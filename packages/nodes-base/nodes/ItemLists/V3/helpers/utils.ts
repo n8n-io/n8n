@@ -1,4 +1,3 @@
-import { NodeVM } from 'vm2';
 import type {
 	IExecuteFunctions,
 	IBinaryData,
@@ -6,6 +5,8 @@ import type {
 	GenericValue,
 } from 'n8n-workflow';
 import { ApplicationError, NodeOperationError } from 'n8n-workflow';
+
+import { JsTaskRunnerSandbox } from '../../../Code/JsTaskRunnerSandbox';
 
 export const prepareFieldsArray = (fields: string | string[], fieldName = 'Fields') => {
 	if (typeof fields === 'string') {
@@ -25,12 +26,12 @@ export const prepareFieldsArray = (fields: string | string[], fieldName = 'Field
 
 const returnRegExp = /\breturn\b/g;
 
-export function sortByCode(
+export async function sortByCode(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
-): INodeExecutionData[] {
-	const code = this.getNodeParameter('code', 0) as string;
-	if (!returnRegExp.test(code)) {
+): Promise<INodeExecutionData[]> {
+	const userCode = this.getNodeParameter('code', 0) as string;
+	if (!returnRegExp.test(userCode)) {
 		throw new NodeOperationError(
 			this.getNode(),
 			"Sort code doesn't return. Please add a 'return' statement to your code",
@@ -38,12 +39,12 @@ export function sortByCode(
 	}
 
 	const mode = this.getMode();
-	const vm = new NodeVM({
-		console: mode === 'manual' ? 'redirect' : 'inherit',
-		sandbox: { items },
-	});
+	const chunkSize = undefined;
+	const sortCode = `return items.sort((a, b) => { ${userCode} })`;
+	const sandbox = new JsTaskRunnerSandbox(mode, this, chunkSize, { items });
+	const executionResult = await sandbox.runCode<INodeExecutionData[]>(sortCode);
 
-	return vm.run(`module.exports = items.sort((a, b) => { ${code} })`);
+	return executionResult;
 }
 
 type PartialBinaryData = Omit<IBinaryData, 'data'>;

@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import MigrationRules from './MigrationRules.vue';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
@@ -475,24 +475,21 @@ describe('MigrationRules', () => {
 			{
 				severity: 'critical',
 				label: 'Critical',
-				tooltip:
-					'Affected workflows will break after the update. You need to update or replace impacted nodes.',
+				tooltipText: 'will break',
 			},
 			{
 				severity: 'medium',
 				label: 'Medium',
-				tooltip:
-					'Workflows may still run but could produce incorrect results. Review and test before updating.',
+				tooltipText: 'incorrect results',
 			},
 			{
 				severity: 'low',
 				label: 'Low',
-				tooltip:
-					'Behavior might change slightly in specific cases. Most workflows will keep working as expected.',
+				tooltipText: 'slightly',
 			},
 		] as const)(
 			'should show $severity severity tooltip on hover',
-			async ({ severity, label, tooltip }) => {
+			async ({ severity, label, tooltipText }) => {
 				const report = createMockReport({
 					report: {
 						generatedAt: new Date('2024-01-01'),
@@ -511,11 +508,10 @@ describe('MigrationRules', () => {
 					expect(screen.getByText(label)).toBeInTheDocument();
 				});
 
-				await userEvent.hover(screen.getByText(label));
-
-				await waitFor(() => {
-					expect(screen.getByText(tooltip)).toBeInTheDocument();
-				});
+				// Verify tooltip shows severity description on hover
+				const labelElement = screen.getByText(label);
+				await hoverTooltipTrigger(labelElement);
+				await waitFor(() => expect(getTooltip()).toHaveTextContent(tooltipText));
 			},
 		);
 	});

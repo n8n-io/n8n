@@ -1,6 +1,7 @@
 export const DEFAULT_OPERATIONS = ['create', 'read', 'update', 'delete', 'list'] as const;
 
 export const RESOURCES = {
+	aiAssistant: ['manage'] as const,
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
 	auditLogs: ['manage'] as const,
 	banner: ['dismiss'] as const,
@@ -8,7 +9,7 @@ export const RESOURCES = {
 	communityPackage: ['install', 'uninstall', 'update', 'list', 'manage'] as const,
 	credential: ['share', 'shareGlobally', 'move', ...DEFAULT_OPERATIONS] as const,
 	externalSecretsProvider: ['sync', ...DEFAULT_OPERATIONS] as const,
-	externalSecret: ['list', 'use'] as const,
+	externalSecret: ['list'] as const,
 	eventBusDestination: ['test', ...DEFAULT_OPERATIONS] as const,
 	ldap: ['sync', 'manage'] as const,
 	license: ['manage'] as const,
@@ -17,6 +18,7 @@ export const RESOURCES = {
 	project: [...DEFAULT_OPERATIONS] as const,
 	saml: ['manage'] as const,
 	securityAudit: ['generate'] as const,
+	securitySettings: ['manage'] as const,
 	sourceControl: ['pull', 'push', 'manage'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	user: [
@@ -37,6 +39,7 @@ export const RESOURCES = {
 		'activate',
 		'deactivate',
 		'publish',
+		'unpublish',
 		...DEFAULT_OPERATIONS,
 	] as const,
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
@@ -64,9 +67,11 @@ export const API_KEY_RESOURCES = {
 	project: ['create', 'update', 'delete', 'list'] as const,
 	user: ['read', 'list', 'create', 'changeRole', 'delete', 'enforceMfa'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get'] as const,
-	credential: ['create', 'update', 'move', 'delete'] as const,
+	credential: ['create', 'update', 'move', 'delete', 'list'] as const,
 	sourceControl: ['pull'] as const,
 	workflowTags: ['update', 'list'] as const,
+	dataTable: ['create', 'read', 'update', 'delete', 'list'] as const,
+	dataTableRow: ['create', 'read', 'update', 'delete', 'upsert'] as const,
 } as const;
 
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
@@ -74,3 +79,11 @@ export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';
 export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';
 export const PROJECT_VIEWER_ROLE_SLUG = 'project:viewer';
 export const PROJECT_CHAT_USER_ROLE_SLUG = 'project:chatUser';
+export const PERSONAL_SPACE_PUBLISHING_SETTING = {
+	key: 'security.personalSpacePublishing',
+	scopes: ['workflow:publish'],
+};
+export const PERSONAL_SPACE_SHARING_SETTING = {
+	key: 'security.personalSpaceSharing',
+	scopes: ['workflow:share', 'credential:share', 'credential:move'],
+};

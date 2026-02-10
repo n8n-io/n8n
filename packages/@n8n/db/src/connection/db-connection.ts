@@ -4,7 +4,7 @@ import { Time } from '@n8n/constants';
 import { Memoized } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
-import { BinaryDataConfig, ErrorReporter } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError, ensureError, OperationalError } from 'n8n-workflow';
 import { setTimeout as setTimeoutP } from 'timers/promises';
 
@@ -22,6 +22,7 @@ export class DbConnection {
 	private dataSource: DataSource;
 
 	private pingTimer: NodeJS.Timeout | undefined;
+	timeout: number;
 
 	readonly connectionState: ConnectionState = {
 		connected: false,
@@ -33,10 +34,12 @@ export class DbConnection {
 		private readonly connectionOptions: DbConnectionOptions,
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly logger: Logger,
-		private readonly binaryDataConfig: BinaryDataConfig,
 	) {
 		this.dataSource = new DataSource(this.options);
 		Container.set(DataSource, this.dataSource);
+		this.timeout = process.env.N8N_DB_PING_TIMEOUT
+			? Number.parseInt(process.env.N8N_DB_PING_TIMEOUT)
+			: 5000;
 	}
 
 	@Memoized
@@ -61,21 +64,6 @@ export class DbConnection {
 				});
 			}
 			throw error;
-		}
-
-		if (
-			(options.type === 'mysql' || options.type === 'mariadb') &&
-			this.binaryDataConfig.availableModes.includes('database')
-		) {
-			const maxAllowedPacket = this.binaryDataConfig.dbMaxFileSize * 1024 * 1024;
-			try {
-				await this.dataSource.query(`SET GLOBAL max_allowed_packet = ${maxAllowedPacket}`);
-			} catch {
-				this.logger.warn(
-					`Failed to set \`max_allowed_packet\` to ${maxAllowedPacket} bytes on your MySQL server. ` +
-						`Please set \`max_allowed_packet\` to at least ${this.binaryDataConfig.dbMaxFileSize} MiB in your MySQL server configuration.`,
-				);
-			}
 		}
 
 		connectionState.connected = true;
@@ -116,7 +104,7 @@ export class DbConnection {
 		try {
 			await Promise.race([
 				this.dataSource.query('SELECT 1'),
-				setTimeoutP(5000, undefined, { signal: abortController.signal }).then(() => {
+				setTimeoutP(this.timeout, undefined, { signal: abortController.signal }).then(() => {
 					throw new OperationalError('Database connection timed out');
 				}),
 			]);

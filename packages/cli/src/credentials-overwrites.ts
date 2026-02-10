@@ -3,13 +3,13 @@ import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { Request, Response, NextFunction } from 'express';
 import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { deepCopy, jsonParse } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import type { ICredentialsOverwrite } from '@/interfaces';
+import { StaticAuthService } from './services/static-auth-service';
 
 const CREDENTIALS_OVERWRITE_KEY = 'credentialsOverwrite';
 
@@ -96,20 +96,7 @@ export class CredentialsOverwrites {
 
 	getOverwriteEndpointMiddleware() {
 		const { endpointAuthToken } = this.globalConfig.credentials.overwrite;
-
-		if (!endpointAuthToken?.trim()) {
-			return null;
-		}
-
-		const expectedAuthorizationHeaderValue = `Bearer ${endpointAuthToken.trim()}`;
-
-		return (req: Request, res: Response, next: NextFunction) => {
-			if (req.headers.authorization !== expectedAuthorizationHeaderValue) {
-				res.status(401).send('Unauthorized');
-				return;
-			}
-			next();
-		};
+		return StaticAuthService.getStaticAuthMiddleware(endpointAuthToken);
 	}
 
 	setPlainData(overwriteData: ICredentialsOverwrite) {

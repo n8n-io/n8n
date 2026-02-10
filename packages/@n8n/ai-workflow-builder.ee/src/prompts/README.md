@@ -16,8 +16,7 @@ src/prompts/
 ├── agents/                       # Multi-agent system prompts
 │   ├── supervisor.prompt.ts      # Routes requests to specialists
 │   ├── discovery.prompt.ts       # Finds nodes & categorizes techniques
-│   ├── builder.prompt.ts         # Creates workflow structure
-│   ├── configurator.prompt.ts    # Sets node parameters
+│   ├── builder.prompt.ts         # Creates workflow structure and configures parameters
 │   └── responder.prompt.ts       # Generates user responses
 │
 └── chains/                       # Chain-level prompts
@@ -63,8 +62,7 @@ The `agents/` directory contains prompts for the multi-agent workflow builder sy
 |-------|---------|
 | **Supervisor** | Routes user requests to the appropriate specialist |
 | **Discovery** | Identifies relevant n8n nodes and categorizes techniques |
-| **Builder** | Creates workflow structure (nodes and connections) |
-| **Configurator** | Sets node parameters using natural language |
+| **Builder** | Creates workflow structure and configures node parameters |
 | **Responder** | Generates user-facing responses |
 
 All agent prompts use PromptBuilder for consistent composition.

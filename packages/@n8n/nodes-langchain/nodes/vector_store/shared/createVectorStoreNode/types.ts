@@ -55,6 +55,17 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 	updateFields?: INodeProperties[];
 
 	/**
+	 * Optional function called once before any documents are inserted.
+	 * Use this for one-time setup operations like clearing an index.
+	 * Only called for node version 1.1+ where batch processing is used.
+	 */
+	beforeInsert?: (
+		context: IExecuteFunctions | ISupplyDataFunctions,
+		embeddings: Embeddings,
+		itemIndex: number,
+	) => Promise<void>;
+
+	/**
 	 * Function to populate the vector store with documents
 	 * Used during the 'insert' operation mode
 	 */

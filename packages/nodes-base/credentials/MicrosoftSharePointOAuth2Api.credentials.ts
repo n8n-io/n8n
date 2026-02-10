@@ -34,5 +34,11 @@ export class MicrosoftSharePointOAuth2Api implements ICredentialType {
 			default: '',
 			hint: 'You can extract the subdomain from the URL. For example, in the URL "https://tenant123.sharepoint.com", the subdomain is "tenant123".',
 		},
+		{
+			displayName: 'Microsoft Graph API Base URL',
+			name: 'graphApiBaseUrl',
+			type: 'hidden',
+			default: 'https://graph.microsoft.com',
+		},
 	];
 }

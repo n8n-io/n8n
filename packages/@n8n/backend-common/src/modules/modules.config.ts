@@ -16,6 +16,8 @@ export const MODULE_NAMES = [
 	'sso-oidc',
 	'sso-saml',
 	'log-streaming',
+	'ldap',
+	'quick-connect',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

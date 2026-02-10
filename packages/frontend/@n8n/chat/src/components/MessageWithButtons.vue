@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref } from 'vue';
+
 import Button from './Button.vue';
 import MarkdownRenderer from './MarkdownRenderer.vue';
 
@@ -10,19 +12,32 @@ defineProps<{
 		type: 'primary' | 'secondary';
 	}>;
 }>();
+
+const clickedButtonIndex = ref<number | null>(null);
+
+const onClick = async (link: string, index: number) => {
+	if (clickedButtonIndex.value !== null) {
+		return;
+	}
+
+	const response = await fetch(link);
+	if (response.ok) {
+		clickedButtonIndex.value = index;
+	}
+};
 </script>
 
 <template>
 	<div>
 		<MarkdownRenderer :text="text" />
 		<div :class="$style.buttons">
-			<template v-for="button in buttons" :key="button.text">
+			<template v-for="(button, index) in buttons" :key="button.text">
 				<Button
-					element="a"
-					:href="button.link"
+					v-if="clickedButtonIndex === null || index === clickedButtonIndex"
+					element="button"
 					:type="button.type"
-					target="_blank"
-					rel="noopener noreferrer"
+					:disabled="index === clickedButtonIndex"
+					@click="onClick(button.link, index)"
 					>{{ button.text }}</Button
 				>
 			</template>

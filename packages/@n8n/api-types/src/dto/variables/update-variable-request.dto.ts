@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import { variableKeySchema, variableTypeSchema, variableValueSchema } from './base.dto';
+import { Z } from '../../zod-class';
 
 export class UpdateVariableRequestDto extends Z.class({
 	key: variableKeySchema.optional(),

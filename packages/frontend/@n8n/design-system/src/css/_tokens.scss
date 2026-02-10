@@ -137,6 +137,7 @@
 	);
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--shadow--light: var(--box-shadow-light, 0 2px 12px 0 rgba(0, 0, 0, 0.07));
+	--shadow--card-hover: 0 2px 8px rgba(68, 28, 23, 0.1);
 
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--radius--xl: var(--border-radius-xlarge, 12px);

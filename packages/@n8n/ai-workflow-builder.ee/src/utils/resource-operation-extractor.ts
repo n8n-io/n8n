@@ -163,7 +163,7 @@ function extractOptions(
 
 /**
  * Extract resource and operation information from a node type description.
- * This is used to provide accurate resource/operation options to the configurator.
+ * This is used to provide accurate resource/operation options to the builder.
  *
  * @param nodeType - The node type description
  * @param nodeVersion - The version of the node to extract info for

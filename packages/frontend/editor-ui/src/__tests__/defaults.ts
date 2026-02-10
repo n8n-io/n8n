@@ -1,6 +1,9 @@
 import type { FrontendSettings } from '@n8n/api-types';
 
 export const defaultSettings: FrontendSettings = {
+	ai: {
+		allowSendingParameterValues: true,
+	},
 	inE2ETests: false,
 	databaseType: 'sqlite',
 	isDocker: false,
@@ -40,6 +43,7 @@ export const defaultSettings: FrontendSettings = {
 		advancedPermissions: false,
 		apiKeyScopes: false,
 		workflowDiffs: false,
+		namedVersions: false,
 		provisioning: true,
 		projects: {
 			team: {
@@ -153,6 +157,7 @@ export const defaultSettings: FrontendSettings = {
 	aiCredits: {
 		enabled: false,
 		credits: 0,
+		setup: false,
 	},
 	easyAIWorkflowOnboarded: false,
 	folders: {

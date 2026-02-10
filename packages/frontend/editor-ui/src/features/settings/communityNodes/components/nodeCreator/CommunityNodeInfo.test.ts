@@ -48,6 +48,10 @@ vi.mock('@/features/shared/nodeCreator/composables/useViewStacks', () => ({
 	useViewStacks: vi.fn(),
 }));
 
+vi.mock('@/features/integrations/quickConnect/composables/useQuickConnect', () => ({
+	useQuickConnect: vi.fn(() => ref(undefined) as ComputedRef),
+}));
+
 describe('CommunityNodeInfo', () => {
 	const renderComponent = createComponentRenderer(CommunityNodeInfo);
 	let pinia: TestingPinia;
@@ -132,8 +136,8 @@ describe('CommunityNodeInfo', () => {
 			'Other node description',
 		);
 		expect(wrapper.getByTestId('verified-tag').textContent).toEqual('Verified');
-		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('9,999 Downloads');
-		expect(wrapper.getByTestId('publisher-name').textContent).toEqual('Published by contributor');
+		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('9,999');
+		expect(wrapper.getByTestId('publisher-name').textContent).toEqual('contributor');
 	});
 
 	it('should display update notice, should show verified badge for older versions', async () => {
@@ -175,8 +179,8 @@ describe('CommunityNodeInfo', () => {
 			'Other node description',
 		);
 		expect(wrapper.getByTestId('verified-tag').textContent).toEqual('Verified');
-		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('9,999 Downloads');
-		expect(wrapper.getByTestId('publisher-name').textContent).toEqual('Published by contributor');
+		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('9,999');
+		expect(wrapper.getByTestId('publisher-name').textContent).toEqual('contributor');
 		expect(
 			wrapper.getByTestId('update-available').querySelector('.n8n-text')?.textContent?.trim(),
 		).toEqual('A new node package version is available');
@@ -267,7 +271,84 @@ describe('CommunityNodeInfo', () => {
 			'Other node description',
 		);
 
-		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('60 Downloads');
-		expect(wrapper.getByTestId('publisher-name').textContent).toEqual('Published by testAuthor');
+		expect(wrapper.getByTestId('number-of-downloads').textContent).toEqual('60');
+		expect(wrapper.getByTestId('publisher-name').textContent).toEqual('testAuthor');
+	});
+
+	describe('Quick connect', () => {
+		beforeEach(() => {
+			getCommunityNodeAttributes.mockResolvedValue({
+				npmVersion: '1.0.0',
+				authorName: 'contributor',
+				numberOfDownloads: 9999,
+				nodeVersions: [{ npmVersion: '1.0.0' }],
+			});
+
+			vi.mocked(useInstalledCommunityPackage).mockReturnValue({
+				...defaultUseInstalledCommunityPackage,
+				installedPackage: ref({
+					installedVersion: '1.0.0',
+					packageName: 'n8n-nodes-test',
+					unverifiedUpdate: false,
+				}) as ComputedRef<ExtendedPublicInstalledPackage>,
+			});
+		});
+
+		describe('Quick connect disabled', () => {
+			it('should not display quick connect tag when disabled', async () => {
+				const wrapper = renderComponent({ pinia });
+
+				await waitFor(() =>
+					expect(wrapper.queryByTestId('number-of-downloads')).toBeInTheDocument(),
+				);
+				expect(wrapper.queryByText(/Quick connect/)).not.toBeInTheDocument();
+			});
+
+			it('should not display quick connect banner when disabled', async () => {
+				const wrapper = renderComponent({ pinia });
+
+				await waitFor(() =>
+					expect(wrapper.queryByTestId('number-of-downloads')).toBeInTheDocument(),
+				);
+				expect(wrapper.queryByTestId('quick-connect-banner')).not.toBeInTheDocument();
+			});
+		});
+
+		describe('Quick connect enabled', () => {
+			beforeEach(async () => {
+				const { useQuickConnect } = await import(
+					'@/features/integrations/quickConnect/composables/useQuickConnect'
+				);
+				vi.mocked(useQuickConnect).mockReturnValue(
+					ref({
+						packageName: 'n8n-nodes-test',
+						credentialType: 'some-credentials',
+						text: 'This packages provides trial access',
+						quickConnectType: 'manual',
+						serviceName: 'Test service',
+					}) as ReturnType<typeof useQuickConnect>,
+				);
+			});
+
+			it('should display quick connect tag', async () => {
+				const wrapper = renderComponent({ pinia });
+
+				await waitFor(() =>
+					expect(wrapper.queryByTestId('number-of-downloads')).toBeInTheDocument(),
+				);
+				expect(wrapper.queryByText(/Quick connect/)).toBeInTheDocument();
+			});
+
+			it('should display quick connect banner', async () => {
+				const wrapper = renderComponent({ pinia });
+
+				await waitFor(() =>
+					expect(wrapper.queryByTestId('number-of-downloads')).toBeInTheDocument(),
+				);
+				expect(wrapper.queryByTestId('quick-connect-banner')).toHaveTextContent(
+					'This packages provides trial access',
+				);
+			});
+		});
 	});
 });

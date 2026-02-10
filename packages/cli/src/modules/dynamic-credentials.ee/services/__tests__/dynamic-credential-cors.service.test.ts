@@ -21,7 +21,8 @@ describe('DynamicCredentialCorsService', () => {
 		mockConfig = {
 			corsOrigin: '',
 			corsAllowCredentials: false,
-		};
+			endpointAuthToken: '',
+		} as unknown as jest.Mocked<DynamicCredentialsConfig>;
 
 		statusSpy = jest.fn().mockReturnThis();
 		endSpy = jest.fn();
@@ -67,6 +68,7 @@ describe('DynamicCredentialCorsService', () => {
 				'Authorization',
 				'Content-Type',
 				'X-Requested-With',
+				'X-Authorization',
 			]);
 
 			// Test 2: 'https://app.com,https://admin.com' → ['https://app.com', 'https://admin.com']
@@ -88,6 +90,7 @@ describe('DynamicCredentialCorsService', () => {
 				'Authorization',
 				'Content-Type',
 				'X-Requested-With',
+				'X-Authorization',
 			]);
 		});
 
@@ -181,7 +184,7 @@ describe('DynamicCredentialCorsService', () => {
 			// Verify: corsService.applyCorsHeaders called with allowedMethods
 			expect(mockCorsService.applyCorsHeaders).toHaveBeenCalledWith(mockRequest, mockResponse, {
 				allowedOrigins: ['https://app.com'],
-				allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
+				allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With', 'X-Authorization'],
 				allowCredentials: true,
 				allowedMethods: ['post', 'options'],
 			});
@@ -231,7 +234,7 @@ describe('DynamicCredentialCorsService', () => {
 			// Verify: corsService called with merged options (defaultOptions + allowedMethods)
 			expect(mockCorsService.applyCorsHeaders).toHaveBeenCalledWith(mockRequest, mockResponse, {
 				allowedOrigins: ['https://app.com'],
-				allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
+				allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With', 'X-Authorization'],
 				allowCredentials: true,
 				allowedMethods: ['get', 'options'],
 			});

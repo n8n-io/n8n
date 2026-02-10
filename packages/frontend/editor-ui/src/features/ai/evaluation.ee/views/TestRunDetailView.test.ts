@@ -7,6 +7,8 @@ import TestRunDetailView from './TestRunDetailView.vue';
 import type { TestCaseExecutionRecord, TestRunRecord } from '../evaluation.api';
 import type { IWorkflowDb } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { computed } from 'vue';
 
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
@@ -124,6 +126,11 @@ describe('TestRunDetailView', () => {
 			},
 			stubActions: false,
 		}),
+		global: {
+			provide: {
+				[WorkflowIdKey]: computed(() => 'test-workflow-id'),
+			},
+		},
 	});
 
 	beforeEach(() => {

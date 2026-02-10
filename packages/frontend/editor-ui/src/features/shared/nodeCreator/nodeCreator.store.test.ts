@@ -20,6 +20,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import type * as nodeCreatorUtils from './nodeCreator.utils';
 
 const workflow_id = 'workflow-id';
 const category_name = 'category-name';
@@ -50,8 +51,10 @@ vi.mock('@/features/workflows/canvas/canvas.utils', () => {
 	};
 });
 
-vi.mock('./nodeCreator.utils', async () => {
+vi.mock('./nodeCreator.utils', async (importOriginal) => {
+	const original = await importOriginal<typeof nodeCreatorUtils>();
 	return {
+		...original,
 		prepareCommunityNodeDetailsViewStack: vi.fn(),
 	};
 });
@@ -328,10 +331,30 @@ describe('useNodeCreatorStore', () => {
 			nodeCreatorStore.openNodeCreatorForConnectingNode({
 				connection,
 				eventSource: 'plus_endpoint',
-				nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
 			});
 
 			expect(nodeCreatorStore.selectedView).toEqual(AI_UNCATEGORIZED_CATEGORY);
+		});
+
+		it('sets nodeCreatorView to provided nodeCreatorView even when connection type is not Main', async () => {
+			mockedParseCanvasConnectionHandleString.mockReturnValue({
+				type: NodeConnectionTypes.AiLanguageModel, // any value that is not NodeConnectionTypes.Main
+				index: 0,
+				mode: CanvasConnectionMode.Input,
+			});
+
+			const connection = {
+				source: 'node-1',
+				sourceHandle: 'fake-handle',
+			};
+
+			nodeCreatorStore.openNodeCreatorForConnectingNode({
+				connection,
+				eventSource: 'plus_endpoint',
+				nodeCreatorView: REGULAR_NODE_CREATOR_VIEW,
+			});
+
+			expect(nodeCreatorStore.selectedView).toEqual(REGULAR_NODE_CREATOR_VIEW);
 		});
 
 		it('uses the provided nodeCreatorView when connection type is Main', async () => {

@@ -187,6 +187,123 @@ class TestDynamicImportDetection(TestTaskAnalyzer):
             analyzer.validate(code)
 
 
+class TestFormatStringAttacks(TestTaskAnalyzer):
+    def test_dangerous_format_patterns_blocked(self, analyzer: TaskAnalyzer) -> None:
+        dangerous_strings = [
+            # Attribute access patterns
+            '"{.__builtins__}".format(print)',
+            '"{.__class__}".format(obj)',
+            '"{.__globals__}".format(fn)',
+            '"{.__class__.__mro__}".format(obj)',
+            # Subscript access patterns
+            '"{.__builtins__[__import__]}".format(print)',
+            '"{[__import__]}".format(__builtins__)',
+            'fmt = "{.__class__}"',
+            'fmt = "{.__builtins__}"; fmt.format(obj)',
+        ]
+
+        for code in dangerous_strings:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "disallowed" in exc_info.value.description.lower()
+
+    def test_safe_format_strings_allowed(self, analyzer: TaskAnalyzer) -> None:
+        safe_format_strings = [
+            '"Hello {}".format(name)',
+            '"{0} {1}".format(a, b)',
+            '"{name}".format(name="world")',
+            '"{.value}".format(obj)',
+            '"{[key]}".format(data)',
+            '"{:.2f}".format(3.14159)',
+        ]
+
+        for code in safe_format_strings:
+            analyzer.validate(code)
+
+    def test_escaped_braces_allowed(self, analyzer: TaskAnalyzer) -> None:
+        safe_escaped = [
+            '"{{.__class__}}".format()',
+            '"{{.__builtins__}}".format()',
+            '"{{.__globals__}}".format()',
+        ]
+
+        for code in safe_escaped:
+            analyzer.validate(code)
+
+    def test_fstring_blocked_attributes_detected(self, analyzer: TaskAnalyzer) -> None:
+        exploit_attempts = [
+            'f"{obj.__class__}"',
+            'f"{fn.__globals__}"',
+        ]
+
+        for code in exploit_attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "disallowed" in exc_info.value.description.lower()
+
+
+class TestMatchPatternValidation(TestTaskAnalyzer):
+    def test_match_pattern_with_blocked_attributes_blocked(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        attempts = [
+            """
+ex = None
+try:
+    pass
+except Exception as e:
+    ex = e
+match ex:
+    case AttributeError(obj=rip):
+        pass
+""",
+            """
+match error:
+    case ValueError(obj=x):
+        pass
+""",
+            """
+match e:
+    case Exception(__traceback__=tb):
+        pass
+""",
+        ]
+
+        for code in attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "disallowed" in exc_info.value.description.lower()
+
+    def test_safe_match_patterns_allowed(self, analyzer: TaskAnalyzer) -> None:
+        safe_patterns = [
+            """
+match value:
+    case 1:
+        pass
+    case "hello":
+        pass
+""",
+            """
+match point:
+    case Point(x=x, y=y):
+        pass
+""",
+            """
+match data:
+    case {"key": value}:
+        pass
+""",
+            """
+match result:
+    case [first, *rest]:
+        pass
+""",
+        ]
+
+        for code in safe_patterns:
+            analyzer.validate(code)
+
+
 class TestAllowAll(TestTaskAnalyzer):
     def test_allow_all_bypasses_validation(self) -> None:
         security_config = SecurityConfig(

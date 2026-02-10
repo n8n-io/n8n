@@ -2,8 +2,7 @@ import type { BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { BedrockEmbeddings } from '@langchain/aws';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
-import { getNodeProxyAgent } from '@utils/httpProxyAgent';
-import { logWrapper } from '@utils/logWrapper';
+import { getNodeProxyAgent, logWrapper } from '@n8n/ai-utilities';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	NodeConnectionTypes,

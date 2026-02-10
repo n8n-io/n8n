@@ -775,6 +775,341 @@ describe('Simplify assistant payloads', () => {
 		expect(simplifiedResultData.runData.TestNode[0].inputOverride).toBeUndefined();
 		expect(simplifiedResultData.runData.TestNode[1].inputOverride).toBeUndefined();
 	});
+
+	it('simplifyResultData: Should keep full error when removeParameterValues is true', () => {
+		const executionData: IRunExecutionData['resultData'] = {
+			runData: {},
+			error: {
+				name: 'NodeOperationError',
+				message: 'Something went wrong',
+				stack: 'Error: Something went wrong\n    at someFunction',
+				node: {
+					id: 'node1',
+					name: 'Test Node',
+					type: 'test.node',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { sensitiveData: 'secret' },
+				},
+			} as unknown as IRunExecutionData['resultData']['error'],
+			lastNodeExecuted: 'Test Node',
+			metadata: { key: 'value' },
+		};
+
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, {
+			removeParameterValues: true,
+		});
+
+		// Full error should be present for debugging context
+		expect(simplifiedResultData.error).toBeDefined();
+		expect(simplifiedResultData.error?.name).toBe('NodeOperationError');
+		expect(simplifiedResultData.error?.message).toBe('Something went wrong');
+		expect((simplifiedResultData.error as unknown as { node?: unknown })?.node).toBeDefined();
+
+		// Metadata and lastNodeExecuted should still be present
+		expect(simplifiedResultData.lastNodeExecuted).toBe('Test Node');
+		expect(simplifiedResultData.metadata).toEqual({ key: 'value' });
+	});
+
+	it('simplifyResultData: Should remove inputOverride from all task data when removeParameterValues is true', () => {
+		const smallInput = createInputOverride({ data: 'small' });
+		const executionData: IRunExecutionData['resultData'] = {
+			runData: {
+				TestNode: [
+					{
+						hints: [],
+						startTime: 1732882780588,
+						executionIndex: 0,
+						executionTime: 4,
+						source: [],
+						executionStatus: 'success',
+						inputOverride: smallInput,
+						data: {
+							main: [[{ json: {} }]],
+						},
+					},
+				],
+			},
+			pinData: {},
+		};
+
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, {
+			removeParameterValues: true,
+		});
+
+		// inputOverride should be removed regardless of size when removeParameterValues is true
+		expect(simplifiedResultData.runData.TestNode[0].inputOverride).toBeUndefined();
+		// But timing/status should still be present
+		expect(simplifiedResultData.runData.TestNode[0].startTime).toBe(1732882780588);
+		expect(simplifiedResultData.runData.TestNode[0].executionStatus).toBe('success');
+	});
+
+	it('simplifyResultData: Should keep full error in task data when removeParameterValues is true', () => {
+		const executionData: IRunExecutionData['resultData'] = {
+			runData: {
+				TestNode: [
+					{
+						hints: [],
+						startTime: 1732882780588,
+						executionIndex: 0,
+						executionTime: 4,
+						source: [],
+						executionStatus: 'error',
+						error: {
+							name: 'NodeApiError',
+							message: 'API call failed',
+							stack: 'Error: API call failed\n    at apiCall',
+							httpCode: '401',
+							description: 'Unauthorized',
+						} as unknown as IRunExecutionData['resultData']['runData'][string][number]['error'],
+						data: {
+							main: [[{ json: {} }]],
+						},
+					},
+				],
+			},
+			pinData: {},
+		};
+
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, {
+			removeParameterValues: true,
+		});
+
+		// Full error should be preserved for debugging context
+		const taskError = simplifiedResultData.runData.TestNode[0].error;
+		expect(taskError).toBeDefined();
+		expect(taskError?.name).toBe('NodeApiError');
+		expect(taskError?.message).toBe('API call failed');
+		expect((taskError as unknown as { httpCode?: string })?.httpCode).toBe('401');
+		expect((taskError as unknown as { description?: string })?.description).toBe('Unauthorized');
+	});
+
+	it('simplifyResultData: Should keep full error when removeParameterValues is false', () => {
+		const executionData: IRunExecutionData['resultData'] = {
+			runData: {},
+			error: {
+				name: 'NodeOperationError',
+				message: 'Something went wrong',
+				stack: 'Error: Something went wrong\n    at someFunction',
+				node: {
+					id: 'node1',
+					name: 'Test Node',
+					type: 'test.node',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { sensitiveData: 'secret' },
+				},
+			} as unknown as IRunExecutionData['resultData']['error'],
+		};
+
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, {
+			removeParameterValues: false,
+		});
+
+		// Full error should be present
+		expect(simplifiedResultData.error).toBeDefined();
+		expect(simplifiedResultData.error?.name).toBe('NodeOperationError');
+		expect((simplifiedResultData.error as unknown as { node?: unknown })?.node).toBeDefined();
+	});
+});
+
+describe('processNodeForAssistant - excludeParameterValues', () => {
+	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		aiAssistantHelpers = useAIAssistantHelpers();
+	});
+
+	it('Should strip values from set node assignments while preserving schema', async () => {
+		const node: INode = {
+			id: 'set-node',
+			name: 'Set Node',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 2,
+			position: [0, 0],
+			parameters: {
+				mode: 'manual',
+				duplicateItem: false,
+				assignments: {
+					assignments: [
+						{
+							id: '4c1abbda-52ad-4809-97b6-6a88c421d9a3',
+							name: 'firstName',
+							value: 'John',
+							type: 'string',
+						},
+						{
+							id: 'af2e008d-cde6-45de-b5f1-26576ba463e0',
+							name: 'lastName',
+							value: 'Doe',
+							type: 'string',
+						},
+					],
+				},
+				includeOtherFields: false,
+				options: {},
+			},
+		};
+
+		const processed = await aiAssistantHelpers.processNodeForAssistant(node, [], {
+			excludeParameterValues: true,
+		});
+
+		expect(processed.parameters).toEqual({
+			mode: '',
+			duplicateItem: null,
+			assignments: {
+				assignments: [
+					{
+						id: '4c1abbda-52ad-4809-97b6-6a88c421d9a3',
+						name: 'firstName',
+						type: 'string',
+					},
+					{
+						id: 'af2e008d-cde6-45de-b5f1-26576ba463e0',
+						name: 'lastName',
+						type: 'string',
+					},
+				],
+			},
+			includeOtherFields: null,
+			options: {},
+		});
+	});
+
+	it('Should sanitize primitive and structured parameter values', async () => {
+		const resourceMapperValue = {
+			mappingMode: 'auto',
+			value: { firstName: 'John' },
+			matchingColumns: ['firstName'],
+			schema: [
+				{
+					id: 'field1',
+					displayName: 'First Name',
+					defaultMatch: true,
+					required: true,
+					display: true,
+				},
+			],
+			attemptToConvertTypes: true,
+			convertFieldsToString: false,
+		};
+
+		const filterValue = {
+			options: {
+				caseSensitive: false,
+				leftValue: 'name',
+				typeValidation: 'strict',
+				version: 2,
+			},
+			combinator: 'AND',
+			conditions: [
+				{
+					id: 'condition-1',
+					leftValue: 'email',
+					operator: {
+						type: 'string',
+						operation: 'contains',
+					},
+					rightValue: ['@n8n'],
+				},
+			],
+		};
+
+		const node: INode = {
+			id: 'http-node',
+			name: 'HTTP Node',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 5,
+			position: [0, 0],
+			parameters: {
+				preBuiltAgentsCalloutHttpRequest: '',
+				curlImport: '',
+				method: 'GET',
+				url: '=https://www.api.com/user={{ $json.firstName }}',
+				authentication: 'none',
+				provideSslCertificates: false,
+				sendQuery: true,
+				nested: {
+					query: {
+						field: 'value',
+					},
+				},
+				resourceLocator: {
+					__rl: true,
+					mode: 'list',
+					value: '123',
+					cachedResultName: 'User',
+					cachedResultUrl: 'https://example.com',
+				},
+				mapper: resourceMapperValue,
+				filters: filterValue,
+				options: {},
+			},
+		};
+
+		const processed = await aiAssistantHelpers.processNodeForAssistant(node, [], {
+			excludeParameterValues: true,
+		});
+
+		expect(processed.parameters).toEqual({
+			preBuiltAgentsCalloutHttpRequest: '',
+			curlImport: '',
+			method: '',
+			url: '',
+			authentication: '',
+			provideSslCertificates: null,
+			sendQuery: null,
+			nested: {
+				query: {
+					field: '',
+				},
+			},
+			resourceLocator: {
+				__rl: true,
+				mode: 'list',
+				value: '',
+			},
+			mapper: {
+				mappingMode: 'auto',
+				value: null,
+				matchingColumns: ['firstName'],
+				schema: [
+					{
+						id: 'field1',
+						displayName: 'First Name',
+						defaultMatch: true,
+						required: true,
+						display: true,
+					},
+				],
+				attemptToConvertTypes: true,
+				convertFieldsToString: false,
+			},
+			filters: {
+				options: {
+					caseSensitive: false,
+					leftValue: 'name',
+					typeValidation: 'strict',
+					version: 2,
+				},
+				combinator: 'AND',
+				conditions: [
+					{
+						id: 'condition-1',
+						leftValue: null,
+						operator: {
+							type: 'string',
+							operation: 'contains',
+						},
+						rightValue: [],
+					},
+				],
+			},
+			options: {},
+		});
+	});
 });
 
 describe('Trim Payload Size', () => {
@@ -1000,17 +1335,17 @@ describe('extractExpressionsFromWorkflow', () => {
 		aiAssistantHelpers = useAIAssistantHelpers();
 	});
 
-	it('Should return empty object for workflow with no nodes', () => {
+	it('Should return empty object for workflow with no nodes', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [],
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(result).toEqual({});
 	});
 
-	it('Should return empty object for workflow with nodes but no expressions', () => {
+	it('Should return empty object for workflow with nodes but no expressions', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1028,11 +1363,11 @@ describe('extractExpressionsFromWorkflow', () => {
 			],
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(result).toEqual({});
 	});
 
-	it('Should extract and resolve expressions with nodeType', () => {
+	it('Should extract and resolve expressions with nodeType', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1049,7 +1384,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			],
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(result['HTTP Request']).toBeDefined();
 		expect(result['HTTP Request'][0]).toEqual({
 			expression: '={{ "hello world" }}',
@@ -1058,7 +1393,7 @@ describe('extractExpressionsFromWorkflow', () => {
 		});
 	});
 
-	it('Should extract multiple expressions from same node and nested objects', () => {
+	it('Should extract multiple expressions from same node and nested objects', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1083,7 +1418,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			],
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(result['HTTP Request']).toBeDefined();
 		expect(result['HTTP Request'].length).toBe(3);
 		const expressions = result['HTTP Request'].map((e) => e.expression);
@@ -1092,7 +1427,7 @@ describe('extractExpressionsFromWorkflow', () => {
 		expect(expressions).toContain("={{ $('Edit Fields').item.json.document }}");
 	});
 
-	it('Should extract expressions from arrays', () => {
+	it('Should extract expressions from arrays', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1124,7 +1459,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			],
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(result['Edit Fields']).toBeDefined();
 		expect(result['Edit Fields'].length).toBe(2);
 		expect(result['Edit Fields'][0]).toMatchObject({
@@ -1140,7 +1475,7 @@ describe('extractExpressionsFromWorkflow', () => {
 		expect(result['Edit Fields'][1].resolvedValue).toBeDefined();
 	});
 
-	it('Should trim resolved values longer than 200 characters', () => {
+	it('Should trim resolved values longer than 200 characters', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1158,7 +1493,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			],
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(result['Test Node']).toBeDefined();
 		expect(result['Test Node'][0].expression).toBe('={{ "x".repeat(300) }}');
 
@@ -1174,7 +1509,7 @@ describe('extractExpressionsFromWorkflow', () => {
 		}
 	});
 
-	it('Should handle expression resolution errors gracefully', () => {
+	it('Should handle expression resolution errors gracefully', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1192,7 +1527,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			],
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(result['Test Node']).toBeDefined();
 		expect(result['Test Node'][0]).toMatchObject({
 			expression: '={{ $json.nonexistent.nested.property }}',
@@ -1206,7 +1541,7 @@ describe('extractExpressionsFromWorkflow', () => {
 		expect(resolvedValue.length).toBeLessThanOrEqual(250);
 	});
 
-	it('Should group expressions by node name', () => {
+	it('Should group expressions by node name', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1233,7 +1568,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			],
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(Object.keys(result)).toHaveLength(2);
 		expect(result['HTTP Request 1']).toBeDefined();
 		expect(result['HTTP Request 2']).toBeDefined();
@@ -1241,7 +1576,7 @@ describe('extractExpressionsFromWorkflow', () => {
 		expect(result['HTTP Request 2'][0].expression).toBe('={{ $json.url2 }}');
 	});
 
-	it('Should not include nodes without expressions in result', () => {
+	it('Should not include nodes without expressions in result', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1268,13 +1603,13 @@ describe('extractExpressionsFromWorkflow', () => {
 			],
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(Object.keys(result)).toHaveLength(1);
 		expect(result['HTTP Request']).toBeUndefined();
 		expect(result['Edit Fields']).toBeDefined();
 	});
 
-	it('Should handle nodes without parameters', () => {
+	it('Should handle nodes without parameters', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1289,11 +1624,11 @@ describe('extractExpressionsFromWorkflow', () => {
 			],
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(result).toEqual({});
 	});
 
-	it('Should resolve different value types correctly (string, number, boolean, object, array)', () => {
+	it('Should resolve different value types correctly (string, number, boolean, object, array)', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1315,7 +1650,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			],
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(result['Test Node']).toBeDefined();
 		expect(result['Test Node'].length).toBe(6);
 
@@ -1336,7 +1671,7 @@ describe('extractExpressionsFromWorkflow', () => {
 		expect(expressionMap['={{ [1, 2, 3] }}']).toEqual([1, 2, 3]);
 	});
 
-	it('Should trim very long resolved values correctly', () => {
+	it('Should trim very long resolved values correctly', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1354,7 +1689,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			],
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(result['Test Node']).toBeDefined();
 		const resolvedValue = result['Test Node'][0].resolvedValue as string;
 		// Mock returns a 300 char string, should be trimmed
@@ -1363,7 +1698,7 @@ describe('extractExpressionsFromWorkflow', () => {
 		expect(resolvedValue).toMatch(/^x+\.\.\. \[truncated\]$/);
 	});
 
-	it('Should handle expressions embedded in regular strings', () => {
+	it('Should handle expressions embedded in regular strings', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1381,7 +1716,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			],
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(result['Test Node']).toBeDefined();
 		expect(result['Test Node'].length).toBe(1);
 		expect(result['Test Node'][0].expression).toBe(
@@ -1392,7 +1727,7 @@ describe('extractExpressionsFromWorkflow', () => {
 		);
 	});
 
-	it('Should handle multiple expressions in one string', () => {
+	it('Should handle multiple expressions in one string', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1410,7 +1745,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			],
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(result['Test Node']).toBeDefined();
 		expect(result['Test Node'].length).toBe(1);
 		expect(result['Test Node'][0].expression).toBe(
@@ -1421,7 +1756,7 @@ describe('extractExpressionsFromWorkflow', () => {
 		);
 	});
 
-	it('Should skip static strings without expressions', () => {
+	it('Should skip static strings without expressions', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1441,7 +1776,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			],
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 		expect(result['Test Node']).toBeDefined();
 		// Should only have 1 expression (the expressionField), not the static string
 		expect(result['Test Node'].length).toBe(1);
@@ -1451,7 +1786,7 @@ describe('extractExpressionsFromWorkflow', () => {
 		expect(expressions).not.toContain('=Static string without expressions');
 	});
 
-	it('Should only extract expressions from executed nodes when execution data is provided', () => {
+	it('Should only extract expressions from executed nodes when execution data is provided', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1496,7 +1831,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			pinData: {},
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow, executionData);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow, executionData);
 
 		// Should only have expressions from executed node
 		expect(result['Executed Node']).toBeDefined();
@@ -1504,7 +1839,7 @@ describe('extractExpressionsFromWorkflow', () => {
 		expect(Object.keys(result)).toHaveLength(1);
 	});
 
-	it('Should extract from all nodes when no execution data is provided', () => {
+	it('Should extract from all nodes when no execution data is provided', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1532,7 +1867,7 @@ describe('extractExpressionsFromWorkflow', () => {
 		};
 
 		// No execution data provided
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
 
 		// Should extract from both nodes
 		expect(result['Node 1']).toBeDefined();
@@ -1540,7 +1875,7 @@ describe('extractExpressionsFromWorkflow', () => {
 		expect(Object.keys(result)).toHaveLength(2);
 	});
 
-	it('Should handle execution data with multiple executed nodes', () => {
+	it('Should handle execution data with multiple executed nodes', async () => {
 		const workflow: IWorkflowDb = {
 			...testWorkflow,
 			nodes: [
@@ -1605,7 +1940,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			pinData: {},
 		};
 
-		const result = aiAssistantHelpers.extractExpressionsFromWorkflow(workflow, executionData);
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow, executionData);
 
 		// Should have expressions from both executed nodes
 		expect(result['Executed Node 1']).toBeDefined();

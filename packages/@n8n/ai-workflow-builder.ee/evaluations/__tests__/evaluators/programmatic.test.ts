@@ -33,6 +33,7 @@ function createMockEvaluationResult(
 		tools: { score: number; violations: Array<{ type: string; description: string }> };
 		fromAi: { score: number; violations: Array<{ type: string; description: string }> };
 		credentials: { score: number; violations: Array<{ type: string; description: string }> };
+		parameters: { score: number; violations: Array<{ type: string; description: string }> };
 		similarity: { score: number; violations: Array<{ type: string; description: string }> } | null;
 	}> = {},
 ) {
@@ -45,6 +46,7 @@ function createMockEvaluationResult(
 		tools: { score: 1.0, violations: [] },
 		fromAi: { score: 0.8, violations: [] },
 		credentials: { score: 1.0, violations: [] },
+		parameters: { score: 1.0, violations: [] },
 		similarity: null,
 		...overrides,
 	};

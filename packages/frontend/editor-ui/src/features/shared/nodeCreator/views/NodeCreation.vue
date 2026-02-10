@@ -102,6 +102,7 @@ function toggleFocusPanel() {
 }
 
 async function onAskAssistantButtonClick() {
+	// Start builder mode if enabled; privacy setting is respected at payload creation level
 	if (builderStore.isAIBuilderEnabled) {
 		await chatPanelStore.toggle({ mode: 'builder' });
 	} else {

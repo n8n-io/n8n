@@ -74,6 +74,8 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 	}
 
 	private sendTo({ type, data }: PushMessage, pushRefs: string[], asBinary: boolean = false) {
+		if (pushRefs.length === 0) return;
+
 		this.logger.debug(`Pushed to frontend: ${type}`, {
 			dataType: type,
 			pushRefs: pushRefs.join(', '),

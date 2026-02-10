@@ -12,7 +12,7 @@ import type {
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { BlockList } from 'node:net';
+import { BlockList, isIPv6 } from 'node:net';
 
 import { WebhookAuthorizationError } from './error';
 import { formatPrivateKey } from '../../utils/utilities';
@@ -127,38 +127,72 @@ export const setupOutputConnection = (
 	};
 };
 
-export const isIpWhitelisted = (
-	whitelist: string | string[] | undefined,
+export const isIpAllowed = (
+	allowlist: string | string[] | undefined,
 	ips: string[],
 	ip?: string,
 ) => {
-	if (whitelist === undefined || whitelist === '') {
+	if (allowlist === undefined || allowlist === '') {
 		return true;
 	}
 
-	if (!Array.isArray(whitelist)) {
-		whitelist = whitelist.split(',').map((entry) => entry.trim());
+	if (!Array.isArray(allowlist)) {
+		allowlist = allowlist.split(',').map((entry) => entry.trim());
 	}
 
-	const allowList = getAllowList(whitelist);
+	const allowList = getAllowList(allowlist);
 
-	if (allowList.check(ip ?? '')) {
-		return true;
+	// Check the primary IP address with proper family detection
+	if (ip) {
+		const ipFamily = isIPv6(ip) ? 'ipv6' : 'ipv4';
+		if (allowList.check(ip, ipFamily)) {
+			return true;
+		}
 	}
 
-	if (ips.some((ipEntry) => allowList.check(ipEntry))) {
+	// Check proxy IPs with proper family detection
+	if (
+		ips.some((ipEntry) => {
+			const ipFamily = isIPv6(ipEntry) ? 'ipv6' : 'ipv4';
+			return allowList.check(ipEntry, ipFamily);
+		})
+	) {
 		return true;
 	}
 
 	return false;
 };
 
-const getAllowList = (whitelist: string[]) => {
+const getAllowList = (allowlist: string[]) => {
 	const allowList = new BlockList();
 
-	for (const entry of whitelist) {
+	for (const entry of allowlist) {
 		try {
-			allowList.addAddress(entry);
+			// Check if entry is in CIDR notation (contains /)
+			if (entry.includes('/')) {
+				const [network, prefixStr] = entry.split('/');
+				const prefix = parseInt(prefixStr, 10);
+
+				// Validate prefix is a number
+				if (isNaN(prefix)) {
+					continue;
+				}
+
+				// Detect IP type (IPv4 vs IPv6)
+				const type = network.includes(':') ? 'ipv6' : 'ipv4';
+
+				// Validate prefix range
+				const maxPrefix = type === 'ipv4' ? 32 : 128;
+				if (prefix < 0 || prefix > maxPrefix) {
+					continue;
+				}
+
+				allowList.addSubnet(network, prefix, type);
+			} else {
+				// Single IP address
+				const type = entry.includes(':') ? 'ipv6' : 'ipv4';
+				allowList.addAddress(entry, type);
+			}
 		} catch {
 			// Ignore invalid entries
 		}

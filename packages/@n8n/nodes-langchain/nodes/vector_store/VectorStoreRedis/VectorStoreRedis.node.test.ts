@@ -13,14 +13,13 @@ jest.mock('@langchain/redis', () => {
 	return { RedisVectorStore, __state: state };
 });
 jest.mock('@utils/sharedFields', () => ({ metadataFilterField: {} }), { virtual: true });
-jest.mock(
-	'@utils/helpers',
-	() => ({ getMetadataFiltersValues: jest.fn(), logAiEvent: jest.fn() }),
-	{ virtual: true },
-);
-jest.mock('@utils/N8nBinaryLoader', () => ({ N8nBinaryLoader: class {} }), { virtual: true });
-jest.mock('@utils/N8nJsonLoader', () => ({ N8nJsonLoader: class {} }), { virtual: true });
-jest.mock('@utils/logWrapper', () => ({ logWrapper: (fn: any) => fn }), { virtual: true });
+jest.mock('@n8n/ai-utilities', () => ({
+	getMetadataFiltersValues: jest.fn(),
+	logAiEvent: jest.fn(),
+	N8nBinaryLoader: class {},
+	N8nJsonLoader: class {},
+	logWrapper: (fn: any) => fn,
+}));
 // Mock the vector store node factory to avoid deep imports but preserve passed methods
 jest.mock('../shared/createVectorStoreNode/createVectorStoreNode', () => ({
 	createVectorStoreNode: (config: any) =>

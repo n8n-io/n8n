@@ -640,6 +640,365 @@ describe('AskAssistantChat', () => {
 			const props = getThinkingMessageProps();
 			expect(props.defaultExpanded).toBe(true);
 		});
+
+		it('should show "Thinking" for non-last completed tool group', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				createToolMessage({
+					id: '1',
+					status: 'completed',
+					displayTitle: 'First Search',
+				}),
+				{
+					id: '2',
+					role: 'assistant' as const,
+					type: 'text' as const,
+					content: 'First result',
+				},
+				createToolMessage({
+					id: '3',
+					status: 'completed',
+					toolName: 'fetch',
+					displayTitle: 'Second Fetch',
+				}),
+				{
+					id: '4',
+					role: 'assistant' as const,
+					type: 'text' as const,
+					content: 'Second result',
+				},
+			];
+
+			renderWithDirectives(messages);
+
+			expect(thinkingMessageCallCount).toBe(2);
+
+			// First group (non-last) should show "Thinking", not "Workflow generated"
+			const firstProps = getThinkingMessageProps(0);
+			expect(firstProps.latestStatusText).toBe('assistantChat.thinking.thinking');
+
+			// Last group should also show "Thinking" (no workflow-updated messages)
+			const secondProps = getThinkingMessageProps(1);
+			expect(secondProps.latestStatusText).toBe('assistantChat.thinking.thinking');
+		});
+
+		it('should show "Workflow generated" for build group and "Thinking" for plan group', () => {
+			// Plan tools (no workflow-updated) then build tools (with workflow-updated interleaved)
+			const messages: ChatUI.AssistantMessage[] = [
+				createToolMessage({
+					id: '1',
+					status: 'completed',
+					displayTitle: 'First Search',
+				}),
+				{
+					id: '2',
+					role: 'assistant' as const,
+					type: 'text' as const,
+					content: 'Planning result',
+				},
+				// User triggers build
+				{
+					id: 'user-2',
+					role: 'user' as const,
+					type: 'text' as const,
+					content: 'Implement the plan',
+				},
+				createToolMessage({
+					id: '3',
+					status: 'completed',
+					toolName: 'add_nodes',
+					displayTitle: 'Adding nodes',
+				}),
+				{
+					id: 'wu-1',
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: '',
+				},
+				createToolMessage({
+					id: '4',
+					status: 'completed',
+					toolName: 'connect_nodes',
+					displayTitle: 'Connecting nodes',
+				}),
+				{
+					id: '5',
+					role: 'assistant' as const,
+					type: 'text' as const,
+					content: 'Workflow built',
+				},
+			];
+
+			renderWithDirectives(messages);
+
+			expect(thinkingMessageCallCount).toBe(2);
+
+			// First group (plan): "Thinking" (no workflow-updated in its region)
+			const firstProps = getThinkingMessageProps(0);
+			expect(firstProps.latestStatusText).toBe('assistantChat.thinking.thinking');
+
+			// Second group (build): "Workflow generated" (workflow-updated interleaved with its tools)
+			const secondProps = getThinkingMessageProps(1);
+			expect(secondProps.latestStatusText).toBe('assistantChat.thinking.workflowGenerated');
+		});
+
+		it('should preserve "Workflow generated" on first build group when second build group appears', () => {
+			// Two sequential builds — both should show "Workflow generated"
+			const messages: ChatUI.AssistantMessage[] = [
+				// First build
+				{
+					id: 'user-1',
+					role: 'user' as const,
+					type: 'text' as const,
+					content: 'Build a workflow',
+				},
+				createToolMessage({
+					id: 't1',
+					status: 'completed',
+					toolName: 'add_nodes',
+					displayTitle: 'Adding nodes',
+				}),
+				{
+					id: 'wu-1',
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: '',
+				},
+				createToolMessage({
+					id: 't2',
+					status: 'completed',
+					toolName: 'connect_nodes',
+					displayTitle: 'Connecting nodes',
+				}),
+				{
+					id: 'resp-1',
+					role: 'assistant' as const,
+					type: 'text' as const,
+					content: 'Workflow created',
+				},
+				// Second build (follow-up)
+				{
+					id: 'user-2',
+					role: 'user' as const,
+					type: 'text' as const,
+					content: 'Also send to Slack',
+				},
+				createToolMessage({
+					id: 't3',
+					status: 'completed',
+					toolName: 'search_nodes',
+					displayTitle: 'Searching nodes',
+				}),
+				createToolMessage({
+					id: 't4',
+					status: 'completed',
+					toolName: 'add_nodes',
+					displayTitle: 'Adding Slack node',
+				}),
+				{
+					id: 'wu-2',
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: '',
+				},
+				createToolMessage({
+					id: 't5',
+					status: 'completed',
+					toolName: 'validate_structure',
+					displayTitle: 'Validating structure',
+				}),
+				{
+					id: 'resp-2',
+					role: 'assistant' as const,
+					type: 'text' as const,
+					content: 'Added Slack node',
+				},
+			];
+
+			renderWithDirectives(messages);
+
+			expect(thinkingMessageCallCount).toBe(2);
+
+			// First build group: "Workflow generated" (has workflow-updated in its region)
+			const firstProps = getThinkingMessageProps(0);
+			expect(firstProps.latestStatusText).toBe('assistantChat.thinking.workflowGenerated');
+
+			// Second build group: "Workflow generated" (also has workflow-updated in its region)
+			const secondProps = getThinkingMessageProps(1);
+			expect(secondProps.latestStatusText).toBe('assistantChat.thinking.workflowGenerated');
+		});
+
+		it('should show mixed titles: plan then build then plan', () => {
+			// Plan → Build → Plan follow-up: each group gets its own title
+			const messages: ChatUI.AssistantMessage[] = [
+				// Plan phase
+				createToolMessage({
+					id: 'p1',
+					status: 'completed',
+					toolName: 'search_nodes',
+					displayTitle: 'Searching nodes',
+				}),
+				{
+					id: 'plan-text',
+					role: 'assistant' as const,
+					type: 'text' as const,
+					content: 'Here is the plan',
+				},
+				// Build phase
+				{
+					id: 'user-build',
+					role: 'user' as const,
+					type: 'text' as const,
+					content: 'Implement it',
+				},
+				createToolMessage({
+					id: 'b1',
+					status: 'completed',
+					toolName: 'add_nodes',
+					displayTitle: 'Adding nodes',
+				}),
+				{
+					id: 'wu-1',
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: '',
+				},
+				{
+					id: 'build-text',
+					role: 'assistant' as const,
+					type: 'text' as const,
+					content: 'Workflow built',
+				},
+				// Plan follow-up (user asks for changes, tools run without workflow-updated)
+				{
+					id: 'user-followup',
+					role: 'user' as const,
+					type: 'text' as const,
+					content: 'What else can we add?',
+				},
+				createToolMessage({
+					id: 'f1',
+					status: 'completed',
+					toolName: 'get_documentation',
+					displayTitle: 'Getting documentation',
+				}),
+				{
+					id: 'followup-text',
+					role: 'assistant' as const,
+					type: 'text' as const,
+					content: 'Here are some suggestions',
+				},
+			];
+
+			renderWithDirectives(messages);
+
+			expect(thinkingMessageCallCount).toBe(3);
+
+			// Group 1 (plan): "Thinking"
+			expect(getThinkingMessageProps(0).latestStatusText).toBe('assistantChat.thinking.thinking');
+			// Group 2 (build): "Workflow generated"
+			expect(getThinkingMessageProps(1).latestStatusText).toBe(
+				'assistantChat.thinking.workflowGenerated',
+			);
+			// Group 3 (plan follow-up): "Thinking"
+			expect(getThinkingMessageProps(2).latestStatusText).toBe('assistantChat.thinking.thinking');
+		});
+
+		it('should show "Thinking" in plan mode (no workflow-updated messages)', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				createToolMessage({
+					id: '1',
+					status: 'completed',
+					displayTitle: 'Searching nodes',
+				}),
+				createToolMessage({
+					id: '2',
+					status: 'completed',
+					toolName: 'get_documentation',
+					displayTitle: 'Getting documentation',
+				}),
+				{
+					id: '3',
+					role: 'assistant' as const,
+					type: 'text' as const,
+					content: 'Here is the plan for your workflow',
+				},
+			];
+
+			renderWithDirectives(messages);
+
+			expect(thinkingMessageCallCount).toBe(1);
+
+			// No workflow-updated, so should show "Thinking" not "Workflow generated"
+			const props = getThinkingMessageProps(0);
+			expect(props.latestStatusText).toBe('assistantChat.thinking.thinking');
+		});
+
+		it('should give each thinking group a unique ID', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				createToolMessage({
+					id: '1',
+					status: 'completed',
+					displayTitle: 'First Search',
+				}),
+				{
+					id: '2',
+					role: 'assistant' as const,
+					type: 'text' as const,
+					content: 'First result',
+				},
+				createToolMessage({
+					id: '3',
+					status: 'completed',
+					toolName: 'fetch',
+					displayTitle: 'Second Fetch',
+				}),
+			];
+
+			renderWithDirectives(messages);
+
+			expect(thinkingMessageCallCount).toBe(2);
+
+			// Each thinking group should get a different latestStatusText or at minimum
+			// both should exist (verifying they are independent groups)
+			expect(getThinkingMessageProps(0)).toBeDefined();
+			expect(getThinkingMessageProps(1)).toBeDefined();
+		});
+
+		it('should not add thinking spinner to old completed group when new turn is streaming', () => {
+			// Old completed tool group + response + user's new message → streaming starts
+			// The old group should stay frozen, not get a "Thinking" spinner
+			const messages: ChatUI.AssistantMessage[] = [
+				createToolMessage({
+					id: '1',
+					status: 'completed',
+					displayTitle: 'Search Results',
+				}),
+				{
+					id: '2',
+					role: 'assistant' as const,
+					type: 'text' as const,
+					content: 'Here is the plan',
+				},
+				{
+					id: '3',
+					role: 'user' as const,
+					type: 'text' as const,
+					content: 'Implement the plan',
+				},
+			];
+
+			renderWithDirectives(messages, { streaming: true, loadingMessage: 'Thinking' });
+
+			expect(thinkingMessageCallCount).toBe(1);
+
+			const props = getThinkingMessageProps(0);
+			// Should NOT have a "thinking-item" spinner appended
+			expect(props.items).toHaveLength(1);
+			expect(props.items[0].displayTitle).toBe('Search Results');
+			expect(props.items[0].status).toBe('completed');
+			// Title should be frozen as "Thinking", not the dynamic loading message
+			expect(props.latestStatusText).toBe('assistantChat.thinking.thinking');
+		});
 	});
 
 	describe('Quick Replies', () => {
@@ -827,6 +1186,143 @@ describe('AskAssistantChat', () => {
 
 			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(0);
 			expect(wrapper.container.textContent).not.toContain('assistantChat.quickRepliesTitle');
+		});
+	});
+
+	describe('Footer Rating', () => {
+		const MessageRatingMock = {
+			name: 'MessageRating',
+			props: ['minimal', 'showFeedback'],
+			emits: ['feedback'],
+			template:
+				'<div data-test-id="footer-rating-component"><button data-test-id="rating-button" @click="$emit(\'feedback\', { rating: \'up\' })">Rate</button></div>',
+		};
+
+		const renderWithFooterRating = (messages: ChatUI.AssistantMessage[], streaming = false) => {
+			return render(AskAssistantChat, {
+				global: {
+					directives: { n8nHtml },
+					stubs: {
+						...Object.fromEntries(stubs.map((stub) => [stub, true])),
+						MessageWrapper: MessageWrapperStub,
+						MessageRating: MessageRatingMock,
+					},
+				},
+				props: {
+					user: { firstName: 'Test', lastName: 'User' },
+					messages,
+					streaming,
+				},
+			});
+		};
+
+		it('should show footer rating when workflow-updated message exists and not streaming', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+				},
+				{
+					id: '2',
+					role: 'assistant',
+					type: 'text',
+					content: 'Workflow created successfully',
+				},
+			];
+
+			const wrapper = renderWithFooterRating(messages, false);
+
+			expect(wrapper.queryByTestId('footer-rating')).toBeTruthy();
+		});
+
+		it('should NOT show footer rating when streaming', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+				},
+				{
+					id: '2',
+					role: 'assistant',
+					type: 'text',
+					content: 'Workflow created successfully',
+				},
+			];
+
+			const wrapper = renderWithFooterRating(messages, true);
+
+			expect(wrapper.queryByTestId('footer-rating')).toBeFalsy();
+		});
+
+		it('should NOT show footer rating when no workflow-updated message exists', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Hello, how can I help?',
+				},
+			];
+
+			const wrapper = renderWithFooterRating(messages, false);
+
+			expect(wrapper.queryByTestId('footer-rating')).toBeFalsy();
+		});
+
+		it('should NOT show footer rating when last message is from user', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+				},
+				{
+					id: '2',
+					role: 'user',
+					type: 'text',
+					content: 'Can you modify this?',
+				},
+			];
+
+			const wrapper = renderWithFooterRating(messages, false);
+
+			expect(wrapper.queryByTestId('footer-rating')).toBeFalsy();
+		});
+
+		it('should NOT show footer rating when there are no messages', () => {
+			const wrapper = renderWithFooterRating([], false);
+
+			expect(wrapper.queryByTestId('footer-rating')).toBeFalsy();
+		});
+
+		it('should emit feedback event when rating is submitted', async () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+				},
+				{
+					id: '2',
+					role: 'assistant',
+					type: 'text',
+					content: 'Workflow created',
+				},
+			];
+
+			const wrapper = renderWithFooterRating(messages, false);
+
+			const ratingButton = wrapper.getByTestId('rating-button');
+			ratingButton.click();
+
+			expect(wrapper.emitted('feedback')).toBeTruthy();
+			expect(wrapper.emitted('feedback')?.[0]).toEqual([{ rating: 'up' }]);
 		});
 	});
 

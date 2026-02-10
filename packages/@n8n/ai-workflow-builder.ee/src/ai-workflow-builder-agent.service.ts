@@ -8,10 +8,13 @@ import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import assert from 'assert';
 import { Client as TracingClient } from 'langsmith';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { LLMServiceError } from '@/errors';
 import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
+import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
+import type { HITLInterruptValue } from '@/types/planning';
 import {
 	BuilderFeatureFlags,
 	WorkflowBuilderAgent,
@@ -24,7 +27,8 @@ type OnTelemetryEvent = (event: string, properties: ITelemetryTrackProperties) =
 
 @Service()
 export class AiWorkflowBuilderService {
-	private readonly parsedNodeTypes: INodeTypeDescription[];
+	private nodeTypes: INodeTypeDescription[];
+
 	private sessionManager: SessionManagerService;
 
 	constructor(
@@ -36,9 +40,20 @@ export class AiWorkflowBuilderService {
 		private readonly n8nVersion?: string,
 		private readonly onCreditsUpdated?: OnCreditsUpdated,
 		private readonly onTelemetryEvent?: OnTelemetryEvent,
+		private readonly resourceLocatorCallbackFactory?: ResourceLocatorCallbackFactory,
 	) {
-		this.parsedNodeTypes = this.filterNodeTypes(parsedNodeTypes);
-		this.sessionManager = new SessionManagerService(this.parsedNodeTypes, logger);
+		this.nodeTypes = this.filterNodeTypes(parsedNodeTypes);
+		this.sessionManager = new SessionManagerService(this.nodeTypes, logger);
+	}
+
+	/**
+	 * Update the node types available to the AI workflow builder.
+	 * Called when community packages are installed, updated, or uninstalled.
+	 * This preserves existing sessions while making new node types available.
+	 */
+	updateNodeTypes(nodeTypes: INodeTypeDescription[]) {
+		this.nodeTypes = this.filterNodeTypes(nodeTypes);
+		this.sessionManager.updateNodeTypes(this.nodeTypes);
 	}
 
 	private static async getAnthropicClaudeModel({
@@ -167,16 +182,19 @@ export class AiWorkflowBuilderService {
 			userMessageId,
 		);
 
+		// Create resource locator callback scoped to this user if factory is provided
+		const resourceLocatorCallback = this.resourceLocatorCallbackFactory?.(user.id);
+
 		const agent = new WorkflowBuilderAgent({
-			parsedNodeTypes: this.parsedNodeTypes,
+			parsedNodeTypes: this.nodeTypes,
 			// Use the same model for all stages in production
 			stageLLMs: {
 				supervisor: anthropicClaude,
 				responder: anthropicClaude,
 				discovery: anthropicClaude,
 				builder: anthropicClaude,
-				configurator: anthropicClaude,
 				parameterUpdater: anthropicClaude,
+				planner: anthropicClaude,
 			},
 			logger: this.logger,
 			checkpointer: this.sessionManager.getCheckpointer(),
@@ -189,6 +207,7 @@ export class AiWorkflowBuilderService {
 				featureFlags: featureFlags ?? {},
 			},
 			onGenerationSuccess: async () => await this.onGenerationSuccess(user, authHeaders),
+			resourceLocatorCallback,
 		});
 
 		return { agent };
@@ -222,7 +241,46 @@ export class AiWorkflowBuilderService {
 		const userId = user?.id?.toString();
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 
-		for await (const output of agent.chat(payload, userId, abortSignal)) {
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
+
+		const pendingHitl = payload.resumeData
+			? this.sessionManager.getAndClearPendingHitl(threadId)
+			: undefined;
+
+		// Store HITL interactions for session replay.
+		// Command.update messages don't persist when a subgraph node interrupts multiple times.
+		if (pendingHitl && payload.resumeData) {
+			if (pendingHitl.value.type === 'questions') {
+				this.sessionManager.addHitlEntry(threadId, {
+					type: 'questions_answered',
+					afterMessageId: pendingHitl.triggeringMessageId,
+					interrupt: pendingHitl.value,
+					answers: payload.resumeData,
+				});
+			} else if (pendingHitl.value.type === 'plan') {
+				const decision = payload.resumeData as { action?: string; feedback?: string };
+				// Only store non-approve decisions; approved plans survive in the checkpoint
+				if (decision.action === 'reject' || decision.action === 'modify') {
+					this.sessionManager.addHitlEntry(threadId, {
+						type: 'plan_decided',
+						afterMessageId: pendingHitl.triggeringMessageId,
+						plan: pendingHitl.value.plan,
+						decision: decision.action,
+						feedback: decision.feedback,
+					});
+				}
+			}
+		}
+
+		const resumeInterrupt = pendingHitl?.value;
+		const agentPayload = resumeInterrupt ? { ...payload, resumeInterrupt } : payload;
+
+		for await (const output of agent.chat(agentPayload, userId, abortSignal)) {
+			const streamHitl = this.extractHitlFromStreamOutput(output);
+			if (streamHitl) {
+				this.sessionManager.setPendingHitl(threadId, streamHitl, payload.id);
+			}
+
 			yield output;
 		}
 
@@ -316,5 +374,67 @@ export class AiWorkflowBuilderService {
 		messageId: string,
 	): Promise<boolean> {
 		return await this.sessionManager.truncateMessagesAfter(workflowId, user.id, messageId);
+	}
+
+	private static readonly questionsInterruptSchema = z.object({
+		type: z.literal('questions'),
+		introMessage: z.string().optional(),
+		questions: z.array(
+			z.object({
+				id: z.string(),
+				question: z.string(),
+				type: z.enum(['single', 'multi', 'text']),
+				options: z.array(z.string()).optional(),
+			}),
+		),
+	});
+
+	private static readonly planInterruptSchema = z.object({
+		type: z.literal('plan'),
+		plan: z.object({
+			summary: z.string(),
+			trigger: z.string(),
+			steps: z.array(
+				z.object({
+					description: z.string(),
+					subSteps: z.array(z.string()).optional(),
+					suggestedNodes: z.array(z.string()).optional(),
+				}),
+			),
+			additionalSpecs: z.array(z.string()).optional(),
+		}),
+	});
+
+	private extractHitlFromStreamOutput(output: unknown): HITLInterruptValue | null {
+		if (typeof output !== 'object' || output === null) return null;
+		if (!('messages' in output)) return null;
+
+		const messages = (output as { messages?: unknown }).messages;
+		if (!Array.isArray(messages)) return null;
+
+		for (const message of messages) {
+			if (typeof message !== 'object' || message === null) continue;
+			const m = message as Record<string, unknown>;
+
+			if (m.type === 'questions') {
+				const parsed = AiWorkflowBuilderService.questionsInterruptSchema.safeParse(m);
+				if (parsed.success) return parsed.data;
+				this.logger?.warn('[HITL] Invalid questions interrupt data', {
+					errors: parsed.error.errors,
+				});
+				continue;
+			}
+
+			if (m.type === 'plan') {
+				const parsed = AiWorkflowBuilderService.planInterruptSchema.safeParse(m);
+				if (parsed.success) return parsed.data;
+				this.logger?.warn('[HITL] Invalid plan interrupt data', {
+					errors: parsed.error.errors,
+				});
+				continue;
+			}
+		}
+
+		return null;
 	}
 }

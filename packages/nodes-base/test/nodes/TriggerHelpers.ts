@@ -107,12 +107,19 @@ export async function testTriggerNode(
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers,
 		emit,
+		logger: mock({
+			debug: jest.fn(),
+			info: jest.fn(),
+			warn: jest.fn(),
+			error: jest.fn(),
+		}),
 		getTimezone: () => timezone,
 		getNode: () => node,
 		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 			(options.credential ?? {}) as T,
 		getMode: () => options.mode ?? 'trigger',
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
+		getWorkflowSettings: () => ({}),
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
 	});
 

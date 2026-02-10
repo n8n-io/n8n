@@ -12,7 +12,7 @@ export class ChangeWorkflowStatisticsFKToNoAction1767018516000 implements Revers
 	transaction = false as const; // Disable FK checks for table recreation
 
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
-		// Create new table with id primary key, workflowName column, and no foreign key constraint
+		// Create new table with id primary key, non nullable workflowId, workflowName column, and no foreign key constraint
 		await queryRunner.query(`
 			CREATE TABLE "${tablePrefix}TMP_workflow_statistics" (
 				"id" INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,12 +25,14 @@ export class ChangeWorkflowStatisticsFKToNoAction1767018516000 implements Revers
 			)
 		`);
 
-		// Copy data from old table and populate workflowName from workflow_entity
+		// Copy data from old table and populate workflowName from workflow_entity.
+		// Rows with null workflowId are skipped, they shouldn't exist in the table anyway.
 		await queryRunner.query(`
 			INSERT INTO "${tablePrefix}TMP_workflow_statistics" ("count", "latestEvent", "name", "workflowId", "workflowName", "rootCount")
 			SELECT ws."count", ws."latestEvent", ws."name", ws."workflowId", we."name", ws."rootCount"
 			FROM "${tablePrefix}workflow_statistics" ws
 			LEFT JOIN "${tablePrefix}workflow_entity" we ON ws."workflowId" = we."id"
+			WHERE ws."workflowId" IS NOT NULL
 		`);
 
 		// Drop old table

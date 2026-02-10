@@ -12,6 +12,7 @@ test.describe('Tools usage @capability:proxy', () => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
+		await page.dismissWelcomeScreen();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i);
 
 		await page.getToolsButton().click();
@@ -20,7 +21,7 @@ test.describe('Tools usage @capability:proxy', () => {
 		await page.toolsModal.getToolSwitch('Jina AI', 'Web Search').click();
 		await page.toolsModal.getConfirmButton().click();
 
-		await expect(page.toolsModal.getRoot()).not.toBeVisible();
+		await expect(page.toolsModal.getRoot()).toBeHidden();
 		await expect(page.getToolsButton()).toHaveText('1 Tool');
 		await page.getChatInput().fill('What is n8n?');
 		await page.getSendButton().click();

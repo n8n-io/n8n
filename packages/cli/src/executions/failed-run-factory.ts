@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import { StorageConfig } from 'n8n-core';
 import {
 	createRunExecutionData,
 	type ExecutionError,
@@ -9,6 +10,8 @@ import {
 
 @Service()
 export class FailedRunFactory {
+	constructor(private readonly storageConfig: StorageConfig) {}
+
 	generateFailedExecutionFromError(
 		mode: WorkflowExecuteMode,
 		error: ExecutionError,
@@ -32,6 +35,7 @@ export class FailedRunFactory {
 			startedAt: new Date(),
 			stoppedAt: new Date(),
 			status: 'error',
+			storedAt: this.storageConfig.modeTag,
 		};
 
 		if (node) {

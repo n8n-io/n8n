@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import axios from 'axios';
 import { ErrorReporter } from 'n8n-core';
+import type { IDataObject } from 'n8n-workflow';
 
 interface ResponseData<T> {
 	data: Array<Entity<T>>;
@@ -24,18 +25,30 @@ interface Pagination {
 	total: number;
 }
 
-const REQUEST_TIMEOUT_MS = 3000;
+export interface PaginationRequestOptions {
+	throwOnError?: boolean;
+}
 
-export async function paginatedRequest<T>(url: string): Promise<T[]> {
+export type StrapiFilters = { [key: string]: { ['$eq']?: string; ['$in']?: string[] } };
+
+interface PaginationRequestParams {
+	filters?: StrapiFilters;
+	fields?: string[];
+	pagination: {
+		page: number;
+		pageSize: number;
+	};
+}
+
+const REQUEST_TIMEOUT_MS = 6000;
+
+export async function paginatedRequest<T>(
+	url: string,
+	params: PaginationRequestParams,
+	options?: PaginationRequestOptions,
+): Promise<T[]> {
 	let returnData: T[] = [];
 	let responseData: T[] | undefined = [];
-
-	const params = {
-		pagination: {
-			page: 1,
-			pageSize: 25,
-		},
-	};
 
 	do {
 		let response;
@@ -52,10 +65,12 @@ export async function paginatedRequest<T>(url: string): Promise<T[]> {
 			Container.get(Logger).error(
 				`Error while fetching community nodes: ${(error as Error).message}`,
 			);
+			if (options?.throwOnError) throw error;
+
 			break;
 		}
 
-		responseData = response?.data?.data?.map((item) => item.attributes);
+		responseData = response?.data?.data?.map((item) => ({ id: item.id, ...item.attributes }));
 
 		if (!responseData?.length) break;
 
@@ -64,13 +79,21 @@ export async function paginatedRequest<T>(url: string): Promise<T[]> {
 		if (response?.data?.meta?.pagination) {
 			const { page, pageCount } = response?.data.meta.pagination;
 
-			if (page === pageCount) {
-				break;
-			}
+			if (page === pageCount) break;
 		}
 
 		params.pagination.page++;
 	} while (responseData?.length);
 
 	return returnData;
+}
+
+export function buildStrapiUpdateQuery(ids: number[]): IDataObject {
+	return {
+		filters: {
+			id: {
+				$in: ids,
+			},
+		},
+	};
 }

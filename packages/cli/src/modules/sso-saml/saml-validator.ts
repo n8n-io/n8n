@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { Constants, IdentityProvider } from 'samlify';
 import type { IdentityProviderInstance } from 'samlify';
 import type { XMLFileInfo, XMLLintOptions, XMLValidationResult } from 'xmllint-wasm';
 
@@ -20,13 +19,20 @@ export class SamlValidator {
 		validateXML: (options: XMLLintOptions) => Promise<XMLValidationResult>;
 	};
 
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	private samlify: typeof import('samlify');
+
 	async init() {
+		if (this.samlify) return;
+		this.samlify = await import('samlify');
 		await this.loadSchemas();
 		this.xmllint = await import('xmllint-wasm');
 	}
 
 	validateIdentiyProvider(idp: IdentityProviderInstance) {
-		const binding = idp.entityMeta.getSingleSignOnService(Constants.wording.binding.redirect);
+		const binding = idp.entityMeta.getSingleSignOnService(
+			this.samlify.Constants.wording.binding.redirect,
+		);
 		if (typeof binding !== 'string') {
 			throw new InvalidSamlMetadataError('only SAML redirect binding is supported.');
 		}
@@ -36,7 +42,7 @@ export class SamlValidator {
 		const validXML = await this.validateXml('metadata', metadata);
 
 		if (validXML) {
-			const idp = IdentityProvider({
+			const idp = this.samlify.IdentityProvider({
 				metadata,
 			});
 			this.validateIdentiyProvider(idp);

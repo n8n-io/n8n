@@ -1,18 +1,19 @@
 #!/usr/bin/env tsx
 import { parseArgs } from 'node:util';
 
-import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
 import type { CloudflaredResult } from './services/cloudflared';
 import type { KeycloakResult } from './services/keycloak';
 import type { MailpitResult } from './services/mailpit';
+import type { NgrokResult } from './services/ngrok';
 import type { TracingResult } from './services/tracing';
 import type { ServiceName } from './services/types';
 import type { VictoriaLogsResult } from './services/victoria-logs';
 import type { VictoriaMetricsResult } from './services/victoria-metrics';
 import type { N8NConfig, N8NStack } from './stack';
 import { createN8NStack } from './stack';
+import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 // ANSI colors for terminal output
 const colors = {
@@ -49,7 +50,9 @@ ${colors.yellow}Options:${colors.reset}
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
   --observability   Enable observability stack (VictoriaLogs + VictoriaMetrics + Vector)
   --tracing         Enable tracing stack (n8n-tracer + Jaeger) for workflow visualization
+  --kafka           Enable Kafka broker for message queue trigger testing
   --tunnel          Enable Cloudflare Tunnel for public URL (via trycloudflare.com)
+  --ngrok           Enable ngrok tunnel for public URL (requires NGROK_AUTHTOKEN env var)
   --mailpit         Enable Mailpit for email testing
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
@@ -67,7 +70,7 @@ ${Object.entries(BASE_PERFORMANCE_PLANS)
 	.join('\n')}
 
 ${colors.yellow}Environment Variables:${colors.reset}
-  • N8N_DOCKER_IMAGE=<image>  Use a custom Docker image (default: n8nio/n8n:local)
+  • TEST_IMAGE_N8N=<image>  Use a custom Docker image (default: n8nio/n8n:local)
 
 ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# Simple SQLite instance${colors.reset}
@@ -130,7 +133,9 @@ async function main() {
 			oidc: { type: 'boolean' },
 			observability: { type: 'boolean' },
 			tracing: { type: 'boolean' },
+			kafka: { type: 'boolean' },
 			tunnel: { type: 'boolean' },
+			ngrok: { type: 'boolean' },
 			mailpit: { type: 'boolean' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
@@ -153,7 +158,9 @@ async function main() {
 	if (values.oidc) services.push('keycloak');
 	if (values.observability) services.push('victoriaLogs', 'victoriaMetrics', 'vector');
 	if (values.tracing) services.push('tracing');
+	if (values.kafka) services.push('kafka');
 	if (values.tunnel) services.push('cloudflared');
+	if (values.ngrok) services.push('ngrok');
 	if (values.mailpit) services.push('mailpit');
 
 	// Build configuration
@@ -290,6 +297,14 @@ async function main() {
 			log.info('Webhooks are accessible from the internet via this URL');
 		}
 
+		const ngrokResult = stack.serviceResults.ngrok as NgrokResult | undefined;
+		if (ngrokResult) {
+			console.log('');
+			log.header('ngrok Tunnel');
+			log.info(`Public URL: ${colors.cyan}${ngrokResult.meta.publicUrl}${colors.reset}`);
+			log.info('Webhooks are accessible from the internet via this URL');
+		}
+
 		const mailpitResult = stack.serviceResults.mailpit as MailpitResult | undefined;
 		if (mailpitResult) {
 			console.log('');
@@ -299,7 +314,9 @@ async function main() {
 
 		console.log('');
 		log.info('Containers are running in the background');
-		log.info('Cleanup with: pnpm stack:clean:all (stops containers and removes networks)');
+		log.info(
+			'Cleanup with: pnpm --filter n8n-containers stack:clean:all (stops containers and removes networks)',
+		);
 		console.log('');
 	} catch (error) {
 		log.error(`Failed to start: ${error as string}`);
@@ -308,7 +325,7 @@ async function main() {
 }
 
 function displayConfig(config: N8NConfig) {
-	const dockerImage = getDockerImageFromEnv();
+	const dockerImage = TEST_CONTAINER_IMAGES.n8n;
 	const mains = config.mains ?? 1;
 	const workers = config.workers ?? 0;
 	const isQueueMode = mains > 1 || workers > 0;
@@ -357,6 +374,8 @@ function displayConfig(config: N8NConfig) {
 	// Display tunnel status
 	if (services.includes('cloudflared')) {
 		log.info('Tunnel: enabled (Cloudflare Quick Tunnel)');
+	} else if (services.includes('ngrok')) {
+		log.info('Tunnel: enabled (ngrok)');
 	} else {
 		log.info('Tunnel: disabled');
 	}

@@ -11,11 +11,12 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { mapLegacyConnectionsToCanvasConnections } from '@/features/workflows/canvas/canvas.utils';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import type { IConnections, INode } from 'n8n-workflow';
+import { NodeHelpers, type IConnections, type INode } from 'n8n-workflow';
 import isEqual from 'lodash/isEqual';
 
 export interface UpdateWorkflowOptions {
@@ -42,6 +43,7 @@ export function useWorkflowUpdate() {
 	const nodeTypesStore = useNodeTypesStore();
 	const builderStore = useBuilderStore();
 	const canvasOperations = useCanvasOperations();
+	const nodeHelpers = useNodeHelpers();
 
 	/**
 	 * Categorize nodes into those to update, add, or remove
@@ -81,19 +83,19 @@ export function useWorkflowUpdate() {
 	): Promise<void> {
 		if (nodesToUpdate.length === 0) return;
 
-		// Track successful renames (nodeId -> newName)
+		// Track successful renames (nodeId -> actualNewName after uniquification)
 		const renamedNodes = new Map<string, string>();
 
 		// First handle renames via canvasOperations (handles pinData, metadata, etc.)
 		for (const { existing, updated } of nodesToUpdate) {
 			if (existing.name !== updated.name) {
-				const success = await canvasOperations.renameNode(existing.name, updated.name, {
+				const actualNewName = await canvasOperations.renameNode(existing.name, updated.name, {
 					trackHistory: true,
 					trackBulk: false,
 					showErrorToast: false,
 				});
-				if (success) {
-					renamedNodes.set(existing.id, updated.name);
+				if (actualNewName) {
+					renamedNodes.set(existing.id, actualNewName);
 				}
 			}
 		}
@@ -114,6 +116,21 @@ export function useWorkflowUpdate() {
 				name: nodeName, // Keep actual name (old if rename failed)
 			});
 
+			// Resolve parameters with defaults to ensure all parameter values are properly initialized
+			// This is necessary because AI builder may send partial parameters without defaults
+			const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			if (nodeTypeDescription) {
+				const resolvedParameters = NodeHelpers.getNodeParameters(
+					nodeTypeDescription.properties ?? [],
+					node.parameters,
+					true, // returnDefaults
+					false,
+					node,
+					nodeTypeDescription,
+				);
+				node.parameters = resolvedParameters ?? {};
+			}
+
 			// Mark node as dirty if parameters changed
 			if (!isEqual(existing.parameters, updated.parameters)) {
 				workflowState.resetParametersLastUpdatedAt(nodeName);
@@ -123,6 +140,11 @@ export function useWorkflowUpdate() {
 		// Sync state back to store
 		workflowsStore.setNodes(Object.values(workflow.nodes));
 		workflowsStore.setConnections(workflow.connectionsBySourceNode);
+		// Revalidate updated nodes to refresh error indicators on canvas
+		for (const { existing } of nodesToUpdate) {
+			const nodeName = renamedNodes.get(existing.id) ?? existing.name;
+			nodeHelpers.updateNodeParameterIssuesByName(nodeName);
+		}
 	}
 
 	/**

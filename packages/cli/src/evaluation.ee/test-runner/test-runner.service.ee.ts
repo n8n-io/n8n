@@ -24,7 +24,7 @@ import type {
 	GenericValue,
 } from 'n8n-workflow';
 import assert from 'node:assert';
-import { JsonObject } from 'openid-client';
+import type { JsonObject } from 'openid-client';
 
 import { ActiveExecutions } from '@/active-executions';
 import { EventService } from '@/events/event.service';

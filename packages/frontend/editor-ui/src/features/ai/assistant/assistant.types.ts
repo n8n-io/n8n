@@ -11,6 +11,7 @@ import type {
 	ITaskData,
 } from 'n8n-workflow';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
+import type { FrontendSettings } from '@n8n/api-types';
 
 export namespace ChatRequest {
 	export interface NodeExecutionSchema {
@@ -58,6 +59,7 @@ export namespace ChatRequest {
 			firstName: string;
 		};
 		authType?: { name: string; value: string };
+		context?: Pick<UserContext, 'aiUsageSettings'>;
 	}
 
 	export interface InitSupportChat {
@@ -95,6 +97,7 @@ export namespace ChatRequest {
 
 	export interface BuilderFeatureFlags {
 		templateExamples?: boolean;
+		planMode?: boolean;
 	}
 
 	export interface UserChatMessage {
@@ -106,6 +109,10 @@ export namespace ChatRequest {
 		context?: UserContext;
 		workflowContext?: WorkflowContext;
 		featureFlags?: BuilderFeatureFlags;
+		/** Builder mode: 'build' for direct generation, 'plan' for planning first */
+		mode?: 'build' | 'plan';
+		/** Resume payload for LangGraph interrupt() */
+		resumeData?: unknown;
 	}
 
 	export interface UserContext {
@@ -124,6 +131,7 @@ export namespace ChatRequest {
 			name: VIEWS;
 			description?: string;
 		};
+		aiUsageSettings?: FrontendSettings['ai'];
 	}
 
 	export type AssistantContext = UserContext & WorkflowContext;
@@ -185,6 +193,26 @@ export namespace ChatRequest {
 		suggestionId?: string;
 	}
 
+	// API-only types for Plan Mode messages
+	export interface ApiQuestionsMessage {
+		role: 'assistant';
+		type: 'questions';
+		questions: PlanMode.PlannerQuestion[];
+		introMessage?: string;
+	}
+
+	export interface ApiPlanMessage {
+		role: 'assistant';
+		type: 'plan';
+		plan: PlanMode.PlanOutput;
+	}
+
+	export interface ApiUserAnswersMessage {
+		role: 'user';
+		type: 'user_answers';
+		answers: PlanMode.QuestionResponse[];
+	}
+
 	// API-only types
 	export type MessageResponse =
 		| ((
@@ -196,6 +224,9 @@ export namespace ChatRequest {
 				| ChatUI.WorkflowUpdatedMessage
 				| ToolMessage
 				| ChatUI.ErrorMessage
+				| ApiQuestionsMessage
+				| ApiPlanMessage
+				| ApiUserAnswersMessage
 		  ) & {
 				quickReplies?: ChatUI.QuickReply[];
 		  })
@@ -240,6 +271,107 @@ export namespace AskAiRequest {
 		forNode: 'code' | 'transform';
 	}
 }
+
+// ============================================================================
+// Plan Mode Types
+// ============================================================================
+
+export namespace PlanMode {
+	export type QuestionType = 'single' | 'multi' | 'text';
+
+	export interface PlannerQuestion {
+		id: string;
+		question: string;
+		type: QuestionType;
+		options?: string[];
+	}
+
+	export interface QuestionResponse {
+		questionId: string;
+		question: string;
+		selectedOptions: string[];
+		customText?: string;
+		skipped?: boolean;
+	}
+
+	export interface PlanStep {
+		description: string;
+		subSteps?: string[];
+		suggestedNodes?: string[];
+	}
+
+	export interface PlanOutput {
+		summary: string;
+		trigger: string;
+		steps: PlanStep[];
+		additionalSpecs?: string[];
+	}
+
+	export interface QuestionsMessageData {
+		questions: PlannerQuestion[];
+		introMessage?: string;
+	}
+
+	export interface PlanMessageData {
+		plan: PlanOutput;
+	}
+
+	export interface UserAnswersMessageData {
+		answers: QuestionResponse[];
+	}
+
+	export type QuestionsMessage = ChatUI.CustomMessage & {
+		customType: 'questions';
+		data: QuestionsMessageData;
+	};
+
+	export type PlanMessage = ChatUI.CustomMessage & {
+		customType: 'plan';
+		data: PlanMessageData;
+	};
+
+	export type UserAnswersMessage = ChatUI.CustomMessage & {
+		role: 'user';
+		customType: 'user_answers';
+		data: UserAnswersMessageData;
+	};
+
+	export type PlanModeMessage = QuestionsMessage | PlanMessage | UserAnswersMessage;
+}
+
+// Type guards for Plan Mode custom messages
+export function isPlanModeQuestionsMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is PlanMode.QuestionsMessage {
+	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'questions';
+}
+
+export function isPlanModePlanMessage(msg: ChatUI.AssistantMessage): msg is PlanMode.PlanMessage {
+	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'plan';
+}
+
+export function isPlanModeUserAnswersMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is PlanMode.UserAnswersMessage {
+	return (
+		msg.type === 'custom' &&
+		msg.role === 'user' &&
+		'customType' in msg &&
+		msg.customType === 'user_answers'
+	);
+}
+
+export function isPlanModeMessage(msg: ChatUI.AssistantMessage): msg is PlanMode.PlanModeMessage {
+	return (
+		isPlanModeQuestionsMessage(msg) ||
+		isPlanModePlanMessage(msg) ||
+		isPlanModeUserAnswersMessage(msg)
+	);
+}
+
+export type AssistantProcessOptions = {
+	excludeParameterValues?: boolean;
+};
 
 // Type guards for ChatRequest messages
 export function isTextMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.TextMessage {
@@ -293,4 +425,20 @@ export function isEndSessionMessage(
 	msg: ChatRequest.MessageResponse,
 ): msg is ChatUI.EndSessionMessage {
 	return 'type' in msg && msg.type === 'event' && msg.eventName === 'end-session';
+}
+
+export function isQuestionsMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.ApiQuestionsMessage {
+	return 'type' in msg && msg.type === 'questions' && 'questions' in msg;
+}
+
+export function isPlanMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.ApiPlanMessage {
+	return 'type' in msg && msg.type === 'plan' && 'plan' in msg;
+}
+
+export function isUserAnswersMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.ApiUserAnswersMessage {
+	return 'type' in msg && msg.type === 'user_answers' && 'answers' in msg;
 }
