@@ -653,22 +653,36 @@ export class Clockify implements INodeType {
 
 						Object.assign(body, updateFields);
 
-						if (body.estimate) {
-							const [hour, minute] = (body.estimate as string).split(':');
-							body.estimate = `PT${hour}H${minute}M`;
-						}
+					if (body.estimate) {
+						const [hour, minute] = (body.estimate as string).split(':');
+						body.estimate = `PT${hour}H${minute}M`;
+					}
 
-						responseData = await clockifyApiRequest.call(
+					if (!body.name) {
+						// Clockify API requires task name in the PUT request body.
+						// If the user did not set a new name, fetch the existing task
+						// to preserve its current name.
+						const { name } = await clockifyApiRequest.call(
 							this,
-							'PUT',
+							'GET',
 							`/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}`,
-							body,
+							{},
 							qs,
 						);
+						body.name = name;
 					}
-				}
 
-				if (resource === 'timeEntry') {
+					responseData = await clockifyApiRequest.call(
+						this,
+						'PUT',
+						`/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}`,
+						body,
+						qs,
+					);
+				}
+			}
+
+			if (resource === 'timeEntry') {
 					if (operation === 'create') {
 						const timezone = this.getTimezone();
 
