@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 
@@ -7,9 +7,11 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import SetupCredentialLabel from './SetupCredentialLabel.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 import type { NodeSetupState } from '../setupPanel.types';
 import { useNodeExecution } from '@/app/composables/useNodeExecution';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const props = defineProps<{
 	state: NodeSetupState;
@@ -23,7 +25,9 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const nodeTypesStore = useNodeTypesStore();
+const workflowsStore = useWorkflowsStore();
 
 const nodeRef = computed(() => props.state.node);
 const { isExecuting, buttonLabel, buttonIcon, disabledReason, hasIssues, execute } =
@@ -51,15 +55,22 @@ const onHeaderClick = () => {
 	expanded.value = !expanded.value;
 };
 
+// Tracks whether the user directly interacted with this card (credential select/deselect or test click).
+// Used to avoid firing telemetry for cards that were auto-completed via credential auto-assignment.
+const hadManualInteraction = ref(false);
+
 const onCredentialSelected = (credentialType: string, credentialId: string) => {
+	hadManualInteraction.value = true;
 	emit('credentialSelected', { credentialType, credentialId });
 };
 
 const onCredentialDeselected = (credentialType: string) => {
+	hadManualInteraction.value = true;
 	emit('credentialDeselected', credentialType);
 };
 
 const onTestClick = async () => {
+	hadManualInteraction.value = true;
 	await execute();
 };
 
@@ -68,6 +79,30 @@ watch(
 	(isComplete) => {
 		if (isComplete) {
 			expanded.value = false;
+
+			if (hadManualInteraction.value) {
+				const nodeTypes = new Set<string>();
+				for (const req of props.state.credentialRequirements) {
+					for (const nodeName of req.nodesWithSameCredential) {
+						const node = workflowsStore.getNodeByName(nodeName);
+						if (node) {
+							nodeTypes.add(node.type);
+						}
+					}
+				}
+
+				telemetry.track('User completed setup step', {
+					template_id: workflowsStore.workflow.meta?.templateId,
+					workflow_id: workflowsStore.workflowId,
+					type: props.state.isTrigger ? 'trigger' : 'credential',
+					nodes: Array.from(nodeTypes),
+					related_nodes_count: props.state.credentialRequirements.reduce(
+						(count, req) => count + req.nodesWithSameCredential.length,
+						0,
+					),
+				});
+				hadManualInteraction.value = false;
+			}
 		}
 	},
 );
