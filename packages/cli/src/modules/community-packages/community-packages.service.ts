@@ -23,6 +23,7 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { NodeDefinitionGeneratorService } from '@/services/node-definition-generator.service';
 import { toError } from '@/utils';
 
 import { getCommunityNodeTypes, type StrapiCommunityNodeType } from './community-node-types-utils';
@@ -69,6 +70,7 @@ export class CommunityPackagesService {
 		private readonly publisher: Publisher,
 		private readonly license: License,
 		private readonly config: CommunityPackagesConfig,
+		private readonly nodeDefinitionGenerator: NodeDefinitionGeneratorService,
 	) {}
 
 	async init() {
@@ -431,6 +433,7 @@ export class CommunityPackagesService {
 				});
 				await this.loadNodesAndCredentials.postProcessLoaders();
 				this.loadNodesAndCredentials.releaseTypes();
+				await this.nodeDefinitionGenerator.generateForPackage(packageName, loader.types.nodes);
 				this.logger.info(`Community package installed: ${packageName}`);
 				return installedPackage;
 			} catch (error) {
@@ -476,6 +479,7 @@ export class CommunityPackagesService {
 	private async removeNpmPackage(packageName: string) {
 		await this.deletePackageDirectory(packageName);
 		await this.loadNodesAndCredentials.unloadPackage(packageName);
+		await this.nodeDefinitionGenerator.removeForPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		this.loadNodesAndCredentials.releaseTypes();
 		this.logger.info(`Community package uninstalled: ${packageName}`);

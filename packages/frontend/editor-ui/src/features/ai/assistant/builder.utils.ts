@@ -6,14 +6,17 @@ import {
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT } from '@/app/constants/experiments';
+import {
+	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT,
+	CODE_WORKFLOW_BUILDER_EXPERIMENT,
+} from '@/app/constants/experiments';
 import type { IRunExecutionData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import { getWorkflowVersionsByIds } from '@n8n/rest-api-client/api/workflowHistory';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
 export function generateShortId() {
-	return Math.random().toString(36).substr(2, 9);
+	return Math.random().toString(36).substring(2, 11);
 }
 
 export function generateMessageId(): string {
@@ -66,26 +69,35 @@ export async function createBuilderPayload(
 		}
 	}
 
-	// Schema is always sent - include values only when privacy is ON (allowSendingParameterValues=true)
-	if (options.nodesForSchema?.length) {
-		workflowContext.executionSchema = assistantHelpers.getNodesSchemas(
-			options.nodesForSchema,
-			shouldExcludeParameterValues, // excludeValues: true when privacy OFF, false when privacy ON
-		);
-	}
-
 	const selectedNodes = focusedNodesStore.buildContextPayload();
 	if (selectedNodes.length > 0) {
 		workflowContext.selectedNodes = selectedNodes;
 	}
 
 	// Get feature flags from Posthog
+	const isCodeBuilderEnabled =
+		posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name) ===
+		CODE_WORKFLOW_BUILDER_EXPERIMENT.test;
+
 	const featureFlags: ChatRequest.BuilderFeatureFlags = {
 		templateExamples:
 			posthogStore.getVariant(AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name) ===
 			AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.variant,
+		codeBuilder: isCodeBuilderEnabled,
 		planMode: options.isPlanModeEnabled ?? false,
 	};
+
+	if (options.nodesForSchema?.length) {
+		const { schemas, pinnedNodeNames } = assistantHelpers.getNodesSchemas(
+			options.nodesForSchema,
+			shouldExcludeParameterValues,
+		);
+		workflowContext.executionSchema = schemas;
+		workflowContext.valuesExcluded = shouldExcludeParameterValues;
+		if (pinnedNodeNames.length > 0) {
+			workflowContext.pinnedNodes = pinnedNodeNames;
+		}
+	}
 
 	return {
 		role: 'user',

@@ -81,14 +81,14 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 @use '../../../css/mixins/animations';
 
 .thinkingContainer {
-	margin: var(--spacing--2xs) 0;
+	margin: var(--spacing--4xs) 0;
 }
 
 .header {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--2xs) 0;
+	padding: var(--spacing--4xs) 0;
 	background: transparent;
 	border: none;
 	cursor: pointer;
@@ -126,10 +126,10 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 
 .itemList {
 	padding-left: var(--spacing--4xs);
-	padding-bottom: var(--spacing--2xs);
+	padding-bottom: var(--spacing--4xs);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
 }
 
 .item {

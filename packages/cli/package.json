@@ -116,6 +116,7 @@
     "@n8n/task-runner": "workspace:*",
     "@n8n/typeorm": "catalog:",
     "@n8n/utils": "workspace:*",
+    "@n8n/workflow-sdk": "workspace:*",
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "@n8n_io/license-sdk": "2.25.0",
     "@parcel/watcher": "^2.5.1",

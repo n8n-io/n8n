@@ -1,5 +1,7 @@
 import type { VIEWS } from '@/app/constants';
+import { CODE_WORKFLOW_BUILDER_EXPERIMENT } from '@/app/constants';
 import { BUILDER_ENABLED_VIEWS } from './constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
@@ -39,7 +41,6 @@ import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
 import type { PlanMode } from '@/features/ai/assistant/assistant.types';
 import {
@@ -56,6 +57,7 @@ export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
  */
 export type WorkflowBuilderJourneyEventType =
 	| 'user_clicked_todo'
+	| 'user_clicked_unpin_all'
 	| 'field_focus_placeholder_in_ndv'
 	| 'no_placeholder_values_left'
 	| 'revert_version_from_builder'
@@ -109,6 +111,7 @@ interface UserSubmittedBuilderMessageTrackingPayload
 	execution_status?: string;
 	error_message?: string;
 	error_node_type?: string;
+	code_builder?: boolean;
 	mode?: 'plan' | 'build';
 }
 
@@ -126,6 +129,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		success: 0,
 		error: 0,
 	});
+
+	// Track whether a successful full execution has occurred in this session
+	const hasHadSuccessfulExecution = ref(false);
 
 	// Track whether AI Builder made edits since last save (resets after each save)
 	const aiBuilderMadeEdits = ref(false);
@@ -172,9 +178,16 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		getRunningTools,
 	} = useBuilderMessages();
 
-	const { workflowTodos, getTodosToTrack } = useBuilderTodos();
+	const { workflowTodos, getTodosToTrack, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
 	const trackingSessionId = computed(() => rootStore.pushRef);
+
+	/** Whether the code-builder experiment is enabled for this user */
+	const isCodeBuilder = computed(
+		() =>
+			posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name) ===
+			CODE_WORKFLOW_BUILDER_EXPERIMENT.test,
+	);
 
 	const workflowPrompt = computed(() => {
 		const firstUserMessage = chatMessages.value.find(
@@ -273,6 +286,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		initialGeneration.value = false;
 		lastUserMessageId.value = undefined;
 		loadedSessionsForWorkflowId.value = undefined;
+		hasHadSuccessfulExecution.value = false;
 		builderMode.value = 'build';
 	}
 
@@ -284,6 +298,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	function incrementManualExecutionStats(type: 'success' | 'error') {
 		manualExecStatsInBetweenMessages.value[type]++;
+		if (type === 'success') {
+			hasHadSuccessfulExecution.value = true;
+		}
 	}
 
 	function resetManualExecutionStats() {
@@ -332,6 +349,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			workflow_id: workflowsStore.workflowId,
 			session_id: trackingSessionId.value,
 			tab_visible: document.visibilityState === 'visible',
+			code_builder: isCodeBuilder.value,
 			mode: builderMode.value,
 			...(planApproved ? { plan_approved: true } : {}),
 			...getWorkflowModifications(currentStreamingMessage.value),
@@ -554,6 +572,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			manual_exec_success_count_since_prev_msg: manualExecStatsInBetweenMessages.value.success,
 			manual_exec_error_count_since_prev_msg: manualExecStatsInBetweenMessages.value.error,
 			user_message_id: userMessageId,
+			code_builder: isCodeBuilder.value,
 			mode,
 			...getTodosToTrack(),
 		};
@@ -861,7 +880,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		isLoadingSessions.value = true;
 		try {
-			const response = await getAiSessions(rootStore.restApiContext, workflowId);
+			const response = await getAiSessions(
+				rootStore.restApiContext,
+				workflowId,
+				isCodeBuilder.value,
+			);
 			loadedSessionsForWorkflowId.value = workflowId;
 			const sessions = response.sessions || [];
 
@@ -908,6 +931,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return [];
 		} finally {
 			isLoadingSessions.value = false;
+		}
+	}
+
+	function unpinAllNodes() {
+		const pinData = workflowsStore.workflow.pinData;
+		if (!pinData) return;
+		for (const nodeName of Object.keys(pinData)) {
+			const node = workflowsStore.getNodeByName(nodeName);
+			if (node) {
+				workflowsStore.unpinData({ node });
+			}
 		}
 	}
 
@@ -1066,7 +1100,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		workflowState.setWorkflowProperty('updatedAt', updatedWorkflow.updatedAt);
 
 		// 2. Truncate messages in backend session (removes message with messageId and all after)
-		await truncateBuilderMessages(rootStore.restApiContext, workflowId, messageId);
+		await truncateBuilderMessages(
+			rootStore.restApiContext,
+			workflowId,
+			messageId,
+			isCodeBuilder.value || undefined,
+		);
 
 		// 3. Truncate local chat messages - find user message with matching messageId
 		// and remove it along with all messages after it
@@ -1108,6 +1147,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		streaming,
 		builderThinkingMessage,
 		isAIBuilderEnabled,
+		isCodeBuilder,
 		builderMode,
 		isPlanModeAvailable,
 		isInterrupted,
@@ -1125,9 +1165,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasNoCreditsRemaining,
 		hasMessages,
 		workflowTodos,
+		hasTodosHiddenByPinnedData,
+		hasHadSuccessfulExecution,
 		lastUserMessageId,
 
 		// Methods
+		unpinAllNodes,
 		abortStreaming,
 		resetBuilderChat,
 		setBuilderMode,

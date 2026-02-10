@@ -97,6 +97,10 @@ export class MemoryBufferWindow implements INodeType {
 				],
 			},
 		},
+		builderHint: {
+			message:
+				'Reuse with multiple agents in the same workflow by connecting to multiple agent nodes so agents have a shared context.',
+		},
 
 		inputs: [],
 

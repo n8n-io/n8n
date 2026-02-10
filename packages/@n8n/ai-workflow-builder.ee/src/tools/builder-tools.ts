@@ -1,5 +1,12 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
+import {
+	CODE_BUILDER_GET_NODE_TYPES_TOOL,
+	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL,
+	CODE_BUILDER_SEARCH_NODES_TOOL,
+	CODE_BUILDER_TEXT_EDITOR_TOOL,
+	CODE_BUILDER_VALIDATE_TOOL,
+} from '@/code-builder/constants';
 import type { BuilderToolBase } from '@/utils/stream-processor';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
@@ -61,6 +68,12 @@ export function getBuilderToolsForDisplay({
 		// Workflow context tools
 		GET_WORKFLOW_OVERVIEW_TOOL,
 		GET_NODE_CONTEXT_TOOL,
+		// CodeBuilderAgent tools
+		CODE_BUILDER_TEXT_EDITOR_TOOL,
+		CODE_BUILDER_VALIDATE_TOOL,
+		CODE_BUILDER_SEARCH_NODES_TOOL,
+		CODE_BUILDER_GET_NODE_TYPES_TOOL,
+		CODE_BUILDER_GET_SUGGESTED_NODES_TOOL,
 	);
 
 	return tools;

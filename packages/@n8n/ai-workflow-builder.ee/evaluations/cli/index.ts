@@ -8,9 +8,22 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
+import { CodeWorkflowBuilder } from '@/code-builder';
 import type { CoordinationLogEntry } from '@/types/coordination';
+import type { StreamChunk, WorkflowUpdateChunk } from '@/types/streaming';
 import type { SimpleWorkflow } from '@/types/workflow';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
+
+/** Type guard for SimpleWorkflow */
+function isSimpleWorkflow(value: unknown): value is SimpleWorkflow {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'name' in value &&
+		'nodes' in value &&
+		'connections' in value
+	);
+}
 
 import {
 	argsToStageModels,
@@ -25,6 +38,7 @@ import {
 	getDefaultTestCaseIds,
 } from './csv-prompt-loader';
 import { sendWebhookNotification } from './webhook';
+import { WorkflowGenerationError } from '../errors';
 import {
 	consumeGenerator,
 	extractSubgraphMetrics,
@@ -44,10 +58,18 @@ import {
 	type TestCase,
 	type Evaluator,
 	type EvaluationContext,
+	type GenerationResult,
 } from '../index';
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
-import { EVAL_TYPES, EVAL_USERS } from '../support/constants';
+import { AGENT_TYPES, EVAL_TYPES, EVAL_USERS } from '../support/constants';
 import { setupTestEnvironment, createAgent, type ResolvedStageLLMs } from '../support/environment';
+
+/**
+ * Type guard for workflow update chunks from streaming output.
+ */
+function isWorkflowUpdateChunk(chunk: StreamChunk): chunk is WorkflowUpdateChunk {
+	return chunk.type === 'workflow-updated';
+}
 
 /**
  * Type guard to check if state values contain a coordination log.
@@ -61,7 +83,7 @@ function hasCoordinationLog(
 }
 
 /**
- * Create a workflow generator function.
+ * Create a workflow generator function for the multi-agent system.
  * LangSmith tracing is handled via traceable() in the runner.
  * Callbacks are passed explicitly from the runner to ensure correct trace context
  * under high concurrency (avoids AsyncLocalStorage race conditions).
@@ -137,6 +159,99 @@ function createWorkflowGenerator(
 }
 
 /**
+ * Create a CodeWorkflowBuilder generator function.
+ * Uses the CodeWorkflowBuilder which coordinates planning and coding agents to generate
+ * workflows via TypeScript SDK code and emits workflow JSON directly in the stream.
+ * Returns GenerationResult including the source code for artifact saving.
+ *
+ * @param timeoutMs - Optional timeout in milliseconds. When provided, the agent will be
+ *                    aborted if it exceeds this duration. This ensures the generator
+ *                    actually stops instead of continuing to run after timeout rejection.
+ */
+function createCodeWorkflowBuilderGenerator(
+	parsedNodeTypes: INodeTypeDescription[],
+	llms: ResolvedStageLLMs,
+	timeoutMs?: number,
+	nodeDefinitionDirs?: string[],
+): (prompt: string, collectors?: GenerationCollectors) => Promise<GenerationResult> {
+	// Subgraph metrics are not applicable since CodeWorkflowBuilder doesn't use coordination logs.
+	return async (prompt: string, collectors?: GenerationCollectors): Promise<GenerationResult> => {
+		const runId = generateRunId();
+
+		// Accumulate token usage across all LLM calls
+		let totalInputTokens = 0;
+		let totalOutputTokens = 0;
+
+		const builder = new CodeWorkflowBuilder({
+			llm: llms.builder,
+			nodeTypes: parsedNodeTypes,
+			nodeDefinitionDirs,
+			onTokenUsage: collectors?.tokenUsage
+				? (usage) => {
+						totalInputTokens += usage.inputTokens;
+						totalOutputTokens += usage.outputTokens;
+					}
+				: undefined,
+		});
+
+		const payload = getChatPayload({
+			evalType: EVAL_TYPES.LANGSMITH,
+			message: prompt,
+			workflowId: runId,
+			featureFlags: { codeBuilder: true },
+		});
+
+		let workflow: SimpleWorkflow | null = null;
+		let generatedCode: string | undefined;
+
+		// Create an AbortController to properly cancel the agent on timeout or error.
+		// Without this, the agent continues running even after Promise.race rejects,
+		// causing the full timeout duration to elapse before the error surfaces.
+		const abortController = new AbortController();
+		let timeoutId: NodeJS.Timeout | undefined;
+
+		if (timeoutMs !== undefined && timeoutMs > 0) {
+			timeoutId = setTimeout(() => {
+				abortController.abort(new Error(`CodeWorkflowBuilder timed out after ${timeoutMs}ms`));
+			}, timeoutMs);
+		}
+
+		try {
+			for await (const output of builder.chat(
+				payload,
+				EVAL_USERS.LANGSMITH,
+				abortController.signal,
+			)) {
+				for (const message of output.messages) {
+					if (isWorkflowUpdateChunk(message)) {
+						const parsed: unknown = JSON.parse(message.codeSnippet);
+						if (isSimpleWorkflow(parsed)) {
+							workflow = parsed;
+							generatedCode = message.sourceCode;
+						}
+					}
+				}
+			}
+		} finally {
+			if (timeoutId !== undefined) {
+				clearTimeout(timeoutId);
+			}
+		}
+
+		if (!workflow) {
+			throw new WorkflowGenerationError('CodeWorkflowBuilder did not produce a workflow');
+		}
+
+		// Report accumulated token usage
+		if (collectors?.tokenUsage && (totalInputTokens > 0 || totalOutputTokens > 0)) {
+			collectors.tokenUsage({ inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
+		}
+
+		return { workflow, generatedCode };
+	};
+}
+
+/**
  * Load test cases from various sources.
  */
 function loadTestCases(args: ReturnType<typeof parseEvaluationArgs>): TestCase[] {
@@ -208,14 +323,20 @@ export async function runV2Evaluation(): Promise<void> {
 		throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
 	}
 
-	// Create workflow generator with per-stage LLMs
-	const generateWorkflow = createWorkflowGenerator(
-		env.parsedNodeTypes,
-		env.llms,
-		args.featureFlags,
-	);
+	// Create workflow generator based on agent type
+	// CODE_BUILDER uses CodeWorkflowBuilder
+	const generateWorkflow =
+		args.agent === AGENT_TYPES.CODE_BUILDER
+			? createCodeWorkflowBuilderGenerator(
+					env.parsedNodeTypes,
+					env.llms,
+					args.timeoutMs,
+					env.nodeDefinitionDirs,
+				)
+			: createWorkflowGenerator(env.parsedNodeTypes, env.llms, args.featureFlags);
 
-	// Create evaluators based on mode (using judge LLM for evaluation)
+	// Create evaluators based on suite (using judge LLM for evaluation)
+	// The --suite flag is always respected, regardless of agent type
 	const evaluators: Array<Evaluator<EvaluationContext>> = [];
 
 	switch (args.suite) {

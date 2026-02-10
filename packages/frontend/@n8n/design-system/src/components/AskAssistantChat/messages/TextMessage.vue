@@ -131,7 +131,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 					{{ isExpanded ? t('notice.showLess') : t('notice.showMore') }}
 				</button>
 			</div>
-			<!-- Assistant message - simple text without container -->
+			<!-- Assistant message -->
 			<div
 				v-else
 				v-n8n-html="renderMarkdown(message.content)"

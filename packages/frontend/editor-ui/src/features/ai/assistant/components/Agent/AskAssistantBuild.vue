@@ -166,6 +166,13 @@ const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsRemaining = computed(() => builderStore.creditsRemaining);
 const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 
+// Use different completion message for code-builder
+const thinkingCompletionMessage = computed(() =>
+	builderStore.isCodeBuilder
+		? i18n.baseText('aiAssistant.builder.thinkingCompletionMessage.codeBuilder')
+		: undefined,
+);
+
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
 	if (builderStore.hasMessages || workflowsStore.workflow.nodes.length > 0) {
 		return undefined;
@@ -487,6 +494,7 @@ defineExpose({
 			:messages="builderStore.chatMessages"
 			:streaming="builderStore.streaming"
 			:loading-message="loadingMessage"
+			:thinking-completion-message="thinkingCompletionMessage"
 			:mode="i18n.baseText('aiAssistant.builder.mode')"
 			:show-stop="true"
 			:scroll-on-new-message="true"

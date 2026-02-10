@@ -1,0 +1,36 @@
+#!/usr/bin/env node
+
+const path = require('path');
+const fs = require('fs');
+
+const { orchestrateGeneration } = require('@n8n/workflow-sdk/dist/generate-types/generate-types');
+
+const cwd = process.cwd();
+const nodesJsonPath = path.join(cwd, 'dist', 'types', 'nodes.json');
+const outputDir = path.join(cwd, 'dist', 'node-definitions');
+
+if (!fs.existsSync(nodesJsonPath)) {
+	console.error(`nodes.json not found at ${nodesJsonPath}`);
+	process.exit(1);
+}
+
+(async () => {
+	const content = await fs.promises.readFile(nodesJsonPath, 'utf-8');
+	const nodes = JSON.parse(content);
+
+	const packageJsonPath = path.join(cwd, 'package.json');
+	const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+	const packageName = packageJson.name;
+
+	for (const node of nodes) {
+		if (!node.name.includes('.')) {
+			node.name = `${packageName}.${node.name}`;
+		}
+	}
+
+	const result = await orchestrateGeneration({ nodes, outputDir });
+	console.log(`Generated node definitions for ${result.nodeCount} nodes in ${outputDir}`);
+})().catch((error) => {
+	console.error('Node definition generation failed:', error);
+	process.exit(1);
+});

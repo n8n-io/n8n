@@ -75,6 +75,8 @@ export class AiBuilderChatRequestDto extends Z.class({
 					return val;
 				})
 				.optional(),
+			valuesExcluded: z.boolean().optional(),
+			pinnedNodes: z.array(z.string()).optional(),
 
 			selectedNodes: z
 				.custom<SelectedNodeContext[]>((val: SelectedNodeContext[]) => {
@@ -101,6 +103,7 @@ export class AiBuilderChatRequestDto extends Z.class({
 		featureFlags: z
 			.object({
 				templateExamples: z.boolean().optional(),
+				codeBuilder: z.boolean().optional(),
 				planMode: z.boolean().optional(),
 			})
 			.optional(),

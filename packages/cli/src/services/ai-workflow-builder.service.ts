@@ -19,6 +19,7 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { NodeDefinitionGeneratorService } from '@/services/node-definition-generator.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { getBase } from '@/workflow-execute-additional-data';
@@ -44,6 +45,7 @@ export class WorkflowBuilderService {
 		private readonly push: Push,
 		private readonly telemetry: Telemetry,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly nodeDefinitionGenerator: NodeDefinitionGeneratorService,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 	) {
 		// Register a post-processor to update node types when they change.
@@ -154,6 +156,7 @@ export class WorkflowBuilderService {
 			N8N_VERSION,
 			onCreditsUpdated,
 			onTelemetryEvent,
+			this.nodeDefinitionGenerator.getNodeDefinitionDirs(),
 			resourceLocatorCallbackFactory,
 		);
 
@@ -165,9 +168,9 @@ export class WorkflowBuilderService {
 		yield* service.chat(payload, user, abortSignal);
 	}
 
-	async getSessions(workflowId: string | undefined, user: IUser) {
+	async getSessions(workflowId: string | undefined, user: IUser, codeBuilder?: boolean) {
 		const service = await this.getService();
-		const sessions = await service.getSessions(workflowId, user);
+		const sessions = await service.getSessions(workflowId, user, codeBuilder);
 		return sessions;
 	}
 
@@ -180,8 +183,9 @@ export class WorkflowBuilderService {
 		workflowId: string,
 		user: IUser,
 		messageId: string,
+		codeBuilder?: boolean,
 	): Promise<boolean> {
 		const service = await this.getService();
-		return await service.truncateMessagesAfter(workflowId, user, messageId);
+		return await service.truncateMessagesAfter(workflowId, user, messageId, codeBuilder);
 	}
 }

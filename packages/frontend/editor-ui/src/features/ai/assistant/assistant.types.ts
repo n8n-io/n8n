@@ -23,6 +23,8 @@ export namespace ChatRequest {
 		expression: string;
 		resolvedValue?: unknown;
 		nodeType: string;
+		/** Parameter path where the expression is located (e.g., 'url', 'headers.authorization') */
+		parameterPath?: string;
 	}
 
 	/**
@@ -50,6 +52,10 @@ export namespace ChatRequest {
 		currentWorkflow?: Partial<IWorkflowDb>;
 		executionData?: IRunExecutionData['resultData'];
 		expressionValues?: Record<string, ExpressionValue[]>;
+		/** Whether execution schema values were excluded (redacted) for privacy */
+		valuesExcluded?: boolean;
+		/** Node names whose output schema was derived from pin data */
+		pinnedNodes?: string[];
 		/** Nodes explicitly selected/focused by the user for AI context */
 		selectedNodes?: SelectedNodeContext[];
 	}
@@ -119,6 +125,7 @@ export namespace ChatRequest {
 
 	export interface BuilderFeatureFlags {
 		templateExamples?: boolean;
+		codeBuilder?: boolean;
 		planMode?: boolean;
 	}
 

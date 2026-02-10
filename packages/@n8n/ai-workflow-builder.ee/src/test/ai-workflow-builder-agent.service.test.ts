@@ -9,7 +9,7 @@ import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { AiWorkflowBuilderService } from '@/ai-workflow-builder-agent.service';
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet45 } from '@/llm-config';
+import { anthropicClaudeSonnet45, anthropicClaudeSonnet45Think } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { formatMessages } from '@/utils/stream-processor';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
@@ -40,6 +40,7 @@ jest.mock('@/workflow-builder-agent');
 jest.mock('@/session-manager.service');
 jest.mock('@/llm-config', () => ({
 	anthropicClaudeSonnet45: jest.fn(),
+	anthropicClaudeSonnet45Think: jest.fn(),
 }));
 jest.mock('@/utils/stream-processor', () => ({
 	formatMessages: jest.fn(),
@@ -57,6 +58,9 @@ const MockedSessionManagerService = SessionManagerService as jest.MockedClass<
 
 const anthropicClaudeSonnet45Mock = anthropicClaudeSonnet45 as jest.MockedFunction<
 	typeof anthropicClaudeSonnet45
+>;
+const anthropicClaudeSonnet45ThinkMock = anthropicClaudeSonnet45Think as jest.MockedFunction<
+	typeof anthropicClaudeSonnet45Think
 >;
 const formatMessagesMock = formatMessages as jest.MockedFunction<typeof formatMessages>;
 
@@ -199,6 +203,7 @@ describe('AiWorkflowBuilderService', () => {
 		});
 
 		anthropicClaudeSonnet45Mock.mockResolvedValue(mockChatAnthropic);
+		anthropicClaudeSonnet45ThinkMock.mockResolvedValue(mockChatAnthropic);
 
 		// Mock onCreditsUpdated callback
 		mockOnCreditsUpdated = jest.fn();
@@ -466,7 +471,11 @@ describe('AiWorkflowBuilderService', () => {
 			const result = await service.getSessions(undefined, mockUser);
 
 			expect(result.sessions).toEqual([]);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(undefined, 'test-user-id');
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				undefined,
+				'test-user-id',
+				undefined,
+			);
 		});
 
 		it('should return session when workflowId exists', async () => {
@@ -493,7 +502,11 @@ describe('AiWorkflowBuilderService', () => {
 				lastUpdated: '2023-12-01T12:00:00Z',
 			});
 			expect(result.sessions[0].messages).toHaveLength(2);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
+				undefined,
+			);
 		});
 
 		it('should handle missing checkpoint gracefully', async () => {
@@ -505,7 +518,11 @@ describe('AiWorkflowBuilderService', () => {
 			const result = await service.getSessions(workflowId, mockUser);
 
 			expect(result.sessions).toEqual([]);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
+				undefined,
+			);
 		});
 
 		it('should handle checkpoint without messages', async () => {
@@ -525,7 +542,11 @@ describe('AiWorkflowBuilderService', () => {
 
 			expect(result.sessions).toHaveLength(1);
 			expect(result.sessions[0].messages).toEqual([]);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
+				undefined,
+			);
 		});
 
 		it('should handle checkpoint with null messages', async () => {
@@ -545,7 +566,11 @@ describe('AiWorkflowBuilderService', () => {
 
 			expect(result.sessions).toHaveLength(1);
 			expect(result.sessions[0].messages).toEqual([]);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
+				undefined,
+			);
 		});
 
 		it('should work without user', async () => {
@@ -557,7 +582,33 @@ describe('AiWorkflowBuilderService', () => {
 			const result = await service.getSessions(workflowId);
 
 			expect(result.sessions).toEqual([]);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, undefined);
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, undefined, undefined);
+		});
+
+		it('should pass codeBuilder flag to sessionManager', async () => {
+			const workflowId = 'test-workflow';
+			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
+
+			await service.getSessions(workflowId, mockUser, true);
+
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
+				'code-builder',
+			);
+		});
+
+		it('should not pass code-builder agentType when codeBuilder is false', async () => {
+			const workflowId = 'test-workflow';
+			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
+
+			await service.getSessions(workflowId, mockUser, false);
+
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
+				undefined,
+			);
 		});
 	});
 
@@ -601,7 +652,11 @@ describe('AiWorkflowBuilderService', () => {
 			expect(sessions.sessions[0].sessionId).toBe(
 				'workflow-integration-test-workflow-user-test-user-id',
 			);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
+				undefined,
+			);
 		});
 	});
 

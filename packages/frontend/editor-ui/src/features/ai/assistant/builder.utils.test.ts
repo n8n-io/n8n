@@ -364,7 +364,10 @@ describe('builder.utils', () => {
 			});
 			mockSimplifyResultData.mockReturnValue({ runData: {} });
 			mockExtractExpressionsFromWorkflow.mockResolvedValue({});
-			mockGetNodesSchemas.mockReturnValue([{ nodeName: 'Node 1', schema: {} }]);
+			mockGetNodesSchemas.mockReturnValue({
+				schemas: [{ nodeName: 'Node 1', schema: {} }],
+				pinnedNodeNames: [],
+			});
 		});
 
 		it('should include executionData and expressionValues when allowSendingParameterValues is true', async () => {

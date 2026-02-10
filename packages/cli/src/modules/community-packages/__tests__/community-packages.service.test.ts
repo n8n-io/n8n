@@ -15,6 +15,7 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { NodeDefinitionGeneratorService } from '@/services/node-definition-generator.service';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
 import { mockPackageName, mockPackagePair } from '@test-integration/utils';
 
@@ -64,6 +65,7 @@ describe('CommunityPackagesService', () => {
 
 	const logger = mock<Logger>();
 	const publisher = mock<Publisher>();
+	const nodeDefinitionGenerator = mock<NodeDefinitionGeneratorService>();
 
 	const communityPackagesService = new CommunityPackagesService(
 		instanceSettings,
@@ -73,6 +75,7 @@ describe('CommunityPackagesService', () => {
 		publisher,
 		license,
 		config,
+		nodeDefinitionGenerator,
 	);
 
 	beforeEach(() => {
@@ -886,6 +889,70 @@ describe('CommunityPackagesService', () => {
 			});
 
 			expect(callOrder).toEqual(['unloadPackage', 'loadPackage']);
+		});
+	});
+
+	describe('node definition generation hooks', () => {
+		const PACKAGE_NAME = 'n8n-nodes-test-hooks';
+
+		const packageDirectoryLoader = mock<PackageDirectoryLoader>({
+			loadedNodes: [{ name: 'a-node', version: 1 }],
+		});
+
+		beforeEach(() => {
+			jest.restoreAllMocks();
+			jest.clearAllMocks();
+
+			config.unverifiedEnabled = true;
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+			mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
+				if (args[0] === 'pack') return `${PACKAGE_NAME}-latest.tgz`;
+				return 'Done';
+			});
+			mocked(execFile).mockImplementation(((...args: unknown[]) => {
+				const cb = args[args.length - 1] as ExecFileCallback;
+				cb(null, 'Done', '');
+			}) as typeof execFile);
+			mocked(readFile).mockResolvedValue(
+				JSON.stringify({
+					name: PACKAGE_NAME,
+					version: '1.0.0',
+					dependencies: {},
+				}),
+			);
+			mocked(writeFile).mockResolvedValue(undefined);
+			mocked(rm).mockResolvedValue(undefined);
+			mocked(mkdir).mockResolvedValue(undefined as never);
+
+			loadNodesAndCredentials.loadPackage.mockResolvedValue(packageDirectoryLoader);
+			loadNodesAndCredentials.unloadPackage.mockResolvedValue(undefined);
+			loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
+
+			installedPackageRepository.saveInstalledPackageWithNodes.mockResolvedValue(
+				mock<InstalledPackages>({ packageName: PACKAGE_NAME }),
+			);
+			installedPackageRepository.remove.mockResolvedValue(undefined as never);
+
+			publisher.publishCommand.mockResolvedValue(undefined);
+
+			nodeDefinitionGenerator.generateForPackage.mockResolvedValue(undefined);
+			nodeDefinitionGenerator.removeForPackage.mockResolvedValue(undefined);
+		});
+
+		test('should generate node definitions after installing a community package', async () => {
+			await communityPackagesService.installPackage(PACKAGE_NAME, '1.0.0');
+
+			expect(nodeDefinitionGenerator.generateForPackage).toHaveBeenCalledTimes(1);
+			expect(nodeDefinitionGenerator.generateForPackage.mock.calls[0][0]).toBe(PACKAGE_NAME);
+		});
+
+		test('should remove node definitions after removing a community package', async () => {
+			const installedPkg = mock<InstalledPackages>({ packageName: PACKAGE_NAME });
+
+			await communityPackagesService.removePackage(PACKAGE_NAME, installedPkg);
+
+			expect(nodeDefinitionGenerator.removeForPackage).toHaveBeenCalledWith(PACKAGE_NAME);
 		});
 	});
 });
