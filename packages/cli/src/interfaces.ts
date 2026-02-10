@@ -1,4 +1,10 @@
-import type { ICredentialsBase, IExecutionBase, IExecutionDb, ITagBase } from '@n8n/db';
+import type {
+	ICredentialsBase,
+	IExecutionBase,
+	IExecutionDb,
+	ITagBase,
+	IWorkflowDb,
+} from '@n8n/db';
 import type { AssignableGlobalRole } from '@n8n/permissions';
 import type { Application, Response } from 'express';
 import type {
@@ -64,6 +70,13 @@ export interface IWorkflowToImport
 		  };
 	parentFolderId: string | null;
 }
+
+export type IWorkflowWithHistoryMetadata = IWorkflowDb & {
+	workflowHistory?: {
+		name: string | null;
+		description: string | null;
+	};
+};
 
 // ----------------------------------
 //            credentials

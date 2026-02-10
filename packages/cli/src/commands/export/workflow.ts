@@ -1,4 +1,4 @@
-import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
+import type { WorkflowHistory } from '@n8n/db';
 import { WorkflowRepository, WorkflowHistoryRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -8,14 +8,10 @@ import path from 'path';
 import { z } from 'zod';
 
 import { BaseCommand } from '../base-command';
-import '../../zod-alias-support';
 
-type WorkflowWithHistory = WorkflowEntity & {
-	workflowHistory?: {
-		name: string | null;
-		description: string | null;
-	};
-};
+import type { IWorkflowWithHistoryMetadata } from '@/interfaces';
+
+import '../../zod-alias-support';
 
 const flagsSchema = z.object({
 	all: z.boolean().describe('Export all workflows').optional(),
@@ -188,7 +184,7 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
  * Then merge the history data into the workflow objects for export with metadata fields (name and description).
  */
 async function getWorkflowsToExport(
-	workflows: WorkflowWithHistory[],
+	workflows: IWorkflowWithHistoryMetadata[],
 	flags: z.infer<typeof flagsSchema>,
 ) {
 	const workflowVersionPairs = workflows
@@ -213,16 +209,16 @@ async function getWorkflowsToExport(
 }
 
 function getTargetVersionId(
-	workflow: WorkflowWithHistory,
+	workflow: IWorkflowWithHistoryMetadata,
 	flags: z.infer<typeof flagsSchema>,
 ): string | null {
 	if (flags.published) return workflow.activeVersionId ?? null;
 	if (flags.version) return flags.version;
-	return workflow.versionId;
+	return workflow.versionId ?? null;
 }
 
 function mergeHistoriesIntoWorkflows(
-	workflows: WorkflowWithHistory[],
+	workflows: IWorkflowWithHistoryMetadata[],
 	historyMap: Map<string, WorkflowHistory>,
 	flags: z.infer<typeof flagsSchema>,
 ) {
@@ -253,5 +249,5 @@ function mergeHistoriesIntoWorkflows(
 				workflowHistory: undefined,
 			};
 		})
-		.filter((w): w is WorkflowWithHistory => w !== null);
+		.filter((w) => w !== null);
 }

@@ -1,5 +1,5 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
-import type { TagEntity, ICredentialsDb, IWorkflowDb } from '@n8n/db';
+import type { TagEntity, ICredentialsDb } from '@n8n/db';
 import {
 	Project,
 	WorkflowEntity,
@@ -23,6 +23,7 @@ import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { IWorkflowWithHistoryMetadata } from '@/interfaces';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 
 @Service()
@@ -63,7 +64,7 @@ export class ImportService {
 		this.dbTags = await this.tagRepository.find();
 	}
 
-	async importWorkflows(workflows: IWorkflowDb[], projectId: string) {
+	async importWorkflows(workflows: IWorkflowWithHistoryMetadata[], projectId: string) {
 		await this.initRecords();
 
 		const { manager: dbManager } = this.credentialsRepository;
@@ -105,7 +106,7 @@ export class ImportService {
 			}
 		}
 
-		const insertedWorkflows: IWorkflowBase[] = [];
+		const insertedWorkflows: IWorkflowWithHistoryMetadata[] = [];
 		await dbManager.transaction(async (tx) => {
 			const workflowsNeedingPublishHistory: Array<{ workflowId: string; versionId: string }> = [];
 
@@ -158,15 +159,15 @@ export class ImportService {
 			// Always create workflow history for the current version
 			// This is needed to be able to activate the workflow later
 			for (const workflow of insertedWorkflows) {
-				const workflowHistory: any = workflow;
+				const workflowHistory = workflow.workflowHistory;
 				await tx.insert(WorkflowHistory, {
 					versionId: workflow.versionId,
 					workflowId: workflow.id,
 					nodes: workflow.nodes,
 					connections: workflow.connections,
 					authors: 'import',
-					name: workflowHistory.workflowHistory?.name ?? null,
-					description: workflowHistory.workflowHistory?.description ?? null,
+					name: workflowHistory?.name ?? null,
+					description: workflowHistory?.description ?? null,
 				});
 			}
 
