@@ -42,15 +42,23 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 		super();
 		this.logger = logger.scoped(this.loggerScope);
 
-		this.runnerLifecycleEvents.on('runner:failed-heartbeat-check', () => {
-			this.logger.warn('Task runner failed heartbeat check, restarting...');
-			void this.forceRestart();
-		});
+		// Log mode for debugging - helps identify configuration issues
+		this.logger.debug(`Task runner process initialized in ${this.runnerConfig.mode} mode`);
 
-		this.runnerLifecycleEvents.on('runner:timed-out-during-task', () => {
-			this.logger.warn('Task runner timed out during task, restarting...');
-			void this.forceRestart();
-		});
+		// Only register lifecycle event handlers in internal mode
+		// In external mode, these processes should never exist, but if they do,
+		// we don't want them to restart automatically
+		if (this.isInternal) {
+			this.runnerLifecycleEvents.on('runner:failed-heartbeat-check', () => {
+				this.logger.warn('Task runner failed heartbeat check, restarting...');
+				void this.forceRestart();
+			});
+
+			this.runnerLifecycleEvents.on('runner:timed-out-during-task', () => {
+				this.logger.warn('Task runner timed out during task, restarting...');
+				void this.forceRestart();
+			});
+		}
 	}
 
 	get isRunning() {
@@ -71,6 +79,10 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 
 	async start() {
 		assert(!this.process, `${this.name} already running`);
+		assert(
+			this.isInternal,
+			`Cannot start ${this.name} in external mode - task runners should be managed externally`,
+		);
 
 		const grantToken = await this.authService.createGrantToken();
 		const taskBrokerUri = `http://127.0.0.1:${this.runnerConfig.port}`;
@@ -94,6 +106,14 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 	protected async forceRestart() {
 		if (!this.process) return;
 
+		// Prevent restart attempts in external mode - runners should be managed externally
+		if (!this.isInternal) {
+			this.logger.error(
+				'Attempted to restart task runner in external mode. This should not happen - runners in external mode should be managed by the external orchestrator.',
+			);
+			return;
+		}
+
 		this.process.kill('SIGKILL');
 		await this._runPromise;
 	}
@@ -103,8 +123,14 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 		const exitReason = this.analyzeExitReason?.(code) ?? { reason: 'unknown' };
 		this.emit('exit', exitReason);
 		resolveFn();
-		if (!this.isShuttingDown) {
+		
+		// Only auto-restart in internal mode - external runners are managed by external orchestrator
+		if (!this.isShuttingDown && this.isInternal) {
 			setImmediate(async () => await this.start());
+		} else if (!this.isShuttingDown && !this.isInternal) {
+			this.logger.error(
+				'Task runner process exited in external mode. This should not happen - task runner processes should only exist in internal mode.',
+			);
 		}
 	}
 
