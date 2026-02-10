@@ -188,7 +188,7 @@ export class LmChatMistralCloud implements INodeType {
 		}) as Partial<ChatMistralAIInput>;
 
 		const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit) =>
-			await proxyFetch(input.toString(), init, {});
+			await proxyFetch(input, init, {});
 		const httpClient = new HTTPClient({ fetcher: fetchWithTimeout });
 
 		const model = new ChatMistralAI({

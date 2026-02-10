@@ -127,6 +127,16 @@ describe('SourceControlService', () => {
 					updatedAt: now,
 				},
 				{
+					file: 'data_tables.json',
+					id: 'data-tables',
+					name: 'Data Tables',
+					type: 'datatable',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
 					file: 'tags.json',
 					id: 'tags',
 					name: 'Tags',
@@ -190,6 +200,9 @@ describe('SourceControlService', () => {
 			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
 				mockExportResult,
 			);
+			sourceControlExportService.exportDataTablesToWorkFolder.mockResolvedValueOnce(
+				mockExportResult,
+			);
 			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(mockExportResult);
 			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
 				mockExportResult,
@@ -231,6 +244,7 @@ describe('SourceControlService', () => {
 			expect(sourceControlExportService.exportTagsToWorkFolder).toHaveBeenCalled();
 			expect(sourceControlExportService.exportFoldersToWorkFolder).toHaveBeenCalled();
 			expect(sourceControlExportService.exportGlobalVariablesToWorkFolder).toHaveBeenCalled();
+			expect(sourceControlExportService.exportDataTablesToWorkFolder).toHaveBeenCalled();
 
 			// Deleted resources should be passed to rmFilesFromExportFolder
 			expect(sourceControlExportService.rmFilesFromExportFolder).toHaveBeenCalledWith(
@@ -249,6 +263,7 @@ describe('SourceControlService', () => {
 					`${preferencesService.gitFolder}/project-1.json`,
 					`${preferencesService.gitFolder}/folders.json`,
 					`${preferencesService.gitFolder}/variables.json`,
+					`${preferencesService.gitFolder}/data_tables.json`,
 					`${preferencesService.gitFolder}/tags.json`,
 				]),
 				new Set([
