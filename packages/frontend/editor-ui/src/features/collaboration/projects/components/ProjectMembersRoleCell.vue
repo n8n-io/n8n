@@ -103,8 +103,11 @@ const roleItems = computed<RoleSelectItem[]>(() => {
 		});
 	}
 
-	// Custom roles section (always show label for upgrade badge)
-	if (filteredCustomRoles.value.length > 0 || !searchQuery.value) {
+	// Custom roles section (show label even when empty if upgrade badge is needed)
+	if (
+		filteredCustomRoles.value.length > 0 ||
+		(!searchQuery.value && !hasCustomRolesLicense.value)
+	) {
 		items.push({
 			type: 'label',
 			label: i18n.baseText('projects.settings.role.selector.section.custom'),
