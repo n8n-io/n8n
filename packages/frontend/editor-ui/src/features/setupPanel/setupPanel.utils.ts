@@ -50,7 +50,7 @@ export function buildCredentialRequirement(
 
 	const credentialIssues = node.issues?.credentials ?? {};
 	const issues = credentialIssues[credentialType];
-	const issueMessages = issues ? (Array.isArray(issues) ? issues : [issues]) : [];
+	const issueMessages = [issues ?? []].flat();
 
 	return {
 		credentialType,
@@ -78,14 +78,25 @@ export function buildNodeSetupState(
 	credentialTypes: string[],
 	getCredentialDisplayName: (type: string) => string,
 	credentialTypeToNodeNames: Map<string, string[]>,
+	isTrigger = false,
+	hasTriggerExecuted = false,
 ): NodeSetupState {
 	const credentialRequirements = credentialTypes.map((credType) =>
 		buildCredentialRequirement(node, credType, getCredentialDisplayName, credentialTypeToNodeNames),
 	);
 
+	const credentialsConfigured = isNodeSetupComplete(credentialRequirements);
+
+	// For triggers: complete only after successful execution
+	// For regular nodes: complete when credentials are configured
+	const isComplete = isTrigger
+		? credentialsConfigured && hasTriggerExecuted
+		: credentialsConfigured;
+
 	return {
 		node,
 		credentialRequirements,
-		isComplete: isNodeSetupComplete(credentialRequirements),
+		isComplete,
+		isTrigger,
 	};
 }

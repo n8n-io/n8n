@@ -17,6 +17,5 @@ export { maxNodesValidator } from './max-nodes-validator';
 export { mergeNodeValidator } from './merge-node-validator';
 export { missingTriggerValidator } from './missing-trigger-validator';
 export { noNodesValidator } from './no-nodes-validator';
-export { placeholderValidator } from './placeholder-validator';
 export { setNodeValidator } from './set-node-validator';
 export { toolNodeValidator } from './tool-node-validator';

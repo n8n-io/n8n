@@ -9,6 +9,34 @@ import NodeSetupCard from './NodeSetupCard.vue';
 import type { NodeSetupState } from '../setupPanel.types';
 import type { INodeUi } from '@/Interface';
 
+const { mockExecute, mockComposableState } = vi.hoisted(() => ({
+	mockExecute: vi.fn(),
+	mockComposableState: {
+		isExecuting: false,
+		hasIssues: false,
+		disabledReason: '',
+	},
+}));
+
+vi.mock('@/app/composables/useNodeExecution', async () => {
+	const { ref, computed } = await import('vue');
+	return {
+		useNodeExecution: vi.fn(() => ({
+			isExecuting: computed(() => mockComposableState.isExecuting),
+			isListening: ref(false),
+			isListeningForWorkflowEvents: ref(false),
+			buttonLabel: ref('Test node'),
+			buttonIcon: ref('flask-conical'),
+			disabledReason: computed(() => mockComposableState.disabledReason),
+			isTriggerNode: ref(false),
+			hasIssues: computed(() => mockComposableState.hasIssues),
+			shouldGenerateCode: ref(false),
+			execute: mockExecute,
+			stopExecution: vi.fn(),
+		})),
+	};
+});
+
 vi.mock('@/features/credentials/components/CredentialPicker/CredentialPicker.vue', () => ({
 	default: {
 		template:
@@ -42,6 +70,7 @@ const createState = (overrides: Partial<NodeSetupState> = {}): NodeSetupState =>
 			},
 		],
 		isComplete: false,
+		isTrigger: true,
 		...overrides,
 	};
 };
@@ -50,6 +79,10 @@ describe('NodeSetupCard', () => {
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
 	beforeEach(() => {
+		mockExecute.mockClear();
+		mockComposableState.isExecuting = false;
+		mockComposableState.hasIssues = false;
+		mockComposableState.disabledReason = '';
 		createTestingPinia();
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(
@@ -160,6 +193,47 @@ describe('NodeSetupCard', () => {
 
 			expect(queryByTestId('node-setup-card-shared-nodes-hint')).not.toBeInTheDocument();
 		});
+
+		it('should apply no-content class when there are no credential requirements', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					state: createState({ credentialRequirements: [], isTrigger: true }),
+					expanded: true,
+				},
+			});
+
+			expect(getByTestId('node-setup-card').className).toMatch(/no-content/);
+		});
+
+		it('should not apply no-content class when there are credential requirements', () => {
+			const { getByTestId } = renderComponent({
+				props: { state: createState(), expanded: true },
+			});
+
+			expect(getByTestId('node-setup-card').className).not.toMatch(/no-content/);
+		});
+
+		it('should show footer for non-complete trigger nodes', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					state: createState({ isTrigger: true, isComplete: false }),
+					expanded: true,
+				},
+			});
+
+			expect(getByTestId('node-setup-card-test-button')).toBeInTheDocument();
+		});
+
+		it('should not show footer for non-trigger non-complete nodes', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					state: createState({ isTrigger: false, isComplete: false }),
+					expanded: true,
+				},
+			});
+
+			expect(queryByTestId('node-setup-card-test-button')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('expand/collapse', () => {
@@ -232,20 +306,48 @@ describe('NodeSetupCard', () => {
 	});
 
 	describe('test button', () => {
-		it('should render test button when expanded', () => {
+		it('should render test button for trigger nodes when expanded', () => {
 			const { getByTestId } = renderComponent({
-				props: { state: createState(), expanded: true },
+				props: { state: createState({ isTrigger: true }), expanded: true },
 			});
 
 			expect(getByTestId('node-setup-card-test-button')).toBeInTheDocument();
 		});
 
-		it('should disable test button when state is not complete', () => {
+		it('should not render test button for non-trigger nodes', () => {
+			const { queryByTestId } = renderComponent({
+				props: { state: createState({ isTrigger: false }), expanded: true },
+			});
+
+			expect(queryByTestId('node-setup-card-test-button')).not.toBeInTheDocument();
+		});
+
+		it('should disable test button when node has issues', () => {
+			mockComposableState.hasIssues = true;
+
 			const { getByTestId } = renderComponent({
-				props: { state: createState({ isComplete: false }), expanded: true },
+				props: { state: createState({ isTrigger: true }), expanded: true },
 			});
 
 			expect(getByTestId('node-setup-card-test-button')).toBeDisabled();
+		});
+
+		it('should disable test button when node is executing', () => {
+			mockComposableState.isExecuting = true;
+
+			const { getByTestId } = renderComponent({
+				props: { state: createState({ isTrigger: true }), expanded: true },
+			});
+
+			expect(getByTestId('node-setup-card-test-button')).toBeDisabled();
+		});
+
+		it('should enable test button when node has no issues and is not executing', () => {
+			const { getByTestId } = renderComponent({
+				props: { state: createState({ isTrigger: true }), expanded: true },
+			});
+
+			expect(getByTestId('node-setup-card-test-button')).not.toBeDisabled();
 		});
 	});
 
@@ -285,12 +387,12 @@ describe('NodeSetupCard', () => {
 		});
 	});
 
-	describe('test node event', () => {
-		it('should emit testNode when test button is clicked', async () => {
-			const state = createState({ isComplete: true });
+	describe('test node execution', () => {
+		it('should call execute when test button is clicked', async () => {
+			const state = createState({ isComplete: true, isTrigger: true });
 
 			// Mount collapsed with isComplete: true, then expand via header click
-			const { getByTestId, emitted } = renderComponent({
+			const { getByTestId } = renderComponent({
 				props: { state, expanded: false },
 			});
 			await userEvent.click(getByTestId('node-setup-card-header'));
@@ -298,7 +400,7 @@ describe('NodeSetupCard', () => {
 			const testButton = getByTestId('node-setup-card-test-button');
 			await userEvent.click(testButton);
 
-			expect(emitted('testNode')).toHaveLength(1);
+			expect(mockExecute).toHaveBeenCalledTimes(1);
 		});
 	});
 });

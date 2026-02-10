@@ -13,4 +13,5 @@ export interface NodeSetupState {
 	node: INodeUi;
 	credentialRequirements: NodeCredentialRequirement[];
 	isComplete: boolean;
+	isTrigger: boolean;
 }

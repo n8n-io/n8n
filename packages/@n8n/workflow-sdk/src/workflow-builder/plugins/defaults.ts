@@ -22,7 +22,6 @@ import {
 	mergeNodeValidator,
 	missingTriggerValidator,
 	noNodesValidator,
-	placeholderValidator,
 	setNodeValidator,
 	subnodeConnectionValidator,
 	toolNodeValidator,
@@ -59,7 +58,6 @@ const coreValidators: ValidatorPlugin[] = [
 	// Expression validators (lower priority)
 	expressionPrefixValidator,
 	dateMethodValidator,
-	placeholderValidator,
 	expressionPathValidator, // Workflow-level validator
 
 	// Structural validators (lowest priority)

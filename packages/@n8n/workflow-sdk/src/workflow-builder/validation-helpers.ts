@@ -267,35 +267,3 @@ export function hasPath(shape: Record<string, unknown>, path: string[]): boolean
 	}
 	return true;
 }
-
-/**
- * Recursively find PlaceholderValue objects nested inside arrays.
- * placeholder() should be used directly as a parameter value, not inside arrays or objects within arrays.
- */
-export function findNestedPlaceholders(
-	value: unknown,
-	path: string = '',
-	insideArray: boolean = false,
-): Array<{ path: string; hint: string }> {
-	const issues: Array<{ path: string; hint: string }> = [];
-
-	if (value && typeof value === 'object' && !Array.isArray(value)) {
-		const record = value as Record<string, unknown>;
-		if (record.__placeholder === true && 'hint' in record && typeof record.hint === 'string') {
-			if (insideArray) {
-				issues.push({ path, hint: record.hint });
-			}
-			return issues;
-		}
-		for (const [key, val] of Object.entries(value)) {
-			const newPath = path ? `${path}.${key}` : key;
-			issues.push(...findNestedPlaceholders(val, newPath, insideArray));
-		}
-	} else if (Array.isArray(value)) {
-		value.forEach((item, index) => {
-			issues.push(...findNestedPlaceholders(item, `${path}[${index}]`, true));
-		});
-	}
-
-	return issues;
-}

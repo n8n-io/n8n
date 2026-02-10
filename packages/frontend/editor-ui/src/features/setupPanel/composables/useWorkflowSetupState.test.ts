@@ -65,16 +65,19 @@ const createNode = (overrides: Partial<INodeUi> = {}): INodeUi =>
 describe('useWorkflowSetupState', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
+	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
 	beforeEach(() => {
 		createTestingPinia();
 		workflowsStore = mockedStore(useWorkflowsStore);
 		credentialsStore = mockedStore(useCredentialsStore);
-		mockedStore(useNodeTypesStore);
+		nodeTypesStore = mockedStore(useNodeTypesStore);
 
 		// Default: getters return no-op functions
 		credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue(undefined);
 		credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
+		nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);
+		workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
 		mockGetNodeTypeDisplayableCredentials.mockReturnValue([]);
 		mockUpdateNodeProperties.mockReset();
@@ -338,6 +341,150 @@ describe('useWorkflowSetupState', () => {
 			const { nodeSetupStates } = useWorkflowSetupState();
 
 			expect(nodeSetupStates.value[0].isComplete).toBe(false);
+		});
+	});
+
+	describe('trigger nodes', () => {
+		it('should include trigger nodes even without credential requirements', () => {
+			const triggerNode = createNode({ name: 'WebhookTrigger', type: 'n8n-nodes-base.webhook' });
+			workflowsStore.allNodes = [triggerNode];
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([]);
+			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+
+			const { nodeSetupStates } = useWorkflowSetupState();
+
+			expect(nodeSetupStates.value).toHaveLength(1);
+			expect(nodeSetupStates.value[0].node.name).toBe('WebhookTrigger');
+			expect(nodeSetupStates.value[0].credentialRequirements).toHaveLength(0);
+		});
+
+		it('should set isTrigger flag to true for trigger nodes', () => {
+			const triggerNode = createNode({ name: 'Trigger', type: 'n8n-nodes-base.trigger' });
+			workflowsStore.allNodes = [triggerNode];
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'testApi' }]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({ displayName: 'Test' });
+
+			const { nodeSetupStates } = useWorkflowSetupState();
+
+			expect(nodeSetupStates.value[0].isTrigger).toBe(true);
+		});
+
+		it('should set isTrigger flag to false for non-trigger nodes', () => {
+			const node = createNode({ name: 'Regular' });
+			workflowsStore.allNodes = [node];
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'testApi' }]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({ displayName: 'Test' });
+
+			const { nodeSetupStates } = useWorkflowSetupState();
+
+			expect(nodeSetupStates.value[0].isTrigger).toBe(false);
+		});
+
+		it('should sort trigger nodes before non-trigger nodes', () => {
+			const regularNode = createNode({
+				name: 'Regular',
+				type: 'n8n-nodes-base.regular',
+				position: [0, 0],
+			});
+			const triggerNode = createNode({
+				name: 'Trigger',
+				type: 'n8n-nodes-base.trigger',
+				position: [100, 0],
+			});
+			workflowsStore.allNodes = [regularNode, triggerNode];
+			nodeTypesStore.isTriggerNode = vi.fn((type: string) => type === 'n8n-nodes-base.trigger');
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'testApi' }]);
+
+			const { nodeSetupStates } = useWorkflowSetupState();
+
+			expect(nodeSetupStates.value[0].node.name).toBe('Trigger');
+			expect(nodeSetupStates.value[1].node.name).toBe('Regular');
+		});
+
+		it('should mark trigger as incomplete when credentials configured but no execution data', () => {
+			const triggerNode = createNode({
+				name: 'Trigger',
+				type: 'n8n-nodes-base.trigger',
+				credentials: { triggerApi: { id: 'cred-1', name: 'My Cred' } },
+			});
+			workflowsStore.allNodes = [triggerNode];
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'triggerApi' }]);
+			credentialsStore.getCredentialTypeByName = vi
+				.fn()
+				.mockReturnValue({ displayName: 'Trigger API' });
+			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+
+			const { nodeSetupStates } = useWorkflowSetupState();
+
+			expect(nodeSetupStates.value[0].isComplete).toBe(false);
+		});
+
+		it('should mark trigger as complete when credentials configured and execution succeeded', () => {
+			const triggerNode = createNode({
+				name: 'Trigger',
+				type: 'n8n-nodes-base.trigger',
+				credentials: { triggerApi: { id: 'cred-1', name: 'My Cred' } },
+			});
+			workflowsStore.allNodes = [triggerNode];
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'triggerApi' }]);
+			credentialsStore.getCredentialTypeByName = vi
+				.fn()
+				.mockReturnValue({ displayName: 'Trigger API' });
+			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue([{ data: {} }]);
+
+			const { nodeSetupStates } = useWorkflowSetupState();
+
+			expect(nodeSetupStates.value[0].isComplete).toBe(true);
+		});
+
+		it('should mark trigger as incomplete when execution data exists but credentials missing', () => {
+			const triggerNode = createNode({ name: 'Trigger', type: 'n8n-nodes-base.trigger' });
+			workflowsStore.allNodes = [triggerNode];
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'triggerApi' }]);
+			credentialsStore.getCredentialTypeByName = vi
+				.fn()
+				.mockReturnValue({ displayName: 'Trigger API' });
+			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue([{ data: {} }]);
+
+			const { nodeSetupStates } = useWorkflowSetupState();
+
+			expect(nodeSetupStates.value[0].isComplete).toBe(false);
+		});
+
+		it('should mark trigger without credentials as incomplete when no execution data', () => {
+			const triggerNode = createNode({
+				name: 'ManualTrigger',
+				type: 'n8n-nodes-base.manualTrigger',
+			});
+			workflowsStore.allNodes = [triggerNode];
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([]);
+			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+
+			const { nodeSetupStates } = useWorkflowSetupState();
+
+			expect(nodeSetupStates.value[0].isComplete).toBe(false);
+		});
+
+		it('should mark trigger without credentials as complete after successful execution', () => {
+			const triggerNode = createNode({
+				name: 'ManualTrigger',
+				type: 'n8n-nodes-base.manualTrigger',
+			});
+			workflowsStore.allNodes = [triggerNode];
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([]);
+			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue([{ data: {} }]);
+
+			const { nodeSetupStates } = useWorkflowSetupState();
+
+			expect(nodeSetupStates.value[0].isComplete).toBe(true);
 		});
 	});
 

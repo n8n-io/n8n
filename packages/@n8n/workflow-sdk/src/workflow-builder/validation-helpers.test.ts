@@ -14,7 +14,6 @@ import {
 	extractExpressions,
 	parseExpression,
 	hasPath,
-	findNestedPlaceholders,
 	TOOLS_WITHOUT_PARAMETERS,
 } from './validation-helpers';
 
@@ -308,59 +307,6 @@ describe('workflow-builder/validation-helpers', () => {
 
 		it('handles empty paths', () => {
 			expect(hasPath({ a: 1 }, [])).toBe(true);
-		});
-	});
-
-	describe('findNestedPlaceholders', () => {
-		it('detects placeholder inside array element object', () => {
-			const issues = findNestedPlaceholders({
-				values: [{ option: { __placeholder: true, hint: 'Choose option' } }],
-			});
-			expect(issues).toHaveLength(1);
-			expect(issues[0].path).toBe('values[0].option');
-			expect(issues[0].hint).toBe('Choose option');
-		});
-
-		it('detects placeholder directly inside array', () => {
-			const issues = findNestedPlaceholders({
-				items: [{ __placeholder: true, hint: 'Item' }],
-			});
-			expect(issues).toHaveLength(1);
-			expect(issues[0].path).toBe('items[0]');
-		});
-
-		it('does not flag direct parameter-level placeholder', () => {
-			const issues = findNestedPlaceholders({
-				url: { __placeholder: true, hint: 'Your API URL' },
-			});
-			expect(issues).toHaveLength(0);
-		});
-
-		it('does not flag placeholder in nested object (not inside array)', () => {
-			const issues = findNestedPlaceholders({
-				options: {
-					apiUrl: { __placeholder: true, hint: 'Your API URL' },
-				},
-			});
-			expect(issues).toHaveLength(0);
-		});
-
-		it('returns empty for parameters without placeholders', () => {
-			const issues = findNestedPlaceholders({
-				url: 'https://example.com',
-				count: 5,
-			});
-			expect(issues).toHaveLength(0);
-		});
-
-		it('detects multiple nested placeholders', () => {
-			const issues = findNestedPlaceholders({
-				values: [
-					{ option: { __placeholder: true, hint: 'Option A' } },
-					{ option: { __placeholder: true, hint: 'Option B' } },
-				],
-			});
-			expect(issues).toHaveLength(2);
 		});
 	});
 });
