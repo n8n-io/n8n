@@ -24,7 +24,7 @@ describe('ChatHubSettingsService', () => {
 		});
 
 		it('should allow n8n models without checking settings', async () => {
-			await service.ensureModelIsAllowed({ provider: 'n8n', model: 'any-model' });
+			await service.ensureModelIsAllowed({ provider: 'n8n', workflowId: 'any-workflow' });
 
 			expect(settingsRepository.findByKey).not.toHaveBeenCalled();
 		});
