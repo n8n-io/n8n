@@ -15,7 +15,7 @@ interface Props {
 	answers: PlanMode.QuestionResponse[];
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 const i18n = useI18n();
 
 function formatAnswer(answer: PlanMode.QuestionResponse): string {
