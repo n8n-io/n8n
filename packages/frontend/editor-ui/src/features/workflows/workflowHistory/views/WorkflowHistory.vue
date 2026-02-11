@@ -7,6 +7,7 @@ import {
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
+	WORKFLOW_HISTORY_GRADUAL_PUBLISH_MODAL_KEY,
 	EnterpriseEditionFeature,
 } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
@@ -36,6 +37,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import type { WorkflowVersionFormModalEventBusEvents } from '../components/WorkflowVersionFormModal.vue';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
+import type { WorkflowHistoryGradualPublishModalEventBusEvents } from '@/features/workflows/workflowHistory/components/WorkflowHistoryGradualPublishModal.vue';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 type WorkflowHistoryActionRecord = {
@@ -45,6 +47,7 @@ type WorkflowHistoryActionRecord = {
 const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
 	'restore',
 	'publish',
+	'publish-gradually',
 	'unpublish',
 	'name',
 	'clone',
@@ -112,7 +115,8 @@ const actions = computed<Array<UserAction<IUser>>>(() =>
 		disabled:
 			(value === 'clone' && !workflowPermissions.value.create) ||
 			((value === 'restore' || value === 'name') && !workflowPermissions.value.update) ||
-			((value === 'publish' || value === 'unpublish') && !workflowPermissions.value.publish),
+			((value === 'publish' || value === 'unpublish' || value === 'publish-gradually') &&
+				!workflowPermissions.value.publish),
 		value,
 	})),
 );
@@ -394,6 +398,63 @@ const nameWorkflowVersion = async (id: WorkflowVersionId, data: WorkflowHistoryA
 	});
 };
 
+const gradualPublishWorkflowVersion = (
+	id: WorkflowVersionId,
+	data: WorkflowHistoryAction['data'],
+) => {
+	const gradualPublishEventBus = createEventBus<WorkflowHistoryGradualPublishModalEventBusEvents>();
+	const modalData = ref({
+		versionId: id,
+		versionName: data.versionName,
+		description: data.description,
+		submitting: false,
+		eventBus: gradualPublishEventBus,
+	});
+
+	gradualPublishEventBus.once(
+		'submit',
+		async (submitData: {
+			versionId: string;
+			percentage: number;
+			name: string;
+			description: string;
+		}) => {
+			modalData.value.submitting = true;
+
+			try {
+				const { success } = await workflowActivate.gradualPublishWorkflow(workflowId.value, {
+					versionId: submitData.versionId,
+					percentage: submitData.percentage,
+					name: submitData.name,
+					description: submitData.description,
+				});
+
+				if (success) {
+					// Update the history list with the new name and description
+					const historyItem = workflowHistory.value.find(
+						(item) => item.versionId === submitData.versionId,
+					);
+					if (historyItem) {
+						historyItem.name = submitData.name;
+						historyItem.description = submitData.description;
+						historyItem.gradualRolloutPercentage = submitData.percentage;
+					}
+
+					sendTelemetry('User started gradual rollout from history');
+					uiStore.closeModal(WORKFLOW_HISTORY_GRADUAL_PUBLISH_MODAL_KEY);
+				}
+			} finally {
+				modalData.value.submitting = false;
+			}
+		},
+	);
+
+	uiStore.openModalWithData({
+		name: WORKFLOW_HISTORY_GRADUAL_PUBLISH_MODAL_KEY,
+		data: modalData.value,
+	});
+};
+
 const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 	try {
 		switch (action) {
@@ -415,6 +476,10 @@ const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.PUBLISH:
 				publishWorkflowVersion(id, data);
+				break;
+			case WORKFLOW_HISTORY_ACTIONS['PUBLISH-GRADUALLY']:
+				gradualPublishWorkflowVersion(id, data);
+				sendTelemetry('User opened gradual publish from history');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.UNPUBLISH:
 				unpublishWorkflowVersion(id, data);

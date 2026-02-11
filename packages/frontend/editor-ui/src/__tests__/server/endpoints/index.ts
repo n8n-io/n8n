@@ -9,6 +9,7 @@ import { routesForSourceControl } from './sourceControl';
 import { routesForWorkflows } from './workflow';
 import { routesForTags } from './tag';
 import { routesForModuleSettings } from './module';
+import { routesForGradualPublish } from './gradualPublish';
 
 const endpoints: Array<(server: Server) => void> = [
 	routesForCredentials,
@@ -21,6 +22,7 @@ const endpoints: Array<(server: Server) => void> = [
 	routesForWorkflows,
 	routesForTags,
 	routesForModuleSettings,
+	routesForGradualPublish,
 ];
 
 export { endpoints };

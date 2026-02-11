@@ -34,6 +34,8 @@ import {
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+	WORKFLOW_GRADUAL_PUBLISH_MODAL_KEY,
+	WORKFLOW_HISTORY_GRADUAL_PUBLISH_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 } from '@/app/constants';
 import {
@@ -111,6 +113,9 @@ import WorkflowHistoryVersionUnpublishModal from '@/features/workflows/workflowH
 import WorkflowVersionFormModal, {
 	type WorkflowVersionFormModalData,
 } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
+import WorkflowHistoryGradualPublishModal, {
+	type WorkflowHistoryGradualPublishModalData,
+} from '@/features/workflows/workflowHistory/components/WorkflowHistoryGradualPublishModal.vue';
 import WorkflowSettings from '@/app/components/WorkflowSettings.vue';
 import WorkflowShareModal from '@/app/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflows/workflowDiff/WorkflowDiffModal.vue';
@@ -123,6 +128,7 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
 import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
+import WorkflowGradualPublishModal from '@/app/components/MainHeader/WorkflowGradualPublishModal.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
 import CredentialResolverEditModal from '@/app/components/CredentialResolverEditModal.vue';
 </script>
@@ -456,11 +462,24 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="WORKFLOW_GRADUAL_PUBLISH_MODAL_KEY">
+			<WorkflowGradualPublishModal />
+		</ModalRoot>
+
 		<ModalRoot :name="WORKFLOW_HISTORY_PUBLISH_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<WorkflowVersionFormModal
 					:modal-name="modalName"
 					:data="data as WorkflowVersionFormModalData"
+				/>
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_HISTORY_GRADUAL_PUBLISH_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<WorkflowHistoryGradualPublishModal
+					:modal-name="modalName"
+					:data="data as WorkflowHistoryGradualPublishModalData"
 				/>
 			</template>
 		</ModalRoot>

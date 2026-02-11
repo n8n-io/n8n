@@ -198,9 +198,68 @@ export function useWorkflowActivate() {
 		}
 	};
 
+	const gradualPublishWorkflow = async (
+		workflowId: string,
+		options: { versionId?: string; percentage: number; name?: string; description?: string },
+	) => {
+		updatingWorkflowActivation.value = true;
+
+		collaborationStore.requestWriteAccess();
+
+		try {
+			const gradualRolloutState = await workflowsStore.gradualPublishWorkflow(workflowId, {
+				versionId: options.versionId,
+				percentage: options.percentage,
+				name: options.name,
+				description: options.description,
+			});
+
+			if (options.percentage === 0) {
+				// Rollback
+				toast.showMessage({
+					title: i18n.baseText('workflowHistory.gradualRollout.rollback.success.title'),
+					message: i18n.baseText('workflowHistory.gradualRollout.rollback.success.message'),
+					type: 'success',
+				});
+			} else if (options.percentage === 100) {
+				// Complete rollout
+				toast.showMessage({
+					title: i18n.baseText('workflowHistory.gradualRollout.complete.success.title'),
+					message: i18n.baseText('workflowHistory.gradualRollout.complete.success.message'),
+					type: 'success',
+				});
+			} else {
+				// Start/adjust gradual rollout
+				toast.showMessage({
+					title: i18n.baseText('workflowHistory.action.gradualPublish.success.title'),
+					message: i18n.baseText('workflowHistory.action.gradualPublish.success.message', {
+						interpolate: { percentage: String(options.percentage) },
+					}),
+					type: 'success',
+				});
+			}
+
+			return { success: true, gradualRolloutState };
+		} catch (error) {
+			if (isWebhookConflictError(error)) {
+				await handleWebhookConflictError(error);
+				return { success: false, errorHandled: true };
+			} else {
+				toast.showError(
+					error,
+					i18n.baseText('workflowHistory.action.gradualPublish.error.title') + ':',
+				);
+			}
+			return { success: false };
+		} finally {
+			updatingWorkflowActivation.value = false;
+		}
+	};
+
 	return {
 		updatingWorkflowActivation,
 		publishWorkflow,
 		unpublishWorkflowFromHistory,
+		gradualPublishWorkflow,
 	};
 }

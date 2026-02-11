@@ -9,6 +9,7 @@ import {
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	WORKFLOW_GRADUAL_PUBLISH_MODAL_KEY,
 	AutoSaveState,
 	EnterpriseEditionFeature,
 } from '@/app/constants';
@@ -311,6 +312,7 @@ const latestPublishDate = computed(() => {
 
 const enum VERSION_ACTIONS {
 	PUBLISH = 'publish',
+	PUBLISH_GRADUALLY = 'publish-gradually',
 	NAME_VERSION = 'name-version',
 	UNPUBLISH = 'unpublish',
 }
@@ -321,6 +323,11 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 			id: VERSION_ACTIONS.PUBLISH,
 			label: i18n.baseText('workflows.publish'),
 			shortcut: { keys: ['P'] },
+			disabled: shouldDisablePublishButton.value,
+		},
+		{
+			id: VERSION_ACTIONS.PUBLISH_GRADUALLY,
+			label: i18n.baseText('workflows.publishGradually'),
 			disabled: shouldDisablePublishButton.value,
 		},
 	];
@@ -405,6 +412,21 @@ const onNameVersion = async () => {
 	});
 };
 
+const onPublishGradually = async () => {
+	// If there are unsaved changes, save the workflow first
+	if (uiStore.stateIsDirty || props.isNewWorkflow) {
+		const saved = await saveBeforePublish();
+		if (!saved) {
+			return;
+		}
+	}
+
+	uiStore.openModalWithData({
+		name: WORKFLOW_GRADUAL_PUBLISH_MODAL_KEY,
+		data: {},
+	});
+};
+
 const onUnpublish = () => {
 	if (!activeVersion.value) {
 		toast.showMessage({
@@ -439,6 +461,9 @@ const onDropdownMenuSelect = async (action: VERSION_ACTIONS) => {
 	switch (action) {
 		case VERSION_ACTIONS.PUBLISH:
 			await onPublishButtonClick();
+			break;
+		case VERSION_ACTIONS.PUBLISH_GRADUALLY:
+			await onPublishGradually();
 			break;
 		case VERSION_ACTIONS.NAME_VERSION:
 			await onNameVersion();

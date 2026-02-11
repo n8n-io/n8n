@@ -86,6 +86,10 @@ import { useSettingsStore } from './settings.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
+import {
+	gradualPublishWorkflow as gradualPublishWorkflowApi,
+	type GradualRolloutState,
+} from '@n8n/rest-api-client/api/workflowHistory';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { isChatNode } from '@/app/utils/aiUtils';
 import { snapPositionToGrid } from '@/app/utils/nodeViewUtils';
@@ -1532,6 +1536,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updatedWorkflow;
 	}
 
+	async function gradualPublishWorkflow(
+		id: string,
+		data: { versionId?: string; percentage: number; name?: string; description?: string },
+	): Promise<GradualRolloutState | null> {
+		return await gradualPublishWorkflowApi(rootStore.restApiContext, id, {
+			versionId: data.versionId,
+			percentage: data.percentage,
+			name: data.name ?? '',
+			description: data.description ?? '',
+		});
+	}
+
 	// Update a single workflow setting key while preserving existing settings
 	async function updateWorkflowSetting<K extends keyof IWorkflowSettings>(
 		id: string,
@@ -1912,6 +1928,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		updateWorkflow,
 		publishWorkflow,
 		deactivateWorkflow,
+		gradualPublishWorkflow,
 		updateWorkflowSetting,
 		saveWorkflowDescription,
 		runWorkflow,
