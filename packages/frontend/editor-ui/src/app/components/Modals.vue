@@ -6,6 +6,7 @@ import {
 	DUPLICATE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+	DELETE_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
@@ -86,6 +87,7 @@ import DeleteUserModal from '@/features/settings/users/components/DeleteUserModa
 import DuplicateWorkflowDialog from '@/app/components/DuplicateWorkflowDialog.vue';
 import ExternalSecretsProviderModal from '@/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderModal.ee.vue';
 import SecretsProviderConnectionModal from '@/features/integrations/secretsProviders.ee/components/SecretsProviderConnectionModal.ee.vue';
+import DeleteSecretsProviderModal from '@/features/integrations/secretsProviders.ee/components/DeleteSecretsProviderModal.ee.vue';
 import FromAiParametersModal from '@/app/components/FromAiParametersModal.vue';
 import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModal.vue';
 import BinaryDataViewModal from '@/features/ndv/runData/components/BinaryDataViewModal.vue';
@@ -305,6 +307,12 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 		<ModalRoot :name="SECRETS_PROVIDER_CONNECTION_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<SecretsProviderConnectionModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="DELETE_SECRETS_PROVIDER_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<DeleteSecretsProviderModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

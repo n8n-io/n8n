@@ -135,6 +135,10 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		return rbacStore.hasScope('externalSecretsProvider:update') || canUpdateProjectScoped.value;
 	});
 
+	const canDelete = computed(() => {
+		return rbacStore.hasScope('externalSecretsProvider:delete');
+	});
+
 	const canShareGlobally = computed(() => {
 		// Only users with global update permission can share globally or with other projects
 		return rbacStore.hasScope('externalSecretsProvider:update');
@@ -463,6 +467,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	return {
 		// State refs
 		providerSecretsCount,
+		providerKey,
 		connectionName,
 		connectionNameBlurred,
 		originalConnectionName,
@@ -478,6 +483,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		connectionProjects,
 		sharedWithProjects,
 		canUpdate,
+		canDelete,
 		canShareGlobally,
 		setScopeState,
 
