@@ -16,6 +16,7 @@ import type {
 } from './webhook.types';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
@@ -197,10 +198,7 @@ export class LiveWebhooks implements IWebhookManager {
 			this.logger.info(
 				`Recovery mode enabled. Ignoring webhook "${httpMethod}" for path "${path}"`,
 			);
-			throw new WebhookNotFoundError(
-				{ path, httpMethod, webhookMethods: [] },
-				{ hint: 'production' },
-			);
+			throw new ServiceUnavailableError('Recovery mode is enabled. Live webhooks are disabled.');
 		}
 
 		const webhook = await this.webhookService.findWebhook(httpMethod, path);

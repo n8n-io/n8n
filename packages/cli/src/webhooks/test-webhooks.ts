@@ -76,7 +76,7 @@ export class TestWebhooks implements IWebhookManager {
 		let path = removeTrailingSlash(request.params.path);
 
 		if (this.workflowsConfig.recoveryMode) {
-			throw new WebhookNotFoundError({ path, httpMethod, webhookMethods: [] });
+			throw new ServiceUnavailableError('Recovery mode is enabled. Test webhooks are disabled.');
 		}
 
 		request.params = {} as WebhookRequest['params'];
