@@ -299,7 +299,7 @@ packages/@n8n/expression-runtime/
 
 ### 4. Why Abstract Bridge?
 
-**Future-Proofing**: Frontend will use Web Workers. Task runners will use IPC. Abstract bridge allows adding new environments without changing other layers.
+**Future-Proofing**: Frontend will use Web Workers. Backend uses isolated-vm. Abstract bridge allows adding new environments without changing other layers.
 
 **Testing**: NodeVmBridge allows fast testing without native isolated-vm dependency.
 
@@ -353,6 +353,7 @@ The runtime has **no access** to:
 - ❌ Node.js APIs (fs, net, child_process, etc.)
 - ❌ Host process memory
 - ❌ Other isolates/workers
+- ❌ Cookies
 
 The runtime **can only**:
 - ✅ Call `getDataSync()` to fetch workflow data
