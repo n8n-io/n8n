@@ -107,15 +107,15 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@JoinColumn({ name: 'activeVersionId', referencedColumnName: 'versionId' })
 	activeVersion: WorkflowHistory | null;
 
-	@Column({ name: 'rolloutVersionId', length: 36, nullable: true })
-	rolloutVersionId: string | null;
+	@Column({ name: 'gradualRolloutVersionId', length: 36, nullable: true })
+	gradualRolloutVersionId: string | null;
 
 	@ManyToOne('WorkflowHistory', { nullable: true })
-	@JoinColumn({ name: 'rolloutVersionId', referencedColumnName: 'versionId' })
-	rolloutVersion: WorkflowHistory | null;
+	@JoinColumn({ name: 'gradualRolloutVersionId', referencedColumnName: 'versionId' })
+	gradualRolloutVersion: WorkflowHistory | null;
 
 	@Column({ type: 'smallint', nullable: true })
-	rolloutPercentage: number | null;
+	gradualRolloutPercentage: number | null;
 
 	@Column({ default: 1 })
 	versionCounter: number;

@@ -39,12 +39,12 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			.where('w.activeVersionId IS NOT NULL')
 			.getQuery();
 
-		const rolloutVersionIdsSubquery = this.manager
+		const gradualRolloutVersionIdsSubquery = this.manager
 			.createQueryBuilder()
 			.subQuery()
-			.select('w.rolloutVersionId')
+			.select('w.gradualRolloutVersionId')
 			.from(WorkflowEntity, 'w')
-			.where('w.rolloutVersionId IS NOT NULL')
+			.where('w.gradualRolloutVersionId IS NOT NULL')
 			.getQuery();
 
 		const query = this.manager
@@ -54,7 +54,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			.where('createdAt < :date', { date })
 			.andWhere(`versionId NOT IN (${currentVersionIdsSubquery})`)
 			.andWhere(`versionId NOT IN (${activeVersionIdsSubquery})`)
-			.andWhere(`versionId NOT IN (${rolloutVersionIdsSubquery})`);
+			.andWhere(`versionId NOT IN (${gradualRolloutVersionIdsSubquery})`);
 
 		if (preserveNamedVersions) {
 			query.andWhere('name IS NULL');
