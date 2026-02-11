@@ -77,7 +77,7 @@ describe('AiWorkflowBuilderService', () => {
 
 	const mockNodeTypeDescriptions: INodeTypeDescription[] = [
 		{
-			name: 'TestNode',
+			name: 'n8n-nodes-base.testNode',
 			displayName: 'Test Node',
 			description: 'A test node',
 			version: 1,
@@ -95,7 +95,7 @@ describe('AiWorkflowBuilderService', () => {
 			group: ['transform'],
 		},
 		{
-			name: 'HiddenNode',
+			name: 'n8n-nodes-base.hiddenNode',
 			displayName: 'Hidden Node',
 			description: 'A hidden node',
 			version: 1,
@@ -130,7 +130,7 @@ describe('AiWorkflowBuilderService', () => {
 			group: ['transform'],
 		},
 		{
-			name: 'TestNodeTool',
+			name: 'n8n-nodes-base.testNodeTool',
 			displayName: 'Test Tool Node',
 			description: 'Test tool node description',
 			version: 1,
@@ -145,6 +145,17 @@ describe('AiWorkflowBuilderService', () => {
 					default: '',
 				},
 			],
+			group: ['transform'],
+		},
+		{
+			name: 'community-nodes-test.someNode',
+			displayName: 'Community Node',
+			description: 'A community node that should be filtered out',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [],
 			group: ['transform'],
 		},
 	];
@@ -234,7 +245,7 @@ describe('AiWorkflowBuilderService', () => {
 
 			expect(testService).toBeInstanceOf(AiWorkflowBuilderService);
 			expect(MockedSessionManagerService).toHaveBeenCalledWith(
-				expect.arrayContaining([expect.objectContaining({ name: 'TestNode' })]),
+				expect.arrayContaining([expect.objectContaining({ name: 'n8n-nodes-base.testNode' })]),
 				mockLogger,
 			);
 		});
@@ -262,9 +273,14 @@ describe('AiWorkflowBuilderService', () => {
 			expect(MockedSessionManagerService).toHaveBeenCalledTimes(1);
 			const filteredNodeTypes = MockedSessionManagerService.mock.calls[0][0];
 
-			expect(filteredNodeTypes.find((node) => node.name === 'HiddenNode')).toBeUndefined();
+			expect(
+				filteredNodeTypes.find((node) => node.name === 'n8n-nodes-base.hiddenNode'),
+			).toBeUndefined();
 			expect(
 				filteredNodeTypes.find((node) => node.name === '@n8n/n8n-nodes-langchain.toolVectorStore'),
+			).toBeUndefined();
+			expect(
+				filteredNodeTypes.find((node) => node.name === 'community-nodes-test.someNode'),
 			).toBeUndefined();
 			expect(
 				filteredNodeTypes.find((node) => node.name === 'n8n-nodes-base.dataTable'),
@@ -287,7 +303,9 @@ describe('AiWorkflowBuilderService', () => {
 			expect(MockedSessionManagerService).toHaveBeenCalledTimes(1);
 			const filteredNodeTypes = MockedSessionManagerService.mock.calls[0][0];
 
-			const testToolNode = filteredNodeTypes.find((node) => node.name === 'TestNodeTool');
+			const testToolNode = filteredNodeTypes.find(
+				(node) => node.name === 'n8n-nodes-base.testNodeTool',
+			);
 			expect(testToolNode).toBeDefined();
 			expect(testToolNode?.description).toBe('Test tool node description');
 			expect(testToolNode?.displayName).toBe('Test Tool Node');

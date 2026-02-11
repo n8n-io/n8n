@@ -1,6 +1,8 @@
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { QueryFailedError } from '@n8n/typeorm';
 import { replaceCircularReferences } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -16,6 +18,7 @@ import type { ExecutionRequest } from '../../../types';
 import { apiKeyHasScope, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
+import { getExecutionTags, mapAnnotationTags, updateExecutionTags } from './executions.service';
 
 export = {
 	deleteExecution: [
@@ -193,6 +196,60 @@ export = {
 				} else {
 					throw error;
 				}
+			}
+		},
+	],
+	getExecutionTags: [
+		apiKeyHasScope('executionTags:list'),
+		async (req: ExecutionRequest.GetTags, res: express.Response): Promise<express.Response> => {
+			const { id } = req.params;
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+
+			if (!sharedWorkflowsIds.length) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			const execution = await Container.get(
+				ExecutionRepository,
+			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, false);
+
+			if (!execution) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			const tags = await getExecutionTags(id);
+
+			return res.json(tags);
+		},
+	],
+	updateExecutionTags: [
+		apiKeyHasScope('executionTags:update'),
+		async (req: ExecutionRequest.UpdateTags, res: express.Response): Promise<express.Response> => {
+			const { id } = req.params;
+			const newTagIds = req.body.map((tag) => tag.id);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:update']);
+
+			if (!sharedWorkflowsIds.length) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			const execution = await Container.get(
+				ExecutionRepository,
+			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, false);
+
+			if (!execution) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			try {
+				const updatedTags = await updateExecutionTags(id, newTagIds);
+				const tags = mapAnnotationTags(updatedTags);
+				return res.json(tags);
+			} catch (error) {
+				if (error instanceof QueryFailedError) {
+					return res.status(404).json({ message: 'Some tags not found' });
+				}
+				throw error;
 			}
 		},
 	],

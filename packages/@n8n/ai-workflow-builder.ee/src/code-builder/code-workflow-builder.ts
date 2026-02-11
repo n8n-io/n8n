@@ -37,9 +37,7 @@ export interface CodeWorkflowBuilderConfig {
 	/** Optional logger */
 	logger?: Logger;
 	/**
-	 * Ordered list of directories to search for node definitions.
-	 * Built-in dirs come first, then the community dir.
-	 * If not provided, falls back to ~/.n8n/node-definitions.
+	 * Ordered list of directories to search for built-in node definitions.
 	 */
 	nodeDefinitionDirs?: string[];
 	/**
