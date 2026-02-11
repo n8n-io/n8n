@@ -45,6 +45,14 @@ const descriptionV2: INodeTypeDescription = {
 	defaults: {
 		name: 'On form submission',
 	},
+	builderHint: {
+		relatedNodes: [
+			{
+				nodeType: 'n8n-nodes-base.form',
+				relationHint: 'Add pages and final page to the form',
+			},
+		],
+	},
 
 	inputs: [],
 	outputs: [NodeConnectionTypes.Main],

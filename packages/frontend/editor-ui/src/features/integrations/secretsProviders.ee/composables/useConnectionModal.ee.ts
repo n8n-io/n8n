@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 import type { SecretProviderTypeResponse } from '@n8n/api-types';
 import type { INodeProperties } from 'n8n-workflow';
@@ -6,6 +6,9 @@ import { useSecretsProviderConnection } from './useSecretsProviderConnection.ee'
 import { useRBACStore } from '@/app/stores/rbac.store';
 import { useToast } from '@/app/composables/useToast';
 import { i18n } from '@n8n/i18n';
+import type { Scope } from '@n8n/permissions';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
 export type ConnectionProjectSummary = { id: string; name: string };
 
@@ -15,6 +18,7 @@ interface UseConnectionModalOptions {
 	existingProviderNames?: Ref<string[]>;
 	providerKey?: Ref<string>;
 	useMockApi?: boolean;
+	projectId?: string;
 }
 
 /**
@@ -32,9 +36,11 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	// Composables
 	const rbacStore = useRBACStore();
 	const toast = useToast();
+	const projectsStore = useProjectsStore();
 
 	// State
 	const providerKey = ref<string | undefined>(options.providerKey?.value);
+	const providerSecretsCount = ref(0);
 	const connectionName = ref('');
 	const originalConnectionName = ref('');
 	const connectionNameBlurred = ref(false);
@@ -77,13 +83,62 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const originalIsSharedGlobally = ref(true);
 	const connectionProjects = ref<ConnectionProjectSummary[]>([]);
 
-	// Computed - Permissions
-	const canCreate = computed(() => rbacStore.hasScope('externalSecretsProvider:create'));
-	const canUpdate = computed(() => rbacStore.hasScope('externalSecretsProvider:update'));
-	const canRemoveProjectScope = computed(() =>
-		// TODO: allow removing projects from scope external secrets providers with project scope permissions
-		rbacStore.hasScope('externalSecretsProvider:update'),
+	// Fetch project data when connection projects change
+	watch(
+		connectionProjects,
+		async (projects: ConnectionProjectSummary[]) => {
+			if (projects.length === 0) return;
+
+			// Fetch project if not in store
+			const projectId = projects[0].id;
+			if (!projectsStore.projects.find((p: ProjectSharingData) => p.id === projectId)) {
+				await projectsStore.fetchProject(projectId);
+			}
+		},
+		{ immediate: true },
 	);
+
+	const sharedWithProjects = computed(() => {
+		if (projectIds.value.length === 0) return [];
+		return projectsStore.projects.filter((p: ProjectSharingData) =>
+			projectIds.value.includes(p.id),
+		);
+	});
+
+	// Helper to check if a project has a specific scope
+	const hasProjectScope = (projectId: string, scope: Scope): boolean => {
+		const project = projectsStore.myProjects.find((p) => p.id === projectId);
+		return project?.scopes?.includes(scope) ?? false;
+	};
+
+	// Permission checks
+	const canCreateProjectScoped = computed(() => {
+		if (!options.projectId) return false;
+		return hasProjectScope(options.projectId, 'externalSecretsProvider:create');
+	});
+
+	const canUpdateProjectScoped = computed(() => {
+		// Can update if user has update permission within the scope of the original project
+		// This allows removing project from scope
+		if (originalProjectIds.value.length === 0) return false;
+
+		return originalProjectIds.value.every((id) =>
+			hasProjectScope(id, 'externalSecretsProvider:update'),
+		);
+	});
+
+	const canCreate = computed(
+		() => rbacStore.hasScope('externalSecretsProvider:create') || canCreateProjectScoped.value,
+	);
+
+	const canUpdate = computed(() => {
+		return rbacStore.hasScope('externalSecretsProvider:update') || canUpdateProjectScoped.value;
+	});
+
+	const canShareGlobally = computed(() => {
+		// Only users with global update permission can share globally or with other projects
+		return rbacStore.hasScope('externalSecretsProvider:update');
+	});
 
 	// Computed - State
 	const isEditMode = computed(() => !!providerKey.value);
@@ -260,25 +315,41 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	async function createNewConnection(): Promise<boolean> {
 		if (!selectedProviderType.value) return false;
 
+		// Use current scope state: either global ([]) or project-specific (max 1 project)
+		const scopeProjectIds = isSharedGlobally.value ? [] : projectIds.value.slice(0, 1);
+
 		const connectionData = {
 			providerKey: connectionName.value.trim(),
 			type: selectedProviderType.value.type,
 			settings: normalizedConnectionSettings.value,
-			projectIds: [],
+			projectIds: scopeProjectIds,
 		};
 
-		await connection.createConnection(connectionData);
+		const { secretsCount } = await connection.createConnection(connectionData);
 
 		// Transition to edit mode after successful creation
 		providerKey.value = connectionName.value.trim();
+		providerSecretsCount.value = secretsCount;
 
 		// Update saved state
 		originalSettings.value = { ...connectionSettings.value };
 		originalConnectionName.value = connectionName.value.trim();
+		originalProjectIds.value = [...projectIds.value];
+		originalIsSharedGlobally.value = isSharedGlobally.value;
 
 		// Test connection automatically
 		if (providerKey.value) {
 			await connection.testConnection(providerKey.value);
+			if (connection.connectionState.value !== 'connected') {
+				toast.showError(
+					new Error(i18n.baseText('generic.error')),
+					i18n.baseText('generic.error'),
+					i18n.baseText(
+						'settings.secretsProviderConnections.modal.testConnection.error.serviceDisabled',
+					),
+				);
+				return false;
+			}
 		}
 
 		return true;
@@ -297,13 +368,19 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			projectIds: scopeProjectIds,
 		};
 
-		await connection.updateConnection(providerKey.value, updateData);
+		const { secretsCount, projects } = await connection.updateConnection(
+			providerKey.value,
+			updateData,
+		);
+
+		providerSecretsCount.value = secretsCount;
 
 		// Update saved state
 		originalSettings.value = { ...connectionSettings.value };
 		originalConnectionName.value = connectionName.value.trim();
 		originalProjectIds.value = [...projectIds.value];
-		originalIsSharedGlobally.value = isSharedGlobally.value;
+		isSharedGlobally.value = projects.length === 0;
+		originalIsSharedGlobally.value = projects.length === 0;
 
 		// Test connection automatically
 		await connection.testConnection(providerKey.value);
@@ -315,6 +392,34 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		projectIds.value = newProjectIds.slice(0, 1);
 		isSharedGlobally.value = newIsSharedGlobally;
 	}
+
+	/**
+	 * Initialize the modal with project scope when creating from a project context
+	 */
+	function initializeProjectScope() {
+		// Only initialize project scope for new connections (not edit mode)
+		if (!providerKey.value && options.projectId) {
+			const project = projectsStore.myProjects.find((p) => p.id === options.projectId);
+
+			// Initialize scope state
+			projectIds.value = [options.projectId];
+			isSharedGlobally.value = false;
+			originalProjectIds.value = [options.projectId];
+			originalIsSharedGlobally.value = false;
+
+			// Initialize connectionProjects with project info if available
+			if (project?.name) {
+				connectionProjects.value = [
+					{
+						id: project.id,
+						name: project.name,
+					},
+				];
+			}
+		}
+	}
+
+	initializeProjectScope();
 
 	/**
 	 * Saves the connection (creates new or updates existing)
@@ -357,6 +462,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 	return {
 		// State refs
+		providerSecretsCount,
 		connectionName,
 		connectionNameBlurred,
 		originalConnectionName,
@@ -370,8 +476,9 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		projectIds,
 		isSharedGlobally,
 		connectionProjects,
+		sharedWithProjects,
 		canUpdate,
-		canRemoveProjectScope,
+		canShareGlobally,
 		setScopeState,
 
 		// Computed

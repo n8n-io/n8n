@@ -24,13 +24,17 @@ import { mock } from 'jest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
+import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
+import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+
 import { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { ExportableFolder } from '../types/exportable-folders';
 import type { ExportableProject } from '../types/exportable-project';
 import { SourceControlContext } from '../types/source-control-context';
 
-import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -56,13 +60,16 @@ describe('SourceControlImportService', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const tagRepository = mock<TagRepository>();
 	const workflowTagMappingRepository = mock<WorkflowTagMappingRepository>();
+	const userRepository = mock<UserRepository>();
 	const mockLogger = mock<Logger>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const variableService = mock<VariablesService>();
 	const variablesRepository = mock<VariablesRepository>();
 	const workflowService = mock<WorkflowService>();
-	const userRepository = mock<UserRepository>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
+	const dataTableRepository = mock<DataTableRepository>();
+	const dataTableColumnRepository = mock<DataTableColumnRepository>();
+	const dataTableDDLService = mock<DataTableDDLService>();
 	const service = new SourceControlImportService(
 		mockLogger,
 		mock(),
@@ -84,6 +91,9 @@ describe('SourceControlImportService', () => {
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
 		sourceControlScopedService,
 		workflowHistoryService,
+		dataTableRepository,
+		dataTableColumnRepository,
+		dataTableDDLService,
 	);
 
 	const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
@@ -1969,6 +1979,401 @@ describe('SourceControlImportService', () => {
 				await service.deleteTeamProjectsNotInWorkfolder([]);
 
 				expect(projectRepository.delete).not.toHaveBeenCalled();
+			});
+		});
+	});
+
+	describe('Data Tables', () => {
+		describe('getRemoteDataTablesFromFiles', () => {
+			it('should return data tables from individual files', async () => {
+				// Arrange
+				const mockDataTable1 = {
+					id: 'dt1',
+					name: 'Test Table 1',
+					projectId: 'project1',
+					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+				const mockDataTable2 = {
+					id: 'dt2',
+					name: 'Test Table 2',
+					projectId: 'project2',
+					columns: [{ id: 'col2', name: 'Column 2', type: 'number', index: 0 }],
+					createdAt: '2024-01-03T00:00:00.000Z',
+					updatedAt: '2024-01-04T00:00:00.000Z',
+				};
+
+				globMock.mockResolvedValue([
+					'/mock/n8n/git/datatables/dt1.json',
+					'/mock/n8n/git/datatables/dt2.json',
+				]);
+				fsReadFile
+					.mockResolvedValueOnce(JSON.stringify(mockDataTable1) as any)
+					.mockResolvedValueOnce(JSON.stringify(mockDataTable2) as any);
+
+				// Act
+				const result = await service.getRemoteDataTablesFromFiles();
+
+				// Assert
+				expect(result).toEqual([mockDataTable1, mockDataTable2]);
+				expect(globMock).toHaveBeenCalledWith('*.json', {
+					cwd: '/mock/n8n/git/datatables',
+					absolute: true,
+				});
+			});
+
+			it('should return empty array when no files exist', async () => {
+				// Arrange
+				globMock.mockResolvedValue([]);
+
+				// Act
+				const result = await service.getRemoteDataTablesFromFiles();
+
+				// Assert
+				expect(result).toEqual([]);
+			});
+
+			it('should filter out null values from invalid JSON', async () => {
+				// Arrange
+				const mockDataTable = {
+					id: 'dt1',
+					name: 'Test Table',
+					projectId: 'project1',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+
+				globMock.mockResolvedValue([
+					'/mock/n8n/git/datatables/dt1.json',
+					'/mock/n8n/git/datatables/invalid.json',
+				]);
+				fsReadFile
+					.mockResolvedValueOnce(JSON.stringify(mockDataTable) as any)
+					.mockResolvedValueOnce('invalid json' as any);
+
+				// Act
+				const result = await service.getRemoteDataTablesFromFiles();
+
+				// Assert
+				expect(result).toEqual([mockDataTable]);
+			});
+		});
+
+		describe('getLocalDataTablesFromDb', () => {
+			it('should return data tables from database', async () => {
+				// Arrange
+				const mockDataTables = [
+					{
+						id: 'dt1',
+						name: 'Test Table',
+						projectId: 'project1',
+						columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+						createdAt: new Date('2024-01-01'),
+						updatedAt: new Date('2024-01-02'),
+						project: {
+							id: 'project1',
+							name: 'Team Project 1',
+							type: 'team',
+							projectRelations: [],
+						},
+					},
+				];
+
+				dataTableRepository.find.mockResolvedValue(mockDataTables as any);
+
+				// Act
+				const result = await service.getLocalDataTablesFromDb();
+
+				// Assert
+				expect(result).toHaveLength(1);
+				expect(result[0]).toEqual({
+					id: 'dt1',
+					name: 'Test Table',
+					ownedBy: {
+						type: 'team',
+						projectId: 'project1',
+						projectName: 'Team Project 1',
+					},
+					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					filename: expect.stringContaining('dt1.json'),
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				});
+				expect(dataTableRepository.find).toHaveBeenCalledWith({
+					relations: [
+						'columns',
+						'project',
+						'project.projectRelations',
+						'project.projectRelations.role',
+					],
+				});
+			});
+
+			it('should return empty array when no data tables exist', async () => {
+				// Arrange
+				dataTableRepository.find.mockResolvedValue([]);
+
+				// Act
+				const result = await service.getLocalDataTablesFromDb();
+
+				// Assert
+				expect(result).toEqual([]);
+			});
+
+			it('should return empty array when DataTable entity is not registered', async () => {
+				// Arrange
+				const error = new Error('No metadata for "DataTable" was found');
+				dataTableRepository.find.mockRejectedValue(error);
+
+				// Act
+				const result = await service.getLocalDataTablesFromDb();
+
+				// Assert
+				expect(result).toEqual([]);
+			});
+
+			it('should throw error for other database errors', async () => {
+				// Arrange
+				const error = new Error('Database connection failed');
+				dataTableRepository.find.mockRejectedValue(error);
+
+				// Act & Assert
+				await expect(service.getLocalDataTablesFromDb()).rejects.toThrow(
+					'Database connection failed',
+				);
+			});
+		});
+
+		describe('importDataTablesFromWorkFolder', () => {
+			const mockUser = Object.assign(new User(), {
+				id: 'user1',
+				role: GLOBAL_ADMIN_ROLE,
+			});
+
+			const mockPersonalProject = Object.assign(new Project(), {
+				id: 'personal-project-1',
+				type: 'personal',
+			});
+
+			const mockCandidate: SourceControlledFile = {
+				id: 'dt1',
+				name: 'Test Table',
+				type: 'datatable',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/mock/n8n/git/datatables/dt1.json',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			};
+
+			beforeEach(() => {
+				projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+					mockPersonalProject as any,
+				);
+				projectRepository.find.mockResolvedValue([
+					mockPersonalProject,
+					{ id: 'project1', type: 'team' },
+				] as any);
+
+				const mockTransaction = {
+					save: jest.fn(async (_entity: any, data: any) => data),
+					delete: jest.fn(async () => {}),
+				};
+
+				Object.defineProperty(dataTableRepository, 'manager', {
+					value: {
+						connection: {
+							options: { type: 'sqlite' },
+						},
+						transaction: jest.fn(async (callback: any) => {
+							return await callback(mockTransaction);
+						}),
+					},
+					configurable: true,
+				});
+			});
+
+			it('should import new data table', async () => {
+				// Arrange
+				const mockDataTable = {
+					id: 'dt1',
+					name: 'Test Table',
+					ownedBy: {
+						type: 'team',
+						teamId: 'project1',
+						teamName: 'Team Project 1',
+					},
+					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+
+				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
+				dataTableRepository.findOne.mockResolvedValue(null);
+				dataTableColumnRepository.find.mockResolvedValue([]);
+				dataTableColumnRepository.save.mockResolvedValue({ id: 'col1' } as any);
+				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
+
+				// Act
+				await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
+
+				// Assert
+				expect(dataTableRepository.upsert).toHaveBeenCalledWith(
+					{
+						id: 'dt1',
+						name: 'Test Table',
+						projectId: 'project1',
+						createdAt: '2024-01-01T00:00:00.000Z',
+						updatedAt: '2024-01-02T00:00:00.000Z',
+					},
+					['id'],
+				);
+				expect(dataTableDDLService.createTableWithColumns).toHaveBeenCalledWith(
+					'dt1',
+					expect.any(Array),
+					expect.anything(),
+				);
+			});
+
+			it('should import personal project data table', async () => {
+				// Arrange
+				const mockDataTable = {
+					id: 'dt1',
+					name: 'Test Table',
+					ownedBy: {
+						type: 'personal',
+						projectId: 'personal-project-1',
+						projectName: 'User Name',
+						personalEmail: 'user@example.com',
+					},
+					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+
+				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
+				dataTableRepository.findOne.mockResolvedValue(null);
+				dataTableColumnRepository.find.mockResolvedValue([]);
+				dataTableColumnRepository.save.mockResolvedValue({ id: 'col1' } as any);
+				userRepository.findOne.mockResolvedValue({ id: 'user1', email: 'user@example.com' } as any);
+
+				// Act
+				await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
+
+				// Assert
+				expect(dataTableRepository.upsert).toHaveBeenCalledWith(
+					{
+						id: 'dt1',
+						name: 'Test Table',
+						projectId: 'personal-project-1',
+						createdAt: '2024-01-01T00:00:00.000Z',
+						updatedAt: '2024-01-02T00:00:00.000Z',
+					},
+					['id'],
+				);
+			});
+
+			it('should update existing data table and add new columns', async () => {
+				// Arrange
+				const mockDataTable = {
+					id: 'dt1',
+					name: 'Updated Table',
+					ownedBy: {
+						type: 'team',
+						teamId: 'project1',
+						teamName: 'Team Project 1',
+					},
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+
+				const existingTable = {
+					id: 'dt1',
+					name: 'Old Name',
+					projectId: 'project1',
+					columns: [{ id: 'col1', name: 'Column 1' }],
+				};
+
+				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
+				dataTableRepository.findOne.mockResolvedValue(existingTable as any);
+				dataTableColumnRepository.find.mockResolvedValue([{ id: 'col1', name: 'Column 1' }] as any);
+				dataTableColumnRepository.save.mockImplementation(async (col: any) => col);
+				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
+
+				// Act
+				await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
+
+				// Assert
+				expect(dataTableRepository.upsert).toHaveBeenCalled();
+				expect(dataTableDDLService.addColumn).toHaveBeenCalledWith(
+					'dt1',
+					expect.objectContaining({ id: 'col2' }),
+					'sqlite',
+					expect.anything(),
+				);
+			});
+
+			it('should delete removed columns', async () => {
+				// Arrange
+				const mockDataTable = {
+					id: 'dt1',
+					name: 'Test Table',
+					ownedBy: {
+						type: 'team',
+						teamId: 'project1',
+						teamName: 'Team Project 1',
+					},
+					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+
+				const existingTable = {
+					id: 'dt1',
+					name: 'Test Table',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Column 1' },
+						{ id: 'col2', name: 'Column 2' },
+					],
+				};
+
+				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
+				dataTableRepository.findOne.mockResolvedValue(existingTable as any);
+				dataTableColumnRepository.find.mockResolvedValue([
+					{ id: 'col1', name: 'Column 1' },
+					{ id: 'col2', name: 'Column 2' },
+				] as any);
+				dataTableColumnRepository.save.mockResolvedValue({ id: 'col1' } as any);
+				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
+
+				// Act
+				await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
+
+				// Assert
+				expect(dataTableDDLService.dropColumnFromTable).toHaveBeenCalledWith(
+					'dt1',
+					'Column 2',
+					'sqlite',
+					expect.anything(),
+				);
+			});
+
+			it('should handle empty data tables file', async () => {
+				// Arrange
+				fsReadFile.mockResolvedValue('[]' as any);
+
+				// Act
+				await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
+
+				// Assert
+				expect(dataTableRepository.upsert).not.toHaveBeenCalled();
 			});
 		});
 	});

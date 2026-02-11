@@ -288,7 +288,8 @@ describe('AuthRolesService', () => {
 		test('should create new system roles that do not exist in database', async () => {
 			const allScopes = createAllScopes();
 			setupDefaultMocks(allScopes);
-			roleRepository.find.mockResolvedValueOnce([]);
+			// syncScopes and syncRoles each call roleRepository.find() once
+			roleRepository.find.mockResolvedValue([]);
 
 			await authRolesService.init();
 
@@ -307,7 +308,8 @@ describe('AuthRolesService', () => {
 
 			const allScopes = createAllScopes();
 			scopeRepository.find.mockResolvedValue(allScopes);
-			roleRepository.find.mockResolvedValueOnce([outdatedRole]);
+			// syncScopes and syncRoles each call roleRepository.find() once
+			roleRepository.find.mockResolvedValue([outdatedRole]);
 			roleRepository.save.mockImplementation(async (entities) => entities as any);
 
 			await authRolesService.init();
@@ -331,7 +333,8 @@ describe('AuthRolesService', () => {
 
 			const allScopes = createAllScopes();
 			scopeRepository.find.mockResolvedValue(allScopes);
-			roleRepository.find.mockResolvedValueOnce([existingRole]);
+			// syncScopes and syncRoles each call roleRepository.find() once
+			roleRepository.find.mockResolvedValue([existingRole]);
 			roleRepository.save.mockImplementation(async (entities) => entities as any);
 
 			await authRolesService.init();
@@ -377,7 +380,8 @@ describe('AuthRolesService', () => {
 		test('should handle roles across different role types', async () => {
 			const allScopes = createAllScopes();
 			setupDefaultMocks(allScopes);
-			roleRepository.find.mockResolvedValueOnce([]);
+			// syncScopes and syncRoles each call roleRepository.find() once
+			roleRepository.find.mockResolvedValue([]);
 
 			await authRolesService.init();
 
@@ -393,7 +397,8 @@ describe('AuthRolesService', () => {
 
 		test('should not update roles when they are already correct', async () => {
 			// When personal space publishing/sharing are enabled (null = default = enabled),
-			// project:personalOwner needs workflow:publish and workflow:share, credential:share, credential:move
+			// project:personalOwner needs workflow:publish, workflow:unpublish (in base PERSONAL_PROJECT_OWNER_SCOPES),
+			// and workflow:share, credential:share, credential:move
 			const correctRoles = Object.entries(ALL_ROLES).flatMap(([namespace, roles]) =>
 				roles.map((roleDef) => {
 					const scopes = roleDef.scopes.map((scopeSlug) => createMinimalScope(scopeSlug));
@@ -414,7 +419,11 @@ describe('AuthRolesService', () => {
 
 			const allScopes = createAllScopes();
 			scopeRepository.find.mockResolvedValue(allScopes);
-			roleRepository.find.mockResolvedValueOnce(correctRoles);
+			// syncScopes calls roleRepository.find({ relations: ['scopes'], ... }); syncRoles calls it with select/where.
+			// Return [] for the obsolete-scopes lookup so syncScopes does not save; return correctRoles for syncRoles.
+			roleRepository.find.mockImplementation(async (opts?: { relations?: string[] }) =>
+				opts?.relations?.includes('scopes') ? [] : correctRoles,
+			);
 			roleRepository.save.mockImplementation(async (entities) => entities as any);
 
 			await authRolesService.init();
@@ -425,7 +434,8 @@ describe('AuthRolesService', () => {
 		test('should log when updating roles', async () => {
 			const allScopes = createAllScopes();
 			setupDefaultMocks(allScopes);
-			roleRepository.find.mockResolvedValueOnce([]);
+			// syncScopes and syncRoles each call roleRepository.find() once
+			roleRepository.find.mockResolvedValue([]);
 
 			await authRolesService.init();
 

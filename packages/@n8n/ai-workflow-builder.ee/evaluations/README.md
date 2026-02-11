@@ -35,6 +35,7 @@ popd
 - **LLM key** (required for generation and any LLM-based evaluators):
   - `N8N_AI_ANTHROPIC_KEY` (see `evaluations/support/environment.ts`)
 - **Node definitions** (required for workflow generation, and used by evaluators):
+	- export using `pnpm export:nodes` in this package.
   - `evaluations/.data/nodes.json` (see `evaluations/support/load-nodes.ts`)
   - Optional: `N8N_EVALS_DISABLED_NODES="n8n-nodes-base.httpRequest,..."` to exclude specific nodes from generation.
 - **LangSmith** (only for `--backend langsmith` runs):

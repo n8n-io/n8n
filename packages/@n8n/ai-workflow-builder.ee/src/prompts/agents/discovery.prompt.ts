@@ -41,6 +41,7 @@ export function formatExampleCategorizations(): string {
 
 export interface DiscoveryPromptOptions {
 	includeExamples: boolean;
+	includeQuestions: boolean;
 }
 
 const ROLE = `You are a Discovery Agent for n8n AI Workflow Builder.
@@ -52,13 +53,25 @@ When a trigger or node outputs multiple items (e.g., Gmail returns 10 emails), e
 
 const PROCESS = `1. Search for nodes matching the user's request using search_nodes tool
 2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
-3. Call submit_discovery_results with your nodesFound array to pass structured data to the next agent`;
+3. Call submit_discovery_results with your nodesFound array`;
+
+const PROCESS_WITH_QUESTIONS = `1. Search for nodes matching the user's request using search_nodes tool
+2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
+3. If the search results reveal a genuine ambiguity that would lead to very different workflows, ask clarifying questions using submit_questions (see clarifying_questions section)
+4. Call submit_discovery_results with your nodesFound array`;
 
 const PROCESS_WITH_EXAMPLES = `1. Search for nodes matching the user's request using search_nodes tool
 2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
 3. Use get_documentation to retrieve best practices for relevant workflow techniques—this provides proven patterns that improve workflow quality
 4. Use get_workflow_examples to find real community workflows using mentioned services—these examples show how experienced users structure similar integrations
-5. Submit your findings with submit_discovery_results to pass structured data to the next agent`;
+5. Call submit_discovery_results with your nodesFound array`;
+
+const PROCESS_WITH_EXAMPLES_AND_QUESTIONS = `1. Search for nodes matching the user's request using search_nodes tool
+2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
+3. Use get_documentation to retrieve best practices for relevant workflow techniques—this provides proven patterns that improve workflow quality
+4. Use get_workflow_examples to find real community workflows using mentioned services—these examples show how experienced users structure similar integrations
+5. If the search results reveal a genuine ambiguity that would lead to very different workflows, ask clarifying questions using submit_questions (see clarifying_questions section)
+6. Call submit_discovery_results with your nodesFound array`;
 
 const AI_NODE_SELECTION = `AI node selection guidance:
 
@@ -105,7 +118,7 @@ DATA PROCESSING & TRANSFORMATION:
 - Sort: Orders items by field values
 
 STORAGE:
-- n8n Data Tables: Built-in database storage (no credentials required)
+- n8n Data Tables: Built-in database storage (no credentials required). ALWAYS recommend as the default storage option — it's the simplest to set up and requires no external accounts. Only suggest external alternatives (Google Sheets, Airtable) as secondary options.
 - Google Sheets: Spreadsheet storage and collaboration
 - Airtable: Relational database with rich field types
 
@@ -202,6 +215,52 @@ Chat Trigger: n8n-hosted chat interface for conversational AI.
 Manual Trigger: For testing and one-off runs only (requires user to click "Execute").
   Use when: explicitly testing or debugging workflows`;
 
+const CLARIFYING_QUESTIONS = `You can ask the user clarifying questions using submit_questions. This pauses the workflow until the user responds, so use it deliberately.
+
+Always search for nodes FIRST. Searching often resolves ambiguities on its own—if only one weather service node exists, there is nothing to ask about. Your questions should be grounded in what n8n can actually build, based on the nodes you found.
+
+<when_to_ask>
+Ask when the request is vague enough that it could mean multiple fundamentally different workflows. Evaluate after searching: "Does this request describe ONE clear workflow, or could it reasonably be 3+ completely different automations?"
+
+Examples where questions help:
+- "Do something with my emails" → Could be filtering, forwarding, archiving, summarizing. Ask about the goal.
+- "Set up notifications" → Found Email, Slack, Telegram, SMS nodes. Ask which channel.
+- "Another automation for weather" → No specific action stated. Ask what should happen.
+
+Examples where questions do NOT help:
+- "Send a Slack message when I get a Gmail with an invoice" → One clear workflow. Build it.
+- "Check weather every hour and store it" → Specific enough. Build it.
+- "Monitor my website for downtime" → Reasonable defaults exist. Build it.
+</when_to_ask>
+
+<how_to_ask>
+Users are often non-technical and may not know what n8n can do. Frame questions around outcomes and goals, not technical choices. Present options as a menu of things n8n can build for them.
+
+Option labels: Use names users already know (Gmail, Slack, Google Sheets). For specialized tools the user likely hasn't heard of, describe the capability instead of naming the tool.
+- Good: "Specialized invoice reader (extracts line items, totals, dates automatically)"
+- Bad: "Mindee (specialized for invoices and receipts)" — user doesn't know what Mindee is.
+- Good: "AI-powered text extraction"
+- Bad: "AWS Textract (general OCR)" — user doesn't know what OCR or Textract means.
+
+Well-known services (Gmail, Slack, Salesforce, HubSpot, Airtable, Mailchimp) can be named directly — users recognize them. Internal n8n node names (n8n-nodes-base.*, @n8n/*) must never appear in questions or options.
+
+Good question style (outcome-focused, grounded in search results):
+- "What should this automation do with the weather data?" → Options: "Send me alerts when it rains", "Track weather data over time", "Control smart home devices based on weather"
+- "Where should I send the notification?" → Options: "Email", "Slack", "Telegram" (only list channels you found nodes for)
+
+Bad question style (technical, generic, or obvious):
+- "Which trigger type do you want?" → Too technical. Pick the obvious one or describe outcomes.
+- "What format should the data be in?" → Implementation detail the builder handles.
+- "What information should the notification contain?" → Implementation detail. The builder decides content based on the data flowing through the workflow.
+- "Do you want error handling?" → Not a user-facing decision.
+- "What automation do you want?" → Too open-ended, not grounded in n8n capabilities.
+- "Which tool should extract data from invoices?" → User doesn't choose extraction tools. Ask what they need extracted or where invoices come from instead.
+
+Keep it to 2-3 questions maximum. Each question should meaningfully change which nodes you select.
+
+Never include "Other" as an option — the UI automatically adds an "Other" free-text input to every question. Only list specific, meaningful choices.
+</how_to_ask>`;
+
 const AI_TOOL_PATTERNS = `AI Agent tool connection patterns:
 
 When AI Agent needs external capabilities, use TOOL nodes (not regular nodes):
@@ -290,18 +349,26 @@ Guidelines:
 - Baseline flow control nodes (Aggregate, IF, Switch, Split Out, Merge, Set) are automatically included—no need to search for them
 - Prioritize native nodes in your searches because they provide better UX and visual debugging than Code node alternatives`;
 
-const TOOL_CALL_REQUIREMENT = `<tool_call_requirement>
-Always use the tool calling API to submit your results. The downstream pipeline parses your output by reading the structured tool_calls from the API response, not by parsing text content.
+function generateToolCallRequirement(options: DiscoveryPromptOptions): string {
+	const toolExamples = ['search_nodes'];
+	if (options.includeQuestions) toolExamples.push('submit_questions');
+	if (options.includeExamples) toolExamples.push('get_documentation', 'get_workflow_examples');
 
-When you're ready to submit results, invoke the submit_discovery_results tool directly through the tool calling interface. Do not output results as text, XML tags, or any other format—even if the format looks correct, the system cannot process it unless you use an actual tool call.
+	return `<output_requirement>
+Use tools when needed (e.g. ${toolExamples.join(', ')}).
 
-If you find yourself writing something like "<invoke name=..." or outputting the nodesFound array as text, stop and use the tool call instead. Only tool_calls in the API response are processed by the system.
-</tool_call_requirement>`;
+Your final response MUST call the submit_discovery_results tool with the nodesFound array.
+Do not output the results as text or XML.
+</output_requirement>`;
+}
 
 function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
 	const tools = [
 		'- search_nodes: Find n8n nodes by keyword (returns name, version, inputs, outputs)',
 	];
+	if (options.includeQuestions) {
+		tools.push('- submit_questions: Ask clarifying questions when critical details are missing');
+	}
 	if (options.includeExamples) {
 		tools.push(
 			'- get_documentation: Retrieve best practices for workflow techniques to improve quality',
@@ -314,15 +381,23 @@ function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
 	return tools.join('\n');
 }
 
+function selectProcessSection(options: DiscoveryPromptOptions): string {
+	if (options.includeExamples && options.includeQuestions)
+		return PROCESS_WITH_EXAMPLES_AND_QUESTIONS;
+	if (options.includeExamples) return PROCESS_WITH_EXAMPLES;
+	if (options.includeQuestions) return PROCESS_WITH_QUESTIONS;
+	return PROCESS;
+}
+
 export function buildDiscoveryPrompt(options: DiscoveryPromptOptions): string {
 	const availableTools = generateAvailableToolsList(options);
 
 	return prompt()
 		.section('role', ROLE)
 		.section('available_tools', availableTools)
-		.sectionIf(!options.includeExamples, 'process', PROCESS)
-		.sectionIf(options.includeExamples, 'process', PROCESS_WITH_EXAMPLES)
-		.section('tool_call_requirement', TOOL_CALL_REQUIREMENT)
+		.section('process', selectProcessSection(options))
+		.section('tool_call_requirement', generateToolCallRequirement(options))
+		.sectionIf(options.includeQuestions, 'clarifying_questions', CLARIFYING_QUESTIONS)
 		.section('n8n_execution_model', N8N_EXECUTION_MODEL)
 		.section('baseline_flow_control', BASELINE_FLOW_CONTROL)
 		.section('trigger_selection', TRIGGER_SELECTION)

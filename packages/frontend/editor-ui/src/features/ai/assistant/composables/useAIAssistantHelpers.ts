@@ -228,7 +228,7 @@ export const useAIAssistantHelpers = () => {
 		}
 		// Get all referenced nodes and their schemas
 		const referencedNodeNames = getReferencedNodes(node);
-		const schemas = getNodesSchemas(referencedNodeNames, options?.excludeParameterValues);
+		const { schemas } = getNodesSchemas(referencedNodeNames, options?.excludeParameterValues);
 
 		const nodeType = nodeTypesStore.getNodeType(node.type);
 
@@ -294,14 +294,18 @@ export const useAIAssistantHelpers = () => {
 	/**
 	 * Get the schema for the referenced nodes as expected by the AI assistant
 	 * @param nodeNames The names of the nodes to get the schema for
-	 * @returns An array of NodeExecutionSchema objects
+	 * @returns schemas and list of node names whose schema was derived from pin data
 	 */
 	function getNodesSchemas(nodeNames: string[], excludeValues?: boolean) {
 		const schemas: ChatRequest.NodeExecutionSchema[] = [];
+		const pinnedNodeNames: string[] = [];
 		for (const name of nodeNames) {
 			const node = workflowsStore.getNodeByName(name);
 			if (!node) {
 				continue;
+			}
+			if (workflowsStore.pinDataByNodeName(node.name)) {
+				pinnedNodeNames.push(node.name);
 			}
 			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
 			const schema = getSchemaForExecutionData(
@@ -314,7 +318,7 @@ export const useAIAssistantHelpers = () => {
 				schema,
 			});
 		}
-		return schemas;
+		return { schemas, pinnedNodeNames };
 	}
 
 	function getCurrentViewDescription(view: VIEWS) {
@@ -493,6 +497,7 @@ export const useAIAssistantHelpers = () => {
 			// Uses a WeakSet to track visited objects and prevent infinite recursion on cycles
 			const extractExpressions = async (
 				params: unknown,
+				path: string = '',
 				visited = new WeakSet<object>(),
 			): Promise<void> => {
 				if (typeof params === 'string' && params.startsWith('=')) {
@@ -522,6 +527,7 @@ export const useAIAssistantHelpers = () => {
 						expression: trimmedExpression,
 						resolvedValue: trimValue(resolved),
 						nodeType: node.type,
+						parameterPath: path,
 					});
 				} else if (Array.isArray(params)) {
 					// Check if we've already visited this array to prevent cycles
@@ -529,8 +535,8 @@ export const useAIAssistantHelpers = () => {
 						return;
 					}
 					visited.add(params);
-					for (const item of params) {
-						await extractExpressions(item, visited);
+					for (let i = 0; i < params.length; i++) {
+						await extractExpressions(params[i], `${path}[${i}]`, visited);
 					}
 				} else if (typeof params === 'object' && params !== null) {
 					// Check if we've already visited this object to prevent cycles
@@ -538,13 +544,14 @@ export const useAIAssistantHelpers = () => {
 						return;
 					}
 					visited.add(params);
-					for (const value of Object.values(params)) {
-						await extractExpressions(value, visited);
+					for (const [key, value] of Object.entries(params)) {
+						const newPath = path ? `${path}.${key}` : key;
+						await extractExpressions(value, newPath, visited);
 					}
 				}
 			};
 
-			await extractExpressions(node.parameters);
+			await extractExpressions(node.parameters, '');
 
 			// Only add to map if node has expressions
 			if (nodeExpressions.length > 0) {

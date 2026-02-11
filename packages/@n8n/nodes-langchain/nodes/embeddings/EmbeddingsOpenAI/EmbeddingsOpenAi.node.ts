@@ -12,8 +12,7 @@ import {
 import type { ClientOptions } from 'openai';
 
 import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { logWrapper } from '@n8n/ai-utilities';
+import { getProxyAgent, logWrapper } from '@n8n/ai-utilities';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 const modelParameter: INodeProperties = {
@@ -146,7 +145,7 @@ export class EmbeddingsOpenAi implements INodeType {
 					{
 						displayName: 'Dimensions',
 						name: 'dimensions',
-						default: undefined,
+						default: 1536,
 						description:
 							'The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.',
 						type: 'options',
@@ -213,7 +212,7 @@ export class EmbeddingsOpenAi implements INodeType {
 						name: 'encodingFormat',
 						type: 'options',
 						description: 'The format to return the embeddings in',
-						default: undefined,
+						default: 'float',
 						options: [
 							{
 								name: 'Float',

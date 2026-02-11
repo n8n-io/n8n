@@ -127,6 +127,7 @@ describe('CredentialSharing.ee', () => {
 				advancedPermissions: false,
 				apiKeyScopes: false,
 				workflowDiffs: false,
+				namedVersions: false,
 				provisioning: true,
 				showNonProdBanner: false,
 				projects: {

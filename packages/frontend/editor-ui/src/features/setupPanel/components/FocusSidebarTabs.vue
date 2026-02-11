@@ -55,6 +55,6 @@ const onTabSelected = (tab: FocusSidebarTabs) => {
 <style module lang="scss">
 .container {
 	display: flex;
-	padding: var(--spacing--xs) 0;
+	padding-top: var(--spacing--xs);
 }
 </style>
