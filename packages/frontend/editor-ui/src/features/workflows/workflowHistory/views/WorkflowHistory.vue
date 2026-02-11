@@ -136,10 +136,20 @@ const sendTelemetry = (event: string) => {
 const updateGradualRolloutInfo = () => {
 	const rolloutVersionId = activeWorkflow.value?.gradualRolloutVersionId;
 	const rolloutPercentage = activeWorkflow.value?.gradualRolloutPercentage;
+	const activeVersionId = activeWorkflow.value?.activeVersion?.versionId;
 
 	for (const item of workflowHistory.value) {
-		if (rolloutVersionId && item.versionId === rolloutVersionId) {
-			item.gradualRolloutPercentage = rolloutPercentage ?? undefined;
+		if (rolloutVersionId && rolloutPercentage !== undefined && rolloutPercentage !== null) {
+			// Gradual rollout is active
+			if (item.versionId === rolloutVersionId) {
+				// Rollout version gets its percentage
+				item.gradualRolloutPercentage = rolloutPercentage;
+			} else if (item.versionId === activeVersionId) {
+				// Active version gets the remaining percentage
+				item.gradualRolloutPercentage = 100 - rolloutPercentage;
+			} else {
+				item.gradualRolloutPercentage = undefined;
+			}
 		} else {
 			item.gradualRolloutPercentage = undefined;
 		}
