@@ -8,7 +8,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import { WebhookEntity, WorkflowRepository, withTransaction } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
@@ -108,6 +108,8 @@ export class ActiveWorkflowManager {
 
 		await this.addActiveWorkflows('init');
 
+		await this.reconcileWebhooks();
+
 		await this.externalHooks.run('activeWorkflows.initialized');
 	}
 
@@ -154,15 +156,16 @@ export class ActiveWorkflowManager {
 		activation: WorkflowActivateMode,
 	) {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
-		let path = '';
 
 		if (webhooks.length === 0) return false;
 
+		// Phase 1: Build webhook entities and normalize paths
+		const webhookEntities: WebhookEntity[] = [];
 		for (const webhookData of webhooks) {
 			const node = workflow.getNode(webhookData.node) as INode;
 			node.name = webhookData.node;
 
-			path = webhookData.path;
+			const path = webhookData.path;
 
 			const webhook = this.webhookService.createWebhook({
 				workflowId: webhookData.workflowId,
@@ -183,45 +186,58 @@ export class ActiveWorkflowManager {
 				webhook.pathLength = webhook.webhookPath.split('/').length;
 			}
 
-			try {
-				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
-				await this.webhookService.storeWebhook(webhook);
-				await this.webhookService.createWebhookIfNotExists(workflow, webhookData, mode, activation);
-			} catch (error) {
-				if (
-					['init', 'leadershipChange'].includes(activation) &&
-					error.name === 'QueryFailedError'
-				) {
-					// n8n does not remove the registered webhooks on exit.
-					// This means that further initializations will always fail
-					// when inserting to database. This is why we ignore this error
-					// as it's expected to happen.
+			webhookEntities.push(webhook);
+		}
 
-					continue;
+		// Phase 2: Store all webhooks to DB in a single transaction
+		try {
+			await withTransaction(this.workflowRepository.manager, undefined, async (em) => {
+				for (const webhook of webhookEntities) {
+					await this.webhookService.storeWebhook(webhook, em);
 				}
-
-				try {
-					await this.clearWebhooks(workflow.id);
-				} catch (error1) {
-					this.errorReporter.error(error1);
-					this.logger.error(
-						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error1.message}"`,
-					);
-				}
-
-				// if it's a workflow from the insert
-				// TODO check if there is standard error code for duplicate key violation that works
-				// with all databases
-				if (error instanceof Error && error.name === 'QueryFailedError') {
-					error = new WebhookPathTakenError(webhook.node, error);
-				} else if (error.detail) {
-					// it's a error running the webhook methods (checkExists, create)
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					error.message = error.detail;
-				}
-
-				throw error;
+			});
+		} catch (error) {
+			if (['init', 'leadershipChange'].includes(activation) && error.name === 'QueryFailedError') {
+				// n8n does not remove the registered webhooks on exit.
+				// This means that further initializations will always fail
+				// when inserting to database. This is why we ignore this error
+				// as it's expected to happen.
+				return true;
 			}
+
+			if (error instanceof Error && error.name === 'QueryFailedError') {
+				throw new WebhookPathTakenError(webhookEntities[0]?.node ?? '', error);
+			}
+
+			throw error;
+		}
+
+		// Phase 3: Create external webhooks (non-transactional)
+		const createdIndices: number[] = [];
+		try {
+			for (let i = 0; i < webhooks.length; i++) {
+				await this.webhookService.createWebhookIfNotExists(workflow, webhooks[i], mode, activation);
+				createdIndices.push(i);
+			}
+		} catch (error) {
+			// Rollback: delete already-created external webhooks (best-effort)
+			for (const idx of createdIndices) {
+				try {
+					await this.webhookService.deleteWebhook(workflow, webhooks[idx], mode, activation);
+				} catch {
+					// best effort
+				}
+			}
+			// Rollback DB records
+			await this.webhookService.deleteWorkflowWebhooks(workflow.id);
+
+			if (error.detail) {
+				// it's an error running the webhook methods (checkExists, create)
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+				error.message = error.detail;
+			}
+
+			throw error;
 		}
 
 		await this.workflowStaticDataService.saveStaticData(workflow);
@@ -234,10 +250,10 @@ export class ActiveWorkflowManager {
 	}
 
 	/**
-	 * Remove all webhooks of a workflow from the database, and
-	 * deregister those webhooks from external services.
+	 * Deregister webhooks from external services (best-effort).
+	 * Does NOT delete DB records - use deleteWorkflowWebhooks() for that.
 	 */
-	async clearWebhooks(workflowId: WorkflowId) {
+	private async clearExternalWebhooks(workflowId: WorkflowId) {
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
 			relations: { activeVersion: true },
@@ -280,8 +296,39 @@ export class ActiveWorkflowManager {
 		}
 
 		await this.workflowStaticDataService.saveStaticData(workflow);
+	}
 
+	/**
+	 * Remove all webhooks of a workflow from the database, and
+	 * deregister those webhooks from external services.
+	 */
+	async clearWebhooks(workflowId: WorkflowId) {
+		await this.clearExternalWebhooks(workflowId);
 		await this.webhookService.deleteWorkflowWebhooks(workflowId);
+	}
+
+	/**
+	 * Remove orphaned webhook DB records for workflows that are not active in memory.
+	 * Called during startup after all workflows have been activated.
+	 */
+	private async reconcileWebhooks(): Promise<void> {
+		const dbWebhooks = await this.webhookService.findAllWebhooks();
+		if (!dbWebhooks?.length) return;
+
+		const activeIds = new Set(this.activeWorkflows.allActiveWorkflows());
+
+		const orphanedWorkflowIds = [
+			...new Set(dbWebhooks.filter((w) => !activeIds.has(w.workflowId)).map((w) => w.workflowId)),
+		];
+
+		if (orphanedWorkflowIds.length > 0) {
+			this.logger.warn(
+				`Found orphaned webhooks for ${orphanedWorkflowIds.length} workflow(s), cleaning up`,
+			);
+			for (const workflowId of orphanedWorkflowIds) {
+				await this.webhookService.deleteWorkflowWebhooks(workflowId);
+			}
+		}
 	}
 
 	/**
@@ -886,34 +933,29 @@ export class ActiveWorkflowManager {
 	 *
 	 * @param {string} workflowId The id of the workflow to deactivate
 	 */
-	// TODO: this should happen in a transaction
-	// maybe, see: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
 	async remove(workflowId: WorkflowId) {
-		if (this.instanceSettings.isMultiMain) {
-			try {
-				await this.clearWebhooks(workflowId);
-			} catch (error) {
-				this.errorReporter.error(error);
-				this.logger.error(
-					`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
-				);
-			}
+		// Phase 1: External webhook cleanup (best-effort, outside transaction)
+		try {
+			await this.clearExternalWebhooks(workflowId);
+		} catch (error) {
+			this.errorReporter.error(error);
+			this.logger.error(
+				`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
+			);
+		}
 
+		// Phase 2: DB webhook cleanup in transaction
+		await withTransaction(this.workflowRepository.manager, undefined, async (em) => {
+			await this.webhookService.deleteWorkflowWebhooks(workflowId, em);
+		});
+
+		if (this.instanceSettings.isMultiMain) {
 			void this.publisher.publishCommand({
 				command: 'remove-triggers-and-pollers',
 				payload: { workflowId },
 			});
 
 			return;
-		}
-
-		try {
-			await this.clearWebhooks(workflowId);
-		} catch (error) {
-			this.errorReporter.error(error);
-			this.logger.error(
-				`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
-			);
 		}
 
 		await this.activationErrorsService.deregister(workflowId);
