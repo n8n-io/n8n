@@ -1,24 +1,15 @@
-import { screen, waitFor } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import CanvasNodeStickyColorSelector from './CanvasNodeStickyColorSelector.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
-import { createPinia, setActivePinia, type Pinia } from 'pinia';
 
 const renderComponent = createComponentRenderer(CanvasNodeStickyColorSelector);
 
 describe('CanvasNodeStickyColorSelector', () => {
-	let pinia: Pinia;
-
-	beforeEach(() => {
-		pinia = createPinia();
-		setActivePinia(pinia);
-	});
-
 	it('should render trigger correctly', () => {
 		const { getByTestId } = renderComponent({
-			pinia,
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
@@ -31,7 +22,6 @@ describe('CanvasNodeStickyColorSelector', () => {
 
 	it('should render all colors and apply selected color correctly', async () => {
 		const { getByTestId, emitted } = renderComponent({
-			pinia,
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
@@ -55,7 +45,6 @@ describe('CanvasNodeStickyColorSelector', () => {
 	describe('custom color picker', () => {
 		it('should render custom color button (8th option)', async () => {
 			const { getByTestId } = renderComponent({
-				pinia,
 				global: {
 					provide: {
 						...createCanvasNodeProvide(),
@@ -72,7 +61,6 @@ describe('CanvasNodeStickyColorSelector', () => {
 
 		it('should render 7 preset colors + 1 custom color button', async () => {
 			const { getByTestId } = renderComponent({
-				pinia,
 				global: {
 					provide: {
 						...createCanvasNodeProvide(),
@@ -91,7 +79,6 @@ describe('CanvasNodeStickyColorSelector', () => {
 		it('should show selected state for custom hex color', async () => {
 			const customColor = '#FF5733';
 			const { getByTestId } = renderComponent({
-				pinia,
 				global: {
 					provide: {
 						...createCanvasNodeProvide({
@@ -119,7 +106,6 @@ describe('CanvasNodeStickyColorSelector', () => {
 		it('should show no selected state on presets when custom color is active', async () => {
 			const customColor = '#FF5733';
 			const { getByTestId } = renderComponent({
-				pinia,
 				global: {
 					provide: {
 						...createCanvasNodeProvide({
@@ -146,9 +132,8 @@ describe('CanvasNodeStickyColorSelector', () => {
 			});
 		});
 
-		it('should emit hex string when custom color is selected', async () => {
-			const { getByTestId } = renderComponent({
-				pinia,
+		it('should emit uppercase hex string when native color input changes', async () => {
+			const { getByTestId, emitted } = renderComponent({
 				global: {
 					provide: {
 						...createCanvasNodeProvide(),
@@ -156,20 +141,16 @@ describe('CanvasNodeStickyColorSelector', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('change-sticky-color'));
+			const nativeInput = getByTestId('native-color-input') as HTMLInputElement;
+			await fireEvent.update(nativeInput, '#ff5733');
+			await fireEvent.change(nativeInput);
 
-			await waitFor(() => {
-				expect(screen.getByTestId('custom-color')).toBeVisible();
-			});
-
-			// Note: This test expects the modal to be implemented
-			// The actual color selection will happen in the modal component
-			// For now, we're testing that clicking the button opens the modal
+			expect(emitted()).toHaveProperty('update');
+			expect(emitted().update[0]).toEqual(['#FF5733']);
 		});
 
 		it('should show preset selected state for number colors', async () => {
 			const { getByTestId } = renderComponent({
-				pinia,
 				global: {
 					provide: {
 						...createCanvasNodeProvide({

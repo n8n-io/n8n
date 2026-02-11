@@ -1,30 +1,27 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeStickyNoteRender } from '../../../../canvas.types';
-import { useUIStore } from '@/app/stores/ui.store';
 
 import { N8nIcon, N8nPopover } from '@n8n/design-system';
-import CanvasNodeStickyCustomColorPicker from './CanvasNodeStickyCustomColorPicker.vue';
+
 const emit = defineEmits<{
 	update: [color: number | string];
 }>();
 
 const i18n = useI18n();
-const uiStore = useUIStore();
 
 const { render, eventBus } = useCanvasNode();
 const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']);
-
-const isDarkMode = computed(() => uiStore.appliedTheme === 'dark');
 
 const autoHideTimeout = ref<NodeJS.Timeout | null>(null);
 
 const colors = computed(() => Array.from({ length: 7 }).map((_, index) => index + 1));
 
 const isPopoverVisible = defineModel<boolean>('visible');
-const isCustomColorPickerOpen = ref(false);
+
+const colorInputRef = ref<HTMLInputElement | null>(null);
 
 function hidePopover() {
 	isPopoverVisible.value = false;
@@ -39,16 +36,14 @@ function changeColor(index: number) {
 	hidePopover();
 }
 
-function openCustomColorPicker() {
-	hidePopover();
-	nextTick(() => {
-		isCustomColorPickerOpen.value = true;
-	});
+function openNativeColorPicker() {
+	colorInputRef.value?.click();
 }
 
-function onCustomColorSelected(hexColor: string) {
-	emit('update', hexColor);
-	isCustomColorPickerOpen.value = false;
+function onNativeColorChange(event: Event) {
+	const input = event.target as HTMLInputElement;
+	emit('update', input.value.toUpperCase());
+	hidePopover();
 }
 
 function onMouseEnter() {
@@ -74,69 +69,75 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<N8nPopover
-		v-model:open="isPopoverVisible"
-		side="top"
-		width="240px"
-		:content-class="`${$style.popover} ${isDarkMode ? 'sticky-color-popover-dark' : 'sticky-color-popover-light'}`"
-		:enable-scrolling="false"
-		:show-arrow="true"
-		@before-enter="onMouseEnter"
-		@after-leave="onMouseLeave"
-	>
-		<template #trigger>
-			<div
-				:class="$style.option"
-				data-test-id="change-sticky-color"
-				:title="i18n.baseText('node.changeColor')"
-			>
-				<N8nIcon size="small" icon="palette" />
-			</div>
-		</template>
-		<template #content>
-			<div :class="$style.content">
+	<div>
+		<N8nPopover
+			v-model:open="isPopoverVisible"
+			side="top"
+			width="208px"
+			:content-class="$style.popover"
+			:enable-scrolling="false"
+			@before-enter="onMouseEnter"
+			@after-leave="onMouseLeave"
+		>
+			<template #trigger>
 				<div
-					v-for="color in colors"
-					:key="color"
-					data-test-id="color"
-					:class="[
-						$style.color,
-						$style[`sticky-color-${color}`],
-						renderOptions.color === color ? $style.selected : '',
-					]"
-					@click="changeColor(color)"
-				></div>
-
-				<div
-					data-test-id="custom-color"
-					:class="[
-						$style.color,
-						$style.customColorButton,
-						typeof renderOptions.color === 'string' ? $style.selected : '',
-					]"
-					:style="
-						typeof renderOptions.color === 'string' ? { backgroundColor: renderOptions.color } : {}
-					"
-					:title="i18n.baseText('node.customColor')"
-					@click.stop="openCustomColorPicker"
+					:class="$style.option"
+					data-test-id="change-sticky-color"
+					:title="i18n.baseText('node.changeColor')"
 				>
-					<N8nIcon icon="plus" size="xsmall" :class="$style.plusIcon" />
+					<N8nIcon size="small" icon="palette" />
 				</div>
-			</div>
-		</template>
-	</N8nPopover>
+			</template>
+			<template #content>
+				<div :class="$style.content">
+					<div
+						v-for="color in colors"
+						:key="color"
+						data-test-id="color"
+						:class="[
+							$style.color,
+							$style[`sticky-color-${color}`],
+							renderOptions.color === color ? $style.selected : '',
+						]"
+						@click="changeColor(color)"
+					></div>
 
-	<CanvasNodeStickyCustomColorPicker
-		v-if="isCustomColorPickerOpen"
-		:current-color="typeof renderOptions.color === 'string' ? renderOptions.color : '#FFD700'"
-		@select="onCustomColorSelected"
-		@close="isCustomColorPickerOpen = false"
-	/>
+					<div
+						data-test-id="custom-color"
+						:class="[
+							$style.color,
+							$style.customColorButton,
+							typeof renderOptions.color === 'string' ? $style.selected : '',
+						]"
+						:style="
+							typeof renderOptions.color === 'string'
+								? { backgroundColor: renderOptions.color }
+								: {}
+						"
+						:title="i18n.baseText('node.customColor')"
+						@click.stop="openNativeColorPicker"
+					>
+						<N8nIcon icon="plus" size="xsmall" :class="$style.plusIcon" />
+					</div>
+				</div>
+			</template>
+		</N8nPopover>
+
+		<input
+			ref="colorInputRef"
+			type="color"
+			:class="$style.hiddenColorInput"
+			data-test-id="native-color-input"
+			@change="onNativeColorChange"
+		/>
+	</div>
 </template>
 
 <style lang="scss" module>
 .popover {
-	padding: var(--spacing--xs);
+	min-width: 208px;
+	margin-bottom: calc(-1 * var(--spacing--2xs));
+	margin-left: calc(-1 * var(--spacing--5xs));
 }
 
 .content {
@@ -232,31 +233,12 @@ onBeforeUnmount(() => {
 	color: white;
 	filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
-</style>
 
-<style lang="scss">
-// Light theme popover
-.sticky-color-popover-light {
-	background: var(--color--background--shade-2);
-}
-
-// Dark theme popover
-.sticky-color-popover-dark {
-	background: var(--color--background--shade-2);
-	color: var(--color--foreground--tint-2);
-}
-
-// Arrow styles - light theme
-[data-reka-popper-content-wrapper]:has(.sticky-color-popover-light) svg path {
-	fill: var(--color--background--shade-2);
-	stroke: var(--color--foreground);
-	stroke-width: 1px;
-}
-
-// Arrow styles - dark theme
-[data-reka-popper-content-wrapper]:has(.sticky-color-popover-dark) svg path {
-	fill: var(--color--background--shade-2);
-	stroke: var(--color--foreground);
-	stroke-width: 1px;
+.hiddenColorInput {
+	position: absolute;
+	opacity: 0;
+	width: 0;
+	height: 0;
+	pointer-events: none;
 }
 </style>
