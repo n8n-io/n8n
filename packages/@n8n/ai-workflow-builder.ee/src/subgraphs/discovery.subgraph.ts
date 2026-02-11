@@ -186,6 +186,12 @@ export const DiscoverySubgraphState = Annotation.Root({
 		default: () => ({}),
 	}),
 
+	// Selected nodes context for planner (built from workflowContext.selectedNodes)
+	selectedNodesContext: Annotation<string>({
+		reducer: (x, y) => y ?? x,
+		default: () => '',
+	}),
+
 	// Retry count for when LLM fails to use tool calls properly
 	toolCallRetryCount: Annotation<number>({
 		reducer: (x, y) => y ?? x,
@@ -353,6 +359,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 				workflowJSON: state.workflowJSON,
 				planPrevious: state.planPrevious,
 				planFeedback: state.planFeedback,
+				selectedNodesContext: state.selectedNodesContext,
 			},
 			runnableConfig,
 		);
@@ -685,6 +692,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			planDecision: null,
 			planFeedback: parentState.planFeedback ?? null,
 			planPrevious: parentState.planPrevious ?? null,
+			selectedNodesContext: selectedNodesSummary ?? '',
 			messages: [contextMessage], // Context already in messages
 			cachedTemplates: parentState.cachedTemplates,
 		};
