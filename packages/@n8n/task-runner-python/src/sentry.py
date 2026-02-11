@@ -1,8 +1,8 @@
 import logging
 from typing import Any
 
-from src.config.sentry_config import SentryConfig
-from src.constants import (
+from n8n_task_runner.config.sentry_config import SentryConfig
+from n8n_task_runner.constants import (
     EXECUTOR_FILENAMES,
     IGNORED_ERROR_TYPES,
     LOG_SENTRY_MISSING,

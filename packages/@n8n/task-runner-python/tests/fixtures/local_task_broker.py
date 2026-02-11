@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from aiohttp import web, web_ws
-from src.nanoid import nanoid
+from n8n_task_runner.nanoid import nanoid
 
 from tests.fixtures.test_constants import (
     TASK_RESPONSE_WAIT,

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from unittest.mock import patch
 
-from src.env import read_env, read_int_env, read_bool_env, read_str_env, read_float_env
+from n8n_task_runner.env import read_env, read_int_env, read_bool_env, read_str_env, read_float_env
 
 
 class TestReadEnv:

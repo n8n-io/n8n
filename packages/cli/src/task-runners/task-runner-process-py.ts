@@ -35,12 +35,17 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 		const pythonDir = path.join(__dirname, '../../../@n8n/task-runner-python');
 		const venvPath = PyTaskRunnerProcess.getVenvPath();
 
-		return spawn(venvPath, ['-m', 'src.main'], {
+		// Use n8n_task_runner.main instead of src.main
+		// The package is installed as 'n8n_task_runner' (mapped from 'src' in pyproject.toml)
+		// For internal mode, we still set PYTHONPATH for development convenience
+		return spawn(venvPath, ['-m', 'n8n_task_runner.main'], {
 			cwd: pythonDir,
 			env: {
 				// system environment
 				PATH: process.env.PATH,
 				HOME: process.env.HOME,
+				// PYTHONPATH for internal/development mode only
+				PYTHONPATH: pythonDir,
 
 				// runner
 				N8N_RUNNERS_GRANT_TOKEN: grantToken,

@@ -2,11 +2,11 @@ import pytest
 import json
 from unittest.mock import MagicMock, patch
 
-from src.task_executor import TaskExecutor
-from src.pipe_reader import PipeReader
-from src.errors import TaskCancelledError, TaskKilledError, TaskSubprocessFailedError
-from src.constants import SIGTERM_EXIT_CODE, SIGKILL_EXIT_CODE, PIPE_MSG_PREFIX_LENGTH
-from src.message_types.pipe import (
+from n8n_task_runner.task_executor import TaskExecutor
+from n8n_task_runner.pipe_reader import PipeReader
+from n8n_task_runner.errors import TaskCancelledError, TaskKilledError, TaskSubprocessFailedError
+from n8n_task_runner.constants import SIGTERM_EXIT_CODE, SIGKILL_EXIT_CODE, PIPE_MSG_PREFIX_LENGTH
+from n8n_task_runner.message_types.pipe import (
     PipeResultMessage,
     PipeErrorMessage,
     TaskErrorInfo,
@@ -71,7 +71,7 @@ class TestTaskExecutorProcessExitHandling:
         assert exc_info.value.exit_code == -1
 
     def test_zero_exit_code_with_empty_pipe_raises_task_result_read_error(self):
-        from src.errors import TaskResultReadError
+        from n8n_task_runner.errors import TaskResultReadError
 
         process = MagicMock()
         process.is_alive.return_value = False
@@ -125,7 +125,7 @@ class TestTaskExecutorPipeCommunication:
 
     @patch("os.read")
     def test_successful_error_communication(self, mock_os_read):
-        from src.errors import TaskRuntimeError
+        from n8n_task_runner.errors import TaskRuntimeError
 
         error_info: TaskErrorInfo = {
             "message": "Test error",

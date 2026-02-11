@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal, Any
 
-from src.constants import (
+from n8n_task_runner.constants import (
     RUNNER_INFO,
     RUNNER_RPC_CALL,
     RUNNER_TASK_ACCEPTED,

@@ -8,19 +8,19 @@ import websockets
 from websockets.exceptions import InvalidStatus
 from websockets.asyncio.client import ClientConnection
 import random
-from src.errors import TaskCancelledError
+from n8n_task_runner.errors import TaskCancelledError
 
 
-from src.config.task_runner_config import TaskRunnerConfig
-from src.errors import (
+from n8n_task_runner.config.task_runner_config import TaskRunnerConfig
+from n8n_task_runner.errors import (
     NoIdleTimeoutHandlerError,
     TaskMissingError,
     WebsocketConnectionError,
 )
-from src.message_types.broker import TaskSettings
-from src.nanoid import nanoid
+from n8n_task_runner.message_types.broker import TaskSettings
+from n8n_task_runner.nanoid import nanoid
 
-from src.constants import (
+from n8n_task_runner.constants import (
     RUNNER_NAME,
     TASK_REJECTED_REASON_AT_CAPACITY,
     TASK_REJECTED_REASON_OFFER_EXPIRED,
@@ -36,7 +36,7 @@ from src.constants import (
     LOG_TASK_CANCEL_UNKNOWN,
     LOG_TASK_CANCEL_WAITING,
 )
-from src.message_types import (
+from n8n_task_runner.message_types import (
     BrokerMessage,
     RunnerMessage,
     BrokerInfoRequest,
@@ -53,11 +53,11 @@ from src.message_types import (
     RunnerTaskError,
     RunnerRpcCall,
 )
-from src.message_serde import MessageSerde
-from src.task_state import TaskState, TaskStatus
-from src.task_executor import TaskExecutor
-from src.task_analyzer import TaskAnalyzer
-from src.config.security_config import SecurityConfig
+from n8n_task_runner.message_serde import MessageSerde
+from n8n_task_runner.task_state import TaskState, TaskStatus
+from n8n_task_runner.task_executor import TaskExecutor
+from n8n_task_runner.task_analyzer import TaskAnalyzer
+from n8n_task_runner.config.security_config import SecurityConfig
 
 
 @dataclass

@@ -1,0 +1,4 @@
+websockets>=15.0.1
+
+[sentry]
+sentry-sdk>=2.35.2

@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import patch, Mock
 from websockets.exceptions import InvalidStatus
 
-from src.task_runner import TaskRunner
-from src.config.task_runner_config import TaskRunnerConfig
+from n8n_task_runner.task_runner import TaskRunner
+from n8n_task_runner.config.task_runner_config import TaskRunnerConfig
 
 
 class TestTaskRunnerConnectionRetry:

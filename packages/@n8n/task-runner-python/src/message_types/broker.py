@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal, Any
 
-from src.constants import (
+from n8n_task_runner.constants import (
     BROKER_INFO_REQUEST,
     BROKER_RUNNER_REGISTERED,
     BROKER_TASK_CANCEL,

@@ -4,9 +4,9 @@ import signal
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.task_runner import TaskRunner
-    from src.health_check_server import HealthCheckServer
-    from src.sentry import TaskRunnerSentry
+    from n8n_task_runner.task_runner import TaskRunner
+    from n8n_task_runner.health_check_server import HealthCheckServer
+    from n8n_task_runner.sentry import TaskRunnerSentry
 
 
 class Shutdown:

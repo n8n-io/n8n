@@ -4,7 +4,7 @@ import re
 import sys
 from pathlib import Path
 
-from src.constants import (
+from n8n_task_runner.constants import (
     ENV_GRACEFUL_SHUTDOWN_TIMEOUT,
     ENV_GRANT_TOKEN,
     ENV_HEALTH_CHECK_SERVER_ENABLED,
@@ -39,7 +39,6 @@ class TaskRunnerManager:
 
     async def start(self):
         project_root = Path(__file__).parent.parent.parent
-        runner_path = project_root / "src" / "main.py"
 
         env_vars = os.environ.copy()
         env_vars[ENV_GRANT_TOKEN] = "test_token"
@@ -52,12 +51,16 @@ class TaskRunnerManager:
             env_vars[ENV_GRACEFUL_SHUTDOWN_TIMEOUT] = str(
                 self.graceful_shutdown_timeout
             )
+        # Use PYTHONPATH for test convenience (tests run in development mode)
         env_vars["PYTHONPATH"] = str(project_root)
         env_vars.update(self.custom_env)
 
+        # Use the installed package name (n8n_task_runner.main)
+        # This works in tests because PYTHONPATH is set above
         self.subprocess = await asyncio.create_subprocess_exec(
             sys.executable,
-            str(runner_path),
+            "-m",
+            "n8n_task_runner.main",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env=env_vars,

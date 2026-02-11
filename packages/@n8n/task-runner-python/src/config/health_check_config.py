@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
-from src.env import read_int_env, read_bool_env, read_str_env
-from src.errors import ConfigurationError
-from src.constants import (
+from n8n_task_runner.env import read_int_env, read_bool_env, read_str_env
+from n8n_task_runner.errors import ConfigurationError
+from n8n_task_runner.constants import (
     DEFAULT_HEALTH_CHECK_SERVER_HOST,
     DEFAULT_HEALTH_CHECK_SERVER_PORT,
     ENV_HEALTH_CHECK_SERVER_ENABLED,

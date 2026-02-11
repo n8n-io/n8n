@@ -8,7 +8,7 @@ import sys
 import logging
 from typing import cast
 
-from src.errors import (
+from n8n_task_runner.errors import (
     TaskCancelledError,
     TaskKilledError,
     TaskResultMissingError,
@@ -18,18 +18,18 @@ from src.errors import (
     TaskSubprocessFailedError,
     SecurityViolationError,
 )
-from src.import_validation import validate_module_import
-from src.config.security_config import SecurityConfig
+from n8n_task_runner.import_validation import validate_module_import
+from n8n_task_runner.config.security_config import SecurityConfig
 
-from src.message_types.broker import NodeMode, Items, Query
-from src.message_types.pipe import (
+from n8n_task_runner.message_types.broker import NodeMode, Items, Query
+from n8n_task_runner.message_types.pipe import (
     PipeResultMessage,
     PipeErrorMessage,
     TaskErrorInfo,
     PrintArgs,
 )
-from src.pipe_reader import PipeReader
-from src.constants import (
+from n8n_task_runner.pipe_reader import PipeReader
+from n8n_task_runner.constants import (
     EXECUTOR_CIRCULAR_REFERENCE_KEY,
     EXECUTOR_USER_OUTPUT_KEY,
     EXECUTOR_ALL_ITEMS_FILENAME,

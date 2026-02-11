@@ -2,7 +2,7 @@ import asyncio
 import textwrap
 
 import pytest
-from src.nanoid import nanoid
+from n8n_task_runner.nanoid import nanoid
 
 from tests.integration.conftest import (
     create_task_settings,

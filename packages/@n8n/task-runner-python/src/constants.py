@@ -1,4 +1,4 @@
-from src.errors import (
+from n8n_task_runner.errors import (
     ConfigurationError,
     TaskCancelledError,
     TaskRuntimeError,

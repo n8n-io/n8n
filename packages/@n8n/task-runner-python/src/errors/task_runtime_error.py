@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.message_types.pipe import TaskErrorInfo
+    from n8n_task_runner.message_types.pipe import TaskErrorInfo
 
 
 class TaskRuntimeError(Exception):

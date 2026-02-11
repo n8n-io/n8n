@@ -74,8 +74,10 @@ RUN uv sync \
 			--all-extras \
       --no-editable
 
-# Install the python runner package itself into site packages. We can remove the src directory then
-RUN uv pip install . && rm -rf /app/task-runner-python/src
+# Install the python runner package itself into site packages
+# The package is installed as 'n8n_task_runner' (mapped from 'src' directory in pyproject.toml)
+# This allows Python's -I (isolated mode) to find the package without PYTHONPATH
+RUN uv pip install .
 
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download

@@ -1,7 +1,7 @@
 import sys
 
-from src.config.security_config import SecurityConfig
-from src.constants import ERROR_STDLIB_DISALLOWED, ERROR_EXTERNAL_DISALLOWED
+from n8n_task_runner.config.security_config import SecurityConfig
+from n8n_task_runner.constants import ERROR_STDLIB_DISALLOWED, ERROR_EXTERNAL_DISALLOWED
 
 
 def validate_module_import(

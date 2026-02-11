@@ -1,7 +1,7 @@
 import sys
 import logging
 import os
-from src.constants import LOG_FORMAT, LOG_TIMESTAMP_FORMAT, ENV_LAUNCHER_LOG_LEVEL
+from n8n_task_runner.constants import LOG_FORMAT, LOG_TIMESTAMP_FORMAT, ENV_LAUNCHER_LOG_LEVEL
 
 COLORS = {
     "DEBUG": "\033[34m",  # blue

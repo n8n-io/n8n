@@ -1,5 +1,5 @@
 [project]
-name = "task-runner-python"
+name = "n8n-task-runner"
 version = "0.1.0"
 description = "Native Python task runner for n8n"
 readme = "README.md"
@@ -34,6 +34,9 @@ addopts = "-v"
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["src*"]
+# Properly configure the package name and location
+# This allows Python's -I (isolated mode) to find the installed package
+# without relying on PYTHONPATH or current working directory
+[tool.setuptools]
+packages = ["n8n_task_runner"]
+package-dir = {"n8n_task_runner" = "src"}

@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
-from src.env import read_bool_env, read_int_env, read_str_env
-from src.errors import ConfigurationError
-from src.constants import (
+from n8n_task_runner.env import read_bool_env, read_int_env, read_str_env
+from n8n_task_runner.errors import ConfigurationError
+from n8n_task_runner.constants import (
     BUILTINS_DENY_DEFAULT,
     DEFAULT_MAX_CONCURRENCY,
     DEFAULT_MAX_PAYLOAD_SIZE,

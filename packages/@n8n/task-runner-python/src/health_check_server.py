@@ -2,7 +2,7 @@ import asyncio
 import errno
 import logging
 
-from src.config.health_check_config import HealthCheckConfig
+from n8n_task_runner.config.health_check_config import HealthCheckConfig
 
 HEALTH_CHECK_RESPONSE = (
     b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nOK"

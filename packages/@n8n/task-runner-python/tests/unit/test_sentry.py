@@ -5,9 +5,9 @@ import pytest
 
 pytest.importorskip("sentry_sdk")
 
-from src.config.sentry_config import SentryConfig
-from src.sentry import TaskRunnerSentry, setup_sentry
-from src.constants import (
+from n8n_task_runner.config.sentry_config import SentryConfig
+from n8n_task_runner.sentry import TaskRunnerSentry, setup_sentry
+from n8n_task_runner.constants import (
     EXECUTOR_ALL_ITEMS_FILENAME,
     EXECUTOR_PER_ITEM_FILENAME,
     IGNORED_ERROR_TYPES,

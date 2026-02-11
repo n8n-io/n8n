@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from src.env import read_str_env, read_float_env
-from src.constants import (
+from n8n_task_runner.env import read_str_env, read_float_env
+from n8n_task_runner.constants import (
     ENV_DEPLOYMENT_NAME,
     ENV_ENVIRONMENT,
     ENV_N8N_VERSION,

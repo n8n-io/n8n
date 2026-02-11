@@ -1,9 +1,9 @@
 import pytest
 
-from src.errors.security_violation_error import SecurityViolationError
-from src.task_analyzer import TaskAnalyzer
-from src.config.security_config import SecurityConfig
-from src.constants import BLOCKED_ATTRIBUTES, BLOCKED_NAMES
+from n8n_task_runner.errors.security_violation_error import SecurityViolationError
+from n8n_task_runner.task_analyzer import TaskAnalyzer
+from n8n_task_runner.config.security_config import SecurityConfig
+from n8n_task_runner.constants import BLOCKED_ATTRIBUTES, BLOCKED_NAMES
 
 
 class TestTaskAnalyzer:

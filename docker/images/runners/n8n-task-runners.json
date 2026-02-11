@@ -33,7 +33,7 @@
 			"runner-type": "python",
 			"workdir": "/home/runner",
 			"command": "/opt/runners/task-runner-python/.venv/bin/python",
-			"args": ["-I", "-B", "-X", "disable_remote_debug", "-m", "src.main"],
+			"args": ["-I", "-B", "-X", "disable_remote_debug", "-m", "n8n_task_runner.main"],
 			"health-check-server-port": "5682",
 			"allowed-env": [
 				"PATH",

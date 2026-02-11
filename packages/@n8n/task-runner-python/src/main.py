@@ -3,14 +3,14 @@ import logging
 import sys
 import platform
 
-from src.constants import ERROR_WINDOWS_NOT_SUPPORTED
-from src.config.health_check_config import HealthCheckConfig
-from src.config.sentry_config import SentryConfig
-from src.config.task_runner_config import TaskRunnerConfig
-from src.errors import ConfigurationError
-from src.logs import setup_logging
-from src.task_runner import TaskRunner
-from src.shutdown import Shutdown
+from n8n_task_runner.constants import ERROR_WINDOWS_NOT_SUPPORTED
+from n8n_task_runner.config.health_check_config import HealthCheckConfig
+from n8n_task_runner.config.sentry_config import SentryConfig
+from n8n_task_runner.config.task_runner_config import TaskRunnerConfig
+from n8n_task_runner.errors import ConfigurationError
+from n8n_task_runner.logs import setup_logging
+from n8n_task_runner.task_runner import TaskRunner
+from n8n_task_runner.shutdown import Shutdown
 
 
 async def main():
@@ -21,7 +21,7 @@ async def main():
     sentry_config = SentryConfig.from_env()
 
     if sentry_config.enabled:
-        from src.sentry import setup_sentry
+        from n8n_task_runner.sentry import setup_sentry
 
         sentry = setup_sentry(sentry_config)
 
@@ -33,7 +33,7 @@ async def main():
 
     health_check_server: "HealthCheckServer | None" = None
     if health_check_config.enabled:
-        from src.health_check_server import HealthCheckServer
+        from n8n_task_runner.health_check_server import HealthCheckServer
 
         health_check_server = HealthCheckServer()
         try:

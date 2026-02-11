@@ -3,10 +3,10 @@ import hashlib
 import re
 from collections import OrderedDict
 
-from src.errors import SecurityViolationError
-from src.import_validation import validate_module_import
-from src.config.security_config import SecurityConfig
-from src.constants import (
+from n8n_task_runner.errors import SecurityViolationError
+from n8n_task_runner.import_validation import validate_module_import
+from n8n_task_runner.config.security_config import SecurityConfig
+from n8n_task_runner.constants import (
     MAX_VALIDATION_CACHE_SIZE,
     ERROR_RELATIVE_IMPORT,
     ERROR_DANGEROUS_NAME,

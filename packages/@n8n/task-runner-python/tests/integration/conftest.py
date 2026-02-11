@@ -1,6 +1,6 @@
 import pytest_asyncio
-from src.message_types.broker import Items
-from src.message_serde import NODE_MODE_MAP
+from n8n_task_runner.message_types.broker import Items
+from n8n_task_runner.message_serde import NODE_MODE_MAP
 
 from tests.fixtures.local_task_broker import LocalTaskBroker
 from tests.fixtures.task_runner_manager import TaskRunnerManager

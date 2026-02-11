@@ -5,12 +5,12 @@ from typing import cast
 
 from multiprocessing.connection import Connection
 
-from src.errors import (
+from n8n_task_runner.errors import (
     InvalidPipeMsgContentError,
     InvalidPipeMsgLengthError,
 )
-from src.message_types.pipe import PipeMessage
-from src.constants import PIPE_MSG_PREFIX_LENGTH
+from n8n_task_runner.message_types.pipe import PipeMessage
+from n8n_task_runner.constants import PIPE_MSG_PREFIX_LENGTH
 
 type PipeConnection = Connection
 

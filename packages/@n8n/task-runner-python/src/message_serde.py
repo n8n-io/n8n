@@ -2,8 +2,8 @@ import json
 from dataclasses import asdict
 from typing import cast
 
-from src.message_types.broker import NodeMode, TaskSettings
-from src.constants import (
+from n8n_task_runner.message_types.broker import NodeMode, TaskSettings
+from n8n_task_runner.constants import (
     BROKER_INFO_REQUEST,
     BROKER_RUNNER_REGISTERED,
     BROKER_TASK_CANCEL,
@@ -11,7 +11,7 @@ from src.constants import (
     BROKER_TASK_SETTINGS,
     BROKER_RPC_RESPONSE,
 )
-from src.message_types import (
+from n8n_task_runner.message_types import (
     BrokerMessage,
     RunnerMessage,
     BrokerInfoRequest,
