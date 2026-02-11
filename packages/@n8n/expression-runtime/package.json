@@ -1,0 +1,43 @@
+{
+	"name": "@n8n/expression-runtime",
+	"version": "0.1.0",
+	"description": "Secure, isolated expression evaluation runtime for n8n",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "tsc && pnpm build:runtime",
+		"build:runtime": "node esbuild.config.js",
+		"test": "vitest",
+		"test:watch": "vitest --watch",
+		"lint": "eslint .",
+		"typecheck": "tsc --noEmit"
+	},
+	"keywords": [
+		"n8n",
+		"expression",
+		"evaluation",
+		"isolated-vm",
+		"web-worker",
+		"security"
+	],
+	"license": "SEE LICENSE IN LICENSE.md",
+	"dependencies": {
+		"isolated-vm": "^5.0.1",
+		"lodash": "^4.17.21",
+		"luxon": "^3.4.4"
+	},
+	"devDependencies": {
+		"@types/lodash": "^4.14.202",
+		"@types/luxon": "^3.4.0",
+		"@types/node": "^20.10.0",
+		"esbuild": "^0.19.0",
+		"typescript": "^5.3.0",
+		"vitest": "^1.0.0"
+	},
+	"files": [
+		"dist",
+		"bundle",
+		"ARCHITECTURE.md",
+		"LICENSE.md"
+	]
+}
