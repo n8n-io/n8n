@@ -177,6 +177,7 @@ export class FrontendService {
 			isDocker: this.instanceSettings.isDocker,
 			databaseType: this.globalConfig.database.type,
 			previewMode: process.env.N8N_PREVIEW_MODE === 'true',
+			recoveryMode: this.globalConfig.workflows.recoveryMode,
 			endpointForm: this.globalConfig.endpoints.form,
 			endpointFormTest: this.globalConfig.endpoints.formTest,
 			endpointFormWaiting: this.globalConfig.endpoints.formWaiting,

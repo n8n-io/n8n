@@ -146,6 +146,10 @@ export async function initializeAuthenticatedFeatures(
 		bannersStore.pushBannerToStack('NON_PRODUCTION_LICENSE');
 	}
 
+	if (settingsStore.settings.recoveryMode) {
+		bannersStore.pushBannerToStack('RECOVERY_MODE');
+	}
+
 	if (
 		settingsStore.settings.banners &&
 		!settingsStore.settings.banners.dismissed.includes('V1') &&
