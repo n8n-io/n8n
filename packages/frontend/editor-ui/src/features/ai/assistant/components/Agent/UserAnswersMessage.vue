@@ -6,8 +6,6 @@
  * Used as a custom user message type for better visual presentation
  * compared to raw JSON text.
  */
-import { computed } from 'vue';
-
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -19,8 +17,6 @@ interface Props {
 
 const props = defineProps<Props>();
 const i18n = useI18n();
-
-const displayedAnswers = computed(() => props.answers);
 
 function formatAnswer(answer: PlanMode.QuestionResponse): string {
 	const parts: string[] = [];
@@ -38,16 +34,12 @@ function formatAnswer(answer: PlanMode.QuestionResponse): string {
 </script>
 
 <template>
-	<div
-		v-if="displayedAnswers.length > 0"
-		:class="$style.container"
-		data-test-id="plan-mode-user-answers"
-	>
-		<div v-for="answer in displayedAnswers" :key="answer.questionId" :class="$style.answerItem">
+	<div v-if="answers.length > 0" :class="$style.container" data-test-id="plan-mode-user-answers">
+		<div v-for="answer in answers" :key="answer.questionId" :class="$style.answerItem">
 			<N8nText :bold="true" :class="$style.question">
 				{{ answer.question }}
 			</N8nText>
-			<N8nText v-if="answer.skipped" :class="$style.skipped">
+			<N8nText v-if="answer.skipped">
 				{{ i18n.baseText('aiAssistant.builder.planMode.answers.skipped') }}
 			</N8nText>
 			<N8nText v-else>{{ formatAnswer(answer) }}</N8nText>
