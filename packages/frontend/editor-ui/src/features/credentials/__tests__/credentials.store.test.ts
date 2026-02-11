@@ -61,16 +61,20 @@ describe('credentials.store', () => {
 
 			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue(mockCredentials);
 
-			await store.fetchAllCredentials(undefined, true, false, true);
+			await store.fetchAllCredentials({
+				projectId: undefined,
+				includeScopes: true,
+				onlySharedWithMe: false,
+				includeGlobal: true,
+			});
 
-			expect(credentialsApi.getAllCredentials).toHaveBeenCalledWith(
-				mockRootStore.restApiContext,
-				undefined,
-				true,
-				false,
-				true,
-				undefined,
-			);
+			expect(credentialsApi.getAllCredentials).toHaveBeenCalledWith(mockRootStore.restApiContext, {
+				filter: undefined,
+				includeScopes: true,
+				onlySharedWithMe: false,
+				includeGlobal: true,
+				externalSecretsStore: undefined,
+			});
 		});
 
 		it('should pass includeGlobal as true when not provided', async () => {
@@ -89,14 +93,13 @@ describe('credentials.store', () => {
 
 			await store.fetchAllCredentials();
 
-			expect(credentialsApi.getAllCredentials).toHaveBeenCalledWith(
-				mockRootStore.restApiContext,
-				undefined,
-				true,
-				false,
-				true,
-				undefined,
-			);
+			expect(credentialsApi.getAllCredentials).toHaveBeenCalledWith(mockRootStore.restApiContext, {
+				filter: undefined,
+				includeScopes: true,
+				onlySharedWithMe: false,
+				includeGlobal: true,
+				externalSecretsStore: undefined,
+			});
 		});
 
 		it('should set credentials in store including global credentials', async () => {
@@ -119,7 +122,12 @@ describe('credentials.store', () => {
 
 			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue(mockCredentials);
 
-			await store.fetchAllCredentials(undefined, true, false, true);
+			await store.fetchAllCredentials({
+				projectId: undefined,
+				includeScopes: true,
+				onlySharedWithMe: false,
+				includeGlobal: true,
+			});
 
 			expect(store.allCredentials).toHaveLength(2);
 			expect(store.allCredentials.find((c) => c.id === 'cred-2')?.isGlobal).toBe(true);

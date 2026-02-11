@@ -13,7 +13,7 @@ onMounted(() => {
 </script>
 
 <template>
-	<div id="app-grid" ref="layout" class="app-grid" :class="$style.appGrid">
+	<div ref="layout" class="app-grid" :class="$style.appGrid">
 		<div v-if="!!$slots.banners" id="banners" :class="$style.banners">
 			<slot name="banners" />
 		</div>

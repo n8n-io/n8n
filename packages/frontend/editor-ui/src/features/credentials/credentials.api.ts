@@ -23,14 +23,28 @@ export async function getCredentialsNewName(
 	return await makeRestApiRequest(context, 'GET', '/credentials/new', name ? { name } : {});
 }
 
+export interface GetAllCredentialsOptions {
+	filter?: object;
+	includeScopes?: boolean;
+	onlySharedWithMe?: boolean;
+	includeGlobal?: boolean;
+	externalSecretsStore?: string;
+}
+
+/**
+ * The implementation of the externalSecretsStore filter option is not optimized for performance.
+ * Don't expose it via the filter selection component. It shall only be provided when clicking on
+ * the link to jump to this overview from the "Delete secret provider connection" modal.
+ *
+ * See RFC to improve its performance in the future:
+ * https://www.notion.so/n8n/Querying-credential-dependencies-e-g-External-Secret-Store-stored-in-expressions-3035b6e0c94f80e78448ff08e5528c2a
+ */
 export async function getAllCredentials(
 	context: IRestApiContext,
-	filter?: object,
-	includeScopes?: boolean,
-	onlySharedWithMe?: boolean,
-	includeGlobal?: boolean,
-	externalSecretsStore?: string,
+	options: GetAllCredentialsOptions = {},
 ): Promise<ICredentialsResponse[]> {
+	const { filter, includeScopes, onlySharedWithMe, includeGlobal, externalSecretsStore } = options;
+
 	return await makeRestApiRequest(context, 'GET', '/credentials', {
 		...(includeScopes ? { includeScopes } : {}),
 		includeData: true,

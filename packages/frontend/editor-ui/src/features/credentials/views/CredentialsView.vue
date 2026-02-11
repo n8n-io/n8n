@@ -220,13 +220,13 @@ const initialize = async () => {
 	}
 
 	const loadPromises = [
-		credentialsStore.fetchAllCredentials(
-			route?.params?.projectId as string | undefined,
-			true,
-			overview.isSharedSubPage,
-			!isPersonalView, // don't include global credentials if personal
-			...(filters.value.externalSecretsStore ? [filters.value.externalSecretsStore] : []),
-		),
+		credentialsStore.fetchAllCredentials({
+			projectId: route?.params?.projectId as string | undefined,
+			includeScopes: true,
+			onlySharedWithMe: overview.isSharedSubPage,
+			includeGlobal: !isPersonalView, // don't include global credentials if personal
+			externalSecretsStore: filters.value.externalSecretsStore,
+		}),
 		credentialsStore.fetchCredentialTypes(false),
 		...externalSecretRequests,
 		nodeTypesStore.loadNodeTypesIfNotLoaded(),
@@ -242,13 +242,11 @@ const initialize = async () => {
 credentialsStore.$onAction(({ name, after }) => {
 	if (name === 'createNewCredential') {
 		after(() => {
-			void credentialsStore.fetchAllCredentials(
-				route?.params?.projectId as string | undefined,
-				true,
-				undefined,
-				undefined,
-				...(filters.value.externalSecretsStore ? [filters.value.externalSecretsStore] : []),
-			);
+			void credentialsStore.fetchAllCredentials({
+				projectId: route?.params?.projectId as string | undefined,
+				includeScopes: true,
+				externalSecretsStore: filters.value.externalSecretsStore,
+			});
 		});
 	}
 });
@@ -261,20 +259,6 @@ sourceControlStore.$onAction(({ name, after }) => {
 });
 
 watch(() => route?.params?.projectId, initialize);
-
-// Sync filters ref with route query params
-watch(
-	() => route.query,
-	(query) => {
-		filters.value = {
-			...query,
-			setupNeeded: query.setupNeeded?.toString() === 'true',
-			...(query.externalSecretsStore
-				? { externalSecretsStore: query.externalSecretsStore.toString() }
-				: {}),
-		} as Filters;
-	},
-);
 
 watch(
 	() => props.credentialId,
@@ -381,7 +365,7 @@ onMounted(() => {
 
 			<!-- secret store filter is only shown if query parameter is set in url
 			 -  needed for handling deletion of enterprise external secrets -->
-			<div v-if="showSecretStoreFilter" class="mb-s">
+			<div v-if="showSecretStoreFilter && filters.externalSecretsStore" class="mb-s">
 				<N8nInputLabel
 					:label="i18n.baseText('credentials.filters.secretStore')"
 					:bold="false"
@@ -390,16 +374,13 @@ onMounted(() => {
 					class="mb-3xs"
 				/>
 				<N8nSelect
-					:model-value="filters.externalSecretsStore || ''"
+					:model-value="filters.externalSecretsStore"
 					size="medium"
 					disabled
 					data-test-id="credential-filter-secret-store"
 					:class="$style['type-input']"
 				>
-					<N8nOption
-						:value="filters.externalSecretsStore || ''"
-						:label="filters.externalSecretsStore || ''"
-					/>
+					<N8nOption :value="filters.externalSecretsStore" :label="filters.externalSecretsStore" />
 				</N8nSelect>
 			</div>
 		</template>

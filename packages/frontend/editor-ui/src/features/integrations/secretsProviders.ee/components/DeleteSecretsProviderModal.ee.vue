@@ -67,14 +67,10 @@ onMounted(async () => {
 	isLoadingCredentials.value = true;
 	try {
 		// Fetch credentials count that use this provider
-		const credentials = await getAllCredentials(
-			rootStore.restApiContext,
-			undefined,
-			undefined,
-			undefined,
-			true,
-			props.data.providerKey,
-		);
+		const credentials = await getAllCredentials(rootStore.restApiContext, {
+			includeGlobal: true,
+			externalSecretsStore: props.data.providerKey,
+		});
 		credentialsCount.value = credentials.length;
 	} catch (error) {
 		toast.showError(error as Error, i18n.baseText('error'));
