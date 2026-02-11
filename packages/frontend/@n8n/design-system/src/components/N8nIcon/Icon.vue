@@ -136,12 +136,11 @@ watch(
 		v-else-if="fallbackBody"
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 0 24 24"
-		:class="classes"
+		:class="[...classes, $style.fallbackIcon]"
 		:height="size.height"
 		:width="size.width"
 		fill="none"
 		stroke="currentColor"
-		stroke-width="2"
 		stroke-linecap="round"
 		stroke-linejoin="round"
 		aria-hidden="true"
@@ -154,6 +153,10 @@ watch(
 </template>
 
 <style lang="scss" module>
+.fallbackIcon {
+	stroke-width: 1.5;
+}
+
 .strokeWidth {
 	rect,
 	path {
