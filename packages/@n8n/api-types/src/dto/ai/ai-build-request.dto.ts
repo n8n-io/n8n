@@ -9,6 +9,22 @@ export interface ExpressionValue {
 	nodeType?: string;
 }
 
+/**
+ * Context for a node selected/focused by the user.
+ * Used for focused nodes feature - allows user to select specific nodes
+ * for the AI to prioritize in its responses.
+ */
+export interface SelectedNodeContext {
+	/** Node display name - use to look up full node in currentWorkflow.nodes */
+	name: string;
+	/** Configuration issues/validation errors on the node */
+	issues?: Record<string, string[]>;
+	/** Names of nodes that connect INTO this node */
+	incomingConnections: string[];
+	/** Names of nodes that this node connects TO */
+	outgoingConnections: string[];
+}
+
 export class AiBuilderChatRequestDto extends Z.class({
 	payload: z.object({
 		id: z.string(),
@@ -59,10 +75,35 @@ export class AiBuilderChatRequestDto extends Z.class({
 					return val;
 				})
 				.optional(),
+			valuesExcluded: z.boolean().optional(),
+			pinnedNodes: z.array(z.string()).optional(),
+
+			selectedNodes: z
+				.custom<SelectedNodeContext[]>((val: SelectedNodeContext[]) => {
+					if (!Array.isArray(val)) {
+						return false;
+					}
+					if (val.length === 0) {
+						return val;
+					}
+					if (
+						val.every(
+							(item) =>
+								typeof item.name === 'string' &&
+								Array.isArray(item.incomingConnections) &&
+								Array.isArray(item.outgoingConnections),
+						)
+					) {
+						return val;
+					}
+					return false;
+				})
+				.optional(),
 		}),
 		featureFlags: z
 			.object({
 				templateExamples: z.boolean().optional(),
+				codeBuilder: z.boolean().optional(),
 				planMode: z.boolean().optional(),
 			})
 			.optional(),

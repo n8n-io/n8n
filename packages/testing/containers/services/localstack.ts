@@ -84,11 +84,9 @@ export const localstack: Service<LocalStackResult> = {
 		}
 	},
 
-	env(result: LocalStackResult): Record<string, string> {
+	env(result: LocalStackResult, external?: boolean): Record<string, string> {
 		return {
-			// AWS SDK v3 standard endpoint override
-			AWS_ENDPOINT_URL: result.meta.internalEndpoint,
-			// Dummy credentials (LocalStack doesn't validate by default)
+			AWS_ENDPOINT_URL: external ? result.meta.endpoint : result.meta.internalEndpoint,
 			AWS_ACCESS_KEY_ID: 'test',
 			AWS_SECRET_ACCESS_KEY: 'test',
 			AWS_DEFAULT_REGION: DEFAULT_REGION,

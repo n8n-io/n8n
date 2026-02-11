@@ -2,8 +2,11 @@ import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
 import SecuritySettings from './SecuritySettings.vue';
-import { MODAL_CONFIRM } from '@/app/constants/modals';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
 const getSecuritySettings = vi.fn();
 const updateSecuritySettings = vi.fn();
@@ -28,8 +31,14 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {} }),
 }));
 
+vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
+	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
+}));
+
+const pinia = createTestingPinia();
+
 const renderView = createComponentRenderer(SecuritySettings, {
-	pinia: createTestingPinia(),
+	pinia,
 });
 
 describe('SecuritySettings', () => {
@@ -41,9 +50,25 @@ describe('SecuritySettings', () => {
 		sharedPersonalCredentialsCount: 5,
 	};
 
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+	let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		getSecuritySettings.mockResolvedValue(defaultSettings);
+
+		settingsStore = mockedStore(useSettingsStore);
+		usersStore = mockedStore(useUsersStore);
+
+		settingsStore.isMFAEnforced = false;
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA] = true;
+		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
+
+		// Enable PERSONAL_SECURITY_SETTINGS env feature flag for Personal Space section
+		settingsStore.settings.envFeatureFlags = {
+			...settingsStore.settings.envFeatureFlags,
+			N8N_ENV_FEAT_PERSONAL_SECURITY_SETTINGS: 'true',
+		};
 	});
 
 	it('should render security heading and personal space section', async () => {
@@ -248,5 +273,92 @@ describe('SecuritySettings', () => {
 		});
 
 		expect(getByTestId('security-sharing-count')).toHaveTextContent('Existing shares');
+	});
+
+	it('should hide personal space section when PERSONAL_SECURITY_SETTINGS flag is disabled', async () => {
+		settingsStore.settings.envFeatureFlags = {
+			...settingsStore.settings.envFeatureFlags,
+			N8N_ENV_FEAT_PERSONAL_SECURITY_SETTINGS: 'false',
+		};
+
+		const { getByText, queryByText, getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('enable-force-mfa')).toBeInTheDocument();
+		});
+
+		expect(getByText('Security')).toBeInTheDocument();
+		expect(queryByText('Personal Space')).not.toBeInTheDocument();
+	});
+
+	it('should render the enforce MFA toggle', async () => {
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('enable-force-mfa')).toBeInTheDocument();
+		});
+	});
+
+	it('should turn enforcing MFA on', async () => {
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('enable-force-mfa')).toBeInTheDocument();
+		});
+
+		const actionSwitch = getByTestId('enable-force-mfa');
+		await userEvent.click(actionSwitch);
+
+		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(true);
+	});
+
+	it('should turn enforcing MFA off', async () => {
+		settingsStore.isMFAEnforced = true;
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('enable-force-mfa')).toBeInTheDocument();
+		});
+
+		const actionSwitch = getByTestId('enable-force-mfa');
+		await userEvent.click(actionSwitch);
+
+		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(false);
+	});
+
+	it('should show success toast when enabling MFA enforcement', async () => {
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('enable-force-mfa')).toBeInTheDocument();
+		});
+
+		const actionSwitch = getByTestId('enable-force-mfa');
+		await userEvent.click(actionSwitch);
+
+		await waitFor(() => {
+			expect(showToast).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'success',
+				}),
+			);
+		});
+	});
+
+	it('should show error toast when MFA enforcement update fails', async () => {
+		usersStore.updateEnforceMfa = vi.fn().mockRejectedValue(new Error('MFA update failed'));
+
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('enable-force-mfa')).toBeInTheDocument();
+		});
+
+		const actionSwitch = getByTestId('enable-force-mfa');
+		await userEvent.click(actionSwitch);
+
+		await waitFor(() => {
+			expect(showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+		});
 	});
 });
