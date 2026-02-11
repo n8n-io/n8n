@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, Variables } from '@n8n/db';
-import type { IWorkflowSettings } from 'n8n-workflow';
+import type { IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
@@ -179,5 +179,92 @@ describe('removeDefaultValues', () => {
 		const originalSettings = { ...settings };
 		removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
 		expect(settings).toEqual(originalSettings);
+	});
+
+	it('should remove callerPolicy when it is default and workflow has no Execute Workflow Trigger', () => {
+		const settings: IWorkflowSettings = {
+			callerPolicy: 'workflowsFromSameOwner',
+			timezone: 'America/New_York',
+		};
+		const nodes = [
+			{ type: 'n8n-nodes-base.webhook', name: 'Webhook' },
+			{ type: 'n8n-nodes-base.set', name: 'Set' },
+		] as IWorkflowBase['nodes'];
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT, nodes);
+		expect(result).toEqual({
+			timezone: 'America/New_York',
+		});
+	});
+
+	it('should keep callerPolicy when workflow has Execute Workflow Trigger', () => {
+		const settings: IWorkflowSettings = {
+			callerPolicy: 'workflowsFromSameOwner',
+			timezone: 'America/New_York',
+		};
+		const nodes = [
+			{ type: 'n8n-nodes-base.executeWorkflowTrigger', name: 'When Called' },
+			{ type: 'n8n-nodes-base.set', name: 'Set' },
+		] as IWorkflowBase['nodes'];
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT, nodes);
+		expect(result).toEqual({
+			callerPolicy: 'workflowsFromSameOwner',
+			timezone: 'America/New_York',
+		});
+	});
+
+	it('should keep callerPolicy when it is not the default value', () => {
+		const settings: IWorkflowSettings = {
+			callerPolicy: 'any',
+			timezone: 'America/New_York',
+		};
+		const nodes = [
+			{ type: 'n8n-nodes-base.webhook', name: 'Webhook' },
+		] as IWorkflowBase['nodes'];
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT, nodes);
+		expect(result).toEqual({
+			callerPolicy: 'any',
+			timezone: 'America/New_York',
+		});
+	});
+
+	it('should handle undefined nodes parameter (backward compatibility)', () => {
+		const settings: IWorkflowSettings = {
+			callerPolicy: 'workflowsFromSameOwner',
+			timezone: 'America/New_York',
+		};
+		// When nodes is undefined, callerPolicy should be kept (can't determine if workflow has Execute Workflow Trigger)
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
+		expect(result).toEqual({
+			callerPolicy: 'workflowsFromSameOwner',
+			timezone: 'America/New_York',
+		});
+	});
+
+	it('should handle empty nodes array', () => {
+		const settings: IWorkflowSettings = {
+			callerPolicy: 'workflowsFromSameOwner',
+			timezone: 'America/New_York',
+		};
+		const nodes = [] as IWorkflowBase['nodes'];
+		// Empty nodes array means no Execute Workflow Trigger, so callerPolicy should be removed
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT, nodes);
+		expect(result).toEqual({
+			timezone: 'America/New_York',
+		});
+	});
+
+	it('should handle custom defaultCallerPolicy parameter', () => {
+		const settings: IWorkflowSettings = {
+			callerPolicy: 'none', // Custom default
+			timezone: 'America/New_York',
+		};
+		const nodes = [
+			{ type: 'n8n-nodes-base.webhook', name: 'Webhook' },
+		] as IWorkflowBase['nodes'];
+		// With custom default 'none', should remove it for webhook-only workflows
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT, nodes, 'none');
+		expect(result).toEqual({
+			timezone: 'America/New_York',
+		});
 	});
 });

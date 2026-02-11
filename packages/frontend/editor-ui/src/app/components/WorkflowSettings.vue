@@ -663,9 +663,16 @@ onMounted(async () => {
 	if (workflowSettingsData.saveManualExecutions === undefined) {
 		workflowSettingsData.saveManualExecutions = 'DEFAULT';
 	}
+	// Only set callerPolicy default if workflow has an Execute Workflow Trigger node
+	// callerPolicy is only relevant for workflows that can be called by other workflows
 	if (workflowSettingsData.callerPolicy === undefined) {
-		workflowSettingsData.callerPolicy = defaultValues.value
-			.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
+		const hasExecuteWorkflowTrigger = workflowsStore.workflowNodes.some(
+			(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
+		);
+		if (hasExecuteWorkflowTrigger) {
+			workflowSettingsData.callerPolicy = defaultValues.value
+				.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
+		}
 	}
 	if (workflowSettingsData.executionTimeout === undefined) {
 		workflowSettingsData.executionTimeout = rootStore.executionTimeout;

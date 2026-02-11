@@ -364,6 +364,8 @@ export class WorkflowService {
 			workflowUpdateData.settings = WorkflowHelpers.removeDefaultValues(
 				workflowUpdateData.settings,
 				this.globalConfig.executions.timeout,
+				workflowUpdateData.nodes ?? workflow.nodes,
+				this.globalConfig.workflows.callerPolicyDefaultOption,
 			);
 		}
 

@@ -24,11 +24,21 @@ export class SubworkflowPolicyChecker {
 
 	/**
 	 * Check whether the parent workflow is allowed to call the subworkflow.
+	 * If parentWorkflowId is not provided (e.g., for direct executions like MCP), skip the check.
 	 */
-	async check(subworkflow: Workflow, parentWorkflowId: string, node?: INode, userId?: string) {
+	async check(
+		subworkflow: Workflow,
+		parentWorkflowId: string | undefined,
+		node?: INode,
+		userId?: string,
+	) {
 		const { id: subworkflowId } = subworkflow;
 
 		if (!subworkflowId) return; // e.g. when running a subworkflow loaded from a file
+
+		// Skip policy check for direct executions (no parent workflow, e.g., MCP, manual, webhook)
+		// callerPolicy only applies to subworkflow calls from other workflows
+		if (!parentWorkflowId) return;
 
 		const policy = this.findPolicy(subworkflow);
 

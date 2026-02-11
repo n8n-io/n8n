@@ -721,4 +721,122 @@ describe('WorkflowSettingsVue', () => {
 			expect(input).toBeDisabled();
 		});
 	});
+
+	describe('callerPolicy auto-injection fix', () => {
+		it('should NOT auto-inject callerPolicy for webhook-only workflows', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+			
+			// Workflow with only webhook trigger (no Execute Workflow Trigger)
+			workflowsStore.workflowNodes = [
+				{
+					id: 'node-1',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-2',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [100, 0],
+					parameters: {},
+				},
+			] as any[];
+
+			// Workflow settings without callerPolicy
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v1',
+				availableInMCP: true,
+			};
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			// Wait for settings to load
+			await waitFor(() => {
+				expect(getByTestId('workflow-settings-dialog')).toBeVisible();
+			});
+
+			// Verify callerPolicy is not set (should be undefined, not auto-injected)
+			// The component should not have set callerPolicy since there's no Execute Workflow Trigger
+			expect(workflowsStore.workflowSettings.callerPolicy).toBeUndefined();
+		});
+
+		it('should auto-inject callerPolicy for workflows with Execute Workflow Trigger', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+			
+			// Workflow with Execute Workflow Trigger node
+			workflowsStore.workflowNodes = [
+				{
+					id: 'node-1',
+					name: 'When Called',
+					type: 'n8n-nodes-base.executeWorkflowTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-2',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [100, 0],
+					parameters: {},
+				},
+			] as any[];
+
+			// Workflow settings without callerPolicy
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v1',
+			};
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			// Wait for settings to load
+			await waitFor(() => {
+				expect(getByTestId('workflow-settings-dialog')).toBeVisible();
+			});
+
+			// Verify callerPolicy is set to default since workflow has Execute Workflow Trigger
+			// The component should have auto-injected callerPolicy
+			expect(workflowsStore.workflowSettings.callerPolicy).toBe('workflowsFromSameOwner');
+		});
+
+		it('should keep existing callerPolicy value when already set', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+			
+			// Workflow with only webhook trigger
+			workflowsStore.workflowNodes = [
+				{
+					id: 'node-1',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			] as any[];
+
+			// Workflow settings with callerPolicy already set
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v1',
+				callerPolicy: 'any',
+			};
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			// Wait for settings to load
+			await waitFor(() => {
+				expect(getByTestId('workflow-settings-dialog')).toBeVisible();
+			});
+
+			// Verify existing callerPolicy is preserved
+			expect(workflowsStore.workflowSettings.callerPolicy).toBe('any');
+		});
+	});
 });

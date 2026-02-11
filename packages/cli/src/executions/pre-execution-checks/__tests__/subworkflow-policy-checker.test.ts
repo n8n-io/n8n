@@ -260,4 +260,65 @@ describe('SubworkflowPolicyChecker', () => {
 			});
 		});
 	});
+
+	describe('MCP execution (no parent workflow)', () => {
+		it('should skip policy check when parentWorkflowId is undefined (MCP execution)', async () => {
+			const subworkflow = mock<Workflow>({
+				id: 'mcp-workflow-id',
+				settings: { callerPolicy: 'workflowsFromSameOwner' },
+			});
+
+			// MCP executions don't have a parent workflow, so parentWorkflowId is undefined
+			const check = checker.check(subworkflow, undefined);
+
+			// Should not throw - policy check is skipped for direct executions
+			await expect(check).resolves.not.toThrow();
+
+			// Should not attempt to find projects
+			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+		});
+
+		it('should skip policy check when parentWorkflowId is empty string (MCP execution)', async () => {
+			const subworkflow = mock<Workflow>({
+				id: 'mcp-workflow-id',
+				settings: { callerPolicy: 'none' }, // Even with restrictive policy
+			});
+
+			// Empty string should also be treated as no parent
+			const check = checker.check(subworkflow, '');
+
+			await expect(check).resolves.not.toThrow();
+			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+		});
+
+		it('should allow MCP execution even with restrictive callerPolicy', async () => {
+			const subworkflow = mock<Workflow>({
+				id: 'mcp-workflow-id',
+				settings: {
+					availableInMCP: true,
+					callerPolicy: 'none', // Most restrictive policy
+				},
+			});
+
+			// MCP execution (no parent workflow)
+			const check = checker.check(subworkflow, undefined);
+
+			await expect(check).resolves.not.toThrow();
+		});
+
+		it('should allow MCP execution with workflowsFromSameOwner policy', async () => {
+			const subworkflow = mock<Workflow>({
+				id: 'mcp-workflow-id',
+				settings: {
+					availableInMCP: true,
+					callerPolicy: 'workflowsFromSameOwner',
+				},
+			});
+
+			// MCP execution (no parent workflow)
+			const check = checker.check(subworkflow, undefined);
+
+			await expect(check).resolves.not.toThrow();
+		});
+	});
 });

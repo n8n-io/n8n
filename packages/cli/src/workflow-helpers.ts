@@ -74,11 +74,15 @@ export function addNodeIds(workflow: IWorkflowBase) {
  *
  * @param settings - The workflow settings to clean
  * @param defaultExecutionTimeout - The default execution timeout from global config
+ * @param nodes - Optional workflow nodes to check if workflow has Execute Workflow Trigger
+ * @param defaultCallerPolicy - Optional default caller policy from config
  * @returns A new settings object with default values removed
  */
 export function removeDefaultValues(
 	settings: IWorkflowSettings,
 	defaultExecutionTimeout: number,
+	nodes?: IWorkflowBase['nodes'],
+	defaultCallerPolicy: string = 'workflowsFromSameOwner',
 ): IWorkflowSettings {
 	const cleanedSettings = { ...settings };
 
@@ -101,6 +105,16 @@ export function removeDefaultValues(
 	// Remove executionTimeout if it matches the default
 	if (cleanedSettings.executionTimeout === defaultExecutionTimeout) {
 		delete cleanedSettings.executionTimeout;
+	}
+
+	// Remove callerPolicy if it's the default value and workflow doesn't have Execute Workflow Trigger
+	// callerPolicy is only relevant for workflows that can be called by other workflows (subworkflows)
+	if (
+		cleanedSettings.callerPolicy === defaultCallerPolicy &&
+		nodes &&
+		!nodes.some((node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger')
+	) {
+		delete cleanedSettings.callerPolicy;
 	}
 
 	return cleanedSettings;

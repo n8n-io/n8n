@@ -20,6 +20,7 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { v4 as uuid } from 'uuid';
+import type { WorkflowEntity } from '@n8n/db';
 
 describe('execute-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -1085,6 +1086,19 @@ describe('execute-workflow MCP tool', () => {
 			});
 		});
 
+		describe('regression: MCP execution after workflow update', () => {
+			test('should execute workflow successfully after callerPolicy is removed from settings', async () => {
+				const workflowId = 'test-workflow-id';
+				const executionId = 'exec-123';
+
+				// Initial workflow with callerPolicy
+				const workflowWithCallerPolicy = createWorkflow({
+					id: workflowId,
+					activeVersionId: uuid(),
+					settings: {
+						availableInMCP: true,
+						callerPolicy: 'workflowsFromSameOwner',
+					},
 		describe('queue mode support', () => {
 			let queueModeMcpService: McpService;
 
@@ -1117,6 +1131,25 @@ describe('execute-workflow MCP tool', () => {
 						} as INode,
 					],
 				});
+
+				// Updated workflow without callerPolicy (simulating the fix)
+				const workflowWithoutCallerPolicy = createWorkflow({
+					id: workflowId,
+					activeVersionId: workflowWithCallerPolicy.activeVersionId,
+					settings: {
+						availableInMCP: true,
+						// callerPolicy removed
+					},
+					nodes: workflowWithCallerPolicy.activeVersion?.nodes ?? [],
+				});
+
+				// First call returns workflow with callerPolicy (simulating cached/stale data)
+				(workflowFinderService.findWorkflowForUser as jest.Mock)
+					.mockResolvedValueOnce(workflowWithCallerPolicy)
+					// After cache invalidation, subsequent calls return fresh data
+					.mockResolvedValue(workflowWithoutCallerPolicy);
+
+				(workflowRunner.run as jest.Mock).mockResolvedValue(executionId);
 				(workflowRepository.findById as jest.Mock).mockResolvedValue(workflow);
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
 				(workflowRunner.run as jest.Mock).mockResolvedValue('exec-queue');
@@ -1201,12 +1234,40 @@ describe('execute-workflow MCP tool', () => {
 					data: { resultData: {} },
 				});
 
+				// Execute workflow - should work even after callerPolicy removal
+				const result = await executeWorkflow(
 				await executeWorkflow(
 					user,
 					workflowFinderService,
 					workflowRepository,
 					activeExecutions,
 					workflowRunner,
+					workflowId,
+					{ type: 'webhook', webhookData: {} },
+				);
+
+				expect(result.success).toBe(true);
+				expect(result.executionId).toBe(executionId);
+				expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+					workflowId,
+					user,
+					['workflow:execute'],
+					{ includeActiveVersion: true },
+				);
+			});
+
+			test('should execute workflow successfully after settings change without restart', async () => {
+				const workflowId = 'test-workflow-id';
+				const executionId = 'exec-456';
+
+				// Workflow after update (callerPolicy removed)
+				const workflowAfter = createWorkflow({
+					id: workflowId,
+					activeVersionId: uuid(),
+					settings: {
+						availableInMCP: true,
+						// callerPolicy removed by removeDefaultValues
+					},
 					mcpService,
 					'regular-workflow',
 					undefined,
@@ -1234,6 +1295,11 @@ describe('execute-workflow MCP tool', () => {
 						} as INode,
 					],
 				});
+
+				// Simulate fresh data after cache invalidation
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflowAfter);
+
+				(workflowRunner.run as jest.Mock).mockResolvedValue(executionId);
 				(workflowRepository.findById as jest.Mock).mockResolvedValue(workflow);
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
 				(workflowRunner.run as jest.Mock).mockResolvedValue('exec-regular-2');
@@ -1242,12 +1308,34 @@ describe('execute-workflow MCP tool', () => {
 					data: { resultData: {} },
 				});
 
+				// Execute after workflow update - should use fresh data
+				const result = await executeWorkflow(
 				await executeWorkflow(
 					user,
 					workflowFinderService,
 					workflowRepository,
 					activeExecutions,
 					workflowRunner,
+					workflowId,
+					{ type: 'webhook', webhookData: {} },
+				);
+
+				expect(result.success).toBe(true);
+				expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+					workflowId,
+					user,
+					['workflow:execute'],
+					{ includeActiveVersion: true },
+				);
+				// Verify the workflow returned has updated settings (no callerPolicy blocking MCP)
+				const workflow = await workflowFinderService.findWorkflowForUser(
+					workflowId,
+					user,
+					['workflow:execute'],
+					{ includeActiveVersion: true },
+				);
+				expect(workflow?.settings?.availableInMCP).toBe(true);
+				expect(workflow?.settings?.callerPolicy).toBeUndefined();
 					mcpService,
 					'regular-workflow-2',
 					undefined,

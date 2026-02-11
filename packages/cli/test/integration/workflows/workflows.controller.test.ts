@@ -3504,6 +3504,144 @@ describe('PATCH /workflows/:workflowId', () => {
 		});
 		expect(updatedWorkflow?.name).toBe('Updated Name');
 	});
+
+	test('should remove callerPolicy when it is default and workflow has no Execute Workflow Trigger', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Webhook',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'node-2',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: {},
+					},
+				],
+				settings: {
+					availableInMCP: true,
+					callerPolicy: 'workflowsFromSameOwner', // Default value
+				},
+			},
+			owner,
+		);
+
+		// Update workflow - callerPolicy should be removed since workflow has no Execute Workflow Trigger
+		const payload = {
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: {
+				availableInMCP: true,
+				// callerPolicy not explicitly set, should be removed by removeDefaultValues
+			},
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+
+		// callerPolicy should be removed since it's default and workflow has no Execute Workflow Trigger
+		expect(updatedWorkflow?.settings?.callerPolicy).toBeUndefined();
+		expect(updatedWorkflow?.settings?.availableInMCP).toBe(true);
+	});
+
+	test('should keep callerPolicy when workflow has Execute Workflow Trigger', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'When Called',
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'node-2',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: {},
+					},
+				],
+				settings: {
+					callerPolicy: 'workflowsFromSameOwner',
+				},
+			},
+			owner,
+		);
+
+		// Update workflow - callerPolicy should be kept since workflow has Execute Workflow Trigger
+		const payload = {
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: {
+				callerPolicy: 'workflowsFromSameOwner',
+			},
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+
+		// callerPolicy should be kept since workflow has Execute Workflow Trigger
+		expect(updatedWorkflow?.settings?.callerPolicy).toBe('workflowsFromSameOwner');
+	});
+
+	test('should keep callerPolicy when it is not the default value', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Webhook',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				settings: {
+					callerPolicy: 'any', // Not the default value
+				},
+			},
+			owner,
+		);
+
+		const payload = {
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: {
+				callerPolicy: 'any',
+			},
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+
+		// callerPolicy should be kept since it's not the default value
+		expect(updatedWorkflow?.settings?.callerPolicy).toBe('any');
+	});
 });
 
 describe('POST /workflows/:workflowId/activate', () => {
