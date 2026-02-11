@@ -804,7 +804,11 @@ export class WorkflowService {
 		}
 
 		if (!gradualRolloutVersionId) {
-			throw new BadRequestError('Rollout version cannot be undefined.');
+			throw new BadRequestError('Gradual publish version cannot be undefined.');
+		}
+
+		if (!gradualRolloutPercentage) {
+			throw new BadRequestError('Gradual publish precentage cannot be undefined.');
 		}
 
 		if (gradualRolloutVersionId === workflow.activeVersionId) {
