@@ -69,21 +69,10 @@ watch(
 	},
 );
 
-const MAX_VISIBLE_FOCUSED_NODES = 3;
-
-const focusedNodesLabel = computed(() => {
+const fallbackFocusedNodesLabel = computed(() => {
 	const names = props.message.focusedNodeNames;
 	if (!names?.length) return '';
-
-	const quoted = names.map((n) => `'${n}'`);
-
-	if (names.length <= MAX_VISIBLE_FOCUSED_NODES) {
-		return `Focusing on ${quoted.join(', ')}`;
-	}
-
-	const visible = quoted.slice(0, MAX_VISIBLE_FOCUSED_NODES).join(', ');
-	const remaining = names.length - MAX_VISIBLE_FOCUSED_NODES;
-	return `Focusing on ${visible}, and ${remaining} more`;
+	return `Focusing on ${names.map((n) => `'${n}'`).join(', ')}`;
 });
 
 async function onCopyButtonClick(content: string, e: MouseEvent) {
@@ -130,6 +119,17 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 				>
 					{{ isExpanded ? t('notice.showLess') : t('notice.showMore') }}
 				</button>
+				<div
+					v-if="message.focusedNodeNames?.length"
+					:class="$style.focusedNodesSlotWrapper"
+					data-test-id="message-focused-nodes"
+				>
+					<slot name="focused-nodes-chips" :message="message">
+						<span :class="$style.focusedNodesFallback">
+							{{ fallbackFocusedNodesLabel }}
+						</span>
+					</slot>
+				</div>
 			</div>
 			<!-- Assistant message -->
 			<div
@@ -138,13 +138,6 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 				:class="[$style.assistantText, $style.renderedContent]"
 				:style="color ? { color } : undefined"
 			></div>
-			<!-- Focused nodes context label (shown below user message) -->
-			<span
-				v-if="message.role === 'user' && message.focusedNodeNames?.length"
-				:class="$style.focusedNodesLabel"
-			>
-				{{ focusedNodesLabel }}
-			</span>
 			<div
 				v-if="message?.codeSnippet"
 				:class="$style.codeSnippet"
@@ -329,7 +322,14 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	}
 }
 
-.focusedNodesLabel {
+.focusedNodesSlotWrapper {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--4xs);
+	margin-top: var(--spacing--4xs);
+}
+
+.focusedNodesFallback {
 	font-size: var(--font-size--3xs);
 	color: var(--color--text--tint-2);
 	font-style: italic;

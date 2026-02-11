@@ -43,7 +43,11 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	const filteredUnconfirmedNodes = computed(() => {
 		const totalWorkflowNodes = workflowsStore.allNodes.length;
 		const availableNodes = totalWorkflowNodes - confirmedNodes.value.length;
-		if (availableNodes > 0 && unconfirmedNodes.value.length >= availableNodes) {
+		if (
+			confirmedNodes.value.length > 0 &&
+			availableNodes > 0 &&
+			unconfirmedNodes.value.length >= availableNodes
+		) {
 			return [];
 		}
 		return unconfirmedNodes.value;

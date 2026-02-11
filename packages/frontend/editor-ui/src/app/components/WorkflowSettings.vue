@@ -193,11 +193,11 @@ const hasSavedTimeNodes = computed(() => {
 
 const timeSavedModeOptions = computed(() => [
 	{
-		label: 'Fixed',
+		label: i18n.baseText('workflowSettings.timeSavedPerExecution.tab.fixed'),
 		value: 'fixed' as const,
 	},
 	{
-		label: 'Dynamic (uses time saved nodes)',
+		label: i18n.baseText('workflowSettings.timeSavedPerExecution.tab.dynamic'),
 		value: 'dynamic' as const,
 	},
 ]);
