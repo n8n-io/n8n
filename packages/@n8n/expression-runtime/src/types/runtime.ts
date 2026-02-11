@@ -6,15 +6,28 @@
  */
 export interface RuntimeHostInterface {
 	/**
-	 * Get data from host by path.
+	 * Get data from host by path (synchronous).
 	 * Used by lazy loading proxies to fetch data on-demand.
+	 *
+	 * IMPORTANT: This is SYNCHRONOUS because JavaScript Proxy traps cannot be async.
+	 * - IsolatedVmBridge: Uses ivm.Reference for true sync callbacks
+	 * - NodeVmBridge: Direct synchronous call
+	 * - WebWorkerBridge: Not supported - must pre-fetch all data
 	 *
 	 * @param dataId - Data identifier
 	 * @param path - Property path to fetch
-	 * @returns Promise resolving to the value
+	 * @returns Value at the path, or undefined if not found
 	 */
-	getData(dataId: string, path: string): Promise<unknown>;
+	getDataSync(dataId: string, path: string): unknown;
 }
+
+/**
+ * Lazy-loading proxy for workflow data.
+ *
+ * At runtime, these appear as plain objects but are actually Proxy objects
+ * that fetch data on-demand from the host using getDataSync().
+ */
+type LazyDataProxy = Record<string, unknown>;
 
 /**
  * Runtime globals available in isolated context.
@@ -37,14 +50,22 @@ export interface RuntimeGlobals {
 	 * Workflow data proxy ($json, $item, etc.).
 	 * Set by bridge before each execute() call.
 	 */
-	$: Record<string, unknown>;
-	$json: Record<string, unknown>;
-	$item: (index: number, runIndex?: number) => Record<string, unknown>;
+
+	/** Current item data (lazy-loaded proxy) */
+	$json: LazyDataProxy;
+
+	/** Alias for $json (lazy-loaded proxy) */
+	$: LazyDataProxy;
+
+	/** Get item by index (lazy-loaded) */
+	$item: (index: number, runIndex?: number) => LazyDataProxy;
+
+	/** Access to all items */
 	$input: {
-		all: () => Array<{ json: Record<string, unknown> }>;
-		first: () => { json: Record<string, unknown> } | undefined;
-		last: () => { json: Record<string, unknown> } | undefined;
-		item: { json: Record<string, unknown> };
+		all: () => Array<{ json: LazyDataProxy }>;
+		first: () => { json: LazyDataProxy } | undefined;
+		last: () => { json: LazyDataProxy } | undefined;
+		item: { json: LazyDataProxy };
 	};
 
 	/**
@@ -72,7 +93,18 @@ export interface RuntimeConfig {
 }
 
 /**
- * Runtime error types.
+ * Runtime error thrown inside isolated context.
+ *
+ * These errors are thrown by the runtime code when something goes wrong during
+ * expression evaluation. The bridge must catch these and translate them to the
+ * appropriate ExpressionError subclass (see evaluator.ts).
+ *
+ * Translation mapping:
+ * - code: 'MEMORY_LIMIT' → MemoryLimitError
+ * - code: 'TIMEOUT' → TimeoutError
+ * - code: 'SECURITY_VIOLATION' → SecurityViolationError
+ * - code: 'SYNTAX_ERROR' → SyntaxError
+ * - other → ExpressionError
  */
 export class RuntimeError extends Error {
 	constructor(

@@ -20,21 +20,28 @@ export interface RuntimeBridge {
 	 *
 	 * @param code - Transformed JavaScript code to execute
 	 * @param dataId - Unique identifier for workflow data (for lazy loading)
-	 * @returns Result of the expression evaluation
+	 * @returns Result of the expression evaluation.
+	 *          Must be JSON-serializable (no functions, symbols, etc.)
 	 */
 	execute(code: string, dataId: string): Promise<unknown>;
 
 	/**
-	 * Handle data request from runtime (lazy loading).
+	 * Handle synchronous data request from runtime (lazy loading).
 	 *
 	 * Called when runtime accesses a property it doesn't have locally.
 	 * The bridge looks up the property in host data and returns it.
 	 *
+	 * IMPORTANT: This must be SYNCHRONOUS for lazy-loading proxies to work.
+	 * - IsolatedVmBridge: Uses ivm.Reference for synchronous callbacks
+	 * - WebWorkerBridge: Must pre-fetch data (no lazy loading in Phase 1)
+	 * - NodeVmBridge: Direct synchronous call
+	 *
 	 * @param dataId - Data identifier from execute()
 	 * @param path - Property path (e.g., "user.email")
-	 * @returns Value at the path, or undefined if not found
+	 * @returns Value at the path, or undefined if not found.
+	 *          Must be JSON-serializable.
 	 */
-	getData(dataId: string, path: string): Promise<unknown>;
+	getDataSync(dataId: string, path: string): unknown;
 
 	/**
 	 * Dispose of the isolated context and free resources.
@@ -83,7 +90,10 @@ export interface DataStore {
 }
 
 /**
- * Workflow data proxy for lazy loading.
+ * Internal proxy for lazy-loading workflow data.
+ *
+ * This is created by the bridge from WorkflowData input (see evaluator.ts).
+ * The bridge stores this in the DataStore and uses it to respond to getDataSync() calls.
  */
 export interface WorkflowDataProxy {
 	/**

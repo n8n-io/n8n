@@ -273,6 +273,11 @@ packages/@n8n/expression-runtime/
 
 **Performance**: Transferring only accessed fields is faster than transferring entire objects.
 
+**Limitation**: Lazy loading requires **synchronous** callbacks from runtime to host. This works for:
+- ✅ **isolated-vm**: Uses `ivm.Reference` for true synchronous callbacks
+- ✅ **Node.js vm**: Direct synchronous function calls
+- ❌ **Web Workers**: postMessage is always async (see Known Limitations below)
+
 ### 3. Why Bundle the Runtime?
 
 **No Node.js Dependencies**: Runtime must work in environments without Node.js (browser, isolated-vm). Bundling produces a self-contained IIFE/ESM module.
@@ -284,6 +289,62 @@ packages/@n8n/expression-runtime/
 **Future-Proofing**: Frontend will use Web Workers. Task runners will use IPC. Abstract bridge allows adding new environments without changing other layers.
 
 **Testing**: NodeVmBridge allows fast testing without native isolated-vm dependency.
+
+## Known Limitations
+
+### Lazy Loading with Async Boundaries
+
+JavaScript Proxy trap handlers are **synchronous**, which creates a fundamental limitation:
+
+```javascript
+const proxy = new Proxy({}, {
+  get(target, prop) {
+    // This handler MUST be synchronous
+    // Cannot use await or return Promise
+    return someValue;
+  }
+});
+```
+
+**Impact by Environment**:
+
+1. **isolated-vm** ✅
+   - Uses `ivm.Reference` for true synchronous callbacks from isolate to host
+   - Full lazy loading support
+
+2. **Node.js vm** ✅
+   - Direct synchronous function calls
+   - Full lazy loading support (used for testing)
+
+3. **Web Workers** ❌
+   - `postMessage` is always async
+   - **Phase 1 Limitation**: No lazy loading, must pre-fetch all data before evaluation
+   - **Future Enhancement (Phase 2+)**: Explore `SharedArrayBuffer` + `Atomics` for synchronous data access
+
+### Web Worker Support Roadmap
+
+**Phase 1** (Initial implementation):
+- WebWorkerBridge will pre-fetch all workflow data
+- Transfer complete data object to worker before evaluation
+- Works for small/medium datasets (< 50MB)
+- No lazy loading benefit
+
+**Phase 2+** (Future enhancement):
+- Investigate `SharedArrayBuffer` + `Atomics` for sync access
+- Or accept pre-fetching as the Web Worker approach
+- Decision based on real-world usage patterns
+
+### Security Boundaries
+
+The runtime has **no access** to:
+- ❌ Node.js APIs (fs, net, child_process, etc.)
+- ❌ Host process memory
+- ❌ Other isolates/workers
+
+The runtime **can only**:
+- ✅ Call `getDataSync()` to fetch workflow data
+- ✅ Access lodash and Luxon libraries
+- ✅ Execute pure JavaScript code
 
 ## Testing Strategy
 

@@ -2,12 +2,25 @@
 
 Secure, isolated expression evaluation runtime for n8n workflows.
 
+## Status
+
+⚠️ **This package is under active development.**
+
+Currently implemented:
+- ✅ TypeScript interfaces and architecture design
+- ✅ Core architecture documentation
+
+Coming soon:
+- 🚧 Runtime implementation (Phase 1.1)
+- 🚧 IsolatedVmBridge (Phase 1.1)
+- 🚧 Web Worker support (Phase 2+)
+
 ## Overview
 
 This package provides a robust, environment-agnostic runtime for evaluating expressions in isolated contexts. It supports multiple execution environments:
 
-- **Node.js Backend**: Uses `isolated-vm` for V8 isolate-based isolation
-- **Browser Frontend**: Uses Web Workers for browser-based isolation
+- **Node.js Backend**: Uses `isolated-vm` for V8 isolate-based isolation with lazy data loading
+- **Browser Frontend**: Uses Web Workers for browser-based isolation (Phase 2, no lazy loading initially)
 - **Task Runners**: Uses IPC for separate process isolation
 
 ## Features
