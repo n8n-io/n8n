@@ -104,12 +104,21 @@ This document maps interfaces to implementation phases to help developers focus 
 - Inspector protocol integration
 - Debug mode in IsolatedVmBridge
 
-### Task Runner Integration
-**Interfaces**: Already defined (same `RuntimeBridge`)
+### Task Runner Integration (Architecture TBD)
 
-**Implementations**:
-- `TaskRunnerBridge`
-- IPC communication
+Task runners already have process-level isolation. Expression evaluation happens **inside the task runner** (no IPC to worker needed).
+
+**Option A**: Use `IsolatedVmBridge` locally within task runner
+- Adds another sandbox layer for extra security
+- Task runner creates local evaluator instance
+- No lazy loading needed (task runner has all data)
+
+**Option B**: Evaluate directly without extra sandbox
+- Reuse task runner's existing process isolation
+- Simpler, potentially faster
+- May be sufficient given process-level isolation
+
+**Decision pending** - will be made during Phase 2+ implementation.
 
 ---
 

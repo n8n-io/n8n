@@ -12,7 +12,7 @@
  * Different bridge implementations support different isolation mechanisms:
  * - IsolatedVmBridge: Uses isolated-vm for Node.js backend (Phase 1.1)
  * - WebWorkerBridge: Uses Web Workers for browser frontend (Phase 2+)
- * - TaskRunnerBridge: Uses IPC for separate processes (Phase 2+)
+ * - Task Runner: TBD - May use IsolatedVmBridge locally or direct evaluation (Phase 2+)
  * - NodeVmBridge: Uses Node.js vm module for testing (Phase 1.1)
  */
 export interface RuntimeBridge {

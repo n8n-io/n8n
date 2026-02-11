@@ -144,10 +144,10 @@ interface RuntimeBridge {
 
 ### Bridge Implementations
 
-- **IsolatedVmBridge**: For Node.js backend (isolated-vm)
-- **WebWorkerBridge**: For browser frontend (Web Workers)
-- **TaskRunnerBridge**: For separate processes (IPC)
-- **NodeVmBridge**: For testing (Node.js vm module)
+- **IsolatedVmBridge**: For Node.js backend (isolated-vm) - Phase 1.1
+- **WebWorkerBridge**: For browser frontend (Web Workers) - Phase 2+
+- **Task Runner Integration**: TBD - May use IsolatedVmBridge locally or direct evaluation - Phase 2+
+- **NodeVmBridge**: For testing (Node.js vm module) - Phase 1.1
 
 ## Configuration
 

@@ -17,37 +17,37 @@ The architecture is split into three distinct layers:
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                     Host Process                        │
-│                                                          │
-│  ┌────────────────────────────────────────────────┐   │
-│  │         ExpressionEvaluator (Layer 3)          │   │
-│  │  - Public API                                   │   │
-│  │  - Tournament integration                       │   │
-│  │  - Code caching                                 │   │
-│  │  - Observability                                │   │
-│  └────────────────┬───────────────────────────────┘   │
+│                                                         │
+│  ┌────────────────────────────────────────────────┐     │
+│  │         ExpressionEvaluator (Layer 3)          │     │
+│  │  - Public API                                  │     │
+│  │  - Tournament integration                      │     │
+│  │  - Code caching                                │     │
+│  │  - Observability                               │     │
+│  └────────────────┬───────────────────────────────┘     │
 │                   │                                     │
-│  ┌────────────────▼───────────────────────────────┐   │
-│  │           Bridge (Layer 2)                      │   │
-│  │  - IsolatedVmBridge                             │   │
-│  │  - WebWorkerBridge                              │   │
-│  │  - TaskRunnerBridge                             │   │
-│  └────────────────┬───────────────────────────────┘   │
-│                   │ IPC/Message Passing                │
+│  ┌────────────────▼───────────────────────────────┐     │
+│  │           Bridge (Layer 2)                     │     │
+│  │  - IsolatedVmBridge (Phase 1.1)                │     │
+│  │  - WebWorkerBridge (Phase 2+)                  │     │
+│  │  - Task Runner Integration (TBD)               │     │
+│  └────────────────┬───────────────────────────────┘     │
+│                   │ IPC/Message Passing                 │
 └───────────────────┼─────────────────────────────────────┘
                     │
 ┌───────────────────▼─────────────────────────────────────┐
 │              Isolated Context                           │
-│                                                          │
-│  ┌────────────────────────────────────────────────┐   │
-│  │            Runtime (Layer 1)                    │   │
-│  │  - Runs inside isolation                        │   │
-│  │  - No Node.js dependencies                      │   │
-│  │  - Lazy loading proxies                         │   │
-│  │  - Helper functions ($json, $item, etc.)        │   │
-│  │  - lodash, Luxon                                │   │
-│  └────────────────────────────────────────────────┘   │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
+│                                                         │
+│  ┌────────────────────────────────────────────────┐     │
+│  │            Runtime (Layer 1)                   │     │
+│  │  - Runs inside isolation                       │     │
+│  │  - No Node.js dependencies                     │     │
+│  │  - Lazy loading proxies                        │     │
+│  │  - Helper functions ($json, $item, etc.)       │     │
+│  │  - lodash, Luxon                               │     │
+│  └────────────────────────────────────────────────┘     │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ### Layer 1: Runtime (Isolated Context)
@@ -72,9 +72,9 @@ The architecture is split into three distinct layers:
 
 **Key Components**:
 - **RuntimeBridge Interface**: Abstract interface for all bridge implementations
-- **IsolatedVmBridge**: Uses isolated-vm API for Node.js backend
-- **WebWorkerBridge**: Uses postMessage API for browser
-- **TaskRunnerBridge**: Uses IPC for separate processes
+- **IsolatedVmBridge**: Uses isolated-vm API for Node.js backend (Phase 1.1)
+- **WebWorkerBridge**: Uses postMessage API for browser (Phase 2+)
+- **Task Runner Integration**: TBD - May use IsolatedVmBridge locally or direct evaluation (Phase 2+)
 
 **Responsibilities**:
 - Initialize isolated context
@@ -193,23 +193,32 @@ class WebWorkerBridge implements RuntimeBridge {
 }
 ```
 
-### TaskRunnerBridge (Separate Process)
+### Task Runner Integration (TBD - Phase 2+)
 
-Uses task runner IPC for code node evaluation:
+Task runners already provide process-level isolation. When code nodes call `evaluateExpression()`, evaluation happens **inside the task runner** (not via IPC to worker).
 
+**Architecture decision pending - two options**:
+
+**Option A**: Task runner uses `IsolatedVmBridge` locally
 ```typescript
-class TaskRunnerBridge implements RuntimeBridge {
-  private taskRunner: TaskRunner;
+// Inside task runner process
+const evaluator = new ExpressionEvaluator({
+  bridge: new IsolatedVmBridge(config), // Evaluates locally
+});
 
-  async initialize(): Promise<void> {
-    // Setup IPC with task runner
-  }
-
-  async execute(code: string, dataId: string): Promise<unknown> {
-    // Implementation...
-  }
-}
+// Code node calls evaluateExpression()
+const result = await evaluator.evaluate(expression, workflowData);
+// ^ All happens inside task runner, no IPC, no lazy loading needed
 ```
+
+**Option B**: Task runner evaluates directly (no extra sandbox)
+```typescript
+// Task runner already isolated at process level
+// No need for isolated-vm sandbox on top
+const result = evaluateExpressionDirectly(expression, workflowData);
+```
+
+**Key point**: Task runner already has all workflow data, so no lazy loading or IPC communication is needed for data access.
 
 ## Package Structure
 
