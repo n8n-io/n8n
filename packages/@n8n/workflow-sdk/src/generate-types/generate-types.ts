@@ -3778,10 +3778,6 @@ function convertNodeToToolVariant(node: NodeTypeDescription): NodeTypeDescriptio
 // Main Entry Point
 // =============================================================================
 
-/**
- * Write files from a plan map to disk
- * Creates directories as needed
- */
 /** Batch size for parallel file writes to avoid file descriptor exhaustion */
 const WRITE_BATCH_SIZE = 100;
 
@@ -3791,7 +3787,8 @@ const WRITE_BATCH_SIZE = 100;
 async function writeFilesInBatches(files: Array<{ path: string; content: string }>): Promise<void> {
 	for (let i = 0; i < files.length; i += WRITE_BATCH_SIZE) {
 		const batch = files.slice(i, i + WRITE_BATCH_SIZE);
-		await Promise.all(batch.map(async (f) => await fs.promises.writeFile(f.path, f.content)));
+		// eslint-disable-next-line @typescript-eslint/promise-function-async
+		await Promise.all(batch.map((f) => fs.promises.writeFile(f.path, f.content)));
 	}
 }
 
@@ -3828,7 +3825,11 @@ async function generateVersionSpecificFiles(
 	for (const [nodeName, nodes] of nodesByName) {
 		try {
 			const nodeDir = path.join(packageDir, nodeName);
-			allDirs.add(nodeDir);
+
+			// Accumulate writes locally — only commit to allWrites on success
+			const nodeWrites: Array<{ path: string; content: string }> = [];
+			const nodeDirs = new Set<string>([nodeDir]);
+			const nodeSplitPlans: Array<{ baseDir: string; plan: Map<string, string> }> = [];
 
 			const versionToNode = new Map<number, NodeTypeDescription>();
 			const allVersions: number[] = [];
@@ -3851,14 +3852,14 @@ async function generateVersionSpecificFiles(
 				if (hasDiscriminatorPattern(sourceNode)) {
 					const versionDir = path.join(nodeDir, fileName);
 					const plan = planSplitVersionFiles(sourceNode, version);
-					splitPlans.push({ baseDir: versionDir, plan });
+					nodeSplitPlans.push({ baseDir: versionDir, plan });
 					splitVersionsSet.add(version);
 				} else {
 					const content = generateSingleVersionTypeFile(sourceNode, version);
-					allWrites.push({ path: path.join(nodeDir, `${fileName}.ts`), content });
+					nodeWrites.push({ path: path.join(nodeDir, `${fileName}.ts`), content });
 
 					const schemaContent = generateSingleVersionSchemaFile(sourceNode, version);
-					allWrites.push({
+					nodeWrites.push({
 						path: path.join(nodeDir, `${fileName}.schema.js`),
 						content: schemaContent,
 					});
@@ -3866,8 +3867,12 @@ async function generateVersionSpecificFiles(
 			}
 
 			const indexContent = generateVersionIndexFile(nodes[0], allVersions, splitVersionsSet);
-			allWrites.push({ path: path.join(nodeDir, 'index.ts'), content: indexContent });
+			nodeWrites.push({ path: path.join(nodeDir, 'index.ts'), content: indexContent });
 
+			// Commit: all generation succeeded for this node, merge into global arrays
+			allWrites.push(...nodeWrites);
+			for (const d of nodeDirs) allDirs.add(d);
+			splitPlans.push(...nodeSplitPlans);
 			allNodes.push(nodes[0]);
 		} catch (error) {
 			console.error(`  Error generating ${nodeName}:`, error);
@@ -3884,7 +3889,8 @@ async function generateVersionSpecificFiles(
 	}
 
 	// Phase 2: Create all directories in parallel
-	await Promise.all([...allDirs].map(async (d) => await fs.promises.mkdir(d, { recursive: true })));
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
+	await Promise.all([...allDirs].map((d) => fs.promises.mkdir(d, { recursive: true })));
 
 	// Phase 3: Write all files in parallel batches
 	await writeFilesInBatches(allWrites);
