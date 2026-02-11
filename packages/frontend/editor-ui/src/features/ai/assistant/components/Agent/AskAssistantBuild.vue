@@ -195,10 +195,6 @@ const disabledTooltip = computed(() => {
 	return undefined;
 });
 
-const isPlanModeSelectorDisabled = computed(() => {
-	return builderStore.streaming || isChatInputDisabled.value;
-});
-
 /**
  * Check if questions have been answered (there's a user_answers message after this questions message)
  */
@@ -490,13 +486,6 @@ defineExpose({
 					/>
 				</div>
 			</template>
-			<template v-if="builderStore.isPlanModeAvailable" #before-actions>
-				<PlanModeSelector
-					:model-value="builderStore.builderMode"
-					:disabled="isPlanModeSelectorDisabled"
-					@update:model-value="builderStore.setBuilderMode"
-				/>
-			</template>
 			<template #inputHeader>
 				<Transition name="slide">
 					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />
@@ -509,12 +498,13 @@ defineExpose({
 				<BuildModeEmptyState />
 			</template>
 			<template #custom-message="{ message }">
-				<!-- Show questions form only if not yet answered; hide completely when answered -->
+				<!-- Always render questions message; when answered, collapse to intro text only -->
 				<PlanQuestionsMessage
-					v-if="isPlanModeQuestionsMessage(message) && !isQuestionsAnswered(message)"
+					v-if="isPlanModeQuestionsMessage(message)"
 					:questions="message.data.questions"
 					:intro-message="message.data.introMessage"
 					:disabled="builderStore.streaming"
+					:answered="isQuestionsAnswered(message)"
 					@submit="builderStore.resumeWithQuestionsAnswers"
 				/>
 				<PlanDisplayMessage
@@ -527,6 +517,12 @@ defineExpose({
 				<UserAnswersMessage
 					v-else-if="isPlanModeUserAnswersMessage(message)"
 					:answers="message.data.answers"
+				/>
+			</template>
+			<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+				<PlanModeSelector
+					:model-value="builderStore.builderMode"
+					@update:model-value="builderStore.setBuilderMode"
 				/>
 			</template>
 		</N8nAskAssistantChat>

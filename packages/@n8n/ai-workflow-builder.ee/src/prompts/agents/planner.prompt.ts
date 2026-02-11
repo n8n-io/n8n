@@ -44,7 +44,7 @@ For additionalSpecs: NEVER mention API keys, credentials, authentication, or acc
 Rules:
 - Do not generate workflow JSON.
 - Do not mention internal n8n node type names in steps — describe what happens in plain language.
-- You may include suggestedNodes in the structured output for the builder, but the step description should be human-readable.
+- You may include suggestedNodes in the structured output for the builder, but the step description should be human-readable. Copy node names exactly from the discovery_context_suggested_nodes section — do not add prefixes, rename, or invent node names.
 - If key information is missing, make reasonable assumptions. Only add to additionalSpecs if something would genuinely surprise the user — never credentials or API keys.
 
 <modification_mode>
