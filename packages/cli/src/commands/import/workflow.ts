@@ -18,7 +18,7 @@ import { z } from 'zod';
 import { BaseCommand } from '../base-command';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import type { IWorkflowToImport, IWorkflowWithHistoryMetadata } from '@/interfaces';
+import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
 
 function assertHasWorkflowsToImport(
@@ -36,27 +36,27 @@ function assertHasWorkflowsToImport(
 }
 
 /**
- * Creates workflow entities from plain objects while preserving workflowHistory metadata.
+ * Creates workflow entities from plain objects while preserving versionMetadata metadata.
  */
-function createWorkflowsWithHistoryMetadata(
+function createWorkflowsWithVersionMetadata(
 	workflowRepository: WorkflowRepository,
 	workflows: IWorkflowToImport[],
-): IWorkflowWithHistoryMetadata[] {
+): IWorkflowWithVersionMetadata[] {
 	const createdWorkflows = workflowRepository.create(workflows);
 	return createdWorkflows.map((created, index) => ({
 		...created,
-		workflowHistory: workflows[index].workflowHistory,
+		versionMetadata: workflows[index].versionMetadata,
 	}));
 }
 
 /**
- * Creates a workflow entity from a plain object while preserving workflowHistory metadata.
+ * Creates a workflow entity from a plain object while preserving versionMetadata metadata.
  */
-function createWorkflowWithHistoryMetadata(
+function createWorkflowWithVersionMetadata(
 	workflowRepository: WorkflowRepository,
 	workflow: IWorkflowToImport,
-): IWorkflowWithHistoryMetadata {
-	return createWorkflowsWithHistoryMetadata(workflowRepository, [workflow])[0];
+): IWorkflowWithVersionMetadata {
+	return createWorkflowsWithVersionMetadata(workflowRepository, [workflow])[0];
 }
 
 const flagsSchema = z.object({
@@ -209,7 +209,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 	private async readWorkflows(
 		path: string,
 		separate: boolean,
-	): Promise<IWorkflowWithHistoryMetadata[]> {
+	): Promise<IWorkflowWithVersionMetadata[]> {
 		if (process.platform === 'win32') {
 			path = path.replace(/\\/g, '/');
 		}
@@ -223,7 +223,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			const workflowsArray = Array.isArray(workflows) ? workflows : [workflows];
 			assertHasWorkflowsToImport(workflowsArray);
 
-			return createWorkflowsWithHistoryMetadata(workflowRepository, workflowsArray);
+			return createWorkflowsWithVersionMetadata(workflowRepository, workflowsArray);
 		}
 
 		const files = await glob('*.json', {
@@ -231,7 +231,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			absolute: true,
 		});
 
-		const workflows: IWorkflowWithHistoryMetadata[] = [];
+		const workflows: IWorkflowWithVersionMetadata[] = [];
 
 		for (const file of files) {
 			const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
@@ -242,7 +242,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			try {
 				assertHasWorkflowsToImport([workflow]);
 
-				workflows.push(createWorkflowWithHistoryMetadata(workflowRepository, workflow));
+				workflows.push(createWorkflowWithVersionMetadata(workflowRepository, workflow));
 			} catch (error) {
 				this.logger.warn(`Skipping invalid workflow file: ${file}`);
 				continue;

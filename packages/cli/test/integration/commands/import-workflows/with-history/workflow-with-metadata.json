@@ -16,7 +16,7 @@
 		"active": false,
 		"settings": {},
 		"versionId": "version-uuid-1",
-		"workflowHistory": {
+		"versionMetadata": {
 			"name": "Historical Version Name",
 			"description": "Historical version description"
 		}

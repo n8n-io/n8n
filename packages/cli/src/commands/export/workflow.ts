@@ -9,7 +9,7 @@ import { z } from 'zod';
 
 import { BaseCommand } from '../base-command';
 
-import type { IWorkflowWithHistoryMetadata } from '@/interfaces';
+import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 
 import '../../zod-alias-support';
 
@@ -179,7 +179,7 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
  * Then merge the history data into the workflow objects for export with metadata fields (name and description).
  */
 async function getWorkflowsToExport(
-	workflows: IWorkflowWithHistoryMetadata[],
+	workflows: IWorkflowWithVersionMetadata[],
 	flags: z.infer<typeof flagsSchema>,
 ) {
 	const versionIdByWorkflow = new Map<string, string>();
@@ -208,7 +208,7 @@ async function getWorkflowsToExport(
 }
 
 function getTargetVersionId(
-	workflow: IWorkflowWithHistoryMetadata,
+	workflow: IWorkflowWithVersionMetadata,
 	flags: z.infer<typeof flagsSchema>,
 ): string | null {
 	if (flags.published) return workflow.activeVersionId ?? null;
@@ -217,7 +217,7 @@ function getTargetVersionId(
 }
 
 function mergeHistoriesIntoWorkflows(
-	workflows: IWorkflowWithHistoryMetadata[],
+	workflows: IWorkflowWithVersionMetadata[],
 	versionIdByWorkflow: Map<string, string>,
 	historyMap: Map<string, WorkflowHistory>,
 	flags: z.infer<typeof flagsSchema>,
@@ -237,7 +237,7 @@ function mergeHistoriesIntoWorkflows(
 					nodes: history.nodes,
 					connections: history.connections,
 					versionId: history.versionId,
-					workflowHistory: {
+					versionMetadata: {
 						name: history.name,
 						description: history.description,
 					},
@@ -246,7 +246,7 @@ function mergeHistoriesIntoWorkflows(
 
 			return {
 				...workflow,
-				workflowHistory: null,
+				versionMetadata: null,
 			};
 		})
 		.filter((w) => w !== null);

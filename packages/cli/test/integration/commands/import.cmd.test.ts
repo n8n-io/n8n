@@ -342,7 +342,7 @@ test('`import:workflow --projectId ... --userId ...` fails explaining that only 
 	);
 });
 
-test('should preserve workflowHistory metadata from JSON file when importing', async () => {
+test('should preserve versionMetadata from JSON file when importing', async () => {
 	//
 	// ARRANGE
 	//

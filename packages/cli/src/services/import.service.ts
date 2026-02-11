@@ -23,7 +23,7 @@ import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { IWorkflowWithHistoryMetadata } from '@/interfaces';
+import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 
 @Service()
@@ -64,7 +64,7 @@ export class ImportService {
 		this.dbTags = await this.tagRepository.find();
 	}
 
-	async importWorkflows(workflows: IWorkflowWithHistoryMetadata[], projectId: string) {
+	async importWorkflows(workflows: IWorkflowWithVersionMetadata[], projectId: string) {
 		await this.initRecords();
 
 		const { manager: dbManager } = this.credentialsRepository;
@@ -106,7 +106,7 @@ export class ImportService {
 			}
 		}
 
-		const insertedWorkflows: IWorkflowWithHistoryMetadata[] = [];
+		const insertedWorkflows: IWorkflowWithVersionMetadata[] = [];
 		await dbManager.transaction(async (tx) => {
 			const workflowsNeedingPublishHistory: Array<{ workflowId: string; versionId: string }> = [];
 
@@ -159,15 +159,15 @@ export class ImportService {
 			// Always create workflow history for the current version
 			// This is needed to be able to activate the workflow later
 			for (const workflow of insertedWorkflows) {
-				const workflowHistory = workflow.workflowHistory;
+				const versionMetadata = workflow.versionMetadata;
 				await tx.insert(WorkflowHistory, {
 					versionId: workflow.versionId,
 					workflowId: workflow.id,
 					nodes: workflow.nodes,
 					connections: workflow.connections,
 					authors: 'import',
-					name: workflowHistory?.name ?? null,
-					description: workflowHistory?.description ?? null,
+					name: versionMetadata?.name ?? null,
+					description: versionMetadata?.description ?? null,
 				});
 			}
 

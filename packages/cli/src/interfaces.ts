@@ -53,8 +53,8 @@ export interface IWorkflowResponse extends IWorkflowBase {
 	id: string;
 }
 
-export interface IWorkflowHistoryMetadata {
-	workflowHistory?: {
+export interface IWorkflowVersionMetadata {
+	versionMetadata?: {
 		name: string | null;
 		description: string | null;
 	} | null;
@@ -65,7 +65,7 @@ export interface IWorkflowToImport
 			IWorkflowBase,
 			'staticData' | 'pinData' | 'createdAt' | 'updatedAt' | 'activeVersion'
 		>,
-		IWorkflowHistoryMetadata {
+		IWorkflowVersionMetadata {
 	owner?:
 		| {
 				type: 'personal';
@@ -79,7 +79,7 @@ export interface IWorkflowToImport
 	parentFolderId: string | null;
 }
 
-export type IWorkflowWithHistoryMetadata = IWorkflowDb & IWorkflowHistoryMetadata;
+export type IWorkflowWithVersionMetadata = IWorkflowDb & IWorkflowVersionMetadata;
 
 // ----------------------------------
 //            credentials

@@ -267,9 +267,9 @@ describe('ImportService', () => {
 		expect(workflowHistoryRecords[0].connections).toEqual(workflowToImport.connections);
 	});
 
-	test('should preserve workflowHistory name and description when importing', async () => {
+	test('should preserve versionMetadata name and description when importing', async () => {
 		const workflowToImport: any = newWorkflow();
-		workflowToImport.workflowHistory = {
+		workflowToImport.versionMetadata = {
 			name: 'Historical Workflow Name',
 			description: 'Historical workflow description',
 		};

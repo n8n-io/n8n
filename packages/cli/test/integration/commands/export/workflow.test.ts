@@ -336,7 +336,7 @@ test('should export all published versions with --all --published', async () => 
 	expect(exportedData[0].versionId).toBe(publishedVersionId);
 });
 
-test('should include workflowHistory with historical name when set', async () => {
+test('should include versionMetadata with historical name when set', async () => {
 	const workflow = await createWorkflowWithTriggerAndHistory({
 		name: 'Original Name',
 	});
@@ -363,13 +363,13 @@ test('should include workflowHistory with historical name when set', async () =>
 
 	expect(exportedData.name).toBe('Current Name');
 	expect(exportedData.versionId).toBe(version2Id);
-	expect(exportedData.workflowHistory).toEqual({
+	expect(exportedData.versionMetadata).toEqual({
 		name: 'Version 2 Historical Name',
 		description: null,
 	});
 });
 
-test('should include workflowHistory with historical description when set', async () => {
+test('should include versionMetadata with historical description when set', async () => {
 	const workflow = await createWorkflowWithTriggerAndHistory({
 		description: 'Original Description',
 	});
@@ -396,7 +396,7 @@ test('should include workflowHistory with historical description when set', asyn
 
 	expect(exportedData.description).toBe('Current Description');
 	expect(exportedData.versionId).toBe(version2Id);
-	expect(exportedData.workflowHistory).toEqual({
+	expect(exportedData.versionMetadata).toEqual({
 		name: null,
 		description: 'Version 2 Historical Description',
 	});
