@@ -35,7 +35,9 @@ export const plannerOutputSchema = z.object({
 				suggestedNodes: z
 					.array(z.string())
 					.optional()
-					.describe('Suggested internal n8n node type names (when known)'),
+					.describe(
+						'Copy exact node type names from discovery_context_suggested_nodes. Do not modify, prefix, or invent names.',
+					),
 			}),
 		)
 		.min(1)

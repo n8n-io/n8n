@@ -782,10 +782,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 					if (result.shouldClearThinking) {
 						builderThinkingMessage.value = undefined;
-					} else {
-						// Always update thinking message, even when undefined (to clear it)
+					} else if (result.thinkingMessage !== undefined) {
 						builderThinkingMessage.value = result.thinkingMessage;
 					}
+					// When thinkingMessage is undefined and no explicit clear: keep current value.
+					// This preserves "Thinking" from prepareForStreaming during streaming gaps
+					// (e.g., after submitting answers, before first tool call arrives).
 				},
 				() => {
 					stopStreaming();
