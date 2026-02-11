@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue';
+import { computed, ref, type Ref } from 'vue';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
 import type {
 	AddColumnResponse,
@@ -20,7 +20,7 @@ import AddColumnButton from '@/features/core/dataTable/components/dataGrid/AddCo
 import AddRowButton from '@/features/core/dataTable/components/dataGrid/AddRowButton.vue';
 import { reorderItem } from '@/features/core/dataTable/utils';
 import {
-	getCellClass,
+	createCellClass,
 	createValueGetter,
 	createCellRendererSelector,
 	createStringValueSetter,
@@ -31,6 +31,7 @@ import {
 	getDateColumnFilterOptions,
 	getNumberColumnFilterOptions,
 	getBooleanColumnFilterOptions,
+	isOversizedValue,
 } from '@/features/core/dataTable/utils/columnUtils';
 import { useI18n } from '@n8n/i18n';
 import { GRID_FILTER_CONFIG } from '@/features/core/dataTable/utils/filterMappings';
@@ -41,12 +42,14 @@ export const useDataTableColumns = ({
 	onAddRowClick,
 	onAddColumn,
 	isTextEditorOpen,
+	readOnly = computed(() => false),
 }: {
 	onDeleteColumn: (columnId: string) => void;
 	onRenameColumn: (columnId: string, columnName: string) => void;
 	onAddRowClick: () => void;
 	onAddColumn: (column: DataTableColumnCreatePayload) => Promise<AddColumnResponse>;
 	isTextEditorOpen: Ref<boolean>;
+	readOnly?: Ref<boolean>;
 }) => {
 	const colDefs = ref<ColDef[]>([]);
 	const { mapToAGCellType } = useDataTableTypes();
@@ -59,18 +62,22 @@ export const useDataTableColumns = ({
 			filter: !GRID_FILTER_CONFIG.excludedColumns.includes(col.id),
 			headerName: col.name,
 			sortable: true,
-			editable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
+			editable: (params) =>
+				!readOnly.value &&
+				params.data?.id !== ADD_ROW_ROW_ID &&
+				!isOversizedValue(params.data?.[col.name]),
 			resizable: true,
 			lockPinned: true,
 			headerComponent: ColumnHeader,
 			headerComponentParams: {
 				onDelete: onDeleteColumn,
 				onRename: onRenameColumn,
-				allowMenuActions: true,
+				allowMenuActions: !readOnly.value,
+				readOnly: readOnly.value,
 			},
 			cellEditorPopup: false,
 			cellDataType: mapToAGCellType(col.type),
-			cellClass: getCellClass,
+			cellClass: createCellClass(col),
 			valueGetter: createValueGetter(col),
 			cellRendererSelector: createCellRendererSelector(col),
 			width: DEFAULT_COLUMN_WIDTH,
@@ -154,7 +161,7 @@ export const useDataTableColumns = ({
 						if (params.value === ADD_ROW_ROW_ID) {
 							return {
 								component: AddRowButton,
-								params: { onClick: onAddRowClick },
+								params: { onClick: onAddRowClick, disabled: readOnly.value },
 							};
 						}
 						return undefined;
@@ -196,7 +203,7 @@ export const useDataTableColumns = ({
 					resizable: false,
 					flex: 1,
 					headerComponent: AddColumnButton,
-					headerComponentParams: { onAddColumn },
+					headerComponentParams: { onAddColumn, disabled: readOnly.value },
 				},
 			),
 		];

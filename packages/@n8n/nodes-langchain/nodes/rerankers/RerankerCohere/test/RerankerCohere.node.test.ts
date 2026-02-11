@@ -2,7 +2,7 @@ import { CohereRerank } from '@langchain/cohere';
 import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
+import { logWrapper } from '@n8n/ai-utilities';
 
 import { RerankerCohere } from '../RerankerCohere.node';
 
@@ -12,7 +12,7 @@ jest.mock('@langchain/cohere', () => ({
 }));
 
 // Mock the logWrapper utility
-jest.mock('@utils/logWrapper', () => ({
+jest.mock('@n8n/ai-utilities', () => ({
 	logWrapper: jest.fn().mockImplementation((obj) => ({ logWrapped: obj })),
 }));
 

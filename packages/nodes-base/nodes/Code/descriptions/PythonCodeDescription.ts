@@ -22,7 +22,7 @@ export const pythonCodeDescription: INodeProperties[] = [
 		...commonDescription,
 		displayOptions: {
 			show: {
-				language: ['pythonNative'],
+				language: ['python', 'pythonNative'],
 				mode: ['runOnceForAllItems'],
 			},
 		},
@@ -31,7 +31,7 @@ export const pythonCodeDescription: INodeProperties[] = [
 		...commonDescription,
 		displayOptions: {
 			show: {
-				language: ['pythonNative'],
+				language: ['python', 'pythonNative'],
 				mode: ['runOnceForEachItem'],
 			},
 		},
@@ -42,7 +42,7 @@ export const pythonCodeDescription: INodeProperties[] = [
 		type: 'notice',
 		displayOptions: {
 			show: {
-				language: ['pythonNative'],
+				language: ['python', 'pythonNative'],
 			},
 		},
 		default: '',

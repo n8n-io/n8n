@@ -45,11 +45,14 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	);
 
 	// Actions
-	async function open(options?: { mode?: ChatPanelMode }) {
+	async function open(options?: { mode?: ChatPanelMode; showCoachmark?: boolean }) {
 		const mode = options?.mode;
+		const showCoachmark = options?.showCoachmark ?? true;
+
 		if (mode) {
 			chatPanelStateStore.activeMode = mode;
 		}
+		chatPanelStateStore.showCoachmark = showCoachmark;
 
 		// Check if the mode is enabled in the current view
 		const enabledViews =
@@ -68,7 +71,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 		if (chatPanelStateStore.activeMode === 'builder') {
 			const builderStore = useBuilderStore();
-			if (!builderStore.streaming && builderStore.chatMessages.length === 0) {
+			if (!builderStore.streaming) {
 				void builderStore.fetchBuilderCredits();
 				void builderStore.loadSessions();
 			}
@@ -88,6 +91,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 	function close() {
 		chatPanelStateStore.isOpen = false;
+		chatPanelStateStore.showCoachmark = false;
 		// Wait for slide animation to finish before updating grid width and resetting
 		setTimeout(() => {
 			uiStore.appGridDimensions = {
@@ -96,15 +100,10 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			};
 
 			const assistantStore = useAssistantStore();
-			const builderStore = useBuilderStore();
 
 			// Reset assistant only if session has ended
 			if (assistantStore.isSessionEnded) {
 				assistantStore.resetAssistantChat();
-			}
-
-			if (!builderStore.streaming) {
-				builderStore.resetBuilderChat();
 			}
 		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
 	}
@@ -130,6 +129,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 		// Switch the mode without re-initialization
 		chatPanelStateStore.activeMode = mode;
+		chatPanelStateStore.showCoachmark = false;
 	}
 
 	function updateWidth(newWidth: number) {
@@ -203,6 +203,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		isOpen: computed(() => chatPanelStateStore.isOpen),
 		width: computed(() => chatPanelStateStore.width),
 		activeMode: computed(() => chatPanelStateStore.activeMode),
+		showCoachmark: computed(() => chatPanelStateStore.showCoachmark),
 		// Computed
 		isAssistantModeActive,
 		isBuilderModeActive,

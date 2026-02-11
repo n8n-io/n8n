@@ -1,5 +1,6 @@
 import { test, expect } from '../../../../fixtures/base';
 import executionOutOfMemoryResponse from '../../../../fixtures/execution-out-of-memory-server-response.json';
+import { retryUntil } from '../../../../utils/retry-utils';
 
 test.describe('Executions Filter', () => {
 	test.beforeEach(async ({ n8n }) => {
@@ -251,6 +252,51 @@ test.describe('Workflow Executions', () => {
 			await expect(n8n.page).not.toHaveURL(/\/executions/);
 			await expect(n8n.page).toHaveURL(/\/workflow\//);
 			await expect(n8n.canvas.canvasPane()).toBeVisible();
+		});
+	});
+
+	test.describe('execution timing', () => {
+		test('should preserve execution start time for standard workflow', async ({ api }) => {
+			const { webhookPath, workflowId, createdWorkflow } =
+				await api.workflows.importWorkflowFromFile('simple-webhook-test.json');
+
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+
+			const webhookResponse = await api.request.post(`/webhook/${webhookPath}`, { data: {} });
+			expect(webhookResponse.ok()).toBe(true);
+
+			const execution = await api.workflows.waitForExecution(workflowId, 10000);
+			const originalStartedAt = execution.startedAt;
+			console.log('originalStartedAt', originalStartedAt);
+
+			const finalExecution = await api.workflows.getExecution(execution.id);
+			console.log('finalExecution', finalExecution);
+			expect(finalExecution.startedAt).toBe(originalStartedAt);
+		});
+
+		test('should preserve execution start time after resuming from wait node', async ({ api }) => {
+			const { webhookPath, workflowId, createdWorkflow } =
+				await api.workflows.importWorkflowFromFile('cat-1854-wait-execution-history.json');
+
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+
+			const webhookResponse = await api.request.get(`/webhook/${webhookPath}`);
+			expect(webhookResponse.ok()).toBe(true);
+
+			const execution = await api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
+			const originalStartedAt = execution.startedAt;
+
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+
+			const resumeResponse = await api.request.get(`/webhook-waiting/${execution.id}`);
+			expect(resumeResponse.ok()).toBe(true);
+
+			await api.workflows.waitForExecution(workflowId, 15000);
+
+			await retryUntil(async () => {
+				const finalExecution = await api.workflows.getExecution(execution.id);
+				expect(finalExecution.startedAt).toBe(originalStartedAt);
+			});
 		});
 	});
 

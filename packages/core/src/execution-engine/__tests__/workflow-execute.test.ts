@@ -10,6 +10,7 @@
 // DR denotes that the node is dirty
 // PD denotes that the node has pinned data
 
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { mock } from 'jest-mock-extended';
 import pick from 'lodash/pick';
 import type {
@@ -54,6 +55,12 @@ import * as partialExecutionUtils from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
 import { WorkflowExecute } from '../workflow-execute';
 
+jest.mock('node:fs', () => ({
+	...jest.requireActual('node:fs'),
+	existsSync: jest.fn().mockReturnValue(false),
+	renameSync: jest.fn(),
+}));
+
 const nodeTypes = Helpers.NodeTypes();
 
 beforeEach(() => {
@@ -84,7 +91,7 @@ describe('WorkflowExecute', () => {
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
-				const executionData = await workflowExecute.run(workflowInstance);
+				const executionData = await workflowExecute.run({ workflow: workflowInstance });
 
 				const result = await waitPromise.promise;
 
@@ -157,7 +164,7 @@ describe('WorkflowExecute', () => {
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
-				const executionData = await workflowExecute.run(workflowInstance);
+				const executionData = await workflowExecute.run({ workflow: workflowInstance });
 
 				const result = await waitPromise.promise;
 
@@ -232,9 +239,13 @@ describe('WorkflowExecute', () => {
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
 			// ACT
-			await workflowExecute.run(workflowInstance, trigger, {
-				nodeName: 'node1',
-				mode: 'inclusive',
+			await workflowExecute.run({
+				workflow: workflowInstance,
+				startNode: trigger,
+				destinationNode: {
+					nodeName: 'node1',
+					mode: 'inclusive',
+				},
 			});
 
 			// ASSERT
@@ -272,7 +283,7 @@ describe('WorkflowExecute', () => {
 			jest.spyOn(workflowExecute, 'ensureInputData').mockReturnValue(false);
 
 			// ACT
-			await workflowExecute.run(workflowInstance, trigger);
+			await workflowExecute.run({ workflow: workflowInstance, startNode: trigger });
 
 			// ASSERT
 			const workflowHooks = runHookSpy.mock.calls.filter(
@@ -306,9 +317,13 @@ describe('WorkflowExecute', () => {
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
 			// ACT
-			await workflowExecute.run(workflowInstance, trigger, {
-				nodeName: 'node2',
-				mode: 'exclusive',
+			await workflowExecute.run({
+				workflow: workflowInstance,
+				startNode: trigger,
+				destinationNode: {
+					nodeName: 'node2',
+					mode: 'exclusive',
+				},
 			});
 
 			// ASSERT
@@ -347,9 +362,13 @@ describe('WorkflowExecute', () => {
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
 			// ACT
-			await workflowExecute.run(workflowInstance, trigger, {
-				nodeName: 'node1',
-				mode: 'inclusive',
+			await workflowExecute.run({
+				workflow: workflowInstance,
+				startNode: trigger,
+				destinationNode: {
+					nodeName: 'node1',
+					mode: 'inclusive',
+				},
 			});
 
 			// ASSERT
@@ -387,7 +406,7 @@ describe('WorkflowExecute', () => {
 			jest.spyOn(workflowExecute, 'ensureInputData').mockReturnValue(false);
 
 			// ACT
-			await workflowExecute.run(workflowInstance, trigger);
+			await workflowExecute.run({ workflow: workflowInstance, startNode: trigger });
 
 			// ASSERT
 			const workflowHooks = runHookSpy.mock.calls.filter(
@@ -421,9 +440,13 @@ describe('WorkflowExecute', () => {
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
 			// ACT
-			await workflowExecute.run(workflowInstance, trigger, {
-				nodeName: 'node2',
-				mode: 'exclusive',
+			await workflowExecute.run({
+				workflow: workflowInstance,
+				startNode: trigger,
+				destinationNode: {
+					nodeName: 'node2',
+					mode: 'exclusive',
+				},
 			});
 
 			// ASSERT
@@ -437,6 +460,79 @@ describe('WorkflowExecute', () => {
 				{ name: 'nodeExecuteBefore', node: 'node1' },
 				{ name: 'nodeExecuteAfter', node: 'node1' },
 				// node2 should NOT appear here because mode is 'exclusive'
+			]);
+		});
+	});
+
+	describe('workflowExecuteResume hook', () => {
+		const executionMode = 'manual';
+		const executionOrder = 'v1';
+		const nodeTypes = Helpers.NodeTypes();
+
+		test('should call workflowExecuteResume instead of workflowExecuteBefore when restartExecutionId is set', async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger, node1)
+				.addConnections({ from: trigger, to: node1 })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			// Set restartExecutionId to simulate a resumed execution
+			additionalData.restartExecutionId = 'previous-execution-id';
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			await workflowExecute.run({ workflow: workflowInstance, startNode: trigger });
+
+			// ASSERT
+			const workflowHooks = runHookSpy.mock.calls.filter(
+				(call) =>
+					call[0] === 'workflowExecuteBefore' ||
+					call[0] === 'workflowExecuteAfter' ||
+					call[0] === 'workflowExecuteResume',
+			);
+
+			// Should have workflowExecuteResume instead of workflowExecuteBefore
+			expect(workflowHooks.map((hook) => hook[0])).toEqual([
+				'workflowExecuteResume',
+				'workflowExecuteAfter',
+			]);
+		});
+
+		test('should call workflowExecuteBefore when restartExecutionId is not set', async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger, node1)
+				.addConnections({ from: trigger, to: node1 })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			// restartExecutionId is undefined by default
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			await workflowExecute.run({ workflow: workflowInstance, startNode: trigger });
+
+			// ASSERT
+			const workflowHooks = runHookSpy.mock.calls.filter(
+				(call) =>
+					call[0] === 'workflowExecuteBefore' ||
+					call[0] === 'workflowExecuteAfter' ||
+					call[0] === 'workflowExecuteResume',
+			);
+
+			// Should have workflowExecuteBefore, not workflowExecuteResume
+			expect(workflowHooks.map((hook) => hook[0])).toEqual([
+				'workflowExecuteBefore',
+				'workflowExecuteAfter',
 			]);
 		});
 	});
@@ -465,7 +561,7 @@ describe('WorkflowExecute', () => {
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
-				const executionData = await workflowExecute.run(workflowInstance);
+				const executionData = await workflowExecute.run({ workflow: workflowInstance });
 
 				const result = await waitPromise.promise;
 
@@ -1187,6 +1283,137 @@ describe('WorkflowExecute', () => {
 			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(2);
 			expect(nodeParamIssuesSpy).toHaveBeenCalledTimes(2);
 		});
+
+		it('should skip TOOL_EXECUTOR_NODE_NAME when node is undefined in destinationNode check', () => {
+			const trigger = mock<INode>({ name: 'trigger' });
+			const node1 = mock<INode>({ name: 'node1' });
+
+			const workflow = new Workflow({
+				nodes: [trigger, node1],
+				connections: {
+					trigger: { main: [[{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 }]] },
+				},
+				active: false,
+				nodeTypes,
+			});
+
+			nodeParamIssuesSpy.mockReturnValue(null);
+			nodeTypes.getByNameAndVersion.mockClear();
+			nodeParamIssuesSpy.mockClear();
+
+			// When TOOL_EXECUTOR_NODE_NAME is passed as destinationNode but doesn't exist in workflow.nodes,
+			// it will be added to checkNodes (via getParentNodes + push), but should be skipped
+			const issues = workflowExecute.checkReadyForExecution(workflow, {
+				destinationNode: { nodeName: TOOL_EXECUTOR_NODE_NAME, mode: 'inclusive' },
+			});
+
+			expect(issues).toBe(null);
+			expect(nodeTypes.getByNameAndVersion).not.toHaveBeenCalled();
+			expect(nodeParamIssuesSpy).not.toHaveBeenCalled();
+		});
+
+		it('should skip TOOL_EXECUTOR_NODE_NAME when node is undefined in startNode check', () => {
+			const trigger = mock<INode>({ name: 'trigger' });
+			const node1 = mock<INode>({ name: 'node1' });
+
+			const workflow = new Workflow({
+				nodes: [trigger, node1],
+				connections: {
+					trigger: { main: [[{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 }]] },
+				},
+				active: false,
+				nodeTypes,
+			});
+
+			nodeParamIssuesSpy.mockReturnValue(null);
+			nodeTypes.getByNameAndVersion.mockClear();
+			nodeParamIssuesSpy.mockClear();
+
+			// When TOOL_EXECUTOR_NODE_NAME is passed as startNode but doesn't exist in workflow.nodes,
+			// it will be added to checkNodes (via getChildNodes + push), but should be skipped
+			const issues = workflowExecute.checkReadyForExecution(workflow, {
+				startNode: TOOL_EXECUTOR_NODE_NAME,
+			});
+
+			expect(issues).toBe(null);
+			expect(nodeTypes.getByNameAndVersion).not.toHaveBeenCalled();
+			expect(nodeParamIssuesSpy).not.toHaveBeenCalled();
+		});
+
+		it('should skip undefined nodes', () => {
+			const trigger = mock<INode>({ name: 'trigger' });
+			const node1 = mock<INode>({ name: 'node1' });
+
+			const workflow = new Workflow({
+				nodes: [trigger, node1],
+				connections: {
+					trigger: { main: [[{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 }]] },
+				},
+				active: false,
+				nodeTypes,
+			});
+
+			nodeParamIssuesSpy.mockReturnValue(null);
+			nodeTypes.getByNameAndVersion.mockClear();
+			nodeParamIssuesSpy.mockClear();
+
+			// Test with a destination node that doesn't exist in the workflow
+			// This will be added to checkNodes but should be skipped via the !node check
+			const issues = workflowExecute.checkReadyForExecution(workflow, {
+				destinationNode: { nodeName: 'nonexistentNode', mode: 'inclusive' },
+			});
+
+			expect(issues).toBe(null);
+			expect(nodeTypes.getByNameAndVersion).not.toHaveBeenCalled();
+			expect(nodeParamIssuesSpy).not.toHaveBeenCalled();
+		});
+
+		it('should check other nodes when TOOL_EXECUTOR_NODE_NAME is in checkNodes but skip it', () => {
+			const trigger = mock<INode>({ name: 'trigger' });
+			const node1 = mock<INode>({ name: 'node1' });
+			const destination = mock<INode>({ name: 'destination' });
+
+			const workflow = new Workflow({
+				nodes: [trigger, node1, destination],
+				connections: {
+					trigger: { main: [[{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 }]] },
+					node1: { main: [[{ node: 'destination', type: NodeConnectionTypes.Main, index: 0 }]] },
+				},
+				active: false,
+				nodeTypes,
+			});
+
+			// Mock workflow.getParentNodes to include TOOL_EXECUTOR_NODE_NAME in the path
+			// This simulates a scenario where TOOL_EXECUTOR_NODE_NAME would be in checkNodes
+			// but doesn't exist in the workflow.nodes (e.g., dynamically added during execution)
+			const originalGetParentNodes = workflow.getParentNodes.bind(workflow);
+			jest.spyOn(workflow, 'getParentNodes').mockImplementation((nodeName) => {
+				if (nodeName === 'destination') {
+					// Return parent nodes including TOOL_EXECUTOR_NODE_NAME that doesn't exist in workflow.nodes
+					return [TOOL_EXECUTOR_NODE_NAME, 'node1', 'trigger'];
+				}
+				return originalGetParentNodes(nodeName);
+			});
+
+			nodeParamIssuesSpy.mockReturnValue(null);
+			nodeTypes.getByNameAndVersion.mockClear();
+			nodeParamIssuesSpy.mockClear();
+
+			const issues = workflowExecute.checkReadyForExecution(workflow, {
+				destinationNode: { nodeName: 'destination', mode: 'inclusive' },
+			});
+
+			// Should not throw and should check other nodes but skip TOOL_EXECUTOR_NODE_NAME
+			expect(issues).toBe(null);
+			// Should check: node1, trigger, destination (3 nodes, skipping TOOL_EXECUTOR_NODE_NAME)
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(3);
+			expect(nodeParamIssuesSpy).toHaveBeenCalledTimes(3);
+			// Verify TOOL_EXECUTOR_NODE_NAME was not checked (no call with TOOL_EXECUTOR_NODE_NAME as node type)
+			const calledWithToolExecutor = nodeTypes.getByNameAndVersion.mock.calls.some(
+				(call) => call[0] === TOOL_EXECUTOR_NODE_NAME,
+			);
+			expect(calledWithToolExecutor).toBe(false);
+		});
 	});
 
 	describe('runNode', () => {
@@ -1811,6 +2038,7 @@ describe('WorkflowExecute', () => {
 				mode: 'manual',
 				startedAt,
 				stoppedAt: startedAt,
+				storedAt: 'db',
 				status: 'new',
 			});
 
@@ -1826,6 +2054,7 @@ describe('WorkflowExecute', () => {
 				mode: 'manual',
 				startedAt,
 				stoppedAt,
+				storedAt: 'db',
 				status: 'running',
 			});
 		});
@@ -2047,6 +2276,33 @@ describe('WorkflowExecute', () => {
 
 			expect(result?.[0][0].pairedItem).toEqual({ item: 0 });
 			expect(result?.[1][0].pairedItem).toEqual({ item: 0 });
+		});
+
+		test('should auto-fix pairedItem for single output from multiple inputs', () => {
+			// Simulates aggregating multiple items into one (e.g., Code node combining data)
+			const nodeOutput = [[{ json: { combined: 'result' } }]];
+			const executionData = mock<IExecuteData>({
+				data: { main: [[{ json: { a: 1 } }, { json: { b: 2 } }, { json: { c: 3 } }]] },
+			});
+
+			const result = workflowExecute.assignPairedItems(nodeOutput, executionData);
+
+			expect(result?.[0][0].pairedItem).toEqual({ item: 0 });
+		});
+
+		test('should not auto-fix when output count differs from input count (except single output)', () => {
+			// 2 inputs → 3 outputs: ambiguous, cannot auto-fix
+			const nodeOutput = [[{ json: { x: 1 } }, { json: { y: 2 } }, { json: { z: 3 } }]];
+			const executionData = mock<IExecuteData>({
+				data: { main: [[{ json: { a: 1 } }, { json: { b: 2 } }]] },
+			});
+
+			const result = workflowExecute.assignPairedItems(nodeOutput, executionData);
+
+			// pairedItem should remain undefined (not auto-fixed)
+			expect(result?.[0][0].pairedItem).toBeUndefined();
+			expect(result?.[0][1].pairedItem).toBeUndefined();
+			expect(result?.[0][2].pairedItem).toBeUndefined();
 		});
 	});
 
@@ -2357,7 +2613,7 @@ describe('WorkflowExecute', () => {
 
 			// ACT
 			try {
-				await workflowExecute.run(workflow, errorNode);
+				await workflowExecute.run({ workflow, startNode: errorNode });
 			} catch {
 				// Expected to throw
 			}
@@ -2421,7 +2677,7 @@ describe('WorkflowExecute', () => {
 
 			// ACT
 			try {
-				await workflowExecute.run(workflow, errorNode);
+				await workflowExecute.run({ workflow, startNode: errorNode });
 			} catch {
 				// Expected to throw
 			}
@@ -2481,7 +2737,7 @@ describe('WorkflowExecute', () => {
 			testAdditionalData.hooks = mockHooks;
 
 			// ACT
-			await workflowExecute.run(workflow, successNode);
+			await workflowExecute.run({ workflow, startNode: successNode });
 
 			// ASSERT
 			expect(mockHooks.runHook).not.toHaveBeenCalledWith('sendChunk', expect.anything());
@@ -2531,7 +2787,7 @@ describe('WorkflowExecute', () => {
 
 			// ACT
 			try {
-				await workflowExecute.run(workflow, errorNode);
+				await workflowExecute.run({ workflow, startNode: errorNode });
 			} catch {
 				// Expected to throw
 			}
@@ -2594,7 +2850,7 @@ describe('WorkflowExecute', () => {
 
 			// ACT
 			try {
-				await workflowExecute.run(workflow, errorNode);
+				await workflowExecute.run({ workflow, startNode: errorNode });
 			} catch {
 				// Expected to throw
 			}
@@ -2669,9 +2925,10 @@ describe('WorkflowExecute', () => {
 			const convertBinaryDataSpy = jest.spyOn(convertBinaryDataModule, 'convertBinaryData');
 
 			// ACT
-			await workflowExecute.run(workflow, trigger, {
-				nodeName: nodeWithBinary.name,
-				mode: 'inclusive',
+			await workflowExecute.run({
+				workflow,
+				startNode: trigger,
+				destinationNode: { nodeName: nodeWithBinary.name, mode: 'inclusive' },
 			});
 			await waitPromise.promise;
 
@@ -2847,6 +3104,257 @@ describe('WorkflowExecute', () => {
 			expect(workflowExecute.timedOut).toBe(true);
 			expect(result.status).toBe('canceled');
 			expect(result.data.resultData.error?.name).toBe('TimeoutExecutionCancelledError');
+		});
+	});
+
+	describe('resolveSourceOverwrite integration', () => {
+		test('should preserve sourceOverwrite when metadata.preserveSourceOverwrite is true and item has sourceOverwrite', async () => {
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const toolNode = createNodeData({ name: 'tool' });
+
+			const sourceOverwriteData = {
+				previousNode: 'OriginalNode',
+				previousNodeOutput: 1,
+				previousNodeRun: 2,
+			};
+
+			const inputData: INodeExecutionData[] = [
+				{
+					json: { data: 'test' },
+					pairedItem: {
+						item: 0,
+						sourceOverwrite: sourceOverwriteData,
+					},
+				},
+			];
+
+			const nodeType = mock<INodeType>({
+				description: {
+					name: 'test',
+					displayName: 'test',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute(this: IExecuteFunctions) {
+					const items = this.getInputData();
+					expect(items[0].pairedItem).toHaveProperty('sourceOverwrite');
+					return [[{ json: { result: 'success' } }]];
+				},
+			});
+
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, toolNode)
+				.addConnections({ from: trigger, to: toolNode })
+				.toWorkflow({ name: 'test', nodeTypes, active: false });
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: toolNode,
+							data: { main: [inputData] },
+							source: {
+								main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }],
+							},
+							metadata: {
+								preserveSourceOverwrite: true,
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			});
+
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			await workflowExecute.processRunExecutionData(workflow);
+			const result = await waitPromise.promise;
+
+			expect(result.finished).toBe(true);
+		});
+
+		test('should use preservedSourceOverwrite from metadata when present', async () => {
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const toolNode = createNodeData({ name: 'tool' });
+
+			const preservedSourceData = {
+				previousNode: 'PreservedNode',
+				previousNodeOutput: 3,
+				previousNodeRun: 4,
+			};
+
+			const inputData: INodeExecutionData[] = [
+				{
+					json: { data: 'test' },
+					pairedItem: {
+						item: 0,
+						sourceOverwrite: {
+							previousNode: 'DifferentNode',
+							previousNodeOutput: 0,
+							previousNodeRun: 0,
+						},
+					},
+				},
+			];
+
+			const nodeType = mock<INodeType>({
+				description: {
+					name: 'test',
+					displayName: 'test',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute(this: IExecuteFunctions) {
+					const items = this.getInputData();
+					const pairedItem = items[0].pairedItem;
+					if (typeof pairedItem === 'object' && 'sourceOverwrite' in pairedItem) {
+						expect(pairedItem.sourceOverwrite).toEqual(preservedSourceData);
+					}
+					return [[{ json: { result: 'success' } }]];
+				},
+			});
+
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, toolNode)
+				.addConnections({ from: trigger, to: toolNode })
+				.toWorkflow({ name: 'test', nodeTypes, active: false });
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: toolNode,
+							data: { main: [inputData] },
+							source: {
+								main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }],
+							},
+							metadata: {
+								preserveSourceOverwrite: true,
+								preservedSourceOverwrite: preservedSourceData,
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			});
+
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			await workflowExecute.processRunExecutionData(workflow);
+			const result = await waitPromise.promise;
+
+			expect(result.finished).toBe(true);
+		});
+
+		test('should not preserve sourceOverwrite when preserveSourceOverwrite is false', async () => {
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const regularNode = createNodeData({ name: 'regular' });
+
+			const inputData: INodeExecutionData[] = [
+				{
+					json: { data: 'test' },
+					pairedItem: {
+						item: 0,
+						sourceOverwrite: {
+							previousNode: 'SomeNode',
+							previousNodeOutput: 1,
+							previousNodeRun: 1,
+						},
+					},
+				},
+			];
+
+			const nodeType = mock<INodeType>({
+				description: {
+					name: 'test',
+					displayName: 'test',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute(this: IExecuteFunctions) {
+					const items = this.getInputData();
+					const pairedItem = items[0].pairedItem;
+					if (typeof pairedItem === 'object') {
+						expect(pairedItem).not.toHaveProperty('sourceOverwrite');
+					}
+					return [[{ json: { result: 'success' } }]];
+				},
+			});
+
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, regularNode)
+				.addConnections({ from: trigger, to: regularNode })
+				.toWorkflow({ name: 'test', nodeTypes, active: false });
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: regularNode,
+							data: { main: [inputData] },
+							source: {
+								main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }],
+							},
+							metadata: {
+								preserveSourceOverwrite: false,
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			});
+
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			await workflowExecute.processRunExecutionData(workflow);
+			const result = await waitPromise.promise;
+
+			expect(result.finished).toBe(true);
 		});
 	});
 });

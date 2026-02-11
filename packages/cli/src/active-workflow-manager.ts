@@ -17,6 +17,7 @@ import {
 	ErrorReporter,
 	InstanceSettings,
 	PollContext,
+	StorageConfig,
 	TriggerContext,
 	type IGetExecutePollFunctions,
 	type IGetExecuteTriggerFunctions,
@@ -94,6 +95,7 @@ export class ActiveWorkflowManager {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly push: Push,
 		private readonly eventService: EventService,
+		private readonly storageConfig: StorageConfig,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -221,7 +223,6 @@ export class ActiveWorkflowManager {
 				throw error;
 			}
 		}
-		await this.webhookService.populateCache();
 
 		await this.workflowStaticDataService.saveStaticData(workflow);
 
@@ -407,7 +408,32 @@ export class ActiveWorkflowManager {
 
 				this.addQueuedWorkflowActivation(activation, workflowData as WorkflowEntity);
 			};
-			return new TriggerContext(workflow, node, additionalData, mode, activation, emit, emitError);
+
+			const saveFailedExecution = (error: ExecutionError) => {
+				this.logger.info(
+					`The trigger node "${node.name}" of workflow "${workflowData.name}" reported the error: "${error.message}". Saving to failed executions`,
+					{
+						nodeName: node.name,
+						workflowId: workflowData.id,
+						workflowName: workflowData.name,
+					},
+				);
+				void this.executionService
+					.createErrorExecution(error, node, workflowData, workflow, mode)
+					.then(() => {
+						this.executeErrorWorkflow(error, workflowData, mode);
+					});
+			};
+			return new TriggerContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				activation,
+				emit,
+				emitError,
+				saveFailedExecution,
+			);
 		};
 	}
 
@@ -428,6 +454,7 @@ export class ActiveWorkflowManager {
 			startedAt: new Date(),
 			stoppedAt: new Date(),
 			status: 'running',
+			storedAt: this.storageConfig.modeTag,
 		};
 
 		executeErrorWorkflow(workflowData, fullRunData, mode);

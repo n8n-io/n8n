@@ -76,9 +76,9 @@ export const gitea: Service<GiteaResult> = {
 		}
 	},
 
-	env(): Record<string, string> {
+	env(result: GiteaResult, external?: boolean): Record<string, string> {
 		return {
-			N8N_SOURCECONTROL_HOST: `http://${HOSTNAME}:${HTTP_PORT}`,
+			N8N_SOURCECONTROL_HOST: external ? result.meta.apiUrl : `http://${HOSTNAME}:${HTTP_PORT}`,
 		};
 	},
 };

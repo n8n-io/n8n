@@ -129,15 +129,14 @@ describe('SettingsSso View', () => {
 			const { getByTestId } = renderView();
 
 			const toggle = getByTestId('sso-toggle');
-			const checkbox = toggle.querySelector('input[type="checkbox"]') as HTMLInputElement;
 
-			expect(checkbox).not.toBeChecked();
-
-			await userEvent.click(toggle);
-			expect(checkbox).toBeChecked();
+			expect(toggle).not.toBeChecked();
 
 			await userEvent.click(toggle);
-			expect(checkbox).not.toBeChecked();
+			expect(toggle).toBeChecked();
+
+			await userEvent.click(toggle);
+			expect(toggle).not.toBeChecked();
 		});
 
 		it("allows user to fill Identity Provider's URL", async () => {
@@ -337,10 +336,9 @@ describe('SettingsSso View', () => {
 
 			await waitFor(async () => {
 				const toggle = getByTestId('sso-toggle');
-				const checkbox = toggle.querySelector('input[type="checkbox"]') as HTMLInputElement;
-				expect(checkbox).toBeChecked();
+				expect(toggle).toBeChecked();
 				await userEvent.click(toggle);
-				expect(checkbox).not.toBeChecked();
+				expect(toggle).not.toBeChecked();
 			});
 		});
 

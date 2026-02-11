@@ -6,10 +6,10 @@ import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { ChatOptionsSymbol } from '@n8n/chat/constants';
+import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
+import { ChatOptionsSymbol, MessageComponentKey } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
-import { v4 as uuid } from 'uuid';
 import type { InjectionKey, Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -17,7 +17,11 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { restoreChatHistory } from '@/features/execution/logs/logs.utils';
 import type { INodeParameters } from 'n8n-workflow';
 import { isChatNode } from '@/app/utils/aiUtils';
-import { constructChatWebsocketUrl } from '@n8n/chat/utils';
+import {
+	constructChatWebsocketUrl,
+	parseBotChatMessageContent,
+	shouldBlockUserInput,
+} from '@n8n/chat/utils';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 type IntegratedChat = Omit<Chat, 'sendMessage'> & {
@@ -93,6 +97,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 			initialMessages: ref([]),
 			currentSessionId: params.currentSessionId,
 			waitingForResponse: params.isLoading,
+			blockUserInput: ref(false),
 		};
 
 		const chatOptions: ChatOptions = {
@@ -112,6 +117,9 @@ export function useChatState(isReadOnly: boolean): ChatState {
 			disabled: params.isDisabled,
 			allowFileUploads: params.allowFileUploads,
 			allowedFilesMimeTypes,
+			messageComponents: {
+				[MessageComponentKey.WITH_BUTTONS]: MessageWithButtons,
+			},
 		};
 
 		return { chatConfig, chatOptions };
@@ -194,11 +202,10 @@ export function useChatState(isReadOnly: boolean): ChatState {
 					}
 					setLoadingState(false);
 					const newMessage: ChatMessage & { sessionId: string } = {
-						text: event.data,
-						sender: 'bot',
+						...parseBotChatMessageContent(event.data as string),
 						sessionId: currentSessionId.value,
-						id: uuid(),
 					};
+					chatConfig.blockUserInput.value = shouldBlockUserInput(newMessage);
 					logsStore.addChatMessage(newMessage);
 
 					if (logsStore.isOpen) {
@@ -208,6 +215,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 				ws.value.onclose = () => {
 					setLoadingState(false);
 					ws.value = null;
+					chatConfig.blockUserInput.value = false;
 				};
 			}
 

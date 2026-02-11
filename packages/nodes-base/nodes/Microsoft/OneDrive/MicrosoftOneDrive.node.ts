@@ -22,6 +22,7 @@ export class MicrosoftOneDrive implements INodeType {
 		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Microsoft OneDrive API',
+		schemaPath: 'Microsoft/OneDrive',
 		defaults: {
 			name: 'Microsoft OneDrive',
 		},

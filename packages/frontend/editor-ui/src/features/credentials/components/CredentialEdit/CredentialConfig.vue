@@ -37,12 +37,15 @@ import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 
 import {
 	N8nCallout,
+	N8nIcon,
 	N8nInfoTip,
 	N8nInlineAskAssistantButton,
 	N8nLink,
 	N8nNotice,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
+import { ElSwitch } from 'element-plus';
 
 type Props = {
 	mode: string;
@@ -62,6 +65,9 @@ type Props = {
 	requiredPropertiesFilled?: boolean;
 	showAuthTypeSelector?: boolean;
 	isManaged?: boolean;
+	isDynamicCredentialsEnabled?: boolean;
+	isResolvable?: boolean;
+	isNewCredential?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -77,6 +83,7 @@ const emit = defineEmits<{
 	scrollToTop: [];
 	retest: [];
 	oauth: [];
+	'update:isResolvable': [value: boolean];
 }>();
 
 const credentialsStore = useCredentialsStore();
@@ -244,6 +251,16 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	<div v-else>
 		<div :class="$style.config" data-test-id="node-credentials-config-container">
 			<FreeAiCreditsCallout :credential-type-name="credentialType?.name" />
+
+			<N8nNotice v-if="documentationUrl && credentialProperties.length" theme="warning">
+				{{ i18n.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
+				<span class="ml-4xs">
+					<N8nLink :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
+						{{ i18n.baseText('credentialEdit.credentialConfig.openDocs') }}
+					</N8nLink>
+				</span>
+			</N8nNotice>
+
 			<Banner
 				v-show="showValidationWarning"
 				theme="danger"
@@ -306,18 +323,39 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				@click="$emit('retest')"
 			/>
 
+			<div
+				v-if="
+					isDynamicCredentialsEnabled &&
+					// Only OAuth credentials can be dynamic for now, as they are the only ones with the managed authorize endpoint
+					isOAuthType &&
+					((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
+				"
+				:class="$style.dynamicCredentials"
+				data-test-id="dynamic-credentials-section"
+			>
+				<div :class="$style.dynamicCredentialsRow">
+					<ElSwitch
+						:model-value="isResolvable"
+						data-test-id="dynamic-credentials-toggle"
+						@update:model-value="(val) => $emit('update:isResolvable', Boolean(val))"
+					/>
+					<N8nText size="small">
+						{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.title') }}
+					</N8nText>
+					<N8nTooltip placement="top">
+						<template #content>
+							<div>
+								{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip') }}
+							</div>
+						</template>
+						<N8nIcon icon="circle-help" size="small" color="text-light" />
+					</N8nTooltip>
+				</div>
+			</div>
+
 			<template
 				v-if="(credentialPermissions.create && isNewCredential) || credentialPermissions.update"
 			>
-				<N8nNotice v-if="documentationUrl && credentialProperties.length" theme="warning">
-					{{ i18n.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
-					<span class="ml-4xs">
-						<N8nLink :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
-							{{ i18n.baseText('credentialEdit.credentialConfig.openDocs') }}
-						</N8nLink>
-					</span>
-				</N8nNotice>
-
 				<AuthTypeSelector
 					v-if="showAuthTypeSelector && isNewCredential"
 					:credential-type="credentialType"
@@ -428,5 +466,24 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 		margin-left: var(--spacing--3xs);
 		font-size: var(--font-size--sm);
 	}
+}
+
+.dynamicCredentials {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--radius);
+}
+
+.dynamicCredentialsRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.dynamicCredentialsNotice {
+	margin-top: var(--spacing--xs);
 }
 </style>

@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import type { User, WorkflowHistoryUpdate } from '@n8n/db';
+import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { WorkflowHistory, WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -13,6 +14,7 @@ import { WorkflowFinderService } from '../workflow-finder.service';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
+import { EventService } from '@/events/event.service';
 
 @Service()
 export class WorkflowHistoryService {
@@ -20,6 +22,7 @@ export class WorkflowHistoryService {
 		private readonly logger: Logger,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly eventService: EventService,
 	) {}
 
 	async getList(
@@ -100,7 +103,11 @@ export class WorkflowHistoryService {
 
 	async saveVersion(
 		user: User | string,
-		workflow: IWorkflowBase,
+		workflow: {
+			versionId: string;
+			nodes: IWorkflowBase['nodes'];
+			connections: IWorkflowBase['connections'];
+		},
 		workflowId: string,
 		autosaved = false,
 		transactionManager?: EntityManager,
@@ -134,8 +141,63 @@ export class WorkflowHistoryService {
 		}
 	}
 
-	async updateVersion(versionId: string, workflowId: string, updateData: WorkflowHistoryUpdate) {
-		await this.workflowHistoryRepository.update({ versionId, workflowId }, { ...updateData });
+	async updateVersionForUser(
+		user: User,
+		workflowId: string,
+		versionId: string,
+		updateData: UpdateWorkflowHistoryVersionDto,
+	) {
+		// Check rights and ensure version exists
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:update',
+		]);
+
+		if (!workflow) {
+			throw new SharedWorkflowNotFoundError('');
+		}
+
+		const version = await this.workflowHistoryRepository.findOne({
+			where: {
+				workflowId: workflow.id,
+				versionId,
+			},
+		});
+		if (!version) {
+			throw new WorkflowHistoryVersionNotFoundError('');
+		}
+
+		await this.updateVersion(workflowId, versionId, updateData);
+
+		if (updateData.name !== undefined || updateData.description !== undefined) {
+			this.eventService.emit('workflow-version-updated', {
+				user: {
+					id: user.id,
+					email: user.email,
+					firstName: user.firstName,
+					lastName: user.lastName,
+					role: user.role,
+				},
+				workflowId: workflow.id,
+				workflowName: workflow.name,
+				versionId,
+				versionName: updateData.name,
+				versionDescription: updateData.description,
+			});
+		}
+	}
+
+	/**
+	 * Update a workflow history version without permission checks.
+	 */
+	async updateVersion(
+		workflowId: string,
+		versionId: string,
+		updateData: Omit<
+			Partial<WorkflowHistory>,
+			'versionId' | 'workflowId' | 'createdAt' | 'updatedAt'
+		>,
+	) {
+		await this.workflowHistoryRepository.update({ versionId, workflowId }, updateData);
 	}
 
 	/**

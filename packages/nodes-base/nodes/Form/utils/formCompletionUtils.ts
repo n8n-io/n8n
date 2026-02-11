@@ -8,7 +8,7 @@ import {
 	OperationalError,
 } from 'n8n-workflow';
 
-import { sanitizeCustomCss, sanitizeHtml, validateSafeRedirectUrl } from './utils';
+import { handleNewlines, sanitizeCustomCss, sanitizeHtml, validateSafeRedirectUrl } from './utils';
 
 const SANDBOX_CSP =
 	'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols';
@@ -49,7 +49,9 @@ export const renderFormCompletion = async (
 	trigger: NodeTypeAndVersion,
 ): Promise<IWebhookResponseData> => {
 	const completionTitle = context.getNodeParameter('completionTitle', '') as string;
-	const completionMessage = context.getNodeParameter('completionMessage', '') as string;
+	const completionMessage = handleNewlines(
+		sanitizeHtml(context.getNodeParameter('completionMessage', '') as string),
+	);
 	const redirectUrl = context.getNodeParameter('redirectUrl', '') as string;
 	const options = context.getNodeParameter('options', {}) as {
 		formTitle: string;
@@ -77,7 +79,7 @@ export const renderFormCompletion = async (
 
 	res.render('form-trigger-completion', {
 		title: completionTitle,
-		message: sanitizeHtml(completionMessage),
+		message: completionMessage,
 		formTitle: title,
 		appendAttribution,
 		responseText,

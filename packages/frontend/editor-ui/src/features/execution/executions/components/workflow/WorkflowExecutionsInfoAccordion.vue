@@ -179,7 +179,7 @@ async function onSaveWorkflowClick(): Promise<void> {
 		tags: currentWorkflowTagIds.value,
 	});
 	if (saved) {
-		await npsSurveyStore.fetchPromptsData();
+		await npsSurveyStore.showNpsSurveyIfPossible();
 	}
 }
 </script>

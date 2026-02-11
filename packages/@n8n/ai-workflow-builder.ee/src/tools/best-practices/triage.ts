@@ -20,7 +20,7 @@ Define clear categories and outcomes before building. Design in logical stages:
 5. **Actions**: Execute category-specific tasks (create tasks, send alerts, update records)
 6. **Logging**: Track outcomes for monitoring and analysis
 
-CRITICAL: Always include a default/fallback path to catch unclassified items. Never allow data to drop silently.
+Include a default/fallback path to catch unclassified items so data is tracked rather than dropped silently.
 
 ## Classification Strategies
 
@@ -102,7 +102,7 @@ Avoid parallel IF nodes that could match multiple conditions - use Switch node.
 **Switch** (n8n-nodes-base.switch):
 - Purpose: Multi-way branching based on field values
 - Use when: Multiple categories (3+ outcomes)
-- CRITICAL: Always configure Default output for unmatched items
+- Configure Default output for unmatched items
 
 **Merge** (n8n-nodes-base.merge):
 - Purpose: Consolidate branches for unified logging
@@ -111,14 +111,14 @@ Avoid parallel IF nodes that could match multiple conditions - use Switch node.
 **Text Classifier** (@n8n/n8n-nodes-langchain.textClassifier):
 - Purpose: AI-powered text classification with predefined labels
 - Use when: Need to assign categories to unstructured text
-- CRITICAL: Always configure "When No Clear Match" option to output items to "Other" branch
+- Configure "When No Clear Match" option to output items to "Other" branch
 
 **AI Agent** (@n8n/n8n-nodes-langchain.agent):
 - Purpose: Complex classification or scoring requiring multiple steps or tool use
 - Use when: Classification needs context lookup, multi-step reasoning with tools, numerical scoring or other complex outputs
-- CRITICAL: Always use structured output format (JSON schema)
+- Use structured output format (JSON schema)
 
-**IMPORTANT**: For all AI nodes (Text Classifier, AI Agent):
+For all AI nodes (Text Classifier, AI Agent):
 	- Set low temperature of the model (0-0.2) for consistency
 	- Include few-shot examples in prompts
 

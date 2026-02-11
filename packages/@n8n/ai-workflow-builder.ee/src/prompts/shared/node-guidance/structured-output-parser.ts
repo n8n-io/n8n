@@ -15,7 +15,7 @@ export const structuredOutputParser: NodeGuidance = {
 
 	connections: `When Discovery results include AI Agent or Structured Output Parser:
 1. Create the Structured Output Parser node
-2. Set AI Agent's hasOutputParser: true in connectionParameters
+2. Set AI Agent's hasOutputParser: true in initialParameters
 3. Connect: Structured Output Parser → AI Agent (ai_outputParser connection)`,
 
 	configuration: `WHEN TO SET hasOutputParser: true on AI Agent:

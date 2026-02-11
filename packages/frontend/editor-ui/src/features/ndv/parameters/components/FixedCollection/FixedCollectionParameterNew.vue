@@ -653,7 +653,7 @@ const onAddButtonClick = () => {
 						hide-delete
 						:parameters="getVisiblePropertyValues(property)"
 						:node-values="nodeValues"
-						:path="getPropertyPath(property.name, 0)"
+						:path="getPropertyPath(property.name)"
 						:is-read-only="!!isReadOnly"
 						:is-nested="false"
 						:remove-first-parameter-margin="true"
@@ -846,7 +846,7 @@ const onAddButtonClick = () => {
 						hide-delete
 						:parameters="getVisiblePropertyValues(property)"
 						:node-values="nodeValues"
-						:path="getPropertyPath(property.name, 0)"
+						:path="getPropertyPath(property.name)"
 						:is-read-only="!!isReadOnly"
 						:is-nested="false"
 						:remove-first-parameter-margin="true"

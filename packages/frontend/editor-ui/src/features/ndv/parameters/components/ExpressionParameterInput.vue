@@ -306,6 +306,8 @@ defineExpose({ focus, select });
 
 .focused :global(.cm-editor) {
 	border-color: var(--color--secondary);
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
 }
 
 .focused > .expression-editor-modal-opener {

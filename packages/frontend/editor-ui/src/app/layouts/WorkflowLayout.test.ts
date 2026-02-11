@@ -1,7 +1,25 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowLayout from './WorkflowLayout.vue';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { createTestingPinia } from '@pinia/testing';
+
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = (await importOriginal()) as object;
+	return {
+		...actual,
+		useRoute: () => ({
+			params: { name: 'test-workflow-id' },
+			query: {},
+			meta: {},
+			name: 'workflow',
+		}),
+		useRouter: () => ({
+			replace: vi.fn(),
+			push: vi.fn(),
+		}),
+	};
+});
 
 vi.mock('@/app/composables/useLayoutProps', () => ({
 	useLayoutProps: vi.fn(() => ({
@@ -15,35 +33,65 @@ vi.mock('@/features/ai/assistant/assistant.store', () => ({
 	})),
 }));
 
+vi.mock('@/app/composables/useWorkflowState', () => ({
+	useWorkflowState: vi.fn(() => ({
+		getNewWorkflowDataAndMakeShareable: vi.fn(),
+		setWorkflowId: vi.fn(),
+		resetState: vi.fn(),
+	})),
+}));
+
+vi.mock('@/app/composables/useWorkflowInitialization', () => ({
+	useWorkflowInitialization: vi.fn(() => ({
+		isLoading: ref(false),
+		workflowId: computed(() => 'test-workflow-id'),
+		isTemplateRoute: computed(() => false),
+		isOnboardingRoute: computed(() => false),
+		initializeData: vi.fn().mockResolvedValue(undefined),
+		initializeWorkflow: vi.fn().mockResolvedValue(undefined),
+		cleanup: vi.fn(),
+	})),
+}));
+
+const defaultStubs = {
+	AppHeader: {
+		template: '<div data-test-id="app-header">App Header</div>',
+	},
+	AppSidebar: {
+		template: '<div data-test-id="app-sidebar">App Sidebar</div>',
+	},
+	LogsPanel: {
+		template: '<div data-test-id="logs-panel">Logs Panel</div>',
+	},
+	AskAssistantFloatingButton: {
+		template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
+	},
+	AppChatPanel: {
+		template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
+	},
+	LoadingView: {
+		template: '<div data-test-id="loading-view">Loading...</div>',
+	},
+	RouterView: {
+		template: '<div>Workflow Content</div>',
+	},
+	Suspense: {
+		template: '<div><slot /></div>',
+	},
+};
+
 const renderComponent = createComponentRenderer(WorkflowLayout, {
 	global: {
-		stubs: {
-			AppHeader: {
-				template: '<div data-test-id="app-header">App Header</div>',
-			},
-			AppSidebar: {
-				template: '<div data-test-id="app-sidebar">App Sidebar</div>',
-			},
-			LogsPanel: {
-				template: '<div data-test-id="logs-panel">Logs Panel</div>',
-			},
-			AskAssistantFloatingButton: {
-				template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
-			},
-			AppChatPanel: {
-				template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
-			},
-			RouterView: {
-				template: '<div><slot /></div>',
-			},
-			Suspense: {
-				template: '<div><slot /></div>',
-			},
-		},
+		stubs: defaultStubs,
 	},
 });
 
 describe('WorkflowLayout', () => {
+	beforeEach(() => {
+		createTestingPinia();
+		vi.clearAllMocks();
+	});
+
 	it('should render the layout without throwing', () => {
 		expect(() => renderComponent()).not.toThrow();
 	});
@@ -60,34 +108,8 @@ describe('WorkflowLayout', () => {
 		expect(gridElement).toBeInTheDocument();
 	});
 
-	it('should render RouterView content', () => {
-		const { getByText } = renderComponent({
-			global: {
-				stubs: {
-					AppHeader: {
-						template: '<div data-test-id="app-header">App Header</div>',
-					},
-					AppSidebar: {
-						template: '<div data-test-id="app-sidebar">App Sidebar</div>',
-					},
-					LogsPanel: {
-						template: '<div data-test-id="logs-panel">Logs Panel</div>',
-					},
-					AskAssistantFloatingButton: {
-						template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
-					},
-					AppChatPanel: {
-						template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
-					},
-					RouterView: {
-						template: '<div>Workflow Content</div>',
-					},
-					Suspense: {
-						template: '<div><slot /></div>',
-					},
-				},
-			},
-		});
+	it('should render RouterView content when not loading', () => {
+		const { getByText } = renderComponent();
 		expect(getByText('Workflow Content')).toBeInTheDocument();
 	});
 
@@ -121,36 +143,10 @@ describe('WorkflowLayout', () => {
 	});
 
 	it('should render all header, sidebar and content together', () => {
-		const { getByText, getByTestId } = renderComponent({
-			global: {
-				stubs: {
-					AppHeader: {
-						template: '<div data-test-id="app-header">App Header</div>',
-					},
-					AppSidebar: {
-						template: '<div data-test-id="app-sidebar">App Sidebar</div>',
-					},
-					LogsPanel: {
-						template: '<div data-test-id="logs-panel">Logs Panel</div>',
-					},
-					AskAssistantFloatingButton: {
-						template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
-					},
-					AppChatPanel: {
-						template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
-					},
-					RouterView: {
-						template: '<div>Workflow Canvas</div>',
-					},
-					Suspense: {
-						template: '<div><slot /></div>',
-					},
-				},
-			},
-		});
+		const { getByText, getByTestId } = renderComponent();
 		expect(getByTestId('app-header')).toBeInTheDocument();
 		expect(getByTestId('app-sidebar')).toBeInTheDocument();
-		expect(getByText('Workflow Canvas')).toBeInTheDocument();
+		expect(getByText('Workflow Content')).toBeInTheDocument();
 	});
 
 	it('should wrap AppHeader in Suspense', () => {
@@ -168,39 +164,13 @@ describe('WorkflowLayout', () => {
 	});
 
 	it('should render complete workflow layout structure', () => {
-		const { container, getByText, getByTestId } = renderComponent({
-			global: {
-				stubs: {
-					AppHeader: {
-						template: '<div data-test-id="app-header">App Header</div>',
-					},
-					AppSidebar: {
-						template: '<div data-test-id="app-sidebar">App Sidebar</div>',
-					},
-					LogsPanel: {
-						template: '<div data-test-id="logs-panel">Logs Panel</div>',
-					},
-					AskAssistantFloatingButton: {
-						template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
-					},
-					AppChatPanel: {
-						template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
-					},
-					RouterView: {
-						template: '<div>Workflow Editor</div>',
-					},
-					Suspense: {
-						template: '<div><slot /></div>',
-					},
-				},
-			},
-		});
+		const { container, getByText, getByTestId } = renderComponent();
 		expect(container.querySelector('.app-grid')).toBeInTheDocument();
 		expect(container.querySelector('header#header')).toBeInTheDocument();
 		expect(container.querySelector('aside#sidebar')).toBeInTheDocument();
 		expect(container.querySelector('main#content')).toBeInTheDocument();
 		expect(getByTestId('app-header')).toBeInTheDocument();
 		expect(getByTestId('app-sidebar')).toBeInTheDocument();
-		expect(getByText('Workflow Editor')).toBeInTheDocument();
+		expect(getByText('Workflow Content')).toBeInTheDocument();
 	});
 });

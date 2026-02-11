@@ -1,7 +1,7 @@
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeInputConfiguration,
-	INodeInputFilter,
+	INodeFilter,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -45,7 +45,7 @@ function getInputs(
 ): Array<NodeConnectionType | INodeInputConfiguration> {
 	interface SpecialInput {
 		type: NodeConnectionType;
-		filter?: INodeInputFilter;
+		filter?: INodeFilter;
 		required?: boolean;
 	}
 
@@ -283,6 +283,18 @@ export class AgentV1 implements INodeType {
 				})($parameter.agent, $parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true)
 			}}`,
 			outputs: [NodeConnectionTypes.Main],
+			builderHint: {
+				...baseDescription.builderHint,
+				inputs: {
+					ai_languageModel: { required: true },
+					ai_memory: { required: false },
+					ai_tool: { required: false },
+					ai_outputParser: {
+						required: false,
+						displayOptions: { show: { hasOutputParser: [true] } },
+					},
+				},
+			},
 			credentials: [
 				{
 					name: 'mySql',

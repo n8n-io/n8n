@@ -105,6 +105,8 @@ export type ExecutionError =
 	| NodeOperationError
 	| NodeApiError;
 
+export type ExecutionStorageLocation = 'db' | 'fs';
+
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
 	get(type: string, id: string | null): Promise<ICredentialsEncrypted>;
@@ -494,6 +496,11 @@ export interface IHttpRequestOptions {
 	timeout?: number;
 	json?: boolean;
 	abortSignal?: GenericAbortSignal;
+	/**
+	 * Whether to send credentials on cross-origin redirects
+	 * @default true - for backwards compatibility
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
 }
 
 /**
@@ -541,6 +548,12 @@ export interface IRequestOptions {
 	maxRedirects?: number;
 
 	agentOptions?: SecureContextOptions;
+
+	/**
+	 * Whether to send credentials on cross-origin redirects
+	 * @default true - for backwards compatibility
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
 }
 
 export interface PaginationOptions {
@@ -1201,6 +1214,23 @@ export interface ITriggerFunctions
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun>,
 	): void;
+	/**
+	 * Persist the current run as a failed execution and run the error workflow if configured.
+	 * Use this when the trigger or poller encounters an error during a run (e.g. processing failed)
+	 * but the listener/connection is still healthy. The workflow stays active.
+	 *
+	 * @param error - The execution error to persist and pass to the error workflow
+	 */
+	saveFailedExecution(error: ExecutionError): void;
+	/**
+	 * Report a fatal trigger/poller error: deactivate the workflow, run the error workflow if configured,
+	 * and queue the workflow for reactivation with backoff. Use this when the trigger or poller cannot
+	 * continue (e.g. connection lost, auth failure). The workflow is removed from active workflows
+	 * and will be retried periodically until it activates successfully.
+	 *
+	 * @param error - The error that caused the trigger or poller to fail
+	 * @param responsePromise - Optional. When provided (e.g. in manual trigger mode), used to signal the error to the caller
+	 */
 	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
 		parameterName: string,
@@ -1316,6 +1346,25 @@ export interface IPairedItemData {
 	sourceOverwrite?: ISourceData;
 }
 
+export const ChatNodeMessageType = {
+	WITH_BUTTONS: 'with-buttons',
+} as const;
+
+export type ChatNodeMessageButtonType = 'primary' | 'secondary';
+
+export type ChatNodeMessageWithButtons = {
+	type: typeof ChatNodeMessageType.WITH_BUTTONS;
+	text: string;
+	blockUserInput: boolean;
+	buttons: Array<{
+		text: string;
+		link: string;
+		type: ChatNodeMessageButtonType;
+	}>;
+};
+
+export type ChatNodeMessage = ChatNodeMessageWithButtons | string;
+
 export interface INodeExecutionData {
 	[key: string]:
 		| IDataObject
@@ -1344,7 +1393,7 @@ export interface INodeExecutionData {
 	 * See example in
 	 * packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/Chat.node.ts
 	 */
-	sendMessage?: string;
+	sendMessage?: ChatNodeMessage;
 
 	/**
 	 * @deprecated This key was added by accident and should not be used as it
@@ -1608,6 +1657,7 @@ export interface INodeProperties {
 	default: NodeParameterValueType;
 	description?: string;
 	hint?: string;
+	builderHint?: IParameterBuilderHint;
 	disabledOptions?: IDisplayOptions;
 	displayOptions?: IDisplayOptions;
 	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>;
@@ -1705,6 +1755,7 @@ export interface INodePropertyOptions {
 	value: string | number | boolean;
 	action?: string;
 	description?: string;
+	builderHint?: IParameterBuilderHint;
 	routing?: INodePropertyRouting;
 	outputConnectionType?: NodeConnectionType;
 	inputSchema?: any;
@@ -1728,6 +1779,12 @@ export interface INodePropertyCollection {
 	displayName: string;
 	name: string;
 	values: INodeProperties[];
+	builderHint?: IParameterBuilderHint;
+}
+
+export interface IParameterBuilderHint {
+	message: string;
+	placeholderSupported?: boolean;
 }
 
 export interface INodePropertyValueExtractorBase {
@@ -1934,7 +1991,7 @@ export type ExecuteNodeResult<T = unknown> = {
  *
  * @template T - The type of metadata associated with this result
  */
-type EngineResult<T> = ExecuteNodeResult<T>;
+export type EngineResult<T> = ExecuteNodeResult<T>;
 
 /**
  * Response structure returned from the workflow engine after execution.
@@ -2069,6 +2126,12 @@ export interface INodeTypeBaseDescription {
 	 * optionally replacing provided parts of the description
 	 */
 	usableAsTool?: true | UsableAsToolDescription;
+
+	/** Hints for workflow-sdk type generation, including explicit AI input requirements */
+	builderHint?: IBuilderHint;
+
+	/** Path to schema directory relative to nodes-base/dist/nodes/ (e.g., "Google/Drive") */
+	schemaPath?: string;
 }
 
 /**
@@ -2202,7 +2265,7 @@ export type AINodeConnectionType = Exclude<NodeConnectionType, typeof NodeConnec
 
 export const nodeConnectionTypes: NodeConnectionType[] = Object.values(NodeConnectionTypes);
 
-export interface INodeInputFilter {
+export interface INodeFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
 	//       regex, allow to exclude certain nodes, ... ?
 	//       Potentially change totally after alpha/beta. Is not a breaking change after all.
@@ -2210,12 +2273,17 @@ export interface INodeInputFilter {
 	excludedNodes?: string[];
 }
 
+/**
+ * @deprecated Use INodeFilter instead
+ */
+export type INodeInputFilter = INodeFilter;
+
 export interface INodeInputConfiguration {
 	category?: string;
 	displayName?: string;
 	required?: boolean;
 	type: NodeConnectionType;
-	filter?: INodeInputFilter;
+	filter?: INodeFilter;
 	maxConnections?: number;
 }
 
@@ -2225,6 +2293,7 @@ export interface INodeOutputConfiguration {
 	maxConnections?: number;
 	required?: boolean;
 	type: NodeConnectionType;
+	filter?: INodeFilter;
 }
 
 export type ExpressionString = `={{${string}}}`;
@@ -2236,6 +2305,43 @@ export type NodeDefaults = Partial<{
 	color: string;
 	name: string;
 }>;
+
+/**
+ * Configuration for a single AI subnode input in builderHint.inputs
+ */
+export interface IBuilderHintInputConfig {
+	/** Whether this AI input is required */
+	required: boolean;
+	/** Conditions under which this input should be available/required */
+	displayOptions?: IDisplayOptions;
+}
+
+/**
+ * Maps AI input types (e.g. 'ai_languageModel', 'ai_memory') to their configuration
+ */
+export type BuilderHintInputs = Partial<Record<AINodeConnectionType, IBuilderHintInputConfig>>;
+
+/**
+ * Related node with explanation of why it's related
+ */
+export interface IRelatedNode {
+	/** The node type ID (e.g., '@n8n/n8n-nodes-langchain.memoryBufferWindow') */
+	nodeType: string;
+	/** Brief explanation of why this node is related (e.g., 'Maintains conversation history') */
+	relationHint: string;
+}
+
+/**
+ * Builder hints for workflow-sdk type generation
+ */
+export interface IBuilderHint {
+	/** Explicit AI input requirements for accurate type generation */
+	inputs?: BuilderHintInputs;
+	/** General hint message for LLM workflow builders */
+	message?: string;
+	/** Related nodes that work together with this node */
+	relatedNodes?: IRelatedNode[];
+}
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
@@ -2268,7 +2374,14 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	communityNodePackageVersion?: string;
 	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
+	/**
+	 * When true, skip generating a name from resource/operation (e.g., "SendAndWait message in Slack")
+	 * and just use defaults.name. Useful for tool nodes that should keep a simple name like "Slack".
+	 */
+	skipNameGeneration?: boolean;
 	features?: NodeFeaturesDefinition;
+	/** Hints for workflow-sdk type generation, including explicit AI input requirements */
+	builderHint?: IBuilderHint;
 }
 
 export type TriggerPanelDefinition = {
@@ -2377,7 +2490,7 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
 	$pageCount?: number;
-
+	$tool?: { name: string; parameters: string };
 	/** @deprecated */
 	$executionId?: string;
 	/** @deprecated */
@@ -2468,6 +2581,7 @@ export interface IRun {
 	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt?: Date;
+	storedAt: ExecutionStorageLocation;
 	status: ExecutionStatus;
 
 	/** ID of the job this execution belongs to. Only in scaling mode. */
@@ -2533,6 +2647,7 @@ export interface ITaskMetadata {
 	 * tools to access data from nodes earlier in the workflow chain via $() expressions.
 	 */
 	preserveSourceOverwrite?: boolean;
+	preservedSourceOverwrite?: ISourceData;
 	/**
 	 * Indicates that this node execution is resuming from a previous pause (e.g., AI agent
 	 * resuming after tool execution). When true, the nodeExecuteBefore hook is skipped to
@@ -2692,6 +2807,22 @@ export interface IWorkflowExecutionDataProcess {
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
 	startedAt?: Date;
+
+	// MCP-specific fields for queue mode support
+	/** Whether this execution was triggered by an MCP tool call. */
+	isMcpExecution?: boolean;
+	/** Type of MCP execution: 'service' for MCP Service, 'trigger' for MCP Trigger Node. */
+	mcpType?: 'service' | 'trigger';
+	/** MCP session ID for routing responses back to the correct client. */
+	mcpSessionId?: string;
+	/** MCP message ID for correlating responses with requests. */
+	mcpMessageId?: string;
+	/** Tool call info for MCP Trigger executions in queue mode. */
+	mcpToolCall?: {
+		toolName: string;
+		arguments: Record<string, unknown>;
+		sourceNodeName?: string;
+	};
 }
 
 export interface ExecuteWorkflowOptions {
@@ -2733,9 +2864,10 @@ type AiEventPayload = {
 	nodeType?: string;
 };
 
+export type AgentRequestQuery = { [nodeName: string]: Record<string, unknown> | string };
 // Used to transport an agent request for partial execution
 export interface AiAgentRequest {
-	query: string | INodeParameters;
+	query: AgentRequestQuery;
 	tool: {
 		name: string;
 	};
@@ -2807,7 +2939,7 @@ export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BI
 
 export interface IWorkflowSettings {
 	timezone?: 'DEFAULT' | string;
-	errorWorkflow?: string;
+	errorWorkflow?: 'DEFAULT' | string;
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	saveDataErrorExecution?: WorkflowSettings.SaveDataExecution;
@@ -2957,7 +3089,6 @@ export interface INodeGraphItem {
 	operation?: string;
 	domain?: string; // HTTP Request node v1
 	domain_base?: string; // HTTP Request node v2
-	domain_path?: string; // HTTP Request node v2
 	position: [number, number];
 	mode?: string;
 	credential_type?: string; // HTTP Request node v2
@@ -2980,6 +3111,7 @@ export interface INodeGraphItem {
 	language?: string; // only for Code node: 'javascript' or 'python' or 'pythonNative'
 	package_version?: string; // only for community nodes
 	used_guardrails?: string[]; // only for @n8n/n8n-nodes-langchain.guardrails
+	mcp_client_auth_method?: string; // for @n8n/n8n-nodes-langchain.mcpClientTool and @n8n/n8n-nodes-langchain.mcpClient
 }
 
 export interface INodeNameIndex {

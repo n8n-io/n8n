@@ -8,6 +8,7 @@ import * as workflowsApi from '@/app/api/workflows';
 import * as workflowsEEApi from '@/app/api/workflows.ee';
 import * as credentialsApi from '@/features/credentials/credentials.api';
 import * as credentialsEEApi from '@/features/credentials/credentials.ee.api';
+import { getProjectSecretProviderConnectionsByProjectId } from '@n8n/rest-api-client';
 import type { Project, ProjectListItem, ProjectsCount } from './projects.types';
 import { ProjectTypes } from './projects.types';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -17,7 +18,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
+import type { CreateProjectDto, UpdateProjectDto, SecretProviderConnection } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { hasRole } from '@/app/utils/rbac/checks';
 
@@ -269,6 +270,15 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		};
 	};
 
+	const getProjectSecretProviders = async (
+		projectId: string,
+	): Promise<SecretProviderConnection[]> => {
+		return await getProjectSecretProviderConnectionsByProjectId(
+			rootStore.restApiContext,
+			projectId,
+		);
+	};
+
 	watch(
 		route,
 		async (newRoute) => {
@@ -337,5 +347,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		setProjectNavActiveIdByWorkflowHomeProject,
 		moveResourceToProject,
 		getResourceCounts,
+		getProjectSecretProviders,
 	};
 });

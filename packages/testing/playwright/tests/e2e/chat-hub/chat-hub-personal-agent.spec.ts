@@ -12,6 +12,7 @@ test.describe('Personal agent @capability:proxy', () => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
+		await page.dismissWelcomeScreen();
 
 		await page.getModelSelectorButton().click();
 		await n8n.page.waitForTimeout(500); // to reliably hover intended menu item
@@ -62,6 +63,7 @@ test.describe('Personal agent @capability:proxy', () => {
 
 		// STEP: send message to the created agent
 		await page.getAgentCards().nth(0).click();
+		await chatPage.dismissWelcomeScreen();
 		await chatPage.getChatInput().fill('Hello');
 		await chatPage.getSendButton().click();
 		await expect(chatPage.getChatMessages().last()).toContainText('你好');

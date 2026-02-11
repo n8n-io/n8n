@@ -161,6 +161,11 @@ Best for: Enrichment, validation, conditional logic based on stored data
 - **Validate before storing:** Ensure data quality before persistence
 - **Avoid duplicates:** Use unique identifiers or upsert operations when appropriate
 
+## Referencing Documents, Sheets, or Tables
+
+When configuring storage nodes, use ResourceLocator mode "list". This will allow users to select from existing documents, sheets, or tables rather than passing IDs dynamically.
+Use modes "id", "url" or "name" only when user specifically mentions it in their prompt.
+
 ## Important Distinctions
 
 ### Storage vs. Transformation

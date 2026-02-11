@@ -1,6 +1,12 @@
 import { testDb, createWorkflow, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { type User, type ExecutionEntity, GLOBAL_OWNER_ROLE, Project } from '@n8n/db';
+import {
+	type User,
+	type ExecutionEntity,
+	GLOBAL_OWNER_ROLE,
+	Project,
+	ExecutionRepository,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
@@ -60,6 +66,7 @@ afterAll(() => {
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
 	jest.clearAllMocks();
+	jest.spyOn(Container.get(ExecutionRepository), 'setRunning').mockResolvedValue(new Date());
 });
 
 describe('processError', () => {
@@ -308,6 +315,39 @@ describe('enqueueExecution', () => {
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
 		expect(setupQueue).toHaveBeenCalledTimes(1);
+	});
+
+	it('should include restartExecutionId in job data when provided', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		jest.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionData: undefined,
+			pushRef: 'push-ref',
+			streamingEnabled: true,
+		});
+		const error = new Error('stop for test purposes');
+
+		// mock a rejection to stop execution flow before we create the PCancelable promise,
+		// so that Jest does not move on to tear down the suite until the PCancelable settles
+		addJob.mockRejectedValueOnce(error);
+
+		const restartExecutionId = 'restart-execution-id';
+
+		await expect(
+			// @ts-expect-error Private method
+			runner.enqueueExecution('1', 'workflow-xyz', data, false, false, restartExecutionId),
+		).rejects.toThrowError(error);
+
+		expect(addJob).toHaveBeenCalledWith(
+			expect.objectContaining({
+				workflowId: 'workflow-xyz',
+				executionId: '1',
+				restartExecutionId,
+			}),
+			expect.any(Object),
+		);
 	});
 });
 

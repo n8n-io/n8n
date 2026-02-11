@@ -13,6 +13,12 @@ import { ApplicationError, NodeConnectionTypes, createRunExecutionData } from 'n
 
 import { NodeTypes } from '@test/helpers';
 
+jest.mock('node:fs', () => ({
+	...jest.requireActual('node:fs'),
+	existsSync: jest.fn().mockReturnValue(false),
+	renameSync: jest.fn(),
+}));
+
 import { DirectedGraph } from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
 import { WorkflowExecute } from '../workflow-execute';
@@ -397,7 +403,7 @@ describe('processRunExecutionData', () => {
 				ai_tool: [
 					[
 						{
-							json: { prompt: 'test prompt', query: 'test input', toolCallId: 'action_1' },
+							json: { query: 'test input' },
 							pairedItem: {
 								input: 0,
 								item: 0,
@@ -417,7 +423,7 @@ describe('processRunExecutionData', () => {
 				ai_tool: [
 					[
 						{
-							json: { prompt: 'test prompt', data: 'another input', toolCallId: 'action_2' },
+							json: { data: 'another input' },
 							pairedItem: {
 								input: 0,
 								item: 0,
@@ -524,7 +530,7 @@ describe('processRunExecutionData', () => {
 				ai_tool: [
 					[
 						{
-							json: { prompt: 'test prompt', query: 'test input', toolCallId: 'action_1' },
+							json: { query: 'test input' },
 							pairedItem: {
 								input: 0,
 								item: 0,
@@ -714,9 +720,7 @@ describe('processRunExecutionData', () => {
 			expect(toolRunData.inputOverride).toBeDefined();
 			expect(toolRunData.inputOverride?.ai_tool).toBeDefined();
 			expect(toolRunData.inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject({
-				prompt: 'test prompt',
 				query: 'test input that will fail',
-				toolCallId: 'action_1',
 			});
 
 			// Error output should be set under the correct connection type (ai_tool)

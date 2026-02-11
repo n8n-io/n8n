@@ -2,23 +2,22 @@
 import { computed, ref } from 'vue';
 
 import Modal from '@/app/components/Modal.vue';
-import {
-	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_SETTINGS_MODAL_KEY,
-	LOCAL_STORAGE_ACTIVATION_FLAG,
-	VIEWS,
-} from '../constants';
-import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
+import { useStorage } from '@/app/composables/useStorage';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useStorage } from '@/app/composables/useStorage';
+import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
-import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { useRouter } from 'vue-router';
+import {
+	LOCAL_STORAGE_ACTIVATION_FLAG,
+	VIEWS,
+	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+} from '../constants';
 
-import { ElCheckbox } from 'element-plus';
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
 
 const checked = ref(false);
 
@@ -118,9 +117,9 @@ const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
 
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<ElCheckbox :model-value="checked" @update:model-value="handleCheckboxChange">{{
-					i18n.baseText('generic.dontShowAgain')
-				}}</ElCheckbox>
+				<N8nCheckbox :model-value="checked" @update:model-value="handleCheckboxChange">
+					<template #label>{{ i18n.baseText('generic.dontShowAgain') }}</template>
+				</N8nCheckbox>
 				<N8nButton :label="i18n.baseText('activationModal.gotIt')" @click="close" />
 			</div>
 		</template>

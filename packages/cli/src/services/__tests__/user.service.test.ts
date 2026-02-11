@@ -934,4 +934,50 @@ describe('UserService', () => {
 			);
 		});
 	});
+
+	describe('findSsoIdentity', () => {
+		it('should return undefined when user has no SSO identity', async () => {
+			const userId = uuid();
+			userRepository.findOne.mockResolvedValue(
+				Object.assign(new User(), {
+					id: userId,
+					authIdentities: [{ providerType: 'email' }],
+				}),
+			);
+
+			const result = await userService.findSsoIdentity(userId);
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return SSO identity when user has LDAP identity', async () => {
+			const userId = uuid();
+			const ldapIdentity = { providerType: 'ldap', providerId: 'ldap-id' };
+			userRepository.findOne.mockResolvedValue(
+				Object.assign(new User(), {
+					id: userId,
+					authIdentities: [ldapIdentity],
+				}),
+			);
+
+			const result = await userService.findSsoIdentity(userId);
+
+			expect(result).toEqual(ldapIdentity);
+		});
+
+		it('should return SSO identity when user has both email and SSO identity', async () => {
+			const userId = uuid();
+			const samlIdentity = { providerType: 'saml', providerId: 'saml-id' };
+			userRepository.findOne.mockResolvedValue(
+				Object.assign(new User(), {
+					id: userId,
+					authIdentities: [{ providerType: 'email' }, samlIdentity],
+				}),
+			);
+
+			const result = await userService.findSsoIdentity(userId);
+
+			expect(result).toEqual(samlIdentity);
+		});
+	});
 });

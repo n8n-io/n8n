@@ -228,7 +228,11 @@ test.describe('Workflow templates', () => {
 		test('should save template id with the workflow', async ({ n8n }) => {
 			await n8n.templatesComposer.importFirstTemplate();
 
-			const saveResponse = await n8n.canvas.waitForSaveWorkflowCompleted();
+			// Execute workflow to trigger autosave (imported templates don't auto-save immediately)
+			await n8n.canvas.hitExecuteWorkflow();
+
+			const saveResponsePromise = n8n.canvas.waitForSaveWorkflowCompleted();
+			const saveResponse = await saveResponsePromise;
 
 			const requestBody = saveResponse.request().postDataJSON();
 			expect(requestBody.meta.templateId).toBe(TEMPLATE_ID);
@@ -292,8 +296,8 @@ test.describe('Workflow templates', () => {
 			await expect(n8n.page).toHaveURL(/\?categories=/);
 			await expect(n8n.page).toHaveURL(/&search=/);
 
-			const salesFilterLabel = n8n.templates.getCategoryFilter(TEST_CATEGORY).locator('label');
-			await expect(salesFilterLabel).toHaveClass(/is-checked/);
+			const salesFilterLabel = n8n.templates.getCategoryFilter(TEST_CATEGORY);
+			await expect(salesFilterLabel).toBeChecked();
 			await expect(n8n.templates.getSearchInput()).toHaveValue('auto');
 
 			await expect(n8n.templates.getCategoryFilters().nth(1)).toHaveText('Sales');

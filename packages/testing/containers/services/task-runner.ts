@@ -16,7 +16,7 @@ export type TaskRunnerResult = ServiceResult<TaskRunnerMeta>;
 
 export const taskRunner: Service<TaskRunnerResult> = {
 	description: 'Task Runner',
-	shouldStart: () => true,
+	shouldStart: (ctx) => ctx.mains > 0 || ctx.workers > 0,
 
 	getOptions(ctx) {
 		const { workers, mains, projectName } = ctx;

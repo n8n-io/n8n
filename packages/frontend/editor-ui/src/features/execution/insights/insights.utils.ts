@@ -5,8 +5,9 @@ import {
 } from '@/features/execution/insights/insights.constants';
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
 import type { DateValue } from '@internationalized/date';
-import { getLocalTimeZone, isToday } from '@internationalized/date';
+import { getLocalTimeZone, isToday, now, toCalendarDateTime, today } from '@internationalized/date';
 import type { InsightsDateRange, InsightsSummary, InsightsSummaryType } from '@n8n/api-types';
+import type { DateRange } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import dateformat from 'dateformat';
 
@@ -126,4 +127,45 @@ export const getMatchingPreset = (range: { start?: DateValue; end?: DateValue })
 	}
 
 	return null;
+};
+
+/**
+ * Converts DateValue range to adjusted Date objects for API calls
+ * - For single-day ranges ending today: injects current time into both dates (exact 24 hours)
+ * - For multi-day ranges ending today: injects current time into end date only
+ * - For past dates: uses end-of-day for end date
+ *
+ * @param dateRange - The date range to adjust
+ */
+export const getAdjustedDateRange = (dateRange: DateRange): { startDate: Date; endDate: Date } => {
+	if (!dateRange.start || !dateRange.end) return { startDate: new Date(), endDate: new Date() };
+
+	const timezone = getLocalTimeZone();
+
+	const todayInTimezone = today(timezone);
+	const isEndDateToday = dateRange.end && dateRange.end.compare(todayInTimezone) === 0;
+	const daysDiff = dateRange.end && dateRange.start ? dateRange.end.compare(dateRange.start) : 0;
+
+	if (isEndDateToday) {
+		const nowInTimezone = now(timezone);
+
+		if (daysDiff === 1) {
+			// For single-day ranges (e.g., "Last 24 hours"), inject current time into both dates
+			// This gives exact 24-hour ranges
+			const startDate = toCalendarDateTime(dateRange.start, nowInTimezone).toDate(timezone);
+			const endDate = toCalendarDateTime(dateRange.end, nowInTimezone).toDate(timezone);
+			return { startDate, endDate };
+		} else {
+			// For multi-day ranges, use start-of-day for start but current time for end
+			const startDate = dateRange.start?.toDate(timezone) ?? new Date();
+			const endDate = toCalendarDateTime(dateRange.end, nowInTimezone).toDate(timezone);
+			return { startDate, endDate };
+		}
+	} else {
+		// For past dates, use beginning of day for start and end of day for end to ensure full day coverage
+		const startDate = dateRange.start?.toDate(timezone) ?? new Date();
+		const endDate = dateRange.end?.toDate(timezone) ?? new Date();
+		endDate.setHours(23, 59, 59, 999);
+		return { startDate, endDate };
+	}
 };

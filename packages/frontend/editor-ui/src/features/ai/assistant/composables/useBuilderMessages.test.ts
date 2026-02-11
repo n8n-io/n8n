@@ -673,7 +673,7 @@ describe('useBuilderMessages', () => {
 			expect(result.shouldClearThinking).toBe(true);
 		});
 
-		it('should only apply rating to the last text message after workflow-updated', () => {
+		it('should not apply inline rating (rating is now in footer)', () => {
 			const currentMessages: ChatUI.AssistantMessage[] = [];
 			const newMessages: ChatRequest.MessageResponse[] = [
 				{
@@ -706,24 +706,14 @@ describe('useBuilderMessages', () => {
 
 			expect(result.messages).toHaveLength(4);
 
-			// First text message should NOT have showRating (comes before workflow-updated)
-			const firstText = result.messages[0];
-			expect(firstText.showRating).toBeUndefined();
-
-			// Workflow-updated message should not have rating
-			expect(result.messages[1].type).toBe('workflow-updated');
-
-			// Middle text message should NOT have rating
-			const middleText = result.messages[2];
-			expect(middleText.showRating).toBeUndefined();
-
-			// Only the LAST text message should have showRating with minimal style
-			const lastText = result.messages[3];
-			expect(lastText.showRating).toBe(true);
-			expect(lastText.ratingStyle).toBe('minimal');
+			// No messages should have inline rating (rating is now handled in footer)
+			result.messages.forEach((message) => {
+				expect(message.showRating).toBeUndefined();
+				expect(message.ratingStyle).toBeUndefined();
+			});
 		});
 
-		it('should not apply rating to text messages without workflow-updated', () => {
+		it('should not apply inline rating regardless of workflow state (rating is in footer)', () => {
 			const currentMessages: ChatUI.AssistantMessage[] = [];
 			const newMessages: ChatRequest.MessageResponse[] = [
 				{
@@ -745,7 +735,7 @@ describe('useBuilderMessages', () => {
 			expect(textMessage.ratingStyle).toBeUndefined();
 		});
 
-		it('should not apply rating when tools are still running', () => {
+		it('should not apply inline rating when tools are running (rating is in footer)', () => {
 			const currentMessages: ChatUI.AssistantMessage[] = [];
 			const newMessages: ChatRequest.MessageResponse[] = [
 				{
@@ -779,15 +769,13 @@ describe('useBuilderMessages', () => {
 				'test-id',
 			);
 
-			// No messages should have rating while tools are running
-			const firstMessage = result.messages[0];
-			expect(firstMessage.showRating).toBeUndefined();
-
-			const lastMessage = result.messages[3];
-			expect(lastMessage.showRating).toBeUndefined();
+			// No messages should have inline rating (rating is now in footer)
+			result.messages.forEach((message) => {
+				expect(message.showRating).toBeUndefined();
+			});
 		});
 
-		it('should apply rating to the last text message after all tools complete', () => {
+		it('should not apply inline rating even after all tools complete (rating is in footer)', () => {
 			const currentMessages: ChatUI.AssistantMessage[] = [
 				{
 					id: 'msg-1',
@@ -830,13 +818,11 @@ describe('useBuilderMessages', () => {
 				'test-id',
 			);
 
-			// Only the last text message should have rating
-			const firstMessage = result.messages[0];
-			expect(firstMessage.showRating).toBeUndefined();
-
-			const lastMessage = result.messages[3];
-			expect(lastMessage.showRating).toBe(true);
-			expect(lastMessage.ratingStyle).toBe('minimal');
+			// No messages should have inline rating (rating is now in footer)
+			result.messages.forEach((message) => {
+				expect(message.showRating).toBeUndefined();
+				expect(message.ratingStyle).toBeUndefined();
+			});
 		});
 	});
 
@@ -1215,10 +1201,10 @@ describe('useBuilderMessages', () => {
 			const workflowUpdates = result.messages.filter((m) => m.type === 'workflow-updated');
 			expect(workflowUpdates).toHaveLength(2);
 
-			// Check final text message has rating
+			// Check final text message does NOT have inline rating (rating is now in footer)
 			const textMessage = result.messages.find((m) => m.type === 'text');
-			expect(textMessage?.showRating).toBe(true);
-			expect(textMessage?.ratingStyle).toBe('minimal');
+			expect(textMessage?.showRating).toBeUndefined();
+			expect(textMessage?.ratingStyle).toBeUndefined();
 
 			// Should clear thinking since tools are complete and text is present
 			expect(result.shouldClearThinking).toBe(true);
@@ -1298,8 +1284,9 @@ describe('useBuilderMessages', () => {
 			const workflowUpdate = result.messages.find((m) => m.type === 'workflow-updated');
 			expect(workflowUpdate).toBeTruthy();
 
+			// Text message should NOT have inline rating (rating is now in footer)
 			const textMessage = result.messages.find((m) => m.type === 'text');
-			expect(textMessage?.showRating).toBe(true);
+			expect(textMessage?.showRating).toBeUndefined();
 			expect(textMessage?.content).toContain('error');
 		});
 
@@ -1369,6 +1356,311 @@ describe('useBuilderMessages', () => {
 			expect(result.messages.find((m) => m.type === 'tool')).toBeTruthy();
 			expect(result.messages.find((m) => m.type === 'workflow-updated')).toBeTruthy();
 			expect(result.messages.find((m) => m.type === 'text')).toBeTruthy();
+		});
+	});
+
+	describe('plan mode messages', () => {
+		const sampleQuestions: ChatRequest.ApiQuestionsMessage = {
+			role: 'assistant',
+			type: 'questions',
+			introMessage: 'I have a few questions:',
+			questions: [
+				{ id: 'q1', question: 'Which provider?', type: 'single', options: ['Gmail', 'Outlook'] },
+				{ id: 'q2', question: 'Details?', type: 'text' },
+			],
+		};
+
+		const samplePlan: ChatRequest.ApiPlanMessage = {
+			role: 'assistant',
+			type: 'plan',
+			plan: {
+				summary: 'Send weather alerts via Slack',
+				trigger: 'Daily at 7 AM',
+				steps: [
+					{ description: 'Check weather forecast' },
+					{ description: 'Send Slack message if rain expected' },
+				],
+			},
+		};
+
+		const sampleUserAnswers: ChatRequest.ApiUserAnswersMessage = {
+			role: 'user',
+			type: 'user_answers',
+			answers: [
+				{ questionId: 'q1', question: 'Which provider?', selectedOptions: ['Gmail'] },
+				{ questionId: 'q2', question: 'Details?', selectedOptions: [], customText: 'daily digest' },
+			],
+		};
+
+		it('should process a questions message into a custom UI message', () => {
+			const result = builderMessages.processAssistantMessages([], [sampleQuestions], 'msg-1');
+
+			expect(result.messages).toHaveLength(1);
+			expect(result.messages[0]).toMatchObject({
+				role: 'assistant',
+				type: 'custom',
+				customType: 'questions',
+				data: {
+					questions: sampleQuestions.questions,
+					introMessage: 'I have a few questions:',
+				},
+				read: false,
+			});
+			expect(result.shouldClearThinking).toBe(true);
+		});
+
+		it('should process a plan message into a custom UI message', () => {
+			const result = builderMessages.processAssistantMessages([], [samplePlan], 'msg-1');
+
+			expect(result.messages).toHaveLength(1);
+			expect(result.messages[0]).toMatchObject({
+				role: 'assistant',
+				type: 'custom',
+				customType: 'plan',
+				data: { plan: samplePlan.plan },
+				read: false,
+			});
+			expect(result.shouldClearThinking).toBe(true);
+		});
+
+		it('should process a user_answers message into a custom UI message', () => {
+			const result = builderMessages.processAssistantMessages([], [sampleUserAnswers], 'msg-1');
+
+			expect(result.messages).toHaveLength(1);
+			expect(result.messages[0]).toMatchObject({
+				role: 'user',
+				type: 'custom',
+				customType: 'user_answers',
+				data: { answers: sampleUserAnswers.answers },
+			});
+			expect(result.shouldClearThinking).toBe(true);
+		});
+
+		it('should not add duplicate questions message from streaming', () => {
+			const existingMessages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'existing-q',
+					role: 'assistant',
+					type: 'custom',
+					customType: 'questions',
+					data: { questions: sampleQuestions.questions },
+					read: false,
+				} as ChatUI.AssistantMessage,
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				existingMessages,
+				[sampleQuestions],
+				'msg-2',
+			);
+
+			// Should still have only 1 questions message (deduped)
+			const questionsMessages = result.messages.filter(
+				(m) => m.type === 'custom' && 'customType' in m && m.customType === 'questions',
+			);
+			expect(questionsMessages).toHaveLength(1);
+		});
+
+		it('should add new questions after user answers (new round)', () => {
+			const existingMessages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'q-1',
+					role: 'assistant',
+					type: 'custom',
+					customType: 'questions',
+					data: { questions: sampleQuestions.questions },
+					read: false,
+				} as ChatUI.AssistantMessage,
+				{
+					id: 'a-1',
+					role: 'user',
+					type: 'custom',
+					customType: 'user_answers',
+					data: { answers: sampleUserAnswers.answers },
+				} as ChatUI.AssistantMessage,
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				existingMessages,
+				[sampleQuestions],
+				'msg-3',
+			);
+
+			const questionsMessages = result.messages.filter(
+				(m) => m.type === 'custom' && 'customType' in m && m.customType === 'questions',
+			);
+			expect(questionsMessages).toHaveLength(2);
+		});
+
+		it('should not add duplicate plan message with same signature', () => {
+			const existingMessages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'plan-1',
+					role: 'assistant',
+					type: 'custom',
+					customType: 'plan',
+					data: { plan: samplePlan.plan },
+					read: false,
+				} as ChatUI.AssistantMessage,
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				existingMessages,
+				[samplePlan],
+				'msg-2',
+			);
+
+			const planMessages = result.messages.filter(
+				(m) => m.type === 'custom' && 'customType' in m && m.customType === 'plan',
+			);
+			expect(planMessages).toHaveLength(1);
+		});
+
+		it('should add new plan after user response (modify flow)', () => {
+			const existingMessages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'plan-1',
+					role: 'assistant',
+					type: 'custom',
+					customType: 'plan',
+					data: { plan: samplePlan.plan },
+					read: false,
+				} as ChatUI.AssistantMessage,
+				{
+					id: 'user-response',
+					role: 'user',
+					type: 'text',
+					content: 'Add error handling',
+					read: true,
+				},
+			];
+
+			const modifiedPlan: ChatRequest.ApiPlanMessage = {
+				role: 'assistant',
+				type: 'plan',
+				plan: {
+					...samplePlan.plan,
+					summary: 'Send weather alerts with error handling',
+				},
+			};
+
+			const result = builderMessages.processAssistantMessages(
+				existingMessages,
+				[modifiedPlan],
+				'msg-3',
+			);
+
+			const planMessages = result.messages.filter(
+				(m) => m.type === 'custom' && 'customType' in m && m.customType === 'plan',
+			);
+			expect(planMessages).toHaveLength(2);
+		});
+
+		it('should stop thinking when plan/questions arrive after tools', () => {
+			const existingMessages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'tool-1',
+					role: 'assistant',
+					type: 'tool',
+					toolName: 'search_nodes',
+					toolCallId: 'call-1',
+					status: 'completed',
+					updates: [],
+					read: false,
+				} as ChatUI.AssistantMessage,
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				existingMessages,
+				[samplePlan],
+				'msg-2',
+			);
+
+			// Custom message counts as response → not still thinking
+			expect(result.thinkingMessage).toBeUndefined();
+			expect(result.shouldClearThinking).toBe(true);
+		});
+	});
+
+	describe('mapAssistantMessageToUI - plan mode', () => {
+		it('should map questions message to UI format', () => {
+			const msg: ChatRequest.ApiQuestionsMessage = {
+				role: 'assistant',
+				type: 'questions',
+				introMessage: 'Before I proceed:',
+				questions: [{ id: 'q1', question: 'Which service?', type: 'single', options: ['A', 'B'] }],
+			};
+
+			const result = builderMessages.mapAssistantMessageToUI(msg, 'test-id');
+
+			expect(result).toMatchObject({
+				id: 'test-id',
+				role: 'assistant',
+				type: 'custom',
+				customType: 'questions',
+				data: {
+					questions: msg.questions,
+					introMessage: 'Before I proceed:',
+				},
+				read: false,
+			});
+		});
+
+		it('should map plan message to UI format', () => {
+			const msg: ChatRequest.ApiPlanMessage = {
+				role: 'assistant',
+				type: 'plan',
+				plan: {
+					summary: 'Test plan',
+					trigger: 'Manual',
+					steps: [{ description: 'Step 1' }],
+				},
+			};
+
+			const result = builderMessages.mapAssistantMessageToUI(msg, 'test-id');
+
+			expect(result).toMatchObject({
+				id: 'test-id',
+				role: 'assistant',
+				type: 'custom',
+				customType: 'plan',
+				data: { plan: msg.plan },
+				read: false,
+			});
+		});
+
+		it('should map user_answers message to UI format', () => {
+			const msg: ChatRequest.ApiUserAnswersMessage = {
+				role: 'user',
+				type: 'user_answers',
+				answers: [{ questionId: 'q1', question: 'Service?', selectedOptions: ['Gmail'] }],
+			};
+
+			const result = builderMessages.mapAssistantMessageToUI(msg, 'test-id');
+
+			expect(result).toMatchObject({
+				id: 'test-id',
+				role: 'user',
+				type: 'custom',
+				customType: 'user_answers',
+				data: { answers: msg.answers },
+			});
+		});
+	});
+
+	describe('createUserAnswersMessage', () => {
+		it('should create a custom user message with answers data', () => {
+			const answers = [{ questionId: 'q1', question: 'Provider?', selectedOptions: ['Gmail'] }];
+
+			const result = builderMessages.createUserAnswersMessage(answers, 'ua-1');
+
+			expect(result).toMatchObject({
+				id: 'ua-1',
+				role: 'user',
+				type: 'custom',
+				customType: 'user_answers',
+				data: { answers },
+			});
 		});
 	});
 

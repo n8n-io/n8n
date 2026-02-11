@@ -138,7 +138,7 @@ export class OnfleetTrigger implements INodeType {
 			/*                             Validation request                             */
 			/* -------------------------------------------------------------------------- */
 			const res = this.getResponseObject();
-			res.status(200).send(req.query.check);
+			res.status(200).type('text/plain').send(req.query.check);
 			return { noWebhookResponse: true };
 		}
 
