@@ -21,8 +21,7 @@ async function goToWorkflow(n8n: n8nPage, workflowId: string): Promise<void> {
 	await loadResponsePromise;
 }
 
-test.describe('Workflow Archive @fixme', () => {
-	test.fixme();
+test.describe('Workflow Archive', () => {
 
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
@@ -65,8 +64,7 @@ test.describe('Workflow Archive @fixme', () => {
 		await expect(n8n.page).toHaveURL(/\/workflows$/);
 	});
 
-	// Flaky in multi-main mode
-	test.fixme('should archive published workflow and then delete it @fixme', async ({ n8n }) => {
+	test('should archive published workflow and then delete it', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		const workflowId = await getWorkflowIdAfterSave(n8n);
 		await n8n.canvas.publishWorkflow();
@@ -135,8 +133,7 @@ test.describe('Workflow Archive @fixme', () => {
 		await expect(n8n.workflowSettingsModal.getUnpublishMenuItem()).not.toBeAttached();
 	});
 
-	// TODO: flaky test - 18 similar failures across 10 branches in last 14 days
-	test.fixme('should unpublish a published workflow @fixme', async ({ n8n }) => {
+	test('should unpublish a published workflow', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.publishWorkflow();
 		await n8n.page.keyboard.press('Escape');
@@ -153,8 +150,7 @@ test.describe('Workflow Archive @fixme', () => {
 		await expect(n8n.canvas.getPublishedIndicator()).toBeHidden();
 	});
 
-	// Flaky in multi-main mode
-	test.fixme('should unpublish published workflow on archive @fixme', async ({ n8n }) => {
+	test('should unpublish published workflow on archive', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		const workflowId = await getWorkflowIdAfterSave(n8n);
 		await n8n.canvas.publishWorkflow();
