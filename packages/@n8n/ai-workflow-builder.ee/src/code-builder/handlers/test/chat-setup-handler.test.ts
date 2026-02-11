@@ -98,10 +98,10 @@ describe('ChatSetupHandler', () => {
 
 			await handler.execute({ payload });
 
-			const bindToolsCall = (llm.bindTools as jest.Mock).mock.calls[0][0] as Array<{
-				name?: string;
-			}>;
-			const toolNames = bindToolsCall
+			const firstCallArgs = (llm.bindTools as jest.Mock).mock.calls[0] as [
+				Array<{ name?: string }>,
+			];
+			const toolNames = firstCallArgs[0]
 				.filter((t): t is { name: string } => 'name' in t)
 				.map((t) => t.name);
 
@@ -126,10 +126,10 @@ describe('ChatSetupHandler', () => {
 
 			await handler.execute({ payload });
 
-			const bindToolsCall = (llm.bindTools as jest.Mock).mock.calls[0][0] as Array<{
-				name?: string;
-			}>;
-			const toolNames = bindToolsCall
+			const firstCallArgs = (llm.bindTools as jest.Mock).mock.calls[0] as [
+				Array<{ name?: string }>,
+			];
+			const toolNames = firstCallArgs[0]
 				.filter((t): t is { name: string } => 'name' in t)
 				.map((t) => t.name);
 
@@ -155,10 +155,10 @@ describe('ChatSetupHandler', () => {
 
 			await handler.execute({ payload });
 
-			const bindToolsCall = (llm.bindTools as jest.Mock).mock.calls[0][0] as Array<{
-				name?: string;
-			}>;
-			const toolNames = bindToolsCall
+			const firstCallArgs = (llm.bindTools as jest.Mock).mock.calls[0] as [
+				Array<{ name?: string }>,
+			];
+			const toolNames = firstCallArgs[0]
 				.filter((t): t is { name: string } => 'name' in t)
 				.map((t) => t.name);
 

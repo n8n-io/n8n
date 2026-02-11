@@ -537,7 +537,8 @@ export default workflow('ai-sentiment', 'AI Sentiment Analyzer')
 // Steps are split into constants so the prompt can swap in plan-specific
 // versions of Steps 1, 2a, 2b, 2c, and 3 when an approved plan is provided.
 
-const MANDATORY_WORKFLOW_INTRO = `**You MUST follow these steps in order. Do NOT produce visible output until the final step — only tool calls. Use the \`think\` tool in-between steps (after first step) when you need to reason about results.**`;
+const MANDATORY_WORKFLOW_INTRO =
+	'**You MUST follow these steps in order. Do NOT produce visible output until the final step — only tool calls. Use the `think` tool in-between steps (after first step) when you need to reason about results.**';
 
 // ── Step 1 variants ──────────────────────────────────────────────────────────
 
@@ -847,6 +848,76 @@ export interface BuildCodeBuilderPromptOptions {
 }
 
 /**
+ * Build the user message context parts (history, workflow, plan, search results)
+ */
+function buildUserMessageParts(
+	currentWorkflow: WorkflowJSON | undefined,
+	historyContext: HistoryContext | undefined,
+	options: BuildCodeBuilderPromptOptions | undefined,
+): string[] {
+	const parts: string[] = [];
+
+	// 1. Compacted summary (if exists from previous compactions)
+	if (historyContext?.previousSummary) {
+		parts.push(
+			`<conversation_summary>\n${escapeCurlyBrackets(historyContext.previousSummary)}\n</conversation_summary>`,
+		);
+	}
+
+	// 2. Previous user requests (raw messages for recent context)
+	if (historyContext?.userMessages && historyContext.userMessages.length > 0) {
+		parts.push('<previous_requests>');
+		historyContext.userMessages.forEach((msg, i) => {
+			parts.push(`${i + 1}. ${escapeCurlyBrackets(msg)}`);
+		});
+		parts.push('</previous_requests>');
+	}
+
+	// 3. Current workflow context (with line numbers for text editor)
+	if (currentWorkflow) {
+		// Use pre-generated code if provided (ensures text editor and prompt match),
+		// otherwise generate with execution context
+		const workflowCode =
+			options?.preGeneratedCode ??
+			generateWorkflowCode({
+				workflow: currentWorkflow,
+				executionSchema: options?.executionSchema,
+				executionData: options?.executionData,
+				expressionValues: options?.expressionValues,
+				valuesExcluded: options?.valuesExcluded,
+				pinnedNodes: options?.pinnedNodes,
+			});
+
+		// Format as file with line numbers (matches view command output)
+		// Include SDK import so LLM sees the same code that's in the text editor
+		const codeWithImport = `${SDK_IMPORT_STATEMENT}\n\n${workflowCode}`;
+		const formattedCode = formatCodeWithLineNumbers(codeWithImport);
+		const escapedCode = escapeCurlyBrackets(formattedCode);
+		parts.push(`<workflow_file path="/workflow.js">\n${escapedCode}\n</workflow_file>`);
+	} else {
+		parts.push(
+			'<workflow_file path="/workflow.js">\nNo file exists yet. Use the `create` command to write the initial workflow code.\n</workflow_file>',
+		);
+	}
+
+	// 4. Approved plan (when plan mode feeds into code builder)
+	if (options?.planOutput) {
+		parts.push(
+			`<approved_plan>\n${escapeCurlyBrackets(formatPlanAsText(options.planOutput))}\n</approved_plan>`,
+		);
+	}
+
+	// 5. Pre-fetched search results (saves an LLM round-trip when plan is provided)
+	if (options?.preSearchResults) {
+		parts.push(
+			`<node_search_results>\n${escapeCurlyBrackets(options.preSearchResults)}\n</node_search_results>`,
+		);
+	}
+
+	return parts;
+}
+
+/**
  * Build the complete system prompt for the code builder agent
  *
  * @param currentWorkflow - Optional current workflow JSON context
@@ -874,67 +945,9 @@ export function buildCodeBuilderPrompt(
 
 	const systemMessage = promptSections.join('\n\n');
 
-	// User message template
-	const userMessageParts: string[] = [];
+	const userMessageParts = buildUserMessageParts(currentWorkflow, historyContext, options);
 
-	// 1. Compacted summary (if exists from previous compactions)
-	if (historyContext?.previousSummary) {
-		userMessageParts.push(
-			`<conversation_summary>\n${escapeCurlyBrackets(historyContext.previousSummary)}\n</conversation_summary>`,
-		);
-	}
-
-	// 2. Previous user requests (raw messages for recent context)
-	if (historyContext?.userMessages && historyContext.userMessages.length > 0) {
-		userMessageParts.push('<previous_requests>');
-		historyContext.userMessages.forEach((msg, i) => {
-			userMessageParts.push(`${i + 1}. ${escapeCurlyBrackets(msg)}`);
-		});
-		userMessageParts.push('</previous_requests>');
-	}
-
-	// 3. Current workflow context (with line numbers for text editor)
-	if (currentWorkflow) {
-		// Use pre-generated code if provided (ensures text editor and prompt match),
-		// otherwise generate with execution context
-		const workflowCode =
-			options?.preGeneratedCode ??
-			generateWorkflowCode({
-				workflow: currentWorkflow,
-				executionSchema: options?.executionSchema,
-				executionData: options?.executionData,
-				expressionValues: options?.expressionValues,
-				valuesExcluded: options?.valuesExcluded,
-				pinnedNodes: options?.pinnedNodes,
-			});
-
-		// Format as file with line numbers (matches view command output)
-		// Include SDK import so LLM sees the same code that's in the text editor
-		const codeWithImport = `${SDK_IMPORT_STATEMENT}\n\n${workflowCode}`;
-		const formattedCode = formatCodeWithLineNumbers(codeWithImport);
-		const escapedCode = escapeCurlyBrackets(formattedCode);
-		userMessageParts.push(`<workflow_file path="/workflow.js">\n${escapedCode}\n</workflow_file>`);
-	} else {
-		userMessageParts.push(
-			'<workflow_file path="/workflow.js">\nNo file exists yet. Use the `create` command to write the initial workflow code.\n</workflow_file>',
-		);
-	}
-
-	// 4. Approved plan (when plan mode feeds into code builder)
-	if (options?.planOutput) {
-		userMessageParts.push(
-			`<approved_plan>\n${escapeCurlyBrackets(formatPlanAsText(options.planOutput))}\n</approved_plan>`,
-		);
-	}
-
-	// 5. Pre-fetched search results (saves an LLM round-trip when plan is provided)
-	if (options?.preSearchResults) {
-		userMessageParts.push(
-			`<node_search_results>\n${escapeCurlyBrackets(options.preSearchResults)}\n</node_search_results>`,
-		);
-	}
-
-	// 6. Wrap user message in XML tag for easy extraction when loading sessions
+	// Wrap user message in XML tag for easy extraction when loading sessions
 	if (userMessageParts.length > 0) {
 		userMessageParts.push('<user_request>');
 		userMessageParts.push('{userMessage}');
