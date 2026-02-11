@@ -3507,6 +3507,7 @@
 	"workflowHistory.item.publishedAtLabel": "Last published by",
 	"workflowHistory.item.actions.restore": "Restore version",
 	"workflowHistory.item.actions.publish": "Publish version",
+	"workflowHistory.item.actions.publish-gradually": "Publish version gradually",
 	"workflowHistory.item.actions.unpublish": "Unpublish workflow",
 	"workflowHistory.item.actions.clone": "Clone to new workflow",
 	"workflowHistory.item.actions.open": "Open version in new tab",
