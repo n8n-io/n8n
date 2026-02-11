@@ -50,9 +50,9 @@ export class NodesRiskReporter implements RiskReporter {
 				title: NODES_REPORT.SECTIONS.OFFICIAL_RISKY_NODES,
 				description: [
 					sentenceStart(officialRiskyNodes.length),
-					"part of n8n's official nodes and may be used to fetch and run any arbitrary code in the host system. This may lead to exploits such as remote code execution.",
+					'able to execute code, commands, or access external systems. This is powerful functionality - ensure workflows using these nodes are configured as intended.',
 				].join(' '),
-				recommendation: `Consider reviewing the parameters in these nodes, replacing them with app nodes where possible, and not loading unneeded node types with the NODES_EXCLUDE environment variable. See: ${ENV_VARS_DOCS_URL}`,
+				recommendation: `Review these workflows to confirm they behave as expected. To restrict available node types, use the NODES_EXCLUDE environment variable. See: ${ENV_VARS_DOCS_URL}`,
 				location: officialRiskyNodes,
 			});
 		}

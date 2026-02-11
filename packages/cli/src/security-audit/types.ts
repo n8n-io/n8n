@@ -1,7 +1,13 @@
 import type { IWorkflowBase } from 'n8n-workflow';
 
 export namespace Risk {
-	export type Category = 'database' | 'credentials' | 'nodes' | 'instance' | 'filesystem';
+	export type Category =
+		| 'database'
+		| 'credentials'
+		| 'nodes'
+		| 'instance'
+		| 'filesystem'
+		| 'advisories';
 
 	type CredLocation = {
 		kind: 'credential';
@@ -36,7 +42,12 @@ export namespace Risk {
 		recommendation: string;
 	};
 
-	export type Report = StandardReport | InstanceReport;
+	export type AdvisoryReport = {
+		risk: 'advisories';
+		sections: AdvisorySection[];
+	};
+
+	export type Report = StandardReport | InstanceReport | AdvisoryReport;
 
 	export type StandardSection = SectionBase & {
 		location: NodeLocation[] | CredLocation[] | CommunityNodeDetails[] | CustomNodeDetails[];
@@ -46,6 +57,25 @@ export namespace Risk {
 		location?: NodeLocation[];
 		settings?: Record<string, unknown>;
 		nextVersions?: n8n.Version[];
+	};
+
+	export type AdvisorySeverity = 'critical' | 'high' | 'medium' | 'low';
+
+	export type AdvisoryDetails = {
+		kind: 'advisory';
+		ghsaId: string;
+		cveId: string | null;
+		severity: AdvisorySeverity;
+		summary: string;
+		vulnerableVersionRange: string;
+		patchedVersions: string | null;
+		publishedAt: string;
+		htmlUrl: string;
+	};
+
+	export type AdvisorySection = SectionBase & {
+		advisories: AdvisoryDetails[];
+		affectsCurrentVersion: boolean;
 	};
 
 	export type StandardReport = {

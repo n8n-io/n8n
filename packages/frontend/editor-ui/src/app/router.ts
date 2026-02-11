@@ -22,7 +22,10 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
+import {
+	TEMPLATE_SETUP_EXPERIENCE,
+	SECURITY_AUDIT_UI_EXPERIMENT,
+} from '@/app/constants/experiments';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
@@ -892,6 +895,32 @@ export const routes: RouteRecordRaw[] = [
 					middlewareOptions: {
 						rbac: {
 							scope: 'ldap:manage',
+						},
+					},
+				},
+			},
+			{
+				path: 'security-center',
+				name: VIEWS.SECURITY_CENTER,
+				component: async () =>
+					await import('@/features/settings/securityCenter/views/SettingsSecurityAuditView.vue'),
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'securityAudit:generate',
+						},
+						custom: () => {
+							const posthog = usePostHog();
+							return posthog.isFeatureEnabled(SECURITY_AUDIT_UI_EXPERIMENT.name);
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'security-center',
+							};
 						},
 					},
 				},

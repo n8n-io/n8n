@@ -37,8 +37,8 @@ export class CredentialsRiskReporter implements RiskReporter {
 			sections: [],
 		};
 
-		const hint = 'Keeping unused credentials in your instance is an unneeded security risk.';
-		const recommendation = 'Consider deleting these credentials if you no longer need them.';
+		const hint = 'Removing unused credentials helps keep your instance tidy.';
+		const recommendation = 'Consider removing these credentials if you no longer need them.';
 
 		const sentenceStart = ({ length }: { length: number }) =>
 			length > 1 ? 'These credentials are' : 'This credential is';

@@ -7,9 +7,9 @@ properties:
       sections:
         [
           {
-            title: Credentials not used in any workflow,
-            description: These credentials are not used in any workflow. Keeping unused credentials in your instance is an unneeded security risk.,
-            recommendation: Consider deleting these credentials if you no longer need them.,
+            title: Unused credentials,
+            description: These credentials are not used in any workflow. Removing unused credentials helps keep your instance tidy.,
+            recommendation: Consider removing these credentials if you no longer need them.,
             location: [{ kind: credential, id: '1', name: My Test Account }],
           },
         ]

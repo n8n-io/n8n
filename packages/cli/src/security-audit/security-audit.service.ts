@@ -55,6 +55,7 @@ export class SecurityAuditService {
 			const className = category.charAt(0).toUpperCase() + category.slice(1) + 'RiskReporter';
 
 			const toFilename: Record<string, string> = {
+				AdvisoriesRiskReporter: 'advisories-risk-reporter',
 				CredentialsRiskReporter: 'credentials-risk-reporter',
 				DatabaseRiskReporter: 'database-risk-reporter',
 				FilesystemRiskReporter: 'filesystem-risk-reporter',
