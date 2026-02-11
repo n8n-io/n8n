@@ -45,8 +45,7 @@ export class ProjectSettingsPage extends BasePage {
 		return this.getMembersTable()
 			.locator('tr')
 			.filter({ hasText: email })
-			.getByTestId('project-member-role-dropdown')
-			.getByRole('button');
+			.getByTestId('project-member-role-dropdown');
 	}
 
 	getMembersTable() {
