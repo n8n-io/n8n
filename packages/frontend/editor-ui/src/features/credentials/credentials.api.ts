@@ -28,17 +28,17 @@ export interface GetAllCredentialsOptions {
 	includeScopes?: boolean;
 	onlySharedWithMe?: boolean;
 	includeGlobal?: boolean;
+	/**
+	 * The implementation of the externalSecretsStore filter option is not optimized for performance.
+	 * Don't expose it via the filter selection component. It shall only be provided when clicking on
+	 * the link to jump to this overview from the "Delete secret provider connection" modal.
+	 *
+	 * See RFC to improve its performance in the future:
+	 * https://www.notion.so/n8n/Querying-credential-dependencies-e-g-External-Secret-Store-stored-in-expressions-3035b6e0c94f80e78448ff08e5528c2a
+	 */
 	externalSecretsStore?: string;
 }
 
-/**
- * The implementation of the externalSecretsStore filter option is not optimized for performance.
- * Don't expose it via the filter selection component. It shall only be provided when clicking on
- * the link to jump to this overview from the "Delete secret provider connection" modal.
- *
- * See RFC to improve its performance in the future:
- * https://www.notion.so/n8n/Querying-credential-dependencies-e-g-External-Secret-Store-stored-in-expressions-3035b6e0c94f80e78448ff08e5528c2a
- */
 export async function getAllCredentials(
 	context: IRestApiContext,
 	options: GetAllCredentialsOptions = {},
