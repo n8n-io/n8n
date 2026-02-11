@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import type { WebhookEntity } from '@n8n/db';
-import { WebhookRepository } from '@n8n/db';
+import { WebhookEntity, WebhookRepository } from '@n8n/db';
+import type { EntityManager } from '@n8n/typeorm';
 import { Service } from '@n8n/di';
 import { HookContext, WebhookContext } from 'n8n-core';
 import { ensureError, Node, NodeHelpers, UnexpectedError } from 'n8n-workflow';
@@ -125,7 +125,7 @@ export class WebhookService {
 		return await this.findCached(method, path);
 	}
 
-	async storeWebhook(webhook: WebhookEntity) {
+	async storeWebhook(webhook: WebhookEntity, em?: EntityManager) {
 		try {
 			await this.cacheService.set(webhook.cacheKey, webhook);
 		} catch (error) {
@@ -134,14 +134,31 @@ export class WebhookService {
 			});
 		}
 
-		await this.webhookRepository.upsert(webhook, ['method', 'webhookPath']);
+		if (em) {
+			await em.upsert(WebhookEntity, webhook, ['method', 'webhookPath']);
+		} else {
+			await this.webhookRepository.upsert(webhook, ['method', 'webhookPath']);
+		}
 	}
 
 	createWebhook(data: Partial<WebhookEntity>) {
 		return this.webhookRepository.create(data);
 	}
 
-	async deleteWorkflowWebhooks(workflowId: string) {
+	async findAllWebhooks() {
+		return await this.webhookRepository.find();
+	}
+
+	async deleteWorkflowWebhooks(workflowId: string, em?: EntityManager) {
+		if (em) {
+			const webhooks = await em.findBy(WebhookEntity, { workflowId });
+			if (webhooks.length) {
+				void this.cacheService.deleteMany(webhooks.map((w) => w.cacheKey));
+				await em.remove(webhooks);
+			}
+			return webhooks;
+		}
+
 		const webhooks = await this.webhookRepository.findBy({ workflowId });
 
 		return await this.deleteWebhooks(webhooks);
