@@ -310,11 +310,6 @@ const showSuggestions = computed(() => {
 	return showPlaceholder.value && props.suggestions && props.suggestions.length > 0;
 });
 
-// Check if we have any thinking group (tool messages grouped into thinking blocks)
-const hasAnyThinkingGroup = computed(() => {
-	return normalizedMessages.value.some((msg) => msg.type === 'thinking-group');
-});
-
 // Show placeholder when streaming with loading message but no active tool group for the current turn.
 // Check the last message — if it's not a thinking-group, the current turn has no tools yet.
 const showThinkingPlaceholder = computed(() => {
