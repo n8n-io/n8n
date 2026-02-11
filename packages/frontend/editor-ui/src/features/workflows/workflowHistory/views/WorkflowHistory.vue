@@ -24,6 +24,7 @@ import WorkflowHistoryContent from '../components/WorkflowHistoryContent.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -67,6 +68,7 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
 const workflowsListStore = useWorkflowsListStore();
+const workflowsStore = useWorkflowsStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const workflowActivate = useWorkflowActivate();
@@ -115,8 +117,9 @@ const actions = computed<Array<UserAction<IUser>>>(() =>
 		disabled:
 			(value === 'clone' && !workflowPermissions.value.create) ||
 			((value === 'restore' || value === 'name') && !workflowPermissions.value.update) ||
-			((value === 'publish' || value === 'unpublish' || value === 'publish-gradually') &&
-				!workflowPermissions.value.publish),
+			((value === 'publish' || value === 'unpublish') && !workflowPermissions.value.publish) ||
+			(value === 'publish-gradually' &&
+				(!workflowPermissions.value.publish || workflowsStore.isGradualRolloutMaxVersionsReached)),
 		value,
 	})),
 );

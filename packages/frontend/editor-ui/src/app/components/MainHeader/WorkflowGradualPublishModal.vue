@@ -47,6 +47,8 @@ const containsTrigger = computed((): boolean => {
 
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
 
+const isMaxVersionsReached = computed(() => workflowsStore.isGradualRolloutMaxVersionsReached);
+
 const isPercentageValid = computed(() => {
 	const value = percentage.value;
 	return Number.isInteger(value) && value >= 1 && value <= 99;
@@ -54,7 +56,11 @@ const isPercentageValid = computed(() => {
 
 const inputsDisabled = computed(() => {
 	return (
-		!containsTrigger.value || hasNodeIssues.value || !hasWebhookTrigger.value || publishing.value
+		!containsTrigger.value ||
+		hasNodeIssues.value ||
+		!hasWebhookTrigger.value ||
+		isMaxVersionsReached.value ||
+		publishing.value
 	);
 });
 
@@ -62,7 +68,7 @@ const isPublishDisabled = computed(() => {
 	return inputsDisabled.value || versionName.value.trim().length === 0 || !isPercentageValid.value;
 });
 
-type GradualPublishCalloutId = 'noTrigger' | 'nodeIssues' | 'noWebhook';
+type GradualPublishCalloutId = 'noTrigger' | 'nodeIssues' | 'noWebhook' | 'maxVersions';
 
 const activeCalloutId = computed<GradualPublishCalloutId | null>(() => {
 	if (!containsTrigger.value) {
@@ -73,6 +79,9 @@ const activeCalloutId = computed<GradualPublishCalloutId | null>(() => {
 	}
 	if (!hasWebhookTrigger.value) {
 		return 'noWebhook';
+	}
+	if (isMaxVersionsReached.value) {
+		return 'maxVersions';
 	}
 	return null;
 });
@@ -153,6 +162,9 @@ async function handleGradualPublish() {
 				</N8nCallout>
 				<N8nCallout v-else-if="activeCalloutId === 'noWebhook'" theme="warning">
 					{{ i18n.baseText('workflows.gradualPublishModal.webhookRequired') }}
+				</N8nCallout>
+				<N8nCallout v-else-if="activeCalloutId === 'maxVersions'" theme="warning">
+					{{ i18n.baseText('workflows.gradualPublishModal.maxVersionsReached') }}
 				</N8nCallout>
 				<N8nInputLabel
 					input-name="gradual-publish-percentage"

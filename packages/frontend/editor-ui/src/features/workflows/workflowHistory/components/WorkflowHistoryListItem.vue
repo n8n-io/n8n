@@ -88,6 +88,13 @@ const versionPublishInfo = computed(() => {
 	return publishInfo;
 });
 
+const isGradualRollout = computed(() => {
+	const percentage = props.item.gradualRolloutPercentage;
+	return percentage !== undefined && percentage > 0 && percentage < 100;
+});
+
+const gradualRolloutPercentage = computed(() => props.item.gradualRolloutPercentage ?? 0);
+
 const getPublishedUserName = (userId: string | undefined | null) => {
 	if (!userId) {
 		return null;
@@ -99,6 +106,11 @@ const getPublishedUserName = (userId: string | undefined | null) => {
 const mainTooltipContent = computed(() => {
 	if (props.isGrouped) {
 		return null;
+	}
+
+	// Show gradual rollout info if applicable
+	if (isGradualRollout.value) {
+		return i18n.baseText('workflowHistory.item.gradualRollout');
 	}
 
 	if (props.isVersionActive) {
@@ -120,6 +132,15 @@ const mainTooltipContent = computed(() => {
 	}
 
 	return formattedCreatedAt.value;
+});
+
+const gradualRolloutTooltipText = computed(() => {
+	if (!isGradualRollout.value) {
+		return null;
+	}
+	return i18n.baseText('workflowHistory.item.gradualRolloutPercentage', {
+		interpolate: { percentage: String(gradualRolloutPercentage.value) },
+	});
 });
 
 const mainTooltipDate = computed(() => {
@@ -194,7 +215,12 @@ onMounted(() => {
 <template>
 	<N8nTooltip placement="left" :disabled="!mainTooltipContent" :show-after="300">
 		<template #content>
-			<div v-if="props.index === 0 && !props.isVersionActive">
+			<div v-if="isGradualRollout">
+				{{ mainTooltipContent }}
+				<br />
+				{{ gradualRolloutTooltipText }}
+			</div>
+			<div v-else-if="props.index === 0 && !props.isVersionActive">
 				{{ mainTooltipContent }}
 			</div>
 			<div v-else>
@@ -224,7 +250,11 @@ onMounted(() => {
 			<span :class="$style.timelineColumn">
 				<template v-if="!props.isGrouped">
 					<span
-						v-if="props.isVersionActive"
+						v-if="isGradualRollout"
+						:class="[$style.timelineDot, $style.timelineDotGradualRollout]"
+					/>
+					<span
+						v-else-if="props.isVersionActive"
 						:class="[$style.timelineDot, $style.timelineDotPublished]"
 					/>
 					<span
@@ -353,6 +383,10 @@ $authorMaxWidth: 130px;
 
 .timelineDotPublished {
 	background-color: var(--color--mint-600);
+}
+
+.timelineDotGradualRollout {
+	background-color: var(--color--purple-500);
 }
 
 .timelineDotLatest {

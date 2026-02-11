@@ -36,8 +36,18 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const getWorkflowHistory = async (
 		workflowId: string,
 		queryParams: WorkflowHistoryRequestParams,
-	): Promise<WorkflowHistory[]> =>
-		await whApi.getWorkflowHistory(rootStore.restApiContext, workflowId, queryParams);
+	): Promise<WorkflowHistory[]> => {
+		const history = await whApi.getWorkflowHistory(
+			rootStore.restApiContext,
+			workflowId,
+			queryParams,
+		);
+		// TODO: Remove mock - setting all versions to 50% gradual rollout for testing
+		return history.map((version) => ({
+			...version,
+			gradualRolloutPercentage: 50,
+		}));
+	};
 
 	const getWorkflowVersion = async (
 		workflowId: string,
