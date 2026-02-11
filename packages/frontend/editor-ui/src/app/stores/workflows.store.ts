@@ -71,7 +71,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/app/utils/credentialOnlyNodes';
 import { i18n } from '@n8n/i18n';
 
-import { computed, ref, watch } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -136,7 +136,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const versionData = ref<WorkflowVersionData | null>(null);
 
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
-	const workflowExecutionData = ref<IExecutionResponse | null>(null);
+	const workflowExecutionData = shallowRef<IExecutionResponse | null>(null);
 	const lastSuccessfulExecution = ref<IExecutionResponse | null>(null);
 	const workflowExecutionStartedData =
 		ref<[executionId: string, data: { [nodeName: string]: ITaskStartedData[] }]>();
@@ -148,6 +148,26 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const chatMessages = ref<string[]>([]);
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
 	const selectedTriggerNodeName = ref<string>();
+
+	/**
+	 * Immutably updates nested resultData inside workflowExecutionData.
+	 * Required because workflowExecutionData is a shallowRef — nested
+	 * mutations don't trigger reactivity.
+	 */
+	function updateExecutionResultData(
+		updater: (
+			resultData: IRunExecutionData['resultData'],
+		) => Partial<IRunExecutionData['resultData']>,
+	): void {
+		const current = workflowExecutionData.value;
+		if (!current?.data) return;
+		workflowExecutionData.value = {
+			...current,
+			data: Object.assign({}, current.data, {
+				resultData: { ...current.data.resultData, ...updater(current.data.resultData) },
+			}),
+		};
+	}
 
 	const workflowName = computed(() => workflow.value.name);
 
@@ -640,11 +660,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflowActiveVersion(version: WorkflowHistory | null) {
-		workflow.value.activeVersion = deepCopy(version);
+		workflow.value.activeVersion = structuredClone(version);
 	}
 
 	function setWorkflowVersionData(version: WorkflowVersionData) {
-		versionData.value = deepCopy(version);
+		versionData.value = structuredClone(version);
 		workflow.value.versionId = version.versionId;
 	}
 
@@ -993,14 +1013,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function renameNodeSelectedAndExecution(nameData: { old: string; new: string }): void {
 		uiStore.markStateDirty();
 
-		// If node has any WorkflowResultData rename also that one that the data
-		// does still get displayed also after node got renamed
-		const runData = workflowExecutionData.value?.data?.resultData?.runData;
-		if (runData?.[nameData.old]) {
-			runData[nameData.new] = runData[nameData.old];
-			delete runData[nameData.old];
-		}
-
 		// In case the renamed node was last selected set it also there with the new name
 		if (uiStore.lastSelectedNode === nameData.old) {
 			uiStore.lastSelectedNode = nameData.new;
@@ -1016,14 +1028,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowDocumentStore.renamePinDataNode(nameData.old, nameData.new);
 		}
 
-		const resultData = workflowExecutionData.value?.data?.resultData;
-		if (resultData?.pinData?.[nameData.old]) {
-			resultData.pinData[nameData.new] = resultData.pinData[nameData.old];
-			delete resultData.pinData[nameData.old];
-		}
-
-		// Update the name in execution result pinData pairedItem references
-		Object.values(workflowExecutionData.value?.data?.resultData.pinData ?? {})
+		// Update the name in pairedItem sourceOverwrite (pinData)
+		Object.values(workflow.value.pinData ?? {})
+			.concat(Object.values(workflowExecutionData.value?.data?.resultData.pinData ?? {}))
 			.flatMap((executionData) =>
 				executionData.flatMap((nodeExecution) =>
 					Array.isArray(nodeExecution.pairedItem)
@@ -1040,12 +1047,42 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				pairedItem.sourceOverwrite.previousNode = nameData.new;
 			});
 
-		Object.values(workflowExecutionData.value?.data?.resultData.runData ?? {})
-			.flatMap((taskData) => taskData.flatMap((task) => task.source))
-			.forEach((source) => {
-				if (!source || source.previousNode !== nameData.old) return;
-				source.previousNode = nameData.new;
-			});
+		// Update source.previousNode in runData and rename runData/pinData keys
+		// Deep mutations on pairedItem/source objects above are in-place;
+		// immutable update on runData/pinData keys triggers shallowRef reactivity.
+		if (workflowExecutionData.value?.data?.resultData) {
+			const resultData = workflowExecutionData.value.data.resultData;
+
+			const { [nameData.old]: renamedRunData, ...restRunData } = resultData.runData;
+			const newRunData = renamedRunData
+				? { ...restRunData, [nameData.new]: renamedRunData }
+				: restRunData;
+
+			// Rename source.previousNode in runData
+			Object.values(newRunData)
+				.flatMap((taskData) => taskData.flatMap((task) => task.source))
+				.forEach((source) => {
+					if (!source || source.previousNode !== nameData.old) return;
+					source.previousNode = nameData.new;
+				});
+
+			const { [nameData.old]: renamedPinData, ...restPinData } = resultData.pinData ?? {};
+			const newPinData = renamedPinData
+				? { ...restPinData, [nameData.new]: renamedPinData }
+				: resultData.pinData;
+
+			workflowExecutionData.value = {
+				...workflowExecutionData.value,
+				data: {
+					...workflowExecutionData.value.data,
+					resultData: {
+						...resultData,
+						runData: newRunData,
+						pinData: newPinData,
+					},
+				},
+			};
+		}
 	}
 
 	function setNodes(nodes: INodeUi[]): void {
@@ -1174,45 +1211,47 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const node = getNodeByName(nodeName);
 		if (!node) return;
 
-		workflowExecutionData.value.data.resultData.lastNodeExecuted = nodeName;
+		const currentTasksData = workflowExecutionData.value.data.resultData.runData[nodeName] ?? [];
 
-		if (workflowExecutionData.value.data.resultData.runData[nodeName] === undefined) {
-			workflowExecutionData.value.data.resultData.runData[nodeName] = [];
-		}
-
-		const tasksData = workflowExecutionData.value.data.resultData.runData[nodeName];
+		let newTasksData: ITaskData[];
 		if (isNodeWaiting) {
-			tasksData.push(data);
-			workflowExecutionResultDataLastUpdate.value = Date.now();
-
-			if (
-				node.type === FORM_NODE_TYPE ||
-				(node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form')
-			) {
-				const testUrl = getFormResumeUrl(node, executionId);
-				openFormPopupWindow(testUrl);
-			}
+			newTasksData = [...currentTasksData, data];
 		} else {
 			// If we process items in parallel on subnodes we get several placeholder taskData items.
 			// We need to find and replace the item with the matching executionIndex and only append if we don't find anything matching.
-			const existingRunIndex = tasksData.findIndex(
+			const existingRunIndex = currentTasksData.findIndex(
 				(item) => item.executionIndex === data.executionIndex,
 			);
 
 			// For waiting nodes always replace the last item as executionIndex will always be different
-			const hasWaitingItems = tasksData.some((it) => it.executionStatus === 'waiting');
+			const hasWaitingItems = currentTasksData.some((it) => it.executionStatus === 'waiting');
 			const index =
-				existingRunIndex > -1 && !hasWaitingItems ? existingRunIndex : tasksData.length - 1;
-			const status = tasksData[index]?.executionStatus ?? 'unknown';
+				existingRunIndex > -1 && !hasWaitingItems ? existingRunIndex : currentTasksData.length - 1;
+			const status = currentTasksData[index]?.executionStatus ?? 'unknown';
 
-			if ('waiting' === status || 'running' === status || tasksData[existingRunIndex]) {
-				tasksData.splice(index, 1, data);
+			if ('waiting' === status || 'running' === status || currentTasksData[existingRunIndex]) {
+				newTasksData = currentTasksData.toSpliced(index, 1, data);
 			} else {
-				tasksData.push(data);
+				newTasksData = [...currentTasksData, data];
 			}
+		}
 
-			workflowExecutionResultDataLastUpdate.value = Date.now();
+		updateExecutionResultData((resultData) => ({
+			lastNodeExecuted: nodeName,
+			runData: { ...resultData.runData, [nodeName]: newTasksData },
+		}));
+		workflowExecutionResultDataLastUpdate.value = Date.now();
 
+		if (
+			isNodeWaiting &&
+			(node.type === FORM_NODE_TYPE ||
+				(node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form'))
+		) {
+			const testUrl = getFormResumeUrl(node, executionId);
+			openFormPopupWindow(testUrl);
+		}
+
+		if (!isNodeWaiting) {
 			void trackNodeExecution(pushData);
 		}
 	}
@@ -1223,7 +1262,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			tasksData?.findIndex((item) => item.executionIndex === pushData.data.executionIndex) ?? -1;
 
 		if (tasksData?.[existingRunIndex]) {
-			tasksData.splice(existingRunIndex, 1, pushData.data);
+			updateExecutionResultData((resultData) => ({
+				runData: {
+					...resultData.runData,
+					[pushData.nodeName]: tasksData.toSpliced(existingRunIndex, 1, pushData.data),
+				},
+			}));
 			workflowExecutionResultDataLastUpdate.value = Date.now();
 		}
 	}
@@ -1233,9 +1277,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return;
 		}
 
-		const { [nodeName]: removedRunData, ...remainingRunData } =
+		const { [nodeName]: _removedRunData, ...remainingRunData } =
 			workflowExecutionData.value.data.resultData.runData;
-		workflowExecutionData.value.data.resultData.runData = remainingRunData;
+		updateExecutionResultData(() => ({ runData: remainingRunData }));
 	}
 
 	function activeNode(): INodeUi | null {
@@ -1747,6 +1791,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setDescription,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,
+		updateExecutionResultData,
 		setWorkflow,
 		addConnection,
 		removeConnection,
