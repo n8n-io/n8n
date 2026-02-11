@@ -323,8 +323,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(ExecutionsPruningService).init();
 		Container.get(WorkflowHistoryCompactionService).init();
 
-		if (this.globalConfig.executions.mode === 'regular') {
+		if (
+			this.globalConfig.executions.mode === 'regular' &&
+			!this.globalConfig.workflows.recoveryMode
+		) {
 			await this.runEnqueuedExecutions();
+		} else if (this.globalConfig.executions.mode === 'regular') {
+			this.logger.warn('Recovery mode enabled. Skipping enqueued execution recovery.');
 		}
 
 		// Start to get active workflows and run their triggers

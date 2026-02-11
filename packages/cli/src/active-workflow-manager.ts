@@ -106,7 +106,11 @@ export class ActiveWorkflowManager {
 			'Active workflow manager expects instance role to be set',
 		);
 
-		await this.addActiveWorkflows('init');
+		if (this.workflowsConfig.recoveryMode) {
+			this.logger.warn('Recovery mode enabled. Skipping activation of active workflows.');
+		} else {
+			await this.addActiveWorkflows('init');
+		}
 
 		await this.externalHooks.run('activeWorkflows.initialized');
 	}
@@ -467,6 +471,13 @@ export class ActiveWorkflowManager {
 	 * only on instance init or (in multi-main setup) on leadership change.
 	 */
 	async addActiveWorkflows(activationMode: 'init' | 'leadershipChange') {
+		if (this.workflowsConfig.recoveryMode) {
+			this.logger.info(
+				`Recovery mode enabled. Skipping workflow activation for mode "${activationMode}".`,
+			);
+			return;
+		}
+
 		if (this.isActivationInProgress) {
 			this.logger.debug(`Skipping activation - already in progress for mode: ${activationMode}`);
 			return;
@@ -1015,6 +1026,8 @@ export class ActiveWorkflowManager {
 	 * Whether this instance may add webhooks to the `webhook_entity` table.
 	 */
 	shouldAddWebhooks(activationMode: WorkflowActivateMode) {
+		if (this.workflowsConfig.recoveryMode) return false;
+
 		// Always try to populate the webhook entity table as well as register the webhooks
 		// to prevent issues with users upgrading from a version < 1.15, where the webhook entity
 		// was cleared on shutdown to anything past 1.28.0, where we stopped populating it on init,
@@ -1031,6 +1044,8 @@ export class ActiveWorkflowManager {
 	 * triggers and pollers in memory, to ensure they are not duplicated.
 	 */
 	shouldAddTriggersAndPollers() {
+		if (this.workflowsConfig.recoveryMode) return false;
+
 		return this.instanceSettings.isLeader;
 	}
 }

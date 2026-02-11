@@ -19,6 +19,10 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOW_ACTIVATION_BATCH_SIZE')
 	activationBatchSize: number = 1;
 
+	/** Whether to start in recovery mode, skipping workflow activation and trigger registration. */
+	@Env('N8N_RECOVERY_MODE')
+	recoveryMode: boolean = false;
+
 	/** Whether to enable workflow dependency indexing. */
 	@Env('N8N_WORKFLOWS_INDEXING_ENABLED')
 	indexingEnabled: boolean = true;
