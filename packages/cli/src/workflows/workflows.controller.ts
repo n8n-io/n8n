@@ -3,10 +3,12 @@ import {
 	ArchiveWorkflowDto,
 	CreateWorkflowDto,
 	DeactivateWorkflowDto,
+	GradualPublishWorkflowDto,
 	ImportWorkflowFromUrlDto,
 	ROLE,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
+	type GradualPublishResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -624,6 +626,56 @@ export class WorkflowsController {
 		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
 
 		return { ...workflow, scopes, checksum };
+	}
+
+	@Post('/:workflowId/gradual-rollout')
+	@ProjectScope('workflow:publish')
+	async setRollout(
+		req: WorkflowRequest.SetGradualRollout,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Body body: GradualPublishWorkflowDto,
+	): Promise<GradualPublishResponse> {
+		const workflow = await this.workflowService.setRollout(
+			req.user,
+			workflowId,
+			body.versionId,
+			body.percentage,
+		);
+
+		return {
+			workflowId: workflow.id,
+			gradualRollout: {
+				enabled: true,
+				versions: [
+					{
+						versionId: workflow.activeVersionId!,
+						percentage: 100 - (workflow.gradualRolloutPercentage ?? 0),
+						isNew: false,
+					},
+					{
+						versionId: workflow.gradualRolloutVersionId!,
+						percentage: workflow.gradualRolloutPercentage!,
+						isNew: true,
+					},
+				],
+			},
+		};
+	}
+
+	@Delete('/:workflowId/gradual-rollout')
+	@ProjectScope('workflow:publish')
+	async removeRollout(
+		req: WorkflowRequest.RemoveGradualRollout,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+	): Promise<GradualPublishResponse> {
+		const workflow = await this.workflowService.removeRollout(req.user, workflowId);
+
+		return {
+			workflowId: workflow.id,
+			gradualRollout: null,
+		};
 	}
 
 	@Post('/:workflowId/run')

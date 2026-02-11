@@ -463,6 +463,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 						createdAt: new Date(),
 						updatedAt: new Date(),
 					}),
+					gradualRolloutPercentage: null,
+					gradualRolloutVersion: null,
 				}),
 			);
 
@@ -472,7 +474,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			expect(result.connections).toEqual(activeVersionConnections);
 			expect(workflowRepository.get).toHaveBeenCalledWith(
 				{ id: 'workflow-123' },
-				{ relations: ['activeVersion', 'tags'] },
+				{ relations: ['activeVersion', 'gradualRolloutVersion', 'tags'] },
 			);
 		});
 
@@ -528,7 +530,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(workflowRepository.get).toHaveBeenCalledWith(
 				{ id: 'workflow-123' },
-				{ relations: ['activeVersion'] },
+				{ relations: ['activeVersion', 'gradualRolloutVersion'] },
 			);
 
 			globalConfig.tags.disabled = false;

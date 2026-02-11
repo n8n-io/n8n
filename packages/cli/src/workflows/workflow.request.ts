@@ -103,4 +103,12 @@ export declare namespace WorkflowRequest {
 	>;
 
 	type Deactivate = AuthenticatedRequest<{ workflowId: string }>;
+
+	type SetGradualRollout = AuthenticatedRequest<
+		{ workflowId: string },
+		{},
+		{ rolloutVersionId: string; rolloutPercentage: number }
+	>;
+
+	type RemoveGradualRollout = AuthenticatedRequest<{ workflowId: string }>;
 }

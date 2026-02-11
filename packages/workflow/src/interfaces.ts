@@ -2745,6 +2745,8 @@ export interface IWorkflowBase {
 	versionId?: string;
 	activeVersionId: string | null;
 	activeVersion?: IWorkflowHistory | null;
+	gradualRolloutVersionId?: string | null;
+	gradualRolloutPrecentage?: number | null;
 	versionCounter?: number;
 	meta?: WorkflowFEMeta;
 }

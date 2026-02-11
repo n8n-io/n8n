@@ -750,6 +750,8 @@ export class WorkflowService {
 		await this.workflowRepository.update(workflowId, {
 			active: false,
 			activeVersionId: null,
+			gradualRolloutVersionId: null,
+			gradualRolloutPercentage: null,
 			// workflow content did not change, so we keep updatedAt as is
 			updatedAt: workflow.updatedAt,
 		});
@@ -775,6 +777,88 @@ export class WorkflowService {
 			publicApi: options?.publicApi ?? false,
 			deactivatedVersionId,
 		});
+
+		return workflow;
+	}
+
+	/**
+	 * Sets a rollout (B) version for gradual workflow rollout.
+	 * The rollout version will be used for a percentage of executions.
+	 */
+	async setRollout(
+		user: User,
+		workflowId: string,
+		gradualRolloutVersionId: string | undefined,
+		gradualRolloutPercentage: number | undefined,
+	): Promise<WorkflowEntity> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:publish',
+		]);
+
+		if (!workflow) {
+			throw new NotFoundError('You do not have permission to configure rollout for this workflow.');
+		}
+
+		if (workflow.activeVersionId === null) {
+			throw new BadRequestError('Cannot set rollout on an inactive workflow.');
+		}
+
+		if (!gradualRolloutVersionId) {
+			throw new BadRequestError('Gradual publish version cannot be undefined.');
+		}
+
+		if (!gradualRolloutPercentage) {
+			throw new BadRequestError('Gradual publish precentage cannot be undefined.');
+		}
+
+		if (gradualRolloutVersionId === workflow.activeVersionId) {
+			throw new BadRequestError('Rollout version cannot be the same as the active version.');
+		}
+
+		// Verify the rollout version exists in workflow history
+		try {
+			await this.workflowHistoryService.getVersion(user, workflowId, gradualRolloutVersionId, {
+				includePublishHistory: false,
+			});
+		} catch (error) {
+			if (error instanceof WorkflowHistoryVersionNotFoundError) {
+				throw new NotFoundError('Rollout version not found in workflow history.');
+			}
+			throw error;
+		}
+
+		await this.workflowRepository.update(workflowId, {
+			gradualRolloutVersionId,
+			gradualRolloutPercentage,
+			updatedAt: workflow.updatedAt,
+		});
+
+		workflow.gradualRolloutVersionId = gradualRolloutVersionId;
+		workflow.gradualRolloutPercentage = gradualRolloutPercentage;
+
+		return workflow;
+	}
+
+	/**
+	 * Removes the rollout (B) version from a workflow, returning to 100% A version.
+	 */
+	async removeRollout(user: User, workflowId: string): Promise<WorkflowEntity> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:publish',
+		]);
+
+		if (!workflow) {
+			throw new NotFoundError('You do not have permission to configure rollout for this workflow.');
+		}
+
+		await this.workflowRepository.update(workflowId, {
+			gradualRolloutVersionId: null,
+			gradualRolloutPercentage: null,
+			updatedAt: workflow.updatedAt,
+		});
+
+		workflow.gradualRolloutVersionId = null;
+		workflow.gradualRolloutPercentage = null;
 
 		return workflow;
 	}
@@ -865,11 +949,15 @@ export class WorkflowService {
 		workflow.active = false;
 		workflow.activeVersionId = null;
 		workflow.activeVersion = null;
+		workflow.gradualRolloutVersionId = null;
+		workflow.gradualRolloutPercentage = null;
 
 		await this.workflowRepository.update(workflowId, {
 			isArchived: true,
 			active: false,
 			activeVersion: null,
+			gradualRolloutVersionId: null,
+			gradualRolloutPercentage: null,
 			versionId,
 		});
 

@@ -51,6 +51,7 @@ import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { resolveExecutionVersion } from '@/workflows/resolve-execution-version';
 
 export function getRunData(
 	workflowData: IWorkflowBase,
@@ -109,7 +110,7 @@ async function fetchWorkflowData(
 	}
 
 	if (workflowInfo.id !== undefined) {
-		const baseRelations = ['activeVersion'];
+		const baseRelations = ['activeVersion', 'gradualRolloutVersion'];
 		const relations = Container.get(GlobalConfig).tags.disabled
 			? [...baseRelations]
 			: [...baseRelations, 'tags'];
@@ -177,13 +178,17 @@ export async function getPublishedWorkflowData(
 		return workflowData!;
 	}
 
-	// For workflows from database, ensure active version exists and use it
+	// For workflows from database, resolve which version to use (supports A/B rollout)
 	if (workflowData && 'activeVersion' in workflowData && workflowData.activeVersion) {
-		return {
-			...workflowData,
-			nodes: workflowData.activeVersion.nodes,
-			connections: workflowData.activeVersion.connections,
-		};
+		if ('gradualRolloutVersion' in workflowData) {
+			const { nodes, connections } = resolveExecutionVersion(workflowData);
+			return {
+				...workflowData,
+				nodes,
+				connections,
+			};
+		}
+		return workflowData;
 	}
 
 	throw new UnexpectedError('Workflow is not active and cannot be executed.', {

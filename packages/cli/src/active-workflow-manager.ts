@@ -61,6 +61,7 @@ import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { resolveExecutionVersion } from '@/workflows/resolve-execution-version';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
@@ -302,14 +303,28 @@ export class ActiveWorkflowManager {
 			) => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
-				const executePromise = this.workflowExecutionService.runWorkflow(
-					workflowData,
-					node,
-					data,
-					additionalData,
-					mode,
-					responsePromise,
-				);
+
+				// Re-fetch workflow to resolve A/B rollout version per execution
+				const executePromise = this.workflowRepository
+					.findOne({
+						where: { id: workflowData.id },
+						relations: { activeVersion: true, gradualRolloutVersion: true },
+					})
+					.then(async (freshWorkflow) => {
+						let resolvedWorkflowData = workflowData;
+						if (freshWorkflow?.activeVersion) {
+							const { nodes, connections } = resolveExecutionVersion(freshWorkflow);
+							resolvedWorkflowData = { ...workflowData, nodes, connections };
+						}
+						return await this.workflowExecutionService.runWorkflow(
+							resolvedWorkflowData,
+							node,
+							data,
+							additionalData,
+							mode,
+							responsePromise,
+						);
+					});
 
 				if (donePromise) {
 					void executePromise.then((executionId) => {
@@ -354,14 +369,27 @@ export class ActiveWorkflowManager {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
-				const executePromise = this.workflowExecutionService.runWorkflow(
-					workflowData,
-					node,
-					data,
-					additionalData,
-					mode,
-					responsePromise,
-				);
+				// Re-fetch workflow to resolve A/B rollout version per execution
+				const executePromise = this.workflowRepository
+					.findOne({
+						where: { id: workflowData.id },
+						relations: { activeVersion: true, gradualRolloutVersion: true },
+					})
+					.then(async (freshWorkflow) => {
+						let resolvedWorkflowData = workflowData;
+						if (freshWorkflow?.activeVersion) {
+							const { nodes, connections } = resolveExecutionVersion(freshWorkflow);
+							resolvedWorkflowData = { ...workflowData, nodes, connections };
+						}
+						return await this.workflowExecutionService.runWorkflow(
+							resolvedWorkflowData,
+							node,
+							data,
+							additionalData,
+							mode,
+							responsePromise,
+						);
+					});
 
 				void executePromise.then((executionId) => {
 					this.eventService.emit('workflow-executed', {

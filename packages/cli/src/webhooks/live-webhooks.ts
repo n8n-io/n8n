@@ -20,6 +20,7 @@ import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { resolveExecutionVersion } from '@/workflows/resolve-execution-version';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 /**
@@ -98,6 +99,7 @@ export class LiveWebhooks implements IWebhookManager {
 			where: { id: webhook.workflowId },
 			relations: {
 				activeVersion: true,
+				gradualRolloutVersion: true,
 				shared: true,
 			},
 		});
@@ -112,9 +114,9 @@ export class LiveWebhooks implements IWebhookManager {
 			);
 		}
 
-		const { nodes, connections } = workflowData.activeVersion;
+		const { nodes, connections } = resolveExecutionVersion(workflowData);
 
-		// Create a clean workflowData object with only activeVersion nodes/connections
+		// Create a clean workflowData object with resolved version nodes/connections
 		// This prevents any downstream code from accidentally using the draft nodes
 		const activeWorkflowData: IWorkflowBase = {
 			...workflowData,

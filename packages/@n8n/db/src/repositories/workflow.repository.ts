@@ -123,7 +123,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async findById(workflowId: string) {
 		return await this.findOne({
 			where: { id: workflowId },
-			relations: { shared: { project: true }, activeVersion: true },
+			relations: { shared: { project: true }, activeVersion: true, gradualRolloutVersion: true },
 		});
 	}
 
