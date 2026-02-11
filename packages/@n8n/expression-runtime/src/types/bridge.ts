@@ -19,29 +19,28 @@ export interface RuntimeBridge {
 	 * Execute JavaScript code in the isolated context.
 	 *
 	 * @param code - Transformed JavaScript code to execute
-	 * @param dataId - Unique identifier for workflow data (for lazy loading)
+	 * @param data - Workflow data for this evaluation
 	 * @returns Result of the expression evaluation.
 	 *          Must be JSON-serializable (no functions, symbols, etc.)
 	 */
-	execute(code: string, dataId: string): Promise<unknown>;
+	execute(code: string, data: WorkflowDataProxy): Promise<unknown>;
 
 	/**
 	 * Handle synchronous data request from runtime (lazy loading).
 	 *
 	 * Called when runtime accesses a property it doesn't have locally.
-	 * The bridge looks up the property in host data and returns it.
+	 * The bridge looks up the property in the current workflow data.
 	 *
 	 * IMPORTANT: This must be SYNCHRONOUS for lazy-loading proxies to work.
 	 * - IsolatedVmBridge: Uses ivm.Reference for synchronous callbacks
 	 * - WebWorkerBridge: Must pre-fetch data (no lazy loading in Phase 1)
 	 * - NodeVmBridge: Direct synchronous call
 	 *
-	 * @param dataId - Data identifier from execute()
 	 * @param path - Property path (e.g., "user.email")
 	 * @returns Value at the path, or undefined if not found.
 	 *          Must be JSON-serializable.
 	 */
-	getDataSync(dataId: string, path: string): unknown;
+	getDataSync(path: string): unknown;
 
 	/**
 	 * Dispose of the isolated context and free resources.
@@ -80,20 +79,13 @@ export interface BridgeConfig {
 }
 
 /**
- * Data store for workflow data.
- * Maps data IDs to workflow data objects.
- */
-export interface DataStore {
-	set(id: string, data: WorkflowDataProxy): void;
-	get(id: string): WorkflowDataProxy | undefined;
-	delete(id: string): void;
-}
-
-/**
  * Internal proxy for lazy-loading workflow data.
  *
- * This is created by the bridge from WorkflowData input (see evaluator.ts).
- * The bridge stores this in the DataStore and uses it to respond to getDataSync() calls.
+ * This is created by the evaluator from WorkflowData input (see evaluator.ts)
+ * and passed to bridge.execute(). The bridge stores it temporarily and uses it
+ * to respond to getDataSync() calls during evaluation.
+ *
+ * Implementation will provide efficient path-based lookup (e.g., lodash.get).
  */
 export interface WorkflowDataProxy {
 	/**

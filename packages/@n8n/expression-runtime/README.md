@@ -156,8 +156,8 @@ interface EvaluatorConfig {
   bridge: RuntimeBridge;
   observability?: ObservabilityProvider;
   tournament?: TournamentInstance;
-  enableCache?: boolean;      // Default: true
-  maxCacheSize?: number;       // Default: 1000
+  enableCodeCache?: boolean;   // Default: true (caches transformed code)
+  maxCodeCacheSize?: number;   // Default: 1000
 }
 
 interface BridgeConfig {
@@ -175,15 +175,15 @@ N8N_EXPRESSION_MEMORY_LIMIT_MB=128
 N8N_EXPRESSION_TIMEOUT_MS=5000
 N8N_EXPRESSION_DEBUG=false
 
+# Code cache (caches transformed code, not results)
+N8N_EXPRESSION_CODE_CACHE_ENABLED=true
+N8N_EXPRESSION_CODE_CACHE_MAX_SIZE=1000
+
 # Observability
 N8N_EXPRESSION_OBSERVABILITY_ENABLED=true
 N8N_EXPRESSION_METRICS_ENABLED=true
 N8N_EXPRESSION_TRACES_ENABLED=true
 N8N_EXPRESSION_TRACE_SAMPLE_RATE=0.01
-
-# Cache
-N8N_EXPRESSION_CACHE_ENABLED=true
-N8N_EXPRESSION_CACHE_MAX_SIZE=1000
 ```
 
 ## Development

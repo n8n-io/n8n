@@ -15,21 +15,23 @@ export interface EvaluatorConfig {
 	observability?: ObservabilityProvider;
 
 	/**
-	 * Tournament instance for AST transformation.
+	 * Tournament instance for AST transformation and security validation.
 	 */
 	tournament?: TournamentInstance;
 
 	/**
-	 * Enable code caching.
+	 * Enable caching of transformed code (not evaluation results).
+	 * Caches the output of Tournament transformation to avoid re-transforming
+	 * the same expression multiple times.
 	 * Default: true
 	 */
-	enableCache?: boolean;
+	enableCodeCache?: boolean;
 
 	/**
-	 * Maximum cache size (number of entries).
+	 * Maximum number of transformed code entries to cache.
 	 * Default: 1000
 	 */
-	maxCacheSize?: number;
+	maxCodeCacheSize?: number;
 }
 
 /**
@@ -110,19 +112,22 @@ export interface WorkflowData {
  */
 export interface EvaluateOptions {
 	/**
-	 * Skip Tournament transformation.
+	 * Skip Tournament transformation and security validation.
 	 * Default: false
+	 * WARNING: Only use for trusted code!
 	 */
 	skipTransform?: boolean;
 
 	/**
-	 * Skip cache lookup and storage.
+	 * Skip code cache lookup and storage for this evaluation.
+	 * Forces re-transformation even if the code is cached.
 	 * Default: false
 	 */
-	skipCache?: boolean;
+	skipCodeCache?: boolean;
 
 	/**
-	 * Custom timeout for this evaluation.
+	 * Custom timeout for this evaluation (in milliseconds).
+	 * Overrides the bridge's default timeout.
 	 */
 	timeout?: number;
 }

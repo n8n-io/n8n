@@ -92,12 +92,14 @@ The architecture is split into three distinct layers:
 **Key Components**:
 - **ExpressionEvaluator**: Main class used by workflow package
 - **Tournament Integration**: AST transformation and security validation
-- **Code Caching**: Cache compiled expressions
+- **Code Cache**: Cache transformed code (not evaluation results)
 - **Observability**: Emit metrics, traces, and logs
 
 **Responsibilities**:
 - Accept expression strings and workflow data
 - Transform expressions with Tournament
+- Cache transformed code to avoid re-transformation
+- Convert WorkflowData to WorkflowDataProxy for lazy loading
 - Use bridge to evaluate in isolated context
 - Handle errors gracefully
 - Emit observability data
@@ -115,11 +117,13 @@ sequenceDiagram
 
     WF->>Eval: evaluate(expr, data)
     Eval->>Eval: Transform with Tournament
-    Eval->>Bridge: execute(code, dataId)
+    Eval->>Eval: Convert to WorkflowDataProxy
+    Eval->>Bridge: execute(code, dataProxy)
+    Bridge->>Bridge: Store dataProxy temporarily
     Bridge->>Runtime: Run code
     Runtime->>Runtime: Access $json.field
-    Runtime->>Bridge: getData(dataId, 'field')
-    Bridge->>Bridge: Lookup field
+    Runtime->>Bridge: getDataSync('field')
+    Bridge->>Bridge: Lookup in dataProxy
     Bridge-->>Runtime: Return value
     Runtime-->>Bridge: Result
     Bridge-->>Eval: Result
@@ -133,14 +137,14 @@ sequenceDiagram
     participant Runtime as Runtime (Isolated)
     participant Proxy as Lazy Proxy
     participant Bridge as Bridge
-    participant Host as Host Data Store
 
     Runtime->>Proxy: $json.user.email
-    Proxy->>Bridge: getData(dataId, 'user.email')
-    Bridge->>Host: Lookup path
-    Host-->>Bridge: "test@example.com"
-    Bridge-->>Proxy: Value
+    Proxy->>Bridge: getDataSync('user.email')
+    Bridge->>Bridge: Lookup path in current data
+    Bridge-->>Proxy: "test@example.com"
     Proxy-->>Runtime: "test@example.com"
+
+    Note over Bridge: Bridge stores current WorkflowDataProxy<br/>during execute() call
 ```
 
 ## Environment-Specific Implementations
@@ -238,7 +242,7 @@ packages/@n8n/expression-runtime/
 │   │
 │   ├── evaluator/               # Layer 3 (host process)
 │   │   ├── expression-evaluator.ts
-│   │   └── code-cache.ts
+│   │   └── code-cache.ts        # Caches transformed code
 │   │
 │   └── observability/           # Observability support
 │       ├── provider.ts          # ObservabilityProvider interface
@@ -359,9 +363,11 @@ The runtime **can only**:
 - Test memory limits, timeouts, disposal
 
 **Evaluator Tests** (vitest):
-- Test Tournament integration
-- Test code caching
+- Test Tournament integration (transformation and validation)
+- Test code caching (transformed code, not results)
+- Test WorkflowData to WorkflowDataProxy conversion
 - Test observability emission
+- Test error handling
 
 **Integration Tests** (jest in workflow package):
 - Test full stack with real isolated-vm
@@ -375,7 +381,8 @@ All layers emit metrics, traces, and logs:
 **Metrics**:
 - `expression.evaluation.count`
 - `expression.evaluation.duration_ms`
-- `expression.cache.hit`
+- `expression.code_cache.hit` (transformed code cache)
+- `expression.code_cache.miss`
 - `expression.isolate.memory_mb`
 
 **Traces**:

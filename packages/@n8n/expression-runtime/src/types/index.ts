@@ -8,7 +8,6 @@
 export type {
 	RuntimeBridge,
 	BridgeConfig,
-	DataStore,
 	WorkflowDataProxy,
 } from './bridge';
 

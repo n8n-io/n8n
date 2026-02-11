@@ -14,11 +14,10 @@ export interface RuntimeHostInterface {
 	 * - NodeVmBridge: Direct synchronous call
 	 * - WebWorkerBridge: Not supported - must pre-fetch all data
 	 *
-	 * @param dataId - Data identifier
-	 * @param path - Property path to fetch
+	 * @param path - Property path to fetch (e.g., "user.email", "items[0].json")
 	 * @returns Value at the path, or undefined if not found
 	 */
-	getDataSync(dataId: string, path: string): unknown;
+	getDataSync(path: string): unknown;
 }
 
 /**
@@ -39,12 +38,6 @@ export interface RuntimeGlobals {
 	 * Host interface for calling back to host process.
 	 */
 	__host: RuntimeHostInterface;
-
-	/**
-	 * Data ID for current evaluation.
-	 * Set by bridge before each execute() call.
-	 */
-	__dataId: string;
 
 	/**
 	 * Workflow data proxy ($json, $item, etc.).
@@ -122,22 +115,18 @@ export class RuntimeError extends Error {
  */
 export interface LazyProxyConfig {
 	/**
-	 * Data ID for lazy loading.
-	 */
-	dataId: string;
-
-	/**
 	 * Host interface for fetching data.
 	 */
 	host: RuntimeHostInterface;
 
 	/**
 	 * Property path prefix (for nested proxies).
+	 * Example: If this proxy represents $json.user, pathPrefix would be "user"
 	 */
 	pathPrefix?: string;
 
 	/**
-	 * Cache for fetched values.
+	 * Cache for fetched values to avoid repeated host calls.
 	 */
 	cache?: Map<string, unknown>;
 }
