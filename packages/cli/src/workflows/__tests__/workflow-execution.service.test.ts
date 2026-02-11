@@ -15,6 +15,7 @@ import {
 
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import type { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -116,6 +117,32 @@ describe('WorkflowExecutionService', () => {
 		beforeEach(() => {
 			workflowRunner.run.mockClear();
 			jest.spyOn(nodeTypes, 'getByNameAndVersion').mockReset();
+		});
+
+		test('should throw ServiceUnavailableError when recovery mode is enabled', async () => {
+			const service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRunner,
+				mock<GlobalConfig>({ workflows: { recoveryMode: true } }),
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			const user = mock<User>({ id: 'user-id' });
+			const runPayload = mock<WorkflowRequest.ManualRunPayload>({
+				workflowData: mock<IWorkflowBase>({ id: 'workflow-id', nodes: [] }),
+			});
+
+			await expect(service.executeManually(runPayload, user)).rejects.toThrow(
+				ServiceUnavailableError,
+			);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
 		test('should call `WorkflowRunner.run()` with correct parameters with default partial execution logic', async () => {

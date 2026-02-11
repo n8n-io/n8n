@@ -1,5 +1,6 @@
 import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId } from '@n8n/db';
+import type { WorkflowsConfig } from '@n8n/config';
 import type * as express from 'express';
 import { mock } from 'jest-mock-extended';
 import type {
@@ -13,6 +14,7 @@ import type {
 import { v4 as uuid } from 'uuid';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import type {
 	TestWebhookRegistrationsService,
@@ -44,6 +46,7 @@ const webhook = mock<IWebhookData>({
 describe('TestWebhooks', () => {
 	const registrations = mock<TestWebhookRegistrationsService>();
 	const webhookService = mock<WebhookService>();
+	const workflowsConfig = mock<WorkflowsConfig>({ recoveryMode: false });
 
 	const testWebhooks = new TestWebhooks(
 		mock(),
@@ -52,7 +55,7 @@ describe('TestWebhooks', () => {
 		mock(),
 		mock(),
 		webhookService,
-		mock(),
+		workflowsConfig,
 	);
 
 	beforeAll(() => {
@@ -61,6 +64,49 @@ describe('TestWebhooks', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		workflowsConfig.recoveryMode = false;
+	});
+
+	describe('recovery mode', () => {
+		beforeEach(() => {
+			workflowsConfig.recoveryMode = true;
+		});
+
+		test('executeWebhook should throw ServiceUnavailableError', async () => {
+			const getActiveWebhookSpy = jest.spyOn(testWebhooks, 'getActiveWebhook');
+
+			await expect(
+				testWebhooks.executeWebhook(
+					mock<WebhookRequest>({ method: 'GET', params: { path } }),
+					mock<express.Response>(),
+				),
+			).rejects.toThrow(ServiceUnavailableError);
+
+			expect(getActiveWebhookSpy).not.toHaveBeenCalled();
+		});
+
+		test('needsWebhook should throw ServiceUnavailableError', async () => {
+			const args: Parameters<typeof testWebhooks.needsWebhook>[0] = {
+				userId,
+				workflowEntity,
+				additionalData: mock<IWorkflowExecuteAdditionalData>(),
+			};
+
+			await expect(testWebhooks.needsWebhook(args)).rejects.toThrow(ServiceUnavailableError);
+		});
+
+		test('getWebhookMethods should return no methods', async () => {
+			const methods = await testWebhooks.getWebhookMethods(path);
+
+			expect(methods).toEqual([]);
+		});
+
+		test('findAccessControlOptions should return undefined', async () => {
+			const options = await testWebhooks.findAccessControlOptions(path, 'GET');
+
+			expect(options).toBeUndefined();
+			expect(registrations.getAllKeys).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('needsWebhook()', () => {
