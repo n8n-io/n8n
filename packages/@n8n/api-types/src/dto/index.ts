@@ -73,6 +73,12 @@ export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.d
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
 export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
+export {
+	GradualPublishWorkflowDto,
+	type GradualRolloutVersion,
+	type GradualRolloutState,
+	type GradualPublishResponse,
+} from './workflows/gradual-publish-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';

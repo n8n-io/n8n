@@ -1,7 +1,15 @@
+import type {
+	GradualPublishWorkflowDto,
+	GradualRolloutState,
+	GradualRolloutVersion,
+	GradualPublishResponse,
+} from '@n8n/api-types';
 import type { IConnections, INode } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
 import { get, patch, post } from '../utils';
+
+export type { GradualRolloutState, GradualRolloutVersion, GradualPublishResponse };
 
 export type WorkflowHistory = {
 	versionId: string;
@@ -11,6 +19,7 @@ export type WorkflowHistory = {
 	workflowPublishHistory: WorkflowPublishHistory[];
 	name: string | null;
 	description: string | null;
+	gradualRolloutPercentage?: number;
 };
 
 export type WorkflowVersionData = Pick<WorkflowHistory, 'versionId' | 'name' | 'description'>;
@@ -33,7 +42,7 @@ export type WorkflowVersion = WorkflowHistory & {
 };
 
 export type WorkflowHistoryActionTypes = Array<
-	'restore' | 'publish' | 'unpublish' | 'clone' | 'open' | 'download' | 'name'
+	'restore' | 'publish' | 'unpublish' | 'clone' | 'open' | 'download' | 'name' | 'publish-gradually'
 >;
 
 export type WorkflowHistoryRequestParams = { take: number; skip?: number };
@@ -95,4 +104,18 @@ export const updateWorkflowHistoryVersion = async (
 		`/workflow-history/workflow/${workflowId}/versions/${versionId}`,
 		data,
 	);
+};
+
+export const gradualPublishWorkflow = async (
+	context: IRestApiContext,
+	workflowId: string,
+	requestData: GradualPublishWorkflowDto,
+): Promise<GradualRolloutState | null> => {
+	const response = await post(
+		context.baseUrl,
+		`/workflows/${workflowId}/gradual-publish`,
+		requestData,
+	);
+	const { data } = response as { data: GradualPublishResponse };
+	return data.gradualRollout;
 };
