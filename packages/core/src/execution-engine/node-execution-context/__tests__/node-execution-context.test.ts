@@ -7,6 +7,7 @@ import type {
 	INodeTypes,
 	INodeExecutionData,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowSettings,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -577,6 +578,141 @@ describe('NodeExecutionContext', () => {
 			expect(testContext.isNodeFeatureEnabled('useFeatureA')).toBe(true);
 			expect(testContext.isNodeFeatureEnabled('useFeatureB')).toBe(false);
 			expect(testContext.isNodeFeatureEnabled('useFeatureC')).toBe(true);
+		});
+	});
+
+	describe('getWorkflowSettings', () => {
+		it('should return workflow settings', () => {
+			const settings: IWorkflowSettings = {
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+			};
+			workflow.settings = settings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(result).toEqual(settings);
+		});
+
+		it('should return a frozen object that cannot be modified', () => {
+			const settings: IWorkflowSettings = {
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+			};
+			workflow.settings = settings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(Object.isFrozen(result)).toBe(true);
+			expect(() => {
+				(result as Record<string, unknown>).saveDataErrorExecution = 'none';
+			}).toThrow(TypeError);
+			expect(result.saveDataErrorExecution).toBe('all');
+		});
+
+		it('should return a deep clone that does not affect the original workflow settings', () => {
+			const settings: IWorkflowSettings = {
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+			};
+			workflow.settings = settings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(() => {
+				(result as Record<string, unknown>).saveDataErrorExecution = 'none';
+			}).toThrow(TypeError);
+			expect(workflow.settings.saveDataErrorExecution).toBe('all');
+
+			const result2 = testContext.getWorkflowSettings();
+			expect(result2.saveDataErrorExecution).toBe('all');
+		});
+
+		it('should memoize the result and return the same reference on multiple calls', () => {
+			const settings: IWorkflowSettings = {
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+			};
+			workflow.settings = settings;
+
+			const result1 = testContext.getWorkflowSettings();
+			const result2 = testContext.getWorkflowSettings();
+
+			expect(result1).toBe(result2);
+		});
+
+		it('should handle binaryMode setting correctly', () => {
+			const settings: IWorkflowSettings = {
+				saveDataErrorExecution: 'all',
+				binaryMode: 'separate',
+			};
+			workflow.settings = settings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(Object.isFrozen(result)).toBe(true);
+			expect(result.binaryMode).toBe('separate');
+			expect(() => {
+				(result as Record<string, unknown>).binaryMode = 'combined';
+			}).toThrow(TypeError);
+			expect(result.binaryMode).toBe('separate');
+		});
+
+		it('should prevent modification of all workflow settings properties', () => {
+			const settings: IWorkflowSettings = {
+				timezone: 'America/New_York',
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'none',
+				executionTimeout: 3600,
+				binaryMode: 'combined',
+			};
+			workflow.settings = settings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(Object.isFrozen(result)).toBe(true);
+			expect(() => {
+				(result as Record<string, unknown>).timezone = 'UTC';
+			}).toThrow(TypeError);
+			expect(() => {
+				(result as Record<string, unknown>).executionTimeout = 7200;
+			}).toThrow(TypeError);
+			expect(() => {
+				(result as Record<string, unknown>).binaryMode = 'separate';
+			}).toThrow(TypeError);
+			expect(result.timezone).toBe('America/New_York');
+			expect(result.executionTimeout).toBe(3600);
+			expect(result.binaryMode).toBe('combined');
+		});
+
+		it('should freeze nested objects in settings', () => {
+			const settingsWithNested = {
+				saveDataErrorExecution: 'all' as const,
+				callerIds: 'workflow1,workflow2',
+				hypotheticalNested: { key: 'value', deep: { prop: 'test' } },
+			};
+			workflow.settings = settingsWithNested as IWorkflowSettings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(Object.isFrozen(result)).toBe(true);
+
+			const nested = (result as Record<string, unknown>).hypotheticalNested;
+			if (nested && typeof nested === 'object') {
+				const isFrozen = Object.isFrozen(nested);
+				if (isFrozen) {
+					expect(() => {
+						(nested as Record<string, unknown>).key = 'modified';
+					}).toThrow(TypeError);
+
+					const deep = (nested as Record<string, unknown>).deep;
+					if (deep && typeof deep === 'object' && Object.isFrozen(deep)) {
+						expect(() => {
+							(deep as Record<string, unknown>).prop = 'modified';
+						}).toThrow(TypeError);
+					}
+				}
+			}
 		});
 	});
 });

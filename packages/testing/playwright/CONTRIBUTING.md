@@ -306,26 +306,22 @@ export class ProjectComposer {
 ```typescript
 // ✅ GOOD: From workflows/list/workflows.spec.ts
 test('should create a new workflow using add workflow button', async ({ n8n }) => {
-  await n8n.workflows.clickAddWorklowButton();
+  await n8n.workflows.addResource.workflow();
 
   const workflowName = `Test Workflow ${Date.now()}`;
   await n8n.canvas.setWorkflowName(workflowName);
-  await n8n.canvas.clickSaveWorkflowButton();
-
-  await expect(
-    n8n.notifications.notificationContainerByText('Workflow successfully created'),
-  ).toBeVisible();
+  await n8n.page.keyboard.press('Enter');
+  await n8n.canvas.waitForSaveWorkflowCompleted();
 });
 
 // ✅ GOOD: From workflows/editor/execution/debug.spec.ts - Using helper functions
 async function createBasicWorkflow(n8n, url = URLS.FAILING) {
-  await n8n.workflows.clickAddWorklowButton();
+  await n8n.navigate.toWorkflow('new');
   await n8n.canvas.addNode('Manual Trigger');
   await n8n.canvas.addNode('HTTP Request');
   await n8n.ndv.fillParameterInput('URL', url);
+  await n8n.canvas.waitForSaveWorkflowCompleted();
   await n8n.ndv.close();
-  await n8n.canvas.clickSaveWorkflowButton();
-  await n8n.notifications.waitForNotificationAndClose(NOTIFICATIONS.WORKFLOW_CREATED);
 }
 
 test('should enter debug mode for failed executions', async ({ n8n }) => {
@@ -413,7 +409,6 @@ export const HTTP_REQUEST_NODE_NAME = 'HTTP Request';
 
 // From workflows/editor/execution/debug.spec.ts
 const NOTIFICATIONS = {
-  WORKFLOW_CREATED: 'Workflow successfully created',
   EXECUTION_IMPORTED: 'Execution data imported',
   PROBLEM_IN_NODE: 'Problem in node',
   SUCCESSFUL: 'Successful',

@@ -1,6 +1,12 @@
 import type { IExecutionResponse } from '@n8n/db';
 import type { IDataObject, INode } from 'n8n-workflow';
-import { CHAT_WAIT_USER_REPLY, RESPOND_TO_WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import {
+	CHAT_NODE_TYPE,
+	CHAT_TOOL_NODE_TYPE,
+	CHAT_WAIT_USER_REPLY,
+	RESPOND_TO_WEBHOOK_NODE_TYPE,
+	SEND_AND_WAIT_OPERATION,
+} from 'n8n-workflow';
 
 import { getMessage, getLastNodeExecuted, shouldResumeImmediately } from '../utils';
 
@@ -440,5 +446,49 @@ describe('shouldResumeImmediately', () => {
 		});
 		const result = shouldResumeImmediately(node);
 		expect(result).toBe(false);
+	});
+
+	it('should return false when operation is SEND_AND_WAIT_OPERATION and node type is CHAT_NODE_TYPE', () => {
+		const node = createMockNode({
+			type: CHAT_NODE_TYPE,
+			parameters: {
+				operation: SEND_AND_WAIT_OPERATION,
+			},
+		});
+		const result = shouldResumeImmediately(node);
+		expect(result).toBe(false);
+	});
+
+	it('should return false when operation is SEND_AND_WAIT_OPERATION and node type is CHAT_TOOL_NODE_TYPE', () => {
+		const node = createMockNode({
+			type: CHAT_TOOL_NODE_TYPE,
+			parameters: {
+				operation: SEND_AND_WAIT_OPERATION,
+			},
+		});
+		const result = shouldResumeImmediately(node);
+		expect(result).toBe(false);
+	});
+
+	it('should return true when operation is not SEND_AND_WAIT_OPERATION and node type is CHAT_NODE_TYPE', () => {
+		const node = createMockNode({
+			type: CHAT_NODE_TYPE,
+			parameters: {
+				operation: 'send',
+			},
+		});
+		const result = shouldResumeImmediately(node);
+		expect(result).toBe(true);
+	});
+
+	it('should return true operation is not SEND_AND_WAIT_OPERATION and node type is CHAT_TOOL_NODE_TYPE', () => {
+		const node = createMockNode({
+			type: CHAT_TOOL_NODE_TYPE,
+			parameters: {
+				operation: 'send',
+			},
+		});
+		const result = shouldResumeImmediately(node);
+		expect(result).toBe(true);
 	});
 });

@@ -1,5 +1,12 @@
 import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type {
+	AddDataTableRowsDto,
+	CreateDataTableDto,
+	UpdateDataTableDto,
+	UpdateDataTableRowDto,
+	UpsertDataTableRowDto,
+} from '@n8n/api-types';
 
 import type { AuthlessRequest } from '@/requests';
 import type { Risk } from '@/security-audit/types';
@@ -35,6 +42,8 @@ export declare namespace ExecutionRequest {
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { includeData?: boolean }>;
 	type Delete = Get;
 	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
+	type GetTags = AuthenticatedRequest<{ id: string }>;
+	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, Array<{ id: string }>>;
 }
 
 export declare namespace TagRequest {
@@ -138,6 +147,13 @@ export declare namespace UserRequest {
 }
 
 export declare namespace CredentialRequest {
+	type GetAll = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{ limit?: number; cursor?: string; offset?: number }
+	>;
+
 	type Create = AuthenticatedRequest<
 		{},
 		{},
@@ -191,6 +207,64 @@ export interface IJsonSchema {
 	properties: { [key: string]: { type: string } };
 	allOf?: IDependency[];
 	required: string[];
+}
+
+// ----------------------------------
+//           /data-tables
+// ----------------------------------
+
+export declare namespace DataTableRequest {
+	type List = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+			filter?: string;
+			sortBy?: string;
+		}
+	>;
+
+	type Create = AuthenticatedRequest<{}, {}, CreateDataTableDto, {}>;
+
+	type Get = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
+
+	type Update = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableDto, {}>;
+
+	type Delete = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
+
+	type GetRows = AuthenticatedRequest<
+		{ dataTableId: string },
+		{},
+		{},
+		{
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+			filter?: string;
+			sortBy?: string;
+			search?: string;
+		}
+	>;
+
+	type InsertRows = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableRowsDto, {}>;
+
+	type UpdateRows = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableRowDto, {}>;
+
+	type UpsertRow = AuthenticatedRequest<{ dataTableId: string }, {}, UpsertDataTableRowDto, {}>;
+
+	type DeleteRows = AuthenticatedRequest<
+		{ dataTableId: string },
+		{},
+		{},
+		{
+			filter?: string;
+			returnData?: string | boolean;
+			dryRun?: string | boolean;
+		}
+	>;
 }
 
 // ----------------------------------

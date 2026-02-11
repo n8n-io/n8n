@@ -30,6 +30,7 @@ vi.mock('@n8n/chat/composables', () => ({
 	}),
 	useChat: () => ({
 		waitingForResponse: { value: false },
+		blockUserInput: { value: false },
 		currentSessionId: { value: 'session-123' },
 		messages: { value: [] },
 		sendMessage: vi.fn(),

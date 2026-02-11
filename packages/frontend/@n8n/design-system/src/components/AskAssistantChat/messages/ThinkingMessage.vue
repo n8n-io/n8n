@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 import type { ChatUI } from '../../../types/assistant';
 import N8nIcon from '../../N8nIcon';
@@ -8,15 +8,26 @@ interface Props {
 	items: ChatUI.ThinkingItem[];
 	latestStatusText: string;
 	isStreaming?: boolean;
+	defaultExpanded?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	isStreaming: false,
+	defaultExpanded: false,
 });
 
-const isExpanded = ref(false);
+const isExpanded = ref(props.defaultExpanded);
 
 const hasRunningItem = computed(() => props.items.some((item) => item.status === 'running'));
+
+watch(
+	() => props.isStreaming,
+	(newValue, oldValue) => {
+		if (oldValue && !newValue) {
+			isExpanded.value = false;
+		}
+	},
+);
 
 const shouldShowShimmer = computed(() => hasRunningItem.value);
 
@@ -70,14 +81,14 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 @use '../../../css/mixins/animations';
 
 .thinkingContainer {
-	margin: var(--spacing--2xs) 0;
+	margin: var(--spacing--4xs) 0;
 }
 
 .header {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--2xs) 0;
+	padding: var(--spacing--4xs) 0;
 	background: transparent;
 	border: none;
 	cursor: pointer;
@@ -115,10 +126,10 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 
 .itemList {
 	padding-left: var(--spacing--4xs);
-	padding-bottom: var(--spacing--2xs);
+	padding-bottom: var(--spacing--4xs);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
 }
 
 .item {

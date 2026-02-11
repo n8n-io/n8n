@@ -46,5 +46,10 @@ export const schema = {
 			format: Boolean,
 			default: Container.get(GlobalConfig).ai.enabled,
 		},
+		allowSendingParameterValues: {
+			doc: 'Whether to allow sending actual parameter data to AI services',
+			format: Boolean,
+			default: Container.get(GlobalConfig).ai.allowSendingParameterValues,
+		},
 	},
 };

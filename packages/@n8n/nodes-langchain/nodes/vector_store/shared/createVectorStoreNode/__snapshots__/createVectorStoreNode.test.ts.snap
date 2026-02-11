@@ -2,6 +2,38 @@
 
 exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] = `
 {
+  "builderHint": {
+    "inputs": {
+      "ai_document": {
+        "displayOptions": {
+          "show": {
+            "mode": [
+              "insert",
+            ],
+          },
+        },
+        "required": true,
+      },
+      "ai_embedding": {
+        "required": true,
+      },
+      "ai_reranker": {
+        "displayOptions": {
+          "show": {
+            "mode": [
+              "load",
+              "retrieve",
+              "retrieve-as-tool",
+            ],
+            "useReranker": [
+              true,
+            ],
+          },
+        },
+        "required": true,
+      },
+    },
+  },
   "codex": {
     "categories": [
       "AI",

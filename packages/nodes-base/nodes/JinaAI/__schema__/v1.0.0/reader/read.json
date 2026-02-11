@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "content": {
+            "type": "string"
+        },
         "description": {
             "type": "string"
         },
@@ -82,6 +85,9 @@
         "metadata": {
             "type": "object",
             "properties": {
+                "description": {
+                    "type": "string"
+                },
                 "lang": {
                     "type": "string"
                 },
@@ -111,5 +117,5 @@
             }
         }
     },
-    "version": 4
+    "version": 5
 }

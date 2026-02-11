@@ -123,7 +123,13 @@ test.describe('AI Assistant::enabled', () => {
 				if (index >= 0) {
 					credentials[index] = {
 						...credentials[index],
-						__overwrittenProperties: ['authUrl', 'accessTokenUrl', 'clientId', 'clientSecret'],
+						__overwrittenProperties: [
+							'authUrl',
+							'accessTokenUrl',
+							'clientId',
+							'clientSecret',
+							'graphApiBaseUrl',
+						],
 					};
 				}
 				await route.fulfill({

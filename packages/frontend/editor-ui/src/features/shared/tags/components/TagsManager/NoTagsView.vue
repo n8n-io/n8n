@@ -7,11 +7,13 @@ import { N8nButton, N8nHeading } from '@n8n/design-system';
 type Props = {
 	titleLocaleKey: BaseTextKey;
 	descriptionLocaleKey: BaseTextKey;
+	createLocaleKey: BaseTextKey;
 };
 
 withDefaults(defineProps<Props>(), {
 	titleLocaleKey: 'noTagsView.readyToOrganizeYourWorkflows',
 	descriptionLocaleKey: 'noTagsView.withWorkflowTagsYouReFree',
+	createLocaleKey: 'noTagsView.createTag',
 });
 
 const i18n = useI18n();
@@ -31,7 +33,11 @@ const i18n = useI18n();
 					{{ i18n.baseText(descriptionLocaleKey) }}
 				</div>
 			</div>
-			<N8nButton label="Create a tag" size="large" @click="$emit('enableCreate')" />
+			<N8nButton
+				:label="i18n.baseText(`${createLocaleKey}`)"
+				size="large"
+				@click="$emit('enableCreate')"
+			/>
 		</ElCol>
 	</div>
 </template>

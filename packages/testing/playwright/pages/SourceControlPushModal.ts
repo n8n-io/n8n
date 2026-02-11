@@ -1,4 +1,10 @@
+import type { GitCommitInfo, SourceControlledFile } from '@n8n/api-types';
 import type { Locator, Page } from '@playwright/test';
+
+export interface PushResult {
+	files: SourceControlledFile[];
+	commit: GitCommitInfo | null;
+}
 
 export class SourceControlPushModal {
 	constructor(private readonly page: Page) {}
@@ -11,9 +17,20 @@ export class SourceControlPushModal {
 		return this.page.getByTestId('source-control-push-modal-submit');
 	}
 
-	async push(commitMessage: string): Promise<void> {
+	async push(commitMessage: string): Promise<PushResult> {
 		await this.page.getByTestId('source-control-push-modal-commit').fill(commitMessage);
+
+		const responsePromise = this.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/source-control/push-workfolder') &&
+				response.status() === 200,
+		);
+
 		await this.getSubmitButton().click();
+
+		const response = await responsePromise;
+		const json = await response.json();
+		return json.data as PushResult;
 	}
 
 	// Tabs
@@ -73,9 +90,6 @@ export class SourceControlPushModal {
 		return this.getFileCheckboxByName(fileName).getByText(status);
 	}
 
-	/**
-	 * Deselect a file checkbox if it's currently checked
-	 */
 	async deselectFile(fileName: string): Promise<void> {
 		const checkbox = this.getFileCheckboxByName(fileName);
 		const isChecked = await checkbox.isChecked();
@@ -84,9 +98,6 @@ export class SourceControlPushModal {
 		}
 	}
 
-	/**
-	 * Select a file checkbox if it's currently unchecked
-	 */
 	async selectFile(fileName: string): Promise<void> {
 		const checkbox = this.getFileCheckboxByName(fileName);
 		const isChecked = await checkbox.isChecked();

@@ -1,4 +1,5 @@
 import type {
+	GitCommitInfo,
 	PullWorkFolderRequestDto,
 	PushWorkFolderRequestDto,
 	SourceControlledFile,
@@ -27,7 +28,7 @@ const createPreferencesRequestFn =
 export const pushWorkfolder = async (
 	context: IRestApiContext,
 	data: PushWorkFolderRequestDto,
-): Promise<void> => {
+): Promise<{ files: SourceControlledFile[]; commit: GitCommitInfo | null }> => {
 	return await makeRestApiRequest(context, 'POST', `${sourceControlApiRoot}/push-workfolder`, data);
 };
 

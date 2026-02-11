@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
+import { computedAsync, useDebounceFn } from '@vueuse/core';
 
 import get from 'lodash/get';
 
@@ -22,10 +23,13 @@ import type {
 } from 'n8n-workflow';
 import {
 	CREDENTIAL_EMPTY_VALUE,
+	IconOrEmojiSchema,
 	isResourceLocatorValue,
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
+
+import type { IconOrEmoji as DesignSystemIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 import type { CodeNodeLanguageOption } from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CodeNodeEditor from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
@@ -57,7 +61,9 @@ import {
 	APP_MODALS_ELEMENT_ID,
 	CORE_NODES_CATEGORY,
 	CUSTOM_API_CALL_KEY,
+	DEBOUNCE_TIME,
 	ExpressionLocalResolveContextSymbol,
+	getDebounceTime,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
 } from '@/app/constants';
@@ -75,6 +81,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -98,9 +105,19 @@ import { getParameterDisplayableOptions } from '@/app/utils/nodes/nodeTransforms
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
-import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nIconPicker,
+	N8nInput,
+	N8nInputNumber,
+	N8nOption,
+	N8nSelect,
+	N8nSwitch2,
+} from '@n8n/design-system';
+import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPlaceholderValue } from '@/features/ai/assistant/composables/useBuilderTodos';
+
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
 type Props = {
@@ -160,6 +177,7 @@ const telemetry = useTelemetry();
 const credentialsStore = useCredentialsStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const workflowState = injectWorkflowState();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -168,6 +186,7 @@ const focusPanelStore = useFocusPanelStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const projectsStore = useProjectsStore();
 const builderStore = useBuilderStore();
+const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -216,6 +235,8 @@ const dateTimePickerOptions = ref({
 	],
 });
 const isFocused = ref(false);
+// Track when we're switching modes to prevent spurious focus events
+const isSwitchingMode = ref(false);
 
 const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
 	expressionLocalResolveCtx.value.nodeName,
@@ -257,7 +278,12 @@ const parameterOptions = computed(() => {
 });
 
 const modelValueString = computed<string>(() => {
-	return props.modelValue as string;
+	const value = props.modelValue;
+	// For json type parameters, stringify objects to prevent [object object] display
+	if (props.parameter.type === 'json' && typeof value === 'object' && value !== null) {
+		return JSON.stringify(value);
+	}
+	return value as string;
 });
 
 const modelValueResourceLocator = computed<INodeParameterResourceLocator>(() => {
@@ -270,6 +296,22 @@ const modelValueExpressionEdit = computed<NodeParameterValueType>(() => {
 			? (props.modelValue as INodeParameterResourceLocator).value
 			: ''
 		: props.modelValue;
+});
+
+const iconPickerValue = computed<DesignSystemIconOrEmoji | undefined>({
+	get() {
+		const result = IconOrEmojiSchema.safeParse(props.modelValue);
+		if (result.success) {
+			return {
+				type: result.data.type,
+				value: result.data.value,
+			} as DesignSystemIconOrEmoji;
+		}
+		return undefined;
+	},
+	set(_value: DesignSystemIconOrEmoji | undefined) {
+		// Handled by valueChanged
+	},
 });
 
 const editorRows = computed(() => getTypeOption('rows'));
@@ -363,7 +405,7 @@ const displayValue = computed(() => {
 	if (returnValue !== undefined && returnValue !== null && props.parameter.type === 'string') {
 		const rows = editorRows.value;
 		if (rows === undefined || rows === 1) {
-			returnValue = (returnValue as string).toString().replace(/\n/, '|');
+			returnValue = (returnValue as string).toString().replace(/\n/g, '|');
 		}
 	}
 
@@ -385,7 +427,12 @@ const expressionDisplayValue = computed(() => {
 	return `${displayValue.value ?? ''}`;
 });
 
-const dependentParametersValues = computed<string | null>(() => {
+const dependentParametersValues = computedAsync(async () => {
+	// Reference dependencies to ensure reactivity tracking
+	void ndvStore.activeNode?.parameters;
+	void props.parameter;
+	void props.path;
+
 	const loadOptionsDependsOn = getTypeOption('loadOptionsDependsOn');
 
 	if (loadOptionsDependsOn === undefined) {
@@ -395,7 +442,7 @@ const dependentParametersValues = computed<string | null>(() => {
 	// Get the resolved parameter values of the current node
 	const currentNodeParameters = ndvStore.activeNode?.parameters;
 	try {
-		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
@@ -408,7 +455,7 @@ const dependentParametersValues = computed<string | null>(() => {
 	} catch {
 		return null;
 	}
-});
+}, null);
 
 const getStringInputType = computed(() => {
 	if (getTypeOption('password') === true) {
@@ -492,7 +539,7 @@ const getIssues = computed<string[]>(() => {
 	} else if (props.parameter.type === 'workflowSelector') {
 		const selected = modelValueResourceLocator.value?.value;
 		if (selected) {
-			const isSelectedArchived = workflowsStore.allWorkflows.some(
+			const isSelectedArchived = workflowsListStore.allWorkflows.some(
 				(resource) => resource.id === selected && resource.isArchived,
 			);
 
@@ -536,6 +583,10 @@ const isSwitch = computed(
 	() => props.parameter.type === 'boolean' && !isModelValueExpression.value,
 );
 
+const switchLabel = computed(() =>
+	i18n.nodeText(node.value?.type).inputLabelDisplayName(props.parameter, props.path),
+);
+
 const isTextarea = computed(
 	() => props.parameter.type === 'string' && editorRows.value !== undefined,
 );
@@ -548,6 +599,9 @@ const parameterInputClasses = computed(() => {
 
 	if (isSwitch.value) {
 		classes['parameter-switch'] = true;
+		if (isCollectionOverhaulEnabled.value) {
+			classes['inline-switch-mode'] = true;
+		}
 	} else {
 		classes['parameter-value-container'] = true;
 	}
@@ -692,10 +746,10 @@ async function loadRemoteParameterOptions() {
 
 	try {
 		const currentNodeParameters = (ndvStore.activeNode as INodeUi).parameters;
-		const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			currentNodeParameters,
-		) as INodeParameters;
+		)) as INodeParameters;
 		const loadOptionsMethod = getTypeOption('loadOptionsMethod');
 		const loadOptions = getTypeOption('loadOptions');
 
@@ -710,6 +764,7 @@ async function loadRemoteParameterOptions() {
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: node.value.credentials,
 			projectId: projectsStore.currentProjectId,
+			workflowId: workflowsStore.workflowId,
 		});
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
@@ -795,15 +850,17 @@ function selectInput() {
 	}
 }
 
-function trackBuilderPlaceholders() {
+const trackBuilderPlaceholders = useDebounceFn(() => {
 	if (node.value && isPlaceholderValue(props.modelValue) && builderStore.isAIBuilderEnabled) {
 		builderStore.trackWorkflowBuilderJourney('field_focus_placeholder_in_ndv', {
 			node_type: node.value.type,
 		});
 	}
-}
+}, getDebounceTime(DEBOUNCE_TIME.INPUT.VALIDATION));
 
-async function setFocus() {
+async function setFocus(fromModeSwitch: boolean | FocusEvent = false) {
+	// When called from template @focus="setFocus", the first arg is a FocusEvent, not a boolean
+	const isFromModeSwitch = fromModeSwitch === true;
 	if (['json'].includes(props.parameter.type) && getTypeOption('alwaysOpenEditWindow')) {
 		displayEditDialog();
 		return;
@@ -819,6 +876,19 @@ async function setFocus() {
 		nodeName.value = node.value.name;
 	}
 
+	// Skip if we're in the middle of a mode switch and this is not the mode switch call itself
+	// This prevents spurious focus events from the unmounting expression editor
+	if (isSwitchingMode.value && !isFromModeSwitch) {
+		return;
+	}
+
+	// Skip if already focused to avoid re-triggering focus events
+	// This prevents the options menu from staying visible after mode switches
+	// But allow mode switch calls through, as they need to refocus the new input element
+	if (isFocused.value && !isFromModeSwitch) {
+		return;
+	}
+
 	await nextTick();
 
 	if (inputField.value) {
@@ -832,7 +902,7 @@ async function setFocus() {
 	}
 
 	emit('focus');
-	trackBuilderPlaceholders();
+	void trackBuilderPlaceholders();
 }
 
 function rgbaToHex(value: string): string | null {
@@ -905,11 +975,7 @@ function valueChanged(untypedValue: unknown) {
 
 	const isSpecializedEditor = props.parameter.typeOptions?.editor !== undefined;
 
-	if (
-		!oldValue &&
-		oldValue !== undefined &&
-		shouldConvertToExpression(value, isSpecializedEditor)
-	) {
+	if (!oldValue && shouldConvertToExpression(value, isSpecializedEditor)) {
 		// if empty old value and updated value has an expression, add '=' prefix to switch to expression mode
 		value = '=' + value;
 	}
@@ -1014,6 +1080,12 @@ function onResourceLocatorDrop(data: string) {
 }
 
 function onUpdateTextInput(value: string) {
+	if (
+		props.parameter.type === 'string' &&
+		(editorRows.value === undefined || editorRows.value === 1)
+	) {
+		value = value.replace(/\|/g, '\n');
+	}
 	valueChanged(value);
 	onTextInputChange(value);
 }
@@ -1033,7 +1105,10 @@ async function optionSelected(command: string) {
 			break;
 
 		case 'removeExpression':
-			isFocused.value = false;
+			// Set flag to prevent spurious focus events from the unmounting expression editor
+			// Keep the flag active for a short time after setFocus completes because
+			// the spurious events can arrive asynchronously
+			isSwitchingMode.value = true;
 			valueChanged(
 				parseFromExpression(
 					props.modelValue,
@@ -1043,6 +1118,14 @@ async function optionSelected(command: string) {
 					parameterOptions.value,
 				),
 			);
+			// Don't focus boolean switches - they don't integrate properly with our focus tracking
+			// and focusing them causes the options to stay visible
+			if (props.parameter.type !== 'boolean') {
+				await setFocus(true);
+			}
+			setTimeout(() => {
+				isSwitchingMode.value = false;
+			}, 100);
 			break;
 
 		case 'refreshOptions':
@@ -1193,7 +1276,7 @@ watch(remoteParameterOptionsLoading, () => {
 watch(isModelValueExpression, async (isExpression, wasExpression) => {
 	if (!props.isReadOnly && isFocused.value && isExpression !== wasExpression) {
 		await nextTick();
-		await setFocus();
+		await setFocus(true);
 	}
 });
 
@@ -1314,6 +1397,19 @@ onUpdated(async () => {
 				@focus="setFocus"
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
+			/>
+			<N8nIconPicker
+				v-else-if="parameter.type === 'icon' && !isModelValueExpression && !forceShowExpression"
+				ref="inputField"
+				v-model="iconPickerValue"
+				:button-tooltip="
+					parameter.placeholder || i18n.baseText('parameterInput.iconPicker.tooltip')
+				"
+				button-size="large"
+				:is-read-only="isReadOnly"
+				@update:model-value="valueChanged"
+				@focus="setFocus"
+				@blur="onBlur"
 			/>
 			<ExpressionParameterInput
 				v-else-if="isModelValueExpression || forceShowExpression"
@@ -1785,7 +1881,23 @@ onUpdated(async () => {
 				</N8nOption>
 			</N8nSelect>
 
-			<!-- temporary state of booleans while data is mapped -->
+			<N8nInput
+				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled && droppable"
+				:size="inputSize"
+				:disabled="isReadOnly"
+				:title="displayTitle"
+				class="switch-droppable-input"
+			>
+				<template #prefix>
+					<N8nSwitch2
+						:model-value="Boolean(displayValue)"
+						:label="switchLabel"
+						:disabled="true"
+						size="small"
+					/>
+				</template>
+			</N8nInput>
+
 			<N8nInput
 				v-else-if="parameter.type === 'boolean' && droppable"
 				:size="inputSize"
@@ -1793,6 +1905,17 @@ onUpdated(async () => {
 				:disabled="isReadOnly"
 				:title="displayTitle"
 			/>
+
+			<N8nSwitch2
+				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled"
+				ref="inputField"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
+				:model-value="Boolean(displayValue)"
+				:disabled="isReadOnly"
+				size="small"
+				@update:model-value="valueChanged"
+			/>
+
 			<ElSwitch
 				v-else-if="parameter.type === 'boolean'"
 				ref="inputField"
@@ -1846,6 +1969,11 @@ onUpdated(async () => {
 	align-self: flex-start;
 	justify-items: center;
 	gap: var(--spacing--xs);
+
+	&.inline-switch-mode {
+		width: 100%;
+		gap: 0;
+	}
 }
 
 .parameter-input {
@@ -1873,11 +2001,13 @@ onUpdated(async () => {
 	--input--border-color: var(--ndv--droppable-parameter--color);
 	--input--border-right-color: var(--ndv--droppable-parameter--color);
 	--input--border-style: dashed;
+	--input--border-width: 1.5px;
 
-	textarea,
-	input,
 	.cm-editor {
-		border-width: 1.5px;
+		border-color: transparent;
+		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
+		outline-offset: -1.5px;
+		transition: none;
 	}
 }
 
@@ -1886,16 +2016,23 @@ onUpdated(async () => {
 	--input--border-right-color: var(--color--success);
 	--input--color--background: var(--color--foreground--tint-2);
 	--input--border-style: solid;
+	--input--border-width: 1px;
 
 	textarea,
-	input {
+	input,
+	.cm-editor {
 		cursor: grabbing !important;
-		border-width: 1px;
 	}
 }
 
 .has-issues {
 	--input--border-color: var(--color--danger);
+}
+
+.switch-droppable-input {
+	.el-input__prefix {
+		left: var(--spacing--2xs);
+	}
 }
 
 .el-dropdown {
@@ -2007,6 +2144,7 @@ onUpdated(async () => {
 
 .tipVisible {
 	--input--radius--bottom-left: 0;
+	--input--radius--bottom-right: 0;
 	--input-triple--radius--bottom-right: 0;
 }
 

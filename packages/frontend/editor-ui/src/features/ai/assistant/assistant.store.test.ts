@@ -429,6 +429,69 @@ describe('AI Assistant store', () => {
 			source: 'error',
 			task: 'error',
 			workflow_id: '',
+			instance_id: '',
+			canvas_status: 'empty',
+		});
+	});
+
+	it('should call telemetry for opening assistant with build_with_ai source on empty canvas', () => {
+		const assistantStore = useAssistantStore();
+		const workflowsStore = useWorkflowsStore();
+
+		// Ensure canvas is empty
+		workflowsStore.workflow.nodes = [];
+
+		assistantStore.trackUserOpenedAssistant({
+			task: 'placeholder',
+			source: 'build_with_ai',
+			has_existing_session: false,
+		});
+
+		expect(track).toHaveBeenCalledWith('User opened assistant', {
+			source: 'build_with_ai',
+			task: 'placeholder',
+			has_existing_session: false,
+			instance_id: '',
+			workflow_id: '',
+			canvas_status: 'empty',
+			node_type: undefined,
+			error: undefined,
+			chat_session_id: undefined,
+		});
+	});
+
+	it('should call telemetry for opening assistant on existing workflow', () => {
+		const assistantStore = useAssistantStore();
+		const workflowsStore = useWorkflowsStore();
+
+		// Add a node to the workflow
+		workflowsStore.workflow.nodes = [
+			{
+				id: '1',
+				type: 'n8n-nodes-base.start',
+				typeVersion: 1,
+				name: 'Start',
+				position: [250, 250],
+				parameters: {},
+			},
+		];
+
+		assistantStore.trackUserOpenedAssistant({
+			task: 'placeholder',
+			source: 'canvas',
+			has_existing_session: false,
+		});
+
+		expect(track).toHaveBeenCalledWith('User opened assistant', {
+			source: 'canvas',
+			task: 'placeholder',
+			has_existing_session: false,
+			instance_id: '',
+			workflow_id: '',
+			canvas_status: 'existing_workflow',
+			node_type: undefined,
+			error: undefined,
+			chat_session_id: undefined,
 		});
 	});
 

@@ -6,12 +6,14 @@ import { readFileSync } from 'fs';
 import { setGlobalState, UserError } from 'n8n-workflow';
 
 import { inE2ETests } from '@/constants';
+import { setMicrosoftObservabilityDefaults } from '@/utils';
 
 const globalConfig = Container.get(GlobalConfig);
 
+setMicrosoftObservabilityDefaults();
+
 if (inE2ETests) {
 	globalConfig.diagnostics.enabled = false;
-	globalConfig.publicApi.disabled = true;
 	process.env.EXTERNAL_FRONTEND_HOOKS_URLS = '';
 	process.env.N8N_PERSONALIZATION_ENABLED = 'false';
 	process.env.N8N_AI_ENABLED = 'true';
@@ -49,6 +51,11 @@ if (!inE2ETests && !inTest) {
 						throw new UserError('File not found', { extra: { fileName } });
 					}
 					throw error;
+				}
+				if (value !== value.trim()) {
+					console.warn(
+						`[n8n] Warning: The file specified by ${envName} contains leading or trailing whitespace, which may cause authentication failures.`,
+					);
 				}
 				config.set(key, value);
 			}

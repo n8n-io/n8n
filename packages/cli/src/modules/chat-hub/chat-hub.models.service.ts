@@ -9,6 +9,7 @@ import {
 } from '@n8n/api-types';
 import { In, WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { Scope } from '@n8n/permissions';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	type INodeCredentials,
@@ -16,16 +17,15 @@ import {
 	type IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
-import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
-import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import { chatTriggerParamsShape } from './chat-hub.types';
-
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { Scope } from '@n8n/permissions';
+
+import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
+import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import { chatTriggerParamsShape } from './chat-hub.types';
 
 @Service()
 export class ChatHubModelsService {
@@ -40,7 +40,7 @@ export class ChatHubModelsService {
 
 	async getModels(
 		user: User,
-		credentialIds: Record<ChatHubLLMProvider, string | null>,
+		credentialIds: Partial<Record<ChatHubProvider, string | null>>,
 	): Promise<ChatModelsResponse> {
 		const additionalData = await getBase({ userId: user.id });
 		const providers = chatHubProviderSchema.options;
@@ -741,6 +741,8 @@ export class ChatHubModelsService {
 					role: true,
 					project: {
 						id: true,
+						name: true,
+						type: true,
 						icon: { type: true, value: true },
 					},
 				},
@@ -791,11 +793,15 @@ export class ChatHubModelsService {
 
 		// Find the owner's project (home project)
 		const ownerSharedWorkflow = shared?.find((sw) => sw.role === 'workflow:owner');
+		const ownerProject = ownerSharedWorkflow?.project;
+
+		// Use null for personal projects so the frontend can display a localized label
+		const groupName = ownerProject?.type === 'personal' ? null : (ownerProject?.name ?? null);
 
 		return {
 			name: agentName,
 			description: chatTriggerParams.agentDescription ?? null,
-			icon: ownerSharedWorkflow?.project?.icon ?? null,
+			icon: chatTriggerParams.agentIcon ?? null,
 			model: {
 				provider: 'n8n',
 				workflowId: id,
@@ -810,6 +816,8 @@ export class ChatHubModelsService {
 				available: true,
 				scopes,
 			},
+			groupName,
+			groupIcon: ownerProject?.icon ?? null,
 		};
 	}
 
@@ -842,6 +850,8 @@ export class ChatHubModelsService {
 					createdAt: null,
 					updatedAt: null,
 					metadata,
+					groupName: null,
+					groupIcon: null,
 				},
 			];
 		});

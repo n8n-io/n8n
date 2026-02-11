@@ -1,0 +1,161 @@
+name: 'Test: Evals AI'
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/@n8n/ai-workflow-builder.ee/src/prompts/**'
+      - 'packages/@n8n/ai-workflow-builder.ee/**/*.prompt.ts'
+      - '.github/workflows/test-evals-ai.yml'
+      - '.github/workflows/test-evals-ai-reusable.yml'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch to test.'
+        required: false
+        default: 'master'
+      eval_type:
+        description: 'Which evaluations to run.'
+        required: false
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - spec
+          - matrix
+      spec_repetitions:
+        description: 'Number of repetitions for spec (pairwise) evals.'
+        required: false
+        default: '1'
+      spec_judges:
+        description: 'Number of judges for spec (pairwise) evals.'
+        required: false
+        default: '1'
+
+jobs:
+  check-skip:
+    name: Check Skip Label
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.check.outputs.should_skip }}
+    steps:
+      - name: Check for no-prompt-changes opt-out
+        id: check
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const SKIP_TAG = '(no-prompt-changes)';
+            const SKIP_LABEL = 'no-prompt-changes';
+
+            // Only check for push events (merges to master)
+            if (context.eventName !== 'push') {
+              core.setOutput('should_skip', 'false');
+              return;
+            }
+
+            // Check commit message for skip tag
+            const commitMessage = context.payload.head_commit?.message || '';
+            if (commitMessage.includes(SKIP_TAG)) {
+              console.log(`Found ${SKIP_TAG} in commit message, skipping evals`);
+              core.setOutput('should_skip', 'true');
+              return;
+            }
+
+            // Find the PR associated with this merge commit
+            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha
+            });
+
+            if (prs.length === 0) {
+              console.log('No PR found for this commit, running evals');
+              core.setOutput('should_skip', 'false');
+              return;
+            }
+
+            const pr = prs[0];
+            console.log(`PR #${pr.number}: "${pr.title}"`);
+
+            // Check PR title for skip tag
+            if (pr.title.includes(SKIP_TAG)) {
+              console.log(`Found ${SKIP_TAG} in PR title, skipping evals`);
+              core.setOutput('should_skip', 'true');
+              return;
+            }
+
+            // Check PR labels for skip label
+            const labels = pr.labels.map(l => l.name);
+            console.log(`PR labels: ${labels.join(', ') || '(none)'}`);
+
+            if (labels.includes(SKIP_LABEL)) {
+              console.log(`Found ${SKIP_LABEL} label, skipping evals`);
+              core.setOutput('should_skip', 'true');
+            } else {
+              console.log('No skip indicator found, running evals');
+              core.setOutput('should_skip', 'false');
+            }
+
+  determine-config:
+    name: Determine Configuration
+    needs: check-skip
+    if: needs.check-skip.outputs.should_skip != 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.config.outputs.branch }}
+      spec_repetitions: ${{ steps.config.outputs.spec_repetitions }}
+      spec_judges: ${{ steps.config.outputs.spec_judges }}
+      experiment_prefix: ${{ steps.config.outputs.experiment_prefix }}
+    steps:
+      - name: Set configuration based on trigger
+        id: config
+        run: |
+          EVENT_NAME="${{ github.event_name }}"
+
+          if [ "$EVENT_NAME" = "push" ]; then
+            # Merge to master: spec evals use 1 rep, 1 judge
+            {
+              echo "branch=${{ github.ref_name }}"
+              echo "spec_repetitions=1"
+              echo "spec_judges=1"
+              echo "experiment_prefix="
+            } >> "$GITHUB_OUTPUT"
+          else
+            # Manual dispatch: use provided values for spec evals
+            {
+              echo "branch=${{ inputs.branch || 'master' }}"
+              echo "spec_repetitions=${{ inputs.spec_repetitions || '1' }}"
+              echo "spec_judges=${{ inputs.spec_judges || '1' }}"
+              echo "experiment_prefix=CI_manual"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+  run-pairwise-evals:
+    name: Run Pairwise (Spec) Evaluations
+    needs: determine-config
+    if: github.event_name == 'push' || inputs.eval_type == 'both' || inputs.eval_type == 'spec'
+    uses: ./.github/workflows/test-evals-ai-reusable.yml
+    with:
+      branch: ${{ needs.determine-config.outputs.branch }}
+      suite: pairwise
+      dataset: notion-pairwise-fresh
+      repetitions: ${{ fromJson(needs.determine-config.outputs.spec_repetitions) }}
+      judges: ${{ fromJson(needs.determine-config.outputs.spec_judges) }}
+      experiment_name_prefix: ${{ needs.determine-config.outputs.experiment_prefix }}
+    secrets: inherit
+
+  run-llm-judge-evals:
+    name: Run LLM Judge (Matrix) Evaluations
+    needs: determine-config
+    if: github.event_name == 'push' || inputs.eval_type == 'both' || inputs.eval_type == 'matrix'
+    uses: ./.github/workflows/test-evals-ai-reusable.yml
+    with:
+      branch: ${{ needs.determine-config.outputs.branch }}
+      suite: llm-judge
+      dataset: workflow-builder-canvas-prompts
+      # Matrix evals always use 3 reps, 3 judges regardless of trigger
+      repetitions: 3
+      judges: 3
+      experiment_name_prefix: ${{ needs.determine-config.outputs.experiment_prefix }}
+    secrets: inherit

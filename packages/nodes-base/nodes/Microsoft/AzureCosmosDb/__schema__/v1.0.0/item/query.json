@@ -1,9 +1,39 @@
 {
     "type": "object",
     "properties": {
+        "createdDate": {
+            "type": "string"
+        },
+        "documentType": {
+            "type": "string"
+        },
+        "eTag": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
+        },
+        "isActive": {
+            "type": "boolean"
+        },
+        "lastModifiedDate": {
+            "type": "string"
+        },
+        "partitionKey": {
+            "type": "string"
+        },
+        "resourceId": {
+            "type": "string"
+        },
+        "selfLink": {
+            "type": "string"
+        },
+        "timeStamp": {
+            "type": "integer"
+        },
+        "version": {
+            "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -6,6 +6,7 @@ import { workflow } from './ExpressionExtensions/helpers';
 import { baseFixtures } from './ExpressionFixtures/base';
 import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
 import * as Helpers from './helpers';
+import { ExpressionReservedVariableError } from '../src/errors/expression-reserved-variable.error';
 import { ExpressionError } from '../src/errors/expression.error';
 import { extendSyntax } from '../src/extensions/expression-extension';
 import type { INodeExecutionData } from '../src/interfaces';
@@ -171,6 +172,342 @@ describe('Expression', () => {
 			vi.useRealTimers();
 
 			expect(testFn).not.toHaveBeenCalled();
+		});
+
+		describe('SafeObject security wrapper', () => {
+			it('should block Object.defineProperty', () => {
+				expect(evaluate('={{Object.defineProperty}}')).toBeUndefined();
+			});
+
+			it('should block Object.defineProperties', () => {
+				expect(evaluate('={{Object.defineProperties}}')).toBeUndefined();
+			});
+
+			it('should block Object.setPrototypeOf', () => {
+				expect(evaluate('={{Object.setPrototypeOf}}')).toBeUndefined();
+			});
+
+			it('should block Object.getPrototypeOf', () => {
+				expect(() => evaluate('={{Object.getPrototypeOf}}')).toThrow();
+			});
+
+			it('should block Object.getOwnPropertyDescriptor', () => {
+				expect(evaluate('={{Object.getOwnPropertyDescriptor}}')).toBeUndefined();
+			});
+
+			it('should block Object.getOwnPropertyDescriptors', () => {
+				expect(evaluate('={{Object.getOwnPropertyDescriptors}}')).toBeUndefined();
+			});
+
+			it('should block __defineGetter__ on Object', () => {
+				expect(() => evaluate('={{Object.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __defineSetter__ on Object', () => {
+				expect(() => evaluate('={{Object.__defineSetter__}}')).toThrow(
+					'Cannot access "__defineSetter__" due to security concerns',
+				);
+			});
+
+			it('should block __lookupGetter__ on Object', () => {
+				expect(() => evaluate('={{Object.__lookupGetter__}}')).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __lookupSetter__ on Object', () => {
+				expect(() => evaluate('={{Object.__lookupSetter__}}')).toThrow(
+					'Cannot access "__lookupSetter__" due to security concerns',
+				);
+			});
+
+			it('should allow safe Object methods', () => {
+				expect(evaluate('={{Object.keys({a: 1})}}')).toEqual(['a']);
+				expect(evaluate('={{Object.values({a: 1})}}')).toEqual([1]);
+				expect(evaluate('={{Object.entries({a: 1})}}')).toEqual([['a', 1]]);
+				expect(evaluate('={{Object.assign({}, {a: 1})}}')).toEqual({ a: 1 });
+				expect(evaluate('={{Object.fromEntries([["a", 1]])}}')).toEqual({ a: 1 });
+				expect(evaluate('={{Object.is(1, 1)}}')).toEqual(true);
+				expect(evaluate('={{Object.hasOwn({a: 1}, "a")}}')).toEqual(true);
+			});
+
+			it('should allow Object.create with single argument', () => {
+				// Object.create with null prototype
+				expect(evaluate('={{Object.create(null) !== null}}')).toEqual(true);
+			});
+
+			it('should prevent Object.defineProperty attack on Error.prepareStackTrace', () => {
+				// Object.defineProperty is undefined, so calling it returns undefined (no-op)
+				// The attack fails silently - prepareStackTrace is never set
+				const result = evaluate(
+					"={{Object.defineProperty(Error, 'prepareStackTrace', { value: (e, s) => s })}}",
+				);
+				expect(result).toBeUndefined();
+			});
+		});
+
+		describe('SafeError security wrapper', () => {
+			it('should block Error.prepareStackTrace access', () => {
+				expect(() => evaluate('={{Error.prepareStackTrace}}')).toThrow();
+			});
+
+			it('should block Error.captureStackTrace access', () => {
+				// captureStackTrace is blocked by the SafeError proxy, returns undefined
+				expect(evaluate('={{Error.captureStackTrace}}')).toBeUndefined();
+			});
+
+			it('should block Error.stackTraceLimit access', () => {
+				// stackTraceLimit is blocked by the SafeError proxy, returns undefined
+				expect(evaluate('={{Error.stackTraceLimit}}')).toBeUndefined();
+			});
+
+			it('should block __defineGetter__ on Error', () => {
+				expect(() => evaluate('={{Error.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __defineSetter__ on Error', () => {
+				expect(() => evaluate('={{Error.__defineSetter__}}')).toThrow(
+					'Cannot access "__defineSetter__" due to security concerns',
+				);
+			});
+
+			it('should prevent setting Error.prepareStackTrace via assignment', () => {
+				// Assignment fails because the sanitizer blocks access to prepareStackTrace
+				expect(() =>
+					evaluate('={{Error.prepareStackTrace = (e, s) => s, Error.prepareStackTrace}}'),
+				).toThrow();
+			});
+
+			it('should allow normal Error functionality', () => {
+				expect(evaluate('={{new Error("test").message}}')).toEqual('test');
+				expect(evaluate('={{new Error("test") instanceof Error}}')).toEqual(true);
+			});
+		});
+
+		describe('Error subclass security wrappers', () => {
+			it('should block __defineGetter__ on TypeError', () => {
+				expect(() => evaluate('={{TypeError.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __defineGetter__ on SyntaxError', () => {
+				expect(() => evaluate('={{SyntaxError.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
+			});
+
+			it('should block prepareStackTrace on all error types', () => {
+				expect(() => evaluate('={{TypeError.prepareStackTrace}}')).toThrow();
+				expect(() => evaluate('={{SyntaxError.prepareStackTrace}}')).toThrow();
+				expect(() => evaluate('={{RangeError.prepareStackTrace}}')).toThrow();
+				expect(() => evaluate('={{ReferenceError.prepareStackTrace}}')).toThrow();
+				expect(() => evaluate('={{EvalError.prepareStackTrace}}')).toThrow();
+				expect(() => evaluate('={{URIError.prepareStackTrace}}')).toThrow();
+			});
+
+			it('should allow normal Error subclass functionality', () => {
+				expect(evaluate('={{new TypeError("test").message}}')).toEqual('test');
+				expect(evaluate('={{new TypeError("test").name}}')).toEqual('TypeError');
+				expect(evaluate('={{new SyntaxError("test") instanceof Error}}')).toEqual(true);
+			});
+		});
+
+		describe('RCE prevention', () => {
+			it('should block the Object.defineProperty + prepareStackTrace RCE attack', () => {
+				// This is the actual attack payload that was used
+				// Attack fails because Object.defineProperty is undefined,
+				// calling undefined(...) throws TypeError, and the expression returns undefined
+				const payload = `={{(() => {
+					Object.defineProperty(Error, 'prepareStackTrace', {
+						value: (e, stack) => {
+							try {
+								const g = stack[0].getThis();
+								if (!g || !g.global || !g.global.process) return "no_global";
+								const p = g.global.process;
+								const gbm = p.getBuiltinModule;
+								if (!gbm) return "no_gbm";
+								const cp = gbm('child_process');
+								return cp.execSync('echo pwned').toString();
+							} catch (x) {
+								return "err:" + x.message;
+							}
+						},
+						configurable: true
+					});
+					return new Error().stack;
+				})()}}`;
+
+				// Attack is blocked - calling undefined() throws, result is undefined
+				const result = evaluate(payload);
+				expect(result).toBeUndefined();
+			});
+
+			it('should block __defineGetter__ bypass attack', () => {
+				// Alternative attack using __defineGetter__ to set prepareStackTrace
+				// Attack fails because __defineGetter__ is blocked at AST level
+				const payload = `={{(() => {
+					Error.__defineGetter__('prepareStackTrace', function() {
+						return (e, stack) => 'ATTACK_WORKED';
+					});
+					return new Error().stack;
+				})()}}`;
+
+				// Attack is blocked at AST parsing level
+				expect(() => evaluate(payload)).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
+			});
+
+			it('should block getOwnPropertyDescriptor bypass attempt', () => {
+				// Attempt to read blocked properties via getOwnPropertyDescriptor
+				// getOwnPropertyDescriptor is undefined, calling it throws TypeError
+				const payload = `={{(() => {
+					const desc = Object.getOwnPropertyDescriptor(Error, 'prepareStackTrace');
+					return desc ? 'HAS_DESC' : 'NO_DESC';
+				})()}}`;
+
+				// getOwnPropertyDescriptor is undefined, calling undefined() throws
+				const result = evaluate(payload);
+				expect(result).toBeUndefined();
+			});
+
+			it('should block indirect access to defineProperty via bracket notation', () => {
+				expect(evaluate("={{Object['defineProperty']}}")).toBeUndefined();
+			});
+
+			it('should block storing defineProperty in a variable', () => {
+				// Even if you try to store it, you get undefined
+				const result = evaluate('={{(() => { const dp = Object.defineProperty; return dp; })()}}');
+				expect(result).toBeUndefined();
+			});
+
+			it('should block prototype pollution via __lookupGetter__ as bare identifier', () => {
+				const payload = `={{(() => {
+					const getProto = __lookupGetter__('__proto__');
+					const objProto = getProto.call({});
+					objProto['win'] = 1337;
+					const empty = {};
+					return empty['win'];
+				})()}}`;
+
+				// Now blocked at AST level when trying to call __lookupGetter__
+				expect(() => evaluate(payload)).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __lookupGetter__ as bare identifier', () => {
+				expect(() => evaluate('={{__lookupGetter__}}')).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __lookupSetter__ as bare identifier', () => {
+				expect(() => evaluate('={{__lookupSetter__}}')).toThrow(
+					'Cannot access "__lookupSetter__" due to security concerns',
+				);
+			});
+
+			it('should block __defineGetter__ as bare identifier', () => {
+				expect(() => evaluate('={{__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __defineSetter__ as bare identifier', () => {
+				expect(() => evaluate('={{__defineSetter__}}')).toThrow(
+					'Cannot access "__defineSetter__" due to security concerns',
+				);
+			});
+
+			it('should block __lookupGetter__ on object literals', () => {
+				expect(() => evaluate('={{{}.__lookupGetter__("__proto__")}}')).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
+			});
+
+			it('should block prototype pollution RCE via __lookupGetter__ on object literal', () => {
+				const payload = `={{(() => {
+					const getProto = {}.__lookupGetter__("__proto__");
+					const setProto = getProto.call(new Set());
+					if (!setProto._has) {
+						setProto._has = setProto.has;
+						setProto.has = function (a) {
+							if (["construct" + "or"].includes(a)) {
+								return false;
+							}
+							try {
+								return this._has(a);
+							} catch {
+								return false;
+							}
+						};
+					}
+					return setProto;
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
+			});
+
+			it('should block TOCTOU bypass via custom toString()', () => {
+				const payload = `={{(() => {
+					function createBypass() {
+						let value = 'noop';
+						return {
+							toString: () => {
+								const current = value;
+								value = 'constructor';
+								return current;
+							}
+						}
+					}
+					return ({})[createBypass()][createBypass()]('return 1')();
+				})()}}`;
+
+				expect(evaluate(payload)).toBeUndefined();
+			});
+
+			it('should block `__sanitize` override attempt', () => {
+				const payload = `={{(() => {
+					__sanitize = a => a;
+					return this['const' + 'ructor']['const' + 'ructor']('return 1')();
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow();
+			});
+
+			it('should block `___n8n_data` shadowing attempt', () => {
+				const payload = `={{(() => {
+					const ___n8n_data = {__sanitize: a => a};
+					return ({})['const'+'ructor']['const'+'ructor']('return 1')();
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+			});
+
+			it('should block `__sanitize` variable declaration', () => {
+				const payload = `={{(() => {
+					const __sanitize = a => a;
+					return 1;
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+			});
+
+			it('should block `___n8n_data` as function parameter', () => {
+				const payload = `={{((___n8n_data) => {
+					return 1;
+				})({})}}`;
+
+				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+			});
 		});
 	});
 

@@ -174,7 +174,7 @@ const repoUrlValidationRules = computed<Array<Rule | RuleGroup>>(() => {
 			name: 'MATCH_REGEX',
 			config: {
 				regex:
-					/^(?:git@|ssh:\/\/git@|[\w-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~.]+(?:\/[\w\-~.]+)*(?:\.git)?(?:\/.*)?$/,
+					/^(?:git@|ssh:\/\/git@|[\w.-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~.]+(?:\/[\w\-~.]+)*(?:\.git)?(?:\/.*)?$/,
 				message: locale.baseText('settings.sourceControl.repoUrlInvalid'),
 			},
 		});
@@ -500,11 +500,13 @@ watch(connectionType, () => {
 						:class="$style.readOnly"
 						data-test-id="source-control-read-only-checkbox"
 					>
-						<I18nT keypath="settings.sourceControl.protected" tag="span" scope="global">
-							<template #bold>
-								<strong>{{ locale.baseText('settings.sourceControl.protected.bold') }}</strong>
-							</template>
-						</I18nT>
+						<template #label>
+							<I18nT keypath="settings.sourceControl.protected" tag="span" scope="global">
+								<template #bold>
+									<strong>{{ locale.baseText('settings.sourceControl.protected.bold') }}</strong>
+								</template>
+							</I18nT>
+						</template>
 					</N8nCheckbox>
 				</div>
 				<div :class="$style.group">
@@ -556,7 +558,7 @@ watch(connectionType, () => {
 		border: 1px solid var(--color--foreground--tint-1);
 	}
 
-	label {
+	> label {
 		display: inline-block;
 		padding: 0 0 var(--spacing--2xs);
 		font-size: var(--font-size--sm);

@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "BucketArn": {
+            "type": "string"
+        },
         "CreationDate": {
             "type": "string"
         },
@@ -8,5 +11,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

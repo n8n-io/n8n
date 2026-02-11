@@ -187,6 +187,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 		const messages = ref<ChatMessage[]>([]);
 		const currentSessionId = ref<string | null>(null);
 		const waitingForResponse = ref(false);
+		const blockUserInput = ref(false);
 
 		const initialMessages = computed<ChatMessage[]>(() =>
 			(options.initialMessages ?? []).map((text) => ({
@@ -302,6 +303,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			messages,
 			currentSessionId,
 			waitingForResponse,
+			blockUserInput,
 			loadPreviousSession,
 			startNewSession,
 			sendMessage,

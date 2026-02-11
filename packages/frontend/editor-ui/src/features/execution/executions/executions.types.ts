@@ -18,7 +18,8 @@ export type ExecutionFilterVote = AnnotationVote | 'all';
 
 export type ExecutionFilterType = {
 	status: string;
-	workflowId: string;
+	// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+	workflowId: 'all' | string;
 	startDate: string | Date;
 	endDate: string | Date;
 	tags: string[];

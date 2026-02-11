@@ -362,4 +362,58 @@ describe('UserSelect', () => {
 			'user-select-option-id-f',
 		]);
 	});
+
+	it('should not apply client-side filtering in remote mode', async () => {
+		// In remote mode, the component should display all provided users
+		// without filtering them locally, even if they don't match the filter term
+		const { getByRole, rerender } = renderComponent({
+			props: {
+				users: sampleUsers, // All users
+				remote: true,
+			},
+		});
+
+		const selectInput = getByRole('combobox');
+		await userEvent.click(selectInput);
+
+		// All users should be visible initially
+		const initialOptions = await getRenderedOptions();
+		expect(initialOptions.length).toBe(sampleUsers.length);
+
+		// Re-render with filtered users (simulating what the parent would do after remote search)
+		await rerender({
+			users: [sampleUsers[0]], // Only Alice after "remote" filtering
+			remote: true,
+		});
+
+		// Should now only show the filtered user provided by parent
+		await waitFor(async () => {
+			const options = await getRenderedOptions();
+			expect(options.length).toBe(1);
+			expect(options[0]).toHaveAttribute('id', 'user-select-option-id-u1');
+		});
+	});
+
+	it('should respect ignoreIds in remote mode', async () => {
+		const remoteMethodMock = vi.fn();
+		const { getByRole } = renderComponent({
+			props: {
+				users: sampleUsers.slice(0, 3), // Alice, Bob, Charlie
+				remote: true,
+				remoteMethod: remoteMethodMock,
+				ignoreIds: ['u1'], // Exclude Alice
+			},
+		});
+
+		const selectInput = getByRole('combobox');
+		await userEvent.click(selectInput);
+
+		// Should exclude ignored user even in remote mode
+		await waitFor(async () => {
+			const options = await getRenderedOptions();
+			expect(options.length).toBe(2); // Bob and Charlie only
+			const optionIds = Array.from(options).map((o) => o.getAttribute('id'));
+			expect(optionIds).not.toContain('user-select-option-id-u1');
+		});
+	});
 });

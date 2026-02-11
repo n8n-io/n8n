@@ -144,6 +144,9 @@ export const promptTypeOptions: INodeProperties = {
 		},
 	],
 	default: 'auto',
+	builderHint: {
+		message: "Use 'auto' when following a chat trigger, 'define' when custom prompt needed",
+	},
 };
 
 export const textInput: INodeProperties = {
@@ -155,6 +158,11 @@ export const textInput: INodeProperties = {
 	placeholder: 'e.g. Hello, how can you help me?',
 	typeOptions: {
 		rows: 2,
+	},
+	builderHint: {
+		placeholderSupported: false,
+		message:
+			'Use expressions to include dynamic data from previous nodes (e.g., "={{ $json.input }}"). Static text prompts ignore incoming data.',
 	},
 };
 

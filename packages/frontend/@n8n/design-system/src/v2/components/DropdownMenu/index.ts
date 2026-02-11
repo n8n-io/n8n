@@ -7,5 +7,5 @@ export type {
 	DropdownMenuItemSlots,
 	DropdownMenuEmits,
 	DropdownMenuTrigger,
-	Placement as DropdownMenuPlacement,
+	DropdownMenuPlacement,
 } from './DropdownMenu.types';

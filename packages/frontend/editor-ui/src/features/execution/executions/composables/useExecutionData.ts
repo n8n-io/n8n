@@ -21,8 +21,6 @@ export function useExecutionData({ node }: { node: ComputedRef<INode | undefined
 	});
 
 	const hasNodeRun = computed(() => {
-		if (workflowsStore.subWorkflowExecutionError) return true;
-
 		return Boolean(
 			node.value &&
 				workflowRunData.value &&

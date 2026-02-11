@@ -16,7 +16,9 @@ export class ChatHubSettingsController {
 		private readonly settings: ChatHubSettingsService,
 		private readonly logger: Logger,
 		private readonly moduleRegistry: ModuleRegistry,
-	) {}
+	) {
+		this.logger = this.logger.scoped('chat-hub');
+	}
 
 	@Get('/settings')
 	@GlobalScope('chatHub:manage')

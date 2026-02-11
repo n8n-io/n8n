@@ -30,6 +30,10 @@ vi.mock('vue-router', async () => {
 			replace: mockReplace,
 			back: mockBack,
 		}),
+		useRoute: () => ({
+			name: VIEWS.PROJECT_ROLE_SETTINGS,
+			params: {},
+		}),
 	};
 });
 
@@ -328,8 +332,7 @@ describe('ProjectRoleView', () => {
 			await waitFor(() => expect(getByTestId('scope-checkbox-project:update')).toBeInTheDocument());
 
 			// Find the checkbox by its label text
-			const label = getByTestId('scope-checkbox-project:update');
-			const checkbox = label.querySelector('input[type="checkbox"]') as HTMLInputElement;
+			const checkbox = getByTestId('scope-checkbox-project:update');
 
 			// Initially unchecked
 			expect(checkbox).not.toBeChecked();
@@ -481,9 +484,8 @@ describe('ProjectRoleView', () => {
 			});
 
 			const scopeCheckbox = getByTestId('scope-checkbox-project:update');
-			const checkbox = scopeCheckbox.querySelector('input[type="checkbox"]') as HTMLInputElement;
 
-			await userEvent.click(checkbox);
+			await userEvent.click(scopeCheckbox);
 			await waitForEditButtonsToBe(getByText, 'enabled');
 		});
 	});
