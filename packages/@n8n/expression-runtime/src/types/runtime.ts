@@ -1,3 +1,10 @@
+// ============================================================================
+// Phase 1.1: Runtime Interfaces (IMPLEMENT WITH BRIDGE)
+//
+// These interfaces define how the runtime (inside isolation) communicates
+// with the host. Implement these when building the runtime code.
+// ============================================================================
+
 /**
  * Runtime interface exposed to isolated context.
  *

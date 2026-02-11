@@ -1,12 +1,19 @@
+// ============================================================================
+// Phase 1.1: Bridge Interface (CORE - IMPLEMENT FIRST)
+//
+// This is the main interface all environments must implement.
+// Start here for CLI/backend (IsolatedVmBridge) or frontend (WebWorkerBridge).
+// ============================================================================
+
 /**
  * Abstract interface for runtime bridges.
  *
  * A bridge manages communication between the host process and the isolated context.
  * Different bridge implementations support different isolation mechanisms:
- * - IsolatedVmBridge: Uses isolated-vm for Node.js backend
- * - WebWorkerBridge: Uses Web Workers for browser frontend
- * - TaskRunnerBridge: Uses IPC for separate processes
- * - NodeVmBridge: Uses Node.js vm module for testing
+ * - IsolatedVmBridge: Uses isolated-vm for Node.js backend (Phase 1.1)
+ * - WebWorkerBridge: Uses Web Workers for browser frontend (Phase 2+)
+ * - TaskRunnerBridge: Uses IPC for separate processes (Phase 2+)
+ * - NodeVmBridge: Uses Node.js vm module for testing (Phase 1.1)
  */
 export interface RuntimeBridge {
 	/**
@@ -74,6 +81,8 @@ export interface BridgeConfig {
 	/**
 	 * Enable debug mode (inspector protocol).
 	 * Default: false
+	 *
+	 * Phase 2+: Chrome DevTools debugging support
 	 */
 	debug?: boolean;
 }

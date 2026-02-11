@@ -1,5 +1,10 @@
 import type { RuntimeBridge } from './bridge';
 
+// ============================================================================
+// Phase 1.1: Core Evaluation Interfaces (MVP)
+// These are the minimal interfaces needed to evaluate expressions.
+// ============================================================================
+
 /**
  * Configuration for ExpressionEvaluator.
  */
@@ -155,6 +160,16 @@ export interface ValidationResult {
 	errors?: string[];
 }
 
+// ============================================================================
+// Phase 0.2 / Phase 1+: Observability Interfaces (OPTIONAL FOR MVP)
+//
+// These can be stubbed with NoOpProvider initially.
+// Full implementation comes in Phase 0.2 (observability infrastructure).
+//
+// Frontend developers: You can ignore this section for Phase 1.
+// CLI/Backend developers: Use NoOpProvider initially, real providers later.
+// ============================================================================
+
 /**
  * Observability provider interface.
  *
@@ -256,6 +271,13 @@ export interface LogsAPI {
 	 */
 	debug(message: string, context?: Record<string, unknown>): void;
 }
+
+// ============================================================================
+// Phase 1.4: Error Handling (IMPLEMENT WITH EVALUATOR)
+//
+// These error types provide structured error information.
+// Start with basic Error, add these types in Phase 1.4.
+// ============================================================================
 
 /**
  * Expression evaluation error.
