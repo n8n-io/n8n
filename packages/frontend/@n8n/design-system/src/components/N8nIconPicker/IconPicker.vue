@@ -437,8 +437,16 @@ function humanizeIconName(name: string): string {
 	}
 }
 
+.icon-button {
+	svg {
+		width: 20px;
+		height: 20px;
+	}
+}
+
 .emoji-button {
 	padding: 0;
+	font-size: 20px;
 }
 
 .popup {
