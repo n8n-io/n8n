@@ -264,6 +264,8 @@ export interface IWorkflowDb {
 		updatedAt?: string;
 	};
 	activeVersion?: WorkflowHistory | null;
+	gradualRolloutVersionId?: string | null;
+	gradualRolloutPercentage?: number | null;
 	checksum?: string;
 }
 

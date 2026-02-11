@@ -2,7 +2,7 @@ import type { Server } from 'miragejs';
 import { Response } from 'miragejs';
 
 export function routesForGradualPublish(server: Server) {
-	server.post('/rest/workflows/:workflowId/gradual-publish', (_schema, request) => {
+	server.post('/rest/workflows/:workflowId/gradual-rollout', (_schema, request) => {
 		const { percentage, versionId } = JSON.parse(request.requestBody);
 
 		// Mock: 0% = rollback, 100% = complete (both disable gradual rollout)

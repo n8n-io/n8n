@@ -41,7 +41,7 @@ const description = ref('');
 const submitting = computed(() => props.data.submitting ?? false);
 
 const isPercentageValid = computed(() => {
-	const value = percentage.value;
+	const value = Number(percentage.value);
 	return Number.isInteger(value) && value >= 1 && value <= 99;
 });
 
@@ -84,7 +84,7 @@ const handleSubmit = () => {
 	}
 	props.data.eventBus.emit('submit', {
 		versionId: props.data.versionId,
-		percentage: percentage.value,
+		percentage: Number(percentage.value),
 		name: versionName.value,
 		description: description.value,
 	});

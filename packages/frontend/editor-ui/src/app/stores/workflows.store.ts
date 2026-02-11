@@ -661,6 +661,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function resetWorkflow() {
 		workflow.value = createEmptyWorkflow();
 		workflowChecksum.value = '';
+		gradualRolloutState.value = null;
 	}
 
 	function setUsedCredentials(data: IUsedCredential[]) {

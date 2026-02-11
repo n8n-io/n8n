@@ -113,7 +113,7 @@ export const gradualPublishWorkflow = async (
 ): Promise<GradualRolloutState | null> => {
 	const response = await post(
 		context.baseUrl,
-		`/workflows/${workflowId}/gradual-publish`,
+		`/workflows/${workflowId}/gradual-rollout`,
 		requestData,
 	);
 	const { data } = response as { data: GradualPublishResponse };

@@ -133,6 +133,19 @@ const sendTelemetry = (event: string) => {
 	});
 };
 
+const updateGradualRolloutInfo = () => {
+	const rolloutVersionId = activeWorkflow.value?.gradualRolloutVersionId;
+	const rolloutPercentage = activeWorkflow.value?.gradualRolloutPercentage;
+
+	for (const item of workflowHistory.value) {
+		if (rolloutVersionId && item.versionId === rolloutVersionId) {
+			item.gradualRolloutPercentage = rolloutPercentage ?? undefined;
+		} else {
+			item.gradualRolloutPercentage = undefined;
+		}
+	}
+};
+
 const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 	const history = await workflowHistoryStore.getWorkflowHistory(workflowId.value, queryParams);
 	lastReceivedItemsLength.value = history.length;
@@ -142,6 +155,7 @@ const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 	const userIdsToFetch = new Set<string>(userIds);
 	await usersStore.fetchUsers({ filter: { ids: Array.from(userIdsToFetch) } });
 	workflowHistory.value = workflowHistory.value.concat(history);
+	updateGradualRolloutInfo();
 };
 
 onBeforeMount(async () => {
@@ -152,6 +166,7 @@ onBeforeMount(async () => {
 			loadMore({ take: requestNumberOfItems.value }),
 		]);
 		activeWorkflow.value = workflow;
+		updateGradualRolloutInfo();
 		isListLoading.value = false;
 
 		if (!versionId.value && workflowHistory.value.length) {

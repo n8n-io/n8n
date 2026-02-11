@@ -50,7 +50,7 @@ const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
 const isMaxVersionsReached = computed(() => workflowsStore.isGradualRolloutMaxVersionsReached);
 
 const isPercentageValid = computed(() => {
-	const value = percentage.value;
+	const value = Number(percentage.value);
 	return Number.isInteger(value) && value >= 1 && value <= 99;
 });
 
@@ -114,16 +114,17 @@ async function handleGradualPublish() {
 		return;
 	}
 	publishing.value = true;
+	const percentageNumber = Number(percentage.value);
 	const { success } = await workflowActivate.gradualPublishWorkflow(workflowsStore.workflow.id, {
 		versionId: workflowsStore.workflow.versionId,
-		percentage: percentage.value,
+		percentage: percentageNumber,
 		name: versionName.value,
 		description: description.value,
 	});
 	if (success) {
 		telemetry.track('User started gradual rollout from canvas', {
 			workflow_id: workflowsStore.workflow.id,
-			percentage: percentage.value,
+			percentage: percentageNumber,
 		});
 		modalBus.emit('close');
 	}
