@@ -100,6 +100,7 @@ export class CodeBuilderAgent {
 
 		this.parseValidateHandler = new ParseValidateHandler({
 			logger: config.logger,
+			generatePinData: config.generatePinData,
 		});
 
 		// Initialize auto-finalize handler

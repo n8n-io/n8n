@@ -183,11 +183,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const trackingSessionId = computed(() => rootStore.pushRef);
 
 	/** Whether the code-builder experiment is enabled for this user */
-	const isCodeBuilder = computed(
-		() =>
-			posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name) ===
-			CODE_WORKFLOW_BUILDER_EXPERIMENT.test,
-	);
+	const isCodeBuilder = computed(() => {
+		const variant = posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name);
+		return (
+			variant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codeNoPinData ||
+			variant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData
+		);
+	});
 
 	const workflowPrompt = computed(() => {
 		const firstUserMessage = chatMessages.value.find(
