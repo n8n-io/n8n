@@ -165,8 +165,8 @@ describe('generate-node-defs-cli', () => {
 			const consoleSpy = jest.spyOn(console, 'log');
 			await generateNodeDefinitions({ nodesJsonPath, outputDir });
 
-			const logCalls = consoleSpy.mock.calls.map((c) => c[0]);
-			expect(logCalls.some((msg: string) => msg.includes('Generated node definitions'))).toBe(true);
+			const logCalls = consoleSpy.mock.calls.map((c) => String(c[0]));
+			expect(logCalls.some((msg) => msg.includes('Generated node definitions'))).toBe(true);
 			consoleSpy.mockRestore();
 
 			// Hash sentinel should be recreated

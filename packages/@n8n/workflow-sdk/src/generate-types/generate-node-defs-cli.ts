@@ -75,7 +75,7 @@ export async function generateNodeDefinitions(
 	try {
 		const existingHash = await fs.promises.readFile(hashFilePath, 'utf-8');
 		if (existingHash.trim() === inputHash) {
-			console.log(`Node definitions up to date (hash match), skipping generation.`);
+			console.log('Node definitions up to date (hash match), skipping generation.');
 			return;
 		}
 	} catch {

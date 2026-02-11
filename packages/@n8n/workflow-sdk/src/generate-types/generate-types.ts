@@ -3791,7 +3791,7 @@ const WRITE_BATCH_SIZE = 100;
 async function writeFilesInBatches(files: Array<{ path: string; content: string }>): Promise<void> {
 	for (let i = 0; i < files.length; i += WRITE_BATCH_SIZE) {
 		const batch = files.slice(i, i + WRITE_BATCH_SIZE);
-		await Promise.all(batch.map((f) => fs.promises.writeFile(f.path, f.content)));
+		await Promise.all(batch.map(async (f) => fs.promises.writeFile(f.path, f.content)));
 	}
 }
 
@@ -3884,7 +3884,7 @@ async function generateVersionSpecificFiles(
 	}
 
 	// Phase 2: Create all directories in parallel
-	await Promise.all([...allDirs].map((d) => fs.promises.mkdir(d, { recursive: true })));
+	await Promise.all([...allDirs].map(async (d) => fs.promises.mkdir(d, { recursive: true })));
 
 	// Phase 3: Write all files in parallel batches
 	await writeFilesInBatches(allWrites);
