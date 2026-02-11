@@ -82,6 +82,8 @@ describe('Test Github Node', () => {
 					helpers: {
 						returnJsonArray: jest.fn().mockReturnValue([{ json: {} }]),
 						requestWithAuthentication: jest.fn().mockResolvedValue({}),
+						httpRequestWithAuthentication: jest.fn().mockResolvedValue({}),
+						httpRequest: jest.fn().mockResolvedValue({}),
 						constructExecutionMetaData: jest.fn().mockReturnValue([{ json: {} }]),
 					},
 				};
@@ -116,16 +118,14 @@ describe('Test Github Node', () => {
 				await githubNode.execute.call(mockExecutionContext);
 
 				expect(utilities.removeTrailingSlash).toHaveBeenCalledWith('path/to/file/');
-				expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				expect(mockExecutionContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 					'githubOAuth2Api',
-					{
-						body: {},
-						headers: { 'User-Agent': 'n8n' },
-						json: true,
+					expect.objectContaining({
 						method: 'GET',
-						qs: {},
-						uri: 'https://api.github.com/repos/me/repo/contents/path%2Fto%2Ffile',
-					},
+						url: '/repos/me/repo/contents/path%2Fto%2Ffile',
+						baseURL: 'https://api.github.com',
+						headers: { 'User-Agent': 'n8n' },
+					}),
 				);
 			});
 		});
@@ -175,14 +175,22 @@ describe('Test Github Node', () => {
 				helpers: {
 					returnJsonArray: jest.fn().mockReturnValue([{ json: {} }]),
 					httpRequest: jest.fn(),
-					httpRequestWithAuthentication: jest.fn(),
+					httpRequestWithAuthentication: jest
+						.fn()
+						.mockImplementation(async (_credentialType, options) => {
+							if (options.url?.includes('dispatches') && options.method === 'POST') {
+								const error: Record<string, unknown> = new Error('Not Found');
+								(error as Record<string, unknown>).statusCode = 404;
+								throw error;
+							}
+							return {};
+						}),
 					requestWithAuthentication: jest
 						.fn()
 						.mockImplementation(async (_credentialType, options) => {
-							if (options.uri.includes('dispatches') && options.method === 'POST') {
-								const error: any = new Error('Not Found');
-								error.statusCode = 404;
-								error.message = 'Not Found';
+							if (options.uri?.includes('dispatches') && options.method === 'POST') {
+								const error: Record<string, unknown> = new Error('Not Found');
+								(error as Record<string, unknown>).statusCode = 404;
 								throw error;
 							}
 							return {};
@@ -231,6 +239,10 @@ describe('Test Github Node', () => {
 				statusCode: 404,
 				message: 'Not Found',
 			});
+			mockExecutionContext.helpers.httpRequestWithAuthentication.mockRejectedValueOnce({
+				statusCode: 404,
+				message: 'Not Found',
+			});
 
 			mockExecutionContext.getNodeParameter.mockImplementation((parameterName: string) => {
 				if (parameterName === 'owner') {
@@ -271,6 +283,10 @@ describe('Test Github Node', () => {
 			const workflowId = 147025216;
 
 			mockExecutionContext.helpers.requestWithAuthentication.mockRejectedValueOnce({
+				statusCode: 500,
+				message: 'Internal Server Error',
+			});
+			mockExecutionContext.helpers.httpRequestWithAuthentication.mockRejectedValueOnce({
 				statusCode: 500,
 				message: 'Internal Server Error',
 			});
@@ -323,6 +339,10 @@ describe('Test Github Node', () => {
 				statusCode: 500,
 				message: 'Internal Server Error',
 			});
+			mockExecutionContext.helpers.httpRequestWithAuthentication.mockRejectedValueOnce({
+				statusCode: 500,
+				message: 'Internal Server Error',
+			});
 
 			mockExecutionContext.getNodeParameter.mockImplementation((parameterName: string) => {
 				if (parameterName === 'owner') {
@@ -356,11 +376,11 @@ describe('Test Github Node', () => {
 				await githubNode.execute.call(mockExecutionContext);
 			}).rejects.toThrow(NodeApiError);
 
-			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			expect(mockExecutionContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({
 					method: 'POST',
-					uri: expect.stringContaining(
+					url: expect.stringContaining(
 						`/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`,
 					),
 					body: expect.objectContaining({
@@ -393,6 +413,8 @@ describe('Test Github Node', () => {
 				helpers: {
 					returnJsonArray: jest.fn().mockReturnValue([{ json: {} }]),
 					requestWithAuthentication: jest.fn().mockResolvedValue({}),
+					httpRequestWithAuthentication: jest.fn().mockResolvedValue({}),
+					httpRequest: jest.fn().mockResolvedValue({}),
 					constructExecutionMetaData: jest.fn().mockReturnValue([{ json: {} }]),
 				},
 			};
@@ -431,11 +453,12 @@ describe('Test Github Node', () => {
 
 			await githubNode.execute.call(mockExecutionContext);
 
-			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			expect(mockExecutionContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({
 					method: 'PUT',
-					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/disable`,
+					url: `/repos/${owner}/${repository}/actions/workflows/${workflowId}/disable`,
+					baseURL: 'https://api.github.com',
 				}),
 			);
 		});
@@ -473,11 +496,12 @@ describe('Test Github Node', () => {
 
 			await githubNode.execute.call(mockExecutionContext);
 
-			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			expect(mockExecutionContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({
 					method: 'PUT',
-					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/enable`,
+					url: `/repos/${owner}/${repository}/actions/workflows/${workflowId}/enable`,
+					baseURL: 'https://api.github.com',
 				}),
 			);
 		});
@@ -515,11 +539,12 @@ describe('Test Github Node', () => {
 
 			await githubNode.execute.call(mockExecutionContext);
 
-			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			expect(mockExecutionContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({
 					method: 'GET',
-					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}`,
+					url: `/repos/${owner}/${repository}/actions/workflows/${workflowId}`,
+					baseURL: 'https://api.github.com',
 				}),
 			);
 		});
@@ -557,11 +582,12 @@ describe('Test Github Node', () => {
 
 			await githubNode.execute.call(mockExecutionContext);
 
-			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			expect(mockExecutionContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({
 					method: 'GET',
-					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/timing`,
+					url: `/repos/${owner}/${repository}/actions/workflows/${workflowId}/timing`,
+					baseURL: 'https://api.github.com',
 				}),
 			);
 		});
@@ -614,6 +640,8 @@ describe('Test Github Node', () => {
 				helpers: {
 					returnJsonArray: jest.fn().mockReturnValue([{ json: {} }]),
 					requestWithAuthentication: jest.fn().mockResolvedValue({}),
+					httpRequestWithAuthentication: jest.fn().mockResolvedValue({}),
+					httpRequest: jest.fn().mockResolvedValue({}),
 					constructExecutionMetaData: jest.fn().mockReturnValue([{ json: {} }]),
 				},
 			};
@@ -635,13 +663,21 @@ describe('Test Github Node', () => {
 				],
 				headers: {},
 			});
+			mockExecutionContext.helpers.httpRequestWithAuthentication.mockResolvedValue({
+				body: [
+					{ id: 1, title: 'Issue 1', state: 'open' },
+					{ id: 2, title: 'Issue 2', state: 'open' },
+				],
+				headers: {},
+			});
 
 			await githubNode.execute.call(mockExecutionContext);
-			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			expect(mockExecutionContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.github.com/issues',
+					url: '/issues',
+					baseURL: 'https://api.github.com',
 					qs: expect.not.objectContaining({ state: 'closed' }),
 				}),
 			);
@@ -661,13 +697,18 @@ describe('Test Github Node', () => {
 				body: [{ id: 3, title: 'Issue 3', state: 'closed' }],
 				headers: {},
 			});
+			mockExecutionContext.helpers.httpRequestWithAuthentication.mockResolvedValue({
+				body: [{ id: 3, title: 'Issue 3', state: 'closed' }],
+				headers: {},
+			});
 
 			await githubNode.execute.call(mockExecutionContext);
-			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			expect(mockExecutionContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.github.com/issues',
+					url: '/issues',
+					baseURL: 'https://api.github.com',
 					qs: expect.objectContaining({ state: 'closed' }),
 				}),
 			);
@@ -687,13 +728,18 @@ describe('Test Github Node', () => {
 				body: [{ id: 4, title: 'Issue 4', state: 'open', labels: ['bug'] }],
 				headers: {},
 			});
+			mockExecutionContext.helpers.httpRequestWithAuthentication.mockResolvedValue({
+				body: [{ id: 4, title: 'Issue 4', state: 'open', labels: ['bug'] }],
+				headers: {},
+			});
 
 			await githubNode.execute.call(mockExecutionContext);
-			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			expect(mockExecutionContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.github.com/issues',
+					url: '/issues',
+					baseURL: 'https://api.github.com',
 					qs: expect.objectContaining({ labels: 'bug' }),
 				}),
 			);

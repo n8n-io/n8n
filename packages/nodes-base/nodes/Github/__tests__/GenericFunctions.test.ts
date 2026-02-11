@@ -19,6 +19,8 @@ const mockExecuteHookFunctions = {
 	}),
 	helpers: {
 		requestWithAuthentication: jest.fn(),
+		httpRequestWithAuthentication: jest.fn(),
+		httpRequest: jest.fn(),
 	},
 	getCurrentNodeParameter: jest.fn(),
 	getWebhookName: jest.fn(),
@@ -42,23 +44,21 @@ describe('GenericFunctions', () => {
 			const body = {};
 			const responseData = { id: 123, name: 'test-repo' };
 
-			(mockExecuteHookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-				responseData,
-			);
+			(
+				mockExecuteHookFunctions.helpers.httpRequestWithAuthentication as jest.Mock
+			).mockResolvedValue(responseData);
 
 			const result = await githubApiRequest.call(mockExecuteHookFunctions, method, endpoint, body);
 
 			expect(result).toEqual(responseData);
-			expect(mockExecuteHookFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			expect(mockExecuteHookFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'githubApi',
-				{
+				expect.objectContaining({
 					method: 'GET',
 					headers: { 'User-Agent': 'n8n' },
-					body: {},
-					qs: undefined,
-					uri: 'https://api.github.com/repos/test-owner/test-repo',
-					json: true,
-				},
+					url: '/repos/test-owner/test-repo',
+					baseURL: 'https://api.github.com',
+				}),
 			);
 		});
 
@@ -68,9 +68,9 @@ describe('GenericFunctions', () => {
 			const body = {};
 			const error = new Error('API Error');
 
-			(mockExecuteHookFunctions.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
-				error,
-			);
+			(
+				mockExecuteHookFunctions.helpers.httpRequestWithAuthentication as jest.Mock
+			).mockRejectedValue(error);
 
 			await expect(
 				githubApiRequest.call(mockExecuteHookFunctions, method, endpoint, body),
@@ -86,9 +86,9 @@ describe('GenericFunctions', () => {
 			const branch = 'main';
 			const responseData = { sha: 'abc123' };
 
-			(mockExecuteHookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-				responseData,
-			);
+			(
+				mockExecuteHookFunctions.helpers.httpRequestWithAuthentication as jest.Mock
+			).mockResolvedValue(responseData);
 
 			const result = await getFileSha.call(
 				mockExecuteHookFunctions,
@@ -99,16 +99,15 @@ describe('GenericFunctions', () => {
 			);
 
 			expect(result).toBe('abc123');
-			expect(mockExecuteHookFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			expect(mockExecuteHookFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'githubApi',
-				{
+				expect.objectContaining({
 					method: 'GET',
 					headers: { 'User-Agent': 'n8n' },
-					body: {},
+					url: `/repos/test-owner/test-repo/contents/README.md`,
+					baseURL: 'https://api.github.com',
 					qs: { ref: 'main' },
-					uri: 'https://api.github.com/repos/test-owner/test-repo/contents/README.md',
-					json: true,
-				},
+				}),
 			);
 		});
 
@@ -118,9 +117,9 @@ describe('GenericFunctions', () => {
 			const filePath = 'README.md';
 			const responseData = {};
 
-			(mockExecuteHookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
-				responseData,
-			);
+			(
+				mockExecuteHookFunctions.helpers.httpRequestWithAuthentication as jest.Mock
+			).mockResolvedValue(responseData);
 
 			await expect(
 				getFileSha.call(mockExecuteHookFunctions, owner, repository, filePath),
@@ -137,9 +136,13 @@ describe('GenericFunctions', () => {
 			const responseData1 = [{ id: 1, title: 'Issue 1' }];
 			const responseData2 = [{ id: 2, title: 'Issue 2' }];
 
-			(mockExecuteHookFunctions.helpers.requestWithAuthentication as jest.Mock)
-				.mockResolvedValueOnce({ headers: { link: 'next' }, body: responseData1 })
-				.mockResolvedValueOnce({ headers: {}, body: responseData2 });
+			(mockExecuteHookFunctions.helpers.httpRequestWithAuthentication as jest.Mock)
+				.mockResolvedValueOnce({
+					headers: { link: '<url>; rel="next"' },
+					body: responseData1,
+					statusCode: 200,
+				})
+				.mockResolvedValueOnce({ headers: {}, body: responseData2, statusCode: 200 });
 
 			const result = await githubApiRequestAllItems.call(
 				mockExecuteHookFunctions,
@@ -150,7 +153,9 @@ describe('GenericFunctions', () => {
 			);
 
 			expect(result).toEqual([...responseData1, ...responseData2]);
-			expect(mockExecuteHookFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
+			expect(mockExecuteHookFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(
+				2,
+			);
 		});
 	});
 

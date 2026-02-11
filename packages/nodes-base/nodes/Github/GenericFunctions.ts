@@ -3,15 +3,13 @@ import type {
 	IHookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-	JsonObject,
 	IHttpRequestMethods,
-	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { httpClient } from 'n8n-core';
 
 /**
  * Make an API request to Github
- *
  */
 export async function githubApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -19,55 +17,28 @@ export async function githubApiRequest(
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
-	option: IDataObject = {},
+	_option: IDataObject = {},
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
-	const options: IRequestOptions = {
-		method,
-		headers: {
-			'User-Agent': 'n8n',
-		},
-		body,
-		qs: query,
-		uri: '',
-		json: true,
-	};
+	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 
-	if (Object.keys(option).length !== 0) {
-		Object.assign(options, option);
-	}
+	const credentialType = authenticationMethod === 'accessToken' ? 'githubApi' : 'githubOAuth2Api';
+	const credentials = await this.getCredentials(credentialType);
+	const baseUrl = (credentials.server as string) || 'https://api.github.com';
 
-	try {
-		const authenticationMethod = this.getNodeParameter(
-			'authentication',
-			0,
-			'accessToken',
-		) as string;
-		let credentialType = '';
-
-		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('githubApi');
-			credentialType = 'githubApi';
-
-			const baseUrl = credentials.server || 'https://api.github.com';
-			options.uri = `${baseUrl}${endpoint}`;
-		} else {
-			const credentials = await this.getCredentials('githubOAuth2Api');
-			credentialType = 'githubOAuth2Api';
-
-			const baseUrl = credentials.server || 'https://api.github.com';
-			options.uri = `${baseUrl}${endpoint}`;
-		}
-
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
+	return httpClient(this)
+		.baseUrl(baseUrl)
+		.endpoint(endpoint)
+		.method(method)
+		.body(body as IDataObject)
+		.query(query ?? {})
+		.headers({ 'User-Agent': 'n8n' })
+		.withAuthentication(credentialType)
+		.execute();
 }
 
 /**
  * Returns the SHA of the given file
- *
- * @param {(IHookFunctions | IExecuteFunctions)} this
  */
 export async function getFileSha(
 	this: IHookFunctions | IExecuteFunctions,
@@ -75,6 +46,7 @@ export async function getFileSha(
 	repository: string,
 	filePath: string,
 	branch?: string,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
 	const query: IDataObject = {};
 	if (branch !== undefined) {
@@ -82,7 +54,13 @@ export async function getFileSha(
 	}
 
 	const getEndpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
-	const responseData = await githubApiRequest.call(this, 'GET', getEndpoint, {}, query);
+	const responseData = (await githubApiRequest.call(
+		this,
+		'GET',
+		getEndpoint,
+		{},
+		query,
+	)) as IDataObject;
 
 	if (responseData.sha === undefined) {
 		throw new NodeOperationError(this.getNode(), 'Could not get the SHA of the file.');
@@ -94,25 +72,26 @@ export async function githubApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
-
-	body: any = {},
+	body: object = {},
 	query: IDataObject = {},
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
-	const returnData: IDataObject[] = [];
+	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 
-	let responseData;
+	const credentialType = authenticationMethod === 'accessToken' ? 'githubApi' : 'githubOAuth2Api';
+	const credentials = await this.getCredentials(credentialType);
+	const baseUrl = (credentials.server as string) || 'https://api.github.com';
 
-	query.per_page = 100;
-	query.page = 1;
-
-	do {
-		responseData = await githubApiRequest.call(this, method, endpoint, body as IDataObject, query, {
-			resolveWithFullResponse: true,
-		});
-		query.page++;
-		returnData.push.apply(returnData, responseData.body as IDataObject[]);
-	} while (responseData.headers.link?.includes('next'));
-	return returnData;
+	return httpClient(this)
+		.baseUrl(baseUrl)
+		.endpoint(endpoint)
+		.method(method)
+		.body(body as IDataObject)
+		.query(query)
+		.headers({ 'User-Agent': 'n8n' })
+		.withAuthentication(credentialType)
+		.withPagination({ strategy: 'link-header', itemsPath: '', pageSize: 100 })
+		.executeAll();
 }
 
 export function isBase64(content: string) {
@@ -120,6 +99,7 @@ export function isBase64(content: string) {
 	return base64regex.test(content);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
