@@ -27,13 +27,7 @@ describe('PlanModeSelector', () => {
 		expect(button?.textContent).toContain('Plan');
 	});
 
-	it('disables the button when disabled prop is true', () => {
-		const { getByTestId } = render('build');
-		const button = getByTestId('plan-mode-selector').querySelector('button');
-		expect(button?.hasAttribute('disabled')).toBe(true);
-	});
-
-	it('does not disable the button when disabled prop is false', () => {
+	it('button is never disabled', () => {
 		const { getByTestId } = render('build');
 		const button = getByTestId('plan-mode-selector').querySelector('button');
 		expect(button?.hasAttribute('disabled')).toBe(false);
