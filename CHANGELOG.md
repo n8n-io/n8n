@@ -1,3 +1,12 @@
+## [2.7.4](https://github.com/n8n-io/n8n/compare/n8n@2.7.3...n8n@2.7.4) (2026-02-11)
+
+
+### Bug Fixes
+
+* **core:** Revert the fix for execution history when flow includes wait node ([#25610](https://github.com/n8n-io/n8n/issues/25610)) ([697903b](https://github.com/n8n-io/n8n/commit/697903bfcb996136cd0a03f079c6f89f1b183446))
+
+
+
 ## [2.7.3](https://github.com/n8n-io/n8n/compare/n8n@2.7.2...n8n@2.7.3) (2026-02-09)
 
 
