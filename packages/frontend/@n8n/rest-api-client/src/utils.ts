@@ -233,6 +233,15 @@ export async function patch(
 	return await request({ method: 'PATCH', baseURL, endpoint, headers, data: params });
 }
 
+export async function del(
+	baseURL: string,
+	endpoint: string,
+	params?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
+) {
+	return await request({ method: 'DELETE', baseURL, endpoint, headers, data: params });
+}
+
 export async function streamRequest<T extends object>(
 	context: IRestApiContext,
 	apiEndpoint: string,

@@ -207,29 +207,44 @@ export function useWorkflowActivate() {
 		collaborationStore.requestWriteAccess();
 
 		try {
-			const gradualRolloutState = await workflowsStore.gradualPublishWorkflow(workflowId, {
-				versionId: options.versionId,
-				percentage: options.percentage,
-				name: options.name,
-				description: options.description,
-			});
-
 			if (options.percentage === 0) {
-				// Rollback
+				// Rollback: Remove gradual rollout, keep current active version
+				await workflowsStore.removeGradualRollout(workflowId);
 				toast.showMessage({
 					title: i18n.baseText('workflowHistory.gradualRollout.rollback.success.title'),
 					message: i18n.baseText('workflowHistory.gradualRollout.rollback.success.message'),
 					type: 'success',
 				});
+				return { success: true, gradualRolloutState: null };
 			} else if (options.percentage === 100) {
-				// Complete rollout
+				// Complete rollout: Promote rollout version to active, then clear gradual rollout
+				if (!options.versionId) {
+					throw new Error('Version ID is required to complete rollout');
+				}
+				const expectedChecksum =
+					workflowId === workflowsStore.workflowId ? workflowsStore.workflowChecksum : undefined;
+
+				await workflowsStore.publishWorkflow(workflowId, {
+					versionId: options.versionId,
+					name: options.name,
+					description: options.description,
+					expectedChecksum,
+				});
+				await workflowsStore.removeGradualRollout(workflowId);
 				toast.showMessage({
 					title: i18n.baseText('workflowHistory.gradualRollout.complete.success.title'),
 					message: i18n.baseText('workflowHistory.gradualRollout.complete.success.message'),
 					type: 'success',
 				});
+				return { success: true, gradualRolloutState: null };
 			} else {
-				// Start/adjust gradual rollout
+				// Start/adjust gradual rollout (1-99%)
+				const gradualRolloutState = await workflowsStore.gradualPublishWorkflow(workflowId, {
+					versionId: options.versionId,
+					percentage: options.percentage,
+					name: options.name,
+					description: options.description,
+				});
 				toast.showMessage({
 					title: i18n.baseText('workflowHistory.action.gradualPublish.success.title'),
 					message: i18n.baseText('workflowHistory.action.gradualPublish.success.message', {
@@ -237,9 +252,8 @@ export function useWorkflowActivate() {
 					}),
 					type: 'success',
 				});
+				return { success: true, gradualRolloutState };
 			}
-
-			return { success: true, gradualRolloutState };
 		} catch (error) {
 			if (isWebhookConflictError(error)) {
 				await handleWebhookConflictError(error);

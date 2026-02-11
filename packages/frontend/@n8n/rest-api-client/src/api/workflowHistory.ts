@@ -7,7 +7,7 @@ import type {
 import type { IConnections, INode } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
-import { get, patch, post } from '../utils';
+import { del, get, patch, post } from '../utils';
 
 export type { GradualRolloutState, GradualRolloutVersion, GradualPublishResponse };
 
@@ -118,4 +118,11 @@ export const gradualPublishWorkflow = async (
 	);
 	const { data } = response as { data: GradualPublishResponse };
 	return data.gradualRollout;
+};
+
+export const removeGradualRollout = async (
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<void> => {
+	await del(context.baseUrl, `/workflows/${workflowId}/gradual-rollout`);
 };

@@ -88,6 +88,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import {
 	gradualPublishWorkflow as gradualPublishWorkflowApi,
+	removeGradualRollout as removeGradualRolloutApi,
 	type GradualRolloutState,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
@@ -1562,6 +1563,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return result;
 	}
 
+	async function removeGradualRollout(id: string): Promise<void> {
+		await removeGradualRolloutApi(rootStore.restApiContext, id);
+		gradualRolloutState.value = null;
+	}
+
 	// Update a single workflow setting key while preserving existing settings
 	async function updateWorkflowSetting<K extends keyof IWorkflowSettings>(
 		id: string,
@@ -1946,6 +1952,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		publishWorkflow,
 		deactivateWorkflow,
 		gradualPublishWorkflow,
+		removeGradualRollout,
 		updateWorkflowSetting,
 		saveWorkflowDescription,
 		runWorkflow,

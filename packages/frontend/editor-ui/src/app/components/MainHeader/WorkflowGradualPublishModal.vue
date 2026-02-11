@@ -51,7 +51,7 @@ const isMaxVersionsReached = computed(() => workflowsStore.isGradualRolloutMaxVe
 
 const isPercentageValid = computed(() => {
 	const value = Number(percentage.value);
-	return Number.isInteger(value) && value >= 1 && value <= 99;
+	return Number.isInteger(value) && value >= 0 && value <= 100;
 });
 
 const inputsDisabled = computed(() => {
@@ -179,8 +179,8 @@ async function handleGradualPublish() {
 							ref="percentageInput"
 							v-model="percentage"
 							type="number"
-							:min="1"
-							:max="99"
+							:min="0"
+							:max="100"
 							:disabled="inputsDisabled"
 							size="large"
 							data-test-id="gradual-publish-percentage-input"

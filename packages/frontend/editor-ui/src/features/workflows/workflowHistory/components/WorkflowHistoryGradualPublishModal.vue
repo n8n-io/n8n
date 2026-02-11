@@ -42,7 +42,7 @@ const submitting = computed(() => props.data.submitting ?? false);
 
 const isPercentageValid = computed(() => {
 	const value = Number(percentage.value);
-	return Number.isInteger(value) && value >= 1 && value <= 99;
+	return Number.isInteger(value) && value >= 0 && value <= 100;
 });
 
 const isSubmitDisabled = computed(() => {
@@ -122,8 +122,8 @@ const handleSubmit = () => {
 							ref="percentageInput"
 							v-model="percentage"
 							type="number"
-							:min="1"
-							:max="99"
+							:min="0"
+							:max="100"
 							:disabled="submitting"
 							size="large"
 							data-test-id="history-gradual-publish-percentage-input"

@@ -5,20 +5,7 @@ export function routesForGradualPublish(server: Server) {
 	server.post('/rest/workflows/:workflowId/gradual-rollout', (_schema, request) => {
 		const { percentage, versionId } = JSON.parse(request.requestBody);
 
-		// Mock: 0% = rollback, 100% = complete (both disable gradual rollout)
-		if (percentage === 0 || percentage === 100) {
-			return new Response(
-				200,
-				{},
-				{
-					data: {
-						gradualRollout: null,
-					},
-				},
-			);
-		}
-
-		// Mock: Active gradual rollout
+		// Mock: Active gradual rollout (1-99%)
 		return new Response(
 			200,
 			{},
@@ -39,6 +26,19 @@ export function routesForGradualPublish(server: Server) {
 							},
 						],
 					},
+				},
+			},
+		);
+	});
+
+	// DELETE endpoint: Remove gradual rollout (rollback to version A)
+	server.delete('/rest/workflows/:workflowId/gradual-rollout', () => {
+		return new Response(
+			200,
+			{},
+			{
+				data: {
+					gradualRollout: null,
 				},
 			},
 		);
