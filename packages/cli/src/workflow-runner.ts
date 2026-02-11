@@ -3,7 +3,7 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
-import { ExecutionsConfig } from '@n8n/config';
+import { ExecutionsConfig, WorkflowsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
@@ -29,6 +29,7 @@ import PCancelable from 'p-cancelable';
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 // eslint-disable-next-line import-x/no-cycle
 import {
 	getLifecycleHooksForRegularMain,
@@ -64,6 +65,7 @@ export class WorkflowRunner {
 		private readonly failedRunFactory: FailedRunFactory,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly storageConfig: StorageConfig,
 		private readonly externalHooks: ExternalHooks,
 	) {}
@@ -143,6 +145,12 @@ export class WorkflowRunner {
 		restartExecutionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
+		if (this.workflowsConfig.recoveryMode) {
+			throw new ServiceUnavailableError(
+				'Recovery mode is enabled. Workflow executions are disabled.',
+			);
+		}
+
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, restartExecutionId);
 

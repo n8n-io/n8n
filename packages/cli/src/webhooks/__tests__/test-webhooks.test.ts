@@ -52,6 +52,7 @@ describe('TestWebhooks', () => {
 		mock(),
 		mock(),
 		webhookService,
+		mock(),
 	);
 
 	beforeAll(() => {

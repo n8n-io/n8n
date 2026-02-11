@@ -26,6 +26,7 @@ import {
 } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -104,6 +105,12 @@ export class WorkflowExecutionService {
 		user: User,
 		pushRef?: string,
 	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
+		if (this.globalConfig.workflows?.recoveryMode) {
+			throw new ServiceUnavailableError(
+				'Recovery mode is enabled. Manual workflow executions are disabled.',
+			);
+		}
+
 		// Check whether this workflow is active.
 		const workflowIsActive = await this.workflowRepository.isActive(payload.workflowData.id);
 
