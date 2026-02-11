@@ -36,6 +36,13 @@ jest.mock('@/utils/stream-processor', () => ({
 	formatMessages: jest.fn(),
 }));
 
+const mockCodeWorkflowBuilderChat = jest.fn();
+jest.mock('@/code-builder', () => ({
+	CodeWorkflowBuilder: jest.fn().mockImplementation(() => ({
+		chat: mockCodeWorkflowBuilderChat,
+	})),
+}));
+
 const mockRandomUUID = jest.fn();
 Object.defineProperty(global, 'crypto', {
 	value: {
@@ -44,8 +51,10 @@ Object.defineProperty(global, 'crypto', {
 	writable: true,
 });
 
+import { CodeWorkflowBuilder } from '@/code-builder';
 import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 import { ValidationError } from '@/errors';
+import type { PlanInterruptValue, PlanOutput } from '@/types/planning';
 import type { StreamOutput } from '@/types/streaming';
 import { createStreamProcessor } from '@/utils/stream-processor';
 import {
@@ -272,6 +281,163 @@ describe('WorkflowBuilderAgent', () => {
 				const generator = agent.chat(mockPayload);
 				await generator.next();
 			}).rejects.toThrow(unknownError);
+		});
+	});
+
+	describe('hybrid plan+codeBuilder routing', () => {
+		const MockedCodeWorkflowBuilder = CodeWorkflowBuilder as jest.MockedClass<
+			typeof CodeWorkflowBuilder
+		>;
+
+		const mockPlan: PlanOutput = {
+			summary: 'Fetch weather and send Slack alert',
+			trigger: 'Runs every morning at 7 AM',
+			steps: [
+				{ description: 'Fetch weather forecast', suggestedNodes: ['n8n-nodes-base.httpRequest'] },
+				{ description: 'Check if rain is predicted' },
+				{ description: 'Send Slack notification', suggestedNodes: ['n8n-nodes-base.slack'] },
+			],
+		};
+
+		const mockPlanInterrupt: PlanInterruptValue = {
+			type: 'plan',
+			plan: mockPlan,
+		};
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			MockedCodeWorkflowBuilder.mockClear();
+			mockCodeWorkflowBuilderChat.mockReturnValue(
+				(async function* () {
+					yield {
+						messages: [{ role: 'assistant', type: 'message', text: 'Built workflow' }],
+					} as StreamOutput;
+				})(),
+			);
+		});
+
+		it('should route to multi-agent for initial plan request when codeBuilder+planMode enabled', async () => {
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Create a weather alert workflow',
+				featureFlags: { codeBuilder: true, planMode: true },
+				mode: 'plan',
+			};
+
+			const mockStreamOutput: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Planning...' }],
+			};
+			mockCreateStreamProcessor.mockReturnValue(
+				(async function* () {
+					yield mockStreamOutput;
+				})(),
+			);
+
+			const generator = agent.chat(payload);
+			const result = await generator.next();
+
+			expect(result.value).toEqual(mockStreamOutput);
+			// Multi-agent path uses createStreamProcessor; code builder does not
+			expect(mockCreateStreamProcessor).toHaveBeenCalled();
+			expect(MockedCodeWorkflowBuilder).not.toHaveBeenCalled();
+		});
+
+		it('should route to CodeWorkflowBuilder with plan on plan approval', async () => {
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Create a weather alert workflow',
+				featureFlags: { codeBuilder: true, planMode: true },
+				resumeData: { action: 'approve' },
+				resumeInterrupt: mockPlanInterrupt,
+			};
+
+			const generator = agent.chat(payload);
+			for await (const _ of generator) {
+				// consume
+			}
+
+			// Should have constructed CodeWorkflowBuilder
+			expect(MockedCodeWorkflowBuilder).toHaveBeenCalled();
+			// Should have passed the plan via the payload
+			expect(mockCodeWorkflowBuilderChat).toHaveBeenCalledWith(
+				expect.objectContaining({ planOutput: mockPlan }),
+				expect.any(String),
+				undefined,
+			);
+			// Should NOT have used multi-agent stream processor
+			expect(mockCreateStreamProcessor).not.toHaveBeenCalled();
+		});
+
+		it('should route to multi-agent on plan modification', async () => {
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Create a weather alert workflow',
+				featureFlags: { codeBuilder: true, planMode: true },
+				resumeData: { action: 'modify', feedback: 'Add error handling' },
+				resumeInterrupt: mockPlanInterrupt,
+			};
+
+			const mockStreamOutput: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Re-planning...' }],
+			};
+			mockCreateStreamProcessor.mockReturnValue(
+				(async function* () {
+					yield mockStreamOutput;
+				})(),
+			);
+
+			const generator = agent.chat(payload);
+			const result = await generator.next();
+
+			expect(result.value).toEqual(mockStreamOutput);
+			expect(mockCreateStreamProcessor).toHaveBeenCalled();
+			expect(MockedCodeWorkflowBuilder).not.toHaveBeenCalled();
+		});
+
+		it('should route to multi-agent on plan rejection', async () => {
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Create a weather alert workflow',
+				featureFlags: { codeBuilder: true, planMode: true },
+				resumeData: { action: 'reject' },
+				resumeInterrupt: mockPlanInterrupt,
+			};
+
+			const mockStreamOutput: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'OK, cancelled.' }],
+			};
+			mockCreateStreamProcessor.mockReturnValue(
+				(async function* () {
+					yield mockStreamOutput;
+				})(),
+			);
+
+			const generator = agent.chat(payload);
+			const result = await generator.next();
+
+			expect(result.value).toEqual(mockStreamOutput);
+			expect(mockCreateStreamProcessor).toHaveBeenCalled();
+			expect(MockedCodeWorkflowBuilder).not.toHaveBeenCalled();
+		});
+
+		it('should route to CodeWorkflowBuilder without plan when codeBuilder enabled but no planMode', async () => {
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Create a simple workflow',
+				featureFlags: { codeBuilder: true },
+			};
+
+			const generator = agent.chat(payload);
+			for await (const _ of generator) {
+				// consume
+			}
+
+			expect(MockedCodeWorkflowBuilder).toHaveBeenCalled();
+			expect(mockCodeWorkflowBuilderChat).toHaveBeenCalledWith(
+				expect.not.objectContaining({ planOutput: expect.anything() }),
+				expect.any(String),
+				undefined,
+			);
 		});
 	});
 });

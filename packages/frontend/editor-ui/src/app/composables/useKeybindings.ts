@@ -3,7 +3,27 @@ import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.u
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useActiveElement, useEventListener } from '@vueuse/core';
 import type { MaybeRefOrGetter } from 'vue';
-import { computed, inject, ref, toValue } from 'vue';
+import { computed, inject, onScopeDispose, ref, toValue } from 'vue';
+
+declare global {
+	interface Navigator {
+		keyboard?: {
+			getLayoutMap(): Promise<KeyboardLayoutMap>;
+			addEventListener(type: 'layoutchange', listener: () => void): void;
+			removeEventListener(type: 'layoutchange', listener: () => void): void;
+		};
+	}
+
+	interface KeyboardLayoutMap {
+		get(code: string): string | undefined;
+		has(code: string): boolean;
+		entries(): IterableIterator<[string, string]>;
+		keys(): IterableIterator<string>;
+		values(): IterableIterator<string>;
+		readonly size: number;
+		forEach(callbackfn: (value: string, key: string, map: KeyboardLayoutMap) => void): void;
+	}
+}
 
 type KeyboardEventHandler =
 	| ((event: KeyboardEvent) => void)
@@ -34,6 +54,29 @@ export const useKeybindings = (
 	const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 	const activeElement = useActiveElement({ window: popOutWindow?.value });
 	const { isCtrlKeyPressed } = useDeviceSupport();
+
+	const layoutMap = ref<KeyboardLayoutMap | null>(null);
+
+	async function updateLayoutMap() {
+		try {
+			layoutMap.value = (await navigator.keyboard?.getLayoutMap()) ?? null;
+		} catch {
+			layoutMap.value = null;
+		}
+	}
+
+	if (navigator.keyboard) {
+		void updateLayoutMap();
+		if ('addEventListener' in navigator.keyboard) {
+			const onLayoutChange = () => {
+				void updateLayoutMap();
+			};
+			navigator.keyboard.addEventListener('layoutchange', onLayoutChange);
+			onScopeDispose(() => {
+				navigator.keyboard?.removeEventListener('layoutchange', onLayoutChange);
+			});
+		}
+	}
 
 	const isDisabled = computed(() => toValue(options?.disabled));
 
@@ -118,22 +161,40 @@ export const useKeybindings = (
 			modifiers.push('alt');
 		}
 
+		// Use the Keyboard Layout Map API to resolve the logical key from the
+		// physical code. This handles non-QWERTY layouts (e.g. Colemak) where
+		// macOS produces dead keys for Alt+key combinations, causing both byKey
+		// and byCode to miss.
+		let byLayout: string | undefined;
+		if (layoutMap.value && 'code' in event) {
+			const layoutKey = layoutMap.value.get(event.code);
+			if (layoutKey) {
+				byLayout = shortcutPartsToString([...modifiers, layoutKey]);
+			}
+		}
+
 		return {
 			byKey: shortcutPartsToString([...modifiers, ...keys]),
 			byCode: shortcutPartsToString([...modifiers, ...codes]),
+			byLayout,
 		};
 	}
 
 	function onKeyDown(event: KeyboardEvent) {
 		if (ignoreKeyPresses.value || isDisabled.value) return;
 
-		const { byKey, byCode } = toShortcutString(event);
+		const { byKey, byCode, byLayout } = toShortcutString(event);
 
 		// Prefer `byKey` over `byCode` so that:
 		// - ANSI layouts work correctly
 		// - Dvorak works correctly
 		// - Non-ansi layouts work correctly
-		const handler = normalizedKeymap.value[byKey] ?? normalizedKeymap.value[byCode];
+		// Fall back to `byLayout` (Keyboard Layout Map API) for layouts like
+		// Colemak where macOS Alt+key produces dead keys
+		const handler =
+			normalizedKeymap.value[byKey] ??
+			normalizedKeymap.value[byCode] ??
+			(byLayout ? normalizedKeymap.value[byLayout] : undefined);
 		const run =
 			typeof handler === 'function' ? handler : handler?.disabled() ? undefined : handler?.run;
 

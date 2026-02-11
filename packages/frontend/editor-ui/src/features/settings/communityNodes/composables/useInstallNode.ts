@@ -8,9 +8,14 @@ import { useToast } from '@/app/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 type InstallNodeProps = {
 	type: 'verified' | 'unverified';
+	telemetry?: {
+		hasQuickConnect: boolean;
+		source: string;
+	};
 } & (
 	| {
 			type: 'verified';
@@ -38,6 +43,7 @@ export function useInstallNode() {
 	const loading = ref(false);
 	const toast = useToast();
 	const canvasOperations = useCanvasOperations();
+	const telemetry = useTelemetry();
 
 	const getNpmVersion = async (key: string) => {
 		const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(key);
@@ -55,6 +61,15 @@ export function useInstallNode() {
 			toast.showError(error, i18n.baseText('settings.communityNodes.messages.install.error'));
 			return { success: false, error };
 		}
+
+		if (props.telemetry) {
+			telemetry.track('user started cnr package install', {
+				input_string: props.packageName,
+				has_quick_connect: props.telemetry.hasQuickConnect,
+				source: props.telemetry.source,
+			});
+		}
+
 		try {
 			loading.value = true;
 			if (props.type === 'verified') {

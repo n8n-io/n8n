@@ -181,6 +181,16 @@ export class OutputParserStructured implements INodeType {
 					'={{ $parameter["schemaType"] === "manual" && $parameter["inputSchema"]?.includes("$ref") }}',
 			},
 		],
+		builderHint: {
+			message:
+				'Output data is wrapped in an "output" key, e.g. { "output": { "state": "California", "cities": ["San Francisco"] } }',
+			inputs: {
+				ai_languageModel: {
+					required: true,
+					displayOptions: { show: { autoFix: [true] } },
+				},
+			},
+		},
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {

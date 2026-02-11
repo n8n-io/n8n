@@ -1,9 +1,15 @@
+/**
+ * Can be used to test chat models outside of n8n nodes.
+ * Example: npx tsx run.ts --generate "What is the weather in Tokyo?"
+ */
+
 import dotenv from 'dotenv';
 import { createAgent, HumanMessage, tool } from 'langchain';
 import z from 'zod';
 
+import { LangchainAdapter } from 'src/adapters/langchain-chat-model';
+
 import { OpenAIChatModel } from './models/openai';
-import { LangchainAdapter } from '../src/adapters/langchain-chat-model';
 
 dotenv.config();
 
@@ -113,8 +119,43 @@ async function main() {
 	// Create model based on selection
 	let chatModel;
 	if (model === 'openai') {
+		const apiKey = process.env.OPENAI_API_KEY;
+		if (!apiKey) {
+			throw new Error('OPENAI_API_KEY is not set');
+		}
 		const openaiChatModel = new OpenAIChatModel('gpt-4o', {
-			apiKey: process.env.OPENAI_API_KEY,
+			httpRequest: async (method, url, body, headers) => {
+				const response = await fetch(url, {
+					method,
+					body: JSON.stringify(body),
+					headers: {
+						...headers,
+						Authorization: `Bearer ${apiKey}`,
+					},
+				});
+				if (!response.ok) {
+					throw new Error(`Failed to fetch: ${response.statusText}`);
+				}
+				return {
+					body: await response.json(),
+				};
+			},
+			openStream: async (method, url, body, headers) => {
+				const response = await fetch(url, {
+					method,
+					body: JSON.stringify(body),
+					headers: {
+						...headers,
+						Authorization: `Bearer ${apiKey}`,
+					},
+				});
+				if (!response.ok) {
+					throw new Error(`Failed to fetch: ${response.statusText}`);
+				}
+				return {
+					body: response.body as ReadableStream<Uint8Array<ArrayBufferLike>>,
+				};
+			},
 		});
 		chatModel = new LangchainAdapter(openaiChatModel);
 	} else {
@@ -131,6 +172,7 @@ async function main() {
 		process.exit(1);
 	}
 	if (generate) {
+		console.log('=====Generate=====');
 		console.log(
 			await agent.invoke({
 				messages: [new HumanMessage(prompt)],
@@ -139,9 +181,10 @@ async function main() {
 	}
 
 	if (stream) {
+		console.log('=====Stream=====');
 		for await (const chunk of await agent.stream(
 			{ messages: [{ role: 'user', content: prompt }] },
-			{ streamMode: 'updates' },
+			{ streamMode: 'messages' },
 		)) {
 			const [step, content] = Object.entries(chunk)[0];
 			console.log(`step: ${step}`);
