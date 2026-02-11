@@ -19,7 +19,21 @@ pnpm test
 pnpm dev
 ```
 
-# Model SDK
+## Running examples
+
+```bash
+pnpm build:examples
+```
+
+Update your env file with:
+
+```bash
+N8N_CUSTOM_EXTENSIONS="<PATH_TO_N8N>/packages/@n8n/ai-utilities/dist_examples/examples/nodes"
+```
+
+Start n8n and add "OpenAI Simple" or "OpenAI Custom" to workflows
+
+# Chat model SDK
 
 ## Core Pattern
 
@@ -145,7 +159,7 @@ class ImaginaryLlmChatModel extends BaseChatModel {
   async generate(messages: Message[], config?: ChatModelConfig): Promise<GenerateResult> {
     // Convert n8n messages to provider format
     const providerMessages = messages.map(m => ({
-      speaker: m.role === 'human' ? 'user' : m.role === 'ai' ? 'bot' : m.role,
+      speaker: m.role === 'user' ? 'user' : m.role === 'assistant' ? 'bot' : m.role,
       text: m.content.find(c => c.type === 'text')?.text ?? '',
     }));
 
@@ -310,8 +324,8 @@ class MyCustomChatMemory extends BaseChatMemory {
 
   async saveTurn(input: string, output: string): Promise<void> {
     await this.chatHistory.addMessages([
-      { role: 'human', content: [{ type: 'text', text: input }] },
-      { role: 'ai', content: [{ type: 'text', text: output }] },
+      { role: 'user', content: [{ type: 'text', text: input }] },
+      { role: 'assistant', content: [{ type: 'text', text: output }] },
     ]);
   }
 
@@ -367,7 +381,7 @@ class ImaginaryDbChatHistory extends BaseChatHistory {
 
     // Convert from provider format to n8n Message format
     return data.messages.map((m: any) => ({
-      role: m.speaker === 'user' ? 'human' : m.speaker === 'bot' ? 'ai' : m.speaker,
+      role: m.speaker === 'user' ? 'user' : m.speaker === 'bot' ? 'assistant' : m.speaker,
       content: [{ type: 'text', text: m.text }],
     }));
   }
@@ -379,7 +393,7 @@ class ImaginaryDbChatHistory extends BaseChatHistory {
       url: `${this.baseUrl}/sessions/${this.sessionId}/messages`,
       headers: { Authorization: `Bearer ${this.apiKey}` },
       body: {
-        speaker: message.role === 'human' ? 'user' : message.role === 'ai' ? 'bot' : message.role,
+        speaker: message.role === 'user' ? 'user' : message.role === 'assistant' ? 'bot' : message.role,
         text,
       },
       json: true,
@@ -405,7 +419,7 @@ export class MemoryImaginaryDb implements INodeType {
     version: 1,
     description: 'Use ImaginaryDB for chat memory storage',
     defaults: { name: 'ImaginaryDB Memory' },
-    codex: { categories: ['AI'], subcategories: { AI: ['Memory'] } },
+    codex: { categories: ['assistant'], subcategories: { AI: ['Memory'] } },
     inputs: [],
     outputs: [NodeConnectionTypes.AiMemory],
     outputNames: ['Memory'],

@@ -2,8 +2,9 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { SETUP_CREDENTIALS_MODAL_KEY, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { doesNodeHaveAllCredentialsFilled } from '@/app/utils/nodes/nodeTransforms';
 
@@ -12,6 +13,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useRoute } from 'vue-router';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 const workflowsStore = useWorkflowsStore();
 const readyToRunStore = useReadyToRunStore();
@@ -19,6 +21,8 @@ const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const posthogStore = usePostHog();
 const uiStore = useUIStore();
+const focusPanelStore = useFocusPanelStore();
+const setupPanelStore = useSetupPanelStore();
 const i18n = useI18n();
 const route = useRoute();
 
@@ -43,18 +47,38 @@ const allCredentialsFilled = computed(() => {
 	return nodes.every((node) => doesNodeHaveAllCredentialsFilled(nodeTypesStore, node));
 });
 
+const isNewTemplatesSetupEnabled = computed(() => {
+	return (
+		posthogStore.getVariant(TEMPLATE_SETUP_EXPERIENCE.name) === TEMPLATE_SETUP_EXPERIENCE.variant
+	);
+});
+
+const isSetupPanelFeatureEnabled = computed(() => {
+	return setupPanelStore.isFeatureEnabled;
+});
+
 const showButton = computed(() => {
 	const isCreatedFromTemplate = !!workflowsStore.workflow?.meta?.templateId;
-	if (!isCreatedFromTemplate || isTemplateSetupCompleted.value) {
+	if (!isCreatedFromTemplate) {
+		return false;
+	}
+
+	if (isSetupPanelFeatureEnabled.value) {
+		return workflowsStore.getNodes().length > 0;
+	}
+
+	if (isTemplateSetupCompleted.value) {
 		return false;
 	}
 
 	return !allCredentialsFilled.value;
 });
 
-const isNewTemplatesSetupEnabled = computed(() => {
+const isButtonDisabled = computed(() => {
 	return (
-		posthogStore.getVariant(TEMPLATE_SETUP_EXPERIENCE.name) === TEMPLATE_SETUP_EXPERIENCE.variant
+		isSetupPanelFeatureEnabled.value &&
+		focusPanelStore.focusPanelActive &&
+		focusPanelStore.selectedTab === 'setup'
 	);
 });
 
@@ -68,8 +92,21 @@ const unsubscribe = watch(allCredentialsFilled, (newValue) => {
 	}
 });
 
+const openSetupPanel = () => {
+	focusPanelStore.setSelectedTab('setup');
+	focusPanelStore.openFocusPanel();
+};
+
 const openSetupModal = () => {
 	uiStore.openModal(SETUP_CREDENTIALS_MODAL_KEY);
+};
+
+const handleTemplateSetup = () => {
+	if (isSetupPanelFeatureEnabled.value) {
+		openSetupPanel();
+	} else {
+		openSetupModal();
+	}
 };
 
 onBeforeUnmount(() => {
@@ -90,7 +127,7 @@ onMounted(async () => {
 		!isReadyToRunWorkflow &&
 		isTemplateImportRoute.value
 	) {
-		openSetupModal();
+		handleTemplateSetup();
 	}
 });
 </script>
@@ -99,10 +136,11 @@ onMounted(async () => {
 	<N8nButton
 		v-if="showButton"
 		:label="i18n.baseText('nodeView.setupTemplate')"
+		:disabled="isButtonDisabled"
 		data-test-id="setup-credentials-button"
 		size="large"
 		icon="package-open"
 		type="secondary"
-		@click="openSetupModal()"
+		@click="handleTemplateSetup()"
 	/>
 </template>

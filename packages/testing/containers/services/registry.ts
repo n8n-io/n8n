@@ -9,7 +9,7 @@ import { mysqlService } from './mysql';
 import { ngrok } from './ngrok';
 import { createObservabilityHelper } from './observability';
 import { postgres } from './postgres';
-import { proxy } from './proxy';
+import { proxy, createProxyHelper } from './proxy';
 import { redis } from './redis';
 import { taskRunner } from './task-runner';
 import { tracing, createTracingHelper } from './tracing';
@@ -45,6 +45,7 @@ export const helperFactories: Partial<HelperFactories> = {
 	keycloak: createKeycloakHelper,
 	observability: createObservabilityHelper,
 	tracing: createTracingHelper,
+	proxy: createProxyHelper,
 	kafka: createKafkaHelper,
 	localstack: createLocalStackHelper,
 };

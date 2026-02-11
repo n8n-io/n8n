@@ -81,10 +81,10 @@ export interface Service<TResult extends ServiceResult = ServiceResult> {
 		options?: unknown,
 		ctx?: StartContext,
 	): Promise<TResult>;
-	/** @example () => ({ QUEUE_BULL_REDIS_HOST: 'redis' }) */
-	env?(result: TResult): Record<string, string>;
-	/** @example () => ({ N8N_EXTERNAL_STORAGE_ENABLED: 'true' }) */
-	extraEnv?(result: TResult): Record<string, string>;
+	/** @param external When true, returns host-compatible values using mapped ports (for local dev) */
+	env?(result: TResult, external?: boolean): Record<string, string>;
+	/** @param external When true, returns host-compatible values using mapped ports (for local dev) */
+	extraEnv?(result: TResult, external?: boolean): Record<string, string>;
 	/** Verifies service is reachable from inside n8n containers */
 	verifyFromN8n?(result: TResult, n8nContainers: StartedTestContainer[]): Promise<void>;
 }
