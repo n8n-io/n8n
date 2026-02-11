@@ -30,6 +30,7 @@ import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
+import ManagedOAuthSelector from './ManagedOAuthSelector.vue';
 import OauthButton from './OauthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
@@ -68,6 +69,8 @@ type Props = {
 	isDynamicCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
 	isNewCredential?: boolean;
+	showManagedOAuthSelector?: boolean;
+	useCustomOAuth?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -84,6 +87,7 @@ const emit = defineEmits<{
 	retest: [];
 	oauth: [];
 	'update:isResolvable': [value: boolean];
+	managedOauthModeChange: [value: boolean];
 }>();
 
 const credentialsStore = useCredentialsStore();
@@ -360,6 +364,12 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					v-if="showAuthTypeSelector && isNewCredential"
 					:credential-type="credentialType"
 					@auth-type-changed="onAuthTypeChange"
+				/>
+
+				<ManagedOAuthSelector
+					v-if="showManagedOAuthSelector && isOAuthType"
+					:use-custom-o-auth="useCustomOAuth"
+					@update:use-custom-o-auth="(val: boolean) => $emit('managedOauthModeChange', val)"
 				/>
 
 				<div

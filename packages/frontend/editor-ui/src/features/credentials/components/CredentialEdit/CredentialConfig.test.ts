@@ -165,6 +165,89 @@ describe('CredentialConfig', () => {
 		expect(addCredentialTranslation).not.toHaveBeenCalled();
 	});
 
+	describe('Managed OAuth Selector', () => {
+		it('should show ManagedOAuthSelector when showManagedOAuthSelector and isOAuthType are true', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isOAuthType: true,
+					isNewCredential: true,
+					showManagedOAuthSelector: true,
+					useCustomOAuth: false,
+					credentialPermissions: {
+						create: true,
+						update: true,
+						read: true,
+						delete: true,
+						share: true,
+						list: true,
+						move: true,
+					},
+				},
+			});
+
+			expect(screen.getByTestId('managed-oauth-selector')).toBeInTheDocument();
+		});
+
+		it('should not show ManagedOAuthSelector when showManagedOAuthSelector is false', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isOAuthType: true,
+					isNewCredential: true,
+					showManagedOAuthSelector: false,
+					useCustomOAuth: false,
+					credentialPermissions: {
+						create: true,
+						update: true,
+						read: true,
+						delete: true,
+						share: true,
+						list: true,
+						move: true,
+					},
+				},
+			});
+
+			expect(screen.queryByTestId('managed-oauth-selector')).not.toBeInTheDocument();
+		});
+
+		it('should not show ManagedOAuthSelector when isOAuthType is false', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isOAuthType: false,
+					isNewCredential: true,
+					showManagedOAuthSelector: true,
+					useCustomOAuth: false,
+					credentialPermissions: {
+						create: true,
+						update: true,
+						read: true,
+						delete: true,
+						share: true,
+						list: true,
+						move: true,
+					},
+				},
+			});
+
+			expect(screen.queryByTestId('managed-oauth-selector')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('Dynamic Credentials Section', () => {
 		it('should not display dynamic credentials section when isDynamicCredentialsEnabled is false', async () => {
 			renderComponent({

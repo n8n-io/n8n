@@ -117,6 +117,7 @@ const requiredCredentials = ref(false); // Are credentials required or optional 
 const contentRef = ref<HTMLDivElement>();
 const isSharedGlobally = ref(false);
 const isResolvable = ref(false);
+const useCustomOAuth = ref(false);
 
 const activeNodeType = computed(() => {
 	const activeNode = ndvStore.activeNode;
@@ -241,6 +242,7 @@ const isOAuthType = computed(() => {
 });
 
 const allOAuth2BasePropertiesOverridden = computed(() => {
+	if (useCustomOAuth.value) return false;
 	if (credentialType.value?.__overwrittenProperties) {
 		return (
 			credentialType.value.__overwrittenProperties.includes('clientId') &&
@@ -248,6 +250,15 @@ const allOAuth2BasePropertiesOverridden = computed(() => {
 		);
 	}
 	return false;
+});
+
+const showManagedOAuthSelector = computed(() => {
+	if (!isOAuthType.value) return false;
+	if (!credentialType.value?.__overwrittenProperties) return false;
+	return (
+		credentialType.value.__overwrittenProperties.includes('clientId') &&
+		credentialType.value.__overwrittenProperties.includes('clientSecret')
+	);
 });
 
 const isOAuthConnected = computed(() => isOAuthType.value && !!credentialData.value.oauthTokenData);
@@ -261,7 +272,7 @@ const credentialProperties = computed(() => {
 		if (!displayCredentialParameter(propertyData)) {
 			return false;
 		}
-		return !type.__overwrittenProperties?.includes(propertyData.name);
+		return useCustomOAuth.value || !type.__overwrittenProperties?.includes(propertyData.name);
 	});
 
 	/**
@@ -388,6 +399,15 @@ onMounted(async () => {
 				};
 			}
 		}
+	}
+
+	// Detect if existing credential uses custom OAuth (user-provided clientId/clientSecret)
+	if (
+		showManagedOAuthSelector.value &&
+		credentialData.value.clientId &&
+		credentialData.value.clientSecret
+	) {
+		useCustomOAuth.value = true;
 	}
 
 	await externalHooks.run('credentialsEdit.credentialModalOpened', {
@@ -600,6 +620,16 @@ function onShareWithAllUsersUpdate(shareWithAllUsers: boolean) {
 function onResolvableChange(value: boolean) {
 	isResolvable.value = value;
 	hasUnsavedChanges.value = true;
+}
+
+function onManagedOAuthModeChange(isCustom: boolean): void {
+	useCustomOAuth.value = isCustom;
+	hasUnsavedChanges.value = true;
+	if (!isCustom) {
+		// Switching to managed: clear user-provided clientId/clientSecret + OAuth token
+		const { clientId, clientSecret, oauthTokenData, ...rest } = credentialData.value;
+		credentialData.value = { ...rest };
+	}
 }
 
 function onDataChange({ name, value }: IUpdateInformation) {
@@ -1159,7 +1189,10 @@ function resetCredentialData(): void {
 		return;
 	}
 	for (const property of credentialType.value.properties) {
-		if (!credentialType.value.__overwrittenProperties?.includes(property.name)) {
+		if (
+			useCustomOAuth.value ||
+			!credentialType.value.__overwrittenProperties?.includes(property.name)
+		) {
 			credentialData.value = {
 				...credentialData.value,
 				[property.name]: property.default as CredentialInformation,
@@ -1299,12 +1332,15 @@ const { width } = useElementSize(credNameRef);
 						:is-dynamic-credentials-enabled="isDynamicCredentialsEnabled"
 						:is-resolvable="isResolvable"
 						:is-new-credential="isNewCredential"
+						:show-managed-o-auth-selector="showManagedOAuthSelector"
+						:use-custom-o-auth="useCustomOAuth"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
 						@scroll-to-top="scrollToTop"
 						@auth-type-changed="onAuthTypeChanged"
 						@update:is-resolvable="onResolvableChange"
+						@managed-oauth-mode-change="onManagedOAuthModeChange"
 					/>
 				</div>
 				<div v-else-if="showSharingContent" :class="$style.mainContent">
