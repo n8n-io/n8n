@@ -3944,9 +3944,10 @@ export async function orchestrateGeneration(options: GenerationOptions): Promise
 
 	const allNodes: NodeTypeDescription[] = [];
 
-	// Generate files for each package
+	// Generate files for each package, cleaning stale output first
 	for (const [packageName, nodesByName] of nodesByPackage) {
 		const packageDir = path.join(outputDir, 'nodes', packageName);
+		await fs.promises.rm(packageDir, { recursive: true, force: true });
 		const packageNodes = await generateVersionSpecificFiles(packageDir, packageName, nodesByName);
 		allNodes.push(...packageNodes);
 	}

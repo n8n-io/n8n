@@ -92,10 +92,6 @@ export async function generateNodeDefinitions(
 		}
 	}
 
-	// Clean output directory before regenerating to remove stale files from deleted nodes
-	const nodesDir = path.join(outputDir, 'nodes');
-	await fs.promises.rm(nodesDir, { recursive: true, force: true });
-
 	const result = await orchestrateGeneration({ nodes, outputDir });
 
 	// Write hash sentinel after successful generation
