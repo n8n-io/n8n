@@ -107,40 +107,15 @@ export const updateWorkflowHistoryVersion = async (
 };
 
 export const gradualPublishWorkflow = async (
-	_context: IRestApiContext,
+	context: IRestApiContext,
 	workflowId: string,
 	requestData: GradualPublishWorkflowDto,
 ): Promise<GradualRolloutState | null> => {
-	// TODO: Remove mock and use real API call once backend is ready
-	// const response = await post(
-	// 	context.baseUrl,
-	// 	`/workflows/${workflowId}/gradual-publish`,
-	// 	requestData,
-	// );
-	// const { data } = response as { data: GradualPublishResponse };
-	// return data.gradualRollout;
-
-	const { versionId, percentage } = requestData;
-
-	// Mock: 0% = rollback, 100% = complete (both disable gradual rollout)
-	if (percentage === 0 || percentage === 100) {
-		return null;
-	}
-
-	// Mock: Active gradual rollout
-	return {
-		enabled: true,
-		versions: [
-			{
-				versionId: versionId ?? `new-version-${Date.now()}`,
-				percentage,
-				isNew: true,
-			},
-			{
-				versionId: `current-active-${workflowId}`,
-				percentage: 100 - percentage,
-				isNew: false,
-			},
-		],
-	};
+	const response = await post(
+		context.baseUrl,
+		`/workflows/${workflowId}/gradual-publish`,
+		requestData,
+	);
+	const { data } = response as { data: GradualPublishResponse };
+	return data.gradualRollout;
 };
