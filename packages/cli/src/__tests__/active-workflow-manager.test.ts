@@ -216,6 +216,7 @@ describe('ActiveWorkflowManager', () => {
 			jest.clearAllMocks();
 			workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
 			workflowExecutionService.runWorkflow.mockResolvedValue('exec-123');
+			workflowRepository.findOne.mockResolvedValue(null);
 			activeWorkflows.remove.mockResolvedValue(true);
 			activationErrorsService.register.mockResolvedValue(undefined);
 			executionService.createErrorExecution.mockResolvedValue(undefined);
@@ -267,6 +268,9 @@ describe('ActiveWorkflowManager', () => {
 				context.emit(triggerData);
 
 				expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
 				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
 					workflowData,
 					node,
@@ -275,9 +279,6 @@ describe('ActiveWorkflowManager', () => {
 					mode,
 					undefined,
 				);
-
-				await new Promise((resolve) => setTimeout(resolve, 0));
-
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-executed', {
 					workflowId: workflowData.id,
 					workflowName: workflowData.name,

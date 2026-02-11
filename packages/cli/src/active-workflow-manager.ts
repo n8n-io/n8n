@@ -310,13 +310,13 @@ export class ActiveWorkflowManager {
 						where: { id: workflowData.id },
 						relations: { activeVersion: true, gradualRolloutVersion: true },
 					})
-					.then((freshWorkflow) => {
+					.then(async (freshWorkflow) => {
 						let resolvedWorkflowData = workflowData;
 						if (freshWorkflow?.activeVersion) {
 							const { nodes, connections } = resolveExecutionVersion(freshWorkflow);
 							resolvedWorkflowData = { ...workflowData, nodes, connections };
 						}
-						return this.workflowExecutionService.runWorkflow(
+						return await this.workflowExecutionService.runWorkflow(
 							resolvedWorkflowData,
 							node,
 							data,
@@ -375,13 +375,13 @@ export class ActiveWorkflowManager {
 						where: { id: workflowData.id },
 						relations: { activeVersion: true, gradualRolloutVersion: true },
 					})
-					.then((freshWorkflow) => {
+					.then(async (freshWorkflow) => {
 						let resolvedWorkflowData = workflowData;
 						if (freshWorkflow?.activeVersion) {
 							const { nodes, connections } = resolveExecutionVersion(freshWorkflow);
 							resolvedWorkflowData = { ...workflowData, nodes, connections };
 						}
-						return this.workflowExecutionService.runWorkflow(
+						return await this.workflowExecutionService.runWorkflow(
 							resolvedWorkflowData,
 							node,
 							data,

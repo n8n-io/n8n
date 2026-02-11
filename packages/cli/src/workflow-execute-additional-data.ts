@@ -179,18 +179,16 @@ export async function getPublishedWorkflowData(
 	}
 
 	// For workflows from database, resolve which version to use (supports A/B rollout)
-	if (
-		workflowData &&
-		'activeVersion' in workflowData &&
-		workflowData.activeVersion &&
-		'gradualRolloutVersion' in workflowData
-	) {
-		const { nodes, connections } = resolveExecutionVersion(workflowData);
-		return {
-			...workflowData,
-			nodes,
-			connections,
-		};
+	if (workflowData && 'activeVersion' in workflowData && workflowData.activeVersion) {
+		if ('gradualRolloutVersion' in workflowData) {
+			const { nodes, connections } = resolveExecutionVersion(workflowData);
+			return {
+				...workflowData,
+				nodes,
+				connections,
+			};
+		}
+		return workflowData;
 	}
 
 	throw new UnexpectedError('Workflow is not active and cannot be executed.', {
