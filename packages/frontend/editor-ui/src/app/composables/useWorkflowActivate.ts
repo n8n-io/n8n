@@ -114,6 +114,14 @@ export function useWorkflowActivate() {
 
 			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion, true);
 
+			// Always clear gradual rollout from database when publishing
+			// (backend handles case where there's no active rollout)
+			try {
+				await workflowsStore.removeGradualRollout(workflowId);
+			} catch {
+				// Ignore errors - rollout may not exist
+			}
+
 			if (workflowId === workflowsStore.workflowId) {
 				workflowsStore.setWorkflowVersionData(
 					{

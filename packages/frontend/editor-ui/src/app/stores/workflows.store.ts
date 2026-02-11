@@ -1568,6 +1568,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		gradualRolloutState.value = null;
 	}
 
+	function clearGradualRolloutState(): void {
+		gradualRolloutState.value = null;
+	}
+
 	// Update a single workflow setting key while preserving existing settings
 	async function updateWorkflowSetting<K extends keyof IWorkflowSettings>(
 		id: string,
@@ -1953,6 +1957,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		deactivateWorkflow,
 		gradualPublishWorkflow,
 		removeGradualRollout,
+		clearGradualRolloutState,
 		updateWorkflowSetting,
 		saveWorkflowDescription,
 		runWorkflow,
