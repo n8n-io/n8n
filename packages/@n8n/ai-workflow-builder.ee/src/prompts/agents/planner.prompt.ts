@@ -77,6 +77,7 @@ export interface PlannerContextOptions {
 	workflowJSON: SimpleWorkflow;
 	planPrevious?: PlanOutput | null;
 	planFeedback?: string | null;
+	selectedNodesContext?: string;
 }
 
 /**
@@ -85,7 +86,14 @@ export interface PlannerContextOptions {
  * feedback from a previous modify cycle.
  */
 export function buildPlannerContext(options: PlannerContextOptions): string {
-	const { userRequest, discoveryContext, workflowJSON, planPrevious, planFeedback } = options;
+	const {
+		userRequest,
+		discoveryContext,
+		workflowJSON,
+		planPrevious,
+		planFeedback,
+		selectedNodesContext,
+	} = options;
 
 	const discoveredNodesList = discoveryContext.nodesFound
 		.map((node) => `- ${node.nodeName} v${node.version}: ${node.reasoning}`)
@@ -101,6 +109,7 @@ export function buildPlannerContext(options: PlannerContextOptions): string {
 
 	return prompt()
 		.section('user_request', userRequest)
+		.sectionIf(selectedNodesContext, 'selected_nodes', () => selectedNodesContext!)
 		.sectionIf(
 			discoveryContext.nodesFound.length > 0,
 			'discovery_context_suggested_nodes',
