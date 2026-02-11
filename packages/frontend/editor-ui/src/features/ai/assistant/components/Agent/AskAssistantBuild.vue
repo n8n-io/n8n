@@ -525,12 +525,6 @@ defineExpose({
 					/>
 				</div>
 			</template>
-			<template v-if="builderStore.isPlanModeAvailable" #before-actions>
-				<PlanModeSelector
-					:model-value="builderStore.builderMode"
-					@update:model-value="builderStore.setBuilderMode"
-				/>
-			</template>
 			<template #inputHeader>
 				<Transition name="slide">
 					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />
@@ -596,7 +590,14 @@ defineExpose({
 					@stop="onStop"
 					@upgrade-click="onUpgradeClick"
 					@vue:mounted="registerFocus(() => suggestionsInputRef?.focusInput())"
-				/>
+				>
+					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+						<PlanModeSelector
+							:model-value="builderStore.builderMode"
+							@update:model-value="builderStore.setBuilderMode"
+						/>
+					</template>
+				</ChatInputWithMention>
 			</template>
 			<template #inputPlaceholder>
 				<ChatInputWithMention
@@ -612,7 +613,14 @@ defineExpose({
 					@submit="onCustomInputSubmit"
 					@stop="builderStore.abortStreaming"
 					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
-				/>
+				>
+					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+						<PlanModeSelector
+							:model-value="builderStore.builderMode"
+							@update:model-value="builderStore.setBuilderMode"
+						/>
+					</template>
+				</ChatInputWithMention>
 			</template>
 		</N8nAskAssistantChat>
 	</div>

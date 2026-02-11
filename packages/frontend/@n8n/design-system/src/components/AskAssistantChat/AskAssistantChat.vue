@@ -620,8 +620,8 @@ defineExpose({
 								@submit="onSendMessage"
 								@stop="emit('stop')"
 							>
-								<template v-if="$slots['before-actions']" #beforeActions>
-									<slot name="before-actions" />
+								<template v-if="$slots['extra-actions']" #extra-actions>
+									<slot name="extra-actions" />
 								</template>
 							</N8nPromptInput>
 						</template>
@@ -689,8 +689,8 @@ defineExpose({
 				@submit="onSendMessage"
 				@stop="emit('stop')"
 			>
-				<template v-if="$slots['before-actions']" #beforeActions>
-					<slot name="before-actions" />
+				<template v-if="$slots['extra-actions']" #extra-actions>
+					<slot name="extra-actions" />
 				</template>
 			</N8nPromptInput>
 		</div>
