@@ -1,5 +1,5 @@
-import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchain/openai';
-import pick from 'lodash/pick';
+import { supplyModel } from '@n8n/ai-utilities';
+import type { ProviderTool } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type INodeProperties,
@@ -14,7 +14,6 @@ import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
 import { searchModels } from './methods/loadModels';
 import type { ModelOptions } from './types';
@@ -744,94 +743,78 @@ export class LmChatOpenAi implements INodeType {
 
 		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
-		const configuration: ClientOptions = {
-			defaultHeaders,
-		};
-
+		// Determine base URL
+		let baseUrl = 'https://api.openai.com/v1';
 		if (options.baseURL) {
 			checkDomainRestrictions(this, credentials, options.baseURL);
-			configuration.baseURL = options.baseURL;
+			baseUrl = options.baseURL;
 		} else if (credentials.url) {
-			configuration.baseURL = credentials.url as string;
+			baseUrl = credentials.url as string;
 		}
 
-		const timeout = options.timeout;
-		configuration.fetchOptions = {
-			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {
-				headersTimeout: timeout,
-				bodyTimeout: timeout,
-			}),
-		};
+		// Prepare default headers
+		const headers: Record<string, string> = { ...defaultHeaders };
 		if (
 			credentials.header &&
 			typeof credentials.headerName === 'string' &&
 			credentials.headerName &&
 			typeof credentials.headerValue === 'string'
 		) {
-			configuration.defaultHeaders = {
-				...configuration.defaultHeaders,
-				[credentials.headerName]: credentials.headerValue,
-			};
+			headers[credentials.headerName] = credentials.headerValue;
 		}
 
-		// Extra options to send to OpenAI, that are not directly supported by LangChain
-		const modelKwargs: Record<string, unknown> = {};
+		// Extra options to send to OpenAI
+		const additionalParams: Record<string, unknown> = {};
 		if (responsesApiEnabled) {
 			const kwargs = prepareAdditionalResponsesParams(options);
-			Object.assign(modelKwargs, kwargs);
+			Object.assign(additionalParams, kwargs);
 		} else {
-			if (options.responseFormat) modelKwargs.response_format = { type: options.responseFormat };
+			if (options.responseFormat)
+				additionalParams.response_format = { type: options.responseFormat };
 			if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort)) {
-				modelKwargs.reasoning_effort = options.reasoningEffort;
+				additionalParams.reasoning_effort = options.reasoningEffort;
 			}
 		}
 
-		const includedOptions = pick(options, [
-			'frequencyPenalty',
-			'maxTokens',
-			'presencePenalty',
-			'temperature',
-			'topP',
-			'baseURL',
-		]);
-
-		const fields: ChatOpenAIFields = {
-			apiKey: credentials.apiKey as string,
-			model: modelName,
-			...includedOptions,
-			timeout,
-			maxRetries: options.maxRetries ?? 2,
-			configuration,
-			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs,
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
-			// Set to false to ensure compatibility with OpenAI-compatible backends (LM Studio, vLLM, etc.)
-			// that reject strict: null in tool definitions
-			supportsStrictToolCalling: false,
-		};
-
-		// by default ChatOpenAI can switch to responses API automatically, so force it only on 1.3 and above to keep backwards compatibility
-		if (responsesApiEnabled) {
-			fields.useResponsesApi = true;
-		}
-
-		const model = new ChatOpenAI(fields);
-
+		// Prepare provider tools (built-in tools)
+		let providerTools: ProviderTool[] | undefined;
 		if (responsesApiEnabled) {
 			const tools = formatBuiltInTools(
 				this.getNodeParameter('builtInTools', itemIndex, {}) as IDataObject,
 			);
-			// pass tools to the model metadata, ToolAgent will use it to create agent configuration
 			if (tools.length) {
-				model.metadata = {
-					...model.metadata,
-					tools,
-				};
+				providerTools = tools;
 			}
 		}
 
-		return {
-			response: model,
-		};
+		// Handle reasoning effort for reasoning models
+		const reasoning =
+			options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort)
+				? { effort: options.reasoningEffort }
+				: undefined;
+
+		return supplyModel(this, {
+			type: 'openai',
+			baseUrl,
+			apiKey: credentials.apiKey as string,
+			model: modelName,
+			defaultHeaders: headers,
+			useResponsesApi: responsesApiEnabled ? true : undefined,
+			temperature: options.temperature,
+			topP: options.topP,
+			frequencyPenalty: options.frequencyPenalty,
+			presencePenalty: options.presencePenalty,
+			maxTokens: options.maxTokens,
+			timeout: options.timeout,
+			maxRetries: options.maxRetries ?? 2,
+			supportsStrictToolCalling: false,
+			additionalParams: Object.keys(additionalParams).length > 0 ? additionalParams : undefined,
+			providerTools,
+			reasoning,
+			topLogprobs: options.topLogprobs,
+			service_tier: options.serviceTier,
+			promptCacheKey: options.promptCacheKey,
+			onFailedAttempt: openAiFailedAttemptHandler,
+		});
 	}
 }

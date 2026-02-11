@@ -1,5 +1,4 @@
-import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
-import { getProxyAgent, makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import { supplyModel } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -224,35 +223,24 @@ export class LmChatDeepSeek implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
-		const timeout = options.timeout;
-		const configuration: ClientOptions = {
-			baseURL: credentials.url,
-			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url, {
-					headersTimeout: timeout,
-					bodyTimeout: timeout,
-				}),
-			},
-		};
-
-		const model = new ChatOpenAI({
+		return supplyModel(this, {
+			type: 'openai',
+			baseUrl: credentials.url,
 			apiKey: credentials.apiKey,
 			model: modelName,
-			...options,
-			timeout,
+			timeout: options.timeout,
 			maxRetries: options.maxRetries ?? 2,
-			configuration,
-			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
+			onFailedAttempt: openAiFailedAttemptHandler,
+			additionalParams: options.responseFormat
 				? {
 						response_format: { type: options.responseFormat },
 					}
 				: undefined,
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
+			frequencyPenalty: options.frequencyPenalty,
+			maxTokens: options.maxTokens,
+			presencePenalty: options.presencePenalty,
+			temperature: options.temperature,
+			topP: options.topP,
 		});
-
-		return {
-			response: model,
-		};
 	}
 }

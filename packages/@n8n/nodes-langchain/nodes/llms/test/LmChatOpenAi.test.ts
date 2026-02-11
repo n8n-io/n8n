@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
+import type { ProviderTool } from '@n8n/ai-utilities';
 import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -11,7 +12,12 @@ import * as common from '../LMChatOpenAi/common';
 import { LmChatOpenAi } from '../LMChatOpenAi/LmChatOpenAi.node';
 
 jest.mock('@langchain/openai');
-jest.mock('@n8n/ai-utilities');
+jest.mock('@n8n/ai-utilities', () => ({
+	...jest.requireActual('@n8n/ai-utilities'),
+	N8nLlmTracing: jest.fn(),
+	makeN8nLlmFailedAttemptHandler: jest.fn(),
+	getProxyAgent: jest.fn(),
+}));
 jest.mock('../LMChatOpenAi/common');
 
 const MockedChatOpenAI = jest.mocked(ChatOpenAI);
@@ -112,13 +118,14 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					maxRetries: 2,
 					configuration: {
+						baseURL: 'https://api.openai.com/v1',
 						defaultHeaders,
 						fetchOptions: {
-							dispatcher: {},
+							dispatcher: expect.any(Object),
 						},
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
-					modelKwargs: {},
+					modelKwargs: undefined,
 					onFailedAttempt: expect.any(Function),
 				}),
 			);
@@ -148,13 +155,14 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					maxRetries: 2,
 					configuration: {
+						baseURL: 'https://api.openai.com/v1',
 						defaultHeaders,
 						fetchOptions: {
-							dispatcher: {},
+							dispatcher: expect.any(Object),
 						},
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
-					modelKwargs: {},
+					modelKwargs: undefined,
 					onFailedAttempt: expect.any(Function),
 				}),
 			);
@@ -181,18 +189,17 @@ describe('LmChatOpenAi', () => {
 				expect.objectContaining({
 					apiKey: 'test-api-key',
 					model: 'gpt-4o-mini',
-					baseURL: customBaseURL,
 					timeout: 30000,
 					maxRetries: 5,
 					configuration: {
 						baseURL: customBaseURL,
 						fetchOptions: {
-							dispatcher: {},
+							dispatcher: expect.any(Object),
 						},
 						defaultHeaders,
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
-					modelKwargs: {},
+					modelKwargs: undefined,
 					onFailedAttempt: expect.any(Function),
 				}),
 			);
@@ -223,12 +230,12 @@ describe('LmChatOpenAi', () => {
 					configuration: {
 						baseURL: customURL,
 						fetchOptions: {
-							dispatcher: {},
+							dispatcher: expect.any(Object),
 						},
 						defaultHeaders,
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
-					modelKwargs: {},
+					modelKwargs: undefined,
 					onFailedAttempt: expect.any(Function),
 				}),
 			);
@@ -258,16 +265,17 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					maxRetries: 2,
 					configuration: {
+						baseURL: 'https://api.openai.com/v1',
 						defaultHeaders: {
 							...defaultHeaders,
 							'X-Custom-Header': 'custom-value',
 						},
 						fetchOptions: {
-							dispatcher: {},
+							dispatcher: expect.any(Object),
 						},
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
-					modelKwargs: {},
+					modelKwargs: undefined,
 					onFailedAttempt: expect.any(Function),
 				}),
 			);
@@ -307,9 +315,10 @@ describe('LmChatOpenAi', () => {
 					timeout: 45000,
 					maxRetries: 3,
 					configuration: {
+						baseURL: 'https://api.openai.com/v1',
 						defaultHeaders,
 						fetchOptions: {
-							dispatcher: {},
+							dispatcher: expect.any(Object),
 						},
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
@@ -339,39 +348,8 @@ describe('LmChatOpenAi', () => {
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					model: 'gpt-4o-mini',
-					modelKwargs: {}, // Should not include invalid reasoning_effort
+					modelKwargs: undefined, // Should not include invalid reasoning_effort
 				}),
-			);
-		});
-
-		it('should create N8nLlmTracing callback', async () => {
-			const mockContext = setupMockContext();
-
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'model.value') return 'gpt-4o-mini';
-				if (paramName === 'options') return {};
-				return undefined;
-			});
-
-			await lmChatOpenAi.supplyData.call(mockContext, 0);
-
-			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(mockContext);
-		});
-
-		it('should create failed attempt handler', async () => {
-			const mockContext = setupMockContext();
-
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'model.value') return 'gpt-4o-mini';
-				if (paramName === 'options') return {};
-				return undefined;
-			});
-
-			await lmChatOpenAi.supplyData.call(mockContext, 0);
-
-			expect(mockedMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(
-				mockContext,
-				expect.any(Function), // openAiFailedAttemptHandler
 			);
 		});
 
@@ -438,7 +416,7 @@ describe('LmChatOpenAi', () => {
 					configuration: {
 						baseURL: optionsBaseURL,
 						fetchOptions: {
-							dispatcher: {},
+							dispatcher: expect.any(Object),
 						},
 						defaultHeaders,
 					},
@@ -568,10 +546,16 @@ describe('LmChatOpenAi', () => {
 				codeInterpreter: true,
 			};
 
-			const mockTools = [
+			const mockTools: ProviderTool[] = [
 				{
-					customTools: true,
+					type: 'provider',
+					name: 'web_search',
+					args: {
+						search_context_size: 'high',
+						allowed_domains: 'google.com, wikipedia.org',
+					},
 				},
+				{ type: 'provider', name: 'no_args' },
 			];
 
 			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
@@ -591,7 +575,13 @@ describe('LmChatOpenAi', () => {
 			const instance: unknown = MockedChatOpenAI.mock.instances[0];
 			expect(instance).toBeDefined();
 			expect((instance as { metadata?: { tools?: unknown } }).metadata).toBeDefined();
-			expect((instance as { metadata?: { tools?: unknown } }).metadata?.tools).toEqual(mockTools);
+			expect((instance as { metadata?: { tools?: unknown } }).metadata?.tools).toEqual([
+				{
+					type: 'web_search',
+					search_context_size: 'high',
+					allowed_domains: 'google.com, wikipedia.org',
+				},
+			]);
 		});
 	});
 });

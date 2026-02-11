@@ -1,5 +1,4 @@
-import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
-import { getProxyAgent, makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import { supplyModel } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -222,35 +221,22 @@ export class LmChatVercelAiGateway implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
-		const timeout = options.timeout;
-		const configuration: ClientOptions = {
-			baseURL: credentials.url,
-			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url, {
-					headersTimeout: timeout,
-					bodyTimeout: timeout,
-				}),
-			},
-		};
-
-		const model = new ChatOpenAI({
+		return supplyModel(this, {
+			type: 'openai',
+			baseUrl: credentials.url,
 			apiKey: credentials.apiKey,
 			model: modelName,
-			...options,
-			timeout,
-			maxRetries: options.maxRetries ?? 2,
-			configuration,
-			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
+			temperature: options.temperature,
+			topP: options.topP,
+			frequencyPenalty: options.frequencyPenalty,
+			presencePenalty: options.presencePenalty,
+			maxTokens: options.maxTokens,
+			additionalParams: options.responseFormat
+				? { response_format: { type: options.responseFormat } }
 				: undefined,
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
+			onFailedAttempt: openAiFailedAttemptHandler,
+			timeout: options.timeout,
+			maxRetries: options.maxRetries ?? 2,
 		});
-
-		return {
-			response: model,
-		};
 	}
 }

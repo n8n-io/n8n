@@ -8,7 +8,7 @@ export interface OpenAIModelOptions {
 	/** Model name to use */
 	model: string;
 	/**
-	 * API key to use when making requests to OpenAI.
+	 * API key to use when making requests.
 	 */
 	apiKey: string;
 	/**
@@ -45,7 +45,7 @@ export interface OpenAIModelOptions {
 	topLogprobs?: number;
 	/**
 	 * Whether the model supports the `strict` argument when passing in tools.
-	 * If `undefined` the `strict` argument will not be passed to OpenAI.
+	 * If `undefined` the `strict` argument will not be passed to the API.
 	 */
 	supportsStrictToolCalling?: boolean;
 
@@ -56,7 +56,6 @@ export interface OpenAIModelOptions {
 
 	/**
 	 * Should be set to `true` in tenancies with Zero Data Retention
-	 * @see https://platform.openai.com/docs/guides/your-data
 	 *
 	 * @default false
 	 */
@@ -69,9 +68,8 @@ export interface OpenAIModelOptions {
 	service_tier?: 'auto' | 'default' | 'flex' | 'scale' | 'priority' | null;
 
 	/**
-	 * Used by OpenAI to cache responses for similar requests to optimize your cache
+	 * Used to cache responses for similar requests to optimize cache
 	 * hit rates. Replaces the `user` field.
-	 * [Learn more](https://platform.openai.com/docs/guides/prompt-caching).
 	 */
 	promptCacheKey?: string;
 
@@ -98,7 +96,7 @@ export interface OpenAIModelOptions {
 	n?: number;
 	/** Dictionary used to adjust the probability of specific tokens being generated */
 	logitBias?: Record<string, number>;
-	/** Unique string identifier representing your end-user, which can help OpenAI to monitor and detect abuse. */
+	/** Unique string identifier representing your end-user, which can help monitor and detect abuse. */
 	user?: string;
 	/** Whether to stream the results or not. Enabling disables tokenUsage reporting */
 	streaming?: boolean;
@@ -108,10 +106,7 @@ export interface OpenAIModelOptions {
 	 */
 	streamUsage?: boolean;
 
-	/** Holds any additional parameters that are valid to pass to {@link
-	 * https://platform.openai.com/docs/api-reference/completions/create |
-	 * `openai.createCompletion`} that are not explicitly specified on this interface
-	 */
+	/** Additional provider-specific parameters to pass to the model. That will be supplied in body of the request. */
 	additionalParams?: Record<string, unknown>;
 	/**
 	 * List of stop words to use when generating
@@ -121,7 +116,7 @@ export interface OpenAIModelOptions {
 	/** List of stop words to use when generating */
 	stopSequences?: string[];
 	/**
-	 * Timeout to use when making requests to OpenAI.
+	 * Timeout to use when making requests.
 	 */
 	timeout?: number;
 	/**

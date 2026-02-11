@@ -54,6 +54,7 @@ function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 		presencePenalty: model.presencePenalty,
 		stopSequences: model.stopSequences,
 		maxRetries: model.maxRetries,
+		timeout: model.timeout,
 		modelKwargs: model.additionalParams,
 		verbosity: model.verbosity,
 		streaming: model.streaming,

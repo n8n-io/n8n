@@ -33,6 +33,7 @@ export type ModelOptions = {
 	safetyIdentifier?: string;
 	serviceTier?: 'auto' | 'flex' | 'default' | 'priority';
 	topLogprobs?: number;
+	verbosity?: 'low' | 'medium' | 'high';
 	textFormat?: {
 		textOptions?: TextOptions;
 	};

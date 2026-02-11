@@ -1,6 +1,7 @@
 import type { IDataObject } from 'n8n-workflow';
 
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from '../common';
+import type { ProviderTool } from '@n8n/ai-utilities';
 
 describe('formatBuiltInTools', () => {
 	it('returns empty array when no built-in tools provided', () => {
@@ -19,19 +20,24 @@ describe('formatBuiltInTools', () => {
 			},
 		} as unknown as IDataObject);
 
-		expect(tools).toEqual([
+		const expected: ProviderTool[] = [
 			{
-				type: 'web_search',
-				search_context_size: 'high',
-				user_location: {
-					type: 'approximate',
-					country: 'US',
-					city: 'NYC',
-					region: 'NY',
+				type: 'provider',
+				name: 'web_search',
+				args: {
+					search_context_size: 'high',
+					user_location: {
+						type: 'approximate',
+						country: 'US',
+						city: 'NYC',
+						region: 'NY',
+					},
+					filters: { allowed_domains: ['example.com', 'sub.domain.org', 'another.net'] },
 				},
-				filters: { allowed_domains: ['example.com', 'sub.domain.org', 'another.net'] },
 			},
-		]);
+		];
+
+		expect(tools).toEqual(expected);
 	});
 
 	it.each([
@@ -65,18 +71,27 @@ describe('formatBuiltInTools', () => {
 				},
 			} as unknown as IDataObject);
 
-			const commonData = {
-				type: 'web_search',
-				search_context_size: 'high',
-				filters: { allowed_domains: ['example.com', 'sub.domain.org', 'another.net'] },
+			const commonData: ProviderTool = {
+				type: 'provider',
+				name: 'web_search',
+				args: {
+					search_context_size: 'high',
+					filters: { allowed_domains: ['example.com', 'sub.domain.org', 'another.net'] },
+				},
 			};
 			if (hasUserLocation) {
 				expect(tools).toEqual([
-					expect.objectContaining({ ...commonData, user_location: expect.anything() }),
+					expect.objectContaining({
+						...commonData,
+						args: { ...commonData.args, user_location: expect.anything() },
+					}),
 				]);
 			} else {
 				expect(tools).toEqual([
-					expect.objectContaining({ ...commonData, user_location: undefined }),
+					expect.objectContaining({
+						...commonData,
+						args: { ...commonData.args, user_location: undefined },
+					}),
 				]);
 			}
 		},
@@ -86,8 +101,11 @@ describe('formatBuiltInTools', () => {
 		const tools = formatBuiltInTools({ codeInterpreter: true } as unknown as IDataObject);
 		expect(tools).toEqual([
 			{
-				type: 'code_interpreter',
-				container: { type: 'auto' },
+				type: 'provider',
+				name: 'code_interpreter',
+				args: {
+					container: { type: 'auto' },
+				},
 			},
 		]);
 	});
@@ -103,10 +121,13 @@ describe('formatBuiltInTools', () => {
 
 		expect(tools).toEqual([
 			{
-				type: 'file_search',
-				vector_store_ids: ['vs1', 'vs2'],
-				filters: { file_types: ['pdf'], tags: ['t1'] },
-				max_num_results: 50,
+				type: 'provider',
+				name: 'file_search',
+				args: {
+					vector_store_ids: ['vs1', 'vs2'],
+					filters: { file_types: ['pdf'], tags: ['t1'] },
+					max_num_results: 50,
+				},
 			},
 		]);
 	});
@@ -117,10 +138,13 @@ describe('formatBuiltInTools', () => {
 		} as unknown as IDataObject);
 		expect(tools).toEqual([
 			{
-				type: 'file_search',
-				vector_store_ids: ['only'],
-				filters: undefined,
-				max_num_results: 3,
+				type: 'provider',
+				name: 'file_search',
+				args: {
+					vector_store_ids: ['only'],
+					filters: undefined,
+					max_num_results: 3,
+				},
 			},
 		]);
 	});

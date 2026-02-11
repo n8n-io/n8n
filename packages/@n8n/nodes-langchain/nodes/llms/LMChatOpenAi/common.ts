@@ -1,5 +1,5 @@
 import type { OpenAIClient } from '@langchain/openai';
-import type { ChatOpenAIToolType } from '@langchain/openai/dist/utils/tools';
+import type { ProviderTool } from '@n8n/ai-utilities';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import { isObjectEmpty, jsonParse } from 'n8n-workflow';
@@ -28,7 +28,7 @@ const toArray = (str: string) =>
 		.filter(Boolean);
 
 export const formatBuiltInTools = (builtInTools: BuiltInTools) => {
-	const tools: ChatOpenAIToolType[] = [];
+	const tools: ProviderTool[] = [];
 	if (builtInTools) {
 		const webSearchOptions = get(builtInTools, 'webSearch');
 		if (webSearchOptions) {
@@ -49,18 +49,24 @@ export const formatBuiltInTools = (builtInTools: BuiltInTools) => {
 			}
 
 			tools.push({
-				type: 'web_search',
-				search_context_size: get(webSearchOptions, 'searchContextSize', 'medium'),
-				user_location: userLocation,
-				...(allowedDomains && { filters: { allowed_domains: allowedDomains } }),
+				type: 'provider',
+				name: 'web_search',
+				args: {
+					search_context_size: get(webSearchOptions, 'searchContextSize', 'medium'),
+					user_location: userLocation,
+					...(allowedDomains && { filters: { allowed_domains: allowedDomains } }),
+				},
 			});
 		}
 
 		if (builtInTools.codeInterpreter) {
 			tools.push({
-				type: 'code_interpreter',
-				container: {
-					type: 'auto',
+				type: 'provider',
+				name: 'code_interpreter',
+				args: {
+					container: {
+						type: 'auto',
+					},
 				},
 			});
 		}
@@ -69,14 +75,17 @@ export const formatBuiltInTools = (builtInTools: BuiltInTools) => {
 			const vectorStoreIds = get(builtInTools.fileSearch, 'vectorStoreIds', '[]');
 			const filters = get(builtInTools.fileSearch, 'filters', '{}');
 			tools.push({
-				type: 'file_search',
-				vector_store_ids: jsonParse(vectorStoreIds, {
-					errorMessage: 'Failed to parse vector store IDs',
-				}),
-				filters: filters
-					? jsonParse(filters, { errorMessage: 'Failed to parse filters' })
-					: undefined,
-				max_num_results: get(builtInTools.fileSearch, 'maxResults') as number,
+				type: 'provider',
+				name: 'file_search',
+				args: {
+					vector_store_ids: jsonParse(vectorStoreIds, {
+						errorMessage: 'Failed to parse vector store IDs',
+					}),
+					filters: filters
+						? jsonParse(filters, { errorMessage: 'Failed to parse filters' })
+						: undefined,
+					max_num_results: get(builtInTools.fileSearch, 'maxResults') as number,
+				},
 			});
 		}
 	}

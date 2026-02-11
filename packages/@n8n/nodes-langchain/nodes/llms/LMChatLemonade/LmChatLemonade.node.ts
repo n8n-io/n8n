@@ -1,5 +1,5 @@
-import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
-import { getProxyAgent, makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import { type ClientOptions } from '@langchain/openai';
+import { getProxyAgent, supplyModel } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -12,7 +12,7 @@ import type { LemonadeApiCredentialsType } from '../../../credentials/LemonadeAp
 
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { lemonadeModel, lemonadeOptions, lemonadeDescription } from '../LMLemonade/description';
+import { lemonadeDescription, lemonadeModel, lemonadeOptions } from '../LMLemonade/description';
 
 export class LmChatLemonade implements INodeType {
 	description: INodeTypeDescription = {
@@ -104,17 +104,17 @@ export class LmChatLemonade implements INodeType {
 			dispatcher: getProxyAgent(configuration.baseURL ?? '', {}),
 		};
 
-		const model = new ChatOpenAI({
+		return supplyModel(this, {
+			type: 'openai',
+			baseUrl: credentials.baseUrl,
 			apiKey: credentials.apiKey || 'lemonade-placeholder-key',
 			model: modelName,
-			...processedOptions,
-			configuration,
-			callbacks: [new N8nLlmTracing(this)],
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+			temperature: processedOptions.temperature,
+			topP: processedOptions.topP,
+			frequencyPenalty: processedOptions.frequencyPenalty,
+			presencePenalty: processedOptions.presencePenalty,
+			maxTokens: processedOptions.maxTokens,
+			stop: processedOptions.stop,
 		});
-
-		return {
-			response: model,
-		};
 	}
 }
