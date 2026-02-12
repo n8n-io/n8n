@@ -237,14 +237,22 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			if (options.attachments && item.binary) {
 				const attachments = [];
 				const attachmentProperties = prepareBinariesDataList(options.attachments);
+				const htmlBody = typeof mailOptions.html === 'string' ? mailOptions.html : '';
 
 				for (const propertyName of attachmentProperties) {
 					const binaryData = this.helpers.assertBinaryData(itemIndex, propertyName);
-					attachments.push({
+					const attachment: { [key: string]: string | Buffer } = {
 						filename: binaryData.fileName || 'unknown',
 						content: await this.helpers.getBinaryDataBuffer(itemIndex, propertyName),
-						cid: propertyName,
-					});
+					};
+
+					// Only mark as inline (set cid) if the HTML body references this attachment
+					// via cid:propertyName. Otherwise, send as a regular attachment.
+					if (htmlBody.includes(`cid:${propertyName}`)) {
+						attachment.cid = propertyName;
+					}
+
+					attachments.push(attachment);
 				}
 
 				if (attachments.length) {
