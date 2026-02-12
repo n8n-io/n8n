@@ -3997,6 +3997,8 @@
 	"settings.security.personalSpace.sharing.confirmMessage.disable.message": "This will prevent sharing workflows and credentials from personal spaces going forwards. Existing shares will remain in place.",
 	"settings.security.personalSpace.sharing.existingCount.label": "Existing shares",
 	"settings.security.personalSpace.sharing.existingCount.value": "{workflowCount} workflows, {credentialCount} credentials",
+	"settings.security.personalSpace.unlicensed_tooltip": "Upgrade to a plan that includes personal space policies to manage this setting. {action}",
+	"settings.security.personalSpace.unlicensed_tooltip.link": "Upgrade now",
 	"settings.sso": "SSO",
 	"settings.sso.title": "Single Sign On",
 	"settings.sso.subtitle": "SAML 2.0 Configuration",
