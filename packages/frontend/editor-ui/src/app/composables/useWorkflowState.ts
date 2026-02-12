@@ -12,6 +12,7 @@ import type {
 } from '@/features/execution/executions/executions.types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import {
@@ -49,6 +50,7 @@ export const workflowStateEventBus = createEventBus<WorkflowStateBusEvents>();
 
 export function useWorkflowState() {
 	const ws = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const workflowStateStore = useWorkflowStateStore();
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
@@ -60,19 +62,19 @@ export function useWorkflowState() {
 
 	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
 		if (data.setStateDirty) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 		ws.workflow.name = data.newName;
 		ws.workflowObject.name = data.newName;
 
-		if (ws.workflow.id && ws.workflowsById[ws.workflow.id]) {
-			ws.workflowsById[ws.workflow.id].name = data.newName;
+		if (ws.workflow.id && workflowsListStore.workflowsById[ws.workflow.id]) {
+			workflowsListStore.workflowsById[ws.workflow.id].name = data.newName;
 		}
 	}
 
 	function removeAllConnections(data: { setStateDirty: boolean }): void {
 		if (data?.setStateDirty) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 
 		ws.workflow.connections = {};
@@ -81,7 +83,7 @@ export function useWorkflowState() {
 
 	function removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
 		if (data.setStateDirty) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 
 		if (data.removePinData) {
@@ -334,7 +336,7 @@ export function useWorkflowState() {
 		});
 
 		if (changed) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 			ws.nodeMetadata[name].parametersLastUpdatedAt = Date.now();
 		}
 	}
@@ -377,7 +379,9 @@ export function useWorkflowState() {
 			[updateInformation.key]: updateInformation.value,
 		});
 
-		uiStore.stateIsDirty = uiStore.stateIsDirty || changed;
+		if (changed) {
+			uiStore.markStateDirty();
+		}
 
 		const excludeKeys = ['position', 'notes', 'notesInFlow'];
 
@@ -391,6 +395,27 @@ export function useWorkflowState() {
 		if (!node) return;
 
 		setNodeValue({ name: node.name, key: 'position', value: position });
+	}
+
+	/**
+	 * Update node by ID. Finds the node by ID and updates it with the provided data.
+	 * @returns `true` if the node was found and updated
+	 */
+	function updateNodeById(nodeId: string, nodeData: Partial<INodeUi>): boolean {
+		const nodeIndex = ws.workflow.nodes.findIndex((node) => node.id === nodeId);
+		if (nodeIndex === -1) return false;
+		return updateNodeAtIndex(nodeIndex, nodeData);
+	}
+
+	/**
+	 * Reset parametersLastUpdatedAt to current timestamp for a node.
+	 * Used to mark a node as "dirty" when its parameters change.
+	 */
+	function resetParametersLastUpdatedAt(nodeName: string): void {
+		if (!ws.nodeMetadata[nodeName]) {
+			ws.nodeMetadata[nodeName] = { pristine: true };
+		}
+		ws.nodeMetadata[nodeName].parametersLastUpdatedAt = Date.now();
 	}
 
 	function updateNodeProperties(
@@ -410,7 +435,7 @@ export function useWorkflowState() {
 				const changed = updateNodeAtIndex(nodeIndex, { [key]: property });
 
 				if (changed) {
-					uiStore.stateIsDirty = true;
+					uiStore.markStateDirty();
 				}
 			}
 		}
@@ -482,7 +507,9 @@ export function useWorkflowState() {
 		setNodePositionById,
 		setNodeIssue,
 		updateNodeAtIndex,
+		updateNodeById,
 		updateNodeProperties,
+		resetParametersLastUpdatedAt,
 
 		// reexport
 		executingNode: workflowStateStore.executingNode,

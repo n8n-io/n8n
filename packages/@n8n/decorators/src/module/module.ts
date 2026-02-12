@@ -36,6 +36,8 @@ export interface ModuleInterface {
 	init?(): Promise<void>;
 	shutdown?(): Promise<void>;
 
+	commands?(): Promise<void>;
+
 	/**
 	 * Return a list of entities to register with the typeorm database connection.
 	 *

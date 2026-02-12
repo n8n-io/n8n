@@ -1,7 +1,7 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { isAIMessage, ToolMessage, HumanMessage } from '@langchain/core/messages';
 import type { StructuredTool } from '@langchain/core/tools';
-import { isCommand, END } from '@langchain/langgraph';
+import { isCommand, isGraphInterrupt, END } from '@langchain/langgraph';
 
 import { isBaseMessage } from '../types/langchain';
 import type { WorkflowMetadata } from '../types/tools';
@@ -12,6 +12,7 @@ interface CommandUpdate {
 	workflowOperations?: WorkflowOperation[];
 	templateIds?: number[];
 	cachedTemplates?: WorkflowMetadata[];
+	bestPractices?: string;
 }
 
 /**
@@ -46,6 +47,14 @@ function isCommandUpdate(value: unknown): value is CommandUpdate {
 	) {
 		return false;
 	}
+	// bestPractices is optional, but if present must be a string
+	if (
+		'bestPractices' in obj &&
+		obj.bestPractices !== undefined &&
+		typeof obj.bestPractices !== 'string'
+	) {
+		return false;
+	}
 	return true;
 }
 
@@ -54,6 +63,10 @@ function isCommandUpdate(value: unknown): value is CommandUpdate {
  *
  * Adapts the executeToolsInParallel pattern for subgraph use.
  * Executes all tool calls from the last AI message in parallel.
+ *
+ * Tools that call interrupt() (like submit_questions) are handled naturally:
+ * - On initial run: interrupt() throws GraphInterrupt, Promise.all rejects, graph pauses
+ * - On resume: interrupt() returns the user's answers, all tools complete normally
  *
  * @param state - Subgraph state with messages array
  * @param toolMap - Map of tool name to tool instance
@@ -67,6 +80,7 @@ export async function executeSubgraphTools(
 	workflowOperations?: WorkflowOperation[] | null;
 	templateIds?: number[];
 	cachedTemplates?: WorkflowMetadata[];
+	bestPractices?: string;
 }> {
 	const lastMessage = state.messages[state.messages.length - 1];
 
@@ -97,6 +111,10 @@ export async function executeSubgraphTools(
 				// We return it as-is and handle the type in the loop below
 				return result;
 			} catch (error) {
+				// Let GraphInterrupt propagate - tools like submit_questions use interrupt() for HITL
+				if (isGraphInterrupt(error)) {
+					throw error;
+				}
 				return new ToolMessage({
 					content: `Tool failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
 					tool_call_id: toolCall.id ?? '',
@@ -105,11 +123,12 @@ export async function executeSubgraphTools(
 		}),
 	);
 
-	// Unwrap Command objects and collect messages/operations/templateIds/cachedTemplates
+	// Unwrap Command objects and collect messages/operations/templateIds/cachedTemplates/bestPractices
 	const messages: BaseMessage[] = [];
 	const operations: WorkflowOperation[] = [];
 	const templateIds: number[] = [];
 	const cachedTemplates: WorkflowMetadata[] = [];
+	let bestPractices: string | undefined;
 
 	for (const result of toolResults) {
 		if (isCommand(result)) {
@@ -127,6 +146,9 @@ export async function executeSubgraphTools(
 				if (result.update.cachedTemplates) {
 					cachedTemplates.push(...result.update.cachedTemplates);
 				}
+				if (result.update.bestPractices) {
+					bestPractices = result.update.bestPractices;
+				}
 			}
 		} else if (isBaseMessage(result)) {
 			// Direct message (ToolMessage, AIMessage, etc.)
@@ -139,6 +161,7 @@ export async function executeSubgraphTools(
 		workflowOperations?: WorkflowOperation[] | null;
 		templateIds?: number[];
 		cachedTemplates?: WorkflowMetadata[];
+		bestPractices?: string;
 	} = {};
 
 	if (messages.length > 0) {
@@ -157,6 +180,10 @@ export async function executeSubgraphTools(
 		stateUpdate.cachedTemplates = cachedTemplates;
 	}
 
+	if (bestPractices) {
+		stateUpdate.bestPractices = bestPractices;
+	}
+
 	return stateUpdate;
 }
 
@@ -166,8 +193,12 @@ export async function executeSubgraphTools(
  */
 export function extractUserRequest(messages: BaseMessage[], defaultValue = ''): string {
 	// Get the LAST HumanMessage (most recent user request for iteration support)
+	// Skip resume messages to avoid treating plan decisions/answers as new requests.
 	const humanMessages = messages.filter((m) => m instanceof HumanMessage);
-	const lastUserMessage = humanMessages[humanMessages.length - 1];
+	const lastNonResumeMessage = [...humanMessages]
+		.reverse()
+		.find((msg) => msg.additional_kwargs?.resumeData === undefined);
+	const lastUserMessage = lastNonResumeMessage ?? humanMessages[humanMessages.length - 1];
 	return typeof lastUserMessage?.content === 'string' ? lastUserMessage.content : defaultValue;
 }
 

@@ -61,6 +61,12 @@ export class ChainRetrievalQa implements INodeType {
 			},
 		],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+				ai_retriever: { required: true },
+			},
+		},
 		credentials: [],
 		properties: [
 			getTemplateNoticeField(1960),

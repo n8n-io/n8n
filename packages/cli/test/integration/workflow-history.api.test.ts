@@ -1,11 +1,16 @@
-import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { LicenseState } from '@n8n/backend-common';
+import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { User, WorkflowHistory } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { createOwner, createUser } from '@test-integration/db/users';
+import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
+import { createWorkflowPublishHistoryItem } from '@test-integration/db/workflow-publish-history';
+import type { IConnections, INode } from 'n8n-workflow';
 
-import { createOwner, createUser } from './shared/db/users';
-import { createWorkflowHistoryItem } from './shared/db/workflow-history';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
-import { createWorkflowPublishHistoryItem } from '@test-integration/db/workflow-publish-history';
+
+import { ProjectService } from '@/services/project.service.ee';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -17,6 +22,11 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
+	// Mock license to allow team projects
+	const licenseMock = mockInstance(LicenseState);
+	licenseMock.isSharingLicensed.mockReturnValue(true);
+	licenseMock.getMaxTeamProjects.mockReturnValue(-1);
+
 	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	member = await createUser();
@@ -296,5 +306,197 @@ describe('GET /workflow-history/workflow/:workflowId/version/:versionId', () => 
 			]),
 		});
 		expect(resp.body.data.workflowPublishHistory).toHaveLength(2);
+	});
+});
+
+describe('PATCH /workflow-history/workflow/:workflowId/versions/:versionId', () => {
+	beforeEach(() => {
+		testServer.license.enable('feat:namedVersions');
+	});
+
+	test('should return 403 when license is disabled', async () => {
+		testServer.license.disable('feat:namedVersions');
+
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id);
+		const response = await authOwnerAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/versions/${version.versionId}`)
+			.send({ name: 'Updated Name' });
+		expect(response.status).toBe(403);
+	});
+
+	test('should return 404 on invalid workflow ID', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id);
+		const response = await authOwnerAgent
+			.patch(`/workflow-history/workflow/badid/versions/${version.versionId}`)
+			.send({ name: 'Updated Name' });
+		expect(response.status).toBe(404);
+	});
+
+	test('should return 404 on invalid version ID', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		await createWorkflowHistoryItem(workflow.id);
+		const response = await authOwnerAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/versions/badid`)
+			.send({ name: 'Updated Name' });
+		expect(response.status).toBe(404);
+	});
+
+	test('should return 404 if not shared with user', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id);
+		const response = await authMemberAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/versions/${version.versionId}`)
+			.send({ name: 'Updated Name' });
+		expect(response.status).toBe(404);
+	});
+
+	test('should return 404 if user does not have update permissions', async () => {
+		const projectService = Container.get(ProjectService);
+		const teamProject = await projectService.createTeamProject(owner, { name: 'Test Project' });
+		await projectService.addUser(teamProject.id, {
+			userId: member.id,
+			role: 'project:viewer',
+		});
+
+		const workflow = await createWorkflow(undefined, teamProject);
+		const version = await createWorkflowHistoryItem(workflow.id);
+
+		const response = await authMemberAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/versions/${version.versionId}`)
+			.send({ name: 'Updated Name' });
+
+		expect(response.status).toBe(404);
+	});
+
+	test('should update name', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id, { name: 'Original Name' });
+		const response = await authOwnerAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/versions/${version.versionId}`)
+			.send({ name: 'Updated Name' });
+		expect(response.status).toBe(200);
+
+		const getResponse = await authOwnerAgent.get(
+			`/workflow-history/workflow/${workflow.id}/version/${version.versionId}`,
+		);
+		expect(getResponse.body.data.name).toBe('Updated Name');
+	});
+
+	test('should update description', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id, {
+			description: 'Original Description',
+		});
+		const response = await authOwnerAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/versions/${version.versionId}`)
+			.send({ description: 'Updated Description' });
+		expect(response.status).toBe(200);
+
+		const getResponse = await authOwnerAgent.get(
+			`/workflow-history/workflow/${workflow.id}/version/${version.versionId}`,
+		);
+		expect(getResponse.body.data.description).toBe('Updated Description');
+	});
+
+	test('should update both name and description', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id, {
+			name: 'Original Name',
+			description: 'Original Description',
+		});
+		const response = await authOwnerAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/versions/${version.versionId}`)
+			.send({ name: 'Updated Name', description: 'Updated Description' });
+		expect(response.status).toBe(200);
+
+		const getResponse = await authOwnerAgent.get(
+			`/workflow-history/workflow/${workflow.id}/version/${version.versionId}`,
+		);
+		expect(getResponse.body.data.name).toBe('Updated Name');
+		expect(getResponse.body.data.description).toBe('Updated Description');
+	});
+
+	test('should allow setting description to null', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id, {
+			description: 'Original Description',
+		});
+		const resp = await authOwnerAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/versions/${version.versionId}`)
+			.send({ description: null });
+		expect(resp.status).toBe(200);
+
+		const getResponse = await authOwnerAgent.get(
+			`/workflow-history/workflow/${workflow.id}/version/${version.versionId}`,
+		);
+		expect(getResponse.body.data.description).toBe(null);
+	});
+
+	test('should not modify other fields', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id, {
+			name: 'Original Name',
+			description: 'Original Description',
+			authors: 'John Doe',
+		});
+		const originalVersionId = version.versionId;
+		const originalCreatedAt = version.createdAt;
+		const originalAuthors = version.authors;
+
+		const response = await authOwnerAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/versions/${version.versionId}`)
+			.send({ name: 'Updated Name' });
+		expect(response.status).toBe(200);
+
+		// Verify other fields remain unchanged
+		const getResponse = await authOwnerAgent.get(
+			`/workflow-history/workflow/${workflow.id}/version/${version.versionId}`,
+		);
+		expect(getResponse.body.data.versionId).toBe(originalVersionId);
+		expect(getResponse.body.data.authors).toBe(originalAuthors);
+		expect(getResponse.body.data.description).toBe('Original Description');
+		expect(getResponse.body.data.createdAt).toBe(originalCreatedAt.toISOString());
+	});
+
+	test('should ignore immutable fields', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const originalNodes: INode[] = [
+			{
+				id: 'node1',
+				name: 'Original Node',
+				parameters: {},
+				position: [0, 0],
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+			},
+		];
+		const originalConnections: IConnections = { node1: {} };
+		const originalAuthors = 'John Doe';
+		const version = await createWorkflowHistoryItem(workflow.id, {
+			name: 'Original Name',
+			authors: originalAuthors,
+			nodes: originalNodes,
+			connections: originalConnections,
+		});
+
+		const response = await authOwnerAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/versions/${version.versionId}`)
+			.send({
+				name: 'Updated Name',
+				authors: 'Malicious Actor',
+				nodes: [{ id: 'fake', name: 'Fake Node' }],
+				connections: { fake: {} },
+			});
+		expect(response.status).toBe(200);
+
+		const getResponse = await authOwnerAgent.get(
+			`/workflow-history/workflow/${workflow.id}/version/${version.versionId}`,
+		);
+		expect(getResponse.body.data.name).toBe('Updated Name');
+		expect(getResponse.body.data.authors).toBe(originalAuthors);
+		expect(getResponse.body.data.nodes).toEqual(originalNodes);
+		expect(getResponse.body.data.connections).toEqual(originalConnections);
 	});
 });

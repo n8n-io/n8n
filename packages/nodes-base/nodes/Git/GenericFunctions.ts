@@ -1,5 +1,6 @@
 import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { ConfigListSummary } from 'simple-git';
 
 /**
  * Validates a git reference to prevent command injection attacks
@@ -39,4 +40,46 @@ export function validateGitReference(reference: string, node: INode): void {
 			'Invalid reference format. Reference cannot contain control characters',
 		);
 	}
+}
+
+const REMOTE_ORIGIN_URL_KEY = 'remote.origin.url';
+
+const REMOTE_ORIGIN_PUSH_URL_KEY = 'remote.origin.pushurl';
+
+function sanitizeUrl(url: string): string {
+	const urlObj = new URL(url);
+	urlObj.username = '';
+	urlObj.password = '';
+	return urlObj.toString();
+}
+
+export function mapGitConfigList(config: ConfigListSummary) {
+	const data = [];
+	for (const fileName of Object.keys(config.values)) {
+		let remoteOriginUrl = config.values[fileName][REMOTE_ORIGIN_URL_KEY];
+		if (remoteOriginUrl) {
+			if (Array.isArray(remoteOriginUrl)) {
+				remoteOriginUrl = remoteOriginUrl.map(sanitizeUrl);
+			} else {
+				remoteOriginUrl = sanitizeUrl(remoteOriginUrl);
+			}
+		}
+
+		let remoteOriginPushUrl = config.values[fileName][REMOTE_ORIGIN_PUSH_URL_KEY];
+		if (remoteOriginPushUrl) {
+			if (Array.isArray(remoteOriginPushUrl)) {
+				remoteOriginPushUrl = remoteOriginPushUrl.map(sanitizeUrl);
+			} else {
+				remoteOriginPushUrl = sanitizeUrl(remoteOriginPushUrl);
+			}
+		}
+
+		data.push({
+			_file: fileName,
+			...config.values[fileName],
+			[REMOTE_ORIGIN_URL_KEY]: remoteOriginUrl,
+			[REMOTE_ORIGIN_PUSH_URL_KEY]: remoteOriginPushUrl,
+		});
+	}
+	return data;
 }

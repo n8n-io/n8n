@@ -1,6 +1,5 @@
 import type { ProjectRelation } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
-import type { DatabaseConfig } from '@n8n/config';
 import {
 	type Project,
 	type ProjectRepository,
@@ -33,7 +32,6 @@ describe('ProjectService', () => {
 		sharedCredentialsRepository,
 		cacheService,
 		mock(),
-		mock<DatabaseConfig>({ type: 'postgresdb' }),
 		moduleRegistry,
 	);
 

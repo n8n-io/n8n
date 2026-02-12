@@ -1,6 +1,6 @@
 {
   "name": "@n8n/codemirror-lang",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Language support package for CodeMirror 6 in n8n",
   "sideEffects": false,
   "license": "MIT",

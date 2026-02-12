@@ -49,6 +49,15 @@ export class ChainLlm implements INodeType {
 		},
 		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+				ai_outputParser: {
+					required: false,
+					displayOptions: { show: { hasOutputParser: [true] } },
+				},
+			},
+		},
 		credentials: [],
 		properties: nodeProperties,
 	};

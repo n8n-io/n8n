@@ -1,10 +1,14 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, Variables } from '@n8n/db';
+import type { IWorkflowSettings } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
-import { getVariables } from '@/workflow-helpers';
-import { shouldRestartParentExecution } from '@/workflow-helpers';
+import {
+	getVariables,
+	removeDefaultValues,
+	shouldRestartParentExecution,
+} from '@/workflow-helpers';
 
 describe('workflow-helpers', () => {
 	beforeAll(() => {
@@ -95,5 +99,85 @@ describe('shouldRestartParentExecution', () => {
 			shouldResume: true,
 		};
 		expect(shouldRestartParentExecution(parentExecution)).toBe(true);
+	});
+});
+
+describe('removeDefaultValues', () => {
+	const DEFAULT_EXECUTION_TIMEOUT = 3600;
+	const DEFAULT = 'DEFAULT';
+
+	it('should remove errorWorkflow when set to DEFAULT', () => {
+		const settings: IWorkflowSettings = {
+			errorWorkflow: DEFAULT,
+			timezone: 'America/New_York',
+		};
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
+		expect(result).toEqual({
+			timezone: 'America/New_York',
+		});
+	});
+
+	it('should remove all keys set to DEFAULT', () => {
+		const settings: IWorkflowSettings = {
+			errorWorkflow: DEFAULT,
+			timezone: DEFAULT,
+			saveDataErrorExecution: DEFAULT,
+			saveDataSuccessExecution: DEFAULT,
+			saveManualExecutions: DEFAULT,
+			saveExecutionProgress: DEFAULT,
+			callerPolicy: 'workflowsFromSameOwner',
+		};
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
+		expect(result).toEqual({
+			callerPolicy: 'workflowsFromSameOwner',
+		});
+	});
+
+	it('should remove executionTimeout when it matches default', () => {
+		const settings: IWorkflowSettings = {
+			executionTimeout: 3600,
+			timezone: 'America/New_York',
+		};
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
+		expect(result).toEqual({
+			timezone: 'America/New_York',
+		});
+	});
+
+	it('should keep executionTimeout when it differs from default', () => {
+		const settings: IWorkflowSettings = {
+			executionTimeout: 7200,
+			timezone: 'America/New_York',
+		};
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
+		expect(result).toEqual({
+			executionTimeout: 7200,
+			timezone: 'America/New_York',
+		});
+	});
+
+	it('should keep non-DEFAULT values', () => {
+		const settings: IWorkflowSettings = {
+			errorWorkflow: 'some-workflow-id',
+			timezone: 'America/New_York',
+			saveDataErrorExecution: 'all',
+		};
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
+		expect(result).toEqual({
+			errorWorkflow: 'some-workflow-id',
+			timezone: 'America/New_York',
+			saveDataErrorExecution: 'all',
+		});
+	});
+
+	it('should not mutate the original settings object', () => {
+		const settings = {
+			errorWorkflow: DEFAULT,
+			timezone: 'America/New_York',
+			executionTimeout: 3600,
+		};
+		const originalSettings = { ...settings };
+		removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
+		expect(settings).toEqual(originalSettings);
 	});
 });

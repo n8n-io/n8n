@@ -39,7 +39,10 @@ export class CredentialModal extends BaseModal {
 	}
 
 	async fillField(key: string, value: string): Promise<void> {
-		const input = this.root.getByTestId(`parameter-input-${key}`).locator('input, textarea');
+		const parameterInput = this.root.getByTestId(`parameter-input-${key}`);
+		const input = parameterInput.locator('input, textarea');
+		// Wait for input to be visible before filling
+		await input.waitFor({ state: 'visible', timeout: 10000 });
 		await input.fill(value);
 		await expect(input).toHaveValue(value);
 	}
@@ -139,6 +142,13 @@ export class CredentialModal extends BaseModal {
 	}
 
 	/**
+	 * Get a specific credential field input
+	 */
+	getFieldInput(key: string): Locator {
+		return this.root.getByTestId(`parameter-input-${key}`).locator('input, textarea');
+	}
+
+	/**
 	 * Get the users select dropdown in the Sharing tab
 	 */
 	getUsersSelect(): Locator {
@@ -154,11 +164,23 @@ export class CredentialModal extends BaseModal {
 
 	/**
 	 * Add a user to credential sharing
-	 * @param email - User email to share with
+	 * @param emailOrName - User email or name to share with
 	 */
-	async addUserToSharing(email: string): Promise<void> {
+	async addUserToSharing(emailOrName: string): Promise<void> {
 		await this.getUsersSelect().click();
-		await this.getVisibleDropdown().getByText(email.toLowerCase(), { exact: false }).click();
+		const dropdown = this.getVisibleDropdown();
+		// Wait for dropdown content to load
+		await dropdown.locator('.el-select-dropdown__item').first().waitFor({ state: 'visible' });
+
+		// Try to find by email or name (personal projects now show "Personal space" instead of email)
+		const byEmail = dropdown.getByText(emailOrName.toLowerCase(), { exact: false });
+		if ((await byEmail.count()) > 0) {
+			await byEmail.click();
+		} else {
+			// For personal projects, try matching by name part of email
+			const namePart = emailOrName.split('@')[0].replace(/[.-]/g, ' ');
+			await dropdown.getByText(new RegExp(namePart, 'i')).first().click();
+		}
 	}
 
 	/**

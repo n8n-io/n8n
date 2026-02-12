@@ -222,6 +222,19 @@
 	--button--color--text--highlight--disabled: var(--color--neutral-600);
 	--button--border-color--highlight--disabled: transparent;
 
+	// Button highlight-fill
+	--button--color--text--highlight-fill: var(--color--text--shade-1);
+	--button--border-color--highlight-fill: transparent;
+	--button--color--background--highlight-fill: var(--color--background);
+	--button--color--text--highlight-fill--hover-active-focus: var(--color--primary);
+	--button--border-color--highlight-fill--hover-active-focus: transparent;
+	--button--color--background--highlight-fill--hover: var(--color--background);
+	--button--color--background--highlight-fill--active-focus: var(--color--background);
+	--button--outline-color--highlight-fill--focus: var(--color--neutral-700);
+	--button--color--text--highlight-fill--disabled: var(--color--neutral-600);
+	--button--border-color--highlight-fill--disabled: transparent;
+	--button--color--background--highlight-fill--disabled: var(--color--background);
+
 	// Button success, warning, danger
 	--button--color--text--danger: var(--color--neutral-white);
 	--button--border-color--danger: transparent;

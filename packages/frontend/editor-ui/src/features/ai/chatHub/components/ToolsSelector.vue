@@ -53,6 +53,7 @@ onMounted(async () => {
 			:class="[$style.toolsButton, { [$style.transparentBg]: transparentBg }]"
 			:disabled="disabled"
 			:icon="toolCount > 0 ? undefined : 'plus'"
+			data-test-id="chat-tools-button"
 			@click="emit('click', $event)"
 		>
 			<span v-if="toolCount" :class="$style.iconStack">

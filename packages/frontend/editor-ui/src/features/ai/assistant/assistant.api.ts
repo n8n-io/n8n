@@ -101,6 +101,7 @@ export async function claimFreeAiCredits(
 export async function getAiSessions(
 	ctx: IRestApiContext,
 	workflowId?: string,
+	codeBuilder?: boolean,
 ): Promise<{
 	sessions: Array<{
 		sessionId: string;
@@ -110,20 +111,9 @@ export async function getAiSessions(
 }> {
 	const body: IDataObject = {
 		workflowId,
+		codeBuilder,
 	};
 	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions', body);
-}
-
-export async function getSessionsMetadata(
-	ctx: IRestApiContext,
-	workflowId?: string,
-): Promise<{
-	hasMessages: boolean;
-}> {
-	const body: IDataObject = {
-		workflowId,
-	};
-	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions/metadata', body);
 }
 
 export async function getBuilderCredits(ctx: IRestApiContext): Promise<{
@@ -137,9 +127,11 @@ export async function truncateBuilderMessages(
 	ctx: IRestApiContext,
 	workflowId: string,
 	messageId: string,
+	codeBuilder?: boolean,
 ): Promise<{ success: boolean }> {
 	return await makeRestApiRequest(ctx, 'POST', '/ai/build/truncate-messages', {
 		workflowId,
 		messageId,
+		codeBuilder,
 	});
 }

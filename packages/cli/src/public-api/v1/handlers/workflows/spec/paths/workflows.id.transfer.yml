@@ -3,8 +3,8 @@ put:
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
     - Workflow
-  summary: Transfer a workflow to another project.
-  description: Transfer a workflow to another project.
+  summary: Transfer a workflow to another project
+  description: Transfer a workflow to another project
   parameters:
     - $ref: '../schemas/parameters/workflowId.yml'
   requestBody:

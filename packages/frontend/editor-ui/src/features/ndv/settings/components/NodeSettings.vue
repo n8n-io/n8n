@@ -45,6 +45,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import {
@@ -60,6 +61,8 @@ import { useResizeObserver } from '@vueuse/core';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
+import QuickConnectBanner from '@/features/integrations/quickConnect/components/QuickConnectBanner.vue';
+import { useQuickConnect } from '@/features/integrations/quickConnect/composables/useQuickConnect';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
@@ -121,6 +124,7 @@ const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const workflowState = injectWorkflowState();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
@@ -156,7 +160,7 @@ const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
 const { isPreviewMode } = useSettingsStore();
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
 const currentWorkflow = computed(
-	() => workflowsStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
+	() => workflowsListStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(
@@ -241,6 +245,24 @@ const isDisplayingCredentials = computed(
 			.getCredentialTypesNodeDescriptions('', nodeType.value)
 			.filter((credentialTypeDescription) => displayCredentials(credentialTypeDescription)).length >
 		0,
+);
+
+const displayedCredentialTypes = computed(() =>
+	credentialsStore
+		.getCredentialTypesNodeDescriptions('', nodeType.value)
+		.filter((credentialTypeDescription) => displayCredentials(credentialTypeDescription))
+		.map((desc) => desc.name),
+);
+
+const quickConnect = useQuickConnect({ credentialTypes: displayedCredentialTypes });
+
+const showQuickConnectBanner = computed(
+	() =>
+		quickConnect.value &&
+		!areAllCredentialsSet.value &&
+		!isReadOnly.value &&
+		!isDemoPreview.value &&
+		!props.isEmbeddedInCanvas,
 );
 
 const showNoParametersNotice = computed(
@@ -733,6 +755,11 @@ function handleSelectAction(params: INodeParameters) {
 					@activate="onWorkflowActivate"
 					@parameter-blur="onParameterBlur"
 				>
+					<QuickConnectBanner
+						v-if="showQuickConnectBanner"
+						:text="quickConnect?.text ?? ''"
+						:class="$style.quickConnectBanner"
+					/>
 					<NodeCredentials
 						v-if="!isEmbeddedInCanvas && !isDemoPreview"
 						:node="node"
@@ -854,6 +881,10 @@ function handleSelectAction(params: INodeParameters) {
 		font-weight: var(--font-weight--bold);
 		color: var(--color--text--tint-1);
 	}
+}
+
+.quickConnectBanner {
+	margin-top: var(--spacing--sm);
 }
 
 .uiBlockerNdvV2 {

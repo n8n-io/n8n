@@ -2,6 +2,7 @@ import type {
 	LoginRequestDto,
 	PasswordUpdateRequestDto,
 	SettingsUpdateRequestDto,
+	UserSelfSettingsUpdateRequestDto,
 	UsersListFilterDto,
 	UserUpdateRequestDto,
 	Role,
@@ -115,7 +116,7 @@ export async function setupOwner(
 
 export async function validateSignupToken(
 	context: IRestApiContext,
-	params: { inviterId: string; inviteeId: string },
+	params: { token?: string } | { inviterId?: string; inviteeId?: string },
 ): Promise<{ inviter: { firstName: string; lastName: string } }> {
 	return await makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
 }
@@ -169,7 +170,7 @@ export async function updateCurrentUser(
 
 export async function updateCurrentUserSettings(
 	context: IRestApiContext,
-	settings: SettingsUpdateRequestDto,
+	settings: UserSelfSettingsUpdateRequestDto,
 ): Promise<IUserSettings> {
 	return await makeRestApiRequest(context, 'PATCH', '/me/settings', settings);
 }

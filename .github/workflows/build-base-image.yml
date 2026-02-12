@@ -6,9 +6,11 @@ on:
       - master
     paths:
       - 'docker/images/n8n-base/Dockerfile'
+      - '.github/workflows/build-base-image.yml'
   pull_request:
     paths:
       - 'docker/images/n8n-base/Dockerfile'
+      - '.github/workflows/build-base-image.yml'
   workflow_dispatch:
     inputs:
       push:
@@ -22,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node_version: ['20', '22.21.1', '24']
+        node_version: ['20', '22.22.0', '24']
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 

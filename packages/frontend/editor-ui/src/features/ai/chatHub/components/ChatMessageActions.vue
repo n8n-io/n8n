@@ -8,6 +8,7 @@ import { N8nIconButton, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system'
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { isEditable, isRegenerable } from '../chat.utils';
 
 const i18n = useI18n();
 const router = useRouter();
@@ -31,6 +32,8 @@ const currentAlternativeIndex = computed(() => {
 	return message.alternatives.findIndex((id) => id === message.id);
 });
 
+const text = computed(() => message.content.map((c) => c.content).join('\n\n'));
+
 const executionUrl = computed(() => {
 	if (
 		workflowsStore.canViewWorkflows &&
@@ -46,6 +49,9 @@ const executionUrl = computed(() => {
 	return undefined;
 });
 
+const canEdit = computed(() => isEditable(message));
+const canRegenerate = computed(() => isRegenerable(message));
+
 function handleEdit() {
 	emit('edit');
 }
@@ -60,8 +66,8 @@ function handleReadAloud() {
 </script>
 
 <template>
-	<div :class="$style.actions">
-		<CopyButton :content="message.content" data-test-id="chat-message-copy" />
+	<div :class="$style.actions" data-test-id="chat-message-actions">
+		<CopyButton :content="text" data-test-id="chat-message-copy" />
 		<N8nTooltip
 			v-if="isSpeechSynthesisAvailable && message.type === 'ai'"
 			placement="bottom"
@@ -80,7 +86,7 @@ function handleReadAloud() {
 					: i18n.baseText('chatHub.message.actions.readAloud')
 			}}</template>
 		</N8nTooltip>
-		<N8nTooltip v-if="message.status === 'success'" placement="bottom" :show-after="300">
+		<N8nTooltip v-if="canEdit" placement="bottom" :show-after="300">
 			<N8nIconButton
 				icon="pen"
 				type="tertiary"
@@ -92,7 +98,7 @@ function handleReadAloud() {
 			/>
 			<template #content>{{ i18n.baseText('chatHub.message.actions.edit') }}</template>
 		</N8nTooltip>
-		<N8nTooltip v-if="message.type === 'ai'" placement="bottom" :show-after="300">
+		<N8nTooltip v-if="canRegenerate" placement="bottom" :show-after="300">
 			<N8nIconButton
 				icon="refresh-cw"
 				type="tertiary"

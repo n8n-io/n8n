@@ -228,6 +228,8 @@ describe('SettingsSourceControl', () => {
 				['http://github.com/user/repository', false],
 				['https://github.com/user/repository', false],
 				['git@gitlab.com:something.net/n8n.git', true],
+				// Test cases for usernames containing dots
+				['user.name@github.com:user/repository.git', true],
 			])('%s', async (url: string, isValid: boolean) => {
 				await nextTick();
 				const { container, queryByText } = renderComponent({

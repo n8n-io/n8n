@@ -1,6 +1,4 @@
-import InfisicalClient from 'infisical-node';
-import { getServiceTokenData } from 'infisical-node/lib/api/serviceTokenData';
-import { populateClientWorkspaceConfigsHelper } from 'infisical-node/lib/helpers/key';
+import type InfisicalClient from 'infisical-node';
 import { UnexpectedError, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
 import { EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
@@ -97,7 +95,8 @@ export class InfisicalProvider extends SecretsProvider {
 	}
 
 	protected async doConnect(): Promise<void> {
-		this.client = new InfisicalClient(this.settings);
+		const { default: InfisicalClientClass } = await import('infisical-node');
+		this.client = new InfisicalClientClass(this.settings);
 
 		const [testSuccess] = await this.test();
 		if (!testSuccess) {
@@ -108,6 +107,7 @@ export class InfisicalProvider extends SecretsProvider {
 	}
 
 	async getEnvironment(): Promise<string> {
+		const { getServiceTokenData } = await import('infisical-node/lib/api/serviceTokenData');
 		const serviceTokenData = (await getServiceTokenData(
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			this.client.clientConfig,
@@ -126,6 +126,9 @@ export class InfisicalProvider extends SecretsProvider {
 			return [false, 'Client not initialized'];
 		}
 		try {
+			const { populateClientWorkspaceConfigsHelper } = await import(
+				'infisical-node/lib/helpers/key'
+			);
 			await populateClientWorkspaceConfigsHelper(this.client.clientConfig);
 			return [true];
 		} catch (e) {

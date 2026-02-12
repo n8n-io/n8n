@@ -158,9 +158,10 @@ describe('LogStreamingEventRelay', () => {
 				workflow: mock<IWorkflowDb>({
 					id: 'wf789',
 					name: 'Deactivated Workflow',
-					activeVersionId: 'version-xyz-789',
+					activeVersionId: null,
 				}),
 				publicApi: false,
+				deactivatedVersionId: 'version-xyz-789',
 			};
 
 			eventService.emit('workflow-deactivated', event);
@@ -175,7 +176,42 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'user',
 					workflowId: 'wf789',
 					workflowName: 'Deactivated Workflow',
-					activeVersionId: 'version-xyz-789',
+					deactivatedVersionId: 'version-xyz-789',
+				},
+			});
+		});
+
+		it('should log on `workflow-version-updated` event', () => {
+			const event: RelayEventMap['workflow-version-updated'] = {
+				user: {
+					id: '789',
+					email: 'john@n8n.io',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: 'admin' },
+				},
+				workflowId: 'wf-version-123',
+				workflowName: 'Version Test Workflow',
+				versionId: 'v-001',
+				versionName: 'Production Release',
+				versionDescription: 'Initial production release with all features',
+			};
+
+			eventService.emit('workflow-version-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.version.updated',
+				payload: {
+					userId: '789',
+					_email: 'john@n8n.io',
+					_firstName: 'John',
+					_lastName: 'Doe',
+					globalRole: 'admin',
+					workflowId: 'wf-version-123',
+					workflowName: 'Version Test Workflow',
+					versionId: 'v-001',
+					versionName: 'Production Release',
+					versionDescription: 'Initial production release with all features',
 				},
 			});
 		});
@@ -1732,6 +1768,169 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log on `workflow-executed` event for webhook execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
+				workflowId: 'wf-webhook',
+				workflowName: 'Webhook Test Workflow',
+				executionId: 'exec-webhook-123',
+				source: 'webhook',
+			};
+
+			eventService.emit('workflow-executed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.executed',
+				payload: {
+					workflowId: 'wf-webhook',
+					workflowName: 'Webhook Test Workflow',
+					executionId: 'exec-webhook-123',
+					source: 'webhook',
+				},
+			});
+		});
+
+		it('should log on `workflow-executed` event for trigger execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
+				workflowId: 'wf-trigger',
+				workflowName: 'Trigger Test Workflow',
+				executionId: 'exec-trigger-123',
+				source: 'trigger',
+			};
+
+			eventService.emit('workflow-executed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.executed',
+				payload: {
+					workflowId: 'wf-trigger',
+					workflowName: 'Trigger Test Workflow',
+					executionId: 'exec-trigger-123',
+					source: 'trigger',
+				},
+			});
+		});
+
+		it('should log on `workflow-executed` event for error workflow execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
+				workflowId: 'wf-error',
+				workflowName: 'Error Test Workflow',
+				executionId: 'exec-error-123',
+				source: 'error',
+			};
+
+			eventService.emit('workflow-executed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.executed',
+				payload: {
+					workflowId: 'wf-error',
+					workflowName: 'Error Test Workflow',
+					executionId: 'exec-error-123',
+					source: 'error',
+				},
+			});
+		});
+
+		it('should log on `workflow-executed` event for CLI execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
+				user: {
+					id: 'user-cli',
+				},
+				workflowId: 'wf-cli',
+				workflowName: 'CLI Test Workflow',
+				executionId: 'exec-cli-123',
+				source: 'cli',
+			};
+
+			eventService.emit('workflow-executed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.executed',
+				payload: {
+					userId: 'user-cli',
+					workflowId: 'wf-cli',
+					workflowName: 'CLI Test Workflow',
+					executionId: 'exec-cli-123',
+					source: 'cli',
+				},
+			});
+		});
+
+		it('should log on `workflow-executed` event for integrated/subworkflow execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
+				user: {
+					id: 'user-integrated',
+				},
+				workflowId: 'wf-integrated',
+				workflowName: 'Integrated Test Workflow',
+				executionId: 'exec-integrated-123',
+				source: 'integrated',
+			};
+
+			eventService.emit('workflow-executed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.executed',
+				payload: {
+					userId: 'user-integrated',
+					workflowId: 'wf-integrated',
+					workflowName: 'Integrated Test Workflow',
+					executionId: 'exec-integrated-123',
+					source: 'integrated',
+				},
+			});
+		});
+
+		it('should log on `workflow-executed` event for evaluation execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
+				user: {
+					id: 'user-eval',
+				},
+				workflowId: 'wf-evaluation',
+				workflowName: 'Evaluation Test Workflow',
+				executionId: 'exec-evaluation-123',
+				source: 'evaluation',
+			};
+
+			eventService.emit('workflow-executed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.executed',
+				payload: {
+					userId: 'user-eval',
+					workflowId: 'wf-evaluation',
+					workflowName: 'Evaluation Test Workflow',
+					executionId: 'exec-evaluation-123',
+					source: 'evaluation',
+				},
+			});
+		});
+
+		it('should log on `workflow-executed` event for chat execution', () => {
+			const event: RelayEventMap['workflow-executed'] = {
+				user: {
+					id: 'user-chat',
+				},
+				workflowId: 'wf-chat',
+				workflowName: 'Chat Test Workflow',
+				executionId: 'exec-chat-123',
+				source: 'chat',
+			};
+
+			eventService.emit('workflow-executed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.executed',
+				payload: {
+					userId: 'user-chat',
+					workflowId: 'wf-chat',
+					workflowName: 'Chat Test Workflow',
+					executionId: 'exec-chat-123',
+					source: 'chat',
+				},
+			});
+		});
 	});
 
 	describe('AI events', () => {
@@ -2092,6 +2291,170 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-2',
 					hostId,
 					jobId: 'job-4',
+				},
+			});
+		});
+	});
+
+	describe('instance policies events', () => {
+		it('should log `personal-publishing-restricted.enabled` when workflow_publishing is disabled', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user123',
+					email: 'admin@example.com',
+					firstName: 'Admin',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'workflow_publishing',
+				value: false,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.personal-publishing-restricted.enabled',
+				payload: {
+					userId: 'user123',
+					_email: 'admin@example.com',
+					_firstName: 'Admin',
+					_lastName: 'User',
+					globalRole: 'global:owner',
+				},
+			});
+		});
+
+		it('should log `personal-publishing-restricted.disabled` when workflow_publishing is enabled', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user456',
+					email: 'admin2@example.com',
+					firstName: 'Another',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				},
+				settingName: 'workflow_publishing',
+				value: true,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.personal-publishing-restricted.disabled',
+				payload: {
+					userId: 'user456',
+					_email: 'admin2@example.com',
+					_firstName: 'Another',
+					_lastName: 'Admin',
+					globalRole: 'global:admin',
+				},
+			});
+		});
+
+		it('should log `personal-sharing-restricted.enabled` when workflow_sharing is disabled', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user789',
+					email: 'admin3@example.com',
+					firstName: 'Third',
+					lastName: 'Admin',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'workflow_sharing',
+				value: false,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.personal-sharing-restricted.enabled',
+				payload: {
+					userId: 'user789',
+					_email: 'admin3@example.com',
+					_firstName: 'Third',
+					_lastName: 'Admin',
+					globalRole: 'global:owner',
+				},
+			});
+		});
+
+		it('should log `personal-sharing-restricted.disabled` when workflow_sharing is enabled', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user101',
+					email: 'admin4@example.com',
+					firstName: 'Fourth',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				},
+				settingName: 'workflow_sharing',
+				value: true,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.personal-sharing-restricted.disabled',
+				payload: {
+					userId: 'user101',
+					_email: 'admin4@example.com',
+					_firstName: 'Fourth',
+					_lastName: 'Admin',
+					globalRole: 'global:admin',
+				},
+			});
+		});
+
+		it('should log `2fa-enforcement.enabled` when 2fa_enforcement is enabled', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user202',
+					email: 'admin5@example.com',
+					firstName: 'Fifth',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				},
+				settingName: '2fa_enforcement',
+				value: true,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.2fa-enforcement.enabled',
+				payload: {
+					userId: 'user202',
+					_email: 'admin5@example.com',
+					_firstName: 'Fifth',
+					_lastName: 'Admin',
+					globalRole: 'global:admin',
+				},
+			});
+		});
+
+		it('should log `2fa-enforcement.disabled` when 2fa_enforcement is disabled', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user303',
+					email: 'admin6@example.com',
+					firstName: 'Sixth',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				},
+				settingName: '2fa_enforcement',
+				value: false,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.2fa-enforcement.disabled',
+				payload: {
+					userId: 'user303',
+					_email: 'admin6@example.com',
+					_firstName: 'Sixth',
+					_lastName: 'Admin',
+					globalRole: 'global:admin',
 				},
 			});
 		});

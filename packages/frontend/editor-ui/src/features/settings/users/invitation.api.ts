@@ -5,8 +5,9 @@ import type { IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 type AcceptInvitationParams = {
-	inviterId: string;
-	inviteeId: string;
+	token?: string;
+	inviterId?: string;
+	inviteeId?: string;
 	firstName: string;
 	lastName: string;
 	password: string;
@@ -20,11 +21,26 @@ export async function inviteUsers(
 }
 
 export async function acceptInvitation(context: IRestApiContext, params: AcceptInvitationParams) {
+	// Use new /accept endpoint for token-based invitations
+	if (params.token) {
+		return await makeRestApiRequest<CurrentUserResponse>(
+			context,
+			'POST',
+			'/invitations/accept',
+			params as unknown as IDataObject,
+		);
+	}
+
+	// Use legacy /:id/accept endpoint for inviterId/inviteeId-based invitations
+	if (!params.inviteeId) {
+		throw new Error('inviteeId is required when not using token');
+	}
+
 	const { inviteeId, ...props } = params;
 	return await makeRestApiRequest<CurrentUserResponse>(
 		context,
 		'POST',
-		`/invitations/${params.inviteeId}/accept`,
+		`/invitations/${inviteeId}/accept`,
 		props as unknown as IDataObject,
 	);
 }

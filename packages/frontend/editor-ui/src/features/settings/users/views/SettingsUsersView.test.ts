@@ -160,16 +160,12 @@ describe('SettingsUsersView', () => {
 			.mockResolvedValue({ link: 'https://example.com/reset/123' });
 		usersStore.updateOtherUserSettings = vi.fn().mockResolvedValue(undefined);
 		usersStore.updateGlobalRole = vi.fn().mockResolvedValue(undefined);
-		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
 		usersStore.generateInviteLink = vi
 			.fn()
 			.mockResolvedValue({ link: 'https://example.com/signup?token=generated-token' });
 
 		settingsStore.isSmtpSetup = true;
-		settingsStore.isMFAEnforced = false;
-		settingsStore.settings.enterprise = {
-			mfaEnforcement: true,
-		} as FrontendSettings['enterprise'];
+		settingsStore.settings.enterprise = {} as FrontendSettings['enterprise'];
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.AdvancedPermissions] = true;
 		ssoStore.isSamlLoginEnabled = false;
 	});
@@ -179,42 +175,6 @@ describe('SettingsUsersView', () => {
 		// Reset mock implementation to default (feature flag disabled)
 		mockIsVariantEnabled.mockReset();
 		mockIsVariantEnabled.mockReturnValue(false);
-	});
-
-	it('should turn enforcing mfa on', async () => {
-		const { getByTestId } = renderComponent();
-
-		const actionSwitch = getByTestId('enable-force-mfa');
-		expect(actionSwitch).toBeInTheDocument();
-
-		await userEvent.click(actionSwitch);
-
-		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(true);
-	});
-
-	it('should turn enforcing mfa off', async () => {
-		settingsStore.isMFAEnforced = true;
-		const { getByTestId } = renderComponent();
-
-		const actionSwitch = getByTestId('enable-force-mfa');
-		expect(actionSwitch).toBeInTheDocument();
-
-		await userEvent.click(actionSwitch);
-
-		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(false);
-	});
-
-	it('should handle MFA enforcement error', async () => {
-		usersStore.updateEnforceMfa = vi.fn().mockRejectedValue(new Error('MFA update failed'));
-
-		const { getByTestId } = renderComponent();
-
-		const actionSwitch = getByTestId('enable-force-mfa');
-		await userEvent.click(actionSwitch);
-
-		await waitFor(() => {
-			expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
-		});
 	});
 
 	it('should handle missing user settings in SSO actions', async () => {
@@ -725,6 +685,33 @@ describe('SettingsUsersView', () => {
 			spy.mockRestore();
 		});
 
+		it('should hide generate invite link action when user has already accepted invite', () => {
+			mockIsVariantEnabled.mockImplementation(
+				(experiment: string, variant: string) =>
+					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
+					variant === TAMPER_PROOF_INVITE_LINKS.variant,
+			);
+
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
+					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
+						return true;
+					}
+					return false;
+				});
+
+			// Set user with firstName (already accepted)
+			usersStore.usersList.state.items[2].firstName = 'John';
+
+			renderComponent();
+
+			// Generate invite link should not be in the actions list when user has accepted
+			expect(screen.queryByTestId('action-generateInviteLink-3')).not.toBeInTheDocument();
+
+			spy.mockRestore();
+		});
+
 		it('should handle copy password reset link error', async () => {
 			usersStore.getUserPasswordResetLink = vi
 				.fn()
@@ -794,6 +781,16 @@ describe('SettingsUsersView', () => {
 					title: expect.any(String),
 					message: expect.any(String),
 				});
+			});
+		});
+
+		it('should refresh the users list after a successful role update', async () => {
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:role', { role: ROLE.Admin, userId: '2' });
+
+			await waitFor(() => {
+				expect(usersStore.usersList.execute).toHaveBeenCalled();
 			});
 		});
 
@@ -1075,33 +1072,6 @@ describe('SettingsUsersView', () => {
 				filter: {
 					fullText: '',
 				},
-			});
-		});
-
-		it('should handle MFA enforcement with partial success', async () => {
-			let callCount = 0;
-			usersStore.updateEnforceMfa = vi.fn().mockImplementation(async () => {
-				callCount++;
-				if (callCount === 1) {
-					throw Error('First attempt failed');
-				}
-				return await Promise.resolve();
-			});
-
-			const { getByTestId } = renderComponent();
-
-			const actionSwitch = getByTestId('enable-force-mfa');
-			await userEvent.click(actionSwitch);
-
-			await waitFor(() => {
-				expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
-			});
-
-			// Try again
-			await userEvent.click(actionSwitch);
-
-			await waitFor(() => {
-				expect(usersStore.updateEnforceMfa).toHaveBeenCalledTimes(2);
 			});
 		});
 

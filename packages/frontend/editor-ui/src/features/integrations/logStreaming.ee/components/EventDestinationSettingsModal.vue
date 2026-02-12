@@ -323,7 +323,7 @@ async function removeThis() {
 	} else {
 		callEventBus('remove', destination.id);
 		uiStore.closeModal(LOG_STREAM_MODAL_KEY);
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 	}
 }
 
@@ -336,7 +336,7 @@ function onModalClose() {
 	}
 	ndvStore.unsetActiveNodeName();
 	callEventBus('closing', destination.id);
-	uiStore.stateIsDirty = false;
+	uiStore.markStateClean();
 }
 
 async function saveDestination() {
@@ -349,7 +349,7 @@ async function saveDestination() {
 		testMessageSent.value = false;
 		unchanged.value = true;
 		callEventBus('destinationWasSaved', destination.id);
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 
 		const destinationType = (
 			nodeParameters.value.__type && typeof nodeParameters.value.__type !== 'object'

@@ -1,6 +1,7 @@
 import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 import {
 	computeTimelineEntries,
+	generateVersionName,
 	type TimelineGroupHeader,
 	type TimelineVersionEntry,
 } from './utils';
@@ -180,5 +181,35 @@ describe('computeTimelineEntries', () => {
 
 		expect(versionEntry.item).toBe(items[0]);
 		expect(groupHeader.versions[0].item).toBe(items[1]);
+	});
+});
+
+describe('generateVersionName', () => {
+	it('should generate version name with first 8 characters of versionId', () => {
+		const versionId = '12345678abcdef';
+		const result = generateVersionName(versionId);
+
+		expect(result).toBe('Version 12345678');
+	});
+
+	it('should handle versionId shorter than 8 characters', () => {
+		const versionId = 'abc123';
+		const result = generateVersionName(versionId);
+
+		expect(result).toBe('Version abc123');
+	});
+
+	it('should handle versionId exactly 8 characters', () => {
+		const versionId = '12345678';
+		const result = generateVersionName(versionId);
+
+		expect(result).toBe('Version 12345678');
+	});
+
+	it('should truncate versionId longer than 8 characters', () => {
+		const versionId = '123456789abcdefghijklmnop';
+		const result = generateVersionName(versionId);
+
+		expect(result).toBe('Version 12345678');
 	});
 });

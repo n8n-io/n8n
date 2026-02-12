@@ -29,6 +29,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	CredentialInformation,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import type { IUpdateInformation } from '@/Interface';
 import CredentialInputs from '@/features/credentials/components/CredentialEdit/CredentialInputs.vue';
 
@@ -52,9 +53,17 @@ const isSaving = ref(false);
 const resolverName = ref('');
 const resolverType = ref('');
 const resolverConfig = ref<Record<string, unknown>>({});
+const clearCredentials = ref<boolean | null>(null);
 const hasUnsavedChanges = ref(false);
 const errorMessage = ref<string>('');
 const mainContentRef = ref<HTMLElement>();
+
+// Store original values to detect non-name changes
+const originalResolverName = ref('');
+const originalResolverType = ref('');
+const originalResolverConfig = ref<Record<string, unknown>>({});
+// Track if user has ever made a non-name change (stays true even if reverted)
+const hasEverMadeNonNameChange = ref(false);
 
 const {
 	resolverTypes: availableTypes,
@@ -159,8 +168,29 @@ const requiredPropertiesFilled = computed(() => {
 	return true;
 });
 
+// Check if non-name fields have changed
+const hasNonNameChanges = computed(() => {
+	if (!isEditMode.value) return false;
+
+	const typeChanged = originalResolverType.value !== resolverType.value;
+	const configChanged =
+		JSON.stringify(originalResolverConfig.value) !== JSON.stringify(resolverConfig.value);
+
+	// Update the flag if there's a current change
+	if (typeChanged || configChanged) {
+		hasEverMadeNonNameChange.value = true;
+	}
+
+	// Show dropdown if user has ever made a non-name change
+	return hasEverMadeNonNameChange.value;
+});
+
 const canSave = computed(() => {
-	return resolverName.value.trim() !== '' && resolverType.value !== '';
+	const baseCheck = resolverName.value.trim() !== '' && resolverType.value !== '';
+	if (isEditMode.value && hasNonNameChanges.value) {
+		return baseCheck && clearCredentials.value !== null;
+	}
+	return baseCheck;
 });
 
 const sidebarItems = computed<IMenuItem[]>(() => [
@@ -184,6 +214,15 @@ const loadResolver = async () => {
 		resolverName.value = resolver.name;
 		resolverType.value = resolver.type;
 		resolverConfig.value = resolver.decryptedConfig || {};
+
+		// Store original values for change detection
+		originalResolverName.value = resolver.name;
+		originalResolverType.value = resolver.type;
+		originalResolverConfig.value = deepCopy(resolver.decryptedConfig || {});
+
+		// Reset the flag when loading a resolver
+		hasEverMadeNonNameChange.value = false;
+		clearCredentials.value = null;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('credentialResolverEdit.error.save'));
 	}
@@ -208,12 +247,33 @@ const save = async () => {
 		return;
 	}
 
+	if (isEditMode.value && hasNonNameChanges.value && clearCredentials.value === null) {
+		errorMessage.value = i18n.baseText('credentialResolverEdit.clearCredentials.error.required');
+		isSaving.value = false;
+		return;
+	}
+
 	try {
-		const payload = {
+		const payload: {
+			name: string;
+			type: string;
+			config: Record<string, unknown>;
+			clearCredentials?: boolean;
+		} = {
 			name: resolverName.value.trim(),
 			type: resolverType.value,
 			config: resolverConfig.value,
 		};
+
+		// Include clearCredentials if non-name fields changed, otherwise default to false
+		if (isEditMode.value) {
+			if (hasNonNameChanges.value && clearCredentials.value !== null) {
+				payload.clearCredentials = clearCredentials.value;
+			} else if (!hasNonNameChanges.value) {
+				// Only name changed, default to false
+				payload.clearCredentials = false;
+			}
+		}
 
 		let savedResolver: CredentialResolver;
 		if (isEditMode.value && props.data?.resolverId) {
@@ -255,6 +315,10 @@ const onConfigUpdate = (updateData: IUpdateInformation) => {
 	};
 	hasUnsavedChanges.value = true;
 	errorMessage.value = '';
+	// Reset clearCredentials when config changes to force user to make a choice
+	if (isEditMode.value) {
+		clearCredentials.value = null;
+	}
 };
 
 const onNameEdit = (newName: string) => {
@@ -299,6 +363,7 @@ onMounted(async () => {
 	} else {
 		// Set default name for new resolvers
 		resolverName.value = i18n.baseText('credentialResolverEdit.defaultName');
+		clearCredentials.value = null;
 	}
 	isLoading.value = false;
 });
@@ -374,6 +439,43 @@ onMounted(async () => {
 						{{ errorMessage }}
 					</N8nCallout>
 
+					<div v-if="isEditMode && hasNonNameChanges" :class="$style.formGroup">
+						<label :class="$style.label">
+							{{ i18n.baseText('credentialResolverEdit.clearCredentials.label') }}
+						</label>
+						<N8nSelect
+							v-model="clearCredentials"
+							:placeholder="i18n.baseText('credentialResolverEdit.clearCredentials.placeholder')"
+							data-test-id="credential-resolver-clear-credentials-select"
+							@update:model-value="
+								() => {
+									hasUnsavedChanges = true;
+									errorMessage = '';
+								}
+							"
+						>
+							<N8nOption
+								:label="i18n.baseText('credentialResolverEdit.clearCredentials.yes')"
+								:value="true"
+							>
+							</N8nOption>
+							<N8nOption
+								:label="i18n.baseText('credentialResolverEdit.clearCredentials.no')"
+								:value="false"
+							>
+							</N8nOption>
+						</N8nSelect>
+					</div>
+
+					<N8nCallout
+						v-if="isEditMode && hasNonNameChanges"
+						theme="warning"
+						:class="$style.warningAlert"
+						data-test-id="credential-resolver-clear-credentials-warning"
+					>
+						{{ i18n.baseText('credentialResolverEdit.clearCredentials.warning') }}
+					</N8nCallout>
+
 					<div :class="$style.formGroup">
 						<label :class="$style.label">
 							{{ i18n.baseText('credentialResolverEdit.type.label') }}
@@ -386,6 +488,7 @@ onMounted(async () => {
 								() => {
 									hasUnsavedChanges = true;
 									errorMessage = '';
+									clearCredentials = null;
 								}
 							"
 						>
@@ -521,6 +624,10 @@ onMounted(async () => {
 }
 
 .errorAlert {
+	margin-bottom: var(--spacing--md);
+}
+
+.warningAlert {
 	margin-bottom: var(--spacing--md);
 }
 </style>

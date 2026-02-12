@@ -31,28 +31,30 @@ test.describe('Inline expression editor', () => {
 			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toBeHidden();
 		});
 
-		// eslint-disable-next-line playwright/no-skipped-test
-		test.skip('should switch between expression and fixed using keyboard', async ({ n8n }) => {
-			await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME);
+		test.fixme(
+			'should switch between expression and fixed using keyboard @fixme',
+			async ({ n8n }) => {
+				await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME);
 
-			// Should switch to expression with =
-			await n8n.ndv.getAssignmentCollectionAdd('assignments').click();
-			await n8n.ndv.fillParameterInputByName('value', '=');
+				// Should switch to expression with =
+				await n8n.ndv.getAssignmentCollectionAdd('assignments').click();
+				await n8n.ndv.fillParameterInputByName('value', '=');
 
-			// Should complete {{ --> {{ | }}
-			await n8n.ndv.getInlineExpressionEditorInput().click();
-			await n8n.ndv.typeInExpressionEditor('{{');
-			await expect(n8n.ndv.getInlineExpressionEditorInput()).toHaveText('{{  }}');
+				// Should complete {{ --> {{ | }}
+				await n8n.ndv.getInlineExpressionEditorInput().click();
+				await n8n.ndv.typeInExpressionEditor('{{');
+				await expect(n8n.ndv.getInlineExpressionEditorInput()).toHaveText('{{  }}');
 
-			// Should switch back to fixed with backspace on empty expression
-			await n8n.ndv.clearExpressionEditor('value');
-			await expect(n8n.ndv.getParameterInputHint()).toContainText('empty');
-			const parameterInput = n8n.ndv.getParameterInput('value').getByRole('textbox');
-			await parameterInput.click();
-			await parameterInput.focus();
-			await parameterInput.press('Backspace');
-			await expect(n8n.ndv.getInlineExpressionEditorInput()).toBeHidden();
-		});
+				// Should switch back to fixed with backspace on empty expression
+				await n8n.ndv.clearExpressionEditor('value');
+				await expect(n8n.ndv.getParameterInputHint()).toContainText('empty');
+				const parameterInput = n8n.ndv.getParameterInput('value').getByRole('textbox');
+				await parameterInput.click();
+				await parameterInput.focus();
+				await parameterInput.press('Backspace');
+				await expect(n8n.ndv.getInlineExpressionEditorInput()).toBeHidden();
+			},
+		);
 	});
 
 	test.describe('Static data', () => {

@@ -148,6 +148,8 @@ const groups = computed<SelectItemProps[]>(() => {
 
 		<SelectPortal>
 			<SelectContent :class="$style.selectContent">
+				<slot name="header" />
+
 				<SelectScrollUpButton :class="$style.selectScrollButton">
 					<Icon icon="chevron-up" />
 				</SelectScrollUpButton>
@@ -156,7 +158,9 @@ const groups = computed<SelectItemProps[]>(() => {
 					<SelectGroup>
 						<template v-for="(item, index) in groups" :key="`group-${index}`">
 							<SelectLabel v-if="item.type === 'label'" :class="[$style.selectLabel, labelSize]">
-								{{ item.label }}
+								<slot name="label" :item="item">
+									{{ item.label }}
+								</slot>
 							</SelectLabel>
 
 							<SelectSeparator
@@ -181,6 +185,8 @@ const groups = computed<SelectItemProps[]>(() => {
 						</template>
 					</SelectGroup>
 				</SelectViewport>
+
+				<slot name="footer" />
 
 				<SelectScrollDownButton :class="$style.selectScrollButton">
 					<Icon icon="chevron-down" />

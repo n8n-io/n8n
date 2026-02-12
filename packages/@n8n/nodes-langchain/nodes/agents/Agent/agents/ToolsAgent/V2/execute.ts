@@ -37,7 +37,7 @@ import { ChatOpenAI } from '@langchain/openai';
 /**
  * Creates an agent executor with the given configuration
  */
-function createAgentExecutor(
+export function createAgentExecutor(
 	model: BaseChatModel,
 	tools: Array<DynamicStructuredTool | Tool>,
 	prompt: ChatPromptTemplate,
