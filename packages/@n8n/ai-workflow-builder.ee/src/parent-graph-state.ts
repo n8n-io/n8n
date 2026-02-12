@@ -1,6 +1,7 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
+import type { IntrospectionEvent } from './tools/introspect.tool';
 import type { CoordinationLogEntry } from './types/coordination';
 import type { DiscoveryContext } from './types/discovery-types';
 import type { PlanDecision, PlanOutput } from './types/planning';
@@ -104,5 +105,12 @@ export const ParentGraphState = Annotation.Root({
 	planPrevious: Annotation<PlanOutput | null>({
 		reducer: (x, y) => (y === undefined ? x : y),
 		default: () => null,
+	}),
+
+	// Introspection events collected from all subgraphs
+	// Used for evaluation and analysis of agent behavior
+	introspectionEvents: Annotation<IntrospectionEvent[]>({
+		reducer: (x, y) => x.concat(y),
+		default: () => [],
 	}),
 });

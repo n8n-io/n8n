@@ -22,6 +22,7 @@ export const CAPABILITIES = {
 			N8N_ENV_FEAT_EXTERNAL_SECRETS_FOR_PROJECTS: 'true',
 		},
 	},
+	kent: { services: ['kent'] },
 } as const satisfies Record<string, Partial<N8NConfig>>;
 
 export type Capability = keyof typeof CAPABILITIES;

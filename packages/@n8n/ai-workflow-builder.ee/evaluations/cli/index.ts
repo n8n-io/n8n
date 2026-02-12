@@ -45,11 +45,12 @@ import {
 	getChatPayload,
 } from '../harness/evaluation-helpers';
 import { createLogger } from '../harness/logger';
-import type { GenerationCollectors } from '../harness/runner';
+import type { GenerationCollectors, SubgraphMetricsCollector } from '../harness/runner';
 import { TokenUsageTrackingHandler } from '../harness/token-tracking-handler';
 import {
 	runEvaluation,
 	createConsoleLifecycle,
+	mergeLifecycles,
 	createLLMJudgeEvaluator,
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
@@ -61,6 +62,7 @@ import {
 	type GenerationResult,
 } from '../index';
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
+import { createIntrospectionAnalysisLifecycle } from '../lifecycles/introspection-analysis';
 import { AGENT_TYPES, EVAL_TYPES, EVAL_USERS } from '../support/constants';
 import { setupTestEnvironment, createAgent, type ResolvedStageLLMs } from '../support/environment';
 
@@ -83,6 +85,28 @@ function hasCoordinationLog(
 }
 
 /**
+ * Report subgraph metrics from coordination log and workflow.
+ */
+function reportSubgraphMetrics(
+	collector: SubgraphMetricsCollector,
+	stateValues: unknown,
+	workflow: SimpleWorkflow,
+): void {
+	const coordinationLog = hasCoordinationLog(stateValues) ? stateValues.coordinationLog : undefined;
+	const nodeCount = workflow.nodes?.length;
+	const metrics = extractSubgraphMetrics(coordinationLog, nodeCount);
+
+	if (
+		metrics.discoveryDurationMs !== undefined ||
+		metrics.builderDurationMs !== undefined ||
+		metrics.responderDurationMs !== undefined ||
+		metrics.nodeCount !== undefined
+	) {
+		collector(metrics);
+	}
+}
+
+/**
  * Create a workflow generator function for the multi-agent system.
  * LangSmith tracing is handled via traceable() in the runner.
  * Callbacks are passed explicitly from the runner to ensure correct trace context
@@ -93,6 +117,7 @@ function createWorkflowGenerator(
 	llms: ResolvedStageLLMs,
 	featureFlags?: BuilderFeatureFlags,
 ): (prompt: string, collectors?: GenerationCollectors) => Promise<SimpleWorkflow> {
+
 	return async (prompt: string, collectors?: GenerationCollectors): Promise<SimpleWorkflow> => {
 		const runId = generateRunId();
 
@@ -138,24 +163,46 @@ function createWorkflowGenerator(
 
 		// Extract and report subgraph metrics from coordination log
 		if (collectors?.subgraphMetrics) {
-			const coordinationLog = hasCoordinationLog(state.values)
-				? state.values.coordinationLog
-				: undefined;
-			const nodeCount = workflow.nodes?.length;
-			const metrics = extractSubgraphMetrics(coordinationLog, nodeCount);
-
-			if (
-				metrics.discoveryDurationMs !== undefined ||
-				metrics.builderDurationMs !== undefined ||
-				metrics.responderDurationMs !== undefined ||
-				metrics.nodeCount !== undefined
-			) {
-				collectors.subgraphMetrics(metrics);
-			}
+			reportSubgraphMetrics(collectors.subgraphMetrics, state.values, workflow);
 		}
+
+		// Report introspection events
+		collectors?.introspectionEvents?.(state.values.introspectionEvents ?? []);
 
 		return workflow;
 	};
+}
+
+/**
+ * Create evaluators based on suite type.
+ */
+function createEvaluators(params: {
+	suite: string;
+	judgeLlm: ResolvedStageLLMs['judge'];
+	parsedNodeTypes: Parameters<typeof createProgrammaticEvaluator>[0];
+	numJudges: number;
+}): Array<Evaluator<EvaluationContext>> {
+	const { suite, judgeLlm, parsedNodeTypes, numJudges } = params;
+	const evaluators: Array<Evaluator<EvaluationContext>> = [];
+
+	switch (suite) {
+		case 'llm-judge':
+			evaluators.push(createLLMJudgeEvaluator(judgeLlm, parsedNodeTypes));
+			evaluators.push(createProgrammaticEvaluator(parsedNodeTypes));
+			break;
+		case 'pairwise':
+			evaluators.push(createPairwiseEvaluator(judgeLlm, { numJudges }));
+			evaluators.push(createProgrammaticEvaluator(parsedNodeTypes));
+			break;
+		case 'programmatic':
+			evaluators.push(createProgrammaticEvaluator(parsedNodeTypes));
+			break;
+		case 'similarity':
+			evaluators.push(createSimilarityEvaluator());
+			break;
+	}
+
+	return evaluators;
 }
 
 /**
@@ -314,7 +361,6 @@ export async function runV2Evaluation(): Promise<void> {
 
 	// Setup environment with per-stage model configuration
 	const logger = createLogger(args.verbose);
-	const lifecycle = createConsoleLifecycle({ verbose: args.verbose, logger });
 	const stageModels = argsToStageModels(args);
 	const env = await setupTestEnvironment(stageModels, logger);
 
@@ -324,7 +370,6 @@ export async function runV2Evaluation(): Promise<void> {
 	}
 
 	// Create workflow generator based on agent type
-	// CODE_BUILDER uses CodeWorkflowBuilder
 	const generateWorkflow =
 		args.agent === AGENT_TYPES.CODE_BUILDER
 			? createCodeWorkflowBuilderGenerator(
@@ -335,43 +380,39 @@ export async function runV2Evaluation(): Promise<void> {
 				)
 			: createWorkflowGenerator(env.parsedNodeTypes, env.llms, args.featureFlags);
 
-	// Create evaluators based on suite (using judge LLM for evaluation)
-	// The --suite flag is always respected, regardless of agent type
-	const evaluators: Array<Evaluator<EvaluationContext>> = [];
-
-	switch (args.suite) {
-		case 'llm-judge':
-			evaluators.push(createLLMJudgeEvaluator(env.llms.judge, env.parsedNodeTypes));
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'pairwise':
-			evaluators.push(
-				createPairwiseEvaluator(env.llms.judge, {
-					numJudges: args.numJudges,
-				}),
-			);
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'programmatic':
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'similarity':
-			evaluators.push(createSimilarityEvaluator());
-			break;
-	}
+	// Create evaluators based on suite type
+	const evaluators = createEvaluators({
+		suite: args.suite,
+		judgeLlm: env.llms.judge,
+		parsedNodeTypes: env.parsedNodeTypes,
+		numJudges: args.numJudges,
+	});
 
 	const llmCallLimiter = pLimit(args.concurrency);
+
+	// Merge console lifecycle with optional introspection analysis lifecycle
+	const mergedLifecycle = mergeLifecycles(
+		createConsoleLifecycle({ verbose: args.verbose, logger }),
+		args.suite === 'introspection'
+			? createIntrospectionAnalysisLifecycle({
+					judgeLlm: env.llms.judge,
+					outputDir: args.outputDir,
+					logger,
+				})
+			: undefined,
+	);
 
 	const baseConfig = {
 		generateWorkflow,
 		evaluators,
-		lifecycle,
+		lifecycle: mergedLifecycle,
 		logger,
 		outputDir: args.outputDir,
 		outputCsv: args.outputCsv,
 		suite: args.suite,
 		timeoutMs: args.timeoutMs,
 		context: { llmCallLimiter },
+		passThreshold: args.suite === 'introspection' ? 0 : undefined,
 	};
 
 	const config: RunConfig =
@@ -400,6 +441,7 @@ export async function runV2Evaluation(): Promise<void> {
 					...baseConfig,
 					mode: 'local',
 					dataset: loadTestCases(args),
+					concurrency: args.concurrency,
 				};
 
 	// Run evaluation

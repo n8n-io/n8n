@@ -64,15 +64,31 @@ jest.mock('../cli/webhook', () => ({
 jest.mock('../harness/evaluation-helpers', () => ({
 	consumeGenerator: (...args: unknown[]): unknown => mockConsumeGenerator(...args),
 	getChatPayload: (...args: unknown[]): unknown => mockGetChatPayload(...args),
+	createWorkflowGenerator: () =>
+		jest.fn().mockResolvedValue({ name: 'Test', nodes: [], connections: {} }),
+}));
+
+jest.mock('../lifecycles/introspection-analysis', () => ({
+	createIntrospectionAnalysisLifecycle: () => ({}),
 }));
 
 jest.mock('../index', () => ({
 	runEvaluation: (...args: unknown[]): unknown => mockRunEvaluation(...args),
 	createConsoleLifecycle: (...args: unknown[]): unknown => mockCreateConsoleLifecycle(...args),
+	mergeLifecycles: (...lifecycles: unknown[]): unknown => {
+		// Simple merge implementation for tests - just return the first non-empty lifecycle
+		const valid = (lifecycles as Array<Record<string, unknown> | undefined>).filter(
+			(lc) => lc !== undefined,
+		);
+		if (valid.length === 0) return {};
+		// Return a merged object
+		return Object.assign({}, ...valid);
+	},
 	createLLMJudgeEvaluator: (...args: unknown[]): unknown => mockCreateLLMJudgeEvaluator(...args),
 	createProgrammaticEvaluator: (...args: unknown[]): unknown =>
 		mockCreateProgrammaticEvaluator(...args),
 	createPairwiseEvaluator: (...args: unknown[]): unknown => mockCreatePairwiseEvaluator(...args),
+	createSimilarityEvaluator: () => ({ name: 'similarity', evaluate: jest.fn() }),
 }));
 
 /** Helper to create a minimal valid workflow for tests */

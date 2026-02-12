@@ -320,7 +320,7 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 		{
 			id: VERSION_ACTIONS.PUBLISH,
 			label: i18n.baseText('workflows.publish'),
-			shortcut: { keys: ['P'] },
+			shortcut: { shiftKey: true, keys: ['P'] },
 			disabled: shouldDisablePublishButton.value,
 		},
 	];
@@ -452,7 +452,7 @@ const onDropdownMenuSelect = async (action: VERSION_ACTIONS) => {
 };
 
 useKeybindings({
-	p: {
+	shift_p: {
 		disabled: () => shouldDisablePublishButton.value,
 		run: async () => {
 			await onPublishButtonClick();
