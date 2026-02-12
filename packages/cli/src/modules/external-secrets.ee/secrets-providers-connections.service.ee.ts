@@ -286,6 +286,19 @@ export class SecretsProvidersConnectionsService {
 		return this.cipher.encrypt(settings);
 	}
 
+	async getConnectionForProject(
+		providerKey: string,
+		projectId: string,
+	): Promise<SecretsProviderConnection> {
+		const connection = await this.repository.findOne({ where: { providerKey } });
+
+		if (!connection || !connection.projectAccess.some((access) => access.projectId === projectId)) {
+			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
+		}
+
+		return connection;
+	}
+
 	private decryptConnectionSettings(encryptedSettings: string): IDataObject {
 		return jsonParse(this.cipher.decrypt(encryptedSettings));
 	}

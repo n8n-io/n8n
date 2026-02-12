@@ -47,6 +47,12 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'projectVariable:create',
 	'projectVariable:update',
 	'projectVariable:delete',
+	'externalSecretsProvider:create',
+	'externalSecretsProvider:read',
+	'externalSecretsProvider:update',
+	'externalSecretsProvider:delete',
+	'externalSecretsProvider:sync',
+	'externalSecret:list',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
