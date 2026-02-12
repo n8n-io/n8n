@@ -87,6 +87,10 @@ async function connectAndGetTools(
 	const node = ctx.getNode();
 	const { headers } = await getAuthHeaders(ctx, config.authentication);
 
+	// MCP_CONNECTION: connectAndGetTools() — shared helper called by both supplyData() and execute()
+	// console.log(
+	// 	'client.connect at Execution:connectAndGetTools McpClientTool/McpClientTool.node.ts connectAndGetTools()',
+	// );
 	const client = await connectMcpClient({
 		serverTransport: config.serverTransport,
 		endpointUrl: config.endpointUrl,
@@ -101,15 +105,23 @@ async function connectAndGetTools(
 		return { client, mcpTools: null, error: client.error };
 	}
 
-	const allTools = await getAllTools(client.result);
-	const mcpTools = getSelectedTools({
-		tools: allTools,
-		mode: config.mode,
-		includeTools: config.includeTools,
-		excludeTools: config.excludeTools,
-	});
+	try {
+		const allTools = await getAllTools(client.result);
+		const mcpTools = getSelectedTools({
+			tools: allTools,
+			mode: config.mode,
+			includeTools: config.includeTools,
+			excludeTools: config.excludeTools,
+		});
 
-	return { client: client.result, mcpTools, error: null };
+		return { client: client.result, mcpTools, error: null };
+	} catch (error) {
+		console.log(
+			'client.close at Execution:connectAndGetTools-error McpClientTool/McpClientTool.node.ts connectAndGetTools()',
+		);
+		await client.result.close();
+		throw error;
+	}
 }
 
 export class McpClientTool implements INodeType {
@@ -356,6 +368,10 @@ export class McpClientTool implements INodeType {
 			throw error;
 		};
 
+		// MCP_CONNECTION: supplyData() — connects to provide tools to AI Agent (long-lived, closed via closeFunction)
+		console.log(
+			`client.connect at Execution:supplyData McpClientTool/McpClientTool.node.ts supplyData() - ${node.name}`,
+		);
 		const { client, mcpTools, error } = await connectAndGetTools(this, config);
 
 		if (error) {
@@ -393,7 +409,15 @@ export class McpClientTool implements INodeType {
 
 		const toolkit = new StructuredToolkit(tools);
 
-		return { response: toolkit, closeFunction: async () => await client.close() };
+		return {
+			response: toolkit,
+			closeFunction: async () => {
+				console.log(
+					`client.close at Execution:supplyData-closeFunction McpClientTool/McpClientTool.node.ts supplyData() - ${node.name}`,
+				);
+				await client.close();
+			},
+		};
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -405,56 +429,71 @@ export class McpClientTool implements INodeType {
 			const item = items[itemIndex];
 			const config = getNodeConfig(this, itemIndex);
 
+			// MCP_CONNECTION: execute() — connects per item to call a tool (short-lived, closed in finally)
+			console.log(
+				`client.connect at Execution:tool-call McpClientTool/McpClientTool.node.ts execute() - ${node.name}`,
+			);
 			const { client, mcpTools, error } = await connectAndGetTools(this, config);
 
 			if (error) {
 				throw new NodeOperationError(node, error.error, { itemIndex });
 			}
 
-			if (!mcpTools?.length) {
-				throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex });
-			}
-
-			for (const tool of mcpTools) {
-				// Check for tool name in item.json.tool (for toolkit execution from agent)
-				// or item.tool (for direct execution)
-				if (!item.json.tool || typeof item.json.tool !== 'string') {
-					throw new NodeOperationError(node, 'Tool name not found in item.json.tool or item.tool', {
-						itemIndex,
-					});
+			try {
+				if (!mcpTools?.length) {
+					throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex });
 				}
 
-				const toolName = item.json.tool;
-				if (toolName === tool.name) {
-					// Extract the tool name from arguments before passing to MCP
-					const { tool: _, ...toolArguments } = item.json;
-					const schema: JSONSchema7 = tool.inputSchema;
-					// When additionalProperties is not explicitly true, filter to schema-defined properties.
-					// Otherwise, pass all arguments through
-					const sanitizedToolArguments: IDataObject =
-						schema.additionalProperties !== true
-							? pick(toolArguments, Object.keys(schema.properties ?? {}))
-							: toolArguments;
+				for (const tool of mcpTools) {
+					// Check for tool name in item.json.tool (for toolkit execution from agent)
+					// or item.tool (for direct execution)
+					if (!item.json.tool || typeof item.json.tool !== 'string') {
+						throw new NodeOperationError(
+							node,
+							'Tool name not found in item.json.tool or item.tool',
+							{
+								itemIndex,
+							},
+						);
+					}
 
-					const params: {
-						name: string;
-						arguments: IDataObject;
-					} = {
-						name: tool.name,
-						arguments: sanitizedToolArguments,
-					};
-					const result = await client.callTool(params, CallToolResultSchema, {
-						timeout: config.timeout,
-					});
-					returnData.push({
-						json: {
-							response: result.content as IDataObject,
-						},
-						pairedItem: {
-							item: itemIndex,
-						},
-					});
+					const toolName = item.json.tool;
+					if (toolName === tool.name) {
+						// Extract the tool name from arguments before passing to MCP
+						const { tool: _, ...toolArguments } = item.json;
+						const schema: JSONSchema7 = tool.inputSchema;
+						// When additionalProperties is not explicitly true, filter to schema-defined properties.
+						// Otherwise, pass all arguments through
+						const sanitizedToolArguments: IDataObject =
+							schema.additionalProperties !== true
+								? pick(toolArguments, Object.keys(schema.properties ?? {}))
+								: toolArguments;
+
+						const params: {
+							name: string;
+							arguments: IDataObject;
+						} = {
+							name: tool.name,
+							arguments: sanitizedToolArguments,
+						};
+						const result = await client.callTool(params, CallToolResultSchema, {
+							timeout: config.timeout,
+						});
+						returnData.push({
+							json: {
+								response: result.content as IDataObject,
+							},
+							pairedItem: {
+								item: itemIndex,
+							},
+						});
+					}
 				}
+			} finally {
+				console.log(
+					`client.close at Execution:tool-call McpClientTool/McpClientTool.node.ts execute() - ${node.name}`,
+				);
+				await client.close();
 			}
 		}
 

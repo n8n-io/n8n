@@ -18,6 +18,8 @@ export async function getTools(
 	const endpointUrl = this.getNodeParameter('endpointUrl') as string;
 	const node = this.getNode();
 	const { headers } = await getAuthHeaders(this, authentication);
+	// MCP_CONNECTION: listSearch.getTools() — connects when user opens tool dropdown in editor UI
+	console.log('client.connect at UI:tool-dropdown McpClient/listSearch.ts getTools()');
 	const client = await connectMcpClient({
 		serverTransport,
 		endpointUrl,
@@ -31,18 +33,23 @@ export async function getTools(
 		throw mapToNodeOperationError(node, client.error);
 	}
 
-	const result = await client.result.listTools({ cursor: paginationToken });
-	const tools = filter
-		? result.tools.filter((tool) => tool.name.toLowerCase().includes(filter.toLowerCase()))
-		: result.tools;
+	try {
+		const result = await client.result.listTools({ cursor: paginationToken });
+		const tools = filter
+			? result.tools.filter((tool) => tool.name.toLowerCase().includes(filter.toLowerCase()))
+			: result.tools;
 
-	return {
-		results: tools.map((tool) => ({
-			name: tool.name,
-			value: tool.name,
-			description: tool.description,
-			inputSchema: tool.inputSchema,
-		})),
-		paginationToken: result.nextCursor,
-	};
+		return {
+			results: tools.map((tool) => ({
+				name: tool.name,
+				value: tool.name,
+				description: tool.description,
+				inputSchema: tool.inputSchema,
+			})),
+			paginationToken: result.nextCursor,
+		};
+	} finally {
+		console.log('client.close at UI:tool-dropdown McpClient/listSearch.ts getTools()');
+		await client.result.close();
+	}
 }
