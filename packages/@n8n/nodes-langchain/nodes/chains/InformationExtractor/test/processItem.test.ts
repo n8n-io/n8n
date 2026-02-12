@@ -116,6 +116,85 @@ describe('processItem', () => {
 		expect(result).toEqual({ name: 'John', age: 30 });
 	});
 
+	it('should handle system prompt containing JSON-like structures', async () => {
+		// This test reproduces the bug from https://github.com/n8n-io/n8n/issues/25566
+		// Before the fix, JSON-like content in the system prompt caused LangChain's
+		// template parser to interpret curly braces as template variables, crashing
+		// before any LLM call was made.
+		const jsonPrompt =
+			'Extract fields matching this schema: {"name": "string", "age": "number"}. Only extract relevant info.';
+		const mockExecuteFunctions = {
+			getNodeParameter: (param: string) => {
+				if (param === 'text') return 'John is 30 years old';
+				if (param === 'options') return { systemPromptTemplate: jsonPrompt };
+				return undefined;
+			},
+			getNode: () => ({ typeVersion: 1.1 }),
+		};
+
+		const llm = new FakeLLM({ response: formatFakeLlmResponse({ name: 'John', age: 30 }) });
+		const parser = OutputFixingParser.fromLLM(
+			llm,
+			StructuredOutputParser.fromZodSchema(makeZodSchemaFromAttributes(mockPersonAttributes)),
+		);
+
+		const result = await processItem(mockExecuteFunctions as any, 0, llm, parser);
+
+		expect(result).toEqual({ name: 'John', age: 30 });
+	});
+
+	it('should handle system prompt with nested JSON example', async () => {
+		const nestedJsonPrompt = `You are an extraction algorithm.
+Extract data following this example output:
+{
+  "person": {
+    "name": "Jane",
+    "contacts": [{"type": "email", "value": "jane@example.com"}]
+  }
+}
+Only extract what is relevant.`;
+		const mockExecuteFunctions = {
+			getNodeParameter: (param: string) => {
+				if (param === 'text') return 'John is 30 years old';
+				if (param === 'options') return { systemPromptTemplate: nestedJsonPrompt };
+				return undefined;
+			},
+			getNode: () => ({ typeVersion: 1.1 }),
+		};
+
+		const llm = new FakeLLM({ response: formatFakeLlmResponse({ name: 'John', age: 30 }) });
+		const parser = OutputFixingParser.fromLLM(
+			llm,
+			StructuredOutputParser.fromZodSchema(makeZodSchemaFromAttributes(mockPersonAttributes)),
+		);
+
+		const result = await processItem(mockExecuteFunctions as any, 0, llm, parser);
+
+		expect(result).toEqual({ name: 'John', age: 30 });
+	});
+
+	it('should handle system prompt with curly braces in plain text', async () => {
+		const bracesPrompt = 'Use curly braces like {this} for emphasis. Extract the data.';
+		const mockExecuteFunctions = {
+			getNodeParameter: (param: string) => {
+				if (param === 'text') return 'John is 30 years old';
+				if (param === 'options') return { systemPromptTemplate: bracesPrompt };
+				return undefined;
+			},
+			getNode: () => ({ typeVersion: 1.1 }),
+		};
+
+		const llm = new FakeLLM({ response: formatFakeLlmResponse({ name: 'John', age: 30 }) });
+		const parser = OutputFixingParser.fromLLM(
+			llm,
+			StructuredOutputParser.fromZodSchema(makeZodSchemaFromAttributes(mockPersonAttributes)),
+		);
+
+		const result = await processItem(mockExecuteFunctions as any, 0, llm, parser);
+
+		expect(result).toEqual({ name: 'John', age: 30 });
+	});
+
 	it('should handle retries when LLM returns invalid data', async () => {
 		const mockExecuteFunctions = {
 			getNodeParameter: (param: string) => {
