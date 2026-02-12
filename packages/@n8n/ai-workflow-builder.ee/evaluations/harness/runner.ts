@@ -31,6 +31,7 @@ import {
 	selectScoringItems,
 	calculateFiniteAverage,
 } from './score-calculator';
+import type { IntrospectionEvent } from '../../src/tools/introspect.tool.js';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import { extractMessageContent } from '../langsmith/types';
 
@@ -54,11 +55,18 @@ export type SubgraphMetricsCollector = (metrics: {
 }) => void;
 
 /**
+ * Callback to collect introspection events from generation.
+ * Called after each workflow generation with the events array.
+ */
+export type IntrospectionEventsCollector = (events: IntrospectionEvent[]) => void;
+
+/**
  * Combined collectors for workflow generation metrics.
  */
 export interface GenerationCollectors {
 	tokenUsage?: TokenUsageCollector;
 	subgraphMetrics?: SubgraphMetricsCollector;
+	introspectionEvents?: IntrospectionEventsCollector;
 }
 
 /**
@@ -449,6 +457,7 @@ interface CollectedMetrics {
 	builderDurationMs?: number;
 	responderDurationMs?: number;
 	nodeCount?: number;
+	introspectionEvents?: IntrospectionEvent[];
 }
 
 /**
@@ -471,6 +480,9 @@ function createMetricsCollectors(): {
 			metrics.builderDurationMs = m.builderDurationMs;
 			metrics.responderDurationMs = m.responderDurationMs;
 			metrics.nodeCount = m.nodeCount;
+		},
+		introspectionEvents: (events) => {
+			metrics.introspectionEvents = events;
 		},
 	};
 
@@ -591,6 +603,7 @@ async function runLocalExampleSuccess(args: {
 		generationInputTokens: metrics.genInputTokens,
 		generationOutputTokens: metrics.genOutputTokens,
 		subgraphMetrics: buildSubgraphMetrics(metrics),
+		introspectionEvents: metrics.introspectionEvents,
 		workflow,
 		generatedCode,
 	};
@@ -686,6 +699,7 @@ async function runLocalDataset(params: {
 	timeoutMs: number | undefined;
 	lifecycle?: Partial<EvaluationLifecycle>;
 	artifactSaver: ArtifactSaver | null;
+	concurrency?: number;
 }): Promise<ExampleResult[]> {
 	const {
 		testCases,
@@ -696,27 +710,32 @@ async function runLocalDataset(params: {
 		timeoutMs,
 		lifecycle,
 		artifactSaver,
+		concurrency = 1,
 	} = params;
 
-	const results: ExampleResult[] = [];
-	for (let i = 0; i < testCases.length; i++) {
-		const testCase = testCases[i];
+	// Use pLimit to control concurrency of example execution
+	const exampleLimiter = pLimit(concurrency);
+
+	const resultPromises = testCases.map(async (testCase, i) => {
 		const index = i + 1;
-		const result = await runLocalExample({
-			index,
-			total: testCases.length,
-			testCase,
-			generateWorkflow,
-			evaluators,
-			globalContext,
-			passThreshold,
-			timeoutMs,
-			lifecycle,
-			artifactSaver,
-		});
-		results.push(result);
-	}
-	return results;
+		return await exampleLimiter(
+			async () =>
+				await runLocalExample({
+					index,
+					total: testCases.length,
+					testCase,
+					generateWorkflow,
+					evaluators,
+					globalContext,
+					passThreshold,
+					timeoutMs,
+					lifecycle,
+					artifactSaver,
+				}),
+		);
+	});
+
+	return await Promise.all(resultPromises);
 }
 
 function buildRunSummary(results: ExampleResult[]): RunSummary {
@@ -832,6 +851,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		outputCsv,
 		suite,
 		logger,
+		concurrency = 1,
 	} = config;
 
 	const testCases: TestCase[] = dataset;
@@ -859,6 +879,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		timeoutMs,
 		lifecycle,
 		artifactSaver,
+		concurrency,
 	});
 	const summary = buildRunSummary(results);
 
@@ -874,7 +895,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		logger.info(`Results written to: ${outputCsv}`);
 	}
 
-	lifecycle?.onEnd?.(summary);
+	await lifecycle?.onEnd?.(summary);
 
 	return summary;
 }
@@ -1260,6 +1281,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				generationInputTokens: metrics.genInputTokens,
 				generationOutputTokens: metrics.genOutputTokens,
 				subgraphMetrics: buildSubgraphMetrics(metrics),
+				introspectionEvents: metrics.introspectionEvents,
 				workflow,
 				generatedCode,
 			};
@@ -1366,7 +1388,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		logger.info(`Results written to: ${outputCsv}`);
 	}
 
-	lifecycle?.onEnd?.(summary);
+	await lifecycle?.onEnd?.(summary);
 
 	return summary;
 }

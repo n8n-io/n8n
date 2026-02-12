@@ -119,6 +119,40 @@ describe('stream-processor', () => {
 				expect(message.codeSnippet).toBe(JSON.stringify(workflowData, null, 2));
 			});
 
+			it('should handle create_workflow_name with generated name', () => {
+				const workflowData = {
+					nodes: [] as unknown[],
+					connections: {},
+					name: 'Email Automation Workflow',
+				};
+				const chunk = {
+					create_workflow_name: {
+						workflowJSON: workflowData,
+					},
+				};
+
+				const result = processStreamChunk('updates', chunk);
+
+				expect(result).toBeDefined();
+				expect(result?.messages).toHaveLength(1);
+				const message = result?.messages[0] as WorkflowUpdateChunk;
+				expect(message.role).toBe('assistant');
+				expect(message.type).toBe('workflow-updated');
+				expect(message.codeSnippet).toBe(JSON.stringify(workflowData, null, 2));
+			});
+
+			it('should ignore create_workflow_name without a name', () => {
+				const chunk = {
+					create_workflow_name: {
+						workflowJSON: { nodes: [], connections: {} },
+					},
+				};
+
+				const result = processStreamChunk('updates', chunk);
+
+				expect(result).toBeNull();
+			});
+
 			it('should ignore chunks without relevant content', () => {
 				const chunk = {
 					responder: {

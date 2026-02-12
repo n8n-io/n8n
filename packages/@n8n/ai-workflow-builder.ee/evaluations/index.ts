@@ -49,6 +49,12 @@ export {
 	type SimilarityEvaluatorOptions,
 } from './evaluators';
 
+// Introspection lifecycle
+export {
+	createIntrospectionAnalysisLifecycle,
+	type IntrospectionAnalysisOptions,
+} from './lifecycles/introspection-analysis';
+
 // Output
 export {
 	createArtifactSaver,
