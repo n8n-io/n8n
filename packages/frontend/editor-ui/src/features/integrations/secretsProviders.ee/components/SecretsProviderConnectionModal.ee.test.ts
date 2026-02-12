@@ -118,7 +118,6 @@ const mockProjectsStore = {
 	teamProjects: mockProjects,
 	fetchProject: vi.fn(),
 	getAvailableProjects: vi.fn(),
-	getAllProjects: vi.fn(),
 };
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
