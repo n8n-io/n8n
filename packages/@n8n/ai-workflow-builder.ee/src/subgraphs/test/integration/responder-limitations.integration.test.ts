@@ -61,7 +61,7 @@ describe('Responder Limitations - Integration Tests (AI-1894)', () => {
 
 			const responderAgent = createResponderAgent({ llm });
 
-			const response = await invokeResponderAgent(responderAgent, {
+			const { response } = await invokeResponderAgent(responderAgent, {
 				messages: [
 					new HumanMessage({
 						content: 'Can you search the web for information about Slack API rate limits?',
@@ -116,7 +116,7 @@ describe('Responder Limitations - Integration Tests (AI-1894)', () => {
 
 			const responderAgent = createResponderAgent({ llm });
 
-			const response = await invokeResponderAgent(responderAgent, {
+			const { response } = await invokeResponderAgent(responderAgent, {
 				messages: [
 					new HumanMessage({
 						content:
@@ -165,7 +165,7 @@ describe('Responder Limitations - Integration Tests (AI-1894)', () => {
 
 			const responderAgent = createResponderAgent({ llm });
 
-			const response = await invokeResponderAgent(responderAgent, {
+			const { response } = await invokeResponderAgent(responderAgent, {
 				messages: [
 					new HumanMessage({
 						content: 'What is the current Bitcoin price?',
