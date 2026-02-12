@@ -15,7 +15,7 @@ const NODES = {
 
 test.describe('Logs', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

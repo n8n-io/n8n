@@ -2,7 +2,7 @@ import { expect, test } from '../../../fixtures/base';
 
 test.describe('PDF Test', {
 	annotation: [
-		{ type: 'team', description: 'NODES' },
+		{ type: 'owner', description: 'NODES' },
 	],
 }, () => {
 	test('Can read and write PDF files and extract text', async ({ n8n }) => {

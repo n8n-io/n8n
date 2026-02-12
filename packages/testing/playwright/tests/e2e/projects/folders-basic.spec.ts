@@ -2,7 +2,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.describe('Folders - Basic Operations', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, () => {
 	const FOLDER_CREATED_NOTIFICATION = 'Folder created';

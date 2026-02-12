@@ -9,7 +9,7 @@ const generateValidId = customAlphabet(
 
 test.describe('Variables', {
 	annotation: [
-		{ type: 'team', description: 'Lifecycle & Governance' },
+		{ type: 'owner', description: 'Lifecycle & Governance' },
 	],
 }, () => {
 	// These tests are serial since it's at an instance level and they interact with the same variables

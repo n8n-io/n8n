@@ -20,7 +20,7 @@ const RECOVERY_CODE = mfaRecoveryCodes![0];
 
 test.describe('Two-factor authentication @auth:none @db:reset', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, () => {
 	test.describe.configure({ mode: 'serial' });

@@ -6,7 +6,7 @@ import { resolveFromRoot } from '../../../../../utils/path-helper';
 
 test.describe('Editors', {
 	annotation: [
-		{ type: 'team', description: 'NODES' },
+		{ type: 'owner', description: 'NODES' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

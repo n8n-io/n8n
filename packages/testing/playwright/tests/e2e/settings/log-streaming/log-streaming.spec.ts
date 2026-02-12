@@ -9,7 +9,7 @@ const MODAL_MAX_WIDTH = 500;
 
 test.describe('Log Streaming Settings', {
 	annotation: [
-		{ type: 'team', description: 'Lifecycle & Governance' },
+		{ type: 'owner', description: 'Lifecycle & Governance' },
 	],
 }, () => {
 	test.describe.configure({ mode: 'serial' });

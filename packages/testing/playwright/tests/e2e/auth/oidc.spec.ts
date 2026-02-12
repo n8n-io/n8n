@@ -7,7 +7,7 @@ test.use({
 
 test.describe('OIDC Authentication @capability:oidc', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, () => {
 	test('should configure OIDC and login with Keycloak @auth:owner', async ({

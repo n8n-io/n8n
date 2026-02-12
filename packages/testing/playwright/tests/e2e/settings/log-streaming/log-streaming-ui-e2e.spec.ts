@@ -13,7 +13,7 @@ test.use({ capability: 'observability' });
 
 test.describe('Log Streaming UI E2E @capability:observability', {
 	annotation: [
-		{ type: 'team', description: 'Lifecycle & Governance' },
+		{ type: 'owner', description: 'Lifecycle & Governance' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

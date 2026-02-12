@@ -3,7 +3,7 @@ import { test, expect } from '../../../../../fixtures/base';
 // Flaky in multi-main mode: "execute previous nodes" also executes the current node
 test.describe('Execute previous nodes @fixme', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	test.fixme();

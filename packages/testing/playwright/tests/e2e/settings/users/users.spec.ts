@@ -3,7 +3,7 @@ import { test, expect } from '../../../../fixtures/base';
 
 test.describe('Users Settings', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, () => {
 	test('should prevent non-owners to access UM settings', async ({ n8n }) => {

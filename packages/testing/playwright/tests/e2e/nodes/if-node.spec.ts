@@ -5,7 +5,7 @@ const FILTER_PARAM_NAME = 'conditions';
 
 test.describe('If Node (filter component)', {
 	annotation: [
-		{ type: 'team', description: 'NODES' },
+		{ type: 'owner', description: 'NODES' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

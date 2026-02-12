@@ -6,7 +6,7 @@ const TEST_API_KEY = 'test-api-key';
 
 test.describe('Credential Sharing', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, () => {
 	test('should share credential with another user via UI', async ({ n8n, api }) => {

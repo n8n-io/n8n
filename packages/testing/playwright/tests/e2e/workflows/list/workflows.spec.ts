@@ -11,7 +11,7 @@ const NOTIFICATIONS = {
 
 test.describe('Workflows', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

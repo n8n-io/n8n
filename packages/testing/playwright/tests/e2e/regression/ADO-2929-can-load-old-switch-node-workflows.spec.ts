@@ -9,7 +9,7 @@ const requirements: TestRequirements = {
 
 test.describe('ADO-2929 can load Switch nodes', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test('can load workflows with Switch nodes with null at connection index @auth:owner', async ({

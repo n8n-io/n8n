@@ -3,7 +3,7 @@ import type { n8nPage } from '../../../../../pages/n8nPage';
 
 test.describe('Data transformation expressions', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

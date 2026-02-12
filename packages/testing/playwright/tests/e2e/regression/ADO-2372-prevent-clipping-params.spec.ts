@@ -2,7 +2,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.describe('ADO-2362 ADO-2350 NDV Prevent clipping long parameters and scrolling to expression', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test('should show last parameters and open at scroll top of parameters', async ({ n8n }) => {

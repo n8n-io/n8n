@@ -8,7 +8,7 @@ import { retryUntil } from '../../../../../utils/retry-utils';
 
 test.describe('Parent that does not wait for sub-workflow', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	test('should not wait for the sub-workflow', async ({ api }) => {

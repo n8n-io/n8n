@@ -4,7 +4,7 @@ import { expect, test } from '../../../fixtures/base';
 
 test.describe('User API Service', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	test.describe('Internal API (Cookie Auth)', () => {

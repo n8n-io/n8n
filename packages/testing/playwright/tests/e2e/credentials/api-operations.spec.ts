@@ -4,7 +4,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.describe('Credential API Operations', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, () => {
 	test.describe('Basic CRUD Operations', () => {

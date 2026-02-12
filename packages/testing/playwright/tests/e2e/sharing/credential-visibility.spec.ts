@@ -6,7 +6,7 @@ const TEST_API_KEY = 'test-api-key';
 
 test.describe('Credential Visibility Rules', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, () => {
 	test('should only show credentials from the same team project', async ({ n8n, api }) => {

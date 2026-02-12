@@ -9,7 +9,7 @@ test.use(chatHubTestConfig);
 
 test.describe('File attachment @capability:proxy', {
 	annotation: [
-		{ type: 'team', description: 'Chat' },
+		{ type: 'owner', description: 'Chat' },
 	],
 }, () => {
 	let tmpDir: string;

@@ -53,7 +53,7 @@ const hitlForToolsTestConfig = {
 test.use(hitlForToolsTestConfig);
 test.describe('HITL for Tools @capability:proxy', {
 	annotation: [
-		{ type: 'team', description: 'AI' },
+		{ type: 'owner', description: 'AI' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n, services }) => {

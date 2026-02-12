@@ -11,7 +11,7 @@ test.skip(
 	'Database connection timeout health check bug @mode:postgres @chaostest @capability:observability',
 	{
 		annotation: [
-			{ type: 'team', description: 'Catalysts' },
+			{ type: 'owner', description: 'Catalysts' },
 			{ type: 'issue', description: 'CAT-1018' },
 		],
 	},

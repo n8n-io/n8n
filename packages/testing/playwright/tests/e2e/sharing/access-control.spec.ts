@@ -6,7 +6,7 @@ const TEST_API_KEY = 'test-api-key';
 
 test.describe('Access Control Boundaries', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, () => {
 	test('should prevent credential editing by sharee', async ({ n8n, api }) => {

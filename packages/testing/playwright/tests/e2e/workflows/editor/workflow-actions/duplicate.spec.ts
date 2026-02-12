@@ -5,7 +5,7 @@ import { test, expect } from '../../../../../fixtures/base';
 
 test.describe('Workflow Duplicate @fixme', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test.fixme();

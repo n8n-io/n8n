@@ -59,7 +59,7 @@ const requirements: TestRequirements = {
 
 test.describe('Versions', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test('should show updates in help section', async ({ n8n, setupRequirements }) => {

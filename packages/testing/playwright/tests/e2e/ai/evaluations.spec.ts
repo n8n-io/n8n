@@ -4,7 +4,7 @@ test.use({ capability: 'proxy' });
 
 test.describe('Evaluations @capability:proxy', {
 	annotation: [
-		{ type: 'team', description: 'AI' },
+		{ type: 'owner', description: 'AI' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n, services }) => {

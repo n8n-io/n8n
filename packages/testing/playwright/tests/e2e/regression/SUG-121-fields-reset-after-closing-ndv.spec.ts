@@ -10,7 +10,7 @@ const requirements: TestRequirements = {
 
 test.describe('SUG-121 Fields reset after closing NDV', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test('should preserve changes to parameters after closing NDV when focus panel is open', async ({

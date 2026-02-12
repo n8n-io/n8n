@@ -4,7 +4,7 @@ import type { n8nPage } from '../../../../../pages/n8nPage';
 // Example of using helper functions inside a test
 test.describe('Debug mode', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	// Constants to avoid magic strings

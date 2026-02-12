@@ -11,7 +11,7 @@ const getContainerName = (log: LogEntry): string | undefined => log.container_na
 
 test('Leader election @mode:multi-main @chaostest @capability:observability', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, async ({
 	n8nContainer,

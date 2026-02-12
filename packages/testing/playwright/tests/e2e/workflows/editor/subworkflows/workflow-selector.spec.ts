@@ -5,7 +5,7 @@ const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Sub-workflow';
 
 test.describe('Workflow Selector Parameter', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

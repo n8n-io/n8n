@@ -19,7 +19,7 @@ const MOCK_PACKAGE = {
 
 test.describe('Community nodes management', {
 	annotation: [
-		{ type: 'team', description: 'NODES' },
+		{ type: 'owner', description: 'NODES' },
 	],
 }, () => {
 	test('can install, update and uninstall community nodes', async ({ n8n }) => {

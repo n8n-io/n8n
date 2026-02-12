@@ -2,7 +2,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.describe('RAG callout experiment', {
 	annotation: [
-		{ type: 'team', description: 'AI' },
+		{ type: 'owner', description: 'AI' },
 	],
 }, () => {
 	test.describe('NDV callout', () => {

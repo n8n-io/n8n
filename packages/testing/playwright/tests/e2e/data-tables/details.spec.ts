@@ -5,7 +5,7 @@ import type { n8nPage } from '../../../pages/n8nPage';
 
 test.describe('Data Table details view', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	let testDataTableName: string;

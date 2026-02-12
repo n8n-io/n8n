@@ -2,7 +2,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.describe('HTTP Request node', {
 	annotation: [
-		{ type: 'team', description: 'NODES' },
+		{ type: 'owner', description: 'NODES' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

@@ -53,7 +53,7 @@ const setupCloudTest = async (
 
 test.describe('Cloud @db:reset @auth:owner', {
 	annotation: [
-		{ type: 'team', description: 'Cloud Platform' },
+		{ type: 'owner', description: 'Cloud Platform' },
 	],
 }, () => {
 	test.describe('Trial Upgrade', () => {

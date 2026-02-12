@@ -11,7 +11,7 @@ const CUSTOM_NODE_WITH_CUSTOM_CREDENTIAL = 'E2E Node with custom credential';
 
 test.describe('Community and custom nodes in canvas', {
 	annotation: [
-		{ type: 'team', description: 'NODES' },
+		{ type: 'owner', description: 'NODES' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

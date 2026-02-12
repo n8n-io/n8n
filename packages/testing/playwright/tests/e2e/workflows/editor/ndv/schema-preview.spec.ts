@@ -2,7 +2,7 @@ import { test, expect } from '../../../../../fixtures/base';
 
 test.describe('Schema Preview', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test('should show schema preview for regular nodes but not triggers', async ({ n8n }) => {

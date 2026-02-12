@@ -3,7 +3,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.describe('Sign In', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, () => {
 	test('should login and logout @auth:none', async ({ n8n }) => {

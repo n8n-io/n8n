@@ -11,7 +11,7 @@ test.beforeEach(async ({ api }) => {
 
 test.describe('Workflow tags - Tag creation', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test('should create and attach tags inline, then add more incrementally', async ({ n8n }) => {

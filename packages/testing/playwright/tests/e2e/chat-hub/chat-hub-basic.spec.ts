@@ -6,7 +6,7 @@ test.use(chatHubTestConfig);
 
 test.describe('Basic conversation @capability:proxy', {
 	annotation: [
-		{ type: 'team', description: 'Chat' },
+		{ type: 'owner', description: 'Chat' },
 	],
 }, () => {
 	test('new chat with pre-configured credentials', async ({ n8n, anthropicCredential: _ }) => {

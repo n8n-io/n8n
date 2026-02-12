@@ -2,7 +2,7 @@ import { test, expect } from '../../../../fixtures/base';
 
 test.describe('Editor zoom should work after route changes', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

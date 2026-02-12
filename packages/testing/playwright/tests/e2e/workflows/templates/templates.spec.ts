@@ -137,7 +137,7 @@ async function setupDynamicTemplateRoutes(n8n: n8nPage, hostname: string) {
 
 test.describe('Workflow templates', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test.describe('For api.n8n.io', () => {

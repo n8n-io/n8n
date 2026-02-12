@@ -26,7 +26,7 @@ const VALID_NAMES = [
 
 test.describe('Personal Settings', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, () => {
 	test('should allow to change first and last name', async ({ n8n }) => {

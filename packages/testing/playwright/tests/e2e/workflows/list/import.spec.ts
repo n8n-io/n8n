@@ -3,7 +3,7 @@ import onboardingWorkflow from '../../../../workflows/Onboarding_workflow.json';
 
 test.describe('Import workflow', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test.describe('From URL', () => {

@@ -40,7 +40,7 @@ async function setupProjectWithWorkflowAndSignInAsMember({
 
 test.describe('Workflow Viewer Permissions', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, () => {
 	test.describe.configure({ mode: 'serial' });

@@ -5,7 +5,7 @@ test.use(chatHubTestConfig);
 
 test.describe('Tools usage @capability:proxy', {
 	annotation: [
-		{ type: 'team', description: 'Chat' },
+		{ type: 'owner', description: 'Chat' },
 	],
 }, () => {
 	test('use web search tool in conversation', async ({

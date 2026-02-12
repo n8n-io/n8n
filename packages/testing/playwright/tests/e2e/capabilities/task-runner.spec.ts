@@ -9,7 +9,7 @@ import { test, expect } from '../../../fixtures/base';
  */
 test.describe('Task Runner', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	test('should execute Javascript with task runner enabled', async ({ n8n }) => {

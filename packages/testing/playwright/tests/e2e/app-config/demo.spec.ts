@@ -13,7 +13,7 @@ const requirements: TestRequirements = {
 
 test.describe('Demo', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test.beforeEach(async ({ setupRequirements }) => {

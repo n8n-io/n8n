@@ -3,7 +3,7 @@ import { test, expect } from '../../../fixtures/base';
 test.describe
 	.serial('Environment Feature Flags', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 		test('should set feature flags at runtime and load it back in envFeatureFlags from backend settings', async ({

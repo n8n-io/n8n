@@ -32,7 +32,7 @@ test.use({
 
 test.describe('Workflow Builder @auth:owner @ai @capability:proxy', {
 	annotation: [
-		{ type: 'team', description: 'AI' },
+		{ type: 'owner', description: 'AI' },
 	],
 }, () => {
 	test.beforeEach(async ({ setupRequirements, services }) => {

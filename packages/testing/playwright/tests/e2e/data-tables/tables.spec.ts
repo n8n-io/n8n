@@ -4,7 +4,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.describe('Data Table list view', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n, api }) => {

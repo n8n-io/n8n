@@ -13,7 +13,7 @@ const NOTION_API_KEY = 'abc123Playwright';
 
 test.describe('Projects @db:reset', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, () => {
 	test.describe.configure({ mode: 'serial' });

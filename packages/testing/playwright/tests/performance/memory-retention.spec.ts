@@ -11,7 +11,7 @@ test.use({
 
 test.describe('Memory Leak Detection @capability:observability', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	async function performMemoryAction(n8n: n8nPage) {

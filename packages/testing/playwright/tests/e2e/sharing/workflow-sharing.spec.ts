@@ -4,7 +4,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.describe('Workflow Sharing', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, () => {
 	test('should share workflow with another user via UI', async ({ n8n, api }) => {

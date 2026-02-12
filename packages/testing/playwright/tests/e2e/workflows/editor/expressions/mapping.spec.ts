@@ -2,7 +2,7 @@ import { test, expect } from '../../../../../fixtures/base';
 
 test.describe('Data Mapping', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	test.describe

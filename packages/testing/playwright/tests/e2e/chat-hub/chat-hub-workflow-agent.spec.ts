@@ -9,7 +9,7 @@ test.use(chatHubTestConfig);
 
 test.describe('Workflow agent @capability:proxy', {
 	annotation: [
-		{ type: 'team', description: 'Chat' },
+		{ type: 'owner', description: 'Chat' },
 	],
 }, () => {
 	test('manage workflow agents @auth:admin', async ({ n8n, agentWorkflow }) => {

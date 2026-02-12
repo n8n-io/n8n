@@ -6,7 +6,7 @@ test.use(chatHubTestConfig);
 
 test.describe('Chat user role @capability:proxy', {
 	annotation: [
-		{ type: 'team', description: 'Chat' },
+		{ type: 'owner', description: 'Chat' },
 	],
 }, () => {
 	test('use chat as chat user @auth:chat', async ({ n8n, anthropicApiKey }) => {

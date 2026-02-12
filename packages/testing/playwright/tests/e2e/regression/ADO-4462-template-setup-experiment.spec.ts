@@ -57,7 +57,7 @@ function createTemplateRequirements(): TestRequirements {
 
 test.describe('Template credentials setup @db:reset', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test.beforeEach(async ({ setupRequirements, n8n }) => {

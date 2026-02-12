@@ -7,7 +7,7 @@ test.use(chatHubTestConfig);
 
 test.describe('Settings @capability:proxy', {
 	annotation: [
-		{ type: 'team', description: 'Chat' },
+		{ type: 'owner', description: 'Chat' },
 	],
 }, () => {
 	test('set global credentials for a provider', async ({ n8n, anthropicCredential }) => {

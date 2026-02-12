@@ -9,7 +9,7 @@ import { test, expect } from '../../../../../fixtures/base';
 
 test.describe('Code node', {
 	annotation: [
-		{ type: 'team', description: 'NODES' },
+		{ type: 'owner', description: 'NODES' },
 	],
 }, () => {
 	test.describe('Code editor', () => {

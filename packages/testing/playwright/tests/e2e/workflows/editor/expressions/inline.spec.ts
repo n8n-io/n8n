@@ -12,7 +12,7 @@ const HACKER_NEWS_PARAMETER_NAME = 'limit';
 
 test.describe('Inline expression editor', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

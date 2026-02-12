@@ -6,7 +6,7 @@ test.use({ capability: 'proxy' });
 // @capability:proxy tag ensures that test suite is only run when proxy is available
 test.describe('Proxy server @capability:proxy', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	test.beforeEach(async ({ services }) => {

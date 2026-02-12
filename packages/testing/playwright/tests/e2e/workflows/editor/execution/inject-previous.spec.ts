@@ -7,7 +7,7 @@ const NOTIFICATIONS = {
 
 test.describe('Inject previous execution', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	test('can map keys from previous execution', async ({ n8n }) => {

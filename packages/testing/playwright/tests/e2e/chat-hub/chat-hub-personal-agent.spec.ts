@@ -6,7 +6,7 @@ test.use(chatHubTestConfig);
 
 test.describe('Personal agent @capability:proxy', {
 	annotation: [
-		{ type: 'team', description: 'Chat' },
+		{ type: 'owner', description: 'Chat' },
 	],
 }, () => {
 	test('create personal agent and start conversation @auth:owner', async ({

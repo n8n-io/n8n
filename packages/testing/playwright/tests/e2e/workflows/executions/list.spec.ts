@@ -3,7 +3,7 @@ import executionOutOfMemoryResponse from '../../../../fixtures/execution-out-of-
 
 test.describe('Executions Filter', {
 	annotation: [
-		{ type: 'team', description: 'Lifecycle & Governance' },
+		{ type: 'owner', description: 'Lifecycle & Governance' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

@@ -3,7 +3,7 @@ import { test, expect } from '../../../../../fixtures/base';
 
 test.describe('Resource Mapper', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

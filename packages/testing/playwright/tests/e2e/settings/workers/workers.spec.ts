@@ -4,7 +4,7 @@ test.describe
 	.serial('Worker View', () => {
 		test.describe('unlicensed', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 			test.beforeEach(async ({ n8n }) => {

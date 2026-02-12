@@ -3,7 +3,7 @@ import type { TestRequirements } from '../../../../../Types';
 
 test.describe('Focus panel', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test.describe('With experimental NDV in focus panel enabled', () => {

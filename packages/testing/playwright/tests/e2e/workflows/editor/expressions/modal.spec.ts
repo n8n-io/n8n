@@ -2,7 +2,7 @@ import { test, expect } from '../../../../../fixtures/base';
 
 test.describe('Expression editor modal', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

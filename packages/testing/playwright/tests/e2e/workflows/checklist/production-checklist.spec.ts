@@ -4,7 +4,7 @@ const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 
 test.describe('Workflow Production Checklist', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

@@ -16,7 +16,7 @@ import type { McpSession } from '../../../services/mcp-api-helper';
 
 test.describe('MCP Trigger Node', {
 	annotation: [
-		{ type: 'team', description: 'AI' },
+		{ type: 'owner', description: 'AI' },
 	],
 }, () => {
 	test.describe('Streamable HTTP Transport', () => {

@@ -3,7 +3,7 @@ import type { n8nPage } from '../../../../../pages/n8nPage';
 
 test.describe('NDV Data Display', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

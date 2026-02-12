@@ -6,7 +6,7 @@ test.use({ capability: 'kafka' });
 
 test.describe('Kafka Nodes', {
 	annotation: [
-		{ type: 'team', description: 'NODES' },
+		{ type: 'owner', description: 'NODES' },
 	],
 }, () => {
 	test('Kafka node publishes messages to topic @capability:kafka', async ({

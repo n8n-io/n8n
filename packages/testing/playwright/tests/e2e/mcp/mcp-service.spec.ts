@@ -22,7 +22,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.describe('MCP Service', {
 	annotation: [
-		{ type: 'team', description: 'AI' },
+		{ type: 'owner', description: 'AI' },
 	],
 }, () => {
 	// Run tests serially - n8n only supports one MCP API key at a time,

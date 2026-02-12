@@ -23,7 +23,7 @@ async function goToWorkflow(n8n: n8nPage, workflowId: string): Promise<void> {
 
 test.describe('Workflow Archive @fixme', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test.fixme();

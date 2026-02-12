@@ -52,7 +52,7 @@ test.use({
 
 test.describe('Multi-main Observability @capability:observability @mode:multi-main', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	/**

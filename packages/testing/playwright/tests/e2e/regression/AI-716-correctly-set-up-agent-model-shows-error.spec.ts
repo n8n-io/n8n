@@ -2,7 +2,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.describe('AI-716 Correctly set up agent model shows error', {
 	annotation: [
-		{ type: 'team', description: 'AI' },
+		{ type: 'owner', description: 'AI' },
 	],
 }, () => {
 	test('should not show error when adding a sub-node with credential set-up', async ({ n8n }) => {

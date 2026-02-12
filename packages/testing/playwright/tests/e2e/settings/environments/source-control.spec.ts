@@ -21,7 +21,7 @@ async function saveSettings(n8n: n8nPage) {
 // https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
 test.describe('Source Control Settings @capability:source-control @fixme', {
 	annotation: [
-		{ type: 'team', description: 'Lifecycle & Governance' },
+		{ type: 'owner', description: 'Lifecycle & Governance' },
 	],
 }, () => {
 	test.fixme();

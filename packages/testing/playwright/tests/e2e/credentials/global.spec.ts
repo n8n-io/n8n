@@ -4,7 +4,7 @@ test.use({ capability: { env: { TEST_ISOLATION: 'global-credentials' } } });
 
 test.describe('Global credentials', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, () => {
 	test.describe.configure({ mode: 'serial' });

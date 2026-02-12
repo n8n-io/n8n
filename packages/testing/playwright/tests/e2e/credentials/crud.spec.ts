@@ -4,7 +4,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.describe('Credentials', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

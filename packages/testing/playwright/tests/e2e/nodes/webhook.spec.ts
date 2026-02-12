@@ -9,7 +9,7 @@ const cowBase64 =
 
 test.describe('Webhook Trigger node', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

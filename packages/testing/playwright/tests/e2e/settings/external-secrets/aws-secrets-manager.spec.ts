@@ -6,7 +6,7 @@ test.setTimeout(180_000);
 
 test.describe('AWS Secrets Manager with LocalStack @capability:external-secrets @licensed', {
 	annotation: [
-		{ type: 'team', description: 'Lifecycle & Governance' },
+		{ type: 'owner', description: 'Lifecycle & Governance' },
 	],
 }, () => {
 	const PROVIDER_NAME = 'awsSecretsManager';

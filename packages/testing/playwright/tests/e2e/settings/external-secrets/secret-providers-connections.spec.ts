@@ -7,7 +7,7 @@ test.setTimeout(180_000);
 
 test.describe('Secret Providers Connections with LocalStack @capability:external-secrets @licensed', {
 	annotation: [
-		{ type: 'team', description: 'Lifecycle & Governance' },
+		{ type: 'owner', description: 'Lifecycle & Governance' },
 	],
 }, () => {
 	const PROVIDER_KEY = 'aws-localstack-e2e';

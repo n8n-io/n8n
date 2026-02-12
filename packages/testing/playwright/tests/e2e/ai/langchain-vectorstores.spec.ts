@@ -11,7 +11,7 @@ async function waitForWorkflowSuccess(n8n: n8nPage, timeout = 10000) {
 test.use({ capability: 'proxy' });
 test.describe('Langchain Integration @capability:proxy', {
 	annotation: [
-		{ type: 'team', description: 'AI' },
+		{ type: 'owner', description: 'AI' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n, services }) => {

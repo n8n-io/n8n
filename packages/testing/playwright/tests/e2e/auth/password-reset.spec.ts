@@ -4,7 +4,7 @@ test.use({ capability: 'email' });
 
 test('Password reset email is delivered @capability:email', {
 	annotation: [
-		{ type: 'team', description: 'Identity & Access' },
+		{ type: 'owner', description: 'Identity & Access' },
 	],
 }, async ({ api, services }) => {
 	const ownerEmail = 'nathan@n8n.io';

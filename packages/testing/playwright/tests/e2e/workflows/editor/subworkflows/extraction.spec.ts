@@ -11,7 +11,7 @@ const EDIT_FIELDS_NAMES = [
 
 test.describe('Subworkflow Extraction', {
 	annotation: [
-		{ type: 'team', description: 'Catalysts' },
+		{ type: 'owner', description: 'Catalysts' },
 	],
 }, () => {
 	test.beforeEach(async ({ n8n }) => {

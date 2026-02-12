@@ -24,7 +24,7 @@ import { test, expect } from '../../../fixtures/base';
  */
 test.describe('PAY-4367: Node shifting in cyclic workflows', {
 	annotation: [
-		{ type: 'team', description: 'Adore' },
+		{ type: 'owner', description: 'Adore' },
 	],
 }, () => {
 	test('should not shift nodes to the left of insertion point in cyclic workflow', async ({
