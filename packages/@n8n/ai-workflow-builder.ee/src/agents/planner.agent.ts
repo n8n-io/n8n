@@ -94,6 +94,7 @@ export interface PlannerNodeInput {
 	workflowJSON: SimpleWorkflow;
 	planPrevious?: PlanOutput | null;
 	planFeedback?: string | null;
+	selectedNodesContext?: string;
 }
 
 export interface PlannerNodeResult {
@@ -143,6 +144,7 @@ export async function invokePlannerNode(
 		workflowJSON: input.workflowJSON,
 		planPrevious: input.planPrevious,
 		planFeedback: input.planFeedback,
+		selectedNodesContext: input.selectedNodesContext,
 	});
 	const contextMessage = createContextMessage([contextContent]);
 
