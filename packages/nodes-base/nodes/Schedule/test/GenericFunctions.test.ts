@@ -201,6 +201,22 @@ describe('recurrenceCheck', () => {
 		const result2 = recurrenceCheck(recurrence, recurrenceRules, 'UTC');
 		expect(result2).toBe(false);
 	});
+
+	it('should trigger on first call when recurrenceRules are cleared (schedule change)', () => {
+		// Simulate stale recurrence data from a previous schedule configuration
+		// being cleared when the schedule is changed — the first call after
+		// clearing should always succeed (lastExecution === undefined).
+		const recurrence: IRecurrenceRule = {
+			activated: true,
+			index: 0,
+			intervalSize: 3,
+			typeInterval: 'hours',
+		};
+		// Fresh recurrence rules (as if cleared after schedule change)
+		const recurrenceRules: number[] = [];
+		const result = recurrenceCheck(recurrence, recurrenceRules, 'UTC');
+		expect(result).toBe(true);
+	});
 });
 
 describe('intervalToRecurrence', () => {
