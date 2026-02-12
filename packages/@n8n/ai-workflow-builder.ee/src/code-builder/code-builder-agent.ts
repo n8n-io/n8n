@@ -157,6 +157,7 @@ export class CodeBuilderAgent {
 			getErrorContext: (code, errorMessage) =>
 				this.parseValidateHandler.getErrorContext(code, errorMessage),
 			nodeTypeParser: this.nodeTypeParser,
+			logger: this.logger,
 		});
 
 		// Initialize tool dispatch handler

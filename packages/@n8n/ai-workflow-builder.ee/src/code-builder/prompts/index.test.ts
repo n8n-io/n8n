@@ -239,8 +239,8 @@ export default workflow('', 'Test').add(start);`;
 				: String(systemMessage?.content ?? '');
 
 			expect(content).toContain('pre-fetched in <node_search_results>');
-			// Should NOT contain the plan search variant's instruction to call search_nodes with queries
-			expect(content).not.toContain('search_nodes({ queries:');
+			// Should NOT contain the plan search variant's specific instruction about suggestedNodes discriminators
+			expect(content).not.toContain('suggestedNodes to get discriminators');
 		});
 
 		it('uses plan Step 2b variant when planOutput but no preSearchResults', async () => {

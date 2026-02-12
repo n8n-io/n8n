@@ -423,10 +423,7 @@ export function formatNodeResult(
 	if (!nodeType) return undefined;
 
 	const resolvedVersion =
-		version ??
-		(Array.isArray(nodeType.version)
-			? nodeType.version[nodeType.version.length - 1]
-			: nodeType.version);
+		version ?? (Array.isArray(nodeType.version) ? Math.max(...nodeType.version) : nodeType.version);
 
 	const triggerTag = isTriggerNodeType(nodeId) ? ' [TRIGGER]' : '';
 	const basicInfo = `- ${nodeId}${triggerTag}\n  Display Name: ${nodeType.displayName}\n  Version: ${resolvedVersion}\n  Description: ${nodeType.description}`;
