@@ -7,7 +7,13 @@ export type QueryMode = 'single' | 'transaction' | 'independently';
 
 export type QueryValue = string | number | IDataObject | string[];
 export type QueryValues = QueryValue[];
-export type QueryWithValues = { query: string; values?: QueryValues; options?: IFormattingOptions };
+export type QueryWithValues = {
+	query: string;
+	values?: QueryValues;
+	options?: IFormattingOptions;
+	/** When true, indicates the query has a RETURNING clause and MUST return row data on success */
+	hasReturning?: boolean;
+};
 
 export type WhereClause = { column: string; condition: string; value: string | number };
 export type SortRule = { column: string; direction: string };

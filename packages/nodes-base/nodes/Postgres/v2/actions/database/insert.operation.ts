@@ -250,7 +250,9 @@ export async function execute(
 
 			[query, values] = addReturning(query, outputColumns, values);
 
-			queries.push({ query, values });
+			// Mark queries that should return data so the runner can detect persistence failures.
+			// Skip for ON CONFLICT DO NOTHING since empty results are expected on conflict.
+			queries.push({ query, values, hasReturning: !options.skipOnConflict });
 		} catch (e) {
 			if (this.continueOnFail()) {
 				const error = e instanceof Error ? e : String(e);

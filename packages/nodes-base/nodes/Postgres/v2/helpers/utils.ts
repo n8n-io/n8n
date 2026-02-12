@@ -67,6 +67,52 @@ export function prepareErrorItem(error: IDataObject | NodeOperationError | Error
 	} as INodeExecutionData;
 }
 
+/**
+ * Validates that queries with a RETURNING clause actually returned data.
+ * If all such queries returned empty results, it indicates a persistence failure
+ * (e.g., connection pooler interrupted the batch, connection dropped mid-execution).
+ * Returns a NodeOperationError if validation fails, or null if results are valid.
+ */
+export function validateReturningResults(
+	node: INode,
+	queries: QueryWithValues[],
+	results: unknown[][],
+): NodeOperationError | null {
+	const queriesExpectingResults = queries.filter((q) => q.hasReturning);
+	if (queriesExpectingResults.length === 0) return null;
+
+	let emptyCount = 0;
+
+	// Check results that were returned
+	for (let i = 0; i < results.length; i++) {
+		if (queries[i]?.hasReturning && (!Array.isArray(results[i]) || results[i].length === 0)) {
+			emptyCount++;
+		}
+	}
+
+	// Count queries beyond the returned results (truncated response)
+	for (let i = results.length; i < queries.length; i++) {
+		if (queries[i]?.hasReturning) {
+			emptyCount++;
+		}
+	}
+
+	if (emptyCount > 0 && emptyCount === queriesExpectingResults.length) {
+		return new NodeOperationError(
+			node,
+			`None of the ${queriesExpectingResults.length} executed queries returned data despite having a RETURNING clause. The data may not have been persisted to the database.`,
+			{
+				description:
+					'This can happen when a connection pooler (e.g., pgBouncer, Supavisor) interrupts ' +
+					'a large batch execution, or when the connection is dropped mid-query. Verify the data ' +
+					'in your database and consider using "independently" or "transaction" query batching mode.',
+			},
+		);
+	}
+
+	return null;
+}
+
 export function parsePostgresError(
 	node: INode,
 	error: any,
@@ -252,7 +298,24 @@ export function configureQueryRunner(
 
 		if (queryBatching === 'single') {
 			try {
-				returnData = (await db.multi(pgp.helpers.concat(queries)))
+				const multiResults = await db.multi(pgp.helpers.concat(queries));
+
+				// Validate that queries with RETURNING actually produced data.
+				// If all RETURNING queries got empty results, data was likely not persisted.
+				const persistenceError = validateReturningResults(node, queries, multiResults);
+				if (persistenceError) {
+					if (!continueOnFail) throw persistenceError;
+					return [
+						{
+							json: {
+								message: persistenceError.message,
+								error: { ...persistenceError },
+							},
+						},
+					];
+				}
+
+				returnData = multiResults
 					.map((result, i) => {
 						return this.helpers.constructExecutionMetaData(wrapData(result as IDataObject[]), {
 							itemData: { item: i },
@@ -275,6 +338,18 @@ export function configureQueryRunner(
 					}
 				}
 			} catch (err) {
+				// Preserve NodeOperationError (e.g. from persistence validation) without re-wrapping
+				if (err instanceof NodeOperationError) {
+					if (!continueOnFail) throw err;
+					return [
+						{
+							json: {
+								message: err.message,
+								error: { ...err },
+							},
+						},
+					];
+				}
 				const error = parsePostgresError(node, err, queries);
 				if (!continueOnFail) throw error;
 
@@ -305,6 +380,13 @@ export function configureQueryRunner(
 						}
 
 						if (!transactionResults.length) {
+							if (queries[i].hasReturning) {
+								throw new NodeOperationError(
+									node,
+									'Query returned no data despite RETURNING clause. The data may not have been persisted.',
+									{ itemIndex: i },
+								);
+							}
 							if ((options?.nodeVersion as number) < 2.3) {
 								transactionResults = emptyReturnData;
 							} else {
@@ -319,7 +401,10 @@ export function configureQueryRunner(
 
 						result.push(...executionData);
 					} catch (err) {
-						const error = parsePostgresError(node, err, queries, i);
+						const error =
+							err instanceof NodeOperationError
+								? err
+								: parsePostgresError(node, err, queries, i);
 						if (!continueOnFail) throw error;
 						result.push(prepareErrorItem(error, i));
 						return result;
@@ -345,6 +430,13 @@ export function configureQueryRunner(
 						}
 
 						if (!transactionResults.length) {
+							if (queries[i].hasReturning) {
+								throw new NodeOperationError(
+									node,
+									'Query returned no data despite RETURNING clause. The data may not have been persisted.',
+									{ itemIndex: i },
+								);
+							}
 							if ((options?.nodeVersion as number) < 2.3) {
 								transactionResults = emptyReturnData;
 							} else {
@@ -359,7 +451,10 @@ export function configureQueryRunner(
 
 						result.push(...executionData);
 					} catch (err) {
-						const error = parsePostgresError(node, err, queries, i);
+						const error =
+							err instanceof NodeOperationError
+								? err
+								: parsePostgresError(node, err, queries, i);
 						if (!continueOnFail) throw error;
 						result.push(prepareErrorItem(error, i));
 					}

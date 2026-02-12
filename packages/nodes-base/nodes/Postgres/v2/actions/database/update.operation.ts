@@ -354,7 +354,7 @@ export async function execute(
 
 			[query, values] = addReturning(query, outputColumns, values);
 
-			queries.push({ query, values });
+			queries.push({ query, values, hasReturning: true });
 		} catch (e) {
 			if (this.continueOnFail()) {
 				const error = e instanceof Error ? e : String(e);
