@@ -1,10 +1,10 @@
 import type { INodeUi } from '@/Interface';
-import type { SecurityFinding } from '../types';
+import { findingId, type SecurityFinding } from '../types';
 import { walkParameters } from '../utils/parameterWalker';
 import { redactValue } from '../utils/redact';
 
 // Known API key prefixes and their providers
-const SECRET_PATTERNS: Array<{ pattern: RegExp; provider: string }> = [
+export const SECRET_PATTERNS: Array<{ pattern: RegExp; provider: string }> = [
 	{ pattern: /sk_live_[a-zA-Z0-9]{20,}/, provider: 'Stripe' },
 	{ pattern: /sk_test_[a-zA-Z0-9]{20,}/, provider: 'Stripe (test)' },
 	{ pattern: /ghp_[a-zA-Z0-9]{36,}/, provider: 'GitHub' },
@@ -21,7 +21,6 @@ const SECRET_PATTERNS: Array<{ pattern: RegExp; provider: string }> = [
 	{ pattern: /-----BEGIN OPENSSH PRIVATE KEY-----/, provider: 'SSH Private Key' },
 ];
 
-// Header names that typically contain credentials
 const SENSITIVE_HEADERS = new Set([
 	'authorization',
 	'x-api-key',
@@ -31,12 +30,8 @@ const SENSITIVE_HEADERS = new Set([
 	'apikey',
 ]);
 
-// Long random strings that look like tokens (32+ hex or base64 chars)
 const GENERIC_TOKEN_PATTERN = /^[a-zA-Z0-9+/=_-]{32,}$/;
 
-/**
- * Check if a field name indicates it holds sensitive data
- */
 function isSensitiveFieldName(path: string): boolean {
 	const lowerPath = path.toLowerCase();
 	return (
@@ -47,12 +42,8 @@ function isSensitiveFieldName(path: string): boolean {
 	);
 }
 
-/**
- * Detects hardcoded secrets (API keys, tokens, private keys) in node parameters.
- */
 export function checkHardcodedSecrets(nodes: INodeUi[]): SecurityFinding[] {
 	const findings: SecurityFinding[] = [];
-	let counter = 0;
 
 	for (const node of nodes) {
 		if (!node.parameters) continue;
@@ -65,7 +56,7 @@ export function checkHardcodedSecrets(nodes: INodeUi[]): SecurityFinding[] {
 				const match = pattern.exec(value);
 				if (match) {
 					findings.push({
-						id: `secret-${++counter}`,
+						id: findingId('secret', node.id, path),
 						category: 'hardcoded-secret',
 						severity: 'critical',
 						title: `Hardcoded ${provider} key detected`,
@@ -87,10 +78,9 @@ export function checkHardcodedSecrets(nodes: INodeUi[]): SecurityFinding[] {
 			// relies on the full value shape and would false-positive on expressions.
 			if (isExpr) return;
 
-			// Check if a sensitive field has a long hardcoded value (likely a token)
 			if (isSensitiveFieldName(path) && value.length >= 16 && GENERIC_TOKEN_PATTERN.test(value)) {
 				findings.push({
-					id: `secret-${++counter}`,
+					id: findingId('secret', node.id, path),
 					category: 'hardcoded-secret',
 					severity: 'critical',
 					title: 'Possible hardcoded token or secret',

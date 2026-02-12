@@ -1,7 +1,7 @@
 import type { INodeUi } from '@/Interface';
 import type { IConnections } from 'n8n-workflow';
 
-import type { SecurityFinding, SecurityScanSummary } from './types';
+import type { ScanContext, SecurityFinding, SecurityScanSummary } from './types';
 import { checkHardcodedSecrets } from './checks/hardcodedSecrets';
 import { checkPiiPatterns } from './checks/piiPatterns';
 import { checkInsecureConfig } from './checks/insecureConfig';
@@ -22,25 +22,29 @@ const SEVERITY_ORDER: Record<string, number> = {
 export function runSecurityScan(nodes: INodeUi[], connections: IConnections): SecurityFinding[] {
 	if (!nodes.length) return [];
 
+	const ctx: ScanContext = {
+		nodes,
+		connections,
+		nodesByName: new Map(nodes.map((n) => [n.name, n])),
+	};
+
 	const findings: SecurityFinding[] = [
 		...checkHardcodedSecrets(nodes),
 		...checkPiiPatterns(nodes),
 		...checkInsecureConfig(nodes),
-		...checkDataExposure(nodes, connections),
+		...checkDataExposure(ctx),
 		...checkExpressionRisks(nodes),
-		...checkAiSecurity(nodes, connections),
+		...checkAiSecurity(ctx),
 	];
 
-	// Deduplicate findings that flag the same secret on the same node/parameter.
+	// Deduplicate findings that flag the same issue on the same node/parameter.
 	// AI-specific checks (id prefix "ai-") provide better context, so when both
 	// a generic and an AI-specific finding exist for the same spot, keep the AI one.
 	const seen = new Map<string, SecurityFinding>();
 	for (const finding of findings) {
-		if (finding.category !== 'hardcoded-secret' || !finding.parameterPath) {
-			seen.set(finding.id, finding);
-			continue;
-		}
-		const dedupeKey = `${finding.category}:${finding.nodeId}:${finding.parameterPath}`;
+		const dedupeKey = finding.parameterPath
+			? `${finding.category}:${finding.nodeId}:${finding.parameterPath}`
+			: finding.id;
 		const existing = seen.get(dedupeKey);
 		if (!existing) {
 			seen.set(dedupeKey, finding);
@@ -55,9 +59,6 @@ export function runSecurityScan(nodes: INodeUi[], connections: IConnections): Se
 	return deduped;
 }
 
-/**
- * Computes a summary of findings by severity.
- */
 export function computeSummary(findings: SecurityFinding[]): SecurityScanSummary {
 	const summary: SecurityScanSummary = { critical: 0, warning: 0, info: 0, total: 0 };
 

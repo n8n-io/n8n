@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, useCssModule } from 'vue';
 import { storeToRefs } from 'pinia';
-import { N8nResizeWrapper, N8nTabs, N8nText, N8nIcon, N8nButton, N8nLink } from '@n8n/design-system';
+import {
+	N8nResizeWrapper,
+	N8nTabs,
+	N8nText,
+	N8nIcon,
+	N8nButton,
+	N8nLink,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useThrottleFn } from '@vueuse/core';
@@ -119,11 +126,7 @@ function onFixFindingWithAi(finding: SecurityFinding) {
 					<SecuritySummaryBar :summary="summary" />
 
 					<div v-if="isAiAvailable" :class="$style.aiAction">
-						<N8nLink
-							size="small"
-							data-test-id="security-analyze-ai"
-							@click="onAnalyzeWithAi"
-						>
+						<N8nLink size="small" data-test-id="security-analyze-ai" @click="onAnalyzeWithAi">
 							<N8nIcon icon="wand-sparkles" size="small" />
 							{{ i18n.baseText('securityScanner.ai.deepScan' as BaseTextKey) }}
 						</N8nLink>

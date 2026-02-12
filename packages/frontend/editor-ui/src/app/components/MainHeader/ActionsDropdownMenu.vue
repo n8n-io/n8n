@@ -196,11 +196,13 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		});
 	}
 
-	actions.push({
-		id: WORKFLOW_MENU_ACTIONS.SECURITY_SCAN,
-		label: locale.baseText('menuActions.securityScan'),
-		disabled: !onWorkflowPage.value,
-	});
+	if (securityScannerStore.isFeatureEnabled) {
+		actions.push({
+			id: WORKFLOW_MENU_ACTIONS.SECURITY_SCAN,
+			label: locale.baseText('menuActions.securityScan'),
+			disabled: !onWorkflowPage.value,
+		});
+	}
 
 	actions.push({
 		id: WORKFLOW_MENU_ACTIONS.SETTINGS,

@@ -10,6 +10,7 @@ import { checkDataExposure } from '../scanner/checks/dataExposure';
 import { checkExpressionRisks } from '../scanner/checks/expressionRisks';
 import { checkAiSecurity } from '../scanner/checks/aiSecurityChecks';
 import { redactValue } from '../scanner/utils/redact';
+import type { ScanContext } from '../scanner/types';
 
 /**
  * Node type descriptions used by the node classification utilities.
@@ -187,6 +188,14 @@ function makeNode(overrides: Partial<INodeUi> & { name: string; type: string }):
 		name,
 		type,
 	} as INodeUi;
+}
+
+function makeCtx(nodes: INodeUi[], connections: IConnections = {}): ScanContext {
+	return {
+		nodes,
+		connections,
+		nodesByName: new Map(nodes.map((n) => [n.name, n])),
+	};
 }
 
 describe('redactValue', () => {
@@ -493,7 +502,7 @@ describe('checkDataExposure', () => {
 				main: [[{ node: 'HTTP Request', type: 'main' as never, index: 0 }]],
 			},
 		};
-		const findings = checkDataExposure(nodes, connections);
+		const findings = checkDataExposure(makeCtx(nodes, connections));
 		expect(findings.length).toBeGreaterThanOrEqual(1);
 		expect(findings[0].category).toBe('data-exposure');
 	});
@@ -508,7 +517,7 @@ describe('checkDataExposure', () => {
 				},
 			}),
 		];
-		const findings = checkDataExposure(nodes, {});
+		const findings = checkDataExposure(makeCtx(nodes));
 		expect(findings.length).toBeGreaterThanOrEqual(1);
 		expect(findings[0].title).toContain('console.log');
 	});
@@ -523,7 +532,7 @@ describe('checkDataExposure', () => {
 				},
 			}),
 		];
-		const findings = checkDataExposure(nodes, {});
+		const findings = checkDataExposure(makeCtx(nodes));
 		expect(findings.some((f) => f.title.includes('spawn()'))).toBe(true);
 		expect(findings.some((f) => f.parameterPath === 'pythonCode')).toBe(true);
 	});
@@ -635,7 +644,7 @@ describe('checkAiSecurity', () => {
 				},
 			}),
 		];
-		const findings = checkAiSecurity(nodes, {});
+		const findings = checkAiSecurity(makeCtx(nodes));
 		expect(findings.length).toBeGreaterThanOrEqual(1);
 		expect(findings[0].category).toBe('expression-risk');
 		expect(findings[0].severity).toBe('warning');
@@ -652,7 +661,7 @@ describe('checkAiSecurity', () => {
 				},
 			}),
 		];
-		const findings = checkAiSecurity(nodes, {});
+		const findings = checkAiSecurity(makeCtx(nodes));
 		expect(findings).toHaveLength(0);
 	});
 
@@ -670,7 +679,7 @@ describe('checkAiSecurity', () => {
 				main: [[{ node: 'AI Agent', type: 'main' as never, index: 0 }]],
 			},
 		};
-		const findings = checkAiSecurity(nodes, connections);
+		const findings = checkAiSecurity(makeCtx(nodes, connections));
 		expect(findings.length).toBeGreaterThanOrEqual(1);
 		expect(findings[0].category).toBe('data-exposure');
 		expect(findings[0].title).toContain('directly');
@@ -694,7 +703,7 @@ describe('checkAiSecurity', () => {
 				ai_tool: [[{ node: 'AI Agent', type: 'ai_tool' as never, index: 0 }]],
 			},
 		};
-		const findings = checkAiSecurity(nodes, connections);
+		const findings = checkAiSecurity(makeCtx(nodes, connections));
 		expect(findings.length).toBeGreaterThanOrEqual(1);
 		expect(findings[0].category).toBe('insecure-config');
 		expect(findings[0].title).toContain('HTTP Request tool');
@@ -718,7 +727,7 @@ describe('checkAiSecurity', () => {
 				main: [[{ node: 'Slack', type: 'main' as never, index: 0 }]],
 			},
 		};
-		const findings = checkAiSecurity(nodes, connections);
+		const findings = checkAiSecurity(makeCtx(nodes, connections));
 		expect(findings.length).toBeGreaterThanOrEqual(1);
 		expect(findings[0].category).toBe('data-exposure');
 		expect(findings[0].title).toContain('AI output');
@@ -734,7 +743,7 @@ describe('checkAiSecurity', () => {
 				},
 			}),
 		];
-		const findings = checkAiSecurity(nodes, {});
+		const findings = checkAiSecurity(makeCtx(nodes));
 		expect(findings.length).toBeGreaterThanOrEqual(1);
 		const secretFinding = findings.find((f) => f.category === 'hardcoded-secret');
 		expect(secretFinding).toBeDefined();
@@ -753,7 +762,7 @@ describe('checkAiSecurity', () => {
 				},
 			}),
 		];
-		const findings = checkAiSecurity(nodes, {});
+		const findings = checkAiSecurity(makeCtx(nodes));
 		const secretFindings = findings.filter((f) => f.category === 'hardcoded-secret');
 		expect(secretFindings).toHaveLength(0);
 	});
@@ -776,7 +785,7 @@ describe('checkAiSecurity', () => {
 				main: [[{ node: 'AI Chain', type: 'main' as never, index: 0 }]],
 			},
 		};
-		const findings = checkAiSecurity(nodes, connections);
+		const findings = checkAiSecurity(makeCtx(nodes, connections));
 		const chainFinding = findings.find((f) => f.title.includes('chains directly'));
 		expect(chainFinding).toBeDefined();
 		expect(chainFinding?.category).toBe('data-exposure');
@@ -801,7 +810,7 @@ describe('checkAiSecurity', () => {
 				main: [[{ node: 'Set', type: 'main' as never, index: 0 }]],
 			},
 		};
-		const findings = checkAiSecurity(nodes, connections);
+		const findings = checkAiSecurity(makeCtx(nodes, connections));
 		const chainFindings = findings.filter((f) => f.title.includes('chains directly'));
 		expect(chainFindings).toHaveLength(0);
 	});
@@ -824,7 +833,7 @@ describe('checkAiSecurity', () => {
 				ai_tool: [[{ node: 'AI Agent', type: 'ai_tool' as never, index: 0 }]],
 			},
 		};
-		const findings = checkAiSecurity(nodes, connections);
+		const findings = checkAiSecurity(makeCtx(nodes, connections));
 		const toolFinding = findings.find((f) => f.title.includes('Code tool'));
 		expect(toolFinding).toBeDefined();
 		expect(toolFinding?.category).toBe('insecure-config');
@@ -842,7 +851,7 @@ describe('Tier 1 checks', () => {
 				},
 			}),
 		];
-		const findings = checkDataExposure(nodes, {});
+		const findings = checkDataExposure(makeCtx(nodes));
 		const evalFinding = findings.find((f) => f.title.includes('eval()'));
 		expect(evalFinding).toBeDefined();
 		expect(evalFinding?.severity).toBe('warning');
@@ -859,7 +868,7 @@ describe('Tier 1 checks', () => {
 				},
 			}),
 		];
-		const findings = checkDataExposure(nodes, {});
+		const findings = checkDataExposure(makeCtx(nodes));
 		const childProcFinding = findings.find((f) => f.title.includes('child_process'));
 		expect(childProcFinding).toBeDefined();
 	});
@@ -886,7 +895,7 @@ describe('Tier 1 checks', () => {
 				],
 			},
 		};
-		const findings = checkDataExposure(nodes, connections);
+		const findings = checkDataExposure(makeCtx(nodes, connections));
 		const fanOutFinding = findings.find((f) => f.title.includes('fan-out'));
 		expect(fanOutFinding).toBeDefined();
 		expect(fanOutFinding?.severity).toBe('warning');

@@ -36,18 +36,21 @@ const tagClass = computed(() => {
 .TagCritical {
 	color: var(--color--danger);
 	background-color: light-dark(var(--color--neutral-white), var(--color--foreground--tint-1));
-	border: var(--border-width) var(--border-style) light-dark(var(--color--neutral-300), var(--color--foreground));
+	border: var(--border-width) var(--border-style)
+		light-dark(var(--color--neutral-300), var(--color--foreground));
 }
 
 .TagWarning {
 	color: var(--color--warning--shade-1);
 	background-color: light-dark(var(--color--neutral-white), var(--color--foreground--tint-1));
-	border: var(--border-width) var(--border-style) light-dark(var(--color--neutral-300), var(--color--foreground));
+	border: var(--border-width) var(--border-style)
+		light-dark(var(--color--neutral-300), var(--color--foreground));
 }
 
 .TagInfo {
 	color: light-dark(var(--color--neutral-600), var(--color--text--tint-1));
 	background-color: light-dark(var(--color--neutral-white), var(--color--foreground--tint-1));
-	border: var(--border-width) var(--border-style) light-dark(var(--color--neutral-300), var(--color--foreground));
+	border: var(--border-width) var(--border-style)
+		light-dark(var(--color--neutral-300), var(--color--foreground));
 }
 </style>

@@ -1,8 +1,8 @@
 import type { INodeUi } from '@/Interface';
-import type { IConnections } from 'n8n-workflow';
-import type { SecurityFinding } from '../types';
+import { findingId, type ScanContext, type SecurityFinding } from '../types';
 import { walkParameters } from '../utils/parameterWalker';
 import { redactValue } from '../utils/redact';
+import { SECRET_PATTERNS } from './hardcodedSecrets';
 import {
 	isInputTrigger,
 	isExternalService,
@@ -12,35 +12,15 @@ import {
 	getPromptParameters,
 } from '../utils/nodeClassification';
 
-/** Known secret patterns — reused from hardcodedSecrets for AI prompt context. */
-const SECRET_PATTERNS: Array<{ pattern: RegExp; provider: string }> = [
-	{ pattern: /sk_live_[a-zA-Z0-9]{20,}/, provider: 'Stripe' },
-	{ pattern: /sk_test_[a-zA-Z0-9]{20,}/, provider: 'Stripe (test)' },
-	{ pattern: /ghp_[a-zA-Z0-9]{36,}/, provider: 'GitHub' },
-	{ pattern: /gho_[a-zA-Z0-9]{36,}/, provider: 'GitHub OAuth' },
-	{ pattern: /ghs_[a-zA-Z0-9]{36,}/, provider: 'GitHub App' },
-	{ pattern: /github_pat_[a-zA-Z0-9_]{20,}/, provider: 'GitHub' },
-	{ pattern: /xoxb-[0-9]+-[a-zA-Z0-9]+/, provider: 'Slack Bot' },
-	{ pattern: /xoxp-[0-9]+-[a-zA-Z0-9]+/, provider: 'Slack User' },
-	{ pattern: /AKIA[0-9A-Z]{16}/, provider: 'AWS' },
-	{ pattern: /AIza[0-9A-Za-z_-]{35}/, provider: 'Google API' },
-	{ pattern: /SG\.[a-zA-Z0-9_-]{22}\.[a-zA-Z0-9_-]{43}/, provider: 'SendGrid' },
-	{ pattern: /-----BEGIN (?:RSA |EC |DSA )?PRIVATE KEY-----/, provider: 'Private Key' },
-];
-
 /** Matches expressions that reference external / user-controlled input. */
 const INPUT_REF_PATTERN = /\$json\b|\$input\b|\$\('|\$node\[/;
 
 /**
- * Check 1 — Prompt Injection Risk
- *
- * Flags AI nodes whose system prompt contains expressions referencing
- * user-controlled data ($json, $input, etc.). An attacker could craft
- * webhook/form input that hijacks the system prompt.
+ * Prompt Injection Risk — flags AI nodes whose system prompt contains
+ * expressions referencing user-controlled data ($json, $input, etc.).
  */
 function checkPromptInjection(nodes: INodeUi[]): SecurityFinding[] {
 	const findings: SecurityFinding[] = [];
-	let counter = 0;
 
 	for (const node of nodes) {
 		if (!isAiNode(node) || !node.parameters) continue;
@@ -50,13 +30,12 @@ function checkPromptInjection(nodes: INodeUi[]): SecurityFinding[] {
 		walkParameters(node.parameters, (value, path, isExpr) => {
 			if (!isExpr) return;
 
-			// Only inspect system-prompt-like parameters
 			const topParam = path.split('.')[0];
 			if (!promptParams.has(topParam)) return;
 
 			if (INPUT_REF_PATTERN.test(value)) {
 				findings.push({
-					id: `ai-inject-${++counter}`,
+					id: findingId('ai-inject', node.id, path),
 					category: 'expression-risk',
 					severity: 'warning',
 					title: `User input in AI system prompt of "${node.name}"`,
@@ -77,17 +56,12 @@ function checkPromptInjection(nodes: INodeUi[]): SecurityFinding[] {
 }
 
 /**
- * Check 2 — Direct Trigger-to-AI Data Flow
- *
- * Flags when a webhook/form trigger connects directly (distance=1)
- * to an AI node via a "main" connection without intermediate filtering.
- * Raw user input flowing straight to an LLM may leak PII to the AI provider.
+ * Direct Trigger-to-AI Data Flow — flags when a webhook/form trigger
+ * connects directly (distance=1) to an AI node without intermediate filtering.
  */
-function checkDirectTriggerToAi(nodes: INodeUi[], connections: IConnections): SecurityFinding[] {
+function checkDirectTriggerToAi(ctx: ScanContext): SecurityFinding[] {
 	const findings: SecurityFinding[] = [];
-	let counter = 0;
-
-	const nodesByName = new Map(nodes.map((n) => [n.name, n]));
+	const { nodes, connections, nodesByName } = ctx;
 
 	for (const node of nodes) {
 		if (!isInputTrigger(node)) continue;
@@ -95,7 +69,6 @@ function checkDirectTriggerToAi(nodes: INodeUi[], connections: IConnections): Se
 		const nodeConns = connections[node.name];
 		if (!nodeConns) continue;
 
-		// Check "main" output connections (distance = 1)
 		const mainOutputs = nodeConns.main;
 		if (!mainOutputs) continue;
 
@@ -107,7 +80,7 @@ function checkDirectTriggerToAi(nodes: INodeUi[], connections: IConnections): Se
 
 				if (isAiNode(target)) {
 					findings.push({
-						id: `ai-direct-${++counter}`,
+						id: findingId('ai-direct', target.id),
 						category: 'data-exposure',
 						severity: 'warning',
 						title: `Trigger data flows directly to AI node "${target.name}"`,
@@ -127,20 +100,14 @@ function checkDirectTriggerToAi(nodes: INodeUi[], connections: IConnections): Se
 }
 
 /**
- * Check 3 — Over-Privileged AI Agent Tools
- *
- * Flags AI Agent nodes that have dangerous tools connected (code execution
- * or HTTP access), which grant the LLM the ability to perform arbitrary
- * operations — a data exfiltration and injection risk.
+ * Over-Privileged AI Agent Tools — flags AI Agent nodes that have dangerous
+ * tools connected (code execution or HTTP access).
  */
-function checkOverPrivilegedTools(nodes: INodeUi[], connections: IConnections): SecurityFinding[] {
+function checkOverPrivilegedTools(ctx: ScanContext): SecurityFinding[] {
 	const findings: SecurityFinding[] = [];
-	let counter = 0;
-
-	const nodesByName = new Map(nodes.map((n) => [n.name, n]));
+	const { connections, nodesByName } = ctx;
 
 	for (const [sourceName, nodeConns] of Object.entries(connections)) {
-		// Look for ai_tool connections coming INTO agent nodes
 		const toolOutputs = nodeConns.ai_tool;
 		if (!toolOutputs) continue;
 
@@ -156,7 +123,7 @@ function checkOverPrivilegedTools(nodes: INodeUi[], connections: IConnections): 
 				if (toolResult.isDangerous) {
 					const toolLabel = toolResult.reason.includes('HTTP') ? 'HTTP Request tool' : 'Code tool';
 					findings.push({
-						id: `ai-tool-${++counter}`,
+						id: findingId('ai-tool', agentNode.id, toolNode.id),
 						category: 'insecure-config',
 						severity: 'info',
 						title: `AI Agent "${agentNode.name}" has ${toolLabel}`,
@@ -176,17 +143,12 @@ function checkOverPrivilegedTools(nodes: INodeUi[], connections: IConnections): 
 }
 
 /**
- * Check 4 — AI Output to External Service
- *
- * Flags when an AI node's "main" output connects directly to an external
- * service. AI outputs are unpredictable and may contain hallucinated data,
- * leaked system prompt fragments, or repeated PII.
+ * AI Output to External Service — flags when an AI node's output connects
+ * directly to an external service without validation.
  */
-function checkAiOutputToExternal(nodes: INodeUi[], connections: IConnections): SecurityFinding[] {
+function checkAiOutputToExternal(ctx: ScanContext): SecurityFinding[] {
 	const findings: SecurityFinding[] = [];
-	let counter = 0;
-
-	const nodesByName = new Map(nodes.map((n) => [n.name, n]));
+	const { nodes, connections, nodesByName } = ctx;
 
 	for (const node of nodes) {
 		if (!isAiNode(node)) continue;
@@ -205,7 +167,7 @@ function checkAiOutputToExternal(nodes: INodeUi[], connections: IConnections): S
 
 				if (isExternalService(target)) {
 					findings.push({
-						id: `ai-output-${++counter}`,
+						id: findingId('ai-output', target.id),
 						category: 'data-exposure',
 						severity: 'info',
 						title: `AI output sent directly to "${target.name}"`,
@@ -225,15 +187,11 @@ function checkAiOutputToExternal(nodes: INodeUi[], connections: IConnections): S
 }
 
 /**
- * Check 5 — Secrets in AI Prompt Fields
- *
- * Flags when a known secret pattern (API key, token, private key) appears
- * in an AI node's system prompt parameters. This is elevated to critical
- * because the LLM will likely echo the secret in its output.
+ * Secrets in AI Prompt Fields — flags known secret patterns in AI system
+ * prompt parameters. Elevated to critical because the LLM will echo them.
  */
 function checkSecretsInAiPrompts(nodes: INodeUi[]): SecurityFinding[] {
 	const findings: SecurityFinding[] = [];
-	let counter = 0;
 
 	for (const node of nodes) {
 		if (!isAiNode(node) || !node.parameters) continue;
@@ -248,7 +206,7 @@ function checkSecretsInAiPrompts(nodes: INodeUi[]): SecurityFinding[] {
 				const match = pattern.exec(value);
 				if (match) {
 					findings.push({
-						id: `ai-secret-${++counter}`,
+						id: findingId('ai-secret', node.id, path),
 						category: 'hardcoded-secret',
 						severity: 'critical',
 						title: `${provider} key in AI prompt of "${node.name}"`,
@@ -271,17 +229,12 @@ function checkSecretsInAiPrompts(nodes: INodeUi[]): SecurityFinding[] {
 }
 
 /**
- * Check 6 — AI Agent Chaining Without Guardrails
- *
- * Flags when one AI node's main output connects directly to another AI node.
- * Chained LLMs amplify hallucination risk and can propagate prompt injection
- * from the first model to the second.
+ * AI Agent Chaining — flags when one AI node's output connects directly
+ * to another AI node, amplifying hallucination and injection risk.
  */
-function checkAiChaining(nodes: INodeUi[], connections: IConnections): SecurityFinding[] {
+function checkAiChaining(ctx: ScanContext): SecurityFinding[] {
 	const findings: SecurityFinding[] = [];
-	let counter = 0;
-
-	const nodesByName = new Map(nodes.map((n) => [n.name, n]));
+	const { nodes, connections, nodesByName } = ctx;
 
 	for (const node of nodes) {
 		if (!isAiNode(node)) continue;
@@ -300,7 +253,7 @@ function checkAiChaining(nodes: INodeUi[], connections: IConnections): SecurityF
 
 				if (isAiNode(target)) {
 					findings.push({
-						id: `ai-chain-${++counter}`,
+						id: findingId('ai-chain', target.id, node.id),
 						category: 'data-exposure',
 						severity: 'warning',
 						title: `AI node "${node.name}" chains directly to AI node "${target.name}"`,
@@ -323,13 +276,13 @@ function checkAiChaining(nodes: INodeUi[], connections: IConnections): SecurityF
 /**
  * Runs all AI-specific security checks.
  */
-export function checkAiSecurity(nodes: INodeUi[], connections: IConnections): SecurityFinding[] {
+export function checkAiSecurity(ctx: ScanContext): SecurityFinding[] {
 	return [
-		...checkPromptInjection(nodes),
-		...checkSecretsInAiPrompts(nodes),
-		...checkDirectTriggerToAi(nodes, connections),
-		...checkOverPrivilegedTools(nodes, connections),
-		...checkAiOutputToExternal(nodes, connections),
-		...checkAiChaining(nodes, connections),
+		...checkPromptInjection(ctx.nodes),
+		...checkSecretsInAiPrompts(ctx.nodes),
+		...checkDirectTriggerToAi(ctx),
+		...checkOverPrivilegedTools(ctx),
+		...checkAiOutputToExternal(ctx),
+		...checkAiChaining(ctx),
 	];
 }

@@ -1,6 +1,6 @@
 import type { INodeUi } from '@/Interface';
-import type { SecurityFinding } from '../types';
-import { walkParameters } from '../utils/parameterWalker';
+import { findingId, type SecurityFinding } from '../types';
+import { walkParameters, getNodeParam } from '../utils/parameterWalker';
 import { isWebhookNode } from '../utils/nodeClassification';
 
 const LOCAL_URL_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/;
@@ -9,18 +9,12 @@ const LOCAL_URL_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|
 const INTERNAL_NETWORK_PATTERN =
 	/^https?:\/\/(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|localhost|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|0\.0\.0\.0)(:|\/|$)/;
 
-/**
- * Detects insecure configuration: HTTP URLs (non-localhost), disabled SSL verification,
- * and unauthenticated webhooks.
- */
 export function checkInsecureConfig(nodes: INodeUi[]): SecurityFinding[] {
 	const findings: SecurityFinding[] = [];
-	let counter = 0;
 
 	for (const node of nodes) {
 		if (!node.parameters) continue;
 
-		// Check for http:// URLs (non-localhost)
 		walkParameters(node.parameters, (value, path, isExpr) => {
 			if (isExpr) return;
 
@@ -29,7 +23,7 @@ export function checkInsecureConfig(nodes: INodeUi[]): SecurityFinding[] {
 				const host = httpMatch[1].split(':')[0];
 				if (host !== 'localhost' && host !== '127.0.0.1' && host !== '0.0.0.0') {
 					findings.push({
-						id: `config-${++counter}`,
+						id: findingId('config', node.id, path),
 						category: 'insecure-config',
 						severity: 'warning',
 						title: 'Insecure HTTP URL (no TLS)',
@@ -45,13 +39,10 @@ export function checkInsecureConfig(nodes: INodeUi[]): SecurityFinding[] {
 			}
 		});
 
-		// Check for allowUnauthorizedCerts
-		if (
-			(node.parameters as Record<string, unknown>).allowUnauthorizedCerts === true ||
-			(node.parameters as Record<string, unknown>).allowUnauthorizedCerts === 'true'
-		) {
+		const allowUnauthorizedCerts = getNodeParam(node, 'allowUnauthorizedCerts');
+		if (allowUnauthorizedCerts === true || allowUnauthorizedCerts === 'true') {
 			findings.push({
-				id: `config-${++counter}`,
+				id: findingId('config', node.id, 'allowUnauthorizedCerts'),
 				category: 'insecure-config',
 				severity: 'warning',
 				title: 'SSL certificate verification disabled',
@@ -66,12 +57,11 @@ export function checkInsecureConfig(nodes: INodeUi[]): SecurityFinding[] {
 			});
 		}
 
-		// Check for unauthenticated webhooks
 		if (isWebhookNode(node)) {
-			const auth = (node.parameters as Record<string, unknown>).authentication;
+			const auth = getNodeParam<string>(node, 'authentication');
 			if (!auth || auth === 'none') {
 				findings.push({
-					id: `config-${++counter}`,
+					id: findingId('config', node.id, 'authentication'),
 					category: 'insecure-config',
 					severity: 'warning',
 					title: 'Unauthenticated webhook',
@@ -87,13 +77,11 @@ export function checkInsecureConfig(nodes: INodeUi[]): SecurityFinding[] {
 			}
 		}
 
-		// Check HTTP Request node without credentials
 		if (node.type === 'n8n-nodes-base.httpRequest') {
 			const hasCredentials = node.credentials && Object.keys(node.credentials).length > 0;
-			const authType = (node.parameters as Record<string, unknown>).authentication;
+			const authType = getNodeParam<string>(node, 'authentication');
 			if (!hasCredentials && (!authType || authType === 'none')) {
-				// Only flag if the URL looks like an external API (not localhost)
-				const url = String((node.parameters as Record<string, unknown>).url ?? '');
+				const url = String(getNodeParam(node, 'url') ?? '');
 				if (
 					url &&
 					!url.startsWith('=') &&
@@ -101,7 +89,7 @@ export function checkInsecureConfig(nodes: INodeUi[]): SecurityFinding[] {
 					/^https?:\/\/[^/]+/.test(url)
 				) {
 					findings.push({
-						id: `config-${++counter}`,
+						id: findingId('config', node.id, 'authentication'),
 						category: 'insecure-config',
 						severity: 'info',
 						title: 'HTTP Request without credentials',
@@ -124,10 +112,10 @@ export function checkInsecureConfig(nodes: INodeUi[]): SecurityFinding[] {
 	if (hasWebhook) {
 		for (const node of nodes) {
 			if (node.type !== 'n8n-nodes-base.httpRequest' || !node.parameters) continue;
-			const url = String((node.parameters as Record<string, unknown>).url ?? '');
+			const url = String(getNodeParam(node, 'url') ?? '');
 			if (url && !url.startsWith('=') && INTERNAL_NETWORK_PATTERN.test(url)) {
 				findings.push({
-					id: `config-${++counter}`,
+					id: findingId('config', node.id, 'url'),
 					category: 'insecure-config',
 					severity: 'warning',
 					title: `SSRF risk: webhook with internal URL in "${node.name}"`,

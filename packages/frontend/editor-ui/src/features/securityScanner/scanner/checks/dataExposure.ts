@@ -1,12 +1,12 @@
-import type { INodeUi } from '@/Interface';
 import type { IConnections } from 'n8n-workflow';
-import type { SecurityFinding } from '../types';
+import { findingId, type ScanContext, type SecurityFinding } from '../types';
 import {
 	isInputTrigger,
 	isExternalService,
 	isCodeNode,
 	getCodeParameters,
 } from '../utils/nodeClassification';
+import { getNodeParam } from '../utils/parameterWalker';
 
 /** Dangerous function patterns in Code nodes that indicate code injection risk. */
 const DANGEROUS_CODE_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
@@ -21,10 +21,6 @@ const DANGEROUS_CODE_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
 /** Number of external services from a single trigger that triggers a fan-out warning. */
 const FAN_OUT_THRESHOLD = 5;
 
-/**
- * Builds a set of all node names downstream from the given source nodes,
- * by traversing the connections graph.
- */
 function getDownstreamNodes(sourceNames: Set<string>, connections: IConnections): Set<string> {
 	const visited = new Set<string>();
 	const queue = [...sourceNames];
@@ -54,13 +50,11 @@ function getDownstreamNodes(sourceNames: Set<string>, connections: IConnections)
 
 /**
  * Detects data exposure risks: webhook data flowing to external services,
- * and Code nodes using console.log.
+ * dangerous patterns in Code nodes, and high fan-out from triggers.
  */
-export function checkDataExposure(nodes: INodeUi[], connections: IConnections): SecurityFinding[] {
+export function checkDataExposure(ctx: ScanContext): SecurityFinding[] {
 	const findings: SecurityFinding[] = [];
-	let counter = 0;
-
-	const nodesByName = new Map(nodes.map((n) => [n.name, n]));
+	const { nodes, connections, nodesByName } = ctx;
 
 	// Find input trigger nodes
 	const triggerNames = new Set(nodes.filter((n) => isInputTrigger(n)).map((n) => n.name));
@@ -77,7 +71,7 @@ export function checkDataExposure(nodes: INodeUi[], connections: IConnections): 
 			if (isExternalService(node) && !triggerNames.has(node.name)) {
 				const triggerList = [...triggerNames].join(', ');
 				findings.push({
-					id: `exposure-${++counter}`,
+					id: findingId('exposure', node.id),
 					category: 'data-exposure',
 					severity: 'info',
 					title: `External input flows to ${node.type.replace('n8n-nodes-base.', '')}`,
@@ -97,12 +91,12 @@ export function checkDataExposure(nodes: INodeUi[], connections: IConnections): 
 		if (isCodeNode(node) && node.parameters) {
 			const codeParamNames = getCodeParameters(node);
 			for (const paramName of codeParamNames) {
-				const code = String((node.parameters as Record<string, unknown>)[paramName] ?? '');
+				const code = String(getNodeParam(node, paramName) ?? '');
 				if (!code) continue;
 
 				if (code.includes('console.log')) {
 					findings.push({
-						id: `exposure-${++counter}`,
+						id: findingId('exposure', node.id, paramName),
 						category: 'data-exposure',
 						severity: 'info',
 						title: 'console.log in Code node',
@@ -117,11 +111,10 @@ export function checkDataExposure(nodes: INodeUi[], connections: IConnections): 
 					});
 				}
 
-				// Code injection: detect dangerous functions
 				for (const { pattern, label } of DANGEROUS_CODE_PATTERNS) {
 					if (pattern.test(code)) {
 						findings.push({
-							id: `exposure-${++counter}`,
+							id: findingId('exposure', node.id, paramName),
 							category: 'data-exposure',
 							severity: 'warning',
 							title: `Dangerous "${label}" usage in Code node "${node.name}"`,
@@ -150,8 +143,9 @@ export function checkDataExposure(nodes: INodeUi[], connections: IConnections): 
 				if (node && isExternalService(node)) externalCount++;
 			}
 			if (externalCount >= FAN_OUT_THRESHOLD) {
+				const triggerId = nodesByName.get(triggerName)?.id ?? triggerName;
 				findings.push({
-					id: `exposure-${++counter}`,
+					id: findingId('exposure', triggerId, 'fan-out'),
 					category: 'data-exposure',
 					severity: 'warning',
 					title: `High fan-out: "${triggerName}" reaches ${externalCount} external services`,
@@ -159,7 +153,7 @@ export function checkDataExposure(nodes: INodeUi[], connections: IConnections): 
 					remediation:
 						'1. Review whether all downstream services need the full trigger payload.\n2. Add Set nodes before external services to pass only the minimum required data.\n3. Consider grouping related external calls behind a single sub-workflow to limit blast radius.\n4. Add error handling to prevent a failure in one branch from affecting others.',
 					nodeName: triggerName,
-					nodeId: nodesByName.get(triggerName)?.id ?? triggerName,
+					nodeId: triggerId,
 					nodeType: nodesByName.get(triggerName)?.type ?? '',
 				});
 			}

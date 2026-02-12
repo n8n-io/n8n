@@ -1,11 +1,12 @@
+import type { INodeUi } from '@/Interface';
 import { isExpression } from 'n8n-workflow';
 
 export type ParameterVisitor = (value: string, path: string, isExpr: boolean) => void;
 
-/**
- * Recursively walks all string leaf values in a node's parameters object,
- * calling the visitor with the value, dot-notation path, and whether it's an expression.
- */
+export function getNodeParam<T = unknown>(node: INodeUi, key: string): T | undefined {
+	return (node.parameters as Record<string, unknown> | undefined)?.[key] as T | undefined;
+}
+
 export function walkParameters(params: unknown, visitor: ParameterVisitor, currentPath = ''): void {
 	if (params === null || params === undefined) return;
 

@@ -1,6 +1,6 @@
 import type { INodeUi } from '@/Interface';
-import type { SecurityFinding } from '../types';
-import { walkParameters } from '../utils/parameterWalker';
+import { findingId, type SecurityFinding } from '../types';
+import { walkParameters, getNodeParam } from '../utils/parameterWalker';
 import { redactValue } from '../utils/redact';
 import { getAssignmentFields } from '../utils/nodeClassification';
 
@@ -51,7 +51,6 @@ function isPiiFieldName(name: string): boolean {
  */
 export function checkPiiPatterns(nodes: INodeUi[]): SecurityFinding[] {
 	const findings: SecurityFinding[] = [];
-	let counter = 0;
 
 	for (const node of nodes) {
 		if (!node.parameters) continue;
@@ -63,7 +62,7 @@ export function checkPiiPatterns(nodes: INodeUi[]): SecurityFinding[] {
 			for (const { pattern, type } of PII_VALUE_PATTERNS) {
 				if (pattern.test(value)) {
 					findings.push({
-						id: `pii-${++counter}`,
+						id: findingId('pii', node.id, path),
 						category: 'pii-data-flow',
 						severity: 'warning',
 						title: `${type} detected in parameter`,
@@ -85,15 +84,17 @@ export function checkPiiPatterns(nodes: INodeUi[]): SecurityFinding[] {
 		// Check assignment collection parameters for PII field names
 		const assignmentFieldNames = getAssignmentFields(node);
 		for (const fieldName of assignmentFieldNames) {
-			const assignmentParam = (node.parameters as Record<string, unknown>)[fieldName] as
-				| { assignments?: Array<{ name?: string }> }
-				| undefined;
+			const assignmentParam = getNodeParam<{ assignments?: Array<{ name?: string }> }>(
+				node,
+				fieldName,
+			);
 			const assignments = assignmentParam?.assignments;
 			if (Array.isArray(assignments)) {
 				for (const assignment of assignments) {
 					if (assignment.name && isPiiFieldName(assignment.name)) {
+						const paramPath = `${fieldName}.${assignment.name}`;
 						findings.push({
-							id: `pii-${++counter}`,
+							id: findingId('pii', node.id, paramPath),
 							category: 'pii-data-flow',
 							severity: 'warning',
 							title: `PII field "${assignment.name}" in "${node.name}"`,

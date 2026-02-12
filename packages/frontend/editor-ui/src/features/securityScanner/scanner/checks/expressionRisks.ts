@@ -1,5 +1,5 @@
 import type { INodeUi } from '@/Interface';
-import type { SecurityFinding } from '../types';
+import { findingId, type SecurityFinding } from '../types';
 import { walkParameters } from '../utils/parameterWalker';
 
 const SENSITIVE_FIELD_PATTERNS = /(?:password|secret|token|apiKey|api_key|private_key)/i;
@@ -10,7 +10,6 @@ const SENSITIVE_FIELD_PATTERNS = /(?:password|secret|token|apiKey|api_key|privat
  */
 export function checkExpressionRisks(nodes: INodeUi[]): SecurityFinding[] {
 	const findings: SecurityFinding[] = [];
-	let counter = 0;
 
 	for (const node of nodes) {
 		if (!node.parameters) continue;
@@ -21,7 +20,7 @@ export function checkExpressionRisks(nodes: INodeUi[]): SecurityFinding[] {
 			// Check for $env usage
 			if (value.includes('$env.') || value.includes('$env[')) {
 				findings.push({
-					id: `expr-${++counter}`,
+					id: findingId('expr', node.id, path),
 					category: 'expression-risk',
 					severity: 'info',
 					title: 'Environment variable accessed in expression',
@@ -39,7 +38,7 @@ export function checkExpressionRisks(nodes: INodeUi[]): SecurityFinding[] {
 			// Check for expressions accessing sensitive fields
 			if (SENSITIVE_FIELD_PATTERNS.test(value)) {
 				findings.push({
-					id: `expr-${++counter}`,
+					id: findingId('expr', node.id, path),
 					category: 'expression-risk',
 					severity: 'info',
 					title: 'Expression accesses sensitive field',

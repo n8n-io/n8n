@@ -1,3 +1,6 @@
+import type { INodeUi } from '@/Interface';
+import type { IConnections } from 'n8n-workflow';
+
 export type SecuritySeverity = 'critical' | 'warning' | 'info';
 
 export type SecurityCategory =
@@ -26,4 +29,14 @@ export interface SecurityScanSummary {
 	warning: number;
 	info: number;
 	total: number;
+}
+
+export interface ScanContext {
+	nodes: INodeUi[];
+	connections: IConnections;
+	nodesByName: Map<string, INodeUi>;
+}
+
+export function findingId(category: string, nodeId: string, path?: string): string {
+	return `${category}-${nodeId}-${path ?? 'node'}`;
 }

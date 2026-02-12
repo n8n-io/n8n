@@ -65,11 +65,7 @@ function onFixWithAi() {
 				:show-after="300"
 			>
 				<div :class="$style.metaRow">
-					<NodeIcon
-						v-if="resolvedNodeType"
-						:node-type="resolvedNodeType"
-						:size="16"
-					/>
+					<NodeIcon v-if="resolvedNodeType" :node-type="resolvedNodeType" :size="16" />
 					<N8nIcon v-else icon="box" size="small" :class="$style.metaIcon" />
 					<N8nText tag="span" size="small" bold :class="$style.nodeName">
 						{{ finding.nodeName }}

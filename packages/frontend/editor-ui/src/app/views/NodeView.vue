@@ -1898,7 +1898,9 @@ onBeforeUnmount(() => {
 				/>
 			</Suspense>
 		</WorkflowCanvas>
-		<SecurityPanel v-if="securityScannerStore.panelOpen && !isLoading" />
+		<SecurityPanel
+			v-if="securityScannerStore.isFeatureEnabled && securityScannerStore.panelOpen && !isLoading"
+		/>
 		<FocusSidebar
 			v-if="
 				!isLoading && (experimentalNdvStore.isNdvInFocusPanelEnabled ? !isCanvasReadOnly : true)

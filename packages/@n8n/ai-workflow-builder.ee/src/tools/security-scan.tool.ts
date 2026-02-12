@@ -166,8 +166,9 @@ function checkHardcodedSecrets(nodes: INode[]): SecurityFinding[] {
 		if (!node.parameters) continue;
 
 		walkParameters(node.parameters, (value, path, isExpr) => {
-			if (isExpr) return;
-
+			// Always check known secret patterns — even inside expressions,
+			// because a value like `={{ $json }} use this key sk_live_abc...`
+			// still contains a hardcoded secret embedded in the expression text.
 			for (const { pattern, provider } of SECRET_PATTERNS) {
 				if (pattern.test(value)) {
 					findings.push({
@@ -181,6 +182,10 @@ function checkHardcodedSecrets(nodes: INode[]): SecurityFinding[] {
 					return;
 				}
 			}
+
+			// Skip expressions for heuristic checks — generic token detection
+			// relies on the full value shape and would false-positive on expressions.
+			if (isExpr) return;
 
 			if (isSensitiveFieldName(path) && value.length >= 16 && GENERIC_TOKEN_PATTERN.test(value)) {
 				findings.push({
@@ -226,7 +231,18 @@ function checkPiiPatterns(nodes: INode[]): SecurityFinding[] {
 	return findings;
 }
 
-function checkInsecureConfig(nodes: INode[]): SecurityFinding[] {
+function isNodeWebhook(node: INode, nodeTypeMap: Map<string, INodeTypeDescription>): boolean {
+	const nodeType = nodeTypeMap.get(node.type);
+	if (nodeType) {
+		return (nodeType.webhooks?.length ?? 0) > 0;
+	}
+	return node.type === 'n8n-nodes-base.webhook';
+}
+
+function checkInsecureConfig(
+	nodes: INode[],
+	nodeTypeMap: Map<string, INodeTypeDescription>,
+): SecurityFinding[] {
 	const findings: SecurityFinding[] = [];
 
 	for (const node of nodes) {
@@ -262,7 +278,7 @@ function checkInsecureConfig(nodes: INode[]): SecurityFinding[] {
 			});
 		}
 
-		if (node.type === 'n8n-nodes-base.webhook') {
+		if (isNodeWebhook(node, nodeTypeMap)) {
 			const auth = params.authentication;
 			if (!auth || auth === 'none') {
 				findings.push({
@@ -575,7 +591,10 @@ function checkAiChaining(workflow: SimpleWorkflow): SecurityFinding[] {
 	return findings;
 }
 
-function checkCodeInjection(nodes: INode[]): SecurityFinding[] {
+function checkCodeInjection(
+	nodes: INode[],
+	nodeTypeMap: Map<string, INodeTypeDescription>,
+): SecurityFinding[] {
 	const codePatterns: Array<{ pattern: RegExp; label: string }> = [
 		{ pattern: /\beval\s*\(/, label: 'eval()' },
 		{ pattern: /\bnew\s+Function\s*\(/, label: 'new Function()' },
@@ -587,20 +606,37 @@ function checkCodeInjection(nodes: INode[]): SecurityFinding[] {
 	const findings: SecurityFinding[] = [];
 
 	for (const node of nodes) {
-		if (node.type !== 'n8n-nodes-base.code' && node.type !== 'n8n-nodes-base.codeNode') continue;
 		if (!node.parameters) continue;
 
-		const rawCode = (node.parameters as Record<string, unknown>).jsCode;
-		const code = typeof rawCode === 'string' ? rawCode : '';
-		for (const { pattern, label } of codePatterns) {
-			if (pattern.test(code)) {
-				findings.push({
-					severity: 'warning',
-					title: `Dangerous "${label}" usage in Code node "${node.name}"`,
-					description: `The Code node uses "${label}" which can execute arbitrary code or access the server.`,
-					nodeName: node.name,
-					parameterPath: 'jsCode',
-				});
+		// Detect code parameters via node type metadata, falling back to known types
+		const nodeType = nodeTypeMap.get(node.type);
+		const codeParams = nodeType?.properties
+			.filter((p) => p.typeOptions?.editor === 'codeNodeEditor')
+			.map((p) => p.name);
+
+		const paramNames =
+			codeParams && codeParams.length > 0
+				? codeParams
+				: node.type === 'n8n-nodes-base.code' || node.type === 'n8n-nodes-base.codeNode'
+					? ['jsCode']
+					: [];
+
+		if (paramNames.length === 0) continue;
+
+		const params = node.parameters as Record<string, unknown>;
+		for (const paramName of paramNames) {
+			const rawCode = params[paramName];
+			const code = typeof rawCode === 'string' ? rawCode : '';
+			for (const { pattern, label } of codePatterns) {
+				if (pattern.test(code)) {
+					findings.push({
+						severity: 'warning',
+						title: `Dangerous "${label}" usage in Code node "${node.name}"`,
+						description: `The Code node uses "${label}" which can execute arbitrary code or access the server.`,
+						nodeName: node.name,
+						parameterPath: paramName,
+					});
+				}
 			}
 		}
 	}
@@ -658,12 +694,15 @@ function checkFanOutBlastRadius(
 	return findings;
 }
 
-function checkSsrfRisk(nodes: INode[]): SecurityFinding[] {
+function checkSsrfRisk(
+	nodes: INode[],
+	nodeTypeMap: Map<string, INodeTypeDescription>,
+): SecurityFinding[] {
 	const internalPattern =
 		/^https?:\/\/(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|localhost|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|0\.0\.0\.0)(:|\/|$)/;
 	const findings: SecurityFinding[] = [];
 
-	const hasWebhook = nodes.some((n) => n.type === 'n8n-nodes-base.webhook');
+	const hasWebhook = nodes.some((n) => isNodeWebhook(n, nodeTypeMap));
 	if (!hasWebhook) return findings;
 
 	for (const node of nodes) {
@@ -898,13 +937,13 @@ export function createSecurityScanTool(parsedNodeTypes: INodeTypeDescription[]):
 				const findings: SecurityFinding[] = [
 					...checkHardcodedSecrets(workflow.nodes),
 					...checkPiiPatterns(workflow.nodes),
-					...checkInsecureConfig(workflow.nodes),
+					...checkInsecureConfig(workflow.nodes, nodeTypeMap),
 					...checkExpressionRisks(workflow.nodes),
 					...checkDataExposure(workflow, nodeTypeMap),
 					...checkAiSecurity(workflow, nodeTypeMap),
-					...checkCodeInjection(workflow.nodes),
+					...checkCodeInjection(workflow.nodes, nodeTypeMap),
 					...checkFanOutBlastRadius(workflow, nodeTypeMap),
-					...checkSsrfRisk(workflow.nodes),
+					...checkSsrfRisk(workflow.nodes, nodeTypeMap),
 				];
 
 				// Build workflow overview (without parameters to avoid leaking sensitive values)

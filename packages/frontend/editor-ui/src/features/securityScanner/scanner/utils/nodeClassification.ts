@@ -28,9 +28,13 @@ function getNodeTypeDescription(node: INodeUi): INodeTypeDescription | null {
 	return nodeTypesStore.getNodeType(node.type, node.typeVersion);
 }
 
-/**
- * Checks whether any input or output of the node type matches the given connection types.
- */
+function resolveNodeType(
+	node: INodeUi,
+	nodeType?: INodeTypeDescription | null,
+): INodeTypeDescription | null {
+	return nodeType !== undefined ? nodeType : getNodeTypeDescription(node);
+}
+
 function hasConnectionType(
 	nodeType: INodeTypeDescription,
 	connectionTypes: NodeConnectionType[],
@@ -45,112 +49,90 @@ function hasConnectionType(
 	return check(nodeType.inputs) || check(nodeType.outputs);
 }
 
-/**
- * Determines if a node is an input trigger by checking its node type metadata.
- * Uses `group: ['trigger']` from INodeTypeDescription instead of a hardcoded list.
- */
-export function isInputTrigger(node: INodeUi): boolean {
-	const nodeType = getNodeTypeDescription(node);
-	if (!nodeType) return false;
-	return nodeType.group?.includes('trigger') ?? false;
+export function isInputTrigger(node: INodeUi, nodeType?: INodeTypeDescription | null): boolean {
+	const nt = resolveNodeType(node, nodeType);
+	if (!nt) return false;
+	return nt.group?.includes('trigger') ?? false;
 }
 
-/**
- * Determines if a node sends data to an external service.
- * A node is considered external if it has credential definitions
- * (meaning it authenticates to a third-party service) or is an HTTP Request node.
- */
-export function isExternalService(node: INodeUi): boolean {
+export function isExternalService(node: INodeUi, nodeType?: INodeTypeDescription | null): boolean {
 	if (node.type === 'n8n-nodes-base.httpRequest') return true;
-	const nodeType = getNodeTypeDescription(node);
-	if (!nodeType) return false;
-	return (nodeType.credentials?.length ?? 0) > 0;
+	const nt = resolveNodeType(node, nodeType);
+	if (!nt) return false;
+	return (nt.credentials?.length ?? 0) > 0;
 }
 
-/**
- * Determines if a node executes user-supplied code.
- * Checks if the node type has properties with `typeOptions.editor === 'codeNodeEditor'`.
- * Falls back to known code node types if metadata is unavailable.
- */
-export function isCodeNode(node: INodeUi): boolean {
-	const nodeType = getNodeTypeDescription(node);
-	if (!nodeType) {
+export function isCodeNode(node: INodeUi, nodeType?: INodeTypeDescription | null): boolean {
+	const nt = resolveNodeType(node, nodeType);
+	if (!nt) {
 		return node.type === 'n8n-nodes-base.code' || node.type === 'n8n-nodes-base.codeNode';
 	}
-	return nodeType.properties.some((prop) => prop.typeOptions?.editor === 'codeNodeEditor');
+	return nt.properties.some((prop) => prop.typeOptions?.editor === 'codeNodeEditor');
 }
 
-/**
- * Returns the names of all code editor parameters for a given node.
- * These are properties with `typeOptions.editor === 'codeNodeEditor'`.
- * Falls back to `['jsCode']` if metadata is unavailable.
- */
-export function getCodeParameters(node: INodeUi): string[] {
-	const nodeType = getNodeTypeDescription(node);
-	if (!nodeType) return ['jsCode'];
-	const params = nodeType.properties
+export function getCodeParameters(node: INodeUi, nodeType?: INodeTypeDescription | null): string[] {
+	const nt = resolveNodeType(node, nodeType);
+	if (!nt) return ['jsCode'];
+	const params = nt.properties
 		.filter((prop) => prop.typeOptions?.editor === 'codeNodeEditor')
 		.map((prop) => prop.name);
 	return params.length > 0 ? params : ['jsCode'];
 }
 
-/**
- * Returns the names of all assignment collection parameters for a given node.
- * These are properties with `type === 'assignmentCollection'`.
- */
-export function getAssignmentFields(node: INodeUi): string[] {
-	const nodeType = getNodeTypeDescription(node);
-	if (!nodeType) return [];
-	return nodeType.properties
+export function getAssignmentFields(
+	node: INodeUi,
+	nodeType?: INodeTypeDescription | null,
+): string[] {
+	const nt = resolveNodeType(node, nodeType);
+	if (!nt) return [];
+	return nt.properties
 		.filter((prop) => prop.type === 'assignmentCollection')
 		.map((prop) => prop.name);
 }
 
 /**
- * Determines if a node is an AI node.
- * Checks `codex.categories` for 'AI' or checks if the node has AI connection types
- * in its inputs or outputs. Falls back to prefix check if metadata is unavailable.
+ * Checks `codex.categories` for 'AI' or checks if the node has AI connection types.
+ * Falls back to prefix check if metadata is unavailable.
  */
-export function isAiNode(node: INodeUi): boolean {
-	const nodeType = getNodeTypeDescription(node);
-	if (!nodeType) {
+export function isAiNode(node: INodeUi, nodeType?: INodeTypeDescription | null): boolean {
+	const nt = resolveNodeType(node, nodeType);
+	if (!nt) {
 		return node.type.startsWith('@n8n/n8n-nodes-langchain');
 	}
-	if (nodeType.codex?.categories?.includes('AI')) return true;
-	return hasConnectionType(nodeType, AI_CONNECTION_TYPES);
+	if (nt.codex?.categories?.includes('AI')) return true;
+	return hasConnectionType(nt, AI_CONNECTION_TYPES);
 }
 
 /**
  * Determines if a node is an AI agent (accepts ai_tool inputs).
  * Falls back to checking the type string and codex subcategories.
  */
-export function isAiAgent(node: INodeUi): boolean {
-	const nodeType = getNodeTypeDescription(node);
-	if (!nodeType) {
+export function isAiAgent(node: INodeUi, nodeType?: INodeTypeDescription | null): boolean {
+	const nt = resolveNodeType(node, nodeType);
+	if (!nt) {
 		return node.type === '@n8n/n8n-nodes-langchain.agent';
 	}
-	// Check if node accepts ai_tool input connections
-	if (Array.isArray(nodeType.inputs)) {
-		const acceptsTools = nodeType.inputs.some((input: unknown) => {
+	if (Array.isArray(nt.inputs)) {
+		const acceptsTools = nt.inputs.some((input: unknown) => {
 			const inputType = typeof input === 'string' ? input : (input as { type?: string })?.type;
 			return inputType === NodeConnectionTypes.AiTool;
 		});
 		if (acceptsTools) return true;
 	}
-	// If inputs is an expression, check codex subcategories
-	return nodeType.codex?.subcategories?.AI?.includes('Agents') ?? false;
+	return nt.codex?.subcategories?.AI?.includes('Agents') ?? false;
 }
 
 /**
  * Determines if a tool node is "dangerous" — i.e., it grants the LLM
  * arbitrary code execution or HTTP access.
- *
- * Returns `{ isDangerous, reason }` describing the capability.
  */
-export function isDangerousTool(node: INodeUi): { isDangerous: boolean; reason: string } {
-	const nodeType = getNodeTypeDescription(node);
+export function isDangerousTool(
+	node: INodeUi,
+	nodeType?: INodeTypeDescription | null,
+): { isDangerous: boolean; reason: string } {
+	const nt = resolveNodeType(node, nodeType);
 
-	if (!nodeType) {
+	if (!nt) {
 		if (node.type.endsWith('.toolHttpRequest')) {
 			return { isDangerous: true, reason: 'make arbitrary HTTP requests' };
 		}
@@ -160,25 +142,20 @@ export function isDangerousTool(node: INodeUi): { isDangerous: boolean; reason: 
 		return { isDangerous: false, reason: '' };
 	}
 
-	// Code execution capability: has a code editor property
-	const hasCodeEditor = nodeType.properties.some(
-		(prop) => prop.typeOptions?.editor === 'codeNodeEditor',
-	);
+	const hasCodeEditor = nt.properties.some((prop) => prop.typeOptions?.editor === 'codeNodeEditor');
 	if (hasCodeEditor) {
 		return { isDangerous: true, reason: 'execute arbitrary code' };
 	}
 
-	// HTTP access capability: tool node whose name/displayName indicates HTTP
 	const isToolOutput =
-		Array.isArray(nodeType.outputs) &&
-		nodeType.outputs.some((output: unknown) => {
+		Array.isArray(nt.outputs) &&
+		nt.outputs.some((output: unknown) => {
 			const outputType = typeof output === 'string' ? output : (output as { type?: string })?.type;
 			return outputType === NodeConnectionTypes.AiTool;
 		});
 	if (isToolOutput) {
 		const nameIndicatesHttp =
-			nodeType.name.toLowerCase().includes('http') ||
-			nodeType.displayName.toLowerCase().includes('http');
+			nt.name.toLowerCase().includes('http') || nt.displayName.toLowerCase().includes('http');
 		if (nameIndicatesHttp) {
 			return { isDangerous: true, reason: 'make arbitrary HTTP requests' };
 		}
@@ -189,15 +166,17 @@ export function isDangerousTool(node: INodeUi): { isDangerous: boolean; reason: 
 
 /**
  * Returns the names of parameters that hold prompt text for an AI node.
- * Scans node type properties for names or displayNames matching prompt-related patterns.
  * Falls back to known prompt parameter names if metadata is unavailable.
  */
-export function getPromptParameters(node: INodeUi): string[] {
+export function getPromptParameters(
+	node: INodeUi,
+	nodeType?: INodeTypeDescription | null,
+): string[] {
 	const FALLBACK = ['systemMessage', 'text', 'messages'];
-	const nodeType = getNodeTypeDescription(node);
-	if (!nodeType) return FALLBACK;
+	const nt = resolveNodeType(node, nodeType);
+	if (!nt) return FALLBACK;
 
-	const promptParams = nodeType.properties
+	const promptParams = nt.properties
 		.filter(
 			(prop) =>
 				(prop.type === 'string' || prop.type === 'fixedCollection') &&
@@ -208,15 +187,10 @@ export function getPromptParameters(node: INodeUi): string[] {
 	return promptParams.length > 0 ? promptParams : FALLBACK;
 }
 
-/**
- * Determines if a node exposes a public webhook endpoint.
- * Checks for `webhooks[]` in the node type description.
- * Falls back to checking the known webhook type if metadata is unavailable.
- */
-export function isWebhookNode(node: INodeUi): boolean {
-	const nodeType = getNodeTypeDescription(node);
-	if (!nodeType) {
+export function isWebhookNode(node: INodeUi, nodeType?: INodeTypeDescription | null): boolean {
+	const nt = resolveNodeType(node, nodeType);
+	if (!nt) {
 		return node.type === 'n8n-nodes-base.webhook';
 	}
-	return (nodeType.webhooks?.length ?? 0) > 0;
+	return (nt.webhooks?.length ?? 0) > 0;
 }
