@@ -53,43 +53,57 @@ export async function execute(
 	const queries: QueryWithValues[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		let rawQuery = this.getNodeParameter('query', i) as string;
+		try {
+			let rawQuery = this.getNodeParameter('query', i) as string;
 
-		for (const resolvable of getResolvables(rawQuery)) {
-			rawQuery = rawQuery.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
-		}
+			for (const resolvable of getResolvables(rawQuery)) {
+				rawQuery = rawQuery.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
+			}
 
-		const options = this.getNodeParameter('options', i, {});
+			const options = this.getNodeParameter('options', i, {});
 
-		const nodeVersion = Number(nodeOptions.nodeVersion);
+			const nodeVersion = Number(nodeOptions.nodeVersion);
 
-		let values;
-		let queryReplacement = options.queryReplacement || [];
+			let values;
+			let queryReplacement = options.queryReplacement || [];
 
-		if (typeof queryReplacement === 'string') {
-			queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
-		}
+			if (typeof queryReplacement === 'string') {
+				queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
+			}
 
-		if (Array.isArray(queryReplacement)) {
-			values = queryReplacement as IDataObject[];
-		} else {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Query Replacement must be a string of comma-separated values, or an array of values',
-				{ itemIndex: i },
-			);
-		}
+			if (Array.isArray(queryReplacement)) {
+				values = queryReplacement as IDataObject[];
+			} else {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Query Replacement must be a string of comma-separated values, or an array of values',
+					{ itemIndex: i },
+				);
+			}
 
-		const preparedQuery = prepareQueryAndReplacements(rawQuery, nodeVersion, values);
+			const preparedQuery = prepareQueryAndReplacements(rawQuery, nodeVersion, values);
 
-		if ((nodeOptions.nodeVersion as number) >= 2.3) {
-			const parsedNumbers = preparedQuery.values.map((value) => {
-				return Number(value) ? Number(value) : value;
+			if ((nodeOptions.nodeVersion as number) >= 2.3) {
+				const parsedNumbers = preparedQuery.values.map((value) => {
+					return Number(value) ? Number(value) : value;
+				});
+				preparedQuery.values = parsedNumbers;
+			}
+
+			queries.push(preparedQuery);
+		} catch (error) {
+			if (!this.continueOnFail()) {
+				throw error;
+			}
+			returnData.push({
+				json: { message: (error as Error).message, error: { ...(error as Error) } },
+				pairedItem: { item: i },
 			});
-			preparedQuery.values = parsedNumbers;
 		}
+	}
 
-		queries.push(preparedQuery);
+	if (queries.length === 0) {
+		return returnData;
 	}
 
 	returnData = await runQueries(queries);
