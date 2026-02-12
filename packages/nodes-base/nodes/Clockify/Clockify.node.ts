@@ -651,6 +651,20 @@ export class Clockify implements INodeType {
 
 						const body: IDataObject = {};
 
+						// The Clockify API requires the task name in the PUT body.
+						// If the user didn't provide a name, fetch the current task
+						// to preserve the existing name.
+						if (!updateFields.name) {
+							const currentTask = await clockifyApiRequest.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}`,
+								{},
+								qs,
+							);
+							body.name = (currentTask as IDataObject).name;
+						}
+
 						Object.assign(body, updateFields);
 
 						if (body.estimate) {
