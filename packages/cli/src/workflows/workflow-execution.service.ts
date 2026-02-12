@@ -174,7 +174,7 @@ export class WorkflowExecutionService {
 		if (isFullExecutionFromUnknownTrigger(payload)) {
 			const pinnedTrigger = this.selectPinnedTrigger(
 				payload.workflowData,
-				payload.destinationNode.nodeName,
+				payload.destinationNode?.nodeName,
 				payload.workflowData.pinData ?? {},
 			);
 
@@ -462,12 +462,13 @@ export class WorkflowExecutionService {
 	 */
 	selectPinnedTrigger(
 		workflow: IWorkflowBase,
-		destinationNode: string,
+		destinationNode: string | undefined,
 		pinData: IPinData,
 	): INode | undefined {
 		const allPinnedTriggers = this.findAllPinnedTriggers(workflow, pinData);
 
 		if (allPinnedTriggers.length === 0) return undefined;
+		if (!destinationNode) return allPinnedTriggers.length === 1 ? allPinnedTriggers[0] : undefined;
 
 		const destinationParents = new Set(
 			new Workflow({

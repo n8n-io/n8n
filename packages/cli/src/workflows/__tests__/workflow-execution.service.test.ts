@@ -340,6 +340,49 @@ describe('WorkflowExecutionService', () => {
 			expect(result).toEqual({ executionId });
 		});
 
+		test('should start from pinned trigger when destinationNode is missing', async () => {
+			const executionId = 'fake-execution-id';
+			const userId = 'user-id';
+			const user = mock<User>({ id: userId });
+
+			const chatTriggerNode: INode = {
+				...webhookNode,
+				name: 'When chat message received',
+				type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			};
+
+			const runPayload = {
+				workflowData: {
+					id: 'workflow-id',
+					name: 'Test Workflow',
+					active: false,
+					activeVersionId: null,
+					isArchived: false,
+					nodes: [chatTriggerNode, hackerNewsNode],
+					connections: createMainConnection(hackerNewsNode.name, chatTriggerNode.name),
+					pinData: {
+						[chatTriggerNode.name]: [{ json: { message: 'hello' } }],
+					},
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			} as unknown as WorkflowRequest.ManualRunPayload;
+
+			workflowRunner.run.mockResolvedValue(executionId);
+
+			const result = await workflowExecutionService.executeManually(runPayload, user);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({
+					executionMode: 'manual',
+					userId,
+					triggerToStartFrom: { name: chatTriggerNode.name },
+					destinationNode: undefined,
+				}),
+			);
+			expect(result).toEqual({ executionId });
+		});
+
 		test('should force current version for manual execution even if workflow has active version', async () => {
 			const executionId = 'fake-execution-id';
 			const userId = 'user-id';
@@ -562,6 +605,29 @@ describe('WorkflowExecutionService', () => {
 			);
 
 			expect(node).toEqual(secondWebhookNode);
+		});
+
+		it('should select pinned trigger when destination node is missing and there is one choice', () => {
+			workflow.nodes.push(webhookNode, hackerNewsNode);
+			workflow.connections = {
+				...createMainConnection(hackerNewsNode.name, webhookNode.name),
+			};
+
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, undefined, pinData);
+
+			expect(node).toEqual(webhookNode);
+		});
+
+		it('should return undefined when destination node is missing and multiple pinned triggers exist', () => {
+			workflow.nodes.push(webhookNode, executeWorkflowTriggerNode, hackerNewsNode);
+			workflow.connections = {
+				...createMainConnection(hackerNewsNode.name, webhookNode.name),
+				...createMainConnection(hackerNewsNode.name, executeWorkflowTriggerNode.name),
+			};
+
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, undefined, pinData);
+
+			expect(node).toBeUndefined();
 		});
 	});
 
