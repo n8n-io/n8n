@@ -44,7 +44,6 @@
 	},
 	"files": [
 		"dist",
-		"bundle",
 		"ARCHITECTURE.md",
 		"LICENSE.md"
 	]
