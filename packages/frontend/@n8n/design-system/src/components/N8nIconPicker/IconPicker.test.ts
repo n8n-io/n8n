@@ -44,7 +44,12 @@ vi.mock('./emojiData', () => ({
 			emojis: [
 				{ u: '😀', l: 'Grinning Face', k: ['grinning', 'face', 'smile', 'happy'] },
 				{ u: '😎', l: 'Smiling Face With Sunglasses', k: ['sunglasses', 'cool', 'face'] },
-				{ u: '👋', l: 'Waving Hand', k: ['wave', 'hand'], s: ['👋🏻', '👋🏼', '👋🏽', '👋🏾', '👋🏿'] },
+				{
+					u: '👋',
+					l: 'Waving Hand',
+					k: ['wave', 'hand'],
+					s: ['👋🏻', '👋🏼', '👋🏽', '👋🏾', '👋🏿'],
+				},
 			],
 		},
 		{
@@ -145,7 +150,11 @@ describe('IconPicker', () => {
 		const btn = getByTestId('icon-picker-button');
 		expect(btn).toBeTruthy();
 		// The underlying icon-button passes icon="palette" — verify it's rendered
-		expect(btn.getAttribute('data-icon') ?? btn.querySelector('[data-icon]')?.getAttribute('data-icon') ?? 'palette').toBe('palette');
+		expect(
+			btn.getAttribute('data-icon') ??
+				btn.querySelector('[data-icon]')?.getAttribute('data-icon') ??
+				'palette',
+		).toBe('palette');
 	});
 
 	it('renders emoji as default icon correctly', async () => {

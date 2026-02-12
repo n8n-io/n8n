@@ -30,14 +30,22 @@ export interface IconCategoryDefinition {
  * @see https://lucide.dev/icons/categories
  */
 export const ICON_CATEGORIES: IconCategoryDefinition[] = [
-	{ key: 'accessibility', labelKey: 'iconPicker.iconSection.accessibility', slugs: ['accessibility'] },
+	{
+		key: 'accessibility',
+		labelKey: 'iconPicker.iconSection.accessibility',
+		slugs: ['accessibility'],
+	},
 	{ key: 'account', labelKey: 'iconPicker.iconSection.account', slugs: ['account'] },
 	{ key: 'animals', labelKey: 'iconPicker.iconSection.animals', slugs: ['animals'] },
 	{ key: 'arrows', labelKey: 'iconPicker.iconSection.arrows', slugs: ['arrows'] },
 	{ key: 'brands', labelKey: 'iconPicker.iconSection.brands', slugs: ['brands'] },
 	{ key: 'buildings', labelKey: 'iconPicker.iconSection.buildings', slugs: ['buildings'] },
 	{ key: 'charts', labelKey: 'iconPicker.iconSection.charts', slugs: ['charts'] },
-	{ key: 'communication', labelKey: 'iconPicker.iconSection.communication', slugs: ['communication'] },
+	{
+		key: 'communication',
+		labelKey: 'iconPicker.iconSection.communication',
+		slugs: ['communication'],
+	},
 	{ key: 'connectivity', labelKey: 'iconPicker.iconSection.connectivity', slugs: ['connectivity'] },
 	{ key: 'cursors', labelKey: 'iconPicker.iconSection.cursors', slugs: ['cursors'] },
 	{ key: 'design', labelKey: 'iconPicker.iconSection.design', slugs: ['design'] },
@@ -46,7 +54,11 @@ export const ICON_CATEGORIES: IconCategoryDefinition[] = [
 	{ key: 'emoji', labelKey: 'iconPicker.iconSection.emoji', slugs: ['emoji'] },
 	{ key: 'files', labelKey: 'iconPicker.iconSection.files', slugs: ['files'] },
 	{ key: 'finance', labelKey: 'iconPicker.iconSection.finance', slugs: ['currency', 'money'] },
-	{ key: 'food-beverage', labelKey: 'iconPicker.iconSection.foodBeverage', slugs: ['food-beverage'] },
+	{
+		key: 'food-beverage',
+		labelKey: 'iconPicker.iconSection.foodBeverage',
+		slugs: ['food-beverage'],
+	},
 	{ key: 'gaming', labelKey: 'iconPicker.iconSection.gaming', slugs: ['gaming'] },
 	{ key: 'home', labelKey: 'iconPicker.iconSection.home', slugs: ['home'] },
 	{ key: 'layout', labelKey: 'iconPicker.iconSection.layout', slugs: ['layout'] },
@@ -55,8 +67,16 @@ export const ICON_CATEGORIES: IconCategoryDefinition[] = [
 	{ key: 'medical', labelKey: 'iconPicker.iconSection.medical', slugs: ['medical'] },
 	{ key: 'multimedia', labelKey: 'iconPicker.iconSection.multimedia', slugs: ['multimedia'] },
 	{ key: 'nature', labelKey: 'iconPicker.iconSection.nature', slugs: ['nature'] },
-	{ key: 'navigation', labelKey: 'iconPicker.iconSection.navigation', slugs: ['navigation', 'maps'] },
-	{ key: 'notifications', labelKey: 'iconPicker.iconSection.notifications', slugs: ['notifications'] },
+	{
+		key: 'navigation',
+		labelKey: 'iconPicker.iconSection.navigation',
+		slugs: ['navigation', 'maps'],
+	},
+	{
+		key: 'notifications',
+		labelKey: 'iconPicker.iconSection.notifications',
+		slugs: ['notifications'],
+	},
 	{ key: 'people', labelKey: 'iconPicker.iconSection.people', slugs: ['people'] },
 	{ key: 'photography', labelKey: 'iconPicker.iconSection.photography', slugs: ['photography'] },
 	{ key: 'science', labelKey: 'iconPicker.iconSection.science', slugs: ['science'] },
@@ -66,11 +86,19 @@ export const ICON_CATEGORIES: IconCategoryDefinition[] = [
 	{ key: 'shopping', labelKey: 'iconPicker.iconSection.shopping', slugs: ['shopping'] },
 	{ key: 'social', labelKey: 'iconPicker.iconSection.social', slugs: ['social'] },
 	{ key: 'sports', labelKey: 'iconPicker.iconSection.sports', slugs: ['sports'] },
-	{ key: 'sustainability', labelKey: 'iconPicker.iconSection.sustainability', slugs: ['sustainability'] },
+	{
+		key: 'sustainability',
+		labelKey: 'iconPicker.iconSection.sustainability',
+		slugs: ['sustainability'],
+	},
 	{ key: 'text', labelKey: 'iconPicker.iconSection.text', slugs: ['text'] },
 	{ key: 'time', labelKey: 'iconPicker.iconSection.time', slugs: ['time'] },
 	{ key: 'tools', labelKey: 'iconPicker.iconSection.tools', slugs: ['tools'] },
-	{ key: 'transportation', labelKey: 'iconPicker.iconSection.transportation', slugs: ['transportation'] },
+	{
+		key: 'transportation',
+		labelKey: 'iconPicker.iconSection.transportation',
+		slugs: ['transportation'],
+	},
 	{ key: 'travel', labelKey: 'iconPicker.iconSection.travel', slugs: ['travel'] },
 	{ key: 'weather', labelKey: 'iconPicker.iconSection.weather', slugs: ['weather'] },
 ];
