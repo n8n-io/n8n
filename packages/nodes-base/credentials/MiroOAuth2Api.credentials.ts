@@ -43,7 +43,6 @@ export class MiroOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'hidden',
 			default: '',
-			required: true,
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
