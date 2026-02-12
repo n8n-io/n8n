@@ -1,6 +1,8 @@
 import {
 	CreateSecretsProviderConnectionDto,
 	UpdateSecretsProviderConnectionDto,
+	type ReloadSecretProviderConnectionResponse,
+	type TestSecretProviderConnectionResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -122,5 +124,31 @@ export class SecretProvidersProjectController {
 		await this.connectionsService.getConnectionForProject(providerKey, projectId);
 		const connection = await this.connectionsService.deleteConnection(providerKey);
 		return this.connectionsService.toPublicConnection(connection);
+	}
+
+	@Post('/:projectId/connections/:providerKey/test')
+	@ProjectScope('externalSecretsProvider:update')
+	async testConnection(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('providerKey') providerKey: string,
+	): Promise<TestSecretProviderConnectionResponse> {
+		this.logger.debug('Testing connection for project', { projectId, providerKey });
+		await this.connectionsService.getConnectionForProject(providerKey, projectId);
+		return await this.connectionsService.testConnection(providerKey);
+	}
+
+	@Post('/:projectId/connections/:providerKey/reload')
+	@ProjectScope('externalSecretsProvider:sync')
+	async reloadConnectionSecrets(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('providerKey') providerKey: string,
+	): Promise<ReloadSecretProviderConnectionResponse> {
+		this.logger.debug('Reloading secrets for project connection', { projectId, providerKey });
+		await this.connectionsService.getConnectionForProject(providerKey, projectId);
+		return await this.connectionsService.reloadConnectionSecrets(providerKey);
 	}
 }
