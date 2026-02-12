@@ -135,6 +135,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			where: { providerKey },
 		});
 
+		// Note: connection can be undefined if called after a delete operation
 		if (connection) {
 			const settings = this.decryptSettings(connection.encryptedSettings);
 			await this.setupProvider(
