@@ -1,11 +1,11 @@
 {
-	"extends": "../../tsconfig.build.json",
+	"extends": "../typescript-config/modern/tsconfig.json",
 	"compilerOptions": {
 		"outDir": "dist",
 		"rootDir": "src",
-		"declaration": true,
-		"declarationMap": true
+		"noUncheckedIndexedAccess": false,
+		"types": ["node", "vitest/globals"]
 	},
-	"include": ["src/**/*"],
+	"include": ["src/**/*.ts"],
 	"exclude": ["node_modules", "dist", "**/*.test.ts"]
 }
