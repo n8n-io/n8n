@@ -1,7 +1,7 @@
 import * as vm from 'node:vm';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { RuntimeBridge, BridgeConfig, WorkflowDataProxy } from '../types';
+import type { RuntimeBridge, BridgeConfig } from '../types';
 
 export class NodeVmBridge implements RuntimeBridge {
 	private context: vm.Context | null = null;
@@ -19,33 +19,35 @@ export class NodeVmBridge implements RuntimeBridge {
 	}
 
 	async initialize(): Promise<void> {
-		// Create VM context
+		// Load runtime bundle (context will be created per-execution)
+		const runtimePath = path.join(__dirname, '../bundle/runtime.iife.js');
+		this.runtimeCode = fs.readFileSync(runtimePath, 'utf-8');
+	}
+
+	private runtimeCode?: string;
+
+	async execute(code: string, data: Record<string, unknown>): Promise<unknown> {
+		if (!this.runtimeCode) throw new Error('Not initialized');
+
+		// Create fresh context with workflow data for each execution
 		// TODO: Remove console access for production - security risk (data leakage, environment probing)
 		// Consider making it conditional on debug flag: this.config.debug ? { console } : {}
-		const sandbox = { console };
+		const sandbox = {
+			console,
+			__workflowData: data, // Pass workflow data proxy directly
+		};
 		this.context = vm.createContext(sandbox);
 
-		// Load and execute runtime bundle
-		const runtimePath = path.join(__dirname, '../bundle/runtime.iife.js');
-		const runtimeCode = fs.readFileSync(runtimePath, 'utf-8');
-
-		vm.runInContext(runtimeCode, this.context, {
+		// Load runtime bundle into context
+		vm.runInContext(this.runtimeCode, this.context, {
 			timeout: this.config.timeout,
 			displayErrors: true,
 		});
-	}
 
-	async execute(code: string, data: WorkflowDataProxy): Promise<unknown> {
-		if (!this.context) throw new Error('Not initialized');
-
-		// Serialize data for passing to VM
-		const serializedData = this.serializeData(data);
-
-		// Execute via __n8nExecute
-		const script = new vm.Script(
-			`__n8nExecute(${JSON.stringify(code)}, ${JSON.stringify(serializedData)})`,
-			{ filename: 'expression.js' },
-		);
+		// Execute expression code
+		const script = new vm.Script(`__n8nExecute(${JSON.stringify(code)})`, {
+			filename: 'expression.js',
+		});
 
 		return script.runInContext(this.context, {
 			timeout: this.config.timeout,
@@ -61,18 +63,10 @@ export class NodeVmBridge implements RuntimeBridge {
 	async dispose(): Promise<void> {
 		this.disposed = true;
 		this.context = null;
+		this.runtimeCode = undefined;
 	}
 
 	isDisposed(): boolean {
 		return this.disposed;
-	}
-
-	private serializeData(data: WorkflowDataProxy): any {
-		// Convert proxy to plain object
-		return {
-			$json: data.get('$json'),
-			$items: data.get('$items'),
-			$input: data.get('$input'),
-		};
 	}
 }

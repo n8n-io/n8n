@@ -73,44 +73,12 @@ export interface IExpressionEvaluator {
 }
 
 /**
- * Workflow data passed to evaluate().
+ * Workflow data proxy from WorkflowDataProxy.getDataProxy().
+ *
+ * For Slice 1: We pass this directly via VM context (simple pass-through).
+ * Later: Will implement deep lazy proxy for field-level data fetching.
  */
-export interface WorkflowData {
-	/**
-	 * Current item data.
-	 */
-	json: Record<string, unknown>;
-
-	/**
-	 * All items in current run.
-	 */
-	items?: Array<{ json: Record<string, unknown> }>;
-
-	/**
-	 * Workflow metadata.
-	 */
-	workflow?: {
-		id: string;
-		name: string;
-	};
-
-	/**
-	 * Node metadata.
-	 */
-	node?: {
-		id: string;
-		name: string;
-		type: string;
-	};
-
-	/**
-	 * Execution metadata.
-	 */
-	execution?: {
-		id: string;
-		mode: string;
-	};
-}
+export type WorkflowData = Record<string, unknown>;
 
 /**
  * Options for evaluate().

@@ -5,11 +5,7 @@
  */
 
 // Bridge types
-export type {
-	RuntimeBridge,
-	BridgeConfig,
-	WorkflowDataProxy,
-} from './bridge';
+export type { RuntimeBridge, BridgeConfig } from './bridge';
 
 // Runtime types
 export type {

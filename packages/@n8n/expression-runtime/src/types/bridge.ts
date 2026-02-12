@@ -26,11 +26,11 @@ export interface RuntimeBridge {
 	 * Execute JavaScript code in the isolated context.
 	 *
 	 * @param code - Transformed JavaScript code to execute
-	 * @param data - Workflow data for this evaluation
+	 * @param data - Workflow data proxy from WorkflowDataProxy.getDataProxy()
 	 * @returns Result of the expression evaluation.
 	 *          Must be JSON-serializable (no functions, symbols, etc.)
 	 */
-	execute(code: string, data: WorkflowDataProxy): Promise<unknown>;
+	execute(code: string, data: Record<string, unknown>): Promise<unknown>;
 
 	/**
 	 * Handle synchronous data request from runtime (lazy loading).
@@ -85,26 +85,4 @@ export interface BridgeConfig {
 	 * Phase 2+: Chrome DevTools debugging support
 	 */
 	debug?: boolean;
-}
-
-/**
- * Internal proxy for lazy-loading workflow data.
- *
- * This is created by the evaluator from WorkflowData input (see evaluator.ts)
- * and passed to bridge.execute(). The bridge stores it temporarily and uses it
- * to respond to getDataSync() calls during evaluation.
- *
- * Implementation will provide efficient path-based lookup (e.g., lodash.get).
- */
-export interface WorkflowDataProxy {
-	/**
-	 * Get value at a property path.
-	 * Supports nested paths like "user.email".
-	 */
-	get(path: string): unknown;
-
-	/**
-	 * Check if a property path exists.
-	 */
-	has(path: string): boolean;
 }
