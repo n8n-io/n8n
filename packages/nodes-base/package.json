@@ -139,6 +139,7 @@
       "dist/credentials/GoogleAdsOAuth2Api.credentials.js",
       "dist/credentials/GoogleAnalyticsOAuth2Api.credentials.js",
       "dist/credentials/GoogleApi.credentials.js",
+      "dist/credentials/GoogleIapApi.credentials.js",
       "dist/credentials/GoogleBigQueryOAuth2Api.credentials.js",
       "dist/credentials/GoogleBooksOAuth2Api.credentials.js",
       "dist/credentials/GoogleCalendarOAuth2Api.credentials.js",
