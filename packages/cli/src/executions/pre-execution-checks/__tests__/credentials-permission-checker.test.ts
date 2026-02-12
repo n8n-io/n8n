@@ -225,6 +225,7 @@ describe('CredentialsPermissionChecker', () => {
 				},
 			} as never);
 
+			// The active credential is accessible, the stale one would not be
 			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
 				activeCredentialId,
 			]);
@@ -237,29 +238,6 @@ describe('CredentialsPermissionChecker', () => {
 				[teamProject.id],
 				[activeCredentialId],
 			);
-		});
-
-		it('should not fail on stale credentials that do not exist', async () => {
-			nodeTypes.getByNameAndVersion.mockReturnValue({
-				description: {
-					credentials: [
-						{
-							name: 'httpSslAuth',
-							required: true,
-							displayOptions: { show: { provideSslCertificates: [true] } },
-						},
-					],
-				},
-			} as never);
-
-			// The active credential is accessible, the stale one would not be
-			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
-				activeCredentialId,
-			]);
-			credentialsRepository.find.mockResolvedValue([]);
-
-			// This should pass because the stale credential is filtered out
-			await expect(permissionChecker.check(workflowId, [httpRequestNode])).resolves.not.toThrow();
 		});
 
 		it('should fall back to checking all credentials if node type cannot be resolved', async () => {
