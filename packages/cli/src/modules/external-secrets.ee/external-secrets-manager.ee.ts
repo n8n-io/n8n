@@ -213,8 +213,8 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 		const errorState = {
 			success: false,
-			testState: 'error' as const,
-		};
+			testState: 'error',
+		} as const;
 
 		const result = await this.providerLifecycle.initialize(provider, testSettings);
 
@@ -226,14 +226,23 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			// Connect the provider to authenticate before testing
 			const connectResult = await this.providerLifecycle.connect(result.provider);
 			if (!connectResult.success) {
-				return { ...errorState, error: connectResult.error?.message };
+				return {
+					...errorState,
+					error: connectResult.error?.message,
+				};
 			}
 
 			const [success, error] = await result.provider.test();
-			const currentSettings = await this.settingsStore.getProvider(provider);
-			const testState = this.determineTestState(success, currentSettings?.connected ?? false);
 
-			return { success, testState, error };
+			// This mostly forces the "typing" to work correctly
+			if (!success) {
+				return { success: false, testState: 'error', error };
+			}
+
+			const currentSettings = await this.settingsStore.getProvider(provider);
+			const testState: 'connected' | 'tested' = currentSettings?.connected ? 'connected' : 'tested';
+
+			return { success: true, testState };
 		} catch {
 			return errorState;
 		} finally {
@@ -408,16 +417,6 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			isValid: testResult?.[0] ?? false,
 			errorMessage: testResult?.[1],
 		});
-	}
-
-	private determineTestState(
-		success: boolean,
-		isConnected: boolean,
-	): 'connected' | 'tested' | 'error' {
-		if (!success) {
-			return 'error';
-		}
-		return isConnected ? 'connected' : 'tested';
 	}
 
 	private getCachedSettings(): ExternalSecretsSettings {

@@ -45,8 +45,8 @@ import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -58,7 +58,7 @@ const modalBus = createEventBus();
 const telemetry = useTelemetry();
 const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow, mcpTriggerMap } = useMcp();
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
-const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
+const { isEnabled: isCredentialResolverEnabled } = useDynamicCredentials();
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -144,9 +144,6 @@ const executionLogic = computed(() => {
 const isMCPEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
-const isCredentialResolverEnabled = computed(() =>
-	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
-);
 const readOnlyEnv = computed(
 	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 );
@@ -196,11 +193,11 @@ const hasSavedTimeNodes = computed(() => {
 
 const timeSavedModeOptions = computed(() => [
 	{
-		label: 'Fixed',
+		label: i18n.baseText('workflowSettings.timeSavedPerExecution.tab.fixed'),
 		value: 'fixed' as const,
 	},
 	{
-		label: 'Dynamic (uses time saved nodes)',
+		label: i18n.baseText('workflowSettings.timeSavedPerExecution.tab.dynamic'),
 		value: 'dynamic' as const,
 	},
 ]);

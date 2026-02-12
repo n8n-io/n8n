@@ -10,7 +10,7 @@ on:
         default: ''
 
 env:
-  DOCKER_IMAGE: ghcr.io/n8n-io/n8n:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+  DOCKER_IMAGE: ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
 
 jobs:
   prepare:
@@ -43,13 +43,28 @@ jobs:
           enable-docker-cache: true
         env:
           INCLUDE_TEST_CONTROLLER: 'true'
-          IMAGE_BASE_NAME: ghcr.io/n8n-io/n8n
+          IMAGE_BASE_NAME: ghcr.io/${{ github.repository }}
           IMAGE_TAG: pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
-          RUNNERS_IMAGE_BASE_NAME: ghcr.io/n8n-io/runners
+          RUNNERS_IMAGE_BASE_NAME: ghcr.io/${{ github.repository_owner }}/runners
 
       - name: Generate shard matrix
         id: generate-matrix
         run: echo "matrix=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate)" >> "$GITHUB_OUTPUT"
+
+  sqlite-sanity:
+    needs: [prepare]
+    name: 'SQLite: Sanity Check'
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      branch: ${{ inputs.branch }}
+      test-mode: docker-pull
+      docker-image: ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+      test-command: pnpm --filter=n8n-playwright test:container:sqlite:e2e tests/e2e/building-blocks/workflow-entry-points.spec.ts
+      shards: 1
+      runner: blacksmith-2vcpu-ubuntu-2204
+      workers: '1'
+      pre-generated-matrix: '[{"shard":1,"images":""}]'
 
   # Multi-main: postgres + redis + caddy + 2 mains + 1 worker
   # Only runs for internal PRs (not community/fork PRs)
@@ -62,7 +77,7 @@ jobs:
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-pull
-      docker-image: ghcr.io/n8n-io/n8n:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+      docker-image: ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:e2e
       shards: 16
       runner: blacksmith-2vcpu-ubuntu-2204
@@ -89,7 +104,7 @@ jobs:
   # Cleanup ephemeral Docker image from GHCR after tests complete
   cleanup-docker:
     name: 'Cleanup Docker Image'
-    needs: [prepare, multi-main-e2e]
+    needs: [prepare, multi-main-e2e, sqlite-sanity]
     if: ${{ !failure() && !cancelled() && !github.event.pull_request.head.repo.fork }}
     runs-on: ubuntu-slim
     permissions:
@@ -103,8 +118,11 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Delete images from GHCR
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_ORG: ${{ github.repository_owner }}
+          GHCR_REPO: ${{ github.event.repository.name }}
         run: |
           if [ -n "${{ github.event.pull_request.number }}" ]; then
             echo "PR context: cleaning all images for PR ${{ github.event.pull_request.number }}"

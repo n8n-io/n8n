@@ -23,6 +23,9 @@ type ErrorReporterInitOptions = {
 	/** Whether to enable event loop block detection, if Sentry is enabled. */
 	withEventLoopBlockDetection: boolean;
 
+	/** Threshold in ms for event loop block detection. Only used if `withEventLoopBlockDetection` is true. */
+	eventLoopBlockThreshold?: number;
+
 	/** Sample rate for Sentry traces (0.0 to 1.0). 0 means disabled */
 	tracesSampleRate: number;
 
@@ -107,6 +110,7 @@ export class ErrorReporter {
 		serverName,
 		releaseDate,
 		withEventLoopBlockDetection,
+		eventLoopBlockThreshold,
 		profilesSampleRate,
 		tracesSampleRate,
 		eligibleIntegrations = {},
@@ -143,8 +147,14 @@ export class ErrorReporter {
 		Error.stackTraceLimit = 50;
 
 		const sentry = await import('@sentry/node');
-		const { init, captureException, setTag, requestDataIntegration, rewriteFramesIntegration } =
-			sentry;
+		const {
+			init,
+			captureException,
+			setTag,
+			setUser,
+			requestDataIntegration,
+			rewriteFramesIntegration,
+		} = sentry;
 
 		// Most of the integrations are listed here:
 		// https://docs.sentry.io/platforms/javascript/guides/node/configuration/integrations/
@@ -174,10 +184,13 @@ export class ErrorReporter {
 		const eventLoopBlockIntegration = withEventLoopBlockDetection
 			? // The EventLoopBlockIntegration doesn't automatically include the
 				// same tags, so we set them explicitly.
-				await this.getEventLoopBlockIntegration({
-					server_name: serverName,
-					server_type: serverType,
-				})
+				await this.getEventLoopBlockIntegration(
+					{
+						server_name: serverName,
+						server_type: serverType,
+					},
+					eventLoopBlockThreshold,
+				)
 			: [];
 
 		const profilingIntegration = isProfilingEnabled ? await this.getProfilingIntegration() : [];
@@ -210,6 +223,10 @@ export class ErrorReporter {
 		});
 
 		setTag('server_type', serverType);
+
+		if (serverName) {
+			setUser({ id: serverName });
+		}
 
 		this.report = (error, options) => captureException(error, options);
 		this.beforeSendFilter = beforeSendFilter;
@@ -312,11 +329,12 @@ export class ErrorReporter {
 		if (tags) event.tags = { ...event.tags, ...tags };
 	}
 
-	private async getEventLoopBlockIntegration(tags: Record<string, string>) {
+	private async getEventLoopBlockIntegration(tags: Record<string, string>, threshold?: number) {
 		try {
 			const { eventLoopBlockIntegration } = await import('@sentry/node-native');
 			return [
 				eventLoopBlockIntegration({
+					...(threshold ? { threshold } : {}),
 					staticTags: tags,
 				}),
 			];

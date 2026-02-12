@@ -34,6 +34,7 @@ import Modal from '@/app/components/Modal.vue';
 import {
 	N8nBadge,
 	N8nButton,
+	N8nCallout,
 	N8nHeading,
 	N8nIconButton,
 	N8nInfoTip,
@@ -149,7 +150,9 @@ onBeforeMount(() => {
 
 // Tab state
 const activeTab = ref<
-	typeof SOURCE_CONTROL_FILE_TYPE.workflow | typeof SOURCE_CONTROL_FILE_TYPE.credential
+	| typeof SOURCE_CONTROL_FILE_TYPE.workflow
+	| typeof SOURCE_CONTROL_FILE_TYPE.credential
+	| typeof SOURCE_CONTROL_FILE_TYPE.datatable
 >(SOURCE_CONTROL_FILE_TYPE.workflow);
 
 const groupedFilesByType = computed(() => {
@@ -207,6 +210,39 @@ const sortedCredentials = computed(() =>
 	),
 );
 
+// Filtered data tables
+const filteredDataTables = computed(() => {
+	const dataTables = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable] || [];
+	return dataTables;
+});
+
+const sortedDataTables = computed(() =>
+	orderBy(
+		filteredDataTables.value,
+		[({ status }) => getPullPriorityByStatus(status), 'updatedAt'],
+		['asc', 'desc'],
+	),
+);
+
+// Data tables with schema conflicts (columns will be lost)
+const conflictedDataTables = computed(() => {
+	return filteredDataTables.value.filter((dt) => {
+		// For pull operations, show warning for modified data tables with conflicts
+		// (schema changes) not for deleted data tables (entire table removed)
+		return dt.conflict === true && dt.status === 'modified';
+	});
+});
+
+const hasDataTableConflicts = computed(() => conflictedDataTables.value.length > 0);
+
+const dataTableWarningMessage = computed(() => {
+	if (!hasDataTableConflicts.value) return '';
+
+	return i18n.baseText('settings.sourceControl.modals.pull.dataTablesWarning', {
+		interpolate: { count: conflictedDataTables.value.length },
+	});
+});
+
 // Active data source based on tab
 const activeDataSourceFiltered = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
@@ -215,6 +251,9 @@ const activeDataSourceFiltered = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
 		return sortedCredentials.value;
 	}
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.datatable) {
+		return sortedDataTables.value;
+	}
 	return [];
 });
 
@@ -222,7 +261,13 @@ const filtersNoResultText = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
 		return i18n.baseText('workflows.noResults');
 	}
-	return i18n.baseText('credentials.noResults');
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
+		return i18n.baseText('credentials.noResults');
+	}
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.datatable) {
+		return i18n.baseText('dataTables.noResults');
+	}
+	return i18n.baseText('workflows.noResults');
 });
 
 // Tab data
@@ -238,10 +283,15 @@ const tabs = computed(() => {
 			value: SOURCE_CONTROL_FILE_TYPE.credential,
 			total: groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.credential]?.length || 0,
 		},
+		{
+			label: 'Data Tables',
+			value: SOURCE_CONTROL_FILE_TYPE.datatable,
+			total: groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable]?.length || 0,
+		},
 	];
 });
 
-// Other files (variables, tags, folders) that are always pulled
+// Other files (variables, tags, folders, projects) that are always pulled
 const otherFiles = computed(() => {
 	const others: SourceControlledFileWithProject[] = [];
 
@@ -263,6 +313,32 @@ const otherFiles = computed(() => {
 	}
 
 	return others;
+});
+
+const otherFilesText = computed(() => {
+	const parts: string[] = [];
+
+	const variables = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.variables];
+	if (variables?.length) {
+		parts.push(`Variables (${variables.length})`);
+	}
+
+	const tags = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.tags];
+	if (tags?.length) {
+		parts.push(`Tags (${tags.length})`);
+	}
+
+	const folders = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.folders];
+	if (folders?.length) {
+		parts.push(`Folders (${folders.length})`);
+	}
+
+	const projects = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.project];
+	if (projects?.length) {
+		parts.push(`Projects (${projects.length})`);
+	}
+
+	return parts.join(', ');
 });
 
 function close() {
@@ -525,21 +601,16 @@ onMounted(() => {
 		<template #footer>
 			<div v-if="otherFiles.length" class="mb-xs">
 				<N8nText bold size="medium">Additional changes to be pulled:</N8nText>
-				<N8nText size="small">
-					<template v-if="groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.variables]?.length">
-						Variables ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.variables]?.length || 0 }}),
-					</template>
-					<template v-if="groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.tags]?.length">
-						Tags ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.tags]?.length || 0 }}),
-					</template>
-					<template v-if="groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.folders]?.length">
-						Folders ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.folders]?.length || 0 }}),
-					</template>
-					<template v-if="groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.project]?.length">
-						Projects ({{ groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.project]?.length || 0 }})
-					</template>
-				</N8nText>
+				<N8nText size="small">{{ otherFilesText }}</N8nText>
 			</div>
+			<N8nCallout v-if="hasDataTableConflicts" theme="warning" class="mb-xs">
+				<div :class="$style.warningContent">
+					<div>{{ dataTableWarningMessage }}</div>
+					<ul :class="$style.dataTableList">
+						<li v-for="table in conflictedDataTables" :key="table.id">{{ table.name }}</li>
+					</ul>
+				</div>
+			</N8nCallout>
 			<div :class="$style.footer">
 				<N8nButton type="tertiary" class="mr-2xs" @click="close">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.buttons.cancel') }}
@@ -649,6 +720,26 @@ onMounted(() => {
 	flex-direction: row;
 	justify-content: flex-end;
 	margin-top: 8px;
+}
+
+.warningContent {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+}
+
+.dataTableList {
+	margin: var(--spacing--4xs) 0 0 0;
+	padding-left: 0;
+	list-style-position: inside;
+
+	li {
+		margin-bottom: var(--spacing--3xs);
+
+		&:last-child {
+			margin-bottom: 0;
+		}
+	}
 }
 
 .table {

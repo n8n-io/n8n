@@ -10,6 +10,7 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -23,13 +24,16 @@ import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
+	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_PROJECT_EXPORT_FOLDER,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
+	SOURCE_CONTROL_WRITE_FILE_BATCH_SIZE,
 } from './constants';
 import {
 	getCredentialExportPath,
+	getDataTableExportPath,
 	getFoldersPath,
 	getProjectExportPath,
 	getVariablesPath,
@@ -43,11 +47,13 @@ import { SourceControlScopedService } from './source-control-scoped.service';
 import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
+import type { DataTableResourceOwner, ExportableDataTable } from './types/exportable-data-table';
 import { ExportableProject } from './types/exportable-project';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import { ExportableVariable } from './types/exportable-variable';
+import chunk from 'lodash/chunk';
 
 @Service()
 export class SourceControlExportService {
@@ -58,6 +64,8 @@ export class SourceControlExportService {
 	private projectExportFolder: string;
 
 	private credentialExportFolder: string;
+
+	private dataTableExportFolder: string;
 
 	constructor(
 		private readonly logger: Logger,
@@ -71,6 +79,7 @@ export class SourceControlExportService {
 		private readonly folderRepository: FolderRepository,
 		private readonly sourceControlScopedService: SourceControlScopedService,
 		instanceSettings: InstanceSettings,
+		private readonly dataTableRepository: DataTableRepository,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -79,6 +88,7 @@ export class SourceControlExportService {
 			this.gitFolder,
 			SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 		);
+		this.dataTableExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER);
 	}
 
 	getWorkflowPath(workflowId: string): string {
@@ -87,6 +97,10 @@ export class SourceControlExportService {
 
 	getCredentialsPath(credentialsId: string): string {
 		return getCredentialExportPath(credentialsId, this.credentialExportFolder);
+	}
+
+	getDataTablePath(dataTableId: string): string {
+		return getDataTableExportPath(dataTableId, this.dataTableExportFolder);
 	}
 
 	async deleteRepositoryFolder() {
@@ -110,25 +124,28 @@ export class SourceControlExportService {
 		workflowsToBeExported: IWorkflowDb[],
 		owners: Record<string, RemoteResourceOwner>,
 	) {
-		await Promise.all(
-			workflowsToBeExported.map(async (e) => {
-				const fileName = this.getWorkflowPath(e.id);
-				const sanitizedWorkflow: ExportableWorkflow = {
-					id: e.id,
-					name: e.name,
-					nodes: e.nodes,
-					connections: e.connections,
-					settings: e.settings,
-					triggerCount: e.triggerCount,
-					versionId: e.versionId,
-					owner: owners[e.id],
-					parentFolderId: e.parentFolder?.id ?? null,
-					isArchived: e.isArchived,
-				};
-				this.logger.debug(`Writing workflow ${e.id} to ${fileName}`);
-				return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
-			}),
-		);
+		const workflowChunks = chunk(workflowsToBeExported, SOURCE_CONTROL_WRITE_FILE_BATCH_SIZE);
+		for (const workflowChunk of workflowChunks) {
+			await Promise.all(
+				workflowChunk.map(async (workflow) => {
+					const fileName = this.getWorkflowPath(workflow.id);
+					const sanitizedWorkflow: ExportableWorkflow = {
+						id: workflow.id,
+						name: workflow.name,
+						nodes: workflow.nodes,
+						connections: workflow.connections,
+						settings: workflow.settings,
+						triggerCount: workflow.triggerCount,
+						versionId: workflow.versionId,
+						owner: owners[workflow.id],
+						parentFolderId: workflow.parentFolder?.id ?? null,
+						isArchived: workflow.isArchived,
+					};
+					this.logger.debug(`Writing workflow ${workflow.id} to ${fileName}`);
+					return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
+				}),
+			);
+		}
 	}
 
 	async exportWorkflowsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
@@ -231,6 +248,128 @@ export class SourceControlExportService {
 		} catch (error) {
 			this.logger.error('Failed to export variables to work folder', { error });
 			throw new UnexpectedError('Failed to export variables to work folder', {
+				cause: error,
+			});
+		}
+	}
+
+	async exportDataTablesToWorkFolder(
+		candidates: SourceControlledFile[],
+		_context: SourceControlContext,
+	): Promise<ExportResult> {
+		try {
+			sourceControlFoldersExistCheck([this.gitFolder, this.dataTableExportFolder]);
+
+			if (candidates.length === 0) {
+				return {
+					count: 0,
+					folder: this.dataTableExportFolder,
+					files: [],
+				};
+			}
+
+			// Extract data table IDs from candidates
+			const candidateIds = candidates.map((candidate) => candidate.id);
+
+			// Fetch only the selected data tables
+			const dataTables = await this.dataTableRepository.find({
+				where: {
+					id: In(candidateIds),
+				},
+				relations: [
+					'columns',
+					'project',
+					'project.projectRelations',
+					'project.projectRelations.role',
+					'project.projectRelations.user',
+				],
+				select: {
+					id: true,
+					name: true,
+					projectId: true,
+					createdAt: true,
+					updatedAt: true,
+					columns: {
+						id: true,
+						name: true,
+						type: true,
+						index: true,
+					},
+					project: {
+						id: true,
+						name: true,
+						type: true,
+						projectRelations: {
+							userId: true,
+							role: {
+								slug: true,
+							},
+							user: {
+								email: true,
+							},
+						},
+					},
+				},
+			});
+
+			const exportedFiles: Array<{ id: string; name: string }> = [];
+
+			// Write each data table to its own file
+			for (const table of dataTables) {
+				let owner: DataTableResourceOwner | null = null;
+				if (table.project?.type === 'personal') {
+					const ownerRelation = table.project.projectRelations?.find(
+						(pr) => pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
+					);
+					if (ownerRelation) {
+						owner = {
+							type: 'personal',
+							projectId: table.project.id,
+							projectName: table.project.name,
+							personalEmail: ownerRelation.user.email,
+						};
+					}
+				} else if (table.project?.type === 'team') {
+					owner = {
+						type: 'team',
+						teamId: table.project.id,
+						teamName: table.project.name,
+					};
+				}
+
+				const exportableDataTable: ExportableDataTable = {
+					id: table.id,
+					name: table.name,
+					columns: table.columns
+						.sort((a, b) => a.index - b.index)
+						.map((col) => ({
+							id: col.id,
+							name: col.name,
+							type: col.type,
+							index: col.index,
+						})),
+					ownedBy: owner,
+					createdAt: table.createdAt.toISOString(),
+					updatedAt: table.updatedAt.toISOString(),
+				};
+
+				const filePath = this.getDataTablePath(table.id);
+				await fsWriteFile(filePath, JSON.stringify(exportableDataTable, null, 2));
+
+				exportedFiles.push({
+					id: table.id,
+					name: filePath,
+				});
+			}
+
+			return {
+				count: dataTables.length,
+				folder: this.dataTableExportFolder,
+				files: exportedFiles,
+			};
+		} catch (error) {
+			this.logger.error('Failed to export data tables to work folder', { error });
+			throw new UnexpectedError('Failed to export data tables to work folder', {
 				cause: error,
 			});
 		}

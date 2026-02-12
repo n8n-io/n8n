@@ -8,7 +8,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { N8nHeading, N8nCallout, N8nButton, N8nLink } from '@n8n/design-system';
-import WorkflowPublishForm from '@/app/components/WorkflowPublishForm.vue';
+import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
@@ -28,7 +28,7 @@ const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
 const publishing = ref(false);
 
-const publishForm = useTemplateRef<InstanceType<typeof WorkflowPublishForm>>('publishForm');
+const publishForm = useTemplateRef<InstanceType<typeof WorkflowVersionForm>>('publishForm');
 
 const description = ref('');
 const versionName = ref('');
@@ -80,9 +80,20 @@ function onModalOpened() {
 }
 
 onMounted(() => {
-	if (!versionName.value && !inputsDisabled.value) {
-		versionName.value = generateVersionName(workflowsStore.workflow.versionId);
+	const versionData = workflowsStore.versionData;
+
+	if (!versionName.value) {
+		if (versionData?.name) {
+			versionName.value = versionData.name;
+		} else {
+			versionName.value = generateVersionName(workflowsStore.workflow.versionId);
+		}
 	}
+
+	if (!description.value && versionData?.description) {
+		description.value = versionData.description;
+	}
+
 	modalBus.on('opened', onModalOpened);
 });
 
@@ -171,6 +182,12 @@ async function handlePublish() {
 	);
 
 	if (success) {
+		workflowsStore.setWorkflowVersionData({
+			versionId: workflowsStore.workflow.versionId,
+			name: versionName.value,
+			description: description.value,
+		});
+
 		// Show AI credits warning if applicable
 		if (shouldShowFreeAiCreditsWarning.value) {
 			showMessage({
@@ -237,7 +254,7 @@ async function handlePublish() {
 				<N8nCallout v-else-if="activeCalloutId === 'noChanges'" theme="warning">
 					{{ i18n.baseText('workflows.publishModal.noChanges') }}
 				</N8nCallout>
-				<WorkflowPublishForm
+				<WorkflowVersionForm
 					ref="publishForm"
 					v-model:version-name="versionName"
 					v-model:description="description"

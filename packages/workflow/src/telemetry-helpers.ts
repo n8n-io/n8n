@@ -1,3 +1,5 @@
+import { ApplicationError } from '@n8n/errors';
+
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
@@ -26,8 +28,8 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './constants';
-import { ApplicationError } from '@n8n/errors';
 import type { NodeApiError } from './errors/node-api.error';
+import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 import type {
 	IConnection,
 	IConnections,
@@ -47,7 +49,6 @@ import type {
 import { NodeConnectionTypes } from './interfaces';
 import { getNodeParameters, isSubNodeType } from './node-helpers';
 import { jsonParse } from './utils';
-import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 
 const isNodeApiError = (error: unknown): error is NodeApiError =>
 	typeof error === 'object' && error !== null && 'name' in error && error?.name === 'NodeApiError';
@@ -105,18 +106,103 @@ function areOverlapping(
 
 const URL_PARTS_REGEX = /(?<protocolPlusDomain>.*?\..*?)(?<pathname>\/.*)/;
 
+// List of common multi-level TLDs (public suffixes)
+// Covers 95%+ of real-world domains for telemetry privacy purposes
+const MULTI_LEVEL_TLDS = new Set([
+	// UK
+	'co.uk',
+	'gov.uk',
+	'org.uk',
+	'ac.uk',
+	'sch.uk',
+	// Australia
+	'com.au',
+	'gov.au',
+	'edu.au',
+	'org.au',
+	'net.au',
+	// New Zealand
+	'co.nz',
+	'org.nz',
+	'net.nz',
+	'govt.nz',
+	'ac.nz',
+	// Japan
+	'co.jp',
+	'or.jp',
+	'ne.jp',
+	'ac.jp',
+	'go.jp',
+	// Brazil
+	'com.br',
+	'gov.br',
+	'org.br',
+	'edu.br',
+	// India
+	'co.in',
+	'org.in',
+	'net.in',
+	'gov.in',
+	'edu.in',
+	// South Africa
+	'co.za',
+	'org.za',
+	'gov.za',
+	'ac.za',
+	// AWS S3 (special case for cloud services)
+	's3.amazonaws.com',
+]);
+
 export function getDomainBase(raw: string, urlParts = URL_PARTS_REGEX): string {
+	let hostname: string;
+
 	try {
 		const url = new URL(raw);
-
-		return [url.protocol, url.hostname].join('//');
+		hostname = url.hostname;
 	} catch {
 		const match = urlParts.exec(raw);
-
 		if (!match?.groups?.protocolPlusDomain) return '';
 
-		return match.groups.protocolPlusDomain;
+		// Extract hostname from malformed URL
+		hostname = match.groups.protocolPlusDomain.replace(/^https?:\/\//, '');
 	}
+
+	// Handle edge cases
+	if (!hostname || hostname === 'localhost') return hostname;
+
+	// Handle IP addresses (v4 and v6) - return as-is
+	if (/^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(':')) {
+		return hostname;
+	}
+
+	const parts = hostname.split('.');
+
+	// Single-word domain (e.g., "localhost", "example")
+	if (parts.length === 1) {
+		return hostname;
+	}
+
+	// Check for multi-level TLDs (e.g., co.uk, com.au)
+	if (parts.length >= 3) {
+		const lastTwoParts = `${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
+
+		if (MULTI_LEVEL_TLDS.has(lastTwoParts)) {
+			// Return last 3 parts for multi-level TLD
+			return parts.slice(-3).join('.');
+		}
+
+		// Check for 3-level TLDs (e.g., s3.amazonaws.com)
+		if (parts.length >= 4) {
+			const lastThreeParts = `${parts[parts.length - 3]}.${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
+			if (MULTI_LEVEL_TLDS.has(lastThreeParts)) {
+				// Return last 4 parts for 3-level TLD
+				return parts.slice(-4).join('.');
+			}
+		}
+	}
+
+	// Default: return last 2 parts (standard TLD like .com, .org, .net)
+	return parts.slice(-2).join('.');
 }
 
 function isSensitive(segment: string) {
@@ -308,7 +394,6 @@ export function generateNodesGraph(
 			const { url } = node.parameters as { url: string };
 
 			nodeItem.domain_base = getDomainBase(url);
-			nodeItem.domain_path = getDomainPath(url);
 			nodeItem.method = node.parameters.requestMethod as string;
 		} else if (HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE === node.type) {
 			if (!nodeItem.toolSettings) nodeItem.toolSettings = {};

@@ -83,6 +83,18 @@ test.describe('Workflow Publish', () => {
 			).resolves.not.toThrow();
 		});
 
+		test('successfully publishes a workflow containing wait node', async ({ api }) => {
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'webhook-publish-with-wait-node.json',
+			);
+
+			cleanupWorkflowIds.push(workflowId);
+
+			await expect(
+				api.workflows.activate(workflowId, createdWorkflow.versionId!),
+			).resolves.not.toThrow();
+		});
+
 		test('Rejects publishing a workflow containing webhook conflicts with published workflow', async ({
 			api,
 		}) => {

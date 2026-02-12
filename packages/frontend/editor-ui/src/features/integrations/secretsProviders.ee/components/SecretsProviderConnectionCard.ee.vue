@@ -6,8 +6,11 @@ import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/
 import { DateTime } from 'luxon';
 import { isDateObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
+import { useRBACStore } from '@/app/stores/rbac.store';
 
 const i18n = useI18n();
+const rbacStore = useRBACStore();
+
 const props = defineProps<{
 	provider: SecretProviderConnection;
 	providerTypeInfo?: SecretProviderTypeResponse;
@@ -15,7 +18,9 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	edit: [connectionId: string];
+	edit: [providerKey: string];
+	share: [providerKey: string];
+	delete: [providerKey: string];
 }>();
 
 const provider = toRef(props, 'provider');
@@ -33,19 +38,39 @@ const showDisconnectedBadge = computed(() => {
 	return provider.value.state === 'error';
 });
 
+const canDelete = computed(() => rbacStore.hasScope('externalSecretsProvider:delete'));
+
 const actionDropdownOptions = computed(() => {
 	if (!props.canUpdate) return [];
-	return [
+
+	const options = [
 		{
 			label: i18n.baseText('generic.edit'),
 			value: 'edit',
 		},
+		{
+			label: i18n.baseText('settings.secretsProviderConnections.actions.share'),
+			value: 'share',
+		},
 	];
+
+	if (canDelete.value) {
+		options.push({
+			label: i18n.baseText('generic.delete'),
+			value: 'delete',
+		});
+	}
+
+	return options;
 });
 
 function onAction(action: string) {
 	if (action === 'edit') {
 		emit('edit', provider.value.name);
+	} else if (action === 'share') {
+		emit('share', provider.value.name);
+	} else if (action === 'delete') {
+		emit('delete', provider.value.name);
 	}
 }
 </script>
@@ -91,7 +116,7 @@ function onAction(action: string) {
 								})
 							: i18n.baseText('settings.externalSecrets.card.secretsCount', {
 									interpolate: {
-										count: `${provider.secretsCount}`,
+										count: `${provider.secretsCount ?? 0}`,
 									},
 								})
 					}}

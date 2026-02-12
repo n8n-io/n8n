@@ -98,10 +98,13 @@ async function loadSourceControlStatus() {
 
 		status.value = freshStatus;
 
-		// Auto-select all credentials by default (only once on load)
+		// Auto-select all credentials and data tables by default (only once on load)
 		freshStatus.forEach((file) => {
 			if (file.type === 'credential') {
 				selectedCredentials.add(file.id);
+			}
+			if (file.type === 'datatable') {
+				selectedDataTables.add(file.id);
 			}
 		});
 	} catch (error) {
@@ -139,6 +142,7 @@ type SourceControlledFileWithProject = SourceControlledFile & { project?: Projec
 type Changes = {
 	tags: SourceControlledFileWithProject[];
 	variables: SourceControlledFileWithProject[];
+	datatable: SourceControlledFileWithProject[];
 	credential: SourceControlledFileWithProject[];
 	workflow: SourceControlledFileWithProject[];
 	currentWorkflow?: SourceControlledFileWithProject;
@@ -164,6 +168,11 @@ const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: 
 
 			if (file.type === SOURCE_CONTROL_FILE_TYPE.variables) {
 				acc.variables.push({ ...file, project });
+				return acc;
+			}
+
+			if (file.type === SOURCE_CONTROL_FILE_TYPE.datatable) {
+				acc.datatable.push({ ...file, project });
 				return acc;
 			}
 
@@ -201,6 +210,7 @@ const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: 
 		{
 			tags: [],
 			variables: [],
+			datatable: [],
 			credential: [],
 			workflow: [],
 			folders: [],
@@ -254,28 +264,8 @@ const selectedWorkflows = reactive<Set<string>>(new Set());
 const maybeSelectCurrentWorkflow = (workflow?: SourceControlledFileWithProject) =>
 	workflow && selectedWorkflows.add(workflow.id);
 
-const currentProject = computed(() => {
-	if (!route.params.projectId) {
-		return null;
-	}
-
-	const project = projectsStore.availableProjects.find(
-		(project) => project.id === route.params.projectId?.toString(),
-	);
-
-	if (!project) {
-		return null;
-	}
-
-	if (!project.role || project.role === 'project:admin') {
-		return project;
-	}
-
-	return null;
-});
-
 const filters = ref<{ status?: SourceControlledFileStatus; project: ProjectSharingData | null }>({
-	project: currentProject.value,
+	project: null,
 });
 const filtersApplied = computed(
 	() => Boolean(search.value) || Boolean(Object.values(filters.value).filter(Boolean).length),
@@ -345,6 +335,8 @@ const sortedWorkflows = computed(() =>
 
 const selectedCredentials = reactive<Set<string>>(new Set());
 
+const selectedDataTables = reactive<Set<string>>(new Set());
+
 const filteredCredentials = computed(() => {
 	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
 
@@ -376,6 +368,37 @@ const sortedCredentials = computed(() =>
 	),
 );
 
+const filteredDataTables = computed(() => {
+	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
+
+	return changes.value.datatable.filter((dataTable) => {
+		if (!dataTable.name.toLocaleLowerCase().includes(searchQuery)) {
+			return false;
+		}
+
+		// Project filter logic: if a project filter is set, only show items from that project
+		if (filters.value.project) {
+			// Item must have a project and it must match the filter
+			return dataTable.project?.id === filters.value.project.id;
+		}
+
+		// Status filter (only applied when no project filter is active)
+		if (filters.value.status && filters.value.status !== dataTable.status) {
+			return false;
+		}
+
+		return true;
+	});
+});
+
+const sortedDataTables = computed(() =>
+	orderBy(
+		filteredDataTables.value,
+		[({ status }) => getPushPriorityByStatus(status), 'updatedAt'],
+		['asc', 'desc'],
+	),
+);
+
 const commitMessage = ref('');
 const isSubmitDisabled = computed(() => {
 	if (!commitMessage.value.trim()) {
@@ -384,6 +407,7 @@ const isSubmitDisabled = computed(() => {
 
 	const toBePushed =
 		selectedCredentials.size +
+		selectedDataTables.size +
 		changes.value.tags.length +
 		changes.value.variables.length +
 		changes.value.folders.length +
@@ -409,7 +433,9 @@ const selectAllIndeterminate = computed(() => {
 	return !allVisibleItemsSelected.value;
 });
 
-const selectedCount = computed(() => selectedWorkflows.size + selectedCredentials.size);
+const selectedCount = computed(
+	() => selectedWorkflows.size + selectedCredentials.size + selectedDataTables.size,
+);
 
 function onToggleSelectAll() {
 	if (allVisibleItemsSelected.value) {
@@ -475,6 +501,15 @@ const successNotificationMessage = () => {
 		messages.push(i18n.baseText('generic.variable_plural'));
 	}
 
+	if (selectedDataTables.size) {
+		messages.push(
+			i18n.baseText('generic.datatable', {
+				adjustToNumber: selectedDataTables.size,
+				interpolate: { count: selectedDataTables.size },
+			}),
+		);
+	}
+
 	if (changes.value.folders.length) {
 		messages.push(i18n.baseText('generic.folders_plural'));
 	}
@@ -487,15 +522,27 @@ const successNotificationMessage = () => {
 		messages.push(i18n.baseText('generic.projects'));
 	}
 
+	const totalCount =
+		selectedWorkflows.size +
+		selectedCredentials.size +
+		changes.value.variables.length +
+		selectedDataTables.size +
+		changes.value.folders.length +
+		changes.value.tags.length +
+		changes.value.projects.length;
+
 	return [
 		concatenateWithAnd(messages),
-		i18n.baseText('settings.sourceControl.modals.push.success.description'),
+		i18n.baseText('settings.sourceControl.modals.push.success.description', {
+			adjustToNumber: totalCount,
+		}),
 	].join(' ');
 };
 
 async function commitAndPush() {
 	const files = changes.value.tags
 		.concat(changes.value.variables)
+		.concat(changes.value.datatable.filter((file) => selectedDataTables.has(file.id)))
 		.concat(changes.value.credential.filter((file) => selectedCredentials.has(file.id)))
 		.concat(changes.value.folders)
 		.concat(changes.value.projects)
@@ -535,7 +582,9 @@ watch(refDebounced(search, 500), (term) => {
 });
 
 const activeTab = ref<
-	typeof SOURCE_CONTROL_FILE_TYPE.workflow | typeof SOURCE_CONTROL_FILE_TYPE.credential
+	| typeof SOURCE_CONTROL_FILE_TYPE.workflow
+	| typeof SOURCE_CONTROL_FILE_TYPE.credential
+	| typeof SOURCE_CONTROL_FILE_TYPE.datatable
 >(SOURCE_CONTROL_FILE_TYPE.workflow);
 
 const allVisibleItemsSelected = computed(() => {
@@ -564,6 +613,16 @@ const allVisibleItemsSelected = computed(() => {
 		return !notSelectedVisibleItems.size;
 	}
 
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.datatable) {
+		const dataTablesSet = new Set(sortedDataTables.value.map(({ id }) => id));
+		if (!dataTablesSet.size) {
+			return false;
+		}
+		const notSelectedVisibleItems = dataTablesSet.difference(toRaw(activeSelection.value));
+
+		return !notSelectedVisibleItems.size;
+	}
+
 	return false;
 });
 
@@ -582,6 +641,9 @@ const activeDataSource = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
 		return changes.value.credential;
 	}
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.datatable) {
+		return changes.value.datatable;
+	}
 	return [];
 });
 
@@ -592,6 +654,9 @@ const activeDataSourceFiltered = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
 		return sortedCredentials.value;
 	}
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.datatable) {
+		return sortedDataTables.value;
+	}
 	return [];
 });
 
@@ -599,8 +664,10 @@ const activeEntityLocale = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
 		return 'generic.workflows';
 	}
-
-	return 'generic.credentials';
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
+		return 'generic.credentials';
+	}
+	return 'generic.datatable';
 });
 
 const activeSelection = computed(() => {
@@ -609,6 +676,9 @@ const activeSelection = computed(() => {
 	}
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
 		return selectedCredentials;
+	}
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.datatable) {
+		return selectedDataTables;
 	}
 	return new Set<string>();
 });
@@ -627,6 +697,12 @@ const tabs = computed(() => {
 			selected: selectedCredentials.size,
 			total: changes.value.credential.length,
 		},
+		{
+			label: 'Data Tables',
+			value: SOURCE_CONTROL_FILE_TYPE.datatable,
+			selected: selectedDataTables.size,
+			total: changes.value.datatable.length,
+		},
 	];
 });
 
@@ -634,7 +710,13 @@ const filtersNoResultText = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
 		return i18n.baseText('workflows.noResults');
 	}
-	return i18n.baseText('credentials.noResults');
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
+		return i18n.baseText('credentials.noResults');
+	}
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.datatable) {
+		return i18n.baseText('dataTables.noResults');
+	}
+	return i18n.baseText('workflows.noResults');
 });
 
 function castType(type: string): ResourceType {
@@ -710,7 +792,7 @@ onMounted(async () => {
 			</N8nHeading>
 
 			<div
-				v-if="changes.workflow.length || changes.credential.length"
+				v-if="changes.workflow.length || changes.credential.length || changes.datatable.length"
 				:class="[$style.filtersRow]"
 				class="mt-l"
 			>
@@ -922,7 +1004,8 @@ onMounted(async () => {
 														<template
 															v-if="
 																file.type === SOURCE_CONTROL_FILE_TYPE.workflow ||
-																file.type === SOURCE_CONTROL_FILE_TYPE.credential
+																file.type === SOURCE_CONTROL_FILE_TYPE.credential ||
+																file.type === SOURCE_CONTROL_FILE_TYPE.datatable
 															"
 														>
 															<ProjectCardBadge

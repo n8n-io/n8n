@@ -57,11 +57,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: validate-inputs
     timeout-minutes: 5
+    permissions:
+      id-token: write
     steps:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22.x
 
+      # Remove after https://github.com/npm/cli/issues/8547 gets resolved
       - run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
 
       - name: Add beta/next tags to NPM

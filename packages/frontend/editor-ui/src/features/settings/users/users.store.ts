@@ -3,6 +3,7 @@ import {
 	type LoginRequestDto,
 	type PasswordUpdateRequestDto,
 	type SettingsUpdateRequestDto,
+	type UserSelfSettingsUpdateRequestDto,
 	type UserUpdateRequestDto,
 	type User,
 	ROLE,
@@ -298,7 +299,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		});
 	};
 
-	const updateUserSettings = async (settings: SettingsUpdateRequestDto) => {
+	const updateUserSettings = async (settings: UserSelfSettingsUpdateRequestDto) => {
 		const updatedSettings = await usersApi.updateCurrentUserSettings(
 			rootStore.restApiContext,
 			settings,

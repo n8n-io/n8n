@@ -20,6 +20,7 @@ import {
 	N8nLink,
 	N8nText,
 } from '@n8n/design-system';
+import { useQuickConnect } from '@/features/integrations/quickConnect/composables/useQuickConnect';
 
 interface ModalData {
 	packageName?: string;
@@ -42,6 +43,7 @@ const packageName = ref(modalData.value?.packageName ?? '');
 const userAgreed = ref(false);
 const checkboxWarning = ref(false);
 const infoTextErrorMessage = ref('');
+const quickConnect = useQuickConnect({ packageName });
 
 const openNPMPage = () => {
 	telemetry.track('user clicked cnr browse button', { source: 'cnr install modal' });
@@ -52,16 +54,15 @@ const onInstallClick = async () => {
 	if (!userAgreed.value) {
 		checkboxWarning.value = true;
 	} else {
-		telemetry.track('user started cnr package install', {
-			input_string: packageName.value,
-			source: 'cnr settings page',
-		});
-
 		infoTextErrorMessage.value = '';
 		const result = await installNode({
 			type: 'unverified',
 			packageName: packageName.value,
 			nodeType: modalData.value?.nodeType,
+			telemetry: {
+				source: 'cnr settings page',
+				hasQuickConnect: quickConnect.value !== undefined,
+			},
 		});
 		if (result.error && 'httpStatusCode' in result.error && result.error.httpStatusCode === 400) {
 			infoTextErrorMessage.value = result.error.message;

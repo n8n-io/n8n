@@ -12,16 +12,6 @@ import { N8nBadge, N8nButton, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8
 
 const locale = useI18n();
 
-const GLOBAL_GROUP: ProjectListItem = {
-	id: 'all_users',
-	name: locale.baseText('projects.sharing.allUsers'),
-	type: 'public',
-	icon: { type: 'icon', value: 'globe' },
-	role: 'member',
-	createdAt: `${Date.now()}`,
-	updatedAt: `${Date.now()}`,
-};
-
 type Props = {
 	projects: ProjectListItem[];
 	homeProject?: ProjectSharingData;
@@ -34,9 +24,21 @@ type Props = {
 	clearable?: boolean;
 	canShareGlobally?: boolean;
 	isSharedGlobally?: boolean;
+	allUsersLabel?: string;
 };
 
 const props = defineProps<Props>();
+
+const GLOBAL_GROUP: ProjectListItem = {
+	id: 'all_users',
+	name: props.allUsersLabel ?? locale.baseText('projects.sharing.allUsers'),
+	type: 'public',
+	icon: { type: 'icon', value: 'globe' },
+	role: 'member',
+	createdAt: `${Date.now()}`,
+	updatedAt: `${Date.now()}`,
+};
+
 const model = defineModel<(ProjectSharingData | null) | ProjectSharingData[]>({
 	required: true,
 });

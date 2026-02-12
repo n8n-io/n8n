@@ -8,6 +8,7 @@ export const STORES = {
 	WORKFLOWS_LIST: 'workflowsList',
 	WORKFLOWS_V2: 'workflowsV2',
 	WORKFLOWS_EE: 'workflowsEE',
+	WORKFLOW_DOCUMENTS: 'workflowDocuments',
 	EXECUTIONS: 'executions',
 	NDV: 'ndv',
 	TEMPLATES: 'templates',
@@ -48,4 +49,5 @@ export const STORES = {
 	CHAT_HUB: 'chatHub',
 	EXPERIMENT_EMPTY_STATE_BUILDER_PROMPT: 'emptyStateBuilderPrompt',
 	SETUP_PANEL: 'setupPanel',
+	FOCUSED_NODES: 'focusedNodes',
 } as const;

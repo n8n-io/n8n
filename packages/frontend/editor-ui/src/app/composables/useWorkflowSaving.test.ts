@@ -35,7 +35,6 @@ vi.mock('@n8n/permissions', () => ({
 const mockWorkflowState = {
 	setWorkflowProperty: vi.fn(),
 	setWorkflowName: vi.fn(),
-	setWorkflowTagIds: vi.fn(),
 	setActive: vi.fn(),
 	setWorkflowId: vi.fn(),
 	setWorkflowSettings: vi.fn(),
@@ -155,9 +154,8 @@ describe('useWorkflowSaving', () => {
 			modalConfirmSpy.mockResolvedValue(MODAL_CONFIRM);
 
 			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowTagIds: vi.fn(),
 				setWorkflowName: vi.fn(),
-				setWorkflowProperty: vi.fn(), // Add missing method
+				setWorkflowProperty: vi.fn(),
 			};
 
 			const resolveSpy = vi.fn();
@@ -562,9 +560,7 @@ describe('useWorkflowSaving', () => {
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
-			const setWorkflowTagIdsSpy = vi.fn();
 			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowTagIds: setWorkflowTagIdsSpy,
 				setWorkflowName: vi.fn(),
 				setWorkflowProperty: vi.fn(),
 			};
@@ -576,7 +572,12 @@ describe('useWorkflowSaving', () => {
 
 			await saveCurrentWorkflow({ id: 'w5', tags: ['tag1', 'tag2'] }, true, false, false);
 
-			expect(setWorkflowTagIdsSpy).toHaveBeenCalledWith(['tag1', 'tag2']);
+			// Tags are now managed by workflowDocumentStore, not workflowState
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'w5',
+				expect.objectContaining({ tags: ['tag1', 'tag2'] }),
+				false,
+			);
 		});
 	});
 
@@ -637,7 +638,6 @@ describe('useWorkflowSaving', () => {
 			const initialDirtyCount = uiStore.dirtyStateSetCount;
 
 			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowTagIds: vi.fn(),
 				setWorkflowName: vi.fn(),
 				setWorkflowProperty: vi.fn(),
 			};
@@ -687,7 +687,6 @@ describe('useWorkflowSaving', () => {
 			uiStore.markStateDirty();
 
 			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowTagIds: vi.fn(),
 				setWorkflowName: vi.fn(),
 				setWorkflowProperty: vi.fn(),
 			};
@@ -724,7 +723,6 @@ describe('useWorkflowSaving', () => {
 			const uiStore = useUIStore();
 
 			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowTagIds: vi.fn(),
 				setWorkflowName: vi.fn(),
 				setWorkflowProperty: vi.fn(),
 			};

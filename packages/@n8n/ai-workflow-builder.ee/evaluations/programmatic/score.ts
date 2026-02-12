@@ -14,7 +14,7 @@ type ImportanceTier = keyof typeof IMPORTANCE_TIER;
 
 /**
  * Category importance assignments.
- * - high: Critical for workflow correctness (connections, trigger, parameters)
+ * - high: Critical for workflow correctness (connections, trigger, parameters, graphValidation)
  * - medium: Important for quality (agentPrompt, tools, similarity)
  * - low: Nice to have (fromAi, nodeUsage)
  */
@@ -22,6 +22,7 @@ const CATEGORY_IMPORTANCE: Record<string, ImportanceTier> = {
 	connections: 'high',
 	trigger: 'high',
 	parameters: 'high',
+	graphValidation: 'high',
 	agentPrompt: 'medium',
 	tools: 'medium',
 	similarity: 'medium',

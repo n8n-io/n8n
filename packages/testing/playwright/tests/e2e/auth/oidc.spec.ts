@@ -9,9 +9,9 @@ test.describe('OIDC Authentication @capability:oidc', () => {
 	test('should configure OIDC and login with Keycloak @auth:owner', async ({
 		n8n,
 		api,
-		n8nContainer,
+		services,
 	}) => {
-		const keycloak = n8nContainer.services.keycloak;
+		const keycloak = services.keycloak;
 		await api.enableFeature('oidc');
 		await n8n.oidcComposer.configureOidc(
 			keycloak.internalDiscoveryUrl,

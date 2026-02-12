@@ -17,7 +17,10 @@ import SecretsProviderConnectionCard from '../components/SecretsProviderConnecti
 import SecretsProvidersEmptyState from '../components/SecretsProvidersEmptyState.ee.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/app/stores/ui.store';
-import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY } from '@/app/constants/modals';
+import {
+	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+	DELETE_SECRETS_PROVIDER_MODAL_KEY,
+} from '@/app/constants/modals';
 import { I18nT } from 'vue-i18n';
 
 const i18n = useI18n();
@@ -33,12 +36,16 @@ function getProviderTypeInfo(providerType: string) {
 	return secretsProviders.providerTypes.value.find((type) => type.type === providerType);
 }
 
-function openConnectionModal(providerKey?: string) {
+function openConnectionModal(
+	providerKey?: string,
+	activeTab: 'connection' | 'sharing' = 'connection',
+) {
 	const existingNames = secretsProviders.activeProviders.value.map((provider) => provider.name);
 
 	uiStore.openModalWithData({
 		name: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 		data: {
+			activeTab,
 			providerKey,
 			providerTypes: secretsProviders.providerTypes.value,
 			existingProviderNames: existingNames,
@@ -50,7 +57,29 @@ function openConnectionModal(providerKey?: string) {
 }
 
 function handleEdit(providerKey: string) {
-	openConnectionModal(providerKey);
+	openConnectionModal(providerKey, 'connection');
+}
+
+function handleShare(providerKey: string) {
+	openConnectionModal(providerKey, 'sharing');
+}
+
+function handleDelete(providerKey: string) {
+	const provider = secretsProviders.activeProviders.value.find((p) => p.name === providerKey);
+
+	if (!provider) return;
+
+	uiStore.openModalWithData({
+		name: DELETE_SECRETS_PROVIDER_MODAL_KEY,
+		data: {
+			providerKey: provider.name,
+			providerName: provider.name,
+			secretsCount: provider.secretsCount ?? 0,
+			onConfirm: async () => {
+				await secretsProviders.fetchActiveConnections();
+			},
+		},
+	});
 }
 
 onMounted(async () => {
@@ -132,6 +161,8 @@ function goToUpgrade() {
 					:provider-type-info="getProviderTypeInfo(provider.type)"
 					:can-update="secretsProviders.canUpdate.value"
 					@edit="handleEdit"
+					@share="handleShare"
+					@delete="handleDelete"
 				/>
 			</div>
 		</div>

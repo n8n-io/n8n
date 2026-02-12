@@ -170,6 +170,145 @@ describe('useWorkflowUpdate', () => {
 				});
 			});
 
+			it('should match nodes by name+type when IDs differ (name-based reconciliation)', async () => {
+				// This tests the fallback behavior when node IDs change
+				// (e.g., when workflow SDK regenerates IDs during re-parsing)
+				const existingNode = createTestNode({
+					id: 'old-uuid-123',
+					name: 'Chat Trigger',
+					type: '@n8n/n8n-nodes-langchain.chatTrigger',
+					position: [100, 200],
+				}) as INodeUi;
+
+				workflowsStore.allNodes = [existingNode];
+
+				const mockWorkflowObject = {
+					nodes: { 'Chat Trigger': { ...existingNode } },
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				};
+				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [
+						{
+							id: 'new-uuid-456', // Different ID!
+							name: 'Chat Trigger', // Same name
+							type: '@n8n/n8n-nodes-langchain.chatTrigger', // Same type
+							typeVersion: 1,
+							position: [300, 400], // New position should be ignored
+							parameters: { greeting: 'Hello' },
+						},
+					],
+					connections: {},
+				});
+
+				// Should NOT add a new node (would trigger maxNodes error for chatTrigger)
+				expect(mockCanvasOperations.addNodes).not.toHaveBeenCalled();
+				// Should NOT remove the existing node
+				expect(mockCanvasOperations.deleteNode).not.toHaveBeenCalled();
+				// Should sync state back to store (update in place)
+				expect(workflowsStore.setNodes).toHaveBeenCalled();
+			});
+
+			it('should preserve existing ID when reconciling by name+type', async () => {
+				const existingNode = createTestNode({
+					id: 'existing-id',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					position: [100, 200],
+					parameters: { url: 'http://old.com' },
+				}) as INodeUi;
+
+				workflowsStore.allNodes = [existingNode];
+
+				const mockWorkflowObject = {
+					nodes: { 'HTTP Request': { ...existingNode } },
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				};
+				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [
+						{
+							id: 'different-id', // Different ID
+							name: 'HTTP Request', // Same name
+							type: 'n8n-nodes-base.httpRequest', // Same type
+							typeVersion: 1,
+							position: [300, 400],
+							parameters: { url: 'http://new.com' },
+						},
+					],
+					connections: {},
+				});
+
+				// Should update the node with the existing ID preserved
+				expect(workflowsStore.setNodes).toHaveBeenCalled();
+				const setNodesCall = workflowsStore.setNodes.mock.calls[0][0];
+				expect(setNodesCall[0].id).toBe('existing-id');
+				expect(setNodesCall[0].parameters.url).toBe('http://new.com');
+			});
+
+			it('should add truly new nodes even when name-based reconciliation is active', async () => {
+				const existingNode = createTestNode({
+					id: 'existing-id',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+				}) as INodeUi;
+
+				workflowsStore.allNodes = [existingNode];
+
+				const mockWorkflowObject = {
+					nodes: { 'HTTP Request': { ...existingNode } },
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				};
+				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+
+				const newNode = createTestNode({
+					id: 'brand-new-id',
+					name: 'Different Name', // Different name
+					type: 'n8n-nodes-base.set', // Different type
+				});
+
+				mockCanvasOperations.addNodes.mockResolvedValue([newNode as INodeUi]);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [
+						{
+							id: 'existing-id',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: 'brand-new-id',
+							name: 'Different Name',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				});
+
+				// Should add the truly new node
+				expect(mockCanvasOperations.addNodes).toHaveBeenCalledWith(
+					[expect.objectContaining({ id: 'brand-new-id', name: 'Different Name' })],
+					expect.any(Object),
+				);
+			});
+
 			it('should update existing nodes in place', async () => {
 				const existingNode = createTestNode({
 					id: 'node-1',
@@ -210,6 +349,75 @@ describe('useWorkflowUpdate', () => {
 				// Should sync state back to store
 				expect(workflowsStore.setNodes).toHaveBeenCalled();
 				expect(workflowsStore.setConnections).toHaveBeenCalled();
+			});
+
+			it('should apply executeOnce when updated node has it set', async () => {
+				const existingNode = createTestNode({
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					position: [100, 200],
+					parameters: { url: 'http://example.com' },
+				}) as INodeUi;
+
+				workflowsStore.allNodes = [existingNode];
+
+				const mockWorkflowObject = {
+					nodes: { 'HTTP Request': { ...existingNode } },
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				};
+				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: { url: 'http://example.com' },
+							executeOnce: true,
+						},
+					],
+					connections: {},
+				});
+
+				expect(workflowsStore.setNodes).toHaveBeenCalled();
+				const setNodesCall = workflowsStore.setNodes.mock.calls[0][0];
+				expect(setNodesCall[0].executeOnce).toBe(true);
+			});
+
+			it('should pass executeOnce through to addNodes for new nodes', async () => {
+				const newNode = createTestNode({
+					id: 'new-node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+				});
+
+				mockCanvasOperations.addNodes.mockResolvedValue([
+					{ ...newNode, executeOnce: true } as INodeUi,
+				]);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [
+						{
+							...newNode,
+							executeOnce: true,
+						},
+					],
+					connections: {},
+				});
+
+				expect(mockCanvasOperations.addNodes).toHaveBeenCalledWith(
+					[expect.objectContaining({ executeOnce: true })],
+					expect.any(Object),
+				);
 			});
 		});
 

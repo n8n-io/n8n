@@ -3814,6 +3814,83 @@ describe('useCanvasOperations', () => {
 			expect(updateNodeAtIndexSpy).toHaveBeenNthCalledWith(1, 0, workflow.nodes[0]);
 			expect(updateNodeAtIndexSpy).toHaveBeenNthCalledWith(2, 1, workflow.nodes[1]);
 		});
+
+		it('should remove preview token from node type when initializing', () => {
+			const updateNodeAtIndexSpy = vi.spyOn(workflowState, 'updateNodeAtIndex');
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeWithPreview = createTestNode({
+				type: 'n8n-nodes-community.testNode-preview',
+				name: 'testNode',
+			});
+			const workflow = createTestWorkflow({
+				nodes: [nodeWithPreview],
+				connections: {},
+			});
+			workflowsStore.workflow.nodes = [nodeWithPreview];
+			const { initializeUnknownNodes } = useCanvasOperations();
+			initializeUnknownNodes(workflow.nodes);
+
+			expect(updateNodeAtIndexSpy).toHaveBeenCalledTimes(1);
+			const updatedNode = updateNodeAtIndexSpy.mock.calls[0][1];
+			expect(updatedNode.type).toBe('n8n-nodes-community.testNode');
+			expect(updatedNode.type).not.toContain('-preview');
+		});
+	});
+
+	describe('resolveNodeData', () => {
+		it('should resolve node parameters and webhooks for installed nodes', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(true);
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-base.httpRequest',
+				webhooks: [
+					{
+						name: 'default',
+						httpMethod: 'GET',
+						path: 'test',
+						responseMode: 'onReceived',
+					},
+				],
+			});
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				nodeTypeDescription,
+			);
+
+			expect(nodeTypesStore.getIsNodeInstalled).toHaveBeenCalledWith('n8n-nodes-base.httpRequest');
+			expect(node).toBeDefined();
+		});
+
+		it('should skip resolving parameters and webhooks for non-installed nodes', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-community.notInstalled',
+			});
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{
+					type: 'n8n-nodes-community.notInstalled',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				nodeTypeDescription,
+			);
+
+			expect(nodeTypesStore.getIsNodeInstalled).toHaveBeenCalledWith(
+				'n8n-nodes-community.notInstalled',
+			);
+			expect(node).toBeDefined();
+		});
 	});
 
 	describe('resetWorkspace', () => {
@@ -5587,6 +5664,469 @@ describe('useCanvasOperations', () => {
 
 			expect(nodesToMove).toHaveLength(2);
 			expect(nodesToMove.find((n) => n.name === 'Start')).toBeUndefined();
+		});
+
+		it('should classify sticky notes as stretch-only when they contain the source node and insertion point is inside the sticky note', () => {
+			/**
+			 * Visual representation of the test scenario:
+			 *
+			 * Before insertion:
+			 * ┌─────────────────────────────┐
+			 * │  Sticky Note (50, 50)       │
+			 * │                             │
+			 * │    [Source]────────────────> [Target]
+			 * │   (100, 100)               (400, 100)
+			 * │                             │
+			 * └─────────────────────────────┘
+			 *
+			 * Insertion point: (250, 100) - between Source and Target
+			 *
+			 * Expected behavior:
+			 * - Sticky should ONLY stretch (not move) because it contains the source node
+			 * - Source node acts as an anchor point
+			 * - Target node will shift right
+			 * - Sticky will expand to accommodate the new node while staying anchored
+			 */
+			const sourceNode = createTestNode({ id: 'source', name: 'Source', position: [100, 100] });
+			const targetNode = createTestNode({ id: 'target', name: 'Target', position: [400, 100] });
+			const stickyNote = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [50, 50],
+				parameters: { width: 300, height: 200 },
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, targetNode, stickyNote],
+							connections: {
+								[sourceNode.name]: {
+									main: [[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+			const insertPosition: [number, number] = [250, 100];
+
+			const { nodesToMove, stickiesToStretch, stickiesToMoveAndStretch } = getNodesToShift(
+				insertPosition,
+				'Source',
+			);
+
+			// Sticky containing source node should only stretch (anchored)
+			expect(stickiesToStretch).toHaveLength(1);
+			expect(stickiesToStretch[0].id).toBe('sticky');
+			expect(stickiesToMoveAndStretch).toHaveLength(0);
+			expect(nodesToMove.find((n) => n.id === 'sticky')).toBeUndefined();
+		});
+
+		it('should classify sticky notes to only move when they are far from the insertion point', () => {
+			/**
+			 * Visual representation:
+			 *
+			 * Before insertion:
+			 *                                                    ┌─────────────┐
+			 *                                                    │  Sticky     │
+			 * [Source]───────────────────────────> [Target]      │  (600, 50)  │
+			 * (100, 100)                          (500, 100)     │             │
+			 *                                                    └─────────────┘
+			 *
+			 * Insertion point: (250, 100)
+			 *
+			 * Expected behavior:
+			 * - Sticky is entirely to the right and far from insertion point
+			 * - Sticky should ONLY move (no stretching needed)
+			 * - Target node will also shift right
+			 */
+			const sourceNode = createTestNode({ id: 'source', name: 'Source', position: [100, 100] });
+			const targetNode = createTestNode({ id: 'target', name: 'Target', position: [500, 100] });
+			const stickyNote = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [600, 50],
+				parameters: { width: 200, height: 200 },
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, targetNode, stickyNote],
+							connections: {
+								[sourceNode.name]: {
+									main: [[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+			const insertPosition: [number, number] = [250, 100];
+
+			const { nodesToMove, stickiesToStretch, stickiesToMoveAndStretch } = getNodesToShift(
+				insertPosition,
+				'Source',
+			);
+
+			// Sticky far from insertion should only move
+			expect(stickiesToMoveAndStretch).toHaveLength(0);
+			expect(stickiesToStretch).toHaveLength(0);
+			expect(nodesToMove).toHaveLength(2); // target + sticky
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'target' }));
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'sticky' }));
+		});
+
+		it('should not move sticky notes that do not overlap vertically with the insertion area', () => {
+			/**
+			 * Visual representation:
+			 *
+			 * [Source]──────────────────────> [Target]
+			 * (100, 100)                     (400, 100)
+			 *            ↑
+			 *       Insertion: (250, 100)
+			 *
+			 *
+			 *
+			 *       ┌─────────────┐
+			 *       │  Sticky     │
+			 *       │  (300, 500) │  ← Far below, no vertical overlap
+			 *       │             │
+			 *       └─────────────┘
+			 *
+			 * Expected behavior:
+			 * - Sticky is far below the insertion area (no vertical overlap)
+			 * - Sticky should NOT be affected (no move, no stretch)
+			 */
+			const sourceNode = createTestNode({ id: 'source', name: 'Source', position: [100, 100] });
+			const targetNode = createTestNode({ id: 'target', name: 'Target', position: [400, 100] });
+			const stickyNote = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [300, 500],
+				parameters: { width: 200, height: 200 },
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, targetNode, stickyNote],
+							connections: {
+								[sourceNode.name]: {
+									main: [[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+			const insertPosition: [number, number] = [250, 100];
+
+			const { nodesToMove, stickiesToStretch, stickiesToMoveAndStretch } = getNodesToShift(
+				insertPosition,
+				'Source',
+			);
+
+			// Sticky not overlapping vertically should not be affected
+			expect(stickiesToStretch).toHaveLength(0);
+			expect(stickiesToMoveAndStretch).toHaveLength(0);
+			expect(nodesToMove).toHaveLength(1); // only target moves
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'target' }));
+			expect(nodesToMove.find((n) => n.id === 'sticky')).toBeUndefined();
+		});
+
+		it('should track associated nodes for sticky notes', () => {
+			/**
+			 * Visual representation:
+			 *
+			 *                                      ┌─────────┐
+			 *                                      │ Sticky  │
+			 * [Source]──────────────────-─────────>│[Target] │
+			 * (100, 100)                           │(400,100)│
+			 *                                      └─────────┘
+			 *                 ↑
+			 *            Insertion: (250, 100)
+			 *
+			 * Expected behavior:
+			 * - Sticky contains the target node (center proximity check)
+			 * - Target node will move, so sticky will move too
+			 * - Sticky should track Target as an associated node for stretching calculations
+			 */
+			const sourceNode = createTestNode({ id: 'source', name: 'Source', position: [100, 100] });
+			const targetNode = createTestNode({ id: 'target', name: 'Target', position: [400, 100] });
+			const stickyNote = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [370, 70],
+				parameters: { width: 100, height: 100 },
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, targetNode, stickyNote],
+							connections: {
+								[sourceNode.name]: {
+									main: [[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+			const insertPosition: [number, number] = [250, 100];
+
+			const { nodesToMove, stickyAssociatedNodes } = getNodesToShift(insertPosition, 'Source');
+
+			// Should track the target node as associated with the sticky
+			expect(nodesToMove).toHaveLength(2); // target + sticky
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'target' }));
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'sticky' }));
+
+			const associatedNodes = stickyAssociatedNodes.get('sticky');
+			expect(associatedNodes).toBeDefined();
+			expect(associatedNodes).toHaveLength(1);
+			expect(associatedNodes?.[0].id).toBe('target');
+		});
+
+		it('should handle multiple sticky notes with different behaviors', () => {
+			/**
+			 * Visual representation:
+			 *
+			 * ┌──────────────────────┐            ┌───────┐              ┌────────────┐
+			 * │  Sticky-Anchor       │            │Sticky │              │Sticky-Move │
+			 * │                      │            │[Tgt]  │              │            │
+			 * │    [Source]──────────────────────>│(400)  │              │  (600, 50) │
+			 * │   (100, 100)         │            └───────┘              │            │
+			 * │                      │                                   └────────────┘
+			 * └──────────────────────┘
+			 *              ↑
+			 *         Insertion: (250, 100)
+			 *
+			 * Expected behavior:
+			 * - Sticky-Anchor: Contains source node → ONLY stretch (anchored)
+			 * - Sticky-WithTarget: Contains target node that will move → move + track association
+			 * - Sticky-Move: Far to the right → ONLY move
+			 */
+			const sourceNode = createTestNode({ id: 'source', name: 'Source', position: [100, 100] });
+			const targetNode = createTestNode({ id: 'target', name: 'Target', position: [400, 100] });
+			const stickyAnchor = createTestNode({
+				id: 'sticky-anchor',
+				name: 'StickyAnchor',
+				type: STICKY_NODE_TYPE,
+				position: [50, 50],
+				parameters: { width: 300, height: 200 },
+			});
+			const stickyWithTarget = createTestNode({
+				id: 'sticky-with-target',
+				name: 'StickyWithTarget',
+				type: STICKY_NODE_TYPE,
+				position: [370, 70],
+				parameters: { width: 100, height: 100 },
+			});
+			const stickyMove = createTestNode({
+				id: 'sticky-move',
+				name: 'StickyMove',
+				type: STICKY_NODE_TYPE,
+				position: [600, 50],
+				parameters: { width: 200, height: 200 },
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, targetNode, stickyAnchor, stickyWithTarget, stickyMove],
+							connections: {
+								[sourceNode.name]: {
+									main: [[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+			const insertPosition: [number, number] = [250, 100];
+
+			const { nodesToMove, stickiesToStretch, stickyAssociatedNodes } = getNodesToShift(
+				insertPosition,
+				'Source',
+			);
+
+			// Sticky containing source should only stretch
+			expect(stickiesToStretch).toHaveLength(1);
+			expect(stickiesToStretch).toContainEqual(expect.objectContaining({ id: 'sticky-anchor' }));
+
+			// Sticky containing target should move (and track associated nodes)
+			expect(nodesToMove).toHaveLength(3); // target + sticky-with-target + sticky-move
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'target' }));
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'sticky-with-target' }));
+			expect(stickyAssociatedNodes.get('sticky-with-target')).toHaveLength(1);
+
+			// Sticky far to the right should only move
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'sticky-move' }));
+		});
+
+		it('should handle sticky notes with nodes at the center boundary', () => {
+			/**
+			 * Visual representation:
+			 *
+			 *            ┌────────────────────┐
+			 *            │  Sticky (200, 50)  │
+			 * [Source]───│───────────────────────────> [Target]
+			 * (100, 100) │        ↑           │       (400, 100)
+			 *            │   Insertion point  │
+			 *            │    (250, 100)      │
+			 *            └────────────────────┘
+			 *
+			 * Expected behavior:
+			 * - Sticky overlaps the insertion point (inside its bounds)
+			 * - Sticky does NOT contain source node
+			 * - Sticky should ONLY stretch to accommodate the new node
+			 */
+			const sourceNode = createTestNode({ id: 'source', name: 'Source', position: [100, 100] });
+			const targetNode = createTestNode({ id: 'target', name: 'Target', position: [400, 100] });
+			const stickyNote = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [200, 50],
+				parameters: { width: 200, height: 200 },
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, targetNode, stickyNote],
+							connections: {
+								[sourceNode.name]: {
+									main: [[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+			const insertPosition: [number, number] = [250, 100];
+
+			const { stickiesToStretch } = getNodesToShift(insertPosition, 'Source');
+
+			// Sticky overlapping insertion point should stretch
+			expect(stickiesToStretch).toHaveLength(1);
+			expect(stickiesToStretch[0].id).toBe('sticky');
+		});
+
+		it('should track multiple associated nodes for sticky stretching', () => {
+			/**
+			 * Visual representation:
+			 *
+			 *                                     ┌──────────┐
+			 *                                     │  Sticky  │
+			 *                           ┌────────>│[Target1] │
+			 *                           │         │ (400,80) │
+			 * [Source]──────────────────┤         │          │
+			 * (100, 100)                │         │[Target2] │
+			 *                           └────────>│(400,120) │
+			 *                                     └──────────┘
+			 *                 ↑
+			 *            Insertion: (250, 100)
+			 *
+			 * Expected behavior:
+			 * - Sticky contains BOTH target nodes
+			 * - Both target nodes will move
+			 * - Sticky should track BOTH targets as associated nodes
+			 * - This ensures proper stretching to encompass all associated nodes
+			 */
+			const sourceNode = createTestNode({
+				id: 'source',
+				name: 'Source',
+				position: [100, 100],
+			});
+
+			const targetNode1 = createTestNode({
+				id: 'target1',
+				name: 'Target1',
+				position: [400, 80],
+			});
+
+			const targetNode2 = createTestNode({
+				id: 'target2',
+				name: 'Target2',
+				position: [400, 120],
+			});
+
+			const stickyNote = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [370, 50],
+				parameters: { width: 100, height: 150 },
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, targetNode1, targetNode2, stickyNote],
+							connections: {
+								[sourceNode.name]: {
+									main: [
+										[
+											{ node: targetNode1.name, type: NodeConnectionTypes.Main, index: 0 },
+											{ node: targetNode2.name, type: NodeConnectionTypes.Main, index: 0 },
+										],
+									],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+			const insertPosition: [number, number] = [250, 100];
+
+			const { nodesToMove, stickyAssociatedNodes } = getNodesToShift(insertPosition, 'Source');
+
+			// Should track both target nodes as associated with the sticky
+			expect(nodesToMove).toHaveLength(3); // target1 + target2 + sticky
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'target1' }));
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'target2' }));
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'sticky' }));
+
+			const associatedNodes = stickyAssociatedNodes.get('sticky');
+			expect(associatedNodes).toBeDefined();
+			expect(associatedNodes).toHaveLength(2);
+			expect(associatedNodes?.map((n) => n.id).sort()).toEqual(['target1', 'target2']);
 		});
 	});
 

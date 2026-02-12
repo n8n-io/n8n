@@ -9,7 +9,7 @@ import {
 	type INodeExecutionData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
+import { logWrapper } from '@n8n/ai-utilities';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 function getTool(ctx: ISupplyDataFunctions | IExecuteFunctions): WikipediaQueryRun {

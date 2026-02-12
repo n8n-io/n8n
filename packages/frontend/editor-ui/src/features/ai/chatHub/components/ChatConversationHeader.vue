@@ -13,10 +13,11 @@ import { useI18n } from '@n8n/i18n';
 import { computed, useTemplateRef, watch, ref } from 'vue';
 import { useChatStore } from '../chat.store';
 
-const { selectedModel, credentials, readyToShowModelSelector } = defineProps<{
+const { selectedModel, credentials, readyToShowModelSelector, showArtifactIcon } = defineProps<{
 	selectedModel: ChatModelDto | null;
 	credentials: CredentialsMap | null;
 	readyToShowModelSelector: boolean;
+	showArtifactIcon: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -26,6 +27,7 @@ const emit = defineEmits<{
 	createCustomAgent: [];
 	selectCredential: [provider: ChatHubProvider, credentialId: string | null];
 	openWorkflow: [workflowId: string];
+	reopenArtifact: [];
 }>();
 
 const modelSelectorRef = useTemplateRef('modelSelectorRef');
@@ -92,6 +94,14 @@ defineExpose({
 				"
 			/>
 		</div>
+		<N8nButton
+			v-if="showArtifactIcon"
+			type="secondary"
+			size="medium"
+			icon="notebook-pen"
+			text
+			@click="emit('reopenArtifact')"
+		/>
 		<N8nButton
 			v-if="selectedModel?.model.provider === 'custom-agent'"
 			:class="$style.editAgent"

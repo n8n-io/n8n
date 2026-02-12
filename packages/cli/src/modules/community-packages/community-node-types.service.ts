@@ -1,8 +1,9 @@
 import type { CommunityNodeType } from '@n8n/api-types';
-import { Logger, inProduction } from '@n8n/backend-common';
+import { inProduction, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
+import { ensureError, isToolType, NodeConnectionTypes } from 'n8n-workflow';
 
+import cloneDeep from 'lodash/cloneDeep';
 import {
 	getCommunityNodeTypes,
 	getCommunityNodesMetadata,
@@ -126,7 +127,43 @@ export class CommunityNodeTypesService {
 
 		this.setCommunityNodeTypes(nodeTypes);
 
+		this.createAiTools();
+
 		this.lastUpdateTimestamp = Date.now();
+	}
+
+	private createAiTools() {
+		const usableAsTools = Array.from(this.communityNodeTypes.values()).filter(
+			(nodeType) => nodeType.nodeDescription.usableAsTool && !isToolType(nodeType.name),
+		);
+		const forbiddenCategories = ['Recommended Tools'];
+		for (const nodeType of usableAsTools) {
+			const clonedNodeType = cloneDeep(nodeType);
+			const toolSubcategories = clonedNodeType.nodeDescription.codex?.subcategories?.Tools ?? [
+				'Other Tools',
+			];
+			// don't allow community nodes to appear in Recommended Tools category
+			const filteredToolSubcategories = toolSubcategories.filter(
+				(subcategory) => !forbiddenCategories.includes(subcategory),
+			);
+			// this parameter is valid npm package name
+			clonedNodeType.name += 'Tool';
+			// this parameter has -preview suffix
+			clonedNodeType.nodeDescription.name += 'Tool';
+			clonedNodeType.nodeDescription.inputs = [];
+			clonedNodeType.nodeDescription.outputs = [NodeConnectionTypes.AiTool];
+			clonedNodeType.nodeDescription.displayName += ' Tool';
+			clonedNodeType.nodeDescription.codex = {
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: filteredToolSubcategories,
+				},
+				resources: clonedNodeType.nodeDescription.codex?.resources ?? {},
+			};
+
+			this.communityNodeTypes.set(clonedNodeType.name, clonedNodeType);
+		}
 	}
 
 	private setCommunityNodeTypes(nodeTypes: StrapiCommunityNodeType[]) {

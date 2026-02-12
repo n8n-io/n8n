@@ -9,7 +9,7 @@ test.describe('Secret Providers Connections with LocalStack @capability:external
 	const PROVIDER_KEY = 'aws-localstack-e2e';
 	const PROVIDER_TYPE = 'awsSecretsManager';
 
-	test.beforeEach(async ({ n8n, n8nContainer }) => {
+	test.beforeEach(async ({ n8n, services }) => {
 		// N8N_ENV_FEAT_EXTERNAL_SECRETS_FOR_PROJECTS is set at container startup
 		// via the external-secrets capability config
 
@@ -17,7 +17,7 @@ test.describe('Secret Providers Connections with LocalStack @capability:external
 		await n8n.api.enableFeature('externalSecrets');
 
 		// Clear any existing secrets from previous tests
-		await n8nContainer.services.localstack.secretsManager.clear();
+		await services.localstack.secretsManager.clear();
 	});
 
 	test.afterEach(async ({ n8n }) => {
@@ -29,16 +29,16 @@ test.describe('Secret Providers Connections with LocalStack @capability:external
 		}
 	});
 
-	test('can create a connection pointing to LocalStack', async ({ n8n, n8nContainer }) => {
+	test('can create a connection pointing to LocalStack', async ({ n8n, services }) => {
 		// Arrange: Seed secrets in LocalStack
-		await n8nContainer.services.localstack.secretsManager.createSecret('e2e-api-key', 'secret-123');
-		await n8nContainer.services.localstack.secretsManager.createSecret(
+		await services.localstack.secretsManager.createSecret('e2e-api-key', 'secret-123');
+		await services.localstack.secretsManager.createSecret(
 			'e2e-db-credentials',
 			JSON.stringify({ username: 'admin', password: 'hunter2' }),
 		);
 
 		// Verify secrets exist in LocalStack
-		const secrets = await n8nContainer.services.localstack.secretsManager.listSecrets();
+		const secrets = await services.localstack.secretsManager.listSecrets();
 		expect(secrets).toContain('e2e-api-key');
 		expect(secrets).toContain('e2e-db-credentials');
 

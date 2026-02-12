@@ -24,11 +24,11 @@ test.describe('Push resources to Git @capability:source-control @fixme', () => {
 
 	let gitRepo: GitRepoHelper;
 
-	test.beforeEach(async ({ n8n, n8nContainer }) => {
+	test.beforeEach(async ({ n8n, services }) => {
 		await n8n.api.enableFeature('sourceControl');
 		await n8n.api.enableFeature('variables');
 
-		gitRepo = await setupGitRepo(n8n, n8nContainer.services.gitea);
+		gitRepo = await setupGitRepo(n8n, services.gitea);
 	});
 
 	test('should push a new workflow', async ({ n8n }) => {

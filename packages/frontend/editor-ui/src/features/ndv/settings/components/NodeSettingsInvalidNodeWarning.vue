@@ -16,6 +16,7 @@ import { computed, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 import ContactAdministratorToInstall from '@/features/settings/communityNodes/components/ContactAdministratorToInstall.vue';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { useQuickConnect } from '@/features/integrations/quickConnect/composables/useQuickConnect';
 
 const { node, previewMode = false } = defineProps<{ node: INodeUi; previewMode?: boolean }>();
 
@@ -35,6 +36,7 @@ const isVerifiedCommunityNode = computed(
 );
 const npmPackage = computed(() => removePreviewToken(node.type.split('.')[0]));
 const isOwner = computed(() => usersStore.isInstanceOwner);
+const quickConnect = useQuickConnect({ packageName: npmPackage });
 
 const { installNode, loading } = useInstallNode();
 
@@ -65,6 +67,10 @@ async function onInstallClick() {
 			type: 'verified',
 			packageName: npmPackage.value,
 			nodeType: node.type,
+			telemetry: {
+				source: 'missing node modal source',
+				hasQuickConnect: quickConnect.value !== undefined,
+			},
 		});
 	} else {
 		uiStore.openModalWithData({

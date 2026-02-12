@@ -171,15 +171,9 @@ const actions = {
 	delete: deleteRole,
 } as const;
 
-function rowProps(row: Role) {
-	const className = [$style.tallRow];
-
-	if (!row.systemRole) {
-		className.push($style.clickableRow);
-	}
-
+function rowProps(_row: Role) {
 	return {
-		class: className,
+		class: [$style.tallRow, $style.clickableRow],
 	};
 }
 
@@ -204,8 +198,11 @@ function handleAction(action: string, item: Role) {
 }
 
 function handleRowClick(item: Role) {
-	if (item.systemRole) return;
-	void router.push({ name: VIEWS.PROJECT_ROLE_SETTINGS, params: { roleSlug: item.slug } });
+	// System roles → view route, custom roles → edit route
+	void router.push({
+		name: item.systemRole ? VIEWS.PROJECT_ROLE_VIEW : VIEWS.PROJECT_ROLE_SETTINGS,
+		params: { roleSlug: item.slug },
+	});
 }
 
 function addRole() {
@@ -261,7 +258,9 @@ function addRole() {
 					<template v-if="item.systemRole">
 						<N8nIcon icon="lock" /> {{ i18n.baseText('projectRoles.literal.system') }}</template
 					>
-					<template v-else>{{ i18n.baseText('projectRoles.literal.custom') }}</template>
+					<template v-else>
+						<N8nIcon icon="user-pen" /> {{ i18n.baseText('projectRoles.literal.custom') }}</template
+					>
 				</template>
 				<template #[`item.actions`]="{ item }">
 					<N8nActionToggle

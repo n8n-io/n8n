@@ -2,6 +2,7 @@ import { ref } from 'vue';
 import { useConnectionModal } from './useConnectionModal.ee';
 import { vi } from 'vitest';
 import type { SecretProviderTypeResponse } from '@n8n/api-types';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
 // Mock dependencies
 const mockConnection = {
@@ -13,20 +14,33 @@ const mockConnection = {
 	connectionState: ref('initializing'),
 };
 
+const mockHasScope = vi.fn((_scope?: string) => true);
+const mockShowError = vi.fn();
+
 vi.mock('./useSecretsProviderConnection.ee', () => ({
 	useSecretsProviderConnection: () => mockConnection,
 }));
 
 vi.mock('@/app/stores/rbac.store', () => ({
 	useRBACStore: vi.fn(() => ({
-		hasScope: vi.fn(() => true),
+		hasScope: mockHasScope,
 	})),
 }));
 
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
-		showError: vi.fn(),
+		showError: mockShowError,
 	})),
+}));
+
+const mockProjectsStore = {
+	projects: [] as ProjectListItem[],
+	myProjects: [] as ProjectListItem[],
+	fetchProject: vi.fn(),
+};
+
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: vi.fn(() => mockProjectsStore),
 }));
 
 describe('useConnectionModal', () => {
@@ -54,6 +68,9 @@ describe('useConnectionModal', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockHasScope.mockReturnValue(true);
+		mockProjectsStore.projects = [];
+		mockProjectsStore.myProjects = [];
 	});
 
 	describe('initialization', () => {
@@ -137,7 +154,7 @@ describe('useConnectionModal', () => {
 				settings: { region: 'us-east-1' },
 				projectIds: [],
 			});
-			expect(mockConnection.testConnection).toHaveBeenCalledWith('new-id');
+			expect(mockConnection.testConnection).toHaveBeenCalledWith('new-provider');
 		});
 
 		it('should call updateConnection when saving existing connection', async () => {
@@ -164,7 +181,7 @@ describe('useConnectionModal', () => {
 				settings: { region: 'us-west-2' },
 				projectIds: [],
 			});
-			expect(mockConnection.testConnection).toHaveBeenCalledWith('existing-id');
+			expect(mockConnection.testConnection).toHaveBeenCalledWith('existing-key');
 		});
 	});
 
@@ -198,6 +215,413 @@ describe('useConnectionModal', () => {
 
 			originalConnectionName.value = 'my-vault';
 			expect(expressionExample.value).toBe('{{ $secrets.my-vault.secret_name }}');
+		});
+
+		it('should detect scope changes', async () => {
+			const options = { ...defaultOptions, providerKey: ref('test-key') };
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'test-id',
+				name: 'test-connection',
+				type: 'awsSecretsManager',
+				settings: { region: 'us-east-1' },
+				projects: [],
+			});
+
+			const modal = useConnectionModal(options);
+			await modal.loadConnection();
+
+			expect(modal.scopeUpdated.value).toBe(false);
+
+			modal.setScopeState(['project-1'], false);
+			expect(modal.scopeUpdated.value).toBe(true);
+		});
+
+		it('should return empty expression example when no connection name', () => {
+			const { expressionExample } = useConnectionModal(defaultOptions);
+			expect(expressionExample.value).toBe('');
+		});
+	});
+
+	describe('permission handling', () => {
+		it('should disable save when user lacks create permission in create mode', () => {
+			mockHasScope.mockImplementation(() => false);
+
+			const { selectProviderType, connectionName, canSave } = useConnectionModal(defaultOptions);
+
+			selectProviderType('awsSecretsManager');
+			connectionName.value = 'new-connection';
+
+			expect(canSave.value).toBe(false);
+		});
+
+		it('should disable save when user lacks update permission in edit mode', async () => {
+			mockHasScope.mockImplementation(() => false);
+
+			const options = { ...defaultOptions, providerKey: ref('existing-key') };
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'existing-id',
+				name: 'existing-name',
+				type: 'awsSecretsManager',
+				settings: { region: 'us-east-1' },
+			});
+
+			const modal = useConnectionModal(options);
+			await modal.loadConnection();
+			modal.updateSettings('region', 'us-west-2');
+
+			expect(modal.canSave.value).toBe(false);
+		});
+
+		it('should prevent saving when lacking permission via canSave', async () => {
+			mockHasScope.mockReturnValue(false);
+
+			const { selectProviderType, connectionName, saveConnection, canSave } =
+				useConnectionModal(defaultOptions);
+
+			selectProviderType('awsSecretsManager');
+			connectionName.value = 'new-connection';
+
+			expect(canSave.value).toBe(false);
+
+			const result = await saveConnection();
+
+			expect(result).toBe(false);
+			expect(mockConnection.createConnection).not.toHaveBeenCalled();
+		});
+
+		it('should allow update with global permission', async () => {
+			mockHasScope.mockImplementation((scope?: string): boolean => {
+				return scope === 'externalSecretsProvider:update';
+			});
+
+			const options = { ...defaultOptions, providerKey: ref('existing-key') };
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'existing-id',
+				name: 'existing-name',
+				type: 'awsSecretsManager',
+				settings: { region: 'us-east-1' },
+			});
+
+			const modal = useConnectionModal(options);
+			await modal.loadConnection();
+			modal.updateSettings('region', 'us-west-2');
+
+			expect(modal.canSave.value).toBe(true);
+		});
+
+		it('should allow update with project-scoped permission', async () => {
+			mockHasScope.mockReturnValue(false);
+
+			mockProjectsStore.myProjects = [
+				{
+					id: 'project-1',
+					name: 'Project 1',
+					type: 'team',
+					createdAt: '',
+					updatedAt: '',
+					icon: null,
+					role: 'owner',
+					scopes: ['externalSecretsProvider:update'],
+				},
+			];
+
+			const options = { ...defaultOptions, providerKey: ref('existing-key') };
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'existing-id',
+				name: 'existing-name',
+				type: 'awsSecretsManager',
+				settings: { region: 'us-east-1' },
+				projects: [{ id: 'project-1', name: 'Project 1' }],
+			});
+
+			const modal = useConnectionModal(options);
+			await modal.loadConnection();
+			modal.updateSettings('region', 'us-west-2');
+
+			expect(modal.canSave.value).toBe(true);
+		});
+
+		it('should not allow update without any permission', async () => {
+			mockHasScope.mockReturnValue(false);
+
+			mockProjectsStore.myProjects = [
+				{
+					id: 'project-1',
+					name: 'Project 1',
+					type: 'team',
+					createdAt: '',
+					updatedAt: '',
+					icon: null,
+					role: '',
+					scopes: [], // No update scope
+				},
+			];
+
+			const options = { ...defaultOptions, providerKey: ref('existing-key') };
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'existing-id',
+				name: 'existing-name',
+				type: 'awsSecretsManager',
+				settings: { region: 'us-east-1' },
+				projects: [{ id: 'project-1', name: 'Project 1' }],
+			});
+
+			const modal = useConnectionModal(options);
+			await modal.loadConnection();
+			modal.updateSettings('region', 'us-west-2');
+
+			expect(modal.canSave.value).toBe(false);
+		});
+
+		it('should allow global sharing only with global update permission', () => {
+			mockHasScope.mockImplementation((scope?: string): boolean => {
+				return scope === 'externalSecretsProvider:update';
+			});
+
+			const modal = useConnectionModal(defaultOptions);
+
+			expect(modal.canShareGlobally.value).toBe(true);
+		});
+
+		it('should not allow global sharing without global update permission', async () => {
+			mockHasScope.mockReturnValue(false);
+
+			mockProjectsStore.myProjects = [
+				{
+					id: 'project-1',
+					name: 'Project 1',
+					type: 'team',
+					createdAt: '',
+					updatedAt: '',
+					icon: null,
+					role: 'owner',
+					scopes: ['externalSecretsProvider:update'], // Project scope only
+				},
+			];
+
+			const options = { ...defaultOptions, providerKey: ref('existing-key') };
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'existing-id',
+				name: 'existing-name',
+				type: 'awsSecretsManager',
+				settings: { region: 'us-east-1' },
+				projects: [{ id: 'project-1', name: 'Project 1' }],
+			});
+
+			const modal = useConnectionModal(options);
+			await modal.loadConnection();
+
+			expect(modal.canShareGlobally.value).toBe(false);
+		});
+
+		it('should require update permission on all original project IDs', async () => {
+			mockHasScope.mockReturnValue(false);
+
+			mockProjectsStore.myProjects = [
+				{
+					id: 'project-1',
+					name: 'Project 1',
+					type: 'team',
+					createdAt: '',
+					updatedAt: '',
+					icon: null,
+					role: 'owner',
+					scopes: ['externalSecretsProvider:update'],
+				},
+				{
+					id: 'project-2',
+					name: 'Project 2',
+					type: 'team',
+					createdAt: '',
+					updatedAt: '',
+					icon: null,
+					role: '',
+					scopes: [], // Missing update permission
+				},
+			];
+
+			const options = { ...defaultOptions, providerKey: ref('existing-key') };
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'existing-id',
+				name: 'existing-name',
+				type: 'awsSecretsManager',
+				settings: { region: 'us-east-1' },
+				projects: [
+					{ id: 'project-1', name: 'Project 1' },
+					{ id: 'project-2', name: 'Project 2' },
+				],
+			});
+
+			const modal = useConnectionModal(options);
+			await modal.loadConnection();
+			modal.updateSettings('region', 'us-west-2');
+
+			// Should fail because project-2 doesn't have update permission
+			expect(modal.canSave.value).toBe(false);
+		});
+	});
+
+	describe('error handling', () => {
+		it('should handle error when loading connection', async () => {
+			const error = new Error('Failed to load');
+			mockConnection.getConnection.mockRejectedValue(error);
+
+			const options = { ...defaultOptions, providerKey: ref('test-key') };
+			const modal = useConnectionModal(options);
+
+			await modal.loadConnection();
+
+			expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String), undefined);
+		});
+
+		it('should handle error with response data when loading connection', async () => {
+			const error = {
+				message: 'Failed to load',
+				response: {
+					data: {
+						data: {
+							error: 'Detailed error message',
+						},
+					},
+				},
+			};
+			mockConnection.getConnection.mockRejectedValue(error);
+
+			const options = { ...defaultOptions, providerKey: ref('test-key') };
+			const modal = useConnectionModal(options);
+
+			await modal.loadConnection();
+
+			expect(mockShowError).toHaveBeenCalledWith(
+				error,
+				expect.any(String),
+				'Detailed error message',
+			);
+		});
+
+		it('should handle error when saving connection', async () => {
+			const error = new Error('Failed to save');
+			mockConnection.createConnection.mockRejectedValue(error);
+
+			const { selectProviderType, connectionName, saveConnection, isSaving } =
+				useConnectionModal(defaultOptions);
+
+			selectProviderType('awsSecretsManager');
+			connectionName.value = 'new-connection';
+
+			const result = await saveConnection();
+
+			expect(result).toBe(false);
+			expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String), undefined);
+			expect(isSaving.value).toBe(false);
+		});
+
+		it('should set isSaving to false after save completes', async () => {
+			mockConnection.createConnection.mockResolvedValue({ id: 'new-id' });
+
+			const { selectProviderType, connectionName, saveConnection, isSaving } =
+				useConnectionModal(defaultOptions);
+
+			selectProviderType('awsSecretsManager');
+			connectionName.value = 'new-connection';
+
+			expect(isSaving.value).toBe(false);
+
+			const savePromise = saveConnection();
+			expect(isSaving.value).toBe(true);
+
+			await savePromise;
+			expect(isSaving.value).toBe(false);
+		});
+
+		it('should set didSave to true when save succeeds', async () => {
+			const { selectProviderType, connectionName, saveConnection, didSave } =
+				useConnectionModal(defaultOptions);
+
+			mockConnection.createConnection.mockResolvedValue({
+				id: 'new-id',
+				name: 'new-connection',
+				type: 'awsSecretsManager',
+				settings: {},
+				secretsCount: 5,
+			});
+			mockConnection.connectionState.value = 'connected';
+
+			selectProviderType('awsSecretsManager');
+			connectionName.value = 'new-connection';
+
+			expect(didSave.value).toBe(false);
+
+			await saveConnection();
+
+			expect(didSave.value).toBe(true);
+		});
+
+		it('should not set didSave to true when save fails', async () => {
+			const { selectProviderType, connectionName, saveConnection, didSave } =
+				useConnectionModal(defaultOptions);
+
+			mockConnection.createConnection.mockRejectedValue(new Error('Save failed'));
+
+			selectProviderType('awsSecretsManager');
+			connectionName.value = 'new-connection';
+
+			expect(didSave.value).toBe(false);
+
+			await saveConnection();
+
+			expect(didSave.value).toBe(false);
+		});
+	});
+
+	describe('scope management', () => {
+		it('should limit project IDs to one when setting scope', () => {
+			const { setScopeState, projectIds } = useConnectionModal(defaultOptions);
+
+			setScopeState(['project-1', 'project-2', 'project-3'], false);
+			expect(projectIds.value).toEqual(['project-1']);
+		});
+
+		it('should load connection with project scope', async () => {
+			const options = { ...defaultOptions, providerKey: ref('test-key') };
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'test-id',
+				name: 'test-connection',
+				type: 'awsSecretsManager',
+				settings: { region: 'us-east-1' },
+				projects: [{ id: 'project-1', name: 'Project 1' }],
+			});
+
+			const modal = useConnectionModal(options);
+			await modal.loadConnection();
+
+			expect(modal.projectIds.value).toEqual(['project-1']);
+			expect(modal.isSharedGlobally.value).toBe(false);
+			expect(modal.connectionProjects.value).toEqual([{ id: 'project-1', name: 'Project 1' }]);
+		});
+
+		it('should update connection with project scope', async () => {
+			const options = { ...defaultOptions, providerKey: ref('existing-key') };
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'existing-id',
+				name: 'existing-name',
+				type: 'awsSecretsManager',
+				settings: { region: 'us-east-1' },
+			});
+
+			const modal = useConnectionModal(options);
+			await modal.loadConnection();
+
+			modal.setScopeState(['project-1'], false);
+			modal.updateSettings('region', 'us-west-2');
+
+			await modal.saveConnection();
+
+			expect(mockConnection.updateConnection).toHaveBeenCalledWith('existing-key', {
+				isGlobal: false,
+				settings: { region: 'us-west-2' },
+				projectIds: ['project-1'],
+			});
 		});
 	});
 });

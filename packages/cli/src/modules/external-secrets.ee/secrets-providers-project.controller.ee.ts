@@ -1,35 +1,47 @@
 import { Logger } from '@n8n/backend-common';
-import { Get, ProjectScope, RestController, Middleware } from '@n8n/decorators';
-import {} from '@n8n/decorators/src';
-import { Request, Response, NextFunction } from 'express';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { AuthenticatedRequest } from '@n8n/db';
+import { Get, Middleware, Param, ProjectScope, RestController } from '@n8n/decorators';
+import type { NextFunction, Request, Response } from 'express';
 
 import { ExternalSecretsConfig } from './external-secrets.config';
+import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee';
+import type { SecretsProvidersResponses } from './secrets-providers.responses.ee';
+
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { sendErrorResponse } from '@/response-helper';
 
 @RestController('/secret-providers/projects')
 export class SecretProvidersProjectController {
 	constructor(
 		private readonly config: ExternalSecretsConfig,
 		private readonly logger: Logger,
+		private readonly connectionsService: SecretsProvidersConnectionsService,
 	) {
 		this.logger = this.logger.scoped('external-secrets');
 	}
 
 	@Middleware()
-	checkFeatureFlag(_req: Request, _res: Response, next: NextFunction) {
+	checkFeatureFlag(_req: Request, res: Response, next: NextFunction) {
 		if (!this.config.externalSecretsForProjects) {
 			this.logger.warn('External secrets for projects feature is not enabled');
-			throw new BadRequestError('External secrets for projects feature is not enabled');
+			sendErrorResponse(
+				res,
+				new ForbiddenError('External secrets for projects feature is not enabled'),
+			);
+			return;
 		}
 		next();
 	}
 
 	@Get('/:projectId/connections')
 	@ProjectScope('externalSecretsProvider:list')
-	async listConnectionsForAProject() {
-		this.logger.debug('List all connections within a project');
-		//TODO implement
-		return await Promise.resolve([]);
+	async listConnectionsForAProject(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+	): Promise<SecretsProvidersResponses.StrippedConnection[]> {
+		this.logger.debug('List all connections within a project', { projectId });
+		const connections = await this.connectionsService.listConnectionsForProject(projectId);
+		return connections.map((c) => this.connectionsService.toPublicConnection(c));
 	}
 }

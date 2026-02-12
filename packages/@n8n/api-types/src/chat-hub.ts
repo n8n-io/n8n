@@ -7,7 +7,8 @@ import {
 	INodeSchema,
 } from 'n8n-workflow';
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from './zod-class';
 
 /**
  * Supported AI model providers
@@ -392,12 +393,34 @@ export interface ChatHubSessionDto {
 	tools: INode[];
 }
 
+export type ChatMessageContentChunk =
+	| { type: 'text'; content: string }
+	| { type: 'hidden'; content: string }
+	| {
+			type: 'artifact-create';
+			content: string;
+			command: ChatArtifactCreateCommand;
+			isIncomplete: boolean;
+	  }
+	| {
+			type: 'artifact-edit';
+			content: string;
+			command: ChatArtifactEditCommand;
+			isIncomplete: boolean;
+	  }
+	| {
+			type: 'with-buttons';
+			content: string;
+			buttons: ChatHubMessageButton[];
+			blockUserInput: boolean;
+	  };
+
 export interface ChatHubMessageDto {
 	id: ChatMessageId;
 	sessionId: ChatSessionId;
 	type: ChatHubMessageType;
 	name: string;
-	content: string;
+	content: ChatMessageContentChunk[];
 	provider: ChatHubProvider | null;
 	model: string | null;
 	workflowId: string | null;
@@ -542,3 +565,52 @@ export interface ChatReconnectResponse {
 	/** Last sequence number received by client (for gap detection) */
 	lastSequenceNumber: number;
 }
+
+/**
+ * Artifact generated during chat interaction
+ */
+export interface ChatArtifact {
+	title: string;
+	/**
+	 * Document type (html, md, csv, js etc.)
+	 */
+	type: string;
+	content: string;
+}
+
+export interface ChatArtifactCreateCommand {
+	title: string;
+	type: string;
+	content: string;
+}
+
+export interface ChatArtifactEditCommand {
+	title: string;
+	oldString: string;
+	newString: string;
+	replaceAll: boolean;
+}
+
+/**
+ * Button shown in a chat message
+ */
+export const chatHubMessageButtonSchema = z.object({
+	text: z.string(),
+	link: z.string(),
+	type: z.enum(['primary', 'secondary']),
+});
+
+export type ChatHubMessageButton = z.infer<typeof chatHubMessageButtonSchema>;
+
+/**
+ * Structured message with buttons, sent from
+ * Chat node in "Send and Wait for Response" mode for HITL approvals
+ */
+export const chatHubMessageWithButtonsSchema = z.object({
+	type: z.literal('with-buttons'),
+	text: z.string(),
+	blockUserInput: z.boolean(),
+	buttons: z.array(chatHubMessageButtonSchema).min(1),
+});
+
+export type ChatHubMessageWithButtons = z.infer<typeof chatHubMessageWithButtonsSchema>;

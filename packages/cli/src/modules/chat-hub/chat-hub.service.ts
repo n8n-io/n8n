@@ -47,6 +47,7 @@ import {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { ChatStreamService } from './chat-stream.service';
+import { parseMessage } from '@n8n/chat-hub';
 
 @Service()
 export class ChatHubService {
@@ -533,15 +534,7 @@ export class ChatHubService {
 				const messageToEdit = await this.getChatMessage(session.id, editId, [], trx);
 
 				if (messageToEdit.type === 'ai') {
-					if (model.provider === 'n8n') {
-						throw new BadRequestError(
-							'Editing AI messages with n8n workflow agents is not supported',
-						);
-					}
-
-					// AI edits just change the original message without revisioning or response generation
-					await this.messageRepository.updateChatMessage(editId, { content: payload.message }, trx);
-					return { workflow: null, combinedAttachments: [] };
+					throw new BadRequestError('Editing AI messages is not supported');
 				}
 
 				if (messageToEdit.type === 'human') {
@@ -799,7 +792,7 @@ export class ChatHubService {
 			sessionId: message.sessionId,
 			type: message.type,
 			name: message.name,
-			content: message.content,
+			content: parseMessage(message),
 			provider: message.provider,
 			model: message.model,
 			workflowId: message.workflowId,

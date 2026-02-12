@@ -5,34 +5,34 @@ import { test, expect } from '../../../fixtures/base';
 test.use({ capability: 'proxy' });
 // @capability:proxy tag ensures that test suite is only run when proxy is available
 test.describe('Proxy server @capability:proxy', () => {
-	test.beforeEach(async ({ proxyServer }) => {
-		await proxyServer.clearAllExpectations();
+	test.beforeEach(async ({ services }) => {
+		await services.proxy.clearAllExpectations();
 	});
 
-	test('should verify ProxyServer container is running', async ({ proxyServer }) => {
-		const mockResponse = await proxyServer.createGetExpectation('/health', {
+	test('should verify ProxyServer container is running', async ({ services }) => {
+		const mockResponse = await services.proxy.createGetExpectation('/health', {
 			status: 'healthy',
 		});
 
 		assert(typeof mockResponse !== 'string');
 		expect(mockResponse.statusCode).toBe(201);
 
-		expect(await proxyServer.wasRequestMade({ method: 'GET', path: '/health' })).toBe(false);
+		expect(await services.proxy.wasRequestMade({ method: 'GET', path: '/health' })).toBe(false);
 
 		// Verify the mock endpoint works
-		const healthResponse = await fetch(`${proxyServer.url}/health`);
+		const healthResponse = await fetch(`${services.proxy.url}/health`);
 		expect(healthResponse.ok).toBe(true);
 		const healthData = await healthResponse.json();
 		expect(healthData.status).toBe('healthy');
 
-		expect(await proxyServer.wasRequestMade({ method: 'GET', path: '/health' })).toBe(true);
+		expect(await services.proxy.wasRequestMade({ method: 'GET', path: '/health' })).toBe(true);
 	});
 
-	test('should run a simple workflow calling http endpoint', async ({ n8n, proxyServer }) => {
+	test('should run a simple workflow calling http endpoint', async ({ n8n, services }) => {
 		const mockResponse = { data: 'Hello from ProxyServer!', test: '1' };
 
 		// Create expectation in mockserver to handle the request
-		await proxyServer.createGetExpectation('/data', mockResponse, { test: '1' });
+		await services.proxy.createGetExpectation('/data', mockResponse, { test: '1' });
 
 		await n8n.canvas.openNewWorkflow();
 
@@ -46,7 +46,7 @@ test.describe('Proxy server @capability:proxy', () => {
 
 		// Verify the request was handled by mockserver
 		expect(
-			await proxyServer.wasRequestMade({
+			await services.proxy.wasRequestMade({
 				method: 'GET',
 				path: '/data',
 				queryStringParameters: { test: ['1'] },
@@ -54,14 +54,16 @@ test.describe('Proxy server @capability:proxy', () => {
 		).toBe(true);
 	});
 
-	test('should use stored expectations respond to api request', async ({ proxyServer }) => {
-		await proxyServer.loadExpectations('proxy-server');
+	test('should use stored expectations respond to api request', async ({ services }) => {
+		await services.proxy.loadExpectations('proxy-server');
 
-		const response = await fetch(`${proxyServer.url}/mock-endpoint`);
+		const response = await fetch(`${services.proxy.url}/mock-endpoint`);
 		expect(response.ok).toBe(true);
 		const data = await response.json();
 		expect(data.title).toBe('delectus aut autem');
-		expect(await proxyServer.wasRequestMade({ method: 'GET', path: '/mock-endpoint' })).toBe(true);
+		expect(await services.proxy.wasRequestMade({ method: 'GET', path: '/mock-endpoint' })).toBe(
+			true,
+		);
 	});
 
 	test('should run a simple workflow proxying HTTPS request', async ({ n8n }) => {

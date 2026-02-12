@@ -1,6 +1,6 @@
 import { AuthService } from '@/auth/auth.service';
 import { Service } from '@n8n/di';
-import { Z } from 'zod-class';
+import { Z } from '@n8n/api-types';
 import { z } from 'zod';
 import { ICredentialContext } from 'n8n-workflow';
 import { Request } from 'express';
