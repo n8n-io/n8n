@@ -10,8 +10,6 @@ export type {
 	EvaluateOptions,
 	RuntimeBridge,
 	BridgeConfig,
-	TournamentInstance,
-	ValidationResult,
 	ObservabilityProvider,
 	MetricsAPI,
 	TracesAPI,

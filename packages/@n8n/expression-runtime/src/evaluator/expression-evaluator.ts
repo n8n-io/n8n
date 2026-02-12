@@ -5,12 +5,16 @@ import type {
 	EvaluateOptions,
 } from '../types';
 
+/**
+ * Expression evaluator for Slice 1.
+ *
+ * Simple implementation that passes expressions directly to the bridge.
+ * Tournament integration and code caching will be added in later slices.
+ */
 export class ExpressionEvaluator implements IExpressionEvaluator {
 	private config: EvaluatorConfig;
 
 	private disposed = false;
-
-	private codeCache: Map<string, string> = new Map();
 
 	constructor(config: EvaluatorConfig) {
 		this.config = config;
@@ -23,40 +27,22 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	async evaluate(
 		expression: string,
 		data: WorkflowData,
-		options?: EvaluateOptions,
+		_options?: EvaluateOptions,
 	): Promise<unknown> {
 		if (this.disposed) throw new Error('Evaluator disposed');
 
-		const skipTransform = options?.skipTransform ?? false;
-		const skipCodeCache = options?.skipCodeCache ?? false;
-
-		// Get transformed code
-		let code: string;
-		if (skipTransform) {
-			code = expression;
-		} else if (!skipCodeCache && this.codeCache.has(expression)) {
-			code = this.codeCache.get(expression)!;
-		} else {
-			// Transform with Tournament if available
-			code = this.config.tournament ? this.config.tournament.transform(expression) : expression;
-
-			if (!skipCodeCache) {
-				this.codeCache.set(expression, code);
-			}
-		}
-
-		// Execute with workflow data proxy (passed directly for Slice 1)
+		// Slice 1: Pass expression directly to bridge (no transformation yet)
 		try {
-			const result = await this.config.bridge.execute(code, data);
+			const result = await this.config.bridge.execute(expression, data);
 
-			// Emit success metric
+			// Emit success metric if observability is configured
 			if (this.config.observability) {
 				this.config.observability.metrics.counter('expression.evaluation.success', 1);
 			}
 
 			return result;
 		} catch (error) {
-			// Emit error metric
+			// Emit error metric if observability is configured
 			if (this.config.observability) {
 				this.config.observability.metrics.counter('expression.evaluation.error', 1);
 			}
@@ -66,7 +52,6 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 	async dispose(): Promise<void> {
 		this.disposed = true;
-		this.codeCache.clear();
 		await this.config.bridge.dispose();
 	}
 

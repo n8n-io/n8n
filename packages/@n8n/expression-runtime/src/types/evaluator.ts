@@ -7,6 +7,9 @@ import type { RuntimeBridge } from './bridge';
 
 /**
  * Configuration for ExpressionEvaluator.
+ *
+ * Note: Slice 1 keeps this minimal. Tournament integration and code caching
+ * will be added in later slices.
  */
 export interface EvaluatorConfig {
 	/**
@@ -18,25 +21,6 @@ export interface EvaluatorConfig {
 	 * Observability provider for metrics, traces, and logs.
 	 */
 	observability?: ObservabilityProvider;
-
-	/**
-	 * Tournament instance for AST transformation and security validation.
-	 */
-	tournament?: TournamentInstance;
-
-	/**
-	 * Enable caching of transformed code (not evaluation results).
-	 * Caches the output of Tournament transformation to avoid re-transforming
-	 * the same expression multiple times.
-	 * Default: true
-	 */
-	enableCodeCache?: boolean;
-
-	/**
-	 * Maximum number of transformed code entries to cache.
-	 * Default: 1000
-	 */
-	maxCodeCacheSize?: number;
 }
 
 /**
@@ -83,49 +67,17 @@ export type WorkflowData = Record<string, unknown>;
 /**
  * Options for evaluate().
  */
+/**
+ * Options for evaluate().
+ *
+ * Note: Slice 1 is minimal. Tournament options will be added later.
+ */
 export interface EvaluateOptions {
-	/**
-	 * Skip Tournament transformation and security validation.
-	 * Default: false
-	 * WARNING: Only use for trusted code!
-	 */
-	skipTransform?: boolean;
-
-	/**
-	 * Skip code cache lookup and storage for this evaluation.
-	 * Forces re-transformation even if the code is cached.
-	 * Default: false
-	 */
-	skipCodeCache?: boolean;
-
 	/**
 	 * Custom timeout for this evaluation (in milliseconds).
 	 * Overrides the bridge's default timeout.
 	 */
 	timeout?: number;
-}
-
-/**
- * Tournament instance for AST transformation.
- */
-export interface TournamentInstance {
-	/**
-	 * Transform expression AST for security and compatibility.
-	 */
-	transform(expression: string): string;
-
-	/**
-	 * Validate expression for security violations.
-	 */
-	validate(expression: string): ValidationResult;
-}
-
-/**
- * Tournament validation result.
- */
-export interface ValidationResult {
-	valid: boolean;
-	errors?: string[];
 }
 
 // ============================================================================

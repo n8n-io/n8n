@@ -23,8 +23,6 @@ export type {
 	IExpressionEvaluator,
 	WorkflowData,
 	EvaluateOptions,
-	TournamentInstance,
-	ValidationResult,
 	ObservabilityProvider,
 	MetricsAPI,
 	TracesAPI,
