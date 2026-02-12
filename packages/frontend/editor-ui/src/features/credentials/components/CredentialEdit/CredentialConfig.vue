@@ -10,7 +10,7 @@ import type {
 import { isCommunityPackageName } from 'n8n-workflow';
 
 import type { IUpdateInformation } from '@/Interface';
-import AuthTypeSelector from './AuthTypeSelector.vue';
+import CredentialModeSelector from './CredentialModeSelector.vue';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useI18n, addCredentialTranslation } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -30,7 +30,6 @@ import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
-import ManagedOAuthSelector from './ManagedOAuthSelector.vue';
 import OauthButton from './OauthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
@@ -256,6 +255,18 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 		<div :class="$style.config" data-test-id="node-credentials-config-container">
 			<FreeAiCreditsCallout :credential-type-name="credentialType?.name" />
 
+			<CredentialModeSelector
+				v-if="
+					((credentialPermissions.create && isNewCredential) || credentialPermissions.update) &&
+					((showAuthTypeSelector && isNewCredential) || (showManagedOAuthSelector && isOAuthType))
+				"
+				:credential-type="credentialType"
+				:use-custom-oauth="useCustomOAuth"
+				:show-managed-oauth-options="showManagedOAuthSelector && isOAuthType"
+				@auth-type-changed="onAuthTypeChange"
+				@update:use-custom-oauth="(val: boolean) => $emit('managedOauthModeChange', val)"
+			/>
+
 			<N8nNotice v-if="documentationUrl && credentialProperties.length" theme="warning">
 				{{ i18n.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 				<span class="ml-4xs">
@@ -360,18 +371,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			<template
 				v-if="(credentialPermissions.create && isNewCredential) || credentialPermissions.update"
 			>
-				<AuthTypeSelector
-					v-if="showAuthTypeSelector && isNewCredential"
-					:credential-type="credentialType"
-					@auth-type-changed="onAuthTypeChange"
-				/>
-
-				<ManagedOAuthSelector
-					v-if="showManagedOAuthSelector && isOAuthType"
-					:use-custom-o-auth="useCustomOAuth"
-					@update:use-custom-o-auth="(val: boolean) => $emit('managedOauthModeChange', val)"
-				/>
-
 				<div
 					v-if="isAskAssistantAvailable"
 					:class="$style.askAssistantButton"

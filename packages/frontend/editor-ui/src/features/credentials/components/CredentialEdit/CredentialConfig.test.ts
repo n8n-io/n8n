@@ -165,8 +165,8 @@ describe('CredentialConfig', () => {
 		expect(addCredentialTranslation).not.toHaveBeenCalled();
 	});
 
-	describe('Managed OAuth Selector', () => {
-		it('should show ManagedOAuthSelector when showManagedOAuthSelector and isOAuthType are true', async () => {
+	describe('Credential Mode Selector', () => {
+		it('should show CredentialModeSelector when showManagedOAuthSelector and isOAuthType are true', async () => {
 			renderComponent({
 				props: {
 					isManaged: false,
@@ -190,10 +190,10 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.getByTestId('managed-oauth-selector')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-mode-selector')).toBeInTheDocument();
 		});
 
-		it('should not show ManagedOAuthSelector when showManagedOAuthSelector is false', async () => {
+		it('should not show CredentialModeSelector when showManagedOAuthSelector is false and showAuthTypeSelector is false', async () => {
 			renderComponent({
 				props: {
 					isManaged: false,
@@ -204,6 +204,7 @@ describe('CredentialConfig', () => {
 					isOAuthType: true,
 					isNewCredential: true,
 					showManagedOAuthSelector: false,
+					showAuthTypeSelector: false,
 					useCustomOAuth: false,
 					credentialPermissions: {
 						create: true,
@@ -217,10 +218,10 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('managed-oauth-selector')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-mode-selector')).not.toBeInTheDocument();
 		});
 
-		it('should not show ManagedOAuthSelector when isOAuthType is false', async () => {
+		it('should not show CredentialModeSelector when isOAuthType is false and showAuthTypeSelector is false', async () => {
 			renderComponent({
 				props: {
 					isManaged: false,
@@ -231,6 +232,7 @@ describe('CredentialConfig', () => {
 					isOAuthType: false,
 					isNewCredential: true,
 					showManagedOAuthSelector: true,
+					showAuthTypeSelector: false,
 					useCustomOAuth: false,
 					credentialPermissions: {
 						create: true,
@@ -244,7 +246,7 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			expect(screen.queryByTestId('managed-oauth-selector')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-mode-selector')).not.toBeInTheDocument();
 		});
 	});
 
