@@ -585,16 +585,17 @@ describe('useWorkflowSaving', () => {
 		it('should not schedule autosave if a save is already in progress', () => {
 			const saveStore = useWorkflowSaveStore();
 
-			// Set state to InProgress (simulating an ongoing save)
-			saveStore.setAutoSaveState(AutoSaveState.InProgress);
+			// Simulate an ongoing save by setting pendingSave
+			const mockPendingSave = new Promise<boolean>(() => {});
+			saveStore.setPendingSave(mockPendingSave);
 
 			const { autoSaveWorkflow } = useWorkflowSaving({ router });
 
 			// Try to schedule autosave
 			autoSaveWorkflow();
 
-			// State should still be InProgress, not changed to Scheduled
-			expect(saveStore.autoSaveState).toBe(AutoSaveState.InProgress);
+			// Should not have scheduled (state should still be Idle, not Scheduled)
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
 		});
 
 		it('should schedule autosave when state is Idle', () => {

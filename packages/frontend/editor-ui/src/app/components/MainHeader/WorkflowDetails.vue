@@ -14,7 +14,6 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { IWorkflowDb } from '@/Interface';
@@ -85,7 +84,6 @@ const telemetry = useTelemetry();
 const message = useMessage();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
-const workflowSaving = useWorkflowSaving({ router });
 const workflowState = injectWorkflowState();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
@@ -179,9 +177,6 @@ function onTagsBlur() {
 	workflowState.setWorkflowTagIds(tags);
 	uiStore.markStateDirty();
 
-	// Schedule autosave (debounced)
-	workflowSaving.autoSaveWorkflow();
-
 	telemetry.track('User edited workflow tags', {
 		workflow_id: props.id,
 		new_tag_count: tags.length,
@@ -221,9 +216,6 @@ function onNameSubmit(name: string) {
 
 	// Update workflow name in store and mark state as dirty
 	workflowState.setWorkflowName({ newName, setStateDirty: true });
-
-	// Schedule autosave (debounced)
-	workflowSaving.autoSaveWorkflow();
 
 	documentTitle.setDocumentTitle(newName, 'IDLE');
 	renameInput.value?.forceCancel();

@@ -20,14 +20,13 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import { isExpression, type IDataObject, type IWorkflowSettings } from 'n8n-workflow';
+import { isExpression, type IDataObject } from 'n8n-workflow';
 import { useToast } from './useToast';
 import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from './useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { isDebouncedFunction } from '@/app/utils/typeGuards';
-import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
@@ -36,10 +35,6 @@ import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
 
 export function useWorkflowSaving({
 	router,
@@ -470,28 +465,27 @@ export function useWorkflowSaving({
 
 			workflowState.setActive(workflowData.activeVersionId);
 			workflowState.setWorkflowId(workflowData.id);
-			workflowsStore.setWorkflowVersionData({
-				versionId: workflowData.versionId,
-				name: null,
-				description: null,
-			});
-			workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
-			workflowState.setWorkflowSettings((workflowData.settings as IWorkflowSettings) || {});
+			workflowsStore.setWorkflowVersionData(
+				{
+					versionId: workflowData.versionId,
+					name: null,
+					description: null,
+				},
+				workflowData.checksum,
+			);
 			workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
 
-			Object.keys(changedNodes).forEach((nodeName) => {
-				const changes = {
-					key: 'webhookId',
-					value: changedNodes[nodeName],
-					name: nodeName,
-				} as IUpdateInformation;
-				workflowState.setNodeValue(changes);
-			});
-
-			const tagIds = convertWorkflowTagsToIds(workflowData.tags);
-			const workflowDocumentId = createWorkflowDocumentId(workflowData.id);
-			const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
-			workflowDocumentStore.setTags(tagIds);
+			// Only update webhook IDs if we explicitly reset them
+			if (resetWebhookUrls) {
+				Object.keys(changedNodes).forEach((nodeName) => {
+					const changes = {
+						key: 'webhookId',
+						value: changedNodes[nodeName],
+						name: nodeName,
+					} as IUpdateInformation;
+					workflowState.setNodeValue(changes);
+				});
+			}
 
 			const route = router.currentRoute.value;
 			const templateId = route.query.templateId;
@@ -540,6 +534,11 @@ export function useWorkflowSaving({
 				return;
 			}
 
+			// Check if another save is already in progress
+			if (saveStore.pendingSave) {
+				return;
+			}
+
 			saveStore.setAutoSaveState(AutoSaveState.InProgress);
 
 			void (async () => {
@@ -564,7 +563,7 @@ export function useWorkflowSaving({
 	const scheduleAutoSave = () => {
 		// Don't schedule if a save is already in progress - the finally block
 		// will reschedule if there are pending changes
-		if (saveStore.autoSaveState === AutoSaveState.InProgress) {
+		if (saveStore.pendingSave) {
 			return;
 		}
 
