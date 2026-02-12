@@ -4145,6 +4145,7 @@
 	"projects.sharing.select.placeholder": "Select project or user",
 	"projects.sharing.select.placeholder.user": "Share with user(s)",
 	"projects.sharing.select.placeholder.project": "Share with projects or users",
+	"projects.sharing.personalSpace": "Personal space",
 	"projects.error.title": "Project error",
 	"projects.create.limit": "{count} project | {count} projects",
 	"projects.create.limitReached": "You have reached the {planName} plan limit of {limit}. Upgrade your plan to unlock more projects. {link}",
