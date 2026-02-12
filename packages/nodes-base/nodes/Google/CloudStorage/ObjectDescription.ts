@@ -162,7 +162,7 @@ export const objectOperations: INodeProperties[] = [
 									if (binaryData.id) {
 										content = await this.helpers.getBinaryStream(binaryData.id);
 										const binaryMetadata = await this.helpers.getBinaryMetadata(binaryData.id);
-										contentType = binaryMetadata.mimeType ?? 'application/octet-stream';
+										contentType = binaryData.mimeType ?? binaryMetadata.mimeType ?? 'application/octet-stream';
 										contentLength = binaryMetadata.fileSize;
 									} else {
 										content = Buffer.from(binaryData.data, BINARY_ENCODING);
