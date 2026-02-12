@@ -6,6 +6,7 @@ import {
 	ChatProviderSettingsDto,
 } from '@n8n/api-types';
 import { SettingsRepository } from '@n8n/db';
+import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
@@ -41,13 +42,13 @@ export class ChatHubSettingsService {
 		]);
 	}
 
-	async ensureModelIsAllowed(model: ChatHubConversationModel): Promise<void> {
+	async ensureModelIsAllowed(model: ChatHubConversationModel, trx?: EntityManager): Promise<void> {
 		if (model.provider === 'custom-agent' || model.provider === 'n8n') {
 			// Custom agents and n8n models are always allowed, for now
 			return;
 		}
 
-		const settings = await this.getProviderSettings(model.provider);
+		const settings = await this.getProviderSettings(model.provider, trx);
 		if (!settings.enabled) {
 			throw new BadRequestError('Provider is not enabled');
 		}
@@ -62,8 +63,14 @@ export class ChatHubSettingsService {
 		return;
 	}
 
-	async getProviderSettings(provider: ChatHubLLMProvider): Promise<ChatProviderSettingsDto> {
-		const settings = await this.settingsRepository.findByKey(CHAT_PROVIDER_SETTINGS_KEY(provider));
+	async getProviderSettings(
+		provider: ChatHubLLMProvider,
+		trx?: EntityManager,
+	): Promise<ChatProviderSettingsDto> {
+		const settings = await this.settingsRepository.findByKey(
+			CHAT_PROVIDER_SETTINGS_KEY(provider),
+			trx,
+		);
 		if (!settings) {
 			return getDefaultProviderSettings(provider);
 		}

@@ -3,6 +3,7 @@ import type pLimit from 'p-limit';
 
 import type { EvalLogger } from './logger';
 import type { GenerationCollectors } from './runner';
+import type { IntrospectionEvent } from '../../src/tools/introspect.tool.js';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 
 export type LlmCallLimiter = ReturnType<typeof pLimit>;
@@ -102,7 +103,12 @@ export interface TestCase {
 }
 
 /** Evaluation suite types supported by the harness */
-export type EvaluationSuite = 'llm-judge' | 'pairwise' | 'programmatic' | 'similarity';
+export type EvaluationSuite =
+	| 'llm-judge'
+	| 'pairwise'
+	| 'programmatic'
+	| 'similarity'
+	| 'introspection';
 
 /**
  * Configuration for an evaluation run.
@@ -138,6 +144,8 @@ export interface LocalRunConfig extends RunConfigBase {
 	/** Local mode requires an in-memory dataset */
 	dataset: TestCase[];
 	langsmithOptions?: never;
+	/** Number of examples to run in parallel (default: 1 for sequential) */
+	concurrency?: number;
 }
 
 export interface LangsmithRunConfig extends RunConfigBase {
@@ -214,6 +222,8 @@ export interface ExampleResult {
 	generationOutputTokens?: number;
 	/** Subgraph timing and workflow metrics */
 	subgraphMetrics?: SubgraphMetrics;
+	/** Introspection events reported by the agent during workflow generation */
+	introspectionEvents?: IntrospectionEvent[];
 	workflow?: SimpleWorkflow;
 	/** Generated source code (e.g., TypeScript SDK code from coding agent) */
 	generatedCode?: string;
@@ -274,5 +284,5 @@ export interface EvaluationLifecycle {
 	onEvaluatorComplete(name: string, feedback: Feedback[]): void;
 	onEvaluatorError(name: string, error: Error): void;
 	onExampleComplete(index: number, result: ExampleResult): void;
-	onEnd(summary: RunSummary): void;
+	onEnd(summary: RunSummary): void | Promise<void>;
 }

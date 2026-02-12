@@ -82,4 +82,51 @@ describe('NodeTypeParser', () => {
 			expect(result).toBeNull();
 		});
 	});
+
+	describe('getNodeType without version specified', () => {
+		it('should return node with highest version when no version specified and multiple descriptions exist', () => {
+			// Simulate versioned node: SetV1 (versions 1,2) and SetV2 (versions 3, 3.4)
+			// Inserted in order that puts the older description LAST
+			const setV1: INodeTypeDescription = {
+				name: 'n8n-nodes-base.set',
+				displayName: 'Set',
+				description: 'Old description',
+				group: ['input'],
+				version: [1, 2],
+				defaults: { name: 'Set' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+			};
+			const setV2: INodeTypeDescription = {
+				name: 'n8n-nodes-base.set',
+				displayName: 'Edit Fields (Set)',
+				description: 'New description',
+				group: ['input'],
+				version: [3, 3.4],
+				defaults: { name: 'Edit Fields (Set)' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						noDataExpression: true,
+						options: [
+							{ name: 'Manual', value: 'manual' },
+							{ name: 'Raw', value: 'raw' },
+						],
+						default: 'manual',
+					},
+				],
+			};
+			// Insert V2 first, V1 last — previously would return V1
+			const parser = new NodeTypeParser([setV2, setV1]);
+			const result = parser.getNodeType('n8n-nodes-base.set');
+			expect(result?.displayName).toBe('Edit Fields (Set)');
+			// Verify it's the v3.4 description, not v2
+			expect(Array.isArray(result?.version) && result.version.includes(3.4)).toBe(true);
+		});
+	});
 });

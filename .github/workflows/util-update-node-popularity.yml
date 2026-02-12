@@ -12,6 +12,9 @@ permissions:
 
 jobs:
   update-popularity:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.repository == 'n8n-io/n8n')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

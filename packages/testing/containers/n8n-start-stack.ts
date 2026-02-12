@@ -7,6 +7,7 @@ import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
 import { createServiceStack } from './service-stack';
 import type { CloudflaredResult } from './services/cloudflared';
+import type { KentResult } from './services/kent';
 import type { KeycloakResult } from './services/keycloak';
 import type { MailpitResult } from './services/mailpit';
 import type { NgrokResult } from './services/ngrok';
@@ -60,6 +61,7 @@ ${colors.yellow}Options:${colors.reset}
   --tunnel          Enable Cloudflare Tunnel for public URL (via trycloudflare.com)
   --ngrok           Enable ngrok tunnel for public URL (requires NGROK_AUTHTOKEN env var)
   --mailpit         Enable Mailpit for email testing
+  --kent            Enable Kent (Sentry mock) for error tracking testing
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
@@ -150,6 +152,7 @@ async function main() {
 			tunnel: { type: 'boolean' },
 			ngrok: { type: 'boolean' },
 			mailpit: { type: 'boolean' },
+			kent: { type: 'boolean' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
@@ -187,6 +190,7 @@ async function main() {
 	if (values.tunnel) services.push('cloudflared');
 	if (values.ngrok) services.push('ngrok');
 	if (values.mailpit) services.push('mailpit');
+	if (values.kent) services.push('kent');
 
 	// Build configuration
 	const config: N8NConfig = {
@@ -429,6 +433,15 @@ async function main() {
 			log.info(`Mailpit UI: ${colors.cyan}${mailpitResult.meta.apiBaseUrl}${colors.reset}`);
 		}
 
+		const kentResult = stack.serviceResults.kent as KentResult | undefined;
+		if (kentResult) {
+			console.log('');
+			log.header('Sentry Mock (Kent)');
+			log.info(`Kent UI: ${colors.cyan}${kentResult.meta.apiUrl}${colors.reset}`);
+			log.info(`Backend DSN: ${colors.cyan}${kentResult.meta.sentryDsn}${colors.reset}`);
+			log.info(`Frontend DSN: ${colors.cyan}${kentResult.meta.frontendDsn}${colors.reset}`);
+		}
+
 		console.log('');
 		log.info('Containers are running in the background');
 		log.info(
@@ -469,6 +482,7 @@ function displayConfig(config: N8NConfig) {
 	if (services.includes('victoriaLogs')) enabledFeatures.push('Observability');
 	if (services.includes('tracing')) enabledFeatures.push('Tracing (Jaeger)');
 	if (services.includes('mailpit')) enabledFeatures.push('Email (Mailpit)');
+	if (services.includes('kent')) enabledFeatures.push('Sentry Mock (Kent)');
 
 	if (enabledFeatures.length > 0) {
 		log.info(`Services: ${enabledFeatures.join(', ')}`);

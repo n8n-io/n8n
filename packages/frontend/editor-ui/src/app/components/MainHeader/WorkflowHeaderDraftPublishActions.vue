@@ -122,6 +122,7 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 const collaborationReadOnly = computed(() => collaborationStore.shouldBeReadOnly);
 const hasUpdatePermission = computed(() => props.workflowPermissions.update);
 const hasPublishPermission = computed(() => props.workflowPermissions.publish);
+const hasUnpublishPermission = computed(() => props.workflowPermissions.unpublish);
 
 const isPersonalSpace = computed(() => projectStore.currentProject?.type === ProjectTypes.Personal);
 
@@ -320,7 +321,7 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 		{
 			id: VERSION_ACTIONS.PUBLISH,
 			label: i18n.baseText('workflows.publish'),
-			shortcut: { keys: ['P'] },
+			shortcut: { shiftKey: true, keys: ['P'] },
 			disabled: shouldDisablePublishButton.value,
 		},
 	];
@@ -337,7 +338,7 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 	actions.push({
 		id: VERSION_ACTIONS.UNPUBLISH,
 		label: i18n.baseText('workflows.unpublish'),
-		disabled: !activeVersion.value || collaborationReadOnly.value || !hasPublishPermission.value,
+		disabled: !activeVersion.value || collaborationReadOnly.value || !hasUnpublishPermission.value,
 		divided: true,
 		shortcut: { metaKey: true, keys: ['U'] },
 	});
@@ -452,7 +453,7 @@ const onDropdownMenuSelect = async (action: VERSION_ACTIONS) => {
 };
 
 useKeybindings({
-	p: {
+	shift_p: {
 		disabled: () => shouldDisablePublishButton.value,
 		run: async () => {
 			await onPublishButtonClick();

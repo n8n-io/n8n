@@ -14,6 +14,9 @@
 		},
 		"./dist/generate-types/generate-types": {
 			"default": "./dist/generate-types/generate-types.js"
+		},
+		"./dist/generate-types/generate-node-defs-cli": {
+			"default": "./dist/generate-types/generate-node-defs-cli.js"
 		}
 	},
 	"scripts": {

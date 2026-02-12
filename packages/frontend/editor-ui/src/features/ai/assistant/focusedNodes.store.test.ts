@@ -25,7 +25,7 @@ vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
 let featureEnabled = true;
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({
-		isFeatureEnabled: () => featureEnabled,
+		isVariantEnabled: () => featureEnabled,
 	}),
 }));
 

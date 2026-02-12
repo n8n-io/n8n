@@ -25,10 +25,15 @@ const { showToast, showError } = useToast();
 const message = useMessage();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
-const tooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
+const mfaTooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
+const personalSpaceTooltipKey = 'settings.security.personalSpace.unlicensed_tooltip';
 
 const isEnforceMFAEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
+);
+
+const isPersonalSpacePolicyLicensed = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy],
 );
 
 async function onUpdateMfaEnforced(value: string | number | boolean) {
@@ -188,7 +193,7 @@ const sharingCountText = computed(() => {
 									:disabled="true"
 								/>
 								<template #content>
-									<I18nT :keypath="tooltipKey" tag="span" scope="global">
+									<I18nT :keypath="mfaTooltipKey" tag="span" scope="global">
 										<template #action>
 											<a @click="goToUpgrade">
 												{{ i18n.baseText('settings.personal.mfa.enforce.unlicensed_tooltip.link') }}
@@ -211,20 +216,46 @@ const sharingCountText = computed(() => {
 			<div :class="$style.settingsSection">
 				<div :class="$style.settingsContainer">
 					<div :class="$style.settingsContainerInfo">
-						<N8nText :bold="true">
-							{{ i18n.baseText('settings.security.personalSpace.sharing.title') }}
+						<N8nText :bold="true"
+							>{{ i18n.baseText('settings.security.personalSpace.sharing.title') }}
+							<N8nBadge v-if="!isPersonalSpacePolicyLicensed" class="ml-4xs">{{
+								i18n.baseText('generic.upgrade')
+							}}</N8nBadge>
 						</N8nText>
 						<N8nText size="small" color="text-light">
 							{{ i18n.baseText('settings.security.personalSpace.sharing.description') }}
 						</N8nText>
 					</div>
 					<div :class="$style.settingsContainerAction">
-						<ElSwitch
-							v-model="personalSpaceSharing"
-							:loading="isLoading"
-							size="large"
-							data-test-id="security-personal-space-sharing-toggle"
-						/>
+						<EnterpriseEdition :features="[EnterpriseEditionFeature.PersonalSpacePolicy]">
+							<ElSwitch
+								v-model="personalSpaceSharing"
+								:loading="isLoading"
+								size="large"
+								data-test-id="security-personal-space-sharing-toggle"
+							/>
+							<template #fallback>
+								<N8nTooltip>
+									<ElSwitch
+										:model-value="false"
+										size="large"
+										:disabled="true"
+										data-test-id="security-personal-space-sharing-toggle"
+									/>
+									<template #content>
+										<I18nT :keypath="personalSpaceTooltipKey" tag="span" scope="global">
+											<template #action>
+												<a @click="goToUpgrade">
+													{{
+														i18n.baseText('settings.security.personalSpace.unlicensed_tooltip.link')
+													}}
+												</a>
+											</template>
+										</I18nT>
+									</template>
+								</N8nTooltip>
+							</template>
+						</EnterpriseEdition>
 					</div>
 				</div>
 				<div :class="$style.settingsCountRow" data-test-id="security-sharing-count">
@@ -240,20 +271,46 @@ const sharingCountText = computed(() => {
 			<div :class="$style.settingsSection">
 				<div :class="$style.settingsContainer">
 					<div :class="$style.settingsContainerInfo">
-						<N8nText :bold="true">
-							{{ i18n.baseText('settings.security.personalSpace.publishing.title') }}
+						<N8nText :bold="true"
+							>{{ i18n.baseText('settings.security.personalSpace.publishing.title') }}
+							<N8nBadge v-if="!isPersonalSpacePolicyLicensed" class="ml-4xs">{{
+								i18n.baseText('generic.upgrade')
+							}}</N8nBadge>
 						</N8nText>
 						<N8nText size="small" color="text-light">
 							{{ i18n.baseText('settings.security.personalSpace.publishing.description') }}
 						</N8nText>
 					</div>
 					<div :class="$style.settingsContainerAction">
-						<ElSwitch
-							v-model="personalSpacePublishing"
-							:loading="isLoading"
-							size="large"
-							data-test-id="security-personal-space-publishing-toggle"
-						/>
+						<EnterpriseEdition :features="[EnterpriseEditionFeature.PersonalSpacePolicy]">
+							<ElSwitch
+								v-model="personalSpacePublishing"
+								:loading="isLoading"
+								size="large"
+								data-test-id="security-personal-space-publishing-toggle"
+							/>
+							<template #fallback>
+								<N8nTooltip>
+									<ElSwitch
+										:model-value="false"
+										size="large"
+										:disabled="true"
+										data-test-id="security-personal-space-publishing-toggle"
+									/>
+									<template #content>
+										<I18nT :keypath="personalSpaceTooltipKey" tag="span" scope="global">
+											<template #action>
+												<a @click="goToUpgrade">
+													{{
+														i18n.baseText('settings.security.personalSpace.unlicensed_tooltip.link')
+													}}
+												</a>
+											</template>
+										</I18nT>
+									</template>
+								</N8nTooltip>
+							</template>
+						</EnterpriseEdition>
 					</div>
 				</div>
 				<div :class="$style.settingsCountRow" data-test-id="security-publishing-count">
