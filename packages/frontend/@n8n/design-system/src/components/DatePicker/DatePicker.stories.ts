@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
-import DateRangePicker from './DateRangePicker.vue';
+import DatePicker from './DatePicker.vue';
 
 const meta = {
-	component: DateRangePicker,
-	title: 'Components v2/DateRangePicker',
-} satisfies Meta<typeof DateRangePicker>;
+	component: DatePicker,
+	title: 'Components v2/DatePicker',
+} satisfies Meta<typeof DatePicker>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

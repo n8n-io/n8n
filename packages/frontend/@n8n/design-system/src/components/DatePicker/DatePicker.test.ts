@@ -1,8 +1,8 @@
-import { CalendarDate, CalendarDateTime, getLocalTimeZone, today } from '@internationalized/date';
+import { getLocalTimeZone, today } from '@internationalized/date';
 import userEvent from '@testing-library/user-event';
 import { render } from '@testing-library/vue';
 
-import DateRangePicker from './DateRangePicker.vue';
+import DatePicker from './DatePicker.vue';
 
 async function openCalendarPopover(container: Element) {
 	const trigger = container.querySelector('[data-reka-date-field-segment="trigger"]') as Element;
@@ -20,47 +20,31 @@ async function openCalendarPopover(container: Element) {
 	return popover;
 }
 
-describe('N8nDateRangePicker', () => {
-	it('should show the date range picker when trigger is clicked', async () => {
-		const { container } = render(DateRangePicker);
+describe('N8nDatePicker', () => {
+	it('should render a single date picker', async () => {
+		const { container } = render(DatePicker);
 		await openCalendarPopover(container);
 	});
 
-	it('should render date inline inputs', async () => {
-		const { container } = render(DateRangePicker);
-		const calendar = await openCalendarPopover(container);
-
-		expect(
-			calendar.querySelectorAll('[data-reka-date-field-segment]:not([data-segment="literal"])')
-				.length,
-		).toBe(6);
-	});
-
-	it('should accept CalendarDateTime values with time', async () => {
-		const { container } = render(DateRangePicker, {
+	it('should render single date input segments', async () => {
+		const todayDate = today(getLocalTimeZone());
+		const { container } = render(DatePicker, {
 			props: {
-				modelValue: {
-					start: new CalendarDateTime(2023, 1, 1, 12, 0, 0),
-					end: new CalendarDateTime(2023, 1, 7, 12, 0, 0),
-				},
+				modelValue: todayDate as never,
 			},
 		});
 		const calendar = await openCalendarPopover(container);
 
-		// Verify date segments are rendered (3 per side = 6 non-literal)
+		// Single mode: 3 segments (month, day, year)
 		expect(
 			calendar.querySelectorAll('[data-reka-date-field-segment]:not([data-segment="literal"])')
 				.length,
-		).toBe(6);
-
-		// Verify the hidden input preserves the full CalendarDateTime value including time
-		const hiddenInput = calendar.querySelector('input[aria-hidden="true"]') as HTMLInputElement;
-		expect(hiddenInput.value).toContain('T12:00:00');
+		).toBe(3);
 	});
 
 	describe('hideInputs prop', () => {
 		it('should not render the input fields when hideInputs is true', async () => {
-			const { container } = render(DateRangePicker, {
+			const { container } = render(DatePicker, {
 				props: { hideInputs: true },
 			});
 			const popover = await openCalendarPopover(container);
@@ -74,7 +58,7 @@ describe('N8nDateRangePicker', () => {
 
 	describe('today button', () => {
 		it('should render a Today button in the calendar header', async () => {
-			const { container, getByText } = render(DateRangePicker);
+			const { container, getByText } = render(DatePicker);
 			await openCalendarPopover(container);
 
 			const todayButton = getByText('Today', { selector: 'button' });
@@ -82,7 +66,7 @@ describe('N8nDateRangePicker', () => {
 		});
 
 		it('should emit update:modelValue with today when Today is clicked', async () => {
-			const { container, emitted, getByText } = render(DateRangePicker);
+			const { container, emitted, getByText } = render(DatePicker);
 			await openCalendarPopover(container);
 
 			const todayButton = getByText('Today', { selector: 'button' });
@@ -94,51 +78,24 @@ describe('N8nDateRangePicker', () => {
 			expect(emittedValues.length).toBeGreaterThan(0);
 
 			const lastEmittedEvent = emittedValues[emittedValues.length - 1] as unknown[];
-			const lastEmitted = lastEmittedEvent[0] as {
-				start: { toString(): string };
-				end: { toString(): string };
-			};
-			expect(lastEmitted.start.toString()).toBe(todayDate.toString());
-			expect(lastEmitted.end.toString()).toBe(todayDate.toString());
+			const lastEmitted = lastEmittedEvent[0] as { toString(): string };
+			expect(lastEmitted.toString()).toBe(todayDate.toString());
 		});
 	});
 
 	describe('clear button', () => {
 		it('should render a Clear button', async () => {
-			const { container, getByText } = render(DateRangePicker);
+			const { container, getByText } = render(DatePicker);
 			await openCalendarPopover(container);
 
 			const clearButton = getByText('Clear', { selector: 'button' });
 			expect(clearButton).toBeVisible();
 		});
-
-		it('should emit update:modelValue with undefined when Clear is clicked', async () => {
-			const { container, emitted, getByText } = render(DateRangePicker, {
-				props: {
-					modelValue: {
-						start: new CalendarDate(2025, 1, 1),
-						end: new CalendarDate(2025, 1, 7),
-					},
-				},
-			});
-			await openCalendarPopover(container);
-
-			const clearButton = getByText('Clear', { selector: 'button' });
-			await userEvent.click(clearButton);
-
-			const emittedValues = emitted('update:modelValue');
-			expect(emittedValues).toBeDefined();
-
-			const lastEmittedEvent = emittedValues[emittedValues.length - 1] as unknown[];
-			const lastEmitted = lastEmittedEvent[0] as { start: unknown; end: unknown };
-			expect(lastEmitted.start).toBeUndefined();
-			expect(lastEmitted.end).toBeUndefined();
-		});
 	});
 
 	describe('keyboard shortcuts', () => {
 		it('should select today when T key is pressed on calendar grid', async () => {
-			const { container, emitted } = render(DateRangePicker);
+			const { container, emitted } = render(DatePicker);
 			const popover = await openCalendarPopover(container);
 
 			const cellTrigger = popover.querySelector('[data-reka-calendar-cell-trigger]') as HTMLElement;
@@ -152,24 +109,18 @@ describe('N8nDateRangePicker', () => {
 			expect(emittedValues.length).toBeGreaterThan(0);
 
 			const lastEmittedEvent = emittedValues[emittedValues.length - 1] as unknown[];
-			const lastEmitted = lastEmittedEvent[0] as {
-				start: { toString(): string };
-				end: { toString(): string };
-			};
-			expect(lastEmitted.start.toString()).toBe(todayDate.toString());
-			expect(lastEmitted.end.toString()).toBe(todayDate.toString());
+			const lastEmitted = lastEmittedEvent[0] as { toString(): string };
+			expect(lastEmitted.toString()).toBe(todayDate.toString());
 		});
 	});
 
 	describe('locale prop', () => {
 		it('should format date segments according to the provided locale', async () => {
-			const { container } = render(DateRangePicker, {
+			const todayDate = today(getLocalTimeZone());
+			const { container } = render(DatePicker, {
 				props: {
 					locale: 'en-GB',
-					modelValue: {
-						start: new CalendarDate(2025, 1, 15),
-						end: new CalendarDate(2025, 1, 20),
-					},
+					modelValue: todayDate as never,
 				},
 			});
 			const calendar = await openCalendarPopover(container);
@@ -182,18 +133,9 @@ describe('N8nDateRangePicker', () => {
 		});
 	});
 
-	describe('apply button removed', () => {
-		it('should not render an Apply button', async () => {
-			const { container, queryByText } = render(DateRangePicker);
-			await openCalendarPopover(container);
-
-			expect(queryByText('Apply', { selector: 'button' })).not.toBeInTheDocument();
-		});
-	});
-
 	describe('presets slot', () => {
 		it('should render preset buttons when provided via the presets slot', async () => {
-			const { container, getByText } = render(DateRangePicker, {
+			const { container, getByText } = render(DatePicker, {
 				slots: {
 					presets: '<button data-testid="preset-button">Preset 1</button>',
 				},

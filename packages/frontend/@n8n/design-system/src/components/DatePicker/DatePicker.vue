@@ -2,40 +2,39 @@
 import { getLocalTimeZone, today } from '@internationalized/date';
 import type { DateValue } from '@internationalized/date';
 import {
-	DateRangePickerCalendar,
-	DateRangePickerCell,
-	DateRangePickerCellTrigger,
-	DateRangePickerContent,
-	DateRangePickerGrid,
-	DateRangePickerGridBody,
-	DateRangePickerGridHead,
-	DateRangePickerGridRow,
-	DateRangePickerHeadCell,
-	DateRangePickerHeader,
-	DateRangePickerHeading,
-	DateRangePickerNext,
-	DateRangePickerPrev,
-	DateRangePickerRoot,
-	DateRangePickerTrigger,
+	DatePickerCalendar,
+	DatePickerCell,
+	DatePickerCellTrigger,
+	DatePickerContent,
+	DatePickerGrid,
+	DatePickerGridBody,
+	DatePickerGridHead,
+	DatePickerGridRow,
+	DatePickerHeadCell,
+	DatePickerHeader,
+	DatePickerHeading,
+	DatePickerNext,
+	DatePickerPrev,
+	DatePickerRoot,
+	DatePickerTrigger,
 	FocusScope,
 	useForwardPropsEmits,
 } from 'reka-ui';
-import type { DateRange } from 'reka-ui';
 import { ref, toRef, watch } from 'vue';
 
 import Button from '../N8nButton/Button.vue';
 import IconButton from '../N8nIconButton';
-import N8nDateRangePickerField from './DateRangePickerField.vue';
-import type { N8nDateRangePickerProps, N8nDateRangePickerRootEmits } from './index';
+import N8nDatePickerField from './DatePickerField.vue';
+import type { N8nDatePickerProps, N8nDatePickerRootEmits } from './index';
 
-const props = withDefaults(defineProps<N8nDateRangePickerProps>(), {
+const props = withDefaults(defineProps<N8nDatePickerProps>(), {
 	weekStartsOn: 1,
 	weekdayFormat: 'narrow',
 	fixedWeeks: true,
 	hourCycle: 24,
 });
 
-const emit = defineEmits<N8nDateRangePickerRootEmits>();
+const emit = defineEmits<N8nDatePickerRootEmits>();
 
 defineSlots<{
 	presets?: {};
@@ -43,16 +42,15 @@ defineSlots<{
 }>();
 
 const initialDate = today(getLocalTimeZone());
-const defaultValue = { start: initialDate, end: initialDate };
 const placeholder = ref<DateValue>(initialDate);
-const modelValue = ref<DateRange>(props.modelValue ?? { start: undefined, end: undefined });
+const modelValue = ref<DateValue | undefined>(props.modelValue);
 const open = ref(props.open ?? false);
 
 watch(toRef(props, 'modelValue'), (v) => {
-	modelValue.value = v ?? { start: undefined, end: undefined };
+	modelValue.value = v;
 });
 watch(modelValue, (v) => {
-	emit('update:modelValue', v as { start: DateValue; end: DateValue });
+	emit('update:modelValue', v as DateValue);
 });
 watch(toRef(props, 'open'), (v) => {
 	open.value = v ?? false;
@@ -66,11 +64,11 @@ const forwarded = useForwardPropsEmits(props, emit);
 function goToToday() {
 	const todayDate = today(getLocalTimeZone());
 	placeholder.value = todayDate;
-	modelValue.value = { start: todayDate, end: todayDate };
+	modelValue.value = todayDate;
 }
 
 function clearValue() {
-	modelValue.value = { start: undefined, end: undefined };
+	modelValue.value = undefined;
 	open.value = false;
 }
 
@@ -86,27 +84,27 @@ function onContentKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-	<DateRangePickerRoot
+	<DatePickerRoot
 		v-bind="forwarded"
-		:default-value="defaultValue"
+		:default-value="initialDate"
 		v-model="modelValue"
 		v-model:placeholder="placeholder"
 		v-model:open="open"
 	>
-		<DateRangePickerTrigger as-child>
+		<DatePickerTrigger as-child>
 			<slot name="trigger">
 				<IconButton icon="calendar" type="secondary" aria-label="Open calendar" />
 			</slot>
-		</DateRangePickerTrigger>
+		</DatePickerTrigger>
 
-		<DateRangePickerContent
+		<DatePickerContent
 			align="start"
 			:side-offset="5"
 			:class="$style.PopoverContent"
 			@keydown="onContentKeydown"
 		>
 			<FocusScope as-child trapped loop>
-				<DateRangePickerCalendar v-slot="{ weekDays, grid }" :class="$style.Calendar">
+				<DatePickerCalendar v-slot="{ weekDays, grid }" :class="$style.Calendar">
 					<template v-if="!!$slots.presets">
 						<div :class="$style.Presets">
 							<slot name="presets" />
@@ -114,71 +112,78 @@ function onContentKeydown(event: KeyboardEvent) {
 					</template>
 					<div>
 						<div v-if="!hideInputs" :class="$style.DateFieldWrapper">
-							<N8nDateRangePickerField :class="$style.DateField" />
+							<N8nDatePickerField :class="$style.DateField" />
 							<div :class="$style.DateFieldError">Outside of allowed range</div>
 						</div>
 
 						<div :class="$style.CalendarWrapper">
-							<DateRangePickerHeader :class="$style.CalendarHeader">
-								<DateRangePickerHeading :class="$style.CalendarHeading" />
+							<DatePickerHeader :class="$style.CalendarHeader">
+								<DatePickerHeading :class="$style.CalendarHeading" />
 								<div :class="$style.CalendarHeaderActions">
-									<DateRangePickerPrev as-child>
+									<DatePickerPrev as-child>
 										<IconButton icon="chevron-left" type="highlight" size="small" />
-									</DateRangePickerPrev>
-									<Button type="highlight" size="small" @click="goToToday"> Today </Button>
-									<DateRangePickerNext as-child>
+									</DatePickerPrev>
+									<Button
+										type="highlight"
+										size="small"
+										:class="$style.TodayButton"
+										@click="goToToday"
+									>
+										Today
+									</Button>
+									<DatePickerNext as-child>
 										<IconButton icon="chevron-right" type="highlight" size="small" />
-									</DateRangePickerNext>
+									</DatePickerNext>
 								</div>
-							</DateRangePickerHeader>
+							</DatePickerHeader>
 
-							<DateRangePickerGrid
+							<DatePickerGrid
 								v-for="month in grid"
 								:key="month.value.toString()"
 								:class="$style.CalendarGrid"
 							>
-								<DateRangePickerGridHead>
-									<DateRangePickerGridRow :class="$style.CalendarGridRow">
-										<DateRangePickerHeadCell
+								<DatePickerGridHead>
+									<DatePickerGridRow :class="$style.CalendarGridRow">
+										<DatePickerHeadCell
 											v-for="day in weekDays"
 											:key="day"
 											:class="$style.CalendarHeadCell"
 										>
 											{{ day }}
-										</DateRangePickerHeadCell>
-									</DateRangePickerGridRow>
-								</DateRangePickerGridHead>
-								<DateRangePickerGridBody>
-									<DateRangePickerGridRow
+										</DatePickerHeadCell>
+									</DatePickerGridRow>
+								</DatePickerGridHead>
+								<DatePickerGridBody>
+									<DatePickerGridRow
 										v-for="(weekDates, index) in month.rows"
 										:key="`weekDate-${index}`"
 										:class="$style.CalendarGridRow"
 									>
-										<DateRangePickerCell
+										<DatePickerCell
 											v-for="weekDate in weekDates"
 											:key="weekDate.toString()"
 											:date="weekDate"
 											:class="$style.CalendarCell"
 										>
-											<DateRangePickerCellTrigger
+											<DatePickerCellTrigger
 												:day="weekDate"
 												:month="month.value"
 												:class="$style.CalendarCellTrigger"
 											/>
-										</DateRangePickerCell>
-									</DateRangePickerGridRow>
-								</DateRangePickerGridBody>
-							</DateRangePickerGrid>
+										</DatePickerCell>
+									</DatePickerGridRow>
+								</DatePickerGridBody>
+							</DatePickerGrid>
 						</div>
 
 						<div :class="$style.FooterWrapper">
 							<Button type="tertiary" size="small" @click="clearValue">Clear</Button>
 						</div>
 					</div>
-				</DateRangePickerCalendar>
+				</DatePickerCalendar>
 			</FocusScope>
-		</DateRangePickerContent>
-	</DateRangePickerRoot>
+		</DatePickerContent>
+	</DatePickerRoot>
 </template>
 
 <style lang="css" module>
@@ -278,9 +283,7 @@ function onContentKeydown(event: KeyboardEvent) {
 	opacity: 0.5;
 }
 
-.CalendarCellTrigger:hover:not([data-disabled]):not([data-selection-start='true']):not(
-		[data-selection-end='true']
-	):not([data-selected]) {
+.CalendarCellTrigger:hover:not([data-disabled]):not([data-selected]) {
 	background-color: var(--color--foreground--tint-1);
 }
 
@@ -299,28 +302,10 @@ function onContentKeydown(event: KeyboardEvent) {
 	text-decoration: line-through;
 }
 
-.CalendarCellTrigger[data-highlighted],
 .CalendarCellTrigger[data-selected] {
-	background: var(--color--foreground--tint-1);
-	border-radius: 0;
-}
-
-.CalendarCellTrigger[data-selection-start='true'],
-.CalendarCellTrigger[data-highlighted-start='true'] {
-	border-top-left-radius: var(--radius);
-	border-bottom-left-radius: var(--radius);
-}
-
-.CalendarCellTrigger[data-selection-end='true'],
-.CalendarCellTrigger[data-highlighted-end='true'] {
-	border-top-right-radius: var(--radius);
-	border-bottom-right-radius: var(--radius);
-}
-
-.CalendarCellTrigger[data-selection-start='true'],
-.CalendarCellTrigger[data-selection-end='true'] {
 	background: var(--color--primary);
 	color: #fff;
+	border-radius: var(--radius);
 }
 
 .CalendarCellTrigger[data-today]::before {

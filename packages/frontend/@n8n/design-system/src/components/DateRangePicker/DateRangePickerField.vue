@@ -104,16 +104,15 @@ function hasTime(segments: Segments) {
 
 <style lang="css" module>
 .DateFieldSegment:focus {
-	outline: 2px solid rgba(67, 142, 255, 1);
-	border-radius: 0.25rem;
+	outline: 2px solid var(--color--primary);
+	border-radius: var(--radius);
 }
 
 .Inline {
 	display: flex;
-	padding: 6px 12px;
+	padding: var(--spacing--3xs) var(--spacing--xs);
 	align-items: center;
-	border-radius: 0.25rem;
-	border-width: 1px;
+	border-radius: var(--radius);
 	text-align: center;
 	user-select: none;
 	border: var(--border);
