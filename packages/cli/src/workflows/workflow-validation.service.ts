@@ -197,7 +197,12 @@ export class WorkflowValidationService {
 
 	/**
 	 * Validates that Schedule Trigger and Interval nodes respect N8N_MIN_SCHEDULE_INTERVAL_SECONDS.
+	 * Public so ActiveWorkflowManager can enforce at runtime (e.g. when loading from DB on startup).
 	 */
+	validateScheduleIntervalsForNodes(nodes: INode[]): WorkflowValidationResult {
+		return this.validateScheduleIntervals(nodes);
+	}
+
 	private validateScheduleIntervals(nodes: INode[]): WorkflowValidationResult {
 		try {
 			for (const node of nodes) {

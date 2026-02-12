@@ -62,6 +62,7 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
@@ -96,6 +97,7 @@ export class ActiveWorkflowManager {
 		private readonly push: Push,
 		private readonly eventService: EventService,
 		private readonly storageConfig: StorageConfig,
+		private readonly workflowValidationService: WorkflowValidationService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -662,6 +664,17 @@ export class ActiveWorkflowManager {
 			if (!validation.isValid) {
 				throw new WorkflowActivationError(
 					`Workflow ${formatWorkflow(dbWorkflow)} has no node to start the workflow - at least one trigger, poller or webhook node is required`,
+					{ level: 'warning' },
+				);
+			}
+
+			// Enforce N8N_MIN_SCHEDULE_INTERVAL_SECONDS at runtime (activation and on startup when loading from DB)
+			const nodesArray = Object.values(workflow.nodes);
+			const scheduleValidation =
+				this.workflowValidationService.validateScheduleIntervalsForNodes(nodesArray);
+			if (!scheduleValidation.isValid) {
+				throw new WorkflowActivationError(
+					scheduleValidation.error ?? 'Workflow validation failed',
 					{ level: 'warning' },
 				);
 			}

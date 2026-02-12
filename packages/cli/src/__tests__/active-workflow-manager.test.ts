@@ -19,6 +19,7 @@ import type { EventService } from '@/events/event.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 describe('ActiveWorkflowManager', () => {
@@ -49,6 +50,9 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock<WorkflowValidationService>({
+				validateScheduleIntervalsForNodes: () => ({ isValid: true }),
+			}),
 		);
 	});
 
@@ -240,6 +244,9 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 				eventService,
 				mock(),
+				mock<WorkflowValidationService>({
+				validateScheduleIntervalsForNodes: () => ({ isValid: true }),
+			}),
 			);
 		});
 
