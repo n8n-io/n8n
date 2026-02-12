@@ -29,8 +29,11 @@ export interface RuntimeBridge {
 	 * @param data - Workflow data proxy from WorkflowDataProxy.getDataProxy()
 	 * @returns Result of the expression evaluation.
 	 *          Must be JSON-serializable (no functions, symbols, etc.)
+	 *
+	 * Note: Synchronous for Node.js vm module (Slice 1).
+	 *       Will be async for isolated-vm (Slice 2).
 	 */
-	execute(code: string, data: Record<string, unknown>): Promise<unknown>;
+	execute(code: string, data: Record<string, unknown>): unknown;
 
 	/**
 	 * Handle synchronous data request from runtime (lazy loading).

@@ -24,16 +24,12 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		await this.config.bridge.initialize();
 	}
 
-	async evaluate(
-		expression: string,
-		data: WorkflowData,
-		_options?: EvaluateOptions,
-	): Promise<unknown> {
+	evaluate(expression: string, data: WorkflowData, _options?: EvaluateOptions): unknown {
 		if (this.disposed) throw new Error('Evaluator disposed');
 
 		// Slice 1: Pass expression directly to bridge (no transformation yet)
 		try {
-			const result = await this.config.bridge.execute(expression, data);
+			const result = this.config.bridge.execute(expression, data);
 
 			// Emit success metric if observability is configured
 			if (this.config.observability) {

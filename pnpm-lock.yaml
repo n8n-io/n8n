@@ -1222,9 +1222,6 @@ importers:
       luxon:
         specifier: ^3.4.4
         version: 3.7.2
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../workflow
     devDependencies:
       '@types/lodash':
         specifier: ^4.14.202

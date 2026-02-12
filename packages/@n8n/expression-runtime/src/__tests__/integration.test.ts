@@ -20,7 +20,7 @@ describe('Integration: ExpressionEvaluator + NodeVmBridge', () => {
 			$json: { email: 'test@example.com' },
 		};
 
-		const result = await evaluator.evaluate('$json.email', data);
+		const result = evaluator.evaluate('$json.email', data);
 
 		expect(result).toBe('test@example.com');
 	});
@@ -36,7 +36,7 @@ describe('Integration: ExpressionEvaluator + NodeVmBridge', () => {
 			},
 		};
 
-		const result = await evaluator.evaluate('$json.user.profile.name', data);
+		const result = evaluator.evaluate('$json.user.profile.name', data);
 
 		expect(result).toBe('John Doe');
 	});
@@ -48,7 +48,7 @@ describe('Integration: ExpressionEvaluator + NodeVmBridge', () => {
 			},
 		};
 
-		const result = await evaluator.evaluate('$json.items[1].id', data);
+		const result = evaluator.evaluate('$json.items[1].id', data);
 
 		expect(result).toBe(2);
 	});
@@ -61,7 +61,7 @@ describe('Integration: ExpressionEvaluator + NodeVmBridge', () => {
 			},
 		};
 
-		const result = await evaluator.evaluate('$json.price * $json.quantity', data);
+		const result = evaluator.evaluate('$json.price * $json.quantity', data);
 
 		expect(result).toBe(300);
 	});
@@ -73,7 +73,7 @@ describe('Integration: ExpressionEvaluator + NodeVmBridge', () => {
 			},
 		};
 
-		const result = await evaluator.evaluate('_.sum($json.items)', data);
+		const result = evaluator.evaluate('_.sum($json.items)', data);
 
 		expect(result).toBe(15);
 	});
@@ -85,7 +85,7 @@ describe('Integration: ExpressionEvaluator + NodeVmBridge', () => {
 			},
 		};
 
-		const result = await evaluator.evaluate(
+		const result = evaluator.evaluate(
 			'DateTime.fromISO($json.date).toFormat("MMMM dd, yyyy")',
 			data,
 			{},

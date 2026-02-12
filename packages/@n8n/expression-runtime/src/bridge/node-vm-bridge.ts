@@ -26,7 +26,7 @@ export class NodeVmBridge implements RuntimeBridge {
 
 	private runtimeCode?: string;
 
-	async execute(code: string, data: Record<string, unknown>): Promise<unknown> {
+	execute(code: string, data: Record<string, unknown>): unknown {
 		if (!this.runtimeCode) throw new Error('Not initialized');
 
 		// Create fresh context with workflow data for each execution

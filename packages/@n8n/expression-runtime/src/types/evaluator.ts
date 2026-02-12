@@ -42,8 +42,11 @@ export interface IExpressionEvaluator {
 	 * @param data - Workflow data context
 	 * @param options - Evaluation options
 	 * @returns Result of the expression
+	 *
+	 * Note: Synchronous for Slice 1 (Node.js vm module).
+	 *       Will be async for Slice 2 (isolated-vm).
 	 */
-	evaluate(expression: string, data: WorkflowData, options?: EvaluateOptions): Promise<unknown>;
+	evaluate(expression: string, data: WorkflowData, options?: EvaluateOptions): unknown;
 
 	/**
 	 * Dispose of the evaluator and free resources.

@@ -31,8 +31,7 @@
 	},
 	"dependencies": {
 		"lodash": "^4.17.21",
-		"luxon": "^3.4.4",
-		"n8n-workflow": "workspace:*"
+		"luxon": "^3.4.4"
 	},
 	"devDependencies": {
 		"@types/lodash": "^4.14.202",
