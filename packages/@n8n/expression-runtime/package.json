@@ -7,8 +7,8 @@
 	"scripts": {
 		"build": "tsc && pnpm build:runtime",
 		"build:runtime": "node esbuild.config.js",
-		"test": "vitest",
-		"test:watch": "vitest --watch",
+		"test": "vitest run",
+		"test:dev": "vitest --watch --silent false",
 		"lint": "eslint .",
 		"typecheck": "tsc --noEmit"
 	},
