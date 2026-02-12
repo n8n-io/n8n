@@ -20,7 +20,7 @@ export class NodeVmBridge implements RuntimeBridge {
 
 	async initialize(): Promise<void> {
 		// Load runtime bundle (context will be created per-execution)
-		const runtimePath = path.join(__dirname, '../bundle/runtime.iife.js');
+		const runtimePath = path.join(__dirname, '../../dist/bundle/runtime.iife.js');
 		this.runtimeCode = fs.readFileSync(runtimePath, 'utf-8');
 	}
 
