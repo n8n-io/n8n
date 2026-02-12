@@ -28,9 +28,17 @@ export class McpEventRelay extends EventRelay {
 	/**
 	 * Handles workflow deactivated events.
 	 * When a workflow is deactivated, automatically disables MCP access.
+	 *
+	 * Skips re-activations (e.g. settings updates on an active workflow) where
+	 * the workflow is temporarily deactivated then immediately re-activated.
+	 * In that case workflow.activeVersionId is still set when the event fires,
+	 * whereas a genuine deactivation sets it to null before emitting.
 	 */
 	private async onWorkflowDeactivated(event: RelayEventMap['workflow-deactivated']) {
 		const { workflow, workflowId } = event;
+
+		// During re-activation workflow.activeVersionId is still set – skip
+		if (workflow.activeVersionId !== null) return;
 
 		// Only process if workflow has MCP access enabled
 		if (workflow.settings?.availableInMCP === true) {

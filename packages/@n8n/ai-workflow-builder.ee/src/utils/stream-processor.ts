@@ -252,6 +252,19 @@ function processOperationsUpdate(update: unknown): StreamOutput | null {
 	return { messages: [workflowUpdateChunk] };
 }
 
+/** Handle create_workflow_name node update - emits name as workflow update */
+function processWorkflowNameUpdate(update: unknown): StreamOutput | null {
+	const typed = update as { workflowJSON?: { name?: string } } | undefined;
+	if (!typed?.workflowJSON?.name) return null;
+
+	const workflowUpdateChunk: WorkflowUpdateChunk = {
+		role: 'assistant',
+		type: 'workflow-updated',
+		codeSnippet: JSON.stringify(typed.workflowJSON, null, 2),
+	};
+	return { messages: [workflowUpdateChunk] };
+}
+
 /** Handle agent node message update */
 function processAgentNodeUpdate(nodeName: string, update: unknown): StreamOutput | null {
 	if (!shouldEmitFromNode(nodeName)) return null;
@@ -300,6 +313,12 @@ function processUpdatesChunk(nodeUpdate: Record<string, unknown>): StreamOutput 
 	// Process operations emits workflow updates
 	if (nodeUpdate.process_operations) {
 		return processOperationsUpdate(nodeUpdate.process_operations);
+	}
+
+	// Workflow name update - emit so frontend receives the generated name
+	// before any potential interrupt (e.g., plan mode approval)
+	if (nodeUpdate.create_workflow_name) {
+		return processWorkflowNameUpdate(nodeUpdate.create_workflow_name);
 	}
 
 	// Generic agent node handling

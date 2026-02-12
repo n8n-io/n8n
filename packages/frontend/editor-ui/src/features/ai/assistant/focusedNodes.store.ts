@@ -25,9 +25,12 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	const chatPanelStateStore = useChatPanelStateStore();
 	const ndvStore = useNDVStore();
 
-	const isFeatureEnabled = computed(() =>
-		posthogStore.isFeatureEnabled(FOCUSED_NODES_EXPERIMENT.name),
-	);
+	const isFeatureEnabled = computed(() => {
+		return posthogStore.isVariantEnabled(
+			FOCUSED_NODES_EXPERIMENT.name,
+			FOCUSED_NODES_EXPERIMENT.variant,
+		);
+	});
 
 	const focusedNodesMap = ref<Record<string, FocusedNode>>({});
 	const canvasSelectedNodeIds = ref<Set<string>>(new Set());

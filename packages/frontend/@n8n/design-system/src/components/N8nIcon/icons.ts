@@ -227,6 +227,7 @@ import IconLucideUpload from '~icons/lucide/upload';
 import IconLucideUser from '~icons/lucide/user';
 import IconLucideUserCheck from '~icons/lucide/user-check';
 import IconLucideUserLock from '~icons/lucide/user-lock';
+import IconLucideUserPen from '~icons/lucide/user-pen';
 import IconLucideUserRound from '~icons/lucide/user-round';
 import IconLucideUsers from '~icons/lucide/users';
 import IconLucideVariable from '~icons/lucide/variable';
@@ -685,6 +686,7 @@ export const updatedIconSet = {
 	user: IconLucideUser,
 	'user-check': IconLucideUserCheck,
 	'user-lock': IconLucideUserLock,
+	'user-pen': IconLucideUserPen,
 	'user-round': IconLucideUserRound,
 	users: IconLucideUsers,
 	vault: IconLucideVault,
