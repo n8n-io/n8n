@@ -142,9 +142,13 @@ export class WorkflowService {
 		}
 
 		if (includeFolders) {
+			// Restrict folders to projects the user has access to.
+			// Admins with global project:read scope can see all folders, so no filtering needed.
 			const accessibleProjectIds = options?.filter?.projectId
 				? [options.filter.projectId as string]
-				: (await this.projectRelationRepository.findAllByUser(user.id)).map((r) => r.projectId);
+				: hasGlobalScope(user, 'project:read')
+					? undefined
+					: (await this.projectRelationRepository.findAllByUser(user.id)).map((r) => r.projectId);
 
 			[workflowsAndFolders, count] = await this.workflowRepository.getWorkflowsAndFoldersWithCount(
 				sharedWorkflowIds,

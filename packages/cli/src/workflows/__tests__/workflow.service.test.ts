@@ -13,6 +13,9 @@ import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+const memberRole = mock({ scopes: [] as Array<{ slug: Scope }> });
+const adminRole = mock({ scopes: [mock({ slug: 'project:read' as Scope })] });
+
 describe('WorkflowService', () => {
 	describe('getMany()', () => {
 		let workflowService: WorkflowService;
@@ -125,7 +128,7 @@ describe('WorkflowService', () => {
 		});
 
 		test('should pass accessible project IDs when includeFolders is true and no projectId filter', async () => {
-			const user = mock<User>({ id: 'user-1' });
+			const user = mock<User>({ id: 'user-1', role: memberRole });
 			const projectIds = ['project-1', 'project-2'];
 			projectRelationRepositoryMock.findAllByUser.mockResolvedValue(
 				projectIds.map((projectId) => mock({ projectId })),
@@ -148,7 +151,7 @@ describe('WorkflowService', () => {
 		});
 
 		test('should use projectId directly as accessible project ID when projectId filter is set', async () => {
-			const user = mock<User>({ id: 'user-1' });
+			const user = mock<User>({ id: 'user-1', role: memberRole });
 			projectRepositoryMock.findOneBy.mockResolvedValue(mock<Project>({ type: 'team' }));
 			workflowSharingServiceMock.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
 			workflowRepositoryMock.getWorkflowsAndFoldersWithCount.mockResolvedValue([[], 0]);
@@ -169,7 +172,7 @@ describe('WorkflowService', () => {
 		});
 
 		test('should pass empty accessible project IDs for user with no project relations', async () => {
-			const user = mock<User>({ id: 'user-1' });
+			const user = mock<User>({ id: 'user-1', role: memberRole });
 			projectRelationRepositoryMock.findAllByUser.mockResolvedValue([]);
 			workflowRepositoryMock.getWorkflowsAndFoldersWithCount.mockResolvedValue([[], 0]);
 
@@ -198,6 +201,25 @@ describe('WorkflowService', () => {
 			);
 
 			expect(projectRelationRepositoryMock.findAllByUser).not.toHaveBeenCalled();
+		});
+
+		test('should skip folder filtering for admin users with global project:read scope', async () => {
+			const user = mock<User>({ id: 'admin-1', role: adminRole });
+			workflowRepositoryMock.getWorkflowsAndFoldersWithCount.mockResolvedValue([[], 0]);
+
+			await workflowService.getMany(
+				user,
+				undefined, // options
+				undefined, // includeScopes
+				true, // includeFolders
+			);
+
+			expect(projectRelationRepositoryMock.findAllByUser).not.toHaveBeenCalled();
+			expect(workflowRepositoryMock.getWorkflowsAndFoldersWithCount).toHaveBeenCalledWith(
+				[],
+				undefined,
+				undefined,
+			);
 		});
 	});
 });

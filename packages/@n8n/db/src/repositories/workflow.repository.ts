@@ -173,7 +173,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	private buildBaseUnionQuery(
 		workflowIds: string[],
 		options: ListQuery.Options = {},
-		accessibleProjectIds: string[] = [],
+		accessibleProjectIds?: string[],
 	) {
 		// Common fields for both folders and workflows
 		const commonFields = {
@@ -224,12 +224,18 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.addSelect('NULL', 'description') // Add NULL for description in folders
 			.addSelect("'folder'", 'resource');
 
-		if (accessibleProjectIds.length > 0) {
-			foldersQuery.andWhere('folder.projectId IN (:...accessibleProjectIds)', {
-				accessibleProjectIds,
-			});
-		} else {
-			foldersQuery.andWhere('1 = 0');
+		// Restrict folders to only those in projects the user has access to.
+		// Without this, folders from other users' projects leak into the count/list
+		// and prevent the empty-state screen from showing for users with no accessible content.
+		// When undefined (admin users), no filtering is applied — they can see all folders.
+		if (accessibleProjectIds !== undefined) {
+			if (accessibleProjectIds.length > 0) {
+				foldersQuery.andWhere('folder.projectId IN (:...accessibleProjectIds)', {
+					accessibleProjectIds,
+				});
+			} else {
+				foldersQuery.andWhere('1 = 0');
+			}
 		}
 
 		const workflowsQuery = this.getManyQuery(workflowIds, workflowQueryParameters).addSelect(
@@ -256,7 +262,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async getWorkflowsAndFoldersUnion(
 		workflowIds: string[],
 		options: ListQuery.Options = {},
-		accessibleProjectIds: string[] = [],
+		accessibleProjectIds?: string[],
 	) {
 		const { baseQuery, sortByColumn, sortByDirection } = this.buildBaseUnionQuery(
 			workflowIds,
@@ -343,7 +349,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async getWorkflowsAndFoldersCount(
 		workflowIds: string[],
 		options: ListQuery.Options = {},
-		accessibleProjectIds: string[] = [],
+		accessibleProjectIds?: string[],
 	) {
 		const { skip, take, ...baseQueryParameters } = options;
 
@@ -365,7 +371,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async getWorkflowsAndFoldersWithCount(
 		workflowIds: string[],
 		options: ListQuery.Options = {},
-		accessibleProjectIds: string[] = [],
+		accessibleProjectIds?: string[],
 	) {
 		if (
 			options.filter?.parentFolderId &&
