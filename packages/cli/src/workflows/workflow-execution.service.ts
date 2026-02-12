@@ -172,11 +172,13 @@ export class WorkflowExecutionService {
 
 		// Case 3: Full execution from an unknown trigger.
 		if (isFullExecutionFromUnknownTrigger(payload)) {
-			const pinnedTrigger = this.selectPinnedTrigger(
-				payload.workflowData,
-				payload.destinationNode?.nodeName,
-				payload.workflowData.pinData ?? {},
-			);
+			const pinnedTrigger = payload.destinationNode
+				? this.selectPinnedTrigger(
+						payload.workflowData,
+						payload.destinationNode.nodeName,
+						payload.workflowData.pinData ?? {},
+					)
+				: undefined;
 
 			if (
 				pinnedTrigger === undefined &&
@@ -462,13 +464,12 @@ export class WorkflowExecutionService {
 	 */
 	selectPinnedTrigger(
 		workflow: IWorkflowBase,
-		destinationNode: string | undefined,
+		destinationNode: string,
 		pinData: IPinData,
 	): INode | undefined {
 		const allPinnedTriggers = this.findAllPinnedTriggers(workflow, pinData);
 
 		if (allPinnedTriggers.length === 0) return undefined;
-		if (!destinationNode) return allPinnedTriggers.length === 1 ? allPinnedTriggers[0] : undefined;
 
 		const destinationParents = new Set(
 			new Workflow({

@@ -47,7 +47,7 @@ export declare namespace WorkflowRequest {
 		workflowData: IWorkflowBase;
 		agentRequest?: AiAgentRequest;
 
-		destinationNode?: IDestinationNode;
+		destinationNode: IDestinationNode;
 	};
 
 	// 3. Partial Manual Execution to Destination

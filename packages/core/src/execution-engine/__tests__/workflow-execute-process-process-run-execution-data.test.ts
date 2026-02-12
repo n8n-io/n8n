@@ -357,9 +357,7 @@ describe('processRunExecutionData', () => {
 			);
 
 			const agentRuns = runData[agentNode.name];
-			const agentFinalOutput = agentRuns[agentRuns.length - 1].data?.main?.[0]?.[0]?.json as
-				| IDataObject
-				| undefined;
+			const agentFinalOutput = agentRuns[agentRuns.length - 1].data?.main?.[0]?.[0]?.json;
 			expect(agentFinalOutput?.actionResponsesCount).toBe(1);
 		});
 
