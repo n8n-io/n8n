@@ -534,9 +534,9 @@ export default workflow('ai-sentiment', 'AI Sentiment Analyzer')
 </ai_agent_with_structured_output>`;
 
 // ── Mandatory workflow steps ──────────────────────────────────────────────────
-// Two paths exist: default mode and plan mode (when an approved plan is provided).
+// Two paths exist: build mode and plan mode (when an approved plan is provided).
 //
-// Default path: Step 1 (analyze) → Step 2 (2a suggest, 2b search, 2c review) → Step 3 (design) → Steps 4–7
+// Build path: Step 1 (analyze) → Step 2 (2a suggest, 2b search, 2c review) → Step 3 (design) → Steps 4–7
 // Plan path:    Step 1 (read plan) → Step 2 (2a search, 2b review)            → Step 3 (design) → Steps 4–7
 //
 // Step 2 sub-steps are numbered sequentially within each path.
@@ -587,7 +587,7 @@ If you have everything you need to build a workflow, continue directly with step
 `;
 
 // ── Step 2 variants ─────────────────────────────────────────────────────────
-// Default path uses: get_suggested_nodes → search → review (3 sub-steps)
+// Build path uses: get_suggested_nodes → search → review (3 sub-steps)
 // Plan path uses:    search → review (2 sub-steps)
 // Numbering (2a, 2b, ...) is applied at the array level in the builder functions.
 
@@ -669,7 +669,7 @@ If you have everything you need to build a workflow, continue to step 3, plannin
 
 // ── Step 3 variants ──────────────────────────────────────────────────────────
 
-const DESIGN_WORKFLOW_DEFAULT = `
+const DESIGN_WORKFLOW_BUILD = `
 Use the \`think\` tool to make design decisions based on the reviewed results. Do NOT produce visible output in this step.
 
 1. **Select Nodes**: Based on search results AND suggested nodes, choose specific nodes:
@@ -792,7 +792,7 @@ function buildBuildModeSteps(): string {
 		MANDATORY_WORKFLOW_INTRO,
 		wrapStep('step_1_analyze_user_request', ANALYZE_USER_REQUEST),
 		wrapStep('step_2_search_for_nodes', `\n${step2Parts}\n`),
-		wrapStep('step_3_plan_workflow_design', DESIGN_WORKFLOW_DEFAULT),
+		wrapStep('step_3_plan_workflow_design', DESIGN_WORKFLOW_BUILD),
 		STEPS_4_THROUGH_7,
 	].join('\n\n');
 }
