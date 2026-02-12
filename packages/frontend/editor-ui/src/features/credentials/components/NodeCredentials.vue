@@ -519,6 +519,11 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	createNewCredential(type.name, true, showMixedCredentials(type));
 }
 
+function getServiceName(credentialTypeName: string): string {
+	const displayName = credentialTypeNames.value[credentialTypeName] ?? credentialTypeName;
+	return displayName.replace(/\s+OAuth2?\s+API$/i, '').replace(/\s+API$/i, '');
+}
+
 // Quick connect UI state helpers
 function showQuickConnectEmptyState(type: INodeCredentialDescription): boolean {
 	if (isCredentialExisting(type)) return false;
@@ -582,7 +587,10 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				>
 					<QuickConnectButton
 						:credential-type-name="type.name"
-						:service-name="getQuickConnectOption(type.name, props.node.type)?.serviceName ?? ''"
+						:service-name="
+							getQuickConnectOption(type.name, props.node.type)?.serviceName ??
+							getServiceName(type.name)
+						"
 						@click="onQuickConnectSignIn(type.name)"
 					/>
 					<span :class="$style.setupManuallyContainer">
