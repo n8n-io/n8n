@@ -1,5 +1,12 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
+import {
+	CODE_BUILDER_GET_NODE_TYPES_TOOL,
+	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL,
+	CODE_BUILDER_SEARCH_NODES_TOOL,
+	CODE_BUILDER_TEXT_EDITOR_TOOL,
+	CODE_BUILDER_VALIDATE_TOOL,
+} from '@/code-builder/constants';
 import type { BuilderToolBase } from '@/utils/stream-processor';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
@@ -13,6 +20,7 @@ import { GET_NODE_CONTEXT_TOOL } from './get-node-context.tool';
 import { GET_NODE_PARAMETER_TOOL } from './get-node-parameter.tool';
 import { GET_WORKFLOW_EXAMPLES_TOOL } from './get-workflow-examples.tool';
 import { GET_WORKFLOW_OVERVIEW_TOOL } from './get-workflow-overview.tool';
+import { INTROSPECT_TOOL } from './introspect.tool';
 import { NODE_DETAILS_TOOL } from './node-details.tool';
 import { NODE_SEARCH_TOOL } from './node-search.tool';
 import { REMOVE_CONNECTION_TOOL } from './remove-connection.tool';
@@ -61,7 +69,18 @@ export function getBuilderToolsForDisplay({
 		// Workflow context tools
 		GET_WORKFLOW_OVERVIEW_TOOL,
 		GET_NODE_CONTEXT_TOOL,
+		// CodeBuilderAgent tools
+		CODE_BUILDER_TEXT_EDITOR_TOOL,
+		CODE_BUILDER_VALIDATE_TOOL,
+		CODE_BUILDER_SEARCH_NODES_TOOL,
+		CODE_BUILDER_GET_NODE_TYPES_TOOL,
+		CODE_BUILDER_GET_SUGGESTED_NODES_TOOL,
 	);
+
+	// Conditionally add introspection tool based on feature flag
+	if (featureFlags?.enableIntrospection === true) {
+		tools.push(INTROSPECT_TOOL);
+	}
 
 	return tools;
 }

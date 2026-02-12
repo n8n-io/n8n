@@ -1401,16 +1401,20 @@ const moveFolder = async (payload: {
 	options?: {
 		skipFetch?: boolean;
 		skipNavigation?: boolean;
+		skipApiCall?: boolean;
 	};
 }) => {
 	if (!route.params.projectId) return;
 
+	loading.value = true;
 	try {
-		await foldersStore.moveFolder(
-			route.params.projectId as string,
-			payload.folder.id,
-			payload.newParent.type === 'folder' ? payload.newParent.id : '0',
-		);
+		if (!payload.options?.skipApiCall) {
+			await foldersStore.moveFolder(
+				route.params.projectId as string,
+				payload.folder.id,
+				payload.newParent.type === 'folder' ? payload.newParent.id : '0',
+			);
+		}
 		const isCurrentFolder = currentFolderId.value === payload.folder.id;
 
 		const newFolderURL = router.resolve({
@@ -1454,6 +1458,8 @@ const moveFolder = async (payload: {
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.error.title'));
+	} finally {
+		loading.value = false;
 	}
 };
 
@@ -1467,17 +1473,9 @@ const onFolderTransferred = async (payload: {
 		parentFolder: { id: string | undefined; name: string };
 		canAccess: boolean;
 	};
-	shareCredentials?: string[];
 }) => {
+	loading.value = true;
 	try {
-		await foldersStore.moveFolderToProject(
-			payload.source.projectId,
-			payload.source.folder.id,
-			payload.destination.projectId,
-			payload.destination.parentFolder.id,
-			payload.shareCredentials,
-		);
-
 		const isCurrentFolder = currentFolderId.value === payload.source.folder.id;
 		const newFolderURL = router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
@@ -1537,6 +1535,8 @@ const onFolderTransferred = async (payload: {
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.error.title'));
+	} finally {
+		loading.value = false;
 	}
 };
 
@@ -1577,17 +1577,9 @@ const onWorkflowTransferred = async (payload: {
 		parentFolder: { id: string | undefined; name: string };
 		canAccess: boolean;
 	};
-	shareCredentials?: string[];
 }) => {
+	loading.value = true;
 	try {
-		await projectsStore.moveResourceToProject(
-			'workflow',
-			payload.source.workflow.id,
-			payload.destination.projectId,
-			payload.destination.parentFolder.id,
-			payload.shareCredentials,
-		);
-
 		await refreshWorkflows();
 
 		if (payload.destination.canAccess) {
@@ -1627,6 +1619,8 @@ const onWorkflowTransferred = async (payload: {
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));
+	} finally {
+		loading.value = false;
 	}
 };
 
@@ -1635,9 +1629,12 @@ const onWorkflowMoved = async (payload: {
 	newParent: { id: string; name: string; type: 'folder' | 'project' };
 	options?: {
 		skipFetch?: boolean;
+		skipApiCall?: boolean;
 	};
 }) => {
 	if (!route.params.projectId) return;
+
+	loading.value = true;
 	try {
 		const newFolderURL = router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
@@ -1646,13 +1643,15 @@ const onWorkflowMoved = async (payload: {
 				folderId: payload.newParent.type === 'folder' ? payload.newParent.id : undefined,
 			},
 		}).href;
-		const workflowResource = workflowsAndFolders.value.find(
-			(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
-		);
-		await workflowsStore.updateWorkflow(payload.workflow.id, {
-			parentFolderId: payload.newParent.type === 'folder' ? payload.newParent.id : '0',
-			versionId: workflowResource?.versionId,
-		});
+		if (!payload.options?.skipApiCall) {
+			const workflowResource = workflowsAndFolders.value.find(
+				(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
+			);
+			await workflowsStore.updateWorkflow(payload.workflow.id, {
+				parentFolderId: payload.newParent.type === 'folder' ? payload.newParent.id : '0',
+				versionId: workflowResource?.versionId,
+			});
+		}
 		if (!payload.options?.skipFetch) {
 			await fetchWorkflows();
 		}
@@ -1679,6 +1678,8 @@ const onWorkflowMoved = async (payload: {
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));
+	} finally {
+		loading.value = false;
 	}
 };
 

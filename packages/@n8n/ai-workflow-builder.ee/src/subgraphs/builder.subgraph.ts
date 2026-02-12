@@ -29,8 +29,11 @@ import {
 } from '../tools/get-node-examples.tool';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createGetResourceLocatorOptionsTool } from '../tools/get-resource-locator-options.tool';
-// Workflow context tools
 import { createGetWorkflowOverviewTool } from '../tools/get-workflow-overview.tool';
+import {
+	createIntrospectTool,
+	extractIntrospectionEventsFromMessages,
+} from '../tools/introspect.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
 import { createRenameNodeTool } from '../tools/rename-node.tool';
@@ -49,6 +52,10 @@ import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
 	buildConversationContext,
 	buildDiscoveryContextBlock,
+	buildWorkflowJsonBlock,
+	buildExecutionSchemaBlock,
+	buildExecutionContextBlock,
+	buildSelectedNodesContextBlock,
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
@@ -60,6 +67,7 @@ import {
 	type RLCPrefetchResult,
 } from '../utils/rlc-prefetch';
 import { cachedTemplatesReducer } from '../utils/state-reducers';
+import type { BuilderTool } from '../utils/stream-processor';
 import {
 	executeSubgraphTools,
 	extractUserRequest,
@@ -168,12 +176,13 @@ export class BuilderSubgraph extends BaseSubgraph<
 
 		// Check if template examples are enabled
 		const includeExamples = config.featureFlags?.templateExamples === true;
+		const enableIntrospection = config.featureFlags?.enableIntrospection === true;
 
 		// Use separate LLM for parameter updater if provided
 		const parameterUpdaterLLM = config.llmParameterUpdater ?? config.llm;
 
 		// Create all tools (structure + configuration)
-		const baseTools = [
+		const baseTools: BuilderTool[] = [
 			// Structure tools
 			createAddNodeTool(config.parsedNodeTypes),
 			createConnectNodesTool(config.parsedNodeTypes, config.logger),
@@ -197,17 +206,23 @@ export class BuilderSubgraph extends BaseSubgraph<
 			// Workflow context tools
 			createGetWorkflowOverviewTool(config.logger),
 			createGetNodeContextTool(config.logger),
-			// Conditionally add resource locator tool if callback is provided
-			...(config.resourceLocatorCallback
-				? [
-						createGetResourceLocatorOptionsTool(
-							config.parsedNodeTypes,
-							config.resourceLocatorCallback,
-							config.logger,
-						),
-					]
-				: []),
 		];
+
+		// Conditionally add resource locator tool if callback is provided
+		if (config.resourceLocatorCallback) {
+			baseTools.push(
+				createGetResourceLocatorOptionsTool(
+					config.parsedNodeTypes,
+					config.resourceLocatorCallback,
+					config.logger,
+				),
+			);
+		}
+
+		// Conditionally add introspect tool if feature flag is enabled
+		if (enableIntrospection) {
+			baseTools.push(createIntrospectTool(config.logger));
+		}
 
 		// Conditionally add example tools if feature flag is enabled
 		const tools = includeExamples
@@ -227,7 +242,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 				[
 					{
 						type: 'text',
-						text: buildBuilderPrompt({ includeExamples }),
+						text: buildBuilderPrompt({ includeExamples, enableIntrospection }),
 					},
 					{
 						type: 'text',
@@ -386,7 +401,12 @@ export class BuilderSubgraph extends BaseSubgraph<
 			}
 		}
 
-		// 3. Discovery context (what nodes to use)
+		const selectedNodesBlock = buildSelectedNodesContextBlock(parentState.workflowContext);
+		if (selectedNodesBlock) {
+			contextParts.push('=== SELECTED NODES ===');
+			contextParts.push(selectedNodesBlock);
+		}
+
 		// Include best practices only when template examples feature flag is enabled
 		if (parentState.discoveryContext) {
 			const includeBestPractices = this.config?.featureFlags?.templateExamples === true;
@@ -396,7 +416,6 @@ export class BuilderSubgraph extends BaseSubgraph<
 			);
 		}
 
-		// 4. Check if this workflow came from a recovered builder recursion error (AI-1812)
 		const builderErrorEntry = parentState.coordinationLog?.find((entry) => {
 			if (entry.status !== 'error') return false;
 			if (entry.phase !== 'builder') return false;
@@ -414,6 +433,23 @@ export class BuilderSubgraph extends BaseSubgraph<
 			const { nodeCount, nodeNames } = builderErrorEntry.metadata.partialBuilderData;
 			contextParts.push(buildRecoveryModeContext(nodeCount, nodeNames));
 		}
+
+		contextParts.push('=== CURRENT WORKFLOW ===');
+		if (parentState.workflowJSON.nodes.length > 0) {
+			contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
+		} else {
+			contextParts.push('Empty workflow - ready to build');
+		}
+
+		const schemaBlock = buildExecutionSchemaBlock(parentState.workflowContext);
+		if (schemaBlock) {
+			contextParts.push('=== AVAILABLE DATA SCHEMA ===');
+			contextParts.push(schemaBlock);
+		}
+
+		// 7. Full execution context (data + schema for parameter values)
+		contextParts.push('=== EXECUTION CONTEXT ===');
+		contextParts.push(buildExecutionContextBlock(parentState.workflowContext));
 
 		// Create initial message with context
 		const contextMessage = createContextMessage(contextParts);
@@ -486,11 +522,15 @@ export class BuilderSubgraph extends BaseSubgraph<
 			}),
 		};
 
+		// Extract introspection events from subgraph messages
+		const introspectionEvents = extractIntrospectionEventsFromMessages(subgraphOutput.messages);
+
 		return {
 			workflowJSON,
 			workflowOperations: subgraphOutput.workflowOperations ?? [],
 			coordinationLog: [logEntry],
 			cachedTemplates: subgraphOutput.cachedTemplates,
+			introspectionEvents,
 			planOutput: null,
 			planDecision: null,
 			planFeedback: null,

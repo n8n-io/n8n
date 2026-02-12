@@ -400,6 +400,63 @@ describe('TextMessage', () => {
 		});
 	});
 
+	describe('focused nodes chips', () => {
+		it('should render focused nodes fallback when focusedNodeNames are provided and slot is not filled', () => {
+			const wrapper = render(TextMessage, {
+				props: {
+					message: createUserMessage({
+						focusedNodeNames: ['HTTP Request', 'Set Node'],
+					}),
+					isFirstOfRole: true,
+				},
+				global: { stubs, directives },
+			});
+
+			expect(wrapper.getByTestId('message-focused-nodes')).toBeTruthy();
+			expect(wrapper.container.textContent).toContain("Focusing on 'HTTP Request', 'Set Node'");
+		});
+
+		it('should not render focused nodes wrapper when focusedNodeNames is empty', () => {
+			const wrapper = render(TextMessage, {
+				props: {
+					message: createUserMessage({ focusedNodeNames: [] }),
+					isFirstOfRole: true,
+				},
+				global: { stubs, directives },
+			});
+
+			expect(wrapper.queryByTestId('message-focused-nodes')).toBeFalsy();
+		});
+
+		it('should not render focused nodes wrapper when focusedNodeNames is undefined', () => {
+			const wrapper = render(TextMessage, {
+				props: {
+					message: createUserMessage(),
+					isFirstOfRole: true,
+				},
+				global: { stubs, directives },
+			});
+
+			expect(wrapper.queryByTestId('message-focused-nodes')).toBeFalsy();
+		});
+
+		it('should render focused nodes inside the user message container', () => {
+			const wrapper = render(TextMessage, {
+				props: {
+					message: createUserMessage({
+						focusedNodeNames: ['Node 1'],
+					}),
+					isFirstOfRole: true,
+				},
+				global: { stubs, directives },
+			});
+
+			const userContainer = wrapper.container.querySelector('[class*="userMessageContainer"]');
+			const focusedNodes = wrapper.getByTestId('message-focused-nodes');
+			expect(userContainer?.contains(focusedNodes)).toBe(true);
+		});
+	});
+
 	describe('custom color', () => {
 		it('should apply custom color to assistant text', () => {
 			const wrapper = render(TextMessage, {

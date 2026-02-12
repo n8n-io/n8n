@@ -27,6 +27,7 @@ import {
 	isSubgraphPhase,
 } from './types/coordination';
 import { getNextPhaseFromLog, hasErrorInLog } from './utils/coordination-log';
+import { sanitizeLlmErrorMessage } from './utils/error-sanitizer';
 import { processOperations } from './utils/operations-processor';
 import {
 	determineStateAction,
@@ -142,8 +143,9 @@ function createSubgraphNodeHandler<
 				throw error;
 			}
 			logger?.error(`[${name}] ERROR:`, { error });
-			const errorMessage =
+			const rawErrorMessage =
 				error instanceof Error ? error.message : `An error occurred in ${name}: ${String(error)}`;
+			const userFacingMessage = sanitizeLlmErrorMessage(error);
 
 			// Route to responder to report error (terminal)
 			// Include in_progress entry for timing even on errors
@@ -152,7 +154,7 @@ function createSubgraphNodeHandler<
 				nextPhase: 'responder',
 				messages: [
 					new HumanMessage({
-						content: `Error in ${name}: ${errorMessage}`,
+						content: `Error in ${name}: ${userFacingMessage}`,
 						name: 'system_error',
 					}),
 				],
@@ -168,10 +170,10 @@ function createSubgraphNodeHandler<
 						phase,
 						status: 'error' as const,
 						timestamp: Date.now(),
-						summary: `Error: ${errorMessage}`,
+						summary: `Error: ${userFacingMessage}`,
 						metadata: createErrorMetadata({
 							failedSubgraph: phase,
-							errorMessage,
+							errorMessage: rawErrorMessage,
 						}),
 					},
 				],
@@ -202,7 +204,11 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	const supervisorAgent = new SupervisorAgent({ llm: stageLLMs.supervisor });
 
 	// Create Responder agent using LangChain v1 createAgent API
-	const responderAgent: ResponderAgentType = createResponderAgent({ llm: stageLLMs.responder });
+	const responderAgent: ResponderAgentType = createResponderAgent({
+		llm: stageLLMs.responder,
+		enableIntrospection: featureFlags?.enableIntrospection,
+		logger,
+	});
 
 	// Create Discovery subgraph (discovery + planning)
 	const discoverySubgraph = new DiscoverySubgraph();
@@ -253,17 +259,18 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				// Record start time for timing metrics
 				const startTimestamp = Date.now();
 
-				const response = await invokeResponderAgent(
+				const { response, introspectionEvents } = await invokeResponderAgent(
 					responderAgent,
 					{
 						messages: state.messages,
 						coordinationLog: state.coordinationLog,
 						discoveryContext: state.discoveryContext,
 						workflowJSON: state.workflowJSON,
-						previousSummary: state.previousSummary,
 						workflowContext: state.workflowContext,
+						previousSummary: state.previousSummary,
 					},
 					config,
+					{ enableIntrospection: featureFlags?.enableIntrospection },
 				);
 
 				// Call success callback only when generation completed without errors
@@ -297,6 +304,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 							metadata: createResponderMetadata({ responseLength: responseContent.length }),
 						},
 					],
+					introspectionEvents, // Collected from responder's tool calls
 				};
 			})
 			// Add process_operations node for hybrid operations approach

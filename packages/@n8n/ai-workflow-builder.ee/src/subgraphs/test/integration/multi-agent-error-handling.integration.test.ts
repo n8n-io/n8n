@@ -175,7 +175,7 @@ describe('Multi-Agent Error Handling - Integration Tests (AI-1812)', () => {
 			// Test responder agent directly instead of full graph
 			const responderAgent = createResponderAgent({ llm });
 
-			const response = await invokeResponderAgent(responderAgent, {
+			const { response } = await invokeResponderAgent(responderAgent, {
 				messages: [
 					new HumanMessage({
 						content:

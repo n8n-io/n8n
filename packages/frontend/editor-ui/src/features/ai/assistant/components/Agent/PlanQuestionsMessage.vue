@@ -13,10 +13,13 @@ import { ElRadio } from 'element-plus';
 
 import type { PlanMode } from '../../assistant.types';
 
+const OTHER_SENTINEL = '__other__';
+
 interface Props {
 	questions: PlanMode.PlannerQuestion[];
 	introMessage?: string;
 	disabled?: boolean;
+	answered?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -26,112 +29,115 @@ const emit = defineEmits<{
 	submit: [answers: PlanMode.QuestionResponse[]];
 }>();
 
-// Current question index (0-based)
 const currentIndex = ref(0);
-
-// Prevent double-submit
 const isSubmitted = ref(false);
-
-// Store answers for each question
 const answers = ref<Map<string, PlanMode.QuestionResponse>>(new Map());
 
 const currentQuestion = computed(() => props.questions[currentIndex.value]);
 const isFirstQuestion = computed(() => currentIndex.value === 0);
 const isLastQuestion = computed(() => currentIndex.value === props.questions.length - 1);
 
-// Filter out "Other" variants from LLM-provided options since we render our own "Other" option.
-// Catches "Other", "Other source", "Other service", etc.
+// Filter LLM-provided "Other" variants — we render our own "Other" option
 const filteredOptions = computed(() => {
-	const options = currentQuestion.value.options ?? [];
-	return options.filter((opt) => !opt.toLowerCase().trim().startsWith('other'));
-});
-
-// Eagerly initialize answer for the current question when the index changes
-function ensureAnswer(q: PlanMode.PlannerQuestion): PlanMode.QuestionResponse {
-	if (!answers.value.has(q.id)) {
-		answers.value.set(q.id, {
-			questionId: q.id,
-			question: q.question,
-			selectedOptions: [],
-			customText: '',
-			skipped: false,
-		});
-	}
-	return answers.value.get(q.id)!;
-}
-
-// Initialize first question's answer immediately (guard against empty questions)
-if (currentQuestion.value) {
-	ensureAnswer(currentQuestion.value);
-}
-
-// Initialize answer when navigating to a new question
-watch(currentIndex, () => {
-	if (currentQuestion.value) {
-		ensureAnswer(currentQuestion.value);
-	}
+	return (currentQuestion.value.options ?? []).filter(
+		(opt) => !opt.toLowerCase().trim().startsWith('other'),
+	);
 });
 
 const currentAnswer = computed(() => {
 	const q = currentQuestion.value;
-	if (!q) return undefined;
-	return answers.value.get(q.id);
+	return q ? answers.value.get(q.id) : undefined;
 });
 
-function getCurrentAnswer(): PlanMode.QuestionResponse | undefined {
-	const q = currentQuestion.value;
-	if (!q) return undefined;
-	return answers.value.get(q.id);
-}
-
-// Check if current question has a valid answer
 const hasValidAnswer = computed(() => {
 	const answer = currentAnswer.value;
 	if (!answer) return false;
 	if (answer.skipped) return true;
-	if (currentQuestion.value?.type === 'text') {
-		return !!answer.customText?.trim();
-	}
-	// If "Other" radio is selected, require custom text
-	if (answer.selectedOptions.includes('__other__')) {
-		return !!answer.customText?.trim();
-	}
-	return answer.selectedOptions.length > 0 || !!answer.customText?.trim();
+
+	const hasCustomText = !!answer.customText?.trim();
+	const hasSelectedOptions = answer.selectedOptions.length > 0;
+
+	if (currentQuestion.value?.type === 'text') return hasCustomText;
+	if (answer.selectedOptions.includes(OTHER_SENTINEL)) return hasCustomText;
+	return hasSelectedOptions || hasCustomText;
 });
 
+const nextButtonLabel = computed(() => {
+	if (!hasValidAnswer.value) {
+		return isLastQuestion.value
+			? i18n.baseText('aiAssistant.builder.planMode.questions.skipAndSubmit')
+			: i18n.baseText('aiAssistant.builder.planMode.questions.skip');
+	}
+	return isLastQuestion.value
+		? i18n.baseText('aiAssistant.builder.planMode.questions.submitButton')
+		: i18n.baseText('aiAssistant.builder.planMode.questions.next');
+});
+
+// Initialize answer for current question on mount and navigation
+watch(
+	currentIndex,
+	() => {
+		const q = currentQuestion.value;
+		if (q && !answers.value.has(q.id)) {
+			answers.value.set(q.id, {
+				questionId: q.id,
+				question: q.question,
+				selectedOptions: [],
+				customText: '',
+				skipped: false,
+			});
+		}
+	},
+	{ immediate: true },
+);
+
 function onSingleSelect(option: string) {
-	const answer = getCurrentAnswer();
+	const answer = currentAnswer.value;
 	if (!answer) return;
 	answer.selectedOptions = [option];
-	// Clear custom text when selecting a regular option (not "Other")
-	if (option !== '__other__') {
+	if (option !== OTHER_SENTINEL) {
 		answer.customText = '';
 	}
 	answer.skipped = false;
 }
 
-function onMultiSelect(option: string, checked: boolean) {
-	const answer = getCurrentAnswer();
+function onMultiToggle(option: string, checked: boolean) {
+	const answer = currentAnswer.value;
 	if (!answer) return;
-	const options = answer.selectedOptions;
-	if (checked) {
-		if (!options.includes(option)) {
-			options.push(option);
-		}
-	} else {
-		const idx = options.indexOf(option);
-		if (idx > -1) {
-			options.splice(idx, 1);
-		}
+	const opts = answer.selectedOptions;
+	if (checked && !opts.includes(option)) {
+		opts.push(option);
+	} else if (!checked) {
+		const idx = opts.indexOf(option);
+		if (idx > -1) opts.splice(idx, 1);
 	}
 	answer.skipped = false;
 }
 
 function onCustomTextChange(text: string) {
-	const answer = getCurrentAnswer();
+	const answer = currentAnswer.value;
 	if (!answer) return;
 	answer.customText = text;
 	answer.skipped = false;
+}
+
+function goToPrevious() {
+	if (!isFirstQuestion.value) {
+		currentIndex.value--;
+	}
+}
+
+function goToNext() {
+	if (!hasValidAnswer.value) {
+		const answer = currentAnswer.value;
+		if (answer) answer.skipped = true;
+	}
+
+	if (isLastQuestion.value) {
+		submitAnswers();
+	} else {
+		currentIndex.value++;
+	}
 }
 
 function submitAnswers() {
@@ -149,39 +155,22 @@ function submitAnswers() {
 				skipped: true,
 			};
 		}
-		// Replace __other__ sentinel with the custom text value
 		return {
 			...answer,
-			selectedOptions: answer.selectedOptions.filter((o) => o !== '__other__'),
+			selectedOptions: answer.selectedOptions.filter((o) => o !== OTHER_SENTINEL),
 		};
 	});
 	emit('submit', allAnswers);
-}
-
-function goToPrevious() {
-	if (!isFirstQuestion.value) {
-		currentIndex.value--;
-	}
-}
-
-function goToNext() {
-	if (isLastQuestion.value) {
-		submitAnswers();
-	} else {
-		currentIndex.value++;
-	}
 }
 </script>
 
 <template>
 	<div :class="$style.wrapper" data-test-id="plan-mode-questions-message">
-		<!-- Intro message (outside the card) -->
 		<N8nText v-if="introMessage" :class="$style.intro">
 			{{ introMessage }}
 		</N8nText>
 
-		<div v-if="currentQuestion && currentAnswer" :class="$style.container">
-			<!-- Question -->
+		<div v-if="!answered && currentQuestion && currentAnswer" :class="$style.container">
 			<div :class="$style.question">
 				<N8nText tag="p" :bold="true" :class="$style.questionText">
 					{{ currentQuestion.question }}
@@ -214,31 +203,30 @@ function goToNext() {
 						<N8nCheckbox
 							:model-value="currentAnswer.selectedOptions.includes(option)"
 							:disabled="disabled"
-							@update:model-value="(checked: boolean) => onMultiSelect(option, checked)"
+							@update:model-value="(checked: boolean) => onMultiToggle(option, checked)"
 						/>
 						<span :class="$style.optionLabel">{{ option }}</span>
 					</label>
 				</div>
 
 				<!-- Text input -->
-				<div v-else-if="currentQuestion.type === 'text'" :class="$style.textInput">
-					<N8nInput
-						:model-value="currentAnswer.customText"
-						type="textarea"
-						:rows="3"
-						:disabled="disabled"
-						:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.customPlaceholder')"
-						@update:model-value="onCustomTextChange"
-					/>
-				</div>
+				<N8nInput
+					v-else-if="currentQuestion.type === 'text'"
+					:model-value="currentAnswer.customText"
+					type="textarea"
+					:rows="3"
+					:disabled="disabled"
+					:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.customPlaceholder')"
+					@update:model-value="onCustomTextChange"
+				/>
 
-				<!-- "Other" option for single/multi — always shown, matches question type -->
+				<!-- "Other" option — single choice -->
 				<div v-if="currentQuestion.type === 'single'" :class="$style.otherOption">
 					<ElRadio
 						:model-value="currentAnswer.selectedOptions[0]"
-						label="__other__"
+						:label="OTHER_SENTINEL"
 						:disabled="disabled"
-						@update:model-value="() => onSingleSelect('__other__')"
+						@update:model-value="() => onSingleSelect(OTHER_SENTINEL)"
 					>
 						<N8nInput
 							:model-value="currentAnswer.customText"
@@ -247,11 +235,12 @@ function goToNext() {
 							size="small"
 							:class="$style.otherInput"
 							@update:model-value="onCustomTextChange"
-							@focus="() => onSingleSelect('__other__')"
+							@focus="() => onSingleSelect(OTHER_SENTINEL)"
 						/>
 					</ElRadio>
 				</div>
 
+				<!-- "Other" option — multi choice -->
 				<div v-else-if="currentQuestion.type === 'multi'" :class="$style.otherOption">
 					<N8nCheckbox
 						:model-value="!!currentAnswer.customText?.trim()"
@@ -273,9 +262,8 @@ function goToNext() {
 				</div>
 			</div>
 
-			<!-- Footer: Progress + Buttons -->
+			<!-- Footer -->
 			<div :class="$style.footer">
-				<!-- Progress dots -->
 				<div :class="$style.progress">
 					<div
 						v-for="(_, i) in questions"
@@ -284,7 +272,6 @@ function goToNext() {
 					/>
 				</div>
 
-				<!-- Navigation buttons -->
 				<div :class="$style.navigation">
 					<N8nButton
 						v-if="!isFirstQuestion"
@@ -298,17 +285,13 @@ function goToNext() {
 					<div v-else />
 
 					<N8nButton
-						type="secondary"
+						:type="isLastQuestion && hasValidAnswer ? 'primary' : 'secondary'"
 						size="small"
-						:disabled="disabled || !hasValidAnswer || isSubmitted"
+						:disabled="disabled || isSubmitted"
 						data-test-id="plan-mode-questions-next"
 						@click="goToNext"
 					>
-						{{
-							isLastQuestion
-								? i18n.baseText('aiAssistant.builder.planMode.questions.submitButton')
-								: i18n.baseText('aiAssistant.builder.planMode.questions.next')
-						}}
+						{{ nextButtonLabel }}
 					</N8nButton>
 				</div>
 			</div>
@@ -324,13 +307,12 @@ function goToNext() {
 }
 
 .intro {
-	color: var(--color--text);
 	line-height: var(--line-height--xl);
 }
 
 .container {
 	border: var(--border);
-	border-radius: var(--radius--s);
+	border-radius: var(--radius);
 }
 
 .question {
@@ -346,10 +328,9 @@ function goToNext() {
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 
-	// Override ElRadio defaults: display block, allow text wrapping, remove inline margin
 	:global(.el-radio) {
 		display: flex;
-		align-items: flex-start;
+		align-items: center;
 		white-space: normal;
 		margin-right: 0;
 		height: auto;
@@ -384,10 +365,6 @@ function goToNext() {
 	font-size: var(--font-size--sm);
 }
 
-.textInput {
-	margin-top: var(--spacing--2xs);
-}
-
 .otherOption {
 	display: flex;
 	align-items: center;
@@ -401,6 +378,11 @@ function goToNext() {
 		white-space: normal;
 		margin-right: 0;
 		height: auto;
+		width: 100%;
+	}
+
+	:global(.el-radio__label) {
+		flex: 1;
 	}
 }
 
@@ -412,9 +394,8 @@ function goToNext() {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	padding-top: var(--spacing--xs);
 	border-top: var(--border);
-	padding: var(--spacing--xs) var(--spacing--xs);
+	padding: var(--spacing--xs);
 }
 
 .progress {

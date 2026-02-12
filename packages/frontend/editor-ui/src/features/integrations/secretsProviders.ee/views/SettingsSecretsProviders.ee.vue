@@ -17,7 +17,10 @@ import SecretsProviderConnectionCard from '../components/SecretsProviderConnecti
 import SecretsProvidersEmptyState from '../components/SecretsProvidersEmptyState.ee.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/app/stores/ui.store';
-import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY } from '@/app/constants/modals';
+import {
+	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+	DELETE_SECRETS_PROVIDER_MODAL_KEY,
+} from '@/app/constants/modals';
 import { I18nT } from 'vue-i18n';
 
 const i18n = useI18n();
@@ -46,10 +49,8 @@ function openConnectionModal(
 			providerKey,
 			providerTypes: secretsProviders.providerTypes.value,
 			existingProviderNames: existingNames,
-			onClose: async (saved?: boolean) => {
-				if (saved) {
-					await secretsProviders.fetchActiveConnections();
-				}
+			onClose: async () => {
+				await secretsProviders.fetchActiveConnections();
 			},
 		},
 	});
@@ -61,6 +62,24 @@ function handleEdit(providerKey: string) {
 
 function handleShare(providerKey: string) {
 	openConnectionModal(providerKey, 'sharing');
+}
+
+function handleDelete(providerKey: string) {
+	const provider = secretsProviders.activeProviders.value.find((p) => p.name === providerKey);
+
+	if (!provider) return;
+
+	uiStore.openModalWithData({
+		name: DELETE_SECRETS_PROVIDER_MODAL_KEY,
+		data: {
+			providerKey: provider.name,
+			providerName: provider.name,
+			secretsCount: provider.secretsCount ?? 0,
+			onConfirm: async () => {
+				await secretsProviders.fetchActiveConnections();
+			},
+		},
+	});
 }
 
 onMounted(async () => {
@@ -143,6 +162,7 @@ function goToUpgrade() {
 					:can-update="secretsProviders.canUpdate.value"
 					@edit="handleEdit"
 					@share="handleShare"
+					@delete="handleDelete"
 				/>
 			</div>
 		</div>

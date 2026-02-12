@@ -6,7 +6,8 @@
 	"compilerOptions": {
 		"baseUrl": ".",
 		"paths": {
-			"src/*": ["./src/*"]
+			"src/*": ["./src/*"],
+			"src": ["./src"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,

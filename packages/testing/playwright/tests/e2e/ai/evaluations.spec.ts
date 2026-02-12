@@ -3,8 +3,8 @@ import { expect, test } from '../../../fixtures/base';
 test.use({ capability: 'proxy' });
 
 test.describe('Evaluations @capability:proxy', () => {
-	test.beforeEach(async ({ n8n, proxyServer }) => {
-		await proxyServer.clearAllExpectations();
+	test.beforeEach(async ({ n8n, services }) => {
+		await services.proxy.clearAllExpectations();
 
 		await n8n.goHome();
 	});
@@ -12,8 +12,8 @@ test.describe('Evaluations @capability:proxy', () => {
 	// @AI team to look at this
 	test.fixme(
 		'should load evaluations workflow and execute twice @fixme',
-		async ({ n8n, proxyServer }) => {
-			await proxyServer.loadExpectations('evaluations');
+		async ({ n8n, services }) => {
+			await services.proxy.loadExpectations('evaluations');
 
 			await n8n.api.credentials.createCredentialFromDefinition({
 				name: 'Test Google Sheets',
@@ -74,9 +74,9 @@ m82JpEptTfAxFHtd8+Sb0U2G
 			await n8n.notifications.waitForNotificationAndClose('Successful', { timeout: 10000 });
 
 			// 💡 To update recordings, remove stored expectations, set real credentials above and rerecord here.
-			// await proxyServer.recordExpectations('evaluations', { host: 'google', dedupe: true });
+			// await services.proxy.recordExpectations('evaluations', { host: 'google', dedupe: true });
 
-			const batchUpdateRequests = (await proxyServer.getAllRequestsMade()).filter((request) => {
+			const batchUpdateRequests = (await services.proxy.getAllRequestsMade()).filter((request) => {
 				const path = request.httpRequest?.path;
 				const method = request.httpRequest?.method;
 

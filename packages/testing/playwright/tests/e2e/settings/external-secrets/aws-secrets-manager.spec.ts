@@ -20,16 +20,13 @@ test.describe('AWS Secrets Manager with LocalStack @capability:external-secrets 
 		return data[PROVIDER_NAME] ?? [];
 	}
 
-	test.beforeEach(async ({ n8n, n8nContainer }) => {
-		await n8nContainer.services.localstack.secretsManager.clear();
+	test.beforeEach(async ({ n8n, services }) => {
+		await services.localstack.secretsManager.clear();
 		await n8n.api.enableFeature('externalSecrets');
 	});
 
-	test('can configure, connect, and sync secrets from LocalStack', async ({
-		n8n,
-		n8nContainer,
-	}) => {
-		const { secretsManager } = n8nContainer.services.localstack;
+	test('can configure, connect, and sync secrets from LocalStack', async ({ n8n, services }) => {
+		const { secretsManager } = services.localstack;
 
 		await secretsManager.createSecret('api-key', 'secret-123');
 

@@ -52,7 +52,11 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const overview = useProjectPages();
 
-type Filters = BaseFilters & { type?: string[]; setupNeeded?: boolean };
+type Filters = BaseFilters & {
+	type?: string[];
+	setupNeeded?: boolean;
+	externalSecretsStore?: string;
+};
 const updateFilter = (state: Filters) => {
 	void router.replace({ query: pickBy(state) as LocationQueryRaw });
 };
@@ -64,6 +68,9 @@ const onSearchUpdated = (search: string) => {
 const filters = ref<Filters>({
 	...route.query,
 	setupNeeded: route.query.setupNeeded?.toString() === 'true',
+	...(route.query.externalSecretsStore
+		? { externalSecretsStore: route.query.externalSecretsStore.toString() }
+		: {}),
 } as Filters);
 const loading = ref(false);
 
@@ -111,6 +118,12 @@ const projectPermissions = computed(() =>
 
 const personalProject = computed<Project | null>(() => {
 	return projectsStore.personalProject;
+});
+
+const showSecretStoreFilter = computed(() => {
+	return (
+		!!route.query.externalSecretsStore && externalSecretsStore.isEnterpriseExternalSecretsEnabled
+	);
 });
 
 const setRouteCredentialId = (credentialId?: string) => {
@@ -207,12 +220,13 @@ const initialize = async () => {
 	}
 
 	const loadPromises = [
-		credentialsStore.fetchAllCredentials(
-			route?.params?.projectId as string | undefined,
-			true,
-			overview.isSharedSubPage,
-			!isPersonalView, // don't include global credentials if personal
-		),
+		credentialsStore.fetchAllCredentials({
+			projectId: route?.params?.projectId as string | undefined,
+			includeScopes: true,
+			onlySharedWithMe: overview.isSharedSubPage,
+			includeGlobal: !isPersonalView, // don't include global credentials if personal
+			externalSecretsStore: filters.value.externalSecretsStore,
+		}),
 		credentialsStore.fetchCredentialTypes(false),
 		...externalSecretRequests,
 		nodeTypesStore.loadNodeTypesIfNotLoaded(),
@@ -228,7 +242,11 @@ const initialize = async () => {
 credentialsStore.$onAction(({ name, after }) => {
 	if (name === 'createNewCredential') {
 		after(() => {
-			void credentialsStore.fetchAllCredentials(route?.params?.projectId as string | undefined);
+			void credentialsStore.fetchAllCredentials({
+				projectId: route?.params?.projectId as string | undefined,
+				includeScopes: true,
+				externalSecretsStore: filters.value.externalSecretsStore,
+			});
 		});
 	}
 });
@@ -247,6 +265,18 @@ watch(
 	() => {
 		maybeCreateCredential();
 		void maybeEditCredential();
+	},
+);
+
+// Watch for changes to externalSecretsStore filter and refetch data
+// since this is a backend filter that affects what credentials are returned
+watch(
+	() => filters.value.externalSecretsStore,
+	async (newValue, oldValue) => {
+		// Only refetch if the filter actually changed (not on initial mount)
+		if (newValue !== oldValue && (newValue !== undefined || oldValue !== undefined)) {
+			void initialize();
+		}
 	},
 );
 
@@ -331,6 +361,27 @@ onMounted(() => {
 					@update:model-value="setKeyValue('setupNeeded', $event)"
 				>
 				</N8nCheckbox>
+			</div>
+
+			<!-- secret store filter is only shown if query parameter is set in url
+			 -  needed for handling deletion of enterprise external secrets -->
+			<div v-if="showSecretStoreFilter && filters.externalSecretsStore" class="mb-s">
+				<N8nInputLabel
+					:label="i18n.baseText('credentials.filters.secretStore')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				/>
+				<N8nSelect
+					:model-value="filters.externalSecretsStore"
+					size="medium"
+					disabled
+					data-test-id="credential-filter-secret-store"
+					:class="$style['type-input']"
+				>
+					<N8nOption :value="filters.externalSecretsStore" :label="filters.externalSecretsStore" />
+				</N8nSelect>
 			</div>
 		</template>
 		<template #empty>

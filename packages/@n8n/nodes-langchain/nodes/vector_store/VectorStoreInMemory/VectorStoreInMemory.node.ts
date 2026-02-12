@@ -67,6 +67,15 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 			'Vector Stores': ['For Beginners'],
 			Tools: ['Other Tools'],
 		},
+		builderHint: {
+			relatedNodes: [
+				{
+					nodeType: '@n8n/n8n-nodes-langchain.retrieverVectorStore',
+					relationHint:
+						'Connect to enable retrieval-augmented generation (RAG) for AI Agent workflows',
+				},
+			],
+		},
 	},
 	sharedFields: [
 		{

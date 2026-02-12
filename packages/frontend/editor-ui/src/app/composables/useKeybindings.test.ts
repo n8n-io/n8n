@@ -163,4 +163,46 @@ describe('useKeybindings', () => {
 		document.dispatchEvent(event);
 		expect(handler).toHaveBeenCalled();
 	});
+
+	it('should resolve alt shortcuts via keyboard layout map for Colemak', async () => {
+		// Simulate the Keyboard Layout Map API (Colemak: physical KeyL → logical 'i')
+		const mockLayoutMap = new Map([['KeyL', 'i']]) as unknown as KeyboardLayoutMap;
+		Object.defineProperty(navigator, 'keyboard', {
+			value: {
+				getLayoutMap: vi.fn().mockResolvedValue(mockLayoutMap),
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+			},
+			configurable: true,
+			writable: true,
+		});
+
+		const handler = vi.fn();
+		const keymap = ref({ alt_i: handler });
+
+		useKeybindings(keymap);
+
+		// Wait for the async getLayoutMap to resolve
+		await vi.waitFor(() => {
+			expect(navigator.keyboard!.getLayoutMap).toHaveBeenCalled();
+		});
+
+		// On macOS Colemak, Alt+I (physical KeyL) produces a dead key in event.key
+		// byKey = 'alt+dead' → no match, byCode = 'alt+l' → no match
+		// byLayout should resolve KeyL → 'i' via layout map → 'alt+i' → match
+		const event = new KeyboardEvent('keydown', {
+			key: 'Dead',
+			code: 'KeyL',
+			altKey: true,
+		});
+		document.dispatchEvent(event);
+		expect(handler).toHaveBeenCalled();
+
+		// Clean up
+		Object.defineProperty(navigator, 'keyboard', {
+			value: undefined,
+			configurable: true,
+			writable: true,
+		});
+	});
 });
