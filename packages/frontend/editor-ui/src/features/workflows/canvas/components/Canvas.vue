@@ -1174,10 +1174,6 @@ defineExpose({
 	opacity: 0;
 }
 
-:deep(.vue-flow__node) {
-	transition: opacity 0.15s ease;
-}
-
 .spotlightActive {
 	:deep(.vue-flow__edges) {
 		opacity: 0.2;
@@ -1186,6 +1182,7 @@ defineExpose({
 
 	:deep(.vue-flow__node) {
 		opacity: 0.2;
+		transition: opacity 0.15s ease;
 	}
 
 	:deep(.vue-flow__node:has(.highlighted)) {
