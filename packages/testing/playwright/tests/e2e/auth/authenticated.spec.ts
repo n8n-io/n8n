@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Authentication', () => {
+test.describe('Authentication', {
+	annotation: [
+		{ type: 'team', description: 'Identity & Access' },
+	],
+}, () => {
 	const testCases = [
 		{ role: 'default', expectedUrl: /\/workflow/, auth: '' },
 		{ role: 'owner', expectedUrl: /\/workflow/, auth: '@auth:owner' },

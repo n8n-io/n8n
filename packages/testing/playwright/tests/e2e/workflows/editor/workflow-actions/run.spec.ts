@@ -4,7 +4,11 @@ import {
 } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 
-test.describe('Workflow Run @fixme', () => {
+test.describe('Workflow Run @fixme', {
+	annotation: [
+		{ type: 'team', description: 'Adore' },
+	],
+}, () => {
 	test.fixme();
 
 	test.beforeEach(async ({ n8n }) => {

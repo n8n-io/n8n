@@ -105,7 +105,11 @@ const newWorkflow = {
 	},
 };
 
-test.describe('Workflow Diff Demo', () => {
+test.describe('Workflow Diff Demo', {
+	annotation: [
+		{ type: 'team', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ setupRequirements }) => {
 		await setupRequirements(requirements);
 	});

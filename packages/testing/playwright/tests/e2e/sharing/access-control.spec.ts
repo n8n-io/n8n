@@ -4,7 +4,11 @@ import { test, expect } from '../../../fixtures/base';
 
 const TEST_API_KEY = 'test-api-key';
 
-test.describe('Access Control Boundaries', () => {
+test.describe('Access Control Boundaries', {
+	annotation: [
+		{ type: 'team', description: 'Identity & Access' },
+	],
+}, () => {
 	test('should prevent credential editing by sharee', async ({ n8n, api }) => {
 		const member = await api.publicApi.createUser({
 			email: `member-${nanoid()}@test.com`,

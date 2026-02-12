@@ -7,7 +7,11 @@ import { ChatHubChatPage } from '../../../pages/ChatHubChatPage';
 
 test.use(chatHubTestConfig);
 
-test.describe('File attachment @capability:proxy', () => {
+test.describe('File attachment @capability:proxy', {
+	annotation: [
+		{ type: 'team', description: 'Chat' },
+	],
+}, () => {
 	let tmpDir: string;
 	let testImagePath: string;
 	let testTextPath: string;

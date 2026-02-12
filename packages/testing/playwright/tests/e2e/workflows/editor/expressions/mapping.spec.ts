@@ -1,6 +1,10 @@
 import { test, expect } from '../../../../../fixtures/base';
 
-test.describe('Data Mapping', () => {
+test.describe('Data Mapping', {
+	annotation: [
+		{ type: 'team', description: 'Catalysts' },
+	],
+}, () => {
 	test.describe
 		.serial('Expression Preview', () => {
 			test('maps expressions from table json, and resolves value based on hover', async ({
