@@ -74,19 +74,21 @@ export function useCredentialOAuth() {
 			return false;
 		}
 
-		// __overwrittenProperties is set by the credentials-overwrites system (CredentialsOverwrites.applyOverwrite)
 		const overwrittenProperties = credentialType.__overwrittenProperties ?? [];
 		if (overwrittenProperties.length === 0) {
 			return false;
 		}
 
-		// Get required properties that would need user input (excluding notice and already overwritten)
-		const requiredProperties = credentialType.properties.filter(
-			(prop) => prop.required === true && prop.type !== 'notice',
+		const visibleProperties = credentialType.properties.filter(
+			(prop) =>
+				prop.type !== 'hidden' &&
+				prop.type !== 'notice' &&
+				!overwrittenProperties.includes(prop.name),
 		);
 
-		// All required properties must be overwritten for managed credentials
-		return requiredProperties.every((prop) => overwrittenProperties.includes(prop.name));
+		return visibleProperties.every(
+			(prop) => prop.required !== true || (prop.type !== 'string' && prop.type !== 'number'),
+		);
 	}
 
 	async function getOAuthAuthorizationUrl(

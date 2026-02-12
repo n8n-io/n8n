@@ -242,6 +242,35 @@ describe('useCredentialOAuth', () => {
 			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(true);
 		});
 
+		it('should ignore hidden properties even when required', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.dropboxOAuth2Api = {
+				name: 'dropboxOAuth2Api',
+				extends: ['oAuth2Api'],
+				displayName: 'Dropbox OAuth2 API',
+				properties: [
+					{
+						displayName: 'Authorization URL',
+						name: 'authUrl',
+						type: 'hidden',
+						default: 'https://www.dropbox.com/oauth2/authorize',
+						required: true,
+					},
+					{
+						displayName: 'Access Token URL',
+						name: 'accessTokenUrl',
+						type: 'hidden',
+						default: 'https://api.dropboxapi.com/oauth2/token',
+						required: true,
+					},
+				],
+				__overwrittenProperties: ['clientId', 'clientSecret'],
+			};
+
+			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			expect(hasManagedOAuthCredentials('dropboxOAuth2Api')).toBe(true);
+		});
+
 		it('should return false for unknown credential types', () => {
 			const { hasManagedOAuthCredentials } = useCredentialOAuth();
 			expect(hasManagedOAuthCredentials('unknownType')).toBe(false);

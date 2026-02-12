@@ -524,21 +524,19 @@ function getServiceName(credentialTypeName: string): string {
 	return displayName.replace(/\s+OAuth2?\s+API$/i, '').replace(/\s+API$/i, '');
 }
 
-// Quick connect UI state helpers
+const quickConnectCredentialType = computed(() => {
+	if (!isQuickConnectEnabled.value) return undefined;
+	return credentialTypesNodeDescriptions.value.find(
+		(t) => !!getQuickConnectOption(t.name, props.node.type) || hasManagedOAuthCredentials(t.name),
+	)?.name;
+});
+
 function showQuickConnectEmptyState(type: INodeCredentialDescription): boolean {
-	if (isCredentialExisting(type)) return false;
-	// Quick connect: explicit config OR managed OAuth credentials
-	return (
-		!!getQuickConnectOption(type.name, props.node.type) || hasManagedOAuthCredentials(type.name)
-	);
+	return !isCredentialExisting(type) && !!quickConnectCredentialType.value;
 }
 
 function showStandardEmptyState(type: INodeCredentialDescription): boolean {
-	if (isCredentialExisting(type)) return false;
-	// Standard empty state when no quick connect AND not managed OAuth
-	return (
-		!getQuickConnectOption(type.name, props.node.type) && !hasManagedOAuthCredentials(type.name)
-	);
+	return !isCredentialExisting(type) && !quickConnectCredentialType.value;
 }
 
 async function onQuickConnectSignIn(credentialTypeName: string) {
@@ -578,20 +576,20 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					/>
 				</div>
 				<div
-					v-else-if="isQuickConnectEnabled && showQuickConnectEmptyState(type)"
+					v-else-if="showQuickConnectEmptyState(type) && quickConnectCredentialType"
 					:class="[
 						$style.quickConnectContainer,
-						{ [$style.noMarginTop]: isGoogleOAuthType(type.name) },
+						{ [$style.noMarginTop]: isGoogleOAuthType(quickConnectCredentialType) },
 					]"
 					data-test-id="quick-connect-empty-state"
 				>
 					<QuickConnectButton
-						:credential-type-name="type.name"
+						:credential-type-name="quickConnectCredentialType"
 						:service-name="
-							getQuickConnectOption(type.name, props.node.type)?.serviceName ??
-							getServiceName(type.name)
+							getQuickConnectOption(quickConnectCredentialType, props.node.type)?.serviceName ??
+							getServiceName(quickConnectCredentialType)
 						"
-						@click="onQuickConnectSignIn(type.name)"
+						@click="onQuickConnectSignIn(quickConnectCredentialType)"
 					/>
 					<span :class="$style.setupManuallyContainer">
 						<N8nText size="small" :class="$style.setupManuallyOr">

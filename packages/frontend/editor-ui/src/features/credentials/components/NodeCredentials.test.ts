@@ -15,8 +15,10 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { FrontendSettings } from '@n8n/api-types';
-import type { ICredentialType } from 'n8n-workflow';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 const httpNode: INodeUi = {
 	parameters: {
@@ -473,6 +475,26 @@ describe('NodeCredentials', () => {
 			expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
 		});
 
+		it('should derive service name from credential displayName when no quick connect config', () => {
+			setupQuickConnectStores({ experimentEnabled: true });
+
+			ndvStore.activeNode = slackNode;
+
+			renderComponent(
+				{
+					props: {
+						node: slackNode,
+						overrideCredType: 'slackOAuth2Api',
+					},
+				},
+				{ merge: true },
+			);
+
+			// Should show "Connect to Slack" (derived from "Slack OAuth2 API" displayName)
+			// not "Connect to " (empty service name)
+			expect(screen.getByText('Connect to Slack')).toBeInTheDocument();
+		});
+
 		it('should show standard-empty-state when experiment enabled but non-OAuth type', () => {
 			setupQuickConnectStores({ experimentEnabled: true });
 
@@ -569,6 +591,94 @@ describe('NodeCredentials', () => {
 			);
 
 			expect(screen.queryByTestId('setup-credential-button')).toBeInTheDocument();
+		});
+
+		it('should show quick connect when sibling credential type has managed OAuth', () => {
+			setupQuickConnectStores({ experimentEnabled: true });
+
+			const dropboxOAuth2ApiType: ICredentialType = {
+				name: 'dropboxOAuth2Api',
+				extends: ['oAuth2Api'],
+				displayName: 'Dropbox OAuth2 API',
+				properties: [
+					{
+						displayName: 'Authorization URL',
+						name: 'authUrl',
+						type: 'hidden',
+						default: 'https://www.dropbox.com/oauth2/authorize',
+						required: true,
+					},
+				],
+				__overwrittenProperties: ['clientId', 'clientSecret'],
+			};
+
+			credentialsStore.state.credentialTypes = {
+				...credentialsStore.state.credentialTypes,
+				dropboxOAuth2Api: dropboxOAuth2ApiType,
+			};
+
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.setNodeTypes([
+				{
+					displayName: 'Dropbox',
+					name: 'n8n-nodes-base.dropbox',
+					group: ['input'],
+					version: 1,
+					description: 'Access data on Dropbox',
+					defaults: { name: 'Dropbox' },
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [
+						{
+							name: 'dropboxApi',
+							required: true,
+							displayOptions: { show: { authentication: ['accessToken'] } },
+						},
+						{
+							name: 'dropboxOAuth2Api',
+							required: true,
+							displayOptions: { show: { authentication: ['oAuth2'] } },
+						},
+					],
+					properties: [
+						{
+							displayName: 'Authentication',
+							name: 'authentication',
+							type: 'options',
+							options: [
+								{ name: 'Access Token', value: 'accessToken' },
+								{ name: 'OAuth2', value: 'oAuth2' },
+							],
+							default: 'accessToken',
+						},
+					],
+				} as unknown as INodeTypeDescription,
+			]);
+
+			const dropboxNode: INodeUi = {
+				parameters: { authentication: 'accessToken' },
+				type: 'n8n-nodes-base.dropbox',
+				typeVersion: 1,
+				position: [0, 0],
+				id: 'dropbox-node-id',
+				name: 'Dropbox',
+				credentials: {},
+			};
+
+			ndvStore.activeNode = dropboxNode;
+
+			renderComponent(
+				{
+					props: {
+						node: dropboxNode,
+						overrideCredType: '',
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('quick-connect-empty-state')).toBeInTheDocument();
+			expect(screen.getByText('Connect to Dropbox')).toBeInTheDocument();
 		});
 
 		it('should show standard dropdown when credential already exists', () => {
