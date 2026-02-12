@@ -29,7 +29,11 @@ const official = ref(false);
 const packageName = computed(() => communityNodeDetails?.packageName);
 const { installedPackage, initInstalledPackage, isUpdateCheckAvailable } =
 	useInstalledCommunityPackage(packageName);
-const { quickConnectOption: quickConnect } = useQuickConnect({ packageName });
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => {
+	const pkg = packageName.value;
+	return pkg ? getQuickConnectOptionByPackageName(pkg) : undefined;
+});
 
 const nodeTypesStore = useNodeTypesStore();
 

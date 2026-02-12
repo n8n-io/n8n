@@ -43,7 +43,8 @@ const packageName = ref(modalData.value?.packageName ?? '');
 const userAgreed = ref(false);
 const checkboxWarning = ref(false);
 const infoTextErrorMessage = ref('');
-const { quickConnectOption: quickConnect } = useQuickConnect({ packageName });
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => getQuickConnectOptionByPackageName(packageName.value));
 
 const openNPMPage = () => {
 	telemetry.track('user clicked cnr browse button', { source: 'cnr install modal' });

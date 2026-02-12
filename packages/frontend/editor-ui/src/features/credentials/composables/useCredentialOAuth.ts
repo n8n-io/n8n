@@ -1,5 +1,7 @@
 import { useToast } from '@/app/composables/useToast';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
+import { ref } from 'vue';
 import { createResultError, createResultOk, type Result } from 'n8n-workflow';
 
 import { useCredentialsStore } from '../credentials.store';
@@ -11,8 +13,12 @@ import type { ICredentialsResponse } from '../credentials.types';
  */
 export function useCredentialOAuth() {
 	const credentialsStore = useCredentialsStore();
+	const projectsStore = useProjectsStore();
 	const toast = useToast();
 	const i18n = useI18n();
+
+	const oauthAbortController = ref<AbortController | null>(null);
+	const pendingCredentialId = ref<string | null>(null);
 
 	/**
 	 * Get parent types for a credential type (e.g., googleSheetsOAuth2Api extends googleOAuth2Api extends oAuth2Api).
@@ -198,11 +204,73 @@ export function useCredentialOAuth() {
 		return await waitForOAuthCallback(popup, signal);
 	}
 
+	/**
+	 * Create a new OAuth credential and run the full authorization flow.
+	 * Returns the credential on success, null on failure (cleans up automatically).
+	 */
+	async function createAndAuthorize(
+		credentialTypeName: string,
+	): Promise<ICredentialsResponse | null> {
+		const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
+		if (!credentialType) {
+			return null;
+		}
+
+		let credential: ICredentialsResponse;
+		try {
+			credential = await credentialsStore.createNewCredential(
+				{
+					id: '',
+					name: credentialType.displayName,
+					type: credentialTypeName,
+					data: {},
+				},
+				projectsStore.currentProject?.id,
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('nodeCredentials.showMessage.title'));
+			return null;
+		}
+
+		const controller = new AbortController();
+		oauthAbortController.value = controller;
+		pendingCredentialId.value = credential.id;
+
+		const success = await authorize(credential, controller.signal);
+
+		oauthAbortController.value = null;
+		pendingCredentialId.value = null;
+
+		if (success) {
+			credentialsStore.upsertCredential(credential);
+			return credential;
+		}
+
+		void credentialsStore.deleteCredential({ id: credential.id });
+		return null;
+	}
+
+	/**
+	 * Cancel any in-progress OAuth authorization and clean up the pending credential.
+	 */
+	function cancelAuthorize() {
+		if (oauthAbortController.value) {
+			oauthAbortController.value.abort();
+		}
+		if (pendingCredentialId.value) {
+			void credentialsStore.deleteCredential({ id: pendingCredentialId.value });
+		}
+	}
+
 	return {
 		getParentTypes,
 		isOAuthCredentialType,
 		isGoogleOAuthType,
 		hasManagedOAuthCredentials,
 		authorize,
+		createAndAuthorize,
+		cancelAuthorize,
 	};
 }

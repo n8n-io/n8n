@@ -254,9 +254,10 @@ const displayedCredentialTypes = computed(() =>
 		.map((desc) => desc.name),
 );
 
-const { quickConnectOption: quickConnect } = useQuickConnect({
-	credentialTypes: displayedCredentialTypes,
-});
+const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
+const quickConnect = computed(() =>
+	getQuickConnectOptionByCredentialTypes(displayedCredentialTypes.value),
+);
 
 const showQuickConnectBanner = computed(
 	() =>

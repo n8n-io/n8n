@@ -87,11 +87,8 @@ const workflowState = injectWorkflowState();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 // Quick connect
-const { isQuickConnectEnabled, getQuickConnectOption } = useQuickConnect({
-	packageName: computed(() => props.node.type.split('.')[0]),
-});
-const { isOAuthCredentialType, isGoogleOAuthType, hasManagedOAuthCredentials, authorize } =
-	useCredentialOAuth();
+const { isQuickConnectEnabled, getQuickConnectOption, connect, cancelConnect } = useQuickConnect();
+const { isGoogleOAuthType, hasManagedOAuthCredentials } = useCredentialOAuth();
 
 const canCreateCredentials = computed(
 	() =>
@@ -106,8 +103,6 @@ const toast = useToast();
 const subscribedToCredentialType = ref('');
 const filter = ref('');
 const listeningForAuthChange = ref(false);
-const oauthAbortController = ref<AbortController | null>(null);
-const pendingCredentialId = ref<string | null>(null);
 const selectRefs = ref<Array<InstanceType<typeof N8nSelect>>>([]);
 
 const node = computed(() => props.node);
@@ -284,13 +279,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	ndvEventBus.off('credential.createNew', onCreateAndAssignNewCredential);
-
-	if (oauthAbortController.value) {
-		oauthAbortController.value.abort();
-	}
-	if (pendingCredentialId.value) {
-		void credentialsStore.deleteCredential({ id: pendingCredentialId.value });
-	}
+	cancelConnect();
 });
 
 function getSelectedId(type: INodeCredentialDescription) {
@@ -548,68 +537,16 @@ function showStandardEmptyState(type: INodeCredentialDescription): boolean {
 }
 
 async function onQuickConnectSignIn(credentialTypeName: string) {
-	if (getQuickConnectOption(credentialTypeName, props.node.type)) {
-		// TODO: Implement quick connect flows here
-		return;
-	}
-
-	if (!isOAuthCredentialType(credentialTypeName)) {
-		return;
-	}
-
-	const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
-	if (!credentialType) {
-		return;
-	}
-
-	let credential: ICredentialsResponse;
-	try {
-		// Create credential on backend but don't add to store yet (wait for OAuth success)
-		credential = await credentialsStore.createNewCredential(
-			{
-				id: '',
-				name: credentialType.displayName,
-				type: credentialTypeName,
-				data: {},
-			},
-			projectsStore.currentProject?.id,
-			undefined,
-			{ skipStoreUpdate: true },
-		);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('nodeCredentials.showMessage.title'));
-		return;
-	}
-
-	const controller = new AbortController();
-	oauthAbortController.value = controller;
-	pendingCredentialId.value = credential.id;
 	subscribedToCredentialType.value = credentialTypeName;
 
-	const success = await authorize(credential, controller.signal);
-
-	oauthAbortController.value = null;
-	pendingCredentialId.value = null;
-
-	// Track telemetry
-	telemetry.track('User saved credentials', {
-		credential_type: credentialTypeName,
-		workflow_id: workflowsStore.workflowId ?? null,
-		credential_id: credential.id,
-		is_complete: true,
-		is_new: true,
-		is_valid: success,
-		uses_external_secrets: false,
-		node_type: props.node.type,
+	const credential = await connect({
+		credentialTypeName,
+		nodeType: props.node.type,
+		source: 'node',
 	});
 
-	if (success) {
-		// Only add credential to store after OAuth succeeds
-		credentialsStore.upsertCredential(credential);
+	if (credential) {
 		onCredentialSelected(credentialTypeName, credential.id);
-	} else {
-		// Clean up the orphaned credential created before OAuth
-		void credentialsStore.deleteCredential({ id: credential.id });
 	}
 }
 </script>
@@ -645,7 +582,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				>
 					<QuickConnectButton
 						:credential-type-name="type.name"
-						:service-name="getQuickConnectOption(type.name, props.node.type)?.serviceName"
+						:service-name="getQuickConnectOption(type.name, props.node.type)?.serviceName ?? ''"
 						@click="onQuickConnectSignIn(type.name)"
 					/>
 					<span :class="$style.setupManuallyContainer">

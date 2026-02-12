@@ -1,7 +1,7 @@
 import { QUICK_CONNECT_EXPERIMENT } from '@/app/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { ref } from 'vue';
 import { useQuickConnect } from './useQuickConnect';
 import type { QuickConnectOption } from '@n8n/api-types';
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
@@ -11,6 +11,17 @@ import { STORES } from '@n8n/stores';
 import merge from 'lodash/merge';
 
 vi.mock('@/app/stores/posthog.store');
+vi.mock('@/app/composables/useTelemetry', () => {
+	const track = vi.fn();
+	return { useTelemetry: () => ({ track }) };
+});
+vi.mock('../../composables/useCredentialOAuth', () => ({
+	useCredentialOAuth: () => ({
+		isOAuthCredentialType: vi.fn(() => false),
+		createAndAuthorize: vi.fn(),
+		cancelAuthorize: vi.fn(),
+	}),
+}));
 
 describe('useQuickConnect()', () => {
 	const isVariantEnabledMock = vi.fn(() => false);
@@ -35,7 +46,10 @@ describe('useQuickConnect()', () => {
 	});
 
 	it('checks if feature is enabled through posthog', () => {
-		useQuickConnect({ packageName: 'test-package' });
+		const { isQuickConnectEnabled } = useQuickConnect();
+
+		// Access computed to trigger evaluation
+		void isQuickConnectEnabled.value;
 
 		expect(isVariantEnabledMock).toHaveBeenCalledWith(
 			QUICK_CONNECT_EXPERIMENT.name,
@@ -43,10 +57,16 @@ describe('useQuickConnect()', () => {
 		);
 	});
 
-	it('returns undefined quickConnectOption by default', () => {
-		const { quickConnectOption } = useQuickConnect({ packageName: 'ok' });
+	it('returns undefined from all getters by default', () => {
+		const {
+			getQuickConnectOption,
+			getQuickConnectOptionByPackageName,
+			getQuickConnectOptionByCredentialTypes,
+		} = useQuickConnect();
 
-		expect(quickConnectOption.value).toBe(undefined);
+		expect(getQuickConnectOption('any', 'any.node')).toBe(undefined);
+		expect(getQuickConnectOptionByPackageName('any')).toBe(undefined);
+		expect(getQuickConnectOptionByCredentialTypes(['any'])).toBe(undefined);
 	});
 
 	describe('quick connect configured', () => {
@@ -65,9 +85,9 @@ describe('useQuickConnect()', () => {
 		});
 
 		it('returns undefined when feature is disabled', () => {
-			const { quickConnectOption } = useQuickConnect({ packageName: 'n8n-nodes-base' });
+			const { getQuickConnectOptionByPackageName } = useQuickConnect();
 
-			expect(quickConnectOption.value).toBe(undefined);
+			expect(getQuickConnectOptionByPackageName('n8n-nodes-base')).toBe(undefined);
 		});
 
 		describe('feature enabled', () => {
@@ -75,32 +95,27 @@ describe('useQuickConnect()', () => {
 				isVariantEnabledMock.mockImplementation(() => true);
 			});
 
-			describe('{ credentialType, nodeType } mode', () => {
+			describe('getQuickConnectOption()', () => {
 				it('returns option when both credential type and package match', () => {
-					const { quickConnectOption } = useQuickConnect({
-						credentialType: 'googleSheetsOAuth2Api',
-						nodeType: 'n8n-nodes-base.googleSheets',
-					});
+					const { getQuickConnectOption } = useQuickConnect();
 
-					expect(quickConnectOption.value).toEqual(quickConnectOptionData);
+					expect(
+						getQuickConnectOption('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets'),
+					).toEqual(quickConnectOptionData);
 				});
 
 				it('returns undefined when credential type does not match', () => {
-					const { quickConnectOption } = useQuickConnect({
-						credentialType: 'slackOAuth2Api',
-						nodeType: 'n8n-nodes-base.slack',
-					});
+					const { getQuickConnectOption } = useQuickConnect();
 
-					expect(quickConnectOption.value).toBe(undefined);
+					expect(getQuickConnectOption('slackOAuth2Api', 'n8n-nodes-base.slack')).toBe(undefined);
 				});
 
 				it('returns undefined when package name does not match', () => {
-					const { quickConnectOption } = useQuickConnect({
-						credentialType: 'googleSheetsOAuth2Api',
-						nodeType: 'other-package.googleSheets',
-					});
+					const { getQuickConnectOption } = useQuickConnect();
 
-					expect(quickConnectOption.value).toBe(undefined);
+					expect(getQuickConnectOption('googleSheetsOAuth2Api', 'other-package.googleSheets')).toBe(
+						undefined,
+					);
 				});
 
 				it('extracts package name from node type by splitting on first dot', () => {
@@ -116,56 +131,75 @@ describe('useQuickConnect()', () => {
 						],
 					};
 
-					const { quickConnectOption } = useQuickConnect({
-						credentialType: 'openAiApi',
-						nodeType: '@n8n.openAi',
-					});
+					const { getQuickConnectOption } = useQuickConnect();
 
-					expect(quickConnectOption.value).toBeDefined();
+					expect(getQuickConnectOption('openAiApi', '@n8n.openAi')).toBeDefined();
 				});
 
-				it('reacts to ref changes', () => {
-					const credentialType = ref('nonexistent');
-					const nodeType = ref('n8n-nodes-base.googleSheets');
-					const { quickConnectOption } = useQuickConnect({ credentialType, nodeType });
+				it('returns undefined when feature is disabled', () => {
+					isVariantEnabledMock.mockImplementation(() => false);
+					const { getQuickConnectOption } = useQuickConnect();
 
-					expect(quickConnectOption.value).toBe(undefined);
+					expect(
+						getQuickConnectOption('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets'),
+					).toBe(undefined);
+				});
 
-					credentialType.value = 'googleSheetsOAuth2Api';
-					expect(quickConnectOption.value).toEqual(quickConnectOptionData);
+				it('returns undefined when options are empty', () => {
+					settingsStore.moduleSettings['quick-connect'] = { options: [] };
+					const { getQuickConnectOption } = useQuickConnect();
+
+					expect(
+						getQuickConnectOption('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets'),
+					).toBe(undefined);
+				});
+
+				it('returns undefined when module settings are missing', () => {
+					settingsStore.moduleSettings = {};
+					const { getQuickConnectOption } = useQuickConnect();
+
+					expect(
+						getQuickConnectOption('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets'),
+					).toBe(undefined);
 				});
 			});
 
-			describe('{ credentialTypes } mode', () => {
-				it.each([['googleSheetsOAuth2Api'], ref(['googleSheetsOAuth2Api'])])(
-					'returns correct option for configured credentials',
-					(credentialTypes) => {
-						const { quickConnectOption } = useQuickConnect({ credentialTypes });
+			describe('getQuickConnectOptionByCredentialTypes()', () => {
+				it('returns correct option for configured credentials', () => {
+					const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
 
-						expect(quickConnectOption.value).toEqual(quickConnectOptionData);
-					},
-				);
+					expect(getQuickConnectOptionByCredentialTypes(['googleSheetsOAuth2Api'])).toEqual(
+						quickConnectOptionData,
+					);
+				});
 
 				it('returns undefined when credentialTypes array is empty', () => {
-					const { quickConnectOption } = useQuickConnect({ credentialTypes: [] });
+					const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
 
-					expect(quickConnectOption.value).toBe(undefined);
+					expect(getQuickConnectOptionByCredentialTypes([])).toBe(undefined);
 				});
 
 				it('returns undefined when no credentialTypes match', () => {
-					const { quickConnectOption } = useQuickConnect({
-						credentialTypes: ['non-matching-credentials', 'another-non-matching'],
-					});
+					const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
 
-					expect(quickConnectOption.value).toBe(undefined);
+					expect(
+						getQuickConnectOptionByCredentialTypes([
+							'non-matching-credentials',
+							'another-non-matching',
+						]),
+					).toBe(undefined);
 				});
 
 				it('returns correct option when one of multiple credentialTypes matches', () => {
-					const { quickConnectOption } = useQuickConnect({
-						credentialTypes: ['non-matching', 'googleSheetsOAuth2Api', 'another-non-matching'],
-					});
+					const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
 
-					expect(quickConnectOption.value).toEqual(quickConnectOptionData);
+					expect(
+						getQuickConnectOptionByCredentialTypes([
+							'non-matching',
+							'googleSheetsOAuth2Api',
+							'another-non-matching',
+						]),
+					).toEqual(quickConnectOptionData);
 				});
 
 				it('returns first matching option when multiple credentialTypes match', () => {
@@ -181,112 +215,61 @@ describe('useQuickConnect()', () => {
 						options: [quickConnectOptionData, secondOption],
 					};
 
-					const { quickConnectOption } = useQuickConnect({
-						credentialTypes: ['googleSheetsOAuth2Api', 'second-credentials'],
-					});
-
-					expect(quickConnectOption.value).toEqual(quickConnectOptionData);
-				});
-
-				it('updates reactive value based on credential types', () => {
-					const credentialTypes = ref(['hello']);
-					const { quickConnectOption } = useQuickConnect({ credentialTypes });
-
-					expect(quickConnectOption.value).toBe(undefined);
-
-					credentialTypes.value = ['googleSheetsOAuth2Api'];
-					expect(quickConnectOption.value).toEqual(quickConnectOptionData);
-				});
-			});
-
-			describe('{ packageName } mode', () => {
-				it.each(['n8n-nodes-base', ref('n8n-nodes-base')])(
-					'returns correct option for configured package',
-					(packageName) => {
-						const { quickConnectOption } = useQuickConnect({ packageName });
-
-						expect(quickConnectOption.value).toEqual(quickConnectOptionData);
-					},
-				);
-
-				it('updates reactive value based on package name', () => {
-					const packageName = ref('hello');
-					const { quickConnectOption } = useQuickConnect({ packageName });
-
-					expect(quickConnectOption.value).toBe(undefined);
-
-					packageName.value = 'n8n-nodes-base';
-					expect(quickConnectOption.value).toEqual(quickConnectOptionData);
-				});
-
-				it('returns undefined for non-matching package', () => {
-					const { quickConnectOption } = useQuickConnect({ packageName: 'other-package' });
-
-					expect(quickConnectOption.value).toBe(undefined);
-				});
-			});
-
-			describe('getQuickConnectOption()', () => {
-				it('returns option when both credential type and package match', () => {
-					const { getQuickConnectOption } = useQuickConnect({ packageName: 'n8n-nodes-base' });
+					const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
 
 					expect(
-						getQuickConnectOption('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets'),
+						getQuickConnectOptionByCredentialTypes(['googleSheetsOAuth2Api', 'second-credentials']),
 					).toEqual(quickConnectOptionData);
 				});
+			});
 
-				it('returns undefined when credential type does not match', () => {
-					const { getQuickConnectOption } = useQuickConnect({ packageName: 'n8n-nodes-base' });
+			describe('getQuickConnectOptionByPackageName()', () => {
+				it('returns correct option for configured package', () => {
+					const { getQuickConnectOptionByPackageName } = useQuickConnect();
 
-					expect(getQuickConnectOption('slackOAuth2Api', 'n8n-nodes-base.slack')).toBe(undefined);
-				});
-
-				it('returns undefined when package name does not match', () => {
-					const { getQuickConnectOption } = useQuickConnect({ packageName: 'n8n-nodes-base' });
-
-					expect(getQuickConnectOption('googleSheetsOAuth2Api', 'other-package.googleSheets')).toBe(
-						undefined,
+					expect(getQuickConnectOptionByPackageName('n8n-nodes-base')).toEqual(
+						quickConnectOptionData,
 					);
 				});
 
-				it('returns undefined when feature is disabled', () => {
-					isVariantEnabledMock.mockImplementation(() => false);
-					const { getQuickConnectOption } = useQuickConnect({ packageName: 'n8n-nodes-base' });
+				it('returns undefined for non-matching package', () => {
+					const { getQuickConnectOptionByPackageName } = useQuickConnect();
 
-					expect(
-						getQuickConnectOption('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets'),
-					).toBe(undefined);
-				});
-
-				it('returns undefined when options are empty', () => {
-					settingsStore.moduleSettings['quick-connect'] = { options: [] };
-					const { getQuickConnectOption } = useQuickConnect({ packageName: 'n8n-nodes-base' });
-
-					expect(
-						getQuickConnectOption('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets'),
-					).toBe(undefined);
-				});
-
-				it('returns undefined when module settings are missing', () => {
-					settingsStore.moduleSettings = {};
-					const { getQuickConnectOption } = useQuickConnect({ packageName: 'n8n-nodes-base' });
-
-					expect(
-						getQuickConnectOption('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets'),
-					).toBe(undefined);
+					expect(getQuickConnectOptionByPackageName('other-package')).toBe(undefined);
 				});
 			});
 
-			it('updates reactive value based on settings store', () => {
-				const { quickConnectOption } = useQuickConnect({ packageName: 'n8n-nodes-base' });
+			it('reacts to settings store changes', () => {
+				const { getQuickConnectOptionByPackageName } = useQuickConnect();
 
-				expect(quickConnectOption.value).toEqual(quickConnectOptionData);
+				expect(getQuickConnectOptionByPackageName('n8n-nodes-base')).toEqual(
+					quickConnectOptionData,
+				);
 
 				settingsStore.moduleSettings['quick-connect'] = {
 					options: [],
 				};
 
-				expect(quickConnectOption.value).toBe(undefined);
+				expect(getQuickConnectOptionByPackageName('n8n-nodes-base')).toBe(undefined);
+			});
+
+			describe('connect()', () => {
+				it('tracks telemetry when called', async () => {
+					const { connect } = useQuickConnect();
+					const telemetry = useTelemetry();
+
+					await connect({
+						credentialTypeName: 'googleSheetsOAuth2Api',
+						nodeType: 'n8n-nodes-base.googleSheets',
+						source: 'node',
+					});
+
+					expect(telemetry.track).toHaveBeenCalledWith('User clicked quick connect button', {
+						source: 'node',
+						credential_type: 'googleSheetsOAuth2Api',
+						node_type: 'n8n-nodes-base.googleSheets',
+					});
+				});
 			});
 		});
 	});

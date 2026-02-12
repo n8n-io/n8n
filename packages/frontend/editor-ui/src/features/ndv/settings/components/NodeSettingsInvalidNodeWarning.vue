@@ -36,7 +36,8 @@ const isVerifiedCommunityNode = computed(
 );
 const npmPackage = computed(() => removePreviewToken(node.type.split('.')[0]));
 const isOwner = computed(() => usersStore.isInstanceOwner);
-const { quickConnectOption: quickConnect } = useQuickConnect({ packageName: npmPackage });
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => getQuickConnectOptionByPackageName(npmPackage.value));
 
 const { installNode, loading } = useInstallNode();
 

@@ -25,7 +25,11 @@ const {
 
 const { communityNodeDetails } = activeViewStack;
 const packageName = computed(() => activeViewStack.communityNodeDetails?.packageName);
-const { quickConnectOption: quickConnect } = useQuickConnect({ packageName });
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => {
+	const pkg = packageName.value;
+	return pkg ? getQuickConnectOptionByPackageName(pkg) : undefined;
+});
 
 const nodeCreatorStore = useNodeCreatorStore();
 const { installNode, loading } = useInstallNode();
