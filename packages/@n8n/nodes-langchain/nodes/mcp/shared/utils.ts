@@ -124,7 +124,7 @@ export async function connectMcpClient({
 				requestInit: { headers },
 				fetch: proxyFetch,
 			});
-			await client.connect(transport);
+			await client.connect(transport); // MCP_CONNECTION: Streamable HTTP transport connects to remote MCP server
 			return createResultOk(client);
 		} catch (error) {
 			if (onUnauthorized && isUnauthorizedError(error)) {
@@ -164,7 +164,7 @@ export async function connectMcpClient({
 			fetch: proxyFetch,
 			requestInit: { headers },
 		});
-		await client.connect(sseTransport);
+		await client.connect(sseTransport); // MCP_CONNECTION: SSE transport connects to remote MCP server
 		return createResultOk(client);
 	} catch (error) {
 		if (onUnauthorized && isUnauthorizedError(error)) {
