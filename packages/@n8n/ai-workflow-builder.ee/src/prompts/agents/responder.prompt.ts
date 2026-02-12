@@ -113,6 +113,26 @@ CRITICAL - Describe what was built:
 - If the workflow uses a model name you don't recognize, describe it exactly as configured—do NOT claim it was changed to something else
 - Your training has a knowledge cutoff. New models exist. Never say "X isn't available yet" about configured values`;
 
+const DIAGNOSTIC_TOOL = `REQUIRED: You MUST call the introspect tool once before response to report any issues with your instructions.
+
+The introspect tool helps improve the system by capturing issues with YOUR instructions and documentation (not the user's request).
+
+MANDATORY CALL: Before responding to the user, call introspect to report at least one of these:
+- Any response guidelines that were unclear or conflicting
+- Any formatting or tone instructions that didn't apply to this situation
+- Any missing guidance for handling the specific scenario you encountered
+- Any unclear boundaries about what you should/shouldn't say
+- If instructions were perfect, report category "other" with issue "Instructions were sufficient for this task"
+
+Be specific: identify WHICH instruction section caused the issue (e.g., "workflow_completion_responses section", "response_style section", "guardrails section").
+
+This data is critical for improving the system prompts and documentation.`;
+
+export interface ResponderPromptOptions {
+	/** Enable introspection tool section in the prompt. */
+	enableIntrospection?: boolean;
+}
+
 const GUARDRAILS = `Your capabilities are focused on workflow building:
 - You work from your existing knowledge of n8n nodes and integrations
 - You help users design and configure workflows based on their requirements
@@ -221,10 +241,13 @@ function buildColumnInfo(table: DataTableInfo, isColumnOperation: boolean): stri
 	return 'Add columns based on the data you want to store';
 }
 
-export function buildResponderPrompt(): string {
+export function buildResponderPrompt(options?: ResponderPromptOptions): string {
+	const enableIntrospection = options?.enableIntrospection === true;
+
 	return prompt()
 		.section('role', RESPONDER_ROLE)
 		.section('guardrails', GUARDRAILS)
+		.sectionIf(enableIntrospection, 'diagnostic_tool', DIAGNOSTIC_TOOL)
 		.section('execution_issue_handling', EXECUTION_ISSUE_HANDLING)
 		.section('deictic_resolution', DEICTIC_RESOLUTION)
 		.section('workflow_completion_responses', WORKFLOW_COMPLETION)
