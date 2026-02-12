@@ -178,7 +178,7 @@ export default workflow('', 'Test').add(start);`;
 			expect(content).toContain('</step_1_read_approved_plan>');
 		});
 
-		it('excludes step 2a (get_suggested_nodes) when planOutput is provided', async () => {
+		it('renumbers step 2 sub-steps in plan mode: search=2a, review=2b', async () => {
 			const prompt = buildCodeBuilderPrompt(undefined, undefined, {
 				planOutput: mockPlan,
 			});
@@ -189,12 +189,14 @@ export default workflow('', 'Test').add(start);`;
 				? systemMessage.content.map((b) => ('text' in b ? b.text : '')).join('')
 				: String(systemMessage?.content ?? '');
 
-			// Should NOT contain step 2a at all
+			// Should NOT contain get_suggested_nodes (default-only step)
 			expect(content).not.toContain('<step_2a_get_suggested_nodes>');
 			expect(content).not.toContain('get_suggested_nodes');
-			// Should still contain step 2b (search_nodes)
-			expect(content).toContain('<step_2b_search_for_nodes>');
+			// Search is 2a in plan mode (not 2b)
+			expect(content).toContain('<step_2a_search_for_nodes>');
 			expect(content).toContain('search_nodes');
+			// Review is 2b in plan mode (not 2c)
+			expect(content).toContain('<step_2b_review_search_results>');
 		});
 
 		it('includes node_search_results in user message when preSearchResults is provided', async () => {
