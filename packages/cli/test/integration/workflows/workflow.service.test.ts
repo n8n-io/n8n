@@ -14,6 +14,7 @@ import {
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 	ProjectRepository,
+	ProjectRelationRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -81,6 +82,7 @@ beforeAll(async () => {
 		webhookServiceMock,
 		mock(), // licenseState
 		Container.get(ProjectRepository), // projectRepository
+		Container.get(ProjectRelationRepository), // projectRelationRepository
 	);
 });
 

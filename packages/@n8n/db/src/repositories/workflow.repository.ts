@@ -170,7 +170,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return totalWorkflowCount ?? 0;
 	}
 
-	private buildBaseUnionQuery(workflowIds: string[], options: ListQuery.Options = {}) {
+	private buildBaseUnionQuery(
+		workflowIds: string[],
+		options: ListQuery.Options = {},
+		accessibleProjectIds?: string[],
+	) {
 		// Common fields for both folders and workflows
 		const commonFields = {
 			updatedAt: true,
@@ -220,6 +224,20 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.addSelect('NULL', 'description') // Add NULL for description in folders
 			.addSelect("'folder'", 'resource');
 
+		// Restrict folders to only those in projects the user has access to.
+		// Without this, folders from other users' projects leak into the count/list
+		// and prevent the empty-state screen from showing for users with no accessible content.
+		// When undefined (admin users), no filtering is applied — they can see all folders.
+		if (accessibleProjectIds !== undefined) {
+			if (accessibleProjectIds.length > 0) {
+				foldersQuery.andWhere('folder.projectId IN (:...accessibleProjectIds)', {
+					accessibleProjectIds,
+				});
+			} else {
+				foldersQuery.andWhere('1 = 0');
+			}
+		}
+
 		const workflowsQuery = this.getManyQuery(workflowIds, workflowQueryParameters).addSelect(
 			"'workflow'",
 			'resource',
@@ -241,10 +259,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		};
 	}
 
-	async getWorkflowsAndFoldersUnion(workflowIds: string[], options: ListQuery.Options = {}) {
+	async getWorkflowsAndFoldersUnion(
+		workflowIds: string[],
+		options: ListQuery.Options = {},
+		accessibleProjectIds?: string[],
+	) {
 		const { baseQuery, sortByColumn, sortByDirection } = this.buildBaseUnionQuery(
 			workflowIds,
 			options,
+			accessibleProjectIds,
 		);
 
 		const query = this.buildUnionQuery(baseQuery, {
@@ -323,10 +346,18 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return results.map(({ name_lower, ...rest }) => rest);
 	}
 
-	async getWorkflowsAndFoldersCount(workflowIds: string[], options: ListQuery.Options = {}) {
+	async getWorkflowsAndFoldersCount(
+		workflowIds: string[],
+		options: ListQuery.Options = {},
+		accessibleProjectIds?: string[],
+	) {
 		const { skip, take, ...baseQueryParameters } = options;
 
-		const { baseQuery } = this.buildBaseUnionQuery(workflowIds, baseQueryParameters);
+		const { baseQuery } = this.buildBaseUnionQuery(
+			workflowIds,
+			baseQueryParameters,
+			accessibleProjectIds,
+		);
 
 		const response = await baseQuery
 			.select(`COUNT(DISTINCT ${baseQuery.escape('RESULT')}.${baseQuery.escape('id')})`, 'count')
@@ -337,7 +368,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return Number(response?.count) || 0;
 	}
 
-	async getWorkflowsAndFoldersWithCount(workflowIds: string[], options: ListQuery.Options = {}) {
+	async getWorkflowsAndFoldersWithCount(
+		workflowIds: string[],
+		options: ListQuery.Options = {},
+		accessibleProjectIds?: string[],
+	) {
 		if (
 			options.filter?.parentFolderId &&
 			typeof options.filter?.parentFolderId === 'string' &&
@@ -356,8 +391,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		}
 
 		const [workflowsAndFolders, count] = await Promise.all([
-			this.getWorkflowsAndFoldersUnion(workflowIds, options),
-			this.getWorkflowsAndFoldersCount(workflowIds, options),
+			this.getWorkflowsAndFoldersUnion(workflowIds, options, accessibleProjectIds),
+			this.getWorkflowsAndFoldersCount(workflowIds, options, accessibleProjectIds),
 		]);
 
 		const isArchived =
