@@ -227,7 +227,7 @@ describe('HelpScoutTrigger', () => {
 			expect(staticData.webhookId).toBeUndefined();
 		});
 
-		test('should return false when webhook exists but is disabled', async () => {
+		test('should return true for disabled webhooks (can be reused)', async () => {
 			const trigger = new HelpScoutTrigger();
 
 			// Mock API response with matching URL but disabled state
@@ -244,9 +244,9 @@ describe('HelpScoutTrigger', () => {
 				mockHookFunctions(),
 			);
 
-			// Note: The current logic considers disabled webhooks as valid
-			// because the condition is: !webhook.events.includes(event) && webhook.state === 'enabled'
-			// So if state is 'disabled', the condition is false and it doesn't return false
+			// The logic considers disabled webhooks as valid matches because
+			// the condition only returns false when: !webhook.events.includes(event) && webhook.state === 'enabled'
+			// So if state is 'disabled', the condition is false and it doesn't return false, allowing reuse
 			expect(exists).toBe(true);
 			expect(staticData.webhookId).toBe('webhook_456');
 		});
