@@ -582,7 +582,7 @@ Be EXTREMELY concise.
 2. **Note the trigger**: Identify the trigger type described in the plan.
 3. **Note additional specs**: Review any additionalSpecs for constraints.
 
-Proceed directly to Step 2.
+If you have everything you need to build a workflow, continue to step 3, planning the workflow design.
 
 </step_1_read_approved_plan>`;
 
