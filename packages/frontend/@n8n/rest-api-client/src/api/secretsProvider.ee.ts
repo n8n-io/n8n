@@ -67,6 +67,17 @@ export const testSecretProviderConnection = async (
 	);
 };
 
+export const deleteSecretProviderConnection = async (
+	context: IRestApiContext,
+	providerKey: string,
+): Promise<void> => {
+	return await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/secret-providers/connections/${providerKey}`,
+	);
+};
+
 export const getProjectSecretProviderConnectionsByProjectId = async (
 	context: IRestApiContext,
 	projectId: string,

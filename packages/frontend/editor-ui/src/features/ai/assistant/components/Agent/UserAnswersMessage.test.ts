@@ -32,7 +32,7 @@ describe('UserAnswersMessage', () => {
 		expect(getByText('Schedule, Webhook, preferably every morning')).toBeTruthy();
 	});
 
-	it('filters out skipped questions', () => {
+	it('shows skipped questions with "Skipped" label', () => {
 		const withSkipped: PlanMode.QuestionResponse[] = [
 			...answeredQuestions,
 			{
@@ -43,12 +43,13 @@ describe('UserAnswersMessage', () => {
 			},
 		];
 
-		const { queryByText } = render(withSkipped);
+		const { getByText } = render(withSkipped);
 
-		expect(queryByText('Skipped question')).toBeNull();
+		expect(getByText('Skipped question')).toBeTruthy();
+		expect(getByText('Skipped')).toBeTruthy();
 	});
 
-	it('renders nothing when all questions are skipped', () => {
+	it('renders skipped questions even when all are skipped', () => {
 		const allSkipped: PlanMode.QuestionResponse[] = [
 			{
 				questionId: 'q1',
@@ -58,9 +59,11 @@ describe('UserAnswersMessage', () => {
 			},
 		];
 
-		const { queryByTestId } = render(allSkipped);
+		const { getByTestId, getByText } = render(allSkipped);
 
-		expect(queryByTestId('plan-mode-user-answers')).toBeNull();
+		expect(getByTestId('plan-mode-user-answers')).toBeTruthy();
+		expect(getByText('Test?')).toBeTruthy();
+		expect(getByText('Skipped')).toBeTruthy();
 	});
 
 	it('renders the data-test-id on the container', () => {

@@ -403,6 +403,38 @@ describe('AI Builder store', () => {
 		vi.useRealTimers();
 	});
 
+	it('should preserve thinking during streaming gaps (empty chunks before tools arrive)', async () => {
+		const builderStore = useBuilderStore();
+
+		apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+			// First chunk: empty (no displayable messages) — simulates streaming gap
+			onMessage({ messages: [] });
+
+			// Second chunk: tool arrives
+			onMessage({
+				messages: [
+					{
+						type: 'tool',
+						role: 'assistant',
+						toolName: 'search_nodes',
+						toolCallId: 'call-1',
+						status: 'running',
+						displayTitle: 'Searching nodes',
+						updates: [],
+					},
+				],
+			});
+
+			onDone();
+		});
+
+		await builderStore.sendChatMessage({ text: 'Build a workflow' });
+
+		// After empty chunk, thinking should still be set (preserved from prepareForStreaming)
+		// After tool chunk, thinking should show the tool name
+		await vi.waitFor(() => expect(builderStore.builderThinkingMessage).toBe('Searching nodes'));
+	});
+
 	it('should keep processing message when workflow-updated arrives', async () => {
 		const builderStore = useBuilderStore();
 

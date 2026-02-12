@@ -262,9 +262,11 @@ defineExpose({
 				</template>
 			</template>
 
-			<!-- Mention button (only when feature enabled) -->
-			<template v-if="isFeatureEnabled" #extra-actions>
+			<!-- Extra actions: parent slot content + mention button -->
+			<template v-if="isFeatureEnabled || $slots['extra-actions']" #extra-actions>
+				<slot name="extra-actions" />
 				<N8nIconButton
+					v-if="isFeatureEnabled"
 					icon="at-sign"
 					type="tertiary"
 					:text="true"

@@ -85,7 +85,7 @@ vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
 let featureEnabled = true;
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({
-		isFeatureEnabled: () => featureEnabled,
+		isVariantEnabled: () => featureEnabled,
 	}),
 }));
 

@@ -252,13 +252,13 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 				resourceId,
 				projectId,
 			);
-			await credentialsStore.fetchAllCredentials(currentProjectId.value);
+			await credentialsStore.fetchAllCredentials({ projectId: currentProjectId.value });
 		}
 	};
 
 	const getResourceCounts = async (projectId: string): Promise<ResourceCounts> => {
 		const [credentials, workflows, dataTables] = await Promise.all([
-			credentialsApi.getAllCredentials(rootStore.restApiContext, { projectId }),
+			credentialsApi.getAllCredentials(rootStore.restApiContext, { filter: { projectId } }),
 			workflowsApi.getWorkflows(rootStore.restApiContext, { projectId }),
 			dataTableApi.fetchDataTablesApi(rootStore.restApiContext, projectId),
 		]);

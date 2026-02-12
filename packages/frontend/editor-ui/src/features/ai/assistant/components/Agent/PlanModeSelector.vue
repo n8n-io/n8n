@@ -9,7 +9,6 @@ type BuilderMode = 'build' | 'plan';
 
 const props = defineProps<{
 	modelValue: BuilderMode;
-	disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -50,15 +49,9 @@ function onSelect(value: BuilderMode) {
 
 <template>
 	<div :class="$style.container" data-test-id="plan-mode-selector">
-		<N8nActionDropdown
-			:items="modeOptions"
-			:disabled="props.disabled"
-			placement="bottom-end"
-			hide-arrow
-			@select="onSelect"
-		>
+		<N8nActionDropdown :items="modeOptions" placement="bottom-end" hide-arrow @select="onSelect">
 			<template #activator>
-				<N8nButton type="secondary" size="small" :disabled="props.disabled" :class="$style.trigger">
+				<N8nButton type="secondary" size="small" :class="$style.trigger">
 					<N8nIcon v-if="currentMode.icon" :icon="currentMode.icon" size="small" />
 					<span :class="$style.triggerLabel">{{ currentMode.label }}</span>
 					<N8nIcon icon="chevron-down" size="xsmall" />

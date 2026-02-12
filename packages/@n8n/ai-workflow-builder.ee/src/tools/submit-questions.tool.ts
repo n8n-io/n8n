@@ -81,8 +81,8 @@ export const submitQuestionsTool = tool(
 		name: 'submit_questions',
 		description: `Ask clarifying questions before proceeding with node discovery. Use when:
 - The request is ambiguous or has multiple interpretations
-- Critical information is missing (which service, what trigger, etc.)
-- User preferences would significantly affect which nodes to find
+- Key information is missing (which service, what goal, what trigger, etc.)
+- You would need to make assumptions the user might disagree with
 
 Maximum 5 questions. Provide options where possible.
 IMPORTANT: Never include "Other" as an option — the UI automatically adds an "Other" free-text input to every question. Only include specific, meaningful options.`,
