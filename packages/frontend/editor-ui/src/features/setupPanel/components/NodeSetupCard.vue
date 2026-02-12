@@ -8,6 +8,7 @@ import CredentialPicker from '@/features/credentials/components/CredentialPicker
 import SetupCredentialLabel from './SetupCredentialLabel.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useSetupPanelStore } from '../setupPanel.store';
 
 import type { NodeSetupState } from '../setupPanel.types';
 import { useNodeExecution } from '@/app/composables/useNodeExecution';
@@ -28,6 +29,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const setupPanelStore = useSetupPanelStore();
 
 const nodeRef = computed(() => props.state.node);
 const { isExecuting, buttonLabel, buttonIcon, disabledReason, hasIssues, execute } =
@@ -50,6 +52,23 @@ const tooltipText = computed(() => {
 	}
 	return disabledReason.value;
 });
+
+const onCardMouseEnter = () => {
+	const ids: string[] = [props.state.node.id];
+	for (const req of props.state.credentialRequirements) {
+		for (const name of req.nodesWithSameCredential) {
+			const node = workflowsStore.getNodeByName(name);
+			if (node) {
+				ids.push(node.id);
+			}
+		}
+	}
+	setupPanelStore.setHighlightedNodes(ids);
+};
+
+const onCardMouseLeave = () => {
+	setupPanelStore.clearHighlightedNodes();
+};
 
 const onHeaderClick = () => {
 	expanded.value = !expanded.value;
@@ -133,6 +152,8 @@ onMounted(() => {
 				[$style['no-content']]: !state.credentialRequirements.length,
 			},
 		]"
+		@mouseenter="onCardMouseEnter"
+		@mouseleave="onCardMouseLeave"
 	>
 		<header data-test-id="node-setup-card-header" :class="$style.header" @click="onHeaderClick">
 			<N8nIcon
