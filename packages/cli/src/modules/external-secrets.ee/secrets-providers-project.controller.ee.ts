@@ -39,7 +39,7 @@ export class SecretProvidersProjectController {
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
-	): Promise<SecretsProvidersResponses.StrippedConnection[]> {
+	): Promise<SecretsProvidersResponses.Connection[]> {
 		this.logger.debug('List all connections within a project', { projectId });
 		const connections = await this.connectionsService.listConnectionsForProject(projectId);
 		return connections.map((c) => this.connectionsService.toPublicConnection(c));
