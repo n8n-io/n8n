@@ -694,7 +694,7 @@ It's OK for this section to be quite long as you work through the design.
 `;
 
 const DESIGN_WORKFLOW_PLAN = `
-Use the \`think\` tool to make design decisions based on the search results and the approved plan's steps. Do NOT produce visible output in this step.
+Use thinking to make design decisions based on the search results and the approved plan's steps. Do NOT produce visible output in this step.
 
 1. **Select Nodes**: Based on search results and the plan's steps, choose specific nodes:
    - Use dedicated integration nodes when available (from search)
