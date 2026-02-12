@@ -324,6 +324,50 @@ describe('ScalingService', () => {
 		});
 	});
 
+	describe('stopJobByExecutionId', () => {
+		it('should find and stop the active job for the given execution ID', async () => {
+			await scalingService.setupQueue();
+			const executionId = 'exec-to-cancel';
+			const activeJob = mock<Job>({
+				data: mock<JobData>({ executionId }),
+				isActive: jest.fn().mockResolvedValue(true),
+			});
+			const otherJob = mock<Job>({
+				data: mock<JobData>({ executionId: 'other-exec' }),
+				isActive: jest.fn().mockResolvedValue(true),
+			});
+			queue.getJobs.mockResolvedValue([activeJob, otherJob]);
+
+			const result = await scalingService.stopJobByExecutionId(executionId);
+
+			expect(result).toBe(true);
+			expect(activeJob.progress).toHaveBeenCalledWith({ kind: 'abort-job' });
+			expect(activeJob.discard).toHaveBeenCalled();
+			expect(activeJob.moveToFailed).toHaveBeenCalled();
+			expect(otherJob.progress).not.toHaveBeenCalled();
+		});
+
+		it('should return false when no active job exists for the execution ID', async () => {
+			await scalingService.setupQueue();
+			queue.getJobs.mockResolvedValue([
+				mock<Job>({ data: mock<JobData>({ executionId: 'different-exec' }) }),
+			]);
+
+			const result = await scalingService.stopJobByExecutionId('exec-to-cancel');
+
+			expect(result).toBe(false);
+		});
+
+		it('should return false when the queue has no active jobs at all', async () => {
+			await scalingService.setupQueue();
+			queue.getJobs.mockResolvedValue([]);
+
+			const result = await scalingService.stopJobByExecutionId('exec-to-cancel');
+
+			expect(result).toBe(false);
+		});
+	});
+
 	describe('message handling', () => {
 		it('should handle send-chunk messages', async () => {
 			const activeExecutions = mock<ActiveExecutions>();

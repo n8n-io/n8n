@@ -508,13 +508,35 @@ function hookFunctionsSaveWorker(
 				fullExecutionData.data.pushRef = pushRef;
 			}
 
-			// In scaling mode, worker saves execution without metadata
-			// Main process will save metadata after deletion decisions to avoid FK violations
-			await updateExistingExecution({
-				executionId: this.executionId,
-				workflowId: this.workflowData.id,
-				executionData: fullExecutionData,
-			});
+			// In scaling mode, worker saves execution without metadata.
+			// Main process will save metadata after deletion decisions to avoid FK violations.
+			//
+			// Use `requireNotCanceled` so the worker never overwrites a 'canceled' status
+			// that was set by the main instance (e.g. via stopDuringRun).  This prevents a
+			// race condition where the main writes 'canceled' to the DB while the worker is
+			// still running and later overwrites it with 'success'.
+			const updated = await Container.get(ExecutionRepository).updateExistingExecution(
+				this.executionId,
+				fullExecutionData,
+				{ requireNotCanceled: true },
+			);
+
+			if (!updated) {
+				logger.debug(
+					'Worker skipped saving execution result: execution was already cancelled',
+					{
+						executionId: this.executionId,
+						workflowId: this.workflowData.id,
+					},
+				);
+				return;
+			}
+
+			if (fullExecutionData.finished === true && fullExecutionData.retryOf !== undefined) {
+				await Container.get(ExecutionRepository).updateExistingExecution(fullExecutionData.retryOf, {
+					retrySuccessId: this.executionId,
+				});
+			}
 		} finally {
 			workflowStatisticsService.emit('workflowExecutionCompleted', {
 				workflowData: this.workflowData,

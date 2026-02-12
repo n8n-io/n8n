@@ -140,6 +140,8 @@ describe('Execution Lifecycle Hooks', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		workflowData.settings = {};
+		// Default: DB update succeeds (execution is not already in a terminal state)
+		executionRepository.updateExistingExecution.mockResolvedValue(true);
 		successfulRun.data = createRunExecutionData({
 			resultData: {
 				runData: {},
@@ -954,14 +956,35 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
 
-				// Worker should save execution data but not metadata
+				// Worker should save execution data but not metadata, with requireNotCanceled guard
 				expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
 					executionId,
 					expect.objectContaining({
 						finished: true,
 						status: 'success',
 					}),
+					{ requireNotCanceled: true },
 				);
+			});
+
+			it('should not overwrite a cancelled execution status with success', async () => {
+				// Simulate the race condition: main already wrote 'canceled' to DB while
+				// the worker was still running. updateExistingExecution returns false because
+				// the requireNotCanceled condition is not met.
+				executionRepository.updateExistingExecution.mockResolvedValueOnce(false);
+
+				const lifecycleHooks = createHooks('trigger');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				// The guard condition was passed to the DB call
+				expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					expect.any(Object),
+					{ requireNotCanceled: true },
+				);
+				// Should bail out after the first failed update - no retry-success write
+				expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(1);
 			});
 		});
 	});

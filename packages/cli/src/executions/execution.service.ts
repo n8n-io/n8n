@@ -13,7 +13,7 @@ import {
 	ExecutionRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	ExecutionError,
@@ -577,10 +577,20 @@ export class ExecutionService {
 
 	private async stopInScalingMode(execution: IExecutionResponse) {
 		if (this.activeExecutions.has(execution.id)) {
+			// This main instance tracks the execution: cancel the local PCancelable, which
+			// will fire the onCancel handler in workflow-runner.ts and send abort-job to the
+			// worker via the Bull queue.
 			this.activeExecutions.stopExecution(
 				execution.id,
 				new ManualExecutionCancelledError(execution.id),
 			);
+		} else {
+			// The execution is running on a worker but is not tracked by this main instance
+			// (e.g. in a multi-main setup the cancel request arrived at a different main than
+			// the one that enqueued the job).  Send the abort signal directly to the worker
+			// via the queue so it receives the cancellation and stops executing.
+			const { ScalingService } = await import('@/scaling/scaling.service');
+			await Container.get(ScalingService).stopJobByExecutionId(execution.id);
 		}
 
 		if (this.waitTracker.has(execution.id)) {

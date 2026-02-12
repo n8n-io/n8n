@@ -261,6 +261,27 @@ export class ScalingService {
 		}
 	}
 
+	/**
+	 * Stop a job by its execution ID, without requiring a job reference.
+	 *
+	 * Used when the current main instance does not track the execution locally,
+	 * e.g. in a multi-main setup where the cancel request arrives at a different
+	 * main than the one that enqueued the job. Finds the active or waiting Bull
+	 * job whose `data.executionId` matches and delegates to `stopJob`.
+	 */
+	async stopJobByExecutionId(executionId: string): Promise<boolean> {
+		const activeJobs = await this.findJobsByStatus(['active', 'waiting']);
+		const job = activeJobs.find((j) => j.data.executionId === executionId);
+
+		if (!job) {
+			this.logger.debug('No active job found to stop for execution', { executionId });
+			return false;
+		}
+
+		this.logger.debug('Stopping job by execution ID', { executionId, jobId: job.id });
+		return await this.stopJob(job);
+	}
+
 	getRunningJobsCount() {
 		return this.jobProcessor.getRunningJobIds().length;
 	}
