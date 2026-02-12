@@ -4,6 +4,7 @@
  * Generates a structured workflow plan for user approval (Plan Mode).
  */
 
+import { mermaidStringify } from '@/tools/utils/mermaid.utils';
 import type { DiscoveryContext } from '@/types/discovery-types';
 import type { PlanOutput } from '@/types/planning';
 import type { SimpleWorkflow } from '@/types/workflow';
@@ -43,8 +44,16 @@ For additionalSpecs: NEVER mention API keys, credentials, authentication, or acc
 Rules:
 - Do not generate workflow JSON.
 - Do not mention internal n8n node type names in steps — describe what happens in plain language.
-- You may include suggestedNodes in the structured output for the builder, but the step description should be human-readable.
-- If key information is missing, make reasonable assumptions. Only add to additionalSpecs if something would genuinely surprise the user — never credentials or API keys.`;
+- You may include suggestedNodes in the structured output for the builder, but the step description should be human-readable. Copy node names exactly from the discovery_context_suggested_nodes section — do not add prefixes, rename, or invent node names.
+- If key information is missing, make reasonable assumptions. Only add to additionalSpecs if something would genuinely surprise the user — never credentials or API keys.
+
+<modification_mode>
+When an existing_workflow_summary is provided, the user is asking to MODIFY an existing workflow — not rebuild it from scratch.
+- Only describe the CHANGES being made, not the entire workflow.
+- The summary should explain what will be modified and why.
+- Steps should only cover the modifications (e.g., "Change the AI model from GPT-4.1-mini to GPT-5-mini"), not re-describe unchanged parts of the workflow.
+- Keep the trigger field as-is from the existing workflow if it isn't changing.
+</modification_mode>`;
 
 const OUTPUT_FORMAT = `Output format:
 - summary: 1–2 sentences describing the workflow outcome in plain language
@@ -68,6 +77,7 @@ export interface PlannerContextOptions {
 	workflowJSON: SimpleWorkflow;
 	planPrevious?: PlanOutput | null;
 	planFeedback?: string | null;
+	selectedNodesContext?: string;
 }
 
 /**
@@ -76,22 +86,36 @@ export interface PlannerContextOptions {
  * feedback from a previous modify cycle.
  */
 export function buildPlannerContext(options: PlannerContextOptions): string {
-	const { userRequest, discoveryContext, workflowJSON, planPrevious, planFeedback } = options;
+	const {
+		userRequest,
+		discoveryContext,
+		workflowJSON,
+		planPrevious,
+		planFeedback,
+		selectedNodesContext,
+	} = options;
 
 	const discoveredNodesList = discoveryContext.nodesFound
 		.map((node) => `- ${node.nodeName} v${node.version}: ${node.reasoning}`)
 		.join('\n');
 
-	const workflowSummary = workflowJSON.nodes.map((n) => `- ${n.name} (${n.type})`).join('\n');
+	const workflowOverview =
+		workflowJSON.nodes.length > 0
+			? mermaidStringify(
+					{ workflow: workflowJSON },
+					{ includeNodeType: true, includeNodeParameters: true, includeNodeName: true },
+				)
+			: '';
 
 	return prompt()
 		.section('user_request', userRequest)
+		.sectionIf(selectedNodesContext, 'selected_nodes', () => selectedNodesContext!)
 		.sectionIf(
 			discoveryContext.nodesFound.length > 0,
 			'discovery_context_suggested_nodes',
 			discoveredNodesList,
 		)
-		.sectionIf(workflowJSON.nodes.length > 0, 'existing_workflow_summary', workflowSummary)
+		.sectionIf(workflowJSON.nodes.length > 0, 'existing_workflow', workflowOverview)
 		.sectionIf(planPrevious, 'previous_plan', () => formatPlanAsText(planPrevious!))
 		.sectionIf(planFeedback, 'user_feedback', () => planFeedback!)
 		.build();

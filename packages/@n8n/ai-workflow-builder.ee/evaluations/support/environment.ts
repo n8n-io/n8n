@@ -1,20 +1,22 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { MemorySaver } from '@langchain/langgraph';
+import fs from 'fs';
 import { Client } from 'langsmith/client';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import path from 'path';
 
 import { DEFAULT_MODEL, getApiKeyEnvVar, MODEL_FACTORIES, type ModelId } from '@/llm-config';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 import { WorkflowBuilderAgent } from '@/workflow-builder-agent';
 
-import { loadNodesFromFile } from './load-nodes.js';
-import type { EvalLogger } from '../harness/logger.js';
+import { loadNodesFromFile } from './load-nodes';
+import type { EvalLogger } from '../harness/logger';
 import {
 	createTraceFilters,
 	isMinimalTracingEnabled,
 	type TraceFilters,
-} from '../langsmith/trace-filters.js';
+} from '../langsmith/trace-filters';
 
 /** Maximum memory for trace queue (3GB) */
 const MAX_INGEST_MEMORY_BYTES = 3 * 1024 * 1024 * 1024;
@@ -69,6 +71,8 @@ export interface TestEnvironment {
 	lsClient?: Client;
 	/** Trace filtering utilities (only present when minimal tracing is enabled) */
 	traceFilters?: TraceFilters;
+	/** Directories containing generated node definition files */
+	nodeDefinitionDirs: string[];
 }
 
 /**
@@ -170,6 +174,51 @@ export function createLangsmithClient(logger?: EvalLogger): LangsmithClientResul
 }
 
 /**
+ * Resolve built-in node definition directories from installed node packages.
+ * Mirrors `WorkflowBuilderService.resolveBuiltinNodeDefinitionDirs()` for use
+ * in the eval harness where the DI container is not available.
+ */
+export function resolveBuiltinNodeDefinitionDirs(): string[] {
+	// In a pnpm monorepo, n8n-nodes-base and n8n-nodes-langchain are not direct
+	// dependencies of ai-workflow-builder.ee, so bare require.resolve() fails.
+	// Resolve from packages/cli which has them as dependencies.
+	const repoRoot = findRepoRoot(__dirname);
+	const resolvePaths = repoRoot ? [path.join(repoRoot, 'packages', 'cli')] : undefined;
+
+	const dirs: string[] = [];
+	for (const packageId of ['n8n-nodes-base', '@n8n/n8n-nodes-langchain']) {
+		try {
+			const packageJsonPath = require.resolve(`${packageId}/package.json`, {
+				paths: resolvePaths,
+			});
+			const distDir = path.dirname(packageJsonPath);
+			const nodeDefsDir = path.join(distDir, 'dist', 'node-definitions');
+			if (fs.existsSync(nodeDefsDir)) {
+				dirs.push(nodeDefsDir);
+			}
+		} catch {
+			// Package not installed, skip
+		}
+	}
+	if (dirs.length === 0) {
+		console.error('[NODE-DEFS] No node definition dirs resolved — get_node_types will fail');
+	}
+	return dirs;
+}
+
+/** Walk up from startDir to find the monorepo root (contains pnpm-workspace.yaml). */
+function findRepoRoot(startDir: string): string | undefined {
+	let dir = startDir;
+	while (dir !== path.dirname(dir)) {
+		if (fs.existsSync(path.join(dir, 'pnpm-workspace.yaml'))) {
+			return dir;
+		}
+		dir = path.dirname(dir);
+	}
+	return undefined;
+}
+
+/**
  * Sets up the test environment with LLM, nodes, and tracing
  * @param stageModels - Per-stage model configuration (optional, uses default model if not provided)
  * @param logger - Optional logger for trace filter output
@@ -197,6 +246,7 @@ export async function setupTestEnvironment(
 		tracer,
 		lsClient,
 		traceFilters,
+		nodeDefinitionDirs: resolveBuiltinNodeDefinitionDirs(),
 	};
 }
 

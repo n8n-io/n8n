@@ -119,6 +119,40 @@ describe('stream-processor', () => {
 				expect(message.codeSnippet).toBe(JSON.stringify(workflowData, null, 2));
 			});
 
+			it('should handle create_workflow_name with generated name', () => {
+				const workflowData = {
+					nodes: [] as unknown[],
+					connections: {},
+					name: 'Email Automation Workflow',
+				};
+				const chunk = {
+					create_workflow_name: {
+						workflowJSON: workflowData,
+					},
+				};
+
+				const result = processStreamChunk('updates', chunk);
+
+				expect(result).toBeDefined();
+				expect(result?.messages).toHaveLength(1);
+				const message = result?.messages[0] as WorkflowUpdateChunk;
+				expect(message.role).toBe('assistant');
+				expect(message.type).toBe('workflow-updated');
+				expect(message.codeSnippet).toBe(JSON.stringify(workflowData, null, 2));
+			});
+
+			it('should ignore create_workflow_name without a name', () => {
+				const chunk = {
+					create_workflow_name: {
+						workflowJSON: { nodes: [], connections: {} },
+					},
+				};
+
+				const result = processStreamChunk('updates', chunk);
+
+				expect(result).toBeNull();
+			});
+
 			it('should ignore chunks without relevant content', () => {
 				const chunk = {
 					responder: {
@@ -385,7 +419,7 @@ describe('stream-processor', () => {
 			expect(result[0]).not.toHaveProperty('revertVersionId');
 		});
 
-		it('should not include id when messageId is missing', () => {
+		it('should include HumanMessage and extract versionId even without messageId', () => {
 			const message = new HumanMessage({ content: 'Another message' });
 			message.additional_kwargs = { versionId: 'version-999' };
 
@@ -416,7 +450,7 @@ describe('stream-processor', () => {
 			expect(formatted.id).toBe('msg-complete');
 		});
 
-		it('should handle undefined additional_kwargs', () => {
+		it('should include HumanMessage with undefined additional_kwargs', () => {
 			const message = new HumanMessage({ content: 'Message without kwargs' });
 			// Message is created without additional_kwargs, so it's undefined by default
 
@@ -432,7 +466,7 @@ describe('stream-processor', () => {
 			expect(result[0]).not.toHaveProperty('id');
 		});
 
-		it('should handle empty additional_kwargs object', () => {
+		it('should include HumanMessage with empty additional_kwargs object', () => {
 			const message = new HumanMessage({ content: 'Empty kwargs' });
 			message.additional_kwargs = {};
 
@@ -464,7 +498,7 @@ describe('stream-processor', () => {
 			expect(result[0]).not.toHaveProperty('revertVersionId');
 		});
 
-		it('should only include id when messageId is a string', () => {
+		it('should include HumanMessage when messageId is not a string but exclude id from output', () => {
 			const message = new HumanMessage({ content: 'Non-string messageId' });
 			message.additional_kwargs = { versionId: 'version-456', messageId: 456 };
 
@@ -1443,6 +1477,46 @@ describe('stream-processor', () => {
 			const input = 'Plain text without any tags';
 			const result = cleanContextTags(input);
 			expect(result).toBe('Plain text without any tags');
+		});
+
+		it('should extract user request from XML tag format', () => {
+			const input = `<previous_requests>
+test
+</previous_requests>
+<workflow_file path="/workflow.js">
+1: const wf = workflow('id', 'name');
+</workflow_file>
+<user_request>
+add set node
+</user_request>`;
+
+			const result = cleanContextTags(input);
+			expect(result).toBe('add set node');
+		});
+
+		it('should extract multiline user request from XML tag', () => {
+			const input = `<workflow_file path="/workflow.js">
+code
+</workflow_file>
+<user_request>
+add a set node
+and connect it to the trigger
+</user_request>`;
+
+			const result = cleanContextTags(input);
+			expect(result).toBe('add a set node\nand connect it to the trigger');
+		});
+
+		it('should strip code builder tags when no user request marker found', () => {
+			const input = `<previous_requests>
+old request
+</previous_requests>
+<workflow_file path="/workflow.js">
+code
+</workflow_file>`;
+
+			const result = cleanContextTags(input);
+			expect(result).toBe('');
 		});
 	});
 

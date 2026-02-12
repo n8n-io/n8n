@@ -641,6 +641,59 @@ describe('AskAssistantChat', () => {
 			expect(props.defaultExpanded).toBe(true);
 		});
 
+		it('should use thinkingCompletionMessage prop instead of default when provided and tools completed', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				createToolMessage({
+					id: '1',
+					status: 'completed',
+					displayTitle: 'Search Results',
+					updates: [{ type: 'output', data: { result: 'Found items' } }],
+				}),
+				{
+					id: 'wu-1',
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: '',
+				},
+			];
+
+			renderWithMessages(messages, {
+				streaming: false,
+				thinkingCompletionMessage: 'Crafting workflow',
+			});
+
+			expect(thinkingMessageCallCount).toBe(1);
+
+			const props = getThinkingMessageProps();
+			// Should use the custom completion message instead of the default i18n key
+			expect(props.latestStatusText).toBe('Crafting workflow');
+		});
+
+		it('should use default i18n key when thinkingCompletionMessage is not provided', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				createToolMessage({
+					id: '1',
+					status: 'completed',
+					displayTitle: 'Search Results',
+					updates: [{ type: 'output', data: { result: 'Found items' } }],
+				}),
+				{
+					id: 'wu-1',
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: '',
+				},
+			];
+
+			renderWithMessages(messages, { streaming: false });
+
+			expect(thinkingMessageCallCount).toBe(1);
+
+			const props = getThinkingMessageProps();
+			// Should use the default i18n key (mocked to return the key itself)
+			expect(props.latestStatusText).toBe('assistantChat.thinking.workflowGenerated');
+		});
+
 		it('should show "Thinking" for non-last completed tool group', () => {
 			const messages: ChatUI.AssistantMessage[] = [
 				createToolMessage({
@@ -739,6 +792,45 @@ describe('AskAssistantChat', () => {
 			// Second group (build): "Workflow generated" (workflow-updated interleaved with its tools)
 			const secondProps = getThinkingMessageProps(1);
 			expect(secondProps.latestStatusText).toBe('assistantChat.thinking.workflowGenerated');
+		});
+
+		it('should not show "Workflow generated" when workflow-updated precedes tools (naming-only)', () => {
+			// workflow-updated (naming) arrives before discovery tools — should NOT trigger "Workflow generated"
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'user-1',
+					role: 'user' as const,
+					type: 'text' as const,
+					content: 'Build a workflow',
+				},
+				{
+					id: 'wu-name',
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: '{"nodes": [], "connections": {}, "name": "My Generated Name"}',
+				},
+				createToolMessage({
+					id: 't1',
+					status: 'completed',
+					toolName: 'search_nodes',
+					displayTitle: 'Searching nodes',
+				}),
+				{
+					id: 'resp-1',
+					role: 'assistant' as const,
+					type: 'text' as const,
+					content: 'Here is the plan',
+				},
+			];
+
+			renderWithDirectives(messages);
+
+			expect(thinkingMessageCallCount).toBe(1);
+
+			// Tool group should show "Thinking" (not "Workflow generated") since
+			// the workflow-updated was a naming-only update before any tools
+			const props = getThinkingMessageProps(0);
+			expect(props.latestStatusText).toBe('assistantChat.thinking.thinking');
 		});
 
 		it('should preserve "Workflow generated" on first build group when second build group appears', () => {
@@ -966,7 +1058,8 @@ describe('AskAssistantChat', () => {
 
 		it('should not add thinking spinner to old completed group when new turn is streaming', () => {
 			// Old completed tool group + response + user's new message → streaming starts
-			// The old group should stay frozen, not get a "Thinking" spinner
+			// The old group should stay frozen, not get a "Thinking" spinner.
+			// A new placeholder thinking message appears for the current turn.
 			const messages: ChatUI.AssistantMessage[] = [
 				createToolMessage({
 					id: '1',
@@ -989,15 +1082,20 @@ describe('AskAssistantChat', () => {
 
 			renderWithDirectives(messages, { streaming: true, loadingMessage: 'Thinking' });
 
-			expect(thinkingMessageCallCount).toBe(1);
+			// Old tool group + new turn's thinking placeholder
+			expect(thinkingMessageCallCount).toBe(2);
 
-			const props = getThinkingMessageProps(0);
-			// Should NOT have a "thinking-item" spinner appended
-			expect(props.items).toHaveLength(1);
-			expect(props.items[0].displayTitle).toBe('Search Results');
-			expect(props.items[0].status).toBe('completed');
-			// Title should be frozen as "Thinking", not the dynamic loading message
-			expect(props.latestStatusText).toBe('assistantChat.thinking.thinking');
+			// Old group should NOT have a spinner appended
+			const oldGroupProps = getThinkingMessageProps(0);
+			expect(oldGroupProps.items).toHaveLength(1);
+			expect(oldGroupProps.items[0].displayTitle).toBe('Search Results');
+			expect(oldGroupProps.items[0].status).toBe('completed');
+			expect(oldGroupProps.latestStatusText).toBe('assistantChat.thinking.thinking');
+
+			// New turn's placeholder should show the loading message
+			const placeholderProps = getThinkingMessageProps(1);
+			expect(placeholderProps.latestStatusText).toBe('Thinking');
+			expect(placeholderProps.isStreaming).toBe(true);
 		});
 	});
 

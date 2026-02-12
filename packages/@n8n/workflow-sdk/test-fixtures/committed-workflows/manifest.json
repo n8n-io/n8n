@@ -1,0 +1,74 @@
+{
+	"description": "Manually committed test workflows (not downloaded from API)",
+	"workflows": [
+		{
+			"id": 0,
+			"name": "Multi-Agent Research Report",
+			"success": true
+		},
+		{
+			"id": 1,
+			"name": "Split in batches - complex patterns",
+			"success": true
+		},
+		{
+			"id": 2,
+			"name": "Merge node patterns",
+			"success": true,
+			"expectedWarnings": [
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Switch5" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "If" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "If1" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Edit Fields1" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Edit Fields2" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Edit Fields3" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Edit Fields4" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Edit Fields5" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Edit Fields6" },
+				{ "code": "MERGE_SINGLE_INPUT", "nodeName": "Merge7" },
+				{ "code": "MERGE_SINGLE_INPUT", "nodeName": "Merge6" },
+				{ "code": "MERGE_SINGLE_INPUT", "nodeName": "Merge10" }
+			]
+		},
+		{
+			"id": 3,
+			"name": "if node",
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "If1"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "If3"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "If4"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "If5"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "If6"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Switch2"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Switch3"
+				}
+			]
+		},
+		{
+			"id": 4,
+			"name": "Unknown nodes with connections",
+			"success": true
+		}
+	]
+}

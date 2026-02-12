@@ -121,7 +121,9 @@ describe('NodeCredentials', () => {
 		envFeatureFlags: {
 			N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
 		},
+		activeModules: ['dynamic-credentials'],
 	} as unknown as FrontendSettings;
+	vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 
 	beforeAll(() => {
 		credentialsStore.state.credentialTypes = {

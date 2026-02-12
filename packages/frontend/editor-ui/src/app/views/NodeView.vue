@@ -1805,7 +1805,6 @@ onMounted(async () => {
 
 	// Register callback for collaboration store to refresh canvas when workflow updates arrive
 	collaborationStore.setRefreshCanvasCallback(async (workflow) => {
-		// Refresh the canvas with updated workflow
 		await initializeWorkspace(workflow);
 	});
 
@@ -2069,6 +2068,7 @@ onBeforeUnmount(() => {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	gap: var(--spacing--xs);
 	left: 50%;
 	transform: translateX(-50%);
 	bottom: var(--spacing--sm);
@@ -2084,7 +2084,6 @@ onBeforeUnmount(() => {
 		display: flex;
 		justify-content: center;
 		align-items: center;
-		margin-left: 0.625rem;
 
 		&:first-child {
 			margin: 0;

@@ -68,6 +68,14 @@ export class DocumentGithubLoader implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
+		builderHint: {
+			inputs: {
+				ai_textSplitter: {
+					required: true,
+					displayOptions: { show: { textSplittingMode: ['custom'] } },
+				},
+			},
+		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{

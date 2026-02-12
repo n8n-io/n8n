@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -86,6 +86,7 @@
       "sqlite3"
     ],
     "overrides": {
+      "@isaacs/brace-expansion": "5.0.1",
       "libphonenumber-js": "npm:empty-npm-package@1.0.0",
       "ast-types": "0.16.1",
       "@azure/identity": "4.13.0",

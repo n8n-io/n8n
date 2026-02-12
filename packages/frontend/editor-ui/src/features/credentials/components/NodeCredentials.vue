@@ -41,7 +41,7 @@ import {
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 import {
 	N8nBadge,
@@ -90,7 +90,7 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const posthogStore = usePostHog();
 const workflowState = injectWorkflowState();
-const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
+const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 // Quick connect feature flag and composable
 const isQuickConnectEnabled = computed(() =>
@@ -148,10 +148,6 @@ const credentialTypeNames = computed(() => {
 
 const selected = computed<Record<string, INodeCredentialsDetails>>(
 	() => props.node.credentials ?? {},
-);
-
-const isDynamicCredentialsEnabled = computed(() =>
-	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
 );
 
 const hasWorkflowResolver = computed(() => {

@@ -21,4 +21,5 @@ export const EnterpriseEditionFeature: Record<
 	ApiKeyScopes: 'apiKeyScopes',
 	NamedVersions: 'namedVersions',
 	Provisioning: 'provisioning',
+	CustomRoles: 'customRoles',
 };

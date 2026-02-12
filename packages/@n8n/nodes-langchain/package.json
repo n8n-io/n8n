@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -13,11 +13,14 @@
       "types": "./dist/nodes/mcp/McpTrigger/index.d.ts",
       "import": "./dist/nodes/mcp/McpTrigger/index.js",
       "require": "./dist/nodes/mcp/McpTrigger/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "typesVersions": {
     "*": {
-      "mcp/core": ["./dist/nodes/mcp/McpTrigger/index.d.ts"]
+      "mcp/core": [
+        "./dist/nodes/mcp/McpTrigger/index.d.ts"
+      ]
     }
   },
   "scripts": {
@@ -25,8 +28,7 @@
     "dev": "pnpm run watch",
     "typecheck": "tsc --noEmit",
     "copy-nodes-json": "node ../../nodes-base/scripts/copy-nodes-json.js .",
-    "copy-tokenizer-json": "node scripts/copy-tokenizer-json.js .",
-    "build": "tsc --build tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata",
+    "build": "tsc --build tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata && pnpm n8n-generate-node-defs",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint nodes credentials utils --quiet",
@@ -256,9 +258,8 @@
     "form-data": "catalog:",
     "generate-schema": "2.6.0",
     "html-to-text": "9.0.5",
-    "https-proxy-agent": "catalog:",
     "ignore": "^5.2.0",
-    "js-tiktoken": "^1.0.12",
+    "js-tiktoken": "catalog:",
     "jsdom": "23.0.1",
     "langchain": "catalog:",
     "@langchain/classic": "1.0.5",
@@ -271,13 +272,11 @@
     "openai": "^6.9.0",
     "pdf-parse": "1.1.1",
     "pg": "catalog:",
-    "proxy-from-env": "^1.1.0",
     "redis": "4.6.14",
     "sanitize-html": "2.12.1",
     "sqlite3": "5.1.7",
     "temp": "0.9.4",
     "tmp-promise": "3.0.3",
-    "undici": "^6.21.0",
     "weaviate-client": "3.9.0",
     "zod": "catalog:",
     "zod-to-json-schema": "3.23.3"

@@ -1,6 +1,7 @@
 import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
 import { fixtures as currentsFixtures } from '@currents/playwright';
 import { test as base, expect, request } from '@playwright/test';
+import type { ServiceHelpers } from 'n8n-containers/services/types';
 import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
 import { createN8NStack } from 'n8n-containers/stack';
 
@@ -11,7 +12,6 @@ import { setupDefaultInterceptors } from '../config/intercepts';
 import { observabilityFixtures, type ObservabilityTestFixtures } from '../fixtures/observability';
 import { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
-import { ProxyServer } from '../services/proxy-server';
 import { TestError, type TestRequirements } from '../Types';
 import { setupTestRequirements } from '../utils/requirements';
 import { getBackendUrl, getFrontendUrl } from '../utils/url-helper';
@@ -21,7 +21,8 @@ type TestFixtures = {
 	api: ApiHelpers;
 	baseURL: string;
 	setupRequirements: (requirements: TestRequirements) => Promise<void>;
-	proxyServer: ProxyServer;
+	/** Type-safe service helpers (mailpit, gitea, proxy, observability, etc.) */
+	services: ServiceHelpers;
 	/**
 	 * Direct URLs to each main instance (bypasses load balancer).
 	 * Only available in container mode with multi-main setup.
@@ -280,25 +281,8 @@ export const test = base.extend<
 		await use(setupFunction);
 	},
 
-	proxyServer: async ({ n8nContainer }, use) => {
-		if (!n8nContainer) {
-			throw new TestError(
-				'Testing with Proxy server is not supported when using N8N_BASE_URL environment variable. Remove N8N_BASE_URL to use containerized testing.',
-			);
-		}
-
-		const proxyServerContainer = n8nContainer.containers.find((container) =>
-			container.getName().endsWith('proxyserver'),
-		);
-
-		if (!proxyServerContainer) {
-			throw new TestError('Proxy server container not initialized. Cannot initialize client.');
-		}
-
-		const serverUrl = `http://${proxyServerContainer?.getHost()}:${proxyServerContainer?.getFirstMappedPort()}`;
-		const proxyServer = new ProxyServer(serverUrl);
-
-		await use(proxyServer);
+	services: async ({ n8nContainer }, use) => {
+		await use(n8nContainer.services);
 	},
 });
 
@@ -309,10 +293,8 @@ Fixture Dependency Graph:
 Worker: capability + project.containerConfig → n8nContainer → [backendUrl, frontendUrl, dbSetup]
 Test:   frontendUrl + dbSetup → baseURL → n8n (uses backendUrl for API calls)
         backendUrl → api
+        n8nContainer → services
 
-n8nContainer provides unified access to:
-- services: Type-safe helpers (mailpit, gitea, observability, etc.)
-- logs/metrics: Shortcuts for observability queries
-- findContainers/stopContainer: Container operations for chaos testing
-- serviceResults: Raw service results (advanced use)
+services: Type-safe helpers (mailpit, gitea, proxy, observability, etc.)
+n8nContainer: Container lifecycle (stop, containers, mainUrls, etc.)
 */

@@ -51,6 +51,7 @@ const mockConnectionModal = {
 	isSaving: { value: false },
 	didSave: { value: false },
 	providerSecretsCount: { value: 0 },
+	providerKey: { value: '' },
 	connection: {
 		isLoading: { value: false },
 		connectionState: { value: 'initializing' },
@@ -62,6 +63,7 @@ const mockConnectionModal = {
 	connectionProjects: { value: [] as ConnectionProjectSummary[] },
 	isSharedGlobally: { value: false },
 	canUpdate: { value: true },
+	canDelete: { value: true },
 	canShareGlobally: { value: true },
 	projectIds: { value: [] as string[] },
 	sharedWithProjects: { value: [] as ProjectSharingData[] },
@@ -84,7 +86,9 @@ vi.mock('../composables/useConnectionModal.ee', () => ({
 			...mockConnectionModal,
 			isEditMode: { value: isEditMode },
 			connectionName: { value: isEditMode ? 'test-123' : '' },
+			providerKey: { value: isEditMode ? 'test-123' : '' },
 			canUpdate: { value: isEditMode }, // Edit mode requires update permission
+			canDelete: { value: true },
 		};
 	}),
 }));

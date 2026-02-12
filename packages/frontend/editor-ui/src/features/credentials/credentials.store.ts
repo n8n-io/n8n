@@ -264,22 +264,33 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const fetchAllCredentials = async (
-		projectId?: string,
-		includeScopes = true,
-		onlySharedWithMe = false,
-		includeGlobal = true,
+		options: {
+			projectId?: string;
+			includeScopes?: boolean;
+			onlySharedWithMe?: boolean;
+			includeGlobal?: boolean;
+			externalSecretsStore?: string;
+		} = {},
 	): Promise<ICredentialsResponse[]> => {
+		const {
+			projectId,
+			includeScopes = true,
+			onlySharedWithMe = false,
+			includeGlobal = true,
+			externalSecretsStore,
+		} = options;
+
 		const filter = {
 			projectId,
 		};
 
-		const credentials = await credentialsApi.getAllCredentials(
-			rootStore.restApiContext,
-			isEmpty(filter) ? undefined : filter,
+		const credentials = await credentialsApi.getAllCredentials(rootStore.restApiContext, {
+			filter: isEmpty(filter) ? undefined : filter,
 			includeScopes,
 			onlySharedWithMe,
 			includeGlobal,
-		);
+			externalSecretsStore,
+		});
 		setCredentials(credentials);
 		return credentials;
 	};
