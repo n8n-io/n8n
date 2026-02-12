@@ -124,7 +124,7 @@ export async function connectMcpClient({
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
 				fetch: authFetch,
 			});
-			await client.connect(transport);
+			await client.connect(transport); // MCP_CONNECTION: Streamable HTTP transport connects to remote MCP server
 			return createResultOk(client);
 		} catch (error) {
 			if (isUnauthorizedError(error) || isForbiddenError(error)) {
@@ -149,7 +149,7 @@ export async function connectMcpClient({
 			},
 			fetch: authFetch,
 		});
-		await client.connect(sseTransport);
+		await client.connect(sseTransport); // MCP_CONNECTION: SSE transport connects to remote MCP server
 		return createResultOk(client);
 	} catch (error) {
 		if (isUnauthorizedError(error) || isForbiddenError(error)) {
