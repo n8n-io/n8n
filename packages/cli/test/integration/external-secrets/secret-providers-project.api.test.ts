@@ -13,12 +13,21 @@ import type { Response } from 'superagent';
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 
-import { MockProviders } from '../../shared/external-secrets/utils';
+import {
+	DummyProvider,
+	MockProviders,
+	createDummyProvider,
+} from '../../shared/external-secrets/utils';
 import { createAdmin, createMember, createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
 
 const mockProvidersInstance = new MockProviders();
+mockProvidersInstance.setProviders({
+	dummy: DummyProvider,
+	awsSecretsManager: createDummyProvider({ name: 'awsSecretsManager' }),
+	gcpSecretsManager: createDummyProvider({ name: 'gcpSecretsManager' }),
+});
 mockInstance(ExternalSecretsProviders, mockProvidersInstance);
 
 const licenseMock = mock<LicenseState>();
@@ -271,6 +280,500 @@ describe('Secret Providers Project API', () => {
 
 				expect(response.body.data).toEqual([]);
 			});
+		});
+	});
+
+	describe('POST /secret-providers/projects/:projectId/connections', () => {
+		const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';
+		let agents: Record<string, SuperAgentTest>;
+
+		beforeAll(() => {
+			agents = { owner: ownerAgent, admin: adminAgent, member: memberAgent };
+		});
+
+		beforeEach(async () => {
+			await testDb.truncate(['SecretsProviderConnection', 'ProjectSecretsProviderAccess']);
+		});
+
+		test('should create a connection scoped to the project', async () => {
+			const response = await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections`)
+				.send({
+					providerKey: 'proj-aws',
+					type: 'awsSecretsManager',
+					projectIds: [],
+					settings: { region: 'us-east-1' },
+				})
+				.expect(200);
+
+			expect(response.body.data).toMatchObject({
+				name: 'proj-aws',
+				type: 'awsSecretsManager',
+				projects: [{ id: teamProject1.id, name: 'Engineering' }],
+			});
+		});
+
+		test('should always scope connection to the URL project, ignoring projectIds in body', async () => {
+			const response = await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections`)
+				.send({
+					providerKey: 'override-test',
+					type: 'awsSecretsManager',
+					projectIds: [teamProject2.id],
+					settings: { region: 'us-east-1' },
+				})
+				.expect(200);
+
+			expect(response.body.data.projects).toHaveLength(1);
+			expect(response.body.data.projects[0].id).toBe(teamProject1.id);
+		});
+
+		test('should encrypt settings in the database', async () => {
+			await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections`)
+				.send({
+					providerKey: 'enc-test',
+					type: 'awsSecretsManager',
+					projectIds: [],
+					settings: { region: 'us-west-2', accessKeyId: 'SECRET_KEY' },
+				})
+				.expect(200);
+
+			const saved = await connectionRepository.findOneByOrFail({ providerKey: 'enc-test' });
+			expect(saved.encryptedSettings).not.toContain('SECRET_KEY');
+
+			const cipher = Container.get(Cipher);
+			const decrypted = JSON.parse(cipher.decrypt(saved.encryptedSettings));
+			expect(decrypted).toEqual({ region: 'us-west-2', accessKeyId: 'SECRET_KEY' });
+		});
+
+		describe('authorization', () => {
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])(
+				'should allow=$allowed for $role to create a project connection',
+				async ({ role, allowed }) => {
+					const response = await agents[role]
+						.post(`/secret-providers/projects/${teamProject1.id}/connections`)
+						.send({
+							providerKey: `create-${role}`,
+							type: 'awsSecretsManager',
+							projectIds: [],
+							settings: { region: 'us-east-1' },
+						})
+						.expect(allowed ? 200 : 403);
+
+					if (!allowed) {
+						expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+					}
+				},
+			);
+		});
+	});
+
+	describe('GET /secret-providers/projects/:projectId/connections/:providerKey', () => {
+		const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';
+		let agents: Record<string, SuperAgentTest>;
+
+		beforeAll(() => {
+			agents = { owner: ownerAgent, admin: adminAgent, member: memberAgent };
+		});
+
+		beforeEach(async () => {
+			await testDb.truncate(['SecretsProviderConnection', 'ProjectSecretsProviderAccess']);
+		});
+
+		test('should return a connection belonging to the project', async () => {
+			await createProviderConnection('my-conn', [teamProject1.id]);
+
+			const response = await ownerAgent
+				.get(`/secret-providers/projects/${teamProject1.id}/connections/my-conn`)
+				.expect(200);
+
+			expect(response.body.data).toMatchObject({
+				name: 'my-conn',
+				projects: [{ id: teamProject1.id }],
+			});
+		});
+
+		test('should return 404 for a connection belonging to another project', async () => {
+			await createProviderConnection('other-proj-conn', [teamProject2.id]);
+
+			const response = await ownerAgent
+				.get(`/secret-providers/projects/${teamProject1.id}/connections/other-proj-conn`)
+				.expect(404);
+
+			expect(response.body.message).toContain('not found');
+		});
+
+		test('should return 404 for a global connection (no project access)', async () => {
+			await createProviderConnection('global-conn', []);
+
+			await ownerAgent
+				.get(`/secret-providers/projects/${teamProject1.id}/connections/global-conn`)
+				.expect(404);
+		});
+
+		test('should return 404 for a non-existent connection', async () => {
+			await ownerAgent
+				.get(`/secret-providers/projects/${teamProject1.id}/connections/does-not-exist`)
+				.expect(404);
+		});
+
+		describe('authorization', () => {
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])(
+				'should allow=$allowed for $role to get a project connection',
+				async ({ role, allowed }) => {
+					await createProviderConnection('auth-get-conn', [teamProject1.id]);
+
+					const response = await agents[role]
+						.get(`/secret-providers/projects/${teamProject1.id}/connections/auth-get-conn`)
+						.expect(allowed ? 200 : 403);
+
+					if (!allowed) {
+						expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+					}
+				},
+			);
+		});
+	});
+
+	describe('PATCH /secret-providers/projects/:projectId/connections/:providerKey', () => {
+		const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';
+		let agents: Record<string, SuperAgentTest>;
+
+		beforeAll(() => {
+			agents = { owner: ownerAgent, admin: adminAgent, member: memberAgent };
+		});
+
+		beforeEach(async () => {
+			await testDb.truncate(['SecretsProviderConnection', 'ProjectSecretsProviderAccess']);
+		});
+
+		test('should update connection type and settings', async () => {
+			await createProviderConnection('update-conn', [teamProject1.id]);
+
+			const response = await ownerAgent
+				.patch(`/secret-providers/projects/${teamProject1.id}/connections/update-conn`)
+				.send({ type: 'gcpSecretsManager', settings: { projectId: 'my-project' } })
+				.expect(200);
+
+			expect(response.body.data.type).toBe('gcpSecretsManager');
+		});
+
+		test('should ignore projectIds in the update body', async () => {
+			await createProviderConnection('no-reassign', [teamProject1.id]);
+
+			const response = await ownerAgent
+				.patch(`/secret-providers/projects/${teamProject1.id}/connections/no-reassign`)
+				.send({ projectIds: [teamProject2.id] })
+				.expect(200);
+
+			// Connection should still belong to teamProject1, not teamProject2
+			expect(response.body.data.projects).toHaveLength(1);
+			expect(response.body.data.projects[0].id).toBe(teamProject1.id);
+		});
+
+		test('should return 404 for a connection belonging to another project', async () => {
+			await createProviderConnection('other-update', [teamProject2.id]);
+
+			await ownerAgent
+				.patch(`/secret-providers/projects/${teamProject1.id}/connections/other-update`)
+				.send({ settings: { region: 'eu-west-1' } })
+				.expect(404);
+		});
+
+		test('should return 404 for a non-existent connection', async () => {
+			await ownerAgent
+				.patch(`/secret-providers/projects/${teamProject1.id}/connections/missing`)
+				.send({ settings: { region: 'eu-west-1' } })
+				.expect(404);
+		});
+
+		describe('authorization', () => {
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])(
+				'should allow=$allowed for $role to update a project connection',
+				async ({ role, allowed }) => {
+					await createProviderConnection('auth-update', [teamProject1.id]);
+
+					const response = await agents[role]
+						.patch(`/secret-providers/projects/${teamProject1.id}/connections/auth-update`)
+						.send({ settings: { region: 'eu-west-1' } })
+						.expect(allowed ? 200 : 403);
+
+					if (!allowed) {
+						expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+					}
+				},
+			);
+		});
+	});
+
+	describe('DELETE /secret-providers/projects/:projectId/connections/:providerKey', () => {
+		const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';
+		let agents: Record<string, SuperAgentTest>;
+
+		beforeAll(() => {
+			agents = { owner: ownerAgent, admin: adminAgent, member: memberAgent };
+		});
+
+		beforeEach(async () => {
+			await testDb.truncate(['SecretsProviderConnection', 'ProjectSecretsProviderAccess']);
+		});
+
+		test('should delete a connection belonging to the project', async () => {
+			const connectionId = await createProviderConnection('del-conn', [teamProject1.id]);
+
+			const response = await ownerAgent
+				.delete(`/secret-providers/projects/${teamProject1.id}/connections/del-conn`)
+				.expect(200);
+
+			expect(response.body.data.name).toBe('del-conn');
+
+			// Verify it's actually gone from the DB
+			const found = await connectionRepository.findOneBy({ id: connectionId });
+			expect(found).toBeNull();
+
+			// Verify cascade deletes project access
+			const access = await projectAccessRepository.find({
+				where: { secretsProviderConnectionId: connectionId },
+			});
+			expect(access).toHaveLength(0);
+		});
+
+		test('should return 404 for a connection belonging to another project', async () => {
+			await createProviderConnection('other-del', [teamProject2.id]);
+
+			await ownerAgent
+				.delete(`/secret-providers/projects/${teamProject1.id}/connections/other-del`)
+				.expect(404);
+
+			// Verify the connection was NOT deleted
+			const found = await connectionRepository.findOneBy({ providerKey: 'other-del' });
+			expect(found).not.toBeNull();
+		});
+
+		test('should return 404 for a non-existent connection', async () => {
+			await ownerAgent
+				.delete(`/secret-providers/projects/${teamProject1.id}/connections/missing`)
+				.expect(404);
+		});
+
+		describe('authorization', () => {
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])(
+				'should allow=$allowed for $role to delete a project connection',
+				async ({ role, allowed }) => {
+					await createProviderConnection(`auth-del-${role}`, [teamProject1.id]);
+
+					const response = await agents[role]
+						.delete(`/secret-providers/projects/${teamProject1.id}/connections/auth-del-${role}`)
+						.expect(allowed ? 200 : 403);
+
+					if (!allowed) {
+						expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+					}
+				},
+			);
+		});
+	});
+
+	describe('POST /secret-providers/projects/:projectId/connections/:providerKey/test', () => {
+		const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';
+		let agents: Record<string, SuperAgentTest>;
+
+		beforeAll(async () => {
+			agents = { owner: ownerAgent, admin: adminAgent, member: memberAgent };
+			const { DummyProvider } = await import('../../shared/external-secrets/utils');
+			mockProvidersInstance.setProviders({ awsSecretsManager: DummyProvider });
+		});
+
+		afterAll(() => {
+			mockProvidersInstance.setProviders({
+				dummy: DummyProvider,
+				awsSecretsManager: createDummyProvider({ name: 'awsSecretsManager' }),
+				gcpSecretsManager: createDummyProvider({ name: 'gcpSecretsManager' }),
+			});
+		});
+
+		beforeEach(async () => {
+			await testDb.truncate(['SecretsProviderConnection', 'ProjectSecretsProviderAccess']);
+		});
+
+		test('should test a connection belonging to the project', async () => {
+			// Create via API so the ExternalSecretsManager picks it up
+			await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections`)
+				.send({
+					providerKey: 'test-conn',
+					type: 'awsSecretsManager',
+					projectIds: [],
+					settings: { username: 'user', password: 'pass' },
+				})
+				.expect(200);
+
+			const response = await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections/test-conn/test`)
+				.expect(200);
+
+			expect(response.body.data).toMatchObject({ success: true });
+		});
+
+		test('should return 404 for a connection belonging to another project', async () => {
+			await createProviderConnection('other-test', [teamProject2.id]);
+
+			await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections/other-test/test`)
+				.expect(404);
+		});
+
+		test('should return 404 for a non-existent connection', async () => {
+			await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections/missing/test`)
+				.expect(404);
+		});
+
+		describe('authorization', () => {
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])(
+				'should allow=$allowed for $role to test a project connection',
+				async ({ role, allowed }) => {
+					await ownerAgent
+						.post(`/secret-providers/projects/${teamProject1.id}/connections`)
+						.send({
+							providerKey: `test-auth-${role}`,
+							type: 'awsSecretsManager',
+							projectIds: [],
+							settings: { username: 'user', password: 'pass' },
+						})
+						.expect(200);
+
+					const response = await agents[role]
+						.post(
+							`/secret-providers/projects/${teamProject1.id}/connections/test-auth-${role}/test`,
+						)
+						.expect(allowed ? 200 : 403);
+
+					if (!allowed) {
+						expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+					}
+				},
+			);
+		});
+	});
+
+	describe('POST /secret-providers/projects/:projectId/connections/:providerKey/reload', () => {
+		const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';
+		let agents: Record<string, SuperAgentTest>;
+
+		beforeAll(async () => {
+			agents = { owner: ownerAgent, admin: adminAgent, member: memberAgent };
+			const { DummyProvider } = await import('../../shared/external-secrets/utils');
+			mockProvidersInstance.setProviders({ awsSecretsManager: DummyProvider });
+		});
+
+		afterAll(() => {
+			mockProvidersInstance.setProviders({
+				dummy: DummyProvider,
+				awsSecretsManager: createDummyProvider({ name: 'awsSecretsManager' }),
+				gcpSecretsManager: createDummyProvider({ name: 'gcpSecretsManager' }),
+			});
+		});
+
+		beforeEach(async () => {
+			await testDb.truncate(['SecretsProviderConnection', 'ProjectSecretsProviderAccess']);
+		});
+
+		test('should reload a connection belonging to the project', async () => {
+			const { ExternalSecretsManager } = await import(
+				'@/modules/external-secrets.ee/external-secrets-manager.ee'
+			);
+
+			await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections`)
+				.send({
+					providerKey: 'reload-conn',
+					type: 'awsSecretsManager',
+					projectIds: [],
+					settings: { username: 'user', password: 'pass' },
+				})
+				.expect(200);
+
+			const manager = Container.get(ExternalSecretsManager);
+			await manager.reloadAllProviders();
+
+			const response = await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections/reload-conn/reload`)
+				.expect(200);
+
+			expect(response.body.data).toEqual({ success: true });
+		});
+
+		test('should return 404 for a connection belonging to another project', async () => {
+			await createProviderConnection('other-reload', [teamProject2.id]);
+
+			await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections/other-reload/reload`)
+				.expect(404);
+		});
+
+		test('should return 404 for a non-existent connection', async () => {
+			await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections/missing/reload`)
+				.expect(404);
+		});
+
+		describe('authorization', () => {
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])(
+				'should allow=$allowed for $role to reload a project connection',
+				async ({ role, allowed }) => {
+					const { ExternalSecretsManager } = await import(
+						'@/modules/external-secrets.ee/external-secrets-manager.ee'
+					);
+
+					await ownerAgent
+						.post(`/secret-providers/projects/${teamProject1.id}/connections`)
+						.send({
+							providerKey: `reload-auth-${role}`,
+							type: 'awsSecretsManager',
+							projectIds: [],
+							settings: { username: 'user', password: 'pass' },
+						})
+						.expect(200);
+
+					await Container.get(ExternalSecretsManager).reloadAllProviders();
+
+					const response = await agents[role]
+						.post(
+							`/secret-providers/projects/${teamProject1.id}/connections/reload-auth-${role}/reload`,
+						)
+						.expect(allowed ? 200 : 403);
+
+					if (!allowed) {
+						expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+					}
+				},
+			);
 		});
 	});
 });
