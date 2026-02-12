@@ -51,6 +51,7 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'externalSecretsProvider:read',
 	'externalSecretsProvider:update',
 	'externalSecretsProvider:delete',
+	'externalSecretsProvider:list',
 	'externalSecretsProvider:sync',
 	'externalSecret:list',
 ];
