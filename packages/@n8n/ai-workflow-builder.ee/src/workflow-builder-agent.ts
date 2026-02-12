@@ -90,6 +90,8 @@ export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
 	/** Enable CodeWorkflowBuilder (default: false). When false, uses legacy multi-agent system. */
 	codeBuilder?: boolean;
+	/** Enable pin data generation in code builder (default: true when codeBuilder is true). */
+	pinData?: boolean;
 	planMode?: boolean;
 }
 
@@ -269,6 +271,7 @@ export class WorkflowBuilderAgent {
 				workflowId: payload.workflowContext?.currentWorkflow?.id,
 			},
 			onTelemetryEvent: this.onTelemetryEvent,
+			generatePinData: payload.featureFlags?.pinData ?? true,
 		});
 
 		yield* codeWorkflowBuilder.chat(payload, userId ?? 'unknown', abortSignal);

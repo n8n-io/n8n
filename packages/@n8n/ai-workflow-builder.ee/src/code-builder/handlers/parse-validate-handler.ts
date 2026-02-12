@@ -18,6 +18,8 @@ import { stripImportStatements } from '../utils/extract-code';
  */
 export interface ParseValidateHandlerConfig {
 	logger?: Logger;
+	/** Whether to generate pin data for new nodes. Defaults to true. */
+	generatePinData?: boolean;
 }
 
 /**
@@ -37,9 +39,11 @@ interface ValidationIssue {
 
 export class ParseValidateHandler {
 	private logger?: Logger;
+	private generatePinData: boolean;
 
 	constructor(config: ParseValidateHandlerConfig = {}) {
 		this.logger = config.logger;
+		this.generatePinData = config.generatePinData ?? true;
 	}
 
 	/**
@@ -176,7 +180,9 @@ export class ParseValidateHandler {
 			);
 
 			// Generate pin data for new nodes only (nodes not in currentWorkflow)
-			builder.generatePinData({ beforeWorkflow: currentWorkflow });
+			if (this.generatePinData) {
+				builder.generatePinData({ beforeWorkflow: currentWorkflow });
+			}
 
 			// Convert to JSON
 			const workflowJson: WorkflowJSON = builder.toJSON();
