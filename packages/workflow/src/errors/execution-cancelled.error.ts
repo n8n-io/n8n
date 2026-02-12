@@ -1,6 +1,6 @@
 import { ExecutionBaseError } from './abstract/execution-base.error';
 
-export type CancellationReason = 'manual' | 'timeout' | 'shutdown';
+export type CancellationReason = 'manual' | 'timeout' | 'shutdown' | 'stalled';
 
 export abstract class ExecutionCancelledError extends ExecutionBaseError {
 	readonly reason: CancellationReason;
@@ -33,5 +33,13 @@ export class SystemShutdownExecutionCancelledError extends ExecutionCancelledErr
 	constructor(executionId: string) {
 		super(executionId, 'shutdown');
 		this.message = 'The execution was cancelled because the system is shutting down';
+	}
+}
+
+export class StalledExecutionCancelledError extends ExecutionCancelledError {
+	constructor(executionId: string) {
+		super(executionId, 'stalled');
+		this.message =
+			'The execution was cancelled because it was detected as stalled by queue recovery';
 	}
 }
