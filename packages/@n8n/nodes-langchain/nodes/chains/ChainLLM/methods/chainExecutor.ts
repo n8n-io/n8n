@@ -7,7 +7,7 @@ import type { ChatPromptTemplate, PromptTemplate } from '@langchain/core/prompts
 import type { Runnable } from '@langchain/core/runnables';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
-import { isChatInstance } from '@utils/helpers';
+import { isChatInstance } from '@n8n/ai-utilities';
 import { getTracingConfig } from '@utils/tracing';
 
 import { createPromptTemplate, getAgentStepsParser } from './promptUtils';

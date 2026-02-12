@@ -89,6 +89,10 @@ const modalTitle = computed(() => {
 
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
 
+const isPersonalSpace = computed(
+	() => projectsStore.currentProject?.type === ProjectTypes.Personal,
+);
+
 const workflowOwnerName = computed(() =>
 	workflowsEEStore.getWorkflowOwnerName(`${workflow.value.id}`),
 );
@@ -261,11 +265,16 @@ watch(
 					:bold="false"
 					class="mb-s"
 				>
-					{{
-						i18n.baseText('workflows.shareModal.info.sharee', {
-							interpolate: { workflowOwnerName },
-						})
-					}}
+					<template v-if="isPersonalSpace">
+						{{ i18n.baseText('workflows.shareModal.info.personalSpaceRestricted') }}
+					</template>
+					<template v-else>
+						{{
+							i18n.baseText('workflows.shareModal.info.sharee', {
+								interpolate: { workflowOwnerName },
+							})
+						}}
+					</template>
 				</N8nInfoTip>
 				<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
 					<div>

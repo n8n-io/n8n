@@ -1,17 +1,12 @@
 <script setup lang="ts">
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useAsyncState } from '@vueuse/core';
 import { EVALUATIONS_DOCS_URL } from '@/app/constants';
-import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useEvaluationStore } from '../evaluation.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useRoute } from 'vue-router';
 
 import { computed, watch } from 'vue';
 import EvaluationsPaywall from '../components/Paywall/EvaluationsPaywall.vue';
@@ -22,18 +17,12 @@ const props = defineProps<{
 	name: string;
 }>();
 
-const workflowsStore = useWorkflowsStore();
-const workflowsListStore = useWorkflowsListStore();
 const usageStore = useUsageStore();
 const evaluationStore = useEvaluationStore();
-const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const locale = useI18n();
-const route = useRoute();
 const sourceControlStore = useSourceControlStore();
-
-const { initializeWorkspace } = useCanvasOperations();
 
 const evaluationsLicensed = computed(() => {
 	return usageStore.workflowsWithEvaluationsLimit !== 0;
@@ -54,11 +43,6 @@ const hasRuns = computed(() => {
 });
 
 const showWizard = computed(() => !hasRuns.value);
-
-// Check if this is a new workflow by looking for the ?new query param
-const isNewWorkflowRoute = computed(() => {
-	return route.query.new === 'true';
-});
 
 // Method to run a test - will be used by the SetupWizard component
 async function runTest() {
@@ -89,30 +73,6 @@ const { isReady } = useAsyncState(async () => {
 		await evaluationStore.fetchTestRuns(props.name);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
-	}
-
-	const workflowId = props.name;
-	const isAlreadyInitialized = workflowsStore.workflow.id === workflowId;
-
-	// Skip fetching if it's a new workflow that hasn't been saved yet
-	if (isNewWorkflowRoute.value || isAlreadyInitialized) {
-		return;
-	}
-
-	// Check if we are loading the Evaluation tab directly, without having loaded the workflow
-	if (!workflowsListStore.workflowsById[workflowId]) {
-		try {
-			const data = await workflowsListStore.fetchWorkflow(workflowId);
-
-			// We need to check for the evaluation node with setMetrics operation, so we need to initialize the nodeTypesStore to have node properties initialized
-			if (nodeTypesStore.allNodeTypes.length === 0) {
-				await nodeTypesStore.getNodeTypes();
-			}
-
-			await initializeWorkspace(data);
-		} catch (error) {
-			toast.showError(error, locale.baseText('nodeView.showError.openWorkflow.title'));
-		}
 	}
 }, undefined);
 

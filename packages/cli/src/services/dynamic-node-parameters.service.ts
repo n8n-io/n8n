@@ -25,7 +25,7 @@ import { Workflow, UnexpectedError, createEmptyRunExecutionData } from 'n8n-work
 import { NodeTypes } from '@/node-types';
 
 import { WorkflowLoaderService } from './workflow-loader.service';
-import { User } from '@n8n/db';
+import { SharedWorkflowRepository, User } from '@n8n/db';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Logger } from '@n8n/backend-common';
 
@@ -57,9 +57,10 @@ export class DynamicNodeParametersService {
 		private logger: Logger,
 		private nodeTypes: NodeTypes,
 		private workflowLoaderService: WorkflowLoaderService,
+		private sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
-	async scrubInaccessibleProjectId(user: User, payload: { projectId?: string }) {
+	async refineResourceIds(user: User, payload: { projectId?: string; workflowId?: string }) {
 		// We want to avoid relying on generic project:read permissions to enable
 		// a future with fine-grained permission control dependent on the respective resource
 		// For now we use the dataTable:listProject scope as this is the existing consumer of
@@ -74,6 +75,27 @@ export class DynamicNodeParametersService {
 				`Scrubbed inaccessible projectId ${payload.projectId} from DynamicNodeParameters request`,
 			);
 			payload.projectId = undefined;
+		}
+
+		if (!payload.workflowId) return;
+
+		const hasAccess = await userHasScopes(user, ['workflow:read'], false, {
+			workflowId: payload.workflowId,
+		});
+
+		if (!hasAccess) {
+			this.logger.warn(
+				`Scrubbed inaccessible workflowId ${payload.workflowId} from DynamicNodeParameters request`,
+			);
+			payload.workflowId = undefined;
+			return;
+		}
+
+		if (payload.projectId === undefined) {
+			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(
+				payload.workflowId,
+			);
+			payload.projectId = project?.id;
 		}
 	}
 

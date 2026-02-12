@@ -48,6 +48,61 @@ export class Code implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			message:
+				'Use Code node as a LAST RESORT — it runs in a sandboxed environment and is slower than native nodes. Code node is ONLY appropriate for complex multi-step algorithms that cannot be expressed in single expressions, or operations requiring complex data structures.',
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.set',
+					relationHint:
+						'Use this instead for data manipulation: add/modify/rename fields, set values, map data',
+				},
+				{
+					nodeType: 'n8n-nodes-base.filter',
+					relationHint: 'Use this instead for filtering items by condition',
+				},
+				{
+					nodeType: 'n8n-nodes-base.if',
+					relationHint: 'Use this instead for routing by condition',
+				},
+				{
+					nodeType: 'n8n-nodes-base.switch',
+					relationHint: 'Use this instead for multi-way routing by condition',
+				},
+				{
+					nodeType: 'n8n-nodes-base.splitOut',
+					relationHint: 'Use this instead for splitting arrays into separate items',
+				},
+				{
+					nodeType: 'n8n-nodes-base.aggregate',
+					relationHint: 'Use this instead for combining multiple items into one',
+				},
+				{
+					nodeType: 'n8n-nodes-base.summarize',
+					relationHint: 'Use this instead for summarizing or pivoting data',
+				},
+				{
+					nodeType: 'n8n-nodes-base.removeDuplicates',
+					relationHint: 'Use this instead for removing duplicates',
+				},
+				{
+					nodeType: 'n8n-nodes-base.limit',
+					relationHint: 'Use this instead to reduce the number of items returned',
+				},
+				{
+					nodeType: 'n8n-nodes-base.merge',
+					relationHint: 'Use this instead for merging data from multiple branches',
+				},
+				{
+					nodeType: 'n8n-nodes-base.dateTime',
+					relationHint: 'Use this instead for date time operations',
+				},
+				{
+					nodeType: 'n8n-nodes-base.html',
+					relationHint: 'Use this instead for creating html pages',
+				},
+			],
+		},
 		parameterPane: 'wide',
 		properties: [
 			{

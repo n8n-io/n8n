@@ -173,6 +173,10 @@ export class Html implements INodeType {
 				default: placeholder,
 				noDataExpression: true,
 				description: 'HTML template to render',
+				builderHint: {
+					message:
+						'Use expressions to generate loops, reference data, etc. Does not support handlebars.',
+				},
 				displayOptions: {
 					show: {
 						operation: ['generateHtmlTemplate'],

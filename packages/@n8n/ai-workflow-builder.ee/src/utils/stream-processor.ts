@@ -7,7 +7,14 @@ import type { ToolCall } from '@langchain/core/messages/tool';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
 
 import type {
+	HITLInterruptValue,
+	PlanInterruptValue,
+	QuestionsInterruptValue,
+} from '../types/planning';
+import type {
 	AgentMessageChunk,
+	PlanChunk,
+	QuestionsChunk,
 	ToolProgressChunk,
 	WorkflowUpdateChunk,
 	StreamOutput,
@@ -139,11 +146,93 @@ function extractMessageContent(messages: MessageContent[]): string | null {
  * Remove context tags from message content that are used for AI context
  * but shouldn't be displayed to users.
  *
- * This removes the entire context block from <current_workflow_json> through
- * </current_execution_nodes_schemas>
+ * Handles multiple formats:
+ * 1. Old multi-agent format: <current_workflow_json>...</current_execution_nodes_schemas>
+ * 2. Code builder format with <user_request> XML tag
+ * 3. Fallback: strips individual context tags
  */
 export function cleanContextTags(text: string): string {
-	return text.replace(/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/, '');
+	// Handle old multi-agent format
+	let cleaned = text.replace(
+		/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/,
+		'',
+	);
+
+	// Handle code builder format - extract content from <user_request> tag
+	const userRequestMatch = cleaned.match(/<user_request>\n?([\s\S]*?)\n?<\/user_request>/);
+	if (userRequestMatch) {
+		return userRequestMatch[1].trim();
+	}
+
+	// Fallback: strip individual tags if no user request marker found
+	cleaned = cleaned.replace(/<conversation_summary>[\s\S]*?<\/conversation_summary>\s*/g, '');
+	cleaned = cleaned.replace(/<previous_requests>[\s\S]*?<\/previous_requests>\s*/g, '');
+	cleaned = cleaned.replace(/<workflow_file[^>]*>[\s\S]*?<\/workflow_file>\s*/g, '');
+
+	return cleaned.trim();
+}
+
+// ============================================================================
+// HITL INTERRUPTS
+// ============================================================================
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function isUnknownArray(value: unknown): value is unknown[] {
+	return Array.isArray(value);
+}
+
+function isQuestionsInterruptValue(value: unknown): value is QuestionsInterruptValue {
+	if (!isRecord(value)) return false;
+	return value.type === 'questions' && Array.isArray(value.questions);
+}
+
+function isPlanInterruptValue(value: unknown): value is PlanInterruptValue {
+	if (!isRecord(value)) return false;
+	return value.type === 'plan' && isRecord(value.plan);
+}
+
+function extractInterruptPayload(
+	update: unknown,
+): { value: HITLInterruptValue; id?: string } | null {
+	if (!isRecord(update)) return null;
+
+	const rawInterrupts = update.__interrupt__;
+	if (!isUnknownArray(rawInterrupts) || rawInterrupts.length === 0) return null;
+
+	const first = rawInterrupts[0];
+	if (!isRecord(first)) return null;
+
+	const value = first.value;
+	if (!isRecord(value)) return null;
+	const id = typeof first.id === 'string' ? first.id : undefined;
+
+	if (isQuestionsInterruptValue(value) || isPlanInterruptValue(value)) {
+		return { value, id };
+	}
+
+	return null;
+}
+
+function processInterrupt(interruptValue: HITLInterruptValue, id?: string): StreamOutput {
+	if (interruptValue.type === 'questions') {
+		const chunk: QuestionsChunk = {
+			role: 'assistant',
+			type: 'questions',
+			introMessage: interruptValue.introMessage,
+			questions: interruptValue.questions,
+		};
+		return { messages: [chunk], ...(id ? { interruptId: id } : {}) };
+	}
+
+	const chunk: PlanChunk = {
+		role: 'assistant',
+		type: 'plan',
+		plan: interruptValue.plan,
+	};
+	return { messages: [chunk], ...(id ? { interruptId: id } : {}) };
 }
 
 // ============================================================================
@@ -154,6 +243,19 @@ export function cleanContextTags(text: string): string {
 function processOperationsUpdate(update: unknown): StreamOutput | null {
 	const typed = update as { workflowJSON?: unknown; workflowOperations?: unknown } | undefined;
 	if (!typed?.workflowJSON || typed.workflowOperations === undefined) return null;
+
+	const workflowUpdateChunk: WorkflowUpdateChunk = {
+		role: 'assistant',
+		type: 'workflow-updated',
+		codeSnippet: JSON.stringify(typed.workflowJSON, null, 2),
+	};
+	return { messages: [workflowUpdateChunk] };
+}
+
+/** Handle create_workflow_name node update - emits name as workflow update */
+function processWorkflowNameUpdate(update: unknown): StreamOutput | null {
+	const typed = update as { workflowJSON?: { name?: string } } | undefined;
+	if (!typed?.workflowJSON?.name) return null;
 
 	const workflowUpdateChunk: WorkflowUpdateChunk = {
 		role: 'assistant',
@@ -202,9 +304,21 @@ function processUpdatesChunk(nodeUpdate: Record<string, unknown>): StreamOutput 
 		return null;
 	}
 
+	// Human-in-the-loop interrupts (questions/plan)
+	const interruptPayload = extractInterruptPayload(nodeUpdate);
+	if (interruptPayload) {
+		return processInterrupt(interruptPayload.value, interruptPayload.id);
+	}
+
 	// Process operations emits workflow updates
 	if (nodeUpdate.process_operations) {
 		return processOperationsUpdate(nodeUpdate.process_operations);
+	}
+
+	// Workflow name update - emit so frontend receives the generated name
+	// before any potential interrupt (e.g., plan mode approval)
+	if (nodeUpdate.create_workflow_name) {
+		return processWorkflowNameUpdate(nodeUpdate.create_workflow_name);
 	}
 
 	// Generic agent node handling
@@ -234,6 +348,18 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 /** Process a subgraph event */
 function processSubgraphEvent(event: SubgraphEvent): StreamOutput | null {
 	const [namespace, streamMode, data] = event;
+
+	// Always surface interrupts, even from skipped subgraphs
+	if (streamMode === 'updates') {
+		const interruptPayload = extractInterruptPayload(data);
+		if (interruptPayload) {
+			const shouldEmit = namespace.length > 0;
+			if (shouldEmit) {
+				return processInterrupt(interruptPayload.value, interruptPayload.id);
+			}
+			return null;
+		}
+	}
 
 	// Filter out message updates from internal subgraphs
 	if (
@@ -277,11 +403,19 @@ function processEvent(event: StreamEvent): StreamOutput | null {
 export async function* createStreamProcessor(
 	stream: AsyncIterable<StreamEvent>,
 ): AsyncGenerator<StreamOutput> {
+	const seenInterruptIds = new Set<string>();
 	for await (const event of stream) {
 		const result = processEvent(event);
-		if (result) {
-			yield result;
+		if (!result) continue;
+
+		if (result.interruptId) {
+			if (seenInterruptIds.has(result.interruptId)) {
+				continue;
+			}
+			seenInterruptIds.add(result.interruptId);
 		}
+
+		yield result;
 	}
 }
 
@@ -308,10 +442,45 @@ function extractHumanMessageText(content: HumanMessage['content']): string {
 	return '';
 }
 
+/** Check if a value is a valid user_answers payload */
+function isUserAnswersPayload(value: unknown): value is Array<{
+	questionId: string;
+	question: string;
+	selectedOptions: string[];
+	customText?: string;
+	skipped?: boolean;
+}> {
+	if (!Array.isArray(value)) return false;
+	return value.every(
+		(item) =>
+			isRecord(item) &&
+			typeof item.questionId === 'string' &&
+			typeof item.question === 'string' &&
+			Array.isArray(item.selectedOptions),
+	);
+}
+
 /** Format a HumanMessage into the expected output format */
 function formatHumanMessage(msg: HumanMessage): Record<string, unknown> {
 	const rawText = extractHumanMessageText(msg.content);
 	const cleanedText = cleanContextTags(rawText);
+
+	// Check if this is a user_answers message (structured answers from plan mode)
+	const resumeData = msg.additional_kwargs?.resumeData;
+	if (isUserAnswersPayload(resumeData)) {
+		const result: Record<string, unknown> = {
+			role: 'user',
+			type: 'user_answers',
+			answers: resumeData,
+		};
+
+		const messageId = msg.additional_kwargs?.messageId;
+		if (typeof messageId === 'string') {
+			result.id = messageId;
+		}
+
+		return result;
+	}
 
 	const result: Record<string, unknown> = {
 		role: 'user',
@@ -365,6 +534,41 @@ function processAIMessageContent(msg: AIMessage): Array<Record<string, unknown>>
 			text: msg.content,
 		},
 	];
+}
+
+function tryFormatHitlMessage(msg: AIMessage): Record<string, unknown> | null {
+	const messageType = msg.additional_kwargs?.messageType;
+	if (messageType !== 'questions' && messageType !== 'plan') return null;
+	if (typeof msg.content !== 'string') return null;
+
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(msg.content);
+	} catch {
+		return null;
+	}
+
+	if (!isRecord(parsed) || parsed.type !== messageType) return null;
+
+	if (messageType === 'questions') {
+		const questions = parsed.questions;
+		if (!Array.isArray(questions)) return null;
+		const introMessage = typeof parsed.introMessage === 'string' ? parsed.introMessage : undefined;
+		return {
+			role: 'assistant',
+			type: 'questions',
+			questions,
+			...(introMessage ? { introMessage } : {}),
+		};
+	}
+
+	const plan = parsed.plan;
+	if (!isRecord(plan)) return null;
+	return {
+		role: 'assistant',
+		type: 'plan',
+		plan,
+	};
 }
 
 /** Create a formatted tool call message */
@@ -434,6 +638,12 @@ export function formatMessages(
 		if (msg instanceof HumanMessage) {
 			formattedMessages.push(formatHumanMessage(msg));
 		} else if (msg instanceof AIMessage) {
+			const hitlMessage = tryFormatHitlMessage(msg);
+			if (hitlMessage) {
+				formattedMessages.push(hitlMessage);
+				continue;
+			}
+
 			// Add AI message content
 			formattedMessages.push(...processAIMessageContent(msg));
 

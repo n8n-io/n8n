@@ -8,9 +8,8 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { logAiEvent } from '@utils/helpers';
-import type { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
-import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { logAiEvent } from '@n8n/ai-utilities';
+import type { N8nBinaryLoader, N8nJsonLoader } from '@n8n/ai-utilities';
 
 import type { VectorStoreNodeConstructorArgs } from '../../types';
 import { handleInsertOperation } from '../insertOperation';
@@ -43,8 +42,10 @@ jest.mock('../../../processDocuments', () => ({
 }));
 
 // Mock helper functions
-jest.mock('@utils/helpers', () => ({
+jest.mock('@n8n/ai-utilities', () => ({
 	logAiEvent: jest.fn(),
+	N8nBinaryLoader: class {},
+	N8nJsonLoader: class {},
 }));
 
 // Helper functions for testing

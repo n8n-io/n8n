@@ -119,6 +119,40 @@ describe('stream-processor', () => {
 				expect(message.codeSnippet).toBe(JSON.stringify(workflowData, null, 2));
 			});
 
+			it('should handle create_workflow_name with generated name', () => {
+				const workflowData = {
+					nodes: [] as unknown[],
+					connections: {},
+					name: 'Email Automation Workflow',
+				};
+				const chunk = {
+					create_workflow_name: {
+						workflowJSON: workflowData,
+					},
+				};
+
+				const result = processStreamChunk('updates', chunk);
+
+				expect(result).toBeDefined();
+				expect(result?.messages).toHaveLength(1);
+				const message = result?.messages[0] as WorkflowUpdateChunk;
+				expect(message.role).toBe('assistant');
+				expect(message.type).toBe('workflow-updated');
+				expect(message.codeSnippet).toBe(JSON.stringify(workflowData, null, 2));
+			});
+
+			it('should ignore create_workflow_name without a name', () => {
+				const chunk = {
+					create_workflow_name: {
+						workflowJSON: { nodes: [], connections: {} },
+					},
+				};
+
+				const result = processStreamChunk('updates', chunk);
+
+				expect(result).toBeNull();
+			});
+
 			it('should ignore chunks without relevant content', () => {
 				const chunk = {
 					responder: {
@@ -385,7 +419,7 @@ describe('stream-processor', () => {
 			expect(result[0]).not.toHaveProperty('revertVersionId');
 		});
 
-		it('should not include id when messageId is missing', () => {
+		it('should include HumanMessage and extract versionId even without messageId', () => {
 			const message = new HumanMessage({ content: 'Another message' });
 			message.additional_kwargs = { versionId: 'version-999' };
 
@@ -416,7 +450,7 @@ describe('stream-processor', () => {
 			expect(formatted.id).toBe('msg-complete');
 		});
 
-		it('should handle undefined additional_kwargs', () => {
+		it('should include HumanMessage with undefined additional_kwargs', () => {
 			const message = new HumanMessage({ content: 'Message without kwargs' });
 			// Message is created without additional_kwargs, so it's undefined by default
 
@@ -432,7 +466,7 @@ describe('stream-processor', () => {
 			expect(result[0]).not.toHaveProperty('id');
 		});
 
-		it('should handle empty additional_kwargs object', () => {
+		it('should include HumanMessage with empty additional_kwargs object', () => {
 			const message = new HumanMessage({ content: 'Empty kwargs' });
 			message.additional_kwargs = {};
 
@@ -464,7 +498,7 @@ describe('stream-processor', () => {
 			expect(result[0]).not.toHaveProperty('revertVersionId');
 		});
 
-		it('should only include id when messageId is a string', () => {
+		it('should include HumanMessage when messageId is not a string but exclude id from output', () => {
 			const message = new HumanMessage({ content: 'Non-string messageId' });
 			message.additional_kwargs = { versionId: 'version-456', messageId: 456 };
 
@@ -1444,6 +1478,46 @@ describe('stream-processor', () => {
 			const result = cleanContextTags(input);
 			expect(result).toBe('Plain text without any tags');
 		});
+
+		it('should extract user request from XML tag format', () => {
+			const input = `<previous_requests>
+test
+</previous_requests>
+<workflow_file path="/workflow.js">
+1: const wf = workflow('id', 'name');
+</workflow_file>
+<user_request>
+add set node
+</user_request>`;
+
+			const result = cleanContextTags(input);
+			expect(result).toBe('add set node');
+		});
+
+		it('should extract multiline user request from XML tag', () => {
+			const input = `<workflow_file path="/workflow.js">
+code
+</workflow_file>
+<user_request>
+add a set node
+and connect it to the trigger
+</user_request>`;
+
+			const result = cleanContextTags(input);
+			expect(result).toBe('add a set node\nand connect it to the trigger');
+		});
+
+		it('should strip code builder tags when no user request marker found', () => {
+			const input = `<previous_requests>
+old request
+</previous_requests>
+<workflow_file path="/workflow.js">
+code
+</workflow_file>`;
+
+			const result = cleanContextTags(input);
+			expect(result).toBe('');
+		});
 	});
 
 	describe('edge cases', () => {
@@ -1498,6 +1572,109 @@ describe('stream-processor', () => {
 			expect(result).toBeNull();
 		});
 
+		// ============================================================================
+		// Plan mode interrupt tests
+		// ============================================================================
+
+		it('should process a questions interrupt from updates stream', () => {
+			const chunk = {
+				__interrupt__: [
+					{
+						value: {
+							type: 'questions',
+							introMessage: 'Before I proceed:',
+							questions: [
+								{
+									id: 'q1',
+									question: 'Which provider?',
+									type: 'single',
+									options: ['Gmail', 'Outlook'],
+								},
+							],
+						},
+						id: 'int-q1',
+					},
+				],
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeDefined();
+			expect(result?.messages).toHaveLength(1);
+			const msg = result!.messages[0] as {
+				type: string;
+				questions: unknown[];
+				introMessage?: string;
+			};
+			expect(msg.type).toBe('questions');
+			expect(msg.questions).toHaveLength(1);
+			expect(msg.introMessage).toBe('Before I proceed:');
+			expect(result?.interruptId).toBe('int-q1');
+		});
+
+		it('should process a plan interrupt from updates stream', () => {
+			const plan = {
+				summary: 'Weather alerts via Slack',
+				trigger: 'Daily at 7 AM',
+				steps: [{ description: 'Check forecast' }, { description: 'Send notification' }],
+			};
+			const chunk = {
+				__interrupt__: [
+					{
+						value: { type: 'plan', plan },
+						id: 'int-p1',
+					},
+				],
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeDefined();
+			expect(result?.messages).toHaveLength(1);
+			const msg = result!.messages[0] as { type: string; plan: typeof plan };
+			expect(msg.type).toBe('plan');
+			expect(msg.plan).toEqual(plan);
+			expect(result?.interruptId).toBe('int-p1');
+		});
+
+		it('should return null for empty __interrupt__ array', () => {
+			const chunk = { __interrupt__: [] };
+			const result = processStreamChunk('updates', chunk);
+			expect(result).toBeNull();
+		});
+
+		it('should return null for __interrupt__ with invalid value', () => {
+			const chunk = { __interrupt__: [{ value: 'not an object', id: 'x' }] };
+			const result = processStreamChunk('updates', chunk);
+			expect(result).toBeNull();
+		});
+
+		it('should return null for __interrupt__ with unknown type', () => {
+			const chunk = {
+				__interrupt__: [{ value: { type: 'unknown_type', data: {} }, id: 'x' }],
+			};
+			const result = processStreamChunk('updates', chunk);
+			expect(result).toBeNull();
+		});
+
+		it('should handle interrupt without id', () => {
+			const chunk = {
+				__interrupt__: [
+					{
+						value: {
+							type: 'questions',
+							questions: [{ id: 'q1', question: 'Test?', type: 'text' }],
+						},
+					},
+				],
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeDefined();
+			expect(result?.interruptId).toBeUndefined();
+		});
+
 		it('should handle stream mode with single character (edge case)', () => {
 			// Single character stream modes should return null (length <= 1 check)
 			const result = processStreamChunk('u', { responder: { messages: [{ content: 'Test' }] } });
@@ -1506,6 +1683,79 @@ describe('stream-processor', () => {
 			// but processStreamChunk itself doesn't have this check - it checks mode names
 			// 'u' is not 'updates' or 'custom', so it returns null
 			expect(result).toBeNull();
+		});
+	});
+
+	describe('createStreamProcessor - interrupt deduplication', () => {
+		async function collectResults(stream: AsyncIterable<StreamOutput>): Promise<StreamOutput[]> {
+			const results: StreamOutput[] = [];
+			for await (const result of stream) {
+				results.push(result);
+			}
+			return results;
+		}
+
+		it('should deduplicate interrupts with the same id', async () => {
+			const interruptChunk = {
+				__interrupt__: [
+					{
+						value: {
+							type: 'questions',
+							questions: [{ id: 'q1', question: 'Service?', type: 'single' }],
+						},
+						id: 'interrupt-123',
+					},
+				],
+			};
+
+			// Simulate same interrupt emitted twice (parent + subgraph)
+			async function* fakeStream() {
+				yield ['updates', interruptChunk] as [string, unknown];
+				yield ['updates', interruptChunk] as [string, unknown];
+			}
+
+			const results = await collectResults(createStreamProcessor(fakeStream()));
+
+			expect(results).toHaveLength(1);
+			expect(results[0].interruptId).toBe('interrupt-123');
+		});
+
+		it('should allow interrupts with different ids', async () => {
+			const makeInterrupt = (id: string) => ({
+				__interrupt__: [
+					{
+						value: {
+							type: 'questions',
+							questions: [{ id: 'q1', question: 'Test?', type: 'text' }],
+						},
+						id,
+					},
+				],
+			});
+
+			async function* fakeStream() {
+				yield ['updates', makeInterrupt('int-1')] as [string, unknown];
+				yield ['updates', makeInterrupt('int-2')] as [string, unknown];
+			}
+
+			const results = await collectResults(createStreamProcessor(fakeStream()));
+
+			expect(results).toHaveLength(2);
+		});
+
+		it('should pass through non-interrupt events without dedup', async () => {
+			const responderChunk = {
+				responder: { messages: [{ content: 'Hello' }] },
+			};
+
+			async function* fakeStream() {
+				yield ['updates', responderChunk] as [string, unknown];
+				yield ['updates', responderChunk] as [string, unknown];
+			}
+
+			const results = await collectResults(createStreamProcessor(fakeStream()));
+
+			expect(results).toHaveLength(2);
 		});
 	});
 });

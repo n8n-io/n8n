@@ -14,12 +14,10 @@ inputs:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
     default: 'false'
-    type: boolean
   build-command:
     description: 'Command to execute for building the project or an optional command. Leave empty to skip build step.'
     required: false
     default: 'pnpm build'
-    type: string
 
 runs:
   using: 'composite'
@@ -32,6 +30,10 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
         cache: 'pnpm'
+
+    - name: Upgrade npm (keep Node 22) # We need npm 11.5.1 for OIDC
+      run: npm i -g npm@11.5.1
+      shell: bash
 
     - name: Install Aikido SafeChain
       if: runner.os != 'Windows'

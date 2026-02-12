@@ -1,13 +1,28 @@
 import { GlobalConfig } from '@n8n/config';
 import { type DatabaseType, DbConnection, type Migration } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource, type QueryRunner } from '@n8n/typeorm';
+import { DataSource, type ObjectLiteral, type QueryRunner } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 async function reinitializeDataConnection(): Promise<void> {
 	const dbConnection = Container.get(DbConnection);
 	await dbConnection.close();
 	await dbConnection.init();
+}
+
+/**
+ * Get the properly qualified migrations table name for the current database.
+ */
+function getMigrationsTableName(): string {
+	const globalConfig = Container.get(GlobalConfig);
+	const dbType = globalConfig.database.type;
+	const tablePrefix = globalConfig.database.tablePrefix;
+
+	if (dbType === 'postgresdb') {
+		const schema = globalConfig.database.postgresdb.schema;
+		return `${schema}."${tablePrefix}migrations"`;
+	}
+	return `"${tablePrefix}migrations"`;
 }
 
 /**
@@ -24,6 +39,7 @@ export interface TestMigrationContext {
 		tableName(name: string): string;
 		indexName(name: string): string;
 	};
+	runQuery: <T = unknown>(sql: string, namedParameters?: ObjectLiteral) => Promise<T>;
 }
 
 /**
@@ -46,6 +62,32 @@ export function createTestMigrationContext(dataSource: DataSource): TestMigratio
 			columnName: (name) => queryRunner.connection.driver.escape(name),
 			tableName: (name) => queryRunner.connection.driver.escape(`${tablePrefix}${name}`),
 			indexName: (name) => queryRunner.connection.driver.escape(`IDX_${tablePrefix}${name}`),
+		},
+		runQuery: async <T>(sql: string, namedParameters?: ObjectLiteral) => {
+			if (namedParameters) {
+				if (dbType === 'postgresdb') {
+					// For PostgreSQL, convert named parameters to positional ($1, $2, etc.)
+					// This handles JSON columns properly which don't work well with TypeORM's escapeQueryWithParameters
+					// Use negative lookbehind to avoid matching PostgreSQL's :: cast operator
+					let paramIndex = 1;
+					const paramValues: unknown[] = [];
+					const convertedSql = sql.replace(/(?<!:):(\w+)/g, (_, paramName: string) => {
+						paramValues.push(namedParameters[paramName] as unknown);
+						return `$${paramIndex++}`;
+					});
+					return (await queryRunner.query(convertedSql, paramValues)) as T;
+				} else {
+					// For MySQL/SQLite, use TypeORM's escapeQueryWithParameters
+					const [query, parameters] = queryRunner.connection.driver.escapeQueryWithParameters(
+						sql,
+						namedParameters,
+						{},
+					);
+					return (await queryRunner.query(query, parameters)) as T;
+				}
+			} else {
+				return (await queryRunner.query(sql)) as T;
+			}
 		},
 	};
 }
@@ -97,7 +139,7 @@ export async function undoLastSingleMigration(): Promise<void> {
 
 	// Get the last executed migration from the migrations table
 	const executedMigrations = await dataSource.query<Array<{ name: string }>>(
-		'SELECT * FROM migrations ORDER BY timestamp DESC LIMIT 1',
+		`SELECT * FROM ${getMigrationsTableName()} ORDER BY timestamp DESC LIMIT 1`,
 	);
 
 	if (executedMigrations.length === 0) {

@@ -4,7 +4,7 @@ import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { generateKeyPairSync } from 'crypto';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse, UserError, type DataTableColumnType } from 'n8n-workflow';
 import { ok } from 'node:assert/strict';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
@@ -21,7 +21,13 @@ import type { ExportedFolders } from './types/exportable-folders';
 import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-import type { StatusResourceOwner } from './types/resource-owner';
+import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner';
+import type {
+	ExportableDataTable,
+	ExportableDataTableColumn,
+	StatusExportableDataTable,
+} from './types/exportable-data-table';
+import type { StatusExportableCredential } from './types/exportable-credential';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
@@ -40,6 +46,10 @@ export function getCredentialExportPath(
 	credentialExportFolder: string,
 ): string {
 	return safeJoinPath(credentialExportFolder, `${credentialId}.json`);
+}
+
+export function getDataTableExportPath(dataTableId: string, dataTableExportFolder: string): string {
+	return safeJoinPath(dataTableExportFolder, `${dataTableId}.json`);
 }
 
 export function getVariablesPath(gitFolder: string): string {
@@ -72,15 +82,38 @@ export async function readTagAndMappingsFromSourceControlFile(file: string): Pro
 	}
 }
 
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'code' in error &&
+		typeof (error as { code: unknown }).code === 'string'
+	);
+}
+
 export async function readFoldersFromSourceControlFile(file: string): Promise<ExportedFolders> {
 	try {
 		return jsonParse<ExportedFolders>(await fsReadFile(file, { encoding: 'utf8' }), {
 			fallbackValue: { folders: [] },
 		});
 	} catch (error) {
-		// Return fallback if file not found
-		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+		if (isErrnoException(error) && error.code === 'ENOENT') {
 			return { folders: [] };
+		}
+		throw error;
+	}
+}
+
+export async function readDataTablesFromSourceControlFile(
+	file: string,
+): Promise<ExportableDataTable[]> {
+	try {
+		return jsonParse<ExportableDataTable[]>(await fsReadFile(file, { encoding: 'utf8' }), {
+			fallbackValue: [],
+		});
+	} catch (error) {
+		if (isErrnoException(error) && error.code === 'ENOENT') {
+			return [];
 		}
 		throw error;
 	}
@@ -164,11 +197,12 @@ export function getRepoType(repoUrl: string): 'github' | 'gitlab' | 'other' {
 }
 
 function filterSourceControlledFilesUniqueIds(files: SourceControlledFile[]) {
-	return (
-		files.filter((file, index, self) => {
-			return self.findIndex((f) => f.id === file.id) === index;
-		}) || []
-	);
+	if (!files || !Array.isArray(files)) {
+		return [];
+	}
+	return files.filter((file, index, self) => {
+		return self.findIndex((f) => f.id === file.id) === index;
+	});
 }
 
 export function getTrackingInformationFromPullResult(
@@ -248,16 +282,36 @@ export function normalizeAndValidateSourceControlledFilePath(
 }
 
 export function hasOwnerChanged(
-	owner1?: StatusResourceOwner,
-	owner2?: StatusResourceOwner,
+	owner1?: RemoteResourceOwner | StatusResourceOwner | null,
+	owner2?: StatusResourceOwner | null,
 ): boolean {
 	// We only compare owners when there is at least one team owner
 	// because personal owners projects are not synced with source control
-	if (owner1?.type !== 'team' && owner2?.type !== 'team') {
+
+	// If either is missing, check if the other is a team owner
+	if (!owner1 || !owner2) {
+		// If one exists and is a team owner, the absence of the other is a change
+		const existingOwner = owner1 || owner2;
+		if (!existingOwner) return false;
+		if (typeof existingOwner === 'string') return false;
+		return existingOwner.type === 'team';
+	}
+
+	// Handle string format (legacy personal email)
+	if (typeof owner1 === 'string') {
+		return false; // Personal projects are not synced
+	}
+
+	if (owner1.type !== 'team' && owner2.type !== 'team') {
 		return false;
 	}
 
-	return owner1?.projectId !== owner2?.projectId;
+	// For team projects, compare IDs
+	// owner1 could be TeamResourceOwner (with teamId) or StatusResourceOwner (with projectId)
+	// owner2 could also be TeamResourceOwner (with teamId) or StatusResourceOwner (with projectId)
+	const owner1TeamId = 'teamId' in owner1 ? owner1.teamId : owner1.projectId;
+	const owner2TeamId = 'teamId' in owner2 ? owner2.teamId : owner2.projectId;
+	return owner1TeamId !== owner2TeamId;
 }
 
 /**
@@ -274,4 +328,70 @@ export function isWorkflowModified(
 	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
 
 	return hasVersionIdChanged || hasParentFolderIdChanged || ownerChanged;
+}
+
+/**
+ * Compares two data table columns arrays to check if they are equal
+ */
+function areDataTableColumnsEqual(
+	localColumns: ExportableDataTableColumn[],
+	remoteColumns: ExportableDataTableColumn[],
+): boolean {
+	if (localColumns.length !== remoteColumns.length) {
+		return false;
+	}
+
+	const sortedLocal = [...localColumns].sort((a, b) => a.id.localeCompare(b.id));
+	const sortedRemote = [...remoteColumns].sort((a, b) => a.id.localeCompare(b.id));
+
+	return sortedLocal.every((localCol, idx) => {
+		const remoteCol = sortedRemote[idx];
+		return (
+			localCol.id === remoteCol.id &&
+			localCol.name === remoteCol.name &&
+			localCol.type === remoteCol.type &&
+			localCol.index === remoteCol.index
+		);
+	});
+}
+
+/**
+ * Checks if a data table has been modified by comparing basic properties and schema (columns)
+ * between local and remote versions.
+ *
+ * Data tables only use PersonalResourceOwner or TeamResourceOwner (no legacy string format).
+ */
+export function isDataTableModified(
+	localDt: StatusExportableDataTable,
+	remoteDt: ExportableDataTable,
+): boolean {
+	if (localDt.name !== remoteDt.name) {
+		return true;
+	}
+
+	const ownerChanged = hasOwnerChanged(remoteDt.ownedBy, localDt.ownedBy);
+	if (ownerChanged) {
+		return true;
+	}
+
+	return !areDataTableColumnsEqual(localDt.columns, remoteDt.columns);
+}
+
+/**
+ * Type guard to check if a string is a valid DataTableColumnType.
+ */
+export function isValidDataTableColumnType(type: string): type is DataTableColumnType {
+	return ['string', 'number', 'boolean', 'date'].includes(type);
+}
+
+export function areSameCredentials(
+	credA: StatusExportableCredential,
+	credB: StatusExportableCredential,
+): boolean {
+	return (
+		credA.name === credB.name &&
+		credA.type === credB.type &&
+		!hasOwnerChanged(credA.ownedBy, credB.ownedBy) &&
+		Boolean(credA.isGlobal) === Boolean(credB.isGlobal)
+	);
 }

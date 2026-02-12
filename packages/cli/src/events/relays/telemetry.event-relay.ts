@@ -141,6 +141,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
 			'history-compacted': (event) => this.historyCompacted(event),
+			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
 		});
 	}
 
@@ -1380,5 +1381,20 @@ export class TelemetryEventRelay extends EventRelay {
 				this.globalConfig.workflowHistoryCompaction.trimmingTimeWindowDays,
 		});
 	}
+	// #endregion
+
+	// #region Instance Policies
+
+	private instancePoliciesUpdated({
+		user,
+		settingName,
+		value,
+	}: RelayEventMap['instance-policies-updated']) {
+		this.telemetry.track('User updated instance policies', {
+			user_id: user.id,
+			[settingName]: value,
+		});
+	}
+
 	// #endregion
 }

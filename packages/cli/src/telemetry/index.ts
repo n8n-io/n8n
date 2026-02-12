@@ -181,6 +181,10 @@ export class Telemetry {
 				executionTrackDataKey.count++;
 			}
 
+			if (properties.used_dynamic_credentials) {
+				this.track('Workflow execution with dynamic credentials', properties);
+			}
+
 			if (
 				!properties.success &&
 				properties.is_manual &&

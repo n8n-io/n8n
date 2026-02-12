@@ -1438,6 +1438,8 @@ export class WorkflowExecute {
 
 					if (!this.additionalData.restartExecutionId) {
 						await hooks.runHook('workflowExecuteBefore', [workflow, this.runExecutionData]);
+					} else {
+						await hooks.runHook('workflowExecuteResume', [workflow, this.runExecutionData]);
 					}
 				} catch (error) {
 					const e = error as unknown as ExecutionBaseError;
@@ -2588,6 +2590,13 @@ export class WorkflowExecute {
 				executionData.data.main.length === 1 &&
 				executionData.data.main[0]?.length === nodeSuccessData[0].length;
 
+			// Multiple inputs → single output (e.g., aggregating items into one)
+			const isSingleOutput =
+				nodeSuccessData.length === 1 &&
+				nodeSuccessData[0]?.length === 1 &&
+				executionData.data.main.length === 1 &&
+				(executionData.data.main[0]?.length ?? 0) > 1;
+
 			checkOutputData: for (const outputData of nodeSuccessData) {
 				if (outputData === null) {
 					continue;
@@ -2607,6 +2616,11 @@ export class WorkflowExecute {
 							// is the origin of the corresponding output items
 							item.pairedItem = {
 								item: index,
+							};
+						} else if (isSingleOutput) {
+							// Multiple inputs were aggregated into a single output, pair to first input
+							item.pairedItem = {
+								item: 0,
 							};
 						} else {
 							// In all other cases autofixing is not possible

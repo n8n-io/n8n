@@ -386,5 +386,23 @@ describe('API: ai', () => {
 				truncateBuilderMessages(mockContext, 'workflow-123', 'message-456'),
 			).rejects.toThrow('API request failed');
 		});
+
+		it('should include codeBuilder in request body when provided', async () => {
+			const mockResponse = { success: true };
+			makeRestApiRequestSpy.mockResolvedValue(mockResponse);
+
+			await truncateBuilderMessages(mockContext, 'workflow-123', 'message-456', true);
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				mockContext,
+				'POST',
+				'/ai/build/truncate-messages',
+				{
+					workflowId: 'workflow-123',
+					messageId: 'message-456',
+					codeBuilder: true,
+				},
+			);
+		});
 	});
 });

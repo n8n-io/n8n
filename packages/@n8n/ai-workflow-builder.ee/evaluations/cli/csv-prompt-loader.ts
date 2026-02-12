@@ -2,7 +2,7 @@ import { parse } from 'csv-parse/sync';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, isAbsolute, resolve } from 'node:path';
 
-import type { TestCase } from '../harness/harness-types.js';
+import type { TestCase } from '../harness/harness-types';
 
 /** Path to the default prompts CSV fixture */
 const DEFAULT_PROMPTS_PATH = join(__dirname, '..', 'fixtures', 'default-prompts.csv');

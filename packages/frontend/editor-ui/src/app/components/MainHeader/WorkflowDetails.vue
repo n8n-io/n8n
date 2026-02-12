@@ -52,7 +52,7 @@ const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
-	tags: IWorkflowDb['tags'];
+	tags: readonly string[];
 	name: IWorkflowDb['name'];
 	meta: IWorkflowDb['meta'];
 	scopes: IWorkflowDb['scopes'];
@@ -91,7 +91,7 @@ const workflowHeaderActionsRef =
 	useTemplateRef<InstanceType<typeof WorkflowHeaderDraftPublishActions>>('workflowHeaderActions');
 const tagsEventBus = createEventBus();
 
-const hasChanged = (prev: string[], curr: string[]) => {
+const hasChanged = (prev: readonly string[], curr: readonly string[]) => {
 	if (prev.length !== curr.length) {
 		return true;
 	}
@@ -116,9 +116,7 @@ const readOnlyActions = computed(() => {
 	return readOnly.value || props.isArchived || !workflowPermissions.value.update;
 });
 
-const workflowTagIds = computed(() => {
-	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
-});
+const workflowTagIds = computed(() => props.tags);
 
 const currentFolderForBreadcrumbs = computed(() => {
 	if (!isNewWorkflow.value && props.currentFolder) {
@@ -145,7 +143,7 @@ function onTagsEditEnable() {
 		return;
 	}
 
-	appliedTagIds.value = (props.tags ?? []) as string[];
+	appliedTagIds.value = [...props.tags];
 	isTagsEditEnabled.value = true;
 
 	setTimeout(() => {
@@ -156,7 +154,7 @@ function onTagsEditEnable() {
 }
 
 async function onTagsBlur() {
-	const current = (props.tags ?? []) as string[];
+	const current = props.tags;
 	const tags = appliedTagIds.value;
 	if (!hasChanged(current, tags)) {
 		isTagsEditEnabled.value = false;
@@ -251,7 +249,9 @@ async function handleArchiveWorkflow() {
 	}
 
 	try {
-		await workflowsStore.archiveWorkflow(props.id);
+		const expectedChecksum =
+			props.id === workflowsStore.workflowId ? workflowsStore.workflowChecksum : undefined;
+		await workflowsStore.archiveWorkflow(props.id, expectedChecksum);
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
 		return;
@@ -423,7 +423,7 @@ onBeforeUnmount(() => {
 					@blur="onTagsBlur"
 					@esc="onTagsEditEsc"
 				/>
-				<div v-else-if="(tags ?? []).length === 0 && !readOnlyActions">
+				<div v-else-if="tags.length === 0 && !readOnlyActions">
 					<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
 						+ {{ i18n.baseText('workflowDetails.addTag') }}
 					</span>

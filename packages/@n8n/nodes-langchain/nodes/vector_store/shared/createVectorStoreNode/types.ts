@@ -12,6 +12,7 @@ import type {
 	ThemeIconColor,
 	IDataObject,
 	NodeParameterValueType,
+	IBuilderHint,
 } from 'n8n-workflow';
 
 export type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update' | 'retrieve-as-tool';
@@ -28,6 +29,7 @@ export interface NodeMeta {
 	operationModes?: NodeOperationMode[];
 	categories?: string[];
 	subcategories?: Record<string, string[]>;
+	builderHint?: IBuilderHint;
 }
 
 export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorStore> {

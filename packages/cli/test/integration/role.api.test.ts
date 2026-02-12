@@ -5,8 +5,13 @@ import { createMember } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 import { Container } from '@n8n/di';
+import { AuthRolesService, SettingsRepository } from '@n8n/db';
 import { SecuritySettingsService } from '@/services/security-settings.service';
-import { PROJECT_SCOPE_MAP } from '@n8n/permissions';
+import {
+	PROJECT_SCOPE_MAP,
+	PERSONAL_SPACE_SHARING_SETTING,
+	PERSONAL_SPACE_PUBLISHING_SETTING,
+} from '@n8n/permissions';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['role'],
@@ -72,23 +77,36 @@ describe('GET /roles/', () => {
 
 	describe('Project roles', () => {
 		let securitySettingsService: SecuritySettingsService;
+		let settingsRepository: SettingsRepository;
 
 		beforeEach(async () => {
 			securitySettingsService = Container.get(SecuritySettingsService);
+			settingsRepository = Container.get(SettingsRepository);
+			await settingsRepository.delete({ key: PERSONAL_SPACE_PUBLISHING_SETTING.key });
+			await settingsRepository.delete({ key: PERSONAL_SPACE_SHARING_SETTING.key });
+			await Container.get(AuthRolesService).init();
 		});
 
-		test('should when no security settings are set - default to adding workflow:publish scope', async () => {
+		test('should default to adding sharing and publishing scopes when no security settings are set', async () => {
 			const resp = await memberAgent.get('/roles/');
 			expect(resp.status).toBe(200);
 			checkForScopes(
 				'project:personalOwner',
-				[...PROJECT_SCOPE_MAP['project:personalOwner'], 'workflow:publish'],
+				[
+					...PROJECT_SCOPE_MAP['project:personalOwner'],
+					...(PERSONAL_SPACE_SHARING_SETTING.scopes as Scope[]),
+					...(PERSONAL_SPACE_PUBLISHING_SETTING.scopes as Scope[]),
+				],
 				resp.body.data.project,
 			);
 		});
 
 		test('should match fixed scopes when security settings are all explicitly disabled', async () => {
-			await securitySettingsService.setPersonalSpacePublishing(false);
+			await securitySettingsService.setPersonalSpaceSetting(
+				PERSONAL_SPACE_PUBLISHING_SETTING,
+				false,
+			);
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, false);
 			const resp = await memberAgent.get('/roles/');
 
 			expect(resp.status).toBe(200);
@@ -98,13 +116,36 @@ describe('GET /roles/', () => {
 		});
 
 		test('should return the list with project:personalOwner - workflow:publish scope when the personal project publish security setting is explicitly enabled', async () => {
-			await securitySettingsService.setPersonalSpacePublishing(true);
+			await securitySettingsService.setPersonalSpaceSetting(
+				PERSONAL_SPACE_PUBLISHING_SETTING,
+				true,
+			);
 			const resp = await memberAgent.get('/roles/');
 
 			expect(resp.status).toBe(200);
 			checkForScopes(
 				'project:personalOwner',
-				[...PROJECT_SCOPE_MAP['project:personalOwner'], 'workflow:publish'],
+				[
+					...PROJECT_SCOPE_MAP['project:personalOwner'],
+					...(PERSONAL_SPACE_PUBLISHING_SETTING.scopes as Scope[]),
+					...(PERSONAL_SPACE_SHARING_SETTING.scopes as Scope[]),
+				],
+				resp.body.data.project,
+			);
+		});
+
+		test('should return the list with project:personalOwner - sharing scopes when the personal project sharing security setting is explicitly enabled', async () => {
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, true);
+			const resp = await memberAgent.get('/roles/');
+
+			expect(resp.status).toBe(200);
+			checkForScopes(
+				'project:personalOwner',
+				[
+					...PROJECT_SCOPE_MAP['project:personalOwner'],
+					...(PERSONAL_SPACE_PUBLISHING_SETTING.scopes as Scope[]),
+					...(PERSONAL_SPACE_SHARING_SETTING.scopes as Scope[]),
+				],
 				resp.body.data.project,
 			);
 		});

@@ -96,6 +96,7 @@ const pullMessage = ({
 	credential,
 	tags,
 	variables,
+	datatable,
 	workflow,
 	folders,
 	project,
@@ -124,6 +125,15 @@ const pullMessage = ({
 		messages.push(i18n.baseText('generic.variable_plural'));
 	}
 
+	if (datatable?.length) {
+		messages.push(
+			i18n.baseText('generic.datatable', {
+				adjustToNumber: datatable.length,
+				interpolate: { count: datatable.length },
+			}),
+		);
+	}
+
 	if (tags?.length) {
 		messages.push(i18n.baseText('generic.tag_plural'));
 	}
@@ -136,9 +146,30 @@ const pullMessage = ({
 		messages.push(i18n.baseText('generic.projects'));
 	}
 
+	const totalCount =
+		(workflow?.length ?? 0) +
+		(credential?.length ?? 0) +
+		(variables?.length ?? 0) +
+		(datatable?.length ?? 0) +
+		(tags?.length ?? 0) +
+		(folders?.length ?? 0) +
+		(project?.length ?? 0);
+
+	// Plural-only resources (variables, tags, folders, projects) always use plural labels.
+	// Force plural verb when any of these are present, even if totalCount is 1.
+	const hasPluralOnlyResources = !!(
+		variables?.length ||
+		tags?.length ||
+		folders?.length ||
+		project?.length
+	);
+	const verbCount = hasPluralOnlyResources ? Math.max(totalCount, 2) : totalCount;
+
 	return [
 		new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages),
-		'were pulled',
+		i18n.baseText('settings.sourceControl.pull.success.description', {
+			adjustToNumber: verbCount,
+		}),
 	].join(' ');
 };
 
@@ -156,14 +187,17 @@ export const notifyUserAboutPullWorkFolderOutcome = async (
 		return;
 	}
 
-	const { credential, tags, variables, workflow, folders, project } = groupBy(files, 'type');
+	const { credential, tags, variables, datatable, workflow, folders, project } = groupBy(
+		files,
+		'type',
+	);
 
 	const toastMessages = [
 		...(variables?.length ? [createVariablesToast(router)] : []),
 		...(credential?.length ? [createCredentialsToast(router)] : []),
 		{
 			title: i18n.baseText('settings.sourceControl.pull.success.title'),
-			message: pullMessage({ credential, tags, variables, workflow, folders, project }),
+			message: pullMessage({ credential, tags, variables, datatable, workflow, folders, project }),
 			type: 'success' as const,
 		},
 	];

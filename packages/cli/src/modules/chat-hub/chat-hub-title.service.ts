@@ -29,7 +29,7 @@ import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import { ChatHubExecutionService } from './chat-hub-execution.service';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
-import { NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import { PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
 import { ChatHubSessionRepository } from './chat-session.repository';
 
 @Service()
@@ -131,11 +131,11 @@ export class ChatHubTitleService {
 
 		if (!execution.status || execution.status !== 'success') {
 			const message =
-				this.executionService.getErrorMessage(execution) ?? 'Failed to generate a response';
+				this.executionService.extractErrorMessage(execution) ?? 'Failed to generate a response';
 			throw new OperationalError(message);
 		}
 
-		const title = this.executionService.getAIOutput(execution, NODE_NAMES.TITLE_GENERATOR_AGENT);
+		const title = this.executionService.extractMessage(execution, 'lastNode');
 		return title ?? null;
 	}
 

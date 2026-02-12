@@ -134,6 +134,7 @@ const commonOptionsFields: INodeProperties[] = [
 		],
 		default: 'notSupported',
 		description: 'If loading messages of a previous session should be enabled',
+		builderHint: { message: "Set to 'memory' to persist conversation history across sessions" },
 	},
 	{
 		displayName: 'Require Button Click to Start Chat',
@@ -254,6 +255,19 @@ export class ChatTrigger extends Node {
 			];
 		 })() }}`,
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			inputs: {
+				ai_memory: {
+					required: true,
+					displayOptions: {
+						show: {
+							mode: ['hostedChat', 'webhook'],
+							'options.loadPreviousSession': ['memory'],
+						},
+					},
+				},
+			},
+		},
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed

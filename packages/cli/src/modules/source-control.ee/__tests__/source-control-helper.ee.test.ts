@@ -18,11 +18,13 @@ import {
 	getTrackingInformationFromPullResult,
 	isWorkflowModified,
 	sourceControlFoldersExistCheck,
+	areSameCredentials,
 } from '../source-control-helper.ee';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { License } from '@/license';
 
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
+import type { StatusExportableCredential } from '../types/exportable-credential';
 
 function createWorkflowVersion(
 	overrides: Partial<SourceControlWorkflowVersionId> = {},
@@ -489,5 +491,124 @@ describe('readFoldersFromSourceControlFile', () => {
 		expect(result).toEqual({
 			folders: [],
 		});
+	});
+});
+
+describe('readDataTablesFromSourceControlFile', () => {
+	beforeEach(() => {
+		// Reset module registry so we can unmock properly
+		jest.resetModules();
+		jest.unmock('node:fs/promises');
+	});
+
+	it('should return empty array if the file path is not valid (ENOENT)', async () => {
+		const filePath = 'invalid/path/data_tables.json';
+		// Import the function after resetting modules
+		const { readDataTablesFromSourceControlFile } = await import(
+			'@/modules/source-control.ee/source-control-helper.ee'
+		);
+		const result = await readDataTablesFromSourceControlFile(filePath);
+		expect(result).toEqual([]);
+	});
+
+	it('should parse valid data table JSON successfully', async () => {
+		const mockDataTables = [
+			{
+				id: 'dt1',
+				name: 'Test Table',
+				projectId: 'project1',
+				columns: [
+					{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+					{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+				],
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-02T00:00:00.000Z',
+			},
+		];
+
+		// Mock fsReadFile to return valid JSON
+		jest.doMock('node:fs/promises', () => ({
+			readFile: jest.fn().mockResolvedValue(JSON.stringify(mockDataTables)),
+		}));
+
+		// Import the function after mocking
+		const { readDataTablesFromSourceControlFile } = await import(
+			'@/modules/source-control.ee/source-control-helper.ee'
+		);
+
+		const result = await readDataTablesFromSourceControlFile('valid/path/data_tables.json');
+		expect(result).toEqual(mockDataTables);
+	});
+});
+
+describe('areSameCredentials', () => {
+	const mockCredential = (
+		overrides: Partial<StatusExportableCredential> = {},
+	): StatusExportableCredential => {
+		return {
+			filename: 'cred1.json',
+			id: 'cred1',
+			name: 'My Credential',
+			type: 'credential',
+			ownedBy: {
+				type: 'team',
+				projectId: 'project1',
+				projectName: 'Project 1',
+				teamId: 'team1',
+				teamName: 'Team 1',
+			},
+			data: {},
+			isGlobal: false,
+			...overrides,
+		};
+	};
+
+	it('should return true when credentials are the same', () => {
+		const creds1 = mockCredential();
+		const creds2 = mockCredential();
+
+		expect(areSameCredentials(creds1, creds2)).toBe(true);
+	});
+
+	it('should return true when only data is different', () => {
+		const creds1 = mockCredential({ data: { accessToken: 'access token' } });
+		const creds2 = mockCredential({ data: { accessToken: 'different access token' } });
+
+		expect(areSameCredentials(creds1, creds2)).toBe(true);
+	});
+
+	it('should return false when names are different', () => {
+		const creds1 = mockCredential();
+		const creds2 = mockCredential({ name: 'Different Name' });
+
+		expect(areSameCredentials(creds1, creds2)).toBe(false);
+	});
+
+	it('should return false when types are different', () => {
+		const creds1 = mockCredential();
+		const creds2 = mockCredential({ type: 'different type' });
+
+		expect(areSameCredentials(creds1, creds2)).toBe(false);
+	});
+
+	it('should return false when ownedBy are different', () => {
+		const creds1 = mockCredential();
+		const creds2 = mockCredential({
+			ownedBy: {
+				type: 'personal',
+				personalEmail: 'test2@example.com',
+				projectId: 'project2',
+				projectName: 'Project 2',
+			},
+		});
+
+		expect(areSameCredentials(creds1, creds2)).toBe(false);
+	});
+
+	it('should return false when isGlobal are different', () => {
+		const creds1 = mockCredential();
+		const creds2 = mockCredential({ isGlobal: true });
+
+		expect(areSameCredentials(creds1, creds2)).toBe(false);
 	});
 });

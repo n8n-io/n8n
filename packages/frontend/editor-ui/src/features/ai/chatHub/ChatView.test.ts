@@ -412,14 +412,14 @@ describe('ChatView', () => {
 							'msg-1': createMockMessageDto({
 								id: 'msg-1',
 								sessionId: 'existing-session-123',
-								content: 'What is the weather today?',
+								content: [{ type: 'text', content: 'What is the weather today?' }],
 							}),
 							'msg-2': createMockMessageDto({
 								id: 'msg-2',
 								sessionId: 'existing-session-123',
 								type: 'ai',
 								name: 'Assistant',
-								content: 'The weather is sunny today.',
+								content: [{ type: 'text', content: 'The weather is sunny today.' }],
 								provider: 'custom-agent',
 								agentId: 'agent-123',
 								previousMessageId: 'msg-1',
@@ -576,14 +576,14 @@ describe('ChatView', () => {
 							'msg-1': createMockMessageDto({
 								id: 'msg-1',
 								sessionId: 'existing-session-123',
-								content: 'Previous question',
+								content: [{ type: 'text', content: 'Previous question' }],
 							}),
 							'msg-2': createMockMessageDto({
 								id: 'msg-2',
 								sessionId: 'existing-session-123',
 								type: 'ai',
 								name: 'Assistant',
-								content: 'Previous answer',
+								content: [{ type: 'text', content: 'Previous answer' }],
 								provider: 'openai',
 								model: 'gpt-4',
 								previousMessageId: 'msg-1',
@@ -704,7 +704,7 @@ describe('ChatView', () => {
 							'msg-1': createMockMessageDto({
 								id: 'msg-1',
 								sessionId: 'existing-session-123',
-								content: 'Please analyze these files',
+								content: [{ type: 'text', content: 'Please analyze these files' }],
 								attachments: [
 									{ fileName: 'file1.txt', mimeType: 'text/plain' },
 									{ fileName: 'file2.pdf', mimeType: 'application/pdf' },
@@ -716,7 +716,7 @@ describe('ChatView', () => {
 								sessionId: 'existing-session-123',
 								type: 'ai',
 								name: 'Assistant',
-								content: 'Analysis complete',
+								content: [{ type: 'text', content: 'Analysis complete' }],
 								provider: 'custom-agent',
 								agentId: 'agent-123',
 								previousMessageId: 'msg-1',
