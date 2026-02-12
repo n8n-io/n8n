@@ -107,7 +107,12 @@ function getToolIdsWithWorkflowUpdate(
 		if (msg.type === 'tool') {
 			currentGroupToolIds.push(msg.id);
 		} else if (msg.type === 'workflow-updated') {
-			hasWorkflowUpdate = true;
+			// Only count as a workflow update if tools already exist in this region.
+			// This prevents naming-only updates (which arrive before tools) from
+			// causing discovery tool groups to show "Workflow generated".
+			if (currentGroupToolIds.length > 0) {
+				hasWorkflowUpdate = true;
+			}
 		} else {
 			// Group boundary — flush
 			if (hasWorkflowUpdate) {
@@ -311,14 +316,12 @@ const showSuggestions = computed(() => {
 	return showPlaceholder.value && props.suggestions && props.suggestions.length > 0;
 });
 
-// Check if we have any thinking group (tool messages grouped into thinking blocks)
-const hasAnyThinkingGroup = computed(() => {
-	return normalizedMessages.value.some((msg) => msg.type === 'thinking-group');
-});
-
-// Show placeholder when streaming with loading message but no tool messages have arrived yet
+// Show placeholder when streaming with loading message but no active tool group for the current turn.
+// Check the last message — if it's not a thinking-group, the current turn has no tools yet.
 const showThinkingPlaceholder = computed(() => {
-	return props.streaming && props.loadingMessage && !hasAnyThinkingGroup.value;
+	if (!props.streaming || !props.loadingMessage) return false;
+	const lastMsg = normalizedMessages.value[normalizedMessages.value.length - 1];
+	return !lastMsg || lastMsg.type !== 'thinking-group';
 });
 
 const showBottomInput = computed(() => {
@@ -617,8 +620,8 @@ defineExpose({
 								@submit="onSendMessage"
 								@stop="emit('stop')"
 							>
-								<template v-if="$slots['before-actions']" #beforeActions>
-									<slot name="before-actions" />
+								<template v-if="$slots['extra-actions']" #extra-actions>
+									<slot name="extra-actions" />
 								</template>
 							</N8nPromptInput>
 						</template>
@@ -686,8 +689,8 @@ defineExpose({
 				@submit="onSendMessage"
 				@stop="emit('stop')"
 			>
-				<template v-if="$slots['before-actions']" #beforeActions>
-					<slot name="before-actions" />
+				<template v-if="$slots['extra-actions']" #extra-actions>
+					<slot name="extra-actions" />
 				</template>
 			</N8nPromptInput>
 		</div>

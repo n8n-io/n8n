@@ -44,7 +44,7 @@ For additionalSpecs: NEVER mention API keys, credentials, authentication, or acc
 Rules:
 - Do not generate workflow JSON.
 - Do not mention internal n8n node type names in steps — describe what happens in plain language.
-- You may include suggestedNodes in the structured output for the builder, but the step description should be human-readable.
+- You may include suggestedNodes in the structured output for the builder, but the step description should be human-readable. Copy node names exactly from the discovery_context_suggested_nodes section — do not add prefixes, rename, or invent node names.
 - If key information is missing, make reasonable assumptions. Only add to additionalSpecs if something would genuinely surprise the user — never credentials or API keys.
 
 <modification_mode>
@@ -77,6 +77,7 @@ export interface PlannerContextOptions {
 	workflowJSON: SimpleWorkflow;
 	planPrevious?: PlanOutput | null;
 	planFeedback?: string | null;
+	selectedNodesContext?: string;
 }
 
 /**
@@ -85,7 +86,14 @@ export interface PlannerContextOptions {
  * feedback from a previous modify cycle.
  */
 export function buildPlannerContext(options: PlannerContextOptions): string {
-	const { userRequest, discoveryContext, workflowJSON, planPrevious, planFeedback } = options;
+	const {
+		userRequest,
+		discoveryContext,
+		workflowJSON,
+		planPrevious,
+		planFeedback,
+		selectedNodesContext,
+	} = options;
 
 	const discoveredNodesList = discoveryContext.nodesFound
 		.map((node) => `- ${node.nodeName} v${node.version}: ${node.reasoning}`)
@@ -101,6 +109,7 @@ export function buildPlannerContext(options: PlannerContextOptions): string {
 
 	return prompt()
 		.section('user_request', userRequest)
+		.sectionIf(selectedNodesContext, 'selected_nodes', () => selectedNodesContext!)
 		.sectionIf(
 			discoveryContext.nodesFound.length > 0,
 			'discovery_context_suggested_nodes',
