@@ -17,6 +17,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 	ProjectRepository,
+	ProjectRelationRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -94,6 +95,7 @@ export class WorkflowService {
 		private readonly webhookService: WebhookService,
 		private readonly licenseState: LicenseState,
 		private readonly projectRepository: ProjectRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	async getMany(
@@ -140,9 +142,14 @@ export class WorkflowService {
 		}
 
 		if (includeFolders) {
+			const accessibleProjectIds = options?.filter?.projectId
+				? [options.filter.projectId as string]
+				: (await this.projectRelationRepository.findAllByUser(user.id)).map((r) => r.projectId);
+
 			[workflowsAndFolders, count] = await this.workflowRepository.getWorkflowsAndFoldersWithCount(
 				sharedWorkflowIds,
 				options,
+				accessibleProjectIds,
 			);
 
 			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
