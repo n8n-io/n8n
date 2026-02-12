@@ -16,17 +16,12 @@ import { useToast } from '@/app/composables/useToast';
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import {
-	CREDENTIAL_ONLY_NODE_PREFIX,
-	QUICK_CONNECT_EXPERIMENT,
-	WORKFLOW_SETTINGS_MODAL_KEY,
-} from '@/app/constants';
+import { CREDENTIAL_ONLY_NODE_PREFIX, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
-import { useQuickConnect } from '../composables/useQuickConnect';
+import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
-import { usePostHog } from '@/app/stores/posthog.store';
-import QuickConnectButton from './QuickConnectButton.vue';
+import QuickConnectButton from '../quickConnect/components/QuickConnectButton.vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -88,15 +83,13 @@ const ndvStore = useNDVStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
-const posthogStore = usePostHog();
 const workflowState = injectWorkflowState();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
-// Quick connect feature flag and composable
-const isQuickConnectEnabled = computed(() =>
-	posthogStore.isVariantEnabled(QUICK_CONNECT_EXPERIMENT.name, 'variant'),
-);
-const { hasQuickConnect } = useQuickConnect();
+// Quick connect
+const { isQuickConnectEnabled, getQuickConnectOption } = useQuickConnect({
+	packageName: computed(() => props.node.type.split('.')[0]),
+});
 const { isOAuthCredentialType, isGoogleOAuthType, hasManagedOAuthCredentials, authorize } =
 	useCredentialOAuth();
 
@@ -541,17 +534,21 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 function showQuickConnectEmptyState(type: INodeCredentialDescription): boolean {
 	if (isCredentialExisting(type)) return false;
 	// Quick connect: explicit config OR managed OAuth credentials
-	return hasQuickConnect(type.name, props.node.type) || hasManagedOAuthCredentials(type.name);
+	return (
+		!!getQuickConnectOption(type.name, props.node.type) || hasManagedOAuthCredentials(type.name)
+	);
 }
 
 function showStandardEmptyState(type: INodeCredentialDescription): boolean {
 	if (isCredentialExisting(type)) return false;
 	// Standard empty state when no quick connect AND not managed OAuth
-	return !hasQuickConnect(type.name, props.node.type) && !hasManagedOAuthCredentials(type.name);
+	return (
+		!getQuickConnectOption(type.name, props.node.type) && !hasManagedOAuthCredentials(type.name)
+	);
 }
 
 async function onQuickConnectSignIn(credentialTypeName: string) {
-	if (hasQuickConnect(credentialTypeName, props.node.type)) {
+	if (getQuickConnectOption(credentialTypeName, props.node.type)) {
 		// TODO: Implement quick connect flows here
 		return;
 	}
@@ -648,6 +645,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				>
 					<QuickConnectButton
 						:credential-type-name="type.name"
+						:service-name="getQuickConnectOption(type.name, props.node.type)?.serviceName"
 						@click="onQuickConnectSignIn(type.name)"
 					/>
 					<span :class="$style.setupManuallyContainer">

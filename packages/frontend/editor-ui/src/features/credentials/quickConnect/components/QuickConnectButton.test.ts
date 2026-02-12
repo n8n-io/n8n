@@ -5,7 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import QuickConnectButton from './QuickConnectButton.vue';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
-import { useCredentialsStore } from '../credentials.store';
+import { useCredentialsStore } from '../../credentials.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { ICredentialType } from 'n8n-workflow';
 
@@ -13,23 +13,10 @@ vi.mock('@/app/composables/useWorkflowState', () => ({
 	injectWorkflowState: vi.fn(),
 }));
 
-const slackOAuth2Api: ICredentialType = {
-	name: 'slackOAuth2Api',
-	extends: ['oAuth2Api'],
-	displayName: 'Slack OAuth2 API',
-	properties: [],
-};
-
 const googleSheetsOAuth2Api: ICredentialType = {
 	name: 'googleSheetsOAuth2Api',
 	extends: ['googleOAuth2Api'],
 	displayName: 'Google Sheets OAuth2 API',
-	properties: [],
-};
-
-const oAuth2Api: ICredentialType = {
-	name: 'oAuth2Api',
-	displayName: 'OAuth2 API',
 	properties: [],
 };
 
@@ -44,6 +31,7 @@ const defaultRenderOptions: RenderOptions<typeof QuickConnectButton> = {
 	pinia: createTestingPinia({ stubActions: false }),
 	props: {
 		credentialTypeName: 'slackOAuth2Api',
+		serviceName: 'Slack',
 	},
 };
 
@@ -53,9 +41,7 @@ describe('QuickConnectButton', () => {
 	beforeAll(() => {
 		const credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.state.credentialTypes = {
-			oAuth2Api,
 			googleOAuth2Api,
-			slackOAuth2Api,
 			googleSheetsOAuth2Api,
 		};
 	});
@@ -69,7 +55,7 @@ describe('QuickConnectButton', () => {
 
 	it('should render GoogleAuthButton for Google OAuth types', () => {
 		renderComponent({
-			props: { credentialTypeName: 'googleSheetsOAuth2Api' },
+			props: { credentialTypeName: 'googleSheetsOAuth2Api', serviceName: 'Google Sheets' },
 		});
 
 		expect(screen.getByTitle('Sign in with Google')).toBeInTheDocument();
@@ -88,6 +74,7 @@ describe('QuickConnectButton', () => {
 		renderComponent({
 			props: {
 				credentialTypeName: 'slackOAuth2Api',
+				serviceName: 'Slack',
 				label: 'Reconnect',
 			},
 		});
@@ -99,6 +86,7 @@ describe('QuickConnectButton', () => {
 		renderComponent({
 			props: {
 				credentialTypeName: 'slackOAuth2Api',
+				serviceName: 'Slack',
 				disabled: true,
 			},
 		});
