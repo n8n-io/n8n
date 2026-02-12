@@ -57,23 +57,37 @@ export async function processEventStream(
 					const chatModelData = event.data;
 					const output = chatModelData.output;
 
+					// Validate that the output is a well-formed object before processing.
+					// Some LLM providers (notably Google Gemini) can emit on_chat_model_end events
+					// with malformed output when the API returns empty or filtered responses.
+					if (!output || typeof output !== 'object') break;
+
 					// Check if this LLM response contains tool calls
-					if (output?.tool_calls && output.tool_calls.length > 0) {
+					if (
+						output?.tool_calls &&
+						Array.isArray(output.tool_calls) &&
+						output.tool_calls.length > 0
+					) {
 						// Collect tool calls for request building
 						// Note: For Gemini, we pass additional_kwargs to ALL tool calls
 						// so the signature can be applied to each when rebuilding
 						for (const toolCall of output.tool_calls) {
+							// Skip malformed tool calls that are missing required fields
+							if (!toolCall.name) continue;
+
 							toolCalls.push({
 								tool: toolCall.name,
-								toolInput: toolCall.args,
+								toolInput: toolCall.args ?? {},
 								toolCallId: toolCall.id || 'unknown',
 								type: toolCall.type || 'tool_call',
 								log:
 									output.content ||
-									`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
+									`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args ?? {})}`,
 								messageLog: [output],
 								// Pass additional_kwargs to ALL tool calls so signature is available
-								additionalKwargs: output.additional_kwargs as Record<string, unknown> | undefined,
+								additionalKwargs: output.additional_kwargs as
+									| Record<string, unknown>
+									| undefined,
 							});
 						}
 					}
