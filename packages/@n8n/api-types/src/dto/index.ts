@@ -66,6 +66,11 @@ export { UpdateVariableRequestDto } from './variables/update-variable-request.dt
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
+export { TransferCredentialBodyDto } from './credentials/transfer-credential-body.dto';
+export { ShareCredentialsBodyDto } from './credentials/share-credentials-body.dto';
+export { CredentialsForWorkflowQueryDto } from './credentials/credentials-for-workflow-query.dto';
+export { UpdateCredentialDto } from './credentials/update-credential.dto';
+export { TestCredentialsBodyDto } from './credentials/test-credentials-body.dto';
 
 export { CreateWorkflowDto } from './workflows/create-workflow.dto';
 export { UpdateWorkflowDto } from './workflows/update-workflow.dto';
