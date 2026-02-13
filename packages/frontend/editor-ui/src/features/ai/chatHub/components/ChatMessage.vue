@@ -408,26 +408,34 @@ onBeforeMount(() => {
 					</div>
 				</div>
 				<ChatTypingIndicator v-if="shouldShowTypingIndicator" :class="$style.typingIndicator" />
-				<ChatMessageActions
-					v-else
-					:is-speech-synthesis-available="speech.isSupported.value"
-					:is-speaking="speech.isPlaying.value"
-					:class="$style.actions"
-					:message="message"
-					:has-session-streaming="hasSessionStreaming"
-					@edit="handleEdit"
-					@regenerate="handleRegenerate"
-					@read-aloud="handleReadAloud"
-					@switch-alternative="handleSwitchAlternative"
-				/>
 			</template>
 		</div>
+		<ChatMessageActions
+			v-if="!isEditing && !shouldShowTypingIndicator"
+			:is-speech-synthesis-available="speech.isSupported.value"
+			:is-speaking="speech.isPlaying.value"
+			:class="$style.actions"
+			:message="message"
+			:has-session-streaming="hasSessionStreaming"
+			@edit="handleEdit"
+			@regenerate="handleRegenerate"
+			@read-aloud="handleReadAloud"
+			@switch-alternative="handleSwitchAlternative"
+		/>
 	</div>
 </template>
 <style lang="scss" module>
 .message {
 	position: relative;
 	scroll-margin-block: var(--spacing--sm);
+
+	@media (hover: hover) {
+		&:hover .actions,
+		&:focus-within .actions {
+			opacity: 1;
+			pointer-events: auto;
+		}
+	}
 }
 
 .grouped {
@@ -471,14 +479,6 @@ onBeforeMount(() => {
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
-
-	@media (hover: hover) {
-		&:hover .actions,
-		&:focus-within .actions {
-			opacity: 1;
-			pointer-events: auto;
-		}
-	}
 }
 
 .attachments {
@@ -499,6 +499,17 @@ onBeforeMount(() => {
 	overflow-wrap: break-word;
 	font-size: var(--font-size--sm);
 	line-height: 1.5;
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--2xs);
+	margin-inline: calc(var(--spacing--2xs) * -1);
+	transition: background-color 0.15s ease;
+
+	@media (hover: hover) {
+		.message:hover &,
+		.message:focus-within & {
+			background-color: light-dark(var(--color--neutral-100), var(--color--neutral-900));
+		}
+	}
 
 	.user & {
 		padding: var(--spacing--2xs) var(--spacing--sm);
@@ -526,8 +537,33 @@ onBeforeMount(() => {
 }
 
 .actions {
-	margin-top: var(--spacing--2xs);
-	transition: opacity 0.15s;
+	position: absolute;
+	top: 0;
+	right: 0;
+	transform: translateY(-50%);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	background: var(--color--background);
+	/* border: var(--border); */
+	border-radius: 999px;
+	box-shadow:
+		0 1px 2px rgba(0, 0, 0, 0.08),
+		0 4px 4px rgba(0, 0, 0, 0.02),
+		0 0px 0px 1px rgba(0, 0, 0, 0.08);
+	transition:
+		opacity 0.15s,
+		transform 0.15s;
+	z-index: 1;
+
+	@media (hover: none) {
+		position: static;
+		transform: none;
+		margin-top: var(--spacing--2xs);
+		background: transparent;
+		box-shadow: none;
+		padding: 0;
+		opacity: 1;
+		pointer-events: auto;
+	}
 
 	@media (hover: hover) {
 		opacity: 0;

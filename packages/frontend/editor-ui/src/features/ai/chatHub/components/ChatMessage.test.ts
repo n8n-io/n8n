@@ -49,11 +49,13 @@ describe('ChatMessage', () => {
 				hasSessionStreaming: false,
 				cachedAgentDisplayName: null,
 				cachedAgentIcon: null,
+				isGroupStart: true,
 			},
 			pinia,
 		});
 
 		// Wait for highlight.js to load and apply syntax highlighting
+		await vi.dynamicImportSettled();
 		await waitFor(() => {
 			const highlightedElements = container.querySelectorAll('.hljs-keyword');
 
@@ -80,6 +82,7 @@ describe('ChatMessage', () => {
 				hasSessionStreaming: false,
 				cachedAgentDisplayName: null,
 				cachedAgentIcon: null,
+				isGroupStart: true,
 			},
 			pinia,
 		});
@@ -104,6 +107,7 @@ describe('ChatMessage', () => {
 				hasSessionStreaming: false,
 				cachedAgentDisplayName: null,
 				cachedAgentIcon: null,
+				isGroupStart: true,
 			},
 			pinia,
 		});
@@ -129,6 +133,7 @@ describe('ChatMessage', () => {
 				hasSessionStreaming: false,
 				cachedAgentDisplayName: null,
 				cachedAgentIcon: null,
+				isGroupStart: true,
 			},
 			pinia,
 		});
