@@ -13,7 +13,8 @@ import TemplatesView from './TemplatesView.vue';
 import RecommendedTemplateCard from '../recommendations/components/RecommendedTemplateCard.vue';
 
 import { N8nButton, N8nMarkdown, N8nText } from '@n8n/design-system';
-import { IWorkflowTemplate } from '@n8n/rest-api-client';
+import type { IWorkflowTemplate } from '@n8n/rest-api-client';
+
 const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();
 const nodeTypesStore = useNodeTypesStore();
