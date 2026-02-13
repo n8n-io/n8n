@@ -17,7 +17,11 @@ import type {
 	NodeParameterValue,
 } from 'n8n-workflow';
 import { computed, onMounted, ref } from 'vue';
-import { N8nLink, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
+import {
+	N8nDropdownMenu,
+	type DropdownMenuItemProps,
+} from '@n8n/design-system/v2/components/DropdownMenu';
 
 interface ModeOption {
 	name: string;
@@ -144,6 +148,24 @@ const otherOption = computed(() => {
 
 const showSelector = computed(() => combinedOptions.value.length >= 2);
 
+const headingText = computed(() => {
+	if (currentOption.value?.isManaged === true) {
+		return i18n.baseText('credentialEdit.credentialConfig.oauthModeManagedTitle');
+	}
+	if (currentOption.value?.isManaged === false) {
+		return i18n.baseText('credentialEdit.credentialConfig.oauthModeCustomTitle');
+	}
+	return currentOption.value?.name ?? '';
+});
+
+const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
+	return combinedOptions.value.map((opt) => ({
+		id: opt.value,
+		label: opt.name,
+		checked: opt.value === selectedValue.value,
+	}));
+});
+
 function shouldShowAuthOption(option: NodeAuthenticationOption): boolean {
 	if (authRelatedFields.value.length === 0) {
 		return true;
@@ -189,13 +211,6 @@ function onAuthRelatedFieldChange(data: IUpdateInformation): void {
 		[data.name]: data.value as NodeParameterValue,
 	};
 }
-
-defineExpose({
-	onAuthTypeChange: (newType: string | number | boolean) => {
-		const stringValue = typeof newType === 'string' ? newType : String(newType);
-		emit('authTypeChanged', stringValue);
-	},
-});
 </script>
 
 <template>
@@ -212,7 +227,7 @@ defineExpose({
 
 		<div :class="$style.headerRow">
 			<N8nText tag="span" :bold="true" size="large">
-				{{ currentOption?.name }}
+				{{ headingText }}
 			</N8nText>
 
 			<N8nLink
@@ -228,21 +243,21 @@ defineExpose({
 				}}
 			</N8nLink>
 
-			<N8nSelect
+			<N8nDropdownMenu
 				v-else
-				:model-value="selectedValue"
-				size="small"
-				:class="$style.dropdown"
+				:items="menuItems"
+				placement="bottom-end"
+				:extra-popper-class="$style.dropdownContent"
 				data-test-id="credential-mode-dropdown"
-				@update:model-value="(val: string) => onOptionChange(val)"
+				@select="onOptionChange"
 			>
-				<N8nOption
-					v-for="opt in combinedOptions"
-					:key="opt.value"
-					:value="opt.value"
-					:label="opt.name"
-				/>
-			</N8nSelect>
+				<template #trigger>
+					<N8nButton type="secondary" text data-test-id="credential-mode-dropdown-trigger">
+						{{ currentOption?.name }}
+						<N8nIcon icon="chevron-down" size="small" />
+					</N8nButton>
+				</template>
+			</N8nDropdownMenu>
 		</div>
 	</div>
 </template>
@@ -258,8 +273,7 @@ defineExpose({
 	font-size: var(--font-size--sm);
 }
 
-.dropdown {
-	width: auto;
-	min-width: 180px;
+.dropdownContent {
+	z-index: var(--modals--z);
 }
 </style>

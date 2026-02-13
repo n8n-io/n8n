@@ -41,7 +41,6 @@ import {
 	N8nInfoTip,
 	N8nInlineAskAssistantButton,
 	N8nLink,
-	N8nNotice,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -267,14 +266,19 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				@update:use-custom-oauth="(val: boolean) => $emit('managedOauthModeChange', val)"
 			/>
 
-			<N8nNotice v-if="documentationUrl && credentialProperties.length" theme="warning">
+			<N8nCallout
+				v-if="documentationUrl && credentialProperties.length"
+				:class="$style.docsCallout"
+				theme="custom"
+				iconless
+			>
 				{{ i18n.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
-				<span class="ml-4xs">
-					<N8nLink :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
+				<template #actions>
+					<N8nLink :to="documentationUrl" size="small" @click="onDocumentationUrlClick">
 						{{ i18n.baseText('credentialEdit.credentialConfig.openDocs') }}
 					</N8nLink>
-				</span>
-			</N8nNotice>
+				</template>
+			</N8nCallout>
 
 			<Banner
 				v-show="showValidationWarning"
@@ -458,7 +462,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	--notice--margin: 0;
 	flex-grow: 1;
 
-	> * {
+	> * + * {
 		margin-bottom: var(--spacing--lg);
 	}
 }
@@ -494,5 +498,14 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 .dynamicCredentialsNotice {
 	margin-top: var(--spacing--xs);
+}
+
+.docsCallout {
+	background-color: light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
+	border-color: light-dark(var(--color--black-alpha-200), var(--color--white-alpha-300));
+
+	a {
+		text-decoration: none;
+	}
 }
 </style>
