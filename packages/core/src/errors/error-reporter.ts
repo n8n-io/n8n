@@ -117,7 +117,7 @@ export class ErrorReporter {
 		profilesSampleRate,
 		tracesSampleRate,
 		eligibleIntegrations = {},
-		healthEndpoint = 'health/live',
+		healthEndpoint = 'healthz',
 	}: ErrorReporterInitOptions) {
 		if (inTest) return;
 

@@ -138,5 +138,5 @@ export class EndpointsConfig {
 
 	/** Path for the health check endpoint. */
 	@Env('N8N_ENDPOINT_HEALTH')
-	health: string = 'health/live';
+	health: string = 'healthz';
 }

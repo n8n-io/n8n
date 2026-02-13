@@ -19,7 +19,7 @@ export function useBackendStatus() {
 		const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
 
 		try {
-			const healthPath = settingsStore.endpointHealth || 'health/live';
+			const healthPath = settingsStore.endpointHealth || 'healthz';
 			const response = await fetch(`/${healthPath}`, {
 				cache: 'no-store',
 				signal: controller.signal,

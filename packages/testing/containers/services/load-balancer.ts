@@ -26,7 +26,7 @@ function buildCaddyConfig(upstreamServers: string[]): string {
     lb_policy first
 
     # Health check
-    health_uri /health/live
+    health_uri /healthz
     health_interval 10s
 
     # Timeouts

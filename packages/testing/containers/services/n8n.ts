@@ -16,7 +16,6 @@ const BASE_ENV: Record<string, string> = {
 	QUEUE_HEALTH_CHECK_ACTIVE: 'true',
 	N8N_DIAGNOSTICS_ENABLED: 'false',
 	N8N_METRICS: 'true',
-	N8N_ENDPOINT_HEALTH: 'health/live',
 	NODE_ENV: 'development',
 	N8N_DYNAMIC_BANNERS_ENABLED: 'false',
 	N8N_LICENSE_TENANT_ID: process.env.N8N_LICENSE_TENANT_ID ?? '1001',
@@ -31,7 +30,7 @@ const BASE_ENV: Record<string, string> = {
 
 const MAIN_WAIT_STRATEGY = Wait.forAll([
 	Wait.forListeningPorts(),
-	Wait.forHttp('/health/live/readiness', 5678).forStatusCode(200).withStartupTimeout(30000),
+	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(30000),
 	Wait.forLogMessage('Editor is now accessible via').withStartupTimeout(30000),
 ]);
 

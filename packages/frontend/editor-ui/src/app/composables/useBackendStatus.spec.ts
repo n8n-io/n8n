@@ -29,7 +29,7 @@ describe('useBackendStatus', () => {
 		settingsStore = useSettingsStore();
 		settingsStore.setSettings(
 			merge({}, defaultSettings, {
-				endpointHealth: 'health/live',
+				endpointHealth: 'healthz',
 			}),
 		);
 
@@ -62,7 +62,7 @@ describe('useBackendStatus', () => {
 		const wrapper = createWrapper();
 
 		await vi.waitFor(() => {
-			expect(mockFetch).toHaveBeenCalledWith('/health/live', {
+			expect(mockFetch).toHaveBeenCalledWith('/healthz', {
 				cache: 'no-store',
 				signal: expect.any(AbortSignal),
 			});

@@ -4,7 +4,7 @@ import axios from 'axios';
 export class N8nApiClient {
 	constructor(
 		readonly apiBaseUrl: string,
-		private readonly healthEndpoint: string = 'health/live',
+		private readonly healthEndpoint: string = 'healthz',
 	) {}
 
 	async waitForInstanceToBecomeOnline(): Promise<void> {
