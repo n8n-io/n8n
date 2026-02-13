@@ -358,6 +358,20 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		return this;
 	}
 
+	output(): never {
+		throw new Error(
+			'Cannot call .output() on the workflow builder. ' +
+				'Use .output() on a node variable instead: myNode.output(0).to(targetNode)',
+		);
+	}
+
+	input(): never {
+		throw new Error(
+			'Cannot call .input() on the workflow builder. ' +
+				'Use .input() on a node variable instead: myNode.input(1)',
+		);
+	}
+
 	settings(settings: WorkflowSettings): WorkflowBuilder {
 		this._settings = { ...this._settings, ...settings };
 		return this;

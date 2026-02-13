@@ -267,6 +267,16 @@ describe('AST Interpreter', () => {
 			expect(interpretSDKCode('export default 7 % 3;', sdkFunctions)).toBe(1);
 		});
 
+		it('should support string concatenation with +', () => {
+			expect(interpretSDKCode("export default 'hello' + ' world';", sdkFunctions)).toBe(
+				'hello world',
+			);
+			expect(interpretSDKCode("export default 'count: ' + 5;", sdkFunctions)).toBe('count: 5');
+			expect(interpretSDKCode("export default 1 + ' item';", sdkFunctions)).toBe('1 item');
+			// Multi-part concat
+			expect(interpretSDKCode("export default 'a' + 'b' + 'c';", sdkFunctions)).toBe('abc');
+		});
+
 		it('should interpret comparison operators', () => {
 			expect(interpretSDKCode('export default 5 > 3;', sdkFunctions)).toBe(true);
 			expect(interpretSDKCode('export default 5 < 3;', sdkFunctions)).toBe(false);

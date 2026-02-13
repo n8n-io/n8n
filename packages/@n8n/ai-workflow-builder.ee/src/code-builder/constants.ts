@@ -14,12 +14,15 @@ export const MAX_VALIDATE_ATTEMPTS = 10;
 
 /** Instruction appended to validation/parse error messages with steps to fix */
 export const FIX_VALIDATION_ERRORS_INSTRUCTION = `
-Use the think tool to analyze ALL errors at once, then act:
+Use the think tool to analyze the errors, then use the editor tool to apply fixes:
 1. Which errors are relevant to the last user request? If NONE, stop — do not fix unrelated warnings.
 2. Use search_nodes and get_node_types to look up the correct node schema (if not already fetched)
 3. Use batch_str_replace to fix ALL identified issues atomically in one call (preferred), or use individual str_replace/insert calls
 4. Call validate_workflow ONCE after all fixes are applied
 Do NOT output explanations — just fix the code. Do not add or edit comments.`;
+
+/** Maximum consecutive think-only iterations before forcing an action */
+export const MAX_CONSECUTIVE_THINK_ONLY = 3;
 
 /** Native Anthropic text editor tool configuration */
 export const TEXT_EDITOR_TOOL = {
