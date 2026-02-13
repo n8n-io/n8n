@@ -1052,8 +1052,6 @@ export class WorkflowExecute {
 			}
 			executionSucceeded = true;
 		} finally {
-			// Always clean up supplyData connections (e.g. MCP client connections),
-			// regardless of outcome (EngineRequest return, success, or error).
 			if (closeFunctions.length > 0) {
 				const closeFunctionsResults = await Promise.allSettled(
 					closeFunctions.map(async (fn) => await fn()),

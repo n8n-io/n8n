@@ -22,10 +22,6 @@ export async function getToolParameters(
 	const endpointUrl = this.getNodeParameter('endpointUrl') as string;
 	const node = this.getNode();
 	const { headers } = await getAuthHeaders(this, authentication);
-	// MCP_CONNECTION: resourceMapping.getToolParameters() — connects when user selects a tool to load its parameter schema
-	console.log(
-		'client.connect at UI:tool-schema-loading McpClient/resourceMapping.ts getToolParameters()',
-	);
 	const client = await connectMcpClient({
 		serverTransport,
 		endpointUrl,
@@ -51,9 +47,6 @@ export async function getToolParameters(
 			fields,
 		};
 	} finally {
-		console.log(
-			'client.close at UI:tool-schema-loading McpClient/resourceMapping.ts getToolParameters()',
-		);
 		await client.result.close();
 	}
 }

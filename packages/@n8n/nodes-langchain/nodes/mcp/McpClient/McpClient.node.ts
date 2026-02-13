@@ -226,8 +226,6 @@ export class McpClient implements INodeType {
 		const endpointUrl = this.getNodeParameter('endpointUrl', 0) as string;
 		const node = this.getNode();
 		const { headers } = await getAuthHeaders(this, authentication);
-		// MCP_CONNECTION: McpClient.execute() — connects per workflow execution to call a specific tool
-		console.log('client.connect at Execution:tool-call McpClient/McpClient.node.ts execute()');
 		const client = await connectMcpClient({
 			serverTransport,
 			endpointUrl,
@@ -327,7 +325,6 @@ export class McpClient implements INodeType {
 
 			return [returnData];
 		} finally {
-			console.log('client.close at Execution:tool-call McpClient/McpClient.node.ts execute()');
 			await client.result.close();
 		}
 	}

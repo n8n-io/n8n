@@ -1321,7 +1321,6 @@ describe('McpClientTool', () => {
 				'listTools failed',
 			);
 
-			// connectAndGetTools catch block should close the client before re-throwing
 			expect(closeSpy).toHaveBeenCalled();
 		});
 	});
