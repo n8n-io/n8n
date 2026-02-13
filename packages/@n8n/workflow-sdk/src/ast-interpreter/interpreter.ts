@@ -142,6 +142,8 @@ class SDKInterpreter {
 				return this.visitLogicalExpression(node);
 			case 'ConditionalExpression':
 				return this.visitConditionalExpression(node);
+			case 'AssignmentExpression':
+				return this.visitAssignmentExpression(node);
 			default:
 				throw new UnsupportedNodeError(node.type, node.loc ?? undefined, this.sourceCode);
 		}
@@ -631,6 +633,65 @@ class SDKInterpreter {
 	private visitConditionalExpression(node: ESTree.ConditionalExpression): unknown {
 		const test = this.evaluate(node.test);
 		return test ? this.evaluate(node.consequent) : this.evaluate(node.alternate);
+	}
+
+	/**
+	 * Visit an assignment expression.
+	 * Only allows simple property assignment (obj.prop = value).
+	 */
+	private visitAssignmentExpression(node: ESTree.AssignmentExpression): unknown {
+		if (node.operator !== '=') {
+			throw new UnsupportedNodeError(
+				`Assignment operator '${node.operator}' is not allowed. Only '=' is permitted.`,
+				node.loc ?? undefined,
+				this.sourceCode,
+			);
+		}
+
+		if (node.left.type !== 'MemberExpression') {
+			throw new UnsupportedNodeError(
+				'Only property assignment (e.g., obj.prop = value) is allowed. Variable reassignment is not permitted.',
+				node.loc ?? undefined,
+				this.sourceCode,
+			);
+		}
+
+		validateMemberExpression(node.left, this.sourceCode);
+
+		if (node.left.object.type === 'Super') {
+			throw new UnsupportedNodeError(
+				'super keyword is not supported in SDK code',
+				node.left.object.loc ?? undefined,
+				this.sourceCode,
+			);
+		}
+
+		const obj = this.evaluate(node.left.object);
+
+		if (obj === null || obj === undefined) {
+			throw new InterpreterError(
+				`Cannot assign property on ${String(obj)}`,
+				node.loc ?? undefined,
+				this.sourceCode,
+			);
+		}
+
+		let propName: string | number;
+		if (node.left.property.type === 'Identifier' && !node.left.computed) {
+			propName = node.left.property.name;
+		} else if (node.left.property.type === 'Literal') {
+			propName = node.left.property.value as string | number;
+		} else {
+			throw new UnsupportedNodeError(
+				'Dynamic property assignment',
+				node.left.property.loc ?? undefined,
+				this.sourceCode,
+			);
+		}
+
+		const value = this.evaluate(node.right);
+		(obj as Record<string | number, unknown>)[propName] = value;
+		return value;
 	}
 
 	/**
