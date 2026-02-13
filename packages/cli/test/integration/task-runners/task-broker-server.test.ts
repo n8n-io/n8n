@@ -8,6 +8,8 @@ describe('TaskBrokerServer', () => {
 		mode: 'external',
 	});
 
+	const originalHealthEndpoint = Container.get(GlobalConfig).endpoints.health;
+
 	beforeAll(async () => {
 		// Use custom test value to prove configuration is respected
 		Container.get(GlobalConfig).endpoints.health = 'internal/health';
@@ -16,6 +18,7 @@ describe('TaskBrokerServer', () => {
 
 	afterAll(async () => {
 		await server.stop();
+		Container.get(GlobalConfig).endpoints.health = originalHealthEndpoint;
 	});
 
 	describe('/internal/health', () => {
