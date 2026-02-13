@@ -60,9 +60,6 @@ export async function setupTestSchemas(): Promise<void> {
 	const nodesDirExists = fs.existsSync(nodesDir);
 	const cacheValid = isCacheValid();
 
-	console.log('[setupTestSchemas] SCHEMA_TEST_DIR:', SCHEMA_TEST_DIR);
-	console.log('[setupTestSchemas] nodesDir exists:', nodesDirExists, '| cacheValid:', cacheValid);
-
 	if (!nodesDirExists || !cacheValid) {
 		// Remove stale schemas if they exist
 		if (fs.existsSync(SCHEMA_TEST_DIR)) {
@@ -72,9 +69,7 @@ export async function setupTestSchemas(): Promise<void> {
 		const repoRoot = path.resolve(__dirname, '../../../../..');
 
 		const nodesBaseJson = path.join(repoRoot, 'packages/nodes-base/dist/types/nodes.json');
-		const nodesBaseExists = fs.existsSync(nodesBaseJson);
-		console.log('[setupTestSchemas] nodesBaseJson:', nodesBaseJson, '| exists:', nodesBaseExists);
-		if (nodesBaseExists) {
+		if (fs.existsSync(nodesBaseJson)) {
 			await generateNodeDefinitions({
 				nodesJsonPath: nodesBaseJson,
 				outputDir: SCHEMA_TEST_DIR,
@@ -86,9 +81,7 @@ export async function setupTestSchemas(): Promise<void> {
 			repoRoot,
 			'packages/@n8n/nodes-langchain/dist/types/nodes.json',
 		);
-		const langchainExists = fs.existsSync(langchainJson);
-		console.log('[setupTestSchemas] langchainJson:', langchainJson, '| exists:', langchainExists);
-		if (langchainExists) {
+		if (fs.existsSync(langchainJson)) {
 			await generateNodeDefinitions({
 				nodesJsonPath: langchainJson,
 				outputDir: SCHEMA_TEST_DIR,
@@ -102,24 +95,9 @@ export async function setupTestSchemas(): Promise<void> {
 			fs.mkdirSync(SCHEMA_TEST_DIR, { recursive: true });
 			fs.writeFileSync(STAMP_FILE, hash);
 		}
-
-		// Log what was generated
-		if (fs.existsSync(nodesDir)) {
-			const pkgs = fs.readdirSync(nodesDir);
-			for (const pkg of pkgs) {
-				const pkgPath = path.join(nodesDir, pkg);
-				const nodes = fs.readdirSync(pkgPath);
-				console.log(`[setupTestSchemas] Generated ${nodes.length} schemas in nodes/${pkg}/`);
-			}
-		} else {
-			console.log('[setupTestSchemas] WARNING: nodesDir does not exist after generation!');
-		}
-	} else {
-		console.log('[setupTestSchemas] Reusing cached schemas');
 	}
 
 	setSchemaBaseDirs([SCHEMA_TEST_DIR]);
-	console.log('[setupTestSchemas] schemaBaseDirs set to:', [SCHEMA_TEST_DIR]);
 }
 
 /**
