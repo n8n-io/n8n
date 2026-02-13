@@ -3,7 +3,6 @@ import { QUICK_CONNECT_EXPERIMENT } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { computed } from 'vue';
 
 import type { ICredentialsResponse } from '../../credentials.types';
@@ -13,7 +12,6 @@ export function useQuickConnect() {
 	const settingsStore = useSettingsStore();
 	const posthogStore = usePostHog();
 	const telemetry = useTelemetry();
-	const workflowsStore = useWorkflowsStore();
 	const { isOAuthCredentialType, createAndAuthorize, cancelAuthorize } = useCredentialOAuth();
 
 	const isQuickConnectEnabled = computed(() =>

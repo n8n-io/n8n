@@ -3,7 +3,6 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useCredentialOAuth } from '../useCredentialOAuth';
 import { useCredentialsStore } from '../../credentials.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
 import { mockedStore } from '@/__tests__/utils';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ICredentialsResponse } from '../../credentials.types';
@@ -557,7 +556,7 @@ describe('useCredentialOAuth', () => {
 
 			expect(mockTrack).toHaveBeenCalledWith('User saved credentials', {
 				credential_type: 'slackOAuth2Api',
-				workflow_id: null,
+				workflow_id: '',
 				credential_id: 'new-cred-123',
 				is_complete: true,
 				is_new: true,
@@ -574,7 +573,7 @@ describe('useCredentialOAuth', () => {
 
 			expect(mockTrack).toHaveBeenCalledWith('User saved credentials', {
 				credential_type: 'slackOAuth2Api',
-				workflow_id: null,
+				workflow_id: '',
 				credential_id: 'new-cred-123',
 				is_complete: true,
 				is_new: true,

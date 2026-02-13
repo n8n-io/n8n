@@ -2,7 +2,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
-import { createResultError, createResultOk, type Result } from 'n8n-workflow';
+import { createResultError, createResultOk, type GenericValue, type Result } from 'n8n-workflow';
 
 import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsResponse } from '../credentials.types';
@@ -257,7 +257,7 @@ export function useCredentialOAuth() {
 		oauthAbortController.value = null;
 		pendingCredentialId.value = null;
 
-		const trackProperties: Record<string, unknown> = {
+		const trackProperties: Record<string, GenericValue> = {
 			credential_type: credentialTypeName,
 			workflow_id: workflowsStore.workflowId ?? null,
 			credential_id: credential.id,
