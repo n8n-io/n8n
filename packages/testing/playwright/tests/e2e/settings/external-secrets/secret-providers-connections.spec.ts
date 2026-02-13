@@ -5,7 +5,11 @@ test.use({ capability: 'external-secrets' });
 // LocalStack can take time to start up
 test.setTimeout(180_000);
 
-test.describe('Secret Providers Connections with LocalStack @capability:external-secrets @licensed', () => {
+test.describe('Secret Providers Connections with LocalStack @capability:external-secrets @licensed', {
+	annotation: [
+		{ type: 'owner', description: 'Lifecycle & Governance' },
+	],
+}, () => {
 	const PROVIDER_KEY = 'aws-localstack-e2e';
 	const PROVIDER_TYPE = 'awsSecretsManager';
 
