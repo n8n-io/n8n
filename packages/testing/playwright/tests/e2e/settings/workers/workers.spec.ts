@@ -2,7 +2,11 @@ import { test, expect } from '../../../../fixtures/base';
 
 test.describe
 	.serial('Worker View', () => {
-		test.describe('unlicensed', () => {
+		test.describe('unlicensed', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 			test.beforeEach(async ({ n8n }) => {
 				await n8n.api.disableFeature('workerView');
 				await n8n.api.disableFeature('workerView');

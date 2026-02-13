@@ -76,7 +76,11 @@ async function setupBasicAgentWorkflow(n8n: n8nPage, additionalNodes: string[] =
 }
 
 test.use({ capability: 'proxy' });
-test.describe('Langchain Integration @capability:proxy', () => {
+test.describe('Langchain Integration @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n, services }) => {
 		await services.proxy.clearAllExpectations();
 		await services.proxy.loadExpectations('langchain');

@@ -4,7 +4,11 @@ import {
 } from '../../../../config/constants';
 import { test, expect } from '../../../../fixtures/base';
 
-test.describe('Routing', () => {
+test.describe('Routing', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test('should ask to save unsaved changes before leaving route', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Test_workflow_1.json');
 		await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });

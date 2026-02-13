@@ -1,4 +1,4 @@
-import { hasLongSequentialRepeat } from './helpers';
+import { hasLongSequentialRepeat } from 'src/utils/helpers';
 
 describe('hasLongSequentialRepeat', () => {
 	it('should return false for text shorter than threshold', () => {

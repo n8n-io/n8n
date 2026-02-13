@@ -6,7 +6,7 @@
 import type { TiktokenEncoding } from 'js-tiktoken/lite';
 import { Tiktoken } from 'js-tiktoken/lite';
 
-import { getEncoding, encodingForModel } from '../tiktoken';
+import { getEncoding, encodingForModel } from 'src/utils/tokenizer/tiktoken';
 
 jest.mock('js-tiktoken/lite', () => ({
 	Tiktoken: jest.fn(),

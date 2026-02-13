@@ -7,7 +7,11 @@ const requirements: TestRequirements = {
 	},
 };
 
-test.describe('ADO-1338-ndv-missing-input-panel', () => {
+test.describe('ADO-1338-ndv-missing-input-panel', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test('should show the input and output panels when node is missing input and output data', async ({
 		n8n,
 		setupRequirements,
