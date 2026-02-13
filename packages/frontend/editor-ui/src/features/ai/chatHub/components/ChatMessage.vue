@@ -45,6 +45,7 @@ const {
 	minHeight,
 	cachedAgentDisplayName,
 	cachedAgentIcon,
+	isGroupStart,
 } = defineProps<{
 	message: ChatMessage;
 	compact: boolean;
@@ -53,6 +54,7 @@ const {
 	hasSessionStreaming: boolean;
 	cachedAgentDisplayName: string | null;
 	cachedAgentIcon: AgentIconOrEmoji | null;
+	isGroupStart: boolean;
 	/**
 	 * minHeight allows scrolling agent's response to the top while it is being generated
 	 */
@@ -309,6 +311,7 @@ onBeforeMount(() => {
 			message.type === 'human' ? $style.user : $style.assistant,
 			{
 				[$style.compact]: compact,
+				[$style.grouped]: !isGroupStart,
 			},
 		]"
 		:style="{
@@ -317,7 +320,7 @@ onBeforeMount(() => {
 		:data-message-id="message.id"
 		:data-test-id="`chat-message-${message.id}`"
 	>
-		<div :class="$style.avatar">
+		<div v-if="isGroupStart" :class="$style.avatar">
 			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
 			<ChatAgentAvatar v-else :agent="agent" size="md" tooltip />
 		</div>
@@ -425,6 +428,10 @@ onBeforeMount(() => {
 .message {
 	position: relative;
 	scroll-margin-block: var(--spacing--sm);
+}
+
+.grouped {
+	margin-top: calc(var(--spacing--xs) - var(--spacing--xl));
 }
 
 .markdownContent {
