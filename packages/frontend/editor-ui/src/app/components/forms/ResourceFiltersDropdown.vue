@@ -113,8 +113,8 @@ onBeforeMount(async () => {
 	<N8nPopover width="304px" :content-class="$style['popover-content']">
 		<template #trigger>
 			<N8nButton
+				variant="subtle"
 				icon="funnel"
-				type="tertiary"
 				size="small"
 				:active="hasFilters"
 				:class="{

@@ -366,24 +366,21 @@ defineExpose({
 							placement="top"
 						>
 							<N8nIconButton
-								native-type="button"
-								type="secondary"
+								variant="ghost"
 								:disabled="messagingState !== 'idle' || !canUploadFiles"
 								icon="paperclip"
 								icon-size="large"
-								text
 								@click.stop="onAttach"
 							/>
 						</N8nTooltip>
 						<N8nIconButton
 							v-if="speechInput.isSupported"
-							native-type="button"
+							variant="outline"
 							:title="
 								speechInput.isListening.value
 									? i18n.baseText('chatHub.chat.prompt.button.stopRecording')
 									: i18n.baseText('chatHub.chat.prompt.button.voiceInput')
 							"
-							type="secondary"
 							:disabled="messagingState !== 'idle'"
 							:icon="speechInput.isListening.value ? 'square' : 'mic'"
 							:class="{ [$style.recording]: speechInput.isListening.value }"
@@ -392,7 +389,7 @@ defineExpose({
 						/>
 						<N8nIconButton
 							v-if="messagingState !== 'receiving'"
-							native-type="submit"
+							type="submit"
 							:disabled="messagingState !== 'idle' || !message.trim()"
 							:title="i18n.baseText('chatHub.chat.prompt.button.send')"
 							:loading="messagingState === 'waitingFirstChunk'"

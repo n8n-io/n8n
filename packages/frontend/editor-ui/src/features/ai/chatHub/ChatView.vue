@@ -821,7 +821,7 @@ function onFilesDropped(files: File[]) {
 						<div v-if="!showWelcomeScreen" :class="$style.promptContainer">
 							<N8nIconButton
 								v-if="!arrivedState.bottom && !isNewSession"
-								type="secondary"
+								variant="subtle"
 								icon="arrow-down"
 								:class="$style.scrollToBottomButton"
 								:title="i18n.baseText('chatHub.chat.scrollToBottom')"
