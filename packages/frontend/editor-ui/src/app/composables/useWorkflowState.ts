@@ -131,6 +131,10 @@ export function useWorkflowState() {
 
 	function setWorkflowTagIds(tags: string[]) {
 		ws.workflow.tags = tags;
+
+		if (ws.workflow.id && workflowsListStore.workflowsById[ws.workflow.id]) {
+			workflowsListStore.workflowsById[ws.workflow.id].tags = tags;
+		}
 	}
 
 	function setWorkflowProperty<K extends keyof IWorkflowDb>(key: K, value: IWorkflowDb[K]) {
