@@ -17,6 +17,7 @@ import {
 	validateMemberExpression,
 	validateIdentifier,
 	isAllowedSDKFunction,
+	isAutoRenameableSDKFunction,
 	isAllowedMethod,
 	getSafeJSONMethod,
 	getSafeStringMethod,
@@ -36,12 +37,24 @@ export type SDKFunctions = Record<string, (...args: any[]) => unknown>;
 class SDKInterpreter {
 	private sdkFunctions: Map<string, (...args: unknown[]) => unknown>;
 	private variables: Map<string, unknown>;
+	private renamedVariables: Map<string, string> = new Map();
 	private sourceCode: string;
 
 	constructor(sdkFunctions: SDKFunctions, sourceCode: string) {
 		this.sdkFunctions = new Map(Object.entries(sdkFunctions));
 		this.variables = new Map();
 		this.sourceCode = sourceCode;
+	}
+
+	private generateSafeName(name: string): string {
+		const base = 'my' + name.charAt(0).toUpperCase() + name.slice(1);
+		let candidate = base;
+		let counter = 1;
+		while (this.variables.has(candidate) || this.sdkFunctions.has(candidate)) {
+			candidate = `${base}${counter}`;
+			counter++;
+		}
+		return candidate;
 	}
 
 	/**
@@ -96,6 +109,14 @@ class SDKInterpreter {
 
 			// Check for SDK function name collisions
 			if (isAllowedSDKFunction(name)) {
+				if (isAutoRenameableSDKFunction(name)) {
+					// Auto-rename subnode variables that collide with SDK function names
+					const safeName = this.generateSafeName(name);
+					const value = declarator.init ? this.evaluate(declarator.init) : undefined;
+					this.renamedVariables.set(name, safeName);
+					this.variables.set(safeName, value);
+					continue;
+				}
 				throw new SecurityError(
 					`'${name}' is a reserved SDK function name and cannot be used as a variable name. ` +
 						`Use a different name like 'my${name.charAt(0).toUpperCase() + name.slice(1)}'.`,
@@ -165,11 +186,14 @@ class SDKInterpreter {
 
 			if (this.sdkFunctions.has(name)) {
 				func = this.sdkFunctions.get(name);
-			} else if (this.variables.has(name)) {
-				// Could be calling a variable that holds a function
-				func = this.variables.get(name);
 			} else {
-				throw new UnknownIdentifierError(name, node.callee.loc ?? undefined, this.sourceCode);
+				// Check variables, including auto-renamed ones
+				const resolvedName = this.renamedVariables.get(name) ?? name;
+				if (this.variables.has(resolvedName)) {
+					func = this.variables.get(resolvedName);
+				} else {
+					throw new UnknownIdentifierError(name, node.callee.loc ?? undefined, this.sourceCode);
+				}
 			}
 		} else if (node.callee.type === 'MemberExpression') {
 			// Method call: wf.add(...), node.to(...), etc.
@@ -370,9 +394,10 @@ class SDKInterpreter {
 		// Check for dangerous globals
 		validateIdentifier(name, this.getVariableNames(), node, this.sourceCode);
 
-		// Check if it's a declared variable
-		if (this.variables.has(name)) {
-			return this.variables.get(name);
+		// Check if it's a declared variable (including auto-renamed ones)
+		const resolvedName = this.renamedVariables.get(name) ?? name;
+		if (this.variables.has(resolvedName)) {
+			return this.variables.get(resolvedName);
 		}
 
 		// Check if it's an SDK function

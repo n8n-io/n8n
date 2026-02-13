@@ -576,6 +576,70 @@ describe('AST Interpreter', () => {
 		});
 	});
 
+	describe('Auto-rename subnode SDK function names used as variables', () => {
+		let sdkFunctions: SDKFunctions;
+
+		beforeEach(() => {
+			sdkFunctions = createMockSDKFunctions();
+		});
+
+		it('should auto-rename embeddings used as variable name', () => {
+			const code =
+				"const embeddings = embedding({ model: 'text-embedding-3-small' }); export default embeddings;";
+			const result = interpretSDKCode(code, sdkFunctions) as { type: string };
+			expect(result.type).toBe('embedding');
+		});
+
+		it('should auto-rename textSplitter used as variable name', () => {
+			const code =
+				'const textSplitter = textSplitter({ chunkSize: 1000 }); export default textSplitter;';
+			const result = interpretSDKCode(code, sdkFunctions) as { type: string };
+			expect(result.type).toBe('textSplitter');
+		});
+
+		it('should auto-rename memory used as variable name', () => {
+			const code = "const memory = memory({ sessionId: '123' }); export default memory;";
+			const result = interpretSDKCode(code, sdkFunctions) as { type: string };
+			expect(result.type).toBe('memory');
+		});
+
+		it('should auto-rename vectorStore used as variable name', () => {
+			const code =
+				"const vectorStore = vectorStore({ mode: 'insert' }); export default vectorStore;";
+			const result = interpretSDKCode(code, sdkFunctions) as { type: string };
+			expect(result.type).toBe('vectorStore');
+		});
+
+		it('should auto-rename multiple subnode variables in the same code', () => {
+			const code = [
+				"const embeddings = embedding({ model: 'text-embedding-3-small' });",
+				'const textSplitter = textSplitter({ chunkSize: 1000 });',
+				'export default { embeddings, textSplitter };',
+			].join('\n');
+			const result = interpretSDKCode(code, sdkFunctions) as {
+				embeddings: { type: string };
+				textSplitter: { type: string };
+			};
+			expect(result.embeddings.type).toBe('embedding');
+			expect(result.textSplitter.type).toBe('textSplitter');
+		});
+
+		it('should still reject core SDK names like workflow as variable name', () => {
+			const code = 'const workflow = 1; export default workflow;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should still reject core SDK names like node as variable name', () => {
+			const code = 'const node = 1; export default node;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should still reject core SDK names like trigger as variable name', () => {
+			const code = 'const trigger = 1; export default trigger;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+	});
+
 	describe('interpretSDKCode - unknown identifiers', () => {
 		let sdkFunctions: SDKFunctions;
 

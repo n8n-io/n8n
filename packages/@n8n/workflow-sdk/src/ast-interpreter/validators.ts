@@ -43,6 +43,31 @@ export const ALLOWED_SDK_FUNCTIONS = new Set([
 ]);
 
 /**
+ * Subset of SDK functions whose names can be auto-renamed when used as variables.
+ * Only subnode builder names are auto-renameable — core builders and control flow still throw.
+ */
+export const AUTO_RENAMEABLE_SDK_FUNCTIONS = new Set([
+	'languageModel',
+	'memory',
+	'tool',
+	'outputParser',
+	'embedding',
+	'embeddings',
+	'vectorStore',
+	'retriever',
+	'documentLoader',
+	'textSplitter',
+	'reranker',
+]);
+
+/**
+ * Check if an identifier is an auto-renameable SDK function.
+ */
+export function isAutoRenameableSDKFunction(name: string): boolean {
+	return AUTO_RENAMEABLE_SDK_FUNCTIONS.has(name);
+}
+
+/**
  * Allowlist of method names that can be called on SDK objects.
  */
 export const ALLOWED_METHODS = new Set([
