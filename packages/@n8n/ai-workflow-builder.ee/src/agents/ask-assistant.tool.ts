@@ -8,7 +8,7 @@ import { z } from 'zod';
 export const ASK_ASSISTANT_TOOL = {
 	name: 'ask_assistant',
 	description:
-		'Ask the n8n assistant a question. Use this when the user needs help understanding n8n concepts, troubleshooting node errors, debugging workflow executions, setting up credentials, or asking "how does X work?" questions. Do NOT use this for requests to create, modify, or build workflows.',
+		'Ask the n8n assistant a question. Use this when the user needs help understanding n8n concepts, learning how something works, or getting guidance on setting up credentials. Do NOT use this for requests to create, modify, build, debug, or fix workflows.',
 	schema: z.object({
 		query: z.string().describe('The user question to send to the assistant'),
 	}),

@@ -3,16 +3,16 @@ import type { AIMessageChunk, BaseMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, SystemMessage, ToolMessage } from '@langchain/core/messages';
 import type { Logger } from '@n8n/backend-common';
 
+import type { AssistantHandler } from '@/assistant/assistant-handler';
+import type { StreamWriter } from '@/assistant/types';
 import { extractTextContent } from '@/code-builder/utils/content-extractors';
 import { MAX_TRIAGE_ITERATIONS } from '@/constants';
 import { prompt } from '@/prompts/builder';
 import type { StreamChunk, StreamOutput } from '@/types/streaming';
+import type { ChatPayload } from '@/workflow-builder-agent';
 
 import { ASK_ASSISTANT_TOOL } from './ask-assistant.tool';
-import type { AssistantHandler } from './assistant-handler';
 import { BUILD_WORKFLOW_TOOL } from './build-workflow.tool';
-import type { StreamWriter } from './types';
-import type { ChatPayload } from '../workflow-builder-agent';
 
 type TriageConversationEntry =
 	| { type: 'build-request'; message: string }
@@ -89,7 +89,7 @@ function buildTriagePrompt(conversationHistory?: TriageConversationEntry[]): str
 1. **build_workflow** — The user wants to create, modify, or change a workflow.
    Pass the full user request as instructions.
 
-2. **ask_assistant** — The user needs help understanding n8n, debugging errors, or setting up credentials.
+2. **ask_assistant** — The user has a general question about n8n concepts, needs help understanding how something works, or wants guidance on setting up credentials.
    Pass the user's query faithfully.
 
 3. **Direct reply** — Simple conversational messages that don't need either tool.
@@ -111,7 +111,7 @@ function buildTriagePrompt(conversationHistory?: TriageConversationEntry[]): str
 
 /**
  * Triage agent that classifies user messages and executes tools directly:
- * - `ask_assistant` — help/debug queries via AssistantHandler (no credits)
+ * - `ask_assistant` — help/conceptual queries via AssistantHandler (no credits)
  * - `build_workflow` — workflow generation via CodeWorkflowBuilder (credits consumed)
  * - direct text reply — conversational responses (no credits)
  *
