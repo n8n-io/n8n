@@ -993,6 +993,128 @@ describe('ToolDispatchHandler', () => {
 		});
 	});
 
+	describe('allThinkOnly tracking', () => {
+		async function drainGenerator(
+			gen: AsyncGenerator<StreamOutput, ToolDispatchResult, unknown>,
+		): Promise<ToolDispatchResult> {
+			let result = await gen.next();
+			while (!result.done) {
+				result = await gen.next();
+			}
+			return result.value;
+		}
+
+		it('should return allThinkOnly=true when every tool call is think', async () => {
+			const thinkTool = {
+				name: 'think',
+				invoke: jest.fn().mockResolvedValue('thinking...'),
+			} as unknown as StructuredToolInterface;
+
+			const handler = createHandler(new Map([['think', thinkTool]]));
+
+			const result = await drainGenerator(
+				handler.dispatch({
+					toolCalls: [
+						{ id: 'tc-1', name: 'think', args: { thought: 'hmm' } },
+						{ id: 'tc-2', name: 'think', args: { thought: 'still thinking' } },
+					],
+					messages: [],
+					iteration: 1,
+					warningTracker: new WarningTracker(),
+				}),
+			);
+
+			expect(result.allThinkOnly).toBe(true);
+		});
+
+		it('should return allThinkOnly=true for a single think call', async () => {
+			const thinkTool = {
+				name: 'think',
+				invoke: jest.fn().mockResolvedValue('thinking...'),
+			} as unknown as StructuredToolInterface;
+
+			const handler = createHandler(new Map([['think', thinkTool]]));
+
+			const result = await drainGenerator(
+				handler.dispatch({
+					toolCalls: [{ id: 'tc-1', name: 'think', args: { thought: 'hmm' } }],
+					messages: [],
+					iteration: 1,
+					warningTracker: new WarningTracker(),
+				}),
+			);
+
+			expect(result.allThinkOnly).toBe(true);
+		});
+
+		it('should return allThinkOnly=false when think is mixed with other tools', async () => {
+			const thinkTool = {
+				name: 'think',
+				invoke: jest.fn().mockResolvedValue('thinking...'),
+			} as unknown as StructuredToolInterface;
+			const searchTool = {
+				name: 'search_nodes',
+				invoke: jest.fn().mockResolvedValue('results'),
+			} as unknown as StructuredToolInterface;
+
+			const handler = createHandler(
+				new Map([
+					['think', thinkTool],
+					['search_nodes', searchTool],
+				]),
+			);
+
+			const result = await drainGenerator(
+				handler.dispatch({
+					toolCalls: [
+						{ id: 'tc-1', name: 'think', args: { thought: 'hmm' } },
+						{ id: 'tc-2', name: 'search_nodes', args: { query: 'http' } },
+					],
+					messages: [],
+					iteration: 1,
+					warningTracker: new WarningTracker(),
+				}),
+			);
+
+			expect(result.allThinkOnly).toBe(false);
+		});
+
+		it('should return allThinkOnly=false when no tool calls are think', async () => {
+			const searchTool = {
+				name: 'search_nodes',
+				invoke: jest.fn().mockResolvedValue('results'),
+			} as unknown as StructuredToolInterface;
+
+			const handler = createHandler(new Map([['search_nodes', searchTool]]));
+
+			const result = await drainGenerator(
+				handler.dispatch({
+					toolCalls: [{ id: 'tc-1', name: 'search_nodes', args: { query: 'http' } }],
+					messages: [],
+					iteration: 1,
+					warningTracker: new WarningTracker(),
+				}),
+			);
+
+			expect(result.allThinkOnly).toBe(false);
+		});
+
+		it('should return allThinkOnly=false when tool calls list is empty', async () => {
+			const handler = createHandler(new Map());
+
+			const result = await drainGenerator(
+				handler.dispatch({
+					toolCalls: [],
+					messages: [],
+					iteration: 1,
+					warningTracker: new WarningTracker(),
+				}),
+			);
+
+			expect(result.allThinkOnly).toBe(false);
+		});
+	});
+
 	describe('parseReplacements', () => {
 		it('should pass through a valid array', () => {
 			const input = [{ old_str: 'a', new_str: 'b' }];

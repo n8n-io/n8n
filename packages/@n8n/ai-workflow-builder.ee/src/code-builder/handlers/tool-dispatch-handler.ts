@@ -99,6 +99,8 @@ export interface ToolDispatchResult {
 	validatePassedThisIteration: boolean;
 	/** undefined = no edits or validations this iteration */
 	hasUnvalidatedEdits?: boolean;
+	/** true if every tool call in this iteration was 'think' */
+	allThinkOnly: boolean;
 }
 
 /**
@@ -196,6 +198,8 @@ export class ToolDispatchHandler {
 			}
 		}
 
+		const allThinkOnly = toolCalls.length > 0 && toolCalls.every((tc) => tc.name === 'think');
+
 		return {
 			workflow,
 			workflowReady,
@@ -203,6 +207,7 @@ export class ToolDispatchHandler {
 			parseDuration,
 			validatePassedThisIteration,
 			hasUnvalidatedEdits,
+			allThinkOnly,
 		};
 	}
 
