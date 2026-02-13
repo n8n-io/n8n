@@ -268,24 +268,6 @@ export class ApiHelpers {
 	}
 
 	/**
-	 * Create an API helper for a specific base URL.
-	 * Useful for multi-main testing where you want to send requests
-	 * directly to a specific main instance (bypassing the load balancer).
-	 *
-	 * @param baseUrl - The base URL to use (e.g., from n8nContainer.mainUrls[0])
-	 * @returns A new ApiHelpers instance configured for the specified URL
-	 */
-	static async createForUrl(baseUrl: string): Promise<ApiHelpers> {
-		const context = await request.newContext({ baseURL: baseUrl });
-		return new ApiHelpers(context);
-	}
-
-	async get(path: string, params?: URLSearchParams) {
-		const response = await this.request.get(path, { params });
-		const { data } = await response.json();
-		return data;
-	}
-	/**
 	 * Check if n8n is healthy
 	 * @returns True if n8n is healthy, false otherwise
 	 */
@@ -397,26 +379,6 @@ export class ApiHelpers {
 	}
 
 	// ===== MCP API KEY METHODS =====
-
-	/**
-	 * Get or create MCP API key for the authenticated user.
-	 * If the user already has an API key, returns the existing one (redacted).
-	 * If not, creates a new one and returns the full key.
-	 *
-	 * @returns The MCP API key data including the key itself
-	 */
-	async getMcpApiKey(): Promise<{ id: string; apiKey: string; userId: string }> {
-		const response = await this.request.get('/rest/mcp/api-key');
-
-		if (!response.ok()) {
-			throw new TestError(
-				`Failed to get MCP API key: ${response.status()} ${await response.text()}`,
-			);
-		}
-
-		const result = await response.json();
-		return result.data ?? result;
-	}
 
 	/**
 	 * Rotate the MCP API key for the authenticated user.
