@@ -275,6 +275,9 @@ export class SecretsProvidersConnectionsService {
 
 			return reloadSecretProviderConnectionResponseSchema.parse({ success: true });
 		} catch (error) {
+			if (error instanceof NotFoundError) {
+				throw error;
+			}
 			this.logger.warn(`Failed to reload provider ${providerKey}`, { providerKey });
 			return reloadSecretProviderConnectionResponseSchema.parse({ success: false });
 		}
