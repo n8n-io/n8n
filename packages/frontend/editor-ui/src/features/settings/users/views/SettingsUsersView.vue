@@ -83,6 +83,8 @@ const isTamperProofInviteLinksEnabled = computed(() =>
 	postHog.isVariantEnabled(TAMPER_PROOF_INVITE_LINKS.name, TAMPER_PROOF_INVITE_LINKS.variant),
 );
 
+const isSSOEnabled = computed(() => !!ssoStore.isSamlLoginEnabled || !!ssoStore.isOidcLoginEnabled);
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
 
@@ -139,12 +141,12 @@ const usersListActions = computed((): Array<UserAction<IUser>> => {
 		{
 			label: i18n.baseText('settings.users.actions.allowSSOManualLogin'),
 			value: 'allowSSOManualLogin',
-			guard: (user) => !!ssoStore.isSamlLoginEnabled && !user.settings?.allowSSOManualLogin,
+			guard: (user) => isSSOEnabled.value && !user.settings?.allowSSOManualLogin,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.disallowSSOManualLogin'),
 			value: 'disallowSSOManualLogin',
-			guard: (user) => !!ssoStore.isSamlLoginEnabled && user.settings?.allowSSOManualLogin === true,
+			guard: (user) => isSSOEnabled.value && user.settings?.allowSSOManualLogin === true,
 		},
 	];
 });
@@ -496,16 +498,14 @@ const onSearch = (value: string) => {
 					<N8nIcon icon="search" />
 				</template>
 			</N8nInput>
-			<N8nTooltip :disabled="!ssoStore.isSamlLoginEnabled">
+			<N8nTooltip :disabled="!isSSOEnabled">
 				<template #content>
 					<span> {{ i18n.baseText('settings.users.invite.tooltip') }} </span>
 				</template>
 				<div>
 					<N8nButton
 						:disabled="
-							ssoStore.isSamlLoginEnabled ||
-							!usersStore.usersLimitNotReached ||
-							isInstanceRoleProvisioningEnabled
+							isSSOEnabled || !usersStore.usersLimitNotReached || isInstanceRoleProvisioningEnabled
 						"
 						:label="i18n.baseText('settings.users.invite')"
 						size="large"
