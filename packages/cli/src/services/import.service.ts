@@ -44,8 +44,8 @@ export class ImportService {
 			sqlite: 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-pooled': 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-memory': 'PRAGMA defer_foreign_keys = OFF;',
-			postgres: 'SET session_replication_role = DEFAULT;',
-			postgresql: 'SET session_replication_role = DEFAULT;',
+			postgres: 'SET session_replication_role = ORIGIN;',
+			postgresql: 'SET session_replication_role = ORIGIN;',
 		},
 	};
 
