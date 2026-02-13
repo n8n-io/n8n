@@ -6,6 +6,8 @@ import { createResultError, createResultOk, type Result } from 'n8n-workflow';
 
 import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsResponse } from '../credentials.types';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 /**
  * Composable for OAuth credential type detection and authorization.
@@ -14,8 +16,11 @@ import type { ICredentialsResponse } from '../credentials.types';
 export function useCredentialOAuth() {
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
+	const workflowsStore = useWorkflowsStore();
+
 	const toast = useToast();
 	const i18n = useI18n();
+	const telemetry = useTelemetry();
 
 	const oauthAbortController = ref<AbortController | null>(null);
 	const pendingCredentialId = ref<string | null>(null);
@@ -212,6 +217,7 @@ export function useCredentialOAuth() {
 	 */
 	async function createAndAuthorize(
 		credentialTypeName: string,
+		nodeType?: string,
 	): Promise<ICredentialsResponse | null> {
 		const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
 		if (!credentialType) {
@@ -225,12 +231,18 @@ export function useCredentialOAuth() {
 					id: '',
 					name: credentialType.displayName,
 					type: credentialTypeName,
-					data: {},
+					data: { allowedHttpRequestDomains: 'none' },
 				},
 				projectsStore.currentProject?.id,
 				undefined,
 				{ skipStoreUpdate: true },
 			);
+
+			telemetry.track('User created credentials', {
+				credential_type: credential.type,
+				credential_id: credential.id,
+				workflow_id: workflowsStore.workflowId,
+			});
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeCredentials.showMessage.title'));
 			return null;
@@ -245,8 +257,25 @@ export function useCredentialOAuth() {
 		oauthAbortController.value = null;
 		pendingCredentialId.value = null;
 
+		const trackProperties: Record<string, unknown> = {
+			credential_type: credentialTypeName,
+			workflow_id: workflowsStore.workflowId ?? null,
+			credential_id: credential.id,
+			is_complete: true,
+			is_new: true,
+			is_valid: success,
+			uses_external_secrets: false,
+		};
+
+		if (nodeType) {
+			trackProperties.node_type = nodeType;
+		}
+
+		telemetry.track('User saved credentials', trackProperties);
+
 		if (success) {
 			credentialsStore.upsertCredential(credential);
+
 			return credential;
 		}
 

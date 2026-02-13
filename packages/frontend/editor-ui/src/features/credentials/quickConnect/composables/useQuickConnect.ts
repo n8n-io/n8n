@@ -89,24 +89,12 @@ export function useQuickConnect() {
 			return null;
 		}
 
-		if (!isOAuthCredentialType(credentialTypeName)) {
-			return null;
+		if (isOAuthCredentialType(credentialTypeName)) {
+			const credential = await createAndAuthorize(credentialTypeName, nodeType);
+			return credential;
 		}
 
-		const credential = await createAndAuthorize(credentialTypeName);
-
-		telemetry.track('User saved credentials', {
-			credential_type: credentialTypeName,
-			workflow_id: workflowsStore.workflowId ?? null,
-			credential_id: credential?.id ?? null,
-			is_complete: true,
-			is_new: true,
-			is_valid: credential !== null,
-			uses_external_secrets: false,
-			node_type: nodeType,
-		});
-
-		return credential;
+		return null;
 	}
 
 	return {

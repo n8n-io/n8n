@@ -15,11 +15,18 @@ vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return { useTelemetry: () => ({ track }) };
 });
+const { mockIsOAuthCredentialType, mockCreateAndAuthorize, mockCancelAuthorize } = vi.hoisted(
+	() => ({
+		mockIsOAuthCredentialType: vi.fn(() => false),
+		mockCreateAndAuthorize: vi.fn(),
+		mockCancelAuthorize: vi.fn(),
+	}),
+);
 vi.mock('../../composables/useCredentialOAuth', () => ({
 	useCredentialOAuth: () => ({
-		isOAuthCredentialType: vi.fn(() => false),
-		createAndAuthorize: vi.fn(),
-		cancelAuthorize: vi.fn(),
+		isOAuthCredentialType: mockIsOAuthCredentialType,
+		createAndAuthorize: mockCreateAndAuthorize,
+		cancelAuthorize: mockCancelAuthorize,
 	}),
 }));
 
@@ -269,6 +276,23 @@ describe('useQuickConnect()', () => {
 						credential_type: 'googleSheetsOAuth2Api',
 						node_type: 'n8n-nodes-base.googleSheets',
 					});
+				});
+
+				it('passes nodeType to createAndAuthorize for OAuth credentials', async () => {
+					mockIsOAuthCredentialType.mockReturnValue(true);
+					mockCreateAndAuthorize.mockResolvedValue(null);
+
+					const { connect } = useQuickConnect();
+					await connect({
+						credentialTypeName: 'slackOAuth2Api',
+						nodeType: 'n8n-nodes-base.slack',
+						source: 'node',
+					});
+
+					expect(mockCreateAndAuthorize).toHaveBeenCalledWith(
+						'slackOAuth2Api',
+						'n8n-nodes-base.slack',
+					);
 				});
 			});
 		});

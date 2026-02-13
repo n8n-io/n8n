@@ -3,6 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useCredentialOAuth } from '../useCredentialOAuth';
 import { useCredentialsStore } from '../../credentials.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { mockedStore } from '@/__tests__/utils';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ICredentialsResponse } from '../../credentials.types';
@@ -17,6 +18,11 @@ vi.mock('@/app/composables/useToast', () => ({
 		showError: mockShowError,
 		showMessage: mockShowMessage,
 	}),
+}));
+
+const mockTrack = vi.fn();
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: mockTrack }),
 }));
 
 const oAuth2Api: ICredentialType = {
@@ -455,6 +461,167 @@ describe('useCredentialOAuth', () => {
 
 			const result = await promise;
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('createAndAuthorize', () => {
+		const createdCredential: ICredentialsResponse = {
+			id: 'new-cred-123',
+			name: 'Slack OAuth2 API',
+			type: 'slackOAuth2Api',
+			data: 'dummy-data',
+			createdAt: '',
+			updatedAt: '',
+			isManaged: false,
+		};
+
+		let mockPopup: { closed: boolean; close: ReturnType<typeof vi.fn> };
+		let mockBroadcastChannel: {
+			close: ReturnType<typeof vi.fn>;
+			addEventListener: ReturnType<typeof vi.fn>;
+			removeEventListener: ReturnType<typeof vi.fn>;
+			postMessage: ReturnType<typeof vi.fn>;
+		};
+
+		beforeEach(() => {
+			mockTrack.mockClear();
+			mockPopup = { closed: false, close: vi.fn() };
+			mockBroadcastChannel = {
+				close: vi.fn(),
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+				postMessage: vi.fn(),
+			};
+
+			vi.stubGlobal(
+				'BroadcastChannel',
+				vi.fn().mockImplementation(() => mockBroadcastChannel),
+			);
+			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
+		});
+
+		afterEach(() => {
+			vi.unstubAllGlobals();
+		});
+
+		function setupSuccessfulOAuthFlow() {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.createNewCredential.mockResolvedValue(createdCredential);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+
+			mockBroadcastChannel.addEventListener.mockImplementation(
+				(event: string, handler: (e: MessageEvent) => void) => {
+					if (event === 'message') {
+						setTimeout(() => handler({ data: 'success' } as MessageEvent), 0);
+					}
+				},
+			);
+
+			return credentialsStore;
+		}
+
+		function setupFailedOAuthFlow() {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.createNewCredential.mockResolvedValue(createdCredential);
+			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
+
+			mockBroadcastChannel.addEventListener.mockImplementation(
+				(event: string, handler: (e: MessageEvent) => void) => {
+					if (event === 'message') {
+						setTimeout(() => handler({ data: 'error' } as MessageEvent), 0);
+					}
+				},
+			);
+
+			return credentialsStore;
+		}
+
+		it('should track "User created credentials" after credential creation', async () => {
+			setupSuccessfulOAuthFlow();
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('slackOAuth2Api');
+
+			expect(mockTrack).toHaveBeenCalledWith('User created credentials', {
+				credential_type: 'slackOAuth2Api',
+				credential_id: 'new-cred-123',
+				workflow_id: '',
+			});
+		});
+
+		it('should track "User saved credentials" with is_valid true on OAuth success', async () => {
+			setupSuccessfulOAuthFlow();
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('slackOAuth2Api');
+
+			expect(mockTrack).toHaveBeenCalledWith('User saved credentials', {
+				credential_type: 'slackOAuth2Api',
+				workflow_id: null,
+				credential_id: 'new-cred-123',
+				is_complete: true,
+				is_new: true,
+				is_valid: true,
+				uses_external_secrets: false,
+			});
+		});
+
+		it('should track "User saved credentials" with is_valid false on OAuth failure', async () => {
+			setupFailedOAuthFlow();
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('slackOAuth2Api');
+
+			expect(mockTrack).toHaveBeenCalledWith('User saved credentials', {
+				credential_type: 'slackOAuth2Api',
+				workflow_id: null,
+				credential_id: 'new-cred-123',
+				is_complete: true,
+				is_new: true,
+				is_valid: false,
+				uses_external_secrets: false,
+			});
+		});
+
+		it('should include node_type in tracking when provided', async () => {
+			setupSuccessfulOAuthFlow();
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('slackOAuth2Api', 'n8n-nodes-base.slack');
+
+			expect(mockTrack).toHaveBeenCalledWith(
+				'User saved credentials',
+				expect.objectContaining({
+					node_type: 'n8n-nodes-base.slack',
+				}),
+			);
+		});
+
+		it('should not include node_type in tracking when not provided', async () => {
+			setupSuccessfulOAuthFlow();
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('slackOAuth2Api');
+
+			const savedCall = mockTrack.mock.calls.find((call) => call[0] === 'User saved credentials');
+			expect(savedCall?.[1]).not.toHaveProperty('node_type');
+		});
+
+		it('should track "User saved credentials" after OAuth completes, not before', async () => {
+			setupSuccessfulOAuthFlow();
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('slackOAuth2Api');
+
+			const createdIndex = mockTrack.mock.calls.findIndex(
+				(call) => call[0] === 'User created credentials',
+			);
+			const savedIndex = mockTrack.mock.calls.findIndex(
+				(call) => call[0] === 'User saved credentials',
+			);
+
+			expect(createdIndex).toBeGreaterThanOrEqual(0);
+			expect(savedIndex).toBeGreaterThan(createdIndex);
 		});
 	});
 });
