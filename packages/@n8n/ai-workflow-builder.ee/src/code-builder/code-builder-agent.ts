@@ -644,12 +644,14 @@ export class CodeBuilderAgent {
 		if (state.consecutiveThinkOnlyCalls >= MAX_CONSECUTIVE_THINK_ONLY) {
 			state.consecutiveThinkOnlyCalls = 0;
 			messages.push(
-				new HumanMessage(
-					'You have been reasoning without making changes for several iterations. ' +
+				new HumanMessage({
+					content:
+						'You have been reasoning without making changes for several iterations. ' +
 						'You MUST now either: (1) use batch_str_replace or str_replace to fix the code, ' +
 						'or (2) simplify the workflow by removing the problematic node. ' +
 						'Do NOT call the think tool again until you have made a code change.',
-				),
+					additional_kwargs: { validationMessage: true },
+				}),
 			);
 		}
 
