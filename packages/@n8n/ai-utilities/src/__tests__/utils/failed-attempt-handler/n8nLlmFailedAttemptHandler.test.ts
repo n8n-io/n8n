@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { ApplicationError, NodeApiError } from 'n8n-workflow';
 
-import { makeN8nLlmFailedAttemptHandler } from './n8nLlmFailedAttemptHandler';
+import { makeN8nLlmFailedAttemptHandler } from 'src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
 
 describe('makeN8nLlmFailedAttemptHandler', () => {
 	const ctx = mock<ISupplyDataFunctions>({

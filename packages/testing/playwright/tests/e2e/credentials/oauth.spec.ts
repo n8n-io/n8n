@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('OAuth Credentials', () => {
+test.describe('OAuth Credentials', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test('should create and connect with Google OAuth2', async ({ n8n }) => {
 		const projectId = await n8n.start.fromNewProjectBlankCanvas();
 		await n8n.navigate.toCredentials(projectId);

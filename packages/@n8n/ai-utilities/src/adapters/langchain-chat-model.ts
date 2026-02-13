@@ -57,7 +57,6 @@ export class LangchainAdapter<
 		messages: BaseMessage[],
 		options: this['ParsedCallOptions'],
 	): Promise<ChatResult> {
-		// Convert LangChain messages to generic messages
 		const transformedMessages = messages.map(fromLcMessage);
 		const result = await this.chatModel.generate(transformedMessages, options);
 		// Build content blocks for the message

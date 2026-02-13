@@ -3,7 +3,11 @@ import { ChatHubChatPage } from '../../../pages/ChatHubChatPage';
 
 test.use(chatHubTestConfig);
 
-test.describe('Tools usage @capability:proxy', () => {
+test.describe('Tools usage @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'Chat' },
+	],
+}, () => {
 	test('use web search tool in conversation', async ({
 		n8n,
 		anthropicCredential: _,

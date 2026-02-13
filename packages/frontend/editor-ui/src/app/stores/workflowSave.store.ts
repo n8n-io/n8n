@@ -4,12 +4,17 @@ import { AutoSaveState } from '@/app/constants';
 import { calculateExponentialBackoff, RETRY_START_DELAY } from '@/app/utils/retryUtils';
 
 /**
- * Store for managing workflow autosave state.
- * This ensures all components share the same autosave state across the app.
+ * Store for managing workflow save state.
+ * This ensures all components share the same save state across the app.
+ *
+ * Tracks both:
+ * - `pendingSave`: Any save operation in progress
+ * - `autoSaveState`: State of the debounced autosave scheduler
+ *
  */
-export const useWorkflowAutosaveStore = defineStore('workflowAutosave', () => {
+export const useWorkflowSaveStore = defineStore('workflowSave', () => {
 	const autoSaveState = ref<AutoSaveState>(AutoSaveState.Idle);
-	const pendingAutoSave = ref<Promise<void> | null>(null);
+	const pendingSave = ref<Promise<boolean> | null>(null);
 
 	// Exponential backoff state
 	const retryCount = ref(0);
@@ -22,8 +27,8 @@ export const useWorkflowAutosaveStore = defineStore('workflowAutosave', () => {
 		autoSaveState.value = state;
 	}
 
-	function setPendingAutoSave(promise: Promise<void> | null) {
-		pendingAutoSave.value = promise;
+	function setPendingSave(promise: Promise<boolean> | null) {
+		pendingSave.value = promise;
 	}
 
 	function incrementRetry() {
@@ -57,20 +62,20 @@ export const useWorkflowAutosaveStore = defineStore('workflowAutosave', () => {
 
 	function reset() {
 		autoSaveState.value = AutoSaveState.Idle;
-		pendingAutoSave.value = null;
+		pendingSave.value = null;
 		resetRetry();
 	}
 
 	return {
 		autoSaveState,
-		pendingAutoSave,
+		pendingSave,
 		retryCount,
 		retryDelay,
 		isRetrying,
 		lastError,
 		conflictModalShown,
 		setAutoSaveState,
-		setPendingAutoSave,
+		setPendingSave,
 		incrementRetry,
 		getRetryDelay,
 		setRetrying,

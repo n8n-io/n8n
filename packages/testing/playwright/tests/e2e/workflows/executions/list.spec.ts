@@ -1,7 +1,11 @@
 import { test, expect } from '../../../../fixtures/base';
 import executionOutOfMemoryResponse from '../../../../fixtures/execution-out-of-memory-server-response.json';
 
-test.describe('Executions Filter', () => {
+test.describe('Executions Filter', {
+	annotation: [
+		{ type: 'owner', description: 'Lifecycle & Governance' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Test_workflow_4_executions_view.json');
 	});
