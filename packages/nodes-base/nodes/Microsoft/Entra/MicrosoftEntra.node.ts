@@ -21,6 +21,7 @@ export class MicrosoftEntra implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Interact with Microsoft Entra ID API',
+		schemaPath: 'Microsoft/Entra',
 		defaults: {
 			name: 'Microsoft Entra ID',
 		},
@@ -34,10 +35,11 @@ export class MicrosoftEntra implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: 'https://graph.microsoft.com/v1.0',
 			headers: {
 				'Content-Type': 'application/json',
 			},
+			baseURL:
+				'={{ ($credentials.graphApiBaseUrl || "https://graph.microsoft.com").replace(/\\/+$/, "") }}/v1.0',
 		},
 		properties: [
 			{

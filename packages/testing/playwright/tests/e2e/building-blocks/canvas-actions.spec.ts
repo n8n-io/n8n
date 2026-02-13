@@ -4,7 +4,11 @@ import {
 } from '../../../config/constants';
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Canvas Node Actions', () => {
+test.describe('Canvas Node Actions', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});

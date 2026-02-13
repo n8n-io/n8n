@@ -380,6 +380,183 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				);
 			});
 		});
+
+		describe('graphApiBaseUrl from credentials', () => {
+			it('should use base URL from credentials', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+					graphApiBaseUrl: 'https://graph.microsoft.us',
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: 'https://graph.microsoft.us/v1.0/security/alerts',
+					json: true,
+				});
+			});
+
+			it('should fall back to default when credentials.graphApiBaseUrl is empty', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+					graphApiBaseUrl: '',
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: 'https://graph.microsoft.com/v1.0/security/alerts',
+					json: true,
+				});
+			});
+
+			it('should fall back to default when credentials.graphApiBaseUrl is undefined', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: 'https://graph.microsoft.com/v1.0/security/alerts',
+					json: true,
+				});
+			});
+
+			it('should strip trailing slashes from base URL using regex', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+					graphApiBaseUrl: 'https://graph.microsoft.com/',
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: 'https://graph.microsoft.com/v1.0/security/alerts',
+					json: true,
+				});
+			});
+
+			it('should strip multiple trailing slashes from base URL', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+					graphApiBaseUrl: 'https://graph.microsoft.com///',
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: 'https://graph.microsoft.com/v1.0/security/alerts',
+					json: true,
+				});
+			});
+
+			it('should use US Government cloud endpoint', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+					graphApiBaseUrl: 'https://graph.microsoft.us',
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: 'https://graph.microsoft.us/v1.0/security/alerts',
+					json: true,
+				});
+			});
+
+			it('should use US Government DOD cloud endpoint', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+					graphApiBaseUrl: 'https://dod-graph.microsoft.us',
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: 'https://dod-graph.microsoft.us/v1.0/security/alerts',
+					json: true,
+				});
+			});
+
+			it('should use China cloud endpoint', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+					graphApiBaseUrl: 'https://microsoftgraph.chinacloudapi.cn',
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: 'https://microsoftgraph.chinacloudapi.cn/v1.0/security/alerts',
+					json: true,
+				});
+			});
+		});
 	});
 
 	describe('tolerateDoubleQuotes', () => {

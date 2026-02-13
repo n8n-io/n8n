@@ -14,7 +14,6 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
-import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -31,8 +30,6 @@ const emit = defineEmits<{
 	collapse: [];
 	openCommandBar: [event: MouseEvent];
 }>();
-
-const { isEnabled: isCommandBarEnabled } = useCommandBar();
 
 const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
@@ -110,8 +107,9 @@ const {
 			@select="handleMenuSelect"
 		>
 			<N8nIconButton
+				class="n8n-button--highlight"
+				variant="ghost"
 				size="small"
-				type="highlight"
 				icon="plus"
 				icon-size="large"
 				aria-label="Add new item"
@@ -154,10 +152,10 @@ const {
 						size="xsmall"
 					/>
 					<N8nButton
+						variant="subtle"
 						v-else
 						:size="'mini'"
 						:class="$style.upgradeButton"
-						type="tertiary"
 						@click="handleMenuSelect(item.id)"
 					>
 						{{ upgradeLabel }}
@@ -166,15 +164,15 @@ const {
 			</template>
 		</N8nNavigationDropdown>
 		<KeyboardShortcutTooltip
-			v-if="isCommandBarEnabled"
 			:placement="isCollapsed ? 'right' : 'bottom'"
 			:show-after="500"
 			:label="i18n.baseText('nodeView.openCommandBar')"
 			:shortcut="{ keys: ['k'], metaKey: true }"
 		>
 			<N8nIconButton
+				class="n8n-button--highlight"
+				variant="ghost"
 				size="small"
-				type="highlight"
 				icon="search"
 				icon-size="large"
 				aria-label="Open command palette"
@@ -193,8 +191,9 @@ const {
 		>
 			<N8nIconButton
 				id="toggle-sidebar-button"
+				class="n8n-button--highlight"
+				variant="ghost"
 				size="small"
-				type="highlight"
 				icon="panel-left"
 				icon-size="large"
 				aria-label="Toggle sidebar"
@@ -209,7 +208,6 @@ const {
 	display: flex;
 	align-items: center;
 	padding: var(--spacing--2xs) var(--spacing--3xs);
-	margin-bottom: var(--spacing--2xs);
 	justify-content: space-between;
 	gap: var(--spacing--4xs);
 
@@ -242,7 +240,7 @@ const {
 	align-self: center;
 	padding: 2px;
 	border-radius: var(--radius--sm);
-	margin: 7px 12px 0 5px;
+	margin: 0 var(--spacing--xs) 0 var(--spacing--3xs);
 }
 
 .iconButton {

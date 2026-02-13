@@ -44,6 +44,13 @@ export type RelayEventMap = {
 		userId: string | null;
 	};
 
+	'instance-first-production-workflow-failed': {
+		projectId: string;
+		workflowId: string;
+		workflowName: string;
+		userId: string;
+	};
+
 	'first-workflow-data-loaded': {
 		userId: string;
 		workflowId: string;
@@ -105,6 +112,7 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflow: IWorkflowDb;
 		publicApi: boolean;
+		deactivatedVersionId: string | null;
 	};
 
 	'workflow-pre-execute': {
@@ -123,6 +131,32 @@ export type RelayEventMap = {
 		workflowId: string;
 		userIdSharer: string;
 		userIdList: string[];
+	};
+
+	'workflow-executed': {
+		user?: UserLike;
+		workflowId: string;
+		workflowName: string;
+		executionId: string;
+		source:
+			| 'user-manual'
+			| 'user-retry'
+			| 'webhook'
+			| 'trigger'
+			| 'error'
+			| 'cli'
+			| 'integrated'
+			| 'evaluation'
+			| 'chat';
+	};
+
+	'workflow-version-updated': {
+		user: UserLike;
+		workflowId: string;
+		workflowName: string;
+		versionId: string;
+		versionName?: string | null;
+		versionDescription?: string | null;
 	};
 
 	// #endregion
@@ -334,6 +368,7 @@ export type RelayEventMap = {
 		projectId?: string;
 		projectType?: string;
 		uiContext?: string;
+		isDynamic?: boolean;
 	};
 
 	'credentials-shared': {
@@ -349,6 +384,7 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		isDynamic?: boolean;
 	};
 
 	'credentials-deleted': {
@@ -410,6 +446,12 @@ export type RelayEventMap = {
 		workflowId?: string;
 		workflowName?: string;
 		reason: CancellationReason;
+	};
+
+	'execution-deleted': {
+		user: UserLike;
+		executionIds: string[];
+		deleteBefore?: Date;
 	};
 
 	// #endregion
@@ -534,6 +576,10 @@ export type RelayEventMap = {
 		errorMessage?: string;
 	};
 
+	'external-secrets-provider-reloaded': {
+		vaultType: string;
+	};
+
 	// #endregion
 
 	// #region LDAP
@@ -622,6 +668,29 @@ export type RelayEventMap = {
 		workflowId: string;
 		hostId: string;
 		jobId: string;
+	};
+
+	// #endregion
+
+	// #region workflow history compaction
+	'history-compacted': {
+		workflowsProcessed: number;
+		totalVersionsSeen: number;
+		totalVersionsDeleted: number;
+		errorCount: number;
+		durationMs: number;
+		windowStartIso: string;
+		windowEndIso: string;
+		compactionStartTime: Date;
+	};
+	// #endregion
+
+	// #region Instance Policies
+
+	'instance-policies-updated': {
+		user: UserLike;
+		settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
+		value: boolean;
 	};
 
 	// #endregion

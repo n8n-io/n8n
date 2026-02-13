@@ -56,6 +56,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { getGenericHints } from '@/app/utils/nodeViewUtils';
@@ -226,6 +227,7 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const sourceControlStore = useSourceControlStore();
+const collaborationStore = useCollaborationStore();
 const rootStore = useRootStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 
@@ -292,7 +294,11 @@ const isSingleNodeView = computed(() => !displaysMultipleNodes.value);
 const hasBinaryData = computed(() => binaryData.value?.length > 0);
 const hasNoData = computed(() => !rawInputData.value.length && !pinnedData.hasData.value);
 const isReadOnly = computed(
-	() => isReadOnlyRoute.value || readOnlyEnv.value || isArchivedWorkflow.value,
+	() =>
+		isReadOnlyRoute.value ||
+		readOnlyEnv.value ||
+		isArchivedWorkflow.value ||
+		collaborationStore.shouldBeReadOnly,
 );
 
 const shouldShowSchemaView = computed(() => {
@@ -366,16 +372,6 @@ const isArtificialRecoveredEventItem = computed(
 	() => rawInputData.value?.[0]?.json?.isArtificialRecoveredEventItem,
 );
 
-const subworkflowExecutionError = computed(() => {
-	if (!node.value) return null;
-	return {
-		node: node.value,
-		messages: [workflowsStore.subWorkflowExecutionError?.message ?? ''],
-	} as NodeError;
-});
-
-const hasSubworkflowExecutionError = computed(() => !!workflowsStore.subWorkflowExecutionError);
-
 const parentNodeError = computed(() => {
 	const parentNode = props.workflowObject.getChildNodes(node.value?.name ?? '', 'ALL_NON_MAIN')[0];
 	return workflowRunData.value?.[parentNode]?.[props.runIndex]?.error as NodeError;
@@ -383,10 +379,13 @@ const parentNodeError = computed(() => {
 
 const workflowRunErrorAsNodeError = computed(() => {
 	if (!node.value) return null;
-	if (isSubNodeType.value && isPaneTypeInput.value) {
+
+	const selfTaskData = workflowRunData.value?.[node.value.name]?.[props.runIndex];
+
+	if (!selfTaskData && isSubNodeType.value && isPaneTypeInput.value) {
 		return parentNodeError.value;
 	}
-	return workflowRunData.value?.[node.value.name]?.[props.runIndex]?.error as NodeError;
+	return selfTaskData?.error as NodeError;
 });
 
 const hasRunError = computed(() => node.value && !!workflowRunErrorAsNodeError.value);
@@ -1501,12 +1500,11 @@ defineExpose({ enterEditMode });
 				</Suspense>
 
 				<N8nIconButton
+					variant="ghost"
 					v-if="displayMode === 'table' && collapsingTableColumnName !== null"
 					:class="$style.resetCollapseButton"
-					text
 					icon="chevrons-up-down"
-					size="xmini"
-					type="tertiary"
+					size="xsmall"
 					@click="emit('collapsingTableColumnChanged', null)"
 				/>
 
@@ -1523,13 +1521,13 @@ defineExpose({ enterEditMode });
 				/>
 
 				<N8nIconButton
+					variant="subtle"
 					v-if="!props.disableEdit && canPinData && !isReadOnlyRoute && !readOnlyEnv"
 					v-show="!editMode.enabled"
 					:title="i18n.baseText('runData.editOutput')"
 					:circle="false"
 					:disabled="node?.disabled"
 					icon="pencil"
-					type="tertiary"
 					data-test-id="ndv-edit-pinned-data"
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
@@ -1549,13 +1547,13 @@ defineExpose({ enterEditMode });
 
 				<div v-if="!props.disableEdit" v-show="editMode.enabled" :class="$style.editModeActions">
 					<N8nButton
-						type="tertiary"
+						variant="subtle"
 						:label="i18n.baseText('runData.editor.cancel')"
 						@click="onClickCancelEdit"
 					/>
 					<N8nButton
+						variant="solid"
 						class="ml-2xs"
-						type="primary"
 						:label="i18n.baseText('runData.editor.save')"
 						@click="onClickSaveEdit"
 					/>
@@ -1602,10 +1600,9 @@ defineExpose({ enterEditMode });
 							{{ i18n.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
 						</template>
 						<N8nIconButton
+							variant="ghost"
 							:icon="linkedRuns ? 'unlink' : 'link'"
 							:class="['linkRun', linkedRuns ? 'linked' : '']"
-							text
-							type="tertiary"
 							size="small"
 							data-test-id="link-run"
 							@click="toggleLinkRuns"
@@ -1743,18 +1740,6 @@ defineExpose({ enterEditMode });
 				</div>
 			</div>
 
-			<div
-				v-else-if="isPaneTypeOutput && hasSubworkflowExecutionError && subworkflowExecutionError"
-				:class="$style.stretchVertically"
-			>
-				<NodeErrorView
-					:compact="compact"
-					:error="subworkflowExecutionError"
-					:class="$style.errorDisplay"
-					show-details
-				/>
-			</div>
-
 			<div v-else-if="isWaitNodeWaiting" :class="$style.center">
 				<slot name="node-waiting">xxx</slot>
 			</div>
@@ -1843,7 +1828,7 @@ defineExpose({ enterEditMode });
 
 					<div :class="$style.warningActions">
 						<N8nButton
-							outline
+							variant="outline"
 							size="small"
 							:label="i18n.baseText('runData.downloadBinaryData')"
 							@click="downloadJsonData()"

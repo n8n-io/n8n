@@ -1,63 +1,94 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
-import { StateGraph, END, START, type MemorySaver } from '@langchain/langgraph';
+import type { RunnableConfig } from '@langchain/core/runnables';
+import { StateGraph, END, START, type MemorySaver, isGraphInterrupt } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { ResponderAgent } from './agents/responder.agent';
+import {
+	createResponderAgent,
+	invokeResponderAgent,
+	type ResponderAgentType,
+} from './agents/responder.agent';
 import { SupervisorAgent } from './agents/supervisor.agent';
 import {
 	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 	MAX_BUILDER_ITERATIONS,
-	MAX_CONFIGURATOR_ITERATIONS,
 	MAX_DISCOVERY_ITERATIONS,
 } from './constants';
 import { ParentGraphState } from './parent-graph-state';
 import { BuilderSubgraph } from './subgraphs/builder.subgraph';
-import { ConfiguratorSubgraph } from './subgraphs/configurator.subgraph';
 import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
+import type { ResourceLocatorCallback } from './types/callbacks';
 import type { SubgraphPhase } from './types/coordination';
-import { createErrorMetadata } from './types/coordination';
-import { getNextPhaseFromLog } from './utils/coordination-log';
+import {
+	createErrorMetadata,
+	createResponderMetadata,
+	isSubgraphPhase,
+} from './types/coordination';
+import { getNextPhaseFromLog, hasErrorInLog } from './utils/coordination-log';
+import { sanitizeLlmErrorMessage } from './utils/error-sanitizer';
 import { processOperations } from './utils/operations-processor';
 import {
 	determineStateAction,
+	handleClearErrorState,
 	handleCleanupDangling,
 	handleCompactMessages,
 	handleCreateWorkflowName,
 	handleDeleteMessages,
 } from './utils/state-modifier';
-import type { BuilderFeatureFlags } from './workflow-builder-agent';
+import type { BuilderFeatureFlags, StageLLMs } from './workflow-builder-agent';
+
+/**
+ * Type guard to check if a value is a coordination log entry-like object.
+ * Validates the required fields without requiring the full CoordinationLogEntry type.
+ */
+function isCoordinationLogEntry(
+	value: unknown,
+): value is { phase: SubgraphPhase; status: string; timestamp: number; summary: string } {
+	if (typeof value !== 'object' || value === null) return false;
+	const obj = value as Record<string, unknown>;
+	return (
+		typeof obj.phase === 'string' &&
+		typeof obj.status === 'string' &&
+		typeof obj.timestamp === 'number' &&
+		typeof obj.summary === 'string'
+	);
+}
 
 /**
  * Maps routing decisions to graph node names.
- * Used by both supervisor (LLM-based) and process_operations (deterministic) routing.
+ * Used by both supervisor (LLM-based) and route_next_phase (deterministic) routing.
  */
 function routeToNode(next: string): string {
 	const nodeMapping: Record<string, string> = {
 		responder: 'responder',
 		discovery: 'discovery_subgraph',
 		builder: 'builder_subgraph',
-		configurator: 'configurator_subgraph',
 	};
 	return nodeMapping[next] ?? 'responder';
 }
 
 export interface MultiAgentSubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
-	llmSimpleTask: BaseChatModel;
-	llmComplexTask: BaseChatModel;
+	/** Per-stage LLM configuration */
+	stageLLMs: StageLLMs;
 	logger?: Logger;
 	instanceUrl?: string;
 	checkpointer?: MemorySaver;
 	/** Token threshold for auto-compaction. Defaults to DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS */
 	autoCompactThresholdTokens?: number;
 	featureFlags?: BuilderFeatureFlags;
+	/** Callback invoked when a successful generation completes (e.g., for credit deduction) */
+	onGenerationSuccess?: () => Promise<void>;
+	/** Callback for fetching resource locator options */
+	resourceLocatorCallback?: ResourceLocatorCallback;
 }
 
 /**
- * Creates a subgraph node handler with standardized error handling
+ * Creates a subgraph node handler with standardized error handling.
+ * Accepts RunnableConfig as second parameter to propagate callbacks for tracing.
+ * Logs in_progress entry at start and completed entry at end for timing metrics.
  */
 function createSubgraphNodeHandler<
 	TSubgraph extends BaseSubgraph<unknown, Record<string, unknown>, Record<string, unknown>>,
@@ -68,40 +99,81 @@ function createSubgraphNodeHandler<
 	logger?: Logger,
 	recursionLimit?: number,
 ) {
-	return async (state: typeof ParentGraphState.State) => {
+	return async (state: typeof ParentGraphState.State, config?: RunnableConfig) => {
+		// Extract phase from subgraph name (e.g., 'discovery_subgraph' → 'discovery')
+		const extractedPhase = name.replace('_subgraph', '');
+		if (!isSubgraphPhase(extractedPhase)) {
+			throw new Error(`Invalid subgraph phase extracted from name "${name}": "${extractedPhase}"`);
+		}
+		const phase: SubgraphPhase = extractedPhase;
+
+		// Record start time for timing metrics
+		const startTimestamp = Date.now();
+
 		try {
 			const input = subgraph.transformInput(state);
-			const result = await compiledGraph.invoke(input, { recursionLimit });
+			// Merge parent config (callbacks, metadata) with recursionLimit
+			const invokeConfig: RunnableConfig = {
+				...config,
+				recursionLimit,
+			};
+			const result = await compiledGraph.invoke(input, invokeConfig);
 			const output = subgraph.transformOutput(result, state);
 
-			return output;
-		} catch (error) {
-			logger?.error(`[${name}] ERROR:`, { error });
-			const errorMessage =
-				error instanceof Error ? error.message : `An error occurred in ${name}: ${String(error)}`;
+			// Prepend in_progress entry to coordination log for timing calculation
+			const inProgressEntry = {
+				phase,
+				status: 'in_progress' as const,
+				timestamp: startTimestamp,
+				summary: `Starting ${phase}`,
+				metadata: { phase } as { phase: 'discovery' } | { phase: 'builder' },
+			};
 
-			// Extract phase from subgraph name (e.g., 'discovery_subgraph' → 'discovery')
-			const phase = name.replace('_subgraph', '') as SubgraphPhase;
+			// Extract coordination log from output, filtering to valid entries using type guard
+			const outputLogRaw = Array.isArray(output.coordinationLog) ? output.coordinationLog : [];
+			const outputCoordinationLog = outputLogRaw.filter(isCoordinationLogEntry);
+
+			return {
+				...output,
+				// Prepend in_progress entry before completed entry from transformOutput
+				coordinationLog: [inProgressEntry, ...outputCoordinationLog],
+			};
+		} catch (error) {
+			if (isGraphInterrupt(error)) {
+				throw error;
+			}
+			logger?.error(`[${name}] ERROR:`, { error });
+			const rawErrorMessage =
+				error instanceof Error ? error.message : `An error occurred in ${name}: ${String(error)}`;
+			const userFacingMessage = sanitizeLlmErrorMessage(error);
 
 			// Route to responder to report error (terminal)
+			// Include in_progress entry for timing even on errors
 			// Add error entry to coordination log so getNextPhaseFromLog routes to responder
 			return {
 				nextPhase: 'responder',
 				messages: [
 					new HumanMessage({
-						content: `Error in ${name}: ${errorMessage}`,
+						content: `Error in ${name}: ${userFacingMessage}`,
 						name: 'system_error',
 					}),
 				],
 				coordinationLog: [
 					{
 						phase,
+						status: 'in_progress' as const,
+						timestamp: startTimestamp,
+						summary: `Starting ${phase}`,
+						metadata: { phase } as { phase: 'discovery' } | { phase: 'builder' },
+					},
+					{
+						phase,
 						status: 'error' as const,
 						timestamp: Date.now(),
-						summary: `Error: ${errorMessage}`,
+						summary: `Error: ${userFacingMessage}`,
 						metadata: createErrorMetadata({
 							failedSubgraph: phase,
-							errorMessage,
+							errorMessage: rawErrorMessage,
 						}),
 					},
 				],
@@ -119,71 +191,120 @@ function createSubgraphNodeHandler<
 export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraphConfig) {
 	const {
 		parsedNodeTypes,
-		llmComplexTask,
+		stageLLMs,
 		logger,
 		instanceUrl,
 		checkpointer,
 		autoCompactThresholdTokens = DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 		featureFlags,
+		onGenerationSuccess,
+		resourceLocatorCallback,
 	} = config;
 
-	const supervisorAgent = new SupervisorAgent({ llm: llmComplexTask });
-	const responderAgent = new ResponderAgent({ llm: llmComplexTask });
+	const supervisorAgent = new SupervisorAgent({ llm: stageLLMs.supervisor });
 
-	// Create subgraph instances
+	// Create Responder agent using LangChain v1 createAgent API
+	const responderAgent: ResponderAgentType = createResponderAgent({
+		llm: stageLLMs.responder,
+		enableIntrospection: featureFlags?.enableIntrospection,
+		logger,
+	});
+
+	// Create Discovery subgraph (discovery + planning)
 	const discoverySubgraph = new DiscoverySubgraph();
-	const builderSubgraph = new BuilderSubgraph();
-	const configuratorSubgraph = new ConfiguratorSubgraph();
-
-	// Compile subgraphs
 	const compiledDiscovery = discoverySubgraph.create({
 		parsedNodeTypes,
-		llm: llmComplexTask,
+		llm: stageLLMs.discovery,
+		plannerLLM: stageLLMs.planner,
 		logger,
 		featureFlags,
 	});
+
+	// Create Builder subgraph (still uses StateGraph pattern)
+	const builderSubgraph = new BuilderSubgraph();
 	const compiledBuilder = builderSubgraph.create({
 		parsedNodeTypes,
-		llm: llmComplexTask,
-		logger,
-		featureFlags,
-	});
-	const compiledConfigurator = configuratorSubgraph.create({
-		parsedNodeTypes,
-		llm: llmComplexTask,
+		llm: stageLLMs.builder,
+		llmParameterUpdater: stageLLMs.parameterUpdater,
 		logger,
 		instanceUrl,
 		featureFlags,
+		resourceLocatorCallback,
 	});
 
 	// Build graph using method chaining for proper TypeScript inference
 	return (
 		new StateGraph(ParentGraphState)
 			// Add Supervisor Node (only used for initial routing)
-			.addNode('supervisor', async (state) => {
-				const routing = await supervisorAgent.invoke({
-					messages: state.messages,
-					workflowJSON: state.workflowJSON,
-					coordinationLog: state.coordinationLog,
-					previousSummary: state.previousSummary,
-				});
+			// Accepts config as second param to propagate callbacks for tracing
+			.addNode('supervisor', async (state, config) => {
+				const routing = await supervisorAgent.invoke(
+					{
+						messages: state.messages,
+						workflowJSON: state.workflowJSON,
+						coordinationLog: state.coordinationLog,
+						previousSummary: state.previousSummary,
+						workflowContext: state.workflowContext,
+					},
+					config,
+				);
 
 				return {
 					nextPhase: routing.next,
 				};
 			})
 			// Add Responder Node (synthesizes final user-facing response)
-			.addNode('responder', async (state) => {
-				const response = await responderAgent.invoke({
-					messages: state.messages,
-					coordinationLog: state.coordinationLog,
-					discoveryContext: state.discoveryContext,
-					workflowJSON: state.workflowJSON,
-					previousSummary: state.previousSummary,
-				});
+			// Uses LangChain v1 createAgent API with context injection middleware
+			.addNode('responder', async (state, config) => {
+				// Record start time for timing metrics
+				const startTimestamp = Date.now();
+
+				const { response, introspectionEvents } = await invokeResponderAgent(
+					responderAgent,
+					{
+						messages: state.messages,
+						coordinationLog: state.coordinationLog,
+						discoveryContext: state.discoveryContext,
+						workflowJSON: state.workflowJSON,
+						workflowContext: state.workflowContext,
+						previousSummary: state.previousSummary,
+					},
+					config,
+					{ enableIntrospection: featureFlags?.enableIntrospection },
+				);
+
+				// Call success callback only when generation completed without errors
+				if (onGenerationSuccess && !hasErrorInLog(state.coordinationLog)) {
+					void Promise.resolve(onGenerationSuccess()).catch((error) => {
+						logger?.warn('Failed to execute onGenerationSuccess callback', { error });
+					});
+				}
+
+				// Calculate response length for metadata
+				const responseContent =
+					typeof response.content === 'string'
+						? response.content
+						: JSON.stringify(response.content);
 
 				return {
 					messages: [response], // Only responder adds to user messages
+					coordinationLog: [
+						{
+							phase: 'responder' as const,
+							status: 'in_progress' as const,
+							timestamp: startTimestamp,
+							summary: 'Starting responder',
+							metadata: createResponderMetadata({ responseLength: 0 }),
+						},
+						{
+							phase: 'responder' as const,
+							status: 'completed' as const,
+							timestamp: Date.now(),
+							summary: `Generated response (${responseContent.length} chars)`,
+							metadata: createResponderMetadata({ responseLength: responseContent.length }),
+						},
+					],
+					introspectionEvents, // Collected from responder's tool calls
 				};
 			})
 			// Add process_operations node for hybrid operations approach
@@ -196,32 +317,63 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					workflowOperations: [], // Clear operations after processing
 				};
 			})
+			.addNode('route_next_phase', (state) => {
+				const next = getNextPhaseFromLog(state.coordinationLog);
+
+				if (state.planDecision === 'reject') {
+					return {
+						nextPhase: 'responder',
+						planDecision: null,
+						planOutput: null,
+						planFeedback: null,
+						planPrevious: null,
+					};
+				}
+
+				if (state.planDecision === 'modify') {
+					return { nextPhase: 'discovery', planDecision: null, planOutput: null };
+				}
+
+				if (
+					next === 'builder' &&
+					featureFlags?.planMode === true &&
+					state.mode === 'plan' &&
+					!state.planOutput
+				) {
+					return { nextPhase: 'discovery', planDecision: null };
+				}
+
+				return { nextPhase: next, planDecision: null };
+			})
 			// State modification nodes (preprocessing)
 			.addNode('check_state', (state) => ({
 				nextPhase: determineStateAction(state, autoCompactThresholdTokens),
 			}))
 			.addNode('cleanup_dangling', (state) => handleCleanupDangling(state.messages, logger))
-			.addNode('compact_messages', async (state) => {
+			.addNode('compact_messages', async (state, config) => {
 				const isAutoCompact = state.messages[state.messages.length - 1]?.content !== '/compact';
 				return await handleCompactMessages(
 					state.messages,
 					state.previousSummary ?? '',
-					llmComplexTask,
+					stageLLMs.responder,
 					isAutoCompact,
+					config,
 				);
 			})
 			.addNode('delete_messages', (state) => handleDeleteMessages(state.messages))
+			.addNode('clear_error_state', (state) => handleClearErrorState(state.coordinationLog, logger))
 			.addNode(
 				'create_workflow_name',
-				async (state) =>
+				async (state, config) =>
 					await handleCreateWorkflowName(
 						state.messages,
 						state.workflowJSON,
-						llmComplexTask,
+						stageLLMs.responder,
 						logger,
+						config,
 					),
 			)
-			// Add Subgraph Nodes (using helper to reduce duplication)
+			// Add Discovery Subgraph Node (discovery + planning)
 			.addNode(
 				'discovery_subgraph',
 				createSubgraphNodeHandler(
@@ -232,6 +384,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					MAX_DISCOVERY_ITERATIONS,
 				),
 			)
+			// Add Builder Subgraph Node (still uses StateGraph pattern)
 			.addNode(
 				'builder_subgraph',
 				createSubgraphNodeHandler(
@@ -242,20 +395,10 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					MAX_BUILDER_ITERATIONS,
 				),
 			)
-			.addNode(
-				'configurator_subgraph',
-				createSubgraphNodeHandler(
-					configuratorSubgraph,
-					compiledConfigurator,
-					'configurator_subgraph',
-					logger,
-					MAX_CONFIGURATOR_ITERATIONS,
-				),
-			)
 			// Connect all subgraphs to process_operations
 			.addEdge('discovery_subgraph', 'process_operations')
 			.addEdge('builder_subgraph', 'process_operations')
-			.addEdge('configurator_subgraph', 'process_operations')
+			.addEdge('process_operations', 'route_next_phase')
 			// Start flows to check_state (preprocessing)
 			.addEdge(START, 'check_state')
 			// Conditional routing from check_state
@@ -266,13 +409,27 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					delete_messages: 'delete_messages',
 					create_workflow_name: 'create_workflow_name',
 					auto_compact_messages: 'compact_messages', // Reuse same node
+					clear_error_state: 'clear_error_state',
 					continue: 'supervisor',
 				};
+
+				// In plan mode, skip the supervisor and go directly to discovery
+				// (which contains the planner) when no plan has been generated yet
+				if (
+					state.nextPhase === 'continue' &&
+					featureFlags?.planMode === true &&
+					state.mode === 'plan' &&
+					!state.planOutput
+				) {
+					return 'discovery_subgraph';
+				}
+
 				return routes[state.nextPhase] ?? 'supervisor';
 			})
 			// Route after state modification nodes
 			.addEdge('cleanup_dangling', 'check_state') // Re-check after cleanup
 			.addEdge('delete_messages', 'responder') // Clear → responder for acknowledgment
+			.addEdge('clear_error_state', 'check_state') // Re-check after clearing errors (AI-1812)
 			.addEdge('create_workflow_name', 'supervisor') // Continue after naming
 			// Compact has conditional routing: auto → continue, manual → responder
 			.addConditionalEdges('compact_messages', (state) => {
@@ -284,9 +441,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			// Conditional Edge for Supervisor (initial routing via LLM)
 			.addConditionalEdges('supervisor', (state) => routeToNode(state.nextPhase))
 			// Deterministic routing after subgraphs complete (based on coordination log)
-			.addConditionalEdges('process_operations', (state) =>
-				routeToNode(getNextPhaseFromLog(state.coordinationLog)),
-			)
+			.addConditionalEdges('route_next_phase', (state) => routeToNode(state.nextPhase))
 			// Responder ends the workflow
 			.addEdge('responder', END)
 			// Compile the graph

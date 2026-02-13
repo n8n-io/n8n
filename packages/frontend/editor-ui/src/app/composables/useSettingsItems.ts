@@ -42,6 +42,15 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.USERS_SETTINGS } },
 			},
 			{
+				id: 'settings-ai',
+				icon: 'sparkles',
+				label: i18n.baseText('settings.ai'),
+				position: 'top',
+				available:
+					settingsStore.isAiAssistantEnabled && canUserAccessRouteByName(VIEWS.AI_SETTINGS),
+				route: { to: { name: VIEWS.AI_SETTINGS } },
+			},
+			{
 				id: 'settings-project-roles',
 				icon: 'user-round',
 				label: i18n.baseText('settings.projectRoles'),
@@ -88,6 +97,14 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.SSO_SETTINGS),
 				route: { to: { name: VIEWS.SSO_SETTINGS } },
+			},
+			{
+				id: 'settings-security',
+				icon: 'shield',
+				label: i18n.baseText('settings.security'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.SECURITY_SETTINGS),
+				route: { to: { name: VIEWS.SECURITY_SETTINGS } },
 			},
 			{
 				id: 'settings-ldap',

@@ -1,0 +1,33 @@
+name: 'Test: Linting'
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: GitHub ref to lint.
+        required: false
+        type: string
+        default: ''
+      nodeVersion:
+        description: Version of node to use.
+        required: false
+        type: string
+        default: 24.13.1
+
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Build and Test
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm lint
+          node-version: ${{ inputs.nodeVersion }}

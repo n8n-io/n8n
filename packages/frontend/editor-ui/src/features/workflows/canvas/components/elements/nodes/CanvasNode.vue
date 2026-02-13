@@ -66,6 +66,7 @@ const emit = defineEmits<{
 	move: [id: string, position: XYPosition];
 	focus: [id: string];
 	'replace:node': [id: string];
+	'add:ai': [id: string];
 }>();
 
 const style = useCssModule();
@@ -287,6 +288,10 @@ function onReplaceNode(id: string) {
 	emit('replace:node', id);
 }
 
+function onAddToAi(id: string) {
+	emit('add:ai', id);
+}
+
 function onUpdateClass({ className, add = true }: CanvasNodeEventBusEvents['update:node:class']) {
 	nodeClasses.value = add
 		? [...new Set([...nodeClasses.value, className])]
@@ -414,6 +419,7 @@ onBeforeUnmount(() => {
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromToolbar"
 			@focus="onFocus"
+			@add:ai="onAddToAi"
 		/>
 
 		<CanvasNodeRenderer
@@ -460,7 +466,8 @@ onBeforeUnmount(() => {
 .canvasNodeToolbar {
 	position: absolute;
 	bottom: 100%;
-	left: 0;
+	left: 50%;
+	transform: translateX(-50%);
 	z-index: 1;
 }
 </style>

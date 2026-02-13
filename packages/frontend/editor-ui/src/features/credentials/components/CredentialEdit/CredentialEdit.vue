@@ -65,9 +65,7 @@ import {
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import get from 'lodash/get';
-import { ElSwitch } from 'element-plus';
-import { N8nLink, N8nTooltip } from '@n8n/design-system';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 type Props = {
 	modalName: string;
@@ -94,7 +92,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const router = useRouter();
 const rootStore = useRootStore();
-const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
+const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 const activeTab = ref('connection');
 const authError = ref('');
@@ -354,10 +352,6 @@ const homeProject = computed(() => {
 	return currentProject ?? personalProject;
 });
 
-const isDynamicCredentialsEnabled = computed<boolean>(() => {
-	return checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS');
-});
-
 const isNewCredential = computed(() => props.mode === 'new' && !credentialId.value);
 
 onMounted(async () => {
@@ -384,9 +378,18 @@ onMounted(async () => {
 				!credentialData.value.hasOwnProperty(property.name) &&
 				!credentialType.value.__overwrittenProperties?.includes(property.name)
 			) {
+				// For new httpHeaderAuth credentials, default allowedHttpRequestDomains to 'none'
+				let defaultValue = property.default as CredentialInformation;
+				if (
+					props.mode === 'new' &&
+					credentialTypeName.value === 'httpHeaderAuth' &&
+					property.name === 'allowedHttpRequestDomains'
+				) {
+					defaultValue = 'none';
+				}
 				credentialData.value = {
 					...credentialData.value,
-					[property.name]: property.default as CredentialInformation,
+					[property.name]: defaultValue,
 				};
 			}
 		}
@@ -596,6 +599,11 @@ function onChangeSharedWith(sharedWithProjects: ProjectSharingData[]) {
 
 function onShareWithAllUsersUpdate(shareWithAllUsers: boolean) {
 	isSharedGlobally.value = shareWithAllUsers;
+	hasUnsavedChanges.value = true;
+}
+
+function onResolvableChange(value: boolean) {
+	isResolvable.value = value;
 	hasUnsavedChanges.value = true;
 }
 
@@ -1054,6 +1062,33 @@ async function oAuthCredentialAuthorize() {
 		return;
 	}
 
+	if (url === undefined || url === '') {
+		toast.showError(
+			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
+			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
+		);
+		return;
+	}
+
+	// Prevent javascript:, data:, vbscript: and other non-http(s) protocols (XSS)
+	const allowedOAuthUrlProtocols = ['http:', 'https:'];
+	try {
+		const parsedUrl = new URL(url);
+		if (!allowedOAuthUrlProtocols.includes(parsedUrl.protocol)) {
+			toast.showError(
+				new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
+				i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
+			);
+			return;
+		}
+	} catch {
+		toast.showError(
+			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
+			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
+		);
+		return;
+	}
+
 	const params =
 		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
 	const oauthPopup = window.open(url, 'OAuth Authorization', params);
@@ -1130,9 +1165,18 @@ function resetCredentialData(): void {
 	}
 	for (const property of credentialType.value.properties) {
 		if (!credentialType.value.__overwrittenProperties?.includes(property.name)) {
+			// For new httpHeaderAuth credentials, default allowedHttpRequestDomains to 'none'
+			let defaultValue = property.default as CredentialInformation;
+			if (
+				props.mode === 'new' &&
+				credentialTypeName.value === 'httpHeaderAuth' &&
+				property.name === 'allowedHttpRequestDomains'
+			) {
+				defaultValue = 'none';
+			}
 			credentialData.value = {
 				...credentialData.value,
-				[property.name]: property.default as CredentialInformation,
+				[property.name]: defaultValue,
 			};
 		}
 	}
@@ -1207,10 +1251,10 @@ const { width } = useElementSize(credNameRef);
 				</div>
 				<div :class="$style.credActions">
 					<N8nIconButton
+						variant="subtle"
 						v-if="currentCredential && credentialPermissions.delete"
 						:title="i18n.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash-2"
-						type="tertiary"
 						:disabled="isSaving"
 						:loading="isDeleting"
 						data-test-id="credential-delete-button"
@@ -1266,65 +1310,16 @@ const { width } = useElementSize(credNameRef);
 						:mode="mode"
 						:selected-credential="selectedCredential"
 						:show-auth-type-selector="requiredCredentials"
+						:is-dynamic-credentials-enabled="isDynamicCredentialsEnabled"
+						:is-resolvable="isResolvable"
+						:is-new-credential="isNewCredential"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
 						@scroll-to-top="scrollToTop"
 						@auth-type-changed="onAuthTypeChanged"
+						@update:is-resolvable="onResolvableChange"
 					/>
-					<div
-						v-if="
-							isDynamicCredentialsEnabled &&
-							((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
-						"
-						:class="$style.dynamicCredentials"
-						data-test-id="dynamic-credentials-section"
-					>
-						<div :class="$style.dynamicCredentialsHeader">
-							<N8nText size="medium" weight="bold">
-								{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.title') }}
-							</N8nText>
-							<N8nTooltip placement="top">
-								<template #content>
-									<div>
-										{{
-											i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip')
-										}}
-									</div>
-								</template>
-								<N8nIcon icon="circle-help" size="small" />
-							</N8nTooltip>
-						</div>
-						<ElSwitch
-							v-model="isResolvable"
-							data-test-id="dynamic-credentials-toggle"
-							@update:model-value="() => (hasUnsavedChanges = true)"
-						/>
-						<div :class="$style.dynamicCredentialsDescription">
-							<N8nText :tag="'div'" size="small" color="text-light">
-								{{
-									i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.description1')
-								}}
-							</N8nText>
-							<N8nText size="small" color="text-light">
-								{{
-									i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.description2')
-								}}
-								<N8nLink
-									:to="i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.docsUrl')"
-									size="small"
-									theme="text"
-									underline
-								>
-									{{
-										i18n.baseText(
-											'credentialEdit.credentialConfig.dynamicCredentials.documentation',
-										)
-									}}
-								</N8nLink>
-							</N8nText>
-						</div>
-					</div>
 				</div>
 				<div v-else-if="showSharingContent" :class="$style.mainContent">
 					<CredentialSharing
@@ -1433,23 +1428,5 @@ const { width } = useElementSize(credNameRef);
 	display: flex;
 	align-items: center;
 	margin-right: var(--spacing--xs);
-}
-
-.dynamicCredentials {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	padding-top: var(--spacing--lg);
-	border-top: var(--border);
-}
-
-.dynamicCredentialsHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.dynamicCredentialsDescription {
-	margin-top: var(--spacing--2xs);
 }
 </style>

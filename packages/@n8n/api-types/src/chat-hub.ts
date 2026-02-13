@@ -1,13 +1,14 @@
 import type { Scope } from '@n8n/permissions';
 import {
-	type StructuredChunk,
 	type JINA_AI_TOOL_NODE_TYPE,
 	type SERP_API_TOOL_NODE_TYPE,
 	type INode,
+	type ChunkType,
 	INodeSchema,
 } from 'n8n-workflow';
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from './zod-class';
 
 /**
  * Supported AI model providers
@@ -228,6 +229,7 @@ export type ChatHubInputModality = 'text' | 'image' | 'audio' | 'video' | 'file'
 
 export interface ChatModelMetadataDto {
 	inputModalities: ChatHubInputModality[];
+	priority?: number; // Order on the model picker list, higher means first, default 0
 	capabilities: {
 		functionCalling: boolean;
 	};
@@ -243,6 +245,8 @@ export interface ChatModelDto {
 	updatedAt: string | null;
 	createdAt: string | null;
 	metadata: ChatModelMetadataDto;
+	groupName: string | null;
+	groupIcon: AgentIconOrEmoji | null;
 }
 
 /**
@@ -367,7 +371,7 @@ export class ChatHubUpdateConversationRequest extends Z.class({
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
-export type ChatHubMessageStatus = 'success' | 'error' | 'running' | 'cancelled';
+export type ChatHubMessageStatus = 'success' | 'error' | 'running' | 'cancelled' | 'waiting';
 
 export type ChatSessionId = string; // UUID
 export type ChatMessageId = string; // UUID
@@ -389,12 +393,34 @@ export interface ChatHubSessionDto {
 	tools: INode[];
 }
 
+export type ChatMessageContentChunk =
+	| { type: 'text'; content: string }
+	| { type: 'hidden'; content: string }
+	| {
+			type: 'artifact-create';
+			content: string;
+			command: ChatArtifactCreateCommand;
+			isIncomplete: boolean;
+	  }
+	| {
+			type: 'artifact-edit';
+			content: string;
+			command: ChatArtifactEditCommand;
+			isIncomplete: boolean;
+	  }
+	| {
+			type: 'with-buttons';
+			content: string;
+			buttons: ChatHubMessageButton[];
+			blockUserInput: boolean;
+	  };
+
 export interface ChatHubMessageDto {
 	id: ChatMessageId;
 	sessionId: ChatSessionId;
 	type: ChatHubMessageType;
 	name: string;
-	content: string;
+	content: ChatMessageContentChunk[];
 	provider: ChatHubProvider | null;
 	model: string | null;
 	workflowId: string | null;
@@ -468,8 +494,11 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	tools: z.array(INodeSchema).optional(),
 }) {}
 
-export interface EnrichedStructuredChunk extends StructuredChunk {
-	metadata: StructuredChunk['metadata'] & {
+export interface MessageChunk {
+	type: ChunkType;
+	content?: string;
+	metadata: {
+		timestamp: number;
 		messageId: ChatMessageId;
 		previousMessageId: ChatMessageId | null;
 		retryOfMessageId: ChatMessageId | null;
@@ -503,3 +532,85 @@ export interface ChatHubModuleSettings {
 	enabled: boolean;
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
 }
+
+/**
+ * Response returned immediately when sending a message via WebSocket streaming.
+ * Message IDs are not included as they come via WebSocket events (chatHubStreamBegin).
+ */
+export interface ChatSendMessageResponse {
+	/** Status indicating streaming has started */
+	status: 'streaming';
+}
+
+/**
+ * Request query parameters for reconnecting to a chat stream
+ */
+export class ChatReconnectRequest extends Z.class({
+	lastSequence: z.coerce.number().int().min(0).optional(),
+}) {}
+
+/**
+ * Response containing pending chunks for reconnection replay
+ */
+export interface ChatReconnectResponse {
+	/** Whether there is an active stream for this session */
+	hasActiveStream: boolean;
+	/** Current message ID being streamed, if any */
+	currentMessageId: ChatMessageId | null;
+	/** Pending chunks that were missed during disconnection */
+	pendingChunks: Array<{
+		sequenceNumber: number;
+		content: string;
+	}>;
+	/** Last sequence number received by client (for gap detection) */
+	lastSequenceNumber: number;
+}
+
+/**
+ * Artifact generated during chat interaction
+ */
+export interface ChatArtifact {
+	title: string;
+	/**
+	 * Document type (html, md, csv, js etc.)
+	 */
+	type: string;
+	content: string;
+}
+
+export interface ChatArtifactCreateCommand {
+	title: string;
+	type: string;
+	content: string;
+}
+
+export interface ChatArtifactEditCommand {
+	title: string;
+	oldString: string;
+	newString: string;
+	replaceAll: boolean;
+}
+
+/**
+ * Button shown in a chat message
+ */
+export const chatHubMessageButtonSchema = z.object({
+	text: z.string(),
+	link: z.string(),
+	type: z.enum(['primary', 'secondary']),
+});
+
+export type ChatHubMessageButton = z.infer<typeof chatHubMessageButtonSchema>;
+
+/**
+ * Structured message with buttons, sent from
+ * Chat node in "Send and Wait for Response" mode for HITL approvals
+ */
+export const chatHubMessageWithButtonsSchema = z.object({
+	type: z.literal('with-buttons'),
+	text: z.string(),
+	blockUserInput: z.boolean(),
+	buttons: z.array(chatHubMessageButtonSchema).min(1),
+});
+
+export type ChatHubMessageWithButtons = z.infer<typeof chatHubMessageWithButtonsSchema>;

@@ -6,11 +6,13 @@ import {
 	UpdateProjectWithRelationsDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
+import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import pick from 'lodash/pick';
 import type { Response } from 'express';
 
 import { ProjectController } from '@/controllers/project.controller';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import type { PaginatedRequest } from '@/public-api/types';
 import { ProjectService } from '@/services/project.service.ee';
@@ -96,6 +98,61 @@ export = {
 					numberOfTotalRecords: count,
 				}),
 			});
+		},
+	],
+	getProjectUsers: [
+		isLicensed('feat:projectRole:admin'),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:list' }),
+		validCursor,
+		async (req: AuthenticatedRequest<{ projectId: string }> & GetAll, res: Response) => {
+			const { projectId } = req.params;
+			const offset = Number(req.query.offset) || 0;
+			const limit = Number(req.query.limit) || 100;
+
+			try {
+				const projectService = Container.get(ProjectService);
+				const project = await projectService.getProjectWithScope(req.user, projectId, [
+					'project:list',
+				]);
+				if (!project) {
+					throw new NotFoundError(`Could not find project with ID "${projectId}"`);
+				}
+
+				const projectRelationRepository = Container.get(ProjectRelationRepository);
+				const [relations, count] = await projectRelationRepository.findAndCount({
+					where: { projectId },
+					relations: { user: true, role: true },
+					skip: offset,
+					take: limit,
+				});
+
+				const memberFields = [
+					'id',
+					'email',
+					'firstName',
+					'lastName',
+					'createdAt',
+					'updatedAt',
+				] as const;
+				const data = relations.map((relation) => ({
+					...pick(relation.user, memberFields),
+					role: relation.role?.slug ?? null,
+				}));
+
+				return res.json({
+					data,
+					nextCursor: encodeNextCursor({
+						offset,
+						limit,
+						numberOfTotalRecords: count,
+					}),
+				});
+			} catch (error) {
+				if (error instanceof ResponseError) {
+					return res.status(error.httpStatusCode).json({ message: error.message });
+				}
+				throw error;
+			}
 		},
 	],
 	addUsersToProject: [

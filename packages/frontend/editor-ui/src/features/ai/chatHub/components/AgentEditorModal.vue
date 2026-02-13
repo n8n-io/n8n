@@ -280,8 +280,8 @@ function onSelectTools() {
 			<div :class="$style.header">
 				<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
 				<N8nButton
+					variant="subtle"
 					v-if="isEditMode"
-					type="secondary"
 					icon="trash-2"
 					:disabled="isDeleting"
 					:loading="isDeleting"
@@ -355,6 +355,7 @@ function onSelectTools() {
 							:credentials="agentMergedCredentials"
 							:agents="agents"
 							:is-loading="isLoadingAgents"
+							:class="$style.modelSelector"
 							warn-missing-credentials
 							@change="onModelChange"
 							@select-credential="onCredentialSelected"
@@ -362,7 +363,7 @@ function onSelectTools() {
 					</N8nInputLabel>
 
 					<N8nInputLabel
-						input-name="agent-model"
+						input-name="agent-tool"
 						:class="$style.input"
 						:label="i18n.baseText('chatHub.agent.editor.tools.label')"
 						:required="false"
@@ -385,10 +386,10 @@ function onSelectTools() {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="secondary" @click="modalBus.emit('close')">{{
+				<N8nButton variant="subtle" @click="modalBus.emit('close')">{{
 					i18n.baseText('chatHub.tools.editor.cancel')
 				}}</N8nButton>
-				<N8nButton type="primary" :disabled="!isValid || isSaving" @click="onSave">
+				<N8nButton variant="solid" :disabled="!isValid || isSaving" @click="onSave">
 					{{ saveButtonLabel }}
 				</N8nButton>
 			</div>
@@ -430,6 +431,10 @@ function onSelectTools() {
 	display: flex;
 	flex-direction: row;
 	gap: var(--spacing--sm);
+}
+
+.modelSelector {
+	width: fit-content;
 }
 
 .footer {

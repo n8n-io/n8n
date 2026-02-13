@@ -81,7 +81,7 @@ The monorepo is organized into these key packages:
 - **Frontend:** Vue 3 + TypeScript + Vite + Pinia + Storybook UI Library
 - **Backend:** Node.js + TypeScript + Express + TypeORM
 - **Testing:** Jest (unit) + Playwright (E2E)
-- **Database:** TypeORM with SQLite/PostgreSQL/MySQL support
+- **Database:** TypeORM with SQLite/PostgreSQL support
 - **Code Quality:** Biome (for formatting) + ESLint + lefthook git hooks
 
 ### Key Architectural Patterns
@@ -103,9 +103,28 @@ The monorepo is organized into these key packages:
 - Workflow tests are JSON-based for integration testing
 - AI features have dedicated development workflow (`pnpm dev:ai`)
 
+### Workflow Traversal Utilities
+
+The `n8n-workflow` package exports graph traversal utilities from
+`packages/workflow/src/common/`. Use these instead of custom traversal logic.
+
+**Key concept:** `workflow.connections` is indexed by **source node**.
+To find parent nodes, use `mapConnectionsByDestination()` to invert it first.
+
+```typescript
+import { getParentNodes, getChildNodes, mapConnectionsByDestination } from 'n8n-workflow';
+
+// Finding parent nodes (predecessors) - requires inverted connections
+const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
+const parents = getParentNodes(connectionsByDestination, 'NodeName', 'main', 1);
+
+// Finding child nodes (successors) - uses connections directly
+const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
+```
+
 ### TypeScript Best Practices
 - **NEVER use `any` type** - use proper types or `unknown`
-- **Avoid type casting with `as`** - use type guards or type predicates instead
+- **Avoid type casting with `as`** - use type guards or type predicates instead (except in test code where `as` is acceptable)
 - **Define shared interfaces in `@n8n/api-types`** package for FE/BE communication
 
 ### Error Handling
@@ -117,7 +136,7 @@ The monorepo is organized into these key packages:
 ### Frontend Development
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
-- **data-test-id must be a single value** (no spaces or multiple values)
+- **data-testid must be a single value** (no spaces or multiple values)
 
 When implementing CSS, refer to @packages/frontend/CLAUDE.md for guidelines on
 CSS variables and styling conventions.

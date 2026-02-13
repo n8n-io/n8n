@@ -1,6 +1,7 @@
 import type { LogLevel, WorkflowSettings } from 'n8n-workflow';
 
 import type { ChatHubLLMProvider, ChatProviderSettingsDto } from './chat-hub';
+import type { QuickConnectOption } from './quick-connect';
 import type { InsightsDateRange } from './schemas/insights.schema';
 
 export interface IVersionNotificationSettings {
@@ -51,6 +52,7 @@ export interface IEnterpriseSettings {
 	advancedPermissions: boolean;
 	apiKeyScopes: boolean;
 	workflowDiffs: boolean;
+	namedVersions: boolean;
 	provisioning: boolean;
 	projects: {
 		team: {
@@ -58,13 +60,14 @@ export interface IEnterpriseSettings {
 		};
 	};
 	customRoles: boolean;
+	personalSpacePolicy: boolean;
 }
 
 export interface FrontendSettings {
 	settingsMode?: 'public' | 'authenticated';
 	inE2ETests: boolean;
 	isDocker: boolean;
-	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
+	databaseType: 'sqlite' | 'postgresdb';
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
@@ -205,6 +208,10 @@ export interface FrontendSettings {
 	aiCredits: {
 		enabled: boolean;
 		credits: number;
+		setup: boolean;
+	};
+	ai: {
+		allowSendingParameterValues: boolean;
 	};
 	pruning?: {
 		isEnabled: boolean;
@@ -252,6 +259,13 @@ export type FrontendModuleSettings = {
 	'chat-hub'?: {
 		enabled: boolean;
 		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+	};
+
+	/**
+	 * Quick connect settings
+	 */
+	'quick-connect'?: {
+		options: QuickConnectOption[];
 	};
 };
 

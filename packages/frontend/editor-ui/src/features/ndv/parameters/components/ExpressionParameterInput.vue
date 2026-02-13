@@ -218,12 +218,11 @@ defineExpose({ focus, select });
 				</template>
 			</DraggableTarget>
 			<N8nButton
+				variant="outline"
+				iconOnly
 				v-if="!isDragging"
-				square
-				outline
-				type="tertiary"
 				icon="external-link"
-				size="mini"
+				size="xsmall"
 				:class="$style['expression-editor-modal-opener']"
 				data-test-id="expander"
 				@click="emit('modal-opener-click')"
@@ -306,6 +305,8 @@ defineExpose({ focus, select });
 
 .focused :global(.cm-editor) {
 	border-color: var(--color--secondary);
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
 }
 
 .focused > .expression-editor-modal-opener {
@@ -315,12 +316,14 @@ defineExpose({ focus, select });
 }
 
 .droppable {
-	--input--border-color: var(--ndv--droppable-parameter--color);
-	--input--border-right-color: var(--ndv--droppable-parameter--color);
-	--input--border-style: dashed;
+	--input--border-color: transparent;
+	--input--border-right-color: transparent;
 
 	:global(.cm-editor) {
-		border-width: 1.5px;
+		border-color: transparent;
+		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
+		outline-offset: -1.5px;
+		transition: none;
 	}
 }
 
@@ -332,7 +335,10 @@ defineExpose({ focus, select });
 
 	:global(.cm-editor) {
 		cursor: grabbing !important;
+		border-color: var(--color--success);
 		border-width: 1px;
+		outline: none;
+		transition: none;
 	}
 }
 </style>

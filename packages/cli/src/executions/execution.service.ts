@@ -31,6 +31,7 @@ import {
 	Workflow,
 	WorkflowOperationError,
 	createErrorExecutionData,
+	ensureError,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -40,6 +41,7 @@ import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
@@ -47,6 +49,7 @@ import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
+import { ExecutionPersistence } from './execution-persistence';
 import type { ExecutionRequest, StopResult } from './execution.types';
 
 export const schemaGetExecutionsQueryFilter = {
@@ -102,6 +105,7 @@ export class ExecutionService {
 		private readonly executionAnnotationRepository: ExecutionAnnotationRepository,
 		private readonly annotationTagMappingRepository: AnnotationTagMappingRepository,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly waitTracker: WaitTracker,
@@ -109,6 +113,7 @@ export class ExecutionService {
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
 		private readonly workflowSharingService: WorkflowSharingService,
+		private readonly eventService: EventService,
 	) {}
 
 	async findOne(
@@ -267,6 +272,20 @@ export class ExecutionService {
 			throw new UnexpectedError('The retry did not start for an unknown reason.');
 		}
 
+		this.eventService.emit('workflow-executed', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+			workflowId: execution.workflowId,
+			workflowName: execution.workflowData.name,
+			executionId: retriedExecutionId,
+			source: 'user-retry',
+		});
+
 		return {
 			id: retriedExecutionId,
 			mode: executionData.mode,
@@ -280,6 +299,7 @@ export class ExecutionService {
 			workflowData: execution.workflowData,
 			customData: execution.customData,
 			annotation: execution.annotation,
+			storedAt: execution.storedAt,
 		};
 	}
 
@@ -303,9 +323,22 @@ export class ExecutionService {
 			delete requestFilters.metadata;
 		}
 
-		await this.executionRepository.deleteExecutionsByFilter(requestFilters, sharedWorkflowIds, {
+		await this.executionPersistence.hardDeleteBy({
+			filters: requestFilters,
+			accessibleWorkflowIds: sharedWorkflowIds,
+			deleteConditions: { deleteBefore, ids },
+		});
+
+		this.eventService.emit('execution-deleted', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+			executionIds: ids ?? [],
 			deleteBefore,
-			ids,
 		});
 	}
 
@@ -333,7 +366,7 @@ export class ExecutionService {
 			status: 'error',
 		};
 
-		await this.executionRepository.createNewExecution(fullExecutionData);
+		await this.executionPersistence.create(fullExecutionData);
 	}
 
 	// ----------------------------------
@@ -465,9 +498,12 @@ export class ExecutionService {
 		);
 
 		if (!execution) {
-			this.logger.info(`Unable to stop execution "${executionId}" as it was not found`, {
-				executionId,
-			});
+			this.logger.info(
+				`Unable to stop execution "${executionId}" as it was not found or not accessible`,
+				{
+					executionId,
+				},
+			);
 
 			throw new MissingExecutionStopError(executionId);
 		}
@@ -486,6 +522,27 @@ export class ExecutionService {
 			finished,
 			status,
 		};
+	}
+
+	async stopMany(query: ExecutionSummaries.StopExecutionFilterQuery, sharedWorkflowIds: string[]) {
+		const executions = await this.executionRepository.findByStopExecutionsFilter(query);
+		let stopped = 0;
+		for (const { id } of executions) {
+			try {
+				await this.stop(id, sharedWorkflowIds);
+				this.logger.debug(`Stopped execution ${id}`);
+				stopped++;
+			} catch (e) {
+				// the throwing code already logs the failure otherwise
+				if (!(e instanceof MissingExecutionStopError)) {
+					this.logger.warn(
+						`Unexpected error while attempting to stop execution ${id}: ${ensureError(e).message}`,
+					);
+				}
+			}
+		}
+
+		return stopped;
 	}
 
 	private assertStoppable(execution: IExecutionResponse) {
@@ -570,7 +627,7 @@ export class ExecutionService {
 			['execution'],
 		);
 
-		// Upsert behavior differs for Postgres, MySQL and sqlite,
+		// Upsert behavior differs for Postgres and sqlite,
 		// so we need to fetch the annotation to get the ID
 		const annotation = await this.executionAnnotationRepository.findOneOrFail({
 			where: {

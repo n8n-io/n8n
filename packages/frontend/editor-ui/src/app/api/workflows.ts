@@ -120,6 +120,14 @@ export async function getLastSuccessfulExecution(
 	);
 }
 
+export async function getWorkflowWriteLock(context: IRestApiContext, workflowId: string) {
+	return await makeRestApiRequest<{ userId: string | null }>(
+		context,
+		'GET',
+		`/workflows/${workflowId}/collaboration/write-lock`,
+	);
+}
+
 export async function activateWorkflow(
 	context: IRestApiContext,
 	workflowId: string,
@@ -136,10 +144,12 @@ export async function activateWorkflow(
 export async function deactivateWorkflow(
 	context: IRestApiContext,
 	workflowId: string,
+	expectedChecksum?: string,
 ): Promise<IWorkflowDb> {
 	return await makeRestApiRequest<IWorkflowDb>(
 		context,
 		'POST',
 		`/workflows/${workflowId}/deactivate`,
+		{ expectedChecksum },
 	);
 }

@@ -14,10 +14,10 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import {
 	SampleTemplates,
-	isPrebuiltAgentTemplateId,
 	isTutorialTemplateId,
 } from '@/features/workflows/templates/utils/workflowSamples';
 import {
@@ -63,6 +63,7 @@ export async function executionFinished(
 	options: ExecutionFinishedOptions,
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 	const readyToRunStore = useReadyToRunStore();
@@ -78,7 +79,7 @@ export async function executionFinished(
 
 	clearPopupWindowState();
 
-	const workflow = workflowsStore.getWorkflowById(data.workflowId);
+	const workflow = workflowsListStore.getWorkflowById(data.workflowId);
 	const templateId = workflow?.meta?.templateId;
 
 	if (templateId) {
@@ -102,11 +103,6 @@ export async function executionFinished(
 			} else {
 				readyToRunStore.trackExecuteAiWorkflow(data.status);
 			}
-		} else if (isPrebuiltAgentTemplateId(templateId)) {
-			telemetry.track('User executed pre-built Agent', {
-				template: templateId,
-				status: data.status,
-			});
 		} else if (isTutorialTemplateId(templateId)) {
 			telemetry.track('User executed tutorial template', {
 				template: templateId,

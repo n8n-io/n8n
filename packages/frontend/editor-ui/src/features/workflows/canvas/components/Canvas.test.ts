@@ -322,4 +322,16 @@ describe('Canvas', () => {
 			expect(container.querySelector('.icon')).toBeInTheDocument();
 		});
 	});
+
+	describe('hideControls prop', () => {
+		it('should not render CanvasControlButtons when hideControls is true', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					hideControls: true,
+				},
+			});
+
+			expect(queryByTestId('canvas-controls')).not.toBeInTheDocument();
+		});
+	});
 });

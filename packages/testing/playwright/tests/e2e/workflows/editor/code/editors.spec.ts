@@ -4,7 +4,11 @@ import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../../../../../config/constant
 import { test, expect } from '../../../../../fixtures/base';
 import { resolveFromRoot } from '../../../../../utils/path-helper';
 
-test.describe('Editors', () => {
+test.describe('Editors', {
+	annotation: [
+		{ type: 'owner', description: 'NODES' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 		await n8n.canvas.addInitialNodeToCanvas('Manual Trigger');
@@ -88,21 +92,19 @@ test.describe('Editors', () => {
 			await n8n.canvas.addNode('Postgres', { action: 'Execute a SQL query' });
 			await n8n.ndv.close();
 
-			await n8n.canvas.saveWorkflow();
-			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 
 			await n8n.canvas.openNode('Execute a SQL query');
 			await n8n.ndv.close();
 
-			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
+			await expect(n8n.canvas.waitForSaveWorkflowCompleted()).rejects.toThrow();
 		});
 
 		test('should trigger dirty flag if query is updated', async ({ n8n }) => {
 			await n8n.canvas.addNode('Postgres', { action: 'Execute a SQL query' });
 			await n8n.ndv.close();
 
-			await n8n.canvas.saveWorkflow();
-			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 
 			await n8n.canvas.openNode('Execute a SQL query');
 
@@ -113,7 +115,7 @@ test.describe('Editors', () => {
 
 			await n8n.ndv.close();
 
-			await expect(n8n.canvas.getWorkflowSaveButton()).not.toContainText('Saved');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 		});
 
 		test('should allow switching between SQL editors in connected nodes', async ({ n8n }) => {
@@ -174,21 +176,19 @@ test.describe('Editors', () => {
 			await n8n.canvas.addNode('HTML', { action: 'Generate HTML template' });
 			await n8n.ndv.close();
 
-			await n8n.canvas.saveWorkflow();
-			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 
 			await n8n.canvas.openNode('HTML');
 			await n8n.ndv.close();
 
-			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
+			await expect(n8n.canvas.waitForSaveWorkflowCompleted()).rejects.toThrow();
 		});
 
 		test('should trigger dirty flag if query is updated', async ({ n8n }) => {
 			await n8n.canvas.addNode('HTML', { action: 'Generate HTML template' });
 			await n8n.ndv.close();
 
-			await n8n.canvas.saveWorkflow();
-			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 
 			await n8n.canvas.openNode('HTML');
 
@@ -200,7 +200,7 @@ test.describe('Editors', () => {
 
 			await n8n.ndv.close();
 
-			await expect(n8n.canvas.getWorkflowSaveButton()).not.toContainText('Saved');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 		});
 
 		test('should allow switching between HTML editors in connected nodes', async ({ n8n }) => {

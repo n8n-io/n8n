@@ -1,7 +1,11 @@
 import { INSTANCE_OWNER_CREDENTIALS } from '../../../config/test-users';
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Sign In', () => {
+test.describe('Sign In', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test('should login and logout @auth:none', async ({ n8n }) => {
 		await n8n.goHome();
 

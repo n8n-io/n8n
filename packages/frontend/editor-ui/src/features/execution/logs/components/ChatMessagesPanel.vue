@@ -184,9 +184,9 @@ async function copySessionId() {
 						{{ locale.baseText('chat.window.session.id.copy') }}
 					</template>
 					<N8nButton
+						variant="outline"
 						data-test-id="chat-session-id"
-						type="secondary"
-						size="mini"
+						size="xsmall"
 						:class="$style.newHeaderButton"
 						@click.stop="copySessionId"
 						>{{ sessionIdText }}</N8nButton
@@ -197,10 +197,9 @@ async function copySessionId() {
 					:content="locale.baseText('chat.window.session.resetSession')"
 				>
 					<N8nIconButton
+						variant="subtle"
 						:class="$style.newHeaderButton"
 						data-test-id="refresh-session-button"
-						outline
-						type="secondary"
 						size="small"
 						icon-size="medium"
 						icon="undo-2"
@@ -257,20 +256,18 @@ async function copySessionId() {
 				<template v-if="pastChatMessages.length > 0" #leftPanel>
 					<div :class="$style.messagesHistory">
 						<N8nButton
+							variant="ghost"
 							title="Navigate to previous message"
 							icon="chevron-up"
-							type="tertiary"
-							text
-							size="mini"
+							size="xsmall"
 							:disabled="previousMessageIndex === 0"
 							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowUp' })"
 						/>
 						<N8nButton
+							variant="ghost"
 							title="Navigate to next message"
 							icon="chevron-down"
-							type="tertiary"
-							text
-							size="mini"
+							size="xsmall"
 							:disabled="previousMessageIndex === -1"
 							@click="onArrowKeyDown({ currentInputValue: '', key: 'ArrowDown' })"
 						/>
@@ -303,6 +300,38 @@ async function copySessionId() {
 		var(--chat--input--padding) * 2 + var(--chat--input--font-size) *
 			var(--chat--input--line-height)
 	);
+	--chat--transition-duration: 0.3s;
+	--chat--button--font-size: var(--font-size--2xs);
+	--chat--button--line-height: 1;
+	--chat--button--border-radius: var(--radius);
+	--chat--button--padding: var(--spacing--2xs) var(--spacing--xs);
+	--chat--button--color--primary: var(--button--color--text--primary);
+	--chat--button--background--primary: var(--button--color--background--primary);
+	--chat--button--border--primary: none;
+	--chat--button--color--primary--hover: var(--button--color--text--primary);
+	--chat--button--background--primary--hover: var(
+		--button--color--background--primary--hover-active-focus
+	);
+	--chat--button--border--primary--hover: none;
+	--chat--button--color--primary--disabled: var(--button--color--text--primary--disabled);
+	--chat--button--background--primary--disabled: var(
+		--button--color--background--primary--disabled
+	);
+	--chat--button--border--primary--disabled: none;
+	--chat--button--color--secondary: var(--button--color--text--secondary);
+	--chat--button--background--secondary: var(--button--color--background--secondary);
+	--chat--button--border--secondary: var(--border-width) var(--button--border-color--secondary)
+		var(--border-style);
+	--chat--button--color--secondary--hover: var(
+		--button--color--text--secondary--hover-active-focus
+	);
+	--chat--button--background--secondary--hover: var(--button--color--background--secondary--hover);
+	--chat--button--border--secondary--hover: var(--border-width)
+		var(--button--border-color--secondary--hover-active-focus) var(--border-style);
+	--chat--button--color--secondary--disabled: var(--button--color--text--secondary--disabled);
+	--chat--button--background--secondary--disabled: var(--button--color--background--secondary);
+	--chat--button--border--secondary--disabled: var(--border-width)
+		var(--button--border-color--secondary--disabled) var(--border-style);
 	height: 100%;
 	display: flex;
 	flex-direction: column;

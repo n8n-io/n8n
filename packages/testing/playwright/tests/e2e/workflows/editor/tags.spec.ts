@@ -9,7 +9,11 @@ test.beforeEach(async ({ api }) => {
 	await api.tags.deleteAll();
 });
 
-test.describe('Workflow tags - Tag creation', () => {
+test.describe('Workflow tags - Tag creation', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test('should create and attach tags inline, then add more incrementally', async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 
@@ -35,7 +39,7 @@ test.describe('Workflow tags - Tag creation', () => {
 
 		// Wait for save to complete first - closing the dropdown triggers a save
 		// which re-renders the tags container
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		// After dropdown closes, tags are displayed via WorkflowTagsContainer (workflow-tags)
 		// not the dropdown container, so use getSavedWorkflowTagPills()
@@ -131,7 +135,6 @@ test.describe('Workflow tags - Tag operations', () => {
 		await n8n.canvas.clickOutsideModal();
 
 		await expect(n8n.canvas.getWorkflowTagsDropdown()).not.toBeAttached();
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 		await expect(n8n.canvas.getSavedWorkflowTagPills()).toHaveCount(4);
 	});
 
@@ -158,7 +161,6 @@ test.describe('Workflow tags - Tag operations', () => {
 		await n8n.canvas.clickOutsideModal();
 
 		await expect(n8n.canvas.getWorkflowTagsDropdown()).not.toBeAttached();
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 		await expect(n8n.canvas.getSavedWorkflowTagPills()).toHaveCount(4);
 	});
 
@@ -180,7 +182,6 @@ test.describe('Workflow tags - Tag operations', () => {
 		await n8n.canvas.clickOutsideModal();
 
 		await expect(n8n.canvas.getWorkflowTagsDropdown()).not.toBeAttached();
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 
 		await n8n.canvas.clickWorkflowTagsArea();
 

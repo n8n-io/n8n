@@ -291,8 +291,8 @@ onMounted(async () => {
 								"
 							>
 								<N8nButton
+									variant="subtle"
 									size="medium"
-									type="secondary"
 									:disabled="!canCreateCredentials"
 									@click="onCreateNewCredential(key)"
 								>
@@ -337,10 +337,10 @@ onMounted(async () => {
 					}}
 				</N8nText>
 				<div :class="$style.footerRight">
-					<N8nButton type="tertiary" @click="onCancel">{{
+					<N8nButton variant="subtle" @click="onCancel">{{
 						i18n.baseText('chatHub.tools.editor.cancel')
 					}}</N8nButton>
-					<N8nButton type="primary" :disabled="isMissingCredentials" @click="handleConfirm">{{
+					<N8nButton variant="solid" :disabled="isMissingCredentials" @click="handleConfirm">{{
 						i18n.baseText('chatHub.tools.editor.confirm')
 					}}</N8nButton>
 				</div>

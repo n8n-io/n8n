@@ -182,7 +182,7 @@ describe('GET /credentials', () => {
 		expect(Array.isArray(ownerCredential.sharedWithProjects)).toBe(true);
 		expect(ownerCredential.sharedWithProjects).toHaveLength(3);
 
-		// Fix order issue (MySQL might return items in any order)
+		// Fix order issue (PostgreSQL might return items in any order)
 		const ownerCredentialsSharedWithOrdered = [...ownerCredential.sharedWithProjects].sort(
 			(a, b) => (a.id < b.id ? -1 : 1),
 		);
