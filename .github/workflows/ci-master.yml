@@ -28,11 +28,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [22.x, 24.x, 25.x]
+        node-version: [22.x, 24.13.1, 25.x]
     with:
       ref: ${{ github.sha }}
       nodeVersion: ${{ matrix.node-version }}
-      collectCoverage: ${{ matrix.node-version == '24.x' }}
+      collectCoverage: ${{ matrix.node-version == '24.13.1' }}
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
