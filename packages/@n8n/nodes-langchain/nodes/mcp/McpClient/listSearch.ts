@@ -18,8 +18,6 @@ export async function getTools(
 	const endpointUrl = this.getNodeParameter('endpointUrl') as string;
 	const node = this.getNode();
 	const { headers } = await getAuthHeaders(this, authentication);
-	// MCP_CONNECTION: listSearch.getTools() — connects when user opens tool dropdown in editor UI
-	console.log('client.connect at UI:tool-dropdown McpClient/listSearch.ts getTools()');
 	const client = await connectMcpClient({
 		serverTransport,
 		endpointUrl,
@@ -49,7 +47,6 @@ export async function getTools(
 			paginationToken: result.nextCursor,
 		};
 	} finally {
-		console.log('client.close at UI:tool-dropdown McpClient/listSearch.ts getTools()');
 		await client.result.close();
 	}
 }

@@ -87,10 +87,6 @@ async function connectAndGetTools(
 	const node = ctx.getNode();
 	const { headers } = await getAuthHeaders(ctx, config.authentication);
 
-	// MCP_CONNECTION: connectAndGetTools() — shared helper called by both supplyData() and execute()
-	// console.log(
-	// 	'client.connect at Execution:connectAndGetTools McpClientTool/McpClientTool.node.ts connectAndGetTools()',
-	// );
 	const client = await connectMcpClient({
 		serverTransport: config.serverTransport,
 		endpointUrl: config.endpointUrl,
@@ -116,9 +112,6 @@ async function connectAndGetTools(
 
 		return { client: client.result, mcpTools, error: null };
 	} catch (error) {
-		console.log(
-			'client.close at Execution:connectAndGetTools-error McpClientTool/McpClientTool.node.ts connectAndGetTools()',
-		);
 		await client.result.close();
 		throw error;
 	}
@@ -368,10 +361,6 @@ export class McpClientTool implements INodeType {
 			throw error;
 		};
 
-		// MCP_CONNECTION: supplyData() — connects to provide tools to AI Agent (long-lived, closed via closeFunction)
-		console.log(
-			`client.connect at Execution:supplyData McpClientTool/McpClientTool.node.ts supplyData() - ${node.name}`,
-		);
 		const { client, mcpTools, error } = await connectAndGetTools(this, config);
 
 		if (error) {
@@ -412,9 +401,6 @@ export class McpClientTool implements INodeType {
 		return {
 			response: toolkit,
 			closeFunction: async () => {
-				console.log(
-					`client.close at Execution:supplyData-closeFunction McpClientTool/McpClientTool.node.ts supplyData() - ${node.name}`,
-				);
 				await client.close();
 			},
 		};
@@ -429,10 +415,6 @@ export class McpClientTool implements INodeType {
 			const item = items[itemIndex];
 			const config = getNodeConfig(this, itemIndex);
 
-			// MCP_CONNECTION: execute() — connects per item to call a tool (short-lived, closed in finally)
-			console.log(
-				`client.connect at Execution:tool-call McpClientTool/McpClientTool.node.ts execute() - ${node.name}`,
-			);
 			const { client, mcpTools, error } = await connectAndGetTools(this, config);
 
 			if (error) {
@@ -490,9 +472,6 @@ export class McpClientTool implements INodeType {
 					}
 				}
 			} finally {
-				console.log(
-					`client.close at Execution:tool-call McpClientTool/McpClientTool.node.ts execute() - ${node.name}`,
-				);
 				await client.close();
 			}
 		}

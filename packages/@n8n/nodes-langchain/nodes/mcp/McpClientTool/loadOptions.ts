@@ -22,10 +22,6 @@ export async function getTools(this: ILoadOptionsFunctions): Promise<INodeProper
 		endpointUrl = this.getNodeParameter('endpointUrl') as string;
 	}
 	const { headers } = await getAuthHeaders(this, authentication);
-	// MCP_CONNECTION: loadOptions.getTools() — connects when user opens include/exclude tool dropdown in editor UI
-	console.log(
-		'client.connect at UI:include/exclude-dropdown McpClientTool/loadOptions.ts getTools()',
-	);
 	const client = await connectMcpClient({
 		serverTransport,
 		endpointUrl,
@@ -48,9 +44,6 @@ export async function getTools(this: ILoadOptionsFunctions): Promise<INodeProper
 			inputSchema: tool.inputSchema,
 		}));
 	} finally {
-		console.log(
-			'client.close at UI:include/exclude-dropdown McpClientTool/loadOptions.ts getTools()',
-		);
 		await client.result.close();
 	}
 }

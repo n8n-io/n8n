@@ -596,9 +596,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 			);
 
-			// EngineRequest should be returned
 			expect(result).toEqual(engineRequest);
-			// Close functions should still be called
 			expect(closeFunction1).toHaveBeenCalled();
 			expect(closeFunction2).toHaveBeenCalled();
 		});
@@ -642,7 +640,6 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				),
 			).rejects.toThrow('Execution failed');
 
-			// Close functions should still be called despite the error
 			expect(closeFunction1).toHaveBeenCalled();
 			expect(closeFunction2).toHaveBeenCalled();
 		});
@@ -688,7 +685,6 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				),
 			).rejects.toThrow('Close error 1');
 
-			// All three close functions must be called, even though closeFunction2 fails
 			expect(closeFunction1).toHaveBeenCalled();
 			expect(closeFunction2).toHaveBeenCalled();
 			expect(closeFunction3).toHaveBeenCalled();
@@ -722,8 +718,6 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				},
 			);
 
-			// executionSucceeded is true (EngineRequest returned successfully),
-			// so close function error should propagate
 			await expect(
 				workflowExecute.runNode(
 					mockWorkflow,
@@ -830,7 +824,6 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				},
 			);
 
-			// The original execution error should propagate, not the close function error
 			await expect(
 				workflowExecute.runNode(
 					mockWorkflow,
@@ -842,7 +835,6 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				),
 			).rejects.toThrow('Execution failed');
 
-			// Close function should still be called
 			expect(closeFunction1).toHaveBeenCalled();
 		});
 	});
