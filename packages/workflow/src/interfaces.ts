@@ -465,6 +465,12 @@ export interface IExecuteContextData {
 
 export type IHttpRequestMethods = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
 
+export type IgnoreStatusErrorConfig = {
+	ignore: true;
+	/** Ignore HTTP status errors except for the specified status codes */
+	except: number[];
+};
+
 /** used in helpers.httpRequest(WithAuthentication) */
 export interface IHttpRequestOptions {
 	url: string;
@@ -483,7 +489,7 @@ export interface IHttpRequestOptions {
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
 	skipSslCertificateValidation?: boolean;
 	returnFullResponse?: boolean;
-	ignoreHttpStatusErrors?: boolean;
+	ignoreHttpStatusErrors?: boolean | IgnoreStatusErrorConfig;
 	proxy?: {
 		host: string;
 		port: number;
