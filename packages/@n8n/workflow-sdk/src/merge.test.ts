@@ -1,6 +1,6 @@
 import type { NodeInstance } from './types/base';
-import { splitInBatches } from './workflow-builder/control-flow-builders/split-in-batches';
 import { workflow } from './workflow-builder';
+import { splitInBatches } from './workflow-builder/control-flow-builders/split-in-batches';
 import { node, trigger } from './workflow-builder/node-builders/node-builder';
 
 // Helper types
