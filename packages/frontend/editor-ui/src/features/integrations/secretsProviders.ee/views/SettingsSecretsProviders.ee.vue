@@ -3,7 +3,9 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useSecretsProvidersList } from '../composables/useSecretsProvidersList.ee';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { computed, onMounted } from 'vue';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import {
 	N8nActionBox,
 	N8nButton,
@@ -22,15 +24,25 @@ import {
 	DELETE_SECRETS_PROVIDER_MODAL_KEY,
 } from '@/app/constants/modals';
 import { I18nT } from 'vue-i18n';
+import type { SecretProviderConnection } from '@n8n/api-types';
 
 const i18n = useI18n();
 const secretsProviders = useSecretsProvidersList();
+const projectsStore = useProjectsStore();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const uiStore = useUIStore();
 
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
+
+function getProjectForProvider(provider: SecretProviderConnection): ProjectListItem | null {
+	if (!provider || provider.projects.length === 0) return null;
+
+	return (
+		projectsStore.projects.find((p: ProjectListItem) => p.id === provider.projects[0].id) ?? null
+	);
+}
 
 function getProviderTypeInfo(providerType: string) {
 	return secretsProviders.providerTypes.value.find((type) => type.type === providerType);
@@ -54,6 +66,10 @@ function openConnectionModal(
 			},
 		},
 	});
+}
+
+function handleCardClick(providerKey: string) {
+	openConnectionModal(providerKey, 'connection');
 }
 
 function handleEdit(providerKey: string) {
@@ -86,8 +102,11 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.secretsProviderConnections.title'));
 	if (!secretsProviders.isEnterpriseExternalSecretsEnabled.value) return;
 	try {
-		await secretsProviders.fetchProviderTypes();
-		await secretsProviders.fetchActiveConnections();
+		await Promise.all([
+			secretsProviders.fetchProviderTypes(),
+			secretsProviders.fetchActiveConnections(),
+			projectsStore.getAllProjects(),
+		]);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
 	}
@@ -159,7 +178,9 @@ function goToUpgrade() {
 					class="mb-2xs"
 					:provider="provider"
 					:provider-type-info="getProviderTypeInfo(provider.type)"
+					:project="getProjectForProvider(provider)"
 					:can-update="secretsProviders.canUpdate.value"
+					@click="handleCardClick(provider.name)"
 					@edit="handleEdit"
 					@share="handleShare"
 					@delete="handleDelete"

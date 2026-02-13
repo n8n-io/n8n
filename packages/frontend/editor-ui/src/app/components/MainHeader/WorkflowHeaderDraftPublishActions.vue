@@ -122,6 +122,7 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 const collaborationReadOnly = computed(() => collaborationStore.shouldBeReadOnly);
 const hasUpdatePermission = computed(() => props.workflowPermissions.update);
 const hasPublishPermission = computed(() => props.workflowPermissions.publish);
+const hasUnpublishPermission = computed(() => props.workflowPermissions.unpublish);
 
 const isPersonalSpace = computed(() => projectStore.currentProject?.type === ProjectTypes.Personal);
 
@@ -337,7 +338,7 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 	actions.push({
 		id: VERSION_ACTIONS.UNPUBLISH,
 		label: i18n.baseText('workflows.unpublish'),
-		disabled: !activeVersion.value || collaborationReadOnly.value || !hasPublishPermission.value,
+		disabled: !activeVersion.value || collaborationReadOnly.value || !hasUnpublishPermission.value,
 		divided: true,
 		shortcut: { metaKey: true, keys: ['U'] },
 	});

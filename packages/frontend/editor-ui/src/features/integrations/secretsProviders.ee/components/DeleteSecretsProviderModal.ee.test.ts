@@ -17,6 +17,17 @@ vi.mock('@n8n/rest-api-client', async () => {
 	};
 });
 
+const mockCredentials = [
+	{
+		id: '1',
+		name: 'cred1',
+		type: 'test',
+		createdAt: '2021-05-05T00:00:00Z',
+		updatedAt: '2021-05-05T00:00:00Z',
+		isManaged: false,
+	},
+];
+
 const renderComponent = createComponentRenderer(DeleteSecretsProviderModal, {
 	global: {
 		stubs: {
@@ -38,11 +49,11 @@ describe('DeleteSecretsProviderModal', () => {
 	beforeEach(() => {
 		pinia = createTestingPinia();
 		vi.clearAllMocks();
-		vi.mocked(credentialsApi.getAllCredentials).mockResolvedValue([]);
+		vi.mocked(credentialsApi.getAllCredentials).mockResolvedValue(mockCredentials);
 	});
 
-	it('should render modal with correct content', () => {
-		const { getByText } = renderComponent({
+	it('should render modal with correct content', async () => {
+		const { findByTestId, getByText } = renderComponent({
 			pinia,
 			props: {
 				modalName: DELETE_SECRETS_PROVIDER_MODAL_KEY,
@@ -53,12 +64,15 @@ describe('DeleteSecretsProviderModal', () => {
 				},
 			},
 		});
+
+		// Wait for confirmation input to appear (indicates credentials are loaded)
+		await findByTestId('delete-confirmation-input');
 
 		expect(getByText(/aws-prod/)).toBeInTheDocument();
 	});
 
-	it('should disable delete button when confirmation text does not match', () => {
-		const { getByTestId } = renderComponent({
+	it('should disable delete button when confirmation text does not match', async () => {
+		const { getByTestId, findByTestId } = renderComponent({
 			pinia,
 			props: {
 				modalName: DELETE_SECRETS_PROVIDER_MODAL_KEY,
@@ -69,13 +83,16 @@ describe('DeleteSecretsProviderModal', () => {
 				},
 			},
 		});
+
+		// Wait for confirmation input to appear (indicates credentials are loaded)
+		await findByTestId('delete-confirmation-input');
 
 		const deleteButton = getByTestId('confirm-delete-button');
 		expect(deleteButton).toBeDisabled();
 	});
 
 	it('should enable delete button when confirmation text matches provider name', async () => {
-		const { getByTestId } = renderComponent({
+		const { getByTestId, findByTestId } = renderComponent({
 			pinia,
 			props: {
 				modalName: DELETE_SECRETS_PROVIDER_MODAL_KEY,
@@ -87,7 +104,8 @@ describe('DeleteSecretsProviderModal', () => {
 			},
 		});
 
-		const input = getByTestId('delete-confirmation-input');
+		// Wait for confirmation input to appear (indicates credentials are loaded)
+		const input = await findByTestId('delete-confirmation-input');
 		const deleteButton = getByTestId('confirm-delete-button');
 
 		await userEvent.type(input, 'aws-prod');
@@ -100,7 +118,7 @@ describe('DeleteSecretsProviderModal', () => {
 		const rootStore = useRootStore();
 		vi.mocked(secretsProviderApi.deleteSecretProviderConnection).mockResolvedValue();
 
-		const { getByTestId } = renderComponent({
+		const { getByTestId, findByTestId } = renderComponent({
 			pinia,
 			props: {
 				modalName: DELETE_SECRETS_PROVIDER_MODAL_KEY,
@@ -113,7 +131,8 @@ describe('DeleteSecretsProviderModal', () => {
 			},
 		});
 
-		const input = getByTestId('delete-confirmation-input');
+		// Wait for confirmation input to appear (indicates credentials are loaded)
+		const input = await findByTestId('delete-confirmation-input');
 		await userEvent.type(input, 'aws-prod');
 
 		const deleteButton = getByTestId('confirm-delete-button');
@@ -126,27 +145,7 @@ describe('DeleteSecretsProviderModal', () => {
 		expect(onConfirm).toHaveBeenCalled();
 	});
 
-	it('should fetch credentials count on mount', async () => {
-		const mockCredentials = [
-			{
-				id: '1',
-				name: 'cred1',
-				type: 'test',
-				createdAt: '2021-05-05T00:00:00Z',
-				updatedAt: '2021-05-05T00:00:00Z',
-				isManaged: false,
-			},
-			{
-				id: '2',
-				name: 'cred2',
-				type: 'test',
-				createdAt: '2021-05-05T00:00:00Z',
-				updatedAt: '2021-05-05T00:00:00Z',
-				isManaged: false,
-			},
-		];
-		vi.mocked(credentialsApi.getAllCredentials).mockResolvedValue(mockCredentials);
-
+	it('should fetch credentials count on mount', () => {
 		renderComponent({
 			pinia,
 			props: {

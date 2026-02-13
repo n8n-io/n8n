@@ -533,13 +533,20 @@ export default workflow('ai-sentiment', 'AI Sentiment Analyzer')
 \`\`\`
 </ai_agent_with_structured_output>`;
 
-/**
- * Mandatory workflow for tool usage
- */
-const MANDATORY_WORKFLOW = `**You MUST follow these steps in order. Do NOT produce visible output until the final step — only tool calls. Use the \`think\` tool in-between steps (after first step) when you need to reason about results.**
+// ── Mandatory workflow steps ──────────────────────────────────────────────────
+// Two paths exist: build mode and plan mode (when an approved plan is provided).
+//
+// Build path: Step 1 (analyze) → Step 2 (2a suggest, 2b search, 2c review) → Step 3 (design) → Steps 4–7
+// Plan path:    Step 1 (read plan) → Step 2 (2a search, 2b review)            → Step 3 (design) → Steps 4–7
+//
+// Step 2 sub-steps are numbered sequentially within each path.
 
-<step_1_analyze_user_request>
+const MANDATORY_WORKFLOW_INTRO =
+	'**You MUST follow these steps in order. Do NOT produce visible output until the final step — only tool calls. Use the `think` tool in-between steps (after first step) when you need to reason about results.**';
 
+// ── Step 1 variants ──────────────────────────────────────────────────────────
+
+const ANALYZE_USER_REQUEST = `
 Analyze the user request internally. Do NOT produce visible output in this step — reason internally (NOT Think tool), then proceed to tool calls. Be concise.
 
 1. **Extract Requirements**: Quote or paraphrase what the user wants to accomplish.
@@ -566,13 +573,25 @@ Analyze the user request internally. Do NOT produce visible output in this step 
    - Branching/routing (if/else, switch, merge)
    - Loops (batch processing)
    - Data transformation needs
+`;
 
-</step_1_analyze_user_request>
+const READ_APPROVED_PLAN = `
+Read the approved plan provided in <approved_plan>. Do NOT re-analyze the user request — the plan is the authoritative specification.
+Be EXTREMELY concise.
 
-<step_2_search_for_nodes>
+1. **Collect node types**: Extract all node type names from each step's suggestedNodes.
+2. **Note the trigger**: Identify the trigger type described in the plan.
+3. **Note additional specs**: Review any additionalSpecs for constraints.
 
-<step_2a_get_suggested_nodes>
+If you have everything you need to build a workflow, continue directly with step 2b, reviewing search results, and step 3, planning workflow design.
+`;
 
+// ── Step 2 variants ─────────────────────────────────────────────────────────
+// Build path uses: get_suggested_nodes → search → review (3 sub-steps)
+// Plan path uses:    search → review (2 sub-steps)
+// Numbering (2a, 2b, ...) is applied at the array level in the builder functions.
+
+const GET_SUGGESTED_NODES = `
 Do NOT produce visible output — only the tool call. Call \`get_suggested_nodes\` with the workflow technique categories identified in Step 1:
 
 \`\`\`
@@ -580,11 +599,9 @@ get_suggested_nodes({{ categories: ["chatbot", "notification"] }})
 \`\`\`
 
 This returns curated node recommendations with pattern hints and configuration guidance.
+`;
 
-</step_2a_get_suggested_nodes>
-
-<step_2b_search_for_nodes>
-
+const SEARCH_NODES_BUILD = `
 Do NOT produce visible output — only the tool call. Be EXTREMELY concise. Call \`search_nodes\` to find specific nodes for services identified in Step 1 and ALL node types you plan to use:
 
 \`\`\`
@@ -597,11 +614,31 @@ Search for:
 - **Utility nodes you'll need** (set/edit fields, filter, if, code, merge, switch, etc.)
 - AI-related terms if needed
 - **Nodes from suggested results you plan to use**
+`;
 
-</step_2b_search_for_nodes>
+const SEARCH_NODES_PLAN = `
+Do NOT produce visible output — only the tool call. Be EXTREMELY concise. Call \`search_nodes\` with node types from the plan's suggestedNodes to get discriminators, versions, and related nodes:
 
-<step_2c_review_search_results>
+\`\`\`
+search_nodes({{ queries: ["httpRequest", "slack", "schedule trigger", "set", ...] }})
+\`\`\`
 
+Search for:
+- All node types listed in the plan's suggestedNodes
+- The trigger type mentioned in the plan
+- **Utility nodes you'll need** (set/edit fields, filter, if, code, merge, switch, etc.)
+`;
+
+const SEARCH_NODES_PREFETCHED = `
+The search results for the plan's suggestedNodes are pre-fetched in <node_search_results>. Read those results carefully.
+If you need additional nodes not covered (trigger, utility nodes (set/edit fields, filter, if, code, merge, switch, etc.)), call \`search_nodes\`. Otherwise proceed to the next step.
+
+\`\`\`
+search_nodes({{ queries: ["httpRequest", "slack", "schedule trigger", "set", ...] }})
+\`\`\`
+`;
+
+const REVIEW_RESULTS_BUILD = `
 Use the \`think\` tool to review all results. Do NOT produce visible output in this step. Be EXTREMELY concise.
 
 For each service/concept searched, list the matching node(s) found:
@@ -614,13 +651,25 @@ For each service/concept searched, list the matching node(s) found:
 - It's OK for this section to be quite long if many nodes were found
 
 If you have everything you need to build a workflow, continue to step 3, planning the workflow design.
+`;
 
-</step_2c_review_search_results>
+const REVIEW_RESULTS_PLAN = `
+Do NOT produce visible output in this step. Only internal thinking or think tool. Be EXTREMELY concise.
 
-</step_2_search_for_nodes>
+For each node searched, list the matching node(s) found:
+- Note which nodes have [TRIGGER] tags for trigger nodes
+- Note discriminator requirements (resource/operation or mode) for each node
+- Note [RELATED] nodes that might be useful
+- Note @relatedNodes with relationHints for complementary nodes
+- **Pay special attention to @builderHint and @example annotations** — write these out as they are guides specifically meant to help you choose the right node configurations
+- It's OK for this section to be quite long if many nodes were found
 
-<step_3_plan_workflow_design>
+If you have everything you need to build a workflow, continue to step 3, planning the workflow design.
+`;
 
+// ── Step 3 variants ──────────────────────────────────────────────────────────
+
+const DESIGN_WORKFLOW_BUILD = `
 Use the \`think\` tool to make design decisions based on the reviewed results. Do NOT produce visible output in this step.
 
 1. **Select Nodes**: Based on search results AND suggested nodes, choose specific nodes:
@@ -642,10 +691,33 @@ Use the \`think\` tool to make design decisions based on the reviewed results. D
 
 It's OK for this section to be quite long as you work through the design.
 **Pay attention to @builderHint annotations in the type definitions** - these provide critical guidance on how to correctly configure node parameters.
+`;
 
-</step_3_plan_workflow_design>
+const DESIGN_WORKFLOW_PLAN = `
+Use thinking to make design decisions based on the search results and the approved plan's steps. Do NOT produce visible output in this step.
 
-<step_4_get_node_type_definitions>
+1. **Select Nodes**: Based on search results and the plan's steps, choose specific nodes:
+   - Use dedicated integration nodes when available (from search)
+   - Only use HTTP Request if no dedicated node was found
+   - Note discriminators needed for each node
+   - Follow the plan's step sequence as the workflow structure
+
+2. **Map Node Connections**:
+   - Is this linear, branching, parallel, or looped? Or merge to combine parallel branches?
+   - **Trace item counts**: For each connection A → B, if A returns N items, should B run N times or just once? If B doesn't need A's items (e.g., it fetches from an independent source), either set \`executeOnce: true\` on B or use parallel branches + Merge to combine results.
+   - Which nodes connect to which?
+	 - Draw out the flow in text form (e.g., "Trigger → Node A → Node B → Node C" or "Trigger → Node A → [Node B (true), Node C (false)]")
+   - **Handling convergence after branches**: When a node receives data from multiple paths (after Switch, IF, Merge): use optional chaining \`expr('{{{{ $json.data?.approved ?? $json.status }}}}')\`, reference a node that ALWAYS runs \`expr("{{{{ $('Webhook').item.json.field }}}}")\`, or normalize data before convergence with Set nodes
+
+3. **Prepare get_node_types Call**: Write the exact call including discriminators
+
+It's OK for this section to be quite long as you work through the design.
+**Pay attention to @builderHint annotations in the type definitions** - these provide critical guidance on how to correctly configure node parameters.
+`;
+
+// ── Steps 4–7 (shared) ──────────────────────────────────────────────────────
+
+const STEPS_4_THROUGH_7 = `<step_4_get_node_type_definitions>
 
 Do NOT produce visible output — only the tool call.
 
@@ -705,6 +777,49 @@ If errors are reported, fix ALL relevant issues using \`batch_str_replace\` (pre
 When validation passes, stop calling tools.
 </step_7_finalize>`;
 
+function wrapStep(tag: string, content: string): string {
+	return `<${tag}>${content}</${tag}>`;
+}
+
+function buildBuildModeSteps(): string {
+	const step2Parts = [
+		wrapStep('step_2a_get_suggested_nodes', GET_SUGGESTED_NODES),
+		wrapStep('step_2b_search_for_nodes', SEARCH_NODES_BUILD),
+		wrapStep('step_2c_review_search_results', REVIEW_RESULTS_BUILD),
+	].join('\n');
+
+	return [
+		MANDATORY_WORKFLOW_INTRO,
+		wrapStep('step_1_analyze_user_request', ANALYZE_USER_REQUEST),
+		wrapStep('step_2_search_for_nodes', `\n${step2Parts}\n`),
+		wrapStep('step_3_plan_workflow_design', DESIGN_WORKFLOW_BUILD),
+		STEPS_4_THROUGH_7,
+	].join('\n\n');
+}
+
+function buildPlanModeSteps(hasPreSearchResults: boolean): string {
+	const searchContent = hasPreSearchResults ? SEARCH_NODES_PREFETCHED : SEARCH_NODES_PLAN;
+	const step2Parts = [
+		wrapStep('step_2a_search_for_nodes', searchContent),
+		wrapStep('step_2b_review_search_results', REVIEW_RESULTS_PLAN),
+	].join('\n');
+
+	return [
+		MANDATORY_WORKFLOW_INTRO,
+		wrapStep('step_1_read_approved_plan', READ_APPROVED_PLAN),
+		wrapStep('step_2_search_for_nodes', `\n${step2Parts}\n`),
+		wrapStep('step_3_plan_workflow_design', DESIGN_WORKFLOW_PLAN),
+		STEPS_4_THROUGH_7,
+	].join('\n\n');
+}
+
+function buildMandatoryWorkflow(hasPlanOutput: boolean, hasPreSearchResults = false): string {
+	if (hasPlanOutput) {
+		return buildPlanModeSteps(hasPreSearchResults);
+	}
+	return buildBuildModeSteps();
+}
+
 /**
  * History context for multi-turn conversations
  */
@@ -735,55 +850,34 @@ export interface BuildCodeBuilderPromptOptions {
 	pinnedNodes?: string[];
 	/** Approved plan from planning phase */
 	planOutput?: PlanOutput;
+	/** Pre-fetched search_nodes results for the plan's suggestedNodes */
+	preSearchResults?: string;
 }
 
 /**
- * Build the complete system prompt for the code builder agent
- *
- * @param currentWorkflow - Optional current workflow JSON context
- * @param historyContext - Optional conversation history for multi-turn refinement
- * @param options - Optional configuration options
+ * Build the user message context parts (history, workflow, plan, search results)
  */
-export function buildCodeBuilderPrompt(
-	currentWorkflow?: WorkflowJSON,
-	historyContext?: HistoryContext,
-	options?: BuildCodeBuilderPromptOptions,
-): ChatPromptTemplate {
-	const promptSections = [
-		`<role>\n${ROLE}\n</role>`,
-		`<response_style>\n${RESPONSE_STYLE}\n</response_style>`,
-		`<workflow_rules>\n${WORKFLOW_RULES}\n</workflow_rules>`,
-		`<workflow_patterns>\n${WORKFLOW_PATTERNS}\n</workflow_patterns>`,
-		`<expression_reference>\n${EXPRESSION_REFERENCE}\n</expression_reference>`,
-		`<additional_functions>\n${ADDITIONAL_FUNCTIONS}\n</additional_functions>`,
-		`<mandatory_workflow_process>\n${MANDATORY_WORKFLOW}\n</mandatory_workflow_process>`,
-	];
-
-	if (options?.planOutput) {
-		promptSections.push(
-			"<plan_mode_instructions>\nAn approved workflow plan is provided in the user message under <approved_plan>. Use this plan as the authoritative specification for what to build. Your Step 1 analysis should follow this plan. The plan's trigger, steps, and suggested nodes guide your search and node selection.\n</plan_mode_instructions>",
-		);
-	}
-
-	const systemMessage = promptSections.join('\n\n');
-
-	// User message template
-	const userMessageParts: string[] = [];
+function buildUserMessageParts(
+	currentWorkflow: WorkflowJSON | undefined,
+	historyContext: HistoryContext | undefined,
+	options: BuildCodeBuilderPromptOptions | undefined,
+): string[] {
+	const parts: string[] = [];
 
 	// 1. Compacted summary (if exists from previous compactions)
 	if (historyContext?.previousSummary) {
-		userMessageParts.push(
+		parts.push(
 			`<conversation_summary>\n${escapeCurlyBrackets(historyContext.previousSummary)}\n</conversation_summary>`,
 		);
 	}
 
 	// 2. Previous user requests (raw messages for recent context)
 	if (historyContext?.userMessages && historyContext.userMessages.length > 0) {
-		userMessageParts.push('<previous_requests>');
+		parts.push('<previous_requests>');
 		historyContext.userMessages.forEach((msg, i) => {
-			userMessageParts.push(`${i + 1}. ${escapeCurlyBrackets(msg)}`);
+			parts.push(`${i + 1}. ${escapeCurlyBrackets(msg)}`);
 		});
-		userMessageParts.push('</previous_requests>');
+		parts.push('</previous_requests>');
 	}
 
 	// 3. Current workflow context (with line numbers for text editor)
@@ -806,21 +900,61 @@ export function buildCodeBuilderPrompt(
 		const codeWithImport = `${SDK_IMPORT_STATEMENT}\n\n${workflowCode}`;
 		const formattedCode = formatCodeWithLineNumbers(codeWithImport);
 		const escapedCode = escapeCurlyBrackets(formattedCode);
-		userMessageParts.push(`<workflow_file path="/workflow.js">\n${escapedCode}\n</workflow_file>`);
+		parts.push(`<workflow_file path="/workflow.js">\n${escapedCode}\n</workflow_file>`);
 	} else {
-		userMessageParts.push(
+		parts.push(
 			'<workflow_file path="/workflow.js">\nNo file exists yet. Use the `create` command to write the initial workflow code.\n</workflow_file>',
 		);
 	}
 
 	// 4. Approved plan (when plan mode feeds into code builder)
 	if (options?.planOutput) {
-		userMessageParts.push(
+		parts.push(
 			`<approved_plan>\n${escapeCurlyBrackets(formatPlanAsText(options.planOutput))}\n</approved_plan>`,
 		);
 	}
 
-	// 5. Wrap user message in XML tag for easy extraction when loading sessions
+	// 5. Pre-fetched search results (saves an LLM round-trip when plan is provided)
+	if (options?.preSearchResults) {
+		parts.push(
+			`<node_search_results>\n${escapeCurlyBrackets(options.preSearchResults)}\n</node_search_results>`,
+		);
+	}
+
+	return parts;
+}
+
+/**
+ * Build the complete system prompt for the code builder agent
+ *
+ * @param currentWorkflow - Optional current workflow JSON context
+ * @param historyContext - Optional conversation history for multi-turn refinement
+ * @param options - Optional configuration options
+ */
+export function buildCodeBuilderPrompt(
+	currentWorkflow?: WorkflowJSON,
+	historyContext?: HistoryContext,
+	options?: BuildCodeBuilderPromptOptions,
+): ChatPromptTemplate {
+	const hasPlanOutput = !!options?.planOutput;
+	const hasPreSearchResults = !!options?.preSearchResults;
+	const mandatoryWorkflow = buildMandatoryWorkflow(hasPlanOutput, hasPreSearchResults);
+
+	const promptSections = [
+		`<role>\n${ROLE}\n</role>`,
+		`<response_style>\n${RESPONSE_STYLE}\n</response_style>`,
+		`<workflow_rules>\n${WORKFLOW_RULES}\n</workflow_rules>`,
+		`<workflow_patterns>\n${WORKFLOW_PATTERNS}\n</workflow_patterns>`,
+		`<expression_reference>\n${EXPRESSION_REFERENCE}\n</expression_reference>`,
+		`<additional_functions>\n${ADDITIONAL_FUNCTIONS}\n</additional_functions>`,
+		`<mandatory_workflow_process>\n${mandatoryWorkflow}\n</mandatory_workflow_process>`,
+	];
+
+	const systemMessage = promptSections.join('\n\n');
+
+	const userMessageParts = buildUserMessageParts(currentWorkflow, historyContext, options);
+
+	// Wrap user message in XML tag for easy extraction when loading sessions
 	if (userMessageParts.length > 0) {
 		userMessageParts.push('<user_request>');
 		userMessageParts.push('{userMessage}');
