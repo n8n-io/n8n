@@ -556,7 +556,7 @@ export default workflow('ai-sentiment', 'AI Sentiment Analyzer')
 // Step 2 sub-steps are numbered sequentially within each path.
 
 const MANDATORY_WORKFLOW_INTRO =
-	'**You MUST follow these steps in order. Do NOT produce visible output until the final step — only tool calls. Use the `think` tool in-between steps (after first step) when you need to reason about results.**';
+	'**You MUST follow these steps in order. Do NOT produce visible output until the final step — only tool calls.**';
 
 // ── Step 1 variants ──────────────────────────────────────────────────────────
 
@@ -653,7 +653,7 @@ search_nodes({{ queries: ["httpRequest", "slack", "schedule trigger", "set", ...
 `;
 
 const REVIEW_RESULTS_BUILD = `
-Use the \`think\` tool to review all results. Do NOT produce visible output in this step. Be EXTREMELY concise.
+Review all results internally. Do NOT produce visible output in this step. Be EXTREMELY concise.
 
 For each service/concept searched, list the matching node(s) found:
 - Note which nodes have [TRIGGER] tags for trigger nodes
@@ -668,7 +668,7 @@ If you have everything you need to build a workflow, continue to step 3, plannin
 `;
 
 const REVIEW_RESULTS_PLAN = `
-Do NOT produce visible output in this step. Only internal thinking or think tool. Be EXTREMELY concise.
+Do NOT produce visible output in this step. Only internal thinking. Be EXTREMELY concise.
 
 For each node searched, list the matching node(s) found:
 - Note which nodes have [TRIGGER] tags for trigger nodes
@@ -684,7 +684,7 @@ If you have everything you need to build a workflow, continue to step 3, plannin
 // ── Step 3 variants ──────────────────────────────────────────────────────────
 
 const DESIGN_WORKFLOW_BUILD = `
-Use the \`think\` tool to make design decisions based on the reviewed results. Do NOT produce visible output in this step.
+Make design decisions internally based on the reviewed results. Do NOT produce visible output in this step.
 
 1. **Select Nodes**: Based on search results AND suggested nodes, choose specific nodes:
    - Use dedicated integration nodes when available (from search)

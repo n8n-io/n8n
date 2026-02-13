@@ -11,7 +11,6 @@
 import type { CallbackManagerForChainRun } from '@langchain/core/callbacks/manager';
 import { CallbackManager } from '@langchain/core/callbacks/manager';
 import type { AIMessage, BaseMessage } from '@langchain/core/messages';
-import { HumanMessage } from '@langchain/core/messages';
 import type { StructuredToolInterface } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
@@ -29,10 +28,7 @@ import {
 	CODE_BUILDER_GET_NODE_TYPES_TOOL,
 	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL,
 	CODE_BUILDER_SEARCH_NODES_TOOL,
-	CODE_BUILDER_THINK_TOOL,
 	MAX_AGENT_ITERATIONS,
-	FORCE_ACTION_INSTRUCTION,
-	MAX_CONSECUTIVE_THINK_ONLY,
 	MAX_VALIDATE_ATTEMPTS,
 } from './constants';
 import { AgentIterationHandler } from './handlers/agent-iteration-handler';
@@ -49,7 +45,6 @@ import { WarningTracker } from './state/warning-tracker';
 import { createCodeBuilderGetTool } from './tools/code-builder-get.tool';
 import { createCodeBuilderSearchTool } from './tools/code-builder-search.tool';
 import { createGetSuggestedNodesTool } from './tools/get-suggested-nodes.tool';
-import { createThinkTool } from './tools/think.tool';
 import type { CodeBuilderAgentConfig, TokenUsage } from './types';
 export type { CodeBuilderAgentConfig } from './types';
 import { sanitizeLlmErrorMessage } from '../utils/error-sanitizer';
@@ -146,8 +141,7 @@ export class CodeBuilderAgent {
 		const searchTool = createCodeBuilderSearchTool(this.nodeTypeParser);
 		const getTool = createCodeBuilderGetTool({ nodeDefinitionDirs: config.nodeDefinitionDirs });
 		const suggestedNodesTool = createGetSuggestedNodesTool(this.nodeTypeParser);
-		const thinkTool = createThinkTool();
-		this.tools = [searchTool, getTool, suggestedNodesTool, thinkTool];
+		this.tools = [searchTool, getTool, suggestedNodesTool];
 		this.toolsMap = new Map(this.tools.map((t) => [t.name, t]));
 
 		// Initialize chat setup handler
@@ -173,7 +167,6 @@ export class CodeBuilderAgent {
 					CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.toolName,
 					CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.displayTitle,
 				],
-				[CODE_BUILDER_THINK_TOOL.toolName, CODE_BUILDER_THINK_TOOL.displayTitle],
 			]),
 			validateToolHandler: this.validateToolHandler,
 		});
@@ -429,7 +422,6 @@ export class CodeBuilderAgent {
 			warningTracker: new WarningTracker(),
 			outputTrace: [],
 			hasUnvalidatedEdits: false,
-			consecutiveThinkOnlyCalls: 0,
 		};
 
 		// Pre-validate existing workflow to discover pre-existing warnings
@@ -637,23 +629,6 @@ export class CodeBuilderAgent {
 			warningTracker: state.warningTracker,
 		});
 
-		// Track consecutive think-only iterations
-		if (dispatchResult.allThinkOnly) {
-			state.consecutiveThinkOnlyCalls++;
-		} else {
-			state.consecutiveThinkOnlyCalls = 0;
-		}
-
-		if (state.consecutiveThinkOnlyCalls >= MAX_CONSECUTIVE_THINK_ONLY) {
-			state.consecutiveThinkOnlyCalls = 0;
-			messages.push(
-				new HumanMessage({
-					content: FORCE_ACTION_INSTRUCTION,
-					additional_kwargs: { validationMessage: true },
-				}),
-			);
-		}
-
 		// Update state from dispatch result
 		if (dispatchResult.hasUnvalidatedEdits !== undefined) {
 			state.hasUnvalidatedEdits = dispatchResult.hasUnvalidatedEdits;
@@ -833,6 +808,4 @@ interface AgenticLoopState {
 	outputTrace: TraceEntry[];
 	/** Whether the agent has made code edits that haven't been followed by validation */
 	hasUnvalidatedEdits: boolean;
-	/** Number of consecutive iterations where the only tool calls were 'think' */
-	consecutiveThinkOnlyCalls: number;
 }
