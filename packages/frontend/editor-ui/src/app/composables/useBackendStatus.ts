@@ -15,12 +15,15 @@ export function useBackendStatus() {
 	 * Check backend connectivity by pinging the health endpoint.
 	 */
 	async function checkBackendConnection(): Promise<boolean> {
+		if (!settingsStore.endpointHealth) {
+			return true;
+		}
+
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
 
 		try {
-			const healthPath = settingsStore.endpointHealth || 'healthz';
-			const response = await fetch(`/${healthPath}`, {
+			const response = await fetch(`/${settingsStore.endpointHealth}`, {
 				cache: 'no-store',
 				signal: controller.signal,
 			});
