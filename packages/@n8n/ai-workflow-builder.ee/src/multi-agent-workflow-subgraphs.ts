@@ -204,7 +204,11 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	const supervisorAgent = new SupervisorAgent({ llm: stageLLMs.supervisor });
 
 	// Create Responder agent using LangChain v1 createAgent API
-	const responderAgent: ResponderAgentType = createResponderAgent({ llm: stageLLMs.responder });
+	const responderAgent: ResponderAgentType = createResponderAgent({
+		llm: stageLLMs.responder,
+		enableIntrospection: featureFlags?.enableIntrospection,
+		logger,
+	});
 
 	// Create Discovery subgraph (discovery + planning)
 	const discoverySubgraph = new DiscoverySubgraph();
@@ -255,7 +259,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				// Record start time for timing metrics
 				const startTimestamp = Date.now();
 
-				const response = await invokeResponderAgent(
+				const { response, introspectionEvents } = await invokeResponderAgent(
 					responderAgent,
 					{
 						messages: state.messages,
@@ -266,6 +270,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 						previousSummary: state.previousSummary,
 					},
 					config,
+					{ enableIntrospection: featureFlags?.enableIntrospection },
 				);
 
 				// Call success callback only when generation completed without errors
@@ -299,6 +304,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 							metadata: createResponderMetadata({ responseLength: responseContent.length }),
 						},
 					],
+					introspectionEvents, // Collected from responder's tool calls
 				};
 			})
 			// Add process_operations node for hybrid operations approach

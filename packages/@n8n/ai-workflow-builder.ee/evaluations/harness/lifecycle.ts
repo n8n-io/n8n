@@ -469,9 +469,9 @@ export function mergeLifecycles(
 			}
 		},
 
-		onEnd(summary: RunSummary): void {
+		async onEnd(summary: RunSummary): Promise<void> {
 			for (const lc of validLifecycles) {
-				lc.onEnd?.(summary);
+				await lc.onEnd?.(summary);
 			}
 		},
 	};

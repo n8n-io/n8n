@@ -726,5 +726,67 @@ describe('Merge', () => {
 			expect(weatherConns.main[0]![0].node).toBe('Merge Results');
 			expect(weatherConns.main[0]![0].index).toBe(1);
 		});
+
+		it('should handle duplicate node names with workflow-level .to() to merge inputs', () => {
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			const mergeNode = node({
+				type: 'n8n-nodes-base.merge',
+				version: 3,
+				config: { name: 'Combine' },
+			}) as MergeNode;
+			// Both nodes have the same name - second will be auto-renamed to "Process 1"
+			const process1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Process' },
+			});
+			const process2 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Process' },
+			});
+			const downstream = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Downstream' },
+			});
+
+			// Use workflow-level .add()/.to() pattern (not node-instance .to() workaround)
+			const wf = workflow('test-id', 'Test')
+				.add(t.to([process1, process2]))
+				.add(process1)
+				.to(mergeNode.input(0))
+				.add(process2)
+				.to(mergeNode.input(1))
+				.add(mergeNode)
+				.to(downstream);
+
+			const json = wf.toJSON();
+
+			// Should have: trigger, process1 ("Process"), process2 ("Process 1"), merge, downstream
+			expect(json.nodes).toHaveLength(5);
+
+			// Verify auto-rename happened
+			const names = json.nodes.map((n) => n.name).sort();
+			expect(names).toContain('Process');
+			expect(names).toContain('Process 1');
+
+			// "Process" should connect to Combine input 0
+			const process1Conns = json.connections['Process'];
+			expect(process1Conns).toBeDefined();
+			expect(process1Conns.main[0]![0].node).toBe('Combine');
+			expect(process1Conns.main[0]![0].index).toBe(0);
+
+			// "Process 1" (auto-renamed) should connect to Combine input 1
+			const process2Conns = json.connections['Process 1'];
+			expect(process2Conns).toBeDefined();
+			expect(process2Conns.main[0]![0].node).toBe('Combine');
+			expect(process2Conns.main[0]![0].index).toBe(1);
+
+			// Combine should connect to Downstream
+			const mergeConns = json.connections['Combine'];
+			expect(mergeConns).toBeDefined();
+			expect(mergeConns.main[0]![0].node).toBe('Downstream');
+		});
 	});
 });
