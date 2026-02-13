@@ -19,7 +19,6 @@ RUN apk add --no-cache busybox-binsh && \
         git \
         openssh \
         openssl \
-        graphicsmagick=1.3.45-r0 `# pinned to avoid ghostscript-fonts (AGPL)` \
         tini \
         tzdata \
         ca-certificates \

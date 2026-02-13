@@ -1,27 +1,55 @@
-import { writeFile as fsWriteFile } from 'fs/promises';
-import getSystemFonts from 'get-system-fonts';
-import gm from 'gm';
+import { Jimp, BlendMode, rgbaToInt } from 'jimp';
 import type {
 	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeProperties,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError, NodeConnectionTypes, deepCopy } from 'n8n-workflow';
-import { parse as pathParse } from 'path';
-import { file } from 'tmp-promise';
+import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
 
 type EditImageNodeOptions = {
 	destinationKey?: string;
-	font?: string;
 	fileName?: string;
 	format?: string;
 	quality?: number;
+};
+
+// Convert CSS hex color (#RRGGBB or #RRGGBBAA) to Jimp's 32-bit RGBA integer
+function cssColorToInt(color: string): number {
+	const hex = color.replace('#', '');
+	let r: number, g: number, b: number, a: number;
+	if (hex.length === 8) {
+		r = parseInt(hex.slice(0, 2), 16);
+		g = parseInt(hex.slice(2, 4), 16);
+		b = parseInt(hex.slice(4, 6), 16);
+		a = parseInt(hex.slice(6, 8), 16);
+	} else {
+		r = parseInt(hex.slice(0, 2), 16);
+		g = parseInt(hex.slice(2, 4), 16);
+		b = parseInt(hex.slice(4, 6), 16);
+		a = 0xff;
+	}
+	return rgbaToInt(r, g, b, a);
+}
+
+const MIME_MAP: Record<string, string> = {
+	bmp: 'image/bmp',
+	gif: 'image/gif',
+	jpeg: 'image/jpeg',
+	png: 'image/png',
+	tiff: 'image/tiff',
+};
+
+const COMPOSITE_BLEND_MAP: Record<string, string> = {
+	Add: BlendMode.ADD,
+	Difference: BlendMode.DIFFERENCE,
+	Multiply: BlendMode.MULTIPLY,
+	Over: BlendMode.SRC_OVER,
+	Plus: BlendMode.ADD,
 };
 
 const nodeOperations: INodePropertyOptions[] = [
@@ -56,12 +84,6 @@ const nodeOperations: INodePropertyOptions[] = [
 		action: 'Crop Image',
 	},
 	{
-		name: 'Draw',
-		value: 'draw',
-		description: 'Draw on image',
-		action: 'Draw Image',
-	},
-	{
 		name: 'Rotate',
 		value: 'rotate',
 		description: 'Rotate image',
@@ -72,18 +94,6 @@ const nodeOperations: INodePropertyOptions[] = [
 		value: 'resize',
 		description: 'Change the size of image',
 		action: 'Resize Image',
-	},
-	{
-		name: 'Shear',
-		value: 'shear',
-		description: 'Shear image along the X or Y axis',
-		action: 'Shear Image',
-	},
-	{
-		name: 'Text',
-		value: 'text',
-		description: 'Adds text to image',
-		action: 'Apply Text to Image',
 	},
 	{
 		name: 'Transparent',
@@ -144,223 +154,14 @@ const nodeOperationOptions: INodeProperties[] = [
 	},
 
 	// ----------------------------------
-	//         draw
-	// ----------------------------------
-	{
-		displayName: 'Primitive',
-		name: 'primitive',
-		type: 'options',
-		displayOptions: {
-			show: {
-				operation: ['draw'],
-			},
-		},
-		options: [
-			{
-				name: 'Circle',
-				value: 'circle',
-			},
-			{
-				name: 'Line',
-				value: 'line',
-			},
-			{
-				name: 'Rectangle',
-				value: 'rectangle',
-			},
-		],
-		default: 'rectangle',
-		description: 'The primitive to draw',
-	},
-	{
-		displayName: 'Color',
-		name: 'color',
-		type: 'color',
-		default: '#ff000000',
-		typeOptions: {
-			showAlpha: true,
-		},
-		displayOptions: {
-			show: {
-				operation: ['draw'],
-			},
-		},
-		description: 'The color of the primitive to draw',
-	},
-	{
-		displayName: 'Start Position X',
-		name: 'startPositionX',
-		type: 'number',
-		default: 50,
-		displayOptions: {
-			show: {
-				operation: ['draw'],
-				primitive: ['circle', 'line', 'rectangle'],
-			},
-		},
-		description: 'X (horizontal) start position of the primitive',
-	},
-	{
-		displayName: 'Start Position Y',
-		name: 'startPositionY',
-		type: 'number',
-		default: 50,
-		displayOptions: {
-			show: {
-				operation: ['draw'],
-				primitive: ['circle', 'line', 'rectangle'],
-			},
-		},
-		description: 'Y (horizontal) start position of the primitive',
-	},
-	{
-		displayName: 'End Position X',
-		name: 'endPositionX',
-		type: 'number',
-		default: 250,
-		displayOptions: {
-			show: {
-				operation: ['draw'],
-				primitive: ['circle', 'line', 'rectangle'],
-			},
-		},
-		description: 'X (horizontal) end position of the primitive',
-	},
-	{
-		displayName: 'End Position Y',
-		name: 'endPositionY',
-		type: 'number',
-		default: 250,
-		displayOptions: {
-			show: {
-				operation: ['draw'],
-				primitive: ['circle', 'line', 'rectangle'],
-			},
-		},
-		description: 'Y (horizontal) end position of the primitive',
-	},
-	{
-		displayName: 'Corner Radius',
-		name: 'cornerRadius',
-		type: 'number',
-		default: 0,
-		displayOptions: {
-			show: {
-				operation: ['draw'],
-				primitive: ['rectangle'],
-			},
-		},
-		description: 'The radius of the corner to create round corners',
-	},
-
-	// ----------------------------------
-	//         text
-	// ----------------------------------
-	{
-		displayName: 'Text',
-		name: 'text',
-		typeOptions: {
-			rows: 5,
-		},
-		type: 'string',
-		default: '',
-		placeholder: 'Text to render',
-		displayOptions: {
-			show: {
-				operation: ['text'],
-			},
-		},
-		description: 'Text to write on the image',
-	},
-	{
-		displayName: 'Font Size',
-		name: 'fontSize',
-		type: 'number',
-		default: 18,
-		displayOptions: {
-			show: {
-				operation: ['text'],
-			},
-		},
-		description: 'Size of the text',
-	},
-	{
-		displayName: 'Font Color',
-		name: 'fontColor',
-		type: 'color',
-		default: '#000000',
-		displayOptions: {
-			show: {
-				operation: ['text'],
-			},
-		},
-		description: 'Color of the text',
-	},
-	{
-		displayName: 'Position X',
-		name: 'positionX',
-		type: 'number',
-		default: 50,
-		displayOptions: {
-			show: {
-				operation: ['text'],
-			},
-		},
-		description: 'X (horizontal) position of the text',
-	},
-	{
-		displayName: 'Position Y',
-		name: 'positionY',
-		type: 'number',
-		default: 50,
-		displayOptions: {
-			show: {
-				operation: ['text'],
-			},
-		},
-		description: 'Y (vertical) position of the text',
-	},
-	{
-		displayName: 'Max Line Length',
-		name: 'lineLength',
-		type: 'number',
-		typeOptions: {
-			minValue: 1,
-		},
-		default: 80,
-		displayOptions: {
-			show: {
-				operation: ['text'],
-			},
-		},
-		description: 'Max amount of characters in a line before a line-break should get added',
-	},
-
-	// ----------------------------------
 	//         blur
 	// ----------------------------------
 	{
-		displayName: 'Blur',
-		name: 'blur',
-		type: 'number',
-		typeOptions: {
-			minValue: 0,
-			maxValue: 1000,
-		},
-		default: 5,
-		displayOptions: {
-			show: {
-				operation: ['blur'],
-			},
-		},
-		description: 'How strong the blur should be',
-	},
-	{
-		displayName: 'Sigma',
+		displayName: 'Blur Radius',
 		name: 'sigma',
 		type: 'number',
 		typeOptions: {
-			minValue: 0,
+			minValue: 1,
 			maxValue: 1000,
 		},
 		default: 2,
@@ -369,7 +170,7 @@ const nodeOperationOptions: INodeProperties[] = [
 				operation: ['blur'],
 			},
 		},
-		description: 'The sigma of the blur',
+		description: 'The radius of the blur',
 	},
 
 	// ----------------------------------
@@ -444,72 +245,12 @@ const nodeOperationOptions: INodeProperties[] = [
 				value: 'Add',
 			},
 			{
-				name: 'Atop',
-				value: 'Atop',
-			},
-			{
-				name: 'Bumpmap',
-				value: 'Bumpmap',
-			},
-			{
-				name: 'Copy',
-				value: 'Copy',
-			},
-			{
-				name: 'Copy Black',
-				value: 'CopyBlack',
-			},
-			{
-				name: 'Copy Blue',
-				value: 'CopyBlue',
-			},
-			{
-				name: 'Copy Cyan',
-				value: 'CopyCyan',
-			},
-			{
-				name: 'Copy Green',
-				value: 'CopyGreen',
-			},
-			{
-				name: 'Copy Magenta',
-				value: 'CopyMagenta',
-			},
-			{
-				name: 'Copy Opacity',
-				value: 'CopyOpacity',
-			},
-			{
-				name: 'Copy Red',
-				value: 'CopyRed',
-			},
-			{
-				name: 'Copy Yellow',
-				value: 'CopyYellow',
-			},
-			{
 				name: 'Difference',
 				value: 'Difference',
 			},
 			{
-				name: 'Divide',
-				value: 'Divide',
-			},
-			{
-				name: 'In',
-				value: 'In',
-			},
-			{
-				name: 'Minus',
-				value: 'Minus',
-			},
-			{
 				name: 'Multiply',
 				value: 'Multiply',
-			},
-			{
-				name: 'Out',
-				value: 'Out',
 			},
 			{
 				name: 'Over',
@@ -518,14 +259,6 @@ const nodeOperationOptions: INodeProperties[] = [
 			{
 				name: 'Plus',
 				value: 'Plus',
-			},
-			{
-				name: 'Subtract',
-				value: 'Subtract',
-			},
-			{
-				name: 'Xor',
-				value: 'Xor',
 			},
 		],
 		default: 'Over',
@@ -717,34 +450,6 @@ const nodeOperationOptions: INodeProperties[] = [
 	},
 
 	// ----------------------------------
-	//         shear
-	// ----------------------------------
-	{
-		displayName: 'Degrees X',
-		name: 'degreesX',
-		type: 'number',
-		default: 0,
-		displayOptions: {
-			show: {
-				operation: ['shear'],
-			},
-		},
-		description: 'X (horizontal) shear degrees',
-	},
-	{
-		displayName: 'Degrees Y',
-		name: 'degreesY',
-		type: 'number',
-		default: 0,
-		displayOptions: {
-			show: {
-				operation: ['shear'],
-			},
-		},
-		description: 'Y (vertical) shear degrees',
-	},
-
-	// ----------------------------------
 	//         transparent
 	// ----------------------------------
 	{
@@ -846,22 +551,6 @@ export class EditImage implements INodeType {
 								default: '',
 							},
 							...nodeOperationOptions,
-							{
-								displayName: 'Font Name or ID',
-								name: 'font',
-								type: 'options',
-								displayOptions: {
-									show: {
-										operation: ['text'],
-									},
-								},
-								typeOptions: {
-									loadOptionsMethod: 'getFonts',
-								},
-								default: '',
-								description:
-									'The font to use. Defaults to Arial. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-							},
 						],
 					},
 				],
@@ -896,22 +585,6 @@ export class EditImage implements INodeType {
 						description: 'File name to set in binary data',
 					},
 					{
-						displayName: 'Font Name or ID',
-						name: 'font',
-						type: 'options',
-						displayOptions: {
-							show: {
-								'/operation': ['text'],
-							},
-						},
-						typeOptions: {
-							loadOptionsMethod: 'getFonts',
-						},
-						default: '',
-						description:
-							'The font to use. Defaults to Arial. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-					},
-					{
 						displayName: 'Format',
 						name: 'format',
 						type: 'options',
@@ -935,10 +608,6 @@ export class EditImage implements INodeType {
 							{
 								name: 'tiff',
 								value: 'tiff',
-							},
-							{
-								name: 'WebP',
-								value: 'webp',
 							},
 						],
 						default: 'jpeg',
@@ -965,39 +634,6 @@ export class EditImage implements INodeType {
 		],
 	};
 
-	methods = {
-		loadOptions: {
-			async getFonts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const files = await getSystemFonts();
-				const returnData: INodePropertyOptions[] = [];
-
-				files.forEach((entry: string) => {
-					const pathParts = pathParse(entry);
-					if (!pathParts.ext) {
-						return;
-					}
-
-					returnData.push({
-						name: pathParts.name,
-						value: entry,
-					});
-				});
-
-				returnData.sort((a, b) => {
-					if (a.name < b.name) {
-						return -1;
-					}
-					if (a.name > b.name) {
-						return 1;
-					}
-					return 0;
-				});
-
-				return returnData;
-			},
-		},
-	};
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
@@ -1021,44 +657,27 @@ export class EditImage implements INodeType {
 					binaryPropertyName = typeof dataPropertyName === 'string' ? dataPropertyName : 'data';
 				}
 
-				const cleanupFunctions: Array<() => void> = [];
-
-				let gmInstance: gm.State;
-
 				const requiredOperationParameters: {
 					[key: string]: string[];
 				} = {
-					blur: ['blur', 'sigma'],
+					blur: ['sigma'],
 					border: ['borderColor', 'borderWidth', 'borderHeight'],
 					create: ['backgroundColor', 'height', 'width'],
 					crop: ['height', 'positionX', 'positionY', 'width'],
 					composite: ['dataPropertyNameComposite', 'operator', 'positionX', 'positionY'],
-					draw: [
-						'color',
-						'cornerRadius',
-						'endPositionX',
-						'endPositionY',
-						'primitive',
-						'startPositionX',
-						'startPositionY',
-					],
 					information: [],
 					resize: ['height', 'resizeOption', 'width'],
 					rotate: ['backgroundColor', 'rotate'],
-					shear: ['degreesX', 'degreesY'],
-					text: ['font', 'fontColor', 'fontSize', 'lineLength', 'positionX', 'positionY', 'text'],
 					transparent: ['color'],
 				};
 
 				let operations: IDataObject[] = [];
 				if (operation === 'multiStep') {
-					// Operation parameters are already in the correct format
 					const operationsData = this.getNodeParameter('operations', itemIndex, {
 						operations: [],
 					}) as IDataObject;
 					operations = operationsData.operations as IDataObject[];
 				} else {
-					// Operation parameters have to first get collected
 					const operationParameters: IDataObject = {};
 					requiredOperationParameters[operation].forEach((parameterName) => {
 						try {
@@ -1074,15 +693,13 @@ export class EditImage implements INodeType {
 					];
 				}
 
+				type JimpImage = Awaited<ReturnType<typeof Jimp.fromBuffer>>;
+				let image: JimpImage | undefined;
+
 				if (operations[0].operation !== 'create') {
-					// "create" generates a new image so does not require any incoming data.
 					this.helpers.assertBinaryData(itemIndex, dataPropertyName);
-					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-						itemIndex,
-						dataPropertyName,
-					);
-					gmInstance = gm(binaryDataBuffer);
-					gmInstance = gmInstance.background('transparent');
+					const imageBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, dataPropertyName);
+					image = await Jimp.fromBuffer(imageBuffer);
 				}
 
 				const newItem: INodeExecutionData = {
@@ -1094,197 +711,112 @@ export class EditImage implements INodeType {
 				};
 
 				if (operation === 'information') {
-					// Just return the information
-					const imageData = await new Promise<IDataObject>((resolve, reject) => {
-						gmInstance = gmInstance.identify((error, data) => {
-							if (error) {
-								reject(error);
-								return;
-							}
-							resolve(data as unknown as IDataObject);
-						});
-					});
-
-					newItem.json = imageData;
+					const format = image!.mime?.split('/')[1] || 'unknown';
+					newItem.json = {
+						width: image!.width,
+						height: image!.height,
+						format,
+					} as unknown as IDataObject;
 				}
 
 				for (let i = 0; i < operations.length; i++) {
 					const operationData = operations[i];
 					if (operationData.operation === 'blur') {
-						gmInstance = gmInstance!.blur(
-							operationData.blur as number,
-							operationData.sigma as number,
-						);
+						const radius = Math.round(operationData.sigma as number) || 1;
+						image!.blur(radius);
 					} else if (operationData.operation === 'border') {
-						gmInstance = gmInstance!
-							.borderColor(operationData.borderColor as string)
-							.border(operationData.borderWidth as number, operationData.borderHeight as number);
+						const bw = operationData.borderWidth as number;
+						const bh = operationData.borderHeight as number;
+						const bc = cssColorToInt(operationData.borderColor as string);
+						const bordered = new Jimp({
+							width: image!.width + bw * 2,
+							height: image!.height + bh * 2,
+							color: bc,
+						}) as unknown as JimpImage;
+						bordered.composite(image!, bw, bh);
+						image = bordered;
 					} else if (operationData.operation === 'composite') {
-						const positionX = operationData.positionX as number;
-						const positionY = operationData.positionY as number;
-						const operator = operationData.operator as string;
-
-						const geometryString =
-							(positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
-
-						const binaryPropertyName = operationData.dataPropertyNameComposite as string;
-						this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
-						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+						const compositePropertyName = operationData.dataPropertyNameComposite as string;
+						this.helpers.assertBinaryData(itemIndex, compositePropertyName);
+						const compositeBuffer = await this.helpers.getBinaryDataBuffer(
 							itemIndex,
-							binaryPropertyName,
+							compositePropertyName,
 						);
+						const overlay = await Jimp.fromBuffer(compositeBuffer);
 
-						const { path, cleanup } = await file();
-						cleanupFunctions.push(cleanup);
-						await fsWriteFile(path, binaryDataBuffer);
+						const blendMode =
+							(COMPOSITE_BLEND_MAP[operationData.operator as string] as BlendMode) ||
+							BlendMode.SRC_OVER;
 
-						if (operations[0].operation === 'create') {
-							// It seems like if the image gets created newly we have to create a new gm instance
-							// else it fails for some reason
-							gmInstance = gm(gmInstance!.stream('png'))
-								.compose(operator)
-								.geometry(geometryString)
-								.composite(path);
-						} else {
-							gmInstance = gmInstance!.compose(operator).geometry(geometryString).composite(path);
-						}
-
-						if (operations.length !== i + 1) {
-							// If there are other operations after the current one create a new gm instance
-							// because else things do get messed up
-							gmInstance = gm(gmInstance.stream());
-						}
+						image!.composite(
+							overlay,
+							operationData.positionX as number,
+							operationData.positionY as number,
+							{ mode: blendMode },
+						);
 					} else if (operationData.operation === 'create') {
-						gmInstance = gm(
-							operationData.width as number,
-							operationData.height as number,
-							operationData.backgroundColor as string,
-						);
+						const bc = cssColorToInt(operationData.backgroundColor as string);
+						image = new Jimp({
+							width: operationData.width as number,
+							height: operationData.height as number,
+							color: bc,
+						}) as unknown as JimpImage;
 						if (!options.format) {
 							options.format = 'png';
 						}
 					} else if (operationData.operation === 'crop') {
-						gmInstance = gmInstance!.crop(
-							operationData.width as number,
-							operationData.height as number,
-							operationData.positionX as number,
-							operationData.positionY as number,
-						);
-					} else if (operationData.operation === 'draw') {
-						gmInstance = gmInstance!.fill(operationData.color as string);
-
-						if (operationData.primitive === 'line') {
-							gmInstance = gmInstance.drawLine(
-								operationData.startPositionX as number,
-								operationData.startPositionY as number,
-								operationData.endPositionX as number,
-								operationData.endPositionY as number,
-							);
-						} else if (operationData.primitive === 'circle') {
-							gmInstance = gmInstance.drawCircle(
-								operationData.startPositionX as number,
-								operationData.startPositionY as number,
-								operationData.endPositionX as number,
-								operationData.endPositionY as number,
-							);
-						} else if (operationData.primitive === 'rectangle') {
-							gmInstance = gmInstance.drawRectangle(
-								operationData.startPositionX as number,
-								operationData.startPositionY as number,
-								operationData.endPositionX as number,
-								operationData.endPositionY as number,
-								(operationData.cornerRadius as number) || undefined,
-							);
-						}
+						image!.crop({
+							x: operationData.positionX as number,
+							y: operationData.positionY as number,
+							w: operationData.width as number,
+							h: operationData.height as number,
+						});
 					} else if (operationData.operation === 'resize') {
 						const resizeOption = operationData.resizeOption as string;
+						const width = operationData.width as number;
+						const height = operationData.height as number;
 
-						// By default use "maximumArea"
-						let option: gm.ResizeOption = '@';
-						if (resizeOption === 'ignoreAspectRatio') {
-							option = '!';
-						} else if (resizeOption === 'minimumArea') {
-							option = '^';
+						if (resizeOption === 'percent') {
+							const newWidth = Math.round((image!.width * width) / 100);
+							const newHeight = Math.round((image!.height * height) / 100);
+							image!.resize({ w: newWidth, h: newHeight });
 						} else if (resizeOption === 'onlyIfSmaller') {
-							option = '<';
+							if (image!.width < width || image!.height < height) {
+								image!.scaleToFit({ w: width, h: height });
+							}
+						} else if (resizeOption === 'ignoreAspectRatio') {
+							image!.resize({ w: width, h: height });
+						} else if (resizeOption === 'minimumArea') {
+							image!.cover({ w: width, h: height });
 						} else if (resizeOption === 'onlyIfLarger') {
-							option = '>';
-						} else if (resizeOption === 'percent') {
-							option = '%';
+							if (image!.width > width || image!.height > height) {
+								image!.scaleToFit({ w: width, h: height });
+							}
+						} else {
+							// maximumArea (default)
+							image!.scaleToFit({ w: width, h: height });
 						}
-
-						gmInstance = gmInstance!.resize(
-							operationData.width as number,
-							operationData.height as number,
-							option,
-						);
 					} else if (operationData.operation === 'rotate') {
-						gmInstance = gmInstance!.rotate(
-							operationData.backgroundColor as string,
-							operationData.rotate as number,
-						);
-					} else if (operationData.operation === 'shear') {
-						gmInstance = gmInstance!.shear(
-							operationData.degreesX as number,
-							operationData.degreesY as number,
-						);
-					} else if (operationData.operation === 'text') {
-						// Split the text in multiple lines
-						const lines: string[] = [];
-						let currentLine = '';
-						(operationData.text as string).split('\n').forEach((textLine: string) => {
-							textLine.split(' ').forEach((textPart: string) => {
-								if (
-									currentLine.length + textPart.length + 1 >
-									(operationData.lineLength as number)
-								) {
-									lines.push(currentLine.trim());
-									currentLine = `${textPart} `;
-									return;
-								}
-								currentLine += `${textPart} `;
-							});
-
-							lines.push(currentLine.trim());
-							currentLine = '';
-						});
-
-						// Combine the lines to a single string
-						const renderText = lines.join('\n');
-
-						let font = (options.font || operationData.font) as string | undefined;
-						if (!font) {
-							const fonts = await getSystemFonts();
-							font = fonts.find((_font) => _font.includes('Arial.'));
-						}
-
-						if (!font) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Default font not found. Select a font from the options.',
-							);
-						}
-
-						gmInstance = gmInstance!
-							.fill(operationData.fontColor as string)
-							.fontSize(operationData.fontSize as number)
-							.font(font)
-							.drawText(
-								operationData.positionX as number,
-								operationData.positionY as number,
-								renderText,
-							);
+						image!.background = cssColorToInt(operationData.backgroundColor as string);
+						image!.rotate(operationData.rotate as number);
 					} else if (operationData.operation === 'transparent') {
-						gmInstance = gmInstance!.transparent(operationData.color as string);
+						const targetColor = operationData.color as string;
+						const hex = targetColor.replace('#', '');
+						const targetR = parseInt(hex.slice(0, 2), 16);
+						const targetG = parseInt(hex.slice(2, 4), 16);
+						const targetB = parseInt(hex.slice(4, 6), 16);
+
+						const data = image!.bitmap.data;
+						for (let px = 0; px < data.length; px += 4) {
+							if (data[px] === targetR && data[px + 1] === targetG && data[px + 2] === targetB) {
+								data[px + 3] = 0;
+							}
+						}
 					}
 				}
 
 				if (item.binary !== undefined && newItem.binary) {
-					// Create a shallow copy of the binary data so that the old
-					// data references which do not get changed still stay behind
-					// but the incoming data does not get changed.
 					Object.assign(newItem.binary, item.binary);
-					// Make a deep copy of the binary data we change
 					if (newItem.binary[binaryPropertyName]) {
 						newItem.binary[binaryPropertyName] = deepCopy(newItem.binary[binaryPropertyName]);
 					}
@@ -1297,14 +829,12 @@ export class EditImage implements INodeType {
 					};
 				}
 
-				if (options.quality !== undefined) {
-					gmInstance = gmInstance!.quality(options.quality as number);
-				}
-
+				// Determine output MIME type
+				let outputMime = image!.mime || 'image/png';
 				if (options.format !== undefined) {
-					gmInstance = gmInstance!.setFormat(options.format as string);
+					outputMime = MIME_MAP[options.format] || 'image/png';
 					newItem.binary![binaryPropertyName].fileExtension = options.format as string;
-					newItem.binary![binaryPropertyName].mimeType = `image/${options.format}`;
+					newItem.binary![binaryPropertyName].mimeType = outputMime;
 					const fileName = newItem.binary![binaryPropertyName].fileName;
 					if (fileName?.includes('.')) {
 						newItem.binary![binaryPropertyName].fileName =
@@ -1312,29 +842,23 @@ export class EditImage implements INodeType {
 					}
 				}
 
+				const getBufferOptions: Record<string, unknown> = {};
+				if (options.quality !== undefined) {
+					getBufferOptions.quality = options.quality;
+				}
+				const imageBuffer = await image!.getBuffer(outputMime as 'image/png', getBufferOptions);
+
 				if (options.fileName !== undefined) {
 					newItem.binary![binaryPropertyName].fileName = options.fileName as string;
 				}
 
-				returnData.push(
-					await new Promise<INodeExecutionData>((resolve, reject) => {
-						gmInstance.toBuffer(async (error: Error | null, buffer: Buffer) => {
-							cleanupFunctions.forEach(async (cleanup) => cleanup());
+				const binaryData = await this.helpers.prepareBinaryData(imageBuffer);
+				newItem.binary![binaryPropertyName] = {
+					...newItem.binary![binaryPropertyName],
+					...binaryData,
+				};
 
-							if (error) {
-								return reject(error);
-							}
-
-							const binaryData = await this.helpers.prepareBinaryData(Buffer.from(buffer));
-							newItem.binary![binaryPropertyName] = {
-								...newItem.binary![binaryPropertyName],
-								...binaryData,
-							};
-
-							return resolve(newItem);
-						});
-					}),
-				);
+				returnData.push(newItem);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({

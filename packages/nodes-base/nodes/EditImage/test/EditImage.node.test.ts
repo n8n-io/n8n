@@ -11,84 +11,62 @@ const createTestBuffer = () =>
 		0x42, 0x60, 0x82,
 	]);
 
-const mockGmInstance: any = {
-	background: jest.fn(function (this: any) {
-		return this;
-	}),
-	blur: jest.fn(function (this: any) {
-		return this;
-	}),
-	borderColor: jest.fn(function (this: any) {
-		return this;
-	}),
-	border: jest.fn(function (this: any) {
-		return this;
-	}),
-	compose: jest.fn(function (this: any) {
-		return this;
-	}),
-	geometry: jest.fn(function (this: any) {
-		return this;
-	}),
-	composite: jest.fn(function (this: any) {
-		return this;
-	}),
-	crop: jest.fn(function (this: any) {
-		return this;
-	}),
-	drawCircle: jest.fn(function (this: any) {
-		return this;
-	}),
-	drawLine: jest.fn(function (this: any) {
-		return this;
-	}),
-	drawRectangle: jest.fn(function (this: any) {
-		return this;
-	}),
-	fill: jest.fn(function (this: any) {
-		return this;
-	}),
-	font: jest.fn(function (this: any) {
-		return this;
-	}),
-	fontSize: jest.fn(function (this: any) {
-		return this;
-	}),
-	drawText: jest.fn(function (this: any) {
-		return this;
-	}),
-	identify: jest.fn(function (this: any, callback: any) {
-		callback(null, { width: 100, height: 100, format: 'PNG' });
-		return this;
-	}),
-	quality: jest.fn(function (this: any) {
-		return this;
-	}),
-	resize: jest.fn(function (this: any) {
-		return this;
-	}),
-	rotate: jest.fn(function (this: any) {
-		return this;
-	}),
-	setFormat: jest.fn(function (this: any) {
-		return this;
-	}),
-	shear: jest.fn(function (this: any) {
-		return this;
-	}),
-	stream: jest.fn(function (this: any) {
-		return this;
-	}),
-	transparent: jest.fn(function (this: any) {
-		return this;
-	}),
-	toBuffer: jest.fn(function (this: any, callback: any) {
-		callback(null, createTestBuffer());
-		return this;
-	}),
-};
+interface MockJimpInstance {
+	blur: jest.Mock;
+	composite: jest.Mock;
+	crop: jest.Mock;
+	resize: jest.Mock;
+	scaleToFit: jest.Mock;
+	cover: jest.Mock;
+	rotate: jest.Mock;
+	getBuffer: jest.Mock;
+	background: number;
+	width: number;
+	height: number;
+	mime: string;
+	bitmap: { data: Buffer };
+}
 
-jest.mock('gm', () => jest.fn(() => mockGmInstance));
+let mockJimpInstance: MockJimpInstance;
+
+function resetJimpMock() {
+	mockJimpInstance = {
+		blur: jest.fn(),
+		composite: jest.fn(),
+		crop: jest.fn(),
+		resize: jest.fn(),
+		scaleToFit: jest.fn(),
+		cover: jest.fn(),
+		rotate: jest.fn(),
+		getBuffer: jest.fn(async () => createTestBuffer()),
+		background: 0,
+		width: 100,
+		height: 100,
+		mime: 'image/png',
+		bitmap: { data: Buffer.alloc(40000, 0xff) },
+	};
+}
+
+// Initialize before jest.mock hoisting
+resetJimpMock();
+
+jest.mock('jimp', () => ({
+	Jimp: Object.assign(
+		jest.fn(() => mockJimpInstance),
+		{
+			fromBuffer: jest.fn(async () => mockJimpInstance),
+		},
+	),
+	BlendMode: {
+		ADD: 'ADD',
+		DIFFERENCE: 'DIFFERENCE',
+		MULTIPLY: 'MULTIPLY',
+		SRC_OVER: 'SRC_OVER',
+	},
+	rgbaToInt: jest.fn(
+		(r: number, g: number, b: number, a: number) => ((r << 24) | (g << 16) | (b << 8) | a) >>> 0,
+	),
+}));
 
 describe('EditImage Node', () => {
 	let editImageNode: EditImage;
@@ -97,6 +75,7 @@ describe('EditImage Node', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		resetJimpMock();
 		editImageNode = new EditImage();
 		mockNode = {
 			id: 'test-node-id',
@@ -795,52 +774,6 @@ describe('EditImage Node', () => {
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
 		});
 
-		it('should handle text operation with IBinaryData', async () => {
-			const testBuffer = createTestBuffer();
-			const binaryData = {
-				data: testBuffer.toString('base64'),
-				mimeType: 'image/png',
-				fileExtension: 'png',
-				fileName: 'test.png',
-			};
-			const items: INodeExecutionData[] = [
-				{
-					json: {},
-					binary: {
-						data: binaryData,
-					},
-				},
-			];
-
-			mockExecuteFunctions.getInputData.mockReturnValue(items);
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				if (paramName === 'operation') return 'text';
-				if (paramName === 'dataPropertyName') return binaryData;
-				if (paramName === 'text') return 'Hello';
-				if (paramName === 'fontSize') return 18;
-				if (paramName === 'fontColor') return '#000000';
-				if (paramName === 'positionX') return 10;
-				if (paramName === 'positionY') return 10;
-				if (paramName === 'lineLength') return 80;
-				if (paramName === 'options') return { font: 'Arial' };
-				return {};
-			});
-
-			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
-			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
-				data: testBuffer.toString('base64'),
-				mimeType: 'image/png',
-				fileExtension: 'png',
-				fileName: 'test.png',
-			});
-
-			const result = await editImageNode.execute.call(mockExecuteFunctions);
-
-			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].binary).toHaveProperty('data');
-			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
-		});
-
 		it('should use destinationKey with IBinaryData', async () => {
 			const testBuffer = createTestBuffer();
 			const binaryData = {
@@ -994,94 +927,6 @@ describe('EditImage Node', () => {
 				if (paramName === 'borderColor') return '#000000';
 				if (paramName === 'borderWidth') return 10;
 				if (paramName === 'borderHeight') return 10;
-				if (paramName === 'options') return {};
-				return {};
-			});
-
-			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
-			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
-				data: testBuffer.toString('base64'),
-				mimeType: 'image/png',
-				fileExtension: 'png',
-			});
-
-			const result = await editImageNode.execute.call(mockExecuteFunctions);
-
-			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].binary).toHaveProperty('data');
-			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
-		});
-
-		it('should handle draw operation with string dataPropertyName', async () => {
-			const testBuffer = createTestBuffer();
-			const items: INodeExecutionData[] = [
-				{
-					json: {},
-					binary: {
-						imageFile: {
-							data: testBuffer.toString('base64'),
-							mimeType: 'image/png',
-							fileExtension: 'png',
-							fileName: 'test.png',
-						},
-					},
-				},
-			];
-
-			mockExecuteFunctions.getInputData.mockReturnValue(items);
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				if (paramName === 'operation') return 'draw';
-				if (paramName === 'dataPropertyName') return 'imageFile';
-				if (paramName === 'primitive') return 'rectangle';
-				if (paramName === 'color') return '#ff0000';
-				if (paramName === 'startPositionX') return 10;
-				if (paramName === 'startPositionY') return 10;
-				if (paramName === 'endPositionX') return 100;
-				if (paramName === 'endPositionY') return 100;
-				if (paramName === 'cornerRadius') return 5;
-				if (paramName === 'options') return {};
-				return {};
-			});
-
-			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
-			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
-				data: testBuffer.toString('base64'),
-				mimeType: 'image/png',
-				fileExtension: 'png',
-			});
-
-			const result = await editImageNode.execute.call(mockExecuteFunctions);
-
-			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].binary).toHaveProperty('imageFile');
-			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, 'imageFile');
-		});
-
-		it('should handle draw operation with IBinaryData dataPropertyName', async () => {
-			const testBuffer = createTestBuffer();
-			const binaryData = {
-				data: testBuffer.toString('base64'),
-				mimeType: 'image/png',
-				fileExtension: 'png',
-				fileName: 'test.png',
-			};
-			const items: INodeExecutionData[] = [
-				{
-					json: {},
-					binary: { data: binaryData },
-				},
-			];
-
-			mockExecuteFunctions.getInputData.mockReturnValue(items);
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				if (paramName === 'operation') return 'draw';
-				if (paramName === 'dataPropertyName') return binaryData;
-				if (paramName === 'primitive') return 'circle';
-				if (paramName === 'color') return '#0000ff';
-				if (paramName === 'startPositionX') return 50;
-				if (paramName === 'startPositionY') return 50;
-				if (paramName === 'endPositionX') return 75;
-				if (paramName === 'endPositionY') return 75;
 				if (paramName === 'options') return {};
 				return {};
 			});
@@ -1260,85 +1105,6 @@ describe('EditImage Node', () => {
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
 		});
 
-		it('should handle shear operation with string dataPropertyName', async () => {
-			const testBuffer = createTestBuffer();
-			const items: INodeExecutionData[] = [
-				{
-					json: {},
-					binary: {
-						myImage: {
-							data: testBuffer.toString('base64'),
-							mimeType: 'image/png',
-							fileExtension: 'png',
-							fileName: 'test.png',
-						},
-					},
-				},
-			];
-
-			mockExecuteFunctions.getInputData.mockReturnValue(items);
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				if (paramName === 'operation') return 'shear';
-				if (paramName === 'dataPropertyName') return 'myImage';
-				if (paramName === 'degreesX') return 20;
-				if (paramName === 'degreesY') return 10;
-				if (paramName === 'options') return {};
-				return {};
-			});
-
-			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
-			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
-				data: testBuffer.toString('base64'),
-				mimeType: 'image/png',
-				fileExtension: 'png',
-			});
-
-			const result = await editImageNode.execute.call(mockExecuteFunctions);
-
-			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].binary).toHaveProperty('myImage');
-			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, 'myImage');
-		});
-
-		it('should handle shear operation with IBinaryData dataPropertyName', async () => {
-			const testBuffer = createTestBuffer();
-			const binaryData = {
-				data: testBuffer.toString('base64'),
-				mimeType: 'image/png',
-				fileExtension: 'png',
-				fileName: 'test.png',
-			};
-			const items: INodeExecutionData[] = [
-				{
-					json: {},
-					binary: { data: binaryData },
-				},
-			];
-
-			mockExecuteFunctions.getInputData.mockReturnValue(items);
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				if (paramName === 'operation') return 'shear';
-				if (paramName === 'dataPropertyName') return binaryData;
-				if (paramName === 'degreesX') return 15;
-				if (paramName === 'degreesY') return 5;
-				if (paramName === 'options') return {};
-				return {};
-			});
-
-			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
-			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
-				data: testBuffer.toString('base64'),
-				mimeType: 'image/png',
-				fileExtension: 'png',
-			});
-
-			const result = await editImageNode.execute.call(mockExecuteFunctions);
-
-			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].binary).toHaveProperty('data');
-			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
-		});
-
 		it('should handle transparent operation with string dataPropertyName', async () => {
 			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [
@@ -1469,6 +1235,343 @@ describe('EditImage Node', () => {
 
 			expect(result[0]).toHaveLength(1);
 			expect(result[0][0].binary).toHaveProperty('data');
+		});
+	});
+
+	describe('Jimp API calls', () => {
+		it('should call image.blur for blur operation', async () => {
+			const testBuffer = createTestBuffer();
+			const items: INodeExecutionData[] = [
+				{
+					json: {},
+					binary: {
+						data: {
+							data: testBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'test.png',
+						},
+					},
+				},
+			];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'blur';
+				if (paramName === 'dataPropertyName') return 'data';
+				if (paramName === 'blur') return 5;
+				if (paramName === 'sigma') return 3;
+				if (paramName === 'options') return {};
+				return {};
+			});
+
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
+			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: testBuffer.toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+			});
+
+			await editImageNode.execute.call(mockExecuteFunctions);
+
+			expect(mockJimpInstance.blur).toHaveBeenCalledWith(3);
+		});
+
+		it('should create bordered image for border operation', async () => {
+			const { Jimp } = jest.requireMock('jimp');
+			const testBuffer = createTestBuffer();
+			const items: INodeExecutionData[] = [
+				{
+					json: {},
+					binary: {
+						data: {
+							data: testBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'test.png',
+						},
+					},
+				},
+			];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'border';
+				if (paramName === 'dataPropertyName') return 'data';
+				if (paramName === 'borderColor') return '#ff0000';
+				if (paramName === 'borderWidth') return 5;
+				if (paramName === 'borderHeight') return 10;
+				if (paramName === 'options') return {};
+				return {};
+			});
+
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
+			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: testBuffer.toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+			});
+
+			await editImageNode.execute.call(mockExecuteFunctions);
+
+			// Jimp constructor called for bordered canvas (original 100x100 + border 5w/10h)
+			expect(Jimp).toHaveBeenCalledWith({
+				width: 110,
+				height: 120,
+				color: expect.any(Number),
+			});
+			// Original image composited onto bordered canvas at offset
+			expect(mockJimpInstance.composite).toHaveBeenCalledWith(mockJimpInstance, 5, 10);
+		});
+
+		it('should call image.crop for crop operation', async () => {
+			const testBuffer = createTestBuffer();
+			const items: INodeExecutionData[] = [
+				{
+					json: {},
+					binary: {
+						data: {
+							data: testBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'test.png',
+						},
+					},
+				},
+			];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'crop';
+				if (paramName === 'dataPropertyName') return 'data';
+				if (paramName === 'width') return 50;
+				if (paramName === 'height') return 50;
+				if (paramName === 'positionX') return 10;
+				if (paramName === 'positionY') return 20;
+				if (paramName === 'options') return {};
+				return {};
+			});
+
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
+			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: testBuffer.toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+			});
+
+			await editImageNode.execute.call(mockExecuteFunctions);
+
+			expect(mockJimpInstance.crop).toHaveBeenCalledWith({
+				x: 10,
+				y: 20,
+				w: 50,
+				h: 50,
+			});
+		});
+
+		it('should call image.rotate for rotate operation', async () => {
+			const testBuffer = createTestBuffer();
+			const items: INodeExecutionData[] = [
+				{
+					json: {},
+					binary: {
+						data: {
+							data: testBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'test.png',
+						},
+					},
+				},
+			];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'rotate';
+				if (paramName === 'dataPropertyName') return 'data';
+				if (paramName === 'rotate') return 45;
+				if (paramName === 'backgroundColor') return '#00ff00';
+				if (paramName === 'options') return {};
+				return {};
+			});
+
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
+			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: testBuffer.toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+			});
+
+			await editImageNode.execute.call(mockExecuteFunctions);
+
+			// cssColorToInt('#00ff00') → rgbaToInt(0, 255, 0, 255) → 0x00FF00FF
+			expect(mockJimpInstance.background).toBe(0x00ff00ff);
+			expect(mockJimpInstance.rotate).toHaveBeenCalledWith(45);
+		});
+
+		it('should call image.composite for composite operation', async () => {
+			const testBuffer = createTestBuffer();
+			const items: INodeExecutionData[] = [
+				{
+					json: {},
+					binary: {
+						data: {
+							data: testBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'test.png',
+						},
+						overlay: {
+							data: testBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'overlay.png',
+						},
+					},
+				},
+			];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'composite';
+				if (paramName === 'dataPropertyName') return 'data';
+				if (paramName === 'dataPropertyNameComposite') return 'overlay';
+				if (paramName === 'operator') return 'Multiply';
+				if (paramName === 'positionX') return 5;
+				if (paramName === 'positionY') return 10;
+				if (paramName === 'options') return {};
+				return {};
+			});
+
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
+			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: testBuffer.toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+			});
+
+			await editImageNode.execute.call(mockExecuteFunctions);
+
+			expect(mockJimpInstance.composite).toHaveBeenCalledWith(mockJimpInstance, 5, 10, {
+				mode: 'MULTIPLY',
+			});
+		});
+
+		it('should call image.resize for ignoreAspectRatio resize', async () => {
+			const testBuffer = createTestBuffer();
+			const items: INodeExecutionData[] = [
+				{
+					json: {},
+					binary: {
+						data: {
+							data: testBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'test.png',
+						},
+					},
+				},
+			];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'resize';
+				if (paramName === 'dataPropertyName') return 'data';
+				if (paramName === 'width') return 200;
+				if (paramName === 'height') return 150;
+				if (paramName === 'resizeOption') return 'ignoreAspectRatio';
+				if (paramName === 'options') return {};
+				return {};
+			});
+
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
+			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: testBuffer.toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+			});
+
+			await editImageNode.execute.call(mockExecuteFunctions);
+
+			expect(mockJimpInstance.resize).toHaveBeenCalledWith({ w: 200, h: 150 });
+		});
+
+		it('should call image.scaleToFit for maximumArea resize', async () => {
+			const testBuffer = createTestBuffer();
+			const items: INodeExecutionData[] = [
+				{
+					json: {},
+					binary: {
+						data: {
+							data: testBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'test.png',
+						},
+					},
+				},
+			];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'resize';
+				if (paramName === 'dataPropertyName') return 'data';
+				if (paramName === 'width') return 200;
+				if (paramName === 'height') return 200;
+				if (paramName === 'resizeOption') return 'maximumArea';
+				if (paramName === 'options') return {};
+				return {};
+			});
+
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
+			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: testBuffer.toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+			});
+
+			await editImageNode.execute.call(mockExecuteFunctions);
+
+			expect(mockJimpInstance.scaleToFit).toHaveBeenCalledWith({ w: 200, h: 200 });
+		});
+
+		it('should call image.cover for minimumArea resize', async () => {
+			const testBuffer = createTestBuffer();
+			const items: INodeExecutionData[] = [
+				{
+					json: {},
+					binary: {
+						data: {
+							data: testBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'test.png',
+						},
+					},
+				},
+			];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'resize';
+				if (paramName === 'dataPropertyName') return 'data';
+				if (paramName === 'width') return 200;
+				if (paramName === 'height') return 200;
+				if (paramName === 'resizeOption') return 'minimumArea';
+				if (paramName === 'options') return {};
+				return {};
+			});
+
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
+			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: testBuffer.toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+			});
+
+			await editImageNode.execute.call(mockExecuteFunctions);
+
+			expect(mockJimpInstance.cover).toHaveBeenCalledWith({ w: 200, h: 200 });
 		});
 	});
 });
