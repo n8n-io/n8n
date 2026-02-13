@@ -295,12 +295,15 @@ export class SecretsProvidersConnectionsService {
 		projectId: string,
 	): Promise<ReloadSecretProviderConnectionResponse> {
 		const projectConnections = await this.repository.findByProjectId(projectId);
-		const results = await Promise.allSettled(
+		const providers: Record<string, { success: boolean }> = {};
+
+		await Promise.allSettled(
 			projectConnections.map(async (c) => {
 				try {
 					await this.externalSecretsManager.updateProvider(c.providerKey);
+					providers[c.providerKey] = { success: true };
 				} catch (error) {
-					// Individual provider reload failures are caught so that other providers still reload
+					providers[c.providerKey] = { success: false };
 					this.logger.warn(`Failed to reload provider ${c.providerKey}`, {
 						projectId,
 						providerKey: c.providerKey,
@@ -308,8 +311,12 @@ export class SecretsProvidersConnectionsService {
 				}
 			}),
 		);
-		const allSucceeded = results.every((r) => r.status === 'fulfilled');
-		return reloadSecretProviderConnectionResponseSchema.parse({ success: allSucceeded });
+
+		const allSucceeded = Object.values(providers).every((p) => p.success);
+		return reloadSecretProviderConnectionResponseSchema.parse({
+			success: allSucceeded,
+			providers,
+		});
 	}
 
 	private encryptConnectionSettings(settings: IDataObject): string {

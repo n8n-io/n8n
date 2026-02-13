@@ -394,7 +394,14 @@ describe('SecretsProvidersConnectionsService', () => {
 
 			const result = await service.reloadProjectConnectionSecrets('project-1');
 
-			expect(result).toEqual({ success: true });
+			expect(result).toEqual({
+				success: true,
+				providers: {
+					'conn-1': { success: true },
+					'conn-2': { success: true },
+					'conn-3': { success: true },
+				},
+			});
 			expect(mockRepository.findByProjectId).toHaveBeenCalledWith('project-1');
 			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledTimes(3);
 			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledWith('conn-1');
@@ -407,7 +414,7 @@ describe('SecretsProvidersConnectionsService', () => {
 
 			const result = await service.reloadProjectConnectionSecrets('empty-project');
 
-			expect(result).toEqual({ success: true });
+			expect(result).toEqual({ success: true, providers: {} });
 			expect(mockExternalSecretsManager.updateProvider).not.toHaveBeenCalled();
 		});
 
@@ -424,7 +431,13 @@ describe('SecretsProvidersConnectionsService', () => {
 
 			const result = await service.reloadProjectConnectionSecrets('project-1');
 
-			expect(result).toEqual({ success: true });
+			expect(result).toEqual({
+				success: false,
+				providers: {
+					'ok-conn': { success: true },
+					'failing-conn': { success: false },
+				},
+			});
 			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledTimes(2);
 			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledWith('ok-conn');
 			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledWith('failing-conn');
