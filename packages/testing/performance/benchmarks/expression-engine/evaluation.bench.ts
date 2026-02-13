@@ -8,8 +8,8 @@
  *
  * Run: pnpm --filter=@n8n/performance bench
  */
-import { bench, describe } from 'vitest';
-import { Workflow } from 'n8n-workflow';
+import { bench, describe, beforeAll } from 'vitest';
+import { Expression, Workflow } from 'n8n-workflow';
 import type { INodeTypes, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 // Minimal node types implementation for workflow instantiation
@@ -104,6 +104,12 @@ const largeData = [
 
 const evaluate = (expr: string, data: typeof smallData | typeof largeData) =>
 	workflow.expression.getParameterValue(expr, null, 0, 0, 'node', data, 'manual', {});
+
+beforeAll(async () => {
+	if (process.env.N8N_EXPRESSION_ENGINE === 'vm') {
+		await Expression.initializeVmEvaluator();
+	}
+});
 
 describe('Hot Path', () => {
 	// Baseline: simplest possible expression
