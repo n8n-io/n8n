@@ -7,6 +7,7 @@ import type {
 import { mock } from 'jest-mock-extended';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import type { EventService } from '@/events/event.service';
 import type { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import type { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 import { SecretsProvidersConnectionsService } from '@/modules/external-secrets.ee/secrets-providers-connections.service.ee';
@@ -17,6 +18,7 @@ describe('SecretsProvidersConnectionsService', () => {
 	const mockProjectAccessRepository = mock<ProjectSecretsProviderAccessRepository>();
 	const mockExternalSecretsManager = mock<ExternalSecretsManager>();
 	const mockRedactionService = mock<RedactionService>();
+	const mockEventService = mock<EventService>();
 	const mockCipher = {
 		encrypt: jest.fn((data: IDataObject) => JSON.stringify(data)),
 		decrypt: jest.fn((data: string) => data),
@@ -28,6 +30,7 @@ describe('SecretsProvidersConnectionsService', () => {
 		mockCipher as any,
 		mockExternalSecretsManager,
 		mockRedactionService,
+		mockEventService,
 	);
 
 	beforeEach(() => {
