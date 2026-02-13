@@ -171,6 +171,9 @@ const ALLOWED_NODE_TYPES = new Set([
 	'SpreadElement',
 	'Property',
 
+	// Assignment (constrained to property assignment only)
+	'AssignmentExpression',
+
 	// Operators (for simple expressions like array access)
 	'UnaryExpression',
 	'BinaryExpression',
@@ -196,7 +199,6 @@ const FORBIDDEN_NODE_TYPES: Record<string, string> = {
 	TryStatement: 'Try-catch is not allowed in SDK code',
 	ThrowStatement: 'Throw statements are not allowed in SDK code',
 	WithStatement: 'With statements are not allowed in SDK code',
-	AssignmentExpression: 'Assignments are not allowed. Use const declarations only.',
 	UpdateExpression: 'Update expressions (++, --) are not allowed in SDK code',
 	NewExpression: 'new expressions are not allowed. Use SDK factory functions instead.',
 	ImportDeclaration: 'Import declarations are not allowed in SDK code',
