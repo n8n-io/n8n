@@ -1,4 +1,5 @@
 import {
+	CreateSecretsProviderConnectionDto,
 	UpdateSecretsProviderConnectionDto,
 	type ReloadSecretProviderConnectionResponse,
 	type TestSecretProviderConnectionResponse,
@@ -46,6 +47,25 @@ export class SecretProvidersProjectController {
 			return;
 		}
 		next();
+	}
+
+	@Post('/:projectId/connections')
+	@ProjectScope('externalSecretsProvider:create')
+	async createConnection(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Body body: CreateSecretsProviderConnectionDto,
+	): Promise<SecretsProvidersResponses.PublicConnection> {
+		this.logger.debug('Creating connection for project', {
+			projectId,
+			providerKey: body.providerKey,
+		});
+		const savedConnection = await this.connectionsService.createConnection({
+			...body,
+			projectIds: [projectId],
+		});
+		return this.connectionsService.toPublicConnection(savedConnection);
 	}
 
 	@Get('/:projectId/connections')

@@ -283,6 +283,107 @@ describe('Secret Providers Project API', () => {
 		});
 	});
 
+	describe('POST /secret-providers/projects/:projectId/connections', () => {
+		const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';
+		let agents: Record<string, SuperAgentTest>;
+
+		beforeAll(() => {
+			agents = { owner: ownerAgent, admin: adminAgent, member: memberAgent };
+		});
+
+		beforeEach(async () => {
+			await testDb.truncate(['SecretsProviderConnection', 'ProjectSecretsProviderAccess']);
+		});
+
+		test('should create a connection for the project', async () => {
+			const response = await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections`)
+				.send({
+					providerKey: 'new-conn',
+					type: 'awsSecretsManager',
+					projectIds: [],
+					settings: { region: 'us-east-1', accessKeyId: 'test-key' },
+				})
+				.expect(200);
+
+			expect(response.body.data).toMatchObject({
+				name: 'new-conn',
+				type: 'awsSecretsManager',
+				projects: [{ id: teamProject1.id, name: teamProject1.name }],
+			});
+
+			// Verify it exists in the DB
+			const found = await connectionRepository.findOneBy({ providerKey: 'new-conn' });
+			expect(found).not.toBeNull();
+
+			// Verify project access was created
+			const access = await projectAccessRepository.find({
+				where: { secretsProviderConnectionId: found!.id },
+			});
+			expect(access).toHaveLength(1);
+			expect(access[0].projectId).toBe(teamProject1.id);
+		});
+
+		test('should return 400 when connection with same providerKey already exists', async () => {
+			await createProviderConnection('existing-conn', [teamProject1.id]);
+
+			await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections`)
+				.send({
+					providerKey: 'existing-conn',
+					type: 'awsSecretsManager',
+					projectIds: [],
+					settings: { region: 'us-east-1', accessKeyId: 'test-key' },
+				})
+				.expect(400);
+		});
+
+		test('should assign the connection only to the target project', async () => {
+			await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections`)
+				.send({
+					providerKey: 'proj1-only',
+					type: 'awsSecretsManager',
+					projectIds: [],
+					settings: { region: 'us-east-1', accessKeyId: 'test-key' },
+				})
+				.expect(200);
+
+			// Connection should NOT be visible from teamProject2
+			const response = await ownerAgent
+				.get(`/secret-providers/projects/${teamProject2.id}/connections`)
+				.expect(200);
+
+			const names = response.body.data.map((c: { name: string }) => c.name);
+			expect(names).not.toContain('proj1-only');
+		});
+
+		describe('authorization', () => {
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])(
+				'should allow=$allowed for $role to create a project connection',
+				async ({ role, allowed }) => {
+					const response = await agents[role]
+						.post(`/secret-providers/projects/${teamProject1.id}/connections`)
+						.send({
+							providerKey: `create-auth-${role}`,
+							type: 'awsSecretsManager',
+							projectIds: [],
+							settings: { region: 'us-east-1', accessKeyId: 'test-key' },
+						})
+						.expect(allowed ? 200 : 403);
+
+					if (!allowed) {
+						expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+					}
+				},
+			);
+		});
+	});
+
 	describe('GET /secret-providers/projects/:projectId/connections/:providerKey', () => {
 		const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';
 		let agents: Record<string, SuperAgentTest>;
