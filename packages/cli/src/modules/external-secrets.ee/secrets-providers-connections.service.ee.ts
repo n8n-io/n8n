@@ -339,6 +339,25 @@ export class SecretsProvidersConnectionsService {
 		return connection;
 	}
 
+	async deleteConnectionForProject(
+		providerKey: string,
+		projectId: string,
+	): Promise<SecretsProviderConnection> {
+		const connection = await this.repository.removeByProviderKeyAndProjectId(
+			providerKey,
+			projectId,
+		);
+
+		if (!connection) {
+			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
+		}
+
+		await this.projectAccessRepository.deleteByConnectionId(connection.id);
+		await this.externalSecretsManager.syncProviderConnection(providerKey);
+
+		return connection;
+	}
+
 	private decryptConnectionSettings(encryptedSettings: string): IDataObject {
 		return jsonParse(this.cipher.decrypt(encryptedSettings));
 	}

@@ -121,8 +121,10 @@ export class SecretProvidersProjectController {
 		@Param('providerKey') providerKey: string,
 	): Promise<SecretsProvidersResponses.PublicConnection> {
 		this.logger.debug('Deleting connection for project', { projectId, providerKey });
-		await this.connectionsService.getConnectionForProject(providerKey, projectId);
-		const connection = await this.connectionsService.deleteConnection(providerKey);
+		const connection = await this.connectionsService.deleteConnectionForProject(
+			providerKey,
+			projectId,
+		);
 		return this.connectionsService.toPublicConnection(connection);
 	}
 

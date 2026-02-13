@@ -99,4 +99,21 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 			.andWhere('projectAccess.projectId = :projectId', { projectId })
 			.getOne();
 	}
+
+	/**
+	 * Remove a connection by its providerKey, but only if it is assigned to the specified project.
+	 * Returns the removed connection, or null if no matching connection was found.
+	 */
+	async removeByProviderKeyAndProjectId(
+		providerKey: string,
+		projectId: string,
+	): Promise<SecretsProviderConnection | null> {
+		const connection = await this.findByProviderKeyAndProjectId(providerKey, projectId);
+
+		if (!connection) {
+			return null;
+		}
+
+		return await this.remove(connection);
+	}
 }

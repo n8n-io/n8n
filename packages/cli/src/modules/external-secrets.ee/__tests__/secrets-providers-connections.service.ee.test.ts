@@ -481,4 +481,96 @@ describe('SecretsProvidersConnectionsService', () => {
 			);
 		});
 	});
+
+	describe('deleteConnectionForProject', () => {
+		const deletedConnection = {
+			id: 1,
+			providerKey: 'my-aws',
+			type: 'awsSecretsManager',
+			encryptedSettings: '{"apiKey":"secret"}',
+			projectAccess: [],
+		} as unknown as SecretsProviderConnection;
+
+		it('should delete connection and sync provider when found', async () => {
+			mockRepository.removeByProviderKeyAndProjectId.mockResolvedValue(deletedConnection);
+
+			const result = await service.deleteConnectionForProject('my-aws', 'project-1');
+
+			expect(result).toBe(deletedConnection);
+			expect(mockRepository.removeByProviderKeyAndProjectId).toHaveBeenCalledWith(
+				'my-aws',
+				'project-1',
+			);
+			expect(mockProjectAccessRepository.deleteByConnectionId).toHaveBeenCalledWith(1);
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
+		});
+
+		it('should throw NotFoundError when connection does not exist', async () => {
+			mockRepository.removeByProviderKeyAndProjectId.mockResolvedValue(null);
+
+			await expect(service.deleteConnectionForProject('missing', 'project-1')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(mockProjectAccessRepository.deleteByConnectionId).not.toHaveBeenCalled();
+			expect(mockExternalSecretsManager.syncProviderConnection).not.toHaveBeenCalled();
+		});
+
+		it('should throw NotFoundError when connection does not belong to the project', async () => {
+			mockRepository.removeByProviderKeyAndProjectId.mockResolvedValue(null);
+
+			await expect(service.deleteConnectionForProject('my-aws', 'other-project')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+
+	describe('CRUD operations reload providers', () => {
+		const savedConnection = {
+			id: 1,
+			providerKey: 'my-aws',
+			type: 'awsSecretsManager',
+			encryptedSettings: '{"apiKey":"secret"}',
+			isEnabled: true,
+			projectAccess: [],
+			createdAt: new Date('2024-01-01'),
+			updatedAt: new Date('2024-01-02'),
+		} as unknown as SecretsProviderConnection;
+
+		it('should sync provider connection after createConnection', async () => {
+			mockRepository.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(savedConnection);
+			mockRepository.create.mockReturnValue(savedConnection);
+			mockRepository.save.mockResolvedValue(savedConnection);
+
+			await service.createConnection(
+				{
+					providerKey: 'my-aws',
+					type: 'awsSecretsManager',
+					settings: { apiKey: 'secret' },
+					projectIds: [],
+				},
+				'test-user',
+			);
+
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
+		});
+
+		it('should sync provider connection after updateConnection', async () => {
+			mockRepository.findOne
+				.mockResolvedValueOnce(savedConnection)
+				.mockResolvedValueOnce(savedConnection);
+
+			await service.updateConnection('my-aws', { projectIds: ['p1'] }, 'test-user');
+
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
+		});
+
+		it('should sync provider connection after deleteConnection', async () => {
+			mockRepository.findOne.mockResolvedValueOnce(savedConnection);
+			mockRepository.remove.mockResolvedValue(savedConnection);
+
+			await service.deleteConnection('my-aws', 'test-user');
+
+			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
+		});
+	});
 });
