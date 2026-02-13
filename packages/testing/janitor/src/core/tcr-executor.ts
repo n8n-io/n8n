@@ -2,7 +2,7 @@
  * TCR Executor - Test && Commit || Revert workflow
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import * as path from 'node:path';
 import { Project } from 'ts-morph';
 
@@ -27,7 +27,7 @@ import {
 } from '../utils/git-operations.js';
 import { createLogger, type Logger } from '../utils/logger.js';
 import { getRootDir } from '../utils/paths.js';
-import { buildTestCommand } from '../utils/test-command.js';
+import { buildTestCommand, resolveTestCommand } from '../utils/test-command.js';
 
 export interface TcrOptions {
 	baseRef?: string;
@@ -41,7 +41,13 @@ export interface TcrOptions {
 
 export interface TcrResult {
 	success: boolean;
-	failedStep?: 'rules' | 'typecheck' | 'tests' | 'diff-too-large' | 'baseline-modified';
+	failedStep?:
+		| 'rules'
+		| 'typecheck'
+		| 'tests'
+		| 'diff-too-large'
+		| 'baseline-modified'
+		| 'test-command-rejected';
 	changedFiles: string[];
 	changedMethods: MethodChange[];
 	affectedTests: string[];
@@ -81,6 +87,12 @@ export class TcrExecutor {
 		} = options;
 
 		this.logger = createLogger({ verbose });
+
+		// Early validation: test command allowlist
+		const commandValidation = this.validateTestCommand(testCommand);
+		if (commandValidation) {
+			return this.buildResult({ ...commandValidation, durationMs: performance.now() - startTime });
+		}
 
 		const changedFiles = this.getChangedFiles(targetBranch);
 
@@ -226,6 +238,21 @@ export class TcrExecutor {
 
 	// --- Validation Methods ---
 
+	private validateTestCommand(testCommand?: string): Partial<TcrResult> | null {
+		try {
+			resolveTestCommand(testCommand);
+			return null;
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.logger.debug(`\n✗ Test command rejected: ${message}`);
+			return {
+				success: false,
+				failedStep: 'test-command-rejected',
+				action: 'dry-run',
+			};
+		}
+	}
+
 	private validateDiffSize(
 		changedFiles: string[],
 		maxDiffLines: number | undefined,
@@ -254,7 +281,7 @@ export class TcrExecutor {
 	private validateBaselineNotModified(changedFiles: string[]): Partial<TcrResult> | null {
 		// Check git status directly for baseline file (not relying on changedFiles which filters by .ts)
 		try {
-			const status = execSync('git status --porcelain', {
+			const status = execFileSync('git', ['status', '--porcelain'], {
 				cwd: this.root,
 				encoding: 'utf-8',
 			});
@@ -264,7 +291,14 @@ export class TcrExecutor {
 
 			if (!hasBaselineChange) return null;
 		} catch {
-			return null;
+			// Fail closed — git failure blocks commit rather than silently passing
+			this.logger.debug('\n[warning] Could not check baseline status (git failed)');
+			return {
+				success: false,
+				failedStep: 'baseline-modified',
+				changedFiles,
+				action: 'dry-run',
+			};
 		}
 
 		this.logger.debug('\n✗ Cannot commit baseline changes via TCR');
@@ -416,7 +450,7 @@ export class TcrExecutor {
 	private runTypecheck(): boolean {
 		try {
 			const stdio = this.logger.isVerbose() ? 'inherit' : 'pipe';
-			execSync('pnpm typecheck', { cwd: this.root, stdio });
+			execFileSync('pnpm', ['typecheck'], { cwd: this.root, stdio });
 			return true;
 		} catch {
 			return false;
@@ -511,10 +545,10 @@ export class TcrExecutor {
 
 		try {
 			const cmd = buildTestCommand(testFiles, testCommand);
-			this.logger.debug(`Command: ${cmd}`);
+			this.logger.debug(`Command: ${cmd.bin} ${cmd.args.join(' ')}`);
 
 			const stdio = this.logger.isVerbose() ? 'inherit' : 'pipe';
-			execSync(cmd, { cwd: this.root, stdio });
+			execFileSync(cmd.bin, cmd.args, { cwd: this.root, stdio });
 			return true;
 		} catch {
 			return false;
@@ -545,6 +579,9 @@ export function formatTcrResultConsole(result: TcrResult, verbose = false): void
 	}
 	if (result.failedStep === 'baseline-modified') {
 		console.log('  Baseline: ✗ Modified (baseline updates must be done manually)');
+	}
+	if (result.failedStep === 'test-command-rejected') {
+		console.log('  Test command: ✗ Rejected (not in allowlist)');
 	}
 	console.log(
 		`  Rules: ${result.ruleViolations === 0 ? '✓ Passed' : `✗ ${result.ruleViolations} violation(s)`}`,
