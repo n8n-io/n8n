@@ -723,7 +723,13 @@ describe('Secret Providers Project API', () => {
 				.post(`/secret-providers/projects/${teamProject1.id}/reload`)
 				.expect(200);
 
-			expect(response.body.data).toEqual({ success: true });
+			expect(response.body.data).toEqual({
+				success: true,
+				providers: {
+					'reload-conn-1': { success: true },
+					'reload-conn-2': { success: true },
+				},
+			});
 		});
 
 		test('should succeed when project has no connections', async () => {
@@ -736,7 +742,7 @@ describe('Secret Providers Project API', () => {
 				.post(`/secret-providers/projects/${emptyProject.id}/reload`)
 				.expect(200);
 
-			expect(response.body.data).toEqual({ success: true });
+			expect(response.body.data).toEqual({ success: true, providers: {} });
 		});
 
 		test('should not reload connections that are not part of the project', async () => {
