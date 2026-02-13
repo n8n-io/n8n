@@ -57,12 +57,16 @@ export class ImportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 		if (skipMigrationChecks) {
 			this.logger.info('⏭️  Skipping migration checks');
 		}
+		if (skipDisableForeignKeyConstraints) {
+			this.logger.info('⏭️  Skipping disabling foreign key constraints');
+		}
 
 		await Container.get(ImportService).importEntities(
 			inputDir,
 			truncateTables,
 			keyFilePath,
 			skipMigrationChecks,
+			skipDisableForeignKeyConstraints,
 		);
 	}
 

@@ -36,6 +36,7 @@ describe('ImportEntitiesCommand', () => {
 				false,
 				undefined,
 				false,
+				false,
 			);
 		});
 
@@ -60,6 +61,7 @@ describe('ImportEntitiesCommand', () => {
 				'/custom/path',
 				false,
 				undefined,
+				false,
 				false,
 			);
 		});
@@ -87,6 +89,7 @@ describe('ImportEntitiesCommand', () => {
 				true,
 				undefined,
 				false,
+				false,
 			);
 		});
 
@@ -111,6 +114,7 @@ describe('ImportEntitiesCommand', () => {
 				'./outputs',
 				false,
 				'key.txt',
+				false,
 				false,
 			);
 		});
@@ -138,6 +142,7 @@ describe('ImportEntitiesCommand', () => {
 				false,
 				undefined,
 				true,
+				false,
 			);
 		});
 
@@ -191,6 +196,7 @@ describe('ImportEntitiesCommand', () => {
 				false,
 				undefined,
 				false,
+				false,
 			);
 		});
 
@@ -216,6 +222,7 @@ describe('ImportEntitiesCommand', () => {
 				'./outputs',
 				true,
 				undefined,
+				false,
 				false,
 			);
 		});
