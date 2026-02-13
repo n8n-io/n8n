@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-common",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",

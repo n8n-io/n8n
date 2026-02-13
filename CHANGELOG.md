@@ -1,3 +1,12 @@
+## [2.7.5](https://github.com/n8n-io/n8n/compare/n8n@2.7.4...n8n@2.7.5) (2026-02-13)
+
+
+### Bug Fixes
+
+* **core:** Make health endpoint configurable to solve conflicts ([#25729](https://github.com/n8n-io/n8n/issues/25729)) ([56aa612](https://github.com/n8n-io/n8n/commit/56aa6128f54d566d9401b85397965792bfa52716))
+
+
+
 ## [2.7.4](https://github.com/n8n-io/n8n/compare/n8n@2.7.3...n8n@2.7.4) (2026-02-11)
 
 
