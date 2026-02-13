@@ -44,7 +44,7 @@ type ErrorReporterInitOptions = {
 	 */
 	eligibleIntegrations?: Partial<Record<SentryIntegration, boolean>>;
 
-	/** Health endpoint path (default: 'health/live') */
+	/** Health endpoint path */
 	healthEndpoint?: string;
 };
 

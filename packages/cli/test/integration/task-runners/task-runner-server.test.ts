@@ -1,3 +1,5 @@
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { setupBrokerTestServer } from '@test-integration/utils/task-broker-test-server';
 
 describe('TaskBrokerServer', () => {
@@ -7,6 +9,8 @@ describe('TaskBrokerServer', () => {
 	});
 
 	beforeAll(async () => {
+		// Use custom test value to prove configuration is respected
+		Container.get(GlobalConfig).endpoints.health = 'internal/health';
 		await server.start();
 	});
 
@@ -14,9 +18,9 @@ describe('TaskBrokerServer', () => {
 		await server.stop();
 	});
 
-	describe('/health/live', () => {
+	describe('/internal/health', () => {
 		it('should return 200', async () => {
-			await agent.get('/health/live').expect(200);
+			await agent.get('/internal/health').expect(200);
 		});
 	});
 

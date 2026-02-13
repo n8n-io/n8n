@@ -57,7 +57,7 @@ describe('WorkerServer', () => {
 				overwrite: { endpoint: '' },
 			},
 			endpoints: {
-				health: 'health/live',
+				health: 'internal/health',
 			},
 		});
 		jest.restoreAllMocks();
@@ -119,7 +119,7 @@ describe('WorkerServer', () => {
 
 			await workerServer.init({ health: true, overwrites: true, metrics: true });
 
-			expect(app.get).toHaveBeenCalledWith('/health/live', expect.any(Function));
+			expect(app.get).toHaveBeenCalledWith('/internal/health', expect.any(Function));
 			expect(app.post).toHaveBeenCalledWith(
 				`/${CREDENTIALS_OVERWRITE_ENDPOINT}`,
 				rawBodyReader,
