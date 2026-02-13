@@ -35,12 +35,12 @@ export class WindowedChatMemory extends BaseChatMemory {
 
 	async saveTurn(input: string, output: string): Promise<void> {
 		const humanMessage: Message = {
-			role: 'human',
+			role: 'user',
 			content: [{ type: 'text', text: input }],
 		};
 
 		const aiMessage: Message = {
-			role: 'ai',
+			role: 'assistant',
 			content: [{ type: 'text', text: output }],
 		};
 

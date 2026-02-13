@@ -47,7 +47,7 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -109,7 +109,7 @@ const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
 const mcp = useMcp();
-const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
+const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
@@ -292,10 +292,6 @@ const isSomeoneElsesWorkflow = computed(
 const isWorkflowPublished = computed(() => {
 	return props.data.activeVersionId !== null;
 });
-
-const isDynamicCredentialsEnabled = computed(() =>
-	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
-);
 
 const hasDynamicCredentials = computed(() => {
 	return isDynamicCredentialsEnabled.value && props.data.hasResolvableCredentials;

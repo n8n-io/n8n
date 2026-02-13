@@ -93,7 +93,7 @@ const sendDisabled = computed(
 );
 
 const containerStyle = computed(() => {
-	return { minHeight: isMultiline.value ? '80px' : '40px' };
+	return { minHeight: '80px' };
 });
 
 const showCredits = computed(() => {
@@ -142,16 +142,10 @@ const hasNoCredits = computed(() => {
 	return showCredits.value && props.creditsRemaining === 0;
 });
 
-const textareaStyle = computed<{ height?: string; overflowY?: 'hidden' }>(() => {
-	if (!isMultiline.value) {
-		return {};
-	}
-
-	return {
-		height: `${textareaHeight.value}px`,
-		overflowY: 'hidden',
-	};
-});
+const textareaStyle = computed(() => ({
+	height: `${textareaHeight.value}px`,
+	overflowY: 'hidden' as const,
+}));
 
 function adjustHeight() {
 	// Store focus state and scroll position before potential mode change
@@ -344,7 +338,6 @@ defineExpose({
 					$style.container,
 					{
 						[$style.focused]: isFocused,
-						[$style.multiline]: isMultiline,
 						[$style.disabled]: disabled || hasNoCredits,
 						[$style.withBottomBorder]: !!showCredits,
 					},
@@ -362,77 +355,51 @@ defineExpose({
 					{{ t('assistantChat.characterLimit', { limit: maxLength.toString() }) }}
 				</N8nCallout>
 
-				<!-- Single line mode: input and button side by side -->
-				<div v-if="!isMultiline" :class="$style.singleLineWrapper">
+				<!-- Use ScrollArea when content exceeds max height -->
+				<N8nScrollArea
+					ref="scrollAreaRef"
+					:class="$style.scrollAreaWrapper"
+					:max-height="`${textAreaMaxHeight}px`"
+					type="auto"
+				>
+					<!-- Chips row (above textarea) -->
+					<div v-if="$slots['inline-chips']" :class="$style.chipsRow">
+						<slot name="inline-chips" />
+					</div>
+					<!-- Textarea -->
 					<textarea
 						ref="textareaRef"
 						v-model="textValue"
 						:class="[
-							$style.singleLineTextarea,
+							$style.multilineTextarea,
 							'ignore-key-press-node-creator',
 							'ignore-key-press-canvas',
 						]"
+						:style="textareaStyle"
 						:placeholder="hasNoCredits ? '' : placeholder"
 						:disabled="disabled || hasNoCredits"
 						:maxlength="maxLength"
-						rows="1"
 						@keydown="handleKeyDown"
 						@focus="handleFocus"
 						@blur="handleBlur"
 						@input="adjustHeight"
 					/>
-					<div :class="$style.inlineActions">
-						<slot name="beforeActions" />
-						<N8nSendStopButton
-							data-test-id="send-message-button"
-							:streaming="streaming"
-							:disabled="sendDisabled"
-							:label="buttonLabel"
-							@send="handleSubmit"
-							@stop="handleStop"
-						/>
+				</N8nScrollArea>
+				<div :class="$style.bottomActions">
+					<!-- Slot for bottom actions chips (e.g., unconfirmed node chips) -->
+					<div v-if="$slots['bottom-actions-chips']" :class="$style.bottomActionsChips">
+						<slot name="bottom-actions-chips" />
 					</div>
+					<slot name="extra-actions" />
+					<N8nSendStopButton
+						data-test-id="send-message-button"
+						:streaming="streaming"
+						:disabled="sendDisabled"
+						:label="buttonLabel"
+						@send="handleSubmit"
+						@stop="handleStop"
+					/>
 				</div>
-
-				<!-- Multiline mode: textarea full width with button below -->
-				<template v-else>
-					<!-- Use ScrollArea when content exceeds max height -->
-					<N8nScrollArea
-						ref="scrollAreaRef"
-						:class="$style.scrollAreaWrapper"
-						:max-height="`${textAreaMaxHeight}px`"
-						type="auto"
-					>
-						<textarea
-							ref="textareaRef"
-							v-model="textValue"
-							:class="[
-								$style.multilineTextarea,
-								'ignore-key-press-node-creator',
-								'ignore-key-press-canvas',
-							]"
-							:style="textareaStyle"
-							:placeholder="hasNoCredits ? '' : placeholder"
-							:disabled="disabled || hasNoCredits"
-							:maxlength="maxLength"
-							@keydown="handleKeyDown"
-							@focus="handleFocus"
-							@blur="handleBlur"
-							@input="adjustHeight"
-						/>
-					</N8nScrollArea>
-					<div :class="$style.bottomActions">
-						<slot name="beforeActions" />
-						<N8nSendStopButton
-							data-test-id="send-message-button"
-							:streaming="streaming"
-							:disabled="sendDisabled"
-							:label="buttonLabel"
-							@send="handleSubmit"
-							@stop="handleStop"
-						/>
-					</div>
-				</template>
 			</div>
 
 			<!-- Credits bar below input -->
@@ -495,10 +462,6 @@ defineExpose({
 		border-bottom: 1px transparent solid;
 	}
 
-	&.multiline {
-		padding-bottom: 0;
-	}
-
 	&.disabled {
 		background-color: var(--color--background);
 		cursor: not-allowed;
@@ -514,42 +477,6 @@ defineExpose({
 	margin: 0 var(--spacing--3xs) var(--spacing--2xs) var(--spacing--3xs);
 }
 
-// Single line mode
-.singleLineWrapper {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
-}
-
-.singleLineTextarea {
-	flex: 1;
-	border: none;
-	background: transparent;
-	resize: none;
-	outline: none;
-	font-family: var(--font-family), sans-serif;
-	font-size: var(--font-size--sm);
-	line-height: 24px;
-	color: var(--color--text--shade-1);
-	padding: 0 var(--spacing--2xs);
-	height: 24px;
-	overflow: hidden;
-	box-sizing: border-box;
-	display: block;
-
-	&::placeholder {
-		color: var(--color--text--tint-1);
-	}
-}
-
-.inlineActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-// Multiline mode
 .scrollAreaWrapper {
 	width: 100%;
 	margin-bottom: 0;
@@ -580,9 +507,25 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--2xs) 0 var(--spacing--2xs) var(--spacing--2xs);
+	gap: var(--spacing--xs) var(--spacing--2xs);
+	padding: var(--spacing--2xs) 0 0 var(--spacing--2xs);
 	margin-top: auto;
+}
+
+.bottomActionsChips {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.chipsRow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: 0 var(--spacing--3xs);
+	padding-bottom: var(--spacing--4xs);
 }
 
 // Credits bar below input

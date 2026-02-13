@@ -1,7 +1,11 @@
 import { test, expect } from '../../../fixtures/base';
 import type { n8nPage } from '../../../pages/n8nPage';
 
-test.describe('Security Notifications', () => {
+test.describe('Security Notifications', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	async function setupVersionsApiMock(
 		n8n: n8nPage,
 		options: {

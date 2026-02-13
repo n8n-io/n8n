@@ -20,7 +20,11 @@ import { test, expect } from '../../../fixtures/base';
  * each other's keys.
  */
 
-test.describe('MCP Service', () => {
+test.describe('MCP Service', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
 	// Run tests serially - n8n only supports one MCP API key at a time,
 	// and rotation invalidates the previous key
 	test.describe.configure({ mode: 'serial' });

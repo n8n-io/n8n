@@ -7,7 +7,11 @@ const DESTINATION_NAMES = {
 
 const MODAL_MAX_WIDTH = 500;
 
-test.describe('Log Streaming Settings', () => {
+test.describe('Log Streaming Settings', {
+	annotation: [
+		{ type: 'owner', description: 'Lifecycle & Governance' },
+	],
+}, () => {
 	test.describe.configure({ mode: 'serial' });
 	test.describe('unlicensed', () => {
 		test.beforeEach(async ({ n8n }) => {

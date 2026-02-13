@@ -30,6 +30,10 @@ vi.mock('vue-router', async () => {
 			replace: mockReplace,
 			back: mockBack,
 		}),
+		useRoute: () => ({
+			name: VIEWS.PROJECT_ROLE_SETTINGS,
+			params: {},
+		}),
 	};
 });
 

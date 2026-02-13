@@ -46,27 +46,52 @@ export function useWorkflowUpdate() {
 	const nodeHelpers = useNodeHelpers();
 
 	/**
-	 * Categorize nodes into those to update, add, or remove
+	 * Categorize nodes into those to update, add, or remove.
+	 *
+	 * Uses name+type fallback matching when IDs don't match. This handles the case
+	 * where the workflow SDK regenerates node IDs during re-parsing (e.g., when the
+	 * AI builder makes corrections to workflow code). Without this fallback, nodes
+	 * with new IDs but the same name+type would be incorrectly categorized as "new",
+	 * triggering maxNodes validation errors for nodes like ChatTrigger.
 	 */
 	function categorizeNodes(workflowData: WorkflowDataUpdate) {
-		const newNodesById = new Map(workflowData.nodes?.map((n) => [n.id, n]) ?? []);
 		const existingNodesById = new Map(workflowsStore.allNodes.map((n) => [n.id, n]));
+
+		// Add name+type index for fallback matching when IDs differ
+		const existingNodesByNameType = new Map(
+			workflowsStore.allNodes.map((n) => [`${n.type}::${n.name}`, n]),
+		);
 
 		const nodesToUpdate: Array<{ existing: INodeUi; updated: INode }> = [];
 		const nodesToAdd: INode[] = [];
 		const nodesToRemove: INodeUi[] = [];
+		const processedExistingIds = new Set<string>();
 
 		workflowData.nodes?.forEach((newNode) => {
-			const existing = existingNodesById.get(newNode.id);
+			// First try to match by ID
+			let existing = existingNodesById.get(newNode.id);
+
+			// Fallback: match by name + type (handles ID regeneration)
+			if (!existing) {
+				const nameTypeKey = `${newNode.type}::${newNode.name}`;
+				existing = existingNodesByNameType.get(nameTypeKey);
+			}
+
 			if (existing) {
-				nodesToUpdate.push({ existing, updated: newNode });
+				// Update node, preserving the existing ID for consistency
+				nodesToUpdate.push({
+					existing,
+					updated: { ...newNode, id: existing.id },
+				});
+				processedExistingIds.add(existing.id);
 			} else {
 				nodesToAdd.push(newNode);
 			}
 		});
 
+		// Nodes to remove: exist in current but not matched by new workflow
 		existingNodesById.forEach((node, id) => {
-			if (!newNodesById.has(id)) {
+			if (!processedExistingIds.has(id)) {
 				nodesToRemove.push(node);
 			}
 		});
@@ -330,6 +355,14 @@ export function useWorkflowUpdate() {
 			const newNodeIds = addedNodes.map((n) => n.id);
 			await updateConnections(workflowData.connections ?? {});
 			updateWorkflowNameIfNeeded(workflowData.name, options?.isInitialGeneration);
+
+			// Merge pin data from workflow data with existing pin data
+			if (workflowData.pinData) {
+				workflowsStore.setWorkflowPinData({
+					...workflowsStore.workflow.pinData,
+					...workflowData.pinData,
+				});
+			}
 
 			builderStore.setBuilderMadeEdits(true);
 

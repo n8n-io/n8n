@@ -1805,7 +1805,6 @@ onMounted(async () => {
 
 	// Register callback for collaboration store to refresh canvas when workflow updates arrive
 	collaborationStore.setRefreshCanvasCallback(async (workflow) => {
-		// Refresh the canvas with updated workflow
 		await initializeWorkspace(workflow);
 	});
 

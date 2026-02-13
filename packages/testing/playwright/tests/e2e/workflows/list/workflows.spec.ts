@@ -9,7 +9,11 @@ const NOTIFICATIONS = {
 	UNPUBLISHED: 'unpublished',
 };
 
-test.describe('Workflows', () => {
+test.describe('Workflows', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.goHome();
 	});

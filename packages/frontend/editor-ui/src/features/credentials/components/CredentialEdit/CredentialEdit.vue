@@ -65,7 +65,7 @@ import {
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import get from 'lodash/get';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 type Props = {
 	modalName: string;
@@ -92,7 +92,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const router = useRouter();
 const rootStore = useRootStore();
-const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
+const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 const activeTab = ref('connection');
 const authError = ref('');
@@ -352,10 +352,6 @@ const homeProject = computed(() => {
 	return currentProject ?? personalProject;
 });
 
-const isDynamicCredentialsEnabled = computed<boolean>(() => {
-	return checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS');
-});
-
 const isNewCredential = computed(() => props.mode === 'new' && !credentialId.value);
 
 onMounted(async () => {
@@ -382,9 +378,18 @@ onMounted(async () => {
 				!credentialData.value.hasOwnProperty(property.name) &&
 				!credentialType.value.__overwrittenProperties?.includes(property.name)
 			) {
+				// For new httpHeaderAuth credentials, default allowedHttpRequestDomains to 'none'
+				let defaultValue = property.default as CredentialInformation;
+				if (
+					props.mode === 'new' &&
+					credentialTypeName.value === 'httpHeaderAuth' &&
+					property.name === 'allowedHttpRequestDomains'
+				) {
+					defaultValue = 'none';
+				}
 				credentialData.value = {
 					...credentialData.value,
-					[property.name]: property.default as CredentialInformation,
+					[property.name]: defaultValue,
 				};
 			}
 		}
@@ -1160,9 +1165,18 @@ function resetCredentialData(): void {
 	}
 	for (const property of credentialType.value.properties) {
 		if (!credentialType.value.__overwrittenProperties?.includes(property.name)) {
+			// For new httpHeaderAuth credentials, default allowedHttpRequestDomains to 'none'
+			let defaultValue = property.default as CredentialInformation;
+			if (
+				props.mode === 'new' &&
+				credentialTypeName.value === 'httpHeaderAuth' &&
+				property.name === 'allowedHttpRequestDomains'
+			) {
+				defaultValue = 'none';
+			}
 			credentialData.value = {
 				...credentialData.value,
-				[property.name]: property.default as CredentialInformation,
+				[property.name]: defaultValue,
 			};
 		}
 	}

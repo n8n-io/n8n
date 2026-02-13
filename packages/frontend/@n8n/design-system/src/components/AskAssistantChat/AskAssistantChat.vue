@@ -41,6 +41,8 @@ interface Props {
 	suggestions?: WorkflowSuggestion[];
 	workflowId?: string;
 	pruneTimeHours?: number;
+	/** Custom message to show when all tools complete (instead of default "Workflow generated") */
+	thinkingCompletionMessage?: string;
 }
 
 const emit = defineEmits<{
@@ -105,7 +107,12 @@ function getToolIdsWithWorkflowUpdate(
 		if (msg.type === 'tool') {
 			currentGroupToolIds.push(msg.id);
 		} else if (msg.type === 'workflow-updated') {
-			hasWorkflowUpdate = true;
+			// Only count as a workflow update if tools already exist in this region.
+			// This prevents naming-only updates (which arrive before tools) from
+			// causing discovery tool groups to show "Workflow generated".
+			if (currentGroupToolIds.length > 0) {
+				hasWorkflowUpdate = true;
+			}
 		} else {
 			// Group boundary — flush
 			if (hasWorkflowUpdate) {
@@ -128,6 +135,7 @@ function groupToolMessagesIntoThinking(
 	options: {
 		streaming?: boolean;
 		loadingMessage?: string;
+		thinkingCompletionMessage?: string;
 		toolIdsWithWorkflowUpdate?: Set<string | undefined>;
 		t: (key: string) => string;
 	},
@@ -236,7 +244,8 @@ function groupToolMessagesIntoThinking(
 		} else if (isActiveGroup && options.streaming) {
 			latestStatus = options.loadingMessage ?? options.t('assistantChat.thinking.processing');
 		} else if (groupGeneratedWorkflow) {
-			latestStatus = options.t('assistantChat.thinking.workflowGenerated');
+			latestStatus =
+				options.thinkingCompletionMessage ?? options.t('assistantChat.thinking.workflowGenerated');
 		} else {
 			latestStatus = options.t('assistantChat.thinking.thinking');
 		}
@@ -268,6 +277,7 @@ const normalizedMessages = computed(() => {
 	return groupToolMessagesIntoThinking(filterOutHiddenMessages(normalized), {
 		streaming: props.streaming,
 		loadingMessage: props.loadingMessage,
+		thinkingCompletionMessage: props.thinkingCompletionMessage,
 		toolIdsWithWorkflowUpdate: toolIdsWithWorkflowUpdate.value,
 		t,
 	});
@@ -286,6 +296,7 @@ const lastMessageQuickReplies = computed(() => {
 const textInputValue = ref<string>('');
 const promptInputRef = ref<InstanceType<typeof N8nPromptInput>>();
 const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
+const suggestionsInputFocusFn = ref<(() => void) | null>(null);
 
 const inputWrapperRef = ref<HTMLDivElement | null>(null);
 
@@ -305,14 +316,12 @@ const showSuggestions = computed(() => {
 	return showPlaceholder.value && props.suggestions && props.suggestions.length > 0;
 });
 
-// Check if we have any thinking group (tool messages grouped into thinking blocks)
-const hasAnyThinkingGroup = computed(() => {
-	return normalizedMessages.value.some((msg) => msg.type === 'thinking-group');
-});
-
-// Show placeholder when streaming with loading message but no tool messages have arrived yet
+// Show placeholder when streaming with loading message but no active tool group for the current turn.
+// Check the last message — if it's not a thinking-group, the current turn has no tools yet.
 const showThinkingPlaceholder = computed(() => {
-	return props.streaming && props.loadingMessage && !hasAnyThinkingGroup.value;
+	if (!props.streaming || !props.loadingMessage) return false;
+	const lastMsg = normalizedMessages.value[normalizedMessages.value.length - 1];
+	return !lastMsg || lastMsg.type !== 'thinking-group';
 });
 
 const showBottomInput = computed(() => {
@@ -348,8 +357,11 @@ async function onSuggestionClick(suggestion: WorkflowSuggestion) {
 	await nextTick();
 	// Wait one more frame to ensure DOM is fully updated
 	await new Promise(requestAnimationFrame);
-	// Focus the input so user can edit it
-	promptInputRef.value?.focusInput();
+	if (suggestionsInputFocusFn.value) {
+		suggestionsInputFocusFn.value();
+	} else {
+		promptInputRef.value?.focusInput();
+	}
 }
 
 function onQuickReply(opt: ChatUI.QuickReply) {
@@ -514,6 +526,9 @@ defineExpose({
 									<template v-if="$slots['custom-message']" #custom-message="customMessageProps">
 										<slot name="custom-message" v-bind="customMessageProps" />
 									</template>
+									<template v-if="$slots['focused-nodes-chips']" #focused-nodes-chips="chipProps">
+										<slot name="focused-nodes-chips" v-bind="chipProps" />
+									</template>
 								</MessageWrapper>
 
 								<div
@@ -568,7 +583,26 @@ defineExpose({
 						@suggestion-click="onSuggestionClick"
 					>
 						<template #prompt-input>
+							<slot
+								v-if="$slots['suggestions-input']"
+								name="suggestions-input"
+								:model-value="textInputValue"
+								:on-update-model-value="(val: string) => (textInputValue = val)"
+								:placeholder="t('assistantChat.blankStateInputPlaceholder')"
+								:disabled="disabled"
+								:disabled-tooltip="disabledTooltip"
+								:streaming="streaming"
+								:credits-quota="creditsQuota"
+								:credits-remaining="creditsRemaining"
+								:show-ask-owner-tooltip="showAskOwnerTooltip"
+								:max-length="maxCharacterLength"
+								:on-submit="onSendMessage"
+								:on-stop="() => emit('stop')"
+								:on-upgrade-click="() => emit('upgrade-click')"
+								:register-focus="(fn: () => void) => (suggestionsInputFocusFn = fn)"
+							/>
 							<N8nPromptInput
+								v-else
 								ref="promptInputRef"
 								v-model="textInputValue"
 								:placeholder="t('assistantChat.blankStateInputPlaceholder')"
@@ -586,8 +620,8 @@ defineExpose({
 								@submit="onSendMessage"
 								@stop="emit('stop')"
 							>
-								<template v-if="$slots['before-actions']" #beforeActions>
-									<slot name="before-actions" />
+								<template v-if="$slots['extra-actions']" #extra-actions>
+									<slot name="extra-actions" />
 								</template>
 							</N8nPromptInput>
 						</template>
@@ -617,7 +651,10 @@ defineExpose({
 		<div v-if="showFooterRating" :class="$style.feedbackWrapper" data-test-id="footer-rating">
 			<MessageRating minimal @feedback="onRateMessage" />
 		</div>
-		<div v-if="$slots.inputHeader && showBottomInput" :class="$style.inputHeaderWrapper">
+		<div
+			v-if="$slots.inputHeader && (showBottomInput || showSuggestions)"
+			:class="$style.inputHeaderWrapper"
+		>
 			<slot name="inputHeader" />
 		</div>
 		<div
@@ -652,8 +689,8 @@ defineExpose({
 				@submit="onSendMessage"
 				@stop="emit('stop')"
 			>
-				<template v-if="$slots['before-actions']" #beforeActions>
-					<slot name="before-actions" />
+				<template v-if="$slots['extra-actions']" #extra-actions>
+					<slot name="extra-actions" />
 				</template>
 			</N8nPromptInput>
 		</div>

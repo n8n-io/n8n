@@ -1,6 +1,6 @@
 {
 	"name": "@n8n/ai-utilities",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Utilities for building AI nodes in n8n",
 	"main": "dist/index.js",
 	"module": "src/index.ts",
@@ -11,6 +11,7 @@
 		"dev": "pnpm run watch",
 		"typecheck": "tsc --noEmit",
 		"copy-tokenizer-json": "node scripts/copy-tokenizer-json.js .",
+		"build:examples": "tsc --build tsconfig.examples.json && tsc-alias -p tsconfig.examples.json && pnpm copy-tokenizer-json ./dist_examples/src/",
 		"build": "tsc --build tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json",
 		"format": "biome format --write .",
 		"format:check": "biome ci .",

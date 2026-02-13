@@ -146,11 +146,30 @@ function extractMessageContent(messages: MessageContent[]): string | null {
  * Remove context tags from message content that are used for AI context
  * but shouldn't be displayed to users.
  *
- * This removes the entire context block from <current_workflow_json> through
- * </current_execution_nodes_schemas>
+ * Handles multiple formats:
+ * 1. Old multi-agent format: <current_workflow_json>...</current_execution_nodes_schemas>
+ * 2. Code builder format with <user_request> XML tag
+ * 3. Fallback: strips individual context tags
  */
 export function cleanContextTags(text: string): string {
-	return text.replace(/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/, '');
+	// Handle old multi-agent format
+	let cleaned = text.replace(
+		/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/,
+		'',
+	);
+
+	// Handle code builder format - extract content from <user_request> tag
+	const userRequestMatch = cleaned.match(/<user_request>\n?([\s\S]*?)\n?<\/user_request>/);
+	if (userRequestMatch) {
+		return userRequestMatch[1].trim();
+	}
+
+	// Fallback: strip individual tags if no user request marker found
+	cleaned = cleaned.replace(/<conversation_summary>[\s\S]*?<\/conversation_summary>\s*/g, '');
+	cleaned = cleaned.replace(/<previous_requests>[\s\S]*?<\/previous_requests>\s*/g, '');
+	cleaned = cleaned.replace(/<workflow_file[^>]*>[\s\S]*?<\/workflow_file>\s*/g, '');
+
+	return cleaned.trim();
 }
 
 // ============================================================================
@@ -233,6 +252,19 @@ function processOperationsUpdate(update: unknown): StreamOutput | null {
 	return { messages: [workflowUpdateChunk] };
 }
 
+/** Handle create_workflow_name node update - emits name as workflow update */
+function processWorkflowNameUpdate(update: unknown): StreamOutput | null {
+	const typed = update as { workflowJSON?: { name?: string } } | undefined;
+	if (!typed?.workflowJSON?.name) return null;
+
+	const workflowUpdateChunk: WorkflowUpdateChunk = {
+		role: 'assistant',
+		type: 'workflow-updated',
+		codeSnippet: JSON.stringify(typed.workflowJSON, null, 2),
+	};
+	return { messages: [workflowUpdateChunk] };
+}
+
 /** Handle agent node message update */
 function processAgentNodeUpdate(nodeName: string, update: unknown): StreamOutput | null {
 	if (!shouldEmitFromNode(nodeName)) return null;
@@ -281,6 +313,12 @@ function processUpdatesChunk(nodeUpdate: Record<string, unknown>): StreamOutput 
 	// Process operations emits workflow updates
 	if (nodeUpdate.process_operations) {
 		return processOperationsUpdate(nodeUpdate.process_operations);
+	}
+
+	// Workflow name update - emit so frontend receives the generated name
+	// before any potential interrupt (e.g., plan mode approval)
+	if (nodeUpdate.create_workflow_name) {
+		return processWorkflowNameUpdate(nodeUpdate.create_workflow_name);
 	}
 
 	// Generic agent node handling

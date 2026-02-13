@@ -16,6 +16,7 @@ const mockConnection = {
 
 const mockHasScope = vi.fn((_scope?: string) => true);
 const mockShowError = vi.fn();
+const mockShowMessage = vi.fn();
 
 vi.mock('./useSecretsProviderConnection.ee', () => ({
 	useSecretsProviderConnection: () => mockConnection,
@@ -30,6 +31,7 @@ vi.mock('@/app/stores/rbac.store', () => ({
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: mockShowError,
+		showMessage: mockShowMessage,
 	})),
 }));
 
@@ -71,6 +73,12 @@ describe('useConnectionModal', () => {
 		mockHasScope.mockReturnValue(true);
 		mockProjectsStore.projects = [];
 		mockProjectsStore.myProjects = [];
+		mockConnection.connectionState.value = 'initializing';
+		mockConnection.testConnection.mockImplementation(async () => {
+			mockConnection.connectionState.value = 'connected';
+		});
+		mockShowError.mockClear();
+		mockShowMessage.mockClear();
 	});
 
 	describe('initialization', () => {
@@ -545,7 +553,6 @@ describe('useConnectionModal', () => {
 				settings: {},
 				secretsCount: 5,
 			});
-			mockConnection.connectionState.value = 'connected';
 
 			selectProviderType('awsSecretsManager');
 			connectionName.value = 'new-connection';

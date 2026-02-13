@@ -1133,6 +1133,66 @@ describe('CredentialsService', () => {
 				expect(result).toHaveLength(1);
 			});
 		});
+
+		describe('with externalSecretsStore', () => {
+			const createCredentialWithEncryptedData = (id: string, apiKey: string) =>
+				mock<CredentialsEntity>({
+					id,
+					data: service.createEncryptedData({ ...regularCredential, data: { apiKey } }).data,
+				});
+
+			it('should filter credentials by external secrets store using dot notation', async () => {
+				// ARRANGE
+				const credentialWithExternalSecret1 = createCredentialWithEncryptedData(
+					'cred-with-external-secret-1',
+					'{{ $secrets.myProvider.apiKey }}',
+				);
+				const credentialWithExternalSecret2 = createCredentialWithEncryptedData(
+					'cred-with-external-secret-2',
+					'{{ $secrets.anotherProvider.apiKey }}',
+				);
+				credentialsRepository.findMany.mockResolvedValue([
+					regularCredential,
+					credentialWithExternalSecret1,
+					credentialWithExternalSecret2,
+				]);
+
+				// ACT
+				const result = await service.getMany(memberUser, {
+					externalSecretsStore: 'myProvider',
+				});
+
+				// ASSERT
+				expect(result).toHaveLength(1);
+				expect(result[0].id).toBe(credentialWithExternalSecret1.id);
+			});
+
+			it('should filter credentials by external secrets store using square bracket notation', async () => {
+				// ARRANGE
+				const credentialWithExternalSecret1 = createCredentialWithEncryptedData(
+					'cred-with-external-secret-1',
+					'{{ $secrets["myProvider"]["apiKey"] }}',
+				);
+				const credentialWithExternalSecret2 = createCredentialWithEncryptedData(
+					'cred-with-external-secret-2',
+					'{{ $secrets["anotherProvider"]["apiKey"] }}',
+				);
+				credentialsRepository.findMany.mockResolvedValue([
+					regularCredential,
+					credentialWithExternalSecret1,
+					credentialWithExternalSecret2,
+				]);
+
+				// ACT
+				const result = await service.getMany(memberUser, {
+					externalSecretsStore: 'myProvider',
+				});
+
+				// ASSERT
+				expect(result).toHaveLength(1);
+				expect(result[0].id).toBe(credentialWithExternalSecret1.id);
+			});
+		});
 	});
 
 	describe('getCredentialsAUserCanUseInAWorkflow', () => {
