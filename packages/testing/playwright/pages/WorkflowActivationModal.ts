@@ -20,12 +20,4 @@ export class WorkflowActivationModal extends BasePage {
 
 		await this.getGotItButton().click();
 	}
-
-	async clickDontShowAgain(): Promise<void> {
-		await this.getDontShowAgainCheckbox().click();
-	}
-
-	async clickGotIt(): Promise<void> {
-		await this.getGotItButton().click();
-	}
 }

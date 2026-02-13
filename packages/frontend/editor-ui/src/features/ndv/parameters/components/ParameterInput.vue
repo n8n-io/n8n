@@ -278,7 +278,12 @@ const parameterOptions = computed(() => {
 });
 
 const modelValueString = computed<string>(() => {
-	return props.modelValue as string;
+	const value = props.modelValue;
+	// For json type parameters, stringify objects to prevent [object object] display
+	if (props.parameter.type === 'json' && typeof value === 'object' && value !== null) {
+		return JSON.stringify(value);
+	}
+	return value as string;
 });
 
 const modelValueResourceLocator = computed<INodeParameterResourceLocator>(() => {

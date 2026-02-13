@@ -1,27 +1,275 @@
 [
 	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-		"popularity": 0.919
+		"id": "n8n-nodes-base.code",
+		"popularity": 1
+	},
+	{
+		"id": "n8n-nodes-base.set",
+		"popularity": 0.98
 	},
 	{
 		"id": "n8n-nodes-base.webhook",
-		"popularity": 0.94
+		"popularity": 0.942
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
-		"popularity": 0.926
+		"id": "n8n-nodes-base.if",
+		"popularity": 0.959
 	},
 	{
-		"id": "n8n-nodes-base.formTrigger",
-		"popularity": 0.871
+		"id": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+		"popularity": 0.936
+	},
+	{
+		"id": "n8n-nodes-base.merge",
+		"popularity": 0.895
+	},
+	{
+		"id": "n8n-nodes-base.scheduleTrigger",
+		"popularity": 0.91
+	},
+	{
+		"id": "n8n-nodes-base.noOp",
+		"popularity": 0.899
 	},
 	{
 		"id": "n8n-nodes-base.telegram",
-		"popularity": 0.903
+		"popularity": 0.899
 	},
 	{
-		"id": "n8n-nodes-base.splitOut",
+		"id": "@n8n/n8n-nodes-langchain.chainLlm",
+		"popularity": 0.86
+	},
+	{
+		"id": "n8n-nodes-base.googleDrive",
+		"popularity": 0.869
+	},
+	{
+		"id": "n8n-nodes-base.formTrigger",
+		"popularity": 0.87
+	},
+	{
+		"id": "n8n-nodes-base.switch",
+		"popularity": 0.873
+	},
+	{
+		"id": "n8n-nodes-base.respondToWebhook",
+		"popularity": 0.858
+	},
+	{
+		"id": "n8n-nodes-base.splitInBatches",
+		"popularity": 0.876
+	},
+	{
+		"id": "n8n-nodes-base.filter",
 		"popularity": 0.85
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.googleGemini",
+		"popularity": 0.864
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+		"popularity": 0.922
+	},
+	{
+		"id": "n8n-nodes-base.wait",
+		"popularity": 0.866
+	},
+	{
+		"id": "n8n-nodes-base.aggregate",
+		"popularity": 0.829
+	},
+	{
+		"id": "n8n-nodes-base.dataTable",
+		"popularity": 0.854
+	},
+	{
+		"id": "n8n-nodes-base.googleSheetsTool",
+		"popularity": 0.852
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.outputParserStructured",
+		"popularity": 0.83
+	},
+	{
+		"id": "n8n-nodes-base.gmailTrigger",
+		"popularity": 0.801
+	},
+	{
+		"id": "n8n-nodes-base.httpRequestTool",
+		"popularity": 0.801
+	},
+	{
+		"id": "n8n-nodes-base.googleCalendar",
+		"popularity": 0.751
+	},
+	{
+		"id": "n8n-nodes-base.readWriteFile",
+		"popularity": 0.817
+	},
+	{
+		"id": "n8n-nodes-base.executeWorkflow",
+		"popularity": 0.816
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.toolWorkflow",
+		"popularity": 0.804
+	},
+	{
+		"id": "n8n-nodes-base.emailSend",
+		"popularity": 0.785
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatOllama",
+		"popularity": 0.795
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.toolCalculator",
+		"popularity": 0.698
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+		"popularity": 0.772
+	},
+	{
+		"id": "n8n-nodes-base.whatsApp",
+		"popularity": 0.795
+	},
+	{
+		"id": "n8n-nodes-base.gmailTool",
+		"popularity": 0.798
+	},
+	{
+		"id": "n8n-nodes-base.googleSheetsTrigger",
+		"popularity": 0.786
+	},
+	{
+		"id": "n8n-nodes-base.whatsAppTrigger",
+		"popularity": 0.789
+	},
+	{
+		"id": "n8n-nodes-base.executeWorkflowTrigger",
+		"popularity": 0.802
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.toolCode",
+		"popularity": 0.739
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.chat",
+		"popularity": 0.763
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+		"popularity": 0.918
+	},
+	{
+		"id": "n8n-nodes-base.limit",
+		"popularity": 0.783
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+		"popularity": 0.784
+	},
+	{
+		"id": "n8n-nodes-docuwriter-ai.docuWriter",
+		"popularity": 0.246
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatGroq",
+		"popularity": 0.794
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.agentTool",
+		"popularity": 0.761
+	},
+	{
+		"id": "n8n-nodes-base.airtable",
+		"popularity": 0.805
+	},
+	{
+		"id": "n8n-nodes-base.supabase",
+		"popularity": 0.812
+	},
+	{
+		"id": "n8n-nodes-base.googleCalendarTool",
+		"popularity": 0.791
+	},
+	{
+		"id": "n8n-nodes-base.html",
+		"popularity": 0.758
+	},
+	{
+		"id": "n8n-nodes-base.googleDocs",
+		"popularity": 0.765
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.mcpClientTool",
+		"popularity": 0.748
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.informationExtractor",
+		"popularity": 0.733
+	},
+	{
+		"id": "n8n-nodes-base.microsoftExcel",
+		"popularity": 0.732
+	},
+	{
+		"id": "n8n-nodes-base.slack",
+		"popularity": 0.777
+	},
+	{
+		"id": "n8n-nodes-base.rssFeedRead",
+		"popularity": 0.769
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.mcpTrigger",
+		"popularity": 0.732
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+		"popularity": 0.75
+	},
+	{
+		"id": "n8n-nodes-base.googleDriveTrigger",
+		"popularity": 0.757
+	},
+	{
+		"id": "n8n-nodes-base.postgres",
+		"popularity": 0.831
+	},
+	{
+		"id": "n8n-nodes-base.form",
+		"popularity": 0.741
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.textClassifier",
+		"popularity": 0.712
+	},
+	{
+		"id": "n8n-nodes-base.aiTransform",
+		"popularity": 0.681
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+		"popularity": 0.765
+	},
+	{
+		"id": "n8n-nodes-base.microsoftOutlook",
+		"popularity": 0.746
+	},
+	{
+		"id": "n8n-nodes-base.executeCommand",
+		"popularity": 0.713
+	},
+	{
+		"id": "n8n-nodes-base.emailReadImap",
+		"popularity": 0.716
+	},
+	{
+		"id": "n8n-nodes-base.discord",
+		"popularity": 0.743
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.openAi",
@@ -29,791 +277,531 @@
 	},
 	{
 		"id": "n8n-nodes-base.gmail",
-		"popularity": 0.899
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.googleGemini",
-		"popularity": 0.864
-	},
-	{
-		"id": "n8n-nodes-base.merge",
-		"popularity": 0.89
-	},
-	{
-		"id": "n8n-nodes-base.splitInBatches",
-		"popularity": 0.873
-	},
-	{
-		"id": "n8n-nodes-base.switch",
-		"popularity": 0.872
-	},
-	{
-		"id": "n8n-nodes-base.executeCommand",
-		"popularity": 0.724
-	},
-	{
-		"id": "n8n-nodes-base.telegramTrigger",
-		"popularity": 0.871
-	},
-	{
-		"id": "n8n-nodes-base.googleDrive",
-		"popularity": 0.867
-	},
-	{
-		"id": "n8n-nodes-base.aggregate",
-		"popularity": 0.822
-	},
-	{
-		"id": "n8n-nodes-base.wait",
-		"popularity": 0.862
-	},
-	{
-		"id": "n8n-nodes-base.filter",
-		"popularity": 0.839
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.outputParserStructured",
-		"popularity": 0.832
+		"popularity": 0.903
 	},
 	{
 		"id": "n8n-nodes-base.extractFromFile",
-		"popularity": 0.824
+		"popularity": 0.83
 	},
 	{
-		"id": "n8n-nodes-base.googleDocs",
-		"popularity": 0.76
+		"id": "n8n-nodes-base.telegramTrigger",
+		"popularity": 0.869
 	},
 	{
-		"id": "n8n-nodes-base.readWriteFile",
-		"popularity": 0.818
-	},
-	{
-		"id": "n8n-nodes-base.executeWorkflowTrigger",
-		"popularity": 0.8
-	},
-	{
-		"id": "n8n-nodes-base.httpRequestTool",
-		"popularity": 0.799
-	},
-	{
-		"id": "n8n-nodes-base.gmailTrigger",
-		"popularity": 0.791
-	},
-	{
-		"id": "n8n-nodes-base.gmailTool",
-		"popularity": 0.794
-	},
-	{
-		"id": "n8n-nodes-base.discord",
-		"popularity": 0.742
-	},
-	{
-		"id": "n8n-nodes-base.executeWorkflow",
-		"popularity": 0.818
-	},
-	{
-		"id": "n8n-nodes-base.dataTable",
-		"popularity": 0.846
+		"id": "n8n-nodes-base.splitOut",
+		"popularity": 0.854
 	},
 	{
 		"id": "n8n-nodes-base.convertToFile",
-		"popularity": 0.802
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
-		"popularity": 0.793
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.toolWorkflow",
 		"popularity": 0.806
 	},
 	{
-		"id": "n8n-nodes-base.whatsApp",
-		"popularity": 0.798
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatGroq",
-		"popularity": 0.787
-	},
-	{
-		"id": "n8n-nodes-base.aiTransform",
-		"popularity": 0.672
-	},
-	{
-		"id": "n8n-nodes-base.limit",
-		"popularity": 0.773
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.chatTrigger",
-		"popularity": 0.953
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatOllama",
-		"popularity": 0.798
-	},
-	{
-		"id": "n8n-nodes-base.whatsAppTrigger",
-		"popularity": 0.793
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.toolCalculator",
-		"popularity": 0.698
-	},
-	{
-		"id": "n8n-nodes-base.googleSheetsTrigger",
-		"popularity": 0.781
-	},
-	{
-		"id": "n8n-nodes-base.emailSend",
-		"popularity": 0.775
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.chat",
-		"popularity": 0.751
-	},
-	{
-		"id": "n8n-nodes-base.rssFeedRead",
-		"popularity": 0.76
-	},
-	{
-		"id": "n8n-nodes-base.googleCalendarTool",
-		"popularity": 0.791
-	},
-	{
-		"id": "n8n-nodes-base.postgres",
-		"popularity": 0.828
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
-		"popularity": 0.747
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.mcpClientTool",
-		"popularity": 0.756
-	},
-	{
-		"id": "n8n-nodes-base.slack",
-		"popularity": 0.764
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.textClassifier",
-		"popularity": 0.714
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
-		"popularity": 0.762
-	},
-	{
-		"id": "n8n-nodes-base.html",
-		"popularity": 0.756
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.informationExtractor",
-		"popularity": 0.731
-	},
-	{
-		"id": "n8n-nodes-base.googleDriveTrigger",
-		"popularity": 0.753
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.toolCode",
-		"popularity": 0.74
-	},
-	{
-		"id": "n8n-nodes-base.airtable",
-		"popularity": 0.803
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.agentTool",
-		"popularity": 0.745
-	},
-	{
-		"id": "n8n-nodes-base.form",
-		"popularity": 0.738
-	},
-	{
-		"id": "n8n-nodes-base.emailReadImap",
-		"popularity": 0.709
-	},
-	{
-		"id": "n8n-nodes-base.supabase",
-		"popularity": 0.802
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
-		"popularity": 0.761
-	},
-	{
-		"id": "n8n-nodes-base.microsoftExcel",
-		"popularity": 0.719
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.mcpTrigger",
-		"popularity": 0.734
-	},
-	{
-		"id": "n8n-nodes-base.googleCalendar",
-		"popularity": 0.744
-	},
-	{
-		"id": "n8n-nodes-base.microsoftOutlook",
-		"popularity": 0.726
+		"id": "n8n-nodes-base.goToWebinar",
+		"popularity": 0.265
 	},
 	{
 		"id": "n8n-nodes-base.httpRequest",
-		"popularity": 0.984
-	},
-	{
-		"id": "n8n-nodes-base.respondToWebhook",
-		"popularity": 0.855
-	},
-	{
-		"id": "n8n-nodes-base.code",
-		"popularity": 1
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-		"popularity": 0.94
-	},
-	{
-		"id": "n8n-nodes-base.set",
-		"popularity": 0.979
-	},
-	{
-		"id": "n8n-nodes-base.scheduleTrigger",
-		"popularity": 0.912
-	},
-	{
-		"id": "n8n-nodes-base.googleSheetsTool",
-		"popularity": 0.851
-	},
-	{
-		"id": "n8n-nodes-base.noOp",
-		"popularity": 0.895
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.chainLlm",
-		"popularity": 0.86
-	},
-	{
-		"id": "n8n-nodes-base.if",
-		"popularity": 0.953
-	},
-	{
-		"id": "n8n-nodes-base.dateTime",
-		"popularity": 0.704
-	},
-	{
-		"id": "n8n-nodes-base.microsoftOutlookTool",
-		"popularity": 0.598
-	},
-	{
-		"id": "n8n-nodes-base.notion",
-		"popularity": 0.77
-	},
-	{
-		"id": "n8n-nodes-base.removeDuplicates",
-		"popularity": 0.669
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
-		"popularity": 0.725
-	},
-	{
-		"id": "n8n-nodes-base.markdown",
-		"popularity": 0.681
-	},
-	{
-		"id": "n8n-nodes-base.notionTool",
-		"popularity": 0.626
-	},
-	{
-		"id": "n8n-nodes-base.airtableTool",
-		"popularity": 0.661
+		"popularity": 0.983
 	},
 	{
 		"id": "n8n-nodes-base.errorTrigger",
-		"popularity": 0.689
-	},
-	{
-		"id": "n8n-nodes-base.microsoftTeams",
-		"popularity": 0.648
-	},
-	{
-		"id": "n8n-nodes-base.compareDatasets",
-		"popularity": 0.609
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
-		"popularity": 0.668
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.chainRetrievalQa",
-		"popularity": 0.659
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.toolSerpApi",
-		"popularity": 0.715
-	},
-	{
-		"id": "n8n-nodes-base.microsoftExcelTool",
-		"popularity": 0.597
-	},
-	{
-		"id": "n8n-nodes-base.summarize",
-		"popularity": 0.699
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.toolThink",
-		"popularity": 0.695
-	},
-	{
-		"id": "n8n-nodes-base.openWeatherMap",
-		"popularity": 0.641
-	},
-	{
-		"id": "n8n-nodes-base.airtableTrigger",
-		"popularity": 0.625
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsOllama",
-		"popularity": 0.656
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
-		"popularity": 0.73
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.memoryRedisChat",
-		"popularity": 0.67
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
-		"popularity": 0.712
-	},
-	{
-		"id": "n8n-nodes-base.telegramTool",
-		"popularity": 0.672
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatXAiGrok",
-		"popularity": 0.672
-	},
-	{
-		"id": "n8n-nodes-base.facebookGraphApi",
-		"popularity": 0.691
-	},
-	{
-		"id": "n8n-nodes-base.crypto",
-		"popularity": 0.624
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
 		"popularity": 0.7
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.chainSummarization",
-		"popularity": 0.607
+		"id": "n8n-nodes-base.notion",
+		"popularity": 0.773
 	},
 	{
-		"id": "n8n-nodes-base.perplexity",
-		"popularity": 0.663
+		"id": "n8n-nodes-base.summarize",
+		"popularity": 0.707
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
-		"popularity": 0.676
+		"id": "@n8n/n8n-nodes-langchain.toolSerpApi",
+		"popularity": 0.711
 	},
 	{
-		"id": "n8n-nodes-base.sort",
-		"popularity": 0.657
-	},
-	{
-		"id": "@apify/n8n-nodes-apify.apify",
-		"popularity": 0.695
-	},
-	{
-		"id": "n8n-nodes-base.ssh",
-		"popularity": 0.714
-	},
-	{
-		"id": "n8n-nodes-base.localFileTrigger",
-		"popularity": 0.505
-	},
-	{
-		"id": "n8n-nodes-base.rssFeedReadTrigger",
-		"popularity": 0.665
+		"id": "n8n-nodes-base.dateTime",
+		"popularity": 0.711
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.anthropic",
-		"popularity": 0.681
+		"popularity": 0.698
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.toolWikipedia",
-		"popularity": 0.655
+		"id": "n8n-nodes-base.youTube",
+		"popularity": 0.714
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatGoogleVertex",
-		"popularity": 0.664
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.sentimentAnalysis",
-		"popularity": 0.611
-	},
-	{
-		"id": "n8n-nodes-base.facebookTrigger",
-		"popularity": 0.646
-	},
-	{
-		"id": "n8n-nodes-base.googleDriveTool",
-		"popularity": 0.684
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.modelSelector",
-		"popularity": 0.651
-	},
-	{
-		"id": "n8n-nodes-base.googleDocsTool",
-		"popularity": 0.672
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
-		"popularity": 0.671
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.memoryManager",
-		"popularity": 0.663
-	},
-	{
-		"id": "n8n-nodes-base.twitter",
-		"popularity": 0.623
-	},
-	{
-		"id": "n8n-nodes-base.microsoftOutlookTrigger",
-		"popularity": 0.649
-	},
-	{
-		"id": "n8n-nodes-base.openWeatherMapTool",
-		"popularity": 0.612
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.memoryMongoDbChat",
+		"id": "n8n-nodes-base.n8n",
 		"popularity": 0.659
 	},
 	{
-		"id": "n8n-nodes-base.evaluationTrigger",
-		"popularity": 0.615
+		"id": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+		"popularity": 0.68
 	},
 	{
-		"id": "n8n-nodes-base.supabaseTool",
-		"popularity": 0.662
+		"id": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+		"popularity": 0.686
 	},
 	{
-		"id": "n8n-nodes-base.slackTrigger",
-		"popularity": 0.674
+		"id": "@n8n/n8n-nodes-langchain.sentimentAnalysis",
+		"popularity": 0.614
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
-		"popularity": 0.714
+		"id": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+		"popularity": 0.735
+	},
+	{
+		"id": "n8n-nodes-base.openWeatherMap",
+		"popularity": 0.639
+	},
+	{
+		"id": "n8n-nodes-base.twitter",
+		"popularity": 0.621
 	},
 	{
 		"id": "n8n-nodes-base.postgresTool",
 		"popularity": 0.647
 	},
 	{
+		"id": "n8n-nodes-base.googleDriveTool",
+		"popularity": 0.686
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+		"popularity": 0.719
+	},
+	{
+		"id": "@seranking/n8n-nodes-seranking.seRanking",
+		"popularity": 0.343
+	},
+	{
+		"id": "n8n-nodes-base.stopAndError",
+		"popularity": 0.697
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.toolThink",
+		"popularity": 0.685
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+		"popularity": 0.661
+	},
+	{
+		"id": "n8n-nodes-base.airtableTool",
+		"popularity": 0.65
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.chainSummarization",
+		"popularity": 0.605
+	},
+	{
+		"id": "n8n-nodes-base.markdown",
+		"popularity": 0.676
+	},
+	{
+		"id": "n8n-nodes-base.googleDocsTool",
+		"popularity": 0.682
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+		"popularity": 0.726
+	},
+	{
+		"id": "n8n-nodes-base.facebookGraphApi",
+		"popularity": 0.691
+	},
+	{
+		"id": "n8n-nodes-base.sort",
+		"popularity": 0.664
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatXAiGrok",
+		"popularity": 0.673
+	},
+	{
+		"id": "n8n-nodes-base.compareDatasets",
+		"popularity": 0.622
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.memoryMongoDbChat",
+		"popularity": 0.659
+	},
+	{
+		"id": "n8n-nodes-base.evaluation",
+		"popularity": 0.625
+	},
+	{
+		"id": "n8n-nodes-base.microsoftTeams",
+		"popularity": 0.672
+	},
+	{
+		"id": "n8n-nodes-base.mySql",
+		"popularity": 0.727
+	},
+	{
 		"id": "n8n-nodes-base.redis",
-		"popularity": 0.714
+		"popularity": 0.723
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatGoogleVertex",
+		"popularity": 0.666
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.chainRetrievalQa",
+		"popularity": 0.664
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+		"popularity": 0.709
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.toolWikipedia",
+		"popularity": 0.658
+	},
+	{
+		"id": "@apify/n8n-nodes-apify.apify",
+		"popularity": 0.705
+	},
+	{
+		"id": "n8n-nodes-base.microsoftOutlookTrigger",
+		"popularity": 0.67
+	},
+	{
+		"id": "n8n-nodes-base.removeDuplicates",
+		"popularity": 0.681
+	},
+	{
+		"id": "n8n-nodes-base.dateTimeTool",
+		"popularity": 0.636
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.memoryManager",
+		"popularity": 0.667
+	},
+	{
+		"id": "n8n-nodes-base.ssh",
+		"popularity": 0.704
+	},
+	{
+		"id": "n8n-nodes-base.rssFeedReadTrigger",
+		"popularity": 0.667
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+		"popularity": 0.682
+	},
+	{
+		"id": "n8n-nodes-base.slackTrigger",
+		"popularity": 0.68
+	},
+	{
+		"id": "n8n-nodes-base.telegramTool",
+		"popularity": 0.664
+	},
+	{
+		"id": "n8n-nodes-base.microsoftOutlookTool",
+		"popularity": 0.606
+	},
+	{
+		"id": "n8n-nodes-base.whatsAppTool",
+		"popularity": 0.637
+	},
+	{
+		"id": "n8n-nodes-base.microsoftExcelTool",
+		"popularity": 0.599
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.modelSelector",
+		"popularity": 0.659
+	},
+	{
+		"id": "n8n-nodes-base.crypto",
+		"popularity": 0.629
+	},
+	{
+		"id": "n8n-nodes-base.dataTableTool",
+		"popularity": 0.67
+	},
+	{
+		"id": "n8n-nodes-base.linkedIn",
+		"popularity": 0.655
+	},
+	{
+		"id": "n8n-nodes-base.facebookTrigger",
+		"popularity": 0.649
+	},
+	{
+		"id": "n8n-nodes-base.notionTool",
+		"popularity": 0.627
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+		"popularity": 0.675
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+		"popularity": 0.658
+	},
+	{
+		"id": "n8n-nodes-whatsable.whatsAble",
+		"popularity": 0.61
+	},
+	{
+		"id": "n8n-nodes-base.localFileTrigger",
+		"popularity": 0.506
+	},
+	{
+		"id": "n8n-nodes-base.supabaseTool",
+		"popularity": 0.673
+	},
+	{
+		"id": "n8n-nodes-base.xml",
+		"popularity": 0.643
 	},
 	{
 		"id": "n8n-nodes-base.editImage",
 		"popularity": 0.657
 	},
 	{
-		"id": "n8n-nodes-base.wordpress",
-		"popularity": 0.648
-	},
-	{
-		"id": "n8n-nodes-base.evaluation",
-		"popularity": 0.614
-	},
-	{
-		"id": "n8n-nodes-base.n8n",
-		"popularity": 0.656
-	},
-	{
-		"id": "n8n-nodes-base.dataTableTool",
-		"popularity": 0.675
-	},
-	{
 		"id": "n8n-nodes-base.twilio",
-		"popularity": 0.657
-	},
-	{
-		"id": "n8n-nodes-base.mySql",
-		"popularity": 0.721
-	},
-	{
-		"id": "n8n-nodes-base.stopAndError",
-		"popularity": 0.687
-	},
-	{
-		"id": "n8n-nodes-base.dateTimeTool",
-		"popularity": 0.621
-	},
-	{
-		"id": "n8n-nodes-whatsable.whatsAble",
-		"popularity": 0.6
-	},
-	{
-		"id": "n8n-nodes-base.microsoftOneDrive",
 		"popularity": 0.667
 	},
 	{
-		"id": "n8n-nodes-base.youTube",
-		"popularity": 0.723
+		"id": "n8n-nodes-base.perplexity",
+		"popularity": 0.65
 	},
 	{
-		"id": "n8n-nodes-base.xml",
-		"popularity": 0.636
+		"id": "n8n-nodes-base.openWeatherMapTool",
+		"popularity": 0.615
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
-		"popularity": 0.659
-	},
-	{
-		"id": "n8n-nodes-base.executionData",
-		"popularity": 0.693
-	},
-	{
-		"id": "n8n-nodes-base.whatsAppTool",
-		"popularity": 0.641
-	},
-	{
-		"id": "n8n-nodes-base.linkedIn",
-		"popularity": 0.651
-	},
-	{
-		"id": "@brave/n8n-nodes-brave-search.braveSearch",
-		"popularity": 0.497
-	},
-	{
-		"id": "n8n-nodes-base.shopifyTrigger",
-		"popularity": 0.547
-	},
-	{
-		"id": "n8n-nodes-base.debugHelper",
-		"popularity": 0.571
-	},
-	{
-		"id": "n8n-nodes-base.notionTrigger",
-		"popularity": 0.601
-	},
-	{
-		"id": "n8n-nodes-base.microsoftSql",
-		"popularity": 0.637
-	},
-	{
-		"id": "n8n-nodes-base.highLevel",
-		"popularity": 0.58
-	},
-	{
-		"id": "n8n-nodes-base.executeCommandTool",
-		"popularity": 0.438
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.textSplitterTokenSplitter",
-		"popularity": 0.528
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas",
-		"popularity": 0.519
-	},
-	{
-		"id": "n8n-nodes-base.facebookGraphApiTool",
-		"popularity": 0.513
-	},
-	{
-		"id": "n8n-nodes-base.github",
-		"popularity": 0.632
-	},
-	{
-		"id": "n8n-nodes-base.jiraTool",
-		"popularity": 0.531
-	},
-	{
-		"id": "n8n-nodes-base.hubspotTrigger",
-		"popularity": 0.534
-	},
-	{
-		"id": "n8n-nodes-base.trello",
-		"popularity": 0.577
-	},
-	{
-		"id": "n8n-nodes-base.formIoTrigger",
-		"popularity": 0.506
-	},
-	{
-		"id": "n8n-nodes-base.postBin",
-		"popularity": 0.557
-	},
-	{
-		"id": "n8n-nodes-base.jira",
-		"popularity": 0.619
-	},
-	{
-		"id": "n8n-nodes-base.actionNetwork",
-		"popularity": 0.512
-	},
-	{
-		"id": "@mendable/n8n-nodes-firecrawl.firecrawl",
-		"popularity": 0.624
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.retrieverVectorStore",
-		"popularity": 0.588
-	},
-	{
-		"id": "n8n-nodes-base.quickChart",
-		"popularity": 0.533
-	},
-	{
-		"id": "n8n-nodes-base.googleSlides",
-		"popularity": 0.562
-	},
-	{
-		"id": "n8n-nodes-pdfco.PDFco Api",
-		"popularity": 0.532
-	},
-	{
-		"id": "n8n-nodes-base.googleChat",
-		"popularity": 0.594
-	},
-	{
-		"id": "n8n-nodes-base.microsoftTeamsTool",
-		"popularity": 0.472
-	},
-	{
-		"id": "n8n-nodes-base.postgresTrigger",
-		"popularity": 0.566
-	},
-	{
-		"id": "n8n-nodes-base.googleTranslate",
-		"popularity": 0.51
-	},
-	{
-		"id": "n8n-nodes-base.hubspot",
+		"id": "n8n-nodes-base.wordpress",
 		"popularity": 0.64
 	},
 	{
-		"id": "n8n-nodes-base.n8nTrainingCustomerMessenger",
-		"popularity": 0.564
+		"id": "n8n-nodes-base.airtableTrigger",
+		"popularity": 0.634
 	},
 	{
-		"id": "n8n-nodes-base.emailReadImapTool",
-		"popularity": 0.515
+		"id": "n8n-nodes-base.evaluationTrigger",
+		"popularity": 0.622
 	},
 	{
-		"id": "n8n-nodes-base.microsoftSharePoint",
-		"popularity": 0.633
+		"id": "n8n-nodes-base.microsoftOneDrive",
+		"popularity": 0.684
 	},
 	{
-		"id": "n8n-nodes-base.odoo",
-		"popularity": 0.599
+		"id": "n8n-nodes-base.executionData",
+		"popularity": 0.706
 	},
 	{
-		"id": "n8n-nodes-base.googleBigQuery",
-		"popularity": 0.554
+		"id": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+		"popularity": 0.715
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference",
-		"popularity": 0.616
+		"id": "n8n-nodes-base.microsoftSql",
+		"popularity": 0.652
 	},
 	{
 		"id": "n8n-nodes-base.hackerNews",
-		"popularity": 0.581
+		"popularity": 0.596
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.code",
-		"popularity": 0.528
+		"id": "@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference",
+		"popularity": 0.615
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.textSplitterCharacterTextSplitter",
-		"popularity": 0.573
-	},
-	{
-		"id": "n8n-nodes-base.calTrigger",
-		"popularity": 0.534
-	},
-	{
-		"id": "n8n-nodes-serpapi.serpApi",
-		"popularity": 0.573
-	},
-	{
-		"id": "n8n-nodes-base.salesforce",
-		"popularity": 0.585
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsHuggingFaceInference",
-		"popularity": 0.557
-	},
-	{
-		"id": "n8n-nodes-base.filemaker",
-		"popularity": 0.549
-	},
-	{
-		"id": "n8n-nodes-base.clickUp",
+		"id": "n8n-nodes-base.github",
 		"popularity": 0.636
 	},
 	{
-		"id": "n8n-nodes-base.n8nTrigger",
-		"popularity": 0.535
+		"id": "n8n-nodes-base.hubspot",
+		"popularity": 0.668
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.memoryXata",
-		"popularity": 0.521
+		"id": "n8n-nodes-base.jira",
+		"popularity": 0.647
+	},
+	{
+		"id": "n8n-nodes-base.baserow",
+		"popularity": 0.617
+	},
+	{
+		"id": "n8n-nodes-base.clickUp",
+		"popularity": 0.655
+	},
+	{
+		"id": "@mendable/n8n-nodes-firecrawl.firecrawl",
+		"popularity": 0.626
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.lmChatAwsBedrock",
-		"popularity": 0.591
+		"popularity": 0.602
 	},
 	{
-		"id": "n8n-nodes-base.s3",
-		"popularity": 0.609
+		"id": "n8n-nodes-base.jiraTool",
+		"popularity": 0.55
 	},
 	{
-		"id": "n8n-nodes-base.sseTrigger",
-		"popularity": 0.524
+		"id": "n8n-nodes-base.microsoftSharePoint",
+		"popularity": 0.658
 	},
 	{
-		"id": "n8n-nodes-base.jiraTrigger",
-		"popularity": 0.512
+		"id": "n8n-nodes-base.homeAssistant",
+		"popularity": 0.562
 	},
 	{
-		"id": "n8n-nodes-base.rssFeedReadTool",
-		"popularity": 0.58
+		"id": "n8n-nodes-base.microsoftTeamsTool",
+		"popularity": 0.504
 	},
 	{
-		"id": "n8n-nodes-base.mongoDb",
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas",
+		"popularity": 0.52
+	},
+	{
+		"id": "n8n-nodes-base.ftp",
 		"popularity": 0.627
 	},
 	{
-		"id": "n8n-nodes-base.awsS3",
-		"popularity": 0.582
+		"id": "@n8n/n8n-nodes-langchain.retrieverContextualCompression",
+		"popularity": 0.521
+	},
+	{
+		"id": "n8n-nodes-base.facebookGraphApiTool",
+		"popularity": 0.508
+	},
+	{
+		"id": "n8n-nodes-base.quickChart",
+		"popularity": 0.54
+	},
+	{
+		"id": "n8n-nodes-base.actionNetwork",
+		"popularity": 0.525
+	},
+	{
+		"id": "n8n-nodes-base.emailReadImapTool",
+		"popularity": 0.516
+	},
+	{
+		"id": "n8n-nodes-base.googleChat",
+		"popularity": 0.611
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.embeddingsCohere",
+		"popularity": 0.542
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.retrieverVectorStore",
+		"popularity": 0.602
+	},
+	{
+		"id": "n8n-nodes-base.debugHelper",
+		"popularity": 0.577
+	},
+	{
+		"id": "n8n-nodes-base.googleSlides",
+		"popularity": 0.57
+	},
+	{
+		"id": "n8n-nodes-base.nasa",
+		"popularity": 0.551
+	},
+	{
+		"id": "@searchapi/n8n-nodes-searchapi.searchApi",
+		"popularity": 0.508
+	},
+	{
+		"id": "n8n-nodes-base.mongoDb",
+		"popularity": 0.63
+	},
+	{
+		"id": "n8n-nodes-base.sseTrigger",
+		"popularity": 0.534
+	},
+	{
+		"id": "n8n-nodes-base.googleTranslate",
+		"popularity": 0.509
+	},
+	{
+		"id": "n8n-nodes-base.googleCalendarTrigger",
+		"popularity": 0.591
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.textSplitterCharacterTextSplitter",
+		"popularity": 0.581
+	},
+	{
+		"id": "n8n-nodes-base.formIoTrigger",
+		"popularity": 0.514
+	},
+	{
+		"id": "n8n-nodes-base.notionTrigger",
+		"popularity": 0.605
+	},
+	{
+		"id": "n8n-nodes-base.odoo",
+		"popularity": 0.619
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.textSplitterTokenSplitter",
+		"popularity": 0.538
+	},
+	{
+		"id": "n8n-nodes-cronlytic.cronlyticTrigger",
+		"popularity": 0.577
+	},
+	{
+		"id": "n8n-nodes-base.rssFeedReadTool",
+		"popularity": 0.595
+	},
+	{
+		"id": "n8n-nodes-base.trello",
+		"popularity": 0.594
+	},
+	{
+		"id": "n8n-nodes-base.shopify",
+		"popularity": 0.604
 	},
 	{
 		"id": "n8n-nodes-base.googleContacts",
 		"popularity": 0.542
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatCohere",
-		"popularity": 0.553
+		"id": "n8n-nodes-base.postgresTrigger",
+		"popularity": 0.567
 	},
 	{
-		"id": "n8n-nodes-base.line",
+		"id": "n8n-nodes-base.jiraTrigger",
+		"popularity": 0.543
+	},
+	{
+		"id": "n8n-nodes-base.googleTasks",
+		"popularity": 0.554
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.embeddingsHuggingFaceInference",
 		"popularity": 0.573
 	},
 	{
-		"id": "n8n-nodes-base.nocoDb",
-		"popularity": 0.637
+		"id": "n8n-nodes-base.awsS3",
+		"popularity": 0.593
+	},
+	{
+		"id": "n8n-nodes-base.hubspotTrigger",
+		"popularity": 0.558
+	},
+	{
+		"id": "n8n-nodes-base.githubTool",
+		"popularity": 0.55
+	},
+	{
+		"id": "n8n-nodes-base.line",
+		"popularity": 0.578
+	},
+	{
+		"id": "n8n-nodes-serpapi.serpApi",
+		"popularity": 0.578
 	},
 	{
 		"id": "n8n-nodes-base.discordTool",
@@ -821,2738 +809,2138 @@
 	},
 	{
 		"id": "n8n-nodes-base.googleContactsTool",
-		"popularity": 0.533
+		"popularity": 0.526
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsCohere",
-		"popularity": 0.533
+		"id": "n8n-nodes-base.filemaker",
+		"popularity": 0.552
 	},
 	{
-		"id": "n8n-nodes-base.githubTool",
-		"popularity": 0.543
+		"id": "n8n-nodes-base.n8nTrainingCustomerMessenger",
+		"popularity": 0.561
 	},
 	{
-		"id": "n8n-nodes-base.githubTrigger",
-		"popularity": 0.54
+		"id": "n8n-nodes-base.s3",
+		"popularity": 0.607
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.documentGithubLoader",
-		"popularity": 0
+		"id": "@n8n/n8n-nodes-langchain.memoryXata",
+		"popularity": 0.547
 	},
 	{
-		"id": "n8n-nodes-base.ftp",
-		"popularity": 0.619
+		"id": "n8n-nodes-base.googleBigQuery",
+		"popularity": 0.577
 	},
 	{
-		"id": "n8n-nodes-base.shopify",
-		"popularity": 0.59
+		"id": "@n8n/n8n-nodes-langchain.lmChatCohere",
+		"popularity": 0.555
 	},
 	{
 		"id": "@blotato/n8n-nodes-blotato.blotato",
-		"popularity": 0.606
+		"popularity": 0.61
 	},
 	{
-		"id": "n8n-nodes-aiscraper.aiScraper",
-		"popularity": 0.494
+		"id": "n8n-nodes-base.salesforce",
+		"popularity": 0.619
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.retrieverContextualCompression",
-		"popularity": 0.518
+		"id": "@brave/n8n-nodes-brave-search.braveSearch",
+		"popularity": 0.543
 	},
 	{
-		"id": "n8n-nodes-base.nasa",
-		"popularity": 0.546
-	},
-	{
-		"id": "n8n-nodes-base.baserow",
-		"popularity": 0.617
-	},
-	{
-		"id": "n8n-nodes-base.homeAssistant",
-		"popularity": 0.584
-	},
-	{
-		"id": "n8n-nodes-base.googleTasks",
-		"popularity": 0.549
-	},
-	{
-		"id": "n8n-nodes-cronlytic.cronlyticTrigger",
-		"popularity": 0.571
-	},
-	{
-		"id": "@searchapi/n8n-nodes-searchapi.searchApi",
-		"popularity": 0.507
-	},
-	{
-		"id": "n8n-nodes-base.googleCalendarTrigger",
-		"popularity": 0.585
-	},
-	{
-		"id": "@aotoki/n8n-nodes-line-messaging.lineMessaging",
-		"popularity": 0.563
-	},
-	{
-		"id": "n8n-nodes-base.rocketchat",
-		"popularity": 0.385
-	},
-	{
-		"id": "n8n-nodes-base.renameKeys",
-		"popularity": 0.564
-	},
-	{
-		"id": "n8n-nodes-base.linkedInTool",
-		"popularity": 0.582
-	},
-	{
-		"id": "n8n-nodes-base.philipsHue",
-		"popularity": 0.359
-	},
-	{
-		"id": "n8n-nodes-base.youTubeTool",
-		"popularity": 0.574
-	},
-	{
-		"id": "n8n-nodes-base.totp",
-		"popularity": 0.448
-	},
-	{
-		"id": "n8n-nodes-powerbi.powerBi",
-		"popularity": 0.473
-	},
-	{
-		"id": "n8n-nodes-base.bitbucketTrigger",
-		"popularity": 0.402
-	},
-	{
-		"id": "n8n-nodes-base.philipsHueTool",
-		"popularity": 0.498
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreZep",
-		"popularity": 0.439
-	},
-	{
-		"id": "n8n-nodes-base.microsoftTeamsTrigger",
+		"id": "n8n-nodes-base.postBin",
 		"popularity": 0.559
 	},
 	{
-		"id": "n8n-nodes-base.s3Tool",
-		"popularity": 0.382
+		"id": "@n8n/n8n-nodes-langchain.code",
+		"popularity": 0.512
 	},
 	{
-		"id": "n8n-nodes-base.quickbooks",
-		"popularity": 0.503
+		"id": "n8n-nodes-base.calTrigger",
+		"popularity": 0.54
+	},
+	{
+		"id": "n8n-nodes-base.githubTrigger",
+		"popularity": 0.556
+	},
+	{
+		"id": "n8n-nodes-base.n8nTrigger",
+		"popularity": 0.541
+	},
+	{
+		"id": "n8n-nodes-base.nocoDb",
+		"popularity": 0.641
+	},
+	{
+		"id": "n8n-nodes-base.highLevel",
+		"popularity": 0.586
+	},
+	{
+		"id": "n8n-nodes-pdfco.PDFco Api",
+		"popularity": 0.567
+	},
+	{
+		"id": "n8n-nodes-aiscraper.aiScraper",
+		"popularity": 0.5
+	},
+	{
+		"id": "n8n-nodes-base.shopifyTrigger",
+		"popularity": 0.547
+	},
+	{
+		"id": "n8n-nodes-base.executeCommandTool",
+		"popularity": 0.425
+	},
+	{
+		"id": "n8n-nodes-base.renameKeys",
+		"popularity": 0.573
+	},
+	{
+		"id": "n8n-nodes-base.emailSendTool",
+		"popularity": 0.57
+	},
+	{
+		"id": "n8n-nodes-base.mistralAi",
+		"popularity": 0.574
+	},
+	{
+		"id": "n8n-nodes-base.youTubeTool",
+		"popularity": 0.563
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.rerankerCohere",
+		"popularity": 0.567
+	},
+	{
+		"id": "n8n-nodes-base.pushover",
+		"popularity": 0.54
+	},
+	{
+		"id": "n8n-nodes-base.awsTranscribeTool",
+		"popularity": 0.354
+	},
+	{
+		"id": "n8n-nodes-base.reddit",
+		"popularity": 0.562
+	},
+	{
+		"id": "n8n-nodes-base.mySqlTool",
+		"popularity": 0.586
+	},
+	{
+		"id": "n8n-nodes-autobound.autobound",
+		"popularity": 0.103
+	},
+	{
+		"id": "n8n-nodes-base.microsoftTeamsTrigger",
+		"popularity": 0.578
+	},
+	{
+		"id": "n8n-nodes-base.azureStorage",
+		"popularity": 0.473
+	},
+	{
+		"id": "n8n-nodes-base.microsoftToDo",
+		"popularity": 0.476
+	},
+	{
+		"id": "n8n-nodes-base.eventbriteTrigger",
+		"popularity": 0.388
+	},
+	{
+		"id": "n8n-nodes-base.snowflake",
+		"popularity": 0.525
 	},
 	{
 		"id": "n8n-nodes-base.jinaAiTool",
 		"popularity": 0.44
 	},
 	{
-		"id": "n8n-nodes-base.vonage",
-		"popularity": 0.389
-	},
-	{
-		"id": "n8n-nodes-base.microsoftToDo",
-		"popularity": 0.47
-	},
-	{
-		"id": "n8n-nodes-base.zoom",
-		"popularity": 0.459
-	},
-	{
-		"id": "n8n-nodes-base.twilioTool",
-		"popularity": 0.467
-	},
-	{
-		"id": "n8n-nodes-base.eventbriteTrigger",
-		"popularity": 0.374
-	},
-	{
-		"id": "n8n-nodes-base.googleCloudNaturalLanguageTool",
-		"popularity": 0.363
-	},
-	{
-		"id": "n8n-nodes-base.pushover",
-		"popularity": 0.484
-	},
-	{
-		"id": "n8n-nodes-base.grist",
-		"popularity": 0.405
-	},
-	{
-		"id": "n8n-nodes-base.payPal",
-		"popularity": 0.372
-	},
-	{
-		"id": "n8n-nodes-base.graphqlTool",
-		"popularity": 0.364
-	},
-	{
-		"id": "n8n-nodes-browserflow.browserflow",
-		"popularity": 0.386
-	},
-	{
-		"id": "n8n-nodes-base.googleBusinessProfile",
-		"popularity": 0.496
-	},
-	{
-		"id": "@2chat/n8n-nodes-twochat.twoChat",
-		"popularity": 0.345
-	},
-	{
-		"id": "n8n-nodes-base.awsSes",
-		"popularity": 0.435
-	},
-	{
-		"id": "n8n-nodes-base.redditTool",
-		"popularity": 0.425
-	},
-	{
-		"id": "n8n-nodes-base.mailjet",
-		"popularity": 0.389
-	},
-	{
-		"id": "n8n-nodes-base.trelloTrigger",
-		"popularity": 0.461
-	},
-	{
 		"id": "@n8n/n8n-nodes-langchain.embeddingsAzureOpenAi",
-		"popularity": 0.49
+		"popularity": 0.517
 	},
 	{
-		"id": "n8n-nodes-base.amqpTrigger",
-		"popularity": 0.326
+		"id": "n8n-nodes-base.s3Tool",
+		"popularity": 0.366
 	},
 	{
-		"id": "n8n-nodes-scrapegraphai.scrapegraphAi",
-		"popularity": 0.393
+		"id": "n8n-nodes-base.quickbooks",
+		"popularity": 0.516
 	},
 	{
-		"id": "n8n-nodes-base.wooCommerceTrigger",
-		"popularity": 0.471
-	},
-	{
-		"id": "n8n-nodes-base.redisTrigger",
-		"popularity": 0.447
-	},
-	{
-		"id": "n8n-nodes-base.compression",
-		"popularity": 0.589
-	},
-	{
-		"id": "n8n-nodes-base.dhlTool",
-		"popularity": 0.352
-	},
-	{
-		"id": "n8n-nodes-base.trelloTool",
-		"popularity": 0.459
-	},
-	{
-		"id": "n8n-nodes-base.snowflake",
-		"popularity": 0.475
+		"id": "n8n-nodes-base.rabbitmq",
+		"popularity": 0.466
 	},
 	{
 		"id": "n8n-nodes-base.seaTable",
 		"popularity": 0.448
 	},
 	{
-		"id": "n8n-nodes-base.azureStorage",
-		"popularity": 0.455
-	},
-	{
-		"id": "n8n-nodes-base.salesforceTrigger",
-		"popularity": 0.459
-	},
-	{
-		"id": "n8n-nodes-base.microsoftGraphSecurityTool",
-		"popularity": 0.349
-	},
-	{
-		"id": "n8n-nodes-base.formstackTrigger",
-		"popularity": 0.42
-	},
-	{
-		"id": "n8n-nodes-base.filemakerTool",
-		"popularity": 0.356
-	},
-	{
-		"id": "n8n-nodes-base.stravaTrigger",
-		"popularity": 0.405
-	},
-	{
-		"id": "n8n-nodes-base.rabbitmq",
-		"popularity": 0.442
-	},
-	{
-		"id": "n8n-nodes-base.mondayComTool",
-		"popularity": 0.384
-	},
-	{
-		"id": "n8n-nodes-base.twilioTrigger",
-		"popularity": 0.567
-	},
-	{
-		"id": "n8n-nodes-base.pipedriveTool",
-		"popularity": 0.386
-	},
-	{
-		"id": "n8n-nodes-base.strava",
-		"popularity": 0.455
-	},
-	{
-		"id": "n8n-nodes-base.emailSendTool",
-		"popularity": 0.564
-	},
-	{
-		"id": "n8n-nodes-base.airtopTool",
-		"popularity": 0.461
-	},
-	{
-		"id": "n8n-nodes-base.zendesk",
-		"popularity": 0.479
-	},
-	{
-		"id": "n8n-nodes-aimlapi.aimlApi",
-		"popularity": 0.389
-	},
-	{
-		"id": "n8n-nodes-base.awsLambda",
-		"popularity": 0.437
-	},
-	{
 		"id": "n8n-nodes-base.matrix",
-		"popularity": 0.469
+		"popularity": 0.455
 	},
 	{
-		"id": "n8n-nodes-base.stripeTool",
-		"popularity": 0.372
-	},
-	{
-		"id": "n8n-nodes-base.box",
-		"popularity": 0.418
-	},
-	{
-		"id": "n8n-nodes-base.rabbitmqTrigger",
-		"popularity": 0.442
-	},
-	{
-		"id": "n8n-nodes-base.actionNetworkTool",
-		"popularity": 0.401
-	},
-	{
-		"id": "n8n-nodes-base.awsTranscribeTool",
-		"popularity": 0.353
-	},
-	{
-		"id": "n8n-nodes-base.linearTrigger",
-		"popularity": 0.386
-	},
-	{
-		"id": "n8n-nodes-base.googleSlidesTool",
-		"popularity": 0.43
-	},
-	{
-		"id": "n8n-nodes-base.zendeskTrigger",
-		"popularity": 0.395
-	},
-	{
-		"id": "n8n-nodes-base.dropbox",
-		"popularity": 0.598
-	},
-	{
-		"id": "n8n-nodes-base.reddit",
-		"popularity": 0.57
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.rerankerCohere",
-		"popularity": 0.566
-	},
-	{
-		"id": "n8n-nodes-base.awsTextractTool",
-		"popularity": 0.354
-	},
-	{
-		"id": "n8n-nodes-base.mistralAi",
-		"popularity": 0.569
-	},
-	{
-		"id": "n8n-nodes-base.coinGecko",
-		"popularity": 0.443
-	},
-	{
-		"id": "@tavily/n8n-nodes-tavily.tavily",
-		"popularity": 0.578
-	},
-	{
-		"id": "n8n-nodes-base.mySqlTool",
-		"popularity": 0.581
-	},
-	{
-		"id": "n8n-nodes-base.jenkins",
-		"popularity": 0.375
-	},
-	{
-		"id": "n8n-nodes-cloudinary.cloudinary",
-		"popularity": 0.548
-	},
-	{
-		"id": "n8n-nodes-base.odooTool",
-		"popularity": 0.458
-	},
-	{
-		"id": "n8n-nodes-base.googleChatTool",
-		"popularity": 0.447
-	},
-	{
-		"id": "n8n-nodes-base.deepL",
-		"popularity": 0.45
-	},
-	{
-		"id": "n8n-nodes-base.calendlyTrigger",
-		"popularity": 0.53
-	},
-	{
-		"id": "n8n-nodes-base.homeAssistantTool",
-		"popularity": 0.511
-	},
-	{
-		"id": "n8n-nodes-base.stripe",
-		"popularity": 0.511
-	},
-	{
-		"id": "n8n-nodes-base.googleCloudStorage",
-		"popularity": 0.54
-	},
-	{
-		"id": "@cloudconvert/n8n-nodes-cloudconvert.cloudConvert",
-		"popularity": 0.512
-	},
-	{
-		"id": "n8n-nodes-base.mattermost",
-		"popularity": 0.474
-	},
-	{
-		"id": "n8n-nodes-scrape-creators.scrapeCreators",
-		"popularity": 0.449
-	},
-	{
-		"id": "n8n-nodes-base.pipedrive",
-		"popularity": 0.565
-	},
-	{
-		"id": "n8n-nodes-base.elasticsearch",
-		"popularity": 0.433
-	},
-	{
-		"id": "n8n-nodes-base.jotFormTrigger",
-		"popularity": 0.486
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.retrieverMultiQuery",
-		"popularity": 0.485
-	},
-	{
-		"id": "n8n-nodes-base.webflow",
-		"popularity": 0.456
-	},
-	{
-		"id": "n8n-nodes-base.wooCommerce",
-		"popularity": 0.555
-	},
-	{
-		"id": "n8n-nodes-base.figmaTrigger",
-		"popularity": 0.422
-	},
-	{
-		"id": "n8n-nodes-base.git",
-		"popularity": 0.499
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreMilvus",
-		"popularity": 0.475
-	},
-	{
-		"id": "n8n-nodes-base.hubspotTool",
-		"popularity": 0.487
-	},
-	{
-		"id": "n8n-nodes-base.quickbooksTool",
-		"popularity": 0.446
-	},
-	{
-		"id": "n8n-nodes-base.zohoCrm",
-		"popularity": 0.547
-	},
-	{
-		"id": "n8n-nodes-base.phantombuster",
-		"popularity": 0.461
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.retrieverWorkflow",
-		"popularity": 0.481
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatVercelAiGateway",
-		"popularity": 0.498
-	},
-	{
-		"id": "n8n-nodes-base.googleTasksTool",
-		"popularity": 0.54
-	},
-	{
-		"id": "n8n-nodes-base.googleFirebaseCloudFirestore",
-		"popularity": 0.55
-	},
-	{
-		"id": "n8n-nodes-base.clickUpTrigger",
-		"popularity": 0.525
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.toolSearXng",
-		"popularity": 0.497
-	},
-	{
-		"id": "n8n-nodes-base.togglTrigger",
-		"popularity": 0.467
-	},
-	{
-		"id": "n8n-nodes-base.spotify",
-		"popularity": 0.531
-	},
-	{
-		"id": "n8n-nodes-base.shopifyTool",
-		"popularity": 0.506
-	},
-	{
-		"id": "n8n-nodes-base.wooCommerceTool",
-		"popularity": 0.466
-	},
-	{
-		"id": "n8n-nodes-base.hackerNewsTool",
-		"popularity": 0.476
-	},
-	{
-		"id": "n8n-nodes-base.baserowTool",
-		"popularity": 0.449
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsGoogleVertex",
-		"popularity": 0.512
-	},
-	{
-		"id": "n8n-nodes-base.mqttTrigger",
-		"popularity": 0.486
-	},
-	{
-		"id": "n8n-nodes-base.nextCloud",
-		"popularity": 0.566
-	},
-	{
-		"id": "n8n-nodes-base.stripeTrigger",
-		"popularity": 0.515
-	},
-	{
-		"id": "n8n-nodes-base.gitlab",
-		"popularity": 0.492
-	},
-	{
-		"id": "n8n-nodes-base.gitlabTrigger",
+		"id": "n8n-nodes-base.totp",
 		"popularity": 0.452
 	},
 	{
-		"id": "n8n-nodes-base.cryptoTool",
+		"id": "n8n-nodes-base.zendesk",
+		"popularity": 0.522
+	},
+	{
+		"id": "n8n-nodes-base.zendeskTrigger",
+		"popularity": 0.433
+	},
+	{
+		"id": "n8n-nodes-base.microsoftGraphSecurityTool",
+		"popularity": 0.379
+	},
+	{
+		"id": "n8n-nodes-base.googleBusinessProfile",
+		"popularity": 0.499
+	},
+	{
+		"id": "n8n-nodes-base.graphqlTool",
+		"popularity": 0.367
+	},
+	{
+		"id": "n8n-nodes-contextualai.contextualAi",
+		"popularity": 0.269
+	},
+	{
+		"id": "n8n-nodes-base.philipsHue",
+		"popularity": 0.362
+	},
+	{
+		"id": "n8n-nodes-base.filemakerTool",
+		"popularity": 0.361
+	},
+	{
+		"id": "n8n-nodes-base.wooCommerceTrigger",
+		"popularity": 0.492
+	},
+	{
+		"id": "n8n-nodes-browserflow.browserflow",
+		"popularity": 0.393
+	},
+	{
+		"id": "n8n-nodes-base.bitbucketTrigger",
+		"popularity": 0.423
+	},
+	{
+		"id": "n8n-nodes-base.payPal",
+		"popularity": 0.384
+	},
+	{
+		"id": "n8n-nodes-base.redisTrigger",
+		"popularity": 0.454
+	},
+	{
+		"id": "n8n-nodes-base.zoom",
+		"popularity": 0.481
+	},
+	{
+		"id": "@tavily/n8n-nodes-tavily.tavily",
+		"popularity": 0.595
+	},
+	{
+		"id": "n8n-nodes-base.mailjet",
+		"popularity": 0.393
+	},
+	{
+		"id": "n8n-nodes-powerbi.powerBi",
+		"popularity": 0.491
+	},
+	{
+		"id": "n8n-nodes-base.rabbitmqTrigger",
+		"popularity": 0.463
+	},
+	{
+		"id": "n8n-nodes-base.dropbox",
+		"popularity": 0.602
+	},
+	{
+		"id": "n8n-nodes-base.amqpTrigger",
+		"popularity": 0.353
+	},
+	{
+		"id": "n8n-nodes-base.awsSes",
+		"popularity": 0.432
+	},
+	{
+		"id": "n8n-nodes-base.formstackTrigger",
+		"popularity": 0.434
+	},
+	{
+		"id": "n8n-nodes-base.stripeTool",
+		"popularity": 0.382
+	},
+	{
+		"id": "n8n-nodes-base.trelloTool",
+		"popularity": 0.473
+	},
+	{
+		"id": "n8n-nodes-base.salesforceTrigger",
+		"popularity": 0.488
+	},
+	{
+		"id": "n8n-nodes-base.dhlTool",
+		"popularity": 0.349
+	},
+	{
+		"id": "n8n-nodes-base.twilioTrigger",
+		"popularity": 0.575
+	},
+	{
+		"id": "n8n-nodes-base.actionNetworkTool",
+		"popularity": 0.411
+	},
+	{
+		"id": "n8n-nodes-base.grist",
+		"popularity": 0.426
+	},
+	{
+		"id": "n8n-nodes-base.redditTool",
+		"popularity": 0.426
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreZep",
+		"popularity": 0.422
+	},
+	{
+		"id": "n8n-nodes-base.awsTextractTool",
+		"popularity": 0.373
+	},
+	{
+		"id": "@aotoki/n8n-nodes-line-messaging.lineMessaging",
+		"popularity": 0.578
+	},
+	{
+		"id": "@2chat/n8n-nodes-twochat.twoChat",
+		"popularity": 0.381
+	},
+	{
+		"id": "n8n-nodes-base.coinGecko",
+		"popularity": 0.418
+	},
+	{
+		"id": "n8n-nodes-base.philipsHueTool",
+		"popularity": 0.497
+	},
+	{
+		"id": "n8n-nodes-base.airtopTool",
+		"popularity": 0.457
+	},
+	{
+		"id": "n8n-nodes-base.trelloTrigger",
+		"popularity": 0.474
+	},
+	{
+		"id": "n8n-nodes-scrapegraphai.scrapegraphAi",
+		"popularity": 0.393
+	},
+	{
+		"id": "n8n-nodes-base.awsLambda",
+		"popularity": 0.458
+	},
+	{
+		"id": "n8n-nodes-base.strava",
+		"popularity": 0.435
+	},
+	{
+		"id": "n8n-nodes-base.stravaTrigger",
+		"popularity": 0.404
+	},
+	{
+		"id": "n8n-nodes-base.mondayComTool",
 		"popularity": 0.41
 	},
 	{
-		"id": "@nskha/n8n-nodes-scrappey.scrappey",
-		"popularity": 0.408
+		"id": "n8n-nodes-base.googleSlidesTool",
+		"popularity": 0.451
 	},
 	{
-		"id": "n8n-nodes-base.microsoftSharePointTool",
-		"popularity": 0.46
+		"id": "n8n-nodes-base.vonage",
+		"popularity": 0.395
+	},
+	{
+		"id": "n8n-nodes-base.rocketchat",
+		"popularity": 0.398
+	},
+	{
+		"id": "n8n-nodes-base.jenkins",
+		"popularity": 0.397
+	},
+	{
+		"id": "n8n-nodes-base.pipedriveTool",
+		"popularity": 0.448
+	},
+	{
+		"id": "n8n-nodes-aimlapi.aimlApi",
+		"popularity": 0.398
+	},
+	{
+		"id": "n8n-nodes-base.twilioTool",
+		"popularity": 0.479
+	},
+	{
+		"id": "n8n-nodes-base.linearTrigger",
+		"popularity": 0.414
+	},
+	{
+		"id": "n8n-nodes-base.googleCloudNaturalLanguageTool",
+		"popularity": 0.376
+	},
+	{
+		"id": "n8n-nodes-base.box",
+		"popularity": 0.436
+	},
+	{
+		"id": "n8n-nodes-base.linkedInTool",
+		"popularity": 0.594
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.embeddingsGoogleVertex",
+		"popularity": 0.525
+	},
+	{
+		"id": "n8n-nodes-base.googleAds",
+		"popularity": 0.528
+	},
+	{
+		"id": "n8n-nodes-base.sendInBlue",
+		"popularity": 0.558
+	},
+	{
+		"id": "n8n-nodes-base.mondayCom",
+		"popularity": 0.613
+	},
+	{
+		"id": "n8n-nodes-base.pipedrive",
+		"popularity": 0.615
 	},
 	{
 		"id": "n8n-nodes-base.asana",
-		"popularity": 0.551
+		"popularity": 0.581
 	},
 	{
-		"id": "n8n-nodes-pdfvector.pdfVector",
-		"popularity": 0.451
+		"id": "n8n-nodes-base.todoistTool",
+		"popularity": 0.456
+	},
+	{
+		"id": "n8n-nodes-base.dhl",
+		"popularity": 0.461
+	},
+	{
+		"id": "n8n-nodes-base.jwt",
+		"popularity": 0.5
+	},
+	{
+		"id": "n8n-nodes-base.clickUpTrigger",
+		"popularity": 0.557
+	},
+	{
+		"id": "n8n-nodes-base.git",
+		"popularity": 0.509
+	},
+	{
+		"id": "n8n-nodes-base.togglTrigger",
+		"popularity": 0.479
+	},
+	{
+		"id": "n8n-nodes-base.microsoftSqlTool",
+		"popularity": 0.515
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.retrieverMultiQuery",
+		"popularity": 0.487
+	},
+	{
+		"id": "n8n-nodes-base.graphql",
+		"popularity": 0.529
+	},
+	{
+		"id": "n8n-nodes-base.odooTool",
+		"popularity": 0.472
+	},
+	{
+		"id": "n8n-nodes-base.zohoCrm",
+		"popularity": 0.55
+	},
+	{
+		"id": "n8n-nodes-upload-post.uploadPost",
+		"popularity": 0.526
+	},
+	{
+		"id": "n8n-nodes-base.hackerNewsTool",
+		"popularity": 0.472
+	},
+	{
+		"id": "n8n-nodes-base.stripe",
+		"popularity": 0.521
+	},
+	{
+		"id": "n8n-nodes-base.phantombuster",
+		"popularity": 0.475
+	},
+	{
+		"id": "n8n-nodes-base.wooCommerce",
+		"popularity": 0.56
+	},
+	{
+		"id": "@nskha/n8n-nodes-scrappey.scrappey",
+		"popularity": 0.41
+	},
+	{
+		"id": "n8n-nodes-base.hubspotTool",
+		"popularity": 0.5
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreMilvus",
+		"popularity": 0.472
+	},
+	{
+		"id": "n8n-nodes-base.microsoftSharePointTool",
+		"popularity": 0.481
+	},
+	{
+		"id": "n8n-nodes-instantly.instantly",
+		"popularity": 0.499
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.retrieverWorkflow",
+		"popularity": 0.487
+	},
+	{
+		"id": "n8n-nodes-base.elasticsearch",
+		"popularity": 0.441
+	},
+	{
+		"id": "n8n-nodes-base.deepL",
+		"popularity": 0.475
+	},
+	{
+		"id": "@cloudconvert/n8n-nodes-cloudconvert.cloudConvert",
+		"popularity": 0.518
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatVercelAiGateway",
+		"popularity": 0.497
+	},
+	{
+		"id": "n8n-nodes-base.googleTasksTool",
+		"popularity": 0.547
+	},
+	{
+		"id": "n8n-nodes-base.googleFirebaseCloudFirestore",
+		"popularity": 0.556
+	},
+	{
+		"id": "n8n-nodes-base.twitterTool",
+		"popularity": 0.464
+	},
+	{
+		"id": "n8n-nodes-base.sendGrid",
+		"popularity": 0.499
+	},
+	{
+		"id": "n8n-nodes-base.shopifyTool",
+		"popularity": 0.519
+	},
+	{
+		"id": "n8n-nodes-base.jinaAi",
+		"popularity": 0.496
+	},
+	{
+		"id": "n8n-nodes-base.baserowTool",
+		"popularity": 0.453
+	},
+	{
+		"id": "n8n-nodes-base.todoist",
+		"popularity": 0.538
+	},
+	{
+		"id": "n8n-nodes-base.wooCommerceTool",
+		"popularity": 0.458
 	},
 	{
 		"id": "n8n-nodes-base.wordpressTool",
 		"popularity": 0.504
 	},
 	{
-		"id": "n8n-nodes-base.twitterTool",
-		"popularity": 0.461
-	},
-	{
-		"id": "n8n-nodes-base.dhl",
-		"popularity": 0.462
-	},
-	{
-		"id": "n8n-nodes-base.mqtt",
-		"popularity": 0.481
-	},
-	{
-		"id": "n8n-nodes-base.mongoDbTool",
-		"popularity": 0.48
-	},
-	{
-		"id": "n8n-nodes-pdf4me.PDF4me",
-		"popularity": 0.463
-	},
-	{
-		"id": "n8n-nodes-base.mondayCom",
-		"popularity": 0.583
-	},
-	{
-		"id": "n8n-nodes-base.activeCampaign",
-		"popularity": 0.493
-	},
-	{
-		"id": "n8n-nodes-base.googleAds",
-		"popularity": 0.505
-	},
-	{
-		"id": "n8n-nodes-base.graphql",
-		"popularity": 0.511
-	},
-	{
-		"id": "n8n-nodes-base.todoist",
-		"popularity": 0.541
-	},
-	{
-		"id": "n8n-nodes-base.microsoftSqlTool",
-		"popularity": 0.505
-	},
-	{
-		"id": "n8n-nodes-base.jwt",
-		"popularity": 0.506
-	},
-	{
-		"id": "n8n-nodes-base.jinaAi",
-		"popularity": 0.493
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsMistralCloud",
-		"popularity": 0.489
-	},
-	{
-		"id": "n8n-nodes-base.googleAdsTool",
-		"popularity": 0.407
-	},
-	{
-		"id": "n8n-nodes-base.todoistTool",
+		"id": "n8n-nodes-base.mailgun",
 		"popularity": 0.482
 	},
 	{
-		"id": "n8n-nodes-upload-post.uploadPost",
-		"popularity": 0.527
+		"id": "n8n-nodes-base.stripeTrigger",
+		"popularity": 0.52
 	},
 	{
-		"id": "n8n-nodes-base.googleTranslateTool",
-		"popularity": 0.447
+		"id": "n8n-nodes-base.nextCloud",
+		"popularity": 0.575
 	},
 	{
-		"id": "n8n-nodes-base.spotifyTool",
-		"popularity": 0.483
+		"id": "n8n-nodes-base.webflow",
+		"popularity": 0.478
 	},
 	{
-		"id": "n8n-nodes-base.microsoftOneDriveTool",
-		"popularity": 0.49
-	},
-	{
-		"id": "n8n-nodes-htmlcsstoimage.htmlCssToImage",
+		"id": "n8n-nodes-base.quickbooksTool",
 		"popularity": 0.451
 	},
 	{
-		"id": "n8n-nodes-base.mailgun",
-		"popularity": 0.465
-	},
-	{
-		"id": "n8n-nodes-base.sendGrid",
-		"popularity": 0.475
-	},
-	{
-		"id": "n8n-nodes-base.redisTool",
-		"popularity": 0.477
-	},
-	{
-		"id": "n8n-nodes-base.sendInBlue",
-		"popularity": 0.544
-	},
-	{
-		"id": "n8n-nodes-instantly.instantly",
-		"popularity": 0.48
-	},
-	{
-		"id": "n8n-nodes-base.airtop",
-		"popularity": 0.546
-	},
-	{
-		"id": "n8n-nodes-base.awsDynamoDb",
-		"popularity": 0.435
-	},
-	{
-		"id": "n8n-nodes-base.asanaTool",
-		"popularity": 0.435
-	},
-	{
-		"id": "n8n-nodes-base.nocoDbTool",
-		"popularity": 0.461
-	},
-	{
-		"id": "n8n-nodes-base.googleFirebaseRealtimeDatabase",
-		"popularity": 0.395
-	},
-	{
-		"id": "n8n-nodes-base.lineTool",
-		"popularity": 0.395
-	},
-	{
-		"id": "n8n-nodes-base.kafka",
-		"popularity": 0.418
-	},
-	{
-		"id": "n8n-nodes-base.microsoftEntra",
-		"popularity": 0.458
-	},
-	{
-		"id": "n8n-nodes-base.cloudflareTool",
-		"popularity": 0.402
-	},
-	{
-		"id": "n8n-nodes-base.gitlabTool",
-		"popularity": 0.422
-	},
-	{
-		"id": "n8n-nodes-base.sms77",
-		"popularity": 0.348
-	},
-	{
-		"id": "n8n-nodes-base.asanaTrigger",
-		"popularity": 0.434
-	},
-	{
-		"id": "n8n-nodes-documentero.documentero",
-		"popularity": 0.419
-	},
-	{
-		"id": "n8n-nodes-base.linear",
-		"popularity": 0.452
-	},
-	{
-		"id": "n8n-nodes-base.dropboxTool",
-		"popularity": 0.417
-	},
-	{
-		"id": "n8n-nodes-base.adalo",
-		"popularity": 0.401
-	},
-	{
-		"id": "n8n-nodes-base.salesforceTool",
-		"popularity": 0.409
-	},
-	{
-		"id": "n8n-nodes-base.grafana",
-		"popularity": 0.42
-	},
-	{
-		"id": "n8n-nodes-base.ldap",
-		"popularity": 0.431
-	},
-	{
-		"id": "n8n-nodes-base.awsTextract",
-		"popularity": 0.4
-	},
-	{
-		"id": "n8n-nodes-base.gotify",
-		"popularity": 0.408
-	},
-	{
-		"id": "n8n-nodes-base.apiTemplateIo",
-		"popularity": 0.44
-	},
-	{
-		"id": "n8n-nodes-base.awsTranscribe",
-		"popularity": 0.384
-	},
-	{
-		"id": "n8n-nodes-base.zohoCrmTool",
-		"popularity": 0.432
-	},
-	{
-		"id": "n8n-nodes-base.xero",
+		"id": "n8n-nodes-base.googleAdsTool",
 		"popularity": 0.421
 	},
 	{
-		"id": "n8n-nodes-base.pipedriveTrigger",
-		"popularity": 0.405
+		"id": "n8n-nodes-base.graphDbTool",
+		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.googleBusinessProfileTool",
-		"popularity": 0.39
+		"id": "n8n-nodes-base.figmaTrigger",
+		"popularity": 0.429
 	},
 	{
-		"id": "n8n-nodes-base.urlScanIo",
-		"popularity": 0.418
+		"id": "n8n-nodes-base.googleCloudStorage",
+		"popularity": 0.538
 	},
 	{
-		"id": "n8n-nodes-base.quickChartTool",
-		"popularity": 0.41
+		"id": "n8n-nodes-base.mattermost",
+		"popularity": 0.491
 	},
 	{
-		"id": "n8n-nodes-base.gSuiteAdmin",
-		"popularity": 0.448
+		"id": "n8n-nodes-base.spotify",
+		"popularity": 0.52
 	},
 	{
-		"id": "n8n-nodes-base.serviceNow",
-		"popularity": 0.406
+		"id": "n8n-nodes-base.googleChatTool",
+		"popularity": 0.461
 	},
 	{
-		"id": "n8n-nodes-base.bubble",
-		"popularity": 0.435
+		"id": "n8n-nodes-base.activeCampaign",
+		"popularity": 0.515
 	},
 	{
-		"id": "n8n-nodes-base.kafkaTrigger",
-		"popularity": 0.41
+		"id": "n8n-nodes-base.gitlab",
+		"popularity": 0.502
 	},
 	{
-		"id": "n8n-nodes-base.deepLTool",
-		"popularity": 0.379
+		"id": "n8n-nodes-base.gitlabTrigger",
+		"popularity": 0.474
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreWeaviate",
-		"popularity": 0.434
+		"id": "@n8n/n8n-nodes-langchain.toolSearXng",
+		"popularity": 0.49
 	},
 	{
-		"id": "n8n-nodes-base.acuitySchedulingTrigger",
-		"popularity": 0.404
+		"id": "n8n-nodes-base.jotFormTrigger",
+		"popularity": 0.5
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.lmCohere",
+		"id": "n8n-nodes-pdfvector.pdfVector",
+		"popularity": 0.462
+	},
+	{
+		"id": "n8n-nodes-base.redisTool",
+		"popularity": 0.495
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.embeddingsMistralCloud",
+		"popularity": 0.503
+	},
+	{
+		"id": "n8n-nodes-base.microsoftOneDriveTool",
+		"popularity": 0.492
+	},
+	{
+		"id": "n8n-nodes-base.mqttTrigger",
+		"popularity": 0.485
+	},
+	{
+		"id": "n8n-nodes-base.mongoDbTool",
+		"popularity": 0.492
+	},
+	{
+		"id": "n8n-nodes-base.airtop",
+		"popularity": 0.557
+	},
+	{
+		"id": "n8n-nodes-base.homeAssistantTool",
+		"popularity": 0.491
+	},
+	{
+		"id": "n8n-nodes-scrape-creators.scrapeCreators",
+		"popularity": 0.445
+	},
+	{
+		"id": "n8n-nodes-htmlcsstoimage.htmlCssToImage",
+		"popularity": 0.453
+	},
+	{
+		"id": "n8n-nodes-pdf4me.PDF4me",
+		"popularity": 0.477
+	},
+	{
+		"id": "n8n-nodes-base.spotifyTool",
+		"popularity": 0.466
+	},
+	{
+		"id": "n8n-nodes-base.mqtt",
+		"popularity": 0.484
+	},
+	{
+		"id": "n8n-nodes-base.googleTranslateTool",
+		"popularity": 0.451
+	},
+	{
+		"id": "n8n-nodes-base.cryptoTool",
+		"popularity": 0.4
+	},
+	{
+		"id": "n8n-nodes-base.appIconTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.calendlyTrigger",
+		"popularity": 0.538
+	},
+	{
+		"id": "n8n-nodes-base.googleBusinessProfileTrigger",
+		"popularity": 0.449
+	},
+	{
+		"id": "@apify/n8n-nodes-apify.apifyTrigger",
+		"popularity": 0.444
+	},
+	{
+		"id": "n8n-nodes-base.mailchimp",
+		"popularity": 0.497
+	},
+	{
+		"id": "n8n-nodes-base.messageBird",
+		"popularity": 0.44
+	},
+	{
+		"id": "n8n-nodes-base.linear",
+		"popularity": 0.466
+	},
+	{
+		"id": "n8n-nodes-base.activeCampaignTrigger",
+		"popularity": 0.369
+	},
+	{
+		"id": "n8n-nodes-base.coinGeckoTool",
+		"popularity": 0.398
+	},
+	{
+		"id": "n8n-nodes-base.grafana",
+		"popularity": 0.427
+	},
+	{
+		"id": "n8n-nodes-base.grafanaTool",
+		"popularity": 0.357
+	},
+	{
+		"id": "n8n-nodes-base.zoomTool",
+		"popularity": 0.376
+	},
+	{
+		"id": "n8n-nodes-base.dropboxTool",
 		"popularity": 0.425
 	},
 	{
-		"id": "n8n-nodes-base.googleBigQueryTool",
-		"popularity": 0.417
+		"id": "n8n-nodes-base.gSuiteAdmin",
+		"popularity": 0.482
 	},
 	{
-		"id": "n8n-nodes-base.mistralAiTool",
+		"id": "n8n-nodes-base.awsTextract",
+		"popularity": 0.419
+	},
+	{
+		"id": "n8n-nodes-base.awsTranscribe",
+		"popularity": 0.385
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.documentGithubLoader",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.asanaTrigger",
+		"popularity": 0.47
+	},
+	{
+		"id": "n8n-nodes-postiz.postiz",
+		"popularity": 0.469
+	},
+	{
+		"id": "n8n-nodes-base.googleBigQueryTool",
+		"popularity": 0.442
+	},
+	{
+		"id": "n8n-nodes-base.ldap",
+		"popularity": 0.468
+	},
+	{
+		"id": "n8n-nodes-base.xero",
+		"popularity": 0.472
+	},
+	{
+		"id": "n8n-nodes-base.adalo",
+		"popularity": 0.412
+	},
+	{
+		"id": "n8n-nodes-base.kafkaTrigger",
+		"popularity": 0.428
+	},
+	{
+		"id": "n8n-nodes-base.salesforceTool",
+		"popularity": 0.441
+	},
+	{
+		"id": "n8n-nodes-autocalls.autocalls",
+		"popularity": 0.413
+	},
+	{
+		"id": "n8n-nodes-base.bubble",
+		"popularity": 0.46
+	},
+	{
+		"id": "n8n-nodes-base.acuitySchedulingTrigger",
+		"popularity": 0.426
+	},
+	{
+		"id": "n8n-nodes-base.nextCloudTool",
 		"popularity": 0.409
 	},
 	{
-		"id": "n8n-nodes-base.pushbullet",
-		"popularity": 0.327
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreWeaviate",
+		"popularity": 0.436
+	},
+	{
+		"id": "n8n-nodes-base.deepLTool",
+		"popularity": 0.383
+	},
+	{
+		"id": "n8n-nodes-base.affinity",
+		"popularity": 0.414
+	},
+	{
+		"id": "n8n-nodes-base.nocoDbTool",
+		"popularity": 0.455
+	},
+	{
+		"id": "n8n-nodes-base.metabase",
+		"popularity": 0.453
+	},
+	{
+		"id": "n8n-nodes-base.awsDynamoDb",
+		"popularity": 0.438
+	},
+	{
+		"id": "n8n-nodes-base.elasticsearchTool",
+		"popularity": 0.408
+	},
+	{
+		"id": "@brightdata/n8n-nodes-brightdata.brightData",
+		"popularity": 0.441
+	},
+	{
+		"id": "n8n-nodes-pdforge.pdforge",
+		"popularity": 0.367
+	},
+	{
+		"id": "n8n-nodes-base.serviceNow",
+		"popularity": 0.459
+	},
+	{
+		"id": "n8n-nodes-base.cloudflare",
+		"popularity": 0.382
 	},
 	{
 		"id": "n8n-nodes-base.webflowTrigger",
-		"popularity": 0.397
+		"popularity": 0.415
+	},
+	{
+		"id": "n8n-nodes-base.highLevelTool",
+		"popularity": 0.448
+	},
+	{
+		"id": "n8n-nodes-base.gitlabTool",
+		"popularity": 0.438
 	},
 	{
 		"id": "n8n-nodes-base.googleFirebaseCloudFirestoreTool",
 		"popularity": 0.414
 	},
 	{
-		"id": "n8n-nodes-base.erpNext",
-		"popularity": 0.44
+		"id": "n8n-nodes-base.mistralAiTool",
+		"popularity": 0.426
 	},
 	{
-		"id": "n8n-nodes-base.oneSimpleApiTool",
-		"popularity": 0.373
+		"id": "n8n-nodes-base.quickChartTool",
+		"popularity": 0.402
 	},
 	{
-		"id": "n8n-nodes-base.elasticsearchTool",
-		"popularity": 0.398
-	},
-	{
-		"id": "n8n-nodes-base.cloudflare",
-		"popularity": 0.385
-	},
-	{
-		"id": "n8n-nodes-base.splunk",
-		"popularity": 0.341
-	},
-	{
-		"id": "n8n-nodes-base.urlScanIoTool",
-		"popularity": 0.277
-	},
-	{
-		"id": "n8n-nodes-base.awsS3Tool",
-		"popularity": 0.38
-	},
-	{
-		"id": "@apify/n8n-nodes-apify.apifyTrigger",
-		"popularity": 0.427
-	},
-	{
-		"id": "n8n-nodes-base.mailchimp",
-		"popularity": 0.466
-	},
-	{
-		"id": "n8n-nodes-base.nextCloudTool",
-		"popularity": 0.439
-	},
-	{
-		"id": "n8n-nodes-base.hunter",
-		"popularity": 0.442
-	},
-	{
-		"id": "n8n-nodes-base.metabase",
-		"popularity": 0.434
-	},
-	{
-		"id": "n8n-nodes-postiz.postiz",
-		"popularity": 0.493
-	},
-	{
-		"id": "n8n-nodes-base.grafanaTool",
-		"popularity": 0.382
-	},
-	{
-		"id": "n8n-nodes-autocalls.autocalls",
-		"popularity": 0.418
-	},
-	{
-		"id": "n8n-nodes-base.coinGeckoTool",
-		"popularity": 0.418
-	},
-	{
-		"id": "n8n-nodes-base.gitTool",
-		"popularity": 0.385
-	},
-	{
-		"id": "n8n-nodes-base.affinity",
-		"popularity": 0.409
-	},
-	{
-		"id": "n8n-nodes-base.zoomTool",
+		"id": "n8n-nodes-base.googleBusinessProfileTool",
 		"popularity": 0.379
 	},
 	{
-		"id": "n8n-nodes-base.webflowTool",
-		"popularity": 0.385
-	},
-	{
-		"id": "n8n-nodes-base.agileCrm",
-		"popularity": 0.385
-	},
-	{
-		"id": "n8n-nodes-base.messageBird",
-		"popularity": 0.433
-	},
-	{
-		"id": "@brightdata/n8n-nodes-brightdata.brightData",
-		"popularity": 0.447
-	},
-	{
-		"id": "n8n-nodes-base.mailcheck",
-		"popularity": 0.393
-	},
-	{
-		"id": "n8n-nodes-base.microsoftToDoTool",
-		"popularity": 0.414
-	},
-	{
-		"id": "n8n-nodes-base.medium",
-		"popularity": 0.396
-	},
-	{
-		"id": "n8n-nodes-base.wise",
-		"popularity": 0.354
+		"id": "n8n-nodes-base.cloudflareTool",
+		"popularity": 0.397
 	},
 	{
 		"id": "n8n-nodes-base.marketstack",
-		"popularity": 0.303
+		"popularity": 0.372
 	},
 	{
-		"id": "n8n-nodes-pdforge.pdforge",
-		"popularity": 0.362
+		"id": "n8n-nodes-base.lineTool",
+		"popularity": 0.398
 	},
 	{
-		"id": "n8n-nodes-base.highLevelTool",
-		"popularity": 0.438
+		"id": "n8n-nodes-base.agileCrm",
+		"popularity": 0.394
+	},
+	{
+		"id": "n8n-nodes-base.urlScanIoTool",
+		"popularity": 0.283
+	},
+	{
+		"id": "n8n-nodes-base.asanaTool",
+		"popularity": 0.443
+	},
+	{
+		"id": "n8n-nodes-base.mailcheck",
+		"popularity": 0.408
+	},
+	{
+		"id": "n8n-nodes-documentero.documentero",
+		"popularity": 0.414
+	},
+	{
+		"id": "n8n-nodes-base.zohoCrmTool",
+		"popularity": 0.443
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmCohere",
+		"popularity": 0.424
+	},
+	{
+		"id": "n8n-nodes-base.webflowTool",
+		"popularity": 0.396
+	},
+	{
+		"id": "n8n-nodes-base.pipedriveTrigger",
+		"popularity": 0.445
+	},
+	{
+		"id": "n8n-nodes-base.pushbullet",
+		"popularity": 0.356
+	},
+	{
+		"id": "n8n-nodes-base.kafka",
+		"popularity": 0.432
+	},
+	{
+		"id": "n8n-nodes-base.awsS3Tool",
+		"popularity": 0.41
+	},
+	{
+		"id": "n8n-nodes-base.apiTemplateIo",
+		"popularity": 0.428
+	},
+	{
+		"id": "n8n-nodes-base.gitTool",
+		"popularity": 0.399
+	},
+	{
+		"id": "n8n-nodes-base.urlScanIo",
+		"popularity": 0.419
+	},
+	{
+		"id": "n8n-nodes-base.sms77",
+		"popularity": 0.334
+	},
+	{
+		"id": "n8n-nodes-base.oneSimpleApiTool",
+		"popularity": 0.382
 	},
 	{
 		"id": "n8n-nodes-base.googleCloudStorageTool",
-		"popularity": 0.403
+		"popularity": 0.397
 	},
 	{
-		"id": "n8n-nodes-base.activeCampaignTrigger",
-		"popularity": 0.371
+		"id": "n8n-nodes-base.erpNext",
+		"popularity": 0.431
 	},
 	{
-		"id": "n8n-nodes-base.awsSnsTrigger",
-		"popularity": 0.306
+		"id": "n8n-nodes-base.microsoftToDoTool",
+		"popularity": 0.405
 	},
 	{
-		"id": "n8n-nodes-chat-data.chatData",
-		"popularity": 0.329
+		"id": "n8n-nodes-base.googleFirebaseRealtimeDatabase",
+		"popularity": 0.393
 	},
 	{
-		"id": "n8n-nodes-base.googleBusinessProfileTrigger",
-		"popularity": 0.441
-	},
-	{
-		"id": "n8n-nodes-heyreach.heyReach",
-		"popularity": 0.375
-	},
-	{
-		"id": "n8n-nodes-base.ghost",
+		"id": "n8n-nodes-base.medium",
 		"popularity": 0.383
 	},
 	{
-		"id": "n8n-nodes-base.compressionTool",
-		"popularity": 0.338
+		"id": "n8n-nodes-base.gotify",
+		"popularity": 0.406
 	},
 	{
-		"id": "n8n-nodes-base.gumroadTrigger",
-		"popularity": 0.345
+		"id": "n8n-nodes-base.awsSnsTrigger",
+		"popularity": 0.315
+	},
+	{
+		"id": "n8n-nodes-base.splunk",
+		"popularity": 0.357
+	},
+	{
+		"id": "n8n-nodes-chat-data.chatData",
+		"popularity": 0.341
+	},
+	{
+		"id": "n8n-nodes-base.wise",
+		"popularity": 0.355
+	},
+	{
+		"id": "n8n-nodes-base.microsoftEntra",
+		"popularity": 0.471
+	},
+	{
+		"id": "n8n-nodes-base.hunter",
+		"popularity": 0.476
+	},
+	{
+		"id": "n8n-nodes-base.bannerbear",
+		"popularity": 0.407
+	},
+	{
+		"id": "n8n-nodes-base.zammad",
+		"popularity": 0.441
+	},
+	{
+		"id": "n8n-nodes-base.microsoftDynamicsCrm",
+		"popularity": 0.391
+	},
+	{
+		"id": "n8n-nodes-base.mautic",
+		"popularity": 0.458
+	},
+	{
+		"id": "n8n-nodes-base.lemlist",
+		"popularity": 0.418
+	},
+	{
+		"id": "n8n-nodes-base.amqp",
+		"popularity": 0.343
+	},
+	{
+		"id": "n8n-nodes-heyreach.heyReach",
+		"popularity": 0.428
+	},
+	{
+		"id": "n8n-nodes-mallabe-images.mallabeImages",
+		"popularity": 0.326
+	},
+	{
+		"id": "n8n-nodes-base.linearTool",
+		"popularity": 0.382
 	},
 	{
 		"id": "n8n-nodes-base.flow",
-		"popularity": 0.344
+		"popularity": 0.348
 	},
 	{
-		"id": "n8n-nodes-base.autopilotTool",
-		"popularity": 0.33
+		"id": "n8n-nodes-craftmypdf.craftMyPdf",
+		"popularity": 0.329
 	},
 	{
-		"id": "n8n-nodes-fillout.filloutTrigger",
+		"id": "n8n-nodes-base.zendeskTool",
+		"popularity": 0.372
+	},
+	{
+		"id": "n8n-nodes-scrapeless.scrapeless",
+		"popularity": 0.31
+	},
+	{
+		"id": "n8n-nodes-base.coda",
+		"popularity": 0.414
+	},
+	{
+		"id": "n8n-nodes-base.awsSqs",
+		"popularity": 0.383
+	},
+	{
+		"id": "n8n-nodes-base.affinityTrigger",
+		"popularity": 0.338
+	},
+	{
+		"id": "n8n-nodes-base.ghost",
+		"popularity": 0.373
+	},
+	{
+		"id": "n8n-nodes-base.freshserviceTool",
+		"popularity": 0.338
+	},
+	{
+		"id": "n8n-nodes-supadata.supadata",
+		"popularity": 0.406
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.toolWolframAlpha",
+		"popularity": 0.34
+	},
+	{
+		"id": "n8n-nodes-base.microsoftGraphSecurity",
 		"popularity": 0.359
+	},
+	{
+		"id": "n8n-nodes-base.bambooHr",
+		"popularity": 0.382
+	},
+	{
+		"id": "n8n-nodes-base.freshdeskTool",
+		"popularity": 0.314
+	},
+	{
+		"id": "n8n-nodes-base.bubbleTool",
+		"popularity": 0.325
+	},
+	{
+		"id": "n8n-nodes-base.mindee",
+		"popularity": 0.362
+	},
+	{
+		"id": "n8n-nodes-base.microsoftDynamicsCrmTool",
+		"popularity": 0.335
 	},
 	{
 		"id": "n8n-nodes-base.clockifyTool",
 		"popularity": 0.305
 	},
 	{
-		"id": "n8n-nodes-base.lemlist",
-		"popularity": 0.368
+		"id": "n8n-nodes-base.affinityTool",
+		"popularity": 0.346
 	},
 	{
-		"id": "n8n-nodes-base.coda",
-		"popularity": 0.391
-	},
-	{
-		"id": "n8n-nodes-base.awsSqs",
-		"popularity": 0.345
-	},
-	{
-		"id": "n8n-nodes-base.nasaTool",
-		"popularity": 0.341
-	},
-	{
-		"id": "n8n-nodes-base.strapi",
-		"popularity": 0.354
-	},
-	{
-		"id": "n8n-nodes-base.gSuiteAdminTool",
-		"popularity": 0.373
-	},
-	{
-		"id": "n8n-nodes-base.agileCrmTool",
-		"popularity": 0.318
-	},
-	{
-		"id": "n8n-nodes-base.getResponse",
-		"popularity": 0.353
-	},
-	{
-		"id": "n8n-nodes-base.serviceNowTool",
-		"popularity": 0.334
-	},
-	{
-		"id": "n8n-nodes-base.intercom",
-		"popularity": 0.353
-	},
-	{
-		"id": "@gotohuman/n8n-nodes-gotohuman.gotoHuman",
-		"popularity": 0.309
-	},
-	{
-		"id": "n8n-nodes-base.amqp",
-		"popularity": 0.333
-	},
-	{
-		"id": "n8n-nodes-base.bitwarden",
-		"popularity": 0.342
-	},
-	{
-		"id": "n8n-nodes-base.jenkinsTool",
-		"popularity": 0.295
-	},
-	{
-		"id": "n8n-nodes-base.payPalTrigger",
-		"popularity": 0.348
-	},
-	{
-		"id": "n8n-nodes-base.clockify",
-		"popularity": 0.397
-	},
-	{
-		"id": "n8n-nodes-base.getResponseTool",
-		"popularity": 0.312
-	},
-	{
-		"id": "n8n-nodes-base.microsoftDynamicsCrm",
+		"id": "n8n-nodes-base.gumroadTrigger",
 		"popularity": 0.35
 	},
 	{
-		"id": "n8n-nodes-base.zammad",
-		"popularity": 0.417
-	},
-	{
-		"id": "@langfuse/n8n-nodes-langfuse.langfuse",
-		"popularity": 0.365
-	},
-	{
-		"id": "n8n-nodes-base.stravaTool",
-		"popularity": 0.363
-	},
-	{
-		"id": "n8n-nodes-base.mindee",
-		"popularity": 0.34
-	},
-	{
-		"id": "n8n-nodes-base.sendInBlueTool",
-		"popularity": 0.371
-	},
-	{
-		"id": "n8n-nodes-base.bitwardenTool",
-		"popularity": 0.328
-	},
-	{
-		"id": "n8n-nodes-craftmypdf.craftMyPdf",
-		"popularity": 0.326
-	},
-	{
-		"id": "n8n-nodes-superchat.superchat",
-		"popularity": 0.394
-	},
-	{
-		"id": "n8n-nodes-base.microsoftEntraTool",
-		"popularity": 0.311
-	},
-	{
-		"id": "n8n-nodes-base.microsoftGraphSecurity",
-		"popularity": 0.317
-	},
-	{
-		"id": "n8n-nodes-base.googleBooksTool",
-		"popularity": 0.311
-	},
-	{
 		"id": "n8n-nodes-base.jwtTool",
-		"popularity": 0.307
-	},
-	{
-		"id": "n8n-nodes-base.bannerbear",
-		"popularity": 0.373
-	},
-	{
-		"id": "n8n-nodes-base.affinityTrigger",
-		"popularity": 0.315
-	},
-	{
-		"id": "n8n-nodes-base.messageBirdTool",
-		"popularity": 0.352
-	},
-	{
-		"id": "n8n-nodes-inoreader.inoreader",
-		"popularity": 0.339
-	},
-	{
-		"id": "n8n-nodes-supadata.supadata",
-		"popularity": 0.403
-	},
-	{
-		"id": "n8n-nodes-base.bitly",
-		"popularity": 0.314
-	},
-	{
-		"id": "n8n-nodes-base.phantombusterTool",
-		"popularity": 0.329
-	},
-	{
-		"id": "n8n-nodes-base.bubbleTool",
-		"popularity": 0.31
-	},
-	{
-		"id": "n8n-nodes-base.bambooHr",
-		"popularity": 0.323
-	},
-	{
-		"id": "n8n-nodes-base.freshservice",
-		"popularity": 0.354
-	},
-	{
-		"id": "n8n-nodes-scraping-dog.scrapingDog",
-		"popularity": 0.275
-	},
-	{
-		"id": "n8n-nodes-base.snowflakeTool",
-		"popularity": 0.327
-	},
-	{
-		"id": "n8n-nodes-base.mailerLite",
-		"popularity": 0.398
-	},
-	{
-		"id": "n8n-nodes-base.clearbit",
-		"popularity": 0.295
-	},
-	{
-		"id": "n8n-nodes-base.googleCloudNaturalLanguage",
-		"popularity": 0.336
-	},
-	{
-		"id": "n8n-nodes-base.microsoftDynamicsCrmTool",
-		"popularity": 0.286
-	},
-	{
-		"id": "n8n-nodes-base.freshdeskTool",
-		"popularity": 0.306
-	},
-	{
-		"id": "n8n-nodes-base.awsLambdaTool",
-		"popularity": 0.329
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.toolWolframAlpha",
-		"popularity": 0.336
-	},
-	{
-		"id": "n8n-nodes-base.metabaseTool",
-		"popularity": 0.322
-	},
-	{
-		"id": "n8n-nodes-mallabe-images.mallabeImages",
-		"popularity": 0.332
-	},
-	{
-		"id": "n8n-nodes-base.freshserviceTool",
-		"popularity": 0.31
-	},
-	{
-		"id": "n8n-nodes-base.mailchimpTool",
-		"popularity": 0.343
-	},
-	{
-		"id": "n8n-nodes-base.mqttTool",
-		"popularity": 0.295
+		"popularity": 0.3
 	},
 	{
 		"id": "n8n-nodes-ticktick.tickTick",
-		"popularity": 0.422
+		"popularity": 0.419
 	},
 	{
-		"id": "n8n-nodes-base.magento2",
-		"popularity": 0.359
+		"id": "n8n-nodes-fillout.filloutTrigger",
+		"popularity": 0.385
 	},
 	{
-		"id": "n8n-nodes-scrapeless.scrapeless",
-		"popularity": 0.312
+		"id": "n8n-nodes-base.invoiceNinja",
+		"popularity": 0.398
 	},
 	{
-		"id": "n8n-nodes-base.affinityTool",
-		"popularity": 0.363
-	},
-	{
-		"id": "n8n-nodes-anchorbrowser.anchorBrowser",
-		"popularity": 0.478
-	},
-	{
-		"id": "n8n-nodes-base.zendeskTool",
-		"popularity": 0.339
-	},
-	{
-		"id": "n8n-nodes-base.mautic",
-		"popularity": 0.435
-	},
-	{
-		"id": "n8n-nodes-base.linearTool",
-		"popularity": 0.375
-	},
-	{
-		"id": "n8n-nodes-base.activeCampaignTool",
+		"id": "n8n-nodes-base.humanticAiTool",
 		"popularity": 0.348
 	},
 	{
+		"id": "n8n-nodes-base.autopilotTool",
+		"popularity": 0.329
+	},
+	{
+		"id": "n8n-nodes-base.strapi",
+		"popularity": 0.369
+	},
+	{
+		"id": "@langfuse/n8n-nodes-langfuse.langfuse",
+		"popularity": 0.371
+	},
+	{
+		"id": "n8n-nodes-base.getResponseTool",
+		"popularity": 0.303
+	},
+	{
+		"id": "n8n-nodes-base.jenkinsTool",
+		"popularity": 0.303
+	},
+	{
+		"id": "n8n-nodes-base.googleBooksTool",
+		"popularity": 0.313
+	},
+	{
+		"id": "n8n-nodes-base.mailchimpTool",
+		"popularity": 0.33
+	},
+	{
+		"id": "n8n-nodes-base.awsLambdaTool",
+		"popularity": 0.338
+	},
+	{
+		"id": "n8n-nodes-base.phantombusterTool",
+		"popularity": 0.359
+	},
+	{
+		"id": "n8n-nodes-base.metabaseTool",
+		"popularity": 0.31
+	},
+	{
+		"id": "n8n-nodes-base.messageBirdTool",
+		"popularity": 0.358
+	},
+	{
+		"id": "n8n-nodes-superchat.superchat",
+		"popularity": 0.419
+	},
+	{
+		"id": "n8n-nodes-base.gSuiteAdminTool",
+		"popularity": 0.371
+	},
+	{
+		"id": "n8n-nodes-base.agileCrmTool",
+		"popularity": 0.311
+	},
+	{
+		"id": "n8n-nodes-base.googleCloudNaturalLanguage",
+		"popularity": 0.362
+	},
+	{
+		"id": "@infobip/n8n-nodes-infobip-api.infobipApi",
+		"popularity": 0.289
+	},
+	{
+		"id": "n8n-nodes-inoreader.inoreader",
+		"popularity": 0.327
+	},
+	{
 		"id": "n8n-nodes-base.convertKitTool",
+		"popularity": 0.342
+	},
+	{
+		"id": "n8n-nodes-base.compressionTool",
+		"popularity": 0.353
+	},
+	{
+		"id": "n8n-nodes-base.bitly",
+		"popularity": 0.321
+	},
+	{
+		"id": "n8n-nodes-base.clockify",
+		"popularity": 0.416
+	},
+	{
+		"id": "n8n-nodes-base.microsoftEntraTool",
+		"popularity": 0.331
+	},
+	{
+		"id": "n8n-nodes-base.magento2",
+		"popularity": 0.369
+	},
+	{
+		"id": "n8n-nodes-base.serviceNowTool",
+		"popularity": 0.345
+	},
+	{
+		"id": "n8n-nodes-base.freshservice",
+		"popularity": 0.407
+	},
+	{
+		"id": "n8n-nodes-base.clearbit",
+		"popularity": 0.305
+	},
+	{
+		"id": "n8n-nodes-base.stravaTool",
+		"popularity": 0.353
+	},
+	{
+		"id": "n8n-nodes-base.intercom",
+		"popularity": 0.385
+	},
+	{
+		"id": "n8n-nodes-base.snowflakeTool",
+		"popularity": 0.353
+	},
+	{
+		"id": "n8n-nodes-base.getResponse",
+		"popularity": 0.357
+	},
+	{
+		"id": "n8n-nodes-base.bitwardenTool",
+		"popularity": 0.338
+	},
+	{
+		"id": "n8n-nodes-base.payPalTrigger",
+		"popularity": 0.355
+	},
+	{
+		"id": "n8n-nodes-base.mailerLite",
+		"popularity": 0.42
+	},
+	{
+		"id": "n8n-nodes-anchorbrowser.anchorBrowser",
+		"popularity": 0.453
+	},
+	{
+		"id": "n8n-nodes-base.activeCampaignTool",
+		"popularity": 0.341
+	},
+	{
+		"id": "n8n-nodes-base.nasaTool",
+		"popularity": 0.338
+	},
+	{
+		"id": "n8n-nodes-base.invoiceNinjaTool",
+		"popularity": 0.343
+	},
+	{
+		"id": "n8n-nodes-base.bitwarden",
+		"popularity": 0.352
+	},
+	{
+		"id": "@gotohuman/n8n-nodes-gotohuman.gotoHuman",
+		"popularity": 0.341
+	},
+	{
+		"id": "n8n-nodes-base.sendInBlueTool",
+		"popularity": 0.367
+	},
+	{
+		"id": "n8n-nodes-base.mqttTool",
 		"popularity": 0.322
 	},
 	{
 		"id": "n8n-nodes-base.pushoverTool",
-		"popularity": 0.402
+		"popularity": 0.501
 	},
 	{
-		"id": "n8n-nodes-base.invoiceNinja",
-		"popularity": 0.392
+		"id": "n8n-nodes-scraping-dog.scrapingDog",
+		"popularity": 0.254
 	},
 	{
-		"id": "n8n-nodes-base.humanticAiTool",
-		"popularity": 0.3
-	},
-	{
-		"id": "n8n-nodes-base.invoiceNinjaTool",
-		"popularity": 0.305
-	},
-	{
-		"id": "n8n-nodes-base.storyblok",
-		"popularity": 0.227
-	},
-	{
-		"id": "n8n-nodes-base.marketstackTool",
-		"popularity": 0.478
-	},
-	{
-		"id": "n8n-nodes-base.openThesaurus",
-		"popularity": 0.281
-	},
-	{
-		"id": "n8n-nodes-base.gong",
-		"popularity": 0.317
-	},
-	{
-		"id": "n8n-nodes-base.cortex",
-		"popularity": 0.267
-	},
-	{
-		"id": "n8n-nodes-base.signl4",
-		"popularity": 0.241
-	},
-	{
-		"id": "n8n-nodes-base.autopilot",
+		"id": "n8n-nodes-base.uptimeRobot",
 		"popularity": 0.295
 	},
 	{
-		"id": "n8n-nodes-base.peekalink",
-		"popularity": 0.234
+		"id": "n8n-nodes-base.theHiveProject",
+		"popularity": 0.326
+	},
+	{
+		"id": "n8n-nodes-base.npmTool",
+		"popularity": 0.265
+	},
+	{
+		"id": "n8n-nodes-base.ldapTool",
+		"popularity": 0.295
+	},
+	{
+		"id": "n8n-nodes-base.xeroTool",
+		"popularity": 0.271
+	},
+	{
+		"id": "n8n-nodes-base.googleBooks",
+		"popularity": 0.269
+	},
+	{
+		"id": "n8n-nodes-base.dropcontact",
+		"popularity": 0.278
+	},
+	{
+		"id": "n8n-nodes-base.plivo",
+		"popularity": 0.263
+	},
+	{
+		"id": "n8n-nodes-base.openThesaurus",
+		"popularity": 0.252
+	},
+	{
+		"id": "n8n-nodes-yepcode.yepCode",
+		"popularity": 0.259
+	},
+	{
+		"id": "n8n-nodes-base.discourse",
+		"popularity": 0.294
+	},
+	{
+		"id": "n8n-nodes-base.compression",
+		"popularity": 0.603
+	},
+	{
+		"id": "n8n-nodes-cloudinary.cloudinary",
+		"popularity": 0.558
+	},
+	{
+		"id": "n8n-nodes-base.marketstackTool",
+		"popularity": 0.58
+	},
+	{
+		"id": "@pinecone-database/n8n-nodes-pinecone-assistant.pineconeAssistant",
+		"popularity": 0.426
+	},
+	{
+		"id": "n8n-nodes-base.travisCiTool",
+		"popularity": 0.383
+	},
+	{
+		"id": "n8n-nodes-base.gong",
+		"popularity": 0.383
+	},
+	{
+		"id": "n8n-nodes-base.sentryIo",
+		"popularity": 0.362
+	},
+	{
+		"id": "n8n-nodes-screenshotbase.screenshotBase",
+		"popularity": 0.341
+	},
+	{
+		"id": "n8n-nodes-base.sendInBlueTrigger",
+		"popularity": 0.358
+	},
+	{
+		"id": "n8n-nodes-1shot.oneShot",
+		"popularity": 0.329
+	},
+	{
+		"id": "n8n-nodes-base.ciscoWebex",
+		"popularity": 0.348
+	},
+	{
+		"id": "n8n-nodes-base.azureCosmosDb",
+		"popularity": 0.394
+	},
+	{
+		"id": "n8n-nodes-base.upleadTool",
+		"popularity": 0.314
+	},
+	{
+		"id": "n8n-nodes-base.npm",
+		"popularity": 0.323
+	},
+	{
+		"id": "@cloudsway-ai/n8n-nodes-cloudsway.smartSearch",
+		"popularity": 0.31
 	},
 	{
 		"id": "n8n-nodes-base.adaloTool",
-		"popularity": 0.299
+		"popularity": 0.309
+	},
+	{
+		"id": "n8n-nodes-base.haloPSA",
+		"popularity": 0.384
+	},
+	{
+		"id": "n8n-nodes-base.convertKit",
+		"popularity": 0.341
+	},
+	{
+		"id": "n8n-nodes-softr.softr",
+		"popularity": 0.409
+	},
+	{
+		"id": "n8n-nodes-base.mattermostTool",
+		"popularity": 0.314
 	},
 	{
 		"id": "n8n-nodes-base.mediumTool",
 		"popularity": 0.295
 	},
 	{
-		"id": "n8n-nodes-base.matrixTool",
-		"popularity": 0.309
+		"id": "n8n-nodes-base.contentfulTool",
+		"popularity": 0.299
 	},
 	{
 		"id": "n8n-nodes-base.venafiTlsProtectDatacenterTool",
-		"popularity": 0.277
-	},
-	{
-		"id": "n8n-nodes-base.awsSesTool",
-		"popularity": 0.223
-	},
-	{
-		"id": "n8n-nodes-base.azureCosmosDb",
-		"popularity": 0.341
+		"popularity": 0.288
 	},
 	{
 		"id": "@decodo/n8n-nodes-decodo.decodo",
-		"popularity": 0.31
-	},
-	{
-		"id": "n8n-nodes-base.netlify",
-		"popularity": 0.32
-	},
-	{
-		"id": "n8n-nodes-base.crateDbTool",
-		"popularity": 0.23
-	},
-	{
-		"id": "n8n-nodes-base.strapiTool",
-		"popularity": 0.227
-	},
-	{
-		"id": "n8n-nodes-base.wiseTrigger",
-		"popularity": 0.262
-	},
-	{
-		"id": "n8n-nodes-base.paddleTool",
-		"popularity": 0.21
-	},
-	{
-		"id": "n8n-nodes-base.ciscoWebex",
-		"popularity": 0.35
-	},
-	{
-		"id": "n8n-nodes-base.googleBooks",
-		"popularity": 0.252
-	},
-	{
-		"id": "n8n-nodes-base.discourseTool",
-		"popularity": 0.166
-	},
-	{
-		"id": "n8n-nodes-base.uptimeRobot",
-		"popularity": 0.288
-	},
-	{
-		"id": "n8n-nodes-base.invoiceNinjaTrigger",
-		"popularity": 0.234
-	},
-	{
-		"id": "n8n-nodes-base.magento2Tool",
-		"popularity": 0.252
-	},
-	{
-		"id": "n8n-nodes-base.npm",
-		"popularity": 0.291
-	},
-	{
-		"id": "n8n-nodes-base.mattermostTool",
-		"popularity": 0.322
-	},
-	{
-		"id": "n8n-nodes-base.upleadTool",
-		"popularity": 0.306
-	},
-	{
-		"id": "n8n-nodes-base.ldapTool",
-		"popularity": 0.26
-	},
-	{
-		"id": "n8n-nodes-base.timescaleDb",
-		"popularity": 0.269
-	},
-	{
-		"id": "n8n-nodes-base.mandrill",
-		"popularity": 0.249
-	},
-	{
-		"id": "n8n-nodes-base.dropcontact",
-		"popularity": 0.298
-	},
-	{
-		"id": "n8n-nodes-visualping.visualpingTrigger",
-		"popularity": 0.194
-	},
-	{
-		"id": "n8n-nodes-screenshotbase.screenshotBase",
-		"popularity": 0.353
-	},
-	{
-		"id": "n8n-nodes-1shot.oneShot",
-		"popularity": 0.332
-	},
-	{
-		"id": "n8n-nodes-base.awsCertificateManager",
-		"popularity": 0.267
-	},
-	{
-		"id": "n8n-nodes-yepcode.yepCode",
-		"popularity": 0.296
-	},
-	{
-		"id": "@cloudsway-ai/n8n-nodes-cloudsway.smartSearch",
-		"popularity": 0.29
-	},
-	{
-		"id": "n8n-nodes-base.wufooTrigger",
-		"popularity": 0.244
-	},
-	{
-		"id": "n8n-nodes-base.securityScorecardTool",
-		"popularity": 0.257
-	},
-	{
-		"id": "n8n-nodes-base.getResponseTrigger",
-		"popularity": 0.188
-	},
-	{
-		"id": "n8n-nodes-base.convertKit",
-		"popularity": 0.335
-	},
-	{
-		"id": "n8n-nodes-base.lemlistTool",
-		"popularity": 0.249
-	},
-	{
-		"id": "n8n-nodes-softr.softr",
-		"popularity": 0.429
-	},
-	{
-		"id": "n8n-nodes-base.googlePerspectiveTool",
-		"popularity": 0.23
-	},
-	{
-		"id": "n8n-nodes-base.helpScoutTrigger",
-		"popularity": 0.205
-	},
-	{
-		"id": "n8n-nodes-base.discourse",
-		"popularity": 0.325
-	},
-	{
-		"id": "n8n-nodes-base.haloPSA",
-		"popularity": 0.373
-	},
-	{
-		"id": "n8n-nodes-base.circleCi",
-		"popularity": 0.237
-	},
-	{
-		"id": "n8n-nodes-base.uproc",
-		"popularity": 0.3
-	},
-	{
-		"id": "n8n-nodes-base.boxTrigger",
-		"popularity": 0.293
-	},
-	{
-		"id": "n8n-nodes-base.harvest",
-		"popularity": 0.346
-	},
-	{
-		"id": "n8n-nodes-base.freshworksCrmTool",
-		"popularity": 0.252
-	},
-	{
-		"id": "n8n-nodes-base.npmTool",
-		"popularity": 0.247
-	},
-	{
-		"id": "n8n-nodes-base.elasticSecurityTool",
-		"popularity": 0.21
-	},
-	{
-		"id": "n8n-nodes-base.pushcut",
-		"popularity": 0.288
+		"popularity": 0.317
 	},
 	{
 		"id": "@scrapeops/n8n-nodes-scrapeops.ScrapeOps",
-		"popularity": 0.298
+		"popularity": 0.303
 	},
 	{
-		"id": "n8n-nodes-base.theHiveTool",
-		"popularity": 0.249
-	},
-	{
-		"id": "n8n-nodes-base.theHiveProject",
-		"popularity": 0.352
-	},
-	{
-		"id": "n8n-nodes-base.ouraTool",
-		"popularity": 0.237
-	},
-	{
-		"id": "n8n-nodes-base.sendInBlueTrigger",
-		"popularity": 0.309
-	},
-	{
-		"id": "n8n-nodes-base.erpNextTool",
-		"popularity": 0.324
-	},
-	{
-		"id": "@alipeople/n8n-nodes-sendon.sendon",
-		"popularity": 0.214
-	},
-	{
-		"id": "n8n-nodes-base.xeroTool",
-		"popularity": 0.295
-	},
-	{
-		"id": "n8n-nodes-base.contentfulTool",
-		"popularity": 0.288
-	},
-	{
-		"id": "n8n-nodes-base.uptimeRobotTool",
-		"popularity": 0.205
-	},
-	{
-		"id": "n8n-nodes-base.crateDb",
-		"popularity": 0.237
-	},
-	{
-		"id": "n8n-nodes-base.travisCiTool",
-		"popularity": 0.358
-	},
-	{
-		"id": "n8n-nodes-base.autopilotTrigger",
-		"popularity": 0.227
-	},
-	{
-		"id": "n8n-nodes-base.cockpitTool",
-		"popularity": 0.205
-	},
-	{
-		"id": "n8n-nodes-base.mailgunTool",
-		"popularity": 0.252
-	},
-	{
-		"id": "@telnyx/n8n-nodes-telnyx-ai.telnyxAi",
-		"popularity": 0.267
-	},
-	{
-		"id": "n8n-nodes-base.sentryIo",
-		"popularity": 0.348
+		"id": "n8n-nodes-base.harvest",
+		"popularity": 0.344
 	},
 	{
 		"id": "n8n-nodes-base.rundeck",
-		"popularity": 0.298
+		"popularity": 0.299
 	},
 	{
-		"id": "n8n-nodes-base.plivo",
-		"popularity": 0.279
+		"id": "n8n-nodes-base.matrixTool",
+		"popularity": 0.306
 	},
 	{
-		"id": "n8n-nodes-base.hunterTool",
-		"popularity": 0.275
+		"id": "n8n-nodes-base.uproc",
+		"popularity": 0.303
 	},
 	{
-		"id": "n8n-nodes-templated.templated",
-		"popularity": 0.334
+		"id": "n8n-nodes-base.cortex",
+		"popularity": 0.276
 	},
 	{
-		"id": "n8n-nodes-base.awsCognito",
-		"popularity": 0.305
+		"id": "n8n-nodes-base.awsCertificateManager",
+		"popularity": 0.238
 	},
 	{
-		"id": "n8n-nodes-base.codaTool",
-		"popularity": 0.271
+		"id": "n8n-nodes-base.boxTrigger",
+		"popularity": 0.318
 	},
 	{
-		"id": "n8n-nodes-base.clockifyTrigger",
-		"popularity": 0.29
+		"id": "n8n-nodes-base.mailgunTool",
+		"popularity": 0.288
 	},
 	{
-		"id": "n8n-nodes-fullenrich.fullEnrich",
-		"popularity": 0.277
+		"id": "n8n-nodes-base.netlify",
+		"popularity": 0.303
 	},
 	{
-		"id": "n8n-nodes-base.awsIam",
-		"popularity": 0.26
-	},
-	{
-		"id": "n8n-nodes-base.gristTool",
+		"id": "n8n-nodes-base.freshworksCrmTool",
 		"popularity": 0.241
 	},
 	{
-		"id": "n8n-nodes-base.harvestTool",
-		"popularity": 0.194
+		"id": "n8n-nodes-base.securityScorecardTool",
+		"popularity": 0.229
 	},
 	{
-		"id": "n8n-nodes-base.seaTableTool",
-		"popularity": 0.324
+		"id": "n8n-nodes-base.getResponseTrigger",
+		"popularity": 0.222
 	},
 	{
-		"id": "n8n-nodes-base.intercomTool",
-		"popularity": 0.273
+		"id": "n8n-nodes-base.autopilot",
+		"popularity": 0.283
 	},
 	{
-		"id": "n8n-nodes-base.totpTool",
-		"popularity": 0.23
+		"id": "n8n-nodes-base.pushcut",
+		"popularity": 0.289
 	},
 	{
-		"id": "n8n-nodes-base.rocketchatTool",
-		"popularity": 0.285
+		"id": "n8n-nodes-base.mailchimpTrigger",
+		"popularity": 0.327
+	},
+	{
+		"id": "n8n-nodes-base.postHog",
+		"popularity": 0.321
+	},
+	{
+		"id": "n8n-nodes-base.awsRekognition",
+		"popularity": 0.31
+	},
+	{
+		"id": "n8n-nodes-fullenrich.fullEnrich",
+		"popularity": 0.304
+	},
+	{
+		"id": "n8n-nodes-kipps.kippsAiChatbot",
+		"popularity": 0.304
 	},
 	{
 		"id": "n8n-nodes-mailtrap.mailtrap",
-		"popularity": 0.279
+		"popularity": 0.305
 	},
 	{
-		"id": "n8n-nodes-base.humanticAi",
-		"popularity": 0.26
+		"id": "n8n-nodes-base.bitlyTool",
+		"popularity": 0.276
+	},
+	{
+		"id": "n8n-nodes-base.splunkTool",
+		"popularity": 0.285
+	},
+	{
+		"id": "n8n-nodes-base.awsCognito",
+		"popularity": 0.306
 	},
 	{
 		"id": "n8n-nodes-base.ciscoWebexTool",
-		"popularity": 0.265
+		"popularity": 0.305
+	},
+	{
+		"id": "n8n-nodes-base.surveyMonkeyTrigger",
+		"popularity": 0.296
+	},
+	{
+		"id": "n8n-nodes-base.contentful",
+		"popularity": 0.316
+	},
+	{
+		"id": "n8n-nodes-base.bambooHrTool",
+		"popularity": 0.254
+	},
+	{
+		"id": "n8n-nodes-base.ciscoWebexTrigger",
+		"popularity": 0.306
+	},
+	{
+		"id": "n8n-nodes-base.mauticTrigger",
+		"popularity": 0.282
+	},
+	{
+		"id": "n8n-nodes-skyvern.skyvern",
+		"popularity": 0.302
 	},
 	{
 		"id": "n8n-nodes-base.awsComprehend",
-		"popularity": 0.277
+		"popularity": 0.265
+	},
+	{
+		"id": "n8n-nodes-fluentc.fluentCTranslate",
+		"popularity": 0.261
+	},
+	{
+		"id": "n8n-nodes-base.sendGridTool",
+		"popularity": 0.275
+	},
+	{
+		"id": "n8n-nodes-shortio.Shortio",
+		"popularity": 0.283
+	},
+	{
+		"id": "n8n-nodes-base.msg91",
+		"popularity": 0.296
+	},
+	{
+		"id": "n8n-nodes-base.awsSns",
+		"popularity": 0.298
+	},
+	{
+		"id": "n8n-nodes-addtowallet.addToWallet",
+		"popularity": 0.256
+	},
+	{
+		"id": "n8n-nodes-base.postmarkTrigger",
+		"popularity": 0.249
+	},
+	{
+		"id": "n8n-nodes-base.rocketchatTool",
+		"popularity": 0.278
+	},
+	{
+		"id": "n8n-nodes-base.rabbitmqTool",
+		"popularity": 0.28
+	},
+	{
+		"id": "n8n-nodes-base.postHogTool",
+		"popularity": 0.259
+	},
+	{
+		"id": "n8n-nodes-base.seaTableTool",
+		"popularity": 0.306
+	},
+	{
+		"id": "@globalping/n8n-nodes-globalping.globalping",
+		"popularity": 0.232
+	},
+	{
+		"id": "n8n-nodes-base.totpTool",
+		"popularity": 0.246
+	},
+	{
+		"id": "n8n-nodes-base.oura",
+		"popularity": 0.304
+	},
+	{
+		"id": "@urlbox/n8n-nodes-urlbox.urlbox",
+		"popularity": 0.271
+	},
+	{
+		"id": "n8n-nodes-base.oneSimpleApi",
+		"popularity": 0.229
+	},
+	{
+		"id": "n8n-nodes-base.zulip",
+		"popularity": 0.315
+	},
+	{
+		"id": "@local-falcon/n8n-nodes-localfalcon.localFalcon",
+		"popularity": 0.222
+	},
+	{
+		"id": "n8n-nodes-base.freshworksCrm",
+		"popularity": 0.31
+	},
+	{
+		"id": "n8n-nodes-base.yourlsTool",
+		"popularity": 0.232
+	},
+	{
+		"id": "n8n-nodes-base.chargebeeTool",
+		"popularity": 0.222
+	},
+	{
+		"id": "n8n-nodes-base.loneScaleTool",
+		"popularity": 0.244
+	},
+	{
+		"id": "@digitalocean/n8n-nodes-digitalocean-gradient-serverless-inference.digitalOceanGradientServerlessInference",
+		"popularity": 0.252
+	},
+	{
+		"id": "n8n-nodes-base.customerIo",
+		"popularity": 0.346
+	},
+	{
+		"id": "n8n-nodes-base.mailerLiteTrigger",
+		"popularity": 0.306
+	},
+	{
+		"id": "n8n-nodes-vikunja.vikunja",
+		"popularity": 0.416
+	},
+	{
+		"id": "n8n-nodes-base.hunterTool",
+		"popularity": 0.322
+	},
+	{
+		"id": "n8n-nodes-templated.templated",
+		"popularity": 0.348
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreChromaDB",
+		"popularity": 0.363
+	},
+	{
+		"id": "n8n-nodes-base.clockifyTrigger",
+		"popularity": 0.305
+	},
+	{
+		"id": "n8n-nodes-base.ghostTool",
+		"popularity": 0.333
+	},
+	{
+		"id": "n8n-nodes-base.awsIam",
+		"popularity": 0.314
+	},
+	{
+		"id": "n8n-nodes-docugenerate.docuGenerate",
+		"popularity": 0.31
+	},
+	{
+		"id": "n8n-nodes-base.lemlistTrigger",
+		"popularity": 0.392
+	},
+	{
+		"id": "n8n-nodes-base.raindrop",
+		"popularity": 0.359
+	},
+	{
+		"id": "n8n-nodes-base.intercomTool",
+		"popularity": 0.292
+	},
+	{
+		"id": "n8n-nodes-base.yourls",
+		"popularity": 0.291
+	},
+	{
+		"id": "n8n-nodes-base.Brandfetch",
+		"popularity": 0.292
+	},
+	{
+		"id": "n8n-nodes-base.okta",
+		"popularity": 0.35
+	},
+	{
+		"id": "n8n-nodes-base.pagerDuty",
+		"popularity": 0.341
+	},
+	{
+		"id": "n8n-nodes-base.codaTool",
+		"popularity": 0.282
+	},
+	{
+		"id": "n8n-nodes-base.BrandfetchTool",
+		"popularity": 0.252
+	},
+	{
+		"id": "n8n-nodes-ipgeolocation.ipgeolocation",
+		"popularity": 0.249
 	},
 	{
 		"id": "@zohomail/n8n-nodes-zohocalendar.zohoCalendar",
 		"popularity": 0.244
 	},
 	{
-		"id": "n8n-nodes-vikunja.vikunja",
-		"popularity": 0.393
+		"id": "n8n-nodes-cyberpulse-compliance-dev.cyberPulseCompliance",
+		"popularity": 0.2
 	},
 	{
-		"id": "n8n-nodes-base.mailcheckTool",
-		"popularity": 0.205
+		"id": "n8n-nodes-alive5.alive5",
+		"popularity": 0.225
 	},
 	{
-		"id": "n8n-nodes-base.kafkaTool",
-		"popularity": 0.234
+		"id": "n8n-nodes-diviup-connect.diviUpConnect",
+		"popularity": 0.19
 	},
 	{
-		"id": "n8n-nodes-base.sendGridTool",
-		"popularity": 0.252
+		"id": "n8n-nodes-mrscraper.mrscraper",
+		"popularity": 0.184
 	},
 	{
-		"id": "n8n-nodes-extruct.extruct",
-		"popularity": 0.205
+		"id": "n8n-nodes-nedzo.nedzo",
+		"popularity": 0.177
 	},
 	{
-		"id": "n8n-nodes-base.bambooHrTool",
-		"popularity": 0.279
-	},
-	{
-		"id": "n8n-nodes-base.oneSimpleApi",
-		"popularity": 0.267
-	},
-	{
-		"id": "n8n-nodes-base.postmarkTrigger",
-		"popularity": 0.247
-	},
-	{
-		"id": "n8n-nodes-base.iterableTool",
-		"popularity": 0.237
-	},
-	{
-		"id": "n8n-nodes-base.rabbitmqTool",
-		"popularity": 0.249
-	},
-	{
-		"id": "n8n-nodes-chat-data.chatDataTrigger",
-		"popularity": 0.188
-	},
-	{
-		"id": "n8n-nodes-pushinator.pushinator",
-		"popularity": 0.249
-	},
-	{
-		"id": "@globalping/n8n-nodes-globalping.globalping",
-		"popularity": 0.296
-	},
-	{
-		"id": "n8n-nodes-base.ghostTool",
-		"popularity": 0.314
-	},
-	{
-		"id": "n8n-nodes-base.bitlyTool",
-		"popularity": 0.223
-	},
-	{
-		"id": "n8n-nodes-fluentc.fluentCTranslate",
-		"popularity": 0.262
-	},
-	{
-		"id": "n8n-nodes-mallabe-barcodes.mallabeBarcodes",
-		"popularity": 0.267
-	},
-	{
-		"id": "n8n-nodes-base.mailerLiteTrigger",
-		"popularity": 0.273
-	},
-	{
-		"id": "n8n-nodes-base.contentful",
-		"popularity": 0.273
-	},
-	{
-		"id": "n8n-nodes-straico-official.straicoOfficial",
-		"popularity": 0.349
-	},
-	{
-		"id": "n8n-nodes-base.Brandfetch",
-		"popularity": 0.255
-	},
-	{
-		"id": "n8n-nodes-base.msg91",
-		"popularity": 0.309
-	},
-	{
-		"id": "n8n-nodes-base.mailchimpTrigger",
-		"popularity": 0.291
-	},
-	{
-		"id": "n8n-nodes-base.okta",
-		"popularity": 0.285
-	},
-	{
-		"id": "n8n-nodes-base.iterable",
-		"popularity": 0.244
-	},
-	{
-		"id": "n8n-nodes-base.gongTool",
-		"popularity": 0.252
-	},
-	{
-		"id": "n8n-nodes-awork.awork",
-		"popularity": 0.341
-	},
-	{
-		"id": "n8n-nodes-base.oura",
-		"popularity": 0.302
-	},
-	{
-		"id": "n8n-nodes-docuwriter-ai.docuWriter",
+		"id": "@port-labs/n8n-nodes-portio-experimental.portApiAi",
 		"popularity": 0.214
 	},
 	{
-		"id": "n8n-nodes-kipps.kippsAiChatbot",
-		"popularity": 0.295
+		"id": "n8n-nodes-pubnub.pubNub",
+		"popularity": 0.17
 	},
 	{
-		"id": "n8n-nodes-base.flowTrigger",
-		"popularity": 0.234
+		"id": "@securevector/n8n-nodes-securevector.secureVector",
+		"popularity": 0.144
 	},
 	{
-		"id": "n8n-nodes-base.timescaleDbTool",
-		"popularity": 0.194
-	},
-	{
-		"id": "n8n-nodes-shortio.Shortio",
-		"popularity": 0.249
-	},
-	{
-		"id": "n8n-nodes-base.yourlsTool",
-		"popularity": 0.262
-	},
-	{
-		"id": "n8n-nodes-base.zulip",
-		"popularity": 0.291
-	},
-	{
-		"id": "n8n-nodes-base.mauticTrigger",
-		"popularity": 0.255
-	},
-	{
-		"id": "n8n-nodes-base.awsRekognition",
-		"popularity": 0.277
-	},
-	{
-		"id": "n8n-nodes-base.chargebeeTool",
-		"popularity": 0.23
-	},
-	{
-		"id": "n8n-nodes-parseur.parseur",
-		"popularity": 0.214
-	},
-	{
-		"id": "n8n-nodes-base.surveyMonkeyTrigger",
-		"popularity": 0.273
-	},
-	{
-		"id": "n8n-nodes-base.yourls",
-		"popularity": 0.275
-	},
-	{
-		"id": "n8n-nodes-base.freshworksCrm",
-		"popularity": 0.3
-	},
-	{
-		"id": "n8n-nodes-skyvern.skyvern",
-		"popularity": 0.299
-	},
-	{
-		"id": "n8n-nodes-base.helpScout",
-		"popularity": 0.277
-	},
-	{
-		"id": "n8n-nodes-base.pagerDuty",
-		"popularity": 0.296
-	},
-	{
-		"id": "n8n-nodes-base.postHog",
-		"popularity": 0.302
-	},
-	{
-		"id": "n8n-nodes-base.mailerLiteTool",
-		"popularity": 0.188
-	},
-	{
-		"id": "n8n-nodes-base.BrandfetchTool",
-		"popularity": 0.237
-	},
-	{
-		"id": "n8n-nodes-base.awsSns",
-		"popularity": 0.302
-	},
-	{
-		"id": "n8n-nodes-base.raindrop",
-		"popularity": 0.403
-	},
-	{
-		"id": "n8n-nodes-base.ciscoWebexTrigger",
-		"popularity": 0.257
-	},
-	{
-		"id": "n8n-nodes-base.splunkTool",
-		"popularity": 0.249
-	},
-	{
-		"id": "n8n-nodes-base.gotifyTool",
-		"popularity": 0.21
-	},
-	{
-		"id": "n8n-nodes-base.loneScaleTool",
-		"popularity": 0.249
-	},
-	{
-		"id": "n8n-nodes-base.lemlistTrigger",
-		"popularity": 0.327
+		"id": "n8n-nodes-craft.craft",
+		"popularity": 0.195
 	},
 	{
 		"id": "n8n-nodes-base.crowdDevTool",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.customerIo",
-		"popularity": 0.314
-	},
-	{
-		"id": "n8n-nodes-base.postHogTool",
-		"popularity": 0.23
-	},
-	{
-		"id": "n8n-nodes-base.netlifyTrigger",
-		"popularity": 0.181
-	},
-	{
-		"id": "n8n-nodes-base.koBoToolbox",
-		"popularity": 0.247
-	},
-	{
-		"id": "n8n-nodes-base.signl4Tool",
-		"popularity": 0.105
-	},
-	{
-		"id": "n8n-nodes-base.wekan",
-		"popularity": 0.21
-	},
-	{
-		"id": "n8n-nodes-base.spontit",
-		"popularity": 0.052
-	},
-	{
-		"id": "n8n-nodes-base.questDb",
-		"popularity": 0.157
-	},
-	{
-		"id": "n8n-nodes-base.storyblokTool",
-		"popularity": 0.194
-	},
-	{
-		"id": "n8n-nodes-logsnag.LogSnag",
-		"popularity": 0.157
-	},
-	{
-		"id": "n8n-nodes-base.customerIoTrigger",
-		"popularity": 0.166
-	},
-	{
-		"id": "n8n-nodes-base.koBoToolboxTrigger",
-		"popularity": 0.205
-	},
-	{
-		"id": "n8n-nodes-base.monicaCrm",
-		"popularity": 0.267
-	},
-	{
-		"id": "n8n-nodes-base.zulipTool",
+		"id": "@bedrijfsdatanl/n8n-nodes-bedrijfsdata.bedrijfsdata",
 		"popularity": 0.241
-	},
-	{
-		"id": "n8n-nodes-base.paddle",
-		"popularity": 0.174
-	},
-	{
-		"id": "n8n-nodes-base.quickbase",
-		"popularity": 0.234
-	},
-	{
-		"id": "@apaleo/n8n-nodes-apaleo-official.apaleo",
-		"popularity": 0.223
-	},
-	{
-		"id": "n8n-nodes-base.keapTrigger",
-		"popularity": 0.241
-	},
-	{
-		"id": "@netgsm/n8n-nodes-netgsm.netgsm",
-		"popularity": 0.2
-	},
-	{
-		"id": "n8n-nodes-base.disqus",
-		"popularity": 0.122
-	},
-	{
-		"id": "n8n-nodes-base.mailjetTrigger",
-		"popularity": 0.166
-	},
-	{
-		"id": "n8n-nodes-base.taiga",
-		"popularity": 0.249
-	},
-	{
-		"id": "n8n-nodes-taddy.taddyApi",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.openThesaurusTool",
-		"popularity": 0.205
-	},
-	{
-		"id": "n8n-nodes-base.postBinTool",
-		"popularity": 0.205
-	},
-	{
-		"id": "n8n-nodes-base.questDbTool",
-		"popularity": 0.255
-	},
-	{
-		"id": "n8n-nodes-base.pushcutTool",
-		"popularity": 0.105
-	},
-	{
-		"id": "n8n-nodes-seo-content-machine.seoContentMachine",
-		"popularity": 0.227
-	},
-	{
-		"id": "n8n-nodes-base.stackby",
-		"popularity": 0.247
-	},
-	{
-		"id": "@ekyte/n8n-nodes-ekyte.eKyteAction",
-		"popularity": 0.288
-	},
-	{
-		"id": "n8n-nodes-base.salesmate",
-		"popularity": 0.174
-	},
-	{
-		"id": "n8n-nodes-base.syncroMspTool",
-		"popularity": 0.21
-	},
-	{
-		"id": "@vlm-run/n8n-nodes-vlmrun.vlmRun",
-		"popularity": 0.174
-	},
-	{
-		"id": "n8n-nodes-base.taigaTrigger",
-		"popularity": 0.122
-	},
-	{
-		"id": "n8n-nodes-base.convertKitTrigger",
-		"popularity": 0.223
-	},
-	{
-		"id": "n8n-nodes-base.goToWebinar",
-		"popularity": 0.23
-	},
-	{
-		"id": "n8n-nodes-base.securityScorecard",
-		"popularity": 0.181
-	},
-	{
-		"id": "n8n-nodes-base.elasticSecurity",
-		"popularity": 0.257
-	},
-	{
-		"id": "n8n-nodes-base.dropcontactTool",
-		"popularity": 0.23
-	},
-	{
-		"id": "@orisma/n8n-nodes-taximail.taximail",
-		"popularity": 0.147
 	},
 	{
 		"id": "n8n-nodes-base.koBoToolboxTool",
-		"popularity": 0.052
+		"popularity": 0.17
 	},
 	{
-		"id": "n8n-nodes-krispcall.krispcall",
-		"popularity": 0.122
-	},
-	{
-		"id": "@bedrijfsdatanl/n8n-nodes-bedrijfsdata.bedrijfsdata",
-		"popularity": 0.122
-	},
-	{
-		"id": "n8n-nodes-base.segment",
-		"popularity": 0.194
-	},
-	{
-		"id": "n8n-nodes-base.kitemakerTool",
-		"popularity": 0.052
-	},
-	{
-		"id": "n8n-nodes-base.taigaTool",
-		"popularity": 0.2
-	},
-	{
-		"id": "n8n-nodes-joggai.joggAiNode",
-		"popularity": 0.052
-	},
-	{
-		"id": "n8n-nodes-base.monicaCrmTool",
-		"popularity": 0.267
-	},
-	{
-		"id": "n8n-nodes-swiftgum-trigger.swiftgumTrigger",
-		"popularity": 0.122
-	},
-	{
-		"id": "n8n-nodes-base.twist",
-		"popularity": 0.174
-	},
-	{
-		"id": "n8n-nodes-base.cockpit",
-		"popularity": 0.2
-	},
-	{
-		"id": "n8n-nodes-zohoteaminbox.zohoTeamInbox",
-		"popularity": 0.247
-	},
-	{
-		"id": "n8n-nodes-base.lingvaNex",
-		"popularity": 0.2
-	},
-	{
-		"id": "n8n-nodes-base.mandrillTool",
-		"popularity": 0.122
+		"id": "n8n-nodes-base.pushcutTool",
+		"popularity": 0.133
 	},
 	{
 		"id": "@handelsregister/n8n-nodes-handelsregister-ai.handelsregisterAi",
-		"popularity": 0.105
+		"popularity": 0.205
 	},
 	{
-		"id": "n8n-nodes-base.awsSnsTool",
-		"popularity": 0.219
+		"id": "n8n-nodes-base.signl4Tool",
+		"popularity": 0.133
 	},
 	{
-		"id": "n8n-nodes-base.theHive",
-		"popularity": 0.194
+		"id": "n8n-nodes-base.salesmate",
+		"popularity": 0.17
 	},
 	{
-		"id": "n8n-nodes-base.oktaTool",
-		"popularity": 0.147
+		"id": "n8n-nodes-base.mandrillTool",
+		"popularity": 0.119
 	},
 	{
-		"id": "n8n-nodes-base.pushbulletTool",
-		"popularity": 0.181
-	},
-	{
-		"id": "@copicake/n8n-nodes-copicake.copicake",
-		"popularity": 0.157
+		"id": "n8n-nodes-base.disqus",
+		"popularity": 0.119
 	},
 	{
 		"id": "n8n-nodes-base.egoiTool",
-		"popularity": 0.105
-	},
-	{
-		"id": "n8n-nodes-base.driftTool",
-		"popularity": 0.23
-	},
-	{
-		"id": "n8n-nodes-base.raindropTool",
-		"popularity": 0.181
-	},
-	{
-		"id": "n8n-nodes-vikunja.vikunjaTrigger",
-		"popularity": 0.257
-	},
-	{
-		"id": "@nuelink/n8n-nodes-nuelink.nuelink",
-		"popularity": 0.181
+		"popularity": 0.103
 	},
 	{
 		"id": "n8n-nodes-dalil-ai.dalilAi",
-		"popularity": 0.083
-	},
-	{
-		"id": "n8n-nodes-base.netlifyTool",
-		"popularity": 0.157
+		"popularity": 0.081
 	},
 	{
 		"id": "n8n-nodes-streak-crm.streak",
 		"popularity": 0.205
 	},
 	{
-		"id": "@paloaltonetworks/n8n-nodes-prisma-airs.prismaAirs",
-		"popularity": 0.181
+		"id": "n8n-nodes-taddy.taddyApi",
+		"popularity": 0.103
 	},
 	{
-		"id": "n8n-nodes-base.unleashedSoftware",
-		"popularity": 0.157
+		"id": "n8n-nodes-base.spontit",
+		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.theHiveProjectTool",
-		"popularity": 0.286
+		"id": "n8n-nodes-base.kitemakerTool",
+		"popularity": 0
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.chatTrigger",
+		"popularity": 0.948
+	},
+	{
+		"id": "n8n-nodes-base.whatsAppHitlTool",
+		"popularity": 0.452
+	},
+	{
+		"id": "n8n-nodes-base.driftTool",
+		"popularity": 0.276
+	},
+	{
+		"id": "n8n-nodes-vikunja.vikunjaTrigger",
+		"popularity": 0.296
+	},
+	{
+		"id": "n8n-nodes-base.elasticSecurity",
+		"popularity": 0.267
+	},
+	{
+		"id": "n8n-nodes-base.stackby",
+		"popularity": 0.261
+	},
+	{
+		"id": "@apaleo/n8n-nodes-apaleo-official.apaleo",
+		"popularity": 0.291
+	},
+	{
+		"id": "n8n-nodes-base.wekan",
+		"popularity": 0.261
+	},
+	{
+		"id": "n8n-nodes-base.netlifyTool",
+		"popularity": 0.195
+	},
+	{
+		"id": "@nuelink/n8n-nodes-nuelink.nuelink",
+		"popularity": 0.229
+	},
+	{
+		"id": "n8n-nodes-base.taigaTool",
+		"popularity": 0.21
+	},
+	{
+		"id": "n8n-nodes-krispcall.krispcall",
+		"popularity": 0.177
+	},
+	{
+		"id": "n8n-nodes-base.twist",
+		"popularity": 0.205
 	},
 	{
 		"id": "n8n-nodes-businessmap.businessmap",
-		"popularity": 0.166
+		"popularity": 0.269
 	},
 	{
-		"id": "n8n-nodes-klicktipp.klicktipp",
-		"popularity": 0.227
+		"id": "n8n-nodes-joggai.joggAiNode",
+		"popularity": 0.235
 	},
 	{
-		"id": "n8n-nodes-base.rundeckTool",
-		"popularity": 0.166
+		"id": "@copicake/n8n-nodes-copicake.copicake",
+		"popularity": 0.163
 	},
 	{
-		"id": "n8n-nodes-base.wekanTool",
-		"popularity": 0.147
+		"id": "n8n-nodes-base.theHiveProjectTool",
+		"popularity": 0.154
 	},
 	{
-		"id": "n8n-nodes-base.mispTool",
-		"popularity": 0.166
+		"id": "n8n-nodes-logsnag.LogSnag",
+		"popularity": 0.144
 	},
 	{
-		"id": "n8n-nodes-base.syncroMsp",
-		"popularity": 0.257
+		"id": "n8n-nodes-base.pushcutTrigger",
+		"popularity": 0.119
+	},
+	{
+		"id": "n8n-nodes-base.twistTool",
+		"popularity": 0.119
+	},
+	{
+		"id": "n8n-nodes-base.salesmateTool",
+		"popularity": 0.119
+	},
+	{
+		"id": "n8n-nodes-base.travisCi",
+		"popularity": 0.103
+	},
+	{
+		"id": "n8n-nodes-klicktipp.klicktippTrigger",
+		"popularity": 0.144
+	},
+	{
+		"id": "n8n-nodes-blue.blue",
+		"popularity": 0.144
+	},
+	{
+		"id": "n8n-nodes-straker-verify.strakerVerify",
+		"popularity": 0.119
+	},
+	{
+		"id": "n8n-nodes-understandtechchat.understandTechChat",
+		"popularity": 0.133
+	},
+	{
+		"id": "n8n-nodes-webmetic.webmetic",
+		"popularity": 0.051
+	},
+	{
+		"id": "n8n-nodes-base.uprocTool",
+		"popularity": 0.051
+	},
+	{
+		"id": "n8n-nodes-base.microsoftOutlookHitlTool",
+		"popularity": 0.392
+	},
+	{
+		"id": "n8n-nodes-apex.apex",
+		"popularity": 0.051
+	},
+	{
+		"id": "n8n-nodes-base.googleChatHitlTool",
+		"popularity": 0.377
+	},
+	{
+		"id": "n8n-nodes-triggercmd.triggercmd",
+		"popularity": 0.373
+	},
+	{
+		"id": "n8n-nodes-exa-official.exa",
+		"popularity": 0.386
+	},
+	{
+		"id": "n8n-nodes-parallel.parallel",
+		"popularity": 0.282
+	},
+	{
+		"id": "n8n-nodes-base.uplead",
+		"popularity": 0.254
+	},
+	{
+		"id": "n8n-nodes-base.seaTableTrigger",
+		"popularity": 0.273
+	},
+	{
+		"id": "n8n-nodes-base.keap",
+		"popularity": 0.294
+	},
+	{
+		"id": "n8n-nodes-beyondpresence.beyondPresence",
+		"popularity": 0.291
+	},
+	{
+		"id": "n8n-nodes-base.segmentTool",
+		"popularity": 0.214
 	},
 	{
 		"id": "n8n-nodes-base.demioTool",
+		"popularity": 0.214
+	},
+	{
+		"id": "n8n-nodes-base.copperTool",
+		"popularity": 0.238
+	},
+	{
+		"id": "n8n-nodes-base.stackbyTool",
+		"popularity": 0.19
+	},
+	{
+		"id": "n8n-nodes-base.drift",
+		"popularity": 0.184
+	},
+	{
+		"id": "n8n-nodes-dart.dart",
 		"popularity": 0.21
+	},
+	{
+		"id": "n8n-nodes-base.quickbaseTool",
+		"popularity": 0.19
+	},
+	{
+		"id": "n8n-nodes-parseur.parseurTrigger",
+		"popularity": 0.154
+	},
+	{
+		"id": "n8n-nodes-base.theHiveProjectTrigger",
+		"popularity": 0.195
+	},
+	{
+		"id": "n8n-nodes-matrix42.matrix42",
+		"popularity": 0.238
+	},
+	{
+		"id": "n8n-nodes-gainium.Gainium",
+		"popularity": 0.225
+	},
+	{
+		"id": "n8n-nodes-base.tapfiliateTool",
+		"popularity": 0.144
+	},
+	{
+		"id": "n8n-nodes-authentica.authentica",
+		"popularity": 0.154
+	},
+	{
+		"id": "n8n-nodes-base.theHiveTrigger",
+		"popularity": 0.214
+	},
+	{
+		"id": "n8n-nodes-velatir.velatir",
+		"popularity": 0.195
+	},
+	{
+		"id": "n8n-nodes-base.emelia",
+		"popularity": 0.154
+	},
+	{
+		"id": "n8n-nodes-raia.raia",
+		"popularity": 0.195
+	},
+	{
+		"id": "n8n-nodes-outgrow.outgrowTrigger",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-base.egoi",
+		"popularity": 0.133
 	},
 	{
 		"id": "n8n-nodes-base.crowdDev",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.goToWebinarTool",
-		"popularity": 0.181
-	},
-	{
-		"id": "n8n-nodes-base.drift",
-		"popularity": 0.136
-	},
-	{
-		"id": "n8n-nodes-base.plivoTool",
-		"popularity": 0.181
-	},
-	{
-		"id": "n8n-nodes-base.tapfiliateTool",
-		"popularity": 0.166
-	},
-	{
 		"id": "n8n-nodes-simplified.simplified",
-		"popularity": 0.181
-	},
-	{
-		"id": "n8n-nodes-base.quickbaseTool",
-		"popularity": 0.136
-	},
-	{
-		"id": "n8n-nodes-base.copper",
-		"popularity": 0.157
-	},
-	{
-		"id": "n8n-nodes-base.tapfiliate",
-		"popularity": 0.083
-	},
-	{
-		"id": "n8n-nodes-base.misp",
-		"popularity": 0.286
-	},
-	{
-		"id": "n8n-nodes-base.venafiTlsProtectDatacenter",
-		"popularity": 0.122
-	},
-	{
-		"id": "n8n-nodes-matrix42.matrix42",
-		"popularity": 0.083
-	},
-	{
-		"id": "n8n-nodes-base.emeliaTool",
-		"popularity": 0.181
-	},
-	{
-		"id": "n8n-nodes-base.vonageTool",
-		"popularity": 0.214
-	},
-	{
-		"id": "n8n-nodes-base.keap",
-		"popularity": 0.323
-	},
-	{
-		"id": "n8n-nodes-base.circleCiTool",
-		"popularity": 0.147
-	},
-	{
-		"id": "n8n-nodes-base.egoi",
-		"popularity": 0.147
-	},
-	{
-		"id": "n8n-nodes-triggercmd.triggercmd",
-		"popularity": 0.34
-	},
-	{
-		"id": "n8n-nodes-base.emelia",
-		"popularity": 0.181
-	},
-	{
-		"id": "n8n-nodes-base.clearbitTool",
-		"popularity": 0.219
-	},
-	{
-		"id": "n8n-nodes-twittershots.twitterShots",
-		"popularity": 0.181
-	},
-	{
-		"id": "n8n-nodes-deeptagger.deepTagger",
-		"popularity": 0.136
-	},
-	{
-		"id": "n8n-nodes-base.chargebeeTrigger",
-		"popularity": 0.223
-	},
-	{
-		"id": "n8n-nodes-base.mailjetTool",
-		"popularity": 0.181
-	},
-	{
-		"id": "n8n-nodes-outgrow.outgrowTrigger",
-		"popularity": 0.166
-	},
-	{
-		"id": "@enginemailer/n8n-nodes-enginemailer.enginemailer",
-		"popularity": 0.21
-	},
-	{
-		"id": "n8n-nodes-raia.raia",
-		"popularity": 0.052
-	},
-	{
-		"id": "n8n-nodes-base.venafiTlsProtectCloudTool",
-		"popularity": 0.174
-	},
-	{
-		"id": "n8n-nodes-base.travisCi",
-		"popularity": 0.122
-	},
-	{
-		"id": "n8n-nodes-base.beeminderTool",
-		"popularity": 0.174
-	},
-	{
-		"id": "n8n-nodes-base.sentryIoTool",
-		"popularity": 0.23
-	},
-	{
-		"id": "n8n-nodes-base.segmentTool",
-		"popularity": 0.23
-	},
-	{
-		"id": "n8n-nodes-base.workableTrigger",
-		"popularity": 0.194
-	},
-	{
-		"id": "n8n-nodes-base.msg91Tool",
-		"popularity": 0.2
+		"popularity": 0
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.lmChatLemonade",
-		"popularity": 0.487
-	},
-	{
-		"id": "n8n-nodes-base.twistTool",
-		"popularity": 0.083
-	},
-	{
-		"id": "n8n-nodes-base.copperTool",
-		"popularity": 0.136
-	},
-	{
-		"id": "n8n-nodes-apex.apex",
-		"popularity": 0.105
-	},
-	{
-		"id": "n8n-nodes-base.amqpTool",
-		"popularity": 0.237
-	},
-	{
-		"id": "n8n-nodes-base.pushcutTrigger",
-		"popularity": 0.147
-	},
-	{
-		"id": "n8n-nodes-blue.blue",
-		"popularity": 0.083
-	},
-	{
-		"id": "n8n-nodes-base.pagerDutyTool",
-		"popularity": 0.205
-	},
-	{
-		"id": "n8n-nodes-base.seaTableTrigger",
-		"popularity": 0.275
-	},
-	{
-		"id": "n8n-nodes-beyondpresence.beyondPresence",
-		"popularity": 0.295
-	},
-	{
-		"id": "n8n-nodes-base.sendy",
-		"popularity": 0.205
-	},
-	{
-		"id": "n8n-nodes-base.helpScoutTool",
-		"popularity": 0.23
-	},
-	{
-		"id": "n8n-nodes-base.salesmateTool",
-		"popularity": 0.105
-	},
-	{
-		"id": "n8n-nodes-base.unleashedSoftwareTool",
-		"popularity": 0.2
-	},
-	{
-		"id": "n8n-nodes-base.theHiveProjectTrigger",
-		"popularity": 0.136
-	},
-	{
-		"id": "n8n-nodes-exa-official.exa",
-		"popularity": 0.389
-	},
-	{
-		"id": "n8n-nodes-dart.dart",
-		"popularity": 0.194
-	},
-	{
-		"id": "n8n-nodes-understandtechchat.understandTechChat",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-autobound.autobound",
-		"popularity": 0.166
-	},
-	{
-		"id": "n8n-nodes-parseur.parseurTrigger",
-		"popularity": 0.122
-	},
-	{
-		"id": "n8n-nodes-base.beeminder",
-		"popularity": 0.181
-	},
-	{
-		"id": "n8n-nodes-webmetic.webmetic",
-		"popularity": 0.083
-	},
-	{
-		"id": "n8n-nodes-velatir.velatir",
-		"popularity": 0
+		"popularity": 0.482
 	},
 	{
 		"id": "n8n-nodes-base.oracleDatabaseTool",
-		"popularity": 0.405
+		"popularity": 0.414
 	},
 	{
-		"id": "n8n-nodes-base.sms77Tool",
-		"popularity": 0.234
+		"id": "n8n-nodes-base.tapfiliate",
+		"popularity": 0.119
 	},
 	{
-		"id": "n8n-nodes-klicktipp.klicktippTrigger",
-		"popularity": 0.136
+		"id": "n8n-nodes-ikas.ikas",
+		"popularity": 0.232
 	},
 	{
-		"id": "n8n-nodes-base.haloPSATool",
-		"popularity": 0.219
-	},
-	{
-		"id": "n8n-nodes-gainium.Gainium",
-		"popularity": 0.105
-	},
-	{
-		"id": "n8n-nodes-parallel.parallel",
-		"popularity": 0.26
-	},
-	{
-		"id": "n8n-nodes-base.awsElb",
-		"popularity": 0.188
-	},
-	{
-		"id": "n8n-nodes-base.onfleet",
-		"popularity": 0.122
-	},
-	{
-		"id": "n8n-nodes-authentica.authentica",
-		"popularity": 0.174
-	},
-	{
-		"id": "n8n-nodes-base.uprocTool",
-		"popularity": 0.147
-	},
-	{
-		"id": "n8n-nodes-base.stackbyTool",
-		"popularity": 0.122
-	},
-	{
-		"id": "n8n-nodes-base.mauticTool",
-		"popularity": 0.249
-	},
-	{
-		"id": "n8n-nodes-base.theHiveTrigger",
-		"popularity": 0.136
-	},
-	{
-		"id": "n8n-nodes-base.demio",
-		"popularity": 0.194
-	},
-	{
-		"id": "n8n-nodes-base.chargebee",
-		"popularity": 0.2
-	},
-	{
-		"id": "n8n-nodes-base.sendyTool",
-		"popularity": 0.147
-	},
-	{
-		"id": "n8n-nodes-straker-verify.strakerVerify",
-		"popularity": 0.083
-	},
-	{
-		"id": "n8n-nodes-base.uplead",
-		"popularity": 0.281
-	},
-	{
-		"id": "n8n-nodes-base.htmlExtract",
-		"popularity": 0
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatGooglePalm",
-		"popularity": 0.105
-	},
-	{
-		"id": "n8n-nodes-zigpoll.zigpollTrigger",
-		"popularity": 0.105
-	},
-	{
-		"id": "n8n-nodes-jigsawstack.jigsawStack",
-		"popularity": 0.052
-	},
-	{
-		"id": "n8n-nodes-base.stickyNote",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.twakeTool",
-		"popularity": 0.083
-	},
-	{
-		"id": "n8n-nodes-base.writeBinaryFile",
-		"popularity": 0
+		"id": "@geocapture/n8n-nodes-geocapture.geocapture",
+		"popularity": 0.163
 	},
 	{
 		"id": "n8n-nodes-pdf4me.pdf4me",
-		"popularity": 0
+		"popularity": 0.119
 	},
 	{
-		"id": "n8n-nodes-base.olhoVivoTool",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.moceanTool",
-		"popularity": 0.083
-	},
-	{
-		"id": "n8n-nodes-base.comfyUITool",
-		"popularity": 0
-	},
-	{
-		"id": "@droidrun/n8n-nodes-droidrun.droidrun",
-		"popularity": 0.122
-	},
-	{
-		"id": "n8n-nodes-base.spontitTool",
-		"popularity": 0
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreSupabaseLoad",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.profitWellTool",
-		"popularity": 0.147
-	},
-	{
-		"id": "n8n-nodes-base.linkedinNodeTool",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.arubaCentralv4Tool",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-signifycrm.signifyCrm",
-		"popularity": 0.083
-	},
-	{
-		"id": "n8n-nodes-base.workflowTrigger",
-		"popularity": 0
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.memoryChatRetriever",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.crewAiTool",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.setTool",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.cron",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.smsItTool",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.kitemaker",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.odooCustomToolTool",
-		"popularity": 0
+		"id": "n8n-nodes-base.copperTrigger",
+		"popularity": 0.184
 	},
 	{
 		"id": "@orq-ai/n8n-nodes-orq.orqDeployment",
-		"popularity": 0.105
-	},
-	{
-		"id": "n8n-nodes-hookdeck.hookdeck",
-		"popularity": 0.052
-	},
-	{
-		"id": "n8n-nodes-base.aimsArticlesTool",
-		"popularity": 0
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.documentBinaryInputLoader",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.orbit",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-targetare.targetareRo",
-		"popularity": 0.052
-	},
-	{
-		"id": "n8n-nodes-base.function",
-		"popularity": 0
+		"popularity": 0.184
 	},
 	{
 		"id": "n8n-nodes-base.libreNmsTool",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.lingvaNexTool",
-		"popularity": 0.105
-	},
-	{
-		"id": "n8n-nodes-base.wakebDvsTool",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-ikas.ikas",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.emeliaTrigger",
-		"popularity": 0.052
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.openAiAssistant",
-		"popularity": 0
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmOpenAi",
-		"popularity": 0
-	},
-	{
-		"id": "@thelifeofrishi/n8n-nodes-orshot.orshot",
-		"popularity": 0.21
-	},
-	{
-		"id": "n8n-nodes-base.youTubeSearchTool",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.readPDF",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.vero",
-		"popularity": 0.083
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmGooglePalm",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.profitWell",
-		"popularity": 0.105
-	},
-	{
-		"id": "n8n-nodes-base.loneScaleTrigger",
-		"popularity": 0.052
-	},
-	{
-		"id": "n8n-nodes-base.spreadsheetFile",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.e2eTest",
-		"popularity": 0.052
-	},
-	{
-		"id": "n8n-nodes-reachkit.reachkit",
-		"popularity": 0.052
-	},
-	{
-		"id": "@steuerboard/n8n-nodes-steuerboard.steuerboard",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.splunkFdjTool",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-crossmint.crossmintWallets",
-		"popularity": 0.247
-	},
-	{
-		"id": "n8n-nodes-base.customSshTool",
-		"popularity": 0
-	},
-	{
 		"id": "n8n-nodes-base.keapTool",
-		"popularity": 0.122
+		"popularity": 0.119
 	},
 	{
-		"id": "n8n-nodes-base.venafiTlsProtectCloudTrigger",
-		"popularity": 0.052
+		"id": "@bedrijfsdatanl/n8n-nodes-prospectpro.prospectpro",
+		"popularity": 0.177
 	},
 	{
-		"id": "n8n-nodes-referral-factory.referralFactory",
-		"popularity": 0.052
-	},
-	{
-		"id": "n8n-nodes-base.mcpClientTool",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.jimengAiTool",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.copperTrigger",
-		"popularity": 0.122
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+		"id": "@n8n/n8n-nodes-langchain.documentBinaryInputLoader",
 		"popularity": 0
 	},
 	{
@@ -3560,11 +2948,231 @@
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-payfunnels.payfunnels",
+		"id": "n8n-nodes-jigsawstack.jigsawStack",
+		"popularity": 0.244
+	},
+	{
+		"id": "n8n-nodes-base.e2eTest",
 		"popularity": 0
 	},
 	{
+		"id": "n8n-nodes-base.youTubeSearchTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.odooCustomToolTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.twakeTool",
+		"popularity": 0.081
+	},
+	{
+		"id": "n8n-nodes-base.orbit",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.htmlExtract",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.squareTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.wakebDvsTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.loneScaleTrigger",
+		"popularity": 0.103
+	},
+	{
+		"id": "n8n-nodes-base.olhoVivoTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.mcpClientTool",
+		"popularity": 0
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatGooglePalm",
+		"popularity": 0.103
+	},
+	{
+		"id": "n8n-nodes-base.vero",
+		"popularity": 0.081
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+		"popularity": 0
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreSupabaseLoad",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-signifycrm.signifyCrm",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.linkedinNodeTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-reachkit.reachkit",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.profitWell",
+		"popularity": 0.081
+	},
+	{
+		"id": "n8n-nodes-zigpoll.zigpollTrigger",
+		"popularity": 0.103
+	},
+	{
+		"id": "n8n-nodes-base.arubaCentralv4Tool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.tfusionGenerateTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.setTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.spontitTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.emeliaTrigger",
+		"popularity": 0.081
+	},
+	{
+		"id": "@datafix/n8n-nodes-anthias.anthias",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.kitemaker",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.writeBinaryFile",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.moceanTool",
+		"popularity": 0.081
+	},
+	{
+		"id": "n8n-nodes-base.microsoftTeamsHitlTool",
+		"popularity": 0.33
+	},
+	{
+		"id": "n8n-nodes-payfunnels.payfunnels",
+		"popularity": 0.081
+	},
+	{
+		"id": "n8n-nodes-winston-ai.winstonAi",
+		"popularity": 0.081
+	},
+	{
+		"id": "n8n-nodes-base.dsSearchTool",
+		"popularity": 0
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.openAiAssistant",
+		"popularity": 0
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmOpenAi",
+		"popularity": 0.081
+	},
+	{
+		"id": "n8n-nodes-base.spreadsheetFile",
+		"popularity": 0
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmGooglePalm",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-nimbasms.nimbaSMS",
+		"popularity": 0.21
+	},
+	{
+		"id": "n8n-nodes-base.stickyNote",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.crowdDevTrigger",
+		"popularity": 0.051
+	},
+	{
+		"id": "n8n-nodes-base.profitWellTool",
+		"popularity": 0.051
+	},
+	{
+		"id": "n8n-nodes-targetare.targetareRo",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.jimengAiTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.aimsArticlesTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.lingvaNexTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-referral-factory.referralFactory",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.comfyUITool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.function",
+		"popularity": 0
+	},
+	{
+		"id": "@droidrun/n8n-nodes-droidrun.droidrun",
+		"popularity": 0.051
+	},
+	{
+		"id": "n8n-nodes-base.crewAiTool",
+		"popularity": 0
+	},
+	{
+		"id": "@steuerboard/n8n-nodes-steuerboard.steuerboard",
+		"popularity": 0.154
+	},
+	{
+		"id": "n8n-nodes-base.smsItTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.workflowTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-hookdeck.hookdeck",
+		"popularity": 0.119
+	},
+	{
 		"id": "n8n-nodes-base.wakebAipTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.venafiTlsProtectCloudTrigger",
 		"popularity": 0
 	},
 	{
@@ -3572,359 +3180,327 @@
 		"popularity": 0
 	},
 	{
-		"id": "@datafix/n8n-nodes-anthias.anthias",
-		"popularity": 0.052
-	},
-	{
-		"id": "n8n-nodes-base.squareTool",
+		"id": "n8n-nodes-base.splunkFdjTool",
 		"popularity": 0
 	},
 	{
-		"id": "@bedrijfsdatanl/n8n-nodes-prospectpro.prospectpro",
-		"popularity": 0.083
-	},
-	{
-		"id": "n8n-nodes-base.tfusionGenerateTool",
+		"id": "n8n-nodes-base.cron",
 		"popularity": 0
 	},
 	{
-		"id": "@geocapture/n8n-nodes-geocapture.geocapture",
-		"popularity": 0.052
-	},
-	{
-		"id": "n8n-nodes-base.crowdDevTrigger",
+		"id": "@n8n/n8n-nodes-langchain.memoryChatRetriever",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-winston-ai.winstonAi",
-		"popularity": 0.136
-	},
-	{
-		"id": "n8n-nodes-base.dsSearchTool",
+		"id": "n8n-nodes-base.customSshTool",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.onfleetTrigger",
-		"popularity": 0.205
-	},
-	{
-		"id": "n8n-nodes-blank.githubIssues",
+		"id": "n8n-nodes-base.readPDF",
 		"popularity": 0
 	},
 	{
-		"id": "@lnkbio/n8n-nodes-lnkbio.lnkBio",
-		"popularity": 0.105
+		"id": "@thelifeofrishi/n8n-nodes-orshot.orshot",
+		"popularity": 0.263
 	},
 	{
-		"id": "@socradar/n8n-nodes-socradar.socradar",
-		"popularity": 0.166
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStorePineconeLoad",
-		"popularity": 0
-	},
-	{
-		"id": "@elevenlabs/n8n-nodes-elevenlabs.elevenLabs",
-		"popularity": 0.647
-	},
-	{
-		"id": "n8n-nodes-octagon.octagonAgents",
-		"popularity": 0.083
-	},
-	{
-		"id": "n8n-nodes-dumplingai.dumplingAi",
-		"popularity": 0.157
+		"id": "n8n-nodes-carbone.carbone",
+		"popularity": 0.218
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.lmOllama",
-		"popularity": 0.662
+		"popularity": 0.669
 	},
 	{
-		"id": "n8n-nodes-meetgeek.meetGeek",
-		"popularity": 0.214
+		"id": "@n8n/n8n-nodes-langchain.toolVectorStore",
+		"popularity": 0.652
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+		"popularity": 0.66
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.memoryMotorhead",
+		"popularity": 0.622
+	},
+	{
+		"id": "n8n-nodes-base.microsoftOneDriveTrigger",
+		"popularity": 0.544
+	},
+	{
+		"id": "n8n-nodes-tallyforms.tallyTrigger",
+		"popularity": 0.531
+	},
+	{
+		"id": "n8n-nodes-base.oracleDatabase",
+		"popularity": 0.537
+	},
+	{
+		"id": "n8n-nodes-google-search-console.googleSearchConsole",
+		"popularity": 0.505
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.documentJsonInputLoader",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.manualTrigger",
-		"popularity": 0.993
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
-		"popularity": 0.654
-	},
-	{
-		"id": "n8n-nodes-google-search-console.googleSearchConsole",
-		"popularity": 0.489
-	},
-	{
-		"id": "n8n-nodes-base.freshdesk",
-		"popularity": 0.439
-	},
-	{
-		"id": "n8n-nodes-htmlcsstopdf.htmlcsstopdf",
-		"popularity": 0.575
-	},
-	{
-		"id": "@promptlayer/n8n-nodes-promptlayer-runagent.promptLayerRunAgent",
-		"popularity": 0.347
-	},
-	{
-		"id": "n8n-nodes-tallyforms.tallyTrigger",
-		"popularity": 0.504
-	},
-	{
-		"id": "n8n-nodes-llmlayer.llmLayer",
-		"popularity": 0.358
-	},
-	{
-		"id": "n8n-nodes-emailvalidation.emailValidation",
-		"popularity": 0.29
-	},
-	{
-		"id": "n8n-nodes-browseract.browserAct",
-		"popularity": 0.418
-	},
-	{
-		"id": "@pdfgeneratorapi/n8n-nodes-pdf-generator-api.pdfGeneratorApi",
-		"popularity": 0.461
-	},
-	{
-		"id": "@decisionrules/n8n-nodes-decisionrules.decisionRules",
-		"popularity": 0.227
-	},
-	{
-		"id": "n8n-nodes-olostep.olostepScrape",
-		"popularity": 0.368
-	},
-	{
-		"id": "n8n-nodes-base.googleAnalyticsTool",
-		"popularity": 0.42
-	},
-	{
-		"id": "n8n-nodes-human-in-the-loop.hitlNode",
-		"popularity": 0.288
-	},
-	{
-		"id": "n8n-nodes-pdfmonkey.pdfMonkey",
-		"popularity": 0.417
-	},
-	{
-		"id": "n8n-nodes-scrapingbee.ScrapingBee",
-		"popularity": 0.421
-	},
-	{
-		"id": "@infobip/n8n-nodes-infobip-api.infobipApi",
-		"popularity": 0.223
-	},
-	{
-		"id": "@servicem8/n8n-nodes-servicem8.serviceM8",
-		"popularity": 0.378
-	},
-	{
-		"id": "n8n-nodes-simla.simlaTrigger",
-		"popularity": 0.122
-	},
-	{
-		"id": "n8n-nodes-base.mocean",
-		"popularity": 0.083
-	},
-	{
-		"id": "n8n-nodes-sourcegeek.sourcegeek",
-		"popularity": 0.307
-	},
-	{
-		"id": "@xano/n8n-nodes-xano.xano",
-		"popularity": 0.343
-	},
-	{
-		"id": "n8n-nodes-verifiemail.verifiEmail",
-		"popularity": 0.302
-	},
-	{
-		"id": "@deutschlandgpt/n8n-nodes-deutschlandgpt.deutschlandgpt",
-		"popularity": 0.166
-	},
-	{
-		"id": "n8n-nodes-binalyze-air.air",
-		"popularity": 0.105
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
-		"popularity": 0.749
-	},
-	{
-		"id": "n8n-nodes-base.cywareConnectorTool",
-		"popularity": 0
-	},
-	{
-		"id": "@nvoip/n8n-nodes-nvoip.nvoip",
-		"popularity": 0.122
-	},
-	{
 		"id": "n8n-nodes-nele-ai.neleAi",
-		"popularity": 0.052
-	},
-	{
-		"id": "@rogerrogerio/n8n-nodes-rogerroger.rogerRoger",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-infranodus.infranodus",
-		"popularity": 0.188
-	},
-	{
-		"id": "n8n-nodes-base.microsoftOneDriveTrigger",
-		"popularity": 0.527
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.ollama",
-		"popularity": 0.728
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.memoryMotorhead",
-		"popularity": 0.571
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.outputParserItemList",
-		"popularity": 0.689
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.toolVectorStore",
-		"popularity": 0.643
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreRedis",
-		"popularity": 0.464
-	},
-	{
-		"id": "n8n-nodes-base.oracleDatabase",
-		"popularity": 0.517
-	},
-	{
-		"id": "n8n-nodes-base.clickUpTool",
-		"popularity": 0.483
-	},
-	{
-		"id": "n8n-nodes-base.googleFirebaseRealtimeDatabaseTool",
-		"popularity": 0.381
-	},
-	{
-		"id": "@ledgers/n8n-nodes-ledgers-cloud.ledgers",
-		"popularity": 0
-	},
-	{
-		"id": "@n8n/n8n-nodes-langchain.embeddingsLemonade",
-		"popularity": 0.355
-	},
-	{
-		"id": "@respond-io/n8n-nodes-respond-io.respondio",
-		"popularity": 0.428
-	},
-	{
-		"id": "@razorpay/n8n-nodes-razorpay.razorpay",
-		"popularity": 0.358
+		"popularity": 0.154
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.vectorStorePineconeInsert",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.veroTool",
-		"popularity": 0.105
+		"id": "n8n-nodes-base.clickUpTool",
+		"popularity": 0.498
+	},
+	{
+		"id": "n8n-nodes-base.cywareConnectorTool",
+		"popularity": 0
+	},
+	{
+		"id": "@pdfgeneratorapi/n8n-nodes-pdf-generator-api.pdfGeneratorApi",
+		"popularity": 0.465
+	},
+	{
+		"id": "@ledgers/n8n-nodes-ledgers-cloud.ledgers",
+		"popularity": 0
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreRedis",
+		"popularity": 0.452
 	},
 	{
 		"id": "n8n-nodes-featherless.featherless",
-		"popularity": 0.166
+		"popularity": 0.133
 	},
 	{
-		"id": "n8n-nodes-base.googlePerspective",
-		"popularity": 0.26
+		"id": "n8n-nodes-base.googleAnalyticsTool",
+		"popularity": 0.426
 	},
 	{
-		"id": "@exploriumai/n8n-nodes-explorium-ai.exploriumApiNode",
-		"popularity": 0.283
+		"id": "n8n-nodes-base.guiScriptTool",
+		"popularity": 0.163
 	},
 	{
-		"id": "n8n-nodes-csvbox.csvboxTrigger",
-		"popularity": 0.205
+		"id": "n8n-nodes-htmlcsstopdf.htmlcsstopdf",
+		"popularity": 0.593
 	},
 	{
-		"id": "n8n-nodes-base.onfleetTool",
-		"popularity": 0.052
+		"id": "n8n-nodes-browseract.browserAct",
+		"popularity": 0.428
 	},
 	{
-		"id": "n8n-nodes-base.peekalinkTool",
-		"popularity": 0.219
+		"id": "n8n-nodes-scrapingbee.ScrapingBee",
+		"popularity": 0.43
+	},
+	{
+		"id": "n8n-nodes-pdfmonkey.pdfMonkey",
+		"popularity": 0.426
+	},
+	{
+		"id": "@respond-io/n8n-nodes-respond-io.respondio",
+		"popularity": 0.473
+	},
+	{
+		"id": "n8n-nodes-base.freshdesk",
+		"popularity": 0.461
+	},
+	{
+		"id": "n8n-nodes-human-in-the-loop.hitlNode",
+		"popularity": 0.31
+	},
+	{
+		"id": "n8n-nodes-base.googleFirebaseRealtimeDatabaseTool",
+		"popularity": 0.393
 	},
 	{
 		"id": "@easysoftware/n8n-nodes-easy-redmine.easyRedmine",
-		"popularity": 0.267
+		"popularity": 0.353
+	},
+	{
+		"id": "n8n-nodes-base.onfleetTool",
+		"popularity": 0.119
+	},
+	{
+		"id": "n8n-nodes-base.peekalinkTool",
+		"popularity": 0.252
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.embeddingsLemonade",
+		"popularity": 0.377
+	},
+	{
+		"id": "@lnkbio/n8n-nodes-lnkbio.lnkBio",
+		"popularity": 0.103
+	},
+	{
+		"id": "@razorpay/n8n-nodes-razorpay.razorpay",
+		"popularity": 0.356
+	},
+	{
+		"id": "n8n-nodes-llmlayer.llmLayer",
+		"popularity": 0.377
+	},
+	{
+		"id": "@exploriumai/n8n-nodes-explorium-ai.exploriumApiNode",
+		"popularity": 0.292
+	},
+	{
+		"id": "@servicem8/n8n-nodes-servicem8.serviceM8",
+		"popularity": 0.422
+	},
+	{
+		"id": "n8n-nodes-sourcegeek.sourcegeek",
+		"popularity": 0.308
+	},
+	{
+		"id": "n8n-nodes-base.mocean",
+		"popularity": 0.081
+	},
+	{
+		"id": "@nvoip/n8n-nodes-nvoip.nvoip",
+		"popularity": 0.222
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+		"popularity": 0.756
 	},
 	{
 		"id": "n8n-nodes-octavehq.octave",
-		"popularity": 0.052
+		"popularity": 0.163
 	},
 	{
-		"id": "n8n-nodes-base.loneScale",
-		"popularity": 0.122
+		"id": "n8n-nodes-meetgeek.meetGeek",
+		"popularity": 0.249
 	},
 	{
-		"id": "@reportei/n8n-nodes-reportei.reportei",
-		"popularity": 0.214
+		"id": "@rogerrogerio/n8n-nodes-rogerroger.rogerRoger",
+		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-memara.memara",
-		"popularity": 0.083
+		"id": "n8n-nodes-crossmint.crossmintWallets",
+		"popularity": 0.19
 	},
 	{
-		"id": "n8n-nodes-base.venafiTlsProtectCloud",
-		"popularity": 0.083
+		"id": "@n8n/n8n-nodes-langchain.ollama",
+		"popularity": 0.733
+	},
+	{
+		"id": "n8n-nodes-base.veroTool",
+		"popularity": 0.103
+	},
+	{
+		"id": "n8n-nodes-olostep.olostepScrape",
+		"popularity": 0.372
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.outputParserItemList",
+		"popularity": 0.692
+	},
+	{
+		"id": "@promptlayer/n8n-nodes-promptlayer-runagent.promptLayerRunAgent",
+		"popularity": 0.348
 	},
 	{
 		"id": "n8n-nodes-base.upGuardTool",
 		"popularity": 0
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.toolExecutor",
+		"id": "@n8n/n8n-nodes-langchain.vectorStorePineconeLoad",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.playwrightScreenshotTool",
+		"id": "n8n-nodes-verifiemail.verifiEmail",
+		"popularity": 0.318
+	},
+	{
+		"id": "n8n-nodes-octagon.octagonAgents",
+		"popularity": 0.154
+	},
+	{
+		"id": "n8n-nodes-emailvalidation.emailValidation",
+		"popularity": 0.295
+	},
+	{
+		"id": "n8n-nodes-base.googlePerspective",
+		"popularity": 0.225
+	},
+	{
+		"id": "n8n-nodes-pagbank-connect.pagBank",
+		"popularity": 0.229
+	},
+	{
+		"id": "n8n-nodes-binalyze-air.air",
+		"popularity": 0.144
+	},
+	{
+		"id": "n8n-nodes-base.venafiTlsProtectCloud",
+		"popularity": 0.144
+	},
+	{
+		"id": "@socradar/n8n-nodes-socradar.socradar",
+		"popularity": 0.177
+	},
+	{
+		"id": "n8n-nodes-base.loneScale",
+		"popularity": 0.119
+	},
+	{
+		"id": "n8n-nodes-simla.simlaTrigger",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-orshot.orshot",
+		"id": "n8n-nodes-base.manualTrigger",
+		"popularity": 0.992
+	},
+	{
+		"id": "@elevenlabs/n8n-nodes-elevenlabs.elevenLabs",
+		"popularity": 0.657
+	},
+	{
+		"id": "n8n-nodes-memara.memara",
+		"popularity": 0.133
+	},
+	{
+		"id": "n8n-nodes-blank.githubIssues",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.googleSheets",
-		"popularity": 0.951
+		"id": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+		"popularity": 0.616
 	},
 	{
-		"id": "n8n-nodes-base.functionItem",
+		"id": "n8n-nodes-base.facebookLeadAdsTrigger",
+		"popularity": 0.593
+	},
+	{
+		"id": "n8n-nodes-base.typeformTrigger",
+		"popularity": 0.551
+	},
+	{
+		"id": "n8n-nodes-qdrant.qdrant",
+		"popularity": 0.585
+	},
+	{
+		"id": "n8n-nodes-base.playwrightBrowserTool",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.hapTool",
+		"id": "@n8n/n8n-nodes-langchain.lmLemonade",
+		"popularity": 0.476
+	},
+	{
+		"id": "n8n-nodes-base.httpRequestSignTool",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-phacet-official.phacet",
-		"popularity": 0
+		"id": "@n8n/n8n-nodes-langchain.embeddingsAwsBedrock",
+		"popularity": 0.452
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.memoryZep",
-		"popularity": 0
-	},
-	{
-		"id": "@joai/n8n-nodes-joai.joai",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.fortimanagerTool",
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreInMemoryLoad",
 		"popularity": 0
 	},
 	{
@@ -3932,39 +3508,39 @@
 		"popularity": 0
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.lmLemonade",
-		"popularity": 0.47
+		"id": "n8n-nodes-base.n8nTrainingCustomeMessenger",
+		"popularity": 0
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.toolExecutor",
+		"popularity": 0
 	},
 	{
 		"id": "n8n-nodes-base.simulate",
 		"popularity": 0
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.vectorStoreInMemoryLoad",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-base.zohoCalendarTool",
-		"popularity": 0
-	},
-	{
-		"id": "n8n-nodes-lavatop.lavatop",
-		"popularity": 0.083
-	},
-	{
-		"id": "n8n-nodes-base.ciscoFirepowerThreatDefenceTool",
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreSupabaseInsert",
 		"popularity": 0
 	},
 	{
 		"id": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
-		"popularity": 0.839
+		"popularity": 0.831
 	},
 	{
-		"id": "n8n-nodes-base.arubaCentralTool",
+		"id": "n8n-nodes-zohozeptomail.zohoZeptomail",
+		"popularity": 0.39
+	},
+	{
+		"id": "n8n-nodes-base.functionItem",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.robloxCodeCenterTool",
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreInMemoryInsert",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.onlyofficeTool",
 		"popularity": 0
 	},
 	{
@@ -3972,11 +3548,39 @@
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.waitTool",
+		"id": "@n8n/n8n-nodes-langchain.embeddingsTensorFlow",
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.moveBinaryData",
+		"id": "@firefliesai/n8n-nodes-fireflies.fireflies",
+		"popularity": 0.489
+	},
+	{
+		"id": "n8n-nodes-base.ciscoFirepowerThreatDefenceTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.apiTemplateIoTool",
+		"popularity": 0.368
+	},
+	{
+		"id": "n8n-nodes-base.coachLmsTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.googleSheets",
+		"popularity": 0.953
+	},
+	{
+		"id": "n8n-nodes-base.serperTool",
+		"popularity": 0
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreZepLoad",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.arubaCentralTool",
 		"popularity": 0
 	},
 	{
@@ -3984,7 +3588,39 @@
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.automizy",
+		"id": "n8n-nodes-base.arubaClearPassTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-oxylabs-ai-studio.oxylabsAiStudio",
+		"popularity": 0.342
+	},
+	{
+		"id": "n8n-nodes-base.zammadTool",
+		"popularity": 0.275
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.vectorStoreZepInsert",
+		"popularity": 0
+	},
+	{
+		"id": "@cometapi-dev/n8n-nodes-cometapi.cometApi",
+		"popularity": 0.269
+	},
+	{
+		"id": "n8n-nodes-base.aimsTokenGenTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.twake",
+		"popularity": 0.154
+	},
+	{
+		"id": "n8n-nodes-jsonpost.jsonPostTrigger",
+		"popularity": 0.256
+	},
+	{
+		"id": "n8n-nodes-base.vkteamsTool",
 		"popularity": 0
 	},
 	{
@@ -3992,11 +3628,375 @@
 		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.typeformTrigger",
-		"popularity": 0.542
+		"id": "n8n-nodes-orshot.orshot",
+		"popularity": 0
 	},
 	{
-		"id": "n8n-nodes-base.facebookLeadAdsTrigger",
-		"popularity": 0.574
+		"id": "n8n-nodes-base.netBoxTool",
+		"popularity": 0
+	},
+	{
+		"id": "@joai/n8n-nodes-joai.joai",
+		"popularity": 0.081
+	},
+	{
+		"id": "n8n-nodes-base.springTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.readBinaryFiles",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.start",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-sinergiacrm.sinergiaCrm",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.hapTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.zohoCalendarTool",
+		"popularity": 0
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.embeddingsGooglePalm",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.evaluationMetrics",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.moveBinaryData",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.playwrightScreenshotTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.openAi",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.itemLists",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.gravityApiTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.databricksTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.simulateTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.activationTrigger",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.robloxCodeCenterTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.fortimanagerTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-lavatop.lavatop",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-magnetite.magnetite",
+		"popularity": 0.133
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.memoryZep",
+		"popularity": 0.051
+	},
+	{
+		"id": "n8n-nodes-telli.telli",
+		"popularity": 0.144
+	},
+	{
+		"id": "n8n-nodes-base.automizy",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.drapiCalendarTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.waitTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.robloxRosTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.readBinaryFile",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.playwrightPageTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.iCal",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-phacet-official.phacet",
+		"popularity": 0.2
+	},
+	{
+		"id": "n8n-nodes-base.executeWorkflowTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-yourtextguru.yourtextGuru",
+		"popularity": 0.19
+	},
+	{
+		"id": "n8n-nodes-docutray.docutray",
+		"popularity": 0.184
+	},
+	{
+		"id": "n8n-nodes-tubelab.tubeLab",
+		"popularity": 0.235
+	},
+	{
+		"id": "n8n-nodes-base.citrixAdc",
+		"popularity": 0.144
+	},
+	{
+		"id": "n8n-nodes-peliqan.peliqan",
+		"popularity": 0.103
+	},
+	{
+		"id": "@postnitro/n8n-nodes-postnitro-ai.postNitro",
+		"popularity": 0.103
+	},
+	{
+		"id": "n8n-nodes-kargo-entegrator.kargoEntegrator",
+		"popularity": 0.103
+	},
+	{
+		"id": "n8n-nodes-camino.camino",
+		"popularity": 0.051
+	},
+	{
+		"id": "@n8n/n8n-nodes-langchain.guardrails",
+		"popularity": 0.625
+	},
+	{
+		"id": "n8n-nodes-scrapfly.Scrapfly",
+		"popularity": 0.401
+	},
+	{
+		"id": "n8n-nodes-base.slackHitlTool",
+		"popularity": 0.375
+	},
+	{
+		"id": "n8n-nodes-get-transcribe.getTranscribe",
+		"popularity": 0.368
+	},
+	{
+		"id": "@zerobounce/n8n-nodes-zerobounce.zeroBounce",
+		"popularity": 0.304
+	},
+	{
+		"id": "n8n-nodes-groner.groner",
+		"popularity": 0.241
+	},
+	{
+		"id": "n8n-nodes-unstract.llmWhisperer",
+		"popularity": 0.351
+	},
+	{
+		"id": "n8n-nodes-base.genericConnectorTool",
+		"popularity": 0
+	},
+	{
+		"id": "@musixmatch/n8n-nodes-musixmatch.musixmatch",
+		"popularity": 0.21
+	},
+	{
+		"id": "n8n-nodes-hedy.hedy",
+		"popularity": 0.214
+	},
+	{
+		"id": "n8n-nodes-bounceban.bounceban",
+		"popularity": 0.17
+	},
+	{
+		"id": "@videodb/n8n-nodes-videodb.videoDb",
+		"popularity": 0.415
+	},
+	{
+		"id": "n8n-nodes-docsautomator.docsAutomator",
+		"popularity": 0.306
+	},
+	{
+		"id": "n8n-nodes-botnoi-voice.botnoitts",
+		"popularity": 0.364
+	},
+	{
+		"id": "n8n-nodes-late.late",
+		"popularity": 0.399
+	},
+	{
+		"id": "@notainc/n8n-nodes-gyazo.gyazo",
+		"popularity": 0.051
+	},
+	{
+		"id": "n8n-nodes-onenote.onenote",
+		"popularity": 0.323
+	},
+	{
+		"id": "n8n-nodes-base.perplexityTool",
+		"popularity": 0.617
+	},
+	{
+		"id": "@serphouse/n8n-nodes-serphouse.serphouse",
+		"popularity": 0.291
+	},
+	{
+		"id": "n8n-nodes-wpforms.wpformsTrigger",
+		"popularity": 0.347
+	},
+	{
+		"id": "@tehw0lf/n8n-nodes-toon.toon",
+		"popularity": 0.312
+	},
+	{
+		"id": "n8n-nodes-placid.placid",
+		"popularity": 0.36
+	},
+	{
+		"id": "n8n-nodes-dust.dust",
+		"popularity": 0.327
+	},
+	{
+		"id": "@docuseal/n8n-nodes-docuseal.docuseal",
+		"popularity": 0.296
+	},
+	{
+		"id": "n8n-nodes-hostinger-api.hostingerApi",
+		"popularity": 0.338
+	},
+	{
+		"id": "n8n-nodes-solapi.solapi",
+		"popularity": 0.304
+	},
+	{
+		"id": "n8n-nodes-bookoly.bookoly",
+		"popularity": 0.303
+	},
+	{
+		"id": "@datafix/n8n-nodes-exact-online.exactOnline",
+		"popularity": 0.296
+	},
+	{
+		"id": "@postpulse/n8n-nodes-postpulse.postPulse",
+		"popularity": 0.306
+	},
+	{
+		"id": "n8n-nodes-sms-advert.smsAdvert",
+		"popularity": 0.195
+	},
+	{
+		"id": "n8n-nodes-syncmate.whatsAuto",
+		"popularity": 0.453
+	},
+	{
+		"id": "@permitio/n8n-nodes-permitio.permit",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-veed.veed",
+		"popularity": 0.44
+	},
+	{
+		"id": "n8n-nodes-famulor.famulor",
+		"popularity": 0.144
+	},
+	{
+		"id": "n8n-nodes-assemblyai.assemblyAi",
+		"popularity": 0.49
+	},
+	{
+		"id": "@markupai/n8n-nodes-markupai.markupai",
+		"popularity": 0.119
+	},
+	{
+		"id": "n8n-nodes-greip.greip",
+		"popularity": 0.103
+	},
+	{
+		"id": "@basalt-ai/n8n-nodes-basalt.basalt",
+		"popularity": 0.144
+	},
+	{
+		"id": "n8n-nodes-linkupapi.linkup",
+		"popularity": 0.435
+	},
+	{
+		"id": "n8n-nodes-jetapi.jetapi",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-postfast.postFast",
+		"popularity": 0.415
+	},
+	{
+		"id": "n8n-nodes-kylas.kylas",
+		"popularity": 0.119
+	},
+	{
+		"id": "n8n-nodes-kinderpedia.kinderpedia",
+		"popularity": 0
+	},
+	{
+		"id": "@wizaco/n8n-nodes-wiza.wiza",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-tomba.tomba",
+		"popularity": 0.163
+	},
+	{
+		"id": "n8n-nodes-tazzoai.tazzoAi",
+		"popularity": 0.051
+	},
+	{
+		"id": "@meistrari/n8n-nodes-tela.tela",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-base.paytmPiPlatformTool",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-moorcheh.moorcheh",
+		"popularity": 0.081
+	},
+	{
+		"id": "n8n-nodes-deliverect.deliverect",
+		"popularity": 0
+	},
+	{
+		"id": "n8n-nodes-tmpfiles.tmpfiles",
+		"popularity": 0.393
 	}
 ]

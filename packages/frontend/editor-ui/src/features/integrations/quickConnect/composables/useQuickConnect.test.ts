@@ -46,7 +46,7 @@ describe('useQuickConnect()', () => {
 			credentialType: 'test-credentials',
 			text: 'this is a promotion text',
 			quickConnectType: 'manual',
-			serviceName: 'test service',
+			serviceName: 'Test service',
 		};
 
 		beforeEach(() => {
@@ -61,8 +61,8 @@ describe('useQuickConnect()', () => {
 			expect(quickConnect.value).toBe(undefined);
 		});
 
-		it('returns undefined when credentialType is configured but quick connect feature is disabled', () => {
-			const quickConnect = useQuickConnect({ credentialType: 'test-credentials' });
+		it('returns undefined when credentialTypes are configured but quick connect feature is disabled', () => {
+			const quickConnect = useQuickConnect({ credentialTypes: ['test-credentials'] });
 
 			expect(quickConnect.value).toBe(undefined);
 		});
@@ -90,10 +90,10 @@ describe('useQuickConnect()', () => {
 				},
 			);
 
-			it.each(['test-credentials', ref('test-credentials')])(
+			it.each([['test-credentials'], ref(['test-credentials'])])(
 				'returns correct option for configured credentials',
-				(credentialType) => {
-					const quickConnect = useQuickConnect({ credentialType });
+				(credentialTypes) => {
+					const quickConnect = useQuickConnect({ credentialTypes });
 
 					expect(quickConnect.value).toEqual(quickConnectOption);
 				},
@@ -109,13 +109,13 @@ describe('useQuickConnect()', () => {
 				expect(quickConnect.value).toEqual(quickConnectOption);
 			});
 
-			it('updates reactive value based on credential type', () => {
-				const credentialType = ref('hello');
-				const quickConnect = useQuickConnect({ credentialType });
+			it('updates reactive value based on credential types', () => {
+				const credentialTypes = ref(['hello']);
+				const quickConnect = useQuickConnect({ credentialTypes });
 
 				expect(quickConnect.value).toEqual(undefined);
 
-				credentialType.value = 'test-credentials';
+				credentialTypes.value = ['test-credentials'];
 				expect(quickConnect.value).toEqual(quickConnectOption);
 			});
 
@@ -129,6 +129,48 @@ describe('useQuickConnect()', () => {
 				};
 
 				expect(quickConnect.value).toEqual(undefined);
+			});
+
+			it('returns undefined when credentialTypes array is empty', () => {
+				const quickConnect = useQuickConnect({ credentialTypes: [] });
+
+				expect(quickConnect.value).toBe(undefined);
+			});
+
+			it('returns undefined when no credentialTypes match', () => {
+				const quickConnect = useQuickConnect({
+					credentialTypes: ['non-matching-credentials', 'another-non-matching'],
+				});
+
+				expect(quickConnect.value).toBe(undefined);
+			});
+
+			it('returns correct option when one of multiple credentialTypes matches', () => {
+				const quickConnect = useQuickConnect({
+					credentialTypes: ['non-matching', 'test-credentials', 'another-non-matching'],
+				});
+
+				expect(quickConnect.value).toEqual(quickConnectOption);
+			});
+
+			it('returns first matching option when multiple credentialTypes match', () => {
+				const secondOption: QuickConnectOption = {
+					packageName: 'second-package',
+					credentialType: 'second-credentials',
+					text: 'second promotion text',
+					quickConnectType: 'manual',
+					serviceName: 'Other test service',
+				};
+
+				settingsStore.moduleSettings['quick-connect'] = {
+					options: [quickConnectOption, secondOption],
+				};
+
+				const quickConnect = useQuickConnect({
+					credentialTypes: ['test-credentials', 'second-credentials'],
+				});
+
+				expect(quickConnect.value).toEqual(quickConnectOption);
 			});
 		});
 	});

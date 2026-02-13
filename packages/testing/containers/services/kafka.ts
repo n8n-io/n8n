@@ -41,8 +41,11 @@ export const kafka: Service<KafkaResult> = {
 		};
 	},
 
-	env(): Record<string, string> {
-		return {};
+	env(result: KafkaResult, external?: boolean): Record<string, string> {
+		if (!external) return {};
+		return {
+			KAFKA_BROKER: result.meta.externalBroker,
+		};
 	},
 };
 

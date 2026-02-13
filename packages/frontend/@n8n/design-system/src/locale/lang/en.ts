@@ -52,6 +52,7 @@ export default {
 	'assistantChat.builder.toolRunning': 'Tool still running',
 	'assistantChat.builder.toolError': 'Some tool calls have failed. Agent will retry these.',
 	'assistantChat.thinking.workflowGenerated': 'Workflow generated',
+	'assistantChat.thinking.craftingWorkflow': 'Crafting workflow',
 	'assistantChat.thinking.thinking': 'Thinking',
 	'assistantChat.thinking.processing': 'Processing',
 	'assistantChat.errorParsingMarkdown': 'Error parsing markdown content',

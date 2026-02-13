@@ -692,6 +692,7 @@ function onRenameNode(value: string) {
 				display: flex;
 				height: 100%;
 				width: 100%;
+				align-items: normal;
 				font-size: var(--font-size--2xs);
 
 				:global(.cm-editor) {
