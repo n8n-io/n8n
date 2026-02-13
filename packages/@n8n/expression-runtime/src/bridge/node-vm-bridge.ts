@@ -19,30 +19,31 @@ export class NodeVmBridge implements RuntimeBridge {
 	}
 
 	async initialize(): Promise<void> {
-		// Load runtime bundle (context will be created per-execution)
+		// Load runtime bundle
 		const runtimePath = path.join(__dirname, '../../dist/bundle/runtime.iife.js');
-		this.runtimeCode = fs.readFileSync(runtimePath, 'utf-8');
-	}
+		const runtimeCode = fs.readFileSync(runtimePath, 'utf-8');
 
-	private runtimeCode?: string;
-
-	execute(code: string, data: Record<string, unknown>): unknown {
-		if (!this.runtimeCode) throw new Error('Not initialized');
-
-		// Create fresh context with workflow data for each execution
+		// Create context once and reuse it across all evaluations
 		// TODO: Remove console access for production - security risk (data leakage, environment probing)
 		// Consider making it conditional on debug flag: this.config.debug ? { console } : {}
 		const sandbox = {
 			console,
-			__workflowData: data, // Pass workflow data proxy directly
+			__workflowData: {}, // Placeholder, will be updated per execution
 		};
 		this.context = vm.createContext(sandbox);
 
-		// Load runtime bundle into context
-		vm.runInContext(this.runtimeCode, this.context, {
+		// Load runtime bundle once into the context
+		vm.runInContext(runtimeCode, this.context, {
 			timeout: this.config.timeout,
 			displayErrors: true,
 		});
+	}
+
+	execute(code: string, data: Record<string, unknown>): unknown {
+		if (!this.context) throw new Error('Not initialized');
+
+		// Update workflow data for this execution (reuse existing context)
+		this.context.__workflowData = data;
 
 		// Execute expression code
 		const script = new vm.Script(`__n8nExecute(${JSON.stringify(code)})`, {
@@ -63,7 +64,6 @@ export class NodeVmBridge implements RuntimeBridge {
 	async dispose(): Promise<void> {
 		this.disposed = true;
 		this.context = null;
-		this.runtimeCode = undefined;
 	}
 
 	isDisposed(): boolean {
