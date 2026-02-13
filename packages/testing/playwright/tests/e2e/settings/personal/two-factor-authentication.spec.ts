@@ -18,7 +18,11 @@ const NOTIFICATIONS = {
 const { email, password, mfaSecret, mfaRecoveryCodes } = INSTANCE_OWNER_CREDENTIALS;
 const RECOVERY_CODE = mfaRecoveryCodes![0];
 
-test.describe('Two-factor authentication @auth:none @db:reset', () => {
+test.describe('Two-factor authentication @auth:none @db:reset', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test.describe.configure({ mode: 'serial' });
 
 	test('Should be able to login with MFA code', async ({ n8n }) => {

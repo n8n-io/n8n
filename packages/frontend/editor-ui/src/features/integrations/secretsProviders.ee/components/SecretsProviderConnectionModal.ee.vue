@@ -176,15 +176,12 @@ async function handleBeforeClose() {
 	return true;
 }
 
-// Lifecycle
 onMounted(async () => {
 	if (providerTypes.value.length === 0) return;
 
 	if (modal.isEditMode.value) {
 		await Promise.all([modal.loadConnection()]);
 	}
-
-	await projectsStore.getAllProjects();
 });
 
 const nameRef = useTemplateRef('nameRef');
@@ -196,10 +193,11 @@ const { width } = useElementSize(nameRef);
 		v-if="providerTypes.length"
 		:id="`${SECRETS_PROVIDER_CONNECTION_MODAL_KEY}-modal`"
 		:custom-class="$style.secretsProviderConnectionModal"
-		width="812px"
 		:event-bus="eventBus"
 		:name="SECRETS_PROVIDER_CONNECTION_MODAL_KEY"
 		:before-close="handleBeforeClose"
+		width="70%"
+		height="80%"
 	>
 		<template #header>
 			<div :class="$style.header">

@@ -37,10 +37,15 @@ const WORKFLOW_TOO_COMPLEX_ERROR =
 	'Workflow generation stopped: The AI reached the maximum number of steps while building your workflow. This usually means the workflow design became too complex or got stuck in a loop while trying to create the nodes and connections.';
 
 /**
- * Type for the state snapshot with properly typed values
+ * Type for the state snapshot with properly typed values.
+ * Note: Uses WorkflowState.State for backward compatibility.
+ * The actual graph uses ParentGraphState which includes additional fields like introspectionEvents.
  */
 export type TypedStateSnapshot = Omit<StateSnapshot, 'values'> & {
-	values: typeof WorkflowState.State;
+	values: typeof WorkflowState.State & {
+		// Additional fields from ParentGraphState that may be present at runtime
+		introspectionEvents?: unknown[];
+	};
 };
 
 /**
@@ -93,6 +98,8 @@ export interface BuilderFeatureFlags {
 	/** Enable pin data generation in code builder (default: true when codeBuilder is true). */
 	pinData?: boolean;
 	planMode?: boolean;
+	/** Enable introspection tool for diagnostic data collection. Disabled by default. */
+	enableIntrospection?: boolean;
 }
 
 export interface ChatPayload {
