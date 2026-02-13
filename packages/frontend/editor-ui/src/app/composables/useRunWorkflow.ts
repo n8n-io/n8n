@@ -319,7 +319,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				});
 
 			const startRunData: IStartRunData = {
-				workflowData,
+				workflowId: workflowData.id!,
 				runData: isPartialExecution
 					? (runData ?? undefined) // For partial execution, backend decides what run data to use and what to ignore.
 					: undefined, // if it's a full execution we don't want to send any run data
