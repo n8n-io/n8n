@@ -352,8 +352,13 @@ function adjustTextAreaHeight() {
 				>
 					<IconPaperclip height="24" width="24" />
 				</button>
-				<button :disabled="isSubmitDisabled" class="chat-input-send-button" @click="onSubmit">
-					<IconSend height="24" width="24" />
+				<button
+				type="submit"
+				:disabled="isSubmitDisabled"
+				class="chat-input-send-button"
+				@click="onSubmit"
+				aria-label="Send message">
+				<IconSend height="24" width="24" aria-hidden="true" focusable="false" />
 				</button>
 			</div>
 		</div>
