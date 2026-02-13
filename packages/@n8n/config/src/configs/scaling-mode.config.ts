@@ -4,7 +4,7 @@ import { Config, Env, Nested } from '../decorators';
 class HealthConfig {
 	/**
 	 * Whether to enable the worker health check endpoints.
-	 * The endpoint paths are configurable via N8N_ENDPOINT_HEALTH (default: 'health/live').
+	 * The endpoint paths are configurable via N8N_ENDPOINT_HEALTH.
 	 * - liveness probe: checks if worker is alive
 	 * - readiness probe: checks if worker is connected to migrated database and Redis
 	 */
