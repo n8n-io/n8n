@@ -555,6 +555,59 @@ describe('Merge', () => {
 			expect(json.connections['Process'].main[0]![0].index).toBe(1);
 		});
 
+		it('should handle duplicate source names connecting to merge inputs', () => {
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			// Two nodes with the same default name - second one gets auto-renamed to "Process 1"
+			const process1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Process' },
+			});
+			const process2 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Process' },
+			});
+			const mergeNode = node({
+				type: 'n8n-nodes-base.merge',
+				version: 3,
+				config: { name: 'Combine' },
+			}) as MergeNode;
+			const downstream = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Output' },
+			});
+
+			// Use node-instance .to() for duplicate-named sources (handles auto-rename),
+			// then WorkflowBuilder .to() for merge → downstream
+			const wf = workflow('test-id', 'Test')
+				.add(t.to([process1, process2]))
+				.add(process1.to(mergeNode.input(0)))
+				.add(process2.to(mergeNode.input(1)))
+				.add(mergeNode)
+				.to(downstream);
+
+			const json = wf.toJSON();
+
+			// Both Process nodes should exist (one auto-renamed)
+			const processNodes = json.nodes.filter((n) => n.name?.startsWith('Process'));
+			expect(processNodes).toHaveLength(2);
+			const processNames = processNodes.map((n) => n.name).sort();
+			expect(processNames).toEqual(['Process', 'Process 1']);
+
+			// Process connects to merge input 0
+			expect(json.connections['Process'].main[0]![0].node).toBe('Combine');
+			expect(json.connections['Process'].main[0]![0].index).toBe(0);
+
+			// Process 1 (auto-renamed) connects to merge input 1
+			expect(json.connections['Process 1'].main[0]![0].node).toBe('Combine');
+			expect(json.connections['Process 1'].main[0]![0].index).toBe(1);
+
+			// Merge connects to downstream via WorkflowBuilder.to()
+			expect(json.connections['Combine'].main[0]![0].node).toBe('Output');
+		});
+
 		it('should not connect to both inputs when using inline chain pattern with .to([])', () => {
 			const webhookTrigger = trigger({
 				type: 'n8n-nodes-base.webhook',
