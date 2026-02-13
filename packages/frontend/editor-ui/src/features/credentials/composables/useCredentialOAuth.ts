@@ -108,10 +108,10 @@ export function useCredentialOAuth() {
 				error,
 				i18n.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.title'),
 			);
-			return createResultError('api-error' as const);
+			return createResultError('api-error');
 		}
 
-		return createResultError('no-url' as const);
+		return createResultError('no-url');
 	}
 
 	function isValidHttpUrl(url: string): boolean {
