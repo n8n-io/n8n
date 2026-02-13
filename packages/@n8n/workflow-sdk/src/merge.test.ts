@@ -608,6 +608,73 @@ describe('Merge', () => {
 			expect(json.connections['Combine'].main[0]![0].node).toBe('Output');
 		});
 
+		it('should connect two merge nodes to each other via WorkflowBuilder.to()', () => {
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			const sourceA = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Fetch A' },
+			});
+			const sourceB = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Fetch B' },
+			});
+			const sourceC = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Fetch C' },
+			});
+			const merge1 = node({
+				type: 'n8n-nodes-base.merge',
+				version: 3,
+				config: { name: 'Merge AB' },
+			}) as MergeNode;
+			const merge2 = node({
+				type: 'n8n-nodes-base.merge',
+				version: 3,
+				config: { name: 'Merge Final' },
+			}) as MergeNode;
+			const downstream = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Output' },
+			});
+
+			// Merge1 combines A+B, then Merge2 combines Merge1's output with C
+			const wf = workflow('test-id', 'Test')
+				.add(t.to([sourceA, sourceB, sourceC]))
+				.add(sourceA)
+				.to(merge1.input(0))
+				.add(sourceB)
+				.to(merge1.input(1))
+				.add(merge1)
+				.to(merge2.input(0))
+				.add(sourceC)
+				.to(merge2.input(1))
+				.add(merge2)
+				.to(downstream);
+
+			const json = wf.toJSON();
+
+			// Sources connect to first merge
+			expect(json.connections['Fetch A'].main[0]![0].node).toBe('Merge AB');
+			expect(json.connections['Fetch A'].main[0]![0].index).toBe(0);
+			expect(json.connections['Fetch B'].main[0]![0].node).toBe('Merge AB');
+			expect(json.connections['Fetch B'].main[0]![0].index).toBe(1);
+
+			// First merge output feeds into second merge input 0
+			expect(json.connections['Merge AB'].main[0]![0].node).toBe('Merge Final');
+			expect(json.connections['Merge AB'].main[0]![0].index).toBe(0);
+
+			// Source C feeds into second merge input 1
+			expect(json.connections['Fetch C'].main[0]![0].node).toBe('Merge Final');
+			expect(json.connections['Fetch C'].main[0]![0].index).toBe(1);
+
+			// Second merge connects to downstream
+			expect(json.connections['Merge Final'].main[0]![0].node).toBe('Output');
+		});
+
 		it('should not connect to both inputs when using inline chain pattern with .to([])', () => {
 			const webhookTrigger = trigger({
 				type: 'n8n-nodes-base.webhook',
