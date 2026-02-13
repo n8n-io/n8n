@@ -140,7 +140,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			const settings = this.decryptSettings(connection.encryptedSettings);
 			await this.setupProvider(
 				connection.type,
-				{ connected: connection.isEnabled, connectedAt: null, settings },
+				{ connected: true, connectedAt: null, settings },
 				providerKey,
 			);
 
@@ -309,7 +309,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			);
 
 			const connectionSettings: SecretsProviderSettings = {
-				connected: connection.isEnabled,
+				connected: true,
 				connectedAt: null,
 				settings,
 			};
