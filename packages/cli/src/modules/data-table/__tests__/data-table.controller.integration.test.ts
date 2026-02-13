@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { DataTable, DataTableCreateColumnSchema } from '@n8n/api-types';
+import type { DataTableCreateColumnSchema } from '@n8n/api-types';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -18,8 +18,12 @@ import { createOwner, createMember, createAdmin } from '@test-integration/db/use
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
+
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
+import type { DataTable } from '../data-table.entity';
 import { DataTableRepository } from '../data-table.repository';
 import { mockDataTableSizeValidator } from './test-helpers';
 
@@ -34,7 +38,7 @@ let memberProject: Project;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['data-table'],
-	modules: ['data-table'],
+	modules: ['data-table', 'source-control'],
 });
 let projectRepository: ProjectRepository;
 let dataTableRepository: DataTableRepository;
@@ -4185,5 +4189,214 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 				}),
 			]),
 		);
+	});
+});
+
+describe('Source Control read-only mode', () => {
+	let sourceControlPreferencesService: SourceControlPreferencesService;
+	let testDataTable: DataTable;
+	let originalPreferences: SourceControlPreferences;
+
+	beforeAll(async () => {
+		sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+
+		// Capture original preferences
+		originalPreferences = sourceControlPreferencesService.getPreferences();
+
+		// Enable read-only mode
+		await sourceControlPreferencesService.setPreferences({
+			connected: true,
+			keyGeneratorType: 'rsa',
+			branchReadOnly: true,
+		});
+	});
+
+	beforeEach(async () => {
+		// Create a test data table with columns for testing in each test
+		testDataTable = await createDataTable(ownerProject, {
+			name: 'Test Table',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+		});
+	});
+
+	afterAll(async () => {
+		// Restore original preferences
+		await sourceControlPreferencesService.setPreferences(originalPreferences);
+	});
+
+	describe('mutating endpoints should return 403', () => {
+		test('POST /projects/:projectId/data-tables should fail', async () => {
+			const payload = {
+				name: 'New Table',
+				columns: [{ name: 'test_column', type: 'string' }],
+			};
+
+			const response = await authOwnerAgent
+				.post(`/projects/${ownerProject.id}/data-tables`)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PATCH /projects/:projectId/data-tables/:dataTableId should fail', async () => {
+			const payload = { name: 'Updated Name' };
+
+			const response = await authOwnerAgent
+				.patch(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}`)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('DELETE /projects/:projectId/data-tables/:dataTableId should fail', async () => {
+			const response = await authOwnerAgent
+				.delete(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}`)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('POST /projects/:projectId/data-tables/:dataTableId/columns should fail', async () => {
+			const payload = { name: 'new_column', type: 'string' };
+
+			const response = await authOwnerAgent
+				.post(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/columns`)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('DELETE /projects/:projectId/data-tables/:dataTableId/columns/:columnId should fail', async () => {
+			const columns = await dataTableColumnRepository.find({
+				where: { dataTableId: testDataTable.id },
+			});
+			const columnId = columns[0].id;
+
+			const response = await authOwnerAgent
+				.delete(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/columns/${columnId}`)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PATCH /projects/:projectId/data-tables/:dataTableId/columns/:columnId/move should fail', async () => {
+			const columns = await dataTableColumnRepository.find({
+				where: { dataTableId: testDataTable.id },
+			});
+			const columnId = columns[0].id;
+			const payload = { targetIndex: 1 };
+
+			const response = await authOwnerAgent
+				.patch(
+					`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/columns/${columnId}/move`,
+				)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PATCH /projects/:projectId/data-tables/:dataTableId/columns/:columnId/rename should fail', async () => {
+			const columns = await dataTableColumnRepository.find({
+				where: { dataTableId: testDataTable.id },
+			});
+			const columnId = columns[0].id;
+			const payload = { name: 'renamed_column' };
+
+			const response = await authOwnerAgent
+				.patch(
+					`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/columns/${columnId}/rename`,
+				)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('POST /projects/:projectId/data-tables/:dataTableId/insert should fail', async () => {
+			const payload = {
+				data: [{ name: 'John', age: 30 }],
+				returnType: 'id',
+			};
+
+			const response = await authOwnerAgent
+				.post(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/insert`)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('POST /projects/:projectId/data-tables/:dataTableId/upsert should fail', async () => {
+			const payload = {
+				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'John' }] },
+				data: { age: 30 },
+			};
+
+			const response = await authOwnerAgent
+				.post(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/upsert`)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('PATCH /projects/:projectId/data-tables/:dataTableId/rows should fail', async () => {
+			const payload = {
+				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'John' }] },
+				data: { age: 31 },
+			};
+
+			const response = await authOwnerAgent
+				.patch(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/rows`)
+				.send(payload)
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+
+		test('DELETE /projects/:projectId/data-tables/:dataTableId/rows should fail', async () => {
+			const response = await authOwnerAgent
+				.delete(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/rows`)
+				.query({
+					filter: JSON.stringify({
+						type: 'and',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'John' }],
+					}),
+				})
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+	});
+
+	describe('read-only endpoints should still work', () => {
+		test('GET /projects/:projectId/data-tables should work', async () => {
+			await authOwnerAgent.get(`/projects/${ownerProject.id}/data-tables`).expect(200);
+		});
+
+		test('GET /projects/:projectId/data-tables/:dataTableId/columns should work', async () => {
+			await authOwnerAgent
+				.get(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/columns`)
+				.expect(200);
+		});
+
+		test('GET /projects/:projectId/data-tables/:dataTableId/rows should work', async () => {
+			await authOwnerAgent
+				.get(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/rows`)
+				.expect(200);
+		});
+
+		test('GET /projects/:projectId/data-tables/:dataTableId/download-csv should work', async () => {
+			await authOwnerAgent
+				.get(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/download-csv`)
+				.expect(200);
+		});
 	});
 });

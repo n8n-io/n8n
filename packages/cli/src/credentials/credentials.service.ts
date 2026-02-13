@@ -50,6 +50,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
+import { getAllKeyPaths } from '@/utils';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 import { validateExternalSecretsPermissions } from './validation';
@@ -103,6 +104,7 @@ export class CredentialsService {
 			includeData: true;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
+			externalSecretsStore?: string;
 		},
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>>>;
 	async getMany(
@@ -113,6 +115,7 @@ export class CredentialsService {
 			includeData?: boolean;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
+			externalSecretsStore?: string;
 		},
 	): Promise<CredentialsEntity[]>;
 	async getMany(
@@ -123,12 +126,14 @@ export class CredentialsService {
 			includeData = false,
 			onlySharedWithMe = false,
 			includeGlobal = false,
+			externalSecretsStore,
 		}: {
 			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
 			includeScopes?: boolean;
 			includeData?: boolean;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
+			externalSecretsStore?: string;
 		} = {},
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
 		const returnAll = hasGlobalScope(user, 'credential:list');
@@ -155,6 +160,10 @@ export class CredentialsService {
 			);
 		}
 
+		if (externalSecretsStore) {
+			credentials = this.filterByExternalSecretsStore(credentials, externalSecretsStore);
+		}
+
 		return await this.enrichCredentials(
 			credentials,
 			user,
@@ -164,6 +173,35 @@ export class CredentialsService {
 			listQueryOptions,
 			onlySharedWithMe,
 		);
+	}
+
+	private filterByExternalSecretsStore(
+		credentials: CredentialsEntity[],
+		externalSecretsStore: string,
+	): CredentialsEntity[] {
+		// matches either dot notation ($secrets.providerKey) or square bracket notation ($secrets['providerKey'])
+		const providerRegex = /\$secrets(?:\.([A-Za-z0-9_-]+)|\[['"]([^'"]+)['"]\])/g;
+		credentials = credentials.filter((credential) => {
+			const decryptedData = this.decrypt(credential, true);
+			const matchingSecretPaths = getAllKeyPaths(decryptedData, '', [], (value) => {
+				if (!value.includes('$secrets')) {
+					return false;
+				}
+
+				let match: RegExpExecArray | null;
+				while ((match = providerRegex.exec(value)) !== null) {
+					const providerKey = match[1] ?? match[2];
+					if (providerKey === externalSecretsStore) {
+						return true;
+					}
+				}
+
+				return false;
+			});
+
+			return matchingSecretPaths.length > 0;
+		});
+		return credentials;
 	}
 
 	private applyOnlySharedWithMeFilter(

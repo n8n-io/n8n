@@ -194,9 +194,9 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets]) {
 				promises.push(externalSecretsStore.fetchGlobalSecrets());
 				const shouldFetchProjectSecrets =
-					route?.params?.projectId !== projectsStore.personalProject?.id;
-				if (shouldFetchProjectSecrets && typeof route?.params?.projectId === 'string') {
-					promises.push(externalSecretsStore.fetchProjectSecrets(route.params.projectId));
+					projectsStore.currentProjectId !== projectsStore.personalProject?.id;
+				if (shouldFetchProjectSecrets && typeof projectsStore.currentProjectId === 'string') {
+					promises.push(externalSecretsStore.fetchProjectSecrets(projectsStore.currentProjectId));
 				}
 			}
 

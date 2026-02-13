@@ -4,13 +4,17 @@ import { test, expect } from '../../../fixtures/base';
 
 test.use({ capability: 'kafka' });
 
-test.describe('Kafka Nodes', () => {
+test.describe('Kafka Nodes', {
+	annotation: [
+		{ type: 'owner', description: 'NODES' },
+	],
+}, () => {
 	test('Kafka node publishes messages to topic @capability:kafka', async ({
 		api,
 		n8n,
-		n8nContainer,
+		services,
 	}) => {
-		const kafka = n8nContainer.services.kafka;
+		const kafka = services.kafka;
 		const topic = `producer-test-${nanoid()}`;
 		const testPayload = { greeting: 'Hello from n8n Kafka node' };
 
@@ -98,8 +102,8 @@ test.describe('Kafka Nodes', () => {
 		expect(JSON.parse(messages[0].value)).toMatchObject(testPayload);
 	});
 
-	test('Kafka Trigger node processes messages @capability:kafka', async ({ api, n8nContainer }) => {
-		const kafka = n8nContainer.services.kafka;
+	test('Kafka Trigger node processes messages @capability:kafka', async ({ api, services }) => {
+		const kafka = services.kafka;
 		const topic = `trigger-test-${nanoid()}`;
 		const groupId = `n8n-test-group-${nanoid()}`;
 

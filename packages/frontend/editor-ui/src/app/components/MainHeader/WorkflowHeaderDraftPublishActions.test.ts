@@ -77,6 +77,7 @@ const defaultWorkflowProps = {
 		update: true,
 		delete: true,
 		publish: true,
+		unpublish: true,
 	},
 };
 
@@ -601,6 +602,33 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			workflowsStore.workflow.activeVersion = null;
 			const { container } = renderComponent();
 			expect(container).toBeInTheDocument();
+		});
+
+		it('should be disabled when user lacks workflow:unpublish permission', async () => {
+			setupEnabledPublishButton({
+				workflow: {
+					...workflowsStore.workflow,
+					activeVersion: createMockActiveVersion('active-version-1'),
+				},
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						unpublish: false,
+					},
+				},
+			});
+
+			const versionMenuButton = getByTestId('version-menu-button');
+			await userEvent.click(versionMenuButton);
+
+			// The unpublish menu item should be disabled
+			const unpublishItem = getByTestId('version-menu-item-unpublish');
+			expect(unpublishItem).toBeInTheDocument();
+			expect(unpublishItem.closest('.el-dropdown-menu__item')).toHaveClass('is-disabled');
 		});
 	});
 

@@ -503,7 +503,7 @@ watchEffect(async () => {
 				{{ i18n.baseText('workflowHistory.title') }}
 			</N8nHeading>
 			<RouterLink :to="editorRoute" data-test-id="workflow-history-close-button">
-				<N8nButton type="tertiary" icon="x" size="small" text square />
+				<N8nButton variant="ghost" icon="x" size="small" square />
 			</RouterLink>
 		</div>
 		<div :class="$style.listComponentWrapper">

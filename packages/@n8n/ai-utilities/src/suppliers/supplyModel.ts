@@ -61,6 +61,7 @@ function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 		stop: model.stop,
 		maxTokens: model.maxTokens,
 		maxCompletionTokens: model.maxCompletionTokens,
+		timeout: model.timeout,
 		callbacks: [new N8nLlmTracing(ctx)],
 		onFailedAttempt: makeN8nLlmFailedAttemptHandler(ctx, model.onFailedAttempt),
 	});

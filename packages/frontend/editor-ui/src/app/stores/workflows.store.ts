@@ -729,8 +729,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			}
 
 			// Check if this node type supports the credential type
-			const supportsCredential = nodeType.credentials.some((cred) => cred.name === data.type);
-			if (!supportsCredential) {
+			// and if the credential is actually active given the node's current parameters
+			const credentialDescription = nodeType.credentials.find((cred) => cred.name === data.type);
+			if (!credentialDescription) {
+				return;
+			}
+
+			if (
+				credentialDescription.displayOptions &&
+				!nodeHelpers.displayParameter(node.parameters, credentialDescription, '', node)
+			) {
 				return;
 			}
 

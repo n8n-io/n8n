@@ -160,18 +160,15 @@ describe('SettingsUsersView', () => {
 			.mockResolvedValue({ link: 'https://example.com/reset/123' });
 		usersStore.updateOtherUserSettings = vi.fn().mockResolvedValue(undefined);
 		usersStore.updateGlobalRole = vi.fn().mockResolvedValue(undefined);
-		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
 		usersStore.generateInviteLink = vi
 			.fn()
 			.mockResolvedValue({ link: 'https://example.com/signup?token=generated-token' });
 
 		settingsStore.isSmtpSetup = true;
-		settingsStore.isMFAEnforced = false;
-		settingsStore.settings.enterprise = {
-			mfaEnforcement: true,
-		} as FrontendSettings['enterprise'];
+		settingsStore.settings.enterprise = {} as FrontendSettings['enterprise'];
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.AdvancedPermissions] = true;
 		ssoStore.isSamlLoginEnabled = false;
+		ssoStore.isOidcLoginEnabled = false;
 	});
 
 	afterEach(() => {
@@ -179,42 +176,6 @@ describe('SettingsUsersView', () => {
 		// Reset mock implementation to default (feature flag disabled)
 		mockIsVariantEnabled.mockReset();
 		mockIsVariantEnabled.mockReturnValue(false);
-	});
-
-	it('should turn enforcing mfa on', async () => {
-		const { getByTestId } = renderComponent();
-
-		const actionSwitch = getByTestId('enable-force-mfa');
-		expect(actionSwitch).toBeInTheDocument();
-
-		await userEvent.click(actionSwitch);
-
-		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(true);
-	});
-
-	it('should turn enforcing mfa off', async () => {
-		settingsStore.isMFAEnforced = true;
-		const { getByTestId } = renderComponent();
-
-		const actionSwitch = getByTestId('enable-force-mfa');
-		expect(actionSwitch).toBeInTheDocument();
-
-		await userEvent.click(actionSwitch);
-
-		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(false);
-	});
-
-	it('should handle MFA enforcement error', async () => {
-		usersStore.updateEnforceMfa = vi.fn().mockRejectedValue(new Error('MFA update failed'));
-
-		const { getByTestId } = renderComponent();
-
-		const actionSwitch = getByTestId('enable-force-mfa');
-		await userEvent.click(actionSwitch);
-
-		await waitFor(() => {
-			expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
-		});
 	});
 
 	it('should handle missing user settings in SSO actions', async () => {
@@ -252,8 +213,17 @@ describe('SettingsUsersView', () => {
 		});
 	});
 
-	it('should disable invite button when SSO is enabled', () => {
+	it('should disable invite button when SAML SSO is enabled', () => {
 		ssoStore.isSamlLoginEnabled = true;
+
+		renderComponent();
+
+		const inviteButton = screen.getByTestId('settings-users-invite-button');
+		expect(inviteButton).toBeDisabled();
+	});
+
+	it('should disable invite button when OIDC SSO is enabled', () => {
+		ssoStore.isOidcLoginEnabled = true;
 
 		renderComponent();
 
@@ -336,6 +306,75 @@ describe('SettingsUsersView', () => {
 		expect(actionsList).toBeInTheDocument();
 		expect(screen.getByTestId('action-delete-2')).toBeInTheDocument();
 		spy.mockRestore();
+	});
+
+	it('should show allow SSO manual login action when SAML is enabled', () => {
+		ssoStore.isSamlLoginEnabled = true;
+		// Ensure user 2 doesn't have allowSSOManualLogin set
+		usersStore.usersList.state.items[1].settings = {};
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-allowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should show allow SSO manual login action when OIDC is enabled', () => {
+		ssoStore.isOidcLoginEnabled = true;
+		// Ensure user 2 doesn't have allowSSOManualLogin set
+		usersStore.usersList.state.items[1].settings = {};
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-allowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should not show allow SSO manual login action when SSO is disabled', () => {
+		ssoStore.isSamlLoginEnabled = false;
+		ssoStore.isOidcLoginEnabled = false;
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.queryByTestId('action-allowSSOManualLogin-2')).not.toBeInTheDocument();
+	});
+
+	it('should show disallow SSO manual login action when SAML is enabled and user has allowSSOManualLogin', () => {
+		ssoStore.isSamlLoginEnabled = true;
+		usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-disallowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should show disallow SSO manual login action when OIDC is enabled and user has allowSSOManualLogin', () => {
+		ssoStore.isOidcLoginEnabled = true;
+		usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-disallowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should not show disallow SSO manual login action when SSO is disabled', () => {
+		ssoStore.isSamlLoginEnabled = false;
+		ssoStore.isOidcLoginEnabled = false;
+		usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.queryByTestId('action-disallowSSOManualLogin-2')).not.toBeInTheDocument();
 	});
 
 	describe('search functionality', () => {
@@ -595,7 +634,9 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should handle allow SSO manual login action', async () => {
+		it('should handle allow SSO manual login action when SAML is enabled', async () => {
+			ssoStore.isSamlLoginEnabled = true;
+
 			renderComponent();
 
 			emitters.settingsUsersTable.emit('action', { action: 'allowSSOManualLogin', userId: '2' });
@@ -612,7 +653,48 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should handle disallow SSO manual login action', async () => {
+		it('should handle allow SSO manual login action when OIDC is enabled', async () => {
+			ssoStore.isOidcLoginEnabled = true;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'allowSSOManualLogin', userId: '2' });
+
+			expect(usersStore.updateOtherUserSettings).toHaveBeenCalledWith('2', {
+				allowSSOManualLogin: true,
+			});
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
+		});
+
+		it('should handle disallow SSO manual login action when SAML is enabled', async () => {
+			ssoStore.isSamlLoginEnabled = true;
+			// Set user to have SSO manual login enabled
+			usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'disallowSSOManualLogin', userId: '2' });
+
+			expect(usersStore.updateOtherUserSettings).toHaveBeenCalledWith('2', {
+				allowSSOManualLogin: false,
+			});
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
+		});
+
+		it('should handle disallow SSO manual login action when OIDC is enabled', async () => {
+			ssoStore.isOidcLoginEnabled = true;
 			// Set user to have SSO manual login enabled
 			usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
 
@@ -1112,33 +1194,6 @@ describe('SettingsUsersView', () => {
 				filter: {
 					fullText: '',
 				},
-			});
-		});
-
-		it('should handle MFA enforcement with partial success', async () => {
-			let callCount = 0;
-			usersStore.updateEnforceMfa = vi.fn().mockImplementation(async () => {
-				callCount++;
-				if (callCount === 1) {
-					throw Error('First attempt failed');
-				}
-				return await Promise.resolve();
-			});
-
-			const { getByTestId } = renderComponent();
-
-			const actionSwitch = getByTestId('enable-force-mfa');
-			await userEvent.click(actionSwitch);
-
-			await waitFor(() => {
-				expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
-			});
-
-			// Try again
-			await userEvent.click(actionSwitch);
-
-			await waitFor(() => {
-				expect(usersStore.updateEnforceMfa).toHaveBeenCalledTimes(2);
 			});
 		});
 

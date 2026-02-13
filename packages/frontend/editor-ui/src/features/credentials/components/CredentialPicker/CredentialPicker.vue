@@ -8,6 +8,7 @@ import { useI18n } from '@n8n/i18n';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import type { ButtonProps } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useToast } from '@/app/composables/useToast';
@@ -22,6 +23,7 @@ const props = defineProps<{
 	personalOnly?: boolean;
 	showDelete?: boolean;
 	hideCreateNew?: boolean;
+	createButtonVariant?: ButtonProps['variant'];
 }>();
 
 const emit = defineEmits<{
@@ -213,16 +215,16 @@ watch(
 			/>
 
 			<N8nTooltip
+				v-if="props.selectedCredentialId"
 				:disabled="credentialPermissions.update"
 				:content="i18n.baseText('nodeCredentials.updateCredential.permissionDenied')"
 				:placement="'top'"
 			>
 				<N8nIconButton
+					variant="subtle"
 					icon="pen"
-					type="secondary"
 					:class="{
 						[$style.edit]: true,
-						[$style.invisible]: !props.selectedCredentialId,
 					}"
 					:title="i18n.baseText('nodeCredentials.updateCredential')"
 					data-test-id="credential-edit-button"
@@ -232,6 +234,7 @@ watch(
 			</N8nTooltip>
 
 			<N8nTooltip
+				v-if="props.showDelete && props.selectedCredentialId"
 				:disabled="credentialPermissions.update"
 				:content="i18n.baseText('nodeCredentials.deleteCredential.permissionDenied')"
 				:placement="'top'"
@@ -242,7 +245,7 @@ watch(
 					:title="i18n.baseText('nodeCredentials.deleteCredential')"
 					icon="trash-2"
 					icon-size="large"
-					type="secondary"
+					variant="outline"
 					:disabled="!credentialPermissions.delete"
 					@click="deleteCredential()"
 				/>
@@ -252,7 +255,9 @@ watch(
 		<N8nButton
 			v-else-if="!props.hideCreateNew"
 			:label="`Create new ${props.appName} credential`"
+			:class="$style.createButton"
 			data-test-id="create-credential"
+			:variant="props.createButtonVariant || 'solid'"
 			:disabled="!credentialPermissions.create"
 			@click="createNewCredential"
 		/>
@@ -273,7 +278,7 @@ watch(
 	font-size: var(--font-size--sm);
 }
 
-.invisible {
-	visibility: hidden;
+.createButton {
+	width: 100%;
 }
 </style>

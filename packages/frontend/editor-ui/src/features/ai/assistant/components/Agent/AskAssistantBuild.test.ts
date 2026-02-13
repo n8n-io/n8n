@@ -10,6 +10,7 @@ interface VueComponentInstance {
 			showExecuteMessage?: boolean;
 			isInputDisabled?: boolean;
 			disabledTooltip?: string;
+			workflowSuggestions?: unknown[] | undefined;
 		};
 	};
 }
@@ -147,7 +148,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import type { INodeUi } from '@/Interface';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState } from '@/app/constants';
 
 const nodeViewEventBusEmitMock = vi.hoisted(() => vi.fn());
@@ -274,7 +275,7 @@ describe('AskAssistantBuild', () => {
 				},
 				workflowAutosave: {
 					autoSaveState: AutoSaveState.Idle,
-					pendingAutoSave: null,
+					pendingSave: null,
 				},
 			},
 		});
@@ -348,7 +349,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should disable input when autosave is scheduled', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Scheduled;
 
 			const { container } = renderComponent();
@@ -360,7 +361,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should disable input when autosave is in progress', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
 
 			const { container } = renderComponent();
@@ -372,7 +373,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should not disable input when autosave is idle', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
@@ -385,7 +386,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should disable input when collaboration shouldBeReadOnly is true regardless of autosave state', () => {
 			collaborationStore.shouldBeReadOnly = true;
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
@@ -397,7 +398,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should show autosaving tooltip when autosave is scheduled', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Scheduled;
 
 			const { container } = renderComponent();
@@ -409,7 +410,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should show autosaving tooltip when autosave is in progress', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
 
 			const { container } = renderComponent();
@@ -422,7 +423,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should show read-only tooltip when collaboration shouldBeReadOnly is true', () => {
 			collaborationStore.shouldBeReadOnly = true;
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
@@ -435,7 +436,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should show autosaving tooltip when both autosave is in progress and collaboration is read-only', () => {
 			collaborationStore.shouldBeReadOnly = true;
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
 
 			const { container } = renderComponent();
@@ -448,7 +449,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should not show any tooltip when input is not disabled', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
@@ -457,6 +458,64 @@ describe('AskAssistantBuild', () => {
 			const disabledTooltip = vm?.setupState?.disabledTooltip;
 
 			expect(disabledTooltip).toBeUndefined();
+		});
+	});
+
+	describe('workflow suggestions visibility', () => {
+		it('should not show suggestions when workflow has existing nodes', () => {
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+			builderStore.hasMessages = false;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const workflowSuggestions = vm?.setupState?.workflowSuggestions;
+
+			expect(workflowSuggestions).toBeUndefined();
+		});
+
+		it('should show suggestions when workflow is empty and has no messages', () => {
+			workflowsStore.$patch({
+				workflow: { nodes: [], connections: {} },
+			});
+			builderStore.hasMessages = false;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const workflowSuggestions = vm?.setupState?.workflowSuggestions;
+
+			expect(workflowSuggestions).toBeDefined();
+			expect(Array.isArray(workflowSuggestions)).toBe(true);
+			expect(workflowSuggestions!.length).toBeGreaterThan(0);
+		});
+
+		it('should not show suggestions when there are already messages', () => {
+			workflowsStore.$patch({
+				workflow: { nodes: [], connections: {} },
+			});
+			builderStore.hasMessages = true;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const workflowSuggestions = vm?.setupState?.workflowSuggestions;
+
+			expect(workflowSuggestions).toBeUndefined();
 		});
 	});
 
