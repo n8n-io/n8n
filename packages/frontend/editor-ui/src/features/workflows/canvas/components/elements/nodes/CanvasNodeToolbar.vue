@@ -92,7 +92,7 @@ function onDeleteNode() {
 	emit('delete');
 }
 
-function onChangeStickyColor(color: number) {
+function onChangeStickyColor(color: number | string) {
 	emit('update', {
 		color,
 	});

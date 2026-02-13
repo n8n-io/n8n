@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -18,7 +18,9 @@
   },
   "typesVersions": {
     "*": {
-      "mcp/core": ["./dist/nodes/mcp/McpTrigger/index.d.ts"]
+      "mcp/core": [
+        "./dist/nodes/mcp/McpTrigger/index.d.ts"
+      ]
     }
   },
   "scripts": {

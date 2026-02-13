@@ -17,6 +17,7 @@ import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
 import ChatInputWithMention from '../FocusedNodes/ChatInputWithMention.vue';
+import MessageFocusedNodesChips from '../FocusedNodes/MessageFocusedNodesChips.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 import { useToast } from '@/app/composables/useToast';
@@ -206,10 +207,6 @@ const disabledTooltip = computed(() => {
 		return i18n.baseText('aiAssistant.builder.disabledTooltip.readOnly');
 	}
 	return undefined;
-});
-
-const isPlanModeSelectorDisabled = computed(() => {
-	return builderStore.streaming || isChatInputDisabled.value;
 });
 
 /**
@@ -515,6 +512,9 @@ defineExpose({
 			@restore-confirm="onRestoreConfirm"
 			@show-version="onShowVersion"
 		>
+			<template #focused-nodes-chips="{ message }">
+				<MessageFocusedNodesChips :focused-node-names="message.focusedNodeNames" />
+			</template>
 			<template #header>
 				<div :class="{ [$style.header]: true, [$style['with-slot']]: !!slots.header }">
 					<slot name="header" />
@@ -524,13 +524,6 @@ defineExpose({
 						:disabled="builderStore.streaming"
 					/>
 				</div>
-			</template>
-			<template v-if="builderStore.isPlanModeAvailable" #before-actions>
-				<PlanModeSelector
-					:model-value="builderStore.builderMode"
-					:disabled="isPlanModeSelectorDisabled"
-					@update:model-value="builderStore.setBuilderMode"
-				/>
 			</template>
 			<template #inputHeader>
 				<Transition name="slide">
@@ -544,12 +537,13 @@ defineExpose({
 				<BuildModeEmptyState />
 			</template>
 			<template #custom-message="{ message }">
-				<!-- Show questions form only if not yet answered; hide completely when answered -->
+				<!-- Always render questions message; when answered, collapse to intro text only -->
 				<PlanQuestionsMessage
-					v-if="isPlanModeQuestionsMessage(message) && !isQuestionsAnswered(message)"
+					v-if="isPlanModeQuestionsMessage(message)"
 					:questions="message.data.questions"
 					:intro-message="message.data.introMessage"
 					:disabled="builderStore.streaming"
+					:answered="isQuestionsAnswered(message)"
 					@submit="builderStore.resumeWithQuestionsAnswers"
 				/>
 				<PlanDisplayMessage
@@ -596,7 +590,14 @@ defineExpose({
 					@stop="onStop"
 					@upgrade-click="onUpgradeClick"
 					@vue:mounted="registerFocus(() => suggestionsInputRef?.focusInput())"
-				/>
+				>
+					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+						<PlanModeSelector
+							:model-value="builderStore.builderMode"
+							@update:model-value="builderStore.setBuilderMode"
+						/>
+					</template>
+				</ChatInputWithMention>
 			</template>
 			<template #inputPlaceholder>
 				<ChatInputWithMention
@@ -612,7 +613,14 @@ defineExpose({
 					@submit="onCustomInputSubmit"
 					@stop="builderStore.abortStreaming"
 					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
-				/>
+				>
+					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+						<PlanModeSelector
+							:model-value="builderStore.builderMode"
+							@update:model-value="builderStore.setBuilderMode"
+						/>
+					</template>
+				</ChatInputWithMention>
 			</template>
 		</N8nAskAssistantChat>
 	</div>

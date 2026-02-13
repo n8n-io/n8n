@@ -67,6 +67,10 @@ export interface CodeWorkflowBuilderConfig {
 	 * Optional callback for emitting telemetry events.
 	 */
 	onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
+	/**
+	 * Whether to generate pin data for new nodes. Defaults to true.
+	 */
+	generatePinData?: boolean;
 }
 
 /**
@@ -95,6 +99,7 @@ export class CodeWorkflowBuilder {
 			callbacks: config.callbacks,
 			runMetadata: config.runMetadata,
 			onTelemetryEvent: config.onTelemetryEvent,
+			generatePinData: config.generatePinData,
 		});
 
 		this.logger = config.logger;

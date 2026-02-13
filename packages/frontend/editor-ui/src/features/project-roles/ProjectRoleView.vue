@@ -18,9 +18,10 @@ import { useAsyncState } from '@vueuse/core';
 import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
 import { computed, ref, toRaw } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 const rolesStore = useRolesStore();
+const route = useRoute();
 const router = useRouter();
 const { showError, showMessage } = useToast();
 const i18n = useI18n();
@@ -61,6 +62,11 @@ const { state: form, isLoading } = useAsyncState(
 	},
 	defaultForm(),
 	{ shallow: false },
+);
+
+// Read-only if system role OR on view route (not edit route)
+const isReadOnly = computed(
+	() => initialState.value?.systemRole === true || route.name === VIEWS.PROJECT_ROLE_VIEW,
 );
 
 const hasUnsavedChanges = computed(() => {
@@ -328,7 +334,7 @@ const displayNameValidationRules = [
 			<N8nHeading tag="h1" size="2xlarge">
 				{{ roleSlug ? `Role "${form.displayName}"` : i18n.baseText('projectRoles.newRole') }}
 			</N8nHeading>
-			<div v-if="initialState">
+			<div v-if="initialState && !isReadOnly">
 				<N8nButton
 					type="secondary"
 					:disabled="!hasUnsavedChanges"
@@ -341,7 +347,7 @@ const displayNameValidationRules = [
 					{{ i18n.baseText('projectRoles.save') }}
 				</N8nButton>
 			</div>
-			<template v-else>
+			<template v-else-if="!initialState">
 				<N8nButton @click="handleSubmit">{{ i18n.baseText('projectRoles.create') }}</N8nButton>
 			</template>
 		</div>
@@ -356,6 +362,7 @@ const displayNameValidationRules = [
 				show-required-asterisk
 				required
 				:maxlength="100"
+				:disabled="isReadOnly"
 			></N8nFormInput>
 			<N8nFormInput
 				v-model="form.description"
@@ -364,27 +371,30 @@ const displayNameValidationRules = [
 				type="textarea"
 				:maxlength="500"
 				:autosize="{ minRows: 2, maxRows: 4 }"
+				:disabled="isReadOnly"
 			></N8nFormInput>
 		</div>
 
 		<N8nHeading tag="h2" size="xlarge" class="mb-s">
 			{{ i18n.baseText('projectRoles.permissions') }}
 		</N8nHeading>
-		<N8nText color="text-light" class="mb-2xs" tag="p">
-			{{ i18n.baseText('projectRoles.preset') }}
-		</N8nText>
+		<template v-if="!isReadOnly">
+			<N8nText color="text-light" class="mb-2xs" tag="p">
+				{{ i18n.baseText('projectRoles.preset') }}
+			</N8nText>
 
-		<div class="mb-s" :class="$style.presetsContainer">
-			<N8nButton type="secondary" @click="setPreset('project:admin')">
-				{{ i18n.baseText('projectRoles.admin') }}
-			</N8nButton>
-			<N8nButton type="secondary" @click="setPreset('project:editor')">
-				{{ i18n.baseText('projectRoles.editor') }}
-			</N8nButton>
-			<N8nButton type="secondary" @click="setPreset('project:viewer')">
-				{{ i18n.baseText('projectRoles.viewer') }}
-			</N8nButton>
-		</div>
+			<div class="mb-s" :class="$style.presetsContainer">
+				<N8nButton type="secondary" @click="setPreset('project:admin')">
+					{{ i18n.baseText('projectRoles.admin') }}
+				</N8nButton>
+				<N8nButton type="secondary" @click="setPreset('project:editor')">
+					{{ i18n.baseText('projectRoles.editor') }}
+				</N8nButton>
+				<N8nButton type="secondary" @click="setPreset('project:viewer')">
+					{{ i18n.baseText('projectRoles.viewer') }}
+				</N8nButton>
+			</div>
+		</template>
 
 		<div :class="$style.cardContainer">
 			<div v-for="type in scopeTypes" :key="type" class="mb-s mt-s" :class="$style.card">
@@ -408,6 +418,7 @@ const displayNameValidationRules = [
 									validate-on-blur
 									type="checkbox"
 									:class="$style.checkbox"
+									:disabled="isReadOnly"
 									@update:model-value="() => toggleScope(scope)"
 								/>
 							</N8nTooltip>
@@ -417,7 +428,7 @@ const displayNameValidationRules = [
 			</div>
 		</div>
 
-		<div v-if="roleSlug && !initialState?.systemRole" class="mt-xl">
+		<div v-if="roleSlug && !isReadOnly" class="mt-xl">
 			<N8nHeading tag="h2" class="mb-2xs" size="large">
 				{{ i18n.baseText('projectRoles.dangerZone') }}
 			</N8nHeading>

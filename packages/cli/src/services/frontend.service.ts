@@ -318,6 +318,7 @@ export class FrontendService {
 					},
 				},
 				customRoles: false,
+				personalSpacePolicy: false,
 			},
 			mfa: {
 				enabled: false,
@@ -460,6 +461,7 @@ export class FrontendService {
 			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
 			namedVersions: this.license.isLicensed(LICENSE_FEATURES.NAMED_VERSIONS),
 			customRoles: this.licenseState.isCustomRolesLicensed(),
+			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
