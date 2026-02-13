@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Webhook Origin Isolation', () => {
+test.describe('Webhook Origin Isolation', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test.beforeAll(async ({ api }) => {
 		await api.workflows.importWorkflowFromFile('webhook-origin-isolation.json', {
 			makeUnique: false,

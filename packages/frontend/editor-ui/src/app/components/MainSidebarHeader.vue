@@ -107,8 +107,9 @@ const {
 			@select="handleMenuSelect"
 		>
 			<N8nIconButton
+				class="n8n-button--highlight"
+				variant="ghost"
 				size="small"
-				type="highlight"
 				icon="plus"
 				icon-size="large"
 				aria-label="Add new item"
@@ -151,10 +152,10 @@ const {
 						size="xsmall"
 					/>
 					<N8nButton
+						variant="subtle"
 						v-else
 						:size="'mini'"
 						:class="$style.upgradeButton"
-						type="tertiary"
 						@click="handleMenuSelect(item.id)"
 					>
 						{{ upgradeLabel }}
@@ -169,8 +170,9 @@ const {
 			:shortcut="{ keys: ['k'], metaKey: true }"
 		>
 			<N8nIconButton
+				class="n8n-button--highlight"
+				variant="ghost"
 				size="small"
-				type="highlight"
 				icon="search"
 				icon-size="large"
 				aria-label="Open command palette"
@@ -189,8 +191,9 @@ const {
 		>
 			<N8nIconButton
 				id="toggle-sidebar-button"
+				class="n8n-button--highlight"
+				variant="ghost"
 				size="small"
-				type="highlight"
 				icon="panel-left"
 				icon-size="large"
 				aria-label="Toggle sidebar"

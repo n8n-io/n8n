@@ -83,10 +83,6 @@ export class ChatHubChatPage extends BasePage {
 		return this.getChatMessages().nth(index).getByTestId('chat-message-prev-alternative');
 	}
 
-	getNextAlternativeButtonAt(index: number): Locator {
-		return this.getChatMessages().nth(index).getByTestId('chat-message-next-alternative');
-	}
-
 	async clickEditButtonAt(index: number): Promise<void> {
 		await this.hoverMessageActionsAt(index);
 		const editButton = this.getEditButtonAt(index);
@@ -114,15 +110,6 @@ export class ChatHubChatPage extends BasePage {
 		await prevButton.click({ force: true });
 	}
 
-	async clickNextAlternativeButtonAt(index: number): Promise<void> {
-		await this.hoverMessageActionsAt(index);
-		const nextButton = this.getNextAlternativeButtonAt(index);
-		// Wait for streaming to complete - the button is disabled during streaming
-		await nextButton.waitFor({ state: 'visible' });
-		await expect(nextButton).toBeEnabled();
-		await nextButton.click({ force: true });
-	}
-
 	/**
 	 * Hovers over the message content area to reveal hidden action buttons.
 	 * The action buttons are hidden by CSS until the content area is hovered.
@@ -131,10 +118,6 @@ export class ChatHubChatPage extends BasePage {
 		const message = this.getChatMessages().nth(index);
 		await message.hover();
 		await message.getByTestId('chat-message-actions').waitFor({ state: 'visible' });
-	}
-
-	getAttachButton(): Locator {
-		return this.page.getByRole('button', { name: /attach/i });
 	}
 
 	getFileInput(): Locator {
