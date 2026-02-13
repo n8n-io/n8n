@@ -1,4 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
+import { mockLogger } from '@n8n/backend-test-utils';
 import type {
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnection,
@@ -26,6 +27,7 @@ describe('SecretsProvidersConnectionsService', () => {
 	};
 
 	const service = new SecretsProvidersConnectionsService(
+		mockLogger(),
 		mockRepository,
 		mockProjectAccessRepository,
 		mockCipher as any,
