@@ -409,17 +409,23 @@ describe('SecretsProvidersConnectionsService', () => {
 			expect(mockExternalSecretsManager.updateProvider).not.toHaveBeenCalled();
 		});
 
-		it('should propagate error if updateProvider fails', async () => {
-			const connections = [{ providerKey: 'failing-conn' }] as SecretsProviderConnection[];
+		it('should still attempt all providers when one fails', async () => {
+			const connections = [
+				{ providerKey: 'ok-conn' },
+				{ providerKey: 'failing-conn' },
+			] as SecretsProviderConnection[];
 
 			mockRepository.findByProjectId.mockResolvedValue(connections);
-			mockExternalSecretsManager.updateProvider.mockRejectedValue(
-				new Error('Provider not connected'),
-			);
+			mockExternalSecretsManager.updateProvider
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('Provider not connected'));
 
-			await expect(service.reloadProjectConnectionSecrets('project-1')).rejects.toThrow(
-				'Provider not connected',
-			);
+			const result = await service.reloadProjectConnectionSecrets('project-1');
+
+			expect(result).toEqual({ success: true });
+			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledTimes(2);
+			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledWith('ok-conn');
+			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledWith('failing-conn');
 		});
 	});
 

@@ -286,12 +286,17 @@ export class SecretsProvidersConnectionsService {
 		projectId: string,
 	): Promise<ReloadSecretProviderConnectionResponse> {
 		const projectConnections = await this.repository.findByProjectId(projectId);
-		await Promise.all(
-			projectConnections.map(
-				async (c) => await this.externalSecretsManager.updateProvider(c.providerKey),
-			),
+		const results = await Promise.allSettled(
+			projectConnections.map(async (c) => {
+				try {
+					await this.externalSecretsManager.updateProvider(c.providerKey);
+				} catch {
+					// Individual provider failures are ignored so other providers still reload
+				}
+			}),
 		);
-		return reloadSecretProviderConnectionResponseSchema.parse({ success: true });
+		const allSucceeded = results.every((r) => r.status === 'fulfilled');
+		return reloadSecretProviderConnectionResponseSchema.parse({ success: allSucceeded });
 	}
 
 	private encryptConnectionSettings(settings: IDataObject): string {
