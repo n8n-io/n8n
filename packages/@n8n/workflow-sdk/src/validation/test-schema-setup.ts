@@ -42,7 +42,8 @@ function isCacheValid(): boolean {
 	try {
 		if (!fs.existsSync(STAMP_FILE)) return false;
 		const storedHash = fs.readFileSync(STAMP_FILE, 'utf-8').trim();
-		return storedHash === computeGeneratorHash() && computeGeneratorHash() !== '';
+		const currentHash = computeGeneratorHash();
+		return storedHash === currentHash && currentHash !== '';
 	} catch {
 		return false;
 	}
@@ -56,8 +57,13 @@ export async function setupTestSchemas(): Promise<void> {
 	originalBaseDirs = getSchemaBaseDirs();
 
 	const nodesDir = path.join(SCHEMA_TEST_DIR, 'nodes');
+	const nodesDirExists = fs.existsSync(nodesDir);
+	const cacheValid = isCacheValid();
 
-	if (!fs.existsSync(nodesDir) || !isCacheValid()) {
+	console.log('[setupTestSchemas] SCHEMA_TEST_DIR:', SCHEMA_TEST_DIR);
+	console.log('[setupTestSchemas] nodesDir exists:', nodesDirExists, '| cacheValid:', cacheValid);
+
+	if (!nodesDirExists || !cacheValid) {
 		// Remove stale schemas if they exist
 		if (fs.existsSync(SCHEMA_TEST_DIR)) {
 			fs.rmSync(SCHEMA_TEST_DIR, { recursive: true, force: true });
@@ -66,7 +72,9 @@ export async function setupTestSchemas(): Promise<void> {
 		const repoRoot = path.resolve(__dirname, '../../../../..');
 
 		const nodesBaseJson = path.join(repoRoot, 'packages/nodes-base/dist/types/nodes.json');
-		if (fs.existsSync(nodesBaseJson)) {
+		const nodesBaseExists = fs.existsSync(nodesBaseJson);
+		console.log('[setupTestSchemas] nodesBaseJson:', nodesBaseJson, '| exists:', nodesBaseExists);
+		if (nodesBaseExists) {
 			await generateNodeDefinitions({
 				nodesJsonPath: nodesBaseJson,
 				outputDir: SCHEMA_TEST_DIR,
@@ -78,7 +86,9 @@ export async function setupTestSchemas(): Promise<void> {
 			repoRoot,
 			'packages/@n8n/nodes-langchain/dist/types/nodes.json',
 		);
-		if (fs.existsSync(langchainJson)) {
+		const langchainExists = fs.existsSync(langchainJson);
+		console.log('[setupTestSchemas] langchainJson:', langchainJson, '| exists:', langchainExists);
+		if (langchainExists) {
 			await generateNodeDefinitions({
 				nodesJsonPath: langchainJson,
 				outputDir: SCHEMA_TEST_DIR,
@@ -92,9 +102,24 @@ export async function setupTestSchemas(): Promise<void> {
 			fs.mkdirSync(SCHEMA_TEST_DIR, { recursive: true });
 			fs.writeFileSync(STAMP_FILE, hash);
 		}
+
+		// Log what was generated
+		if (fs.existsSync(nodesDir)) {
+			const pkgs = fs.readdirSync(nodesDir);
+			for (const pkg of pkgs) {
+				const pkgPath = path.join(nodesDir, pkg);
+				const nodes = fs.readdirSync(pkgPath);
+				console.log(`[setupTestSchemas] Generated ${nodes.length} schemas in nodes/${pkg}/`);
+			}
+		} else {
+			console.log('[setupTestSchemas] WARNING: nodesDir does not exist after generation!');
+		}
+	} else {
+		console.log('[setupTestSchemas] Reusing cached schemas');
 	}
 
 	setSchemaBaseDirs([SCHEMA_TEST_DIR]);
+	console.log('[setupTestSchemas] schemaBaseDirs set to:', [SCHEMA_TEST_DIR]);
 }
 
 /**
