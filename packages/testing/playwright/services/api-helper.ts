@@ -11,6 +11,7 @@ import {
 } from '../config/test-users';
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
+import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
 import { McpApiHelper } from './mcp-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
 import { PublicApiHelper } from './public-api-helper';
@@ -50,6 +51,7 @@ export class ApiHelpers {
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
 	variables: VariablesApiHelper;
+	externalSecrets: ExternalSecretsApiHelper;
 	users: UserApiHelper;
 	tags: TagApiHelper;
 	roles: RoleApiHelper;
@@ -65,6 +67,7 @@ export class ApiHelpers {
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
+		this.externalSecrets = new ExternalSecretsApiHelper(this);
 		this.users = new UserApiHelper(this);
 		this.tags = new TagApiHelper(this);
 		this.roles = new RoleApiHelper(this);
