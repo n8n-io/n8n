@@ -185,6 +185,7 @@ export class FrontendService {
 			endpointWebhook: this.globalConfig.endpoints.webhook,
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
+			endpointHealth: this.globalConfig.endpoints.health,
 			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
 			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
 			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,

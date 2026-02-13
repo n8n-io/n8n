@@ -1,12 +1,14 @@
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useHeartbeat } from '@/app/push-connection/useHeartbeat';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const HEALTH_CHECK_INTERVAL = 10000;
 const HEALTH_CHECK_TIMEOUT = 5000;
 
 export function useBackendStatus() {
 	const backendConnectionStore = useBackendConnectionStore();
+	const settingsStore = useSettingsStore();
 	const checking = ref(false);
 
 	/**
@@ -17,7 +19,8 @@ export function useBackendStatus() {
 		const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
 
 		try {
-			const response = await fetch('/health/live', {
+			const healthPath = settingsStore.endpointHealth || 'health/live';
+			const response = await fetch(`/${healthPath}`, {
 				cache: 'no-store',
 				signal: controller.signal,
 			});
