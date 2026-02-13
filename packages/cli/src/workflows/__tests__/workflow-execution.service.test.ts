@@ -311,21 +311,21 @@ describe('WorkflowExecutionService', () => {
 			const executionId = 'fake-execution-id';
 			const userId = 'user-id';
 			const user = mock<User>({ id: userId });
+			const workflowData = mock<IWorkflowBase>({
+				nodes: [webhookNode, hackerNewsNode],
+				connections: createMainConnection(webhookNode.name, hackerNewsNode.name),
+				pinData: undefined,
+			});
 
 			const runPayload = {
-				workflowData: mock<IWorkflowBase>({
-					nodes: [webhookNode, hackerNewsNode],
-					connections: createMainConnection(webhookNode.name, hackerNewsNode.name),
-					pinData: undefined,
-				}),
 				triggerToStartFrom: { name: webhookNode.name },
 				destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
 				runData: { [webhookNode.name]: [toITaskData([{ data: { value: 1 } }])] },
-			} as unknown as WorkflowRequest.ManualRunPayload;
+			} as WorkflowRequest.ManualRunPayload;
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
-			const result = await workflowExecutionService.executeManually(runPayload, user);
+			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledWith(
 				expect.objectContaining({

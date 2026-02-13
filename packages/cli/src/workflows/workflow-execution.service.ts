@@ -164,7 +164,7 @@ export class WorkflowExecutionService {
 				executionMode: 'manual',
 				pinData: workflowData.pinData,
 				pushRef,
-				workflowData: workflowData,
+				workflowData,
 				userId: user.id,
 				triggerToStartFrom: payload.triggerToStartFrom,
 				agentRequest: payload.agentRequest,
