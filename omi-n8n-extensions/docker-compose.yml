@@ -1,0 +1,76 @@
+################################################################################
+# OmiGroup n8n Self-Hosted Deployment
+#
+# This compose file extends n8n with OmiGroup extensions.
+# n8n core is completely unmodified.
+#
+# Usage:
+#   1. Copy .env.example to .env and fill in values
+#   2. Run: docker compose up -d
+#   3. Access: http://localhost:5678
+#   4. Google SSO: http://localhost:5678/omi/auth/google/login
+################################################################################
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # ─── n8n Core Config ──────────────────────────────────
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - N8N_EDITOR_BASE_URL=${N8N_EDITOR_BASE_URL:-http://localhost:5678}
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678}
+      - N8N_USER_MANAGEMENT_JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+
+      # Database (PostgreSQL recommended for production)
+      - DB_TYPE=${DB_TYPE:-sqlite}
+      - DB_POSTGRESDB_HOST=${DB_POSTGRESDB_HOST:-}
+      - DB_POSTGRESDB_PORT=${DB_POSTGRESDB_PORT:-5432}
+      - DB_POSTGRESDB_DATABASE=${DB_POSTGRESDB_DATABASE:-n8n}
+      - DB_POSTGRESDB_USER=${DB_POSTGRESDB_USER:-}
+      - DB_POSTGRESDB_PASSWORD=${DB_POSTGRESDB_PASSWORD:-}
+
+      # ─── OmiGroup Extension Loader ────────────────────────
+      # This is the ONLY connection to n8n core
+      - EXTERNAL_HOOK_FILES=/home/node/omi-extensions/dist/hooks/omi-hooks.js
+      - N8N_CUSTOM_EXTENSIONS=/home/node/omi-extensions/dist/nodes
+
+      # ─── OmiGroup Config ──────────────────────────────────
+      # Google OAuth2 (required)
+      - OMI_GOOGLE_CLIENT_ID=${OMI_GOOGLE_CLIENT_ID}
+      - OMI_GOOGLE_CLIENT_SECRET=${OMI_GOOGLE_CLIENT_SECRET}
+      - OMI_GOOGLE_CALLBACK_URL=${OMI_GOOGLE_CALLBACK_URL:-http://localhost:5678/omi/auth/google/callback}
+
+      # Domain whitelist
+      - OMI_DOMAIN_WHITELIST=${OMI_DOMAIN_WHITELIST:-omigroup.com}
+      - OMI_DOMAIN_WHITELIST_ENFORCED=${OMI_DOMAIN_WHITELIST_ENFORCED:-true}
+
+      # Admin emails
+      - OMI_ADMIN_EMAILS=${OMI_ADMIN_EMAILS}
+
+      # OmiGroup database (separate from n8n)
+      - OMI_SQLITE_PATH=/home/node/.n8n/omi-extensions.sqlite
+
+      # Template Hub
+      - OMI_TEMPLATES_ENABLED=${OMI_TEMPLATES_ENABLED:-true}
+      - OMI_TEMPLATES_REQUIRE_APPROVAL=${OMI_TEMPLATES_REQUIRE_APPROVAL:-false}
+
+      # Usage Stats
+      - OMI_STATS_ENABLED=${OMI_STATS_ENABLED:-true}
+      - OMI_STATS_RETENTION_DAYS=${OMI_STATS_RETENTION_DAYS:-90}
+
+    volumes:
+      # n8n data persistence
+      - n8n_data:/home/node/.n8n
+
+      # OmiGroup extensions (read-only mount)
+      - ./dist:/home/node/omi-extensions:ro
+
+volumes:
+  n8n_data:
+    driver: local
