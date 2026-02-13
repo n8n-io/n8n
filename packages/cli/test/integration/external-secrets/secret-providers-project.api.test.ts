@@ -625,6 +625,41 @@ describe('Secret Providers Project API', () => {
 			expect(response.body.data).toEqual({ success: true });
 		});
 
+		test('should succeed when project has no connections', async () => {
+			const { ExternalSecretsManager } = await import(
+				'@/modules/external-secrets.ee/external-secrets-manager.ee'
+			);
+			await Container.get(ExternalSecretsManager).reloadAllProviders();
+
+			const response = await ownerAgent
+				.post(`/secret-providers/projects/${emptyProject.id}/reload`)
+				.expect(200);
+
+			expect(response.body.data).toEqual({ success: true });
+		});
+
+		test('should not reload connections that are not part of the project', async () => {
+			await createProviderConnection('global-conn', []);
+			await createProviderConnection('proj1-conn', [teamProject1.id]);
+			await createProviderConnection('proj2-conn', [teamProject2.id]);
+
+			const { ExternalSecretsManager } = await import(
+				'@/modules/external-secrets.ee/external-secrets-manager.ee'
+			);
+			const manager = Container.get(ExternalSecretsManager);
+			await manager.reloadAllProviders();
+
+			const updateSpy = jest.spyOn(manager, 'updateProvider');
+
+			await ownerAgent.post(`/secret-providers/projects/${teamProject1.id}/reload`).expect(200);
+
+			expect(updateSpy).toHaveBeenCalledWith('proj1-conn');
+			expect(updateSpy).not.toHaveBeenCalledWith('proj2-conn');
+			expect(updateSpy).not.toHaveBeenCalledWith('global-conn');
+
+			updateSpy.mockRestore();
+		});
+
 		describe('authorization', () => {
 			test.each([
 				{ role: 'owner', allowed: true },

@@ -379,6 +379,50 @@ describe('SecretsProvidersConnectionsService', () => {
 		});
 	});
 
+	describe('reloadProjectConnectionSecrets', () => {
+		it('should reload all connections for a project', async () => {
+			const connections = [
+				{ providerKey: 'conn-1' },
+				{ providerKey: 'conn-2' },
+				{ providerKey: 'conn-3' },
+			] as SecretsProviderConnection[];
+
+			mockRepository.findByProjectId.mockResolvedValue(connections);
+			mockExternalSecretsManager.updateProvider.mockResolvedValue(undefined);
+
+			const result = await service.reloadProjectConnectionSecrets('project-1');
+
+			expect(result).toEqual({ success: true });
+			expect(mockRepository.findByProjectId).toHaveBeenCalledWith('project-1');
+			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledTimes(3);
+			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledWith('conn-1');
+			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledWith('conn-2');
+			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledWith('conn-3');
+		});
+
+		it('should return success when project has no connections', async () => {
+			mockRepository.findByProjectId.mockResolvedValue([]);
+
+			const result = await service.reloadProjectConnectionSecrets('empty-project');
+
+			expect(result).toEqual({ success: true });
+			expect(mockExternalSecretsManager.updateProvider).not.toHaveBeenCalled();
+		});
+
+		it('should propagate error if updateProvider fails', async () => {
+			const connections = [{ providerKey: 'failing-conn' }] as SecretsProviderConnection[];
+
+			mockRepository.findByProjectId.mockResolvedValue(connections);
+			mockExternalSecretsManager.updateProvider.mockRejectedValue(
+				new Error('Provider not connected'),
+			);
+
+			await expect(service.reloadProjectConnectionSecrets('project-1')).rejects.toThrow(
+				'Provider not connected',
+			);
+		});
+	});
+
 	describe('getConnectionForProject', () => {
 		it('should return connection when it belongs to the given project', async () => {
 			const connection = {

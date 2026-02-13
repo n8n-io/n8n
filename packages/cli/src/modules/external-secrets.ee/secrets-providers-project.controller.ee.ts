@@ -119,16 +119,14 @@ export class SecretProvidersProjectController {
 		return await this.connectionsService.testConnection(providerKey);
 	}
 
-	@Post('/:projectId/connections/:providerKey/reload')
+	@Post('/:projectId/reload')
 	@ProjectScope('externalSecretsProvider:sync')
 	async reloadConnectionSecrets(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
-		@Param('providerKey') providerKey: string,
 	): Promise<ReloadSecretProviderConnectionResponse> {
-		this.logger.debug('Reloading secrets for project connection', { projectId, providerKey });
-		await this.connectionsService.getConnectionForProject(providerKey, projectId);
-		return await this.connectionsService.reloadConnectionSecrets(providerKey);
+		this.logger.debug('Reloading all secrets for project', { projectId });
+		return await this.connectionsService.reloadProjectConnectionSecrets(projectId);
 	}
 }

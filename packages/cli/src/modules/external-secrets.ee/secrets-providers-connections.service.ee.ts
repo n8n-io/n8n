@@ -282,6 +282,18 @@ export class SecretsProvidersConnectionsService {
 		};
 	}
 
+	async reloadProjectConnectionSecrets(
+		projectId: string,
+	): Promise<ReloadSecretProviderConnectionResponse> {
+		const projectConnections = await this.repository.findByProjectId(projectId);
+		await Promise.all(
+			projectConnections.map(
+				async (c) => await this.externalSecretsManager.updateProvider(c.providerKey),
+			),
+		);
+		return reloadSecretProviderConnectionResponseSchema.parse({ success: true });
+	}
+
 	private encryptConnectionSettings(settings: IDataObject): string {
 		return this.cipher.encrypt(settings);
 	}
