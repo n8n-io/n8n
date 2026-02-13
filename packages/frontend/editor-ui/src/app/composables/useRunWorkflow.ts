@@ -48,6 +48,7 @@ import get from 'lodash/get';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { useCanvasOperations } from './useCanvasOperations';
@@ -67,6 +68,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const settingsStore = useSettingsStore();
+	const uiStore = useUIStore();
 	const agentRequestStore = useAgentRequestStore();
 
 	const rootStore = useRootStore();
@@ -157,7 +159,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const runData = workflowsStore.getWorkflowRunData;
 
-			if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+			if (uiStore.stateIsDirty || !workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
 				await workflowSaving.saveCurrentWorkflow();
 			}
 
