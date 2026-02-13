@@ -3,7 +3,7 @@
   "version": "1.2.0",
   "description": "HTML + n8n expression language support for CodeMirror 6",
   "scripts": {
-    "test": "cm-runtests",
+    "test": "vitest run",
     "build": "cm-buildhelper src/html.ts",
     "grammar:build": "lezer-generator src/grammar/html.grammar -o src/grammar/parser && rollup -c src/grammar/rollup.config.js",
     "grammar:build-debug": "lezer-generator src/grammar/html.grammar --names -o src/grammar/parser && rollup -c src/grammar/rollup.config.js",
@@ -42,8 +42,8 @@
     "@lezer/generator": "catalog:",
     "@n8n/typescript-config": "workspace:*",
     "@rollup/plugin-node-resolve": "^9.0.0",
-    "ist": "^1.1.7",
-    "mocha": "^9.0.1",
+    "@n8n/vitest-config": "workspace:*",
+    "vitest": "catalog:",
     "rollup": "^2.52.2"
   },
   "repository": {
