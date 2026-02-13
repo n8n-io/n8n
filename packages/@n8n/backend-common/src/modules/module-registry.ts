@@ -32,6 +32,7 @@ export class ModuleRegistry {
 	private readonly defaultModules: ModuleName[] = [
 		'insights',
 		'external-secrets',
+		'file-upload',
 		'community-packages',
 		'data-table',
 		'mcp',

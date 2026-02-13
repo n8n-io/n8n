@@ -22,6 +22,7 @@ describe('eligibleModules', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'external-secrets',
+			'file-upload',
 			'community-packages',
 			'data-table',
 			'mcp',
@@ -43,6 +44,7 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'insights',
 			'external-secrets',
+			'file-upload',
 			'community-packages',
 			'data-table',
 			'mcp',

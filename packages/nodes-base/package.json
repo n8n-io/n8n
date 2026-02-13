@@ -524,6 +524,7 @@
       "dist/nodes/Facebook/FacebookTrigger.node.js",
       "dist/nodes/FacebookLeadAds/FacebookLeadAdsTrigger.node.js",
       "dist/nodes/Figma/FigmaTrigger.node.js",
+      "dist/nodes/FileData/FileData.node.js",
       "dist/nodes/FileMaker/FileMaker.node.js",
       "dist/nodes/Files/ReadWriteFile/ReadWriteFile.node.js",
       "dist/nodes/Files/ConvertToFile/ConvertToFile.node.js",

@@ -143,6 +143,7 @@ import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { injectStrict } from '@/app/utils/injectStrict';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { uploadFileApi } from '@/features/core/fileUpload/fileUpload.api';
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 
@@ -1537,11 +1538,64 @@ function onSelectionEnd(position: VueFlowXYPosition) {
  * Drag and Drop events
  */
 
+async function onFileDrop(file: File, position: XYPosition) {
+	if (!checkIfEditingIsAllowed()) return;
+
+	const MAX_FILE_SIZE = 10 * 1024 * 1024;
+	if (file.size > MAX_FILE_SIZE) {
+		toast.showError(
+			new Error(i18n.baseText('nodeView.fileDrop.tooLarge')),
+			i18n.baseText('nodeView.fileDrop.error'),
+		);
+		return;
+	}
+
+	try {
+		const response = await uploadFileApi(rootStore.restApiContext, file);
+
+		await onAddNodesAndConnections(
+			{
+				nodes: [
+					{
+						type: 'n8n-nodes-base.fileData',
+						parameters: {
+							fileId: response.fileId,
+							fileName: response.fileName,
+							mimeType: response.mimeType,
+						},
+					},
+				],
+				connections: [],
+			},
+			true,
+			position,
+		);
+	} catch (error) {
+		toast.showError(error as Error, i18n.baseText('nodeView.fileDrop.error'));
+	}
+}
+
 async function onDragAndDrop(position: VueFlowXYPosition, event: DragEvent) {
 	if (!event.dataTransfer) {
 		return;
 	}
 
+	// First check if it's a file being dropped
+	if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+		const item = event.dataTransfer.items[0];
+		const entry = item?.webkitGetAsEntry?.();
+		if (entry?.isDirectory) {
+			toast.showError(
+				new Error(i18n.baseText('nodeView.fileDrop.directoryNotAllowed')),
+				i18n.baseText('nodeView.fileDrop.error'),
+			);
+			return;
+		}
+		await onFileDrop(event.dataTransfer.files[0], [position.x, position.y]);
+		return;
+	}
+
+	// If not, check if it's node data being dropped
 	const dropData = jsonParse<AddedNodesAndConnections>(
 		event.dataTransfer.getData(DRAG_EVENT_DATA_KEY),
 	);

@@ -42,6 +42,7 @@ import type {
 import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
+// import { useI18n } from '@n8n/i18n'; // Uncomment when re-enabling overlay variant
 import { NodeConnectionTypes } from 'n8n-workflow';
 import {
 	computed,
@@ -61,6 +62,7 @@ import CanvasConnectionLine from './elements/edges/CanvasConnectionLine.vue';
 import CanvasControlButtons from './elements/buttons/CanvasControlButtons.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -68,6 +70,7 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 
 const $style = useCssModule();
+// const i18n = useI18n(); // Uncomment when re-enabling overlay variant
 
 const emit = defineEmits<{
 	'update:modelValue': [elements: CanvasNode[]];
@@ -863,11 +866,31 @@ async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
  * Drag and drop
  */
 
+const isDraggingFile = ref(false);
+const fileDragPosition = ref({ x: -100, y: -100 });
+
 function onDragOver(event: DragEvent) {
 	event.preventDefault();
+	if (event.dataTransfer?.types.includes('Files')) {
+		isDraggingFile.value = true;
+		event.dataTransfer.dropEffect = 'copy';
+		fileDragPosition.value = { x: event.clientX, y: event.clientY };
+	}
+}
+
+function onDragLeave(event: DragEvent) {
+	const relatedTarget = event.relatedTarget as Node | null;
+	const currentTarget = event.currentTarget as HTMLElement | null;
+	if (!currentTarget?.contains(relatedTarget)) {
+		isDraggingFile.value = false;
+		fileDragPosition.value = { x: -100, y: -100 };
+	}
 }
 
 function onDrop(event: DragEvent) {
+	event.preventDefault();
+	isDraggingFile.value = false;
+	fileDragPosition.value = { x: -100, y: -100 };
 	const position = getProjectedPosition(event);
 
 	emit('drag-and-drop', position, event);
@@ -1042,6 +1065,7 @@ defineExpose({
 		@selection-end="onSelectionEnd"
 		@selection-context-menu="onOpenSelectionContextMenu"
 		@dragover="onDragOver"
+		@dragleave="onDragLeave"
 		@drop="onDrop"
 		@viewport-change="onViewportChange"
 	>
@@ -1138,6 +1162,28 @@ defineExpose({
 		<Suspense>
 			<ContextMenu @action="onContextMenuAction" />
 		</Suspense>
+
+		<!-- Overlay variant (commented out for UX comparison)
+		<Transition name="file-drop">
+			<div v-if="isDraggingFile" :class="$style.fileDropOverlay">
+				<div :class="$style.fileDropContent">
+					{{ i18n.baseText('nodeView.fileDrop.overlay') }}
+				</div>
+			</div>
+		</Transition>
+		-->
+		<div
+			v-show="isDraggingFile"
+			:class="$style.fileDragGhost"
+			:style="{ top: `${fileDragPosition.y}px`, left: `${fileDragPosition.x}px` }"
+		>
+			<NodeIcon
+				:icon-source="{ type: 'icon', name: 'file' }"
+				:size="40"
+				:shrink="false"
+				color-default="var(--color--foreground--shade-2)"
+			/>
+		</div>
 	</VueFlow>
 </template>
 
@@ -1157,6 +1203,45 @@ defineExpose({
 		--canvas-zoom-compensation-factor: 0.5;
 	}
 }
+
+.fileDropOverlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: rgba(255, 255, 255, 0.8);
+	z-index: 100;
+	pointer-events: none;
+}
+
+.fileDropContent {
+	padding: var(--spacing--lg) var(--spacing--xl);
+	border: 2px dashed var(--color--primary);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--primary--tint-3);
+	color: var(--color--primary);
+	font-size: var(--font-size--lg);
+	font-weight: var(--font-weight--bold);
+}
+
+.fileDragGhost {
+	width: 100px;
+	height: 100px;
+	position: fixed;
+	z-index: 1;
+	opacity: 0.66;
+	border: 2px solid var(--color--foreground--shade-2);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	pointer-events: none;
+}
 </style>
 
 <style lang="scss" scoped>
@@ -1167,6 +1252,16 @@ defineExpose({
 
 .minimap-enter-from,
 .minimap-leave-to {
+	opacity: 0;
+}
+
+.file-drop-enter-active,
+.file-drop-leave-active {
+	transition: opacity 0.2s ease;
+}
+
+.file-drop-enter-from,
+.file-drop-leave-to {
 	opacity: 0;
 }
 </style>
