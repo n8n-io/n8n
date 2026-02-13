@@ -52,7 +52,7 @@ describe('useBackendStatus', () => {
 		const wrapper = createWrapper();
 
 		await vi.waitFor(() => {
-			expect(mockFetch).toHaveBeenCalledWith('/healthz', {
+			expect(mockFetch).toHaveBeenCalledWith('/health/live', {
 				cache: 'no-store',
 				signal: expect.any(AbortSignal),
 			});

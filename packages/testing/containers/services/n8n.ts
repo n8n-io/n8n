@@ -30,7 +30,7 @@ const BASE_ENV: Record<string, string> = {
 
 const MAIN_WAIT_STRATEGY = Wait.forAll([
 	Wait.forListeningPorts(),
-	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(30000),
+	Wait.forHttp('/health/live/readiness', 5678).forStatusCode(200).withStartupTimeout(30000),
 	Wait.forLogMessage('Editor is now accessible via').withStartupTimeout(30000),
 ]);
 

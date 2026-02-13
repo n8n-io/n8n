@@ -158,7 +158,7 @@ export class McpApiHelper {
 			fullUrl = path;
 		} else {
 			// Get base URL from a test request
-			const testResponse = await this.api.request.get('/healthz');
+			const testResponse = await this.api.request.get('/health/live');
 			const testUrl = testResponse.url();
 			const baseUrl = new URL(testUrl).origin;
 			fullUrl = `${baseUrl}/${path.replace(/^\//, '')}`;

@@ -216,7 +216,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		log(`n8n ready: ${mains} main(s), ${workers} worker(s)`);
 
 		if (lbResult) {
-			await pollContainerHttpEndpoint(lbResult.container, '/healthz/readiness');
+			await pollContainerHttpEndpoint(lbResult.container, '/health/live/readiness');
 			log('Load balancer ready');
 		}
 

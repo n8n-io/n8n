@@ -291,7 +291,7 @@ export class ApiHelpers {
 	 * @returns True if n8n is healthy, false otherwise
 	 */
 	async isHealthy(probe: 'liveness' | 'readiness' = 'liveness'): Promise<boolean> {
-		const url = probe === 'liveness' ? '/healthz' : '/healthz/readiness';
+		const url = probe === 'liveness' ? '/health/live' : '/health/live/readiness';
 		const response = await this.request.get(url);
 		const data = await response.json();
 		return data.status === 'ok';

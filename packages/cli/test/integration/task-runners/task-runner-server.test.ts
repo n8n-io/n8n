@@ -14,9 +14,9 @@ describe('TaskBrokerServer', () => {
 		await server.stop();
 	});
 
-	describe('/healthz', () => {
+	describe('/health/live', () => {
 		it('should return 200', async () => {
-			await agent.get('/healthz').expect(200);
+			await agent.get('/health/live').expect(200);
 		});
 	});
 
