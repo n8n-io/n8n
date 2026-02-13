@@ -372,26 +372,6 @@ describe('ExternalSecretsManager', () => {
 				command: 'reload-external-secrets-providers',
 			});
 		});
-
-		it('should pass isEnabled as connected flag to setupProvider', async () => {
-			const disabledConnection = { ...mockConnection, isEnabled: false };
-			mockSecretsProviderConnectionRepository.findOne.mockResolvedValue(disabledConnection as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
-
-			const dummyProvider = new DummyProvider();
-			mockProviderLifecycle.initialize.mockResolvedValue({
-				success: true,
-				provider: dummyProvider,
-			});
-
-			await manager.syncProviderConnection('my-vault');
-
-			expect(mockProviderLifecycle.initialize).toHaveBeenCalledWith('dummy', {
-				connected: false,
-				connectedAt: null,
-				settings: { key: 'value' },
-			});
-		});
 	});
 
 	describe('updateProvider', () => {
@@ -948,11 +928,11 @@ describe('ExternalSecretsManager', () => {
 			});
 		});
 
-		it('should only connect enabled providers', async () => {
+		it('should connect all providers', async () => {
 			const mockConnections = [
 				{
 					id: 1,
-					providerKey: 'enabled-vault',
+					providerKey: 'provider-a',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-1',
 					isEnabled: true,
@@ -963,7 +943,7 @@ describe('ExternalSecretsManager', () => {
 				},
 				{
 					id: 2,
-					providerKey: 'disabled-vault',
+					providerKey: 'provider-b',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-2',
 					isEnabled: false,
@@ -977,28 +957,28 @@ describe('ExternalSecretsManager', () => {
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue(mockConnections as any);
 			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
 
-			const enabledProvider = new DummyProvider();
-			const disabledProvider = new DummyProvider();
-			await enabledProvider.init({ connected: true, connectedAt: null, settings: {} });
-			await disabledProvider.init({ connected: false, connectedAt: null, settings: {} });
+			const providerA = new DummyProvider();
+			const providerB = new DummyProvider();
+			await providerA.init({ connected: true, connectedAt: null, settings: {} });
+			await providerB.init({ connected: true, connectedAt: null, settings: {} });
 
 			let callCount = 0;
 			mockProviderLifecycle.initialize.mockImplementation(async () => {
 				callCount++;
 				return {
 					success: true,
-					provider: callCount === 1 ? enabledProvider : disabledProvider,
+					provider: callCount === 1 ? providerA : providerB,
 				};
 			});
 
 			await managerWithProjectMode.reloadAllProviders();
 
 			expect(mockRetryManager.runWithRetry).toHaveBeenCalledWith(
-				'enabled-vault',
+				'provider-a',
 				expect.any(Function),
 			);
-			expect(mockRetryManager.runWithRetry).not.toHaveBeenCalledWith(
-				'disabled-vault',
+			expect(mockRetryManager.runWithRetry).toHaveBeenCalledWith(
+				'provider-b',
 				expect.any(Function),
 			);
 		});
