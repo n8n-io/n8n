@@ -81,5 +81,9 @@ export default defineConfig({
 	tcr: {
 		testCommand: 'pnpm test:local',
 		workerCount: 1,
+		allowedTestCommands: [
+			'pnpm test:local',
+			'pnpm test:container:sqlite',
+		],
 	},
 });
