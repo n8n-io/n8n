@@ -84,4 +84,19 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 
 		return projectConnections.concat(globalConnections);
 	}
+
+	/**
+	 * Find a connection by its providerKey, but only if it is assigned to the specified project.
+	 * Returns null if not found.
+	 */
+	async findByProviderKeyAndProjectId(
+		providerKey: string,
+		projectId: string,
+	): Promise<SecretsProviderConnection | null> {
+		return await this.createQueryBuilder('connection')
+			.innerJoin('connection.projectAccess', 'projectAccess')
+			.where('connection.providerKey = :providerKey', { providerKey })
+			.andWhere('projectAccess.projectId = :projectId', { projectId })
+			.getOne();
+	}
 }

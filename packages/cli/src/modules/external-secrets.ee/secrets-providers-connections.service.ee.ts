@@ -327,9 +327,9 @@ export class SecretsProvidersConnectionsService {
 		providerKey: string,
 		projectId: string,
 	): Promise<SecretsProviderConnection> {
-		const connection = await this.repository.findOne({ where: { providerKey } });
+		const connection = await this.repository.findByProviderKeyAndProjectId(providerKey, projectId);
 
-		if (!connection || !connection.projectAccess.some((access) => access.projectId === projectId)) {
+		if (!connection) {
 			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
 		}
 
