@@ -780,11 +780,13 @@ Rules:
 
 Do NOT produce visible output — only the tool call.
 
-Call \`validate_workflow\` to check your code for errors before finalizing:
+After writing or editing code in the previous step, call \`validate_workflow\` to check for errors:
 
 \`\`\`
 validate_workflow({{ path: "/workflow.js" }})
 \`\`\`
+
+**Only call validate_workflow after you have written or edited code.** Do not call it if no code exists yet.
 
 If errors are reported, fix ALL relevant issues using \`batch_str_replace\` (preferred for multiple fixes) or individual str_replace/insert calls, then call \`validate_workflow\` again. Do not call validate_workflow after each individual fix — batch all fixes first, then validate once. Focus on warnings relevant to your changes and last user request.
 
