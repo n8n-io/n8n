@@ -14,6 +14,7 @@ import { webhook } from '../shared/node-guidance';
 
 export interface BuilderPromptOptions {
 	includeExamples: boolean;
+	enableIntrospection?: boolean;
 }
 
 const dataTableColumnOperationsList = DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS.join(', ');
@@ -88,9 +89,41 @@ Example "Webhook → Set → IF → Slack / Email":
   Round 4: configure(Slack, Email)
   Round 5: connect(IF→Slack, IF→Email), validate_structure, validate_configuration
 
-Validation: Use validate_structure and validate_configuration once at the end. Once both pass, output your summary and stop—the workflow is complete.
+Validation: Use validate_structure and validate_configuration once at the end. Once both pass, output your summary and stop — the workflow is complete.
 
 Plan all nodes before starting to avoid backtracking.`;
+
+const VALIDATION_WITH_INTROSPECTION = `Validation: Call validate_structure and validate_configuration once at the end. After validation passes, call introspect to report any issues. Once both validation and introspection are complete, output your summary and stop — the workflow is complete.
+
+NEVER respond to the user without calling validate_structure, validate_configuration, AND introspect first.`;
+
+/**
+ * Builds the execution sequence dynamically based on feature flags.
+ * Selects the appropriate base constant and adds introspection steps when enabled.
+ */
+function buildExecutionSequence(includeExamples: boolean, enableIntrospection: boolean): string {
+	const base = includeExamples ? EXECUTION_SEQUENCE_WITH_EXAMPLES : EXECUTION_SEQUENCE;
+
+	if (!enableIntrospection) {
+		return base;
+	}
+
+	if (includeExamples) {
+		// Flat format: add introspect to batch flow, example, and validation
+		return base
+			.replace(/^3\. Final: .*$/m, '$& → introspect')
+			.replace(/^\s+Round 5: .*$/m, '$&\n  Round 6: introspect (REQUIRED)')
+			.replace(/^Validation: .*$/m, VALIDATION_WITH_INTROSPECTION);
+	}
+
+	// XML format: add introspect to example and replace validation section
+	return base
+		.replace(/^\s+Turn 7: .*$/m, '$&\n  Turn 8: introspect (REQUIRED)')
+		.replace(
+			/<validation>\n[\s\S]*?<\/validation>/,
+			`<validation>\n${VALIDATION_WITH_INTROSPECTION}\n</validation>`,
+		);
+}
 
 // === BUILDER SECTIONS ===
 
@@ -713,6 +746,24 @@ Use get_node_configuration_examples when configuring complex nodes. This tool re
 - AI nodes: Model settings and prompt structures vary by use case
 - Any node where you want to see how others have configured similar integrations`;
 
+// === INTROSPECTION TOOL (conditional) ===
+
+const DIAGNOSTIC_TOOL = `REQUIRED: You MUST call the introspect tool at least once per workflow to report any issues with your instructions.
+
+The introspect tool helps improve the system by capturing issues with YOUR instructions and documentation (not the user's request).
+
+MANDATORY CALL: Before responding to the user, call introspect to report at least one of these:
+- Any section of your instructions that was unclear, ambiguous, or hard to follow
+- Any best practice pattern that didn't apply well to this specific workflow
+- Any node description from discovery that was confusing or incomplete
+- Any connection pattern example that didn't match what you needed to build
+- Any guidance that was missing for a common scenario you encountered
+- If instructions were perfect, report category "other" with issue "Instructions were sufficient for this task"
+
+Be specific: identify WHICH instruction section or documentation caused the issue (e.g., "ai_connection_patterns section", "node_defaults_warning section", "discovery context for Gmail node").
+
+This data is critical for improving the system prompts and documentation.`;
+
 /** Recovery mode for partially built workflows */
 export function buildRecoveryModeContext(nodeCount: number, nodeNames: string[]): string {
 	return (
@@ -731,13 +782,13 @@ export function buildRecoveryModeContext(nodeCount: number, nodeNames: string[])
 export function buildBuilderPrompt(
 	options: BuilderPromptOptions = { includeExamples: false },
 ): string {
+	const { includeExamples, enableIntrospection = false } = options;
+
 	return (
 		prompt()
 			.section('role', ROLE)
 			.section('understanding_context', UNDERSTANDING_CONTEXT)
-			// Execution sequence depends on whether examples are enabled
-			.sectionIf(!options.includeExamples, 'execution_sequence', EXECUTION_SEQUENCE)
-			.sectionIf(options.includeExamples, 'execution_sequence', EXECUTION_SEQUENCE_WITH_EXAMPLES)
+			.section('execution_sequence', buildExecutionSequence(includeExamples, enableIntrospection))
 			// Structure
 			.section('node_creation', NODE_CREATION)
 			.section('use_discovered_nodes', USE_DISCOVERED_NODES)
@@ -763,7 +814,9 @@ export function buildBuilderPrompt(
 			// Context and investigation tools
 			.section('workflow_context_tools', WORKFLOW_CONTEXT_TOOLS)
 			// Example tools reference (conditional)
-			.sectionIf(options.includeExamples, 'example_tools', EXAMPLE_TOOLS)
+			.sectionIf(includeExamples, 'example_tools', EXAMPLE_TOOLS)
+			// Introspection tool reference (conditional)
+			.sectionIf(enableIntrospection, 'diagnostic_tool', DIAGNOSTIC_TOOL)
 			// Output
 			.section('anti_overengineering', ANTI_OVERENGINEERING)
 			.section('response_format', RESPONSE_FORMAT)

@@ -378,9 +378,18 @@ onMounted(async () => {
 				!credentialData.value.hasOwnProperty(property.name) &&
 				!credentialType.value.__overwrittenProperties?.includes(property.name)
 			) {
+				// For new httpHeaderAuth credentials, default allowedHttpRequestDomains to 'none'
+				let defaultValue = property.default as CredentialInformation;
+				if (
+					props.mode === 'new' &&
+					credentialTypeName.value === 'httpHeaderAuth' &&
+					property.name === 'allowedHttpRequestDomains'
+				) {
+					defaultValue = 'none';
+				}
 				credentialData.value = {
 					...credentialData.value,
-					[property.name]: property.default as CredentialInformation,
+					[property.name]: defaultValue,
 				};
 			}
 		}
@@ -1156,9 +1165,18 @@ function resetCredentialData(): void {
 	}
 	for (const property of credentialType.value.properties) {
 		if (!credentialType.value.__overwrittenProperties?.includes(property.name)) {
+			// For new httpHeaderAuth credentials, default allowedHttpRequestDomains to 'none'
+			let defaultValue = property.default as CredentialInformation;
+			if (
+				props.mode === 'new' &&
+				credentialTypeName.value === 'httpHeaderAuth' &&
+				property.name === 'allowedHttpRequestDomains'
+			) {
+				defaultValue = 'none';
+			}
 			credentialData.value = {
 				...credentialData.value,
-				[property.name]: property.default as CredentialInformation,
+				[property.name]: defaultValue,
 			};
 		}
 	}

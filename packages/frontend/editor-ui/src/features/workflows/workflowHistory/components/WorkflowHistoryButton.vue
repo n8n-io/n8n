@@ -4,7 +4,7 @@ import { RouterLink } from 'vue-router';
 import { AutoSaveState, VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
@@ -17,7 +17,7 @@ const props = defineProps<{
 }>();
 
 const uiStore = useUIStore();
-const autosaveStore = useWorkflowAutosaveStore();
+const saveStore = useWorkflowSaveStore();
 const isWorkflowSaving = ref(false);
 const { debounce } = useDebounce();
 
@@ -46,7 +46,7 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 	},
 }));
 
-const isScheduled = computed(() => autosaveStore.autoSaveState === AutoSaveState.Scheduled);
+const isScheduled = computed(() => saveStore.autoSaveState === AutoSaveState.Scheduled);
 
 // The button should be disabled until autosave is complete
 const isDisabled = computed(

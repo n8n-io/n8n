@@ -283,7 +283,11 @@ export class WorkflowIndexService {
 		if (node.parameters?.['source'] === 'url') {
 			return undefined; // The sub-workflow is provided via a URL, so no dependency to track.
 		}
-		// If it's none of those sources, it must be 'workflowId'. This might be either directly as a string, or an object.
+		if (!('workflowId' in node.parameters)) {
+			// This happens when the node is first added to the canvas.
+			return undefined; // The workflowId is not present in the parameters, so no dependency to track.
+		}
+		// We have a workflowId. This might be either directly as a string, or an object.
 		if (typeof node.parameters?.['workflowId'] === 'string') {
 			return node.parameters?.['workflowId'];
 		}

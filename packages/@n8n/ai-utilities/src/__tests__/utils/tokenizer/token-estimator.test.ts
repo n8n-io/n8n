@@ -4,7 +4,7 @@ import {
 	estimateTokensByCharCount,
 	estimateTextSplitsByTokens,
 	estimateTokensFromStringList,
-} from '../token-estimator';
+} from 'src/utils/tokenizer/token-estimator';
 
 describe('token-estimator', () => {
 	describe('estimateTokensByCharCount', () => {

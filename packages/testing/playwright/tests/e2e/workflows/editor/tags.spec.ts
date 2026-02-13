@@ -9,7 +9,11 @@ test.beforeEach(async ({ api }) => {
 	await api.tags.deleteAll();
 });
 
-test.describe('Workflow tags - Tag creation', () => {
+test.describe('Workflow tags - Tag creation', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test('should create and attach tags inline, then add more incrementally', async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 

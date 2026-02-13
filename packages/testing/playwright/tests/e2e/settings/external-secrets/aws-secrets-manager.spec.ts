@@ -4,7 +4,11 @@ import type { n8nPage } from '../../../../pages/n8nPage';
 test.use({ capability: 'external-secrets' });
 test.setTimeout(180_000);
 
-test.describe('AWS Secrets Manager with LocalStack @capability:external-secrets @licensed', () => {
+test.describe('AWS Secrets Manager with LocalStack @capability:external-secrets @licensed', {
+	annotation: [
+		{ type: 'owner', description: 'Lifecycle & Governance' },
+	],
+}, () => {
 	const PROVIDER_NAME = 'awsSecretsManager';
 	const PROVIDER_BASE_URL = `/rest/external-secrets/providers/${PROVIDER_NAME}`;
 	const PROVIDER_SETTINGS = {

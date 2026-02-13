@@ -24,7 +24,11 @@ const VALID_NAMES = [
 	['Милорад', 'Филиповић'],
 ];
 
-test.describe('Personal Settings', () => {
+test.describe('Personal Settings', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test('should allow to change first and last name', async ({ n8n }) => {
 		await n8n.settingsPersonal.goToPersonalSettings();
 

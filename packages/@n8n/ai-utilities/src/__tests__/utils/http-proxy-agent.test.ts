@@ -1,6 +1,6 @@
 import { Agent, ProxyAgent } from 'undici';
 
-import { getProxyAgent, proxyFetch } from './http-proxy-agent';
+import { getProxyAgent, proxyFetch } from 'src/utils/http-proxy-agent';
 
 // Mock the dependencies
 jest.mock('undici', () => ({

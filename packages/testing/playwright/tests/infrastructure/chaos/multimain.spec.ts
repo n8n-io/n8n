@@ -9,7 +9,11 @@ test.use({ capability: 'observability' });
 // Vector enriches logs with Docker metadata including container_name
 const getContainerName = (log: LogEntry): string | undefined => log.container_name ?? log.container;
 
-test('Leader election @mode:multi-main @chaostest @capability:observability', async ({
+test('Leader election @mode:multi-main @chaostest @capability:observability', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, async ({
 	n8nContainer,
 	services,
 }) => {

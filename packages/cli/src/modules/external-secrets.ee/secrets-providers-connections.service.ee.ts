@@ -65,9 +65,13 @@ export class SecretsProvidersConnectionsService {
 		}
 
 		// Do a new lookup as we eagerly fill out projects
-		return (await this.repository.findOne({
+		const result = (await this.repository.findOne({
 			where: { providerKey: proposedConnection.providerKey },
 		}))!;
+
+		await this.externalSecretsManager.syncProviderConnection(proposedConnection.providerKey);
+
+		return result;
 	}
 
 	async updateConnection(
@@ -104,6 +108,8 @@ export class SecretsProvidersConnectionsService {
 			await this.projectAccessRepository.setProjectAccess(connection.id, updates.projectIds);
 		}
 
+		await this.externalSecretsManager.syncProviderConnection(providerKey);
+
 		return (await this.repository.findOne({ where: { providerKey } })) as SecretsProviderConnection;
 	}
 
@@ -116,6 +122,8 @@ export class SecretsProvidersConnectionsService {
 
 		await this.projectAccessRepository.deleteByConnectionId(connection.id);
 		await this.repository.remove(connection);
+
+		await this.externalSecretsManager.syncProviderConnection(providerKey);
 
 		return connection;
 	}
