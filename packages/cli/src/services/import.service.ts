@@ -372,6 +372,7 @@ export class ImportService {
 		truncateTables: boolean,
 		keyFilePath?: string,
 		skipMigrationChecks = false,
+		skipDisableForeignKeyConstraints = false,
 	) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
@@ -397,7 +398,9 @@ export class ImportService {
 		}
 
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
-			await this.disableForeignKeyConstraints(transactionManager);
+			if (!skipDisableForeignKeyConstraints) {
+				await this.disableForeignKeyConstraints(transactionManager);
+			}
 
 			// Get import metadata after migration validation
 			const importMetadata = await this.getImportMetadata(inputDir);
@@ -434,7 +437,9 @@ export class ImportService {
 				customEncryptionKey,
 			);
 
-			await this.enableForeignKeyConstraints(transactionManager);
+			if (!skipDisableForeignKeyConstraints) {
+				await this.enableForeignKeyConstraints(transactionManager);
+			}
 		});
 
 		// Cleanup decompressed files after import

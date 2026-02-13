@@ -141,6 +141,33 @@ describe('ImportEntitiesCommand', () => {
 			);
 		});
 
+		it('should skip disabling foreign key constraints when skipDisableForeignKeyConstraints flag is true', async () => {
+			const command = new ImportEntitiesCommand();
+			// @ts-expect-error Protected property
+			command.flags = {
+				inputDir: './outputs',
+				truncateTables: false,
+				skipDisableForeignKeyConstraints: true,
+			};
+			// @ts-expect-error Protected property
+			command.logger = {
+				info: jest.fn(),
+				error: jest.fn(),
+			};
+
+			mockImportService.importEntities.mockResolvedValue(undefined);
+
+			await command.run();
+
+			expect(mockImportService.importEntities).toHaveBeenCalledWith(
+				'./outputs',
+				false,
+				undefined,
+				false,
+				true,
+			);
+		});
+
 		it('should handle service errors gracefully', async () => {
 			const command = new ImportEntitiesCommand();
 			// @ts-expect-error Protected property
