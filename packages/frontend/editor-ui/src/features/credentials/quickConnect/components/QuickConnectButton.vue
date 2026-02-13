@@ -40,7 +40,7 @@ const buttonLabel = computed(() => {
 			/>
 			<N8nButton
 				v-else
-				type="highlightFill"
+				variant="subtle"
 				size="small"
 				:class="$style.quickConnectButton"
 				:disabled="disabled"
@@ -55,19 +55,6 @@ const buttonLabel = computed(() => {
 
 <style lang="scss" module>
 .quickConnectButton {
-	display: inline-flex;
-	align-items: center;
-	--button--color--text: var(--color--neutral-900);
-	--button--border-color: var(--color--neutral-700);
-	--button--color--background: var(--color--neutral-100);
-	--button--color--text--hover: var(--color--neutral-950);
-	--button--border-color--hover: var(--color--neutral-950);
-	--button--color--background--hover: var(--color--neutral-250);
-	--button--color--text--active: var(--color--neutral-950);
-	--button--border-color--active: var(--color--neutral-950);
-	--button--color--background--active: var(--color--neutral-250);
-	--button--color--text--focus: var(--color--neutral-950);
-	--button--border-color--focus: var(--color--neutral-950);
-	--button--color--background--focus: var(--color--neutral-250);
+	color-scheme: light;
 }
 </style>
