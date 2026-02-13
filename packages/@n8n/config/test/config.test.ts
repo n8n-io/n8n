@@ -217,6 +217,7 @@ describe('GlobalConfig', () => {
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
+			health: 'health/live',
 		},
 		cache: {
 			backend: 'auto',
