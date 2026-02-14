@@ -261,16 +261,45 @@ describe('ExportService', () => {
 			);
 		});
 
-		it('should handle database errors gracefully', async () => {
+		it('should skip tables that do not exist in the database', async () => {
+			const outputDir = '/test/output';
+
+			// Mock the migrations table query to fail (table doesn't exist)
+			// Then simulate the first entity table (User) not existing, and the second (Workflow) being empty
+			jest
+				.mocked(mockDataSource.query)
+				.mockImplementationOnce(async () => {
+					// migrations table check
+					throw new Error('Table not found');
+				})
+				.mockImplementationOnce(async () => {
+					// User table - relation does not exist
+					throw new Error('relation "user" does not exist');
+				})
+				.mockResolvedValueOnce([]); // Workflow entities - empty but accessible
+			jest.mocked(readdir).mockResolvedValue([]);
+
+			await exportService.exportEntities(outputDir);
+
+			// Export should complete successfully despite the missing table
+			expect(mockLogger.info).toHaveBeenCalledWith('✅ Task completed successfully! \n');
+			// Should log warning about the missing table
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				expect.stringContaining('not found or not accessible, skipping'),
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+		});
+
+		it('should handle database errors gracefully by skipping inaccessible tables', async () => {
 			const outputDir = '/test/output';
 
 			jest.mocked(mockDataSource.query).mockRejectedValue(new Error('Database connection failed'));
 			jest.mocked(readdir).mockResolvedValue([]);
 
-			// The service will throw the error since it's not caught
-			await expect(exportService.exportEntities(outputDir)).rejects.toThrow(
-				'Database connection failed',
-			);
+			// With per-table error handling, the export completes but skips all failed tables
+			await exportService.exportEntities(outputDir);
+
+			expect(mockLogger.info).toHaveBeenCalledWith('✅ Task completed successfully! \n');
 		});
 
 		it('should handle file system errors gracefully', async () => {
