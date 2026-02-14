@@ -1984,6 +1984,318 @@ export default workflow('test-id', 'Test Workflow')
 			expect(parsedJson.id).toBe('test-id');
 		});
 	});
+
+	describe('shared subnodes (one subnode used by multiple parents)', () => {
+		it('should produce a single language model node connected to both agents', () => {
+			const code = `
+const sharedModel = languageModel({
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1.3,
+  config: {
+    name: 'Shared GPT-4o',
+    parameters: { model: { mode: 'list', value: 'gpt-4o-mini' } }
+  }
+});
+
+const agent1 = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Research Agent',
+    parameters: { text: 'Research this topic' },
+    subnodes: { model: sharedModel }
+  }
+});
+
+const agent2 = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Writing Agent',
+    parameters: { text: 'Write about this topic' },
+    subnodes: { model: sharedModel }
+  }
+});
+
+export default workflow('shared-model-test', 'Shared Model Test')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } })
+    .to([agent1, agent2]));
+`;
+			const parsedJson = parseWorkflowCode(code);
+
+			// Should have exactly 4 nodes: trigger, 2 agents, 1 shared model
+			expect(parsedJson.nodes).toHaveLength(4);
+
+			// Only ONE language model node should exist
+			const modelNodes = parsedJson.nodes.filter(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			);
+			expect(modelNodes).toHaveLength(1);
+			expect(modelNodes[0].name).toBe('Shared GPT-4o');
+
+			// The shared model should have ai_languageModel connections to BOTH agents
+			const modelConnections = parsedJson.connections['Shared GPT-4o']?.ai_languageModel?.[0];
+			expect(modelConnections).toBeDefined();
+			expect(modelConnections).toHaveLength(2);
+			const targetAgents = modelConnections!.map((c) => c.node).sort();
+			expect(targetAgents).toEqual(['Research Agent', 'Writing Agent']);
+		});
+
+		it('should produce a single tool node connected to both agents', () => {
+			const code = `
+const sharedCalculator = tool({
+  type: '@n8n/n8n-nodes-langchain.toolCalculator',
+  version: 1,
+  config: { name: 'Shared Calculator' }
+});
+
+const agent1 = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Math Agent',
+    parameters: { text: 'Calculate this' },
+    subnodes: {
+      model: languageModel({ type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.3, config: { name: 'Model 1', parameters: { model: { mode: 'list', value: 'gpt-4o-mini' } } } }),
+      tools: [sharedCalculator]
+    }
+  }
+});
+
+const agent2 = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Science Agent',
+    parameters: { text: 'Calculate that' },
+    subnodes: {
+      model: languageModel({ type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.3, config: { name: 'Model 2', parameters: { model: { mode: 'list', value: 'gpt-4o-mini' } } } }),
+      tools: [sharedCalculator]
+    }
+  }
+});
+
+export default workflow('shared-tool-test', 'Shared Tool Test')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } })
+    .to([agent1, agent2]));
+`;
+			const parsedJson = parseWorkflowCode(code);
+
+			// Should have 6 nodes: trigger, 2 agents, 2 models, 1 shared tool
+			expect(parsedJson.nodes).toHaveLength(6);
+
+			// Only ONE calculator tool node should exist
+			const toolNodes = parsedJson.nodes.filter(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.toolCalculator',
+			);
+			expect(toolNodes).toHaveLength(1);
+			expect(toolNodes[0].name).toBe('Shared Calculator');
+
+			// The shared tool should have ai_tool connections to BOTH agents
+			const toolConnections = parsedJson.connections['Shared Calculator']?.ai_tool?.[0];
+			expect(toolConnections).toBeDefined();
+			expect(toolConnections).toHaveLength(2);
+			const targetAgents = toolConnections!.map((c) => c.node).sort();
+			expect(targetAgents).toEqual(['Math Agent', 'Science Agent']);
+		});
+
+		it('should roundtrip JSON with shared language model through codegen', () => {
+			// JSON → code → JSON: A single language model connected to 2 agents
+			const originalJson: WorkflowJSON = {
+				id: 'shared-model-roundtrip',
+				name: 'Shared Model Roundtrip',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'agent-1',
+						name: 'Research Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3.1,
+						position: [200, -100],
+						parameters: { text: 'Research this' },
+					},
+					{
+						id: 'agent-2',
+						name: 'Writing Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3.1,
+						position: [200, 100],
+						parameters: { text: 'Write about this' },
+					},
+					{
+						id: 'model-1',
+						name: 'Shared GPT-4o',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1.3,
+						position: [200, 0],
+						parameters: { model: { mode: 'list', value: 'gpt-4o-mini' } },
+					},
+				],
+				connections: {
+					Start: {
+						main: [
+							[
+								{ node: 'Research Agent', type: 'main', index: 0 },
+								{ node: 'Writing Agent', type: 'main', index: 0 },
+							],
+						],
+					},
+					// Shared model connects to BOTH agents
+					'Shared GPT-4o': {
+						ai_languageModel: [
+							[
+								{ node: 'Research Agent', type: 'ai_languageModel', index: 0 },
+								{ node: 'Writing Agent', type: 'ai_languageModel', index: 0 },
+							],
+						],
+					},
+				},
+			};
+
+			const code = generateWorkflowCode(originalJson);
+			const parsedJson = parseWorkflowCode(code);
+
+			// Should have exactly 4 nodes
+			expect(parsedJson.nodes).toHaveLength(4);
+
+			// Only ONE language model node
+			const modelNodes = parsedJson.nodes.filter(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			);
+			expect(modelNodes).toHaveLength(1);
+
+			// The shared model should connect to BOTH agents
+			const modelConnections = parsedJson.connections['Shared GPT-4o']?.ai_languageModel?.[0];
+			expect(modelConnections).toBeDefined();
+			expect(modelConnections).toHaveLength(2);
+			const targetAgents = modelConnections!.map((c) => c.node).sort();
+			expect(targetAgents).toEqual(['Research Agent', 'Writing Agent']);
+		});
+
+		it('should produce a single embedding node connected to both vector stores', () => {
+			const code = `
+const sharedEmbedding = embedding({
+  type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+  version: 1.2,
+  config: {
+    name: 'Shared Embeddings',
+    parameters: { model: 'text-embedding-3-small' }
+  }
+});
+
+const vectorStore1 = node({
+  type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+  version: 1,
+  config: {
+    name: 'Vector Store 1',
+    parameters: {},
+    subnodes: { embedding: sharedEmbedding }
+  }
+});
+
+const vectorStore2 = node({
+  type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+  version: 1,
+  config: {
+    name: 'Vector Store 2',
+    parameters: {},
+    subnodes: { embedding: sharedEmbedding }
+  }
+});
+
+export default workflow('shared-embedding-test', 'Shared Embedding Test')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } })
+    .to([vectorStore1, vectorStore2]));
+`;
+			const parsedJson = parseWorkflowCode(code);
+
+			// Should have 4 nodes: trigger, 2 vector stores, 1 shared embedding
+			expect(parsedJson.nodes).toHaveLength(4);
+
+			// Only ONE embedding node should exist
+			const embeddingNodes = parsedJson.nodes.filter(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+			);
+			expect(embeddingNodes).toHaveLength(1);
+			expect(embeddingNodes[0].name).toBe('Shared Embeddings');
+
+			// The shared embedding should have ai_embedding connections to BOTH vector stores
+			const embeddingConnections = parsedJson.connections['Shared Embeddings']?.ai_embedding?.[0];
+			expect(embeddingConnections).toBeDefined();
+			expect(embeddingConnections).toHaveLength(2);
+			const targetStores = embeddingConnections!.map((c) => c.node).sort();
+			expect(targetStores).toEqual(['Vector Store 1', 'Vector Store 2']);
+		});
+
+		it('should handle same-named agents sharing a language model (auto-rename scenario)', () => {
+			const code = `
+const sharedModel = languageModel({
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1.3,
+  config: {
+    name: 'OpenAI Chat Model',
+    parameters: { model: { mode: 'list', value: 'gpt-4o' } }
+  }
+});
+
+const agent1 = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Generate Story Script',
+    parameters: { text: 'Write act 1' },
+    subnodes: { model: sharedModel }
+  }
+});
+
+const agent2 = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Generate Story Script',
+    parameters: { text: 'Write act 2' },
+    subnodes: { model: sharedModel }
+  }
+});
+
+export default workflow('same-name-agents', 'Same Name Agents')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } })
+    .to([agent1, agent2]));
+`;
+			const parsedJson = parseWorkflowCode(code);
+
+			// Should have 4 nodes: trigger, 2 agents (one renamed), 1 shared model
+			expect(parsedJson.nodes).toHaveLength(4);
+
+			// Two agent nodes should exist, one auto-renamed
+			const agentNodes = parsedJson.nodes.filter(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.agent',
+			);
+			expect(agentNodes).toHaveLength(2);
+			const agentNames = agentNodes.map((n) => n.name).sort();
+			expect(agentNames).toEqual(['Generate Story Script', 'Generate Story Script 1']);
+
+			// Only ONE language model node
+			const modelNodes = parsedJson.nodes.filter(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			);
+			expect(modelNodes).toHaveLength(1);
+
+			// The shared model should connect to BOTH agents (using their actual map keys)
+			const modelConnections = parsedJson.connections['OpenAI Chat Model']?.ai_languageModel?.[0];
+			expect(modelConnections).toBeDefined();
+			expect(modelConnections).toHaveLength(2);
+			const targetAgents = modelConnections!.map((c) => c.node).sort();
+			expect(targetAgents).toEqual(['Generate Story Script', 'Generate Story Script 1']);
+		});
+	});
 });
 
 describe('Codegen Roundtrip with Real Workflows', () => {
