@@ -1,6 +1,6 @@
 import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { Role } from '@n8n/permissions';
+import { type Role } from '@n8n/permissions';
 
 import { RoleService } from '@/services/role.service';
 
@@ -25,6 +25,8 @@ describe('RoleController', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		// Enable CUSTOM_ROLES license for all tests by default
+		testServer.license.enable('feat:customRoles');
 	});
 
 	afterEach(async () => {
@@ -102,6 +104,251 @@ describe('RoleController', () => {
 			});
 
 			expect(roleService.getAllRoles).toHaveBeenCalledTimes(1);
+		});
+
+		describe('GET /roles with withUsageCount parameter', () => {
+			it('should pass withUsageCount=true to service and include usage counts in response', async () => {
+				//
+				// ARRANGE
+				//
+				const mockRolesWithUsage: Role[] = [
+					{
+						slug: 'global:admin',
+						displayName: 'Global Admin',
+						description: 'Global administrator',
+						systemRole: true,
+						roleType: 'global',
+						scopes: ['user:manage', 'workflow:create'],
+						licensed: true,
+						usedByUsers: 5,
+					},
+					{
+						slug: 'project:editor',
+						displayName: 'Project Editor',
+						description: 'Project editor role',
+						systemRole: true,
+						roleType: 'project',
+						scopes: ['workflow:create', 'workflow:edit'],
+						licensed: true,
+						usedByUsers: 12,
+					},
+				];
+
+				roleService.getAllRoles.mockResolvedValue(mockRolesWithUsage);
+
+				//
+				// ACT
+				//
+				const response = await memberAgent.get('/roles?withUsageCount=true').expect(200);
+
+				//
+				// ASSERT
+				//
+				expect(response.body).toEqual({
+					data: {
+						global: [mockRolesWithUsage[0]], // global:admin with usedByUsers
+						project: [mockRolesWithUsage[1]], // project:editor with usedByUsers
+						credential: [],
+						workflow: [],
+					},
+				});
+
+				expect(roleService.getAllRoles).toHaveBeenCalledWith(true);
+			});
+
+			it('should pass withUsageCount=false to service and exclude usage counts', async () => {
+				//
+				// ARRANGE
+				//
+				const mockRolesWithoutUsage: Role[] = [
+					{
+						slug: 'global:admin',
+						displayName: 'Global Admin',
+						description: 'Global administrator',
+						systemRole: true,
+						roleType: 'global',
+						scopes: ['user:manage', 'workflow:create'],
+						licensed: true,
+					},
+					{
+						slug: 'project:editor',
+						displayName: 'Project Editor',
+						description: 'Project editor role',
+						systemRole: true,
+						roleType: 'project',
+						scopes: ['workflow:create', 'workflow:edit'],
+						licensed: true,
+					},
+				];
+
+				roleService.getAllRoles.mockResolvedValue(mockRolesWithoutUsage);
+
+				//
+				// ACT
+				//
+				const response = await memberAgent.get('/roles?withUsageCount=false').expect(200);
+
+				//
+				// ASSERT
+				//
+				expect(response.body).toEqual({
+					data: {
+						global: [mockRolesWithoutUsage[0]], // global:admin without usedByUsers
+						project: [mockRolesWithoutUsage[1]], // project:editor without usedByUsers
+						credential: [],
+						workflow: [],
+					},
+				});
+
+				expect(roleService.getAllRoles).toHaveBeenCalledWith(false);
+			});
+
+			it('should default to withUsageCount=false when parameter is omitted', async () => {
+				//
+				// ARRANGE
+				//
+				const mockRoles: Role[] = [
+					{
+						slug: 'global:admin',
+						displayName: 'Global Admin',
+						description: 'Global administrator',
+						systemRole: true,
+						roleType: 'global',
+						scopes: ['user:manage', 'workflow:create'],
+						licensed: true,
+					},
+				];
+
+				roleService.getAllRoles.mockResolvedValue(mockRoles);
+
+				//
+				// ACT
+				//
+				const response = await memberAgent.get('/roles').expect(200);
+
+				//
+				// ASSERT
+				//
+				expect(response.body).toEqual({
+					data: {
+						global: [mockRoles[0]], // global:admin without usedByUsers
+						project: [],
+						credential: [],
+						workflow: [],
+					},
+				});
+
+				expect(roleService.getAllRoles).toHaveBeenCalledWith(false);
+			});
+
+			it('should maintain grouped response structure with usage counts for all role types', async () => {
+				//
+				// ARRANGE
+				//
+				const mockRolesWithUsageAllTypes: Role[] = [
+					{
+						slug: 'global:admin',
+						displayName: 'Global Admin',
+						description: 'Global administrator',
+						systemRole: true,
+						roleType: 'global',
+						scopes: ['user:manage', 'workflow:create'],
+						licensed: true,
+						usedByUsers: 3,
+					},
+					{
+						slug: 'project:editor',
+						displayName: 'Project Editor',
+						description: 'Project editor role',
+						systemRole: true,
+						roleType: 'project',
+						scopes: ['workflow:create', 'workflow:edit'],
+						licensed: true,
+						usedByUsers: 8,
+					},
+					{
+						slug: 'credential:owner',
+						displayName: 'Credential Owner',
+						description: 'Credential owner',
+						systemRole: true,
+						roleType: 'credential',
+						scopes: ['credential:read', 'credential:write'],
+						licensed: true,
+						usedByUsers: 15,
+					},
+					{
+						slug: 'workflow:editor',
+						displayName: 'Workflow Editor',
+						description: 'Workflow editor',
+						systemRole: true,
+						roleType: 'workflow',
+						scopes: ['workflow:read', 'workflow:edit'],
+						licensed: true,
+						usedByUsers: 7,
+					},
+				];
+
+				roleService.getAllRoles.mockResolvedValue(mockRolesWithUsageAllTypes);
+
+				//
+				// ACT
+				//
+				const response = await memberAgent.get('/roles?withUsageCount=true').expect(200);
+
+				//
+				// ASSERT
+				//
+				expect(response.body).toEqual({
+					data: {
+						global: [mockRolesWithUsageAllTypes[0]], // global:admin with usedByUsers: 3
+						project: [mockRolesWithUsageAllTypes[1]], // project:editor with usedByUsers: 8
+						credential: [mockRolesWithUsageAllTypes[2]], // credential:owner with usedByUsers: 15
+						workflow: [mockRolesWithUsageAllTypes[3]], // workflow:editor with usedByUsers: 7
+					},
+				});
+
+				expect(roleService.getAllRoles).toHaveBeenCalledWith(true);
+			});
+
+			it('should handle invalid withUsageCount parameter values gracefully', async () => {
+				//
+				// ARRANGE & ACT & ASSERT
+				//
+				// Should return 400 for invalid parameter values due to DTO validation
+				await memberAgent.get('/roles?withUsageCount=invalid').expect(400);
+
+				// Service should not be called when validation fails
+				expect(roleService.getAllRoles).not.toHaveBeenCalled();
+			});
+
+			it('should work with both member and owner agents when withUsageCount=true', async () => {
+				//
+				// ARRANGE
+				//
+				const mockRolesWithUsage: Role[] = [
+					{
+						slug: 'project:admin',
+						displayName: 'Project Admin',
+						description: 'Project administrator',
+						systemRole: true,
+						roleType: 'project',
+						scopes: ['project:manage'],
+						licensed: true,
+						usedByUsers: 4,
+					},
+				];
+
+				roleService.getAllRoles.mockResolvedValue(mockRolesWithUsage);
+
+				//
+				// ACT & ASSERT
+				//
+				await ownerAgent.get('/roles?withUsageCount=true').expect(200);
+				await memberAgent.get('/roles?withUsageCount=true').expect(200);
+
+				expect(roleService.getAllRoles).toHaveBeenNthCalledWith(1, true);
+				expect(roleService.getAllRoles).toHaveBeenNthCalledWith(2, true);
+			});
 		});
 
 		it('should return empty categories when no roles exist', async () => {
@@ -248,6 +495,253 @@ describe('RoleController', () => {
 			expect(response.body).toEqual({ data: mockRole });
 			// Parameter verification skipped - test framework issue
 		});
+
+		describe('GET /roles/:slug with withUsageCount parameter', () => {
+			it('should pass withUsageCount=true to service and include usage count in response', async () => {
+				//
+				// ARRANGE
+				//
+				const roleSlug = 'project:admin';
+				const mockRoleWithUsage: Role = {
+					slug: roleSlug,
+					displayName: 'Project Admin',
+					description: 'Project administrator role',
+					systemRole: true,
+					roleType: 'project',
+					scopes: ['project:manage', 'workflow:create'],
+					licensed: true,
+					usedByUsers: 8,
+				};
+
+				roleService.getRole.mockResolvedValue(mockRoleWithUsage);
+
+				//
+				// ACT
+				//
+				const response = await memberAgent
+					.get(`/roles/${roleSlug}?withUsageCount=true`)
+					.expect(200);
+
+				//
+				// ASSERT
+				//
+				expect(response.body).toEqual({ data: mockRoleWithUsage });
+				expect(roleService.getRole).toHaveBeenCalledTimes(1);
+				expect(roleService.getRole).toHaveBeenCalledWith(roleSlug, true);
+			});
+
+			it('should pass withUsageCount=false to service and exclude usage count', async () => {
+				//
+				// ARRANGE
+				//
+				const roleSlug = 'project:admin';
+				const mockRoleWithoutUsage: Role = {
+					slug: roleSlug,
+					displayName: 'Project Admin',
+					description: 'Project administrator role',
+					systemRole: true,
+					roleType: 'project',
+					scopes: ['project:manage', 'workflow:create'],
+					licensed: true,
+				};
+
+				roleService.getRole.mockResolvedValue(mockRoleWithoutUsage);
+
+				//
+				// ACT
+				//
+				const response = await memberAgent
+					.get(`/roles/${roleSlug}?withUsageCount=false`)
+					.expect(200);
+
+				//
+				// ASSERT
+				//
+				expect(response.body).toEqual({ data: mockRoleWithoutUsage });
+				expect(roleService.getRole).toHaveBeenCalledTimes(1);
+				expect(roleService.getRole).toHaveBeenCalledWith(roleSlug, false);
+			});
+
+			it('should default to withUsageCount=false when parameter is omitted', async () => {
+				//
+				// ARRANGE
+				//
+				const roleSlug = 'project:admin';
+				const mockRoleWithoutUsage: Role = {
+					slug: roleSlug,
+					displayName: 'Project Admin',
+					description: 'Project administrator role',
+					systemRole: true,
+					roleType: 'project',
+					scopes: ['project:manage', 'workflow:create'],
+					licensed: true,
+				};
+
+				roleService.getRole.mockResolvedValue(mockRoleWithoutUsage);
+
+				//
+				// ACT
+				//
+				const response = await memberAgent.get(`/roles/${roleSlug}`).expect(200);
+
+				//
+				// ASSERT
+				//
+				expect(response.body).toEqual({ data: mockRoleWithoutUsage });
+				expect(roleService.getRole).toHaveBeenCalledTimes(1);
+				expect(roleService.getRole).toHaveBeenCalledWith(roleSlug, false);
+			});
+
+			it('should include usage count in response when withUsageCount=true', async () => {
+				//
+				// ARRANGE
+				//
+				const roleSlug = 'project:editor';
+				const mockRoleWithUsage: Role = {
+					slug: roleSlug,
+					displayName: 'Project Editor',
+					description: 'Project editor role',
+					systemRole: true,
+					roleType: 'project',
+					scopes: ['workflow:create', 'workflow:edit'],
+					licensed: true,
+					usedByUsers: 15,
+				};
+
+				roleService.getRole.mockResolvedValue(mockRoleWithUsage);
+
+				//
+				// ACT
+				//
+				const response = await memberAgent
+					.get(`/roles/${roleSlug}?withUsageCount=true`)
+					.expect(200);
+
+				//
+				// ASSERT
+				//
+				expect(response.body).toEqual({ data: mockRoleWithUsage });
+				expect(response.body.data.usedByUsers).toBe(15);
+				expect(roleService.getRole).toHaveBeenCalledTimes(1);
+				expect(roleService.getRole).toHaveBeenCalledWith(roleSlug, true);
+			});
+
+			it('should work with URL-encoded slugs and withUsageCount parameter', async () => {
+				//
+				// ARRANGE
+				//
+				const roleSlug = 'project:custom-role';
+				const encodedSlug = encodeURIComponent(roleSlug);
+				const mockRoleWithUsage: Role = {
+					slug: roleSlug,
+					displayName: 'Custom Role',
+					description: 'A custom project role',
+					systemRole: false,
+					roleType: 'project',
+					scopes: ['workflow:read'],
+					licensed: true,
+					usedByUsers: 3,
+				};
+
+				roleService.getRole.mockResolvedValue(mockRoleWithUsage);
+
+				//
+				// ACT
+				//
+				const response = await memberAgent
+					.get(`/roles/${encodedSlug}?withUsageCount=true`)
+					.expect(200);
+
+				//
+				// ASSERT
+				//
+				expect(response.body).toEqual({ data: mockRoleWithUsage });
+				expect(response.body.data.usedByUsers).toBe(3);
+				expect(roleService.getRole).toHaveBeenCalledTimes(1);
+				expect(roleService.getRole).toHaveBeenCalledWith(roleSlug, true);
+			});
+
+			it('should handle invalid withUsageCount parameter values gracefully', async () => {
+				//
+				// ARRANGE
+				//
+				const roleSlug = 'project:admin';
+
+				//
+				// ACT & ASSERT
+				//
+				// Should return 400 for invalid parameter values due to DTO validation
+				await memberAgent.get(`/roles/${roleSlug}?withUsageCount=invalid`).expect(400);
+
+				// Service should not be called when validation fails
+				expect(roleService.getRole).not.toHaveBeenCalled();
+			});
+
+			it('should work with both member and owner agents when withUsageCount=true', async () => {
+				//
+				// ARRANGE
+				//
+				const roleSlug = 'project:viewer';
+				const mockRoleWithUsage: Role = {
+					slug: roleSlug,
+					displayName: 'Project Viewer',
+					description: 'Project viewer role',
+					systemRole: true,
+					roleType: 'project',
+					scopes: ['workflow:read'],
+					licensed: true,
+					usedByUsers: 22,
+				};
+
+				roleService.getRole.mockResolvedValue(mockRoleWithUsage);
+
+				//
+				// ACT & ASSERT
+				//
+				await ownerAgent.get(`/roles/${roleSlug}?withUsageCount=true`).expect(200);
+				await memberAgent.get(`/roles/${roleSlug}?withUsageCount=true`).expect(200);
+
+				expect(roleService.getRole).toHaveBeenCalledTimes(2);
+				expect(roleService.getRole).toHaveBeenNthCalledWith(1, roleSlug, true);
+				expect(roleService.getRole).toHaveBeenNthCalledWith(2, roleSlug, true);
+			});
+
+			it('should maintain single role response structure with usage count', async () => {
+				//
+				// ARRANGE
+				//
+				const roleSlug = 'credential:owner';
+				const mockRoleWithUsage: Role = {
+					slug: roleSlug,
+					displayName: 'Credential Owner',
+					description: 'Credential owner role',
+					systemRole: true,
+					roleType: 'credential',
+					scopes: ['credential:read', 'credential:write'],
+					licensed: true,
+					usedByUsers: 7,
+				};
+
+				roleService.getRole.mockResolvedValue(mockRoleWithUsage);
+
+				//
+				// ACT
+				//
+				const response = await memberAgent
+					.get(`/roles/${roleSlug}?withUsageCount=true`)
+					.expect(200);
+
+				//
+				// ASSERT
+				//
+				expect(response.body).toEqual({ data: mockRoleWithUsage });
+				expect(response.body.data).toHaveProperty('slug', roleSlug);
+				expect(response.body.data).toHaveProperty('displayName', 'Credential Owner');
+				expect(response.body.data).toHaveProperty('usedByUsers', 7);
+				expect(roleService.getRole).toHaveBeenCalledTimes(1);
+				expect(roleService.getRole).toHaveBeenCalledWith(roleSlug, true);
+			});
+		});
 	});
 
 	describe('POST /roles', () => {
@@ -312,7 +806,7 @@ describe('RoleController', () => {
 			//
 			expect(response.body).toEqual({ data: mockCreatedRole });
 			// Parameter verification skipped - test framework issue
-			expect(roleService.createCustomRole).toHaveBeenCalledTimes(1);
+			expect(roleService.createCustomRole).toHaveBeenCalledWith(createRoleDto);
 		});
 
 		it('should create role without description', async () => {
@@ -346,6 +840,7 @@ describe('RoleController', () => {
 			// ASSERT
 			//
 			expect(response.body).toEqual({ data: mockCreatedRole });
+			expect(roleService.createCustomRole).toHaveBeenCalledWith(createRoleDto);
 		});
 
 		it('should handle service errors gracefully', async () => {
@@ -396,7 +891,7 @@ describe('RoleController', () => {
 			const updateRoleDto: UpdateRoleDto = {
 				displayName: 'Updated Role Name',
 				description: 'Updated description',
-				scopes: ['workflow:read', 'workflow:edit'],
+				scopes: ['workflow:read', 'workflow:update'],
 			};
 
 			const mockUpdatedRole: Role = {
@@ -421,7 +916,7 @@ describe('RoleController', () => {
 			//
 			expect(response.body).toEqual({ data: mockUpdatedRole });
 			// Parameter verification skipped - test framework issue
-			expect(roleService.updateCustomRole).toHaveBeenCalledTimes(1);
+			expect(roleService.updateCustomRole).toHaveBeenCalledWith(roleSlug, updateRoleDto);
 		});
 
 		it('should update only provided fields', async () => {
@@ -454,6 +949,7 @@ describe('RoleController', () => {
 			// ASSERT
 			//
 			expect(response.body).toEqual({ data: mockUpdatedRole });
+			expect(roleService.updateCustomRole).toHaveBeenCalledWith(roleSlug, updateRoleDto);
 		});
 
 		it('should handle service errors gracefully', async () => {
@@ -624,6 +1120,107 @@ describe('RoleController', () => {
 			// ASSERT
 			//
 			expect(response.body).toEqual({ data: mockRole });
+		});
+	});
+
+	describe('License enforcement for @Licensed(LICENSE_FEATURES.CUSTOM_ROLES)', () => {
+		describe('POST /roles', () => {
+			it('should return 403 when CUSTOM_ROLES license is disabled', async () => {
+				//
+				// ARRANGE
+				//
+				testServer.license.disable('feat:customRoles');
+
+				const createRoleDto = {
+					displayName: 'Test Role',
+					roleType: 'project' as const,
+					scopes: ['workflow:read'],
+				};
+
+				//
+				// ACT & ASSERT
+				//
+				await ownerAgent.post('/roles').send(createRoleDto).expect(403);
+
+				// Verify service method was not called due to license check
+				expect(roleService.createCustomRole).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('PATCH /roles/:slug', () => {
+			it('should return 403 when CUSTOM_ROLES license is disabled', async () => {
+				//
+				// ARRANGE
+				//
+				testServer.license.disable('feat:customRoles');
+
+				const roleSlug = 'project:test-role';
+				const updateRoleDto = {
+					displayName: 'Updated Role',
+					scopes: ['workflow:read', 'workflow:edit'],
+				};
+
+				//
+				// ACT & ASSERT
+				//
+				await ownerAgent.patch(`/roles/${roleSlug}`).send(updateRoleDto).expect(403);
+
+				// Verify service method was not called due to license check
+				expect(roleService.updateCustomRole).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('DELETE /roles/:slug', () => {
+			it('should return 403 when CUSTOM_ROLES license is disabled', async () => {
+				//
+				// ARRANGE
+				//
+				testServer.license.disable('feat:customRoles');
+
+				const roleSlug = 'project:test-role';
+
+				//
+				// ACT & ASSERT
+				//
+				await ownerAgent.delete(`/roles/${roleSlug}`).expect(403);
+
+				// Verify service method was not called due to license check
+				expect(roleService.removeCustomRole).not.toHaveBeenCalled();
+			});
+		});
+
+		it('should allow non-licensed methods to work when CUSTOM_ROLES is disabled', async () => {
+			//
+			// ARRANGE
+			//
+			testServer.license.disable('feat:customRoles');
+
+			const mockRoles = [
+				{
+					slug: 'project:admin',
+					displayName: 'Project Admin',
+					description: 'Project administrator',
+					systemRole: true,
+					roleType: 'project' as const,
+					scopes: ['project:manage'],
+					licensed: true,
+				},
+			];
+
+			roleService.getAllRoles.mockResolvedValue(mockRoles);
+
+			//
+			// ACT & ASSERT
+			//
+			// GET /roles should work (no @Licensed decorator)
+			await ownerAgent.get('/roles').expect(200);
+			expect(roleService.getAllRoles).toHaveBeenCalledTimes(1);
+
+			// GET /roles/:slug should work (no @Licensed decorator)
+			const mockRole = mockRoles[0];
+			roleService.getRole.mockResolvedValue(mockRole);
+			await ownerAgent.get('/roles/project:admin').expect(200);
+			expect(roleService.getRole).toHaveBeenCalledTimes(1);
 		});
 	});
 });

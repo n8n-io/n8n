@@ -227,7 +227,7 @@ tests/
 |------|---------|---------|
 | **Page Objects** | `{PageName}Page.ts` | `CredentialsPage.ts` |
 | **Composables** | `{Domain}Composer.ts` | `WorkflowComposer.ts` |
-| **Test Files** | `{number}-{feature}.spec.ts` | `1-workflows.spec.ts` |
+| **Test Files** | `{feature}.spec.ts` | `workflows.spec.ts` |
 | **Test IDs** | `kebab-case` | `data-test-id="save-button"` |
 
 ---
@@ -302,30 +302,26 @@ export class ProjectComposer {
 
 ### When Writing Tests
 
-#### UI Tests
+#### E2E Tests
 ```typescript
-// ✅ GOOD: From 1-workflows.spec.ts
+// ✅ GOOD: From workflows/list/workflows.spec.ts
 test('should create a new workflow using add workflow button', async ({ n8n }) => {
-  await n8n.workflows.clickAddWorklowButton();
+  await n8n.workflows.addResource.workflow();
 
   const workflowName = `Test Workflow ${Date.now()}`;
   await n8n.canvas.setWorkflowName(workflowName);
-  await n8n.canvas.clickSaveWorkflowButton();
-
-  await expect(
-    n8n.notifications.notificationContainerByText('Workflow successfully created'),
-  ).toBeVisible();
+  await n8n.page.keyboard.press('Enter');
+  await n8n.canvas.waitForSaveWorkflowCompleted();
 });
 
-// ✅ GOOD: From 28-debug.spec.ts - Using helper functions
+// ✅ GOOD: From workflows/editor/execution/debug.spec.ts - Using helper functions
 async function createBasicWorkflow(n8n, url = URLS.FAILING) {
-  await n8n.workflows.clickAddWorklowButton();
+  await n8n.navigate.toWorkflow('new');
   await n8n.canvas.addNode('Manual Trigger');
   await n8n.canvas.addNode('HTTP Request');
   await n8n.ndv.fillParameterInput('URL', url);
+  await n8n.canvas.waitForSaveWorkflowCompleted();
   await n8n.ndv.close();
-  await n8n.canvas.clickSaveWorkflowButton();
-  await n8n.notifications.waitForNotificationAndClose(NOTIFICATIONS.WORKFLOW_CREATED);
 }
 
 test('should enter debug mode for failed executions', async ({ n8n }) => {
@@ -343,17 +339,17 @@ test('should create workflow via API, activate it, trigger webhook externally @a
   const workflowDefinition = JSON.parse(
     readFileSync(resolveFromRoot('workflows', 'simple-webhook-test.json'), 'utf8'),
   );
-  
+
   const createdWorkflow = await api.workflowApi.createWorkflow(workflowDefinition);
   await api.workflowApi.setActive(createdWorkflow.id, true);
-  
+
   const testPayload = { message: 'Hello from Playwright test' };
   const webhookResponse = await api.workflowApi.triggerWebhook('test-webhook', { data: testPayload });
   expect(webhookResponse.ok()).toBe(true);
-  
+
   const execution = await api.workflowApi.waitForExecution(createdWorkflow.id, 10000);
   expect(execution.status).toBe('success');
-  
+
   const executionDetails = await api.workflowApi.getExecution(execution.id);
   expect(executionDetails.data).toContain('Hello from Playwright test');
 });
@@ -371,12 +367,12 @@ async fillParameterInput(labelName: string, value: string) {
 }
 
 async clickBackToCanvasButton() {
-  await this.clickByTestId('back-to-canvas');
+  await this.clickByTestId('ndv-close-button');
 }
 
 // ❌ AVOID
 async badExample() {
-  await this.page.getByTestId('back-to-canvas').click();
+  await this.page.getByTestId('ndv-close-button').click();
 }
 ```
 
@@ -411,9 +407,8 @@ export const CODE_NODE_NAME = 'Code';
 export const SET_NODE_NAME = 'Set';
 export const HTTP_REQUEST_NODE_NAME = 'HTTP Request';
 
-// From 28-debug.spec.ts
+// From workflows/editor/execution/debug.spec.ts
 const NOTIFICATIONS = {
-  WORKFLOW_CREATED: 'Workflow successfully created',
   EXECUTION_IMPORTED: 'Execution data imported',
   PROBLEM_IN_NODE: 'Problem in node',
   SUCCESSFUL: 'Successful',
@@ -477,7 +472,7 @@ async clickArchiveMenuItem() {
 
 ### ❌ Don't Use Raw Selectors in Tests
 ```typescript
-// BAD: From 1-workflows.spec.ts
+// BAD: From workflows/list/workflows.spec.ts
 await expect(n8n.page.getByText('No workflows found')).toBeVisible();
 
 // GOOD: Add getter to page object
@@ -525,7 +520,8 @@ Here's a complete example from our codebase showing all layers:
 export class ProjectSettingsPage extends BasePage {
   // Simple action methods only
   async fillProjectName(name: string) {
-    await this.page.getByTestId('project-settings-name-input').locator('input').fill(name);
+    // Prefer stable ID selectors on the wrapper element and then target the inner control
+    await this.page.locator('#projectName input').fill(name);
   }
 
   async clickSaveButton() {
@@ -551,7 +547,7 @@ export class ProjectComposer {
   }
 }
 
-// 3. Test (39-projects.spec.ts)
+// 3. Test (projects/projects.spec.ts)
 test('should filter credentials by project ID', async ({ n8n, api }) => {
   const { projectName, projectId } = await n8n.projectComposer.createProject();
   await n8n.projectComposer.addCredentialToProject(
@@ -561,7 +557,7 @@ test('should filter credentials by project ID', async ({ n8n, api }) => {
     NOTION_API_KEY,
   );
 
-  const credentials = await getCredentialsForProject(api, projectId);
+  const credentials = await n8n.api.credentials.getCredentialsByProject(projectId);
   expect(credentials).toHaveLength(1);
 });
 ```

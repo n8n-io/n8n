@@ -1,0 +1,14 @@
+{
+	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.json"],
+	"compilerOptions": {
+		"composite": true,
+		"rootDir": ".",
+		"paths": {
+			"src/*": ["./src/*"],
+			"src": ["./src"]
+		},
+		"outDir": "./dist_examples",
+		"tsBuildInfoFile": "dist_examples/build.tsbuildinfo"
+	},
+	"exclude": ["src/**/__tests__/**", "src/**/*.test.ts", "integration-tests/**/*.ts"]
+}

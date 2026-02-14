@@ -7,7 +7,7 @@ export class ServiceNowOAuth2Api implements ICredentialType {
 
 	displayName = 'ServiceNow OAuth2 API';
 
-	documentationUrl = 'serviceNow';
+	documentationUrl = 'servicenow';
 
 	properties: INodeProperties[] = [
 		{

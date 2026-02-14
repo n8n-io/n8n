@@ -15,6 +15,7 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 import { URL } from 'url';
 import { parseString } from 'xml2js';
+import { getAwsCredentials } from '../GenericFunctions';
 
 function getEndpointForService(
 	service: string,
@@ -39,7 +40,7 @@ export async function awsApiRequest(
 	body?: string,
 	headers?: object,
 ): Promise<any> {
-	const credentials = await this.getCredentials('aws');
+	const { credentials, credentialsType } = await getAwsCredentials(this);
 
 	const requestOptions = {
 		qs: {
@@ -54,7 +55,7 @@ export async function awsApiRequest(
 	} as IHttpRequestOptions;
 
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
+		return await this.helpers.requestWithAuthentication.call(this, credentialsType, requestOptions);
 	} catch (error) {
 		if (error?.response?.data || error?.response?.body) {
 			const errorMessage = error?.response?.data || error?.response?.body;

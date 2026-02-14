@@ -75,11 +75,15 @@ describe('isHtmlRenderedContentType', () => {
 		});
 	});
 
+	it('should handle content type with extra spaces', () => {
+		expect(isHtmlRenderedContentType('  text/html')).toBe(true);
+		expect(isHtmlRenderedContentType('text/html  ')).toBe(true);
+		expect(isHtmlRenderedContentType('  text/html  ')).toBe(true);
+	});
+
 	it('should handle edge cases', () => {
 		expect(isHtmlRenderedContentType('text/htmlsomething')).toBe(true);
 		expect(isHtmlRenderedContentType('application/xhtml+xmlsomething')).toBe(true);
-		expect(isHtmlRenderedContentType(' text/html')).toBe(false);
-		expect(isHtmlRenderedContentType('text/html ')).toBe(true);
 	});
 });
 

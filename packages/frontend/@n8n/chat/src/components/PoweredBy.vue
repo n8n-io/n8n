@@ -10,7 +10,7 @@
 	text-align: center;
 
 	a {
-		color: var(--chat--color-primary);
+		color: var(--chat--color--primary);
 		text-decoration: none;
 	}
 }

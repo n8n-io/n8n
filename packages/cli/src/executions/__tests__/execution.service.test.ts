@@ -1,11 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { WorkflowOperationError } from 'n8n-workflow';
+import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import config from '@/config';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { ExecutionService } from '@/executions/execution.service';
@@ -20,9 +21,10 @@ describe('ExecutionService', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const waitTracker = mock<WaitTracker>();
 	const concurrencyControl = mock<ConcurrencyControlService>();
+	const globalConfig = Container.get(GlobalConfig);
 
 	const executionService = new ExecutionService(
-		mock(),
+		globalConfig,
 		mock(),
 		activeExecutions,
 		mock(),
@@ -30,15 +32,17 @@ describe('ExecutionService', () => {
 		executionRepository,
 		mock(),
 		mock(),
+		mock(),
 		waitTracker,
 		mock(),
 		concurrencyControl,
 		mock(),
 		mock(),
+		mock(),
 	);
 
 	beforeEach(() => {
-		config.set('executions.mode', 'regular');
+		globalConfig.executions.mode = 'regular';
 		jest.clearAllMocks();
 	});
 
@@ -61,6 +65,67 @@ describe('ExecutionService', () => {
 			 * Assert
 			 */
 			await expect(retry).rejects.toThrow(AbortedExecutionRetryError);
+		});
+	});
+
+	describe('getLastSuccessfulExecution', () => {
+		it('should return the last successful execution for a workflow', async () => {
+			/**
+			 * Arrange
+			 */
+			const workflowId = 'workflow-123';
+			const mockExecution = mock<IExecutionResponse>({
+				id: 'execution-456',
+				workflowId,
+				mode: 'trigger',
+				startedAt: new Date('2025-01-15T10:00:00Z'),
+				stoppedAt: new Date('2025-01-15T10:05:00Z'),
+				status: 'success',
+			});
+			executionRepository.findMultipleExecutions.mockResolvedValue([mockExecution]);
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.getLastSuccessfulExecution(workflowId);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toEqual(mockExecution);
+			expect(executionRepository.findMultipleExecutions).toHaveBeenCalledWith(
+				{
+					select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId'],
+					where: {
+						workflowId,
+						status: 'success',
+					},
+					order: { id: 'DESC' },
+					take: 1,
+				},
+				{
+					includeData: true,
+					unflattenData: true,
+				},
+			);
+		});
+
+		it('should return undefined when no successful execution exists', async () => {
+			/**
+			 * Arrange
+			 */
+			const workflowId = 'workflow-with-no-success';
+			executionRepository.findMultipleExecutions.mockResolvedValue([]);
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.getLastSuccessfulExecution(workflowId);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toBeUndefined();
 		});
 	});
 
@@ -125,7 +190,10 @@ describe('ExecutionService', () => {
 				 * Assert
 				 */
 				expect(concurrencyControl.remove).not.toHaveBeenCalled();
-				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+					execution.id,
+					expect.any(ManualExecutionCancelledError),
+				);
 				expect(waitTracker.stopExecution).not.toHaveBeenCalled();
 				expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 			});
@@ -152,7 +220,10 @@ describe('ExecutionService', () => {
 				 * Assert
 				 */
 				expect(concurrencyControl.remove).not.toHaveBeenCalled();
-				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+					execution.id,
+					expect.any(ManualExecutionCancelledError),
+				);
 				expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
 				expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 			});
@@ -194,7 +265,7 @@ describe('ExecutionService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.mode', 'queue');
+					globalConfig.executions.mode = 'queue';
 					const execution = mock<IExecutionResponse>({
 						id: '123',
 						mode: 'manual',
@@ -221,7 +292,10 @@ describe('ExecutionService', () => {
 					 * Assert
 					 */
 					expect(stopInRegularModeSpy).not.toHaveBeenCalled();
-					expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+					expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+						execution.id,
+						expect.any(ManualExecutionCancelledError),
+					);
 					expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 
 					expect(concurrencyControl.remove).not.toHaveBeenCalled();
@@ -235,7 +309,7 @@ describe('ExecutionService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.mode', 'queue');
+					globalConfig.executions.mode = 'queue';
 					const execution = mock<IExecutionResponse>({ id: '123', status: 'running' });
 					executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
 					waitTracker.has.mockReturnValue(false);
@@ -264,7 +338,7 @@ describe('ExecutionService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.mode', 'queue');
+					globalConfig.executions.mode = 'queue';
 					const execution = mock<IExecutionResponse>({ id: '123', status: 'waiting' });
 					executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
 					waitTracker.has.mockReturnValue(true);
@@ -288,6 +362,38 @@ describe('ExecutionService', () => {
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
 				});
 			});
+		});
+	});
+	describe('stopMany', () => {
+		it('should call stop function for the given filters', async () => {
+			executionRepository.findByStopExecutionsFilter.mockResolvedValue(
+				['1', '2', '3'].map((id) => ({ id })),
+			);
+			const stopFn = jest.fn();
+			executionService.stop = stopFn;
+
+			const filters = {
+				workflowId: '1',
+				startedAfter: new Date().toISOString(),
+				startedBefore: new Date().toISOString(),
+				status: ['running'],
+			} satisfies ExecutionRequest.StopMany['body']['filter'];
+
+			const shared = ['A'];
+
+			/**
+			 * Act
+			 */
+			await executionService.stopMany(filters, shared);
+
+			/**
+			 * Assert
+			 */
+			expect(stopFn).toBeCalledTimes(3);
+			expect(stopFn).toBeCalledWith('1', shared);
+			expect(stopFn).toBeCalledWith('2', shared);
+			expect(stopFn).toBeCalledWith('3', shared);
+			expect(executionRepository.findByStopExecutionsFilter).toBeCalledWith(filters);
 		});
 	});
 });

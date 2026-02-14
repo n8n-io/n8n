@@ -1,7 +1,7 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
-import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
+import { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
 import { NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -64,6 +64,11 @@ export class SentimentAnalysis implements INodeType {
 			},
 		],
 		outputs: `={{(${configuredOutputs})($parameter, "${DEFAULT_CATEGORIES}")}}`,
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+			},
+		},
 		properties: [
 			{
 				displayName: 'Text to Analyze',

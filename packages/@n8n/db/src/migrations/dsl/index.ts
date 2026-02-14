@@ -26,12 +26,27 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 	dropColumns: (tableName: string, columnNames: string[]) =>
 		new DropColumns(tableName, columnNames, tablePrefix, queryRunner),
 
+	/**
+	 * Creates an index on the given table and column names.
+	 *
+	 * @param whereClause - The where clause to apply to the index to create a partial index.
+	 */
 	createIndex: (
 		tableName: string,
 		columnNames: string[],
 		isUnique = false,
 		customIndexName?: string,
-	) => new CreateIndex(tableName, columnNames, isUnique, tablePrefix, queryRunner, customIndexName),
+		whereClause?: string,
+	) =>
+		new CreateIndex(
+			tableName,
+			columnNames,
+			isUnique,
+			tablePrefix,
+			queryRunner,
+			customIndexName,
+			whereClause,
+		),
 
 	dropIndex: (
 		tableName: string,
@@ -47,6 +62,7 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 		columnName: string,
 		reference: [string, string],
 		customConstraintName?: string,
+		onDelete?: 'RESTRICT' | 'CASCADE' | 'NO ACTION' | 'SET NULL',
 	) =>
 		new AddForeignKey(
 			tableName,
@@ -55,6 +71,7 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 			tablePrefix,
 			queryRunner,
 			customConstraintName,
+			onDelete,
 		),
 
 	dropForeignKey: (

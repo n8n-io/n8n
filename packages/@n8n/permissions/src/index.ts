@@ -1,4 +1,4 @@
-export type * from './types.ee';
+export * from './types.ee';
 export * from './constants.ee';
 
 export * from './roles/scopes/global-scopes.ee';
@@ -7,6 +7,9 @@ export * from './roles/role-maps.ee';
 export * from './roles/all-roles';
 
 export {
+	systemProjectRoleSchema,
+	assignableProjectRoleSchema,
+	assignableGlobalRoleSchema,
 	projectRoleSchema,
 	teamRoleSchema,
 	roleSchema,
@@ -17,7 +20,7 @@ export {
 export { hasScope } from './utilities/has-scope.ee';
 export { hasGlobalScope } from './utilities/has-global-scope.ee';
 export { combineScopes } from './utilities/combine-scopes.ee';
-export { rolesWithScope } from './utilities/roles-with-scope.ee';
+export { staticRolesWithScope } from './utilities/static-roles-with-scope.ee';
 export { getGlobalScopes } from './utilities/get-global-scopes.ee';
 export { getRoleScopes, getAuthPrincipalScopes } from './utilities/get-role-scopes.ee';
 export { getResourcePermissions } from './utilities/get-resource-permissions.ee';

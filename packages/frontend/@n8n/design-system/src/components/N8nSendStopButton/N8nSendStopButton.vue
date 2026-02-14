@@ -1,0 +1,66 @@
+<script setup lang="ts">
+import N8nButton from '../N8nButton';
+
+export interface N8nSendStopButtonProps {
+	streaming?: boolean;
+	disabled?: boolean;
+	size?: 'mini' | 'small' | 'medium' | 'large';
+	label?: string;
+}
+
+withDefaults(defineProps<N8nSendStopButtonProps>(), {
+	streaming: false,
+	disabled: false,
+	size: 'small',
+	label: undefined,
+});
+
+const emit = defineEmits<{
+	send: [];
+	stop: [];
+}>();
+
+function handleSend() {
+	emit('send');
+}
+
+function handleStop() {
+	emit('stop');
+}
+</script>
+
+<template>
+	<N8nButton
+		v-if="streaming"
+		variant="solid"
+		icon-only
+		:class="$style.stopButton"
+		:size="size"
+		icon="filled-square"
+		icon-size="small"
+		@click="handleStop"
+	/>
+	<N8nButton
+		v-else
+		variant="solid"
+		:class="$style.sendButton"
+		:size="size"
+		icon-size="large"
+		:icon-only="!label"
+		:icon="label ? undefined : 'arrow-up'"
+		:disabled="disabled"
+		@click="handleSend"
+	>
+		{{ label }}
+	</N8nButton>
+</template>
+
+<style lang="scss" module>
+.sendButton {
+	--button--radius: var(--radius--lg);
+}
+
+.stopButton {
+	--button--radius: var(--radius--lg);
+}
+</style>

@@ -1,5 +1,10 @@
 import { type MockProxy, mock } from 'jest-mock-extended';
-import type { IExecuteFunctions, INodeProperties, IWebhookFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeProperties,
+	IWebhookFunctions,
+	IWorkflowSettings,
+} from 'n8n-workflow';
 import { NodeOperationError, WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import { configureWaitTillDate } from '../configureWaitTillDate.util';
@@ -17,6 +22,7 @@ describe('Send and Wait utils tests', () => {
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
+		mockWebhookFunctions.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
 	});
 
 	describe('getSendAndWaitProperties', () => {
@@ -29,9 +35,53 @@ describe('Send and Wait utils tests', () => {
 					default: '',
 				},
 			];
+			const extraOptions: INodeProperties[] = [
+				{
+					displayName: 'Extra Property',
+					name: 'extraProperty',
+					type: 'string',
+					default: '',
+				},
+			];
 
-			const result = getSendAndWaitProperties(targetProperties);
+			const result = getSendAndWaitProperties(targetProperties, undefined, undefined, {
+				extraOptions,
+			});
 
+			expect(result).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						name: 'options',
+						options: expect.arrayContaining([
+							expect.objectContaining({
+								name: 'extraProperty',
+							}),
+						]),
+					}),
+				]),
+			);
+		});
+
+		it('should include extra options when provided', () => {
+			const targetProperties: INodeProperties[] = [
+				{
+					displayName: 'Test Property',
+					name: 'testProperty',
+					type: 'string',
+					default: '',
+				},
+			];
+			const extraOptions: INodeProperties[] = [
+				{
+					displayName: 'Extra Property',
+					name: 'extraProperty',
+					type: 'string',
+					default: '',
+				},
+			];
+			const result = getSendAndWaitProperties(targetProperties, undefined, undefined, {
+				extraOptions,
+			});
 			expect(result).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
@@ -200,6 +250,7 @@ describe('Send and Wait utils tests', () => {
 
 		it('should handle freeText GET webhook', async () => {
 			const mockRender = jest.fn();
+			const mockSetHeader = jest.fn();
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'GET',
@@ -207,6 +258,7 @@ describe('Send and Wait utils tests', () => {
 
 			mockWebhookFunctions.getResponseObject.mockReturnValue({
 				render: mockRender,
+				setHeader: mockSetHeader,
 			} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
@@ -223,6 +275,11 @@ describe('Send and Wait utils tests', () => {
 			expect(result).toEqual({
 				noWebhookResponse: true,
 			});
+
+			expect(mockSetHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+			);
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
@@ -272,6 +329,7 @@ describe('Send and Wait utils tests', () => {
 
 		it('should handle customForm GET webhook', async () => {
 			const mockRender = jest.fn();
+			const mockSetHeader = jest.fn();
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'GET',
@@ -279,6 +337,7 @@ describe('Send and Wait utils tests', () => {
 
 			mockWebhookFunctions.getResponseObject.mockReturnValue({
 				render: mockRender,
+				setHeader: mockSetHeader,
 			} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
@@ -302,6 +361,11 @@ describe('Send and Wait utils tests', () => {
 			expect(result).toEqual({
 				noWebhookResponse: true,
 			});
+
+			expect(mockSetHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+			);
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
@@ -327,9 +391,63 @@ describe('Send and Wait utils tests', () => {
 			});
 		});
 
+		it('should resolve expressions in HTML fields for customForm GET webhook', async () => {
+			const mockRender = jest.fn();
+			const mockSetHeader = jest.fn();
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+			} as any);
+
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				render: mockRender,
+				setHeader: mockSetHeader,
+			} as any);
+
+			// Mock evaluateExpression to resolve the expression
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression) => {
+				if (expression === '{{ $json.videoUrl }}') {
+					return 'https://example.com/video.mp4';
+				}
+				return expression;
+			});
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'customForm',
+					message: 'Test message',
+					defineForm: 'fields',
+					'formFields.values': [
+						{
+							fieldLabel: 'Custom HTML',
+							fieldType: 'html',
+							// Use <source> tag inside <video> since sanitizeHtml allows src on source, not video
+							html: '<video controls><source src="{{ $json.videoUrl }}" type="video/mp4" /></video>',
+						},
+					],
+					options: {},
+				};
+				return params[parameterName];
+			});
+
+			await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			expect(mockRender).toHaveBeenCalledWith(
+				'form-trigger',
+				expect.objectContaining({
+					formFields: expect.arrayContaining([
+						expect.objectContaining({
+							html: '<video controls><source src="https://example.com/video.mp4" type="video/mp4"></source></video>',
+						}),
+					]),
+				}),
+			);
+		});
+
 		it('should handle customForm POST webhook', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'POST',
+				contentType: 'multipart/form-data',
 			} as any);
 			mockWebhookFunctions.getNode.mockReturnValue({} as any);
 

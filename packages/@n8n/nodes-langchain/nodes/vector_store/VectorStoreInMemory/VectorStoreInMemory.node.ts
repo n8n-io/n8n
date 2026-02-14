@@ -1,5 +1,5 @@
 import type { Embeddings } from '@langchain/core/embeddings';
-import type { MemoryVectorStore } from 'langchain/vectorstores/memory';
+import type { MemoryVectorStore } from '@langchain/classic/vectorstores/memory';
 import {
 	type INodeProperties,
 	type ILoadOptionsFunctions,
@@ -66,6 +66,15 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 			AI: ['Vector Stores', 'Tools', 'Root Nodes'],
 			'Vector Stores': ['For Beginners'],
 			Tools: ['Other Tools'],
+		},
+		builderHint: {
+			relatedNodes: [
+				{
+					nodeType: '@n8n/n8n-nodes-langchain.retrieverVectorStore',
+					relationHint:
+						'Connect to enable retrieval-augmented generation (RAG) for AI Agent workflows',
+				},
+			],
 		},
 	},
 	sharedFields: [

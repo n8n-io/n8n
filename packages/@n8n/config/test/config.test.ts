@@ -1,8 +1,11 @@
 import { Container } from '@n8n/di';
 import fs from 'fs';
 import { mock } from 'jest-mock-extended';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import type { UserManagementConfig } from '../src/configs/user-management.config';
+import type { DatabaseConfig } from '../src/index';
 import { GlobalConfig } from '../src/index';
 
 jest.mock('fs');
@@ -52,18 +55,18 @@ describe('GlobalConfig', () => {
 		ssl_key: '',
 		ssl_cert: '',
 		editorBaseUrl: '',
+		dataTable: {
+			maxSize: 50 * 1024 * 1024,
+			sizeCheckCacheDuration: 5 * 1000,
+			cleanupIntervalMs: 60 * 1000,
+			fileMaxAgeMs: 2 * 60 * 1000,
+			uploadDir: path.join(tmpdir(), 'n8nDataTableUploads'),
+		},
 		database: {
 			logging: {
 				enabled: false,
 				maxQueryExecutionTime: 0,
 				options: 'error',
-			},
-			mysqldb: {
-				database: 'n8n',
-				host: 'localhost',
-				password: '',
-				port: 3306,
-				user: 'root',
 			},
 			postgresdb: {
 				database: 'n8n',
@@ -73,6 +76,8 @@ describe('GlobalConfig', () => {
 				port: 5432,
 				schema: 'public',
 				connectionTimeoutMs: 20_000,
+				idleTimeoutMs: 30_000,
+				statementTimeoutMs: 5 * 60 * 1000,
 				ssl: {
 					ca: '',
 					cert: '',
@@ -81,27 +86,27 @@ describe('GlobalConfig', () => {
 					rejectUnauthorized: true,
 				},
 				user: 'postgres',
-				idleTimeoutMs: 30_000,
 			},
 			sqlite: {
 				database: 'database.sqlite',
-				enableWAL: false,
 				executeVacuumOnStartup: false,
-				poolSize: 0,
+				poolSize: 3,
 			},
 			tablePrefix: '',
 			type: 'sqlite',
-			isLegacySqlite: true,
 			pingIntervalSeconds: 2,
-		},
+		} as DatabaseConfig,
 		credentials: {
 			defaultName: 'My credentials',
 			overwrite: {
 				data: '{}',
 				endpoint: '',
+				endpointAuthToken: '',
+				persistence: false,
 			},
 		},
 		userManagement: {
+			inviteLinksEmailOnly: false,
 			jwtSecret: '',
 			jwtSessionDurationHours: 168,
 			jwtRefreshTimeoutHours: 0,
@@ -124,6 +129,8 @@ describe('GlobalConfig', () => {
 					'credentials-shared': '',
 					'user-invited': '',
 					'password-reset-requested': '',
+					'workflow-deactivated': '',
+					'workflow-failure': '',
 					'workflow-shared': '',
 					'project-shared': '',
 				},
@@ -144,7 +151,7 @@ describe('GlobalConfig', () => {
 		nodes: {
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
-			exclude: [],
+			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
 		},
 		publicApi: {
@@ -155,6 +162,7 @@ describe('GlobalConfig', () => {
 		templates: {
 			enabled: true,
 			host: 'https://api.n8n.io/api/',
+			dynamicTemplatesHost: 'https://dynamic-templates.n8n.io/templates',
 		},
 		versionNotifications: {
 			enabled: true,
@@ -163,10 +171,16 @@ describe('GlobalConfig', () => {
 			whatsNewEndpoint: 'https://api.n8n.io/api/whats-new',
 			infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
 		},
+		dynamicBanners: {
+			endpoint: 'https://api.n8n.io/api/banners',
+			enabled: true,
+		},
 		workflows: {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
+			indexingEnabled: true,
+			useWorkflowPublicationService: false,
 		},
 		endpoints: {
 			metrics: {
@@ -186,6 +200,8 @@ describe('GlobalConfig', () => {
 				includeQueueMetrics: false,
 				queueMetricsInterval: 20,
 				activeWorkflowCountInterval: 60,
+				includeWorkflowStatistics: false,
+				workflowStatisticsInterval: 300,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
@@ -201,6 +217,7 @@ describe('GlobalConfig', () => {
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
+			health: 'healthz',
 		},
 		cache: {
 			backend: 'auto',
@@ -212,6 +229,11 @@ describe('GlobalConfig', () => {
 				prefix: 'cache',
 				ttl: 3600000,
 			},
+		},
+		chatHub: {
+			executionContextTtl: 3600,
+			maxBufferedChunks: 1000,
+			streamStateTtl: 300,
 		},
 		queue: {
 			health: {
@@ -230,19 +252,25 @@ describe('GlobalConfig', () => {
 					clusterNodes: '',
 					tls: false,
 					dualStack: false,
+					slotsRefreshInterval: 5_000,
+					slotsRefreshTimeout: 1_000,
+					dnsResolveStrategy: 'LOOKUP',
+					keepAlive: false,
+					keepAliveDelay: 5000,
+					keepAliveInterval: 5000,
+					reconnectOnFailover: true,
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
 				settings: {
-					lockDuration: 30_000,
-					lockRenewTime: 15_000,
+					lockDuration: 60_000,
+					lockRenewTime: 10_000,
 					stalledInterval: 30_000,
-					maxStalledCount: 1,
 				},
 			},
 		},
 		taskRunners: {
-			enabled: false,
+			enabled: true,
 			mode: 'internal',
 			path: '/runners',
 			authToken: '',
@@ -252,6 +280,7 @@ describe('GlobalConfig', () => {
 			maxOldSpaceSize: '',
 			maxConcurrency: 10,
 			taskTimeout: 300,
+			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
 			insecureMode: false,
 		},
@@ -260,6 +289,9 @@ describe('GlobalConfig', () => {
 			frontendDsn: '',
 			environment: '',
 			deploymentName: '',
+			profilesSampleRate: 0,
+			tracesSampleRate: 0,
+			eventLoopBlockThreshold: 500,
 		},
 		logging: {
 			level: 'info',
@@ -294,14 +326,20 @@ describe('GlobalConfig', () => {
 			cert: '',
 		},
 		security: {
-			restrictFileAccessTo: '',
+			restrictFileAccessTo: '~/.n8n-files',
 			blockFileAccessToN8nFiles: true,
+			blockFilePatterns: '^(.*\\/)*\\.git(\\/.*)*$',
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
 			disableWebhookHtmlSandboxing: false,
+			disableBareRepos: true,
+			awsSystemCredentialsAccess: false,
+			enableGitNodeHooks: false,
+			enableGitNodeAllConfigKeys: false,
 		},
 		executions: {
+			mode: 'regular',
 			timeout: -1,
 			maxTimeout: 3600,
 			pruneData: true,
@@ -320,6 +358,10 @@ describe('GlobalConfig', () => {
 				interval: 180,
 				batchSize: 100,
 			},
+			recovery: {
+				maxLastExecutions: 3,
+				workflowDeactivationEnabled: false,
+			},
 			saveDataOnError: 'all',
 			saveDataOnSuccess: 'all',
 			saveExecutionProgress: false,
@@ -331,20 +373,19 @@ describe('GlobalConfig', () => {
 			backendConfig: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io',
 			posthogConfig: {
 				apiKey: 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo',
-				apiHost: 'https://ph.n8n.io',
+				apiHost: 'https://us.i.posthog.com',
 			},
 		},
 		aiAssistant: {
 			baseUrl: '',
 		},
+		aiBuilder: {
+			apiKey: '',
+		},
 		tags: {
 			disabled: false,
 		},
-		partialExecutions: {
-			version: 2,
-		},
 		workflowHistory: {
-			enabled: true,
 			pruneTime: -1,
 		},
 		sso: {
@@ -361,13 +402,32 @@ describe('GlobalConfig', () => {
 				loginEnabled: false,
 				loginLabel: '',
 			},
+			provisioning: {
+				scopesProvisionInstanceRole: false,
+				scopesProvisionProjectRoles: false,
+				scopesName: 'n8n',
+				scopesInstanceRoleClaimName: 'n8n_instance_role',
+				scopesProjectsRolesClaimName: 'n8n_projects',
+			},
 		},
 		redis: {
 			prefix: 'n8n',
 		},
 		externalFrontendHooksUrls: '',
+		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
+			timeout: 3600000,
+			allowSendingParameterValues: true,
+		},
+		workflowHistoryCompaction: {
+			batchDelayMs: 1_000,
+			batchSize: 100,
+			optimizingMinimumAgeHours: 0.25,
+			optimizingTimeWindowHours: 2,
+			trimmingMinimumAgeDays: 7,
+			trimmingTimeWindowDays: 2,
+			trimOnStartUp: false,
 		},
 	};
 
@@ -392,13 +452,15 @@ describe('GlobalConfig', () => {
 			DB_LOGGING_MAX_EXECUTION_TIME: '0',
 			N8N_METRICS: 'TRUE',
 			N8N_TEMPLATES_ENABLED: '0',
+			N8N_DYNAMIC_BANNERS_ENDPOINT: 'https://localhost:5678/api/banners',
+			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
 		};
 		const config = Container.get(GlobalConfig);
+
 		expect(structuredClone(config)).toEqual({
 			...defaultConfig,
 			database: {
 				logging: defaultConfig.database.logging,
-				mysqldb: defaultConfig.database.mysqldb,
 				postgresdb: {
 					...defaultConfig.database.postgresdb,
 					host: 'some-host',
@@ -423,6 +485,10 @@ describe('GlobalConfig', () => {
 			},
 			templates: {
 				...defaultConfig.templates,
+				enabled: false,
+			},
+			dynamicBanners: {
+				endpoint: 'https://localhost:5678/api/banners',
 				enabled: false,
 			},
 		});
@@ -454,6 +520,24 @@ describe('GlobalConfig', () => {
 		expect(mockFs.readFileSync).toHaveBeenCalled();
 	});
 
+	it('should warn when _FILE env variable value contains whitespace', () => {
+		const passwordFile = '/path/to/postgres/password';
+		process.env = {
+			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
+		};
+		mockFs.readFileSync
+			.calledWith(passwordFile, 'utf8')
+			.mockReturnValueOnce('password-from-file\n');
+
+		const config = Container.get(GlobalConfig);
+		expect(config.database.postgresdb.password).toBe('password-from-file');
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining(
+				'DB_POSTGRESDB_PASSWORD_FILE contains leading or trailing whitespace',
+			),
+		);
+	});
+
 	it('should handle invalid numbers', () => {
 		process.env = {
 			DB_LOGGING_MAX_EXECUTION_TIME: 'abcd',
@@ -469,7 +553,6 @@ describe('GlobalConfig', () => {
 		it('on invalid value, should warn and fall back to default value', () => {
 			process.env = {
 				N8N_RUNNERS_MODE: 'non-existing-mode',
-				N8N_RUNNERS_ENABLED: 'true',
 				DB_TYPE: 'postgresdb',
 			};
 

@@ -1,12 +1,16 @@
-import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
+import { CreateRoleDto, RoleGetQueryDto, RoleListQueryDto, UpdateRoleDto } from '@n8n/api-types';
+import { LICENSE_FEATURES } from '@n8n/constants';
+import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
 	Delete,
 	Get,
 	GlobalScope,
+	Licensed,
 	Param,
 	Patch,
 	Post,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 import { Role as RoleDTO } from '@n8n/permissions';
@@ -18,8 +22,12 @@ export class RoleController {
 	constructor(private readonly roleService: RoleService) {}
 
 	@Get('/')
-	async getAllRoles(): Promise<Record<string, RoleDTO[]>> {
-		const allRoles = await this.roleService.getAllRoles();
+	async getAllRoles(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: RoleListQueryDto,
+	): Promise<Record<string, RoleDTO[]>> {
+		const allRoles = await this.roleService.getAllRoles(query.withUsageCount);
 		return {
 			global: allRoles.filter((r) => r.roleType === 'global'),
 			project: allRoles.filter((r) => r.roleType === 'project'),
@@ -29,25 +37,46 @@ export class RoleController {
 	}
 
 	@Get('/:slug')
-	async getRoleBySlug(@Param('slug') slug: string): Promise<RoleDTO> {
-		return await this.roleService.getRole(slug);
+	async getRoleBySlug(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('slug') slug: string,
+		@Query query: RoleGetQueryDto,
+	): Promise<RoleDTO> {
+		return await this.roleService.getRole(slug, query.withUsageCount);
 	}
 
 	@Patch('/:slug')
 	@GlobalScope('role:manage')
-	async updateRole(@Param('slug') slug: string, @Body body: UpdateRoleDto): Promise<RoleDTO> {
-		return await this.roleService.updateCustomRole(slug, body);
+	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
+	async updateRole(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('slug') slug: string,
+		@Body updateRole: UpdateRoleDto,
+	): Promise<RoleDTO> {
+		return await this.roleService.updateCustomRole(slug, updateRole);
 	}
 
 	@Delete('/:slug')
 	@GlobalScope('role:manage')
-	async deleteRole(@Param('slug') slug: string): Promise<RoleDTO> {
+	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
+	async deleteRole(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('slug') slug: string,
+	): Promise<RoleDTO> {
 		return await this.roleService.removeCustomRole(slug);
 	}
 
 	@Post('/')
 	@GlobalScope('role:manage')
-	async createRole(@Body body: CreateRoleDto): Promise<RoleDTO> {
-		return await this.roleService.createCustomRole(body);
+	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
+	async createRole(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body createRole: CreateRoleDto,
+	): Promise<RoleDTO> {
+		return await this.roleService.createCustomRole(createRole);
 	}
 }

@@ -1,7 +1,7 @@
 import sys
 import logging
 import os
-from src.constants import LOG_FORMAT, LOG_TIMESTAMP_FORMAT
+from src.constants import LOG_FORMAT, LOG_TIMESTAMP_FORMAT, ENV_LAUNCHER_LOG_LEVEL
 
 COLORS = {
     "DEBUG": "\033[34m",  # blue
@@ -21,7 +21,7 @@ class ColorFormatter(logging.Formatter):
         self.use_colors = os.getenv("NO_COLOR") is None
 
         # When started by launcher, log level and timestamp are handled by launcher.
-        self.short_form = os.getenv("N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED") == "true"
+        self.short_form = not sys.stdout.isatty()
 
     def format(self, record):
         if self.short_form:
@@ -52,7 +52,7 @@ class ColorFormatter(logging.Formatter):
 def setup_logging():
     logger = logging.getLogger()
 
-    log_level_str = os.getenv("N8N_RUNNERS_LAUNCHER_LOG_LEVEL", "INFO").upper()
+    log_level_str = os.getenv(ENV_LAUNCHER_LOG_LEVEL, "INFO").upper()
     log_level = getattr(logging, log_level_str, logging.INFO)
     logger.setLevel(log_level)
 

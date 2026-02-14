@@ -66,14 +66,20 @@ describe('ExecutionRepository', () => {
 				}),
 			);
 
-			await executionRepository.deleteExecutionsByFilter({ id: '1' }, ['1'], { ids: ['1'] });
+			await executionRepository.deleteExecutionsByFilter({
+				filters: { id: '1' },
+				accessibleWorkflowIds: ['1'],
+				deleteConditions: { ids: ['1'] },
+			});
 
-			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([{ executionId: '1', workflowId }]);
+			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([
+				{ type: 'execution', executionId: '1', workflowId },
+			]);
 		});
 	});
 
 	describe('updateExistingExecution', () => {
-		test.each(['sqlite', 'postgresdb', 'mysqldb'] as const)(
+		test.each(['sqlite', 'postgresdb'] as const)(
 			'should update execution and data in transaction on %s',
 			async (dbType) => {
 				globalConfig.database.type = dbType;
@@ -93,6 +99,8 @@ describe('ExecutionRepository', () => {
 					await cb(entityManager);
 					txCallback();
 				});
+				// Mock update to return affected count
+				entityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 
 				await executionRepository.updateExistingExecution(executionId, execution);
 

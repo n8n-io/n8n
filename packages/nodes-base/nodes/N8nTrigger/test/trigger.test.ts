@@ -29,7 +29,7 @@ describe('N8nTrigger', () => {
 			expect(mockTriggerFunctions.emit).toHaveBeenCalledWith([
 				[
 					{
-						event: 'Workflow activated',
+						event: 'Workflow published',
 						timestamp: expect.any(String),
 						workflow_id: 'test-workflow-id',
 					},

@@ -1,4 +1,4 @@
-import type { ICredentialsResponse } from '@/Interface';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { Model } from 'miragejs';
 import type { ModelDefinition } from 'miragejs/-types';
 

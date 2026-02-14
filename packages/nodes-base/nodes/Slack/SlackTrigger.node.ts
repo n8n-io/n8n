@@ -322,7 +322,8 @@ export class SlackTrigger implements INodeType {
 		const watchWorkspace = this.getNodeParameter('watchWorkspace', false) as boolean;
 		let eventChannel: string = '';
 
-		if (!(await verifySignature.call(this))) {
+		const isSignatureValid = await verifySignature.call(this);
+		if (!isSignatureValid) {
 			const res = this.getResponseObject();
 			res.status(401).send('Unauthorized').end();
 			return {
@@ -382,6 +383,8 @@ export class SlackTrigger implements INodeType {
 						this,
 						req.body.event.item_user,
 					);
+				} else if (req.body.event.type === 'team_join') {
+					req.body.event.user_resolved = req.body.event.user.name;
 				} else {
 					req.body.event.user_resolved = await getUserInfo.call(this, req.body.event.user);
 				}

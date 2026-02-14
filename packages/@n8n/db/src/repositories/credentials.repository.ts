@@ -20,7 +20,12 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	}
 
 	async findMany(
-		listQueryOptions?: ListQuery.Options & { includeData?: boolean; user?: User },
+		listQueryOptions?: ListQuery.Options & {
+			includeData?: boolean;
+			user?: User;
+			/** When provided, sets sort order for the query. */
+			order?: FindManyOptions<CredentialsEntity>['order'];
+		},
 		credentialIds?: string[],
 	) {
 		const findManyOptions = this.toFindManyOptions(listQueryOptions);
@@ -32,17 +37,56 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		return await this.find(findManyOptions);
 	}
 
-	private toFindManyOptions(listQueryOptions?: ListQuery.Options & { includeData?: boolean }) {
+	async findManyAndCount(
+		listQueryOptions?: ListQuery.Options & {
+			includeData?: boolean;
+			user?: User;
+			/** When provided, sets sort order for the query. */
+			order?: FindManyOptions<CredentialsEntity>['order'];
+		},
+		credentialIds?: string[],
+	): Promise<[CredentialsEntity[], number]> {
+		const findManyOptions = this.toFindManyOptions(listQueryOptions);
+
+		if (credentialIds) {
+			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
+		}
+
+		return await this.findAndCount(findManyOptions);
+	}
+
+	private toFindManyOptions(
+		listQueryOptions?: ListQuery.Options & {
+			includeData?: boolean;
+			order?: FindManyOptions<CredentialsEntity>['order'];
+		},
+	) {
 		const findManyOptions: FindManyOptions<CredentialsEntity> = {};
 
 		type Select = Array<keyof CredentialsEntity>;
 
 		const defaultRelations = ['shared', 'shared.project', 'shared.project.projectRelations'];
-		const defaultSelect: Select = ['id', 'name', 'type', 'isManaged', 'createdAt', 'updatedAt'];
+		const defaultSelect: Select = [
+			'id',
+			'name',
+			'type',
+			'isManaged',
+			'createdAt',
+			'updatedAt',
+			'isGlobal',
+			'isResolvable',
+			'resolverId',
+			'resolvableAllowFallback',
+		];
 
-		if (!listQueryOptions) return { select: defaultSelect, relations: defaultRelations };
+		if (!listQueryOptions) {
+			return {
+				select: defaultSelect,
+				relations: defaultRelations,
+			} as FindManyOptions<CredentialsEntity>;
+		}
 
-		const { filter, select, take, skip } = listQueryOptions;
+		const { filter, select, take, skip, order } = listQueryOptions;
 
 		if (typeof filter?.name === 'string' && filter?.name !== '') {
 			filter.name = Like(`%${filter.name}%`);
@@ -66,6 +110,10 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		if (!findManyOptions.select) {
 			findManyOptions.select = defaultSelect;
 			findManyOptions.relations = defaultRelations;
+		}
+
+		if (order !== undefined) {
+			findManyOptions.order = order;
 		}
 
 		if (listQueryOptions.includeData) {
@@ -129,6 +177,17 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 				},
 			};
 		}
+
+		return await this.find(findManyOptions);
+	}
+
+	/**
+	 * Find all global credentials
+	 */
+	async findAllGlobalCredentials(includeData = false): Promise<CredentialsEntity[]> {
+		const findManyOptions = this.toFindManyOptions({ includeData });
+
+		findManyOptions.where = { ...findManyOptions.where, isGlobal: true };
 
 		return await this.find(findManyOptions);
 	}

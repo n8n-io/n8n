@@ -1,3 +1,5 @@
+import type { BuilderCreditsPushMessage } from './builder-credits';
+import type { ChatHubPushMessage } from './chat-hub';
 import type { CollaborationPushMessage } from './collaboration';
 import type { DebugPushMessage } from './debug';
 import type { ExecutionPushMessage } from './execution';
@@ -13,7 +15,9 @@ export type PushMessage =
 	| WebhookPushMessage
 	| WorkerPushMessage
 	| CollaborationPushMessage
-	| DebugPushMessage;
+	| DebugPushMessage
+	| BuilderCreditsPushMessage
+	| ChatHubPushMessage;
 
 export type PushType = PushMessage['type'];
 

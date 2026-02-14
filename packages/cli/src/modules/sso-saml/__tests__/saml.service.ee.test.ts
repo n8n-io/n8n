@@ -1,0 +1,1039 @@
+import type { SamlPreferences } from '@n8n/api-types';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
+import type { GlobalConfig } from '@n8n/config';
+import { SettingsRepository } from '@n8n/db';
+import type { UserRepository, Settings, User } from '@n8n/db';
+import { Container } from '@n8n/di';
+import axios from 'axios';
+import type express from 'express';
+import type { HttpProxyAgent } from 'http-proxy-agent';
+import type { HttpsProxyAgent } from 'https-proxy-agent';
+import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
+import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { UrlService } from '@/services/url.service';
+import * as ssoHelpers from '@/sso.ee/sso-helpers';
+
+import { SAML_PREFERENCES_DB_KEY } from '../constants';
+import { InvalidSamlMetadataUrlError } from '../errors/invalid-saml-metadata-url.error';
+import { InvalidSamlMetadataError } from '../errors/invalid-saml-metadata.error';
+import * as samlHelpers from '../saml-helpers';
+import { SamlValidator } from '../saml-validator';
+import { SamlService } from '../saml.service.ee';
+
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+const InvalidSamlSetting: Settings = {
+	loadOnStartup: true,
+	key: SAML_PREFERENCES_DB_KEY,
+	value: JSON.stringify({
+		mapping: {
+			email: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+			firstName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/firstname',
+			lastName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname',
+			userPrincipalName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn',
+		},
+		metadata:
+			'r xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://mocksaml.com/api/saml/sso"/>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>',
+		metadataUrl:
+			'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://mocksaml.com/api/saml/sso"/>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>',
+		ignoreSSL: false,
+		loginBinding: 'redirect',
+		acsBinding: 'post',
+		authnRequestsSigned: false,
+		loginEnabled: true,
+		loginLabel: '',
+		wantAssertionsSigned: true,
+		wantMessageSigned: true,
+		relayState: 'http://localhost:5678',
+		signatureConfig: {
+			prefix: 'ds',
+			location: { reference: '/samlp:Response/saml:Issuer', action: 'after' },
+		},
+	}),
+};
+
+const SamlMetadataWithoutRedirectBinding =
+	'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>';
+
+const SamlSettingWithInvalidUrl: Settings = {
+	loadOnStartup: true,
+	key: SAML_PREFERENCES_DB_KEY,
+	value: JSON.stringify({
+		mapping: {
+			email: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+			firstName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/firstname',
+			lastName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname',
+			userPrincipalName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn',
+		},
+		metadata:
+			'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://mocksaml.com/api/saml/sso"/>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>',
+		metadataUrl:
+			'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://mocksaml.com/api/saml/sso"/>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>',
+		ignoreSSL: false,
+		loginBinding: 'redirect',
+		acsBinding: 'post',
+		authnRequestsSigned: false,
+		loginEnabled: true,
+		loginLabel: '',
+		wantAssertionsSigned: true,
+		wantMessageSigned: true,
+		relayState: 'http://localhost:5678',
+		signatureConfig: {
+			prefix: 'ds',
+			location: { reference: '/samlp:Response/saml:Issuer', action: 'after' },
+		},
+	}),
+};
+
+const SamlSettingWithInvalidUrlAndInvalidMetadataXML: Settings = {
+	loadOnStartup: true,
+	key: SAML_PREFERENCES_DB_KEY,
+	value: JSON.stringify({
+		mapping: {
+			email: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+			firstName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/firstname',
+			lastName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname',
+			userPrincipalName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn',
+		},
+		metadataUrl:
+			'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://mocksaml.com/api/saml/sso"/>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>',
+		ignoreSSL: false,
+		loginBinding: 'redirect',
+		acsBinding: 'post',
+		authnRequestsSigned: false,
+		loginEnabled: true,
+		loginLabel: '',
+		wantAssertionsSigned: true,
+		wantMessageSigned: true,
+		relayState: 'http://localhost:5678',
+		signatureConfig: {
+			prefix: 'ds',
+			location: { reference: '/samlp:Response/saml:Issuer', action: 'after' },
+		},
+	}),
+};
+
+const SamlSettingWithValidUrl: Settings = {
+	loadOnStartup: true,
+	key: SAML_PREFERENCES_DB_KEY,
+	value: JSON.stringify({
+		mapping: {
+			email: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+			firstName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/firstname',
+			lastName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname',
+			userPrincipalName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn',
+		},
+		metadataUrl: 'https://valid_url.mocked.in.test',
+		ignoreSSL: false,
+		loginBinding: 'redirect',
+		acsBinding: 'post',
+		authnRequestsSigned: false,
+		loginEnabled: true,
+		loginLabel: '',
+		wantAssertionsSigned: true,
+		wantMessageSigned: true,
+		relayState: 'http://localhost:5678',
+		signatureConfig: {
+			prefix: 'ds',
+			location: { reference: '/samlp:Response/saml:Issuer', action: 'after' },
+		},
+	}),
+};
+
+describe('SamlService', () => {
+	let samlService: SamlService;
+	let settingsRepository: SettingsRepository;
+	let instanceSettings: InstanceSettings;
+	let globalConfig: GlobalConfig;
+	let userRepository: UserRepository;
+	let provisioningService: ProvisioningService;
+	const validator = new SamlValidator(mock());
+	const logger = mockLogger();
+
+	const mockSamlConfig = {
+		mapping: {
+			email: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+			firstName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/firstname',
+			lastName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname',
+			userPrincipalName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn',
+		},
+		metadata:
+			'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://mocksaml.com/api/saml/sso"/>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>',
+		metadataUrl: '',
+		ignoreSSL: false,
+		loginBinding: 'redirect',
+		acsBinding: 'post',
+		authnRequestsSigned: false,
+		loginEnabled: false,
+		loginLabel: 'SAML',
+	};
+
+	const mockConfigFromDB = {
+		key: SAML_PREFERENCES_DB_KEY,
+		value: JSON.stringify(mockSamlConfig),
+		loadOnStartup: true,
+	};
+
+	beforeAll(async () => {
+		await validator.init();
+	});
+
+	beforeEach(async () => {
+		jest.resetAllMocks();
+		Container.reset();
+
+		settingsRepository = mockInstance(SettingsRepository);
+		instanceSettings = mock<InstanceSettings>({
+			isMultiMain: true,
+		});
+		provisioningService = mock<ProvisioningService>();
+		userRepository = mock<UserRepository>();
+		globalConfig = mock<GlobalConfig>({
+			sso: { saml: { loginEnabled: false } },
+		});
+		provisioningService = mock<ProvisioningService>();
+
+		jest
+			.spyOn(ssoHelpers, 'reloadAuthenticationMethod')
+			.mockImplementation(async () => await Promise.resolve());
+		jest.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(true);
+
+		samlService = new SamlService(
+			logger,
+			mock<UrlService>(),
+			validator,
+			userRepository,
+			settingsRepository,
+			instanceSettings,
+			provisioningService,
+		);
+		// Mock GlobalConfig container access
+		Container.set(require('@n8n/config').GlobalConfig, globalConfig);
+	});
+
+	describe('getAttributesFromLoginResponse', () => {
+		test('throws when any attribute is missing', async () => {
+			// ARRANGE
+			jest
+				.spyOn(samlService, 'getIdentityProviderInstance')
+				.mockReturnValue(mock<IdentityProviderInstance>());
+
+			const serviceProviderInstance = mock<ServiceProviderInstance>();
+			serviceProviderInstance.parseLoginResponse.mockResolvedValue({
+				samlContent: '',
+				extract: {},
+			});
+			jest
+				.spyOn(samlService, 'getServiceProviderInstance')
+				.mockReturnValue(serviceProviderInstance);
+
+			jest.spyOn(samlHelpers, 'getMappedSamlAttributesFromFlowResult').mockReturnValue({
+				attributes: {} as never,
+				missingAttributes: [
+					'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+					'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/firstname',
+					'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname',
+					'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn',
+				],
+			});
+
+			// ACT & ASSERT
+			await expect(
+				samlService.getAttributesFromLoginResponse(mock<express.Request>(), 'post'),
+			).rejects.toThrowError(
+				'SAML Authentication failed. Invalid SAML response (missing attributes: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress, http://schemas.xmlsoap.org/ws/2005/05/identity/claims/firstname, http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname, http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn).',
+			);
+		});
+
+		test('returns the attributes when they are present', async () => {
+			jest
+				.spyOn(samlService, 'getIdentityProviderInstance')
+				.mockReturnValue(mock<IdentityProviderInstance>());
+			const serviceProviderInstance = mock<ServiceProviderInstance>();
+			serviceProviderInstance.parseLoginResponse.mockResolvedValue({
+				samlContent: '',
+				extract: {},
+			});
+			jest
+				.spyOn(samlService, 'getServiceProviderInstance')
+				.mockReturnValue(serviceProviderInstance);
+
+			jest.spyOn(samlHelpers, 'getMappedSamlAttributesFromFlowResult').mockReturnValue({
+				attributes: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+					n8nInstanceRole: 'global:admin',
+					n8nProjectRoles: ['projectRole1', 'projectRole2'],
+				},
+				missingAttributes: [],
+			});
+
+			const attributes = await samlService.getAttributesFromLoginResponse(
+				mock<express.Request>(),
+				'post',
+			);
+
+			expect(attributes).toEqual({
+				email: 'test@test.com',
+				firstName: 'test',
+				lastName: 'test',
+				userPrincipalName: 'test',
+				n8nInstanceRole: 'global:admin',
+				n8nProjectRoles: ['projectRole1', 'projectRole2'],
+			});
+		});
+	});
+
+	describe('init', () => {
+		test('calls `reset` if an InvalidSamlMetadataUrlError is thrown', async () => {
+			// ARRANGE
+			jest
+				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
+				.mockRejectedValue(new InvalidSamlMetadataUrlError('https://www.google.com'));
+			jest.spyOn(samlService, 'reset');
+
+			// ACT
+			await samlService.init();
+
+			// ASSERT
+			expect(samlService.reset).toHaveBeenCalledTimes(1);
+		});
+
+		test('calls `reset` if an InvalidSamlMetadataError is thrown', async () => {
+			// ARRANGE
+			jest
+				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
+				.mockRejectedValue(new InvalidSamlMetadataError());
+			jest.spyOn(samlService, 'reset');
+
+			// ACT
+			await samlService.init();
+
+			// ASSERT
+			expect(samlService.reset).toHaveBeenCalledTimes(1);
+		});
+
+		test('calls `reset` if a SyntaxError is thrown', async () => {
+			// ARRANGE
+			jest
+				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
+				.mockRejectedValue(new SyntaxError());
+			jest.spyOn(samlService, 'reset');
+
+			// ACT
+			await samlService.init();
+
+			// ASSERT
+			expect(samlService.reset).toHaveBeenCalledTimes(1);
+		});
+
+		test('does not call reset and rethrows if another error is thrown', async () => {
+			// ARRANGE
+			jest
+				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
+				.mockRejectedValue(new TypeError());
+			jest.spyOn(samlService, 'reset');
+
+			// ACT & ASSERT
+			await expect(samlService.init()).rejects.toThrowError(TypeError);
+			expect(samlService.reset).toHaveBeenCalledTimes(0);
+		});
+
+		test('does not call reset if no error is thrown', async () => {
+			// ARRANGE
+			jest.spyOn(samlService, 'reset');
+
+			// ACT
+			await samlService.init();
+
+			// ASSERT
+			expect(samlService.reset).toHaveBeenCalledTimes(0);
+		});
+	});
+
+	describe('handleSamlLogin', () => {
+		it('throws error for invalid email', async () => {
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				email: 'invalid',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: '',
+			});
+
+			await expect(
+				samlService.handleSamlLogin(mock<express.Request>(), 'post'),
+			).rejects.toThrowError(new BadRequestError('Invalid email format'));
+		});
+
+		it('logs in user that has already completed onboarding', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: 'foo@bar.com',
+			};
+			const mockUser = {
+				id: '123',
+				email: samlAttributes.email,
+				authIdentities: [
+					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
+				],
+			} as any;
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+
+			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(loginResult).toEqual({
+				authenticatedUser: mockUser,
+				attributes: samlAttributes,
+				onboardingRequired: false,
+			});
+		});
+
+		it('logs in user that has not completed onboarding', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: 'foo@bar.com',
+			};
+			const mockUser = {
+				id: '123',
+				email: samlAttributes.email,
+				authIdentities: [],
+			} as any;
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+			jest.spyOn(samlHelpers, 'updateUserFromSamlAttributes').mockResolvedValue(mockUser);
+
+			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(loginResult).toEqual({
+				authenticatedUser: mockUser,
+				attributes: samlAttributes,
+				onboardingRequired: true,
+			});
+		});
+
+		it('does not log in the user if sso just-in-time provisioning is disabled', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: 'foo@bar.com',
+			};
+
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
+			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(false);
+
+			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(loginResult).toEqual({
+				authenticatedUser: undefined,
+				attributes: samlAttributes,
+				onboardingRequired: false,
+			});
+		});
+
+		it('logs in the user if just-in-time provisioning is enabled', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: 'foo@bar.com',
+			};
+			const mockUser = mock<User>();
+
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
+			jest.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
+			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
+
+			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(loginResult).toEqual({
+				authenticatedUser: mockUser,
+				attributes: samlAttributes,
+				onboardingRequired: true,
+			});
+		});
+
+		it('provisions instance and project role for onboarded user', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: 'foo@bar.com',
+				n8nInstanceRole: 'global:admin',
+				n8nProjectRoles: ['rgjhURvl0rnEQL3v:viewer', 'ussa2R6P7aDtuRaZ:viewer'],
+			};
+			const mockUser = {
+				id: '123',
+				email: samlAttributes.email,
+				authIdentities: [
+					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
+				],
+			} as any;
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+
+			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(provisioningService.provisionInstanceRoleForUser).toHaveBeenCalledWith(
+				mockUser,
+				samlAttributes.n8nInstanceRole,
+			);
+			expect(provisioningService.provisionProjectRolesForUser).toHaveBeenCalledWith(
+				mockUser.id,
+				samlAttributes.n8nProjectRoles,
+			);
+		});
+	});
+
+	describe('loadFromDbAndApplySamlPreferences', () => {
+		test('does throw `InvalidSamlMetadataError` when no valid SAML metadata could have been loaded', async () => {
+			// ARRANGE
+			jest.spyOn(settingsRepository, 'findOne').mockResolvedValue(InvalidSamlSetting);
+
+			// ACT && ASSERT
+			await expect(samlService.loadFromDbAndApplySamlPreferences(true, false)).rejects.toThrowError(
+				InvalidSamlMetadataError,
+			);
+		});
+
+		test('does throw `InvalidSamlMetadataError` when invalid SAML url and no saml metadata is available', async () => {
+			// ARRANGE
+			jest
+				.spyOn(settingsRepository, 'findOne')
+				.mockResolvedValue(SamlSettingWithInvalidUrlAndInvalidMetadataXML);
+
+			// ACT && ASSERT
+			await expect(samlService.loadFromDbAndApplySamlPreferences(true, false)).rejects.toThrowError(
+				InvalidSamlMetadataError,
+			);
+		});
+
+		test('does not throw an error when the metadata url is invalid, but valid metadata is available in the database', async () => {
+			// ARRANGE
+			jest.spyOn(settingsRepository, 'findOne').mockResolvedValue(SamlSettingWithInvalidUrl);
+
+			// ACT && ASSERT
+			await samlService.loadFromDbAndApplySamlPreferences(true, false);
+		});
+
+		test('does not throw an error when the metadata url is valid', async () => {
+			// ARRANGE
+			jest.spyOn(settingsRepository, 'findOne').mockResolvedValue(SamlSettingWithValidUrl);
+			jest
+				.spyOn(samlService, 'fetchMetadataFromUrl')
+				.mockResolvedValue(
+					'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://mocksaml.com/api/saml/sso"/>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>',
+				);
+
+			// ACT && ASSERT
+			await samlService.loadFromDbAndApplySamlPreferences(true, false);
+		});
+	});
+
+	describe('setSamlPreferences', () => {
+		test('does throw `BadRequestError` when a metadata url is not a valid url', async () => {
+			await expect(
+				samlService.setSamlPreferences({
+					metadataUrl: 'NOT A VALID URL',
+				}),
+			).rejects.toThrowError(BadRequestError);
+		});
+
+		test('does not persist an invalid metadata url', async () => {
+			const metadataUrlTestData = 'TestDataThatShouldPersist';
+			await samlService.loadPreferencesWithoutValidation({
+				metadataUrl: metadataUrlTestData,
+			});
+
+			await expect(
+				samlService.setSamlPreferences({
+					metadataUrl: 'NOT A VALID URL',
+				}),
+			).rejects.toThrowError(BadRequestError);
+
+			expect(samlService.samlPreferences.metadataUrl).toBe(metadataUrlTestData);
+		});
+
+		test('does throw `BadRequestError` when a metadata url is not returning correct metadata', async () => {
+			mockedAxios.get.mockResolvedValue({ status: 200, data: 'NOT VALID SAML METADATA' });
+			await expect(
+				samlService.setSamlPreferences({
+					metadataUrl: 'https://www.some.url',
+				}),
+			).rejects.toThrowError(BadRequestError);
+		});
+
+		test('does not persist a metadata url, that is not returning correct metadata', async () => {
+			const metadataUrlTestData = 'TestDataThatShouldPersist';
+			await samlService.loadPreferencesWithoutValidation({
+				metadataUrl: metadataUrlTestData,
+			});
+
+			mockedAxios.get.mockResolvedValue({ status: 200, data: 'NOT VALID SAML METADATA' });
+			await expect(
+				samlService.setSamlPreferences({
+					metadataUrl: 'https://www.some.url',
+				}),
+			).rejects.toThrowError(BadRequestError);
+
+			expect(samlService.samlPreferences.metadataUrl).toBe(metadataUrlTestData);
+		});
+
+		test('does throw `InvalidSamlMetadataError` when a metadata does not contain redirect binding', async () => {
+			await expect(
+				samlService.setSamlPreferences({
+					metadata: SamlMetadataWithoutRedirectBinding,
+				}),
+			).rejects.toThrowError(InvalidSamlMetadataError);
+		});
+
+		test('does throw `InvalidSamlMetadataError` when a metadata url is not a valid url', async () => {
+			await expect(
+				samlService.setSamlPreferences({
+					metadata: 'NOT A VALID XML',
+				}),
+			).rejects.toThrowError(InvalidSamlMetadataError);
+		});
+
+		test('does throw `InvalidSamlMetadataUrlError` when the metadata url does not return success on http call', async () => {
+			mockedAxios.get.mockResolvedValue({ status: 400, data: '' });
+			await expect(
+				samlService.setSamlPreferences({
+					metadataUrl: 'https://www.some.url',
+				}),
+			).rejects.toThrowError(InvalidSamlMetadataUrlError);
+		});
+
+		test('does not persist a metadata url, that is not returning success on http call', async () => {
+			const metadataUrlTestData = 'TestDataThatShouldPersist';
+			await samlService.loadPreferencesWithoutValidation({
+				metadataUrl: metadataUrlTestData,
+			});
+
+			mockedAxios.get.mockResolvedValue({ status: 400 });
+			await expect(
+				samlService.setSamlPreferences({
+					metadataUrl: 'https://www.some.url',
+				}),
+			).rejects.toThrowError(InvalidSamlMetadataUrlError);
+
+			expect(samlService.samlPreferences.metadataUrl).toBe(metadataUrlTestData);
+		});
+
+		test('does throw `InvalidSamlMetadataError` in case saml login is turned on and no valid metadata is available', async () => {
+			await samlService.loadPreferencesWithoutValidation({
+				metadata: 'not valid data',
+				loginEnabled: true,
+			});
+			await expect(samlService.setSamlPreferences({})).rejects.toThrowError(
+				InvalidSamlMetadataError,
+			);
+		});
+
+		test('does throw `InvalidSamlMetadataError` in case saml login is turned on and the metadata is an empty string', async () => {
+			await samlService.loadPreferencesWithoutValidation({
+				metadata: '',
+				loginEnabled: true,
+			});
+			await expect(samlService.setSamlPreferences({})).rejects.toThrowError(
+				InvalidSamlMetadataError,
+			);
+		});
+	});
+
+	describe('getIdentityProviderInstance', () => {
+		test('does throw `InvalidSamlMetadataError` when a metadata does not contain redirect binding', async () => {
+			await samlService.loadPreferencesWithoutValidation({
+				metadata: SamlMetadataWithoutRedirectBinding,
+			});
+			await samlService.loadSamlify();
+			expect(() => samlService.getIdentityProviderInstance(true)).toThrowError(
+				InvalidSamlMetadataError,
+			);
+		});
+	});
+
+	describe('broadcastReloadSAMLConfigurationCommand', () => {
+		const mockPublisher = { publishCommand: jest.fn() };
+		beforeEach(() => {
+			mockInstance(Publisher, mockPublisher);
+			// Mock all the validation and setup methods that setSamlPreferences calls
+			jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+			jest.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
+			jest.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
+			jest
+				.spyOn(samlService, 'saveSamlPreferencesToDb')
+				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			// Mock SAML login as disabled to avoid metadata validation
+			jest.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
+		});
+
+		test('should publish reload command in multi-main setup', async () => {
+			(instanceSettings as any).isMultiMain = true;
+
+			await samlService.setSamlPreferences(
+				{ loginEnabled: false, metadata: mockSamlConfig.metadata },
+				false,
+				true,
+			);
+
+			expect(mockPublisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-saml-config',
+			});
+		});
+
+		test('should not publish in single main setup', async () => {
+			(instanceSettings as any).isMultiMain = false;
+
+			await samlService.setSamlPreferences(
+				{ loginEnabled: false, metadata: mockSamlConfig.metadata },
+				false,
+				true,
+			);
+
+			expect(mockPublisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		test('should not publish when broadcastReload is false', async () => {
+			(instanceSettings as any).isMultiMain = true;
+
+			await samlService.setSamlPreferences(
+				{ loginEnabled: false, metadata: mockSamlConfig.metadata },
+				false,
+				false,
+			);
+
+			expect(mockPublisher.publishCommand).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('reload', () => {
+		test('should reload SAML configuration from database', async () => {
+			settingsRepository.findOne = jest.fn().mockResolvedValue(mockConfigFromDB);
+			jest
+				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
+				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+
+			await samlService.reload();
+
+			expect(samlService.loadFromDbAndApplySamlPreferences).toHaveBeenCalledWith(true, false);
+			expect(ssoHelpers.reloadAuthenticationMethod).toHaveBeenCalled();
+			expect(globalConfig.sso.saml.loginEnabled).toBe(true);
+			expect(logger.debug).toHaveBeenCalledWith(
+				'SAML configuration changed, starting to load it from the database',
+			);
+		});
+
+		test('should prevent concurrent reloads with isReloading flag', async () => {
+			jest
+				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
+				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+
+			// Start first reload without awaiting
+			const firstReload = samlService.reload();
+			// Start second reload immediately
+			const secondReload = samlService.reload();
+
+			await Promise.all([firstReload, secondReload]);
+
+			// Should have called loadFromDbAndApplySamlPreferences only once due to isReloading flag
+			expect(samlService.loadFromDbAndApplySamlPreferences).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith('SAML configuration reload already in progress');
+		});
+
+		test('should handle errors during reload gracefully', async () => {
+			const error = new Error('Database connection failed');
+			jest.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockRejectedValue(error);
+
+			await samlService.reload();
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'SAML configuration changed, failed to reload SAML configuration',
+				{ error },
+			);
+			// Should reset isReloading flag even on error
+			// Test by calling reload again - should not be blocked
+			jest
+				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
+				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+
+			await samlService.reload();
+			expect(samlService.loadFromDbAndApplySamlPreferences).toHaveBeenCalledTimes(2);
+		});
+
+		test('should update GlobalConfig with login status', async () => {
+			jest
+				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
+				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			// Mock SAML as disabled
+			jest.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
+
+			await samlService.reload();
+
+			expect(globalConfig.sso.saml.loginEnabled).toBe(false);
+			expect(logger.debug).toHaveBeenCalledWith('SAML login is now disabled.');
+		});
+	});
+
+	describe('loadFromDbAndApplySamlPreferences with broadcastReload parameter', () => {
+		beforeEach(() => {
+			// Mock required methods to avoid complex initialization
+			jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+			jest.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
+			jest
+				.spyOn(samlService, 'saveSamlPreferencesToDb')
+				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			jest
+				.spyOn(samlService as any, 'broadcastReloadSAMLConfigurationCommand')
+				.mockResolvedValue(undefined);
+		});
+
+		test('should call setSamlPreferences with broadcastReload=true by default', async () => {
+			settingsRepository.findOne = jest.fn().mockResolvedValue(mockConfigFromDB);
+			jest.spyOn(samlService, 'setSamlPreferences');
+
+			await samlService.loadFromDbAndApplySamlPreferences(true);
+
+			expect(samlService.setSamlPreferences).toHaveBeenCalledWith(mockSamlConfig, true, true);
+		});
+
+		test('should call setSamlPreferences with broadcastReload=false when specified', async () => {
+			settingsRepository.findOne = jest.fn().mockResolvedValue(mockConfigFromDB);
+			jest.spyOn(samlService, 'setSamlPreferences');
+
+			await samlService.loadFromDbAndApplySamlPreferences(true, false);
+
+			expect(samlService.setSamlPreferences).toHaveBeenCalledWith(mockSamlConfig, true, false);
+		});
+	});
+
+	describe('reset', () => {
+		test('disables saml login and deletes the saml `features.saml` key in the db', async () => {
+			// ARRANGE
+			jest.spyOn(samlHelpers, 'setSamlLoginEnabled');
+			jest.spyOn(settingsRepository, 'delete');
+
+			// ACT
+			await samlService.reset();
+
+			// ASSERT
+			expect(samlHelpers.setSamlLoginEnabled).toHaveBeenCalledTimes(1);
+			expect(samlHelpers.setSamlLoginEnabled).toHaveBeenCalledWith(false);
+			expect(settingsRepository.delete).toHaveBeenCalledTimes(1);
+			expect(settingsRepository.delete).toHaveBeenCalledWith({ key: SAML_PREFERENCES_DB_KEY });
+		});
+	});
+
+	describe('proxy configuration', () => {
+		const originalEnv = process.env;
+		const validMetadataXml =
+			'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://mocksaml.com/api/saml/sso"/>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>';
+
+		beforeEach(() => {
+			// Reset environment before each test
+			process.env = { ...originalEnv };
+			jest.restoreAllMocks();
+			jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+		});
+
+		afterEach(() => {
+			// Restore original environment after each test
+			process.env = originalEnv;
+		});
+
+		test('should use proxy when HTTP_PROXY environment variable is set for HTTP URLs', async () => {
+			// Set HTTP proxy environment variable
+			const proxyUrl = 'http://proxy.example.com:8080';
+			process.env.HTTP_PROXY = proxyUrl;
+
+			// Use an HTTP metadata URL
+			const metadataUrl = 'http://saml.example.com/metadata';
+
+			// Mock the preferences to include a metadataUrl
+			type SamlServicePrivate = { _samlPreferences: SamlPreferences };
+			(samlService as unknown as SamlServicePrivate)._samlPreferences = {
+				metadata: mockSamlConfig.metadata,
+				metadataUrl,
+			} as SamlPreferences;
+
+			// Mock axios response
+			mockedAxios.get.mockResolvedValue({
+				status: 200,
+				data: validMetadataXml,
+			});
+
+			// Mock validator
+			jest.spyOn(samlService['validator'], 'validateMetadata').mockResolvedValue(true);
+
+			const result = await samlService.fetchMetadataFromUrl();
+
+			expect(result).toBe(validMetadataXml);
+
+			// Verify that axios.get was called with the correct URL and agents
+			expect(mockedAxios.get).toHaveBeenCalledWith(
+				metadataUrl,
+				expect.objectContaining({
+					httpAgent: expect.any(Object),
+					httpsAgent: expect.any(Object),
+				}),
+			);
+
+			// Get the actual call arguments to verify the agents
+			const callArgs = mockedAxios.get.mock.calls[0];
+			if (!callArgs?.[1]) {
+				throw new Error('Expected axios.get to be called with arguments');
+			}
+
+			const { httpAgent, httpsAgent } = callArgs[1];
+
+			// Verify that both agents are created
+			expect(httpAgent).toBeDefined();
+			expect(httpsAgent).toBeDefined();
+
+			// Verify the httpAgent has proxy configuration
+			expect(httpAgent).toHaveProperty('proxy');
+			const httpProxyAgent = httpAgent as unknown as HttpProxyAgent<string>;
+			expect(httpProxyAgent.proxy).toBeDefined();
+			expect(httpProxyAgent.proxy.href).toBe(`${proxyUrl}/`);
+
+			// The httpsAgent should also have the proxy (both are created with same proxy)
+			expect(httpsAgent).toHaveProperty('proxy');
+			const httpsProxyAgent = httpsAgent as unknown as HttpsProxyAgent<string>;
+			expect(httpsProxyAgent.proxy.href).toBe(`${proxyUrl}/`);
+		});
+
+		test('should use proxy when HTTPS_PROXY environment variable is set for HTTPS URLs', async () => {
+			// Set HTTPS proxy environment variable
+			const proxyUrl = 'https://proxy.example.com:8080';
+			process.env.HTTPS_PROXY = proxyUrl;
+
+			// Use an HTTPS metadata URL
+			const metadataUrl = 'https://saml.example.com/metadata';
+
+			// Mock the preferences to include a metadataUrl
+			type SamlServicePrivate = { _samlPreferences: SamlPreferences };
+			(samlService as unknown as SamlServicePrivate)._samlPreferences = {
+				metadata: mockSamlConfig.metadata,
+				metadataUrl,
+				ignoreSSL: true,
+			} as SamlPreferences;
+
+			// Mock axios response
+			mockedAxios.get.mockResolvedValue({
+				status: 200,
+				data: validMetadataXml,
+			});
+
+			// Mock validator
+			jest.spyOn(samlService['validator'], 'validateMetadata').mockResolvedValue(true);
+
+			const result = await samlService.fetchMetadataFromUrl();
+
+			expect(result).toBe(validMetadataXml);
+
+			// Verify that axios.get was called with the correct URL and agents
+			expect(mockedAxios.get).toHaveBeenCalledWith(
+				metadataUrl,
+				expect.objectContaining({
+					httpAgent: expect.any(Object),
+					httpsAgent: expect.any(Object),
+				}),
+			);
+
+			// Get the actual call arguments to verify the agents
+			const callArgs = mockedAxios.get.mock.calls[0];
+			if (!callArgs?.[1]) {
+				throw new Error('Expected axios.get to be called with arguments');
+			}
+
+			const { httpAgent, httpsAgent } = callArgs[1];
+
+			// Verify that both agents are created
+			expect(httpAgent).toBeDefined();
+			expect(httpsAgent).toBeDefined();
+
+			// Verify the httpsAgent has proxy configuration
+			expect(httpsAgent).toHaveProperty('proxy');
+			const httpsProxyAgent = httpsAgent as unknown as HttpsProxyAgent<string>;
+			expect(httpsProxyAgent.proxy).toBeDefined();
+			expect(httpsProxyAgent.proxy.href).toBe(`${proxyUrl}/`);
+
+			// Verify that the httpsAgent has the correct rejectUnauthorized setting when ignoreSSL is true
+			// HttpsProxyAgent stores connection options in connectOpts, not options
+			const httpsAgentWithConnectOpts = httpsProxyAgent as unknown as {
+				connectOpts?: { rejectUnauthorized?: boolean };
+			};
+			expect(httpsAgentWithConnectOpts.connectOpts?.rejectUnauthorized).toBe(false);
+
+			// The httpAgent should also have the proxy (both are created with same proxy)
+			expect(httpAgent).toHaveProperty('proxy');
+			const httpProxyAgent = httpAgent as unknown as HttpProxyAgent<string>;
+			expect(httpProxyAgent.proxy.href).toBe(`${proxyUrl}/`);
+		});
+
+		test('should work without proxy when no proxy environment variables are set', async () => {
+			// Ensure no proxy env vars are set
+			delete process.env.HTTP_PROXY;
+			delete process.env.HTTPS_PROXY;
+			delete process.env.ALL_PROXY;
+
+			// Mock the preferences to include a metadataUrl
+			type SamlServicePrivate = { _samlPreferences: SamlPreferences };
+			(samlService as unknown as SamlServicePrivate)._samlPreferences = {
+				metadata: mockSamlConfig.metadata,
+				metadataUrl: 'https://saml.example.com/metadata',
+				ignoreSSL: false,
+			} as SamlPreferences;
+
+			// Mock axios response
+			mockedAxios.get.mockResolvedValue({
+				status: 200,
+				data: validMetadataXml,
+			});
+
+			// Mock validator
+			jest.spyOn(samlService['validator'], 'validateMetadata').mockResolvedValue(true);
+
+			const result = await samlService.fetchMetadataFromUrl();
+
+			expect(result).toBe(validMetadataXml);
+
+			// Verify that axios.get was called with agents
+			expect(mockedAxios.get).toHaveBeenCalledWith(
+				'https://saml.example.com/metadata',
+				expect.objectContaining({
+					httpAgent: expect.any(Object),
+					httpsAgent: expect.any(Object),
+				}),
+			);
+
+			// Get the actual call arguments to verify the agents are NOT proxy agents
+			const callArgs = mockedAxios.get.mock.calls[0];
+			if (!callArgs?.[1]) {
+				throw new Error('Expected axios.get to be called with arguments');
+			}
+
+			const { httpAgent, httpsAgent } = callArgs[1];
+
+			// When no proxy is configured, regular http/https Agents are created
+			// These should NOT have a proxy property
+			expect(httpAgent).not.toHaveProperty('proxy');
+			expect(httpsAgent).not.toHaveProperty('proxy');
+		});
+	});
+});

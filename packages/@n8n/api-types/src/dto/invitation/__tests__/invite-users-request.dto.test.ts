@@ -16,6 +16,8 @@ describe('InviteUsersRequestDto', () => {
 				request: [
 					{ email: 'user1@example.com', role: 'global:member' },
 					{ email: 'user2@example.com', role: 'global:admin' },
+					{ email: 'user3@example.com', role: 'custom:role' },
+					{ email: 'user4@example.com', role: 'global:chatUser' },
 				],
 			},
 		])('should validate $name', ({ request }) => {
@@ -42,7 +44,7 @@ describe('InviteUsersRequestDto', () => {
 				request: [
 					{
 						email: 'user@example.com',
-						role: 'invalid-role',
+						role: 'global:owner',
 					},
 				],
 				expectedErrorPath: [0, 'role'],

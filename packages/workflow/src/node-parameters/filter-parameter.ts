@@ -1,6 +1,6 @@
+import { ApplicationError } from '@n8n/errors';
 import type { DateTime } from 'luxon';
 
-import { ApplicationError } from '@n8n/errors';
 import type {
 	FilterConditionValue,
 	FilterOperatorType,
@@ -48,8 +48,16 @@ function parseSingleFilterValue(
 		return { valid: true, newValue: Boolean(value) };
 	}
 
-	if (type === 'number' && Number.isNaN(value)) {
-		return { valid: true, newValue: value };
+	if (type === 'number') {
+		if (Number.isNaN(value)) {
+			return { valid: true, newValue: value };
+		}
+		const isEmptyString = typeof value === 'string' && value.trim() === '';
+		const isEmptyArray = Array.isArray(value) && value.length === 0;
+		// Number('') and Number([]) convert to 0 in validateFieldType, which is not intuitive, consider them empty values
+		if ((isEmptyString || isEmptyArray) && version >= 3) {
+			return { valid: true, newValue: null };
+		}
 	}
 
 	return validateFieldType('filter', value, type, { strict, parseStrings: true });

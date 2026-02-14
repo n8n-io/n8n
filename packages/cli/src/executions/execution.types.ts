@@ -14,8 +14,6 @@ export declare namespace ExecutionRequest {
 			lastId: string;
 			firstId: string;
 		};
-
-		type GetOne = { unflattedResponse: 'true' | 'false' };
 	}
 
 	namespace BodyParams {
@@ -23,6 +21,10 @@ export declare namespace ExecutionRequest {
 			deleteBefore?: Date;
 			filters?: IDataObject;
 			ids?: string[];
+		};
+
+		type StopMany = {
+			filter: ExecutionSummaries.StopExecutionFilterQuery; // stringified `FilterFields`
 		};
 	}
 
@@ -41,13 +43,14 @@ export declare namespace ExecutionRequest {
 		rangeQuery: ExecutionSummaries.RangeQuery; // parsed from query params
 	};
 
-	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId, {}, {}, QueryParams.GetOne>;
+	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId>;
 
 	type Delete = AuthenticatedRequest<{}, {}, BodyParams.DeleteFilter>;
 
-	type Retry = AuthenticatedRequest<RouteParams.ExecutionId, {}, { loadWorkflow: boolean }, {}>;
+	type Retry = AuthenticatedRequest<RouteParams.ExecutionId, {}, { loadWorkflow?: boolean }, {}>;
 
 	type Stop = AuthenticatedRequest<RouteParams.ExecutionId>;
+	type StopMany = AuthenticatedRequest<{}, {}, BodyParams.StopMany>;
 
 	type Update = AuthenticatedRequest<RouteParams.ExecutionId, {}, ExecutionUpdatePayload, {}>;
 }

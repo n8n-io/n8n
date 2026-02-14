@@ -1,0 +1,7 @@
+# Local task broker
+LOCAL_TASK_BROKER_WS_PATH = "/runners/_ws"
+
+# Timing
+TASK_RESPONSE_WAIT = 3
+TASK_TIMEOUT = 2
+GRACEFUL_SHUTDOWN_TIMEOUT = 1

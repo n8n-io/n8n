@@ -9,14 +9,14 @@ withDefaults(defineProps<BlockUiProps>(), {
 </script>
 
 <template>
-	<transition name="fade" mode="out-in">
+	<Transition name="fade" mode="out-in">
 		<div
 			v-show="show"
 			:class="['n8n-block-ui', $style.uiBlocker]"
 			role="dialog"
 			:aria-hidden="true"
 		/>
-	</transition>
+	</Transition>
 </template>
 
 <style lang="scss" module>
@@ -26,10 +26,10 @@ withDefaults(defineProps<BlockUiProps>(), {
 	left: 0;
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-block-ui-overlay);
+	background-color: var(--block-ui--overlay--color);
 	z-index: 10;
 	opacity: 0.6;
-	border-radius: var(--border-radius-large);
+	border-radius: var(--radius--lg);
 }
 </style>
 

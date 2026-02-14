@@ -3,9 +3,14 @@ import { mock } from 'vitest-mock-extended';
 
 import { nodeTypes } from './ExpressionExtensions/helpers';
 import type { NodeTypes } from './node-types';
-import { STICKY_NODE_TYPE } from '../src/constants';
+import {
+	MCP_CLIENT_NODE_TYPE,
+	MCP_CLIENT_TOOL_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '../src/constants';
 import { ApplicationError, ExpressionError, NodeApiError } from '../src/errors';
 import type {
+	IConnections,
 	INode,
 	INodeTypeDescription,
 	IRun,
@@ -23,6 +28,7 @@ import {
 	generateNodesGraph,
 	getDomainBase,
 	getDomainPath,
+	getNodeRole,
 	resolveAIMetrics,
 	resolveVectorStoreMetrics,
 	userInInstanceRanOutOfFreeAiCredits,
@@ -43,6 +49,33 @@ describe('getDomainBase should return protocol plus domain', () => {
 			const { full, protocolPlusDomain } = url;
 			expect(getDomainBase(full)).toBe(protocolPlusDomain);
 		}
+	});
+
+	test('should handle multi-level TLDs correctly', () => {
+		// Test cases for multi-level TLDs (country codes, special services)
+		const testCases = [
+			{ input: 'https://api.example.co.uk/path', expected: 'example.co.uk' },
+			{ input: 'https://user.service.com.au/api', expected: 'service.com.au' },
+			{ input: 'https://api.example.co.jp/test', expected: 'example.co.jp' },
+			{ input: 'https://test.example.gov.uk/data', expected: 'example.gov.uk' },
+			{ input: 'https://sub.domain.org.nz/path', expected: 'domain.org.nz' },
+			{ input: 'api.example.co.uk/path', expected: 'example.co.uk' },
+		];
+
+		testCases.forEach(({ input, expected }) => {
+			expect(getDomainBase(input)).toBe(expected);
+		});
+	});
+
+	test('should handle edge cases', () => {
+		// Single word domains, localhost, etc.
+		expect(getDomainBase('https://localhost/path')).toBe('localhost');
+		expect(getDomainBase('https://example/path')).toBe('example');
+	});
+
+	test('should handle IP addresses', () => {
+		expect(getDomainBase('https://192.168.1.1/path')).toBe('192.168.1.1');
+		expect(getDomainBase('https://[::1]/path')).toBe('[::1]');
 	});
 });
 
@@ -104,6 +137,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -169,6 +203,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [],
 			connections: {},
@@ -213,6 +248,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -280,6 +316,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -304,7 +341,7 @@ describe('generateNodesGraph', () => {
 				{
 					parameters: {
 						content:
-							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
 					},
 					id: '03e85c3e-4303-4f93-8d62-e05d457e8f70',
 					name: 'Sticky Note',
@@ -583,6 +620,7 @@ describe('generateNodesGraph', () => {
 					'0': {
 						id: 'openai-node-id',
 						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						use_responses_api: false,
 						version: 1,
 						position: [400, 400],
 					},
@@ -735,6 +773,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -759,7 +798,7 @@ describe('generateNodesGraph', () => {
 				{
 					parameters: {
 						content:
-							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
 						height: 488,
 						width: 645,
 					},
@@ -929,7 +968,6 @@ describe('generateNodesGraph', () => {
 						credential_type: 'httpBasicAuth',
 						credential_set: true,
 						domain_base: 'google.com',
-						domain_path: '/path/test',
 					},
 				},
 				notes: {},
@@ -984,7 +1022,6 @@ describe('generateNodesGraph', () => {
 						credential_type: 'activeCampaignApi',
 						credential_set: true,
 						domain_base: 'google.com',
-						domain_path: '/path/test',
 					},
 				},
 				notes: {},
@@ -1189,7 +1226,6 @@ describe('generateNodesGraph', () => {
 						position: [600, 240],
 						credential_set: false,
 						domain_base: '',
-						domain_path: '',
 					},
 				},
 				notes: {},
@@ -1290,6 +1326,7 @@ describe('generateNodesGraph', () => {
 					'2': {
 						id: '198133b6-95dd-4f7e-90e5-e16c4cdbad12',
 						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						use_responses_api: false,
 						version: 1,
 						position: [780, 500],
 					},
@@ -1545,6 +1582,436 @@ describe('generateNodesGraph', () => {
 				is_pinned: false,
 			},
 			nameIndices: { 'Evaluation Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test.each([
+		{ typeVersion: 1.2, parameterValue: undefined, expectedValue: false },
+		{ typeVersion: 1.3, parameterValue: true, expectedValue: true },
+		{ typeVersion: 1.3, parameterValue: false, expectedValue: false },
+		{ typeVersion: 1.3, parameterValue: undefined, expectedValue: true },
+	])(
+		'should handle LMChatOpenAi node with use_responses_api set to $expectedValue when typeVersion is $typeVersion and parameterValue is $parameterValue',
+		({ typeVersion, parameterValue, expectedValue }) => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							responsesApiEnabled: parameterValue,
+						},
+						id: 'lmchatopenai-node-id',
+						name: 'LMChatOpenAi Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			expect(generateNodesGraph(workflow, nodeTypes, { isCloudDeployment: true })).toEqual({
+				nodeGraph: {
+					node_types: ['@n8n/n8n-nodes-langchain.lmChatOpenAi'],
+					node_connections: [],
+					nodes: {
+						'0': {
+							id: 'lmchatopenai-node-id',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							version: typeVersion,
+							position: [100, 100],
+							use_responses_api: expectedValue,
+						},
+					},
+					notes: {},
+					is_pinned: false,
+				},
+				nameIndices: { 'LMChatOpenAi Node': '0' },
+				webhookNodeNames: [],
+				evaluationTriggerNodeNames: [],
+			});
+		},
+	);
+
+	test('should add package version to node graph', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'fe69383c-e418-4f98-9c0e-924deafa7f93',
+					name: 'When clicking ‘Execute workflow’',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				{
+					parameters: {},
+					id: 'c5c374f1-6fad-46bb-8eea-ceec126b300a',
+					name: 'Community Installed Node',
+					type: 'n8n-nodes-community-installed-node.communityInstalledNode',
+					typeVersion: 1,
+					position: [200, 200],
+				},
+				{
+					parameters: {},
+					id: 'c5c374f1-6fad-46bb-8eea-ceec126b300b',
+					name: 'Community Installed Node 2',
+					type: 'n8n-nodes-community-installed-node2.communityInstalledNode',
+					typeVersion: 1,
+					position: [300, 300],
+				},
+				{
+					parameters: {
+						options: {},
+					},
+					id: '198133b6-95dd-4f7e-90e5-e16c4cdbad12',
+					name: 'Community Missing Node',
+					type: 'community-missing-node.communityMissingNode',
+					typeVersion: 1,
+					position: [400, 400],
+				},
+			],
+		};
+
+		expect(
+			generateNodesGraph(workflow, {
+				...nodeTypes,
+				getByNameAndVersion: (nodeType: string, version?: number) => {
+					const orig = nodeTypes.getByNameAndVersion(nodeType, version);
+					if (nodeType === 'n8n-nodes-community-installed-node.communityInstalledNode') {
+						return {
+							...orig,
+							description: {
+								...orig.description,
+								communityNodePackageVersion: '1.0.0',
+							},
+						};
+					}
+					if (nodeType === 'n8n-nodes-community-installed-node2.communityInstalledNode') {
+						return {
+							...orig,
+							description: {
+								...orig.description,
+								communityNodePackageVersion: '1.0.1',
+							},
+						};
+					}
+					return orig;
+				},
+			}),
+		).toEqual({
+			evaluationTriggerNodeNames: [],
+			nameIndices: {
+				'When clicking ‘Execute workflow’': '0',
+				'Community Installed Node': '1',
+				'Community Installed Node 2': '2',
+				'Community Missing Node': '3',
+			},
+			webhookNodeNames: [],
+			nodeGraph: {
+				is_pinned: false,
+				node_types: [
+					'n8n-nodes-base.manualTrigger',
+					'n8n-nodes-community-installed-node.communityInstalledNode',
+					'n8n-nodes-community-installed-node2.communityInstalledNode',
+					'community-missing-node.communityMissingNode',
+				],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'fe69383c-e418-4f98-9c0e-924deafa7f93',
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1,
+						position: [100, 100],
+					},
+					'1': {
+						id: 'c5c374f1-6fad-46bb-8eea-ceec126b300a',
+						type: 'n8n-nodes-community-installed-node.communityInstalledNode',
+						version: 1,
+						position: [200, 200],
+						package_version: '1.0.0',
+					},
+					'2': {
+						id: 'c5c374f1-6fad-46bb-8eea-ceec126b300b',
+						type: 'n8n-nodes-community-installed-node2.communityInstalledNode',
+						version: 1,
+						position: [300, 300],
+						package_version: '1.0.1',
+					},
+					'3': {
+						id: '198133b6-95dd-4f7e-90e5-e16c4cdbad12',
+						type: 'community-missing-node.communityMissingNode',
+						version: 1,
+						position: [400, 400],
+					},
+				},
+				notes: {},
+			},
+		});
+	});
+
+	test.each(['classify', 'sanitize'])(
+		'should handle Guardrails node with valid guardrails assignments for operation %s',
+		(operation) => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							operation,
+							guardrails: {
+								promptInjection: {
+									prompt: 'Custom prompt',
+									threshold: 0.5,
+								},
+								nsfw: {
+									prompt: 'Custom prompt',
+									threshold: 0.5,
+								},
+								pii: {
+									type: 'all',
+									entities: ['email', 'phone'],
+									customRegex: {
+										regex: ['/1234567890/'],
+									},
+								},
+								urls: {
+									allowedUrls: 'https://example.com',
+									allowedSchemes: ['https'],
+									blockUserinfo: true,
+									allowSubdomains: true,
+								},
+							},
+						},
+						id: 'guardrails-node-id',
+						name: 'Guardrails Node',
+						type: '@n8n/n8n-nodes-langchain.guardrails',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+				nodeGraph: {
+					node_types: ['@n8n/n8n-nodes-langchain.guardrails'],
+					node_connections: [],
+					nodes: {
+						'0': {
+							id: 'guardrails-node-id',
+							type: '@n8n/n8n-nodes-langchain.guardrails',
+							version: 1,
+							position: [100, 100],
+							operation,
+							used_guardrails: ['promptInjection', 'nsfw', 'pii', 'urls'],
+						},
+					},
+					notes: {},
+					is_pinned: false,
+				},
+				nameIndices: { 'Guardrails Node': '0' },
+				webhookNodeNames: [],
+				evaluationTriggerNodeNames: [],
+			});
+		},
+	);
+
+	test('should handle Guardrails node without guardrails assignments', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						operation: 'classify',
+						guardrails: {},
+					},
+					id: 'guardrails-node-id',
+					name: 'Guardrails Node',
+					type: '@n8n/n8n-nodes-langchain.guardrails',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: ['@n8n/n8n-nodes-langchain.guardrails'],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'guardrails-node-id',
+						type: '@n8n/n8n-nodes-langchain.guardrails',
+						version: 1,
+						position: [100, 100],
+						operation: 'classify',
+						used_guardrails: [],
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'Guardrails Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client node with authentication method', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						authentication: 'bearerAuth',
+					},
+					id: 'mcp-client-node-id',
+					name: 'MCP Client Node',
+					type: MCP_CLIENT_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-node-id',
+						type: MCP_CLIENT_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'bearerAuth',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client node without authentication method (default to none)', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'mcp-client-node-id',
+					name: 'MCP Client Node',
+					type: MCP_CLIENT_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-node-id',
+						type: MCP_CLIENT_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'none',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client Tool node with authentication method', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						authentication: 'bearerAuth',
+					},
+					id: 'mcp-client-tool-node-id',
+					name: 'MCP Client Tool Node',
+					type: MCP_CLIENT_TOOL_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_TOOL_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-tool-node-id',
+						type: MCP_CLIENT_TOOL_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'bearerAuth',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Tool Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client Tool node without authentication method (default to none)', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'mcp-client-tool-node-id',
+					name: 'MCP Client Tool Node',
+					type: MCP_CLIENT_TOOL_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_TOOL_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-tool-node-id',
+						type: MCP_CLIENT_TOOL_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'none',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Tool Node': '0' },
 			webhookNodeNames: [],
 			evaluationTriggerNodeNames: [],
 		});
@@ -1825,42 +2292,42 @@ function validUrls(idMaker: typeof alphanumericId | typeof email, char = CHAR) {
 	return [
 		{
 			full: `https://test.com/api/v1/users/${firstId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users?id=${firstId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: '/api/v1/users',
 		},
 		{
 			full: `https://test.com/api/v1/users?id=${firstId}&post=${secondId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: '/api/v1/users',
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}`,
 		},
 	];
@@ -1880,7 +2347,7 @@ function malformedUrls(idMaker: typeof numericId | typeof email, char = CHAR) {
 		},
 		{
 			full: `htp://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'htp://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
@@ -2225,7 +2692,7 @@ describe('makeAIMetrics', () => {
 			position: [0, 0],
 		}) as INode;
 
-	it('should count applicable nodes and parameters', async () => {
+	it('should count applicable nodes and parameters', () => {
 		const nodes = [
 			makeNode(
 				{
@@ -2270,7 +2737,7 @@ describe('makeAIMetrics', () => {
 		});
 	});
 
-	it('should not count non-applicable nodes and parameters', async () => {
+	it('should not count non-applicable nodes and parameters', () => {
 		const nodes = [
 			makeNode(
 				{
@@ -2290,7 +2757,7 @@ describe('makeAIMetrics', () => {
 		expect(result).toMatchObject({});
 	});
 
-	it('should count ai nodes without tools', async () => {
+	it('should count ai nodes without tools', () => {
 		const nodes = [
 			makeNode(
 				{
@@ -2545,6 +3012,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		id: 'test-workflow',
 		name: 'Test Workflow',
 		active: false,
+		activeVersionId: null,
 		isArchived: false,
 		nodes,
 		connections: connections || {},
@@ -2589,6 +3057,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		status: error ? 'error' : 'success',
 		startedAt: new Date(),
 		stoppedAt: new Date(),
+		storedAt: 'db',
 		data: {
 			startData: {},
 			resultData: {
@@ -3021,6 +3490,194 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			position: [300, 100],
 			response_mode: 'lastNode',
 			public_chat: false,
+		});
+	});
+});
+
+describe('getNodeRole', () => {
+	const makeNode = (name: string, type: string, typeVersion = 1): INode => ({
+		id: `${name}-id`,
+		name,
+		type,
+		typeVersion,
+		position: [0, 0],
+		parameters: {},
+	});
+
+	describe('trigger role', () => {
+		it('should return trigger for node with no incoming main connections', () => {
+			const nodes = [
+				makeNode('Trigger', 'n8n-nodes-base.manualTrigger'),
+				makeNode('Set', 'n8n-nodes-base.set'),
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					[NodeConnectionTypes.Main]: [[{ node: 'Set', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const result = getNodeRole('Trigger', connections, nodeTypes, nodes);
+			expect(result).toBe('trigger');
+		});
+
+		it('should return trigger for isolated node with no connections', () => {
+			const nodes = [makeNode('Trigger', 'n8n-nodes-base.manualTrigger')];
+
+			const connections: IConnections = {};
+
+			const result = getNodeRole('Trigger', connections, nodeTypes, nodes);
+			expect(result).toBe('trigger');
+		});
+	});
+
+	describe('terminal role', () => {
+		it('should return terminal for node with incoming but no outgoing connections', () => {
+			const nodes = [
+				makeNode('Trigger', 'n8n-nodes-base.manualTrigger'),
+				makeNode('Set', 'n8n-nodes-base.set'),
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					[NodeConnectionTypes.Main]: [[{ node: 'Set', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const result = getNodeRole('Set', connections, nodeTypes, nodes);
+			expect(result).toBe('terminal');
+		});
+	});
+
+	describe('internal role', () => {
+		it('should return internal for node with both incoming and outgoing connections', () => {
+			const nodes = [
+				makeNode('Trigger', 'n8n-nodes-base.manualTrigger'),
+				makeNode('Middle', 'n8n-nodes-base.set'),
+				makeNode('End', 'n8n-nodes-base.set'),
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Middle', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				Middle: {
+					[NodeConnectionTypes.Main]: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			const result = getNodeRole('Middle', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
+
+		it('should return internal for subnode even without main connections', () => {
+			const nodes = [
+				makeNode('Agent', '@n8n/n8n-nodes-langchain.agent'),
+				makeNode('Wikipedia', '@n8n/n8n-nodes-langchain.toolWikipedia'),
+			];
+
+			const connections: IConnections = {
+				Wikipedia: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+			};
+
+			const result = getNodeRole('Wikipedia', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
+
+		it('should return internal for calculator tool subnode', () => {
+			const nodes = [
+				makeNode('Agent', '@n8n/n8n-nodes-langchain.agent'),
+				makeNode('Calculator', '@n8n/n8n-nodes-langchain.toolCalculator'),
+			];
+
+			const connections: IConnections = {
+				Calculator: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: 'Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+			};
+
+			const result = getNodeRole('Calculator', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
+
+		it('should return internal for PartialExecutionToolExecutor', () => {
+			const nodes: INode[] = [];
+			const connections: IConnections = {};
+
+			const result = getNodeRole('PartialExecutionToolExecutor', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
+	});
+
+	describe('edge cases', () => {
+		it('should return trigger for node not in connections', () => {
+			const nodes = [makeNode('Isolated', 'n8n-nodes-base.set')];
+			const connections: IConnections = {};
+
+			const result = getNodeRole('Isolated', connections, nodeTypes, nodes);
+			expect(result).toBe('trigger');
+		});
+
+		it('should handle node with empty output arrays', () => {
+			const nodes = [
+				makeNode('Trigger', 'n8n-nodes-base.manualTrigger'),
+				makeNode('Set', 'n8n-nodes-base.set'),
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					[NodeConnectionTypes.Main]: [[{ node: 'Set', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				Set: {
+					[NodeConnectionTypes.Main]: [[]],
+				},
+			};
+
+			const result = getNodeRole('Set', connections, nodeTypes, nodes);
+			expect(result).toBe('terminal');
+		});
+
+		it('should handle multiple output branches', () => {
+			const nodes = [
+				makeNode('Trigger', 'n8n-nodes-base.manualTrigger'),
+				makeNode('Set1', 'n8n-nodes-base.set'),
+				makeNode('TrueBranch', 'n8n-nodes-base.set'),
+				makeNode('FalseBranch', 'n8n-nodes-base.set'),
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'Set1', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				Set1: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'TrueBranch', type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: 'FalseBranch', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			};
+
+			const result = getNodeRole('Set1', connections, nodeTypes, nodes);
+			expect(result).toBe('internal');
+		});
+
+		it('should handle node not found in nodes array', () => {
+			const nodes = [makeNode('Trigger', 'n8n-nodes-base.manualTrigger')];
+			const connections: IConnections = {};
+
+			// Node 'NotInArray' is not in the nodes array
+			const result = getNodeRole('NotInArray', connections, nodeTypes, nodes);
+			expect(result).toBe('trigger');
 		});
 	});
 });

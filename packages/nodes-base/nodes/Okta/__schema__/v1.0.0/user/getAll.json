@@ -42,6 +42,18 @@
         "profile": {
             "type": "object",
             "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "countryCode": {
+                    "type": "string"
+                },
+                "department": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string"
                 },
@@ -53,8 +65,35 @@
                 },
                 "login": {
                     "type": "string"
+                },
+                "manager": {
+                    "type": "string"
+                },
+                "managerEmail": {
+                    "type": "string"
+                },
+                "organization": {
+                    "type": "string"
+                },
+                "site": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "userType": {
+                    "type": "string"
                 }
             }
+        },
+        "realmId": {
+            "type": "string"
         },
         "status": {
             "type": "string"
@@ -68,5 +107,5 @@
             }
         }
     },
-    "version": 2
+    "version": 4
 }

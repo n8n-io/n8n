@@ -85,6 +85,12 @@ export class MyFeatureModule implements ModuleInterface {
 
     return Container.get(MyFeatureService).settings();
   }
+
+  async context() {
+    const { MyFeatureService } = await import('./my-feature.service');
+
+    return { myFeatureProxy: Container.get(MyFeatureService) };
+  }
 }
 ```
 
@@ -94,6 +100,7 @@ The entrypoint is responsible for providing:
 - **shutdown logic**, e.g. in insights, stop compaction timers,
 - **database entities** to register with `typeorm`, e.g. in insights, the three database entities `InsightsMetadata`, `InsightsByPeriod` and `InsightsRaw`
 - **settings** to send to the client for adjusting the UI, e.g. in insights, `{ summary: true, dashboard: false }`
+- **context** to merge an object into the workflow execution context `WorkflowExecuteAdditionalData`. This allows you to make module functionality available to `core`, namespaced under the module name. For now, you will also need to manually [update the type](https://github.com/n8n-io/n8n/blob/master/packages/core/src/execution-engine/index.ts#L7) of `WorkflowExecuteAdditionalData` to reflect the resulting context.
 
 A module entrypoint may or may not need to implement all of these methods.
 
@@ -110,6 +117,21 @@ export class ExternalSecretsModule implements ModuleInterface {
   // This module will be activated only if the license flag is true.
 }
 ```
+
+A module may be restricted to specific instance types:
+
+```ts
+@BackendModule({
+  name: 'my-feature',
+  instanceTypes: ['main', 'webhook']
+})
+export class MyFeatureModule implements ModuleInterface {
+  // This module will only be initialized on main and webhook instances,
+  // not on worker instances.
+}
+```
+
+If `instanceTypes` is omitted, the module will be initialized on all instance types (`main`, `webhook`, and `worker`).
 
 If a module is only _partially_ behind a license flag, e.g. insights, then use the `@Licensed()` decorator instead:
 
@@ -143,7 +165,7 @@ Module-level decorators to be aware of:
 
 ## Controller
 
-To register a controller with the server, simply import the controller file in the module entrypoint: 
+To register a controller with the server, simply import the controller file in the module entrypoint:
 
 ```ts
 @BackendModule({ name: 'my-feature' })
@@ -239,7 +261,7 @@ export class MyFeatureRepository extends Repository<MyFeatureEntity> {
   }
 
   async getSummary() {
-    return await /* typeorm query on entities */; 
+    return await /* typeorm query on entities */;
   }
 }
 ```
@@ -271,7 +293,7 @@ Entities must be registered with `typeorm` in the module entrypoint:
 class MyFeatureModule implements ModuleInterface {
   async entities() {
     const { MyFeatureEntity } = await import('./my-feature.entity');
-    
+
     return [MyFeatureEntity];
   }
 }
@@ -321,7 +343,7 @@ Currently, testing utilities live partly at `cli` and partly at `@n8n/backend-te
 1. A few aspects of modules continue to be defined outside a module's dir:
 
 - Add a license flag to `LICENSE_FEATURES` at `packages/@n8n/constants/src/index.ts`
-- Add a logging scope to `LOG_SCOPES` at `packages/cli/src/logging.config.ts`
+- Add a logging scope to `LOG_SCOPES` at `packages/@n8n/config/src/configs/logging.config.ts`
 - Add a license check to `LicenseState` at `packages/@n8n/backend-common/src/license-state.ts`
 - Add a migration (as discussed above) at `packages/@n8n/db/src/migrations`
 - Add request payload validation using `zod` at `@n8n/api-types`
@@ -329,7 +351,7 @@ Currently, testing utilities live partly at `cli` and partly at `@n8n/backend-te
 
 2. License events (e.g. expiration) currently do not trigger module shutdown or initialization at runtime.
 
-3. Some core functionality is yet to be moved from `cli` into common packages. This is not a blocker for module adoption, but this is desirable so that (a) modules become decoupled from `cli` in the long term, and (b) future external extensions can access some of that functionality. 
+3. Some core functionality is yet to be moved from `cli` into common packages. This is not a blocker for module adoption, but this is desirable so that (a) modules become decoupled from `cli` in the long term, and (b) future external extensions can access some of that functionality.
 
 4. Existing features that are not modules (e.g. LDAP) should be turned into modules over time.
 

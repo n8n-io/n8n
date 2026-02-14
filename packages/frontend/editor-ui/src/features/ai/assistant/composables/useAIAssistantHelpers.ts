@@ -1,0 +1,642 @@
+import {
+	deepCopy,
+	isAssignmentCollectionValue,
+	isFilterValue,
+	isResourceLocatorValue,
+	isResourceMapperValue,
+} from 'n8n-workflow';
+import type {
+	FilterValue,
+	IDataObject,
+	INode,
+	INodeParameters,
+	IRunExecutionData,
+	NodeApiError,
+	NodeError,
+	NodeOperationError,
+	NodeParameterValueType,
+} from 'n8n-workflow';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	executionDataToJson,
+	getMainAuthField,
+	getNodeAuthOptions,
+} from '@/app/utils/nodeTypesUtils';
+import type { AssistantProcessOptions, ChatRequest } from '../assistant.types';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useDataSchema } from '@/app/composables/useDataSchema';
+import { AI_ASSISTANT_MAX_CONTENT_LENGTH, VIEWS } from '@/app/constants';
+import { useI18n } from '@n8n/i18n';
+import type { IWorkflowDb } from '@/Interface';
+import { getObjectSizeInKB } from '@/app/utils/objectUtils';
+
+const CANVAS_VIEWS = [VIEWS.NEW_WORKFLOW, VIEWS.WORKFLOW, VIEWS.EXECUTION_DEBUG];
+const EXECUTION_VIEWS = [VIEWS.EXECUTION_PREVIEW];
+const WORKFLOW_LIST_VIEWS = [VIEWS.WORKFLOWS, VIEWS.PROJECTS_WORKFLOWS];
+const CREDENTIALS_LIST_VIEWS = [VIEWS.CREDENTIALS, VIEWS.PROJECTS_CREDENTIALS];
+
+export const useAIAssistantHelpers = () => {
+	const ndvStore = useNDVStore();
+	const nodeTypesStore = useNodeTypesStore();
+	const workflowsStore = useWorkflowsStore();
+
+	const workflowHelpers = useWorkflowHelpers();
+	const locale = useI18n();
+
+	/**
+		Regular expression to extract the node names from the expressions in the template.
+		Supports single quotes, double quotes, and backticks.
+	*/
+	const entityRegex = /\$\(\s*(\\?["'`])((?:\\.|(?!\1)[^\\])*)\1\s*\)/g;
+
+	/**
+	 * Extract the node names from the expressions in the template.
+	 */
+	function extractNodeNames(template: string): string[] {
+		let matches;
+		const nodeNames: string[] = [];
+		while ((matches = entityRegex.exec(template)) !== null) {
+			nodeNames.push(matches[2]);
+		}
+		return nodeNames;
+	}
+
+	/**
+	 * Unescape quotes in the string. Supports single quotes, double quotes, and backticks.
+	 */
+	function unescapeQuotes(str: string): string {
+		return str.replace(/\\(['"`])/g, '$1');
+	}
+
+	/**
+	 * Extract the node names from the expressions in the node parameters.
+	 */
+	function getReferencedNodes(node: INode): string[] {
+		const referencedNodes: Set<string> = new Set();
+		if (!node) {
+			return [];
+		}
+		// Go through all parameters and check if they contain expressions on any level
+		for (const key in node.parameters) {
+			let names: string[] = [];
+			if (
+				node.parameters[key] &&
+				typeof node.parameters[key] === 'object' &&
+				Object.keys(node.parameters[key]).length
+			) {
+				names = extractNodeNames(JSON.stringify(node.parameters[key]));
+			} else if (typeof node.parameters[key] === 'string' && node.parameters[key]) {
+				names = extractNodeNames(node.parameters[key]);
+			}
+			if (names.length) {
+				names
+					.map((name) => unescapeQuotes(name))
+					.forEach((name) => {
+						referencedNodes.add(name);
+					});
+			}
+		}
+		return referencedNodes.size ? Array.from(referencedNodes) : [];
+	}
+
+	/**
+	 * Removes sensitive values from node parameters while preserving structure
+	 * for AI assistant context when allowSendingParameterData is false.
+	 */
+	function removeParameterValues(params: INodeParameters): INodeParameters {
+		const sanitized: INodeParameters = {};
+		const parameters = params ?? {};
+		for (const [key, value] of Object.entries(parameters)) {
+			sanitized[key] = sanitizeParameterValue(value);
+		}
+		return sanitized;
+	}
+
+	function sanitizeFilterConditionValue(
+		value: FilterValue['conditions'][number]['leftValue'],
+	): FilterValue['conditions'][number]['leftValue'] {
+		if (Array.isArray(value)) {
+			return [];
+		}
+		return null;
+	}
+
+	function sanitizeParameterValue(value: NodeParameterValueType): NodeParameterValueType {
+		if (value === null || value === undefined) {
+			return value;
+		}
+
+		if (Array.isArray(value)) {
+			return value.map((item) => sanitizeParameterValue(item)) as NodeParameterValueType;
+		}
+
+		if (typeof value === 'string') {
+			return '';
+		}
+
+		if (typeof value === 'number' || typeof value === 'boolean') {
+			return null;
+		}
+
+		if (isResourceLocatorValue(value)) {
+			const {
+				cachedResultName: _cachedResultName,
+				cachedResultUrl: _cachedResultUrl,
+				...rest
+			} = value;
+			return {
+				...rest,
+				value: '',
+			};
+		}
+
+		if (isAssignmentCollectionValue(value)) {
+			return {
+				assignments:
+					value.assignments?.map((assignment) => {
+						const { value: _assignmentValue, ...rest } = assignment;
+						return { ...rest };
+					}) ?? [],
+			};
+		}
+
+		if (isResourceMapperValue(value)) {
+			return {
+				...value,
+				value: null,
+			};
+		}
+
+		if (isFilterValue(value)) {
+			return {
+				...value,
+				conditions: value.conditions.map((condition) => ({
+					...condition,
+					leftValue: sanitizeFilterConditionValue(condition.leftValue),
+					rightValue: sanitizeFilterConditionValue(condition.rightValue),
+				})),
+			};
+		}
+
+		if (typeof value === 'object') {
+			const sanitizedObject: INodeParameters = {};
+			for (const [key, childValue] of Object.entries(value)) {
+				sanitizedObject[key] = sanitizeParameterValue(childValue);
+			}
+			return sanitizedObject;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Processes node object before sending it to AI assistant
+	 * - Removes unnecessary properties
+	 * - Extracts expressions from the parameters and resolves them
+	 * @param node original node object
+	 * @param propsToRemove properties to remove from the node object
+	 * @returns processed node
+	 */
+	async function processNodeForAssistant(
+		node: INode,
+		propsToRemove: string[],
+		options?: AssistantProcessOptions,
+	): Promise<INode> {
+		// Make a copy of the node object so we don't modify the original
+		const nodeForLLM = deepCopy(node);
+		propsToRemove.forEach((key) => {
+			delete nodeForLLM[key as keyof INode];
+		});
+		if (options?.excludeParameterValues) {
+			nodeForLLM.parameters = removeParameterValues(nodeForLLM.parameters);
+		} else {
+			nodeForLLM.parameters = await workflowHelpers.getNodeParametersWithResolvedExpressions(
+				nodeForLLM.parameters,
+			);
+		}
+		return nodeForLLM;
+	}
+
+	function getNodeInfoForAssistant(
+		node: INode,
+		options?: AssistantProcessOptions,
+	): ChatRequest.NodeInfo {
+		if (!node) {
+			return {};
+		}
+		// Get all referenced nodes and their schemas
+		const referencedNodeNames = getReferencedNodes(node);
+		const { schemas } = getNodesSchemas(referencedNodeNames, options?.excludeParameterValues);
+
+		const nodeType = nodeTypesStore.getNodeType(node.type);
+
+		// Get node credentials details for the ai assistant
+		let authType = undefined;
+		if (nodeType) {
+			const authField = getMainAuthField(nodeType);
+			const credentialInUse = node.parameters[authField?.name ?? ''];
+			const availableAuthOptions = getNodeAuthOptions(nodeType);
+			authType = availableAuthOptions.find((option) => option.value === credentialInUse);
+		}
+		let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = {};
+		// Only include input data if the node references it and we are allowed to send it
+		if (!options?.excludeParameterValues) {
+			const ndvInput = ndvStore.ndvInputData;
+			if (isNodeReferencingInputData(node) && ndvInput?.length) {
+				const inputData = ndvStore.ndvInputData[0].json;
+				const inputNodeName = ndvStore.input.nodeName;
+				nodeInputData = {
+					inputNodeName,
+					inputData,
+				};
+			}
+		}
+		return {
+			authType,
+			schemas,
+			nodeInputData,
+		};
+	}
+
+	/**
+	 * Simplify node error object for AI assistant
+	 */
+	function simplifyErrorForAssistant(
+		error: NodeError | NodeApiError | NodeOperationError,
+	): ChatRequest.ErrorContext['error'] {
+		const simple: ChatRequest.ErrorContext['error'] = {
+			name: error.name,
+			message: error.message,
+		};
+		if ('type' in error) {
+			simple.type = error.type;
+		}
+		if ('description' in error && error.description) {
+			simple.description = error.description;
+		}
+		if (error.stack) {
+			simple.stack = error.stack;
+		}
+		if ('lineNumber' in error) {
+			simple.lineNumber = error.lineNumber;
+		}
+		return simple;
+	}
+
+	function isNodeReferencingInputData(node: INode): boolean {
+		const parametersString = JSON.stringify(node.parameters);
+		const references = ['$json', '$input', '$binary'];
+		return references.some((ref) => parametersString.includes(ref));
+	}
+
+	/**
+	 * Get the schema for the referenced nodes as expected by the AI assistant
+	 * @param nodeNames The names of the nodes to get the schema for
+	 * @returns schemas and list of node names whose schema was derived from pin data
+	 */
+	function getNodesSchemas(nodeNames: string[], excludeValues?: boolean) {
+		const schemas: ChatRequest.NodeExecutionSchema[] = [];
+		const pinnedNodeNames: string[] = [];
+		for (const name of nodeNames) {
+			const node = workflowsStore.getNodeByName(name);
+			if (!node) {
+				continue;
+			}
+			if (workflowsStore.pinDataByNodeName(node.name)) {
+				pinnedNodeNames.push(node.name);
+			}
+			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
+			const schema = getSchemaForExecutionData(
+				executionDataToJson(getInputDataWithPinned(node)),
+				excludeValues,
+				true, // collapseArrays: true for AI assistant to avoid verbose array expansion
+			);
+			schemas.push({
+				nodeName: node.name,
+				schema,
+			});
+		}
+		return { schemas, pinnedNodeNames };
+	}
+
+	function getCurrentViewDescription(view: VIEWS) {
+		switch (true) {
+			case WORKFLOW_LIST_VIEWS.includes(view):
+				return locale.baseText('aiAssistant.prompts.currentView.workflowList');
+			case CREDENTIALS_LIST_VIEWS.includes(view):
+				return locale.baseText('aiAssistant.prompts.currentView.credentialsList');
+			case EXECUTION_VIEWS.includes(view):
+				return locale.baseText('aiAssistant.prompts.currentView.executionsView');
+			case CANVAS_VIEWS.includes(view):
+				return locale.baseText('aiAssistant.prompts.currentView.workflowEditor');
+			default:
+				return undefined;
+		}
+	}
+	/**
+	 * Prepare workflow execution result data for the AI assistant
+	 * by removing data from nodes
+	 * @param data The execution result data to simplify
+	 * @param options Options for simplification
+	 * @param options.compact If true, removes large inputOverride fields (> 2000 bytes)
+	 * @param options.removeParameterValues If true, removes parameter values but keeps errors and metadata
+	 **/
+	function simplifyResultData(
+		data: IRunExecutionData['resultData'],
+		options: { compact?: boolean; removeParameterValues?: boolean } = {},
+	): ChatRequest.ExecutionResultData {
+		const { compact = false, removeParameterValues = false } = options;
+		const simplifiedResultData: ChatRequest.ExecutionResultData = {
+			runData: {},
+		};
+
+		// Handle optional error - always pass through the full error for debugging context
+		if (data.error) {
+			simplifiedResultData.error = data.error;
+		}
+
+		// Early return if runData is not present
+		if (!data.runData) {
+			return simplifiedResultData;
+		}
+
+		// Map runData, excluding the `data` field from ITaskData
+		for (const key of Object.keys(data.runData)) {
+			const taskDataArray = data.runData[key];
+			simplifiedResultData.runData[key] = taskDataArray.map((taskData) => {
+				const { data: _taskDataContent, ...taskDataWithoutData } = taskData;
+
+				// When privacy is OFF (removeParameterValues), always remove inputOverride
+				// as it can contain parameter values
+				if (removeParameterValues) {
+					delete taskDataWithoutData.inputOverride;
+				} else if (compact && taskDataWithoutData.inputOverride) {
+					// If compact mode is enabled, remove large inputOverride fields
+					try {
+						const inputOverrideStr = JSON.stringify(taskDataWithoutData.inputOverride);
+						const sizeInBytes = new Blob([inputOverrideStr]).size;
+
+						// If too large, remove inputOverride entirely to maintain type safety
+						if (sizeInBytes > 2000) {
+							delete taskDataWithoutData.inputOverride;
+						}
+					} catch (error) {
+						// Handle circular references or non-serializable data
+						// Remove the problematic field entirely
+						delete taskDataWithoutData.inputOverride;
+					}
+				}
+
+				return taskDataWithoutData;
+			});
+		}
+
+		// Handle lastNodeExecuted if it exists
+		if (data.lastNodeExecuted) {
+			simplifiedResultData.lastNodeExecuted = data.lastNodeExecuted;
+		}
+
+		// Handle metadata if it exists
+		if (data.metadata) {
+			simplifiedResultData.metadata = data.metadata;
+		}
+
+		return simplifiedResultData;
+	}
+
+	const simplifyWorkflowForAssistant = async (
+		workflow: IWorkflowDb,
+		options?: AssistantProcessOptions,
+	): Promise<Partial<IWorkflowDb>> => {
+		let nodes: INode[] = workflow.nodes;
+		if (options?.excludeParameterValues) {
+			nodes = await Promise.all(
+				workflow.nodes.map(
+					async (node) => await processNodeForAssistant(node, [], { excludeParameterValues: true }),
+				),
+			);
+		}
+		return {
+			name: workflow.name,
+			active: workflow.active,
+			connections: workflow.connections,
+			nodes,
+		};
+	};
+
+	/**
+	 * Extract all expressions from workflow nodes and resolve them to their values.
+	 * Trims resolved values to ~200 characters to avoid token overload.
+	 * @param workflow The workflow to extract expressions from
+	 * @param executionData Optional execution data to filter only nodes that have executed
+	 * @returns Record mapping node names to arrays of expression/value pairs
+	 */
+	async function extractExpressionsFromWorkflow(
+		workflow: IWorkflowDb,
+		executionData?: IRunExecutionData['resultData'],
+	): Promise<Record<string, ChatRequest.ExpressionValue[]>> {
+		const MAX_VALUE_LENGTH = 200;
+		const MAX_EXPRESSION_LENGTH = 500;
+		const expressionsByNode: Record<string, ChatRequest.ExpressionValue[]> = {};
+
+		if (!workflow.nodes || workflow.nodes.length === 0) {
+			return expressionsByNode;
+		}
+
+		// If execution data is provided, create a set of executed node names for efficient lookup
+		const executedNodeNames = executionData?.runData
+			? new Set(Object.keys(executionData.runData))
+			: null;
+
+		// Helper to trim long values - preserves type for primitives, stringifies and trims objects/arrays
+		const trimValue = (value: unknown): unknown => {
+			if (value === undefined) {
+				return '<EMPTY>';
+			}
+
+			// For string primitives, check string length
+			if (typeof value === 'string') {
+				if (value.length <= MAX_VALUE_LENGTH) {
+					return value;
+				}
+				return value.substring(0, MAX_VALUE_LENGTH) + '... [truncated]';
+			}
+
+			// For non-string primitives (number, boolean, null), return as-is
+			if (value === null || typeof value === 'number' || typeof value === 'boolean') {
+				return value;
+			}
+
+			// For objects and arrays, stringify and trim if needed
+			try {
+				const stringified = JSON.stringify(value);
+				if (stringified.length <= MAX_VALUE_LENGTH) {
+					return value; // Return original value, not stringified
+				}
+				// If too long, return truncated string representation
+				return stringified.substring(0, MAX_VALUE_LENGTH) + '... [truncated]';
+			} catch {
+				return '<Could not serialize value>';
+			}
+		};
+
+		// Extract expressions from all nodes (or only executed nodes if execution data provided)
+		for (const node of workflow.nodes) {
+			if (!node.parameters) continue;
+
+			// Skip nodes that haven't executed (if execution data is provided)
+			if (executedNodeNames && !executedNodeNames.has(node.name)) {
+				continue;
+			}
+
+			const nodeExpressions: ChatRequest.ExpressionValue[] = [];
+
+			// Helper to recursively find and resolve expressions from parameters
+			// Uses a WeakSet to track visited objects and prevent infinite recursion on cycles
+			const extractExpressions = async (
+				params: unknown,
+				path: string = '',
+				visited = new WeakSet<object>(),
+			): Promise<void> => {
+				if (typeof params === 'string' && params.startsWith('=')) {
+					// Skip static strings like "=Static string" that don't contain expressions
+					// Only process strings that contain {{ }} expression syntax
+					if (!params.includes('{{') || !params.includes('}}')) {
+						return;
+					}
+
+					// This is an expression - resolve it with node context
+					let resolved: unknown;
+					try {
+						resolved = await workflowHelpers.resolveExpression(params, undefined, {
+							contextNodeName: node.name,
+						});
+					} catch (error) {
+						resolved = `Error in expression: "${error instanceof Error ? error.message : String(error)}"`;
+					}
+
+					// Trim expression string if too long
+					const trimmedExpression =
+						params.length > MAX_EXPRESSION_LENGTH
+							? params.substring(0, MAX_EXPRESSION_LENGTH) + '... [truncated]'
+							: params;
+
+					nodeExpressions.push({
+						expression: trimmedExpression,
+						resolvedValue: trimValue(resolved),
+						nodeType: node.type,
+						parameterPath: path,
+					});
+				} else if (Array.isArray(params)) {
+					// Check if we've already visited this array to prevent cycles
+					if (visited.has(params)) {
+						return;
+					}
+					visited.add(params);
+					for (let i = 0; i < params.length; i++) {
+						await extractExpressions(params[i], `${path}[${i}]`, visited);
+					}
+				} else if (typeof params === 'object' && params !== null) {
+					// Check if we've already visited this object to prevent cycles
+					if (visited.has(params)) {
+						return;
+					}
+					visited.add(params);
+					for (const [key, value] of Object.entries(params)) {
+						const newPath = path ? `${path}.${key}` : key;
+						await extractExpressions(value, newPath, visited);
+					}
+				}
+			};
+
+			await extractExpressions(node.parameters, '');
+
+			// Only add to map if node has expressions
+			if (nodeExpressions.length > 0) {
+				expressionsByNode[node.name] = nodeExpressions;
+			}
+		}
+
+		return expressionsByNode;
+	}
+
+	/**
+	 * Reduces AI Assistant request payload size to make it fit the specified content length.
+	 * If, after two passes, the payload is still too big, throws an error'
+	 * @param payload The request payload to trim
+	 * @param size The maximum size of the payload in KB
+	 */
+	const trimPayloadToSize = (
+		payload: ChatRequest.RequestPayload,
+		size = AI_ASSISTANT_MAX_CONTENT_LENGTH,
+	): void => {
+		// Create a deep copy to avoid mutating the original payload
+		const payloadCopy = deepCopy(payload);
+		const requestPayload = payloadCopy.payload;
+
+		// For support chat, remove parameters from the active node object and all nodes in the workflow
+		if (requestPayload.type === 'init-support-chat') {
+			if (requestPayload.context?.activeNodeInfo?.node) {
+				requestPayload.context.activeNodeInfo.node.parameters = {};
+			}
+			if (requestPayload.context?.currentWorkflow) {
+				requestPayload.context.currentWorkflow?.nodes?.forEach((node) => {
+					node.parameters = {};
+				});
+			}
+			if (requestPayload.context?.executionData?.runData) {
+				requestPayload.context.executionData.runData = {};
+			}
+			if (
+				requestPayload.context?.executionData?.error &&
+				'node' in requestPayload.context?.executionData?.error
+			) {
+				if (requestPayload.context?.executionData?.error?.node) {
+					requestPayload.context.executionData.error.node.parameters = {};
+				}
+			}
+			// If the payload is still too big, remove the whole context object
+			if (getRequestPayloadSize(payloadCopy) > size) {
+				requestPayload.context = undefined;
+			}
+			// For error helper, remove parameters from the active node object
+			// This will leave just the error, user info and basic node structure in the payload
+		} else if (requestPayload.type === 'init-error-helper') {
+			requestPayload.node.parameters = {};
+		}
+		// If the payload is still too big, throw an error that will be shown to the user
+		if (getRequestPayloadSize(payloadCopy) > size) {
+			throw new Error(locale.baseText('aiAssistant.payloadTooBig.message'));
+		}
+
+		// Apply the trimmed payload back to the original object
+		payload.payload = payloadCopy.payload;
+	};
+
+	/**
+	 * Get the size of the request payload in KB, returns 0 if the payload is not a valid object
+	 */
+	const getRequestPayloadSize = (payload: ChatRequest.RequestPayload): number => {
+		try {
+			return getObjectSizeInKB(payload.payload);
+		} catch (error) {
+			return 0;
+		}
+	};
+
+	return {
+		processNodeForAssistant,
+		getNodeInfoForAssistant,
+		simplifyErrorForAssistant,
+		isNodeReferencingInputData,
+		getNodesSchemas,
+		getCurrentViewDescription,
+		getReferencedNodes,
+		simplifyResultData,
+		simplifyWorkflowForAssistant,
+		trimPayloadSize: trimPayloadToSize,
+		extractExpressionsFromWorkflow,
+	};
+};

@@ -1,6 +1,6 @@
 import { ALL_SCOPES } from '@n8n/permissions';
 
-import { createRoleDtoSchema } from '../create-role.dto';
+import { CreateRoleDto } from '../create-role.dto';
 
 describe('createRoleDtoSchema', () => {
 	describe('Valid requests', () => {
@@ -120,7 +120,7 @@ describe('createRoleDtoSchema', () => {
 				},
 			},
 		])('should validate $name', ({ request }) => {
-			const result = createRoleDtoSchema.safeParse(request);
+			const result = CreateRoleDto.safeParse(request);
 			expect(result.success).toBe(true);
 		});
 	});
@@ -307,7 +307,7 @@ describe('createRoleDtoSchema', () => {
 				expectedErrorPath: ['scopes', 1],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
-			const result = createRoleDtoSchema.safeParse(request);
+			const result = CreateRoleDto.safeParse(request);
 
 			expect(result.success).toBe(false);
 
@@ -328,7 +328,7 @@ describe('createRoleDtoSchema', () => {
 					scopes: [scope],
 				};
 
-				const result = createRoleDtoSchema.safeParse(request);
+				const result = CreateRoleDto.safeParse(request);
 				expect(result.success).toBe(true);
 			}
 		});
@@ -354,7 +354,7 @@ describe('createRoleDtoSchema', () => {
 					scopes: [scope],
 				};
 
-				const result = createRoleDtoSchema.safeParse(request);
+				const result = CreateRoleDto.safeParse(request);
 				expect(result.success).toBe(false);
 			}
 		});

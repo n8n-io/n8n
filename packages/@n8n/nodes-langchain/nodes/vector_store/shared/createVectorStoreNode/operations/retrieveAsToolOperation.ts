@@ -1,12 +1,10 @@
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import { DynamicTool } from 'langchain/tools';
-import { NodeConnectionTypes, type ISupplyDataFunctions, type SupplyData } from 'n8n-workflow';
-
-import { getMetadataFiltersValues } from '@utils/helpers';
-import { nodeNameToToolName } from 'n8n-workflow';
-import { logWrapper } from '@utils/logWrapper';
+import { createToolFromNode } from '@utils/fromAIToolFactory';
+import { logWrapper, getMetadataFiltersValues } from '@n8n/ai-utilities';
+import type { ISupplyDataFunctions, SupplyData } from 'n8n-workflow';
+import { assert, NodeConnectionTypes, nodeNameToToolName } from 'n8n-workflow';
 
 import type { VectorStoreNodeConstructorArgs } from '../types';
 
@@ -30,22 +28,27 @@ export async function handleRetrieveAsToolOperation<T extends VectorStore = Vect
 			? (context.getNodeParameter('toolName', itemIndex) as string)
 			: nodeNameToToolName(node);
 
-	const topK = context.getNodeParameter('topK', itemIndex, 4) as number;
-	const useReranker = context.getNodeParameter('useReranker', itemIndex, false) as boolean;
-	const includeDocumentMetadata = context.getNodeParameter(
-		'includeDocumentMetadata',
-		itemIndex,
-		true,
-	) as boolean;
-
-	// Get metadata filters
-	const filter = getMetadataFiltersValues(context, itemIndex);
-
 	// Create a Dynamic Tool that wraps vector store search functionality
-	const vectorStoreTool = new DynamicTool({
+	const vectorStoreTool = createToolFromNode(node, {
 		name: toolName,
 		description: toolDescription,
-		func: async (input) => {
+		extraArgs: [{ key: 'input', description: 'Query to search for. Required' }],
+		func: async (query) => {
+			const topK = context.getNodeParameter('topK', itemIndex, 4) as number;
+			const useReranker = context.getNodeParameter('useReranker', itemIndex, false) as boolean;
+			const includeDocumentMetadata = context.getNodeParameter(
+				'includeDocumentMetadata',
+				itemIndex,
+				true,
+			) as boolean;
+
+			// Get metadata filters
+			const filter = getMetadataFiltersValues(context, itemIndex);
+
+			// Extract the query string - it can be either a string (DynamicTool) or an object with 'input' key (DynamicStructuredTool)
+			const queryString = typeof query === 'string' ? query : query.input;
+			assert(typeof queryString === 'string', 'Query must be of type string');
+
 			// For each tool use, get a fresh vector store client.
 			// We don't pass in a filter here only later in the similaritySearchVectorWithScore
 			// method to avoid an exception with some vector stores like Supabase or Pinecone(#AI-740)
@@ -58,7 +61,7 @@ export async function handleRetrieveAsToolOperation<T extends VectorStore = Vect
 
 			try {
 				// Embed the input query
-				const embeddedPrompt = await embeddings.embedQuery(input);
+				const embeddedPrompt = await embeddings.embedQuery(queryString);
 
 				// Search for similar documents
 				let documents = await vectorStore.similaritySearchVectorWithScore(
@@ -75,7 +78,7 @@ export async function handleRetrieveAsToolOperation<T extends VectorStore = Vect
 					)) as BaseDocumentCompressor;
 
 					const docs = documents.map(([doc]) => doc);
-					const rerankedDocuments = await reranker.compressDocuments(docs, input);
+					const rerankedDocuments = await reranker.compressDocuments(docs, queryString);
 					documents = rerankedDocuments.map((doc) => {
 						const { relevanceScore, ...metadata } = doc.metadata;
 						return [{ ...doc, metadata }, relevanceScore];

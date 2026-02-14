@@ -5,7 +5,7 @@ export class PostHogApi implements ICredentialType {
 
 	displayName = 'PostHog API';
 
-	documentationUrl = 'postHog';
+	documentationUrl = 'posthog';
 
 	properties: INodeProperties[] = [
 		{

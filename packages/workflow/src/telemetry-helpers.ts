@@ -1,3 +1,5 @@
+import { ApplicationError } from '@n8n/errors';
+
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
@@ -12,20 +14,25 @@ import {
 	FREE_AI_CREDITS_ERROR_TYPE,
 	FREE_AI_CREDITS_USED_ALL_CREDITS_ERROR_CODE,
 	FROM_AI_AUTO_GENERATED_MARKER,
+	GUARDRAILS_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
+	MCP_CLIENT_NODE_TYPE,
+	MCP_CLIENT_TOOL_NODE_TYPE,
 	MERGE_NODE_TYPE,
 	OPEN_AI_API_CREDENTIAL_TYPE,
+	OPENAI_CHAT_LANGCHAIN_NODE_TYPE,
 	OPENAI_LANGCHAIN_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './constants';
-import { ApplicationError } from '@n8n/errors';
 import type { NodeApiError } from './errors/node-api.error';
+import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 import type {
 	IConnection,
+	IConnections,
 	INode,
 	INodeNameIndex,
 	INodesGraph,
@@ -40,9 +47,8 @@ import type {
 	INodeParameterResourceLocator,
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
-import { getNodeParameters } from './node-helpers';
+import { getNodeParameters, isSubNodeType } from './node-helpers';
 import { jsonParse } from './utils';
-import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 
 const isNodeApiError = (error: unknown): error is NodeApiError =>
 	typeof error === 'object' && error !== null && 'name' in error && error?.name === 'NodeApiError';
@@ -100,18 +106,103 @@ function areOverlapping(
 
 const URL_PARTS_REGEX = /(?<protocolPlusDomain>.*?\..*?)(?<pathname>\/.*)/;
 
+// List of common multi-level TLDs (public suffixes)
+// Covers 95%+ of real-world domains for telemetry privacy purposes
+const MULTI_LEVEL_TLDS = new Set([
+	// UK
+	'co.uk',
+	'gov.uk',
+	'org.uk',
+	'ac.uk',
+	'sch.uk',
+	// Australia
+	'com.au',
+	'gov.au',
+	'edu.au',
+	'org.au',
+	'net.au',
+	// New Zealand
+	'co.nz',
+	'org.nz',
+	'net.nz',
+	'govt.nz',
+	'ac.nz',
+	// Japan
+	'co.jp',
+	'or.jp',
+	'ne.jp',
+	'ac.jp',
+	'go.jp',
+	// Brazil
+	'com.br',
+	'gov.br',
+	'org.br',
+	'edu.br',
+	// India
+	'co.in',
+	'org.in',
+	'net.in',
+	'gov.in',
+	'edu.in',
+	// South Africa
+	'co.za',
+	'org.za',
+	'gov.za',
+	'ac.za',
+	// AWS S3 (special case for cloud services)
+	's3.amazonaws.com',
+]);
+
 export function getDomainBase(raw: string, urlParts = URL_PARTS_REGEX): string {
+	let hostname: string;
+
 	try {
 		const url = new URL(raw);
-
-		return [url.protocol, url.hostname].join('//');
+		hostname = url.hostname;
 	} catch {
 		const match = urlParts.exec(raw);
-
 		if (!match?.groups?.protocolPlusDomain) return '';
 
-		return match.groups.protocolPlusDomain;
+		// Extract hostname from malformed URL
+		hostname = match.groups.protocolPlusDomain.replace(/^https?:\/\//, '');
 	}
+
+	// Handle edge cases
+	if (!hostname || hostname === 'localhost') return hostname;
+
+	// Handle IP addresses (v4 and v6) - return as-is
+	if (/^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(':')) {
+		return hostname;
+	}
+
+	const parts = hostname.split('.');
+
+	// Single-word domain (e.g., "localhost", "example")
+	if (parts.length === 1) {
+		return hostname;
+	}
+
+	// Check for multi-level TLDs (e.g., co.uk, com.au)
+	if (parts.length >= 3) {
+		const lastTwoParts = `${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
+
+		if (MULTI_LEVEL_TLDS.has(lastTwoParts)) {
+			// Return last 3 parts for multi-level TLD
+			return parts.slice(-3).join('.');
+		}
+
+		// Check for 3-level TLDs (e.g., s3.amazonaws.com)
+		if (parts.length >= 4) {
+			const lastThreeParts = `${parts[parts.length - 3]}.${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
+			if (MULTI_LEVEL_TLDS.has(lastThreeParts)) {
+				// Return last 4 parts for 3-level TLD
+				return parts.slice(-4).join('.');
+			}
+		}
+	}
+
+	// Default: return last 2 parts (standard TLD like .com, .org, .net)
+	return parts.slice(-2).join('.');
 }
 
 function isSensitive(segment: string) {
@@ -239,6 +330,11 @@ export function generateNodesGraph(
 			position: node.position,
 		};
 
+		const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		if (nodeType?.description?.communityNodePackageVersion) {
+			nodeItem.package_version = nodeType.description.communityNodePackageVersion;
+		}
+
 		if (runData?.[node.name]) {
 			const runs = runData[node.name] ?? [];
 			nodeItem.runs = runs.length;
@@ -298,7 +394,6 @@ export function generateNodesGraph(
 			const { url } = node.parameters as { url: string };
 
 			nodeItem.domain_base = getDomainBase(url);
-			nodeItem.domain_path = getDomainPath(url);
 			nodeItem.method = node.parameters.requestMethod as string;
 		} else if (HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE === node.type) {
 			if (!nodeItem.toolSettings) nodeItem.toolSettings = {};
@@ -430,7 +525,22 @@ export function generateNodesGraph(
 		} else if (node.type === CODE_NODE_TYPE) {
 			const { language } = node.parameters;
 			nodeItem.language =
-				language === undefined ? 'javascript' : language === 'python' ? 'python' : 'unknown';
+				language === undefined
+					? 'javascript'
+					: language === 'python' || language === 'pythonNative'
+						? 'python'
+						: 'unknown';
+		} else if (node.type === GUARDRAILS_NODE_TYPE) {
+			nodeItem.operation = node.parameters.operation as string;
+			const usedGuardrails = Object.keys(node.parameters?.guardrails ?? {});
+			nodeItem.used_guardrails = usedGuardrails;
+		} else if (node.type === OPENAI_CHAT_LANGCHAIN_NODE_TYPE) {
+			const enabledDefault = node.typeVersion >= 1.3 ? true : false;
+			// For 1.3+ node version by default it is true and isn't stored in parameters
+			nodeItem.use_responses_api = (node.parameters?.responsesApiEnabled ??
+				enabledDefault) as boolean;
+		} else if (node.type === MCP_CLIENT_TOOL_NODE_TYPE || node.type === MCP_CLIENT_NODE_TYPE) {
+			nodeItem.mcp_client_auth_method = (node.parameters?.authentication ?? 'none') as string;
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -553,7 +663,6 @@ export function generateNodesGraph(
 			});
 		});
 	});
-
 	return { nodeGraph, nameIndices, webhookNodeNames, evaluationTriggerNodeNames };
 }
 
@@ -786,4 +895,95 @@ export function extractLastExecutedNodeStructuredOutputErrorInfo(
 	}
 
 	return info;
+}
+
+export type NodeRole = 'trigger' | 'terminal' | 'internal';
+
+/**
+ * Determines the role of a node in a workflow based on its connections.
+ *
+ * @param nodeName - The name of the node to check
+ * @param connections - The workflow connections (connectionsBySourceNode format)
+ * @param nodeTypes - The node types registry
+ * @param nodes - The workflow nodes
+ * @returns The role of the node:
+ *   - 'trigger': Has no incoming main connections and is not a subnode
+ *   - 'terminal': Has no outgoing connections
+ *   - 'internal': Has both incoming and outgoing connections, or is a subnode
+ */
+export function getNodeRole(
+	nodeName: string,
+	connections: IConnections,
+	nodeTypes: INodeTypes,
+	nodes: INode[],
+): NodeRole {
+	// partial executions of tools get a special name
+	if (nodeName === 'PartialExecutionToolExecutor') {
+		return 'internal';
+	}
+
+	// Check if node is a subnode based on its type description
+	const node = nodes.find((n) => n.name === nodeName);
+	const nodeTypeDescription = node
+		? (nodeTypes.getByNameAndVersion(node.type, node.typeVersion)?.description ?? null)
+		: null;
+	const isSubnode = isSubNodeType(nodeTypeDescription);
+
+	// Subnodes are always internal (they connect via AI connection types, not main)
+	if (isSubnode) {
+		return 'internal';
+	}
+
+	const hasOutgoingConnections = hasOutgoing(nodeName, connections);
+	const hasIncomingMainConnections = hasIncomingMain(nodeName, connections);
+
+	// A trigger has no incoming main connections
+	if (!hasIncomingMainConnections) {
+		return 'trigger';
+	}
+
+	// A terminal node has no outgoing connections
+	if (!hasOutgoingConnections) {
+		return 'terminal';
+	}
+
+	// Otherwise it's internal
+	return 'internal';
+}
+
+function hasOutgoing(nodeName: string, connections: IConnections): boolean {
+	const mainConnections = connections[nodeName]?.[NodeConnectionTypes.Main];
+	if (!mainConnections) {
+		return false;
+	}
+
+	for (const outputIndex of mainConnections) {
+		if (outputIndex && outputIndex.length > 0) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+function hasIncomingMain(nodeName: string, connections: IConnections): boolean {
+	// Check all source nodes to see if any connect to this node via main connection
+	for (const sourceNode of Object.keys(connections)) {
+		const sourceConnections = connections[sourceNode];
+		const mainConnections = sourceConnections?.[NodeConnectionTypes.Main];
+
+		if (!mainConnections) continue;
+
+		for (const outputIndex of mainConnections) {
+			if (!outputIndex) continue;
+
+			for (const conn of outputIndex) {
+				if (conn.node === nodeName) {
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
 }

@@ -56,6 +56,7 @@ const versionDescription: INodeTypeDescription = {
 			type: 'boolean',
 			default: false,
 			isNodeSetting: true,
+			description: 'Whether this item should be duplicated a set number of times',
 		},
 		{
 			displayName: 'Duplicate Item Count',

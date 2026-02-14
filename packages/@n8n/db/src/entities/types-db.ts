@@ -12,9 +12,14 @@ import type {
 	AnnotationVote,
 	ExecutionSummary,
 	IUser,
+	IDataObject,
+	IBinaryKeyData,
+	IPairedItemData,
 } from 'n8n-workflow';
+import { z } from 'zod';
 
 import type { CredentialsEntity } from './credentials-entity';
+import type { ExecutionDataStorageLocation } from './execution-entity';
 import type { Folder } from './folder';
 import type { Project } from './project';
 import type { SharedCredentials } from './shared-credentials';
@@ -22,6 +27,7 @@ import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { User } from './user';
 import type { WorkflowEntity } from './workflow-entity';
+import type { WorkflowHistory } from './workflow-history';
 
 export type UsageCount = {
 	usageCount: number;
@@ -53,6 +59,7 @@ export interface IExecutionBase {
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
 	status: ExecutionStatus;
 	waitTill?: Date | null;
+	storedAt: ExecutionDataStorageLocation;
 }
 
 // Required by PublicUser
@@ -75,12 +82,16 @@ export interface IWorkflowDb extends IWorkflowBase {
 	triggerCount: number;
 	tags?: TagEntity[];
 	parentFolder?: Folder | null;
+	activeVersion?: WorkflowHistory | null;
 }
 
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: string;
 	name: string;
 	shared?: SharedCredentials[];
+	isGlobal?: boolean;
+	isResolvable?: boolean;
+	isManaged?: boolean;
 }
 
 export interface IExecutionResponse extends IExecutionBase {
@@ -144,7 +155,10 @@ export interface WorkflowWithSharingsMetaDataAndCredentials extends Omit<Workflo
 }
 
 /** Payload for creating an execution. */
-export type CreateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'startedAt'>;
+export type CreateExecutionPayload = Omit<
+	IExecutionDb,
+	'id' | 'createdAt' | 'startedAt' | 'storedAt'
+>;
 
 // Data in regular format with references
 export interface IExecutionDb extends IExecutionBase {
@@ -169,10 +183,10 @@ export namespace ExecutionSummaries {
 
 	export type CountQuery = { kind: 'count' } & FilterFields & AccessFields;
 
-	type FilterFields = Partial<{
+	export type FilterFields = Partial<{
 		id: string;
 		finished: boolean;
-		mode: string;
+		mode: WorkflowExecuteMode;
 		retryOf: string;
 		retrySuccessId: string;
 		status: ExecutionStatus[];
@@ -185,6 +199,11 @@ export namespace ExecutionSummaries {
 		vote: AnnotationVote;
 		projectId: string;
 	}>;
+
+	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
+		FilterFields,
+		'startedAfter' | 'startedBefore' | 'workflowId' | 'status'
+	>; // parsed from query params
 
 	type AccessFields = {
 		accessibleWorkflowIds?: string[];
@@ -213,7 +232,15 @@ export namespace ListQueryDb {
 	 * Slim workflow returned from a list query operation.
 	 */
 	export namespace Workflow {
-		type OptionalBaseFields = 'name' | 'active' | 'versionId' | 'createdAt' | 'updatedAt' | 'tags';
+		type OptionalBaseFields =
+			| 'name'
+			| 'active'
+			| 'versionId'
+			| 'activeVersionId'
+			| 'createdAt'
+			| 'updatedAt'
+			| 'tags'
+			| 'description';
 
 		type BaseFields = Pick<WorkflowEntity, 'id'> &
 			Partial<Pick<WorkflowEntity, OptionalBaseFields>>;
@@ -272,7 +299,13 @@ export const enum StatisticsNames {
 	dataLoaded = 'data_loaded',
 }
 
-export type AuthProviderType = 'ldap' | 'email' | 'saml' | 'oidc'; // | 'google';
+const ALL_AUTH_PROVIDERS = z.enum(['ldap', 'email', 'saml', 'oidc']);
+
+export type AuthProviderType = z.infer<typeof ALL_AUTH_PROVIDERS>;
+
+export function isAuthProviderType(value: string): value is AuthProviderType {
+	return ALL_AUTH_PROVIDERS.safeParse(value).success;
+}
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
 	workflowCount?: boolean;
@@ -327,12 +360,6 @@ export namespace ListQuery {
 	};
 }
 
-export type ProjectRole =
-	| 'project:personalOwner'
-	| 'project:admin'
-	| 'project:editor'
-	| 'project:viewer';
-
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
 	finished?: boolean;
@@ -369,6 +396,8 @@ export type APIRequest<
 
 export type AuthenticationInformation = {
 	usedMfa: boolean;
+	// Indicates the user is logged in but hasn't completed required MFA enrollment
+	mfaEnrollmentRequired?: boolean;
 };
 
 export type AuthenticatedRequest<
@@ -384,3 +413,15 @@ export type AuthenticatedRequest<
 		'push-ref': string;
 	};
 };
+
+/**
+ * Simplified to prevent excessively deep type instantiation error from
+ * `INodeExecutionData` in `IPinData` in a TypeORM entity field.
+ */
+export interface ISimplifiedPinData {
+	[nodeName: string]: Array<{
+		json: IDataObject;
+		binary?: IBinaryKeyData;
+		pairedItem?: IPairedItemData | IPairedItemData[] | number;
+	}>;
+}

@@ -1,3 +1,5 @@
+import FormData from 'form-data';
+
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -97,20 +99,34 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}) as string;
 
 	let uploadId;
+	const metadata = {
+		name,
+		parents: [setParentFolder(folderId, driveId)],
+	};
 	if (Buffer.isBuffer(fileContent)) {
+		const multiPartBody = new FormData();
+		multiPartBody.append('metadata', JSON.stringify(metadata), {
+			contentType: 'application/json',
+		});
+		multiPartBody.append('data', fileContent, {
+			contentType: mimeType,
+			knownLength: contentLength,
+		});
+
 		const response = await googleApiRequest.call(
 			this,
 			'POST',
 			'/upload/drive/v3/files',
-			fileContent,
+			multiPartBody.getBuffer(),
 			{
-				uploadType: 'media',
+				uploadType: 'multipart',
+				supportsAllDrives: true,
 			},
 			undefined,
 			{
 				headers: {
-					'Content-Type': mimeType,
-					'Content-Length': contentLength,
+					'Content-Type': `multipart/related; boundary=${multiPartBody.getBoundary()}`,
+					'Content-Length': multiPartBody.getLengthSync(),
 				},
 			},
 		);
@@ -121,8 +137,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			this,
 			'POST',
 			'/upload/drive/v3/files',
-			undefined,
-			{ uploadType: 'resumable' },
+			metadata,
+			{
+				uploadType: 'resumable',
+				supportsAllDrives: true,
+			},
 			undefined,
 			{
 				returnFullResponse: true,

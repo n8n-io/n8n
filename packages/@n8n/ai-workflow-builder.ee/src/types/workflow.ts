@@ -15,4 +15,13 @@ export type WorkflowOperation =
 	| { type: 'updateNode'; nodeId: string; updates: Partial<INode> }
 	| { type: 'setConnections'; connections: IConnections }
 	| { type: 'mergeConnections'; connections: IConnections }
-	| { type: 'setName'; name: string };
+	| {
+			type: 'removeConnection';
+			sourceNode: string;
+			targetNode: string;
+			connectionType: string;
+			sourceOutputIndex: number;
+			targetInputIndex: number;
+	  }
+	| { type: 'setName'; name: string }
+	| { type: 'renameNode'; nodeId: string; oldName: string; newName: string };

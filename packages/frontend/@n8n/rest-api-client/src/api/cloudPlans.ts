@@ -11,6 +11,8 @@ export declare namespace Cloud {
 		displayName: string;
 		expirationDate: string;
 		metadata: PlanMetadata;
+		userIsTrialing?: boolean;
+		bannerConfig?: BannerConfig;
 	}
 
 	export interface PlanMetadata {
@@ -23,6 +25,33 @@ export declare namespace Cloud {
 	interface Trial {
 		length: number;
 		gracePeriod: number;
+	}
+
+	export interface BannerConfig {
+		// If set, show time left section
+		// - If text provided, use it
+		// - If text not provided, compute from expirationDate
+		timeLeft?: {
+			text?: string;
+		};
+
+		// If true, show executions section with progress bar and x/y text
+		showExecutions?: boolean;
+
+		// CTA button configuration
+		cta?: {
+			text?: string;
+			icon?: string;
+			size?: 'small' | 'medium';
+			style?: 'primary' | 'success' | 'warning' | 'danger'; // button color, defaults to 'success'
+			href?: string; // If provided, navigate to this URL; otherwise use upgrade flow
+		};
+
+		// Banner icon (left side) - if not set, no icon shown
+		icon?: string;
+
+		dismissible?: boolean;
+		forceShow?: boolean; // Override localStorage dismissal
 	}
 
 	export type UserAccount = {
@@ -62,4 +91,16 @@ export async function sendConfirmationEmail(context: IRestApiContext): Promise<C
 
 export async function getAdminPanelLoginCode(context: IRestApiContext): Promise<{ code: string }> {
 	return await get(context.baseUrl, '/cloud/proxy/login/code');
+}
+
+export interface DynamicNotification {
+	title?: string;
+	message?: string;
+}
+
+export async function sendUserEvent(
+	context: IRestApiContext,
+	eventData: { eventType: string; metadata?: Record<string, unknown> },
+): Promise<DynamicNotification> {
+	return await post(context.baseUrl, '/cloud/proxy/user/event', eventData);
 }

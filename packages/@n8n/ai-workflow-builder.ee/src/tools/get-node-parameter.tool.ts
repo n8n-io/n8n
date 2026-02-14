@@ -5,17 +5,16 @@ import type { INode, NodeParameterValueType } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { MAX_PARAMETER_VALUE_LENGTH } from '@/constants';
-import {
-	createNodeParameterTooLargeError,
-	getCurrentWorkflow,
-	getWorkflowState,
-} from '@/tools/helpers';
+import { createNodeParameterTooLargeError, getEffectiveWorkflow } from '@/tools/helpers';
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 
 import { ValidationError, ToolExecutionError } from '../errors';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { validateNodeExists, createNodeNotFoundError } from './helpers/validation';
 import type { GetNodeParameterOutput } from '../types/tools';
+
+const DISPLAY_TITLE = 'Getting node parameter';
 
 /**
  * Schema for getting specific node parameter
@@ -54,15 +53,22 @@ function formatNodeParameter(path: string, value: NodeParameterValueType): strin
 	return parts.join('\n');
 }
 
+export const GET_NODE_PARAMETER_TOOL: BuilderToolBase = {
+	toolName: 'get_node_parameter',
+	displayTitle: DISPLAY_TITLE,
+};
+
 /**
  * Factory function to create the get node parameter tool
  */
-export function createGetNodeParameterTool(logger?: Logger) {
-	const DISPLAY_TITLE = 'Getting node parameter';
-
+export function createGetNodeParameterTool(logger?: Logger): BuilderTool {
 	const dynamicTool = tool(
 		(input: unknown, config) => {
-			const reporter = createProgressReporter(config, 'get_node_parameter', DISPLAY_TITLE);
+			const reporter = createProgressReporter(
+				config,
+				GET_NODE_PARAMETER_TOOL.toolName,
+				DISPLAY_TITLE,
+			);
 
 			try {
 				// Validate input using Zod schema
@@ -76,9 +82,8 @@ export function createGetNodeParameterTool(logger?: Logger) {
 				logger?.debug(`Looking up parameter ${path} for ${nodeId}...`);
 				reportProgress(reporter, `Looking up parameter ${path} for ${nodeId}...`);
 
-				// Get current state
-				const state = getWorkflowState();
-				const workflow = getCurrentWorkflow(state);
+				// Get effective workflow (includes pending operations from this turn)
+				const workflow = getEffectiveWorkflow();
 
 				// Find the node
 				const node = validateNodeExists(nodeId, workflow.nodes);
@@ -134,7 +139,7 @@ export function createGetNodeParameterTool(logger?: Logger) {
 				const toolError = new ToolExecutionError(
 					error instanceof Error ? error.message : 'Unknown error occurred',
 					{
-						toolName: 'get_node_parameter',
+						toolName: GET_NODE_PARAMETER_TOOL.toolName,
 						cause: error instanceof Error ? error : undefined,
 					},
 				);
@@ -143,7 +148,7 @@ export function createGetNodeParameterTool(logger?: Logger) {
 			}
 		},
 		{
-			name: 'get_node_parameter',
+			name: GET_NODE_PARAMETER_TOOL.toolName,
 			description:
 				'Get the value of a specific parameter of a specific node. Use this ONLY to retrieve parameters omitted in the workflow JSON context because of the size.',
 			schema: getNodeParameterSchema,
@@ -152,6 +157,6 @@ export function createGetNodeParameterTool(logger?: Logger) {
 
 	return {
 		tool: dynamicTool,
-		displayTitle: DISPLAY_TITLE,
+		...GET_NODE_PARAMETER_TOOL,
 	};
 }

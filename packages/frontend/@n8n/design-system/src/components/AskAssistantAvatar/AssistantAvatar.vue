@@ -14,7 +14,7 @@ withDefaults(defineProps<{ size?: 'small' | 'mini' }>(), {
 
 <style lang="scss" module>
 .container {
-	background: var(--color-assistant-highlight-gradient);
+	background: var(--assistant--color--highlight-gradient);
 	border-radius: 50%;
 	display: inline-flex;
 	align-items: center;
@@ -22,12 +22,12 @@ withDefaults(defineProps<{ size?: 'small' | 'mini' }>(), {
 }
 
 .small {
-	height: var(--spacing-m);
-	width: var(--spacing-m);
+	height: var(--spacing--md);
+	width: var(--spacing--md);
 }
 
 .mini {
-	height: var(--spacing-s);
-	width: var(--spacing-s);
+	height: var(--spacing--sm);
+	width: var(--spacing--sm);
 }
 </style>

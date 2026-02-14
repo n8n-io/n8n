@@ -165,6 +165,12 @@ export async function extractDataFromPDF(
 		buffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 	}
 
+	// Polyfill DOMMatrix for pdfjs-dist in Node.js environments without canvas
+	if (typeof globalThis.DOMMatrix === 'undefined') {
+		const { default: DOMMatrix } = await import('@thednp/dommatrix');
+		globalThis.DOMMatrix = DOMMatrix as unknown as typeof globalThis.DOMMatrix;
+	}
+
 	const { getDocument: readPDF, version: pdfJsVersion } = await import(
 		'pdfjs-dist/legacy/build/pdf.mjs'
 	);
@@ -202,4 +208,10 @@ export async function extractDataFromPDF(
 	};
 
 	return returnData;
+}
+
+export function prepareBinariesDataList(data: string | string[] | IBinaryData | IBinaryData[]) {
+	if (Array.isArray(data)) return data;
+	if (typeof data === 'object') return [data];
+	return data.split(',').map((item: string) => item.trim());
 }

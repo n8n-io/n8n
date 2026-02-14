@@ -27,6 +27,7 @@ import {
 	decodeItem,
 	simplify,
 } from './utils';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsDynamoDB implements INodeType {
 	description: INodeTypeDescription = {
@@ -37,18 +38,15 @@ export class AwsDynamoDB implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the AWS DynamoDB API',
+		schemaPath: 'Aws/DynamoDB',
 		defaults: {
 			name: 'AWS DynamoDB',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Resource',
 				name: 'resource',

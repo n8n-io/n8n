@@ -11,9 +11,8 @@ import type {
 
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { additionalOptions } from '../gemini-common/additional-options';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getAdditionalOptions } from '../gemini-common/additional-options';
+import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
 
 function errorDescriptionMapper(error: NodeError) {
 	if (error.description?.includes('properties: should be non-empty for OBJECT type')) {
@@ -119,7 +118,9 @@ export class LmChatGoogleGemini implements INodeType {
 				},
 				default: 'models/gemini-2.5-flash',
 			},
-			additionalOptions,
+			// thinking budget not supported in @langchain/google-genai
+			// as it utilises the old google generative ai SDK
+			getAdditionalOptions({ supportsThinkingBudget: false }),
 		],
 	};
 

@@ -188,12 +188,16 @@ async function sendWithFiles(
 		formData.append('files', file);
 	}
 
+	// Exclude Content-Type to let the browser set it with the multipart boundary
+	const headers: Record<string, string> = {
+		Accept: 'text/plain',
+		...options.webhookConfig?.headers,
+	};
+	delete headers['Content-Type'];
+
 	return await fetch(options.webhookUrl, {
 		method: 'POST',
-		headers: {
-			Accept: 'text/plain',
-			...options.webhookConfig?.headers,
-		},
+		headers,
 		body: formData,
 	});
 }

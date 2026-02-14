@@ -59,20 +59,32 @@ export class ExecutionsController {
 		const noRange = !query.range.lastId || !query.range.firstId;
 
 		if (noStatus && noRange) {
-			const executions = await this.executionService.findLatestCurrentAndCompleted(query);
+			const [executions, concurrentExecutionsCount] = await Promise.all([
+				this.executionService.findLatestCurrentAndCompleted(query),
+				this.executionService.getConcurrentExecutionsCount(),
+			]);
 			await this.executionService.addScopes(
 				req.user,
 				executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
 			);
-			return executions;
+			return {
+				...executions,
+				concurrentExecutionsCount,
+			};
 		}
 
-		const executions = await this.executionService.findRangeWithCount(query);
+		const [executions, concurrentExecutionsCount] = await Promise.all([
+			this.executionService.findRangeWithCount(query),
+			this.executionService.getConcurrentExecutionsCount(),
+		]);
 		await this.executionService.addScopes(
 			req.user,
 			executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
 		);
-		return executions;
+		return {
+			...executions,
+			concurrentExecutionsCount,
+		};
 	}
 
 	@Get('/:id')
@@ -99,6 +111,22 @@ export class ExecutionsController {
 		const executionId = req.params.id;
 
 		return await this.executionService.stop(executionId, workflowIds);
+	}
+
+	/**
+	 * Stops executions based on the provided filter
+	 *
+	 * @returns { stopped: number } - The amount of actually stopped executions, potentially lower if some executions finished naturally.
+	 */
+	@Post('/stopMany')
+	async stopMany(req: ExecutionRequest.StopMany) {
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+
+		// Return early to avoid expensive db query
+		if (accessibleWorkflowIds.length === 0) return { stopped: 0 };
+
+		const stopped = await this.executionService.stopMany(req.body.filter, accessibleWorkflowIds);
+		return { stopped };
 	}
 
 	@Post('/:id/retry')

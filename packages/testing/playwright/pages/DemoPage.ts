@@ -1,16 +1,10 @@
 import { BasePage } from './BasePage';
 
 export class DemoPage extends BasePage {
-	async visitDemoPage(theme?: 'dark' | 'light') {
+	async goto(theme?: 'dark' | 'light') {
 		const query = theme ? `?theme=${theme}` : '';
 		await this.page.goto('/workflows/demo' + query);
-		await this.getBody().waitFor({ state: 'visible' });
-		// eslint-disable-next-line playwright/no-networkidle
-		await this.page.waitForLoadState('networkidle');
-		await this.page.evaluate(() => {
-			// @ts-expect-error - this is a custom property added by the demo page
-			window.preventNodeViewBeforeUnload = true;
-		});
+		await this.page.getByTestId('canvas-background').waitFor({ state: 'visible' });
 	}
 
 	/**

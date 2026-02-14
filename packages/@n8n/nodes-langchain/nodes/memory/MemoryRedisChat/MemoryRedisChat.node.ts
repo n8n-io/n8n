@@ -1,6 +1,6 @@
 import type { RedisChatMessageHistoryInput } from '@langchain/redis';
 import { RedisChatMessageHistory } from '@langchain/redis';
-import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
+import { BufferMemory, BufferWindowMemory } from '@langchain/classic/memory';
 import {
 	NodeOperationError,
 	type INodeType,
@@ -13,7 +13,7 @@ import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@utils/logWrapper';
+import { logWrapper } from '@n8n/ai-utilities';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import {

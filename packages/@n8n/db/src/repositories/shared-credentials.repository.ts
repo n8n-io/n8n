@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { CredentialSharingRole, ProjectRole } from '@n8n/permissions';
+import type { CredentialSharingRole } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 
@@ -14,7 +14,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 
 	async findByCredentialIds(credentialIds: string[], role: CredentialSharingRole) {
 		return await this.find({
-			relations: { credentials: true, project: { projectRelations: { user: true } } },
+			relations: { credentials: true, project: { projectRelations: { user: true, role: true } } },
 			where: {
 				credentialsId: In(credentialIds),
 				role,
@@ -90,6 +90,24 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		});
 	}
 
+	async getSharedPersonalCredentialsCount(): Promise<number> {
+		return await this.createQueryBuilder('sc')
+			.innerJoin('sc.project', 'project')
+			.where('sc.role = :role', { role: 'credential:owner' })
+			.andWhere('project.type = :type', { type: 'personal' })
+			.andWhere((qb) => {
+				const subQuery = qb
+					.subQuery()
+					.select('1')
+					.from(SharedCredentials, 'other')
+					.where('other.credentialsId = sc.credentialsId')
+					.andWhere('other.projectId != sc.projectId')
+					.getQuery();
+				return `EXISTS ${subQuery}`;
+			})
+			.getCount();
+	}
+
 	async findCredentialsWithOptions(
 		where: FindOptionsWhere<SharedCredentials> = {},
 		trx?: EntityManager,
@@ -100,7 +118,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 			where,
 			relations: {
 				credentials: {
-					shared: { project: { projectRelations: { user: true } } },
+					shared: { project: true },
 				},
 			},
 		});
@@ -108,8 +126,8 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 
 	async findCredentialsByRoles(
 		userIds: string[],
-		projectRoles: ProjectRole[],
-		credentialRoles: CredentialSharingRole[],
+		projectRoles: string[],
+		credentialRoles: string[],
 		trx?: EntityManager,
 	) {
 		trx = trx ?? this.manager;

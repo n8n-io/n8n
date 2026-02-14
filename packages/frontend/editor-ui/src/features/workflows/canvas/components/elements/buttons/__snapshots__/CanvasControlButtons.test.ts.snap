@@ -1,0 +1,20 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CanvasControlButtons > should render correctly 1`] = `
+"<div class="vue-flow__panel bottom left vue-flow__controls" style="pointer-events: all;">
+  <!---->
+  <!----><button type="button" class="vue-flow__controls-button vue-flow__controls-interactive"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 32">
+      <path d="M21.333 10.667H19.81V7.619C19.81 3.429 16.38 0 12.19 0c-4.114 1.828-1.37 2.133.305 2.438 1.676.305 4.42 2.59 4.42 5.181v3.048H3.047A3.056 3.056 0 0 0 0 13.714v15.238A3.056 3.056 0 0 0 3.048 32h18.285a3.056 3.056 0 0 0 3.048-3.048V13.714a3.056 3.056 0 0 0-3.048-3.047zM12.19 24.533a3.056 3.056 0 0 1-3.047-3.047 3.056 3.056 0 0 1 3.047-3.048 3.056 3.056 0 0 1 3.048 3.048 3.056 3.056 0 0 1-3.048 3.047z"></path>
+    </svg>
+    <!---->
+  </button><span class="" data-state="closed" data-grace-area-trigger=""><n8n-icon-button-stub variant="subtle" icon="maximize" size="large" loading="false" icononly="true" disabled="false" class="" data-test-id="zoom-to-fit"></n8n-icon-button-stub></span>
+  <!--v-if--><span class="" data-state="closed" data-grace-area-trigger=""><n8n-icon-button-stub variant="subtle" icon="zoom-in" size="large" loading="false" icononly="true" disabled="false" class="" data-test-id="zoom-in-button"></n8n-icon-button-stub></span>
+  <!--v-if--><span class="" data-state="closed" data-grace-area-trigger=""><n8n-icon-button-stub variant="subtle" icon="zoom-out" size="large" loading="false" icononly="true" disabled="false" class="" data-test-id="zoom-out-button"></n8n-icon-button-stub></span>
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if--><span class="" data-state="closed" data-grace-area-trigger=""><n8n-button-stub variant="subtle" size="large" loading="false" icononly="true" disabled="false" class="iconButton" data-test-id="tidy-up-button"></n8n-button-stub></span>
+  <!--v-if-->
+  <!--v-if-->
+  <!--v-if-->
+</div>"
+`;

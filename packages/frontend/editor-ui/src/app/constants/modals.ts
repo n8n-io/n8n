@@ -1,0 +1,42 @@
+export const MODAL_CANCEL = 'cancel';
+export const MODAL_CONFIRM = 'confirm';
+export const MODAL_CLOSE = 'close';
+
+export const ABOUT_MODAL_KEY = 'about';
+export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
+export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
+export const CONFIRM_PASSWORD_MODAL_KEY = 'confirmPassword';
+export const DUPLICATE_MODAL_KEY = 'duplicate';
+export const IMPORT_WORKFLOW_URL_MODAL_KEY = 'importWorkflowUrl';
+export const VERSIONS_MODAL_KEY = 'versions';
+export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
+export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
+export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
+export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
+export const IMPORT_CURL_MODAL_KEY = 'importCurl';
+export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
+export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
+export const PROMPT_MFA_CODE_MODAL_KEY = 'promptMfaCode';
+export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
+export const WORKFLOW_HISTORY_VERSION_UNPUBLISH = 'workflowHistoryVersionUnpublish';
+export const WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY = 'workflowHistoryNameVersion';
+export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
+export const NEW_ASSISTANT_SESSION_MODAL = 'newAssistantSession';
+export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
+export const SECRETS_PROVIDER_CONNECTION_MODAL_KEY = 'secretsProviderConnection';
+export const DELETE_SECRETS_PROVIDER_MODAL_KEY = 'deleteSecretsProvider';
+export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
+	'workflowActivationConflictingWebhook';
+export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
+export const STOP_MANY_EXECUTIONS_MODAL_KEY = 'stopManyExecutions';
+export const WORKFLOW_EXTRACTION_NAME_MODAL_KEY = 'workflowExtractionName';
+export const WHATS_NEW_MODAL_KEY = 'whatsNew';
+export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
+export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
+export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
+export const BINARY_DATA_VIEW_MODAL_KEY = 'binaryDataView';
+
+export const WORKFLOW_DESCRIPTION_MODAL_KEY = 'workflowDescription';
+export const WORKFLOW_PUBLISH_MODAL_KEY = 'workflowPublish';
+export const WORKFLOW_HISTORY_PUBLISH_MODAL_KEY = 'workflowHistoryPublish';
+export const CREDENTIAL_RESOLVER_EDIT_MODAL_KEY = 'credentialResolverEdit';

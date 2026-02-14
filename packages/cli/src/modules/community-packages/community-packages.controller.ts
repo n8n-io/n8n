@@ -1,4 +1,5 @@
 import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@n8n/decorators';
+import { valid } from 'semver';
 
 import {
 	RESPONSE_ERROR_MESSAGES,
@@ -15,6 +16,8 @@ import { CommunityNodeTypesService } from './community-node-types.service';
 import { CommunityPackagesService } from './community-packages.service';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
+import { executeNpmCommand } from './npm-utils';
+import { InstanceSettings } from 'n8n-core';
 
 const {
 	PACKAGE_NOT_INSTALLED,
@@ -40,6 +43,7 @@ export class CommunityPackagesController {
 		private readonly communityPackagesService: CommunityPackagesService,
 		private readonly eventService: EventService,
 		private readonly communityNodeTypesService: CommunityNodeTypesService,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	@Post('/')
@@ -49,6 +53,10 @@ export class CommunityPackagesController {
 
 		if (!name) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
+		}
+
+		if (version && !valid(version)) {
+			throw new BadRequestError(`Invalid version: ${version}`);
 		}
 
 		let checksum: string | undefined = undefined;
@@ -164,8 +172,10 @@ export class CommunityPackagesController {
 		let pendingUpdates: CommunityPackages.AvailableUpdates | undefined;
 
 		try {
-			const command = ['npm', 'outdated', '--json'].join(' ');
-			await this.communityPackagesService.executeNpmCommand(command, { doNotHandleError: true });
+			await executeNpmCommand(['outdated', '--json'], {
+				doNotHandleError: true,
+				cwd: this.instanceSettings.nodesDownloadDir,
+			});
 		} catch (error) {
 			// when there are updates, npm exits with code 1
 			// when there are no updates, command succeeds
@@ -184,7 +194,9 @@ export class CommunityPackagesController {
 			if (this.communityPackagesService.hasMissingPackages) {
 				hydratedPackages = this.communityPackagesService.matchMissingPackages(hydratedPackages);
 			}
-		} catch {}
+		} catch {
+			// Ignore errors when matching missing packages
+		}
 
 		return hydratedPackages;
 	}
@@ -251,6 +263,10 @@ export class CommunityPackagesController {
 
 		if (!name) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
+		}
+
+		if (version && !valid(version)) {
+			throw new BadRequestError(`Invalid version: ${version}`);
 		}
 
 		const previouslyInstalledPackage =

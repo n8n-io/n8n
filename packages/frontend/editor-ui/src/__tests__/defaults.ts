@@ -1,6 +1,9 @@
 import type { FrontendSettings } from '@n8n/api-types';
 
 export const defaultSettings: FrontendSettings = {
+	ai: {
+		allowSendingParameterValues: true,
+	},
 	inE2ETests: false,
 	databaseType: 'sqlite',
 	isDocker: false,
@@ -21,6 +24,7 @@ export const defaultSettings: FrontendSettings = {
 	endpointWebhook: '',
 	endpointWebhookTest: '',
 	endpointWebhookWaiting: '',
+	endpointHealth: 'healthz',
 	enterprise: {
 		sharing: false,
 		ldap: false,
@@ -34,18 +38,21 @@ export const defaultSettings: FrontendSettings = {
 		sourceControl: false,
 		auditLogs: false,
 		showNonProdBanner: false,
-		workflowHistory: false,
 		binaryDataS3: false,
 		externalSecrets: false,
 		workerView: false,
 		advancedPermissions: false,
 		apiKeyScopes: false,
 		workflowDiffs: false,
+		namedVersions: false,
+		provisioning: true,
 		projects: {
 			team: {
 				limit: 1,
 			},
 		},
+		customRoles: false,
+		personalSpacePolicy: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,
@@ -66,6 +73,7 @@ export const defaultSettings: FrontendSettings = {
 		debug: false,
 		disableSessionRecording: false,
 		enabled: false,
+		proxy: '',
 	},
 	publicApi: {
 		enabled: false,
@@ -101,6 +109,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	versionCli: '',
 	nodeJsVersion: '',
+	nodeEnv: '',
 	concurrency: -1,
 	versionNotifications: {
 		enabled: true,
@@ -108,6 +117,9 @@ export const defaultSettings: FrontendSettings = {
 		infoUrl: '',
 		whatsNewEnabled: true,
 		whatsNewEndpoint: '',
+	},
+	dataTables: {
+		maxSize: 0,
 	},
 	workflowCallerPolicyDefaultOption: 'any',
 	workflowTagsDisabled: false,
@@ -129,6 +141,10 @@ export const defaultSettings: FrontendSettings = {
 	askAi: {
 		enabled: false,
 	},
+	aiBuilder: {
+		enabled: false,
+		setup: false,
+	},
 	workflowHistory: {
 		pruneTime: 0,
 		licensePruneTime: 0,
@@ -138,15 +154,14 @@ export const defaultSettings: FrontendSettings = {
 	},
 	aiAssistant: {
 		enabled: false,
+		setup: false,
 	},
 	aiCredits: {
 		enabled: false,
 		credits: 0,
+		setup: false,
 	},
 	easyAIWorkflowOnboarded: false,
-	partialExecution: {
-		version: 1,
-	},
 	folders: {
 		enabled: false,
 	},
@@ -155,4 +170,8 @@ export const defaultSettings: FrontendSettings = {
 	},
 	activeModules: [],
 	envFeatureFlags: {},
+	dynamicBanners: {
+		endpoint: 'https://api.n8n.io/api/banners',
+		enabled: true,
+	},
 };

@@ -1,369 +1,414 @@
 <script setup lang="ts">
 import { computed, useAttrs, useCssModule, watchEffect } from 'vue';
 
-import type { IconSize } from '@n8n/design-system/types';
-import type { ButtonProps } from '@n8n/design-system/types/button';
-
+import type { IconSize } from '../../types';
+import type { ButtonProps } from '../../types/button';
+import { cn } from '../../utils/cn';
 import N8nIcon from '../N8nIcon';
-import N8nSpinner from '../N8nSpinner';
 
 const $style = useCssModule();
 const attrs = useAttrs();
 
-defineOptions({ name: 'N8nButton' });
+defineOptions({
+	name: 'N8nButton',
+	inheritAttrs: false,
+});
+
 const props = withDefaults(defineProps<ButtonProps>(), {
-	label: '',
-	type: 'primary',
+	variant: 'solid',
 	size: 'medium',
 	loading: false,
 	disabled: false,
-	outline: false,
-	text: false,
-	block: false,
-	active: false,
-	square: false,
-	element: 'button',
 });
 
-watchEffect(() => {
-	if (props.element === 'a' && !props.href) {
-		console.error('n8n-button:href is required for link buttons');
-	}
+// Map legacy size values to current ones
+const effectiveSize = computed(() => {
+	if (props.size === 'mini' || props.size === 'xmini') return 'xsmall';
+	return props.size;
 });
 
-const ariaBusy = computed(() => (props.loading ? 'true' : undefined));
-const ariaDisabled = computed(() => (props.disabled ? 'true' : undefined));
+// Map legacy variant values to current ones
+const effectiveVariant = computed(() => {
+	if (props.variant === 'highlight') return 'ghost';
+	if (props.variant === 'highlight-fill') return 'ghost';
+	return props.variant;
+});
+
+const computedIconSize = computed((): IconSize | undefined => {
+	if (props.iconSize) return props.iconSize;
+	if (effectiveSize.value === 'xsmall') return 'xsmall';
+	return effectiveSize.value as IconSize;
+});
+
+const componentTag = computed(() => {
+	if (props.href) return 'a';
+	return 'button';
+});
+
+const buttonType = computed(() => {
+	if (componentTag.value === 'a') return undefined;
+	return (attrs.type as string | undefined) ?? 'button';
+});
+
 const isDisabled = computed(() => props.disabled || props.loading);
 
-const iconSize = computed(
-	(): IconSize | undefined =>
-		props.iconSize ?? (props.size === 'xmini' || props.size === 'mini' ? 'xsmall' : props.size),
+const classes = computed(() =>
+	cn(
+		'button',
+		$style.button,
+		$style[effectiveVariant.value],
+		$style[effectiveSize.value],
+		props.loading && $style.loading,
+		props.iconOnly && $style.iconOnly,
+		props.disabled && $style.disabled,
+		props.class,
+	),
 );
 
-const classes = computed(() => {
-	return (
-		`button ${$style.button} ${$style[props.type]}` +
-		`${props.size ? ` ${$style[props.size]}` : ''}` +
-		`${props.outline ? ` ${$style.outline}` : ''}` +
-		`${props.loading ? ` ${$style.loading}` : ''}` +
-		`${props.float ? ` ${$style[`float-${props.float}`]}` : ''}` +
-		`${props.text ? ` ${$style.text}` : ''}` +
-		`${props.disabled ? ` ${$style.disabled}` : ''}` +
-		`${props.block ? ` ${$style.block}` : ''}` +
-		`${props.active ? ` ${$style.active}` : ''}` +
-		`${props.icon || props.loading ? ` ${$style.withIcon}` : ''}` +
-		`${props.square ? ` ${$style.square}` : ''}`
-	);
-});
+// Accessibility warning for icon-only buttons without accessible labels
+if (import.meta.env.DEV) {
+	watchEffect(() => {
+		if (props.iconOnly && !attrs['aria-label'] && !attrs.title) {
+			console.warn(
+				'[N8nButton] Icon-only buttons should have an accessible label. ' +
+					'Add aria-label or title attribute.',
+			);
+		}
+	});
+}
+
+const handleClick = (event: MouseEvent) => {
+	if (props.href && isDisabled.value) {
+		event.preventDefault();
+	}
+};
 </script>
 
 <template>
 	<component
-		:is="element"
-		:class="classes"
-		:disabled="isDisabled"
-		:aria-disabled="ariaDisabled"
-		:aria-busy="ariaBusy"
+		:is="componentTag"
+		v-bind="attrs"
+		:type="buttonType"
 		:href="href"
+		:rel="href ? 'nofollow noopener noreferrer' : undefined"
+		:disabled="componentTag === 'button' ? isDisabled || undefined : undefined"
+		:aria-disabled="isDisabled || undefined"
+		:aria-busy="loading || undefined"
+		:tabindex="componentTag === 'a' && isDisabled ? -1 : undefined"
+		:class="classes"
 		aria-live="polite"
-		v-bind="{
-			...attrs,
-			...(props.nativeType ? { type: props.nativeType } : {}),
-		}"
+		@click="handleClick"
 	>
-		<span v-if="loading || icon" :class="$style.icon">
-			<N8nSpinner v-if="loading" :size="iconSize" />
-			<N8nIcon v-else-if="icon" :icon="icon" :size="iconSize" />
-		</span>
-		<span v-if="label">{{ label }}</span>
-		<template v-else-if="$slots.default"><slot /></template>
+		<Transition name="n8n-button-fade">
+			<div v-if="loading" :class="$style['loading-container']">
+				<div :class="[$style['loading-spinner'], 'n8n-spinner']">
+					<N8nIcon icon="loader" :size="computedIconSize" transform-origin="center" />
+				</div>
+			</div>
+		</Transition>
+
+		<div :class="$style['button-inner']">
+			<slot name="icon">
+				<N8nIcon v-if="icon && !loading" :icon="icon" :size="computedIconSize" />
+			</slot>
+
+			<span v-if="label">{{ label }}</span>
+			<slot v-else />
+		</div>
 	</component>
 </template>
 
 <style lang="scss">
-@use './Button';
-
-.el-button {
-	@include Button.n8n-button(true);
-
-	--button-padding-vertical: var(--spacing-2xs);
-	--button-padding-horizontal: var(--spacing-xs);
-	--button-font-size: var(--font-size-2xs);
-
-	+ .el-button {
-		margin-left: var(--spacing-2xs);
-	}
-
-	&.btn--cancel,
-	&.el-color-dropdown__link-btn {
-		@include Button.n8n-button-secondary;
-	}
-}
+// Import legacy override classes (n8n-button--success, n8n-button--warning, etc.)
+// These are global classes added by the migration codemod for legacy button types
+@use './Button.legacy';
 </style>
 
 <style lang="scss" module>
-@use './Button';
-@use '../../css/mixins/utils';
-@use '../../css/common/var';
+@use '../../css/mixins/focus';
 
 .button {
-	@include Button.n8n-button;
-}
+	appearance: none;
+	touch-action: manipulation;
+	-webkit-tap-highlight-color: transparent;
+	user-select: none;
+	width: fit-content;
+	display: grid;
+	font-weight: var(--font-weight--medium);
+	line-height: 1;
+	cursor: pointer;
+	text-decoration: none;
 
-$loading-overlay-background-color: rgba(255, 255, 255, 0);
+	height: var(--button--height);
+	padding: var(--button--padding);
+	border-radius: var(--button--radius);
+	font-size: var(--button--font-size);
 
-/**
- * Colors
- */
+	--button--color--background: transparent;
+	--button--color--background-hover: transparent;
+	--button--color--background-active: transparent;
+	--button--color: light-dark(var(--color--neutral-900), var(--color--neutral-100));
+	--button--shadow: none;
+	--button--shadow--hover: none;
+	--button--shadow--active: none;
+	--button--border-color: transparent;
+	--button--border-color--hover: transparent;
+	--button--border-color--active: transparent;
 
-.secondary {
-	@include Button.n8n-button-secondary;
-}
+	background-color: var(--button--color--background);
+	color: var(--button--color);
+	box-shadow: var(--button--shadow);
+	border: 1px solid var(--button--border-color);
 
-.highlight {
-	@include Button.n8n-button-highlight;
-}
-
-.tertiary {
-	@include Button.n8n-button-secondary;
-}
-
-.success {
-	@include Button.n8n-button-success;
-}
-
-.warning {
-	@include Button.n8n-button-warning;
-}
-
-.danger {
-	@include Button.n8n-button-danger;
-}
-
-/**
- * Sizes
- */
-
-.xmini {
-	--button-padding-vertical: var(--spacing-4xs);
-	--button-padding-horizontal: var(--spacing-3xs);
-	--button-font-size: var(--font-size-3xs);
-
-	&.square {
-		height: 22px;
-		width: 22px;
-	}
-}
-
-.mini {
-	--button-padding-vertical: var(--spacing-4xs);
-	--button-padding-horizontal: var(--spacing-2xs);
-	--button-font-size: var(--font-size-2xs);
-
-	&.square {
-		height: 22px;
-		width: 22px;
-	}
-}
-
-.small {
-	--button-padding-vertical: var(--spacing-3xs);
-	--button-padding-horizontal: var(--spacing-xs);
-	--button-font-size: var(--font-size-2xs);
-
-	&.square {
-		height: 26px;
-		width: 26px;
-	}
-}
-
-.medium {
-	--button-padding-vertical: var(--spacing-2xs);
-	--button-padding-horizontal: var(--spacing-xs);
-	--button-font-size: var(--font-size-2xs);
-
-	&.square {
-		height: 30px;
-		width: 30px;
-	}
-}
-
-.large {
-	&.square {
-		height: 42px;
-		width: 42px;
-	}
-}
-
-.xlarge {
-	--button-padding-vertical: var(--spacing-xs);
-	--button-padding-horizontal: var(--spacing-s);
-	--button-font-size: var(--font-size-m);
-
-	&.square {
-		height: 46px;
-		width: 46px;
-	}
-}
-
-/**
- * Modifiers
- */
-.outline {
-	--button-background-color: transparent;
-	--button-disabled-background-color: transparent;
-
-	&.primary {
-		--button-font-color: var(--color-primary);
-		--button-disabled-font-color: var(--color-primary-tint-1);
-		--button-disabled-border-color: var(--color-primary-tint-1);
-		--button-disabled-background-color: transparent;
-	}
-
-	&.success {
-		--button-font-color: var(--color-success);
-		--button-border-color: var(--color-success);
-		--button-hover-border-color: var(--color-success);
-		--button-hover-background-color: var(--color-success);
-		--button-active-background-color: var(--color-success);
-		--button-disabled-font-color: var(--color-success-light);
-		--button-disabled-border-color: var(--color-success-light);
-		--button-disabled-background-color: transparent;
-	}
-
-	&.warning {
-		--button-font-color: var(--color-warning);
-		--button-border-color: var(--color-warning);
-		--button-hover-border-color: var(--color-warning);
-		--button-hover-background-color: var(--color-warning);
-		--button-active-background-color: var(--color-warning);
-		--button-disabled-font-color: var(--color-warning-tint-1);
-		--button-disabled-border-color: var(--color-warning-tint-1);
-		--button-disabled-background-color: transparent;
-	}
-
-	&.danger {
-		--button-font-color: var(--color-danger);
-		--button-border-color: var(--color-danger);
-		--button-hover-border-color: var(--color-danger);
-		--button-hover-background-color: var(--color-danger);
-		--button-active-background-color: var(--color-danger);
-		--button-disabled-font-color: var(--color-danger-tint-1);
-		--button-disabled-border-color: var(--color-danger-tint-1);
-		--button-disabled-background-color: transparent;
-	}
-}
-
-.text {
-	--button-font-color: var(--color-text-button-secondary-font);
-	--button-border-color: transparent;
-	--button-background-color: transparent;
-	--button-hover-border-color: transparent;
-	--button-hover-background-color: transparent;
-	--button-active-border-color: transparent;
-	--button-active-background-color: transparent;
-	--button-focus-border-color: transparent;
-	--button-focus-background-color: transparent;
-	--button-disabled-border-color: transparent;
-	--button-disabled-background-color: transparent;
-
-	&:focus {
-		outline: 0;
-	}
-
-	&.primary {
-		--button-font-color: var(--color-primary);
-		--button-hover-font-color: var(--color-primary-shade-1);
-		--button-active-font-color: var(--color-primary-shade-1);
-		--button-focus-font-color: var(--color-primary);
-		--button-disabled-font-color: var(--color-primary-tint-1);
-	}
-
-	&.success {
-		--button-font-color: var(--color-success);
-		--button-hover-font-color: var(--color-success-shade-1);
-		--button-active-font-color: var(--color-success-shade-1);
-		--button-focus-font-color: var(--color-success);
-		--button-disabled-font-color: var(--color-success-light);
-	}
-
-	&.warning {
-		--button-font-color: var(--color-warning);
-		--button-hover-font-color: var(--color-warning-shade-1);
-		--button-active-font-color: var(--color-warning-shade-1);
-		--button-focus-font-color: var(--color-warning);
-		--button-disabled-font-color: var(--color-warning-tint-1);
-	}
-
-	&.danger {
-		--button-font-color: var(--color-danger);
-		--button-hover-font-color: var(--color-danger-shade-1);
-		--button-active-font-color: var(--color-danger-shade-1);
-		--button-focus-font-color: var(--color-danger);
-		--button-disabled-font-color: var(--color-danger-tint-1);
+	> * {
+		grid-area: 1 / 1;
 	}
 
 	&:hover {
-		text-decoration: underline;
+		background-color: var(--button--color--background-hover);
+		box-shadow: var(--button--shadow--hover);
+		border-color: var(--button--border-color--hover);
 	}
-}
 
-.loading {
-	position: relative;
-	pointer-events: none;
-
-	&:before {
-		pointer-events: none;
-		content: '';
-		position: absolute;
-		left: -1px;
-		top: -1px;
-		right: -1px;
-		bottom: -1px;
-		border-radius: inherit;
+	&:active {
+		background-color: var(--button--color--background-active);
+		box-shadow: var(--button--shadow--active);
+		border-color: var(--button--border-color--active);
 	}
-}
 
-.disabled {
-	&,
-	&:hover,
-	&:active,
 	&:focus {
+		outline: none;
+	}
+
+	&:focus-visible {
+		@include focus.focus-ring;
+	}
+
+	&.xsmall {
+		--button--height: 1.5rem;
+		--button--padding: 0 var(--spacing--2xs);
+		--button--radius: var(--radius--2xs);
+		--button--font-size: var(--font-size--2xs);
+	}
+
+	&.small {
+		--button--height: 1.75rem;
+		--button--padding: 0 var(--spacing--xs);
+		--button--radius: var(--radius--2xs);
+		--button--font-size: var(--font-size--xs);
+	}
+
+	&.medium {
+		--button--height: 2rem;
+		--button--padding: 0 var(--spacing--xs);
+		--button--radius: var(--radius--xs);
+		--button--font-size: var(--font-size--sm);
+	}
+
+	&.large {
+		--button--height: 2.25rem;
+		--button--padding: 0 var(--spacing--sm);
+		--button--radius: var(--radius--xs);
+		--button--font-size: var(--font-size--md);
+	}
+
+	&.xlarge {
+		--button--height: 2.5rem;
+		--button--padding: 0 var(--spacing--sm);
+		--button--radius: var(--radius--xs);
+		--button--font-size: var(--font-size--md);
+	}
+
+	&.solid {
+		--button--color--background: var(--color--orange-400);
+		--button--color--background-hover: var(--color--orange-500);
+		--button--color--background-active: var(--color--orange-600);
+		--button--color: var(--color--neutral-white);
+		--button--shadow: 0 1px 3px 0
+			light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
+		--button--shadow--hover: 0 1px 3px 0
+			light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
+		--button--shadow--active: 0 1px 3px 0
+			light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
+		--button--border-color: var(--color--orange-400);
+		--button--border-color--hover: var(--color--orange-500);
+		--button--border-color--active: var(--color--orange-600);
+	}
+
+	&.subtle {
+		--button--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-800));
+		--button--color--background-hover: light-dark(
+			var(--color--neutral-150),
+			var(--color--neutral-700)
+		);
+		--button--color--background-active: light-dark(
+			var(--color--neutral-200),
+			var(--color--neutral-600)
+		);
+		--button--shadow:
+			0 1px 2px light-dark(var(--color--black-alpha-100), var(--color--black-alpha-300)),
+			0 0 0 1px light-dark(transparent, var(--color--black-alpha-100));
+		--button--shadow--hover:
+			0 1px 3px 0 light-dark(var(--color--black-alpha-200), var(--color--black-alpha-300)),
+			0 0 0 1px light-dark(transparent, var(--color--black-alpha-100));
+		--button--shadow--active:
+			0 1px 3px 0 light-dark(var(--color--black-alpha-200), var(--color--black-alpha-300)),
+			0 0 0 1px light-dark(transparent, var(--color--black-alpha-100));
+		--button--border-color: light-dark(
+			var(--color--black-alpha-200),
+			var(--color--white-alpha-100)
+		);
+		--button--border-color--hover: light-dark(
+			var(--color--black-alpha-200),
+			var(--color--white-alpha-300)
+		);
+		--button--border-color--active: light-dark(
+			var(--color--black-alpha-300),
+			var(--color--white-alpha-300)
+		);
+	}
+
+	&.outline {
+		--button--color--background: transparent;
+		--button--color--background-hover: light-dark(
+			var(--color--neutral-150),
+			var(--color--white-alpha-100)
+		);
+		--button--color--background-active: light-dark(
+			var(--color--black-alpha-200),
+			var(--color--white-alpha-200)
+		);
+		--button--border-color: light-dark(
+			var(--color--black-alpha-200),
+			var(--color--white-alpha-100)
+		);
+		--button--border-color--hover: light-dark(
+			var(--color--black-alpha-200),
+			var(--color--white-alpha-200)
+		);
+		--button--border-color--active: light-dark(
+			var(--color--black-alpha-300),
+			var(--color--white-alpha-300)
+		);
+	}
+
+	&.ghost {
+		--button--color--background: transparent;
+		--button--color--background-hover: light-dark(
+			var(--color--black-alpha-100),
+			var(--color--white-alpha-100)
+		);
+		--button--color--background-active: light-dark(
+			var(--color--black-alpha-200),
+			var(--color--white-alpha-200)
+		);
+		--button--border-color: transparent;
+	}
+
+	&.destructive {
+		--button--color--background: light-dark(var(--color--red-500), var(--color--red-600));
+		--button--color--background-hover: light-dark(var(--color--red-600), var(--color--red-500));
+		--button--color--background-active: light-dark(var(--color--red-600), var(--color--red-400));
+		--button--color: var(--color--neutral-white);
+		--button--shadow: light-dark(
+			0 1px 3px 0 var(--color--black-alpha-100),
+			0 1px 3px 0 var(--color--black-alpha-200)
+		);
+		--button--shadow--hover: light-dark(
+			0 1px 3px 0 var(--color--black-alpha-100),
+			0 1px 3px 0 var(--color--black-alpha-200)
+		);
+		--button--shadow--active: light-dark(
+			0 1px 3px 0 var(--color--black-alpha-100),
+			0 1px 3px 0 var(--color--black-alpha-200)
+		);
+		--button--border-color: light-dark(var(--color--red-500), var(--color--red-600));
+		--button--border-color--hover: light-dark(var(--color--red-600), var(--color--red-500));
+		--button--border-color--active: light-dark(var(--color--red-600), var(--color--red-400));
+	}
+
+	&.disabled {
+		opacity: 0.5;
 		cursor: not-allowed;
-		background-image: none;
+	}
+
+	&.loading {
+		pointer-events: none;
+	}
+
+	&.iconOnly {
+		width: var(--button--height);
+		padding: 0;
 	}
 }
 
-.transparent {
-	--button-background-color: transparent;
-	--button-active-background-color: transparent;
+.loading-container {
+	height: auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
-.withIcon {
-	display: inline-flex;
-	justify-content: center;
+.button-inner {
+	display: flex;
 	align-items: center;
-}
-
-.icon {
-	display: inline-flex;
 	justify-content: center;
-	align-items: center;
+	gap: var(--spacing--3xs);
+	white-space: nowrap;
 
-	svg {
-		display: block;
+	/** NOTE (@heymynameisrob): Covers legacy prop label which wraps in span **/
+	> span {
+		white-space: nowrap;
 	}
 }
 
-.block {
-	width: 100%;
+.loading-container + .button-inner {
+	pointer-events: none;
+	opacity: 0;
 }
 
-.float-left {
-	float: left;
+.loading-spinner {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	animation: spin 1s linear infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
-.float-right {
-	float: right;
+/* TODO: Move to global animations css library */
+:global(.n8n-button-fade-enter-active),
+:global(.n8n-button-fade-leave-active) {
+	--easing--ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
+	transition:
+		opacity 0.2s var(--easing--ease-out),
+		transform 0.2s var(--easing--ease-out);
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: opacity 0.1s;
+	}
+}
+
+:global(.n8n-button-fade-enter-from),
+:global(.n8n-button-fade-leave-to) {
+	opacity: 0;
+	transform: translateY(4px);
+	filter: blur(2px);
+
+	@media (prefers-reduced-motion: reduce) {
+		transform: none;
+		filter: none;
+	}
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
 }
 </style>

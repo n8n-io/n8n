@@ -1,4 +1,13 @@
+import type { BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime';
+import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse } from '@langchain/aws';
+import {
+	getNodeProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+} from '@n8n/ai-utilities';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -6,12 +15,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -222,26 +225,45 @@ export class LmChatAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('aws');
+		const credentials = await this.getCredentials<{
+			region: string;
+			secretAccessKey: string;
+			accessKeyId: string;
+			sessionToken: string;
+		}>('aws');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature: number;
 			maxTokensToSample: number;
 		};
 
+		// We set-up client manually to pass httpAgent and httpsAgent
+		const proxyAgent = getNodeProxyAgent();
+		const clientConfig: BedrockRuntimeClientConfig = {
+			region: credentials.region,
+			credentials: {
+				secretAccessKey: credentials.secretAccessKey,
+				accessKeyId: credentials.accessKeyId,
+				...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
+			},
+		};
+
+		if (proxyAgent) {
+			clientConfig.requestHandler = new NodeHttpHandler({
+				httpAgent: proxyAgent,
+				httpsAgent: proxyAgent,
+			});
+		}
+
+		// Pass the pre-configured client to avoid credential resolution proxy issues
+		const client = new BedrockRuntimeClient(clientConfig);
+
 		const model = new ChatBedrockConverse({
-			region: credentials.region as string,
+			client,
 			model: modelName,
+			region: credentials.region,
 			temperature: options.temperature,
 			maxTokens: options.maxTokensToSample,
-			clientConfig: {
-				httpAgent: getProxyAgent(),
-			},
-			credentials: {
-				secretAccessKey: credentials.secretAccessKey as string,
-				accessKeyId: credentials.accessKeyId as string,
-				sessionToken: credentials.sessionToken as string,
-			},
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});

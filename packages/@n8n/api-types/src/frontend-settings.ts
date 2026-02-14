@@ -1,6 +1,8 @@
 import type { LogLevel, WorkflowSettings } from 'n8n-workflow';
 
-import { type InsightsDateRange } from './schemas/insights.schema';
+import type { ChatHubLLMProvider, ChatProviderSettingsDto } from './chat-hub';
+import type { QuickConnectOption } from './quick-connect';
+import type { InsightsDateRange } from './schemas/insights.schema';
 
 export interface IVersionNotificationSettings {
 	enabled: boolean;
@@ -31,10 +33,41 @@ export interface IUserManagementSettings {
 	authenticationMethod: AuthenticationMethod;
 }
 
+export interface IEnterpriseSettings {
+	sharing: boolean;
+	ldap: boolean;
+	saml: boolean;
+	oidc: boolean;
+	mfaEnforcement: boolean;
+	logStreaming: boolean;
+	advancedExecutionFilters: boolean;
+	variables: boolean;
+	sourceControl: boolean;
+	auditLogs: boolean;
+	externalSecrets: boolean;
+	showNonProdBanner: boolean;
+	debugInEditor: boolean;
+	binaryDataS3: boolean;
+	workerView: boolean;
+	advancedPermissions: boolean;
+	apiKeyScopes: boolean;
+	workflowDiffs: boolean;
+	namedVersions: boolean;
+	provisioning: boolean;
+	projects: {
+		team: {
+			limit: number;
+		};
+	};
+	customRoles: boolean;
+	personalSpacePolicy: boolean;
+}
+
 export interface FrontendSettings {
+	settingsMode?: 'public' | 'authenticated';
 	inE2ETests: boolean;
 	isDocker: boolean;
-	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
+	databaseType: 'sqlite' | 'postgresdb';
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
@@ -43,6 +76,7 @@ export interface FrontendSettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
+	endpointHealth: string;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
@@ -59,17 +93,22 @@ export interface FrontendSettings {
 	urlBaseEditor: string;
 	versionCli: string;
 	nodeJsVersion: string;
+	nodeEnv: string | undefined;
 	concurrency: number;
 	authCookie: {
 		secure: boolean;
 	};
-	binaryDataMode: 'default' | 'filesystem' | 's3';
-	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
+	binaryDataMode: 'default' | 'filesystem' | 's3' | 'database';
+	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev' | 'rc';
 	n8nMetadata?: {
 		userId?: string;
 		[key: string]: string | number | undefined;
 	};
 	versionNotifications: IVersionNotificationSettings;
+	dynamicBanners: {
+		endpoint: string;
+		enabled: boolean;
+	};
 	instanceId: string;
 	telemetry: ITelemetrySettings;
 	posthog: {
@@ -79,6 +118,10 @@ export interface FrontendSettings {
 		autocapture: boolean;
 		disableSessionRecording: boolean;
 		debug: boolean;
+		proxy: string;
+	};
+	dataTables: {
+		maxSize: number;
 	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
@@ -123,9 +166,14 @@ export interface FrontendSettings {
 	unverifiedCommunityNodesEnabled: boolean;
 	aiAssistant: {
 		enabled: boolean;
+		setup: boolean;
 	};
 	askAi: {
 		enabled: boolean;
+	};
+	aiBuilder: {
+		enabled: boolean;
+		setup: boolean;
 	};
 	deployment: {
 		type: string;
@@ -134,32 +182,7 @@ export interface FrontendSettings {
 		builtIn?: string[];
 		external?: string[];
 	};
-	enterprise: {
-		sharing: boolean;
-		ldap: boolean;
-		saml: boolean;
-		oidc: boolean;
-		mfaEnforcement: boolean;
-		logStreaming: boolean;
-		advancedExecutionFilters: boolean;
-		variables: boolean;
-		sourceControl: boolean;
-		auditLogs: boolean;
-		externalSecrets: boolean;
-		showNonProdBanner: boolean;
-		debugInEditor: boolean;
-		binaryDataS3: boolean;
-		workflowHistory: boolean;
-		workerView: boolean;
-		advancedPermissions: boolean;
-		apiKeyScopes: boolean;
-		workflowDiffs: boolean;
-		projects: {
-			team: {
-				limit: number;
-			};
-		};
-	};
+	enterprise: IEnterpriseSettings;
 	hideUsagePage: boolean;
 	license: {
 		planName?: string;
@@ -186,6 +209,10 @@ export interface FrontendSettings {
 	aiCredits: {
 		enabled: boolean;
 		credits: number;
+		setup: boolean;
+	};
+	ai: {
+		allowSendingParameterValues: boolean;
 	};
 	pruning?: {
 		isEnabled: boolean;
@@ -196,9 +223,6 @@ export interface FrontendSettings {
 		blockFileAccessToN8nFiles: boolean;
 	};
 	easyAIWorkflowOnboarded: boolean;
-	partialExecution: {
-		version: 1 | 2;
-	};
 	evaluation: {
 		quota: number;
 	};
@@ -220,6 +244,29 @@ export type FrontendModuleSettings = {
 		summary: boolean;
 		dashboard: boolean;
 		dateRanges: InsightsDateRange[];
+	};
+
+	/**
+	 * Client settings for MCP module.
+	 */
+	mcp?: {
+		/** Whether MCP access is enabled in the instance. */
+		mcpAccessEnabled: boolean;
+	};
+
+	/**
+	 * Client settings for Chat module.
+	 */
+	'chat-hub'?: {
+		enabled: boolean;
+		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+	};
+
+	/**
+	 * Quick connect settings
+	 */
+	'quick-connect'?: {
+		options: QuickConnectOption[];
 	};
 };
 

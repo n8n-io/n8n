@@ -12,6 +12,7 @@ describe('PubSubRegistry', () => {
 	let pubsubEventBus: PubSubEventBus;
 	let logger: ReturnType<typeof mockLogger>;
 	const workflowId = 'test-workflow-id';
+	const activeVersionId = 'test-version-id';
 
 	const createTestServiceClass = () => {
 		@Service()
@@ -130,9 +131,9 @@ describe('PubSubRegistry', () => {
 		);
 		pubSubRegistry.init();
 
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, activeVersionId });
 		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1);
-		expect(onLeaderInstanceSpy).toHaveBeenCalledWith({ workflowId });
+		expect(onLeaderInstanceSpy).toHaveBeenCalledWith({ workflowId, activeVersionId });
 
 		pubsubEventBus.emit('restart-event-bus');
 		expect(onFollowerInstanceSpy).not.toHaveBeenCalled();
@@ -152,7 +153,7 @@ describe('PubSubRegistry', () => {
 		);
 		followerPubSubRegistry.init();
 
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, activeVersionId });
 		expect(onLeaderInstanceSpy).not.toHaveBeenCalled();
 
 		pubsubEventBus.emit('restart-event-bus');
@@ -176,9 +177,9 @@ describe('PubSubRegistry', () => {
 		);
 		pubSubRegistry.init();
 
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, activeVersionId });
 		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1);
-		expect(onLeaderInstanceSpy).toHaveBeenCalledWith({ workflowId });
+		expect(onLeaderInstanceSpy).toHaveBeenCalledWith({ workflowId, activeVersionId });
 	});
 
 	it('should handle dynamic role changes at runtime', () => {
@@ -196,19 +197,69 @@ describe('PubSubRegistry', () => {
 		pubSubRegistry.init();
 
 		// Initially as follower, event should be ignored
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, activeVersionId });
 		expect(onLeaderInstanceSpy).not.toHaveBeenCalled();
 
 		// Change role to leader
 		instanceSettings.instanceRole = 'leader';
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, activeVersionId });
 		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1);
-		expect(onLeaderInstanceSpy).toHaveBeenCalledWith({ workflowId });
+		expect(onLeaderInstanceSpy).toHaveBeenCalledWith({ workflowId, activeVersionId });
 
 		// Change back to follower
 		onLeaderInstanceSpy.mockClear();
 		instanceSettings.instanceRole = 'follower';
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, activeVersionId });
 		expect(onLeaderInstanceSpy).not.toHaveBeenCalled();
+	});
+
+	it('should clean up event handlers when reinitializing', () => {
+		const TestService = createTestServiceClass();
+		const testService = Container.get(TestService);
+		const onMainInstanceSpy = jest.spyOn(testService, 'onMainInstance');
+
+		const pubSubRegistry = new PubSubRegistry(
+			logger,
+			leaderInstanceSettings,
+			metadata,
+			pubsubEventBus,
+		);
+
+		// First initialization
+		pubSubRegistry.init();
+
+		// Emit event to verify handler is registered
+		pubsubEventBus.emit('reload-external-secrets-providers');
+		expect(onMainInstanceSpy).toHaveBeenCalledTimes(1);
+
+		// Reinitialize - should clean up previous handlers
+		onMainInstanceSpy.mockClear();
+		pubSubRegistry.init();
+
+		// Emit event again - should only be called once (not twice due to duplicate handlers)
+		pubsubEventBus.emit('reload-external-secrets-providers');
+		expect(onMainInstanceSpy).toHaveBeenCalledTimes(1);
+	});
+
+	it('should handle multiple reinitializations without memory leaks', () => {
+		const TestService = createTestServiceClass();
+		const testService = Container.get(TestService);
+		const onAllInstancesSpy = jest.spyOn(testService, 'onAllInstances');
+
+		const pubSubRegistry = new PubSubRegistry(
+			logger,
+			leaderInstanceSettings,
+			metadata,
+			pubsubEventBus,
+		);
+
+		// Multiple initializations
+		for (let i = 0; i < 5; i++) {
+			pubSubRegistry.init();
+		}
+
+		// Event should only trigger once per emission, not 5 times
+		pubsubEventBus.emit('clear-test-webhooks');
+		expect(onAllInstancesSpy).toHaveBeenCalledTimes(1);
 	});
 });

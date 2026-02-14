@@ -75,7 +75,7 @@ describe('WebSocketPush', () => {
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
 		webSocketPush.sendToOne(pushMessage, pushRef1);
 
-		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
 		expect(mockWebSocket2.send).not.toHaveBeenCalled();
 	});
 
@@ -84,8 +84,8 @@ describe('WebSocketPush', () => {
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
 		webSocketPush.sendToAll(pushMessage);
 
-		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
-		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
 	});
 
 	it('pings all connections', () => {
@@ -103,8 +103,15 @@ describe('WebSocketPush', () => {
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
 		webSocketPush.sendToUsers(pushMessage, [userId]);
 
-		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
-		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+	});
+
+	it('skips sending when user has no connections', () => {
+		webSocketPush.add(pushRef1, userId, mockWebSocket1);
+		webSocketPush.sendToUsers(pushMessage, ['nonexistent-user']);
+
+		expect(mockWebSocket1.send).not.toHaveBeenCalled();
 	});
 
 	it('emits message event when connection receives data', async () => {

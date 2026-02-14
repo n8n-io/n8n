@@ -1,22 +1,11 @@
+/* eslint-disable @typescript-eslint/require-await */
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { ToolMessage } from '@langchain/core/messages';
-import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import type { MemorySaver } from '@langchain/langgraph';
 import { GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
-
-import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
-import { ValidationError } from '@/errors';
-import type { StreamOutput } from '@/types/streaming';
-import { createStreamProcessor, formatMessages } from '@/utils/stream-processor';
-import {
-	WorkflowBuilderAgent,
-	type WorkflowBuilderAgentConfig,
-	type ChatPayload,
-} from '@/workflow-builder-agent';
 
 jest.mock('@/tools/add-node.tool', () => ({
 	createAddNodeTool: jest.fn().mockReturnValue({ tool: { name: 'add_node' } }),
@@ -38,24 +27,20 @@ jest.mock('@/tools/update-node-parameters.tool', () => ({
 		.fn()
 		.mockReturnValue({ tool: { name: 'update_node_parameters' } }),
 }));
-jest.mock('@/tools/prompts/main-agent.prompt', () => ({
-	mainAgentPrompt: {
-		invoke: jest.fn().mockResolvedValue('mocked prompt'),
-	},
-}));
-jest.mock('@/utils/operations-processor', () => ({
-	processOperations: jest.fn(),
+jest.mock('@/tools/get-node-parameter.tool', () => ({
+	createGetNodeParameterTool: jest.fn().mockReturnValue({ tool: { name: 'get_node_parameter' } }),
 }));
 
 jest.mock('@/utils/stream-processor', () => ({
 	createStreamProcessor: jest.fn(),
 	formatMessages: jest.fn(),
 }));
-jest.mock('@/utils/tool-executor', () => ({
-	executeToolsInParallel: jest.fn(),
-}));
-jest.mock('@/chains/conversation-compact', () => ({
-	conversationCompactChain: jest.fn(),
+
+const mockCodeWorkflowBuilderChat = jest.fn();
+jest.mock('@/code-builder', () => ({
+	CodeWorkflowBuilder: jest.fn().mockImplementation(() => ({
+		chat: mockCodeWorkflowBuilderChat,
+	})),
 }));
 
 const mockRandomUUID = jest.fn();
@@ -66,10 +51,21 @@ Object.defineProperty(global, 'crypto', {
 	writable: true,
 });
 
+import { CodeWorkflowBuilder } from '@/code-builder';
+import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
+import { ValidationError } from '@/errors';
+import type { PlanInterruptValue, PlanOutput } from '@/types/planning';
+import type { StreamOutput } from '@/types/streaming';
+import { createStreamProcessor } from '@/utils/stream-processor';
+import {
+	WorkflowBuilderAgent,
+	type WorkflowBuilderAgentConfig,
+	type ChatPayload,
+} from '@/workflow-builder-agent';
+
 describe('WorkflowBuilderAgent', () => {
 	let agent: WorkflowBuilderAgent;
-	let mockLlmSimple: BaseChatModel;
-	let mockLlmComplex: BaseChatModel;
+	let mockLlm: BaseChatModel;
 	let mockLogger: Logger;
 	let mockCheckpointer: MemorySaver;
 	let parsedNodeTypes: INodeTypeDescription[];
@@ -78,17 +74,10 @@ describe('WorkflowBuilderAgent', () => {
 	const mockCreateStreamProcessor = createStreamProcessor as jest.MockedFunction<
 		typeof createStreamProcessor
 	>;
-	const mockFormatMessages = formatMessages as jest.MockedFunction<typeof formatMessages>;
 
 	beforeEach(() => {
-		mockLlmSimple = mock<BaseChatModel>({
+		mockLlm = mock<BaseChatModel>({
 			_llmType: jest.fn().mockReturnValue('test-llm'),
-			bindTools: jest.fn().mockReturnThis(),
-			invoke: jest.fn(),
-		});
-
-		mockLlmComplex = mock<BaseChatModel>({
-			_llmType: jest.fn().mockReturnValue('test-llm-complex'),
 			bindTools: jest.fn().mockReturnThis(),
 			invoke: jest.fn(),
 		});
@@ -121,8 +110,14 @@ describe('WorkflowBuilderAgent', () => {
 
 		config = {
 			parsedNodeTypes,
-			llmSimpleTask: mockLlmSimple,
-			llmComplexTask: mockLlmComplex,
+			stageLLMs: {
+				supervisor: mockLlm,
+				responder: mockLlm,
+				discovery: mockLlm,
+				builder: mockLlm,
+				parameterUpdater: mockLlm,
+				planner: mockLlm,
+			},
 			logger: mockLogger,
 			checkpointer: mockCheckpointer,
 		};
@@ -130,40 +125,12 @@ describe('WorkflowBuilderAgent', () => {
 		agent = new WorkflowBuilderAgent(config);
 	});
 
-	describe('generateThreadId', () => {
-		beforeEach(() => {
-			mockRandomUUID.mockReset();
-		});
-
-		it('should generate thread ID with workflowId and userId', () => {
-			const workflowId = 'workflow-123';
-			const userId = 'user-456';
-			const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
-			expect(threadId).toBe('workflow-workflow-123-user-user-456');
-		});
-
-		it('should generate thread ID with workflowId but without userId', () => {
-			const workflowId = 'workflow-123';
-			const threadId = WorkflowBuilderAgent.generateThreadId(workflowId);
-			expect(threadId).toMatch(/^workflow-workflow-123-user-\d+$/);
-		});
-
-		it('should generate random UUID when no workflowId provided', () => {
-			const mockUuid = 'test-uuid-1234-5678-9012';
-			mockRandomUUID.mockReturnValue(mockUuid);
-
-			const threadId = WorkflowBuilderAgent.generateThreadId();
-
-			expect(mockRandomUUID).toHaveBeenCalled();
-			expect(threadId).toBe(mockUuid);
-		});
-	});
-
 	describe('chat method', () => {
 		let mockPayload: ChatPayload;
 
 		beforeEach(() => {
 			mockPayload = {
+				id: '12345',
 				message: 'Create a workflow',
 				workflowContext: {
 					currentWorkflow: { id: 'workflow-123' },
@@ -174,6 +141,7 @@ describe('WorkflowBuilderAgent', () => {
 		it('should throw ValidationError when message exceeds maximum length', async () => {
 			const longMessage = 'x'.repeat(MAX_AI_BUILDER_PROMPT_LENGTH + 1);
 			const payload: ChatPayload = {
+				id: '12345',
 				message: longMessage,
 			};
 
@@ -191,6 +159,7 @@ describe('WorkflowBuilderAgent', () => {
 		it('should handle valid message length', async () => {
 			const validMessage = 'Create a simple workflow';
 			const payload: ChatPayload = {
+				id: '12345',
 				message: validMessage,
 			};
 
@@ -211,7 +180,7 @@ describe('WorkflowBuilderAgent', () => {
 			mockCreateStreamProcessor.mockReturnValue(mockAsyncGenerator);
 
 			// Mock the LLM to return a simple response
-			(mockLlmSimple.invoke as jest.Mock).mockResolvedValue({
+			(mockLlm.invoke as jest.Mock).mockResolvedValue({
 				content: 'Mocked response',
 				tool_calls: [],
 			});
@@ -236,6 +205,43 @@ describe('WorkflowBuilderAgent', () => {
 			}).rejects.toThrow(ApplicationError);
 		});
 
+		it('should handle 401 expired token error from LangChain MODEL_AUTHENTICATION', async () => {
+			// This matches the actual error structure from LangChain when the AI assistant proxy token expires
+			const expiredTokenError = Object.assign(new Error('Expired token'), {
+				status: 401,
+				lc_error_code: 'MODEL_AUTHENTICATION',
+			});
+
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw expiredTokenError;
+				})();
+			});
+
+			await expect(async () => {
+				const generator = agent.chat(mockPayload);
+				await generator.next();
+			}).rejects.toThrow(ApplicationError);
+		});
+
+		it('should not treat generic 401 errors as expired token errors', async () => {
+			// A generic 401 without lc_error_code should be rethrown as-is, not converted to ApplicationError
+			const generic401Error = Object.assign(new Error('Unauthorized'), { status: 401 });
+
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw generic401Error;
+				})();
+			});
+
+			await expect(async () => {
+				const generator = agent.chat(mockPayload);
+				await generator.next();
+			}).rejects.toThrow(generic401Error);
+		});
+
 		it('should handle invalid request errors', async () => {
 			const invalidRequestError = Object.assign(new Error('Request failed'), {
 				error: {
@@ -246,12 +252,18 @@ describe('WorkflowBuilderAgent', () => {
 				},
 			});
 
-			(mockLlmSimple.invoke as jest.Mock).mockRejectedValue(invalidRequestError);
+			// Mock the stream processor to throw the invalid request error
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw invalidRequestError;
+				})();
+			});
 
 			await expect(async () => {
 				const generator = agent.chat(mockPayload);
 				await generator.next();
-			}).rejects.toThrow(ApplicationError);
+			}).rejects.toThrow(ValidationError);
 		});
 
 		it('should rethrow unknown errors', async () => {
@@ -272,93 +284,160 @@ describe('WorkflowBuilderAgent', () => {
 		});
 	});
 
-	describe('getSessions', () => {
+	describe('hybrid plan+codeBuilder routing', () => {
+		const MockedCodeWorkflowBuilder = CodeWorkflowBuilder as jest.MockedClass<
+			typeof CodeWorkflowBuilder
+		>;
+
+		const mockPlan: PlanOutput = {
+			summary: 'Fetch weather and send Slack alert',
+			trigger: 'Runs every morning at 7 AM',
+			steps: [
+				{ description: 'Fetch weather forecast', suggestedNodes: ['n8n-nodes-base.httpRequest'] },
+				{ description: 'Check if rain is predicted' },
+				{ description: 'Send Slack notification', suggestedNodes: ['n8n-nodes-base.slack'] },
+			],
+		};
+
+		const mockPlanInterrupt: PlanInterruptValue = {
+			type: 'plan',
+			plan: mockPlan,
+		};
+
 		beforeEach(() => {
-			mockFormatMessages.mockImplementation(
-				(messages: Array<AIMessage | HumanMessage | ToolMessage>) =>
-					messages.map((m) => ({ type: m.constructor.name.toLowerCase(), content: m.content })),
+			jest.clearAllMocks();
+			MockedCodeWorkflowBuilder.mockClear();
+			mockCodeWorkflowBuilderChat.mockReturnValue(
+				(async function* () {
+					yield {
+						messages: [{ role: 'assistant', type: 'message', text: 'Built workflow' }],
+					} as StreamOutput;
+				})(),
 			);
 		});
 
-		it('should return session for existing workflowId', async () => {
-			const workflowId = 'workflow-123';
-			const userId = 'user-456';
-			const mockCheckpoint = {
-				checkpoint: {
-					channel_values: {
-						messages: [new HumanMessage('Hello'), new AIMessage('Hi there!')],
-					},
-					ts: '2023-12-01T12:00:00Z',
-				},
+		it('should route to multi-agent for initial plan request when codeBuilder+planMode enabled', async () => {
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Create a weather alert workflow',
+				featureFlags: { codeBuilder: true, planMode: true },
+				mode: 'plan',
 			};
 
-			(mockCheckpointer.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			const mockStreamOutput: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Planning...' }],
+			};
+			mockCreateStreamProcessor.mockReturnValue(
+				(async function* () {
+					yield mockStreamOutput;
+				})(),
+			);
 
-			const result = await agent.getSessions(workflowId, userId);
+			const generator = agent.chat(payload);
+			const result = await generator.next();
 
-			expect(result.sessions).toHaveLength(1);
-			expect(result.sessions[0]).toMatchObject({
-				sessionId: 'workflow-workflow-123-user-user-456',
-				lastUpdated: '2023-12-01T12:00:00Z',
-			});
-			expect(result.sessions[0].messages).toHaveLength(2);
+			expect(result.value).toEqual(mockStreamOutput);
+			// Multi-agent path uses createStreamProcessor; code builder does not
+			expect(mockCreateStreamProcessor).toHaveBeenCalled();
+			expect(MockedCodeWorkflowBuilder).not.toHaveBeenCalled();
 		});
 
-		it('should return empty sessions when workflowId is undefined', async () => {
-			const result = await agent.getSessions(undefined);
-
-			expect(result.sessions).toHaveLength(0);
-			expect(mockCheckpointer.getTuple).not.toHaveBeenCalled();
-		});
-
-		it('should return empty sessions when no checkpoint exists', async () => {
-			const workflowId = 'workflow-123';
-			(mockCheckpointer.getTuple as jest.Mock).mockRejectedValue(new Error('Thread not found'));
-
-			const result = await agent.getSessions(workflowId);
-
-			expect(result.sessions).toHaveLength(0);
-			expect(mockLogger.debug).toHaveBeenCalledWith('No session found for workflow:', {
-				workflowId,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				error: expect.any(Error),
-			});
-		});
-
-		it('should handle checkpoint without messages', async () => {
-			const workflowId = 'workflow-123';
-			const mockCheckpoint = {
-				checkpoint: {
-					channel_values: {},
-					ts: '2023-12-01T12:00:00Z',
-				},
+		it('should route to CodeWorkflowBuilder with plan on plan approval', async () => {
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Create a weather alert workflow',
+				featureFlags: { codeBuilder: true, planMode: true },
+				resumeData: { action: 'approve' },
+				resumeInterrupt: mockPlanInterrupt,
 			};
 
-			(mockCheckpointer.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			const generator = agent.chat(payload);
+			for await (const _ of generator) {
+				// consume
+			}
 
-			const result = await agent.getSessions(workflowId);
-
-			expect(result.sessions).toHaveLength(1);
-			expect(result.sessions[0].messages).toHaveLength(0);
+			// Should have constructed CodeWorkflowBuilder
+			expect(MockedCodeWorkflowBuilder).toHaveBeenCalled();
+			// Should have passed the plan via the payload
+			expect(mockCodeWorkflowBuilderChat).toHaveBeenCalledWith(
+				expect.objectContaining({ planOutput: mockPlan }),
+				expect.any(String),
+				undefined,
+			);
+			// Should NOT have used multi-agent stream processor
+			expect(mockCreateStreamProcessor).not.toHaveBeenCalled();
 		});
 
-		it('should handle checkpoint with null messages', async () => {
-			const workflowId = 'workflow-123';
-			const mockCheckpoint = {
-				checkpoint: {
-					channel_values: {
-						messages: null,
-					},
-					ts: '2023-12-01T12:00:00Z',
-				},
+		it('should route to multi-agent on plan modification', async () => {
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Create a weather alert workflow',
+				featureFlags: { codeBuilder: true, planMode: true },
+				resumeData: { action: 'modify', feedback: 'Add error handling' },
+				resumeInterrupt: mockPlanInterrupt,
 			};
 
-			(mockCheckpointer.getTuple as jest.Mock).mockResolvedValue(mockCheckpoint);
+			const mockStreamOutput: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Re-planning...' }],
+			};
+			mockCreateStreamProcessor.mockReturnValue(
+				(async function* () {
+					yield mockStreamOutput;
+				})(),
+			);
 
-			const result = await agent.getSessions(workflowId);
+			const generator = agent.chat(payload);
+			const result = await generator.next();
 
-			expect(result.sessions).toHaveLength(1);
-			expect(result.sessions[0].messages).toHaveLength(0);
+			expect(result.value).toEqual(mockStreamOutput);
+			expect(mockCreateStreamProcessor).toHaveBeenCalled();
+			expect(MockedCodeWorkflowBuilder).not.toHaveBeenCalled();
+		});
+
+		it('should route to multi-agent on plan rejection', async () => {
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Create a weather alert workflow',
+				featureFlags: { codeBuilder: true, planMode: true },
+				resumeData: { action: 'reject' },
+				resumeInterrupt: mockPlanInterrupt,
+			};
+
+			const mockStreamOutput: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'OK, cancelled.' }],
+			};
+			mockCreateStreamProcessor.mockReturnValue(
+				(async function* () {
+					yield mockStreamOutput;
+				})(),
+			);
+
+			const generator = agent.chat(payload);
+			const result = await generator.next();
+
+			expect(result.value).toEqual(mockStreamOutput);
+			expect(mockCreateStreamProcessor).toHaveBeenCalled();
+			expect(MockedCodeWorkflowBuilder).not.toHaveBeenCalled();
+		});
+
+		it('should route to CodeWorkflowBuilder without plan when codeBuilder enabled but no planMode', async () => {
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Create a simple workflow',
+				featureFlags: { codeBuilder: true },
+			};
+
+			const generator = agent.chat(payload);
+			for await (const _ of generator) {
+				// consume
+			}
+
+			expect(MockedCodeWorkflowBuilder).toHaveBeenCalled();
+			expect(mockCodeWorkflowBuilderChat).toHaveBeenCalledWith(
+				expect.not.objectContaining({ planOutput: expect.anything() }),
+				expect.any(String),
+				undefined,
+			);
 		});
 	});
 });

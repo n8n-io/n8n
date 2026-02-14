@@ -1,24 +1,22 @@
-import { type InsightsSummary, type InsightsDateRange } from '@n8n/api-types';
+import { type InsightsSummary } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
+import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
 import { NumberToType, TypeToNumber } from './database/entities/insights-shared';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
-import { InsightsCollectionService } from './insights-collection.service';
 import { InsightsCompactionService } from './insights-compaction.service';
 import { InsightsPruningService } from './insights-pruning.service';
-import { INSIGHTS_DATE_RANGE_KEYS, keyRangeToDays } from './insights.constants';
 
 @Service()
 export class InsightsService {
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly compactionService: InsightsCompactionService,
-		private readonly collectionService: InsightsCollectionService,
 		private readonly pruningService: InsightsPruningService,
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
@@ -27,16 +25,26 @@ export class InsightsService {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	settings() {
-		return {
-			summary: this.licenseState.isInsightsSummaryLicensed(),
-			dashboard: this.licenseState.isInsightsDashboardLicensed(),
-			dateRanges: this.getAvailableDateRanges(),
-		};
+	private async toggleCollectionService(enable: boolean) {
+		if (
+			this.instanceSettings.instanceType !== 'main' &&
+			this.instanceSettings.instanceType !== 'webhook'
+		) {
+			this.logger.debug('Instance is not main or webhook, skipping collection');
+			return;
+		}
+
+		const { InsightsCollectionService } = await import('./insights-collection.service');
+		const collectionService = Container.get(InsightsCollectionService);
+		if (enable) {
+			collectionService.init();
+		} else {
+			await collectionService.shutdown();
+		}
 	}
 
-	startTimers() {
-		this.collectionService.startFlushingTimer();
+	async init() {
+		await this.toggleCollectionService(true);
 
 		if (this.instanceSettings.isLeader) this.startCompactionAndPruningTimers();
 	}
@@ -56,15 +64,23 @@ export class InsightsService {
 	}
 
 	async shutdown() {
-		await this.collectionService.shutdown();
+		await this.toggleCollectionService(false);
 		this.stopCompactionAndPruningTimers();
 	}
 
 	async getInsightsSummary({
-		periodLengthInDays,
-	}: { periodLengthInDays: number }): Promise<InsightsSummary> {
+		startDate,
+		endDate,
+		projectId,
+	}: {
+		projectId?: string;
+		startDate: Date;
+		endDate: Date;
+	}): Promise<InsightsSummary> {
 		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates({
-			periodLengthInDays,
+			startDate,
+			endDate,
+			projectId,
 		});
 
 		// Initialize data structures for both periods
@@ -147,21 +163,27 @@ export class InsightsService {
 	}
 
 	async getInsightsByWorkflow({
-		maxAgeInDays,
 		skip = 0,
 		take = 10,
 		sortBy = 'total:desc',
+		projectId,
+		startDate,
+		endDate,
 	}: {
-		maxAgeInDays: number;
 		skip?: number;
 		take?: number;
 		sortBy?: string;
+		projectId?: string;
+		startDate: Date;
+		endDate: Date;
 	}) {
 		const { count, rows } = await this.insightsByPeriodRepository.getInsightsByWorkflow({
-			maxAgeInDays,
+			startDate,
+			endDate,
 			skip,
 			take,
 			sortBy,
+			projectId,
 		});
 
 		return {
@@ -171,15 +193,24 @@ export class InsightsService {
 	}
 
 	async getInsightsByTime({
-		maxAgeInDays,
-		periodUnit,
 		// Default to all insight types
 		insightTypes = Object.keys(TypeToNumber) as TypeUnit[],
-	}: { maxAgeInDays: number; periodUnit: PeriodUnit; insightTypes?: TypeUnit[] }) {
+		projectId,
+		startDate,
+		endDate,
+	}: {
+		insightTypes?: TypeUnit[];
+		projectId?: string;
+		startDate: Date;
+		endDate: Date;
+	}) {
+		const periodUnit = this.getDateFiltersGranularity({ startDate, endDate });
 		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
-			maxAgeInDays,
 			periodUnit,
 			insightTypes,
+			projectId,
+			startDate,
+			endDate,
 		});
 
 		return rows.map((r) => {
@@ -207,47 +238,55 @@ export class InsightsService {
 		});
 	}
 
-	getMaxAgeInDaysAndGranularity(
-		dateRangeKey: InsightsDateRange['key'],
-	): InsightsDateRange & { maxAgeInDays: number } {
-		const dateRange = this.getAvailableDateRanges().find((range) => range.key === dateRangeKey);
-
-		if (!dateRange) {
-			// Not supposed to happen if we trust the dateRangeKey type
-			throw new UserError('The selected date range is not available');
-		}
-
-		if (!dateRange.licensed) {
-			throw new UserError(
-				'The selected date range exceeds the maximum history allowed by your license.',
-			);
-		}
-
-		return { ...dateRange, maxAgeInDays: keyRangeToDays[dateRangeKey] };
-	}
-
 	/**
-	 * Returns the available date ranges with their license authorization and time granularity
-	 * when grouped by time.
+	 * Checks if the selected date range is compliant with the license
+	 *
+	 * - If the granularity is 'hour', checks if the license allows hourly data access
+	 * - Checks if the start date is within the allowed history range
+	 *
+	 * @throws {UserError} if the license does not allow the selected date range
 	 */
-	getAvailableDateRanges(): DateRange[] {
+	validateDateFiltersLicense({ startDate, endDate }: { startDate: Date; endDate: Date }) {
+		// we use `startOf('day')` because the license limits are based on full days
+		const today = DateTime.now().startOf('day');
+		const startDateStartOfDay = DateTime.fromJSDate(startDate).startOf('day');
+		const daysToStartDate = today.diff(startDateStartOfDay, 'days').days;
+
+		const granularity = this.getDateFiltersGranularity({ startDate, endDate });
+
 		const maxHistoryInDays =
 			this.licenseState.getInsightsMaxHistory() === -1
 				? Number.MAX_SAFE_INTEGER
 				: this.licenseState.getInsightsMaxHistory();
 		const isHourlyDateLicensed = this.licenseState.isInsightsHourlyDataLicensed();
 
-		return INSIGHTS_DATE_RANGE_KEYS.map((key) => ({
-			key,
-			licensed:
-				key === 'day' ? (isHourlyDateLicensed ?? false) : maxHistoryInDays >= keyRangeToDays[key],
-			granularity: key === 'day' ? 'hour' : keyRangeToDays[key] <= 30 ? 'day' : 'week',
-		}));
+		if (granularity === 'hour' && !isHourlyDateLicensed) {
+			throw new UserError('Hourly data is not available with your current license');
+		}
+
+		if (maxHistoryInDays < daysToStartDate) {
+			throw new UserError(
+				'The selected date range exceeds the maximum history allowed by your license',
+			);
+		}
+	}
+
+	private getDateFiltersGranularity({
+		startDate,
+		endDate,
+	}: { startDate: Date; endDate: Date }): PeriodUnit {
+		const startDateTime = DateTime.fromJSDate(startDate);
+		const endDateTime = DateTime.fromJSDate(endDate);
+		const differenceInDays = endDateTime.diff(startDateTime, 'days').days;
+
+		if (differenceInDays < 1) {
+			return 'hour';
+		}
+
+		if (differenceInDays <= 30) {
+			return 'day';
+		}
+
+		return 'week';
 	}
 }
-
-type DateRange = {
-	key: 'day' | 'week' | '2weeks' | 'month' | 'quarter' | '6months' | 'year';
-	licensed: boolean;
-	granularity: 'hour' | 'day' | 'week';
-};

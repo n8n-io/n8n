@@ -21,10 +21,16 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "a": {
+                        "type": "string"
+                    },
                     "e": {
                         "type": "string"
                     },
                     "t": {
+                        "type": "string"
+                    },
+                    "u": {
                         "type": "string"
                     }
                 }
@@ -116,9 +122,6 @@
         },
         "is_video": {
             "type": "boolean"
-        },
-        "likes": {
-            "type": "null"
         },
         "link_flair_richtext": {
             "type": "array",
@@ -308,5 +311,5 @@
             "type": "boolean"
         }
     },
-    "version": 2
+    "version": 5
 }

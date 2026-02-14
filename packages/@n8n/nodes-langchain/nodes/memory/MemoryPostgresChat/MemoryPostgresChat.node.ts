@@ -1,5 +1,5 @@
 import { PostgresChatMessageHistory } from '@langchain/community/stores/message/postgres';
-import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
+import { BufferMemory, BufferWindowMemory } from '@langchain/classic/memory';
 import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
 import { postgresConnectionTest } from 'n8n-nodes-base/dist/nodes/Postgres/v2/methods/credentialTest';
@@ -13,7 +13,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type pg from 'pg';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@utils/logWrapper';
+import { logWrapper } from '@n8n/ai-utilities';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import {

@@ -7,7 +7,41 @@
         "fields": {
             "type": "object",
             "properties": {
-                "assignee": {
+                "aggregateprogress": {
+                    "type": "object",
+                    "properties": {
+                        "progress": {
+                            "type": "integer"
+                        },
+                        "total": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "components": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "description": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "self": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "created": {
+                    "type": "string"
+                },
+                "creator": {
                     "type": "object",
                     "properties": {
                         "accountId": {
@@ -39,6 +73,9 @@
                         "displayName": {
                             "type": "string"
                         },
+                        "emailAddress": {
+                            "type": "string"
+                        },
                         "self": {
                             "type": "string"
                         },
@@ -47,8 +84,14 @@
                         }
                     }
                 },
-                "created": {
+                "customfield_10001": {
+                    "type": "null"
+                },
+                "customfield_10019": {
                     "type": "string"
+                },
+                "customfield_10021": {
+                    "type": "null"
                 },
                 "fixVersions": {
                     "type": "array",
@@ -75,6 +118,151 @@
                             },
                             "self": {
                                 "type": "string"
+                            }
+                        }
+                    }
+                },
+                "issuelinks": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "inwardIssue": {
+                                "type": "object",
+                                "properties": {
+                                    "fields": {
+                                        "type": "object",
+                                        "properties": {
+                                            "issuetype": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "avatarId": {
+                                                        "type": "integer"
+                                                    },
+                                                    "description": {
+                                                        "type": "string"
+                                                    },
+                                                    "entityId": {
+                                                        "type": "string"
+                                                    },
+                                                    "hierarchyLevel": {
+                                                        "type": "integer"
+                                                    },
+                                                    "iconUrl": {
+                                                        "type": "string"
+                                                    },
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "self": {
+                                                        "type": "string"
+                                                    },
+                                                    "subtask": {
+                                                        "type": "boolean"
+                                                    }
+                                                }
+                                            },
+                                            "priority": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "iconUrl": {
+                                                        "type": "string"
+                                                    },
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "self": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "status": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "description": {
+                                                        "type": "string"
+                                                    },
+                                                    "iconUrl": {
+                                                        "type": "string"
+                                                    },
+                                                    "id": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "self": {
+                                                        "type": "string"
+                                                    },
+                                                    "statusCategory": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "colorName": {
+                                                                "type": "string"
+                                                            },
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "key": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "self": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "summary": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "key": {
+                                        "type": "string"
+                                    },
+                                    "self": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "self": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "inward": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "outward": {
+                                        "type": "string"
+                                    },
+                                    "self": {
+                                        "type": "string"
+                                    }
+                                }
                             }
                         }
                     }
@@ -131,6 +319,17 @@
                         },
                         "self": {
                             "type": "string"
+                        }
+                    }
+                },
+                "progress": {
+                    "type": "object",
+                    "properties": {
+                        "progress": {
+                            "type": "integer"
+                        },
+                        "total": {
+                            "type": "integer"
                         }
                     }
                 },
@@ -217,6 +416,9 @@
                         }
                     }
                 },
+                "security": {
+                    "type": "null"
+                },
                 "status": {
                     "type": "object",
                     "properties": {
@@ -254,6 +456,26 @@
                                     "type": "string"
                                 }
                             }
+                        }
+                    }
+                },
+                "statusCategory": {
+                    "type": "object",
+                    "properties": {
+                        "colorName": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "key": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
                         }
                     }
                 },
@@ -407,6 +629,9 @@
                             "type": "integer"
                         }
                     }
+                },
+                "workratio": {
+                    "type": "integer"
                 }
             }
         },
@@ -420,5 +645,5 @@
             "type": "string"
         }
     },
-    "version": 6
+    "version": 9
 }

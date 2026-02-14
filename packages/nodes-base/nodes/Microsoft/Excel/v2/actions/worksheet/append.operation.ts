@@ -1,14 +1,15 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
+import {
+	NodeOperationError,
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 import { processJsonInput, updateDisplayOptions } from '@utils/utilities';
 
 import type { ExcelResponse } from '../../helpers/interfaces';
-import { prepareOutput } from '../../helpers/utils';
+import { findAppendRange, prepareOutput } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
 
@@ -142,6 +143,8 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
+	const nodeVersion = this.getNode().typeVersion;
+
 	const workbookId = this.getNodeParameter('workbook', 0, undefined, {
 		extractValue: true,
 	}) as string;
@@ -163,6 +166,24 @@ export async function execute(
 	if (dataMode === 'raw') {
 		const data = this.getNodeParameter('data', 0);
 		values = processJsonInput(data, 'Data') as string[][];
+		const notArray = !values || !Array.isArray(values);
+		if (notArray) {
+			throw new NodeOperationError(this.getNode(), 'Data must be an array of arrays of strings');
+		}
+		const notStringArray =
+			values.some((item) => !Array.isArray(item)) ||
+			values.flat().some((item) => typeof item !== 'string');
+		if (notStringArray) {
+			throw new NodeOperationError(this.getNode(), 'Data must be an array of arrays of strings');
+		}
+	}
+
+	const isTableEmpty = !worksheetData.address.includes(':');
+	if (isTableEmpty && dataMode !== 'raw') {
+		throw new NodeOperationError(
+			this.getNode(),
+			'No data found in the specified range, mapping not possible, you can use raw mode instead to update selected range',
+		);
 	}
 
 	const columnsRow = (worksheetData.values as string[][])[0];
@@ -204,21 +225,34 @@ export async function execute(
 			values.push(updateRow);
 		}
 	}
-
 	const { address } = worksheetData;
-	const usedRange = address.split('!')[1];
 
-	const [rangeFrom, rangeTo] = usedRange.split(':');
-	const cellDataFrom = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
-	const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+	let range = '';
 
-	const from = `${cellDataFrom[1]}${Number(cellDataTo[2]) + 1}`;
-	const to = `${cellDataTo[1]}${Number(cellDataTo[2]) + Number(values.length)}`;
+	if (nodeVersion >= 2.2) {
+		range = findAppendRange(address, {
+			cols: values[0]?.length ?? 0,
+			rows: values?.length ?? 0,
+		});
+	} else {
+		// v2.1: incorrectly appends raw data, left for backward compatibility reasons
+		// if used range dimensions are smaller or bigger than inserted values dimensions, it will throw error
+		// Example: if used range is 2x4(cols x rows) and new data is 2x3, it will throw error "The number of rows or columns in the input array doesn't match the size or dimensions of the range."
+		const usedRange = address.split('!')[1];
+
+		const [rangeFrom, rangeTo] = usedRange.split(':');
+		const cellDataFrom = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+		const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+		const from = `${cellDataFrom[1]}${Number(cellDataTo[2]) + 1}`;
+		const to = `${cellDataTo[1]}${Number(cellDataTo[2]) + Number(values.length)}`;
+
+		range = `${from}:${to}`;
+	}
 
 	const responseData: ExcelResponse = await microsoftApiRequest.call(
 		this,
 		'PATCH',
-		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${from}:${to}')`,
+		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 		{ values },
 	);
 

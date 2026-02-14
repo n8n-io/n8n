@@ -1,6 +1,13 @@
 import { BasePage } from './BasePage';
+import { AddResource } from './components/AddResource';
+import { CredentialModal } from './components/CredentialModal';
+import { ResourceCards } from './components/ResourceCards';
 
 export class CredentialsPage extends BasePage {
+	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
+	readonly addResource = new AddResource(this.page);
+	readonly cards = new ResourceCards(this.page);
+
 	get emptyListCreateCredentialButton() {
 		return this.page.getByRole('button', { name: 'Add first credential' });
 	}
@@ -9,57 +16,51 @@ export class CredentialsPage extends BasePage {
 		return this.page.getByTestId('create-credential-button');
 	}
 
-	get credentialCards() {
-		return this.page.getByTestId('credential-cards');
-	}
-
 	/**
-	 * Create a new credential of the specified type
+	 * Create a credential from the credentials list, fill fields, save, and close the modal.
 	 * @param credentialType - The type of credential to create (e.g. 'Notion API')
+	 * @param fields - Key-value pairs for credential fields to fill
 	 */
-	async openNewCredentialDialogFromCredentialList(credentialType: string): Promise<void> {
+	async createCredentialFromCredentialPicker(
+		credentialType: string,
+		fields: Record<string, string>,
+		options?: { closeDialog?: boolean; name?: string },
+	): Promise<void> {
 		await this.page.getByRole('combobox', { name: 'Search for app...' }).fill(credentialType);
 		await this.page
 			.getByTestId('new-credential-type-select-option')
 			.filter({ hasText: credentialType })
 			.click();
 		await this.page.getByTestId('new-credential-type-button').click();
+		await this.credentialModal.addCredential(fields, {
+			name: options?.name,
+			closeDialog: options?.closeDialog,
+		});
 	}
 
-	async openCredentialSelector() {
-		await this.page.getByRole('combobox', { name: 'Select Credential' }).click();
+	async clearSearch() {
+		await this.page.getByTestId('resources-list-search').clear();
 	}
 
-	async createNewCredential() {
-		await this.clickByText('Create new credential');
+	async sortByNameDescending() {
+		await this.page.getByTestId('resources-list-sort').click();
+		await this.page.getByText('Name (Z-A)').click();
 	}
 
-	async fillCredentialField(fieldName: string, value: string) {
-		const field = this.page
-			.getByTestId(`parameter-input-${fieldName}`)
-			.getByTestId('parameter-input-field');
-		await field.click();
-		await field.fill(value);
+	async sortByNameAscending() {
+		await this.page.getByTestId('resources-list-sort').click();
+		await this.page.getByText('Name (A-Z)').click();
 	}
 
-	async saveCredential() {
-		await this.clickButtonByName('Save');
-	}
-
-	async closeCredentialDialog() {
-		await this.clickButtonByName('Close this dialog');
-	}
-
-	async createAndSaveNewCredential(fieldName: string, value: string) {
-		await this.openCredentialSelector();
-		await this.createNewCredential();
-		await this.filLCredentialSaveClose(fieldName, value);
-	}
-
-	async filLCredentialSaveClose(fieldName: string, value: string) {
-		await this.fillCredentialField(fieldName, value);
-		await this.saveCredential();
-		await this.page.getByText('Connection tested successfully').waitFor({ state: 'visible' });
-		await this.closeCredentialDialog();
+	/**
+	 * Select credential type without auto-saving (for tests that need to handle save manually)
+	 */
+	async selectCredentialType(credentialType: string): Promise<void> {
+		await this.page.getByRole('combobox', { name: 'Search for app...' }).fill(credentialType);
+		await this.page
+			.getByTestId('new-credential-type-select-option')
+			.filter({ hasText: credentialType })
+			.click();
+		await this.page.getByTestId('new-credential-type-button').click();
 	}
 }

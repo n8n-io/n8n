@@ -4,7 +4,7 @@ import {
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
 	SharedCredentials,
@@ -25,7 +25,7 @@ import {
 	Param,
 	Query,
 } from '@n8n/decorators';
-import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { deepCopy } from 'n8n-workflow';
@@ -40,7 +40,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
@@ -54,7 +53,7 @@ export class CredentialsController {
 		private readonly credentialsService: CredentialsService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly namingService: NamingService,
-		private readonly license: License,
+		private readonly licenseState: LicenseState,
 		private readonly logger: Logger,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
@@ -74,6 +73,8 @@ export class CredentialsController {
 			includeScopes: query.includeScopes,
 			includeData: query.includeData,
 			onlySharedWithMe: query.onlySharedWithMe,
+			includeGlobal: query.includeGlobal,
+			externalSecretsStore: query.externalSecretsStore,
 		});
 		credentials.forEach((c) => {
 			// @ts-expect-error: This is to emulate the old behavior of removing the shared
@@ -113,8 +114,8 @@ export class CredentialsController {
 		@Param('credentialId') credentialId: string,
 		@Query query: CredentialsGetOneRequestQuery,
 	) {
-		const { shared, ...credential } = this.license.isSharingEnabled()
-			? await this.enterpriseCredentialsService.getOne(
+		const { shared, ...credential } = this.licenseState.isSharingLicensed()
+			? await this.enterpriseCredentialsService.getOneForUser(
 					req.user,
 					credentialId,
 					// TODO: editor-ui is always sending this, maybe we can just rely on the
@@ -194,6 +195,7 @@ export class CredentialsController {
 			projectId: project?.id,
 			projectType: project?.type,
 			uiContext: payload.uiContext,
+			isDynamic: newCredential.isResolvable ?? false,
 		});
 
 		return newCredential;
@@ -228,12 +230,13 @@ export class CredentialsController {
 			throw new BadRequestError('Managed credentials cannot be updated');
 		}
 
-		const decryptedData = this.credentialsService.decrypt(credential, true);
 		// We never want to allow users to change the oauthTokenData
 		delete body.data?.oauthTokenData;
+
 		const preparedCredentialData = await this.credentialsService.prepareUpdateData(
+			req.user,
 			req.body,
-			decryptedData,
+			credential,
 		);
 		const newCredentialData = this.credentialsService.createEncryptedData({
 			id: credential.id,
@@ -242,6 +245,23 @@ export class CredentialsController {
 			data: preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
 		});
 
+		// Update isGlobal if provided in the payload and user has permission
+		const isGlobal = body.isGlobal;
+		if (isGlobal !== undefined && isGlobal !== credential.isGlobal) {
+			if (!this.licenseState.isSharingLicensed()) {
+				throw new ForbiddenError('You are not licensed for sharing credentials');
+			}
+
+			const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
+			if (!canShareGlobally) {
+				throw new ForbiddenError(
+					'You do not have permission to change global sharing for credentials',
+				);
+			}
+			newCredentialData.isGlobal = isGlobal;
+		}
+
+		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
 		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
 
 		if (responseData === null) {
@@ -257,6 +277,7 @@ export class CredentialsController {
 			user: req.user,
 			credentialType: credential.type,
 			credentialId: credential.id,
+			isDynamic: newCredentialData.isResolvable ?? false,
 		});
 
 		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);

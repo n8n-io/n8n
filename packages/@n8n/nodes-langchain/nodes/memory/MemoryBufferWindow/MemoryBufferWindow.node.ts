@@ -1,5 +1,5 @@
-import type { BufferWindowMemoryInput } from 'langchain/memory';
-import { BufferWindowMemory } from 'langchain/memory';
+import type { BufferWindowMemoryInput } from '@langchain/classic/memory';
+import { BufferWindowMemory } from '@langchain/classic/memory';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@utils/logWrapper';
+import { logWrapper } from '@n8n/ai-utilities';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import {
@@ -98,6 +98,10 @@ export class MemoryBufferWindow implements INodeType {
 				],
 			},
 		},
+		builderHint: {
+			message:
+				'Reuse with multiple agents in the same workflow by connecting to multiple agent nodes so agents have a shared context.',
+		},
 
 		inputs: [],
 
@@ -105,6 +109,13 @@ export class MemoryBufferWindow implements INodeType {
 		outputNames: ['Memory'],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
+			{
+				displayName:
+					'This node stores memory locally in the n8n instance. It is not compatible with Queue Mode or Multi-Main setups, as memory will not be shared across workers. For production use with scaling, consider using an external memory store such as Redis, Postgres, or another persistent memory node.',
+				name: 'scalingNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Session Key',
 				name: 'sessionKey',

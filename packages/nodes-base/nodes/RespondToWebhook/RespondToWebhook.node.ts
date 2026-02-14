@@ -83,11 +83,20 @@ export class RespondToWebhook implements INodeType {
 		name: 'respondToWebhook',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
-		// Keep the default version at 1.4 until streaming is fully supported
-		defaultVersion: 1.4,
+		defaultVersion: 1.5,
 		description: 'Returns data for Webhook',
 		defaults: {
 			name: 'Respond to Webhook',
+		},
+		builderHint: {
+			message:
+				'Only works with webhook node (n8n-nodes-base.webhook) with responseMode set to "responseNode"',
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.webhook',
+					relationHint: 'Required trigger - set responseMode to "responseNode"',
+				},
+			],
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: `={{(${configuredOutputs})($nodeVersion, $parameter)}}`,

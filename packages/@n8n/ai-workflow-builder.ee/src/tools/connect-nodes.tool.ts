@@ -3,6 +3,8 @@ import type { Logger } from '@n8n/backend-common';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+
 import {
 	ConnectionError,
 	NodeNotFoundError,
@@ -28,12 +30,12 @@ export const nodeConnectionSchema = z.object({
 	sourceNodeId: z
 		.string()
 		.describe(
-			'The UUID of the source node. For ai_* connections (ai_languageModel, ai_tool, etc.), this MUST be the sub-node (e.g., OpenAI Chat Model). For main connections, this is the node producing the output',
+			'The UUID of the source node. For ai_* connections (ai_languageModel, ai_tool, etc.), use the sub-node (e.g., OpenAI Chat Model). For main connections, this is the node producing the output',
 		),
 	targetNodeId: z
 		.string()
 		.describe(
-			'The UUID of the target node. For ai_* connections, this MUST be the main node that accepts the sub-node (e.g., AI Agent, Basic LLM Chain). For main connections, this is the node receiving the input',
+			'The UUID of the target node. For ai_* connections, use the main node that accepts the sub-node (e.g., AI Agent, Basic LLM Chain). For main connections, this is the node receiving the input',
 		),
 	sourceOutputIndex: z
 		.number()
@@ -45,16 +47,26 @@ export const nodeConnectionSchema = z.object({
 		.describe('The index of the input to connect to (default: 0)'),
 });
 
+export const CONNECT_NODES_TOOL: BuilderToolBase = {
+	toolName: 'connect_nodes',
+	displayTitle: 'Connecting nodes',
+};
+
 /**
  * Factory function to create the connect nodes tool
  */
-export function createConnectNodesTool(nodeTypes: INodeTypeDescription[], logger?: Logger) {
-	const DISPLAY_TITLE = 'Connecting nodes';
-
+export function createConnectNodesTool(
+	nodeTypes: INodeTypeDescription[],
+	logger?: Logger,
+): BuilderTool {
 	const dynamicTool = tool(
 		// eslint-disable-next-line complexity
 		(input, config) => {
-			const reporter = createProgressReporter(config, 'connect_nodes', DISPLAY_TITLE);
+			const reporter = createProgressReporter(
+				config,
+				CONNECT_NODES_TOOL.toolName,
+				CONNECT_NODES_TOOL.displayTitle,
+			);
 
 			try {
 				// Validate input using Zod schema
@@ -290,7 +302,7 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[], logger
 			}
 		},
 		{
-			name: 'connect_nodes',
+			name: CONNECT_NODES_TOOL.toolName,
 			description: `Connect two nodes in the workflow. The tool automatically determines the connection type based on node capabilities and ensures correct connection direction.
 
 UNDERSTANDING CONNECTIONS:
@@ -314,13 +326,26 @@ CONNECTION EXAMPLES:
 - Simple Memory → Basic LLM Chain (detects ai_memory)
 - Embeddings OpenAI → Vector Store (detects ai_embedding)
 - Document Loader → Embeddings OpenAI (detects ai_document)
-- HTTP Request → Set (detects main)`,
+- HTTP Request → Set (detects main)
+
+MULTI-OUTPUT NODES (sourceOutputIndex):
+- IF node: output 0 = true branch, output 1 = false branch
+- Switch node: outputs 0 to N-1 based on configured rules, output N = default/fallback
+
+ERROR OUTPUT CONNECTIONS (onError: 'continueErrorOutput'):
+When a node has nodeSettings.onError = 'continueErrorOutput', it gains an ADDITIONAL error output appended as the LAST index:
+- Single-output node (HTTP Request): output 0 = success, output 1 = error
+- IF node (2 outputs) + error handling: output 0 = true, output 1 = false, output 2 = error
+- Switch node (N outputs) + error handling: outputs 0 to N-1 = branches, output N = error
+
+Example: HTTP Request with continueErrorOutput → success at index 0, error at index 1
+Example: IF with continueErrorOutput → true at 0, false at 1, error at 2`,
 			schema: nodeConnectionSchema,
 		},
 	);
 
 	return {
 		tool: dynamicTool,
-		displayTitle: DISPLAY_TITLE,
+		...CONNECT_NODES_TOOL,
 	};
 }

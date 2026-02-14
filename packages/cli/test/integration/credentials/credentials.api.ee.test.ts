@@ -34,6 +34,7 @@ import {
 } from '../shared/db/users';
 import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';
+import { RoleCacheService } from '@/services/role-cache.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
@@ -58,6 +59,12 @@ const mailer = mockInstance(UserManagementMailer);
 
 let projectService: ProjectService;
 let projectRepository: ProjectRepository;
+
+beforeAll(async () => {
+	await Container.get(RoleCacheService).refreshCache();
+
+	await utils.initCredentialsTypes();
+});
 
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'CredentialsEntity', 'Project', 'ProjectRelation']);
@@ -96,6 +103,23 @@ describe('POST /credentials', () => {
 			.authAgentFor(member)
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), projectId: teamProject.id });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"You don't have the permissions to save the credential in this project.",
+		);
+	});
+
+	test('chat users cannot create credentials', async () => {
+		const chatUser = await createUser({ role: { slug: 'global:chatUser' } });
+		const chatUserPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			chatUser.id,
+		);
+
+		const response = await testServer
+			.authAgentFor(chatUser)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), projectId: chatUserPersonalProject.id });
 
 		expect(response.statusCode).toBe(400);
 		expect(response.body.message).toBe(
@@ -158,7 +182,7 @@ describe('GET /credentials', () => {
 		expect(Array.isArray(ownerCredential.sharedWithProjects)).toBe(true);
 		expect(ownerCredential.sharedWithProjects).toHaveLength(3);
 
-		// Fix order issue (MySQL might return items in any order)
+		// Fix order issue (PostgreSQL might return items in any order)
 		const ownerCredentialsSharedWithOrdered = [...ownerCredential.sharedWithProjects].sort(
 			(a, b) => (a.id < b.id ? -1 : 1),
 		);

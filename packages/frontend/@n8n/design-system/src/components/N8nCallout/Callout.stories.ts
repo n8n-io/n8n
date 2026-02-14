@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nCallout from './Callout.vue';
 import N8nLink from '../N8nLink';

@@ -6,6 +6,7 @@ import type {
 import type { GlobalConfig } from '@n8n/config';
 import { AiAssistantClient, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import type { IUser } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
@@ -21,6 +22,7 @@ describe('AiService', () => {
 	let aiService: AiService;
 
 	const baseUrl = 'https://ai-assistant-url.com';
+	const instanceId = 'mock-instance-id';
 	const user = mock<IUser>({ id: 'user123' });
 	const client = mock<AiAssistantClient>();
 	const license = mock<License>();
@@ -28,11 +30,12 @@ describe('AiService', () => {
 		logging: { level: 'info' },
 		aiAssistant: { baseUrl },
 	});
+	const instanceSettings = mock<InstanceSettings>({ instanceId });
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		(AiAssistantClient as jest.Mock).mockImplementation(() => client);
-		aiService = new AiService(license, globalConfig);
+		aiService = new AiService(license, globalConfig, instanceSettings);
 	});
 
 	afterEach(() => {
@@ -61,6 +64,7 @@ describe('AiService', () => {
 				n8nVersion: N8N_VERSION,
 				baseUrl,
 				logLevel: 'info',
+				instanceId,
 			});
 		});
 	});
@@ -106,6 +110,48 @@ describe('AiService', () => {
 			await expect(aiService.applySuggestion(payload, user)).rejects.toThrow(
 				'Assistant client not setup',
 			);
+		});
+	});
+
+	describe('license certificate refresh', () => {
+		it('should register for license certificate updates on init', async () => {
+			license.isAiAssistantEnabled.mockReturnValue(true);
+			license.loadCertStr.mockResolvedValue('mock-license-cert');
+			license.getConsumerId.mockReturnValue('mock-consumer-id');
+
+			await aiService.init();
+
+			expect(license.onCertRefresh).toHaveBeenCalledWith(expect.any(Function));
+		});
+
+		it('should update client license cert when callback is invoked', async () => {
+			license.isAiAssistantEnabled.mockReturnValue(true);
+			license.loadCertStr.mockResolvedValue('mock-license-cert');
+			license.getConsumerId.mockReturnValue('mock-consumer-id');
+
+			// Capture the callback passed to onCertRefresh
+			let capturedCallback: ((cert: string) => void) | undefined;
+			license.onCertRefresh.mockImplementation((cb: (cert: string) => void) => {
+				capturedCallback = cb;
+				return () => {};
+			});
+
+			await aiService.init();
+
+			expect(capturedCallback).toBeDefined();
+
+			// Invoke the callback with a new cert
+			capturedCallback!('new-cert-value');
+
+			expect(client.updateLicenseCert).toHaveBeenCalledWith('new-cert-value');
+		});
+
+		it('should not register for license updates when AI assistant is disabled', async () => {
+			license.isAiAssistantEnabled.mockReturnValue(false);
+
+			await aiService.init();
+
+			expect(license.onCertRefresh).not.toHaveBeenCalled();
 		});
 	});
 

@@ -30,15 +30,15 @@ import { type Context, createContext, runInContext } from 'node:vm';
 
 import type { MainConfig } from '@/config/main-config';
 import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
+import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
 import type {
 	DataRequestResponse,
 	InputDataChunkDefinition,
 	PartialAdditionalData,
 	TaskResultData,
 } from '@/runner-types';
-import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
-import { noOp, TaskRunner } from '@/task-runner';
 import type { TaskParams } from '@/task-runner';
+import { noOp, TaskRunner } from '@/task-runner';
 
 import { BuiltInsParser } from './built-ins-parser/built-ins-parser';
 import { BuiltInsParserState } from './built-ins-parser/built-ins-parser-state';
@@ -48,16 +48,26 @@ import { makeSerializable } from './errors/serializable-error';
 import { TimeoutError } from './errors/timeout-error';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
-import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
 import { DataRequestResponseReconstruct } from '../data-request/data-request-response-reconstruct';
 
 export interface RpcCallObject {
 	[name: string]: ((...args: unknown[]) => Promise<unknown>) | RpcCallObject;
 }
 
+/**
+ * The mode in which the code is executed:
+ * - 'runCode': The code is executed in a limited environment that doesn't have
+ *    access to builtins or RPC and doesn't fetch any input data separately.
+ * - 'runOnceForAllItems': The code is executed for all items in a single run.
+ * - 'runOnceForEachItem': The code is executed for each item in the input data.
+ */
+export type RunnerExecutionMode = 'runCode' | CodeExecutionMode;
+
 export interface JSExecSettings {
 	code: string;
-	nodeMode: CodeExecutionMode;
+	// Additional properties to add to the context
+	additionalProperties?: Record<string, unknown>;
+	nodeMode: RunnerExecutionMode;
 	workflowMode: WorkflowExecuteMode;
 	continueOnFail: boolean;
 	// For executing partial input data
@@ -137,7 +147,17 @@ export class JsTaskRunner extends TaskRunner {
 			// frozen. This works as long as the overrides are done when the library is
 			// imported.
 			for (const module of allowedExternalModules) {
-				require(module);
+				try {
+					require(module);
+				} catch (error) {
+					if (error instanceof Error && 'code' in error && error.code === 'MODULE_NOT_FOUND') {
+						console.error(
+							`Allowlisted module '${module}' is not installed. Please either install it or remove it from the allowlist in the n8n-task-runners.json config file. See: https://docs.n8n.io/hosting/configuration/task-runners/#adding-extra-dependencies`,
+						);
+						continue;
+					}
+					throw error;
+				}
 			}
 		}
 
@@ -166,6 +186,15 @@ export class JsTaskRunner extends TaskRunner {
 		a.ok(settings, 'JS Code not sent to runner');
 
 		this.validateTaskSettings(settings);
+
+		if (settings.nodeMode === 'runCode') {
+			const result = await this.runCode(settings, abortSignal);
+			return {
+				result,
+				customData: undefined,
+				staticData: undefined,
+			};
+		}
 
 		const neededBuiltInsResult = this.builtInsParser.parseUsedBuiltIns(settings.code);
 		const neededBuiltIns = neededBuiltInsResult.ok
@@ -210,9 +239,19 @@ export class JsTaskRunner extends TaskRunner {
 	}
 
 	private getNativeVariables() {
+		const { mode } = this;
 		return {
 			// Exposed Node.js globals
-			Buffer,
+			Buffer: new Proxy(Buffer, {
+				get(target, prop) {
+					if (mode === 'insecure') return target[prop as keyof typeof Buffer];
+					if (prop === 'allocUnsafe' || prop === 'allocUnsafeSlow') {
+						// eslint-disable-next-line @typescript-eslint/unbound-method
+						return Buffer.alloc;
+					}
+					return target[prop as keyof typeof Buffer];
+				},
+			}),
 			setTimeout,
 			setInterval,
 			setImmediate,
@@ -232,6 +271,48 @@ export class JsTaskRunner extends TaskRunner {
 	}
 
 	/**
+	 * Runs the given code in an environment that doesn't have access to
+	 * builtins or RPC and doesn't fetch any input data separately. Any data
+	 * can be passed in as additional properties.
+	 */
+	async runCode(settings: JSExecSettings, abortSignal: AbortSignal): Promise<unknown> {
+		const context = createContext({
+			__isExecutionContext: true,
+			module: { exports: {} },
+			...settings.additionalProperties,
+		});
+
+		try {
+			const result = await new Promise<unknown>((resolve, reject) => {
+				const abortHandler = () => {
+					reject(new TimeoutError(this.taskTimeout));
+				};
+
+				abortSignal.addEventListener('abort', abortHandler, { once: true });
+
+				// We don't need to check for the insecure mode since we are not
+				// giving access to any third party libraries.
+				const taskResult: Promise<unknown> = runInContext(
+					this.createVmExecutableCode(settings.code),
+					context,
+					{ timeout: this.taskTimeout * 1000 },
+				) as Promise<unknown>;
+
+				void taskResult
+					.then(resolve)
+					.catch(reject)
+					.finally(() => {
+						abortSignal.removeEventListener('abort', abortHandler);
+					});
+			});
+
+			return result;
+		} catch (e) {
+			throw this.toExecutionErrorIfNeeded(e);
+		}
+	}
+
+	/**
 	 * Executes the requested code for all items in a single run
 	 */
 	private async runForAllItems(
@@ -240,12 +321,13 @@ export class JsTaskRunner extends TaskRunner {
 		data: JsTaskData,
 		workflow: Workflow,
 		signal: AbortSignal,
-	): Promise<INodeExecutionData[]> {
+	): Promise<TaskResultData['result']> {
 		const dataProxy = this.createDataProxy(data, workflow, data.itemIndex);
 		const inputItems = data.connectionInputData;
 
 		const context = this.buildContext(taskId, workflow, data.node, dataProxy, {
 			items: inputItems,
+			...settings.additionalProperties,
 		});
 
 		try {
@@ -278,7 +360,7 @@ export class JsTaskRunner extends TaskRunner {
 				return [];
 			}
 
-			return validateRunForAllItemsOutput(result);
+			return result;
 		} catch (e) {
 			// Errors thrown by the VM are not instances of Error, so map them to an ExecutionError
 			const error = this.toExecutionErrorIfNeeded(e);
@@ -310,7 +392,13 @@ export class JsTaskRunner extends TaskRunner {
 			? settings.chunk.startIndex + settings.chunk.count
 			: inputItems.length;
 
-		const context = this.buildContext(taskId, workflow, data.node);
+		const context = this.buildContext(
+			taskId,
+			workflow,
+			data.node,
+			undefined,
+			settings.additionalProperties,
+		);
 
 		for (let index = chunkStartIdx; index < chunkEndIdx; index++) {
 			const dataProxy = this.createDataProxy(data, workflow, index);
@@ -318,7 +406,7 @@ export class JsTaskRunner extends TaskRunner {
 			Object.assign(context, dataProxy, { item: inputItems[index] });
 
 			try {
-				let result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
+				const result = await new Promise<INodeExecutionData | undefined>((resolve, reject) => {
 					const abortHandler = () => {
 						reject(new TimeoutError(this.taskTimeout));
 					};
@@ -348,17 +436,18 @@ export class JsTaskRunner extends TaskRunner {
 					continue;
 				}
 
-				result = validateRunForEachItemOutput(result, index);
 				if (result) {
+					const jsonData = this.extractJsonData(result);
+
 					returnData.push(
 						result.binary
 							? {
-									json: result.json,
+									json: jsonData,
 									pairedItem: { item: index },
 									binary: result.binary,
 								}
 							: {
-									json: result.json,
+									json: jsonData,
 									pairedItem: { item: index },
 								},
 					);
@@ -414,6 +503,19 @@ export class JsTaskRunner extends TaskRunner {
 			// means we run the getter for '$json', and by default $json throws
 			// if there is no data available.
 		).getDataProxy({ throwOnMissingExecutionData: false });
+	}
+
+	private extractJsonData(result: INodeExecutionData) {
+		if (!isObject(result)) return result;
+
+		if ('json' in result) return result.json;
+
+		if ('binary' in result) {
+			// Pick only json property to prevent metadata duplication
+			return (result as INodeExecutionData).json ?? {};
+		}
+
+		return result;
 	}
 
 	private toExecutionErrorIfNeeded(error: unknown): Error {
@@ -558,6 +660,18 @@ export class JsTaskRunner extends TaskRunner {
 			'Reflect.getPrototypeOf = () => ({})',
 			'Object.setPrototypeOf = () => false',
 			'Reflect.setPrototypeOf = () => false',
+
+			// prevent Error.prepareStackTrace RCE attack BEFORE disabling defineProperty
+			// This V8 API allows accessing the real global object via stack frame's getThis()
+			'delete Error.prepareStackTrace',
+			'delete Error.captureStackTrace',
+			'Object.defineProperty(Error, "prepareStackTrace", { configurable: false, writable: false, value: undefined })',
+			'Object.defineProperty(Error, "captureStackTrace", { configurable: false, writable: false, value: undefined })',
+
+			// prevent defineProperty attacks (used to bypass sandbox via Error.prepareStackTrace)
+			// Must come AFTER we've locked down Error properties above
+			'Object.defineProperty = () => ({})',
+			'Object.defineProperties = () => ({})',
 
 			// wrap user code
 			`module.exports = async function VmCodeWrapper() {${code}\n}()`,

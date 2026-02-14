@@ -35,6 +35,14 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 		return projectRelations.map((pr) => pr.projectId);
 	}
 
+	async getAccessibleProjectsByRoles(userId: string, roles: string[]) {
+		const projectRelations = await this.find({
+			where: { userId, role: { slug: In(roles) } },
+		});
+
+		return projectRelations.map((pr) => pr.projectId);
+	}
+
 	/**
 	 * Find the role of a user in a project.
 	 */

@@ -38,12 +38,23 @@ export async function apiRequest(
 		betas.push('code-execution-2025-05-22');
 	}
 
+	const requestHeaders: IDataObject = {
+		'anthropic-version': '2023-06-01',
+		'anthropic-beta': betas.join(','),
+		...headers,
+	};
+
+	if (
+		credentials.header &&
+		typeof credentials.headerName === 'string' &&
+		credentials.headerName &&
+		typeof credentials.headerValue === 'string'
+	) {
+		requestHeaders[credentials.headerName] = credentials.headerValue;
+	}
+
 	const options = {
-		headers: {
-			'anthropic-version': '2023-06-01',
-			'anthropic-beta': betas.join(','),
-			...headers,
-		},
+		headers: requestHeaders,
 		method,
 		body,
 		qs,

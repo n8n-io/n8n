@@ -7,6 +7,7 @@ import {
 	isHtmlRenderedContentType,
 } from 'n8n-core';
 import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
+import { Readable } from 'stream';
 import { finished } from 'stream/promises';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
@@ -22,7 +23,6 @@ import {
 	isWebhookResponse,
 	isWebhookStreamResponse,
 } from '@/webhooks/webhook-response';
-import { WebhookService } from '@/webhooks/webhook.service';
 import type {
 	IWebhookManager,
 	WebhookOptionsRequest,
@@ -67,20 +67,12 @@ class WebhookRequestHandler {
 			// Modern way of responding to webhooks
 			if (isWebhookResponse(response)) {
 				await this.sendWebhookResponse(res, response);
-			} else {
+			} else if (response.noWebhookResponse !== true) {
 				// Legacy way of responding to webhooks. `WebhookResponse` should be used to
 				// pass the response from the webhookManager. However, we still have code
 				// that doesn't use that yet. We need to keep this here until all codepaths
 				// return a `WebhookResponse` instead.
-				if (response.noWebhookResponse !== true) {
-					ResponseHelper.sendSuccessResponse(
-						res,
-						response.data,
-						true,
-						response.responseCode,
-						response.headers,
-					);
-				}
+				this.sendLegacyResponse(res, response.data, true, response.responseCode, response.headers);
 			}
 		} catch (e) {
 			const error = ensureError(e);
@@ -88,10 +80,7 @@ class WebhookRequestHandler {
 			const logger = Container.get(Logger);
 
 			if (e instanceof WebhookNotFoundError) {
-				const currentlyRegistered = await Container.get(WebhookService).findAll();
-				logger.error(`Received request for unknown webhook: ${e.message}`, {
-					currentlyRegistered: currentlyRegistered.map((w) => w.display()),
-				});
+				logger.error(`Received request for unknown webhook: ${e.message}`);
 			} else {
 				logger.error(
 					`Error in handling webhook request ${req.method} ${req.path}: ${error.message}`,
@@ -162,6 +151,40 @@ class WebhookRequestHandler {
 
 		if (needsSandbox && !isWebhookHtmlSandboxingDisabled()) {
 			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
+		}
+	}
+
+	/**
+	 * Sends a legacy response to the client, i.e. when the webhook response is not a `WebhookResponse`.
+	 * @deprecated Use `sendWebhookResponse` instead.
+	 */
+	private sendLegacyResponse(
+		res: express.Response,
+		data: any,
+		raw?: boolean,
+		responseCode?: number,
+		responseHeader?: object,
+	) {
+		this.setResponseStatus(res, responseCode);
+		if (responseHeader) {
+			this.setResponseHeaders(res, new Map(Object.entries(responseHeader)));
+		}
+
+		if (data instanceof Readable) {
+			data.pipe(res);
+			return;
+		}
+
+		if (raw === true) {
+			if (typeof data === 'string') {
+				res.send(data);
+			} else {
+				res.json(data);
+			}
+		} else {
+			res.json({
+				data,
+			});
 		}
 	}
 

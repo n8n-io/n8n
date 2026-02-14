@@ -22,6 +22,9 @@ import {
 	makeNodeName,
 	isTool,
 	getNodeWebhookPath,
+	isToolType,
+	isHitlToolType,
+	getNodeOutputs,
 } from '../src/node-helpers';
 import type { Workflow } from '../src/workflow';
 import { mock } from 'vitest-mock-extended';
@@ -1509,6 +1512,103 @@ describe('NodeHelpers', () => {
 							mode: 'mode1',
 							values: {
 								string1: 'own string1',
+							},
+						},
+					},
+				},
+			},
+			{
+				description:
+					'complex type "fixedCollection" with "multipleValues: false" preserves explicitly added options with all default values (GitHub case)',
+				input: {
+					nodePropertiesArray: [
+						{
+							name: 'additionalParameters',
+							displayName: 'Additional Parameters',
+							type: 'fixedCollection',
+							default: {},
+							options: [
+								{
+									name: 'author',
+									displayName: 'Author',
+									values: [
+										{
+											name: 'name',
+											displayName: 'Name',
+											type: 'string',
+											default: '',
+										},
+										{
+											name: 'email',
+											displayName: 'Email',
+											type: 'string',
+											default: '',
+										},
+									],
+								},
+								{
+									name: 'branch',
+									displayName: 'Branch',
+									values: [
+										{
+											name: 'branch',
+											displayName: 'Branch',
+											type: 'string',
+											default: '',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						additionalParameters: {
+							author: {
+								name: '',
+								email: '',
+							},
+							branch: {
+								branch: '',
+							},
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							additionalParameters: {
+								author: {},
+								branch: {},
+							},
+						},
+						defaultsTrue: {
+							additionalParameters: {
+								author: {
+									name: '',
+									email: '',
+								},
+								branch: {
+									branch: '',
+								},
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							additionalParameters: {
+								author: {},
+								branch: {},
+							},
+						},
+						defaultsTrue: {
+							additionalParameters: {
+								author: {
+									name: '',
+									email: '',
+								},
+								branch: {
+									branch: '',
+								},
 							},
 						},
 					},
@@ -4323,6 +4423,72 @@ describe('NodeHelpers', () => {
 		}
 	});
 
+	describe('getNodeOutputs', () => {
+		const workflowMock = {
+			expression: {
+				getSimpleParameterValue: vi.fn().mockReturnValue([NodeConnectionTypes.Main]),
+			},
+		} as unknown as Workflow;
+
+		test('Should return empty array when nodeTypeData is null', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = getNodeOutputs(workflowMock, node, null as unknown as INodeTypeDescription);
+			expect(result).toEqual([]);
+		});
+
+		test('Should return empty array when nodeTypeData is undefined', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = getNodeOutputs(
+				workflowMock,
+				node,
+				undefined as unknown as INodeTypeDescription,
+			);
+			expect(result).toEqual([]);
+		});
+
+		test('Should return outputs array when nodeTypeData is valid', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const nodeTypeData: INodeTypeDescription = {
+				name: 'TestNode',
+				displayName: 'Test Node',
+				group: ['transform'],
+				description: 'Test node description',
+				version: 1,
+				defaults: {},
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiAgent],
+				properties: [],
+			};
+
+			const result = getNodeOutputs(workflowMock, node, nodeTypeData);
+			expect(result).toEqual([NodeConnectionTypes.Main, NodeConnectionTypes.AiAgent]);
+		});
+	});
+
 	describe('isExecutable', () => {
 		const workflowMock = {
 			expression: {
@@ -4492,6 +4658,34 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(testData.expected);
 			});
 		}
+
+		test('Should return false when nodeTypeData is null', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = isExecutable(workflowMock, node, null as unknown as INodeTypeDescription);
+			expect(result).toBe(false);
+		});
+
+		test('Should return false when nodeTypeData is undefined', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = isExecutable(workflowMock, node, undefined as unknown as INodeTypeDescription);
+			expect(result).toBe(false);
+		});
 	});
 	describe('displayParameter', () => {
 		const testNode: INode = {
@@ -4860,6 +5054,205 @@ describe('NodeHelpers', () => {
 						displayOptions: {
 							show: {
 								'/condition': ['value1'],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature is enabled (simple string array)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': ['useFeatureA'],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature is not enabled (simple string array)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.3,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': ['useFeatureA'],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature condition eq is met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { eq: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature condition eq is not met',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.3,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { eq: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature condition not is met (feature disabled)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.3,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { not: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature condition not is not met (feature enabled)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { not: 'useFeatureA' } }],
+							},
+						},
+					},
+				},
+				false,
+			],
+			[
+				'Should return true if @feature with multiple conditions (OR logic)',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: {
+							useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+							useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+						},
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': [{ _cnd: { eq: 'useFeatureA' } }, { _cnd: { eq: 'useFeatureB' } }],
+							},
+						},
+					},
+				},
+				true,
+			],
+			[
+				'Should return false if @feature is checked but node has no features',
+				{
+					...defaultTestInput,
+					node: {
+						...testNode,
+						typeVersion: 2.4,
+					},
+					nodeTypeDescription: {
+						...testNodeType,
+						features: undefined,
+					},
+					parameter: {
+						...defaultTestInput.parameter,
+						displayOptions: {
+							show: {
+								'@feature': ['useFeatureA'],
 							},
 						},
 					},
@@ -5514,6 +5907,39 @@ describe('NodeHelpers', () => {
 			expect(result).toBe('Create a new user');
 		});
 
+		test('should check for skipNameGeneration and use displayName', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.skipNameGeneration = true;
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Test Node');
+		});
+
+		test('should check for skipNameGeneration and use defaults.name', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.skipNameGeneration = true;
+			mockNodeTypeDescription.defaults.name = 'Test Node Default';
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Test Node Default');
+		});
+
 		test('should return resource-operation-based name when action is not available', () => {
 			// Arrange
 			const nodeParameters: INodeParameters = {
@@ -5631,10 +6057,46 @@ describe('NodeHelpers', () => {
 			expect(result).toBe('Create user in Test Node');
 		});
 
+		test('should return defaults.name when skipNameGeneration is true', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.outputs = [NodeConnectionTypes.AiTool];
+			mockNodeTypeDescription.skipNameGeneration = true;
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							action: 'Create a new user',
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert - should return defaults.name, NOT action-based or resource/operation-based name
+			expect(result).toBe('Test Node');
+		});
+
 		test.each([
 			['javaScript', 'Code in JavaScript'],
-			['python', 'Code in Python (Beta)'],
-			['pythonNative', 'Code in Python (Native) (Beta)'],
+			['pythonNative', 'Code in Python'],
 		])(
 			'should return action-based name for Code node with %s language',
 			(language, expectedAction) => {
@@ -5651,14 +6113,9 @@ describe('NodeHelpers', () => {
 								action: 'Code in JavaScript',
 							},
 							{
-								name: 'Python (Beta)',
-								value: 'python',
-								action: 'Code in Python (Beta)',
-							},
-							{
-								name: 'Python (Native) (Beta)',
+								name: 'Python',
 								value: 'pythonNative',
-								action: 'Code in Python (Native) (Beta)',
+								action: 'Code in Python',
 							},
 						],
 						default: 'javaScript',
@@ -5792,6 +6249,71 @@ describe('NodeHelpers', () => {
 			const result = getNodeWebhookPath(mockWorkflowId, node, mockPath, false, false);
 
 			expect(result).toBe('workflow-123/testnode/test-path');
+		});
+	});
+
+	describe('isToolType', () => {
+		it('should return false when nodeType is undefined', () => {
+			expect(isToolType(undefined)).toBe(false);
+		});
+
+		it('should return false when nodeType is empty string', () => {
+			expect(isToolType('')).toBe(false);
+		});
+
+		it('should return true when nodeType ends with "Tool" (default includeHitl=true)', () => {
+			expect(isToolType('CustomTool')).toBe(true);
+		});
+
+		it('should return true when nodeType ends with "HitlTool" and includeHitl=true (default)', () => {
+			expect(isToolType('CustomHitlTool')).toBe(true);
+			expect(isToolType('CustomHitlTool', { includeHitl: true })).toBe(true);
+		});
+
+		it('should return false when nodeType ends with "HitlTool" and includeHitl=false', () => {
+			expect(isToolType('CustomHitlTool', { includeHitl: false })).toBe(false);
+		});
+
+		it('should return true when nodeType ends with "Tool" but not "HitlTool" and includeHitl=false', () => {
+			expect(isToolType('CustomTool', { includeHitl: false })).toBe(true);
+		});
+
+		it('should return false when nodeType does not end with "Tool" regardless of includeHitl option', () => {
+			expect(isToolType('CustomNode', { includeHitl: true })).toBe(false);
+			expect(isToolType('CustomNode', { includeHitl: false })).toBe(false);
+		});
+
+		it.each([
+			['@n8n/n8n-nodes-base.toolCalculator', true],
+			['@n8n/n8n-nodes-base.toolCode', true],
+			['n8n-nodes-base.someTool', true],
+			['nodes-base.dot.dot.dot.someTool', true],
+			['nodes-base.dot.dot.dot.someTool', true],
+			['nodes-base.dot.dot.dot.someHitlTool', true],
+		])('should return true when nodeType is %s', (nodeType, expected) => {
+			expect(isToolType(nodeType)).toBe(expected);
+		});
+	});
+
+	describe('isHitlToolType', () => {
+		it('should return false when nodeType is undefined', () => {
+			expect(isHitlToolType(undefined)).toBe(false);
+		});
+
+		it('should return false when nodeType is empty string', () => {
+			expect(isHitlToolType('')).toBe(false);
+		});
+
+		it('should return true when nodeType ends with "HitlTool"', () => {
+			expect(isHitlToolType('CustomHitlTool')).toBe(true);
+		});
+
+		it('should return false when nodeType ends with "Tool" but not "HitlTool"', () => {
+			expect(isHitlToolType('CustomTool')).toBe(false);
+		});
+
+		it('should return false when nodeType does not end with "Tool"', () => {
+			expect(isHitlToolType('CustomNode')).toBe(false);
 		});
 	});
 });

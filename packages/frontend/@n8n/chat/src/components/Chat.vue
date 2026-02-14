@@ -91,7 +91,7 @@ onMounted(async () => {
 	cursor: pointer;
 
 	&:hover {
-		color: var(--chat--close--button--color-hover, var(--chat--color-primary));
+		color: var(--chat--close--button--color-hover, var(--chat--color--primary));
 	}
 }
 </style>

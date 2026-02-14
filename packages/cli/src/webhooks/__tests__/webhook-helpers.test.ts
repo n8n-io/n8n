@@ -19,6 +19,9 @@ import {
 	FORM_NODE_TYPE,
 	WAIT_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	WorkflowConfigurationError,
+	NodeOperationError,
+	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
@@ -29,6 +32,7 @@ import {
 	setupResponseNodePromise,
 	prepareExecutionData,
 	handleHostedChatResponse,
+	_privateGetWebhookErrorMessage,
 } from '../webhook-helpers';
 import type { IWebhookResponseCallbackData } from '../webhook.types';
 
@@ -151,6 +155,50 @@ describe('handleFormRedirectionCase', () => {
 		});
 		const result = handleFormRedirectionCase(data, workflowStartNode);
 		expect(result).toEqual(data);
+	});
+
+	test('should block javascript: URLs for security', () => {
+		const data: IWebhookResponseCallbackData = {
+			responseCode: 302,
+			headers: { location: 'javascript:alert(document.domain)' },
+		};
+		const workflowStartNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			parameters: {},
+		});
+		const result = handleFormRedirectionCase(data, workflowStartNode);
+		expect(result.responseCode).toBe(200);
+		expect(result.data).toBeUndefined();
+		expect((result?.headers as IDataObject)?.location).toBeUndefined();
+	});
+
+	test('should block data: URLs for security', () => {
+		const data: IWebhookResponseCallbackData = {
+			responseCode: 302,
+			headers: { location: 'data:text/html,<script>alert(1)</script>' },
+		};
+		const workflowStartNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			parameters: {},
+		});
+		const result = handleFormRedirectionCase(data, workflowStartNode);
+		expect(result.responseCode).toBe(200);
+		expect(result.data).toBeUndefined();
+		expect((result?.headers as IDataObject)?.location).toBeUndefined();
+	});
+
+	test('should allow https: URLs', () => {
+		const data: IWebhookResponseCallbackData = {
+			responseCode: 302,
+			headers: { location: 'https://example.com/callback' },
+		};
+		const workflowStartNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			parameters: {},
+		});
+		const result = handleFormRedirectionCase(data, workflowStartNode);
+		expect(result.responseCode).toBe(200);
+		expect(result.data).toEqual({ redirectURL: 'https://example.com/callback' });
 	});
 });
 
@@ -393,10 +441,13 @@ describe('prepareExecutionData', () => {
 			webhookResultData,
 			undefined,
 			{},
-			'targetNode',
+			{ nodeName: 'targetNode', mode: 'inclusive' },
 		);
 
-		expect(runExecutionData.startData?.destinationNode).toBe('targetNode');
+		expect(runExecutionData.startData?.destinationNode).toEqual({
+			nodeName: 'targetNode',
+			mode: 'inclusive',
+		});
 	});
 
 	test('should update execution data with execution data merge', () => {
@@ -447,5 +498,222 @@ describe('prepareExecutionData', () => {
 
 		expect(pinData).toBeUndefined();
 		expect(runExecutionData.resultData.pinData).toBeUndefined();
+	});
+
+	describe('MICROSOFT_AGENT365_TRIGGER_NODE_TYPE merge condition', () => {
+		test('should merge nodeExecutionStack when node type is MICROSOFT_AGENT365_TRIGGER_NODE_TYPE and runExecutionData exists', () => {
+			const microsoftAgentNode = mock<INode>({
+				name: 'Microsoft Agent 365',
+				type: MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+			});
+
+			const existingNodeExecutionStack: IExecuteData[] = [
+				{
+					node: mock<INode>({ name: 'ExistingNode' }),
+					data: {
+						main: [[{ json: { existing: 'data' } }]],
+					},
+					source: null,
+				},
+			];
+
+			const existingRunExecutionData: IRunExecutionData = {
+				version: 1,
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					metadata: {},
+					nodeExecutionStack: existingNodeExecutionStack,
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			} as IRunExecutionData;
+
+			const { runExecutionData } = prepareExecutionData(
+				'trigger',
+				microsoftAgentNode,
+				webhookResultData,
+				existingRunExecutionData,
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
+			expect(runExecutionData.executionData?.nodeExecutionStack[0].node.name).toBe(
+				'Microsoft Agent 365',
+			);
+			expect(runExecutionData.executionData?.nodeExecutionStack[0].node.type).toBe(
+				MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+			);
+			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]).toHaveLength(1);
+			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]?.[0]?.json).toEqual(
+				{
+					existing: 'data',
+					data: 'test',
+				},
+			);
+		});
+
+		test('should not merge when node type is MICROSOFT_AGENT365_TRIGGER_NODE_TYPE but runExecutionData is undefined', () => {
+			const microsoftAgentNode = mock<INode>({
+				name: 'Microsoft Agent 365',
+				type: MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+			});
+
+			const { runExecutionData } = prepareExecutionData(
+				'trigger',
+				microsoftAgentNode,
+				webhookResultData,
+				undefined,
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
+			expect(runExecutionData.executionData?.nodeExecutionStack[0].node).toEqual(
+				microsoftAgentNode,
+			);
+		});
+
+		test('should not merge when node type is MICROSOFT_AGENT365_TRIGGER_NODE_TYPE but nodeExecutionStack is undefined', () => {
+			const microsoftAgentNode = mock<INode>({
+				name: 'Microsoft Agent 365',
+				type: MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+			});
+
+			const existingRunExecutionData: IRunExecutionData = {
+				version: 1,
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					metadata: {},
+					nodeExecutionStack: undefined as any,
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			} as IRunExecutionData;
+
+			const { runExecutionData } = prepareExecutionData(
+				'trigger',
+				microsoftAgentNode,
+				webhookResultData,
+				existingRunExecutionData,
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack).toBeUndefined();
+		});
+
+		test('should not merge when node type is not MICROSOFT_AGENT365_TRIGGER_NODE_TYPE', () => {
+			const regularNode = mock<INode>({
+				name: 'Regular Webhook',
+				type: 'n8n-nodes-base.webhook',
+			});
+
+			const existingNodeExecutionStack: IExecuteData[] = [
+				{
+					node: mock<INode>({ name: 'ExistingNode' }),
+					data: {
+						main: [[{ json: { existing: 'data' } }]],
+					},
+					source: null,
+				},
+			];
+
+			const existingRunExecutionData: IRunExecutionData = {
+				version: 1,
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					metadata: {},
+					nodeExecutionStack: existingNodeExecutionStack,
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			} as IRunExecutionData;
+
+			const { runExecutionData } = prepareExecutionData(
+				'trigger',
+				regularNode,
+				webhookResultData,
+				existingRunExecutionData,
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
+			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.node.name).toBe(
+				'ExistingNode',
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.data.main).toEqual([
+				[{ json: { existing: 'data' } }],
+			]);
+		});
+
+		test('should merge existing data with new data for MICROSOFT_AGENT365_TRIGGER_NODE_TYPE', () => {
+			const microsoftAgentNode = mock<INode>({
+				name: 'Microsoft Agent 365',
+				type: MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+			});
+
+			const existingData: IExecuteData = {
+				node: mock<INode>({ name: 'ExistingNode' }),
+				data: {
+					main: [[{ json: { existing: 'preserved' } }]],
+				},
+				source: { main: [{ previousNode: 'test' }] },
+			};
+
+			const existingRunExecutionData: IRunExecutionData = {
+				version: 1,
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					metadata: {},
+					nodeExecutionStack: [existingData],
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			} as IRunExecutionData;
+
+			const { runExecutionData } = prepareExecutionData(
+				'trigger',
+				microsoftAgentNode,
+				webhookResultData,
+				existingRunExecutionData,
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.node.name).toBe(
+				'Microsoft Agent 365',
+			);
+			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.node.type).toBe(
+				MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.data.main[0]).toHaveLength(1);
+			expect(
+				runExecutionData.executionData?.nodeExecutionStack?.[0]?.data.main[0]?.[0]?.json,
+			).toEqual({
+				existing: 'preserved',
+				data: 'test',
+			});
+
+			expect(runExecutionData.executionData?.nodeExecutionStack?.[0]?.source).toBeNull();
+		});
+	});
+});
+
+describe('getWebhookErrorMessage', () => {
+	const workflowStartNode = mock<INode>({ name: 'Start' });
+	it('should surface WorkflowConfigurationError', () => {
+		const err = new WorkflowConfigurationError(workflowStartNode, new Error('test'));
+		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toEqual(err.message);
+	});
+
+	it('should obfuscate other errors', () => {
+		const err = new NodeOperationError(workflowStartNode, new Error('test'));
+		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toContain(
+			'Error: Workflow could not be started',
+		);
 	});
 });

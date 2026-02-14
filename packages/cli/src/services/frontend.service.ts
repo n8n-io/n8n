@@ -7,14 +7,13 @@ import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
+import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
@@ -22,19 +21,88 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
-import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
-import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { OwnershipService } from '@/services/ownership.service';
+import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
-} from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
-
+} from '@/workflows/workflow-history/workflow-history-helper';
+import { AiUsageService } from './ai-usage.service';
 import { UrlService } from './url.service';
+
+/**
+ * IMPORTANT: Only add settings that are absolutely necessary for non-authenticated pages
+ */
+export type PublicFrontendSettings = {
+	/** Controls initialization flow in settings store */
+	settingsMode: FrontendSettings['settingsMode'];
+
+	/** Used to localize login page UI */
+	defaultLocale: FrontendSettings['defaultLocale'];
+
+	/** Used to bypass authentication on the workflows/demo page */
+	previewMode: FrontendSettings['previewMode'];
+
+	authCookie: {
+		/** Blocks insecure access incompatible with the authentication cookie. */
+		secure: FrontendSettings['authCookie']['secure'];
+	};
+
+	userManagement: {
+		/** Used to control login page UI behaviour and conditional SSO Login display */
+		authenticationMethod: FrontendSettings['userManagement']['authenticationMethod'];
+
+		/** Enables initial owner setup */
+		showSetupOnFirstLoad: FrontendSettings['userManagement']['showSetupOnFirstLoad'];
+
+		/** Determines forgot password page UX */
+		smtpSetup: FrontendSettings['userManagement']['smtpSetup'];
+	};
+
+	enterprise: {
+		/** License check for SAML for SSO button visibility */
+		saml: FrontendSettings['enterprise']['saml'];
+
+		/** License check for OIDC for SSO button visibility */
+		oidc: FrontendSettings['enterprise']['oidc'];
+
+		/** License check for LDAP authentication */
+		ldap: FrontendSettings['enterprise']['ldap'];
+	};
+
+	sso: {
+		saml: {
+			/** Config flag for SSO button*/
+			loginEnabled: FrontendSettings['sso']['saml']['loginEnabled'];
+		};
+		ldap: {
+			/** Config flag for LDAP authentication */
+			loginEnabled: FrontendSettings['sso']['ldap']['loginEnabled'];
+
+			/** Customizes login form label (defaults to "Email") */
+			loginLabel: FrontendSettings['sso']['ldap']['loginLabel'];
+		};
+		oidc: {
+			/** Config flag for SSO button*/
+			loginEnabled: FrontendSettings['sso']['oidc']['loginEnabled'];
+
+			/** Required for OIDC authentication redirect URL */
+			loginUrl: FrontendSettings['sso']['oidc']['loginUrl'];
+		};
+	};
+	/** Used to fetch community nodes on preview instance */
+	communityNodesEnabled: FrontendSettings['communityNodesEnabled'];
+
+	mfa?: {
+		enabled: boolean;
+		enforced: boolean;
+	};
+};
 
 @Service()
 export class FrontendService {
-	settings: FrontendSettings;
+	private settings: FrontendSettings;
 
 	private communityPackagesService?: CommunityPackagesService;
 
@@ -54,12 +122,11 @@ export class FrontendService {
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly mfaService: MfaService,
+		private readonly ownershipService: OwnershipService,
+		private readonly aiUsageService: AiUsageService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
-
-		this.initSettings();
-
 		// @TODO: Move to community-packages module
 		if (Container.get(CommunityPackagesConfig).enabled) {
 			void import('@/modules/community-packages/community-packages.service').then(
@@ -82,7 +149,7 @@ export class FrontendService {
 		return envFeatureFlags;
 	}
 
-	private initSettings() {
+	private async initSettings() {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
@@ -105,6 +172,7 @@ export class FrontendService {
 		}
 
 		this.settings = {
+			settingsMode: 'authenticated',
 			inE2ETests,
 			isDocker: this.instanceSettings.isDocker,
 			databaseType: this.globalConfig.database.type,
@@ -117,6 +185,7 @@ export class FrontendService {
 			endpointWebhook: this.globalConfig.endpoints.webhook,
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
+			endpointHealth: this.globalConfig.endpoints.health,
 			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
 			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
 			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,
@@ -129,6 +198,7 @@ export class FrontendService {
 			urlBaseEditor: instanceBaseUrl,
 			binaryDataMode: this.binaryDataConfig.mode,
 			nodeJsVersion: process.version.replace(/^v/, ''),
+			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
 			authCookie: {
@@ -146,6 +216,10 @@ export class FrontendService {
 				whatsNewEndpoint: this.globalConfig.versionNotifications.whatsNewEndpoint,
 				infoUrl: this.globalConfig.versionNotifications.infoUrl,
 			},
+			dynamicBanners: {
+				endpoint: this.globalConfig.dynamicBanners.endpoint,
+				enabled: this.globalConfig.dynamicBanners.enabled,
+			},
 			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
 			posthog: {
@@ -154,6 +228,7 @@ export class FrontendService {
 				apiKey: this.globalConfig.diagnostics.posthogConfig.apiKey,
 				autocapture: false,
 				disableSessionRecording: this.globalConfig.deployment.type !== 'cloud',
+				proxy: `${instanceBaseUrl}/${restEndpoint}/ph`,
 				debug: this.globalConfig.logging.level === 'debug',
 			},
 			personalizationSurveyEnabled:
@@ -161,7 +236,7 @@ export class FrontendService {
 			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
 				quota: this.license.getUsersLimit(),
-				showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
+				showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
@@ -180,6 +255,9 @@ export class FrontendService {
 					callbackUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/callback`,
 				},
 			},
+			dataTables: {
+				maxSize: this.globalConfig.dataTable.maxSize,
+			},
 			publicApi: {
 				enabled: isApiEnabled(),
 				latestVersion: 1,
@@ -193,12 +271,13 @@ export class FrontendService {
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
 				enabled: false,
+				setup: false,
 			},
 			templates: {
 				enabled: this.globalConfig.templates.enabled,
 				host: this.globalConfig.templates.host,
 			},
-			executionMode: config.getEnv('executions.mode'),
+			executionMode: this.globalConfig.executions.mode,
 			isMultiMain: this.instanceSettings.isMultiMain,
 			pushBackend: this.pushConfig.backend,
 
@@ -228,16 +307,19 @@ export class FrontendService {
 				showNonProdBanner: false,
 				debugInEditor: false,
 				binaryDataS3: false,
-				workflowHistory: false,
 				workerView: false,
 				advancedPermissions: false,
 				apiKeyScopes: false,
 				workflowDiffs: false,
+				namedVersions: false,
+				provisioning: false,
 				projects: {
 					team: {
 						limit: 0,
 					},
 				},
+				customRoles: false,
+				personalSpacePolicy: false,
 			},
 			mfa: {
 				enabled: false,
@@ -257,13 +339,21 @@ export class FrontendService {
 			askAi: {
 				enabled: false,
 			},
+			aiBuilder: {
+				enabled: false,
+				setup: false,
+			},
 			aiCredits: {
 				enabled: false,
 				credits: 0,
+				setup: false,
+			},
+			ai: {
+				allowSendingParameterValues: true,
 			},
 			workflowHistory: {
-				pruneTime: -1,
-				licensePruneTime: -1,
+				pruneTime: getWorkflowHistoryPruneTime(),
+				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
 			},
 			pruning: {
 				isEnabled: this.globalConfig.executions.pruneData,
@@ -274,7 +364,6 @@ export class FrontendService {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
 			easyAIWorkflowOnboarded: false,
-			partialExecution: this.globalConfig.partialExecutions,
 			folders: {
 				enabled: false,
 			},
@@ -294,13 +383,17 @@ export class FrontendService {
 		await mkdir(path.join(staticCacheDir, 'types'), { recursive: true });
 		const { credentials, nodes } = this.loadNodesAndCredentials.types;
 		this.writeStaticJSON('nodes', nodes);
+		const nodeVersionIdentifiers = this.getNodeVersionIdentifiers(nodes);
+		this.writeStaticJSON('node-versions', nodeVersionIdentifiers);
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	getSettings(): FrontendSettings {
+	async getSettings(): Promise<FrontendSettings> {
+		if (!this.settings) {
+			await this.initSettings();
+		}
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
-		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		this.settings.urlBaseWebhook = this.urlService.getWebhookBaseUrl();
 		this.settings.urlBaseEditor = instanceBaseUrl;
@@ -313,7 +406,7 @@ export class FrontendService {
 		Object.assign(this.settings.userManagement, {
 			quota: this.license.getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
-			showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
+			showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
 		});
 
 		let dismissedBanners: string[] = [];
@@ -330,6 +423,11 @@ export class FrontendService {
 		} catch {
 			this.settings.easyAIWorkflowOnboarded = false;
 		}
+		try {
+			this.settings.ai.allowSendingParameterValues = await this.aiUsageService.getAiUsageSettings();
+		} catch {
+			this.settings.ai.allowSendingParameterValues = true;
+		}
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
@@ -337,6 +435,7 @@ export class FrontendService {
 		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
 		const isAskAiEnabled = this.license.isAskAiEnabled();
 		const isAiCreditsEnabled = this.license.isAiCreditsEnabled();
+		const isAiBuilderEnabled = this.license.isLicensed(LICENSE_FEATURES.AI_BUILDER);
 
 		this.settings.license.planName = this.license.getPlanName();
 		this.settings.license.consumerId = this.license.getConsumerId();
@@ -349,6 +448,7 @@ export class FrontendService {
 			saml: this.license.isSamlEnabled(),
 			oidc: this.licenseState.isOidcLicensed(),
 			mfaEnforcement: this.licenseState.isMFAEnforcementLicensed(),
+			provisioning: false, // temporarily disabled until this feature is ready for release
 			advancedExecutionFilters: this.license.isAdvancedExecutionFiltersEnabled(),
 			variables: this.license.isVariablesEnabled(),
 			sourceControl: this.license.isSourceControlLicensed(),
@@ -356,17 +456,18 @@ export class FrontendService {
 			showNonProdBanner: this.license.isLicensed(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
 			debugInEditor: this.license.isDebugInEditorLicensed(),
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
-			workflowHistory:
-				this.license.isWorkflowHistoryLicensed() && this.globalConfig.workflowHistory.enabled,
 			workerView: this.license.isWorkerViewLicensed(),
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
 			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
+			namedVersions: this.license.isLicensed(LICENSE_FEATURES.NAMED_VERSIONS),
+			customRoles: this.licenseState.isCustomRolesLicensed(),
+			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
 			Object.assign(this.settings.sso.ldap, {
-				loginLabel: getLdapLoginLabel(),
+				loginLabel: this.globalConfig.sso.ldap.loginLabel,
 				loginEnabled: this.globalConfig.sso.ldap.loginEnabled,
 			});
 		}
@@ -388,19 +489,14 @@ export class FrontendService {
 			this.settings.variables.limit = this.license.getVariablesLimit();
 		}
 
-		if (this.globalConfig.workflowHistory.enabled && this.license.isWorkflowHistoryLicensed()) {
-			Object.assign(this.settings.workflowHistory, {
-				pruneTime: getWorkflowHistoryPruneTime(),
-				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
-			});
-		}
-
 		if (this.communityPackagesService) {
 			this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
 		}
 
 		if (isAiAssistantEnabled) {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
+			this.settings.aiAssistant.setup =
+				!!this.globalConfig.aiAssistant.baseUrl || !!process.env.N8N_AI_ANTHROPIC_KEY;
 		}
 
 		if (isAskAiEnabled) {
@@ -410,14 +506,21 @@ export class FrontendService {
 		if (isAiCreditsEnabled) {
 			this.settings.aiCredits.enabled = isAiCreditsEnabled;
 			this.settings.aiCredits.credits = this.license.getAiCredits();
+			this.settings.aiCredits.setup = !!this.globalConfig.aiAssistant.baseUrl;
+		}
+
+		if (isAiBuilderEnabled) {
+			this.settings.aiBuilder.enabled = isAiBuilderEnabled;
+			this.settings.aiBuilder.setup =
+				!!this.globalConfig.aiAssistant.baseUrl || !!this.globalConfig.aiBuilder.apiKey;
 		}
 
 		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
 
 		// TODO: read from settings
-		this.settings.mfa.enforced = this.mfaService.isMFAEnforced();
+		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
 
-		this.settings.executionMode = config.getEnv('executions.mode');
+		this.settings.executionMode = this.globalConfig.executions.mode;
 
 		this.settings.binaryDataMode = this.binaryDataConfig.mode;
 
@@ -434,11 +537,77 @@ export class FrontendService {
 		return this.settings;
 	}
 
+	/**
+	 * Only add settings that are absolutely necessary for non-authenticated pages
+	 * @returns Public settings for unauthenticated users
+	 */
+	async getPublicSettings(includeMfaSettings: boolean): Promise<PublicFrontendSettings> {
+		// Get full settings to ensure all required properties are initialized
+		const {
+			defaultLocale,
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
+			authCookie,
+			previewMode,
+			enterprise: { saml, ldap, oidc },
+			mfa,
+			communityNodesEnabled,
+		} = await this.getSettings();
+
+		const publicSettings: PublicFrontendSettings = {
+			settingsMode: 'public',
+			defaultLocale,
+			userManagement: {
+				authenticationMethod,
+				// In preview mode, skip the setup redirect to allow accessing demo routes
+				showSetupOnFirstLoad: previewMode ? false : showSetupOnFirstLoad,
+				smtpSetup,
+			},
+			sso: {
+				saml: {
+					loginEnabled: ssoSaml.loginEnabled,
+				},
+				ldap: ssoLdap,
+				oidc: {
+					loginEnabled: ssoOidc.loginEnabled,
+					loginUrl: ssoOidc.loginUrl,
+				},
+			},
+			authCookie,
+			previewMode,
+			enterprise: { saml, ldap, oidc },
+			communityNodesEnabled,
+		};
+		if (includeMfaSettings) {
+			publicSettings.mfa = mfa;
+		}
+		return publicSettings;
+	}
+
 	getModuleSettings() {
 		return Object.fromEntries(this.moduleRegistry.settings);
 	}
 
-	private writeStaticJSON(name: string, data: INodeTypeBaseDescription[] | ICredentialType[]) {
+	getNodeVersionIdentifiers(nodes: INodeTypeDescription[]): string[] {
+		const identifiers = new Set<string>();
+
+		for (const node of nodes) {
+			if (!node?.name || node.version === undefined) continue;
+
+			const versions = Array.isArray(node.version) ? node.version : [node.version];
+			for (const version of versions) {
+				if (version === undefined) continue;
+				identifiers.add(`${node.name}@${String(version)}`);
+			}
+		}
+
+		return Array.from(identifiers);
+	}
+
+	private writeStaticJSON(
+		name: string,
+		data: Array<INodeTypeBaseDescription | ICredentialType | string>,
+	) {
 		const { staticCacheDir } = this.instanceSettings;
 		const filePath = path.join(staticCacheDir, `types/${name}.json`);
 		const stream = createWriteStream(filePath, 'utf-8');

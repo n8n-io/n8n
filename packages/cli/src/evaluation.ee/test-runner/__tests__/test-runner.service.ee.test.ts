@@ -1,15 +1,17 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
+import { ExecutionsConfig } from '@n8n/config';
 import type {
 	TestRun,
 	TestCaseExecutionRepository,
 	TestRunRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 import { readFileSync } from 'fs';
-import type { Mock } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import {
+	createRunExecutionData,
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
@@ -17,15 +19,13 @@ import {
 import type { IWorkflowBase, IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
 
+import { TestRunnerService } from '../test-runner.service.ee';
+
 import type { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
-import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
-
-import { TestRunnerService } from '../test-runner.service.ee';
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -41,6 +41,7 @@ describe('TestRunnerService', () => {
 	const activeExecutions = mock<ActiveExecutions>();
 	const testRunRepository = mock<TestRunRepository>();
 	const testCaseExecutionRepository = mock<TestCaseExecutionRepository>();
+	const executionsConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
 	let testRunnerService: TestRunnerService;
 
 	mockInstance(LoadNodesAndCredentials, {
@@ -57,6 +58,8 @@ describe('TestRunnerService', () => {
 			testRunRepository,
 			testCaseExecutionRepository,
 			errorReporter,
+			executionsConfig,
+			mock(),
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -456,14 +459,16 @@ describe('TestRunnerService', () => {
 			const runCallArg = workflowRunner.run.mock.calls[0][0];
 
 			// Verify it has the correct structure
-			expect(runCallArg).toHaveProperty('destinationNode', triggerNodeName);
+			expect(runCallArg).toHaveProperty('destinationNode', {
+				nodeName: triggerNodeName,
+				mode: 'inclusive',
+			});
 			expect(runCallArg).toHaveProperty('executionMode', 'manual');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveManualExecutions', false);
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataErrorExecution', 'none');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataSuccessExecution', 'none');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveExecutionProgress', false);
 			expect(runCallArg).toHaveProperty('userId', metadata.userId);
-			expect(runCallArg).toHaveProperty('partialExecutionVersion', 2);
 
 			expect(runCallArg).toHaveProperty('executionData.executionData.nodeExecutionStack');
 			const nodeExecutionStack = runCallArg.executionData?.executionData?.nodeExecutionStack;
@@ -482,7 +487,19 @@ describe('TestRunnerService', () => {
 		});
 
 		test('should call workflowRunner.run with correct data in queue execution mode and manual offload', async () => {
-			config.set('executions.mode', 'queue');
+			const queueModeConfig = mockInstance(ExecutionsConfig, { mode: 'queue' });
+			const testRunnerService = new TestRunnerService(
+				logger,
+				telemetry,
+				workflowRepository,
+				workflowRunner,
+				activeExecutions,
+				testRunRepository,
+				testCaseExecutionRepository,
+				errorReporter,
+				queueModeConfig,
+				mock(),
+			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
 			// Create workflow with a trigger node
@@ -519,24 +536,40 @@ describe('TestRunnerService', () => {
 			const runCallArg = workflowRunner.run.mock.calls[0][0];
 
 			// Verify it has the correct structure
-			expect(runCallArg).toHaveProperty('destinationNode', triggerNodeName);
+			expect(runCallArg).toHaveProperty('destinationNode', {
+				nodeName: triggerNodeName,
+				mode: 'inclusive',
+			});
 			expect(runCallArg).toHaveProperty('executionMode', 'manual');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveManualExecutions', false);
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataErrorExecution', 'none');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataSuccessExecution', 'none');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveExecutionProgress', false);
 			expect(runCallArg).toHaveProperty('userId', metadata.userId);
-			expect(runCallArg).toHaveProperty('partialExecutionVersion', 2);
 
+			// In queue mode with offloading, executionData.executionData should not exist
 			expect(runCallArg).not.toHaveProperty('executionData.executionData');
 			expect(runCallArg).not.toHaveProperty('executionData.executionData.nodeExecutionStack');
+
+			// But executionData itself should still exist with startData and manualData
+			expect(runCallArg).toHaveProperty('executionData');
+			expect(runCallArg.executionData).toBeDefined();
+			expect(runCallArg).toHaveProperty('executionData.startData.destinationNode', {
+				nodeName: triggerNodeName,
+				mode: 'inclusive',
+			});
+			expect(runCallArg).toHaveProperty('executionData.manualData.userId', metadata.userId);
+			expect(runCallArg).toHaveProperty(
+				'executionData.manualData.triggerToStartFrom.name',
+				triggerNodeName,
+			);
+
 			expect(runCallArg).toHaveProperty('workflowData.nodes[0].forceCustomOperation', {
 				resource: 'dataset',
 				operation: 'getRows',
 			});
 
 			// after reset
-			config.set('executions.mode', 'regular');
 			delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 		});
 
@@ -648,6 +681,8 @@ describe('TestRunnerService', () => {
 			// Setup test data
 			const triggerNodeName = 'TriggerNode';
 			const workflow = mock<IWorkflowBase>({
+				id: 'workflow-id',
+				name: 'Test Workflow',
 				nodes: [
 					{
 						id: 'node1',
@@ -700,7 +735,6 @@ describe('TestRunnerService', () => {
 						},
 					},
 					userId: metadata.userId,
-					partialExecutionVersion: 2,
 					triggerToStartFrom: {
 						name: triggerNodeName,
 					},
@@ -763,24 +797,30 @@ describe('TestRunnerService', () => {
 		});
 
 		describe('runTestCase - Queue Mode', () => {
-			beforeEach(() => {
-				// Mock config to return 'queue' mode
-				jest.spyOn(config, 'getEnv').mockImplementation((key) => {
-					if (key === 'executions.mode') {
-						return 'queue';
-					}
-					return undefined;
-				});
-			});
+			let testRunnerService: TestRunnerService;
 
-			afterEach(() => {
-				(config.getEnv as unknown as Mock).mockRestore();
+			beforeEach(() => {
+				const queueModeConfig = mockInstance(ExecutionsConfig, { mode: 'queue' });
+				testRunnerService = new TestRunnerService(
+					logger,
+					telemetry,
+					workflowRepository,
+					workflowRunner,
+					activeExecutions,
+					testRunRepository,
+					testCaseExecutionRepository,
+					errorReporter,
+					queueModeConfig,
+					mock(),
+				);
 			});
 
 			test('should call workflowRunner.run with correct data in queue mode', async () => {
 				// Setup test data
 				const triggerNodeName = 'TriggerNode';
 				const workflow = mock<IWorkflowBase>({
+					id: 'workflow-id',
+					name: 'Test Workflow',
 					nodes: [
 						{
 							id: 'node1',
@@ -834,11 +874,11 @@ describe('TestRunnerService', () => {
 							},
 						},
 						userId: metadata.userId,
-						partialExecutionVersion: 2,
 						triggerToStartFrom: {
 							name: triggerNodeName,
 						},
-						executionData: {
+						executionData: createRunExecutionData({
+							executionData: null,
 							resultData: {
 								pinData: {
 									[triggerNodeName]: [testCase],
@@ -847,12 +887,11 @@ describe('TestRunnerService', () => {
 							},
 							manualData: {
 								userId: metadata.userId,
-								partialExecutionVersion: 2,
 								triggerToStartFrom: {
 									name: triggerNodeName,
 								},
 							},
-						},
+						}),
 					}),
 				);
 			});

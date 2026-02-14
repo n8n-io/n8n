@@ -8,5 +8,5 @@
 		"isolatedModules": true,
 		"resolveJsonModule": true
 	},
-	"include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts", "tsup.config.ts"]
+	"include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts", "tsdown.config.ts"]
 }

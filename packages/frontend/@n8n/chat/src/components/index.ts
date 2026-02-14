@@ -8,3 +8,4 @@ export { default as Layout } from './Layout.vue';
 export { default as Message } from './Message.vue';
 export { default as MessagesList } from './MessagesList.vue';
 export { default as PoweredBy } from './PoweredBy.vue';
+export { default as MessageWithButtons } from './MessageWithButtons.vue';

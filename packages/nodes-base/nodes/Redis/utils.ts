@@ -10,17 +10,49 @@ import { createClient } from 'redis';
 
 import type { RedisCredential, RedisClient } from './types';
 
-export function setupRedisClient(credentials: RedisCredential): RedisClient {
-	return createClient({
-		socket: {
-			host: credentials.host,
-			port: credentials.port,
-			tls: credentials.ssl === true,
-		},
+export function setupRedisClient(credentials: RedisCredential, isTest = false): RedisClient {
+	const socketConfig: any = {
+		host: credentials.host,
+		port: credentials.port,
+		tls: credentials.ssl === true,
+		connectTimeout: 10000,
+		reconnectStrategy: isTest
+			? false
+			: (retries: number) => {
+					// Retry for ~15min
+					if (retries >= 10) {
+						return false;
+					}
+
+					const jitter = Math.floor(Math.random() * 1000);
+					const delay = Math.pow(2, retries) * 1000;
+
+					return delay + jitter;
+				},
+	};
+
+	// If SSL is enabled and TLS verification should be disabled
+	if (credentials.ssl === true && credentials.disableTlsVerification === true) {
+		socketConfig.rejectUnauthorized = false;
+	}
+
+	const client = createClient({
+		socket: socketConfig,
 		database: credentials.database,
-		username: credentials.user || undefined,
-		password: credentials.password || undefined,
+		username: credentials.user ?? undefined,
+		password: credentials.password ?? undefined,
+		...(isTest && {
+			disableOfflineQueue: true,
+			enableOfflineQueue: false,
+		}),
 	});
+
+	client.on('error', () => {
+		// intentionally ignored,required for reconnectStrategy to function, error will be caught by try catch
+		// https://github.com/redis/node-redis/blob/a64134c55f550f2f102a0f512218bc11717a5e16/README.md?plain=1#L298
+	});
+
+	return client;
 }
 
 export async function redisConnectionTest(
@@ -28,26 +60,68 @@ export async function redisConnectionTest(
 	credential: ICredentialsDecrypted,
 ): Promise<INodeCredentialTestResult> {
 	const credentials = credential.data as RedisCredential;
+	let client: RedisClient | undefined;
 
 	try {
-		const client = setupRedisClient(credentials);
-		await client.connect();
+		client = setupRedisClient(credentials, true);
+
+		// Add error event handler to catch connection errors
+		const errorPromise = new Promise<never>((_, reject) => {
+			client!.on('error', (err) => {
+				reject(err);
+			});
+		});
+
+		// Create a timeout promise
+		const timeoutPromise = new Promise<never>((_, reject) => {
+			setTimeout(() => {
+				reject(new Error('Connection timeout: Unable to connect to Redis server'));
+			}, 10000); // 10 seconds timeout
+		});
+
+		// Race between connecting and error/timeout
+		await Promise.race([client.connect(), errorPromise, timeoutPromise]);
+
 		await client.ping();
 		return {
 			status: 'OK',
 			message: 'Connection successful!',
 		};
 	} catch (error) {
+		// Handle specific error types for better user feedback
+		let errorMessage = error.message;
+		if (error.code === 'ECONNRESET') {
+			errorMessage =
+				'Connection reset: The Redis server rejected the connection. This often happens when trying to connect without SSL to an SSL-only server.';
+		} else if (error.code === 'ECONNREFUSED') {
+			errorMessage =
+				'Connection refused: Unable to connect to the Redis server. Please check the host and port.';
+		}
+
 		return {
 			status: 'Error',
-			message: error.message,
+			message: errorMessage,
 		};
+	} finally {
+		// Ensure the Redis client is always closed to prevent leaked connections
+		if (client) {
+			try {
+				await client.quit();
+			} catch {
+				// If quit fails, forcefully disconnect
+				try {
+					await client.disconnect();
+				} catch {
+					// Ignore disconnect errors in cleanup
+				}
+			}
+		}
 	}
 }
 
 /** Parses the given value in a number if it is one else returns a string */
 function getParsedValue(value: string): string | number {
-	if (value.match(/^[\d\.]+$/) === null) {
+	if (value.match(/^[\d.]+$/) === null) {
 		// Is a string
 		return value;
 	} else {

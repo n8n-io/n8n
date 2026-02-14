@@ -1,5 +1,5 @@
 import type { ProjectRelation } from '@n8n/api-types';
-import type { DatabaseConfig } from '@n8n/config';
+import type { ModuleRegistry } from '@n8n/backend-common';
 import {
 	type Project,
 	type ProjectRepository,
@@ -23,6 +23,7 @@ describe('ProjectService', () => {
 	const roleService = mock<RoleService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const cacheService = mock<CacheService>();
+	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
 	const projectService = new ProjectService(
 		mock(),
 		projectRepository,
@@ -31,7 +32,7 @@ describe('ProjectService', () => {
 		sharedCredentialsRepository,
 		cacheService,
 		mock(),
-		mock<DatabaseConfig>({ type: 'postgresdb' }),
+		moduleRegistry,
 	);
 
 	describe('addUsersToProject', () => {

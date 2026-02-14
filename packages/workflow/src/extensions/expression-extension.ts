@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import type { ExpressionKind } from 'ast-types/gen/kinds';
+import type { ExpressionKind } from 'ast-types/lib/gen/kinds';
 import type { Config as EsprimaConfig } from 'esprima-next';
 import { parse as esprimaParse } from 'esprima-next';
 import { DateTime } from 'luxon';

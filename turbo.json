@@ -1,5 +1,6 @@
 {
-	"globalEnv": ["CI", "COVERAGE_ENABLED"],
+	"globalEnv": ["CI", "BUILD_WITH_COVERAGE", "RELEASE"],
+	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN"],
 	"tasks": {
 		"clean": { "cache": false },
 		"build": {
@@ -25,23 +26,23 @@
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"]
 		},
+		"test:unit": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"]
+		},
+		"test:integration": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"]
+		},
 		"watch": { "cache": false, "persistent": true },
 		"dev": { "cache": false, "persistent": true },
-		"build:playwright": {
-			"dependsOn": ["install-browsers:ci", "build"]
-		},
-		"install-browsers:ci": {
+		"install-browsers": {
 			"cache": true,
-			"inputs": ["package.json"],
-			"outputs": ["ms-playwright-cache/**"],
+			"inputs": [".playwright-version"],
+			"outputs": [".playwright-browsers/**"],
 			"env": ["PLAYWRIGHT_BROWSERS_PATH"]
 		},
-		"install-browsers:local": {
-			"cache": false,
-			"inputs": ["package.json"]
-		},
 		"test:container:standard": {
-			"dependsOn": ["install-browsers:local"],
 			"env": ["E2E_TESTS"],
 			"cache": false
 		}

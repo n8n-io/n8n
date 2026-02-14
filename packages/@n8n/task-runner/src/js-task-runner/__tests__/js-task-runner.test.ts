@@ -13,7 +13,6 @@ import type { JsRunnerConfig } from '@/config/js-runner-config';
 import { MainConfig } from '@/config/main-config';
 import { ExecutionError } from '@/js-task-runner/errors/execution-error';
 import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
-import { ValidationError } from '@/js-task-runner/errors/validation-error';
 import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
 import { JsTaskRunner } from '@/js-task-runner/js-task-runner';
 import {
@@ -30,7 +29,6 @@ import {
 	withPairedItem,
 	wrapIntoJson,
 } from './test-data';
-import { ReservedKeyFoundError } from '../errors/reserved-key-not-found.error';
 
 jest.mock('ws');
 
@@ -64,6 +62,8 @@ describe('JsTaskRunner', () => {
 				deploymentName: '',
 				environment: '',
 				n8nVersion: '',
+				profilesSampleRate: 0,
+				tracesSampleRate: 0,
 			},
 		});
 
@@ -132,6 +132,26 @@ describe('JsTaskRunner', () => {
 			runner,
 		});
 	};
+
+	describe('Buffer security', () => {
+		it('should redirect Buffer.allocUnsafe to Buffer.alloc', async () => {
+			const outcome = await executeForAllItems({
+				code: 'const buf = Buffer.allocUnsafe(10); return [{ json: { allZeros: buf.every(b => b === 0) } }]',
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
+		});
+
+		it('should redirect Buffer.allocUnsafeSlow to Buffer.alloc', async () => {
+			const outcome = await executeForAllItems({
+				code: 'const buf = Buffer.allocUnsafeSlow(10); return [{ json: { allZeros: buf.every(b => b === 0) } }]',
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
+		});
+	});
 
 	describe('console', () => {
 		test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
@@ -237,7 +257,7 @@ describe('JsTaskRunner', () => {
 				inputItems,
 			});
 
-			expect(outcome.result).toEqual([wrapIntoJson(needsWrapping ? { val: expected } : expected)]);
+			expect(outcome.result).toEqual(needsWrapping ? { val: expected } : expected);
 		};
 
 		const testExpressionForEachItem = async (
@@ -250,22 +270,28 @@ describe('JsTaskRunner', () => {
 				inputItems,
 			});
 
-			expect(outcome.result).toEqual([
-				withPairedItem(0, wrapIntoJson(needsWrapping ? { val: expected } : expected)),
-			]);
+			// if expected has json property, use it, else use entire result
+			const expectedJson =
+				expected !== null && typeof expected === 'object' && 'json' in expected
+					? expected.json
+					: needsWrapping
+						? { val: expected }
+						: expected;
+
+			expect(outcome.result).toEqual([{ json: expectedJson, pairedItem: { item: 0 } }]);
 		};
 
 		const testGroups = {
 			// https://docs.n8n.io/code/builtin/current-node-input/
 			'current node input': [
-				['$input.first()', inputItems[0]],
-				['$input.last()', inputItems[inputItems.length - 1]],
+				['$input.first()', { json: inputItems[0] }],
+				['$input.last()', { json: inputItems[inputItems.length - 1] }],
 				['$input.params', { manualTriggerParam: 'empty' }],
 			],
 			// https://docs.n8n.io/code/builtin/output-other-nodes/
 			'output of other nodes': [
-				['$("Trigger").first()', inputItems[0]],
-				['$("Trigger").last()', inputItems[inputItems.length - 1]],
+				['$("Trigger").first()', { json: inputItems[0] }],
+				['$("Trigger").last()', { json: inputItems[inputItems.length - 1] }],
 				['$("Trigger").params', { manualTriggerParam: 'empty' }],
 			],
 			// https://docs.n8n.io/code/builtin/date-time/
@@ -360,7 +386,7 @@ describe('JsTaskRunner', () => {
 					}),
 				});
 
-				expect(outcome.result).toEqual([wrapIntoJson({ val: 'value' })]);
+				expect(outcome.result).toEqual({ val: 'value' });
 			});
 
 			it('should be possible to access env if it has been blocked', async () => {
@@ -411,7 +437,7 @@ describe('JsTaskRunner', () => {
 					}),
 				});
 
-				expect(outcome.result).toEqual([wrapIntoJson({ val: undefined })]);
+				expect(outcome.result).toEqual({ val: undefined });
 			});
 		});
 
@@ -422,16 +448,21 @@ describe('JsTaskRunner', () => {
 					timezone: 'Europe/Helsinki',
 				};
 
-				const outcome = await execTaskWithParams({
+				const outcome = (await execTaskWithParams({
 					task: newTaskParamsWithSettings({
 						code: 'return { val: $now.toSeconds() }',
 						nodeMode: 'runOnceForAllItems',
 					}),
 					taskData,
-				});
-
+				})) as { result: { val: number } };
 				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
-				expect(outcome.result[0].json.val).toBeCloseTo(helsinkiTimeNow, 1);
+
+				// Expect the shape of the result
+				expect(outcome.result).toEqual({ val: expect.any(Number) });
+
+				// Expect the times to be within 500ms of each other
+				const runnerTimeNow = outcome.result.val;
+				expect(Math.abs(helsinkiTimeNow - runnerTimeNow)).toBeLessThan(0.5);
 			});
 
 			it('should use the default timezone', async () => {
@@ -448,7 +479,7 @@ describe('JsTaskRunner', () => {
 				});
 
 				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
-				expect(outcome.result[0].json.val).toBeCloseTo(helsinkiTimeNow, 1);
+				expect(outcome.result).toEqual({ val: expect.closeTo(helsinkiTimeNow, 0) });
 			});
 		});
 
@@ -466,7 +497,7 @@ describe('JsTaskRunner', () => {
 					}),
 				});
 
-				expect(outcome.result).toEqual([wrapIntoJson({ val: { key: 'value' } })]);
+				expect(outcome.result).toEqual({ val: { key: 'value' } });
 			});
 
 			it('should have the global workflow static data available in runOnceForEachItem', async () => {
@@ -559,7 +590,7 @@ describe('JsTaskRunner', () => {
 					taskData: createTaskDataWithNodeStaticData({ key: 'value' }),
 				});
 
-				expect(outcome.result).toEqual([wrapIntoJson({ val: { key: 'value' } })]);
+				expect(outcome.result).toEqual({ val: { key: 'value' } });
 			});
 
 			it('should have the node workflow static data available in runOnceForEachItem', async () => {
@@ -745,7 +776,7 @@ describe('JsTaskRunner', () => {
 				}),
 			});
 
-			expect(outcomeAll.result).toEqual([wrapIntoJson({ val: 'test-buffer' })]);
+			expect(outcomeAll.result).toEqual({ val: 'test-buffer' });
 
 			const outcomePer = await execTaskWithParams({
 				task: newTaskParamsWithSettings({
@@ -789,38 +820,6 @@ describe('JsTaskRunner', () => {
 			});
 		});
 
-		describe('invalid output', () => {
-			test.each([['undefined'], ['42'], ['"a string"']])(
-				'should throw a ValidationError if the code output is %s',
-				async (output) => {
-					await expect(
-						executeForAllItems({
-							code: `return ${output}`,
-							inputItems: [{ a: 1 }],
-						}),
-					).rejects.toThrow(ValidationError);
-				},
-			);
-
-			it('should throw a ValidationError if some items are wrapped in json and some are not', async () => {
-				await expect(
-					executeForAllItems({
-						code: 'return [{b: 1}, {json: {b: 2}}]',
-						inputItems: [{ a: 1 }],
-					}),
-				).rejects.toThrow(ValidationError);
-			});
-
-			it('should throw a ReservedKeyFoundError if there are unknown keys alongside reserved keys', async () => {
-				await expect(
-					executeForAllItems({
-						code: 'return [{json: {b: 1}, objectId: "123"}]',
-						inputItems: [{ a: 1 }],
-					}),
-				).rejects.toThrow(ReservedKeyFoundError);
-			});
-		});
-
 		it('should return static items', async () => {
 			const outcome = await executeForAllItems({
 				code: 'return [{json: {b: 1}}]',
@@ -852,19 +851,19 @@ describe('JsTaskRunner', () => {
 			});
 
 			expect(outcome).toEqual({
-				result: [wrapIntoJson({ b: 1 })],
+				result: [{ b: 1 }],
 				customData: undefined,
 			});
 		});
 
-		it('should wrap single item into an array and json', async () => {
+		it('should not wrap single item into an array and json', async () => {
 			const outcome = await executeForAllItems({
 				code: 'return {b: 1}',
 				inputItems: [{ a: 1 }],
 			});
 
 			expect(outcome).toEqual({
-				result: [wrapIntoJson({ b: 1 })],
+				result: { b: 1 },
 				customData: undefined,
 			});
 		});
@@ -912,20 +911,42 @@ describe('JsTaskRunner', () => {
 					}),
 				).rejects.toThrow('Error message');
 			});
-		});
 
-		describe('invalid output', () => {
-			test.each([['undefined'], ['42'], ['"a string"'], ['[]'], ['[1,2,3]']])(
-				'should throw a ValidationError if the code output is %s',
-				async (output) => {
-					await expect(
-						executeForEachItem({
-							code: `return ${output}`,
-							inputItems: [{ a: 1 }],
-						}),
-					).rejects.toThrow(ValidationError);
-				},
-			);
+			it('should not duplicate binary data in json property when only binary is returned', async () => {
+				const outcome = await executeForEachItem({
+					code: "return { binary: { file: { data: 'test' } } }",
+					inputItems: [{ a: 1 }],
+				});
+
+				expect(outcome).toEqual({
+					result: [
+						{
+							json: {},
+							binary: { file: { data: 'test' } },
+							pairedItem: { item: 0 },
+						},
+					],
+					customData: undefined,
+				});
+			});
+
+			it('should not include metadata properties in json when only binary is returned', async () => {
+				const outcome = await executeForEachItem({
+					code: "return { binary: { file: { data: 'test' } }, pairedItem: 1 }",
+					inputItems: [{ a: 1 }],
+				});
+
+				expect(outcome).toEqual({
+					result: [
+						{
+							json: {},
+							binary: { file: { data: 'test' } },
+							pairedItem: { item: 0 },
+						},
+					],
+					customData: undefined,
+				});
+			});
 		});
 
 		describe('chunked execution', () => {
@@ -1112,7 +1133,7 @@ describe('JsTaskRunner', () => {
 						runner,
 					});
 
-					expect(outcome.result).toEqual([wrapIntoJson({ val: expected })]);
+					expect(outcome.result).toEqual({ val: expected });
 				},
 			);
 
@@ -1174,7 +1195,7 @@ describe('JsTaskRunner', () => {
 						runner,
 					});
 
-					expect(outcome.result).toEqual([wrapIntoJson({ val: expected })]);
+					expect(outcome.result).toEqual({ val: expected });
 				},
 			);
 
@@ -1481,6 +1502,143 @@ describe('JsTaskRunner', () => {
 		});
 	});
 
+	describe('Error.prepareStackTrace RCE prevention', () => {
+		test.each([['runOnceForAllItems'], ['runOnceForEachItem']] as const)(
+			'should block Error.prepareStackTrace access in %s mode',
+			async (mode) => {
+				const execute = mode === 'runOnceForAllItems' ? executeForAllItems : executeForEachItem;
+				const outcome = await execute({
+					code:
+						mode === 'runOnceForAllItems'
+							? 'return [{ json: { result: Error.prepareStackTrace } }]'
+							: 'return { json: { result: Error.prepareStackTrace } }',
+					inputItems: [{ a: 1 }],
+				});
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.result).toBeUndefined();
+			},
+		);
+
+		test.each([['runOnceForAllItems'], ['runOnceForEachItem']] as const)(
+			'should block Error.captureStackTrace access in %s mode',
+			async (mode) => {
+				const execute = mode === 'runOnceForAllItems' ? executeForAllItems : executeForEachItem;
+				const outcome = await execute({
+					code:
+						mode === 'runOnceForAllItems'
+							? 'return [{ json: { result: Error.captureStackTrace } }]'
+							: 'return { json: { result: Error.captureStackTrace } }',
+					inputItems: [{ a: 1 }],
+				});
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.result).toBeUndefined();
+			},
+		);
+
+		test.each([['runOnceForAllItems'], ['runOnceForEachItem']] as const)(
+			'should prevent Object.defineProperty from setting Error.prepareStackTrace in %s mode',
+			async (mode) => {
+				const execute = mode === 'runOnceForAllItems' ? executeForAllItems : executeForEachItem;
+				// First try to define prepareStackTrace, then check if it's still undefined
+				const outcome = await execute({
+					code:
+						mode === 'runOnceForAllItems'
+							? `
+								Object.defineProperty(Error, 'prepareStackTrace', { value: () => 'pwned' });
+								return [{ json: { result: Error.prepareStackTrace } }];
+							`
+							: `
+								Object.defineProperty(Error, 'prepareStackTrace', { value: () => 'pwned' });
+								return { json: { result: Error.prepareStackTrace } };
+							`,
+					inputItems: [{ a: 1 }],
+				});
+				// prepareStackTrace should still be undefined because defineProperty is neutered
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.result).toBeUndefined();
+			},
+		);
+
+		test('should prevent full RCE exploit chain via prepareStackTrace', async () => {
+			// This is the actual exploit payload - should NOT execute system commands
+			// Even though the code runs without throwing, the exploit should not work
+			// because Object.defineProperty is neutered and prepareStackTrace remains undefined
+			const outcome = await executeForAllItems({
+				code: `
+					Object.defineProperty(Error, 'prepareStackTrace', {
+						value: (e, stack) => {
+							const g = stack[0].getThis();
+							return g.global.process.getBuiltinModule('child_process').execSync('echo pwned').toString();
+						}
+					});
+					const result = new Error().stack;
+					// Check if the result contains 'pwned' - if so, exploit succeeded
+					const exploited = typeof result === 'string' && result.includes('pwned');
+					return [{ json: { exploited, result: typeof result } }];
+				`,
+				inputItems: [{ a: 1 }],
+			});
+			// The exploit should fail - prepareStackTrace wasn't actually set
+			// so .stack returns a normal stack trace string, not 'pwned'
+			const result = outcome.result as Array<{ json: IDataObject }>;
+			expect(result[0].json.exploited).toBe(false);
+			expect(result[0].json.result).toBe('string'); // Normal stack trace
+		});
+	});
+
+	describe('Object.defineProperty security', () => {
+		test.each([['runOnceForAllItems'], ['runOnceForEachItem']] as const)(
+			'should neuter Object.defineProperty in %s mode',
+			async (mode) => {
+				const execute = mode === 'runOnceForAllItems' ? executeForAllItems : executeForEachItem;
+				const outcome = await execute({
+					code:
+						mode === 'runOnceForAllItems'
+							? `
+								const obj = {};
+								Object.defineProperty(obj, 'test', { value: 123 });
+								return [{ json: { hasProperty: 'test' in obj, value: obj.test } }];
+							`
+							: `
+								const obj = {};
+								Object.defineProperty(obj, 'test', { value: 123 });
+								return { json: { hasProperty: 'test' in obj, value: obj.test } };
+							`,
+					inputItems: [{ a: 1 }],
+				});
+				// defineProperty is neutered, property won't be defined
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.hasProperty).toBe(false);
+				expect(result[0].json.value).toBeUndefined();
+			},
+		);
+
+		test.each([['runOnceForAllItems'], ['runOnceForEachItem']] as const)(
+			'should neuter Object.defineProperties in %s mode',
+			async (mode) => {
+				const execute = mode === 'runOnceForAllItems' ? executeForAllItems : executeForEachItem;
+				const outcome = await execute({
+					code:
+						mode === 'runOnceForAllItems'
+							? `
+								const obj = {};
+								Object.defineProperties(obj, { a: { value: 1 }, b: { value: 2 } });
+								return [{ json: { hasA: 'a' in obj, hasB: 'b' in obj } }];
+							`
+							: `
+								const obj = {};
+								Object.defineProperties(obj, { a: { value: 1 }, b: { value: 2 } });
+								return { json: { hasA: 'a' in obj, hasB: 'b' in obj } };
+							`,
+					inputItems: [{ a: 1 }],
+				});
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.hasA).toBe(false);
+				expect(result[0].json.hasB).toBe(false);
+			},
+		);
+	});
+
 	describe('stack trace', () => {
 		it('should extract correct line number from user-defined function stack trace', async () => {
 			const runner = createRunnerWithOpts({});
@@ -1526,7 +1684,473 @@ describe('JsTaskRunner', () => {
 				inputItems: [],
 			});
 
-			expect(outcome.result).toEqual([wrapIntoJson({ val: 2 })]);
+			expect(outcome.result).toEqual({ val: 2 });
+		});
+	});
+
+	describe('runCode mode', () => {
+		const executeRunCode = async ({
+			code,
+			additionalProperties = {},
+			runner = defaultTaskRunner,
+		}: {
+			code: string;
+			additionalProperties?: Record<string, unknown>;
+			runner?: JsTaskRunner;
+		}) => {
+			const task = newTaskParamsWithSettings({
+				code,
+				nodeMode: 'runCode',
+				additionalProperties,
+			});
+
+			// runCode mode doesn't fetch data, so we can pass empty response
+			jest.spyOn(runner, 'requestData').mockResolvedValue(newDataRequestResponse([]));
+
+			return await runner.executeTask(task, new AbortController().signal);
+		};
+
+		describe('basic execution', () => {
+			it('should execute simple code and return result', async () => {
+				const outcome = await executeRunCode({
+					code: 'return 1 + 1',
+				});
+
+				expect(outcome.result).toBe(2);
+			});
+
+			it('should execute code returning an object', async () => {
+				const outcome = await executeRunCode({
+					code: 'return { result: "success", value: 42 }',
+				});
+
+				expect(outcome.result).toEqual({ result: 'success', value: 42 });
+			});
+
+			it('should execute code returning an array', async () => {
+				const outcome = await executeRunCode({
+					code: 'return [1, 2, 3, 4, 5]',
+				});
+
+				expect(outcome.result).toEqual([1, 2, 3, 4, 5]);
+			});
+
+			it('should execute code returning a string', async () => {
+				const outcome = await executeRunCode({
+					code: 'return "hello world"',
+				});
+
+				expect(outcome.result).toBe('hello world');
+			});
+
+			it('should execute code returning null', async () => {
+				const outcome = await executeRunCode({
+					code: 'return null',
+				});
+
+				expect(outcome.result).toBeNull();
+			});
+
+			it('should execute code returning undefined', async () => {
+				const outcome = await executeRunCode({
+					code: 'return undefined',
+				});
+
+				expect(outcome.result).toBeUndefined();
+			});
+
+			it('should execute async code', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						const result = await Promise.resolve(42);
+						return result * 2;
+					`,
+				});
+
+				expect(outcome.result).toBe(84);
+			});
+		});
+
+		describe('additional properties', () => {
+			it('should have access to additional properties', async () => {
+				const outcome = await executeRunCode({
+					code: 'return items.length',
+					additionalProperties: {
+						items: [{ a: 1 }, { b: 2 }, { c: 3 }],
+					},
+				});
+
+				expect(outcome.result).toBe(3);
+			});
+
+			it('should be able to manipulate additional properties', async () => {
+				const outcome = await executeRunCode({
+					code: 'return items.map(item => item.value * 2)',
+					additionalProperties: {
+						items: [{ value: 1 }, { value: 2 }, { value: 3 }],
+					},
+				});
+
+				expect(outcome.result).toEqual([2, 4, 6]);
+			});
+
+			it('should have access to multiple additional properties', async () => {
+				const outcome = await executeRunCode({
+					code: 'return items.filter(item => item.value > threshold)',
+					additionalProperties: {
+						items: [{ value: 1 }, { value: 5 }, { value: 10 }],
+						threshold: 4,
+					},
+				});
+
+				expect(outcome.result).toEqual([{ value: 5 }, { value: 10 }]);
+			});
+
+			it('should execute sort operation with items', async () => {
+				const outcome = await executeRunCode({
+					code: 'return items.sort((a, b) => { return a.json.value - b.json.value })',
+					additionalProperties: {
+						items: [{ json: { value: 3 } }, { json: { value: 1 } }, { json: { value: 2 } }],
+					},
+				});
+
+				expect(outcome.result).toEqual([
+					{ json: { value: 1 } },
+					{ json: { value: 2 } },
+					{ json: { value: 3 } },
+				]);
+			});
+		});
+
+		describe('available global variables', () => {
+			test.each([
+				['$input', 'return $input.all()'],
+				['$execution', 'return $execution.id'],
+				['$workflow', 'return $workflow.name'],
+				['$vars', 'return $vars'],
+				['$now', 'return $now'],
+				['$today', 'return $today'],
+				['helpers', 'return helpers'],
+				['items', 'return items'],
+				['Buffer', 'return Buffer.from("test").toString()'],
+				['setTimeout', 'return setTimeout'],
+				['setInterval', 'return setInterval'],
+				['setImmediate', 'return setImmediate'],
+				['clearTimeout', 'return clearTimeout'],
+				['clearInterval', 'return clearInterval'],
+				['clearImmediate', 'return clearImmediate'],
+			])('%s should not be available', async (_name, code) => {
+				await expect(executeRunCode({ code })).rejects.toThrow(/is not defined/);
+			});
+		});
+
+		describe('console methods', () => {
+			it('should allow console.log without making RPC calls', async () => {
+				const rpcSpy = jest.spyOn(defaultTaskRunner, 'makeRpcCall');
+
+				const outcome = await executeRunCode({
+					code: `
+						console.log('test message');
+						return 'success';
+					`,
+				});
+
+				expect(outcome.result).toBe('success');
+				expect(rpcSpy).not.toHaveBeenCalled();
+			});
+
+			it('should allow other console methods', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						console.warn('warning');
+						console.error('error');
+						console.info('info');
+						return 'success';
+					`,
+				});
+
+				expect(outcome.result).toBe('success');
+			});
+		});
+
+		describe('module access', () => {
+			it('should not allow requiring modules', async () => {
+				await expect(
+					executeRunCode({
+						code: 'return require("crypto")',
+					}),
+				).rejects.toThrow();
+			});
+
+			it('should not allow requiring built-in modules even with * allowed', async () => {
+				const runner = createRunnerWithOpts({
+					allowedBuiltInModules: '*',
+				});
+
+				await expect(
+					executeRunCode({
+						code: 'return require("crypto")',
+						runner,
+					}),
+				).rejects.toThrow();
+			});
+		});
+
+		describe('built-in JS features', () => {
+			it('should not have access to Buffer', async () => {
+				await expect(
+					executeRunCode({
+						code: 'return Buffer.from("test").toString("base64")',
+					}),
+				).rejects.toThrow();
+			});
+
+			it('should have access to standard JS objects', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						const date = new Date('2024-01-01');
+						const map = new Map([['key', 'value']]);
+						const set = new Set([1, 2, 3]);
+						return {
+							dateYear: date.getFullYear(),
+							mapValue: map.get('key'),
+							setSize: set.size,
+						};
+					`,
+				});
+
+				expect(outcome.result).toEqual({
+					dateYear: 2024,
+					mapValue: 'value',
+					setSize: 3,
+				});
+			});
+
+			it('should have access to Math functions', async () => {
+				const outcome = await executeRunCode({
+					code: 'return Math.sqrt(16) + Math.max(1, 2, 3)',
+				});
+
+				expect(outcome.result).toBe(7);
+			});
+
+			it('should have access to JSON methods', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						const obj = { name: 'test', value: 42 };
+						const str = JSON.stringify(obj);
+						const parsed = JSON.parse(str);
+						return parsed;
+					`,
+				});
+
+				expect(outcome.result).toEqual({ name: 'test', value: 42 });
+			});
+		});
+
+		describe('error handling', () => {
+			it('should throw ExecutionError for runtime errors', async () => {
+				await expect(
+					executeRunCode({
+						code: 'throw new Error("test error")',
+					}),
+				).rejects.toThrow(ExecutionError);
+			});
+
+			it('should throw ExecutionError for undefined variable access', async () => {
+				await expect(
+					executeRunCode({
+						code: 'return undefinedVariable',
+					}),
+				).rejects.toThrow(ExecutionError);
+			});
+
+			it('should throw ExecutionError for syntax errors', async () => {
+				await expect(
+					executeRunCode({
+						code: 'return {invalid syntax}',
+					}),
+				).rejects.toThrow(ExecutionError);
+			});
+
+			it('should throw ExecutionError for null property access', async () => {
+				await expect(
+					executeRunCode({
+						code: 'const obj = null; return obj.property',
+					}),
+				).rejects.toThrow(ExecutionError);
+			});
+		});
+
+		describe('timeout handling', () => {
+			it('should timeout long-running code', async () => {
+				const runner = createRunnerWithOpts({}, { taskTimeout: 1 });
+
+				await expect(
+					executeRunCode({
+						code: 'while(true) {}',
+						runner,
+					}),
+				).rejects.toThrow();
+			});
+		});
+
+		describe('return value structure', () => {
+			it('should return result without staticData or customData', async () => {
+				const outcome = await executeRunCode({
+					code: 'return { test: "value" }',
+				});
+
+				expect(outcome).toEqual({
+					result: { test: 'value' },
+					customData: undefined,
+					staticData: undefined,
+				});
+			});
+
+			it('should handle complex nested objects', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						return {
+							nested: {
+								deeply: {
+									value: [1, 2, { key: 'value' }]
+								}
+							},
+							array: [{ a: 1 }, { b: 2 }]
+						}
+					`,
+				});
+
+				expect(outcome.result).toEqual({
+					nested: {
+						deeply: {
+							value: [1, 2, { key: 'value' }],
+						},
+					},
+					array: [{ a: 1 }, { b: 2 }],
+				});
+			});
+		});
+
+		describe('security features', () => {
+			it('should prevent prototype pollution with Object.setPrototypeOf', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						const obj = {};
+						Object.setPrototypeOf(obj, { malicious: 'value' });
+						return obj.malicious === undefined;
+					`,
+				});
+
+				expect(outcome.result).toBe(true);
+			});
+
+			it('should prevent prototype pollution with Reflect.setPrototypeOf', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						const obj = {};
+						Reflect.setPrototypeOf(obj, { malicious: 'value' });
+						return obj.malicious === undefined;
+					`,
+				});
+
+				expect(outcome.result).toBe(true);
+			});
+
+			it('should neuter Object.defineProperty', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						const obj = {};
+						Object.defineProperty(obj, 'test', { value: 123 });
+						return 'test' in obj;
+					`,
+				});
+
+				expect(outcome.result).toBe(false);
+			});
+		});
+
+		describe('real-world use cases', () => {
+			it('should execute array sorting with custom comparator', async () => {
+				const items = [
+					{ json: { name: 'Charlie', age: 30 } },
+					{ json: { name: 'Alice', age: 25 } },
+					{ json: { name: 'Bob', age: 35 } },
+				];
+
+				const outcome = await executeRunCode({
+					code: 'return items.sort((a, b) => a.json.age - b.json.age)',
+					additionalProperties: { items },
+				});
+
+				expect(outcome.result).toEqual([
+					{ json: { name: 'Alice', age: 25 } },
+					{ json: { name: 'Charlie', age: 30 } },
+					{ json: { name: 'Bob', age: 35 } },
+				]);
+			});
+
+			it('should execute array filtering with complex logic', async () => {
+				const items = [
+					{ json: { status: 'active', score: 85 } },
+					{ json: { status: 'inactive', score: 92 } },
+					{ json: { status: 'active', score: 78 } },
+					{ json: { status: 'active', score: 95 } },
+				];
+
+				const outcome = await executeRunCode({
+					code: `
+						return items.filter(item =>
+							item.json.status === 'active' && item.json.score >= 80
+						)
+					`,
+					additionalProperties: { items },
+				});
+
+				expect(outcome.result).toEqual([
+					{ json: { status: 'active', score: 85 } },
+					{ json: { status: 'active', score: 95 } },
+				]);
+			});
+
+			it('should execute data transformation', async () => {
+				const data = [
+					{ id: 1, value: 10 },
+					{ id: 2, value: 20 },
+					{ id: 3, value: 30 },
+				];
+
+				const outcome = await executeRunCode({
+					code: `
+						return data.reduce((acc, item) => {
+							acc[item.id] = item.value * 2;
+							return acc;
+						}, {})
+					`,
+					additionalProperties: { data },
+				});
+
+				expect(outcome.result).toEqual({
+					1: 20,
+					2: 40,
+					3: 60,
+				});
+			});
+
+			it('should handle string manipulation', async () => {
+				const outcome = await executeRunCode({
+					code: `
+						return text
+							.split(' ')
+							.map(word => word.charAt(0).toUpperCase() + word.slice(1))
+							.join(' ')
+					`,
+					additionalProperties: { text: 'hello world from n8n' },
+				});
+
+				expect(outcome.result).toBe('Hello World From N8n');
+			});
 		});
 	});
 });

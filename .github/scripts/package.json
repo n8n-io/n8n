@@ -3,7 +3,7 @@
     "cacheable-lookup": "6.1.0",
     "conventional-changelog": "^4.0.0",
     "debug": "4.3.4",
-    "glob": "10.3.10",
+    "glob": "10.5.0",
     "p-limit": "3.1.0",
     "picocolors": "1.0.1",
     "semver": "7.5.4",
