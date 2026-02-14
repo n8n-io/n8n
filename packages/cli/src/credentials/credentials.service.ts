@@ -43,17 +43,22 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { getAllKeyPaths } from '@/utils';
 
 import { CredentialsFinderService } from './credentials-finder.service';
-import { validateExternalSecretsPermissions } from './validation';
+import {
+	validateAccessToReferencedSecretProviders,
+	validateExternalSecretsPermissions,
+} from './validation';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -80,6 +85,8 @@ export class CredentialsService {
 		private readonly userRepository: UserRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsHelper: CredentialsHelper,
+		private readonly externalSecretsConfig: ExternalSecretsConfig,
+		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 	) {}
 
 	private async addGlobalCredentials(
@@ -493,9 +500,23 @@ export class CredentialsService {
 	async prepareUpdateData(
 		user: User,
 		data: CredentialRequest.CredentialProperties,
-		decryptedData: ICredentialDataDecryptedObject,
+		existingCredential: CredentialsEntity,
 	): Promise<CredentialsEntity> {
+		const decryptedData = this.decrypt(existingCredential, true);
 		validateExternalSecretsPermissions(user, data.data, decryptedData);
+
+		// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
+		const projectOwningCredential = existingCredential.shared?.find(
+			(shared) => shared.role === 'credential:owner',
+		)!;
+
+		if (this.externalSecretsConfig.externalSecretsForProjects && data.data) {
+			await validateAccessToReferencedSecretProviders(
+				projectOwningCredential.projectId,
+				data.data,
+				this.externalSecretsProviderAccessCheckService,
+			);
+		}
 
 		const mergedData = deepCopy(data);
 		if (mergedData.data) {
@@ -939,7 +960,6 @@ export class CredentialsService {
 				}
 			}
 		}
-
 		validateExternalSecretsPermissions(user, data);
 		this.validateOAuthCredentialUrls(type, data);
 	}
@@ -982,6 +1002,13 @@ export class CredentialsService {
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
 		this.checkCredentialData(opts.type, opts.data as ICredentialDataDecryptedObject, user);
+		if (this.externalSecretsConfig.externalSecretsForProjects && opts.projectId) {
+			await validateAccessToReferencedSecretProviders(
+				opts.projectId,
+				opts.data as ICredentialDataDecryptedObject,
+				this.externalSecretsProviderAccessCheckService,
+			);
+		}
 		const encryptedCredential = this.createEncryptedData({
 			id: null,
 			name: opts.name,

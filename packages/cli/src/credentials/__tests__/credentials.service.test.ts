@@ -19,10 +19,14 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
 import type { ExternalHooks } from '@/external-hooks';
+import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import type { CredentialsTester } from '@/services/credentials-tester.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
+
+import { mockExistingCredential } from './credentials.test-data';
 
 describe('CredentialsService', () => {
 	const credType = mock<ICredentialType>({
@@ -57,6 +61,8 @@ describe('CredentialsService', () => {
 	const userRepository = mock<UserRepository>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const credentialsHelper = mock<CredentialsHelper>();
+	const externalSecretsConfig = mock<ExternalSecretsConfig>();
+	const externalSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -73,9 +79,40 @@ describe('CredentialsService', () => {
 		userRepository,
 		credentialsFinderService,
 		credentialsHelper,
+		externalSecretsConfig,
+		externalSecretsProviderAccessCheckService,
 	);
 
 	beforeEach(() => jest.resetAllMocks());
+
+	/**
+	 * Helper function to mock the credentials repository transaction manager
+	 * @param options - Configuration options
+	 * @param options.credentialId - The ID to assign to saved credentials (default: 'new-cred-id')
+	 * @param options.onSave - Optional callback to capture saved entities
+	 */
+	const mockTransactionManager = (options?: {
+		credentialId?: string;
+		onSave?: (entity: any) => void;
+	}) => {
+		const credentialId = options?.credentialId ?? 'new-cred-id';
+		const onSave = options?.onSave;
+
+		// @ts-expect-error - Mocking manager for testing
+		credentialsRepository.manager = {
+			transaction: jest.fn().mockImplementation(async (callback) => {
+				const mockManager = {
+					save: jest.fn().mockImplementation(async (entity) => {
+						if (onSave) {
+							onSave(entity);
+						}
+						return { ...entity, id: credentialId };
+					}),
+				};
+				return await callback(mockManager);
+			}),
+		};
+	};
 
 	describe('redact', () => {
 		it('should redact sensitive values', () => {
@@ -1459,18 +1496,7 @@ describe('CredentialsService', () => {
 				credentialEntityInput = data;
 				return data as any;
 			});
-			// @ts-expect-error - Mocking manager for testing
-			credentialsRepository.manager = {
-				transaction: jest.fn().mockImplementation(async (callback) => {
-					const mockManager = {
-						save: jest.fn().mockImplementation(async (entity) => {
-							savedEntities.push(entity);
-							return { ...entity, id: 'new-cred-id' };
-						}),
-					};
-					return await callback(mockManager);
-				}),
-			};
+			mockTransactionManager({ onSave: (entity) => savedEntities.push(entity) });
 
 			// ACT
 			await service.createUnmanagedCredential(payload, ownerUser);
@@ -1497,18 +1523,7 @@ describe('CredentialsService', () => {
 			// ARRANGE
 			const payload = { ...credentialData }; // no isGlobal field
 			let savedCredential: any;
-			// @ts-expect-error - Mocking manager for testing
-			credentialsRepository.manager = {
-				transaction: jest.fn().mockImplementation(async (callback) => {
-					const mockManager = {
-						save: jest.fn().mockImplementation(async (entity) => {
-							savedCredential = entity;
-							return { ...entity, id: 'new-cred-id' };
-						}),
-					};
-					return await callback(mockManager);
-				}),
-			};
+			mockTransactionManager({ onSave: (entity) => (savedCredential = entity) });
 
 			// ACT
 			await service.createUnmanagedCredential(payload, ownerUser);
@@ -1521,18 +1536,7 @@ describe('CredentialsService', () => {
 			// ARRANGE
 			const payload = { ...credentialData, isGlobal: false };
 			let savedCredential: any;
-			// @ts-expect-error - Mocking manager for testing
-			credentialsRepository.manager = {
-				transaction: jest.fn().mockImplementation(async (callback) => {
-					const mockManager = {
-						save: jest.fn().mockImplementation(async (entity) => {
-							savedCredential = entity;
-							return { ...entity, id: 'new-cred-id' };
-						}),
-					};
-					return await callback(mockManager);
-				}),
-			};
+			mockTransactionManager({ onSave: (entity) => (savedCredential = entity) });
 
 			// ACT
 			await service.createUnmanagedCredential(payload, memberUser);
@@ -1610,21 +1614,85 @@ describe('CredentialsService', () => {
 			);
 		});
 
-		it('should prevent use of external secret expression when required permission is missing', async () => {
-			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
-			const payload = {
-				name: 'Test Credential',
-				type: 'apiKey',
-				data: {
-					apiKey: '$secrets.myApiKey',
-					url: 'https://api.example.com',
-				},
-				projectId: 'project-1',
-			};
+		describe('external secrets', () => {
+			it('should prevent use of external secret expression when required permission is missing', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.myApiKey }}',
+						url: 'https://api.example.com',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
 
-			await expect(service.createUnmanagedCredential(payload, memberUser)).rejects.toThrow(
-				'Lacking permissions to reference external secrets in credentials',
-			);
+				await expect(service.createUnmanagedCredential(payload, memberUser)).rejects.toThrow(
+					'Lacking permissions to reference external secrets in credentials',
+				);
+			});
+
+			it('should list all unavailable external secret providers in error message', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.outsideProvider.bar }}',
+						anotherApiKey: '={{ $secrets.anotherOutsideProvider.bar }}',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					false,
+				);
+
+				await expect(service.createUnmanagedCredential(payload, ownerUser)).rejects.toThrow(
+					'The secret providers "outsideProvider" (used in "apiKey"), "anotherOutsideProvider" (used in "anotherApiKey") do not exist in this project',
+				);
+			});
+
+			it('should throw BadRequestError when referencing external secret provider that is not available in current project', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.outsideProvider.bar }}',
+						url: 'https://api.example.com',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					false,
+				);
+
+				await expect(service.createUnmanagedCredential(payload, ownerUser)).rejects.toThrow(
+					'The secret provider "outsideProvider" used in "apiKey" does not exist in this project',
+				);
+			});
+
+			it('should create credential that references external secret provider that is shared with current project', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.validProvider.bar }}',
+						url: 'https://api.example.com',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
+
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					true,
+				);
+
+				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
+				mockTransactionManager();
+
+				await service.createUnmanagedCredential(payload, ownerUser);
+			});
 		});
 	});
 
@@ -1699,17 +1767,7 @@ describe('CredentialsService', () => {
 				},
 			]);
 			credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
-			// @ts-expect-error - Mocking manager for testing
-			credentialsRepository.manager = {
-				transaction: jest.fn().mockImplementation(async (callback) => {
-					const mockManager = {
-						save: jest.fn().mockImplementation(async (entity) => {
-							return { ...entity, id: 'new-managed-cred-id' };
-						}),
-					};
-					return await callback(mockManager);
-				}),
-			};
+			mockTransactionManager({ credentialId: 'new-managed-cred-id' });
 
 			// ACT
 			const result = await service.createManagedCredential(payload, ownerUser);
@@ -1717,6 +1775,108 @@ describe('CredentialsService', () => {
 			// ASSERT
 			expect(result).toHaveProperty('id', 'new-managed-cred-id');
 			expect(result).toHaveProperty('name', 'Managed Credential');
+		});
+	});
+
+	describe('prepareUpdateData', () => {
+		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+		describe('external secrets', () => {
+			beforeEach(() => {
+				jest.spyOn(service, 'decrypt').mockReturnValue({});
+			});
+
+			it('should list all unavailable external secret providers in error message', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.outsideProvider.bar }}',
+						anotherApiKey: '={{ $secrets.anotherOutsideProvider.bar }}',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
+				const existingCredential = mockExistingCredential({
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {},
+					projectId: 'WHwt9vP3keCUvmB5',
+				});
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					false,
+				);
+
+				await expect(
+					service.prepareUpdateData(ownerUser, payload, existingCredential),
+				).rejects.toThrow(
+					'The secret providers "outsideProvider" (used in "apiKey"), "anotherOutsideProvider" (used in "anotherApiKey") do not exist in this project',
+				);
+				expect(
+					externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mock.calls,
+				).toEqual([
+					['outsideProvider', 'WHwt9vP3keCUvmB5'],
+					['anotherOutsideProvider', 'WHwt9vP3keCUvmB5'],
+				]);
+			});
+
+			it('should throw BadRequestError when referencing external secret provider that is not available in current project', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.outsideProvider.bar }}',
+						url: 'https://api.example.com',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
+				const existingCredential = mockExistingCredential({
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {},
+					projectId: 'WHwt9vP3keCUvmB5',
+				});
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					false,
+				);
+
+				await expect(
+					service.prepareUpdateData(ownerUser, payload, existingCredential),
+				).rejects.toThrow(
+					'The secret provider "outsideProvider" used in "apiKey" does not exist in this project',
+				);
+				expect(
+					externalSecretsProviderAccessCheckService.isProviderAvailableInProject,
+				).toHaveBeenCalledWith('outsideProvider', 'WHwt9vP3keCUvmB5');
+			});
+
+			it('should create credential that references external secret provider that is shared with current project', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.validProvider.bar }}',
+						url: 'https://api.example.com',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
+				const existingCredential = mockExistingCredential({
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {},
+					projectId: 'WHwt9vP3keCUvmB5',
+				});
+
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					true,
+				);
+
+				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
+				mockTransactionManager();
+
+				await service.prepareUpdateData(ownerUser, payload, existingCredential);
+			});
 		});
 	});
 
