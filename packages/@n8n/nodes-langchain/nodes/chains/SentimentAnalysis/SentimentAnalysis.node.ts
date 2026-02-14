@@ -13,6 +13,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { escapeLangChainTemplateVars } from '@utils/promptEscaping';
 import { getBatchingOptionFields } from '@utils/sharedFields';
 import { getTracingConfig } from '@utils/tracing';
 
@@ -217,8 +218,15 @@ export class SentimentAnalysis implements INodeType {
 						? OutputFixingParser.fromLLM(llm, structuredParser)
 						: structuredParser;
 
+					// Escape curly braces in user-provided prompt to prevent LangChain from
+					// interpreting JSON-like structures as template variables.
+					// Preserve {categories} since the default prompt uses it as a template variable.
+					const escapedPrompt = escapeLangChainTemplateVars(
+						options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE,
+						['categories'],
+					);
 					const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-						`${options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE}
+						`${escapedPrompt}
 				{format_instructions}`,
 					);
 
@@ -357,8 +365,13 @@ export class SentimentAnalysis implements INodeType {
 						? OutputFixingParser.fromLLM(llm, structuredParser)
 						: structuredParser;
 
+					// Escape curly braces in user-provided prompt (same as batch path above)
+					const escapedPrompt = escapeLangChainTemplateVars(
+						options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE,
+						['categories'],
+					);
 					const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-						`${options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE}
+						`${escapedPrompt}
 			{format_instructions}`,
 					);
 

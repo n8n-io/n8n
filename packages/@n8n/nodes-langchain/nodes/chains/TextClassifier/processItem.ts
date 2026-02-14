@@ -4,6 +4,7 @@ import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core
 import type { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
 import { NodeOperationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
+import { escapeLangChainTemplateVars } from '@utils/promptEscaping';
 import { getTracingConfig } from '@utils/tracing';
 
 import { SYSTEM_PROMPT_TEMPLATE } from './constants';
@@ -36,8 +37,15 @@ export async function processItem(
 		itemIndex,
 		SYSTEM_PROMPT_TEMPLATE,
 	) as string;
+	// Escape curly braces in user-provided prompt to prevent LangChain from
+	// interpreting JSON-like structures as template variables.
+	// Preserve {categories} since the default prompt uses it as a template variable.
+	const escapedPrompt = escapeLangChainTemplateVars(
+		systemPromptTemplateOpt ?? SYSTEM_PROMPT_TEMPLATE,
+		['categories'],
+	);
 	const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-		`${systemPromptTemplateOpt ?? SYSTEM_PROMPT_TEMPLATE}
+		`${escapedPrompt}
 	{format_instructions}
 	${multiClassPrompt}
 	${fallbackPrompt}`,
