@@ -329,6 +329,7 @@ const isNDVV2 = computed(() => true);
 const isCanvasReadOnly = computed(() => {
 	return (
 		isDemoRoute.value ||
+		isReadOnlyRoute.value ||
 		isReadOnlyEnvironment.value ||
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
@@ -1947,8 +1948,8 @@ watch(
 	() => uiStore.dirtyStateSetCount,
 	(dirtyStateSetCount) => {
 		if (dirtyStateSetCount > 0) {
-			// Skip write access and auto-save in demo mode
-			if (isDemoRoute.value) return;
+			// Skip write access and auto-save in demo mode or read-only routes (e.g. execution preview)
+			if (isDemoRoute.value || isReadOnlyRoute.value) return;
 
 			collaborationStore.requestWriteAccess();
 

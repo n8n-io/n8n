@@ -290,6 +290,8 @@ const hasOutputConnection = computed(() => {
 });
 
 const valueChanged = (parameterData: IUpdateInformation) => {
+	if (props.readOnly) return;
+
 	let newValue: NodeParameterValue;
 
 	if (parameterData.hasOwnProperty('value')) {

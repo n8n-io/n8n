@@ -536,6 +536,11 @@ export function useWorkflowSaving({
 	);
 
 	const scheduleAutoSave = () => {
+		// Don't schedule if on a read-only route (e.g. execution preview)
+		if (router.currentRoute.value.meta?.readOnlyCanvas) {
+			return;
+		}
+
 		// Don't schedule if a save is already in progress - the finally block
 		// will reschedule if there are pending changes
 		if (autosaveStore.autoSaveState === AutoSaveState.InProgress) {
