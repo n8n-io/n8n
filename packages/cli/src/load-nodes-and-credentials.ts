@@ -17,6 +17,7 @@ import {
 	UnrecognizedNodeTypeError,
 	ExecutionContextHookRegistry,
 	CUSTOM_NODES_PACKAGE_NAME,
+	resolveCustomNodePackagePaths,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
@@ -629,30 +630,13 @@ export class LoadNodesAndCredentials {
 
 			// For lazy loaded packages, we need to watch the dist directory
 			const watchPaths = loader.isLazyLoaded ? [path.join(directory, 'dist')] : [directory];
-			const customNodesRoot = path.join(directory, 'node_modules');
 
 			if (loader.packageName === CUSTOM_NODES_PACKAGE_NAME) {
-				const customNodeEntries = await fsPromises.readdir(customNodesRoot, {
-					withFileTypes: true,
-				});
-
-				// Custom nodes are usually symlinked using npm link. Resolve symlinks to support file watching
-				const realCustomNodesPaths = await Promise.all(
-					customNodeEntries
-						.filter(
-							(entry) =>
-								(entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith('.'),
-						)
-						.map(
-							async (entry) =>
-								await fsPromises.realpath(path.join(customNodesRoot, entry.name)).catch(() => null),
-						),
-				);
-
-				watchPaths.push.apply(
-					watchPaths,
-					realCustomNodesPaths.filter((path): path is string => !!path),
-				);
+				// Custom nodes are usually symlinked using npm link. Resolve symlinks
+				// to support file watching for both scoped (@scope/pkg) and unscoped packages.
+				const customNodesRoot = path.join(directory, 'node_modules');
+				const resolvedPaths = await resolveCustomNodePackagePaths(customNodesRoot);
+				watchPaths.push(...resolvedPaths);
 			}
 
 			this.logger.debug('Watching node folders for hot reload', {

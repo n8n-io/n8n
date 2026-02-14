@@ -555,7 +555,6 @@ describe('LoadNodesAndCredentials', () => {
 
 			await instance.setupHotReload();
 
-			console.log(subscribe);
 			expect(subscribe).toHaveBeenCalledTimes(2);
 			expect(subscribe).toHaveBeenCalledWith('/some/custom/path', expect.any(Function), {
 				ignore: ['**/node_modules/**/node_modules/**'],
@@ -577,6 +576,69 @@ describe('LoadNodesAndCredentials', () => {
 			expect(mockLoader.reset).toHaveBeenCalled();
 			expect(mockLoader.loadAll).toHaveBeenCalled();
 			expect(postProcessSpy).toHaveBeenCalled();
+		});
+
+		it('should watch scoped custom node packages', async () => {
+			jest.spyOn(instance, 'postProcessLoaders').mockResolvedValue(undefined);
+			const subscribe = jest.mocked(watcher.subscribe);
+
+			// Simulate node_modules with a scoped package
+			(fs.readdir as jest.Mock)
+				.mockResolvedValueOnce([
+					{ name: '@my-scope', isDirectory: () => true, isSymbolicLink: () => false },
+				])
+				.mockResolvedValueOnce([
+					{
+						name: 'n8n-nodes-scoped',
+						isDirectory: () => false,
+						isSymbolicLink: () => true,
+					},
+				]);
+
+			(fs.realpath as jest.Mock).mockResolvedValueOnce('/resolved/scoped-node');
+
+			await instance.setupHotReload();
+
+			expect(subscribe).toHaveBeenCalledTimes(2);
+			expect(subscribe).toHaveBeenCalledWith('/some/custom/path', expect.any(Function), {
+				ignore: ['**/node_modules/**/node_modules/**'],
+			});
+			expect(subscribe).toHaveBeenCalledWith('/resolved/scoped-node', expect.any(Function), {
+				ignore: ['**/node_modules/**/node_modules/**'],
+			});
+		});
+
+		it('should watch both scoped and unscoped packages', async () => {
+			jest.spyOn(instance, 'postProcessLoaders').mockResolvedValue(undefined);
+			const subscribe = jest.mocked(watcher.subscribe);
+
+			// Simulate node_modules with both unscoped and scoped packages
+			(fs.readdir as jest.Mock)
+				.mockResolvedValueOnce([
+					{ name: 'n8n-nodes-unscoped', isDirectory: () => true, isSymbolicLink: () => false },
+					{ name: '@org', isDirectory: () => true, isSymbolicLink: () => false },
+				])
+				.mockResolvedValueOnce([
+					{ name: 'n8n-nodes-scoped', isDirectory: () => true, isSymbolicLink: () => false },
+				]);
+
+			(fs.realpath as jest.Mock)
+				.mockResolvedValueOnce('/resolved/unscoped')
+				.mockResolvedValueOnce('/resolved/scoped');
+
+			await instance.setupHotReload();
+
+			// 1 for the base directory + 2 for the resolved packages
+			expect(subscribe).toHaveBeenCalledTimes(3);
+			expect(subscribe).toHaveBeenCalledWith('/some/custom/path', expect.any(Function), {
+				ignore: ['**/node_modules/**/node_modules/**'],
+			});
+			expect(subscribe).toHaveBeenCalledWith('/resolved/unscoped', expect.any(Function), {
+				ignore: ['**/node_modules/**/node_modules/**'],
+			});
+			expect(subscribe).toHaveBeenCalledWith('/resolved/scoped', expect.any(Function), {
+				ignore: ['**/node_modules/**/node_modules/**'],
+			});
 		});
 	});
 
