@@ -760,5 +760,28 @@ describe('useWorkflowSaving', () => {
 
 			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Idle);
 		});
+
+		it('should not schedule autosave on read-only routes (e.g. execution preview)', () => {
+			const autosaveStore = useWorkflowAutosaveStore();
+			autosaveStore.reset();
+
+			const mockRouter = {
+				resolve: vi.fn(),
+				currentRoute: {
+					value: {
+						name: VIEWS.EXECUTION_PREVIEW,
+						params: {},
+						query: {},
+						meta: { readOnlyCanvas: true },
+					},
+				},
+			};
+
+			const { autoSaveWorkflow } = useWorkflowSaving({ router: mockRouter as never });
+
+			autoSaveWorkflow();
+
+			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Idle);
+		});
 	});
 });
