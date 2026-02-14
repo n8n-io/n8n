@@ -4,15 +4,15 @@ import { BasePage } from './BasePage';
 
 export class SignInPage extends BasePage {
 	getEmailField(): Locator {
-		return this.page.getByTestId('emailOrLdapLoginId').locator('input');
+		return this.page.getByRole('textbox', { name: 'Email' });
 	}
 
 	getPasswordField(): Locator {
-		return this.page.getByTestId('password').locator('input');
+		return this.page.getByRole('textbox', { name: 'Password' });
 	}
 
 	getSubmitButton(): Locator {
-		return this.page.getByTestId('form-submit-button');
+		return this.page.getByRole('button', { name: 'Sign in' });
 	}
 
 	getSsoButton(): Locator {
