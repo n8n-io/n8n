@@ -154,6 +154,7 @@ export async function salesforceApiRequest(
 			);
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			Object.assign(options, option);
+			return await this.helpers.request(options);
 		} else {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_web_server_flow.htm&type=5
 			const credentialsType = 'salesforceOAuth2Api';
