@@ -177,9 +177,9 @@ onClickOutside(
 			}"
 		/>
 		<N8nIconButton
+			variant="subtle"
 			v-if="active"
 			:class="$style.close"
-			type="secondary"
 			icon="x"
 			aria-label="Close Node Creator"
 			@click="emit('closeNodeCreator')"

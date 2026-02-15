@@ -6,7 +6,7 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { CloudPlanAndUsageData } from '@/Interface';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { N8nButton, N8nText, type IconName, type ButtonType } from '@n8n/design-system';
+import { N8nButton, N8nText, type IconName, type ButtonVariant } from '@n8n/design-system';
 
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
 
@@ -21,7 +21,7 @@ const bannerCta = computed(() => ({
 	text: cloudPlanStore.bannerCta.text,
 	icon: cloudPlanStore.bannerCta.icon as IconName | undefined,
 	size: cloudPlanStore.bannerCta.size as 'small' | 'medium',
-	style: cloudPlanStore.bannerCta.style as ButtonType,
+	style: cloudPlanStore.bannerCta.style as ButtonVariant,
 	href: cloudPlanStore.bannerCta.href,
 }));
 const bannerIcon = computed(() => cloudPlanStore.bannerIcon as IconName | undefined);
@@ -129,7 +129,7 @@ function onCtaClick() {
 		<template #trailingContent>
 			<div :class="$style.trailingContentWrapper">
 				<N8nButton
-					:type="bannerCta.style"
+					:variant="bannerCta.style"
 					:icon="bannerCta.icon"
 					:size="bannerCta.size"
 					@click="onCtaClick"

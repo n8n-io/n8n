@@ -307,7 +307,12 @@ function valueChanged(parameterData: IUpdateInformation) {
 					@select="optionSelected"
 				>
 					<template #trigger>
-						<N8nButton type="highlightFill" icon="plus" :label="placeholder" />
+						<N8nButton
+							class="n8n-button--highlightFill"
+							variant="subtle"
+							icon="plus"
+							:label="placeholder"
+						/>
 					</template>
 				</N8nDropdown>
 			</div>
@@ -369,7 +374,12 @@ function valueChanged(parameterData: IUpdateInformation) {
 					@select="optionSelected"
 				>
 					<template #trigger>
-						<N8nButton type="highlightFill" icon="plus" :label="placeholder" />
+						<N8nButton
+							class="n8n-button--highlightFill"
+							variant="subtle"
+							icon="plus"
+							:label="placeholder"
+						/>
 					</template>
 				</N8nDropdown>
 			</div>

@@ -1823,6 +1823,7 @@
 	"nodeCredentials.createNew.permissionDenied": "Your current role does not allow you to create credentials",
 	"nodeCredentials.credentialFor": "Credential for {credentialType}",
 	"nodeCredentials.credentialsLabel": "Credential to connect with",
+	"nodeCredentials.credentialsLabelShort": "Credential",
 	"nodeCredentials.issues": "Issues",
 	"nodeCredentials.selectCredential": "Select Credential",
 	"nodeCredentials.selectedCredentialUnavailable": "{name} (unavailable)",
@@ -1833,6 +1834,13 @@
 	"nodeCredentials.updateCredential.permissionDenied": "Your current role does not allow you to update credentials",
 	"nodeCredentials.deleteCredential": "Delete Credential",
 	"nodeCredentials.deleteCredential.permissionDenied": "Your current role does not allow you to delete credentials",
+	"nodeCredentials.quickConnect.connectTo": "Connect to {provider}",
+	"nodeCredentials.quickConnect.or": "or",
+	"nodeCredentials.quickConnect.setupManually": "setup manually",
+	"nodeCredentials.emptyState.noCredentials": "No credentials yet",
+	"nodeCredentials.emptyState.setupCredential": "Set up credential",
+	"nodeCredentials.oauth.accountConnected": "Account connected successfully",
+	"nodeCredentials.oauth.accountConnectionFailed": "Account connection failed",
 	"nodeErrorView.cause": "Cause",
 	"nodeErrorView.copyToClipboard": "Copy to Clipboard",
 	"nodeErrorView.copyToClipboard.tooltip": "Copy error details for debugging. Copied data may contain sensitive information. Proceed with caution when sharing.",
@@ -2251,17 +2259,14 @@
 	"prompts.npsSurvey.send": "Send",
 	"prompts.npsSurvey.reviewUs": "If you’d like to help even more, leave us a <a target=\"_blank\" href=\"https://www.g2.com/products/n8n/reviews/start\">review on G2</a>.",
 	"prompts.npsSurvey.thanks": "Thanks for your feedback",
-
 	"projectRoles.manageRoles.paywall.title": "Available on the Enterprise plan",
 	"projectRoles.manageRoles.paywall.text": "Create custom roles with granular permissions to control exactly what team members can do inside projects.",
-
 	"projectRoles.project:read": "View",
 	"projectRoles.project:read.tooltip": "View project name, icon, description, and navigate within the project",
 	"projectRoles.project:update": "Edit",
 	"projectRoles.project:update.tooltip": "Edit project details and manage users",
 	"projectRoles.project:delete": "Delete",
 	"projectRoles.project:delete.tooltip": "Delete the entire project and all its contents",
-
 	"projectRoles.folder:read": "View",
 	"projectRoles.folder:read.tooltip": "View folders and subfolders within a project",
 	"projectRoles.folder:update": "Edit",
@@ -2272,7 +2277,6 @@
 	"projectRoles.folder:move.tooltip": "Move a folder and its workflows to another project.",
 	"projectRoles.folder:delete": "Delete",
 	"projectRoles.folder:delete.tooltip": "Delete an empty folder. If not empty, ask further action",
-
 	"projectRoles.workflow:read": "View",
 	"projectRoles.workflow:read.tooltip": "View workflows within the project",
 	"projectRoles.workflow:execute": "Execute",
@@ -2289,7 +2293,6 @@
 	"projectRoles.workflow:publish.tooltip": "Publish workflows",
 	"projectRoles.workflow:unpublish": "Unpublish",
 	"projectRoles.workflow:unpublish.tooltip": "Unpublish workflows",
-
 	"projectRoles.credential:read": "View",
 	"projectRoles.credential:read.tooltip": "View credentials details (secret masked) and use them in workflows",
 	"projectRoles.credential:update": "Edit",
@@ -2302,7 +2305,6 @@
 	"projectRoles.credential:move.tooltip": "Move credentials to another project",
 	"projectRoles.credential:delete": "Delete",
 	"projectRoles.credential:delete.tooltip": "Delete credentials",
-
 	"projectRoles.dataTable:read": "View",
 	"projectRoles.dataTable:read.tooltip": "View the structure of data table (columns, name) and to view metadata",
 	"projectRoles.dataTable:update": "Edit",
@@ -2315,7 +2317,6 @@
 	"projectRoles.dataTable:readRow.tooltip": "View data table rows",
 	"projectRoles.dataTable:writeRow": "Edit Rows",
 	"projectRoles.dataTable:writeRow.tooltip": "Modify data table rows",
-
 	"projectRoles.projectVariable:read": "View",
 	"projectRoles.projectVariable:read.tooltip": "View project variable values and use them in workflows",
 	"projectRoles.projectVariable:update": "Edit",
@@ -2324,17 +2325,14 @@
 	"projectRoles.projectVariable:create.tooltip": "Create new project variables",
 	"projectRoles.projectVariable:delete": "Delete",
 	"projectRoles.projectVariable:delete.tooltip": "Delete project variables",
-
 	"projectRoles.sourceControl:pull": "Pull",
 	"projectRoles.sourceControl:push": "Push",
 	"projectRoles.sourceControl:push.tooltip": "Push changes (workflows, credentials, tags) to the remote repository",
 	"projectRoles.sourceControl:manage": "Configure",
-
 	"projectRoles.sourceControl.table.name": "Name",
 	"projectRoles.sourceControl.table.type": "Type",
 	"projectRoles.sourceControl.table.assignedTo": "Assigned to",
 	"projectRoles.sourceControl.table.lastEdited": "Last edited",
-
 	"projectRoles.backToRoleList": "Back to role list",
 	"projectRoles.newRole": "New Role",
 	"projectRoles.addRole": "Add role",
@@ -2356,10 +2354,8 @@
 	"projectRoles.type.sourceControl": "Source control",
 	"projectRoles.type.dataTable": "Data tables",
 	"projectRoles.type.projectVariable": "Project variables",
-
 	"projectRoles.literal.system": "System",
 	"projectRoles.literal.custom": "Custom",
-
 	"projectRoles.action.cancel": "Cancel",
 	"projectRoles.action.delete": "Delete",
 	"projectRoles.action.delete.button": "Delete role",
@@ -2370,21 +2366,17 @@
 	"projectRoles.action.delete.warning": "Deleting a role is permanent. This can’t be undone.",
 	"projectRoles.action.delete.useWarning": "You can’t delete this role while it’s assigned to {count} users. Unassign it from all users first.",
 	"projectRoles.dangerZone": "Danger zone",
-
 	"projectRoles.action.duplicate": "Duplicate",
 	"projectRoles.action.duplicate.name": "Copy of {roleName}",
 	"projectRoles.action.duplicate.success": "Role '{roleName}' duplicated successfully as '{roleDuplicateName}'",
 	"projectRoles.action.duplicate.error": "Error duplicating role",
-
 	"projectRoles.action.create.success": "Role created successfully",
 	"projectRoles.action.create.error": "Error creating role",
-
 	"projectRoles.action.update": "Update role",
 	"projectRoles.action.update.success": "Role updated successfully",
 	"projectRoles.action.update.error": "Error updating role",
 	"projectRoles.action.update.title": "Update role for '{count}' users?",
 	"projectRoles.action.update.text": "These changes will instantly affect all {count} users with this role. Are you sure you want to continue?",
-
 	"renameAction.emptyName.message": "Please enter a name, or press 'esc' to go back to the old one",
 	"renameAction.emptyName.title": "Name missing",
 	"renameAction.invalidName.title": "Invalid name",
@@ -3224,6 +3216,7 @@
 	"templates.workflowsNotFound": "Workflow could not be found",
 	"templates.card.setupTime": "{count} min setup",
 	"templates.card.verified": "Verified",
+	"templates.card.readyToRun": "Ready to run",
 	"textEdit.edit": "Edit",
 	"userActivity.daysAgo": "{count} days ago",
 	"userActivity.lastTime": "Last {time}",

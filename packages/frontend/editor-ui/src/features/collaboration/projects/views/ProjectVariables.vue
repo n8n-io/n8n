@@ -426,8 +426,8 @@ onMounted(() => {
 							placement="top"
 						>
 							<N8nButton
+								variant="subtle"
 								data-test-id="variable-row-edit-button"
-								type="tertiary"
 								class="mr-xs"
 								:disabled="!(globalPermissions.update ?? projectPermissions.update)"
 								@click="openEditVariableModal(data)"
@@ -443,8 +443,8 @@ onMounted(() => {
 							placement="top"
 						>
 							<N8nButton
+								variant="subtle"
 								data-test-id="variable-row-delete-button"
-								type="tertiary"
 								:disabled="!(globalPermissions.delete ?? projectPermissions.delete)"
 								@click="handleDeleteVariable(data)"
 							>
