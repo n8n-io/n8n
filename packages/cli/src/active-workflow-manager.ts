@@ -10,7 +10,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import {
 	ActiveWorkflows,
@@ -759,7 +759,20 @@ export class ActiveWorkflowManager {
 			const error = ensureError(e);
 			const { message } = error;
 
-			await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
+			const shouldDeactivate = await this.shouldDeactivateOnActivationError();
+
+			if (shouldDeactivate) {
+				await this.workflowRepository.update(workflowId, {
+					active: false,
+					activeVersionId: null,
+				});
+			} else {
+				this.logger.warn(
+					`Workflow ${workflowId} failed to activate but will remain published (N8N_DEACTIVATE_WORKFLOWS_ON_PLUGIN_ERROR=false)`,
+					{ workflowId, errorMessage: message },
+				);
+				await this.activationErrorsService.register(workflowId, message);
+			}
 
 			this.push.broadcast({
 				type: 'workflowFailedToActivate',
@@ -771,6 +784,32 @@ export class ActiveWorkflowManager {
 				payload: { workflowId, errorMessage: message },
 			}); // instruct followers to show activation error in UI
 		}
+	}
+
+	/**
+	 * Whether to deactivate a workflow when activation fails in the pub/sub handler.
+	 * Checks if community packages have missing packages and if the config allows
+	 * deactivation on plugin errors. When missing packages are detected and
+	 * deactivation is disabled (default), workflows remain published to prevent
+	 * mass unpublishing caused by transient plugin load failures.
+	 */
+	private async shouldDeactivateOnActivationError(): Promise<boolean> {
+		const { CommunityPackagesService } = await import(
+			'@/modules/community-packages/community-packages.service'
+		);
+		const { CommunityPackagesConfig } = await import(
+			'@/modules/community-packages/community-packages.config'
+		);
+
+		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
+
+		if (communityPackagesConfig.deactivateOnPluginError) return true;
+
+		const communityPackagesService = Container.get(CommunityPackagesService);
+
+		if (communityPackagesService.hasMissingPackages) return false;
+
+		return true;
 	}
 
 	/**

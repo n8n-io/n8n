@@ -25,4 +25,12 @@ export class CommunityPackagesConfig {
 	/** Whether to load community packages */
 	@Env('N8N_COMMUNITY_PACKAGES_PREVENT_LOADING')
 	preventLoading: boolean = false;
+
+	/**
+	 * Whether to deactivate workflows when a community package fails to load.
+	 * When false (default), workflows remain published even if the plugin they
+	 * depend on fails to load, avoiding mass unpublishing in production.
+	 */
+	@Env('N8N_DEACTIVATE_WORKFLOWS_ON_PLUGIN_ERROR')
+	deactivateOnPluginError: boolean = false;
 }

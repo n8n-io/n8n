@@ -80,6 +80,18 @@ export class CommunityPackagesService {
 		return this.missingPackages.length > 0;
 	}
 
+	/**
+	 * Check if a node type belongs to a package that failed to load.
+	 * The node type format is "packageName.nodeName", and missingPackages
+	 * entries are "packageName@version".
+	 */
+	isNodeFromMissingPackage(nodeTypeName: string): boolean {
+		if (this.missingPackages.length === 0) return false;
+
+		const missingPackageNames = this.missingPackages.map((entry) => entry.split('@')[0]);
+		return missingPackageNames.some((pkg) => nodeTypeName.startsWith(`${pkg}.`));
+	}
+
 	async findInstalledPackage(packageName: string) {
 		return await this.installedPackageRepository.findOne({
 			where: { packageName },
