@@ -30,6 +30,7 @@
 import { Readable } from 'stream';
 import { parser } from 'stream-json';
 import Asm from 'stream-json/Assembler';
+import { ensureError } from 'n8n-workflow';
 
 // 64 KB chunks — selected via benchmarks as the sweet spot for event-loop
 // responsiveness vs scheduling overhead (p95 lag ~4 ms at 50 MB payload).
@@ -161,7 +162,7 @@ export async function parseFlatteAsync(flattedString: string): Promise<unknown> 
 				const prepared = prepareFlatted(asmResult.current);
 				resolve(resolveFlatted(prepared));
 			} catch (e) {
-				reject(e instanceof Error ? e : new Error(String(e)));
+				reject(ensureError(e));
 			}
 		});
 
