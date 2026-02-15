@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import jp from 'jsonpath';
 import type { INodeUi } from '@/Interface';
-import type { IDataObject } from 'n8n-workflow';
+import { NodeConnectionTypes, type IDataObject, type IRunExecutionData } from 'n8n-workflow';
 import { clearJsonKey, convertPath } from '@/app/utils/typesUtils';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -32,6 +32,7 @@ const props = withDefaults(
 		jsonData: IDataObject[];
 		outputIndex: number | undefined;
 		runIndex: number | undefined;
+		execution?: IRunExecutionData;
 	}>(),
 	{
 		selectedJsonPath: nonExistingJsonPath,
@@ -76,7 +77,14 @@ function getJsonValue(): string {
 			selectedValue = clearJsonKey(pinnedData.data.value as object);
 		} else {
 			selectedValue = executionDataToJson(
-				nodeHelpers.getNodeInputData(props.node, props.runIndex, props.outputIndex),
+				nodeHelpers.getNodeInputData(
+					props.node,
+					props.runIndex,
+					props.outputIndex,
+					'output',
+					NodeConnectionTypes.Main,
+					props.execution,
+				),
 			);
 		}
 	} else {
@@ -188,10 +196,10 @@ function handleCopyClick(commandData: { command: string }) {
 <template>
 	<div :class="$style.actionsGroup" data-test-id="ndv-json-actions">
 		<N8nIconButton
+			variant="subtle"
 			v-if="noSelection"
 			:title="i18n.baseText('runData.copyToClipboard')"
 			icon="files"
-			type="tertiary"
 			:circle="false"
 			@click="handleCopyClick({ command: 'value' })"
 		/>
@@ -205,9 +213,9 @@ function handleCopyClick(commandData: { command: string }) {
 		>
 			<span class="el-dropdown-link">
 				<N8nIconButton
+					variant="subtle"
 					:title="i18n.baseText('runData.copyToClipboard')"
 					icon="files"
-					type="tertiary"
 					:circle="false"
 				/>
 			</span>

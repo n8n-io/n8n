@@ -3,7 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { ref, computed } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useEvaluationStore } from '../../evaluation.store';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import StepHeader from '../shared/StepHeader.vue';
 import { useRouter } from 'vue-router';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
@@ -74,10 +74,7 @@ const toggleStep = (index: number) => {
 function navigateToWorkflow(
 	action?: 'addEvaluationTrigger' | 'addEvaluationNode' | 'executeEvaluation',
 ) {
-	const routeWorkflowId =
-		workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
-			? 'new'
-			: workflowsStore.workflow.id;
+	const routeWorkflowId = workflowsStore.workflow.id || 'new';
 
 	void router.push({
 		name: VIEWS.WORKFLOW,
@@ -119,8 +116,8 @@ function onSeePlans() {
 
 					<div :class="$style.actionButton">
 						<N8nButton
+							variant="subtle"
 							size="small"
-							type="secondary"
 							@click="navigateToWorkflow('addEvaluationTrigger')"
 						>
 							{{ locale.baseText('evaluations.setupWizard.step1.button') }}
@@ -148,8 +145,8 @@ function onSeePlans() {
 					</ul>
 					<div :class="$style.actionButton">
 						<N8nButton
+							variant="subtle"
 							size="small"
-							type="secondary"
 							@click="navigateToWorkflow('addEvaluationNode')"
 						>
 							{{ locale.baseText('evaluations.setupWizard.step2.button') }}
@@ -186,9 +183,9 @@ function onSeePlans() {
 					</N8nCallout>
 					<div :class="$style.actionButton">
 						<N8nButton
+							variant="subtle"
 							v-if="!evaluationsQuotaExceeded"
 							size="small"
-							type="secondary"
 							@click="navigateToWorkflow('addEvaluationNode')"
 						>
 							{{ locale.baseText('evaluations.setupWizard.step3.button') }}
@@ -197,8 +194,8 @@ function onSeePlans() {
 							{{ locale.baseText('generic.seePlans') }}
 						</N8nButton>
 						<N8nButton
+							variant="ghost"
 							size="small"
-							text
 							style="color: var(--color--text--tint-1)"
 							@click="toggleStep(3)"
 						>
@@ -233,9 +230,9 @@ function onSeePlans() {
 				>
 					<div :class="[$style.actionButton, $style.actionButtonInline]">
 						<N8nButton
+							variant="subtle"
 							v-if="evaluationStore.evaluationSetMetricsNodeExist && !evaluationsQuotaExceeded"
 							size="medium"
-							type="secondary"
 							:disabled="
 								!evaluationStore.evaluationTriggerExists ||
 								(!evaluationStore.evaluationSetOutputsNodeExist &&
@@ -246,9 +243,9 @@ function onSeePlans() {
 							{{ locale.baseText('evaluations.setupWizard.step4.button') }}
 						</N8nButton>
 						<N8nButton
+							variant="subtle"
 							v-else
 							size="medium"
-							type="secondary"
 							:disabled="
 								!evaluationStore.evaluationTriggerExists ||
 								(!evaluationStore.evaluationSetOutputsNodeExist &&

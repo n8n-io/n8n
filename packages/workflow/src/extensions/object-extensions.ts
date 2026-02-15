@@ -179,6 +179,7 @@ hasField.doc = {
 
 removeField.doc = {
 	name: 'removeField',
+	aliases: ['delete'],
 	description: "Removes a field from the Object. The same as JavaScript's <code>delete</code>.",
 	examples: [
 		{

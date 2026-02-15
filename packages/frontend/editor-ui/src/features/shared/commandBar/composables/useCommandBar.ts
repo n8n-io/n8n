@@ -2,7 +2,7 @@ import { computed, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { COMMAND_BAR_EXPERIMENT, VIEWS } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
 import { useNodeCommands } from './useNodeCommands';
 import { useWorkflowCommands } from './useWorkflowCommands';
@@ -14,12 +14,18 @@ import { useProjectNavigationCommands } from './useProjectNavigationCommands';
 import { useExecutionCommands } from './useExecutionCommands';
 import { useGenericCommands } from './useGenericCommands';
 import { useRecentResources } from './useRecentResources';
+import { useChatHubCommands } from './useChatHubCommands';
 import type { CommandGroup } from '../types';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import {
+	CHAT_CONVERSATION_VIEW,
+	CHAT_PERSONAL_AGENTS_VIEW,
+	CHAT_VIEW,
+	CHAT_WORKFLOW_AGENTS_VIEW,
+} from '@/features/ai/chatHub/constants';
 
 export function useCommandBar() {
 	const nodeTypesStore = useNodeTypesStore();
@@ -27,15 +33,10 @@ export function useCommandBar() {
 	const workflowStore = useWorkflowsStore();
 	const router = useRouter();
 	const route = useRoute();
-	const postHog = usePostHog();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 
 	const placeholder = i18n.baseText('commandBar.placeholder');
-
-	const isEnabled = computed(() =>
-		postHog.isVariantEnabled(COMMAND_BAR_EXPERIMENT.name, COMMAND_BAR_EXPERIMENT.variant),
-	);
 
 	const activeNodeId = ref<string | null>(null);
 	const lastQuery = ref('');
@@ -78,6 +79,9 @@ export function useCommandBar() {
 	});
 	const genericCommandGroup = useGenericCommands();
 	const recentResourcesGroup = useRecentResources();
+	const chatHubCommandGroup = useChatHubCommands({
+		lastQuery,
+	});
 
 	const canvasViewGroups: CommandGroup[] = [
 		recentResourcesGroup,
@@ -147,6 +151,17 @@ export function useCommandBar() {
 		genericCommandGroup,
 	];
 
+	const chatHubViewGroups: CommandGroup[] = [
+		chatHubCommandGroup,
+		recentResourcesGroup,
+		genericCommandGroup,
+		projectNavigationGroup,
+		workflowNavigationGroup,
+		credentialNavigationGroup,
+		dataTableNavigationGroup,
+		executionNavigationGroup,
+	];
+
 	const fallbackViewCommands: CommandGroup[] = [
 		recentResourcesGroup,
 		projectNavigationGroup,
@@ -181,6 +196,11 @@ export function useCommandBar() {
 			case VIEWS.EVALUATION_EDIT:
 			case VIEWS.EVALUATION_RUNS_DETAIL:
 				return evaluationViewGroups;
+			case CHAT_VIEW:
+			case CHAT_CONVERSATION_VIEW:
+			case CHAT_PERSONAL_AGENTS_VIEW:
+			case CHAT_WORKFLOW_AGENTS_VIEW:
+				return chatHubViewGroups;
 			default:
 				return fallbackViewCommands;
 		}
@@ -287,7 +307,6 @@ export function useCommandBar() {
 	}
 
 	return {
-		isEnabled,
 		items,
 		initialize,
 		onCommandBarChange,

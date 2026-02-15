@@ -180,15 +180,6 @@ const googleBigQueryOAuth2Api: ICredentialType = {
 	supportedNodes: ['n8n-nodes-base.googleBigQuery'],
 };
 
-vi.mock('@n8n/permissions', () => ({
-	getResourcePermissions: vi.fn(() => ({
-		credential: {
-			create: true,
-			update: true,
-		},
-	})),
-}));
-
 const renderComponent = createComponentRenderer(CredentialEdit, {
 	pinia: createTestingPinia({
 		initialState: {
@@ -222,6 +213,33 @@ describe('CredentialEdit', () => {
 				modalName: CREDENTIAL_EDIT_MODAL_KEY,
 				mode: 'new',
 			},
+			pinia: createTestingPinia({
+				initialState: {
+					[STORES.UI]: {
+						modalsById: {
+							[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
+						},
+					},
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: {
+								sharing: true,
+								externalSecrets: false,
+							},
+							templates: {
+								host: '',
+							},
+						},
+					},
+					[STORES.PROJECTS]: {
+						personalProject: {
+							id: 'personal-project',
+							type: 'personal',
+							scopes: ['credential:create', 'credential:read'],
+						},
+					},
+				},
+			}),
 		});
 		await retry(() => expect(queryByTestId('credential-save-button')).toBeInTheDocument());
 	});

@@ -6,6 +6,7 @@ import {
 	mockInstance,
 	createActiveWorkflow,
 	createWorkflowWithHistory,
+	linkUserToProject,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, TagEntity, User, WorkflowHistory } from '@n8n/db';
@@ -14,6 +15,7 @@ import {
 	ProjectRepository,
 	WorkflowHistoryRepository,
 	SharedWorkflowRepository,
+	ProjectRelationRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
@@ -21,6 +23,7 @@ import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createTag } from '../shared/db/tags';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
@@ -81,7 +84,36 @@ beforeEach(async () => {
 		'CredentialsEntity',
 		'WorkflowHistory',
 		'WorkflowPublishHistory',
+		'ProjectRelation',
+		'Project',
 	]);
+	await cleanupRolesAndScopes();
+
+	const projectRepository = Container.get(ProjectRepository);
+	const projectRelationRepository = Container.get(ProjectRelationRepository);
+	const createPersonalProject = async (user: User) => {
+		const project = await projectRepository.save(
+			projectRepository.create({
+				type: 'personal',
+				name: user.createPersonalProjectName(),
+				creatorId: user.id,
+			}),
+		);
+
+		await projectRelationRepository.save(
+			projectRelationRepository.create({
+				projectId: project.id,
+				userId: user.id,
+				role: { slug: 'project:personalOwner' },
+			}),
+		);
+
+		return project;
+	};
+
+	// Recreate personal projects that were deleted by truncate
+	ownerPersonalProject = await createPersonalProject(owner);
+	memberPersonalProject = await createPersonalProject(member);
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
@@ -678,7 +710,7 @@ describe('GET /workflows/:id/:versionId', () => {
 				{
 					id: 'node1',
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					parameters: {},
 					position: [0, 0] as [number, number],
 					typeVersion: 1,
@@ -852,7 +884,7 @@ describe('POST /workflows/:id/activate', () => {
 						name: 'Start',
 						parameters: {},
 						position: [-20, 260],
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 					},
 				],
@@ -984,6 +1016,28 @@ describe('POST /workflows/:id/activate', () => {
 		// check whether the workflow is on the active workflow runner
 		expect(await workflowRepository.isActive(workflow.id)).toBe(true);
 	});
+
+	test('should return 403 when user lacks workflow:publish permission', async () => {
+		// Create a custom role with workflow:update but not workflow:publish
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Updater',
+			description: 'Can update workflows but not publish them',
+		});
+
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createWorkflowWithTriggerAndHistory({}, teamProject);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+
+		expect(response.statusCode).toBe(403);
+
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.active).toBe(false);
+		expect(workflowAfter?.activeVersionId).toBeNull();
+	});
 });
 
 describe('POST /workflows/:id/deactivate', () => {
@@ -1081,6 +1135,28 @@ describe('POST /workflows/:id/deactivate', () => {
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 	});
 
+	test('should return 403 when user lacks workflow:publish permission', async () => {
+		// Create a custom role with workflow:update but not workflow:publish
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Updater',
+			description: 'Can update workflows but not publish them',
+		});
+
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createActiveWorkflow({}, teamProject);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
+
+		expect(response.statusCode).toBe(403);
+
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.active).toBe(true);
+		expect(workflowAfter?.activeVersionId).not.toBeNull();
+	});
+
 	test('should deactivate non-owned workflow when owner', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
@@ -1156,7 +1232,7 @@ describe('POST /workflows', () => {
 					id: 'uuid-1234',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},
@@ -1226,7 +1302,7 @@ describe('POST /workflows', () => {
 					id: 'uuid-1234',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},
@@ -1306,7 +1382,7 @@ describe('PUT /workflows/:id', () => {
 					id: 'uuid-1234',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},
@@ -1333,7 +1409,7 @@ describe('PUT /workflows/:id', () => {
 					id: 'uuid-1234',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},
@@ -1362,7 +1438,7 @@ describe('PUT /workflows/:id', () => {
 					id: 'uuid-1234',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},
@@ -1515,7 +1591,7 @@ describe('PUT /workflows/:id', () => {
 					id: 'uuid-1',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},

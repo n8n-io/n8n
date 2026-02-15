@@ -10,6 +10,7 @@ import debounce from 'lodash/debounce';
 import { VIEWS } from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CommandGroup, CommandBarItem } from '../types';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
@@ -35,6 +36,7 @@ export function useWorkflowNavigationCommands(options: {
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const projectsStore = useProjectsStore();
 	const tagsStore = useTagsStore();
 	const sourceControlStore = useSourceControlStore();
@@ -78,14 +80,14 @@ export function useWorkflowNavigationCommands(options: {
 			const matchedTag = tagsStore.allTags.find((tag) => tag.name.toLowerCase() === trimmedLower);
 
 			// Search workflows by name with minimal fields
-			const nameSearchPromise = workflowsStore.searchWorkflows({
+			const nameSearchPromise = workflowsListStore.searchWorkflows({
 				query: trimmed,
 				select: ['id', 'name', 'active', 'ownedBy', 'parentFolder', 'isArchived', 'description'],
 			});
 
 			const nodeTypeSearchPromise =
 				matchedNodeTypeNames.length > 0
-					? workflowsStore.searchWorkflows({
+					? workflowsListStore.searchWorkflows({
 							nodeTypes: matchedNodeTypeNames,
 							select: [
 								'id',
@@ -101,7 +103,7 @@ export function useWorkflowNavigationCommands(options: {
 					: Promise.resolve([]);
 
 			const tagSearchPromise = matchedTag
-				? workflowsStore.searchWorkflows({
+				? workflowsListStore.searchWorkflows({
 						tags: [matchedTag.name],
 						select: [
 							'id',
@@ -237,7 +239,7 @@ export function useWorkflowNavigationCommands(options: {
 		return parts.join(' / ');
 	};
 
-	const createWorkflowCommand = (workflow: IWorkflowDb, isRoot: boolean): CommandBarItem => {
+	const openWorkflowCommand = (workflow: IWorkflowDb, isRoot: boolean): CommandBarItem => {
 		let keywords = workflowKeywords.value.get(workflow.id) ?? [];
 		const matchedNodeType = workflowMatchedNodeTypes.value.get(workflow.id);
 
@@ -308,14 +310,14 @@ export function useWorkflowNavigationCommands(options: {
 	};
 
 	const openWorkflowCommands = computed<CommandBarItem[]>(() => {
-		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow, false));
+		return workflowResults.value.map((workflow) => openWorkflowCommand(workflow, false));
 	});
 
 	const rootWorkflowItems = computed<CommandBarItem[]>(() => {
-		if (lastQuery.value.length <= 2) {
+		if (lastQuery.value.length <= 2 || !workflowsStore.canViewWorkflows) {
 			return [];
 		}
-		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow, true));
+		return workflowResults.value.map((workflow) => openWorkflowCommand(workflow, true));
 	});
 
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {
@@ -350,20 +352,24 @@ export function useWorkflowNavigationCommands(options: {
 		};
 		return [
 			...(hasCreatePermission ? [newWorkflowCommand] : []),
-			{
-				id: ITEM_ID.OPEN_WORKFLOW,
-				title: i18n.baseText('commandBar.workflows.open'),
-				section: i18n.baseText('commandBar.sections.workflows'),
-				placeholder: i18n.baseText('commandBar.workflows.searchPlaceholder'),
-				children: openWorkflowCommands.value,
-				icon: {
-					component: N8nIcon,
-					props: {
-						icon: 'arrow-right',
-						color: 'text-light',
-					},
-				},
-			},
+			...(workflowsStore.canViewWorkflows
+				? [
+						{
+							id: ITEM_ID.OPEN_WORKFLOW,
+							title: i18n.baseText('commandBar.workflows.open'),
+							section: i18n.baseText('commandBar.sections.workflows'),
+							placeholder: i18n.baseText('commandBar.workflows.searchPlaceholder'),
+							children: openWorkflowCommands.value,
+							icon: {
+								component: N8nIcon,
+								props: {
+									icon: 'arrow-right',
+									color: 'text-light',
+								},
+							},
+						},
+					]
+				: []),
 			...rootWorkflowItems.value,
 		];
 	});
@@ -374,7 +380,7 @@ export function useWorkflowNavigationCommands(options: {
 		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
 
 		if (isInWorkflowParent || isRootWithQuery) {
-			isLoading.value = isInWorkflowParent;
+			isLoading.value = true;
 			void fetchWorkflowsDebounced(trimmed);
 		}
 	}
@@ -386,6 +392,7 @@ export function useWorkflowNavigationCommands(options: {
 			isLoading.value = true;
 			void fetchWorkflowsImpl('');
 		} else if (to === null) {
+			isLoading.value = false;
 			workflowResults.value = [];
 			workflowKeywords.value.clear();
 			workflowMatchedNodeTypes.value.clear();

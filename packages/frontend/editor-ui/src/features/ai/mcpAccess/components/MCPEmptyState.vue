@@ -26,10 +26,10 @@ const i18n = useI18n();
 		<N8nActionBox
 			:icon="{ type: 'icon', value: 'mcp' }"
 			:heading="i18n.baseText('settings.mcp.actionBox.heading')"
-			:description="i18n.baseText('settings.mcp.toggle.disabled.notice')"
+			:description="i18n.baseText('settings.mcp.description')"
 			:button-text="i18n.baseText('settings.mcp.actionBox.button.label')"
 			:button-disabled="props.disabled || props.loading"
-			button-variant="primary"
+			button-variant="solid"
 			data-test-id="enable-mcp-access-button"
 			@click:button="emit('turnOnMcp')"
 		>

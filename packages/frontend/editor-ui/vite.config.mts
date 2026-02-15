@@ -6,6 +6,7 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgLoader from 'vite-svg-loader';
 import istanbul from 'vite-plugin-istanbul';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
+import { codecovVitePlugin } from '@codecov/vite-plugin';
 
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import icons from 'unplugin-icons/vite';
@@ -28,9 +29,14 @@ const alias = [
 	{ find: 'stream', replacement: 'stream-browserify' },
 	// Ensure bare imports resolve to sources (not dist)
 	{ find: '@n8n/i18n', replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src') },
+	{ find: '@n8n/chat-hub', replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src') },
 	{
 		find: /^@n8n\/chat(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
+	},
+	{
+		find: /^@n8n\/chat-hub(.+)$/,
+		replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src$1'),
 	},
 	{
 		find: /^@n8n\/api-requests(.+)$/,
@@ -105,6 +111,15 @@ const plugins: UserConfig['plugins'] = [
 				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
 				dest: resolve(__dirname, 'dist'),
 			},
+			// wa-sqlite WASM files for OPFS database support (no cross-origin isolation needed)
+			{
+				src: pathPosix.resolve('node_modules/wa-sqlite/dist/wa-sqlite.wasm'),
+				dest: 'assets',
+			},
+			{
+				src: pathPosix.resolve('node_modules/wa-sqlite/dist/wa-sqlite-async.wasm'),
+				dest: 'assets',
+			},
 		],
 	}),
 	vue(),
@@ -125,9 +140,13 @@ const plugins: UserConfig['plugins'] = [
 			],
 		},
 	}),
-	legacy({
-		modernTargets: browsers,
-	}),
+	...(release
+		? [
+				legacy({
+					modernTargets: browsers,
+				}),
+			]
+		: []),
 	{
 		name: 'Insert config script',
 		transformIndexHtml: (html, ctx) => {
@@ -179,6 +198,16 @@ const plugins: UserConfig['plugins'] = [
 				}),
 			]
 		: []),
+	...(process.env.CODECOV_TOKEN
+		? [
+				codecovVitePlugin({
+					enableBundleAnalysis: true,
+					bundleName: 'editor-ui',
+					uploadToken: process.env.CODECOV_TOKEN,
+					debug: true,
+				}),
+			]
+		: []),
 ];
 
 const target = browserslistToEsbuild(browsers);
@@ -212,6 +241,7 @@ export default mergeConfig(
 			target,
 		},
 		optimizeDeps: {
+			exclude: ['wa-sqlite'],
 			esbuildOptions: {
 				target,
 			},

@@ -10,7 +10,11 @@ import {
 } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 
-test.describe('Canvas Node Manipulation and Navigation', () => {
+test.describe('Canvas Node Manipulation and Navigation', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});
@@ -42,8 +46,7 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 		await n8n.canvas.clickNodeCreatorItemName(SWITCH_NODE_NAME);
 		await n8n.page.keyboard.press('Escape');
 
-		await n8n.canvasComposer.saveWorkflowAndWaitForUrl();
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
+		await n8n.canvasComposer.waitForWorkflowSaveAndUrl();
 
 		await n8n.canvasComposer.reloadAndWaitForCanvas();
 
@@ -103,8 +106,7 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 			n8n.canvas.connectionBetweenNodes('Edit Fields1', MERGE_NODE_NAME).first(),
 		).toBeAttached();
 
-		await n8n.canvasComposer.saveWorkflowAndWaitForUrl();
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
+		await n8n.canvasComposer.waitForWorkflowSaveAndUrl();
 
 		await n8n.canvasComposer.reloadAndWaitForCanvas();
 
@@ -143,15 +145,16 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 
 		await expect(n8n.canvas.getSuccessEdges()).toHaveCount(nodeCount);
 		await expect(n8n.canvas.getAllNodeSuccessIndicators()).toHaveCount(nodeCount + 1);
-		await expect(n8n.canvas.getCanvasHandlePlusWrapper()).toHaveAttribute(
-			'data-plus-type',
-			'success',
-		);
+		await expect(
+			n8n.canvas.getCanvasHandlePlusWrapperByName('Code in JavaScript2'),
+		).toHaveAttribute('data-plus-type', 'success');
 
 		await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
 		await n8n.canvas.clickZoomToFitButton();
 
-		await expect(n8n.canvas.getCanvasHandlePlus()).not.toHaveAttribute('data-plus-type', 'success');
+		await expect(
+			n8n.canvas.getCanvasHandlePlusWrapperByName('Code in JavaScript3'),
+		).not.toHaveAttribute('data-plus-type', 'success');
 
 		await expect(n8n.canvas.getSuccessEdges()).toHaveCount(nodeCount + 1);
 		await expect(n8n.canvas.getAllNodeSuccessIndicators()).toHaveCount(nodeCount + 1);

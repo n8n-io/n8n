@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Webhook Origin Isolation', () => {
+test.describe('Webhook Origin Isolation', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test.beforeAll(async ({ api }) => {
 		await api.workflows.importWorkflowFromFile('webhook-origin-isolation.json', {
 			makeUnique: false,
@@ -31,7 +35,7 @@ test.describe('Webhook Origin Isolation', () => {
 		test(`Webhook responses should include the correct response headers for ${webhookPath}`, async ({
 			api,
 		}) => {
-			const webhookResponse = await api.request.get(`/webhook/${webhookPath}`);
+			const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`);
 			expect(webhookResponse.ok()).toBe(true);
 
 			const headers = webhookResponse.headers();

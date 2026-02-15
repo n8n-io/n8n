@@ -7,6 +7,7 @@ import type {
 	INodeTypes,
 	INodeExecutionData,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowSettings,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -460,6 +461,258 @@ describe('NodeExecutionContext', () => {
 			expect(result).toBe(
 				'http://localhost/waiting-webhook/123/node456?approved=true&signature=11c5efc97a0d6f2ea9045dba6e397596cba29dc24adb44a9ebd3d1272c991e9b',
 			);
+		});
+	});
+
+	describe('nodeFeatures', () => {
+		it('should return empty object when features are not defined', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = undefined;
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({});
+		});
+
+		it('should return enabled features based on node version', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+				useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+				useFeatureC: { '@version': [{ _cnd: { gte: 2.2 } }] },
+			};
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({
+				useFeatureA: true,
+				useFeatureB: false,
+				useFeatureC: true,
+			});
+		});
+
+		it('should return correct features for version 2.1', () => {
+			node.typeVersion = 2.1;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+				useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+				useFeatureC: { '@version': [{ _cnd: { gte: 2.2 } }] },
+			};
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({
+				useFeatureA: false,
+				useFeatureB: true,
+				useFeatureC: false,
+			});
+		});
+
+		it('should handle simple version number conditions', () => {
+			node.typeVersion = 2;
+			nodeType.description.features = {
+				useFeatureD: { '@version': [2] },
+				useFeatureE: { '@version': [{ _cnd: { lt: 2.3 } }] },
+			};
+
+			const result = testContext['nodeFeatures'];
+
+			expect(result).toEqual({
+				useFeatureD: true,
+				useFeatureE: true,
+			});
+		});
+	});
+
+	describe('isNodeFeatureEnabled', () => {
+		it('should return true when feature is enabled', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+			};
+
+			const result = testContext.isNodeFeatureEnabled('useFeatureA');
+
+			expect(result).toBe(true);
+		});
+
+		it('should return false when feature is disabled', () => {
+			node.typeVersion = 2.3;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+			};
+
+			const result = testContext.isNodeFeatureEnabled('useFeatureA');
+
+			expect(result).toBe(false);
+		});
+
+		it('should return false when feature does not exist', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+			};
+
+			const result = testContext.isNodeFeatureEnabled('nonExistentFeature');
+
+			expect(result).toBe(false);
+		});
+
+		it('should return false when features are not defined', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = undefined;
+
+			const result = testContext.isNodeFeatureEnabled('useFeatureA');
+
+			expect(result).toBe(false);
+		});
+
+		it('should handle multiple features correctly', () => {
+			node.typeVersion = 2.4;
+			nodeType.description.features = {
+				useFeatureA: { '@version': [{ _cnd: { gte: 2.4 } }] },
+				useFeatureB: { '@version': [{ _cnd: { lte: 2.1 } }] },
+				useFeatureC: { '@version': [{ _cnd: { gte: 2.2 } }] },
+			};
+
+			expect(testContext.isNodeFeatureEnabled('useFeatureA')).toBe(true);
+			expect(testContext.isNodeFeatureEnabled('useFeatureB')).toBe(false);
+			expect(testContext.isNodeFeatureEnabled('useFeatureC')).toBe(true);
+		});
+	});
+
+	describe('getWorkflowSettings', () => {
+		it('should return workflow settings', () => {
+			const settings: IWorkflowSettings = {
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+			};
+			workflow.settings = settings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(result).toEqual(settings);
+		});
+
+		it('should return a frozen object that cannot be modified', () => {
+			const settings: IWorkflowSettings = {
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+			};
+			workflow.settings = settings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(Object.isFrozen(result)).toBe(true);
+			expect(() => {
+				(result as Record<string, unknown>).saveDataErrorExecution = 'none';
+			}).toThrow(TypeError);
+			expect(result.saveDataErrorExecution).toBe('all');
+		});
+
+		it('should return a deep clone that does not affect the original workflow settings', () => {
+			const settings: IWorkflowSettings = {
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+			};
+			workflow.settings = settings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(() => {
+				(result as Record<string, unknown>).saveDataErrorExecution = 'none';
+			}).toThrow(TypeError);
+			expect(workflow.settings.saveDataErrorExecution).toBe('all');
+
+			const result2 = testContext.getWorkflowSettings();
+			expect(result2.saveDataErrorExecution).toBe('all');
+		});
+
+		it('should memoize the result and return the same reference on multiple calls', () => {
+			const settings: IWorkflowSettings = {
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+			};
+			workflow.settings = settings;
+
+			const result1 = testContext.getWorkflowSettings();
+			const result2 = testContext.getWorkflowSettings();
+
+			expect(result1).toBe(result2);
+		});
+
+		it('should handle binaryMode setting correctly', () => {
+			const settings: IWorkflowSettings = {
+				saveDataErrorExecution: 'all',
+				binaryMode: 'separate',
+			};
+			workflow.settings = settings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(Object.isFrozen(result)).toBe(true);
+			expect(result.binaryMode).toBe('separate');
+			expect(() => {
+				(result as Record<string, unknown>).binaryMode = 'combined';
+			}).toThrow(TypeError);
+			expect(result.binaryMode).toBe('separate');
+		});
+
+		it('should prevent modification of all workflow settings properties', () => {
+			const settings: IWorkflowSettings = {
+				timezone: 'America/New_York',
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'none',
+				executionTimeout: 3600,
+				binaryMode: 'combined',
+			};
+			workflow.settings = settings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(Object.isFrozen(result)).toBe(true);
+			expect(() => {
+				(result as Record<string, unknown>).timezone = 'UTC';
+			}).toThrow(TypeError);
+			expect(() => {
+				(result as Record<string, unknown>).executionTimeout = 7200;
+			}).toThrow(TypeError);
+			expect(() => {
+				(result as Record<string, unknown>).binaryMode = 'separate';
+			}).toThrow(TypeError);
+			expect(result.timezone).toBe('America/New_York');
+			expect(result.executionTimeout).toBe(3600);
+			expect(result.binaryMode).toBe('combined');
+		});
+
+		it('should freeze nested objects in settings', () => {
+			const settingsWithNested = {
+				saveDataErrorExecution: 'all' as const,
+				callerIds: 'workflow1,workflow2',
+				hypotheticalNested: { key: 'value', deep: { prop: 'test' } },
+			};
+			workflow.settings = settingsWithNested as IWorkflowSettings;
+
+			const result = testContext.getWorkflowSettings();
+
+			expect(Object.isFrozen(result)).toBe(true);
+
+			const nested = (result as Record<string, unknown>).hypotheticalNested;
+			if (nested && typeof nested === 'object') {
+				const isFrozen = Object.isFrozen(nested);
+				if (isFrozen) {
+					expect(() => {
+						(nested as Record<string, unknown>).key = 'modified';
+					}).toThrow(TypeError);
+
+					const deep = (nested as Record<string, unknown>).deep;
+					if (deep && typeof deep === 'object' && Object.isFrozen(deep)) {
+						expect(() => {
+							(deep as Record<string, unknown>).prop = 'modified';
+						}).toThrow(TypeError);
+					}
+				}
+			}
 		});
 	});
 });

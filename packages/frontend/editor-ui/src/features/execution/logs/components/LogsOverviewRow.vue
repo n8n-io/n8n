@@ -100,7 +100,15 @@ watch(
 	(isSelected) => {
 		void nextTick(() => {
 			if (isSelected) {
-				container.value?.focus();
+				// Don't steal focus if the chat input is currently focused
+				const activeElement = document.activeElement;
+				const isChatInputFocused =
+					activeElement?.getAttribute('data-test-id') === 'chat-input' ||
+					activeElement?.closest('[data-test-id="canvas-chat"]') !== null;
+
+				if (!isChatInputFocused) {
+					container.value?.focus();
+				}
 			}
 		});
 	},
@@ -185,13 +193,13 @@ watch(
 			:class="$style.compactErrorIcon"
 		/>
 		<N8nIconButton
+			variant="subtle"
 			v-if="canOpenNdv && (!isCompact || !props.latestInfo?.deleted)"
-			type="secondary"
 			size="small"
 			icon="square-pen"
 			icon-size="medium"
 			:style="{
-				visibility: props.data.isSubExecution ? 'hidden' : '',
+				visibility: props.data.isSubExecution ? 'hidden' : undefined,
 			}"
 			:disabled="props.latestInfo?.deleted"
 			:class="$style.openNdvButton"
@@ -199,11 +207,11 @@ watch(
 			@click.stop="emit('openNdv')"
 		/>
 		<N8nIconButton
+			variant="subtle"
 			v-if="
 				!isCompact ||
 				(!props.isReadOnly && !props.latestInfo?.deleted && !props.latestInfo?.disabled)
 			"
-			type="secondary"
 			size="small"
 			icon="play"
 			:aria-label="locale.baseText('logs.overview.body.run')"
@@ -217,13 +225,13 @@ watch(
 		</template>
 		<N8nButton
 			v-if="!isCompact || hasChildren"
-			type="secondary"
+			variant="subtle"
+			iconOnly
 			size="small"
 			:icon="props.expanded ? 'chevron-down' : 'chevron-up'"
 			icon-size="medium"
-			:square="true"
 			:style="{
-				visibility: hasChildren ? '' : 'hidden',
+				visibility: hasChildren ? undefined : 'hidden',
 			}"
 			:class="$style.toggleButton"
 			:aria-label="locale.baseText('logs.overview.body.toggleRow')"

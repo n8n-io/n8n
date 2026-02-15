@@ -264,22 +264,33 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const fetchAllCredentials = async (
-		projectId?: string,
-		includeScopes = true,
-		onlySharedWithMe = false,
-		includeGlobal = true,
+		options: {
+			projectId?: string;
+			includeScopes?: boolean;
+			onlySharedWithMe?: boolean;
+			includeGlobal?: boolean;
+			externalSecretsStore?: string;
+		} = {},
 	): Promise<ICredentialsResponse[]> => {
+		const {
+			projectId,
+			includeScopes = true,
+			onlySharedWithMe = false,
+			includeGlobal = true,
+			externalSecretsStore,
+		} = options;
+
 		const filter = {
 			projectId,
 		};
 
-		const credentials = await credentialsApi.getAllCredentials(
-			rootStore.restApiContext,
-			isEmpty(filter) ? undefined : filter,
+		const credentials = await credentialsApi.getAllCredentials(rootStore.restApiContext, {
+			filter: isEmpty(filter) ? undefined : filter,
 			includeScopes,
 			onlySharedWithMe,
 			includeGlobal,
-		);
+			externalSecretsStore,
+		});
 		setCredentials(credentials);
 		return credentials;
 	};
@@ -320,6 +331,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		data: ICredentialsDecrypted,
 		projectId?: string,
 		uiContext?: string,
+		options?: { skipStoreUpdate?: boolean },
 	): Promise<ICredentialsResponse> => {
 		const settingsStore = useSettingsStore();
 		const credential = await credentialsApi.createNewCredential(rootStore.restApiContext, {
@@ -329,22 +341,25 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			projectId,
 			uiContext,
 			isGlobal: data.isGlobal,
+			isResolvable: data.isResolvable,
 		});
 
 		if (data?.homeProject && !credential.homeProject) {
 			credential.homeProject = data.homeProject as ProjectSharingData;
 		}
 
-		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
-			upsertCredential(credential);
-			if (data.sharedWithProjects) {
-				await setCredentialSharedWith({
-					credentialId: credential.id,
-					sharedWithProjects: data.sharedWithProjects,
-				});
+		if (!options?.skipStoreUpdate) {
+			if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
+				upsertCredential(credential);
+				if (data.sharedWithProjects) {
+					await setCredentialSharedWith({
+						credentialId: credential.id,
+						sharedWithProjects: data.sharedWithProjects,
+					});
+				}
+			} else {
+				upsertCredential(credential);
 			}
-		} else {
-			upsertCredential(credential);
 		}
 		return credential;
 	};

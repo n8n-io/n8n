@@ -3,7 +3,7 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-import type { INode, IWebhookData, IHttpRequestMethods } from 'n8n-workflow';
+import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8n-workflow';
 
 import { authAllowlistedNodes } from './constants';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
@@ -98,7 +98,7 @@ export class LiveWebhooks implements IWebhookManager {
 			where: { id: webhook.workflowId },
 			relations: {
 				activeVersion: true,
-				shared: { project: { projectRelations: true } },
+				shared: true,
 			},
 		});
 
@@ -114,6 +114,14 @@ export class LiveWebhooks implements IWebhookManager {
 
 		const { nodes, connections } = workflowData.activeVersion;
 
+		// Create a clean workflowData object with only activeVersion nodes/connections
+		// This prevents any downstream code from accidentally using the draft nodes
+		const activeWorkflowData: IWorkflowBase = {
+			...workflowData,
+			nodes,
+			connections,
+		};
+
 		const workflow = new Workflow({
 			id: webhook.workflowId,
 			name: workflowData.name,
@@ -125,8 +133,9 @@ export class LiveWebhooks implements IWebhookManager {
 			settings: workflowData.settings,
 		});
 
-		const ownerProjectId = workflowData.shared.find((share) => share.role === 'workflow:owner')
-			?.project.id;
+		const ownerProjectId = workflowData.shared.find(
+			(share) => share.role === 'workflow:owner',
+		)?.projectId;
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			projectId: ownerProjectId,
 		});
@@ -152,7 +161,7 @@ export class LiveWebhooks implements IWebhookManager {
 			void WebhookHelpers.executeWebhook(
 				workflow,
 				webhookData,
-				workflowData,
+				activeWorkflowData, // Use activeWorkflowData instead of workflowData
 				workflowStartNode,
 				executionMode,
 				undefined,

@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('External Webhook Triggering', () => {
+test.describe('External Webhook Triggering', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test('should create workflow via API, activate it, trigger webhook externally, and verify execution', async ({
 		api,
 	}) => {
@@ -10,7 +14,8 @@ test.describe('External Webhook Triggering', () => {
 
 		const testPayload = { message: 'Hello from Playwright test' };
 
-		const webhookResponse = await api.request.post(`/webhook/${webhookPath}`, {
+		const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
+			method: 'POST',
 			data: testPayload,
 		});
 
@@ -28,7 +33,7 @@ test.describe('External Webhook Triggering', () => {
 			'webhook-misconfiguration-test.json',
 		);
 
-		const webhookResponse = await api.request.get(`/webhook/${webhookPath}`);
+		const webhookResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`);
 
 		expect(webhookResponse.ok()).toBe(false);
 		expect(await webhookResponse.text()).toContain('Unused Respond to Webhook node');

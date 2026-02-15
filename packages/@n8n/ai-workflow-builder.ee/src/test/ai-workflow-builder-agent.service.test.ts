@@ -73,7 +73,7 @@ describe('AiWorkflowBuilderService', () => {
 
 	const mockNodeTypeDescriptions: INodeTypeDescription[] = [
 		{
-			name: 'TestNode',
+			name: 'n8n-nodes-base.testNode',
 			displayName: 'Test Node',
 			description: 'A test node',
 			version: 1,
@@ -91,7 +91,7 @@ describe('AiWorkflowBuilderService', () => {
 			group: ['transform'],
 		},
 		{
-			name: 'HiddenNode',
+			name: 'n8n-nodes-base.hiddenNode',
 			displayName: 'Hidden Node',
 			description: 'A hidden node',
 			version: 1,
@@ -126,7 +126,7 @@ describe('AiWorkflowBuilderService', () => {
 			group: ['transform'],
 		},
 		{
-			name: 'TestNodeTool',
+			name: 'n8n-nodes-base.testNodeTool',
 			displayName: 'Test Tool Node',
 			description: 'Test tool node description',
 			version: 1,
@@ -141,6 +141,17 @@ describe('AiWorkflowBuilderService', () => {
 					default: '',
 				},
 			],
+			group: ['transform'],
+		},
+		{
+			name: 'community-nodes-test.someNode',
+			displayName: 'Community Node',
+			description: 'A community node that should be filtered out',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [],
 			group: ['transform'],
 		},
 	];
@@ -185,11 +196,15 @@ describe('AiWorkflowBuilderService', () => {
 		(mockSessionManager.getCheckpointer as jest.Mock).mockReturnValue(mockMemorySaver);
 		MockedSessionManagerService.mockImplementation(() => mockSessionManager);
 
-		// Mock WorkflowBuilderAgent
-		MockedWorkflowBuilderAgent.mockImplementation(() => {
+		// Mock WorkflowBuilderAgent - capture config and call onGenerationSuccess
+		MockedWorkflowBuilderAgent.mockImplementation((config) => {
 			const mockAgent = mock<WorkflowBuilderAgent>();
 			(mockAgent.chat as jest.Mock).mockImplementation(async function* () {
 				yield { messages: [{ role: 'assistant', type: 'message', text: 'Test response' }] };
+				// Simulate the agent calling onGenerationSuccess after successful stream
+				if (config.onGenerationSuccess) {
+					await config.onGenerationSuccess();
+				}
 			});
 			return mockAgent;
 		});
@@ -225,7 +240,7 @@ describe('AiWorkflowBuilderService', () => {
 
 			expect(testService).toBeInstanceOf(AiWorkflowBuilderService);
 			expect(MockedSessionManagerService).toHaveBeenCalledWith(
-				expect.arrayContaining([expect.objectContaining({ name: 'TestNode' })]),
+				expect.arrayContaining([expect.objectContaining({ name: 'n8n-nodes-base.testNode' })]),
 				mockLogger,
 			);
 		});
@@ -253,9 +268,14 @@ describe('AiWorkflowBuilderService', () => {
 			expect(MockedSessionManagerService).toHaveBeenCalledTimes(1);
 			const filteredNodeTypes = MockedSessionManagerService.mock.calls[0][0];
 
-			expect(filteredNodeTypes.find((node) => node.name === 'HiddenNode')).toBeUndefined();
+			expect(
+				filteredNodeTypes.find((node) => node.name === 'n8n-nodes-base.hiddenNode'),
+			).toBeUndefined();
 			expect(
 				filteredNodeTypes.find((node) => node.name === '@n8n/n8n-nodes-langchain.toolVectorStore'),
+			).toBeUndefined();
+			expect(
+				filteredNodeTypes.find((node) => node.name === 'community-nodes-test.someNode'),
 			).toBeUndefined();
 			expect(
 				filteredNodeTypes.find((node) => node.name === 'n8n-nodes-base.dataTable'),
@@ -278,7 +298,9 @@ describe('AiWorkflowBuilderService', () => {
 			expect(MockedSessionManagerService).toHaveBeenCalledTimes(1);
 			const filteredNodeTypes = MockedSessionManagerService.mock.calls[0][0];
 
-			const testToolNode = filteredNodeTypes.find((node) => node.name === 'TestNodeTool');
+			const testToolNode = filteredNodeTypes.find(
+				(node) => node.name === 'n8n-nodes-base.testNodeTool',
+			);
 			expect(testToolNode).toBeDefined();
 			expect(testToolNode?.description).toBe('Test tool node description');
 			expect(testToolNode?.displayName).toBe('Test Tool Node');
@@ -344,11 +366,9 @@ describe('AiWorkflowBuilderService', () => {
 			// Verify key configuration properties
 			expect(config).toHaveProperty('parsedNodeTypes');
 			expect(config).toHaveProperty('instanceUrl', 'https://n8n.example.com');
-			expect(config).toHaveProperty('onGenerationSuccess');
 			expect(config).toHaveProperty('tracer');
 			expect(config).toHaveProperty('checkpointer', mockMemorySaver);
 			expect(config.parsedNodeTypes).toBeInstanceOf(Array);
-			expect(config.onGenerationSuccess).toBeInstanceOf(Function);
 			// Verify checkpointer comes from SessionManagerService
 			expect(mockSessionManager.getCheckpointer).toHaveBeenCalled();
 		});
@@ -372,11 +392,9 @@ describe('AiWorkflowBuilderService', () => {
 			// Verify key configuration properties
 			expect(config).toHaveProperty('parsedNodeTypes');
 			expect(config).toHaveProperty('instanceUrl', undefined);
-			expect(config).toHaveProperty('onGenerationSuccess');
 			expect(config).toHaveProperty('tracer', undefined);
 			expect(config).toHaveProperty('checkpointer');
 			expect(config.parsedNodeTypes).toBeInstanceOf(Array);
-			expect(config.onGenerationSuccess).toBeInstanceOf(Function);
 		});
 
 		it('should throw LLMServiceError when model setup fails', async () => {
@@ -424,14 +442,12 @@ describe('AiWorkflowBuilderService', () => {
 			delete process.env.N8N_AI_ANTHROPIC_KEY;
 		});
 
-		it('should call onGenerationSuccess callback when not using deprecated credentials', async () => {
+		it('should call markBuilderSuccess after stream completes', async () => {
 			const generator = service.chat(mockPayload, mockUser);
-			await generator.next();
-
-			const config = MockedWorkflowBuilderAgent.mock.calls[0][0];
-
-			// Call the onGenerationSuccess callback
-			await config.onGenerationSuccess!();
+			// Drain the generator to complete the stream
+			for await (const _ of generator) {
+				// consume all outputs
+			}
 
 			expect(mockClient.markBuilderSuccess).toHaveBeenCalledWith(mockUser, {
 				Authorization: 'Bearer test-access-token',
@@ -440,12 +456,10 @@ describe('AiWorkflowBuilderService', () => {
 
 		it('should call onCreditsUpdated callback after markBuilderSuccess', async () => {
 			const generator = service.chat(mockPayload, mockUser);
-			await generator.next();
-
-			const config = MockedWorkflowBuilderAgent.mock.calls[0][0];
-
-			// Call the onGenerationSuccess callback
-			await config.onGenerationSuccess!();
+			// Drain the generator to complete the stream
+			for await (const _ of generator) {
+				// consume all outputs
+			}
 
 			// Verify callback was called with correct parameters
 			expect(mockOnCreditsUpdated).toHaveBeenCalledWith('test-user-id', 10, 1);
@@ -470,7 +484,11 @@ describe('AiWorkflowBuilderService', () => {
 			const result = await service.getSessions(undefined, mockUser);
 
 			expect(result.sessions).toEqual([]);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(undefined, 'test-user-id');
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				undefined,
+				'test-user-id',
+				undefined,
+			);
 		});
 
 		it('should return session when workflowId exists', async () => {
@@ -497,7 +515,11 @@ describe('AiWorkflowBuilderService', () => {
 				lastUpdated: '2023-12-01T12:00:00Z',
 			});
 			expect(result.sessions[0].messages).toHaveLength(2);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
+				undefined,
+			);
 		});
 
 		it('should handle missing checkpoint gracefully', async () => {
@@ -509,7 +531,11 @@ describe('AiWorkflowBuilderService', () => {
 			const result = await service.getSessions(workflowId, mockUser);
 
 			expect(result.sessions).toEqual([]);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
+				undefined,
+			);
 		});
 
 		it('should handle checkpoint without messages', async () => {
@@ -529,7 +555,11 @@ describe('AiWorkflowBuilderService', () => {
 
 			expect(result.sessions).toHaveLength(1);
 			expect(result.sessions[0].messages).toEqual([]);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
+				undefined,
+			);
 		});
 
 		it('should handle checkpoint with null messages', async () => {
@@ -549,7 +579,11 @@ describe('AiWorkflowBuilderService', () => {
 
 			expect(result.sessions).toHaveLength(1);
 			expect(result.sessions[0].messages).toEqual([]);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
+				undefined,
+			);
 		});
 
 		it('should work without user', async () => {
@@ -561,7 +595,33 @@ describe('AiWorkflowBuilderService', () => {
 			const result = await service.getSessions(workflowId);
 
 			expect(result.sessions).toEqual([]);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, undefined);
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, undefined, undefined);
+		});
+
+		it('should pass codeBuilder flag to sessionManager', async () => {
+			const workflowId = 'test-workflow';
+			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
+
+			await service.getSessions(workflowId, mockUser, true);
+
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
+				'code-builder',
+			);
+		});
+
+		it('should not pass code-builder agentType when codeBuilder is false', async () => {
+			const workflowId = 'test-workflow';
+			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
+
+			await service.getSessions(workflowId, mockUser, false);
+
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
+				undefined,
+			);
 		});
 	});
 
@@ -605,7 +665,11 @@ describe('AiWorkflowBuilderService', () => {
 			expect(sessions.sessions[0].sessionId).toBe(
 				'workflow-integration-test-workflow-user-test-user-id',
 			);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, 'test-user-id');
+			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
+				workflowId,
+				'test-user-id',
+				undefined,
+			);
 		});
 	});
 

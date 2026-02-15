@@ -716,23 +716,4 @@ describe('ProjectSettings', () => {
 			expect(getByTestId('project-members-select')).toBeInTheDocument();
 		});
 	});
-
-	describe('Upgrade dialog', () => {
-		it('should open upgrade dialog when show-upgrade-dialog event is emitted', async () => {
-			const { queryByRole, getByRole } = renderComponent();
-
-			await nextTick();
-
-			// Dialog should not be visible initially
-			expect(queryByRole('dialog')).not.toBeInTheDocument();
-
-			// Emit the show-upgrade-dialog event from the members table
-			emitters.projectMembersTable.emit('show-upgrade-dialog');
-
-			await nextTick();
-
-			// The upgrade dialog should now be visible
-			expect(getByRole('dialog')).toBeInTheDocument();
-		});
-	});
 });

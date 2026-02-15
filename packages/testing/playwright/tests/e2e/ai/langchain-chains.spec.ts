@@ -38,15 +38,15 @@ async function executeChatAndWaitForResponse(n8n: n8nPage, message: string) {
 	await waitForWorkflowSuccess(n8n);
 }
 
-test.use({
-	addContainerCapability: {
-		proxyServerEnabled: true,
-	},
-});
-test.describe('Langchain Integration @capability:proxy', () => {
-	test.beforeEach(async ({ n8n, proxyServer }) => {
-		await proxyServer.clearAllExpectations();
-		await proxyServer.loadExpectations('langchain');
+test.use({ capability: 'proxy' });
+test.describe('Langchain Integration @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
+	test.beforeEach(async ({ n8n, services }) => {
+		await services.proxy.clearAllExpectations();
+		await services.proxy.loadExpectations('langchain');
 		await n8n.canvas.openNewWorkflow();
 	});
 
@@ -86,7 +86,10 @@ test.describe('Langchain Integration @capability:proxy', () => {
 		});
 
 		test('should not auto-add nodes if ChatTrigger is already present', async ({ n8n }) => {
-			await n8n.canvas.addNode(MANUAL_CHAT_TRIGGER_NODE_NAME, { closeNDV: true });
+			await n8n.canvas.addNode(MANUAL_CHAT_TRIGGER_NODE_NAME, {
+				closeNDV: true,
+				trigger: 'On new Chat event',
+			});
 
 			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
 

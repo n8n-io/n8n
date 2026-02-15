@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -9,13 +10,15 @@ import { computed, onBeforeUnmount, onMounted, ref, watch, type WatchStopHandle 
 import { useRouter } from 'vue-router';
 
 import NodeIssueItem from './NodeIssueItem.vue';
+import CredentialsSetupCard from './CredentialsSetupCard.vue';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { isChatNode } from '@/app/utils/aiUtils';
 import { useToast } from '@/app/composables/useToast';
-import { N8nTooltip } from '@n8n/design-system';
+import { N8nTooltip, N8nIcon, N8nButton } from '@n8n/design-system';
 import { nextTick } from 'vue';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
 import type { WorkflowValidationIssue } from '@/Interface';
 
 interface Emits {
@@ -29,6 +32,7 @@ const emit = defineEmits<Emits>();
 const router = useRouter();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
+const uiStore = useUIStore();
 const i18n = useI18n();
 const logsStore = useLogsStore();
 const toast = useToast();
@@ -76,6 +80,17 @@ const hasValidationIssues = computed(() => builderStore.workflowTodos.length > 0
 const triggerNodes = computed(() =>
 	workflowsStore.workflow.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
 );
+
+const issuesByType = computed(() => {
+	const credentials: WorkflowValidationIssue[] = [];
+	const other: WorkflowValidationIssue[] = [];
+
+	for (const issue of builderStore.workflowTodos) {
+		(issue.type === 'credentials' ? credentials : other).push(issue);
+	}
+
+	return { credentials, other };
+});
 
 /**
  * Converts a locale string pattern with placeholders into a regex.
@@ -137,6 +152,18 @@ const executeButtonTooltip = computed(() =>
 		: '',
 );
 
+const showUnpinSection = computed(
+	() =>
+		builderStore.isCodeBuilder &&
+		builderStore.hasTodosHiddenByPinnedData &&
+		builderStore.hasHadSuccessfulExecution,
+);
+
+function onUnpinAll() {
+	builderStore.unpinAllNodes();
+	builderStore.trackWorkflowBuilderJourney('user_clicked_unpin_all');
+}
+
 async function onExecute() {
 	if (hasValidationIssues.value) {
 		return;
@@ -185,7 +212,23 @@ function trackBuilderPlaceholders(issue: WorkflowValidationIssue) {
 	});
 }
 
+function openCredentialsModal() {
+	uiStore.openModalWithData({ name: SETUP_CREDENTIALS_MODAL_KEY, data: { source: 'builder' } });
+	builderStore.trackWorkflowBuilderJourney('user_clicked_todo', {
+		type: 'credentials',
+		count: issuesByType.value.credentials.length,
+		source: 'builder',
+	});
+}
+
 onMounted(scrollIntoView);
+
+// Track when all todos are resolved while the component is visible
+watch(hasValidationIssues, (hasIssues, hadIssues) => {
+	if (hadIssues && !hasIssues) {
+		builderStore.trackWorkflowBuilderJourney('no_placeholder_values_left');
+	}
+});
 
 onBeforeUnmount(() => {
 	stopExecutionWatcher();
@@ -205,7 +248,15 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('aiAssistant.builder.executeMessage.description') }}
 			</p>
 			<div :class="$style.issuesBox">
+				<CredentialsSetupCard
+					v-if="issuesByType.credentials.length > 0"
+					:issues="issuesByType.credentials"
+					:get-node-type="getNodeTypeByName"
+					@click="openCredentialsModal"
+				/>
+
 				<TransitionGroup
+					v-if="issuesByType.other.length > 0"
 					name="fade"
 					tag="ul"
 					:class="$style.issuesList"
@@ -213,7 +264,7 @@ onBeforeUnmount(() => {
 					aria-label="Workflow validation issues"
 				>
 					<NodeIssueItem
-						v-for="issue in builderStore.workflowTodos"
+						v-for="issue in issuesByType.other"
 						:key="`${formatIssueMessage(issue.value)}_${issue.node}`"
 						:issue="issue"
 						:get-node-type="getNodeTypeByName"
@@ -225,14 +276,29 @@ onBeforeUnmount(() => {
 		</template>
 
 		<!-- No Issues Section -->
-		<template v-else>
+		<template v-else-if="triggerNodes.length > 0">
 			<p :class="$style.noIssuesMessage">
-				{{ i18n.baseText('aiAssistant.builder.executeMessage.noIssues') }}
+				{{
+					builderStore.hasTodosHiddenByPinnedData
+						? i18n.baseText('aiAssistant.builder.executeMessage.noIssuesWithPinData')
+						: i18n.baseText('aiAssistant.builder.executeMessage.noIssues')
+				}}
+				<N8nTooltip v-if="builderStore.hasTodosHiddenByPinnedData" placement="top">
+					<template #content>
+						{{ i18n.baseText('aiAssistant.builder.executeMessage.unpinTooltip') }}
+					</template>
+					<N8nIcon icon="circle-help" size="small" :class="$style.infoIcon" />
+				</N8nTooltip>
 			</p>
 		</template>
 
 		<!-- Execution Button -->
-		<N8nTooltip :disabled="!hasValidationIssues" :content="executeButtonTooltip" placement="left">
+		<N8nTooltip
+			v-if="triggerNodes.length > 0"
+			:disabled="!hasValidationIssues"
+			:content="executeButtonTooltip"
+			placement="left"
+		>
 			<CanvasRunWorkflowButton
 				:class="$style.runButton"
 				:disabled="hasValidationIssues || builderStore.hasNoCreditsRemaining"
@@ -249,6 +315,26 @@ onBeforeUnmount(() => {
 				@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
 			/>
 		</N8nTooltip>
+
+		<!-- Unpin All Section -->
+		<div v-if="showUnpinSection" :class="$style.unpinSection">
+			<N8nButton
+				type="secondary"
+				size="medium"
+				icon="pin"
+				:label="i18n.baseText('aiAssistant.builder.executeMessage.unpinAll')"
+				@click="onUnpinAll"
+			/>
+			<span :class="$style.unpinIndividuallyText">
+				{{ i18n.baseText('aiAssistant.builder.executeMessage.unpinIndividually') }}
+				<N8nTooltip placement="top">
+					<template #content>
+						{{ i18n.baseText('aiAssistant.builder.executeMessage.unpinTooltip') }}
+					</template>
+					<N8nIcon icon="circle-help" size="small" :class="$style.infoIcon" />
+				</N8nTooltip>
+			</span>
+		</div>
 	</div>
 </template>
 
@@ -304,5 +390,25 @@ onBeforeUnmount(() => {
 
 .runButton {
 	align-self: stretch;
+}
+
+.unpinSection {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.unpinIndividuallyText {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.infoIcon {
+	color: var(--color--text--tint-1);
+	cursor: help;
 }
 </style>

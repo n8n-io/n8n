@@ -23,7 +23,8 @@ export class TemplatesComposer {
 		await expect(this.n8n.templates.getUseTemplateButton()).toBeVisible();
 
 		await this.n8n.templates.clickUseTemplateButton();
-		await expect(this.n8n.page).toHaveURL(/\/workflow\/new/);
+		// New workflows redirect to /workflow/<id>?new=true with optional templateId
+		await expect(this.n8n.page).toHaveURL(/\/workflow\/[a-zA-Z0-9_-]+\?.*new=true/);
 	}
 
 	/**

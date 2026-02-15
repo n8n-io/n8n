@@ -48,11 +48,12 @@ onMounted(async () => {
 <template>
 	<N8nTooltip :content="disabledTooltip" :disabled="!disabledTooltip" placement="top">
 		<N8nButton
-			type="secondary"
+			variant="subtle"
 			native-type="button"
 			:class="[$style.toolsButton, { [$style.transparentBg]: transparentBg }]"
 			:disabled="disabled"
 			:icon="toolCount > 0 ? undefined : 'plus'"
+			data-test-id="chat-tools-button"
 			@click="emit('click', $event)"
 		>
 			<span v-if="toolCount" :class="$style.iconStack">

@@ -12,11 +12,11 @@ import type {
 	SubgraphPhase,
 	DiscoveryMetadata,
 	BuilderMetadata,
-	ConfiguratorMetadata,
 	StateManagementMetadata,
+	ResponderMetadata,
 } from '../types/coordination';
 
-export type RoutingDecision = 'discovery' | 'builder' | 'configurator' | 'responder';
+export type RoutingDecision = 'discovery' | 'builder' | 'responder';
 
 /**
  * Get the last completed phase from the coordination log
@@ -51,14 +51,6 @@ export function hasPhaseCompleted(log: CoordinationLogEntry[], phase: SubgraphPh
 }
 
 /**
- * Get configurator output (setup instructions) from the log
- */
-export function getConfiguratorOutput(log: CoordinationLogEntry[]): string | null {
-	const entry = getPhaseEntry(log, 'configurator');
-	return entry?.output ?? null;
-}
-
-/**
  * Get builder output (workflow summary) from the log
  */
 export function getBuilderOutput(log: CoordinationLogEntry[]): string | null {
@@ -79,16 +71,12 @@ export function getPhaseMetadata(
 ): BuilderMetadata | null;
 export function getPhaseMetadata(
 	log: CoordinationLogEntry[],
-	phase: 'configurator',
-): ConfiguratorMetadata | null;
-export function getPhaseMetadata(
-	log: CoordinationLogEntry[],
 	phase: 'state_management',
 ): StateManagementMetadata | null;
 export function getPhaseMetadata(
 	log: CoordinationLogEntry[],
 	phase: SubgraphPhase,
-): DiscoveryMetadata | BuilderMetadata | ConfiguratorMetadata | StateManagementMetadata | null {
+): DiscoveryMetadata | BuilderMetadata | StateManagementMetadata | ResponderMetadata | null {
 	const entry = getPhaseEntry(log, phase);
 	if (!entry) return null;
 
@@ -113,28 +101,60 @@ export function getErrorEntry(log: CoordinationLogEntry[]): CoordinationLogEntry
 }
 
 /**
+ * Check if recursion errors have been cleared (AI-1812)
+ * Returns true if there's a state_management entry that cleared recursion errors
+ */
+export function hasRecursionErrorsCleared(log: CoordinationLogEntry[]): boolean {
+	return log.some(
+		(entry) =>
+			entry.phase === 'state_management' &&
+			entry.summary.includes('Cleared') &&
+			entry.summary.includes('recursion'),
+	);
+}
+
+/**
  * Deterministic routing based on coordination log.
  * Called AFTER a subgraph completes to determine next phase.
  */
 export function getNextPhaseFromLog(log: CoordinationLogEntry[]): RoutingDecision {
 	// If any phase errored, route to responder to report the error
-	if (hasErrorInLog(log)) {
-		return 'responder';
+	// UNLESS recursion errors have been acknowledged/cleared (AI-1812)
+	const hasErrors = hasErrorInLog(log);
+
+	if (hasErrors) {
+		// Check if recursion errors were cleared
+		if (!hasRecursionErrorsCleared(log)) {
+			// No clear marker - route to responder
+			return 'responder';
+		}
+
+		// Find the last clear marker to check for errors after it
+		const lastClearIndex = log.findLastIndex(
+			(entry) =>
+				entry.phase === 'state_management' &&
+				entry.summary.includes('Cleared') &&
+				entry.summary.includes('recursion'),
+		);
+
+		// Check if any errors exist after the clear marker
+		const hasErrorsAfterClear = log
+			.slice(lastClearIndex + 1)
+			.some((entry) => entry.status === 'error');
+
+		if (hasErrorsAfterClear) {
+			return 'responder';
+		}
 	}
 
 	const lastPhase = getLastCompletedPhase(log);
-	// After discovery → always builder (builder decides what new nodes to add)
+	// After discovery → builder (handles adding, connecting, and configuring nodes)
 	if (lastPhase === 'discovery') {
 		return 'builder';
 	}
 
-	// After builder → configurator
+	// After builder → responder (terminal)
 	if (lastPhase === 'builder') {
-		return 'configurator';
-	}
-
-	// After configurator → responder (terminal)
-	if (lastPhase === 'configurator') {
 		return 'responder';
 	}
 

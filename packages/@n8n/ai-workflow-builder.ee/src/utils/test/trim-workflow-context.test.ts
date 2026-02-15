@@ -43,7 +43,7 @@ describe('trimWorkflowJSON', () => {
 				createNode({
 					id: 'node1',
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					parameters: {},
 				}),
 			]);

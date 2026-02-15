@@ -25,12 +25,7 @@ export class SettingsUsersPage extends BasePage {
 		await searchInput.fill(email);
 	}
 
-	async clickTransferUser(email: string) {
-		await this.openActions(email);
-		await this.page.getByTestId('action-transfer').click();
-	}
-
-	async transferData(email: string) {
+	async transferData(emailOrName: string) {
 		await this.page
 			.getByRole('radio', {
 				name: 'Transfer their workflows and credentials to another user or project',
@@ -40,7 +35,19 @@ export class SettingsUsersPage extends BasePage {
 			.click({ force: true });
 
 		await this.page.getByPlaceholder('Select project or user').click();
-		await this.page.getByTestId('project-sharing-info').filter({ hasText: email }).click();
+		const projectSharingInfo = this.page.getByTestId('project-sharing-info');
+		// Try to find by email or name (personal projects now show "Personal space" instead of email)
+		const byEmail = projectSharingInfo.filter({ hasText: emailOrName });
+		if ((await byEmail.count()) > 0) {
+			await byEmail.click();
+		} else {
+			// For personal projects, try matching by name part of email
+			const namePart = emailOrName.split('@')[0].replace(/[.-]/g, ' ');
+			await projectSharingInfo
+				.filter({ hasText: new RegExp(namePart, 'i') })
+				.first()
+				.click();
+		}
 		await this.page.getByRole('button', { name: 'Delete' }).click();
 	}
 

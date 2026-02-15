@@ -9,7 +9,7 @@ import { nanoid } from 'nanoid';
 import type { ApiHelpers } from './api-helper';
 import { TestError } from '../Types';
 
-interface CredentialResponse {
+export interface CredentialResponse {
 	id: string;
 	name: string;
 	type: string;
@@ -20,6 +20,7 @@ interface CredentialResponse {
 		projectId: string;
 		role: string;
 	}>;
+	isResolvable?: boolean;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -170,6 +171,19 @@ export class CredentialApiHelper {
 
 		const result = await response.json();
 		return Array.isArray(result) ? result : (result.data ?? []);
+	}
+
+	/**
+	 * Share a credential with other projects/users
+	 */
+	async shareCredential(credentialId: string, shareWithIds: string[]): Promise<void> {
+		const response = await this.api.request.put(`/rest/credentials/${credentialId}/share`, {
+			data: { shareWithIds },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to share credential: ${await response.text()}`);
+		}
 	}
 
 	/**

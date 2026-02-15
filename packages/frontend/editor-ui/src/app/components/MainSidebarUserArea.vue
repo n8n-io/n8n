@@ -6,7 +6,7 @@ import {
 	N8nAvatar,
 	N8nIconButton,
 	N8nMenuItem,
-	N8nPopoverReka,
+	N8nPopover,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -52,7 +52,7 @@ const onUserActionToggle = (action: string) => {
 
 <template>
 	<div ref="user" :class="$style.userArea">
-		<N8nPopoverReka side="right" align="end" :side-offset="16">
+		<N8nPopover side="right" align="end" :side-offset="16">
 			<template #content>
 				<div :class="$style.popover">
 					<N8nMenuItem
@@ -91,11 +91,11 @@ const onUserActionToggle = (action: string) => {
 						data-test-id="user-menu"
 						:class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }"
 					>
-						<N8nIconButton icon="ellipsis" text square type="tertiary" />
+						<N8nIconButton variant="ghost" iconOnly icon="ellipsis" square />
 					</div>
 				</div>
 			</template>
-		</N8nPopoverReka>
+		</N8nPopover>
 	</div>
 </template>
 

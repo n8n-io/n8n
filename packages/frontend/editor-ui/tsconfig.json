@@ -22,6 +22,7 @@
 			"@n8n/composables*": ["../@n8n/composables/src*"],
 			"@n8n/constants*": ["../../@n8n/constants/src*"],
 			"@n8n/chat*": ["../@n8n/chat/src*"],
+			"@n8n/chat-hub*": ["../../@n8n/chat-hub/src*"],
 			"@n8n/design-system*": ["../@n8n/design-system/src*"],
 			"@n8n/i18n*": ["../@n8n/i18n/src*"],
 			"@n8n/stores*": ["../@n8n/stores/src*"],
@@ -32,5 +33,5 @@
 		"useUnknownInCatchVariables": false
 	},
 	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"],
-	"exclude": ["src/plugins/codemirror/typescript/worker/**/*.d.ts"]
+	"exclude": ["src/**/*.stories.ts", "src/plugins/codemirror/typescript/worker/**/*.d.ts"]
 }

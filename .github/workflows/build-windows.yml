@@ -1,4 +1,4 @@
-name: Windows CI
+name: 'Build: Windows'
 
 on:
   workflow_dispatch:
@@ -24,6 +24,7 @@ on:
       - '**/package.json'
       - '**/turbo.json'
       - '.github/workflows/build-windows.yml'
+      - '.github/actions/setup-nodejs/**'
 
 jobs:
   build:
@@ -34,9 +35,23 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node.js and Build
-        uses: ./.github/actions/setup-nodejs-github
+        uses: ./.github/actions/setup-nodejs
         with:
           build-command: pnpm build
+
+      - name: Smoke test pnpm start -- -- --version
+        shell: pwsh
+        run: |
+          Write-Host "Running smoke test: pnpm start -- -- --version"
+
+          pnpm start -- -- --version
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "`n❌ Smoke test failed (exit code: $LASTEXITCODE)"
+            exit $LASTEXITCODE
+          }
+
+          Write-Host "`n✓ Smoke test passed"
 
       - name: Send Slack notification on failure
         if: failure() && inputs.notify_on_failure == true

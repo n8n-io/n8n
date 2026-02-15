@@ -2,7 +2,11 @@ import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Credentials', () => {
+test.describe('Credentials', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.goHome();
 	});

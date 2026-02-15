@@ -16,6 +16,8 @@ export interface Props {
 	streaming?: boolean;
 	isLastMessage?: boolean;
 	color?: string;
+	workflowId?: string;
+	pruneTimeHours?: number;
 }
 
 const props = defineProps<Props>();
@@ -24,6 +26,10 @@ const emit = defineEmits<{
 	codeReplace: [];
 	codeUndo: [];
 	feedback: [RatingFeedback];
+	restore: [versionId: string];
+	restoreConfirm: [versionId: string, messageId: string];
+	restoreCancel: [];
+	showVersion: [versionId: string];
 }>();
 
 const messageComponent = computed<Component | null>(() => {
@@ -42,10 +48,22 @@ const messageComponent = computed<Component | null>(() => {
 			:streaming="streaming"
 			:is-last-message="isLastMessage"
 			:color="color"
+			:workflow-id="workflowId"
+			:prune-time-hours="pruneTimeHours"
 			@code-replace="emit('codeReplace')"
 			@code-undo="emit('codeUndo')"
 			@feedback="(feedback: RatingFeedback) => emit('feedback', feedback)"
-		/>
+			@restore="(versionId: string) => emit('restore', versionId)"
+			@restore-confirm="
+				(versionId: string, messageId: string) => emit('restoreConfirm', versionId, messageId)
+			"
+			@restore-cancel="emit('restoreCancel')"
+			@show-version="(versionId: string) => emit('showVersion', versionId)"
+		>
+			<template v-if="$slots['focused-nodes-chips']" #focused-nodes-chips="slotProps">
+				<slot name="focused-nodes-chips" v-bind="slotProps" />
+			</template>
+		</component>
 		<slot
 			v-else-if="message.type === 'custom'"
 			name="custom-message"

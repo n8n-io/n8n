@@ -60,6 +60,16 @@ withSecondaryIconTooltip.args = {
 	},
 };
 
+export const withBetaTag = template.bind({});
+withBetaTag.args = {
+	item: {
+		id: 'workflows',
+		icon: 'home',
+		label: 'Workflows',
+		beta: true,
+	},
+};
+
 export const compact = template.bind({});
 compact.args = {
 	item: {

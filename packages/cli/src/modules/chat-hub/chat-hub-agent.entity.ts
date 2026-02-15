@@ -1,7 +1,22 @@
-import { ChatHubLLMProvider } from '@n8n/api-types';
-import { WithTimestamps, User, CredentialsEntity, JsonColumn } from '@n8n/db';
+import { ChatHubLLMProvider, AgentIconOrEmoji } from '@n8n/api-types';
+import { User, CredentialsEntity, JsonColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import { INode } from 'n8n-workflow';
+
+export interface IChatHubAgent {
+	id: string;
+	createdAt: Date;
+	updatedAt: Date;
+	name: string;
+	description: string | null;
+	icon: AgentIconOrEmoji | null;
+	systemPrompt: string;
+	ownerId: string;
+	credentialId: string | null;
+	provider: ChatHubLLMProvider;
+	model: string;
+	tools: INode[];
+}
 
 @Entity({ name: 'chat_hub_agents' })
 export class ChatHubAgent extends WithTimestamps {
@@ -19,6 +34,12 @@ export class ChatHubAgent extends WithTimestamps {
 	 */
 	@Column({ type: 'varchar', length: 512, nullable: true })
 	description: string | null;
+
+	/**
+	 * The icon or emoji for the chat agent.
+	 */
+	@JsonColumn({ nullable: true })
+	icon: AgentIconOrEmoji | null;
 
 	/**
 	 * The system prompt for the chat agent.

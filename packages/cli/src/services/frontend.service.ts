@@ -7,31 +7,29 @@ import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
+import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
-
-import { UrlService } from './url.service';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
-import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
-import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { OwnershipService } from '@/services/ownership.service';
+import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history/workflow-history-helper';
+import { AiUsageService } from './ai-usage.service';
+import { UrlService } from './url.service';
 
 /**
  * IMPORTANT: Only add settings that are absolutely necessary for non-authenticated pages
@@ -39,6 +37,9 @@ import {
 export type PublicFrontendSettings = {
 	/** Controls initialization flow in settings store */
 	settingsMode: FrontendSettings['settingsMode'];
+
+	/** Used to localize login page UI */
+	defaultLocale: FrontendSettings['defaultLocale'];
 
 	/** Used to bypass authentication on the workflows/demo page */
 	previewMode: FrontendSettings['previewMode'];
@@ -90,6 +91,13 @@ export type PublicFrontendSettings = {
 			loginUrl: FrontendSettings['sso']['oidc']['loginUrl'];
 		};
 	};
+	/** Used to fetch community nodes on preview instance */
+	communityNodesEnabled: FrontendSettings['communityNodesEnabled'];
+
+	mfa?: {
+		enabled: boolean;
+		enforced: boolean;
+	};
 };
 
 @Service()
@@ -115,6 +123,7 @@ export class FrontendService {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly mfaService: MfaService,
 		private readonly ownershipService: OwnershipService,
+		private readonly aiUsageService: AiUsageService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -176,6 +185,7 @@ export class FrontendService {
 			endpointWebhook: this.globalConfig.endpoints.webhook,
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
+			endpointHealth: this.globalConfig.endpoints.health,
 			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
 			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
 			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,
@@ -191,9 +201,6 @@ export class FrontendService {
 			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
-			isNativePythonRunnerEnabled:
-				this.globalConfig.taskRunners.enabled &&
-				this.globalConfig.taskRunners.isNativePythonRunnerEnabled,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -221,7 +228,7 @@ export class FrontendService {
 				apiKey: this.globalConfig.diagnostics.posthogConfig.apiKey,
 				autocapture: false,
 				disableSessionRecording: this.globalConfig.deployment.type !== 'cloud',
-				proxy: `${instanceBaseUrl}/${restEndpoint}/posthog`,
+				proxy: `${instanceBaseUrl}/${restEndpoint}/ph`,
 				debug: this.globalConfig.logging.level === 'debug',
 			},
 			personalizationSurveyEnabled:
@@ -304,6 +311,7 @@ export class FrontendService {
 				advancedPermissions: false,
 				apiKeyScopes: false,
 				workflowDiffs: false,
+				namedVersions: false,
 				provisioning: false,
 				projects: {
 					team: {
@@ -311,6 +319,7 @@ export class FrontendService {
 					},
 				},
 				customRoles: false,
+				personalSpacePolicy: false,
 			},
 			mfa: {
 				enabled: false,
@@ -337,6 +346,10 @@ export class FrontendService {
 			aiCredits: {
 				enabled: false,
 				credits: 0,
+				setup: false,
+			},
+			ai: {
+				allowSendingParameterValues: true,
 			},
 			workflowHistory: {
 				pruneTime: getWorkflowHistoryPruneTime(),
@@ -370,6 +383,8 @@ export class FrontendService {
 		await mkdir(path.join(staticCacheDir, 'types'), { recursive: true });
 		const { credentials, nodes } = this.loadNodesAndCredentials.types;
 		this.writeStaticJSON('nodes', nodes);
+		const nodeVersionIdentifiers = this.getNodeVersionIdentifiers(nodes);
+		this.writeStaticJSON('node-versions', nodeVersionIdentifiers);
 		this.writeStaticJSON('credentials', credentials);
 	}
 
@@ -379,7 +394,6 @@ export class FrontendService {
 		}
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
-		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		this.settings.urlBaseWebhook = this.urlService.getWebhookBaseUrl();
 		this.settings.urlBaseEditor = instanceBaseUrl;
@@ -408,6 +422,11 @@ export class FrontendService {
 			this.settings.easyAIWorkflowOnboarded = config.getEnv('easyAIWorkflowOnboarded') ?? false;
 		} catch {
 			this.settings.easyAIWorkflowOnboarded = false;
+		}
+		try {
+			this.settings.ai.allowSendingParameterValues = await this.aiUsageService.getAiUsageSettings();
+		} catch {
+			this.settings.ai.allowSendingParameterValues = true;
 		}
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
@@ -441,12 +460,14 @@ export class FrontendService {
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
 			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
+			namedVersions: this.license.isLicensed(LICENSE_FEATURES.NAMED_VERSIONS),
 			customRoles: this.licenseState.isCustomRolesLicensed(),
+			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
 			Object.assign(this.settings.sso.ldap, {
-				loginLabel: getLdapLoginLabel(),
+				loginLabel: this.globalConfig.sso.ldap.loginLabel,
 				loginEnabled: this.globalConfig.sso.ldap.loginEnabled,
 			});
 		}
@@ -485,6 +506,7 @@ export class FrontendService {
 		if (isAiCreditsEnabled) {
 			this.settings.aiCredits.enabled = isAiCreditsEnabled;
 			this.settings.aiCredits.credits = this.license.getAiCredits();
+			this.settings.aiCredits.setup = !!this.globalConfig.aiAssistant.baseUrl;
 		}
 
 		if (isAiBuilderEnabled) {
@@ -496,7 +518,7 @@ export class FrontendService {
 		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
 
 		// TODO: read from settings
-		this.settings.mfa.enforced = this.mfaService.isMFAEnforced();
+		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
 
 		this.settings.executionMode = this.globalConfig.executions.mode;
 
@@ -519,19 +541,28 @@ export class FrontendService {
 	 * Only add settings that are absolutely necessary for non-authenticated pages
 	 * @returns Public settings for unauthenticated users
 	 */
-	async getPublicSettings(): Promise<PublicFrontendSettings> {
+	async getPublicSettings(includeMfaSettings: boolean): Promise<PublicFrontendSettings> {
 		// Get full settings to ensure all required properties are initialized
 		const {
+			defaultLocale,
 			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
 			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			authCookie,
 			previewMode,
 			enterprise: { saml, ldap, oidc },
+			mfa,
+			communityNodesEnabled,
 		} = await this.getSettings();
 
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
-			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			defaultLocale,
+			userManagement: {
+				authenticationMethod,
+				// In preview mode, skip the setup redirect to allow accessing demo routes
+				showSetupOnFirstLoad: previewMode ? false : showSetupOnFirstLoad,
+				smtpSetup,
+			},
 			sso: {
 				saml: {
 					loginEnabled: ssoSaml.loginEnabled,
@@ -545,7 +576,11 @@ export class FrontendService {
 			authCookie,
 			previewMode,
 			enterprise: { saml, ldap, oidc },
+			communityNodesEnabled,
 		};
+		if (includeMfaSettings) {
+			publicSettings.mfa = mfa;
+		}
 		return publicSettings;
 	}
 
@@ -553,7 +588,26 @@ export class FrontendService {
 		return Object.fromEntries(this.moduleRegistry.settings);
 	}
 
-	private writeStaticJSON(name: string, data: INodeTypeBaseDescription[] | ICredentialType[]) {
+	getNodeVersionIdentifiers(nodes: INodeTypeDescription[]): string[] {
+		const identifiers = new Set<string>();
+
+		for (const node of nodes) {
+			if (!node?.name || node.version === undefined) continue;
+
+			const versions = Array.isArray(node.version) ? node.version : [node.version];
+			for (const version of versions) {
+				if (version === undefined) continue;
+				identifiers.add(`${node.name}@${String(version)}`);
+			}
+		}
+
+		return Array.from(identifiers);
+	}
+
+	private writeStaticJSON(
+		name: string,
+		data: Array<INodeTypeBaseDescription | ICredentialType | string>,
+	) {
 		const { staticCacheDir } = this.instanceSettings;
 		const filePath = path.join(staticCacheDir, `types/${name}.json`);
 		const stream = createWriteStream(filePath, 'utf-8');

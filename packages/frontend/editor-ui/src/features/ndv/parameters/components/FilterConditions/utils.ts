@@ -77,7 +77,7 @@ export const isEmptyInput = (value: unknown): boolean => {
 	return value === '' || value === '=';
 };
 
-export const resolveCondition = ({
+export const resolveCondition = async ({
 	condition,
 	options,
 	index = 0,
@@ -85,11 +85,11 @@ export const resolveCondition = ({
 	condition: FilterConditionValue;
 	options: FilterOptionsValue;
 	index?: number;
-}): ConditionResult => {
+}): Promise<ConditionResult> => {
 	try {
-		const resolved = resolveParameter(
+		const resolved = (await resolveParameter(
 			condition as unknown as NodeParameterValue,
-		) as FilterConditionValue;
+		)) as FilterConditionValue;
 
 		if (resolved.leftValue === undefined || resolved.rightValue === undefined) {
 			return { status: 'resolve_error' };

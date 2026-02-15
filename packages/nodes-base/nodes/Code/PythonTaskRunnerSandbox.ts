@@ -3,6 +3,7 @@ import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type WorkflowExecuteMode,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import type { TextKeys } from './result-validation';
@@ -22,6 +23,15 @@ export class PythonTaskRunnerSandbox {
 		private readonly additionalProperties: Record<string, unknown> = {},
 	) {}
 
+	private validateCode(): void {
+		if (typeof this.pythonCode !== 'string') {
+			throw new NodeOperationError(
+				this.executeFunctions.getNode(),
+				'No Python code found to execute. Please add code to the Code node.',
+			);
+		}
+	}
+
 	/**
 	 * Run a script by forwarding it to a Python task runner, together with input items.
 	 *
@@ -30,6 +40,8 @@ export class PythonTaskRunnerSandbox {
 	 * instead retrieves them later, only if needed, via an RPC request.
 	 */
 	async runUsingIncomingItems() {
+		this.validateCode();
+
 		const itemIndex = 0;
 
 		const node = this.executeFunctions.getNode();
@@ -84,6 +96,8 @@ export class PythonTaskRunnerSandbox {
 	 * - Does not validate the result from the runner (tools can return any type)
 	 */
 	async runCodeForTool(): Promise<unknown> {
+		this.validateCode();
+
 		const itemIndex = 0;
 
 		const node = this.executeFunctions.getNode();

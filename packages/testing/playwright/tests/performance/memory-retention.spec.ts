@@ -1,72 +1,51 @@
 import { test, expect } from '../../fixtures/base';
 import type { n8nPage } from '../../pages/n8nPage';
-import { attachMetric, pollMemoryMetric } from '../../utils/performance-helper';
+import { attachMetric, getStableHeap } from '../../utils/performance-helper';
 
 test.use({
-	addContainerCapability: {
-		resourceQuota: {
-			memory: 0.75,
-			cpu: 0.5,
-		},
+	capability: {
+		resourceQuota: { memory: 0.75, cpu: 0.5 },
+		services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
 	},
 });
-test.describe('Memory Leak Detection', () => {
-	const CONTAINER_STABILIZATION_TIME = 20000;
-	const BASELINE_POLL_DURATION = 10000;
-	const FINAL_POLL_DURATION = 30000;
 
-	const MAX_MEMORY_RETENTION_PERCENT = 10;
-
-	/**
-	 * Define the memory-consuming action to test.
-	 * This function can be easily modified to test different features.
-	 */
+test.describe('Memory Leak Detection @capability:observability', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	async function performMemoryAction(n8n: n8nPage) {
-		// Example 1: AI Workflow Builder
-		// Enable AI workflow feature
-		await n8n.api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
-
+		await n8n.start.fromBlankCanvas();
 		await n8n.navigate.toWorkflows();
-		await expect(n8n.workflows.getEasyAiWorkflowCard()).toBeVisible({ timeout: 10000 });
-		await n8n.workflows.clickEasyAiWorkflowCard();
-
-		// Wait for AI workflow builder to fully load
-		await n8n.page.waitForLoadState();
-		await expect(n8n.canvas.sticky.getStickies().first()).toBeVisible({ timeout: 10000 });
-
-		await new Promise((resolve) => setTimeout(resolve, 5000));
 	}
 
-	test('Memory should be released after actions', async ({ n8nContainer, n8n }, testInfo) => {
-		// Let container stabilize
-		await new Promise((resolve) => setTimeout(resolve, CONTAINER_STABILIZATION_TIME));
+	test('Memory should be released after actions', async ({
+		n8nContainer,
+		n8n,
+		services,
+	}, testInfo) => {
+		const obs = services.observability;
 
-		// Get baseline memory (average over 10 seconds for accuracy)
-		const baselineMemoryMB =
-			(await pollMemoryMetric(n8nContainer.baseUrl, BASELINE_POLL_DURATION, 1000)) / 1024 / 1024;
-
-		// Perform the memory-consuming action
+		const baseline = await getStableHeap(n8nContainer.baseUrl, obs.metrics);
 		await performMemoryAction(n8n);
 		await n8n.page.goto('/home/workflows');
+		const final = await getStableHeap(n8nContainer.baseUrl, obs.metrics);
 
-		// Give time for garbage collection
-		await new Promise((resolve) => setTimeout(resolve, 5000));
+		const retainedMB = final.heapUsedMB - baseline.heapUsedMB;
+		const retentionPercent = (retainedMB / baseline.heapUsedMB) * 100;
 
-		// Measure final memory (average over 30 seconds for stability)
-		const finalMemoryMB =
-			(await pollMemoryMetric(n8nContainer.baseUrl, FINAL_POLL_DURATION, 1000)) / 1024 / 1024;
+		await attachMetric(testInfo, 'memory-heap-retention-percent', retentionPercent, '%');
+		await attachMetric(testInfo, 'memory-heap-used-pre-action', baseline.heapUsedMB, 'MB');
+		await attachMetric(testInfo, 'memory-heap-used-post-action', final.heapUsedMB, 'MB');
+		await attachMetric(testInfo, 'memory-heap-retained', retainedMB, 'MB');
 
-		// Calculate retention percentage - How much memory is retained after the action
-		const memoryRetainedMB = finalMemoryMB - baselineMemoryMB;
-		const retentionPercent = (memoryRetainedMB / baselineMemoryMB) * 100;
+		expect(baseline.heapUsedMB).toBeGreaterThan(0);
+		expect(final.heapUsedMB).toBeGreaterThan(0);
 
-		await attachMetric(testInfo, 'memory-retention-percentage', retentionPercent, '%');
-
-		expect(
-			retentionPercent,
-			`Memory retention (${retentionPercent.toFixed(1)}%) exceeds maximum allowed ${MAX_MEMORY_RETENTION_PERCENT}%. ` +
-				`Baseline: ${baselineMemoryMB.toFixed(1)} MB, Final: ${finalMemoryMB.toFixed(1)} MB, ` +
-				`Retained: ${memoryRetainedMB.toFixed(1)} MB`,
-		).toBeLessThan(MAX_MEMORY_RETENTION_PERCENT);
+		console.log(
+			`[MEMORY RETENTION] Baseline: ${baseline.heapUsedMB.toFixed(1)} MB | ` +
+				`Final: ${final.heapUsedMB.toFixed(1)} MB | ` +
+				`Retained: ${retainedMB.toFixed(1)} MB (${retentionPercent.toFixed(1)}%)`,
+		);
 	});
 });

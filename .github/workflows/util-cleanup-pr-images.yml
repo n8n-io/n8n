@@ -1,0 +1,27 @@
+name: 'Util: Cleanup PR Docker Images'
+
+on:
+  schedule:
+    # Weekly cleanup: Sunday at 3 AM UTC
+    - cron: '0 3 * * 0'
+
+jobs:
+  cleanup:
+    name: 'Delete stale PR images'
+    runs-on: ubuntu-slim
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - name: Delete stale PR images
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_ORG: ${{ github.repository_owner }}
+          GHCR_REPO: ${{ github.event.repository.name }}
+        run: node .github/scripts/cleanup-ghcr-images.mjs --stale 7

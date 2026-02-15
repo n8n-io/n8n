@@ -18,7 +18,8 @@ export type CanvasLayoutSource =
 	| 'canvas-button'
 	| 'context-menu'
 	| 'command-bar'
-	| 'import-workflow-data';
+	| 'import-workflow-data'
+	| 'builder-update';
 export type CanvasLayoutTargetData = {
 	nodes: Array<GraphNode<CanvasNodeData>>;
 	edges: CanvasConnection[];

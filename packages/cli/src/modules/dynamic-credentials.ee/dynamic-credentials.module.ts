@@ -22,6 +22,7 @@ export class DynamicCredentialsModule implements ModuleInterface {
 			DynamicCredentialStorageService,
 			DynamicCredentialService,
 		} = await import('./services');
+		await import('./workflow-status.controller');
 
 		await Container.get(DynamicCredentialResolverRegistry).init();
 
@@ -40,8 +41,11 @@ export class DynamicCredentialsModule implements ModuleInterface {
 		}
 		const { DynamicCredentialResolver } = await import('./database/entities/credential-resolver');
 		const { DynamicCredentialEntry } = await import('./database/entities/dynamic-credential-entry');
+		const { DynamicCredentialUserEntry } = await import(
+			'./database/entities/dynamic-credential-user-entry'
+		);
 
-		return [DynamicCredentialResolver, DynamicCredentialEntry];
+		return [DynamicCredentialResolver, DynamicCredentialEntry, DynamicCredentialUserEntry];
 	}
 
 	@OnShutdown()

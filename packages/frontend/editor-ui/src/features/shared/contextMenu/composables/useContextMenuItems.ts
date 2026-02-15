@@ -8,6 +8,8 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
@@ -35,7 +37,8 @@ export type ContextMenuAction =
 	| 'change_color'
 	| 'open_sub_workflow'
 	| 'tidy_up'
-	| 'extract_sub_workflow';
+	| 'extract_sub_workflow'
+	| 'focus_ai_on_selected';
 
 type Item = ActionDropdownItem<ContextMenuAction>;
 
@@ -44,6 +47,8 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const sourceControlStore = useSourceControlStore();
+	const collaborationStore = useCollaborationStore();
+	const focusedNodesStore = useFocusedNodesStore();
 	const i18n = useI18n();
 
 	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
@@ -57,7 +62,8 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			sourceControlStore.preferences.branchReadOnly ||
 			uiStore.isReadOnlyView ||
 			!workflowPermissions.value.update ||
-			workflowsStore.workflow.isArchived,
+			workflowsStore.workflow.isArchived ||
+			collaborationStore.shouldBeReadOnly,
 	);
 
 	const canOpenSubworkflow = computed(() => {
@@ -147,6 +153,20 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			},
 		];
 
+		const aiActions: Item[] = [
+			!onlyStickies &&
+				focusedNodesStore.isFeatureEnabled && {
+					id: 'focus_ai_on_selected',
+					divided: true,
+					label: i18n.baseText('contextMenu.focusAiOnSelected', {
+						adjustToNumber: nodes.length,
+						interpolate: { count: nodes.length },
+					}),
+					shortcut: { altKey: true, keys: ['I'] },
+					disabled: isReadOnly.value,
+				},
+		].filter(Boolean) as Item[];
+
 		const layoutActions: Item[] = [
 			{
 				id: 'tidy_up',
@@ -207,6 +227,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				},
 				...layoutActions,
 				...extractionActions,
+				...aiActions,
 				...selectionActions,
 				{
 					id: 'delete',

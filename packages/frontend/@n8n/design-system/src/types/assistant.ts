@@ -5,6 +5,11 @@ export namespace ChatUI {
 		type: 'text';
 		content: string;
 		codeSnippet?: string;
+		focusedNodeNames?: string[];
+		revertVersion?: {
+			id: string;
+			createdAt: string;
+		};
 	}
 
 	export interface TaskAbortedMessage extends Omit<TextMessage, 'role' | 'codeSnippet'> {

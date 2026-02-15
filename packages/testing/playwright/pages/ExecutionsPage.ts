@@ -86,4 +86,21 @@ export class ExecutionsPage extends BasePage {
 		await this.page.getByTestId('execution-preview-delete-button').click();
 		await this.page.locator('button.btn--confirm').click();
 	}
+
+	// Filter methods
+	getFilterButton(): Locator {
+		return this.page.getByTestId('executions-filter-button');
+	}
+
+	getFilterForm(): Locator {
+		return this.page.getByTestId('execution-filter-form');
+	}
+
+	getStatusSelect(): Locator {
+		return this.page.getByTestId('executions-filter-status-select');
+	}
+
+	async openFilter(): Promise<void> {
+		await this.getFilterButton().click();
+	}
 }

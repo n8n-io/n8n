@@ -37,12 +37,15 @@ export class ProjectSettingsPage extends BasePage {
 		return this.page.getByTestId('project-settings-delete-button');
 	}
 
-	async clearMemberSearch() {
-		const searchInput = this.page.getByTestId('project-members-search');
-		const clearButton = searchInput.locator('+ span');
-		if (await clearButton.isVisible()) {
-			await clearButton.click();
-		}
+	getMembersSearchInput() {
+		return this.page.getByPlaceholder('Add users...');
+	}
+
+	getRoleDropdownFor(email: string) {
+		return this.getMembersTable()
+			.locator('tr')
+			.filter({ hasText: email })
+			.getByTestId('project-member-role-dropdown');
 	}
 
 	getMembersTable() {
@@ -58,11 +61,6 @@ export class ProjectSettingsPage extends BasePage {
 	async expectTableHasMemberCount(expectedCount: number) {
 		const actualCount = await this.getMemberRowCount();
 		expect(actualCount).toBe(expectedCount);
-	}
-
-	async expectSearchInputValue(expectedValue: string) {
-		const searchInput = this.page.getByTestId('project-members-search').locator('input');
-		await expect(searchInput).toHaveValue(expectedValue);
 	}
 
 	getTitle() {

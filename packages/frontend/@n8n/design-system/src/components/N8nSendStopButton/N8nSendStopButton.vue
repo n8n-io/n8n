@@ -5,12 +5,14 @@ export interface N8nSendStopButtonProps {
 	streaming?: boolean;
 	disabled?: boolean;
 	size?: 'mini' | 'small' | 'medium' | 'large';
+	label?: string;
 }
 
 withDefaults(defineProps<N8nSendStopButtonProps>(), {
 	streaming: false,
 	disabled: false,
 	size: 'small',
+	label: undefined,
 });
 
 const emit = defineEmits<{
@@ -30,25 +32,27 @@ function handleStop() {
 <template>
 	<N8nButton
 		v-if="streaming"
+		variant="solid"
+		icon-only
 		:class="$style.stopButton"
-		type="primary"
 		:size="size"
 		icon="filled-square"
 		icon-size="small"
-		square
 		@click="handleStop"
 	/>
 	<N8nButton
 		v-else
+		variant="solid"
 		:class="$style.sendButton"
-		type="primary"
 		:size="size"
 		icon-size="large"
-		square
-		icon="arrow-up"
+		:icon-only="!label"
+		:icon="label ? undefined : 'arrow-up'"
 		:disabled="disabled"
 		@click="handleSend"
-	/>
+	>
+		{{ label }}
+	</N8nButton>
 </template>
 
 <style lang="scss" module>

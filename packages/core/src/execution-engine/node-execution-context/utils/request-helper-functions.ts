@@ -14,6 +14,7 @@ import type {
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
@@ -43,6 +44,7 @@ import type {
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
+	IgnoreStatusErrorConfig,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
@@ -95,6 +97,17 @@ function validateUrl(url?: string): boolean {
 	}
 }
 
+function isIgnoreStatusErrorConfig(
+	ignoreHttpStatusErrors: unknown,
+): ignoreHttpStatusErrors is IgnoreStatusErrorConfig {
+	return (
+		typeof ignoreHttpStatusErrors === 'object' &&
+		ignoreHttpStatusErrors !== null &&
+		'ignore' in ignoreHttpStatusErrors &&
+		ignoreHttpStatusErrors.ignore === true
+	);
+}
+
 function getUrlFromProxyConfig(proxyConfig: IHttpRequestOptions['proxy'] | string): string | null {
 	if (typeof proxyConfig === 'string') {
 		return validateUrl(proxyConfig) ? proxyConfig : null;
@@ -145,6 +158,15 @@ function setAxiosAgents(
 	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, agentOptions);
 }
 
+function applyVendorHeaders(config: AxiosRequestConfig) {
+	if ([config.url, config.baseURL].some((url) => url?.startsWith('https://api.openai.com/'))) {
+		config.headers = {
+			...Container.get(AiConfig).openAiDefaultHeaders,
+			...(config.headers || {}),
+		};
+	}
+}
+
 axios.interceptors.request.use((config) => {
 	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
 	if (config.data === undefined) {
@@ -152,6 +174,7 @@ axios.interceptors.request.use((config) => {
 	}
 
 	setAxiosAgents(config);
+	applyVendorHeaders(config);
 
 	return config;
 });
@@ -186,6 +209,7 @@ const getBeforeRedirectFn =
 		agentOptions: AgentOptions,
 		axiosConfig: AxiosRequestConfig,
 		proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
+		sendCredentialsOnCrossOriginRedirect: boolean,
 	) =>
 	(redirectedRequest: Record<string, any>) => {
 		const redirectAgentOptions = {
@@ -204,12 +228,19 @@ const getBeforeRedirectFn =
 			: httpAgent;
 		redirectedRequest.agents = { http: httpAgent, https: httpsAgent };
 
+		const originalUrl = axiosConfig.baseURL
+			? new URL(axiosConfig.url ?? '', axiosConfig.baseURL)
+			: new URL(axiosConfig.url ?? '');
+		const originalOrigin = originalUrl.origin;
+		const targetOrigin = new URL(targetUrl).origin;
 		// Copy auth headers
-		if (axiosConfig.headers?.Authorization) {
-			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
-		}
-		if (axiosConfig.auth) {
-			redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
+		if (originalOrigin === targetOrigin || sendCredentialsOnCrossOriginRedirect) {
+			if (axiosConfig.headers?.Authorization) {
+				redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
+			}
+			if (axiosConfig.auth) {
+				redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
+			}
 		}
 	};
 
@@ -574,7 +605,12 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 
 	setAxiosAgents(axiosConfig, agentOptions, requestObject.proxy);
 
-	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig, requestObject.proxy);
+	axiosConfig.beforeRedirect = getBeforeRedirectFn(
+		agentOptions,
+		axiosConfig,
+		requestObject.proxy,
+		requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+	);
 
 	if (requestObject.useStream) {
 		axiosConfig.responseType = 'stream';
@@ -754,7 +790,12 @@ export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): Axios
 	}
 	setAxiosAgents(axiosRequest, agentOptions, proxy);
 
-	axiosRequest.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosRequest, n8nRequest.proxy);
+	axiosRequest.beforeRedirect = getBeforeRedirectFn(
+		agentOptions,
+		axiosRequest,
+		n8nRequest.proxy,
+		n8nRequest.sendCredentialsOnCrossOriginRedirect ?? true,
+	);
 
 	if (n8nRequest.arrayFormat !== undefined) {
 		axiosRequest.paramsSerializer = (params) => {
@@ -814,7 +855,14 @@ export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): Axios
 	}
 
 	if (n8nRequest.ignoreHttpStatusErrors) {
-		axiosRequest.validateStatus = () => true;
+		const ignoreHttpStatusErrors = n8nRequest.ignoreHttpStatusErrors;
+		if (isIgnoreStatusErrorConfig(ignoreHttpStatusErrors)) {
+			axiosRequest.validateStatus = (status) => {
+				return !ignoreHttpStatusErrors.except.includes(status);
+			};
+		} else {
+			axiosRequest.validateStatus = () => true;
+		}
 	}
 
 	return axiosRequest;
@@ -941,6 +989,7 @@ export async function requestOAuth2(
 			nodeCredentials,
 			credentialsType,
 			credentials as unknown as ICredentialDataDecryptedObject,
+			additionalData,
 		);
 
 		oauthTokenData = data;
@@ -1022,6 +1071,7 @@ export async function requestOAuth2(
 					nodeCredentials,
 					credentialsType,
 					credentials as unknown as ICredentialDataDecryptedObject,
+					additionalData,
 				);
 				const refreshedRequestOption = newToken.sign(requestOptions as ClientOAuth2RequestObject);
 
@@ -1102,6 +1152,7 @@ export async function requestOAuth2(
 					nodeCredentials,
 					credentialsType,
 					credentials as unknown as ICredentialDataDecryptedObject,
+					additionalData,
 				);
 
 				this.logger.debug(
@@ -1268,6 +1319,7 @@ export async function refreshOAuth2Token(
 		nodeCredentials,
 		credentialsType,
 		credentials as unknown as ICredentialDataDecryptedObject,
+		additionalData,
 	);
 
 	this.logger.debug(

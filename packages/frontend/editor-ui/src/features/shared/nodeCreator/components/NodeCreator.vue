@@ -177,9 +177,9 @@ onClickOutside(
 			}"
 		/>
 		<N8nIconButton
+			variant="subtle"
 			v-if="active"
 			:class="$style.close"
-			type="secondary"
 			icon="x"
 			aria-label="Close Node Creator"
 			@click="emit('closeNodeCreator')"
@@ -208,7 +208,7 @@ onClickOutside(
 }
 .nodeCreator {
 	--node-creator--width: #{$node-creator-width};
-	--node--icon--color: var(--color--text);
+	--node-creator--icon--color: var(--node--icon--color--neutral);
 	position: fixed;
 	top: $header-height;
 	bottom: 0;

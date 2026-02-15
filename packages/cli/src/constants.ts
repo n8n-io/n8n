@@ -28,7 +28,6 @@ export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
 
 export const STARTING_NODES = [
 	'@n8n/n8n-nodes-langchain.manualChatTrigger',
-	'n8n-nodes-base.start',
 	'n8n-nodes-base.manualTrigger',
 ];
 
@@ -71,7 +70,7 @@ export const NPM_COMMAND_TOKENS = {
 	NPM_NO_VERSION_AVAILABLE: 'No valid versions available',
 	NPM_DISK_NO_SPACE: 'ENOSPC',
 	NPM_DISK_INSUFFICIENT_SPACE: 'insufficient space',
-};
+} as const;
 
 export const NPM_PACKAGE_STATUS_GOOD = 'OK';
 

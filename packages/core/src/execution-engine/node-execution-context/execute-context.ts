@@ -101,9 +101,15 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			...getDeduplicationHelperFunctions(workflow, node),
 
 			assertBinaryData: (itemIndex, propertyName) =>
-				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
+				assertBinaryData(inputData, node, itemIndex, propertyName, 0, workflow.settings.binaryMode),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
-				await getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+				await getBinaryDataBuffer(
+					inputData,
+					itemIndex,
+					propertyName,
+					0,
+					workflow.settings.binaryMode,
+				),
 			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 		};
 
@@ -236,5 +242,10 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	addExecutionHints(...hints: NodeExecutionHint[]) {
 		this.hints.push(...hints);
+	}
+
+	/** Returns true if the node is being executed as an AI Agent tool */
+	isToolExecution(): boolean {
+		return false;
 	}
 }

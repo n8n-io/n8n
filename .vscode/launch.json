@@ -59,6 +59,30 @@
 			],
 			"type": "node",
 			"request": "launch"
+		},
+		{
+			"name": "Attach to remote n8n (K8s)",
+			"type": "node",
+			"request": "attach",
+			"port": 9229,
+			"address": "localhost",
+			"localRoot": "${workspaceFolder}/packages/cli",
+			"remoteRoot": "/usr/local/lib/node_modules/n8n",
+			"skipFiles": ["<node_internals>/**"],
+			"restart": true,
+			"sourceMaps": true,
+			"resolveSourceMapLocations": [
+				"${workspaceFolder}/**",
+				"!**/node_modules/**"
+			],
+			"outFiles": [
+				"${workspaceFolder}/**/dist/**/*.js"
+			],
+			"sourceMapPathOverrides": {
+				"/usr/local/lib/node_modules/n8n/node_modules/.pnpm/@n8n+*@*/node_modules/@n8n/*": "${workspaceFolder}/packages/@n8n/*/dist",
+				"/usr/local/lib/node_modules/n8n/packages/*": "${workspaceFolder}/packages/*",
+				"/usr/local/lib/node_modules/n8n/*": "${workspaceFolder}/packages/cli/*"
+			}
 		}
 	]
 

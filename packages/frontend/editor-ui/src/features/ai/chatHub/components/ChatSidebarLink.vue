@@ -8,14 +8,18 @@ const {
 	active = false,
 	to,
 	label,
+	title,
 	menuItems = [],
 	icon,
+	compact,
 } = defineProps<{
 	active?: boolean;
 	to: RouteLocationRaw;
 	label: string;
+	title: string;
 	menuItems?: Array<ActionDropdownItem<T>>;
 	icon?: IconName;
+	compact?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,17 +39,20 @@ defineSlots<{
 		<template v-else>
 			<RouterLink
 				:to="to"
-				:class="$style.menuItemLink"
-				:title="label"
+				:class="[$style.menuItemLink, { [$style.compact]: compact }]"
+				:title="title"
 				@click="emit('click', $event)"
 			>
 				<slot name="icon">
 					<N8nIcon v-if="icon" size="large" :icon="icon" />
 				</slot>
-				<N8nText :class="$style.label">{{ label }}</N8nText>
+				<div v-if="!compact" :class="$style.textContainer">
+					<N8nText :class="$style.label" size="small" color="text-light">{{ label }}</N8nText>
+					<N8nText :class="$style.title" size="medium" color="text-dark">{{ title }}</N8nText>
+				</div>
 			</RouterLink>
 			<N8nActionDropdown
-				v-if="menuItems.length > 0"
+				v-if="!compact && menuItems.length > 0"
 				:items="menuItems"
 				:class="$style.actionDropdown"
 				placement="bottom-start"
@@ -54,9 +61,8 @@ defineSlots<{
 			>
 				<template #activator>
 					<N8nIconButton
+						variant="ghost"
 						icon="ellipsis-vertical"
-						type="tertiary"
-						text
 						:class="$style.actionDropdownTrigger"
 					/>
 				</template>
@@ -76,15 +82,15 @@ defineSlots<{
 	&:has([aria-expanded='true']),
 	&.active,
 	&:hover {
-		background-color: var(--color--foreground);
+		background-color: var(--color--background--light-1);
 	}
 }
 
 .menuItemLink {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing--3xs);
-	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs);
+	gap: var(--spacing--4xs);
 	cursor: pointer;
 	color: var(--color--text);
 	min-width: 0;
@@ -92,9 +98,19 @@ defineSlots<{
 	text-decoration: none;
 	outline: none;
 
+	&.compact {
+		margin-left: -1px;
+	}
+
 	&:active {
 		color: var(--color--text--shade-1);
 	}
+}
+
+.textContainer {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
 }
 
 .label {
@@ -102,7 +118,16 @@ defineSlots<{
 	text-overflow: ellipsis;
 	overflow: hidden;
 	flex: 1;
-	line-height: var(--font-size--lg);
+	line-height: var(--line-height--xl);
+	min-width: 0;
+}
+
+.title {
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	flex: 1;
+	line-height: 20px;
 	min-width: 0;
 }
 

@@ -89,6 +89,7 @@ export const useExpressionEditor = ({
 	const autocompleteStatus = ref<'pending' | 'active' | null>(null);
 	const dragging = ref(false);
 	const hasChanges = ref(false);
+	let updateSegmentsGeneration = 0;
 	const expressionLocalResolveContext = inject(
 		ExpressionLocalResolveContextSymbol,
 		computed(() => undefined),
@@ -96,7 +97,9 @@ export const useExpressionEditor = ({
 
 	const emitChanges = debounce(onChange, 300);
 
-	const updateSegments = (): void => {
+	const updateSegments = async (): Promise<void> => {
+		const currentGeneration = ++updateSegmentsGeneration;
+
 		const state = editor.value?.state;
 		if (!state) return;
 
@@ -126,31 +129,34 @@ export const useExpressionEditor = ({
 			rawSegments.push(newSegment);
 		});
 
-		segments.value = rawSegments.reduce<Segment[]>((acc, segment) => {
-			const { from, to, text, token } = segment;
+		// Resolve all segments in parallel for better performance
+		const resolvedSegments: Segment[] = await Promise.all(
+			rawSegments.map(async (segment) => {
+				const { from, to, text, token } = segment;
 
-			if (token === 'Resolvable') {
-				const { resolved, error, fullError } = resolve(text, targetItem.value);
-				acc.push({
-					kind: 'resolvable',
-					from,
-					to,
-					resolvable: text,
-					// TODO:
-					// For some reason, expressions that resolve to a number 0 are breaking preview in the SQL editor
-					// This fixes that but as as TODO we should figure out why this is happening
-					resolved: String(resolved),
-					state: getResolvableState(fullError ?? error, autocompleteStatus.value !== null),
-					error: fullError,
-				});
+				if (token === 'Resolvable') {
+					const { resolved, error, fullError } = await resolve(text, targetItem.value);
+					return {
+						kind: 'resolvable' as const,
+						from,
+						to,
+						resolvable: text,
+						// TODO:
+						// For some reason, expressions that resolve to a number 0 are breaking preview in the SQL editor
+						// This fixes that but as as TODO we should figure out why this is happening
+						resolved: String(resolved),
+						state: getResolvableState(fullError ?? error, autocompleteStatus.value !== null),
+						error: fullError,
+					};
+				}
+				return { kind: 'plaintext' as const, from, to, plaintext: text };
+			}),
+		);
 
-				return acc;
-			}
+		// Only update if this is still the latest invocation (prevents race condition)
+		if (currentGeneration !== updateSegmentsGeneration) return;
 
-			acc.push({ kind: 'plaintext', from, to, plaintext: text });
-
-			return acc;
-		}, []);
+		segments.value = resolvedSegments;
 		if (
 			segments.value.length === 1 &&
 			segments.value[0]?.kind === 'resolvable' &&
@@ -191,7 +197,7 @@ export const useExpressionEditor = ({
 		if (viewUpdate.docChanged && !shouldIgnoreUpdate) {
 			hasChanges.value = true;
 			emitChanges(viewUpdate);
-			debouncedUpdateSegments();
+			void debouncedUpdateSegments();
 		}
 	}
 
@@ -243,7 +249,7 @@ export const useExpressionEditor = ({
 					selection.value = state.selection.ranges[0];
 					if (!newHasFocus) {
 						autocompleteStatus.value = null;
-						debouncedUpdateSegments();
+						void debouncedUpdateSegments();
 					}
 					return null;
 				}),
@@ -262,7 +268,7 @@ export const useExpressionEditor = ({
 		editor.value = new EditorView({ parent, state });
 		// Capture is needed here to prevent the browser search window to open in the inline editor
 		editor.value.dom.addEventListener('keydown', onKeyDown, { capture: true });
-		debouncedUpdateSegments();
+		void debouncedUpdateSegments();
 	});
 
 	watchEffect(() => {
@@ -312,7 +318,7 @@ export const useExpressionEditor = ({
 
 	onBeforeUnmount(() => {
 		document.removeEventListener('click', blurOnClickOutside);
-		debouncedUpdateSegments.flush();
+		void debouncedUpdateSegments.flush();
 		emitChanges.flush();
 		editor.value?.destroy();
 	});
@@ -335,7 +341,7 @@ export const useExpressionEditor = ({
 		return end !== undefined && expressionExtensionNames.value.has(end);
 	}
 
-	function resolve(resolvable: string, target: TargetItem | null) {
+	async function resolve(resolvable: string, target: TargetItem | null) {
 		const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
 			resolved: undefined,
 			error: false,
@@ -344,7 +350,7 @@ export const useExpressionEditor = ({
 
 		try {
 			if (expressionLocalResolveContext.value) {
-				result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, {
+				result.resolved = await workflowHelpers.resolveExpression('=' + resolvable, undefined, {
 					...expressionLocalResolveContext.value,
 					additionalKeys: toValue(additionalData),
 				});
@@ -367,7 +373,11 @@ export const useExpressionEditor = ({
 						inputBranchIndex: ndvStore.ndvInputBranchIndex,
 					};
 				}
-				result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
+				result.resolved = await workflowHelpers.resolveExpression(
+					'=' + resolvable,
+					undefined,
+					opts,
+				);
 			}
 		} catch (error) {
 			const hasRunData =

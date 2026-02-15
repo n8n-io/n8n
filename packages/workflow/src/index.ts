@@ -20,6 +20,7 @@ export * from './expression';
 export * from './expressions/expression-helpers';
 export * from './from-ai-parse-utils';
 export * from './node-helpers';
+export * from './node-validation';
 export * from './tool-helpers';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
@@ -54,6 +55,7 @@ export {
 	isDomainAllowed,
 	isCommunityPackageName,
 	dedupe,
+	sanitizeFilename,
 } from './utils';
 export {
 	isINodeProperties,
@@ -66,6 +68,7 @@ export {
 	isResourceLocatorValue,
 	isFilterValue,
 	isNodeConnectionType,
+	isBinaryValue,
 } from './type-guards';
 
 export {
@@ -75,14 +78,16 @@ export {
 	type ExtractableSubgraphData,
 	type IConnectionAdjacencyList as AdjacencyList,
 } from './graph/graph-utils';
-export { ExpressionExtensions } from './extensions';
+export { ExpressionExtensions, type Alias, type AliasCompletion } from './extensions';
 export * as ExpressionParser from './extensions/expression-parser';
 export { NativeMethods } from './native-methods';
 export * from './node-parameters/filter-parameter';
 export * from './node-parameters/parameter-type-validation';
+export * from './node-parameters/node-parameter-value-type-guard';
 export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
 export * from './workflow-diff';
+export * from './workflow-environments-helper';
 
 export type {
 	DocMetadata,

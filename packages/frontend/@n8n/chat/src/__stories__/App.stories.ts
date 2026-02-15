@@ -7,7 +7,7 @@ import type { ChatOptions } from '@n8n/chat/types';
 const webhookUrl = 'http://localhost:5678/webhook/ad712f8b-3546-4d08-b049-e0d035334a4c/chat';
 
 const meta = {
-	title: 'Chat',
+	title: 'Chat/Chat',
 	render: (args: Partial<ChatOptions>) => ({
 		setup() {
 			onMounted(() => {

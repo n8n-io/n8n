@@ -45,6 +45,7 @@ from src.message_types import (
     BrokerTaskSettings,
     BrokerTaskCancel,
     BrokerRpcResponse,
+    BrokerDrain,
     RunnerInfo,
     RunnerTaskOffer,
     RunnerTaskAccepted,
@@ -216,6 +217,8 @@ class TaskRunner:
 
         async for raw_message in self.websocket_connection:
             try:
+                if isinstance(raw_message, bytes):
+                    raw_message = raw_message.decode("utf-8")
                 message = self.serde.deserialize_broker_message(raw_message)
                 await self._handle_message(message)
             except websockets.ConnectionClosedOK:
@@ -237,12 +240,19 @@ class TaskRunner:
                 await self._handle_task_cancel(message)
             case BrokerRpcResponse():
                 pass  # currently only logging, already handled by browser
+            case BrokerDrain():
+                await self._handle_drain()
             case _:
                 self.logger.warning(f"Unhandled message type: {type(message)}")
 
     async def _handle_info_request(self) -> None:
         response = RunnerInfo(name=self.name, types=[TASK_TYPE_PYTHON])
         await self._send_message(response)
+
+    async def _handle_drain(self) -> None:
+        self.can_send_offers = False
+        await self._cancel_coroutine(self.offers_coroutine)
+        self.logger.info("Received drain signal, stopped accepting new tasks")
 
     async def _handle_runner_registered(self) -> None:
         self.can_send_offers = True
@@ -326,7 +336,6 @@ class TaskRunner:
                 read_conn=read_conn,
                 write_conn=write_conn,
                 task_timeout=self.config.task_timeout,
-                pipe_reader_timeout=self.config.pipe_reader_timeout,
                 continue_on_fail=task_settings.continue_on_fail,
             )
 

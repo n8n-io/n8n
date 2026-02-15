@@ -28,5 +28,11 @@ export class AzureStorageOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'https://storage.azure.com/.default',
 		},
+		{
+			displayName: 'Microsoft Graph API Base URL',
+			name: 'graphApiBaseUrl',
+			type: 'hidden',
+			default: 'https://graph.microsoft.com',
+		},
 	];
 }

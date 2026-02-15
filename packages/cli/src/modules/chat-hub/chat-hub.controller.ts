@@ -12,8 +12,10 @@ import {
 	ChatHubUpdateAgentRequest,
 	ChatHubConversationsRequest,
 	ViewableMimeTypes,
+	type ChatSendMessageResponse,
+	type ChatReconnectResponse,
+	ChatReconnectRequest,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	RestController,
@@ -28,16 +30,14 @@ import {
 } from '@n8n/decorators';
 import { sanitizeFilename } from '@n8n/utils';
 import type { Response } from 'express';
-import { jsonStringify } from 'n8n-workflow';
-import { strict as assert } from 'node:assert';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
+import { extractAuthenticationMetadata } from './chat-hub-extractor';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/chat')
@@ -47,7 +47,6 @@ export class ChatHubController {
 		private readonly chatModelsService: ChatHubModelsService,
 		private readonly chatAgentService: ChatHubAgentService,
 		private readonly chatAttachmentService: ChatHubAttachmentService,
-		private readonly logger: Logger,
 	) {}
 
 	@Post('/models')
@@ -96,7 +95,7 @@ export class ChatHubController {
 		}
 
 		// Verify user has access to this session
-		await this.chatService.getConversation(req.user.id, sessionId);
+		await this.chatService.ensureConversation(req.user.id, sessionId);
 
 		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
 			await this.chatAttachmentService.getAttachment(sessionId, messageId, attachmentIndex);
@@ -131,142 +130,71 @@ export class ChatHubController {
 	@Post('/conversations/send')
 	async sendMessage(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Body payload: ChatHubSendMessageRequest,
-	) {
-		this.logger.debug(
-			`Chat send request received: ${jsonStringify({
-				...payload,
-				attachments: payload.attachments?.map((a) => ({
-					fileName: a.fileName,
-					data: `${a.data.length} characters (Base64)`,
-				})),
-			})}`,
-		);
-
-		try {
-			await this.chatService.sendHumanMessage(res, req.user, {
+	): Promise<ChatSendMessageResponse> {
+		await this.chatService.sendHumanMessage(
+			req.user,
+			{
 				...payload,
 				userId: req.user.id,
-			});
-		} catch (error: unknown) {
-			assert(error instanceof Error);
+			},
+			extractAuthenticationMetadata(req),
+		);
 
-			this.logger.error(`Error in chat send endpoint: ${error}`);
-
-			if (!res.headersSent) {
-				if (error instanceof ResponseError) {
-					throw error;
-				}
-
-				res.status(500).json({
-					code: 500,
-					message: error.message,
-				});
-			} else if (!res.writableEnded) {
-				res.write(
-					jsonStringify({
-						type: 'error',
-						content: error.message,
-					}) + '\n',
-				);
-				res.flush();
-			}
-
-			if (!res.writableEnded) res.end();
-		}
+		return {
+			status: 'streaming',
+		};
 	}
 
 	@GlobalScope('chatHub:message')
 	@Post('/conversations/:sessionId/messages/:messageId/edit')
 	async editMessage(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Param('sessionId') sessionId: ChatSessionId,
 		@Param('messageId') editId: ChatMessageId,
 		@Body payload: ChatHubEditMessageRequest,
-	) {
-		this.logger.debug(`Chat edit request received: ${jsonStringify(payload)}`);
-
-		try {
-			await this.chatService.editMessage(res, req.user, {
+	): Promise<ChatSendMessageResponse> {
+		await this.chatService.editMessage(
+			req.user,
+			{
 				...payload,
 				sessionId,
 				editId,
 				userId: req.user.id,
-			});
-		} catch (error: unknown) {
-			assert(error instanceof Error);
+			},
+			extractAuthenticationMetadata(req),
+		);
 
-			this.logger.error(`Error in chat edit endpoint: ${error}`);
-
-			if (!res.headersSent) {
-				if (error instanceof ResponseError) {
-					throw error;
-				}
-
-				res.status(500).json({
-					code: 500,
-					message: error.message,
-				});
-			} else if (!res.writableEnded) {
-				res.write(
-					jsonStringify({
-						type: 'error',
-						content: error.message,
-					}) + '\n',
-				);
-				res.flush();
-			}
-
-			if (!res.writableEnded) res.end();
-		}
+		return {
+			status: 'streaming',
+		};
 	}
 
 	@GlobalScope('chatHub:message')
 	@Post('/conversations/:sessionId/messages/:messageId/regenerate')
 	async regenerateMessage(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Param('sessionId') sessionId: ChatSessionId,
 		@Param('messageId') retryId: ChatMessageId,
 		@Body payload: ChatHubRegenerateMessageRequest,
-	) {
-		this.logger.debug(`Chat retry request received: ${jsonStringify(payload)}`);
-
-		try {
-			await this.chatService.regenerateAIMessage(res, req.user, {
+	): Promise<ChatSendMessageResponse> {
+		await this.chatService.regenerateAIMessage(
+			req.user,
+			{
 				...payload,
 				sessionId,
 				retryId,
 				userId: req.user.id,
-			});
-		} catch (error: unknown) {
-			assert(error instanceof Error);
+			},
+			extractAuthenticationMetadata(req),
+		);
 
-			this.logger.error(`Error in chat retry endpoint: ${error}`);
-
-			if (!res.headersSent) {
-				if (error instanceof ResponseError) {
-					throw error;
-				}
-
-				res.status(500).json({
-					code: 500,
-					message: error.message,
-				});
-			} else if (!res.writableEnded) {
-				res.write(
-					jsonStringify({
-						type: 'error',
-						content: error.message,
-					}) + '\n',
-				);
-				res.flush();
-			}
-
-			if (!res.writableEnded) res.end();
-		}
+		return {
+			status: 'streaming',
+		};
 	}
 
 	@GlobalScope('chatHub:message')
@@ -277,10 +205,28 @@ export class ChatHubController {
 		@Param('sessionId') sessionId: ChatSessionId,
 		@Param('messageId') messageId: ChatMessageId,
 	) {
-		this.logger.debug(`Chat stop request received: ${jsonStringify({ sessionId, messageId })}`);
-
 		await this.chatService.stopGeneration(req.user, sessionId, messageId);
 		res.status(204).send();
+	}
+
+	/**
+	 * Reconnect to an active chat stream after WebSocket reconnection.
+	 * Returns pending chunks for replay.
+	 */
+	@GlobalScope('chatHub:message')
+	@Post('/conversations/:sessionId/reconnect')
+	async reconnectToStream(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sessionId') sessionId: ChatSessionId,
+		@Query query: ChatReconnectRequest,
+	): Promise<ChatReconnectResponse> {
+		// Verify user has access to this session
+		await this.chatService.ensureConversation(req.user.id, sessionId);
+
+		const lastReceivedSequence = query.lastSequence ?? 0;
+
+		return await this.chatService.reconnectToStream(sessionId, lastReceivedSequence);
 	}
 
 	@Patch('/conversations/:sessionId')

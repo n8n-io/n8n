@@ -3,10 +3,6 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class SignInPage extends BasePage {
-	getForm(): Locator {
-		return this.page.getByTestId('auth-form');
-	}
-
 	getEmailField(): Locator {
 		return this.page.getByTestId('emailOrLdapLoginId').locator('input');
 	}
@@ -17,6 +13,10 @@ export class SignInPage extends BasePage {
 
 	getSubmitButton(): Locator {
 		return this.page.getByTestId('form-submit-button');
+	}
+
+	getSsoButton(): Locator {
+		return this.page.getByRole('button', { name: /continue with sso/i });
 	}
 
 	async goToSignIn(): Promise<void> {

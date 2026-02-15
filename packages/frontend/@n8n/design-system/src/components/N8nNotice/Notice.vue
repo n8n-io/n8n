@@ -43,6 +43,7 @@ const displayContent = computed(() =>
 				'data-action-parameter-creatorview',
 			],
 		},
+		allowedTags: ['a', 'ul', 'li'],
 	}),
 );
 
@@ -100,6 +101,15 @@ const onClick = (event: MouseEvent) => {
 
 	a {
 		font-weight: var(--font-weight--bold);
+	}
+
+	ul {
+		padding-left: var(--spacing--lg);
+		margin: var(--spacing--xs) 0;
+	}
+
+	li {
+		margin-bottom: var(--spacing--4xs);
 	}
 }
 

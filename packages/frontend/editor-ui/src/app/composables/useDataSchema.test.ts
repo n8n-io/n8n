@@ -1,6 +1,6 @@
 import jp from 'jsonpath';
 import { useDataSchema, useFlattenSchema, type SchemaNode } from './useDataSchema';
-import type { INodeUi, Schema } from '@/Interface';
+import type { INodeUi, Schema, IWorkflowDb } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
@@ -1165,6 +1165,28 @@ describe('useFlattenSchema', () => {
 		});
 
 		it('should flatten node schemas', () => {
+			vi.mocked(useWorkflowsStore).mockReturnValue({
+				...useWorkflowsStore(),
+				workflow: {
+					id: '1',
+					name: 'Test Workflow',
+					active: false,
+					activeVersionId: null,
+					isArchived: false,
+					createdAt: '2024-01-01',
+					updatedAt: '2024-01-01',
+					nodes: [],
+					connections: {},
+					settings: {
+						executionOrder: 'v1',
+						binaryMode: undefined,
+					},
+					tags: [],
+					pinData: {},
+					versionId: '',
+				} as IWorkflowDb,
+			});
+
 			const { flattenMultipleSchemas } = useFlattenSchema();
 			const schema: Schema = {
 				path: '',

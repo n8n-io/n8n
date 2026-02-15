@@ -86,9 +86,9 @@ export class OAuth2CredentialController {
 
 			// Only overwrite supplied data as some providers do for example just return the
 			// refresh_token on the very first request and not on subsequent ones.
-			let { oauthTokenData } = decryptedDataOriginal;
-			oauthTokenData = {
-				...(typeof oauthTokenData === 'object' ? oauthTokenData : {}),
+			const { oauthTokenData: tokenData } = decryptedDataOriginal;
+			const oauthTokenData: ICredentialDataDecryptedObject = {
+				...(typeof tokenData === 'object' ? tokenData : {}),
 				...oauthToken.data,
 			} as ICredentialDataDecryptedObject;
 
@@ -117,7 +117,7 @@ export class OAuth2CredentialController {
 
 				await this.oauthService.saveDynamicCredential(
 					credential,
-					decryptedDataOriginal,
+					{ oauthTokenData },
 					state.authorizationHeader.split('Bearer ')[1],
 					state.credentialResolverId,
 				);

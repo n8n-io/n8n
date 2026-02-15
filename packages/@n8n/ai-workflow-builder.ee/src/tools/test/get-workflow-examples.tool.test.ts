@@ -10,8 +10,9 @@ import {
 	type ParsedToolContent,
 	createNode,
 } from '../../../test/test-utils';
-import type { TemplateWorkflowDescription, TemplateFetchResponse } from '../../types/web/templates';
+import type { WorkflowMetadata } from '../../types/tools';
 import { createGetWorkflowExamplesTool } from '../get-workflow-examples.tool';
+import type { FetchWorkflowsResult } from '../web/templates';
 import * as templates from '../web/templates';
 
 // Mock LangGraph dependencies
@@ -28,12 +29,10 @@ jest.mock('../web/templates');
 
 describe('GetWorkflowExamplesTool', () => {
 	let getWorkflowExamplesTool: ReturnType<typeof createGetWorkflowExamplesTool>['tool'];
-	const mockFetchTemplateList = templates.fetchTemplateList as jest.MockedFunction<
-		typeof templates.fetchTemplateList
-	>;
-	const mockFetchTemplateByID = templates.fetchTemplateByID as jest.MockedFunction<
-		typeof templates.fetchTemplateByID
-	>;
+	const mockFetchWorkflowsFromTemplates =
+		templates.fetchWorkflowsFromTemplates as jest.MockedFunction<
+			typeof templates.fetchWorkflowsFromTemplates
+		>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -55,35 +54,16 @@ describe('GetWorkflowExamplesTool', () => {
 		);
 	};
 
-	// Helper to create mock template workflow description
-	const createMockTemplateDescription = (
-		id: number,
+	// Helper to create mock workflow metadata
+	let mockTemplateIdCounter = 1;
+	const createMockWorkflowMetadata = (
 		name: string,
 		description: string,
-	): TemplateWorkflowDescription => ({
-		id,
+		nodeCount: number = 3,
+	): WorkflowMetadata => ({
+		templateId: mockTemplateIdCounter++,
 		name,
 		description,
-		price: 0,
-		totalViews: 100,
-		nodes: [],
-		user: {
-			id: 1,
-			name: 'Test User',
-			username: 'testuser',
-			verified: true,
-			bio: 'Test bio',
-		},
-	});
-
-	// Helper to create mock template fetch response
-	const createMockTemplateFetchResponse = (
-		id: number,
-		name: string,
-		nodeCount: number = 3,
-	): TemplateFetchResponse => ({
-		id,
-		name,
 		workflow: {
 			nodes: createMockWorkflowNodes(nodeCount),
 			connections: {},
@@ -91,22 +71,27 @@ describe('GetWorkflowExamplesTool', () => {
 		},
 	});
 
+	// Helper to create mock fetch result
+	const createMockFetchResult = (
+		workflows: WorkflowMetadata[],
+		templateIds: number[] = workflows.map((_, i) => i + 1),
+	): FetchWorkflowsResult => ({
+		workflows,
+		totalFound: workflows.length,
+		templateIds,
+	});
+
 	describe('invoke', () => {
 		it('should successfully fetch workflow examples with search query', async () => {
 			const mockConfig = createToolConfigWithWriter('get_workflow_examples', 'test-call-1');
 
-			// Mock API responses
-			mockFetchTemplateList.mockResolvedValue({
-				workflows: [
-					createMockTemplateDescription(1, 'Email Automation', 'Automate email workflows'),
-					createMockTemplateDescription(2, 'Slack Notification', 'Send Slack notifications'),
-				],
-				totalWorkflows: 2,
-			});
-
-			mockFetchTemplateByID
-				.mockResolvedValueOnce(createMockTemplateFetchResponse(1, 'Email Automation', 3))
-				.mockResolvedValueOnce(createMockTemplateFetchResponse(2, 'Slack Notification', 4));
+			// Mock API response
+			mockFetchWorkflowsFromTemplates.mockResolvedValue(
+				createMockFetchResult([
+					createMockWorkflowMetadata('Email Automation', 'Automate email workflows', 3),
+					createMockWorkflowMetadata('Slack Notification', 'Send Slack notifications', 4),
+				]),
+			);
 
 			const result = await getWorkflowExamplesTool.invoke(
 				{
@@ -127,10 +112,11 @@ describe('GetWorkflowExamplesTool', () => {
 			expect(message).toContain('```mermaid');
 			expect(message).toContain('flowchart TD');
 
-			// Verify API calls
-			expect(mockFetchTemplateList).toHaveBeenCalledWith({ search: 'email automation' });
-			expect(mockFetchTemplateByID).toHaveBeenCalledWith(1);
-			expect(mockFetchTemplateByID).toHaveBeenCalledWith(2);
+			// Verify API call
+			expect(mockFetchWorkflowsFromTemplates).toHaveBeenCalledWith(
+				{ search: 'email automation' },
+				expect.any(Object),
+			);
 
 			// Check progress messages
 			const progressCalls = extractProgressMessages(mockConfig.writer);
@@ -147,19 +133,13 @@ describe('GetWorkflowExamplesTool', () => {
 			const mockConfig = createToolConfig('get_workflow_examples', 'test-call-3');
 
 			// Set up mocks for two queries
-			mockFetchTemplateList
-				.mockResolvedValueOnce({
-					workflows: [createMockTemplateDescription(1, 'Workflow 1', 'Description 1')],
-					totalWorkflows: 1,
-				})
-				.mockResolvedValueOnce({
-					workflows: [createMockTemplateDescription(2, 'Workflow 2', 'Description 2')],
-					totalWorkflows: 1,
-				});
-
-			mockFetchTemplateByID
-				.mockResolvedValueOnce(createMockTemplateFetchResponse(1, 'Workflow 1', 2))
-				.mockResolvedValueOnce(createMockTemplateFetchResponse(2, 'Workflow 2', 3));
+			mockFetchWorkflowsFromTemplates
+				.mockResolvedValueOnce(
+					createMockFetchResult([createMockWorkflowMetadata('Workflow 1', 'Description 1', 2)]),
+				)
+				.mockResolvedValueOnce(
+					createMockFetchResult([createMockWorkflowMetadata('Workflow 2', 'Description 2', 3)]),
+				);
 
 			const result = await getWorkflowExamplesTool.invoke(
 				{
@@ -175,17 +155,26 @@ describe('GetWorkflowExamplesTool', () => {
 			expect(message).toContain('Workflow 1');
 			expect(message).toContain('Workflow 2');
 
-			expect(mockFetchTemplateList).toHaveBeenCalledTimes(2);
-			expect(mockFetchTemplateList).toHaveBeenNthCalledWith(1, { search: 'database' });
-			expect(mockFetchTemplateList).toHaveBeenNthCalledWith(2, { search: 'api' });
+			expect(mockFetchWorkflowsFromTemplates).toHaveBeenCalledTimes(2);
+			expect(mockFetchWorkflowsFromTemplates).toHaveBeenNthCalledWith(
+				1,
+				{ search: 'database' },
+				expect.any(Object),
+			);
+			expect(mockFetchWorkflowsFromTemplates).toHaveBeenNthCalledWith(
+				2,
+				{ search: 'api' },
+				expect.any(Object),
+			);
 		});
 
 		it('should return no results message when no workflows found', async () => {
 			const mockConfig = createToolConfig('get_workflow_examples', 'test-call-4');
 
-			mockFetchTemplateList.mockResolvedValue({
+			mockFetchWorkflowsFromTemplates.mockResolvedValue({
 				workflows: [],
-				totalWorkflows: 0,
+				totalFound: 0,
+				templateIds: [],
 			});
 
 			const result = await getWorkflowExamplesTool.invoke(
@@ -203,20 +192,13 @@ describe('GetWorkflowExamplesTool', () => {
 		it('should handle partial failures when fetching individual templates', async () => {
 			const mockConfig = createToolConfig('get_workflow_examples', 'test-call-5');
 
-			mockFetchTemplateList.mockResolvedValue({
-				workflows: [
-					createMockTemplateDescription(1, 'Workflow 1', 'Description 1'),
-					createMockTemplateDescription(2, 'Workflow 2', 'Description 2'),
-					createMockTemplateDescription(3, 'Workflow 3', 'Description 3'),
-				],
-				totalWorkflows: 3,
-			});
-
-			// First succeeds, second fails, third succeeds
-			mockFetchTemplateByID
-				.mockResolvedValueOnce(createMockTemplateFetchResponse(1, 'Workflow 1', 2))
-				.mockRejectedValueOnce(new Error('Network error'))
-				.mockResolvedValueOnce(createMockTemplateFetchResponse(3, 'Workflow 3', 3));
+			// Mock returns 2 workflows (simulating one failed internally)
+			mockFetchWorkflowsFromTemplates.mockResolvedValue(
+				createMockFetchResult([
+					createMockWorkflowMetadata('Workflow 1', 'Description 1', 2),
+					createMockWorkflowMetadata('Workflow 3', 'Description 3', 3),
+				]),
+			);
 
 			const result = await getWorkflowExamplesTool.invoke(
 				{
@@ -232,7 +214,6 @@ describe('GetWorkflowExamplesTool', () => {
 			expectToolSuccess(content, 'Found 2 workflow example(s)');
 			expect(message).toContain('Workflow 1');
 			expect(message).toContain('Workflow 3');
-			expect(message).not.toContain('Workflow 2');
 		});
 
 		it('should handle validation errors for empty queries array', async () => {
@@ -256,7 +237,7 @@ describe('GetWorkflowExamplesTool', () => {
 		it('should handle network errors when fetching template list', async () => {
 			const mockConfig = createToolConfig('get_workflow_examples', 'test-call-8');
 
-			mockFetchTemplateList.mockRejectedValue(new Error('Network error'));
+			mockFetchWorkflowsFromTemplates.mockRejectedValue(new Error('Network error'));
 
 			const result = await getWorkflowExamplesTool.invoke(
 				{
@@ -274,19 +255,13 @@ describe('GetWorkflowExamplesTool', () => {
 		it('should track batch progress for multiple queries', async () => {
 			const mockConfig = createToolConfigWithWriter('get_workflow_examples', 'test-call-11');
 
-			mockFetchTemplateList
-				.mockResolvedValueOnce({
-					workflows: [createMockTemplateDescription(1, 'Workflow 1', 'Description 1')],
-					totalWorkflows: 1,
-				})
-				.mockResolvedValueOnce({
-					workflows: [createMockTemplateDescription(2, 'Workflow 2', 'Description 2')],
-					totalWorkflows: 1,
-				});
-
-			mockFetchTemplateByID.mockResolvedValue(
-				createMockTemplateFetchResponse(1, 'Mock Workflow', 2),
-			);
+			mockFetchWorkflowsFromTemplates
+				.mockResolvedValueOnce(
+					createMockFetchResult([createMockWorkflowMetadata('Workflow 1', 'Description 1', 2)]),
+				)
+				.mockResolvedValueOnce(
+					createMockFetchResult([createMockWorkflowMetadata('Workflow 2', 'Description 2', 3)]),
+				);
 
 			await getWorkflowExamplesTool.invoke(
 				{
@@ -318,14 +293,13 @@ describe('GetWorkflowExamplesTool', () => {
 			const mockConfig = createToolConfig('get_workflow_examples', 'test-call-13');
 
 			// First query fails, second succeeds
-			mockFetchTemplateList.mockRejectedValueOnce(new Error('API error')).mockResolvedValueOnce({
-				workflows: [createMockTemplateDescription(1, 'Success Workflow', 'Success Description')],
-				totalWorkflows: 1,
-			});
-
-			mockFetchTemplateByID.mockResolvedValue(
-				createMockTemplateFetchResponse(1, 'Success Workflow', 2),
-			);
+			mockFetchWorkflowsFromTemplates
+				.mockRejectedValueOnce(new Error('API error'))
+				.mockResolvedValueOnce(
+					createMockFetchResult([
+						createMockWorkflowMetadata('Success Workflow', 'Success Description', 2),
+					]),
+				);
 
 			const result = await getWorkflowExamplesTool.invoke(
 				{

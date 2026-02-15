@@ -16,6 +16,7 @@ import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { mockedStore } from '@/__tests__/utils';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
@@ -258,10 +259,11 @@ describe('executionFinished', () => {
 			setActivePinia(pinia);
 
 			const workflowsStore = useWorkflowsStore();
+			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
 
 			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
-			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
+			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
 				meta: { templateId: 'ready-to-run-ai-workflow' },
@@ -301,10 +303,11 @@ describe('executionFinished', () => {
 			setActivePinia(pinia);
 
 			const workflowsStore = useWorkflowsStore();
+			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
 
 			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
-			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
+			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
 				meta: { templateId: 'ready-to-run-ai-workflow' },
@@ -336,18 +339,19 @@ describe('executionFinished', () => {
 			expect(trackExecuteAiWorkflow).toHaveBeenCalledWith('error');
 		});
 
-		it('should track execution of ready-to-run-ai-workflow-v1', async () => {
+		it('should track execution of ready-to-run-ai-workflow-v5', async () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
 			const workflowsStore = useWorkflowsStore();
+			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
 
 			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
-			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
+			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
-				meta: { templateId: 'ready-to-run-ai-workflow-v1' },
+				meta: { templateId: 'ready-to-run-ai-workflow-v5' },
 			} as IWorkflowDb);
 
 			const trackExecuteAiWorkflowSuccess = vi.spyOn(
@@ -379,18 +383,19 @@ describe('executionFinished', () => {
 			expect(trackExecuteAiWorkflowSuccess).toHaveBeenCalled();
 		});
 
-		it('should track execution of ready-to-run-ai-workflow-v4', async () => {
+		it('should track execution of ready-to-run-ai-workflow-v6', async () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
 			const workflowsStore = useWorkflowsStore();
+			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
 
 			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
-			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
+			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
-				meta: { templateId: 'ready-to-run-ai-workflow-v4' },
+				meta: { templateId: 'ready-to-run-ai-workflow-v6' },
 			} as IWorkflowDb);
 
 			const trackExecuteAiWorkflow = vi.spyOn(readyToRunStore, 'trackExecuteAiWorkflow');
@@ -424,10 +429,11 @@ describe('executionFinished', () => {
 			setActivePinia(pinia);
 
 			const workflowsStore = useWorkflowsStore();
+			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
 
 			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
-			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
+			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
 				meta: { templateId: 'some-other-template' },
@@ -477,20 +483,21 @@ describe('executionFinished', () => {
 		setActivePinia(pinia);
 
 		const workflowsStore = mockedStore(useWorkflowsStore);
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
 		const uiStore = mockedStore(useUIStore);
 
 		// Set activeExecutionId directly on the store
 		workflowsStore.activeExecutionId = '123';
 
 		// Mock getWorkflowById to return a workflow
-		vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
+		vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 			id: '1',
 			name: 'Test Workflow',
 			nodes: [],
 			connections: {},
 			active: false,
 			settings: {},
-		} as unknown as ReturnType<typeof workflowsStore.getWorkflowById>);
+		} as unknown as ReturnType<typeof workflowsListStore.getWorkflowById>);
 
 		vi.spyOn(workflowsStore, 'fetchExecutionDataById').mockResolvedValue(null);
 

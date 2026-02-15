@@ -97,7 +97,7 @@ describe('check()', () => {
 			{
 				id: uuid(),
 				name: 'Start',
-				type: 'n8n-nodes-base.start',
+				type: 'n8n-nodes-base.manualTrigger',
 				typeVersion: 1,
 				parameters: {},
 				position: [0, 0],

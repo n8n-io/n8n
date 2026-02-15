@@ -1,4 +1,21 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import oracledb from 'oracledb';
+
+const privilegeKeys = [
+	'SYSASM',
+	'SYSBACKUP',
+	'SYSDBA',
+	'SYSDG',
+	'SYSKM',
+	'SYSOPER',
+	'SYSPRELIM',
+	'SYSRAC',
+];
+
+const privilegeOptions = privilegeKeys.map((key) => ({
+	name: key,
+	value: (oracledb as any)[key],
+}));
 
 export class OracleDBApi implements ICredentialType {
 	name = 'oracleDBApi';
@@ -29,6 +46,14 @@ export class OracleDBApi implements ICredentialType {
 			type: 'string',
 			default: 'localhost/orcl',
 			description: 'The Oracle database instance to connect to',
+		},
+		{
+			displayName: 'Privilege',
+			name: 'privilege',
+			type: 'options',
+			description: 'The privilege to use when connecting to the database',
+			default: undefined,
+			options: privilegeOptions,
 		},
 		{
 			displayName: 'Use Optional Oracle Client Libraries',

@@ -852,7 +852,7 @@ describe('POST /workflows', () => {
 					id: 'uuid-1234',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},
@@ -923,7 +923,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						name: 'Start',
 						parameters: {},
 						position: [-20, 260],
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						credentials: {
 							default: {
@@ -958,7 +958,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						name: 'Start',
 						parameters: {},
 						position: [-20, 260],
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						credentials: {
 							default: {
@@ -981,7 +981,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						name: 'Start',
 						parameters: {},
 						position: [-20, 260],
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						credentials: {
 							default: {
@@ -1073,7 +1073,7 @@ describe('PATCH /workflows/:workflowId', () => {
 							name: 'Start',
 							parameters: {},
 							position: [-20, 260],
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							typeVersion: 1,
 							credentials: {
 								default: {
@@ -1106,7 +1106,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						firstParam: 123,
 					},
 					position: [-20, 260],
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					credentials: {
 						default: {
@@ -1145,7 +1145,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						firstParam: 123,
 					},
 					position: [-20, 555],
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					credentials: {
 						default: {
@@ -1400,7 +1400,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						id: 'uuid-1234',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [240, 300],
 					},

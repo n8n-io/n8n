@@ -111,7 +111,7 @@ function getChildNodes(
 		return (
 			(source?.previousNode === node.name ||
 				(isPlaceholderLog(treeNode) && source?.previousNode === TOOL_EXECUTOR_NODE_NAME)) &&
-			(runIndex === undefined || source.previousNodeRun === runIndex)
+			(runIndex === undefined || (source.previousNodeRun ?? 0) === runIndex)
 		);
 	}
 

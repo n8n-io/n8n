@@ -9,7 +9,7 @@ import { PROJECT_MOVE_RESOURCE_MODAL } from '../projects.constants';
 import ProjectMoveResourceModal from './ProjectMoveResourceModal.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useProjectsStore } from '../projects.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import { ResourceType } from '../projects.utils';
@@ -29,7 +29,7 @@ const renderComponent = createComponentRenderer(ProjectMoveResourceModal, {
 
 let telemetry: ReturnType<typeof useTelemetry>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
-let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 let credentialsStore: MockedStore<typeof useCredentialsStore>;
 
 describe('ProjectMoveResourceModal', () => {
@@ -37,7 +37,7 @@ describe('ProjectMoveResourceModal', () => {
 		vi.clearAllMocks();
 		telemetry = useTelemetry();
 		projectsStore = mockedStore(useProjectsStore);
-		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 		credentialsStore = mockedStore(useCredentialsStore);
 	});
 
@@ -45,7 +45,7 @@ describe('ProjectMoveResourceModal', () => {
 		const telemetryTrackSpy = vi.spyOn(telemetry, 'track');
 
 		projectsStore.availableProjects = [createProjectListItem()];
-		workflowsStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
+		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
 
 		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
@@ -71,7 +71,7 @@ describe('ProjectMoveResourceModal', () => {
 
 	it('should show no available projects message', async () => {
 		projectsStore.availableProjects = [];
-		workflowsStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
+		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
 
 		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
@@ -153,7 +153,7 @@ describe('ProjectMoveResourceModal', () => {
 			'User clicked to move a credential',
 			expect.objectContaining({ credential_id: '1' }),
 		);
-		expect(workflowsStore.fetchWorkflow).not.toHaveBeenCalled();
+		expect(workflowsListStore.fetchWorkflow).not.toHaveBeenCalled();
 		expect(getByText(/Moving will remove any existing sharing for this credential/)).toBeVisible();
 	});
 
@@ -180,7 +180,7 @@ describe('ProjectMoveResourceModal', () => {
 
 		projectsStore.currentProjectId = currentProjectId;
 		projectsStore.availableProjects = [destinationProject];
-		workflowsStore.fetchWorkflow.mockResolvedValueOnce(movedWorkflow);
+		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(movedWorkflow);
 		credentialsStore.fetchAllCredentials.mockResolvedValueOnce([
 			{
 				id: '1',
@@ -246,7 +246,7 @@ describe('ProjectMoveResourceModal', () => {
 	it('should prevent duplicate submissions when button clicked multiple times', async () => {
 		const destinationProject = createProjectListItem();
 		projectsStore.availableProjects = [destinationProject];
-		workflowsStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
+		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
 
 		// Make moveResourceToProject take time to simulate slow operation
 		let resolveMove: () => void;

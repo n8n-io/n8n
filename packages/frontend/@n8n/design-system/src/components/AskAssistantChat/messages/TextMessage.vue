@@ -2,6 +2,7 @@
 import { computed, ref, onMounted, nextTick, watch } from 'vue';
 
 import BaseMessage from './BaseMessage.vue';
+import RestoreVersionLink from './RestoreVersionLink.vue';
 import { useMarkdown } from './useMarkdown';
 import { useI18n } from '../../../composables/useI18n';
 import type { ChatUI, RatingFeedback } from '../../../types/assistant';
@@ -18,12 +19,16 @@ interface Props {
 	streaming?: boolean;
 	isLastMessage?: boolean;
 	color?: string;
+	pruneTimeHours?: number;
 }
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	feedback: [RatingFeedback];
+	restoreConfirm: [versionId: string, messageId: string];
+	restoreCancel: [];
+	showVersion: [versionId: string];
 }>();
 const { renderMarkdown } = useMarkdown();
 const { t } = useI18n();
@@ -64,6 +69,12 @@ watch(
 	},
 );
 
+const fallbackFocusedNodesLabel = computed(() => {
+	const names = props.message.focusedNodeNames;
+	if (!names?.length) return '';
+	return `Focusing on ${names.map((n) => `'${n}'`).join(', ')}`;
+});
+
 async function onCopyButtonClick(content: string, e: MouseEvent) {
 	const button = e.target as HTMLButtonElement;
 	await navigator.clipboard.writeText(content);
@@ -82,6 +93,16 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 		@feedback="(feedback) => emit('feedback', feedback)"
 	>
 		<div :class="[$style.textMessage, { [$style.userMessage]: message.role === 'user' }]">
+			<!-- Restore version link for user messages with revertVersion - positioned before the message -->
+			<RestoreVersionLink
+				v-if="message.role === 'user' && message.revertVersion && message.id"
+				:revert-version="message.revertVersion"
+				:streaming="streaming"
+				:prune-time-hours="pruneTimeHours"
+				@restore-confirm="(versionId) => emit('restoreConfirm', versionId, message.id!)"
+				@restore-cancel="emit('restoreCancel')"
+				@show-version="(versionId) => emit('showVersion', versionId)"
+			/>
 			<!-- User message with container -->
 			<div v-if="message.role === 'user'" :class="$style.userMessageContainer">
 				<div
@@ -98,8 +119,19 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 				>
 					{{ isExpanded ? t('notice.showLess') : t('notice.showMore') }}
 				</button>
+				<div
+					v-if="message.focusedNodeNames?.length"
+					:class="$style.focusedNodesSlotWrapper"
+					data-test-id="message-focused-nodes"
+				>
+					<slot name="focused-nodes-chips" :message="message">
+						<span :class="$style.focusedNodesFallback">
+							{{ fallbackFocusedNodesLabel }}
+						</span>
+					</slot>
+				</div>
 			</div>
-			<!-- Assistant message - simple text without container -->
+			<!-- Assistant message -->
 			<div
 				v-else
 				v-n8n-html="renderMarkdown(message.content)"
@@ -113,9 +145,8 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			>
 				<header v-if="isClipboardSupported">
 					<N8nButton
-						type="tertiary"
-						:text="true"
-						size="mini"
+						variant="ghost"
+						size="xsmall"
 						data-test-id="assistant-copy-snippet-button"
 						@click="onCopyButtonClick(message.codeSnippet, $event)"
 					>
@@ -288,5 +319,18 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			padding: var(--spacing--4xs);
 		}
 	}
+}
+
+.focusedNodesSlotWrapper {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--4xs);
+	margin-top: var(--spacing--4xs);
+}
+
+.focusedNodesFallback {
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-2);
+	font-style: italic;
 }
 </style>

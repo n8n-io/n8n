@@ -172,4 +172,57 @@ describe('deepMerge', () => {
 			expect(result).not.toBe(target);
 		});
 	});
+
+	describe('security - prototype pollution prevention', () => {
+		test('prevents __proto__ pollution', () => {
+			const target: TestObject = { a: 1 };
+			const maliciousSource = JSON.parse('{"__proto__": {"polluted": true}}');
+
+			const result = deepMerge(target, maliciousSource);
+
+			expect(result).toEqual({ a: 1 });
+			expect(Object.getPrototypeOf(result).polluted).toBeUndefined();
+			expect(Object.prototype).not.toHaveProperty('polluted');
+		});
+
+		test('prevents constructor pollution', () => {
+			const target: TestObject = { a: 1 };
+			const maliciousSource: TestObject = { constructor: { polluted: true } };
+
+			const result = deepMerge(target, maliciousSource);
+
+			expect(result).toEqual({ a: 1 });
+			expect(result.constructor).not.toHaveProperty('polluted');
+		});
+
+		test('prevents prototype property pollution', () => {
+			const target: TestObject = { a: 1 };
+			const maliciousSource: TestObject = { prototype: { polluted: true } };
+
+			const result = deepMerge(target, maliciousSource);
+
+			expect(result).toEqual({ a: 1 });
+			expect(result).not.toHaveProperty('prototype');
+		});
+
+		test('prevents nested __proto__ pollution', () => {
+			const target: TestObject = { a: 1, nested: { b: 2 } };
+			const maliciousSource = JSON.parse('{"nested": {"__proto__": {"polluted": true}}}');
+
+			const result = deepMerge(target, maliciousSource);
+
+			expect(result).toEqual({ a: 1, nested: { b: 2 } });
+			expect(Object.getPrototypeOf(result.nested).polluted).toBeUndefined();
+			expect(Object.prototype).not.toHaveProperty('polluted');
+		});
+
+		test('allows legitimate properties with similar names', () => {
+			const target: TestObject = { a: 1 };
+			const source: TestObject = { proto: 'value', _constructor: 'value2' };
+
+			const result = deepMerge(target, source);
+
+			expect(result).toEqual({ a: 1, proto: 'value', _constructor: 'value2' });
+		});
+	});
 });

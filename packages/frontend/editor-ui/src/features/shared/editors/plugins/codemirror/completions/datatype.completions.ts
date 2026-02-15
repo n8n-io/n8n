@@ -2,7 +2,6 @@ import { VALID_EMAIL_REGEX } from '@/app/constants';
 import { i18n } from '@n8n/i18n';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
-
 import type {
 	Completion,
 	CompletionContext,
@@ -11,8 +10,14 @@ import type {
 } from '@codemirror/autocomplete';
 import uniqBy from 'lodash/uniqBy';
 import { DateTime } from 'luxon';
-import type { DocMetadata, IDataObject, NativeDoc } from 'n8n-workflow';
-import { Expression, ExpressionExtensions, NativeMethods, validateFieldType } from 'n8n-workflow';
+import type { Alias, DocMetadata, IDataObject, NativeDoc } from 'n8n-workflow';
+import {
+	Expression,
+	ExpressionExtensions,
+	NativeMethods,
+	validateFieldType,
+	type AliasCompletion,
+} from 'n8n-workflow';
 import {
 	ARRAY_NUMBER_ONLY_METHODS,
 	ARRAY_RECOMMENDED_OPTIONS,
@@ -59,11 +64,14 @@ import {
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { isPairedItemIntermediateNodesError } from '@/app/utils/expressions';
 import type { TargetNodeParameterContext } from '@/Interface';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 /**
  * Resolution-based completions offered according to datatype.
  */
-export function datatypeCompletions(context: CompletionContext): CompletionResult | null {
+export async function datatypeCompletions(
+	context: CompletionContext,
+): Promise<CompletionResult | null> {
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
 	const word = context.matchBefore(DATATYPE_REGEX);
 
@@ -74,7 +82,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	const syntaxTree = javascriptLanguage.parser.parse(word.text);
 	const [base, tail] = splitBaseTail(syntaxTree, word.text);
 
-	let options: Completion[] = [];
+	let options: AliasCompletion[] = [];
 
 	const isCredential = isCredentialsModalOpen();
 
@@ -89,34 +97,39 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	} else if (base === '$secrets' && isCredential) {
 		options = secretProvidersOptions();
 	} else {
-		const resolved = attempt(
-			(): Resolved =>
-				resolveAutocompleteExpression(`={{ ${base} }}`, targetNodeParameterContext?.nodeName),
-			(error) => {
-				if (!isPairedItemIntermediateNodesError(error)) {
-					return null;
-				}
+		let resolved: Resolved | null = null;
+		try {
+			resolved = await resolveAutocompleteExpression(
+				`={{ ${base} }}`,
+				targetNodeParameterContext?.nodeName,
+			);
+		} catch (error) {
+			if (!isPairedItemIntermediateNodesError(error)) {
+				return null;
+			}
 
-				// Fallback on first item to provide autocomplete when intermediate nodes have not run
-				return attempt(() =>
-					resolveAutocompleteExpression(
-						`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`,
-						targetNodeParameterContext?.nodeName,
-					),
+			// Fallback on first item to provide autocomplete when intermediate nodes have not run
+			try {
+				resolved = await resolveAutocompleteExpression(
+					`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`,
+					targetNodeParameterContext?.nodeName,
 				);
-			},
-		);
+			} catch {
+				return null;
+			}
+		}
 
 		if (resolved === null) return null;
 
-		options = attempt(
-			() => datatypeOptions({ resolved, base, tail }).map(stripExcessParens(context)),
-			() => [],
-		);
+		try {
+			options = (await datatypeOptions({ resolved, base, tail })).map(stripExcessParens(context));
+		} catch {
+			options = [];
+		}
 	}
 
 	if (tail !== '') {
-		options = options.filter((o) => prefixMatch(o.label, tail));
+		options = filterOptions(options, tail);
 	}
 
 	let from = word.to - tail.length;
@@ -124,7 +137,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	// When autocomplete is explicitely opened (by Ctrl+Space or programatically), add completions for the current word with '.' prefix
 	// example: {{ $json.str| }} -> ['length', 'includes()'...] (would usually need a '.' suffix)
 	if (context.explicit && !word.text.endsWith('.') && options.length === 0) {
-		options = explicitDataTypeOptions(word.text, targetNodeParameterContext);
+		options = await explicitDataTypeOptions(word.text, targetNodeParameterContext);
 		from = word.to;
 	}
 
@@ -142,28 +155,71 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	};
 }
 
-function explicitDataTypeOptions(
-	expression: string,
-	targetNodeParameterContext?: TargetNodeParameterContext,
-): Completion[] {
-	return attempt(
-		() => {
-			const resolved = resolveAutocompleteExpression(
-				`={{ ${expression} }}`,
-				targetNodeParameterContext?.nodeName,
-			);
-			return datatypeOptions({
-				resolved,
-				base: expression,
-				tail: '',
-				transformLabel: (label) => '.' + label,
-			});
-		},
-		() => [],
-	);
+/**
+ * Returns a sorted array of completions by the input string.
+ * Each completion is returned with its order.
+ * 0 if no match
+ * 1 if prefix alias match
+ * 2 if exact alias match
+ * 3 if prefix label match
+ */
+export function sortCompletionsByInput(options: AliasCompletion[], input: string) {
+	return options
+		.map((o) => {
+			let order = 0;
+			let alias: Alias | undefined = undefined;
+			if (prefixMatch(o.label, input)) {
+				order = 3;
+			} else {
+				const exactAliasMatch = o.alias?.find((a) => a.mode === 'exact' && a.label === input);
+				const prefixAliasMatch = o.alias?.find(
+					(a) => a.mode !== 'exact' && prefixMatch(a.label, input),
+				);
+				if (exactAliasMatch) {
+					alias = exactAliasMatch;
+					order = 2;
+				} else if (prefixAliasMatch) {
+					alias = prefixAliasMatch;
+					order = 1;
+				}
+			}
+			return {
+				option: o,
+				order,
+				alias,
+			};
+		})
+		.sort((a, b) => b.order - a.order);
 }
 
-function datatypeOptions(input: AutocompleteInput): Completion[] {
+function filterOptions(options: AliasCompletion[], tail: string): AliasCompletion[] {
+	const matches = sortCompletionsByInput(options, tail)
+		.filter((m) => m.order > 0)
+		.map((m) => m.option);
+	return matches;
+}
+
+async function explicitDataTypeOptions(
+	expression: string,
+	targetNodeParameterContext?: TargetNodeParameterContext,
+): Promise<AliasCompletion[]> {
+	try {
+		const resolved = await resolveAutocompleteExpression(
+			`={{ ${expression} }}`,
+			targetNodeParameterContext?.nodeName,
+		);
+		return await datatypeOptions({
+			resolved,
+			base: expression,
+			tail: '',
+			transformLabel: (label) => '.' + label,
+		});
+	} catch {
+		return [];
+	}
+}
+
+async function datatypeOptions(input: AutocompleteInput): Promise<AliasCompletion[]> {
 	const { resolved } = input;
 
 	if (resolved === null) return [];
@@ -199,7 +255,7 @@ function datatypeOptions(input: AutocompleteInput): Completion[] {
 	}
 
 	if (typeof resolved === 'object') {
-		return objectOptions(input as AutocompleteInput<IDataObject>);
+		return await objectOptions(input as AutocompleteInput<IDataObject>);
 	}
 
 	return [];
@@ -211,7 +267,7 @@ export const natives = ({
 }: {
 	typeName: ExtensionTypeName;
 	transformLabel?: (label: string) => string;
-}): Completion[] => {
+}): AliasCompletion[] => {
 	const nativeDocs = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
 
 	if (!nativeDocs) return [];
@@ -324,9 +380,9 @@ const createCompletionOption = ({
 	isFunction?: boolean;
 	transformLabel?: (label: string) => string;
 	type?: 'strikethrough';
-}): Completion => {
+}): AliasCompletion => {
 	const label = isFunction ? name + '()' : name;
-	const option: Completion = {
+	const option: AliasCompletion = {
 		label,
 		section: doc?.section,
 		apply: applyCompletion({
@@ -334,6 +390,7 @@ const createCompletionOption = ({
 			defaultArgs: getDefaultArgs(doc),
 			transformLabel,
 		}),
+		alias: doc?.aliases?.map((alias) => ({ label: alias, mode: doc.aliasMode })),
 		type,
 	};
 	option.info = createInfoBoxRenderer(doc, isFunction);
@@ -341,7 +398,9 @@ const createCompletionOption = ({
 	return option;
 };
 
-const customObjectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
+const customObjectOptions = async (
+	input: AutocompleteInput<IDataObject>,
+): Promise<Completion[]> => {
 	const { base, resolved } = input;
 
 	if (!resolved) return [];
@@ -353,11 +412,11 @@ const customObjectOptions = (input: AutocompleteInput<IDataObject>): Completion[
 	} else if (base === '$workflow') {
 		return workflowOptions();
 	} else if (base === '$input') {
-		return inputOptions(base);
+		return await inputOptions(base);
 	} else if (base === '$prevNode') {
 		return prevNodeOptions();
 	} else if (/^\$\(['"][\S\s]+['"]\)$/.test(base)) {
-		return nodeRefOptions(base);
+		return await nodeRefOptions(base);
 	} else if (base === '$response') {
 		return responseOptions();
 	} else if (isItem(input)) {
@@ -369,7 +428,7 @@ const customObjectOptions = (input: AutocompleteInput<IDataObject>): Completion[
 	return [];
 };
 
-const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
+const objectOptions = async (input: AutocompleteInput<IDataObject>): Promise<Completion[]> => {
 	const { base, resolved, transformLabel = (label) => label } = input;
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
@@ -382,7 +441,7 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 		rawKeys = Object.keys(descriptors).sort((a, b) => a.localeCompare(b));
 	}
 
-	const customOptions = customObjectOptions(input);
+	const customOptions = await customObjectOptions(input);
 	if (customOptions.length > 0) {
 		// Only return completions that are present in the resolved data
 		return customOptions.filter((option) => option.label in resolved);
@@ -898,7 +957,7 @@ export const customDataOptions = () => {
 	].map((doc) => createCompletionOption({ name: doc.name, doc, isFunction: true }));
 };
 
-export const nodeRefOptions = (base: string) => {
+export const nodeRefOptions = async (base: string) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -987,16 +1046,17 @@ export const nodeRefOptions = (base: string) => {
 		},
 	];
 
+	const noParams = await hasNoParams(base);
 	return applySections({
 		options: options
-			.filter((option) => !(option.doc.name === 'params' && hasNoParams(base)))
+			.filter((option) => !(option.doc.name === 'params' && noParams))
 			.map(({ doc, isFunction }) => createCompletionOption({ name: doc.name, doc, isFunction })),
 		sections: {},
 		recommended: ['item'],
 	});
 };
 
-export const inputOptions = (base: string) => {
+export const inputOptions = async (base: string) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -1059,9 +1119,10 @@ export const inputOptions = (base: string) => {
 		},
 	];
 
+	const noParams = await hasNoParams(base);
 	return applySections({
 		options: options
-			.filter((option) => !(option.doc.name === 'params' && hasNoParams(base)))
+			.filter((option) => !(option.doc.name === 'params' && noParams))
 			.map(({ doc, isFunction }) => createCompletionOption({ name: doc.name, doc, isFunction })),
 		recommended: ['item'],
 		sections: {},
@@ -1209,18 +1270,57 @@ export const secretOptions = (base: string) => {
 
 export const secretProvidersOptions = () => {
 	const externalSecretsStore = useExternalSecretsStore();
+	const { check } = useEnvFeatureFlag();
 
-	return Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
-		createCompletionOption({
+	const externalSecretProviderToOption = (provider: string, section?: 'global' | 'project') => {
+		const doc: DocMetadata = {
 			name: provider,
-			doc: {
-				name: provider,
-				returnType: 'Object',
-				description: i18n.baseText('codeNodeEditor.completer.$secrets.provider'),
-				docURL: i18n.baseText('settings.externalSecrets.docs'),
-			},
-		}),
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.$secrets.provider'),
+			docURL: i18n.baseText('settings.externalSecrets.docs'),
+		};
+		if (section) {
+			// group will be undefined if project secret development feature flag is disabled
+			// TODO: make group param mandatory once feature flag is removed
+			doc.section = section;
+			doc.description = i18n.baseText(
+				`codeNodeEditor.completer.$secrets.group.${section}.description`,
+			);
+		}
+
+		return createCompletionOption({
+			name: provider,
+			doc,
+		});
+	};
+
+	const projectSecretsEnabled = check.value('EXTERNAL_SECRETS_FOR_PROJECTS');
+	if (!projectSecretsEnabled) {
+		return Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
+			externalSecretProviderToOption(provider),
+		);
+	}
+
+	const globalSecretProviders = Object.keys(externalSecretsStore.globalSecretsAsObject).map(
+		(provider) => externalSecretProviderToOption(provider, 'global'),
 	);
+	const projectSecretProviders = Object.keys(externalSecretsStore.projectSecretsAsObject).map(
+		(provider) => externalSecretProviderToOption(provider, 'project'),
+	);
+	const secretSections: Record<string, CompletionSection> = {
+		project: {
+			name: i18n.baseText('codeNodeEditor.completer.$secrets.group.project'),
+			rank: 1,
+		},
+		global: {
+			name: i18n.baseText('codeNodeEditor.completer.$secrets.group.global'),
+			rank: 2,
+		},
+	};
+	return applySections({
+		options: projectSecretProviders.concat(globalSecretProviders),
+		sections: secretSections,
+	});
 };
 
 /**

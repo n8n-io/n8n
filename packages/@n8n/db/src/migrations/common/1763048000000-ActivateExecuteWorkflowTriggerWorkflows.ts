@@ -46,7 +46,15 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Irr
 		return { executeWorkflowTriggerNode, errorTriggerNode };
 	}
 
-	async up({ escape, runQuery, runInBatches, parseJson, isPostgres }: MigrationContext) {
+	async up({
+		escape,
+		runQuery,
+		runInBatches,
+		parseJson,
+		isPostgres,
+		logger,
+		migrationName,
+	}: MigrationContext) {
 		const tableName = escape.tableName('workflow_entity');
 		const historyTableName = escape.tableName('workflow_history');
 		const idColumn = escape.columnName('id');
@@ -66,7 +74,15 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Irr
 
 		await runInBatches<Workflow>(inactiveWorkflows, async (workflows) => {
 			for (const workflow of workflows) {
-				const nodes = parseJson(workflow.nodes);
+				let nodes: Node[];
+				try {
+					nodes = parseJson(workflow.nodes);
+				} catch (error) {
+					logger.warn(
+						`[${migrationName}] Failed to parse nodes for workflow ${workflow.id}: ${error instanceof Error ? error.message : 'Unknown error'}. Skipping this workflow.`,
+					);
+					continue;
+				}
 
 				const { executeWorkflowTriggerNode, errorTriggerNode } =
 					this.findExecuteWfAndErrorTriggers(nodes);
@@ -124,7 +140,7 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Irr
 				// Disable other trigger nodes (keep valid executeWorkflowTrigger and errorTrigger enabled)
 				let nodesModified = false;
 				nodes.forEach((node: Node) => {
-					if (this.isTriggerNode(node.type)) {
+					if (node.type && this.isTriggerNode(node.type)) {
 						// Keep valid Execute Workflow Trigger active
 						if (
 							node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE &&

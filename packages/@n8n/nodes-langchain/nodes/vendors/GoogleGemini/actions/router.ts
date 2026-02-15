@@ -3,6 +3,7 @@ import { NodeOperationError, type IExecuteFunctions, type INodeExecutionData } f
 import * as audio from './audio';
 import * as document from './document';
 import * as file from './file';
+import * as fileSearch from './fileSearch';
 import * as image from './image';
 import type { GoogleGeminiType } from './node.type';
 import * as text from './text';
@@ -30,6 +31,9 @@ export async function router(this: IExecuteFunctions) {
 			break;
 		case 'file':
 			execute = file[googleGeminiTypeData.operation].execute;
+			break;
+		case 'fileSearch':
+			execute = fileSearch[googleGeminiTypeData.operation].execute;
 			break;
 		case 'image':
 			execute = image[googleGeminiTypeData.operation].execute;

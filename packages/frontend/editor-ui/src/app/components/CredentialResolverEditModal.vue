@@ -12,25 +12,24 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useMessage } from '@/app/composables/useMessage';
-import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY, MODAL_CONFIRM } from '../constants';
+import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY } from '../constants';
 import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from './Modal.vue';
 import SaveButton from './SaveButton.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { CredentialResolverType, CredentialResolver } from '@n8n/api-types';
+import type { CredentialResolver } from '@n8n/api-types';
 import {
-	getCredentialResolverTypes,
 	getCredentialResolver,
 	createCredentialResolver,
 	updateCredentialResolver,
-	deleteCredentialResolver,
 } from '@n8n/rest-api-client';
+import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import type {
 	INodeProperties,
 	ICredentialDataDecryptedObject,
 	CredentialInformation,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import type { IUpdateInformation } from '@/Interface';
 import CredentialInputs from '@/features/credentials/components/CredentialEdit/CredentialInputs.vue';
 
@@ -46,20 +45,32 @@ const props = defineProps<{
 const modalBus = createEventBus();
 const i18n = useI18n();
 const toast = useToast();
-const message = useMessage();
 const rootStore = useRootStore();
 
 const activeTab = ref('configuration');
 const isLoading = ref(false);
 const isSaving = ref(false);
-const isDeleting = ref(false);
 const resolverName = ref('');
 const resolverType = ref('');
 const resolverConfig = ref<Record<string, unknown>>({});
-const availableTypes = ref<CredentialResolverType[]>([]);
+const clearCredentials = ref<boolean | null>(null);
 const hasUnsavedChanges = ref(false);
 const errorMessage = ref<string>('');
 const mainContentRef = ref<HTMLElement>();
+
+// Store original values to detect non-name changes
+const originalResolverName = ref('');
+const originalResolverType = ref('');
+const originalResolverConfig = ref<Record<string, unknown>>({});
+// Track if user has ever made a non-name change (stays true even if reverted)
+const hasEverMadeNonNameChange = ref(false);
+
+const {
+	resolverTypes: availableTypes,
+	fetchResolverTypes: loadResolverTypes,
+	deleteResolver: deleteResolverFromComposable,
+	isDeleting,
+} = useCredentialResolvers();
 
 const isEditMode = computed(() => !!props.data?.resolverId);
 
@@ -157,8 +168,29 @@ const requiredPropertiesFilled = computed(() => {
 	return true;
 });
 
+// Check if non-name fields have changed
+const hasNonNameChanges = computed(() => {
+	if (!isEditMode.value) return false;
+
+	const typeChanged = originalResolverType.value !== resolverType.value;
+	const configChanged =
+		JSON.stringify(originalResolverConfig.value) !== JSON.stringify(resolverConfig.value);
+
+	// Update the flag if there's a current change
+	if (typeChanged || configChanged) {
+		hasEverMadeNonNameChange.value = true;
+	}
+
+	// Show dropdown if user has ever made a non-name change
+	return hasEverMadeNonNameChange.value;
+});
+
 const canSave = computed(() => {
-	return resolverName.value.trim() !== '' && resolverType.value !== '';
+	const baseCheck = resolverName.value.trim() !== '' && resolverType.value !== '';
+	if (isEditMode.value && hasNonNameChanges.value) {
+		return baseCheck && clearCredentials.value !== null;
+	}
+	return baseCheck;
 });
 
 const sidebarItems = computed<IMenuItem[]>(() => [
@@ -174,14 +206,6 @@ const sidebarItems = computed<IMenuItem[]>(() => [
 	},
 ]);
 
-const loadResolverTypes = async () => {
-	try {
-		availableTypes.value = await getCredentialResolverTypes(rootStore.restApiContext);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('credentialResolverEdit.error.loadTypes'));
-	}
-};
-
 const loadResolver = async () => {
 	if (!props.data?.resolverId) return;
 
@@ -190,6 +214,15 @@ const loadResolver = async () => {
 		resolverName.value = resolver.name;
 		resolverType.value = resolver.type;
 		resolverConfig.value = resolver.decryptedConfig || {};
+
+		// Store original values for change detection
+		originalResolverName.value = resolver.name;
+		originalResolverType.value = resolver.type;
+		originalResolverConfig.value = deepCopy(resolver.decryptedConfig || {});
+
+		// Reset the flag when loading a resolver
+		hasEverMadeNonNameChange.value = false;
+		clearCredentials.value = null;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('credentialResolverEdit.error.save'));
 	}
@@ -214,12 +247,33 @@ const save = async () => {
 		return;
 	}
 
+	if (isEditMode.value && hasNonNameChanges.value && clearCredentials.value === null) {
+		errorMessage.value = i18n.baseText('credentialResolverEdit.clearCredentials.error.required');
+		isSaving.value = false;
+		return;
+	}
+
 	try {
-		const payload = {
+		const payload: {
+			name: string;
+			type: string;
+			config: Record<string, unknown>;
+			clearCredentials?: boolean;
+		} = {
 			name: resolverName.value.trim(),
 			type: resolverType.value,
 			config: resolverConfig.value,
 		};
+
+		// Include clearCredentials if non-name fields changed, otherwise default to false
+		if (isEditMode.value) {
+			if (hasNonNameChanges.value && clearCredentials.value !== null) {
+				payload.clearCredentials = clearCredentials.value;
+			} else if (!hasNonNameChanges.value) {
+				// Only name changed, default to false
+				payload.clearCredentials = false;
+			}
+		}
 
 		let savedResolver: CredentialResolver;
 		if (isEditMode.value && props.data?.resolverId) {
@@ -261,6 +315,10 @@ const onConfigUpdate = (updateData: IUpdateInformation) => {
 	};
 	hasUnsavedChanges.value = true;
 	errorMessage.value = '';
+	// Reset clearCredentials when config changes to force user to make a choice
+	if (isEditMode.value) {
+		clearCredentials.value = null;
+	}
 };
 
 const onNameEdit = (newName: string) => {
@@ -275,45 +333,25 @@ const onTabSelect = (tabId: string) => {
 const deleteResolver = async () => {
 	if (!props.data?.resolverId) return;
 
-	const savedResolverName = resolverName.value;
+	// Create a resolver object for the composable
+	const resolver: CredentialResolver = {
+		id: props.data.resolverId,
+		name: resolverName.value,
+		type: resolverType.value,
+		config: JSON.stringify(resolverConfig.value),
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	};
 
-	const deleteConfirmed = await message.confirm(
-		i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.message', {
-			interpolate: { savedResolverName },
-		}),
-		i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.headline'),
-		{
-			confirmButtonText: i18n.baseText(
-				'credentialResolverEdit.confirmMessage.deleteResolver.confirmButtonText',
-			),
-		},
-	);
+	const deleted = await deleteResolverFromComposable(resolver);
 
-	if (deleteConfirmed !== MODAL_CONFIRM) {
-		return;
-	}
-
-	try {
-		isDeleting.value = true;
-		await deleteCredentialResolver(rootStore.restApiContext, props.data.resolverId);
+	if (deleted) {
 		hasUnsavedChanges.value = false;
-
 		if (props.data?.onDelete) {
 			props.data.onDelete(props.data.resolverId);
 		}
-	} catch (error) {
-		toast.showError(error, i18n.baseText('credentialResolverEdit.error.delete'));
-		isDeleting.value = false;
-		return;
+		modalBus.emit('close');
 	}
-
-	isDeleting.value = false;
-	modalBus.emit('close');
-
-	toast.showMessage({
-		title: i18n.baseText('credentialResolverEdit.deleteSuccess.title'),
-		type: 'success',
-	});
 };
 
 onMounted(async () => {
@@ -325,6 +363,7 @@ onMounted(async () => {
 	} else {
 		// Set default name for new resolvers
 		resolverName.value = i18n.baseText('credentialResolverEdit.defaultName');
+		clearCredentials.value = null;
 	}
 	isLoading.value = false;
 });
@@ -344,7 +383,7 @@ onMounted(async () => {
 			<div :class="$style.header">
 				<div :class="$style.resolverInfo">
 					<div :class="$style.resolverIcon">
-						<N8nIconButton icon="database" type="tertiary" size="large" :disabled="true" />
+						<N8nIconButton variant="subtle" icon="database" size="large" :disabled="true" />
 					</div>
 					<div :class="$style.resolverName">
 						<N8nInlineTextEdit
@@ -360,10 +399,10 @@ onMounted(async () => {
 				</div>
 				<div :class="$style.resolverActions">
 					<N8nIconButton
+						variant="subtle"
 						v-if="isEditMode"
 						:title="i18n.baseText('credentialResolverEdit.delete')"
 						icon="trash-2"
-						type="tertiary"
 						:disabled="isSaving"
 						:loading="isDeleting"
 						data-test-id="credential-resolver-delete-button"
@@ -400,6 +439,43 @@ onMounted(async () => {
 						{{ errorMessage }}
 					</N8nCallout>
 
+					<div v-if="isEditMode && hasNonNameChanges" :class="$style.formGroup">
+						<label :class="$style.label">
+							{{ i18n.baseText('credentialResolverEdit.clearCredentials.label') }}
+						</label>
+						<N8nSelect
+							v-model="clearCredentials"
+							:placeholder="i18n.baseText('credentialResolverEdit.clearCredentials.placeholder')"
+							data-test-id="credential-resolver-clear-credentials-select"
+							@update:model-value="
+								() => {
+									hasUnsavedChanges = true;
+									errorMessage = '';
+								}
+							"
+						>
+							<N8nOption
+								:label="i18n.baseText('credentialResolverEdit.clearCredentials.yes')"
+								:value="true"
+							>
+							</N8nOption>
+							<N8nOption
+								:label="i18n.baseText('credentialResolverEdit.clearCredentials.no')"
+								:value="false"
+							>
+							</N8nOption>
+						</N8nSelect>
+					</div>
+
+					<N8nCallout
+						v-if="isEditMode && hasNonNameChanges"
+						theme="warning"
+						:class="$style.warningAlert"
+						data-test-id="credential-resolver-clear-credentials-warning"
+					>
+						{{ i18n.baseText('credentialResolverEdit.clearCredentials.warning') }}
+					</N8nCallout>
+
 					<div :class="$style.formGroup">
 						<label :class="$style.label">
 							{{ i18n.baseText('credentialResolverEdit.type.label') }}
@@ -412,6 +488,7 @@ onMounted(async () => {
 								() => {
 									hasUnsavedChanges = true;
 									errorMessage = '';
+									clearCredentials = null;
 								}
 							"
 						>
@@ -547,6 +624,10 @@ onMounted(async () => {
 }
 
 .errorAlert {
+	margin-bottom: var(--spacing--md);
+}
+
+.warningAlert {
 	margin-bottom: var(--spacing--md);
 }
 </style>

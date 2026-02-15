@@ -1,4 +1,4 @@
-ARG NODE_VERSION=22.21.1
+ARG NODE_VERSION=24.13.1
 ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
@@ -74,10 +74,13 @@ RUN uv sync \
 			--all-extras \
       --no-editable
 
+# Install the python runner package itself into site packages. We can remove the src directory then
+RUN uv pip install . && rm -rf /app/task-runner-python/src
+
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
 # ==============================================================================
-FROM alpine:3.22.1 AS launcher-downloader
+FROM alpine:3.22 AS launcher-downloader
 ARG TARGETPLATFORM
 ARG LAUNCHER_VERSION=1.4.2
 

@@ -45,17 +45,6 @@ export class NavigationHelper {
 		await this.page.goto(url);
 	}
 
-	/**
-	 * Navigate to executions page
-	 * URLs:
-	 * - Home executions: /home/executions
-	 * - Project executions: /projects/{projectId}/executions
-	 */
-	async toExecutions(projectId?: string): Promise<void> {
-		const url = projectId ? `/projects/${projectId}/executions` : '/home/executions';
-		await this.page.goto(url);
-	}
-
 	async toDatatables(projectId?: string): Promise<void> {
 		const url = projectId ? `/projects/${projectId}/datatables` : '/home/datatables';
 		await this.page.goto(url);
@@ -71,27 +60,11 @@ export class NavigationHelper {
 	}
 
 	/**
-	 * Navigate to settings page (global only)
-	 * URL: /settings
-	 */
-	async toSettings(): Promise<void> {
-		await this.page.goto('/settings');
-	}
-
-	/**
 	 * Navigate to personal settings
 	 * URL: /settings/personal
 	 */
 	async toPersonalSettings(): Promise<void> {
 		await this.page.goto('/settings/personal');
-	}
-
-	/**
-	 * Navigate to projects page
-	 * URL: /projects
-	 */
-	async toProjects(): Promise<void> {
-		await this.page.goto('/projects');
 	}
 
 	/**
@@ -205,14 +178,6 @@ export class NavigationHelper {
 	}
 
 	/**
-	 * Navigate to worker view
-	 * URL: /settings/workers
-	 */
-	async toWorkerView(): Promise<void> {
-		await this.page.goto('/settings/workers');
-	}
-
-	/**
 	 * Navigate to users management
 	 * URL: /settings/users
 	 */
@@ -229,22 +194,6 @@ export class NavigationHelper {
 	}
 
 	/**
-	 * Navigate to LDAP settings
-	 * URL: /settings/ldap
-	 */
-	async toLdapSettings(): Promise<void> {
-		await this.page.goto('/settings/ldap');
-	}
-
-	/**
-	 * Navigate to SSO settings
-	 * URL: /settings/sso
-	 */
-	async toSsoSettings(): Promise<void> {
-		await this.page.goto('/settings/sso');
-	}
-
-	/**
 	 * Navigate to environments settings
 	 * URL: /settings/environments
 	 */
@@ -253,10 +202,34 @@ export class NavigationHelper {
 	}
 
 	/**
-	 * Navigate to external secrets settings
-	 * URL: /settings/external-secrets
+	 * Navigate to settings page
+	 * URL: /settings/chat
 	 */
-	async toExternalSecrets(): Promise<void> {
-		await this.page.goto('/settings/external-secrets');
+	async toChatHubSettings(): Promise<void> {
+		await this.page.goto('/settings/chat');
+	}
+
+	/**
+	 * Navigate to ChatHub chat page
+	 * URL: /home/chat
+	 */
+	async toChatHub() {
+		await this.page.goto('/home/chat');
+	}
+
+	/**
+	 * Navigate to ChatHub personal agent list
+	 * URL: /home/chat/personal-agents
+	 */
+	async toChatHubPersonalAgents() {
+		await this.page.goto('/home/chat/personal-agents');
+	}
+
+	/**
+	 * Navigate to ChatHub workflow agent list
+	 * URL: /home/chat/workflow-agents
+	 */
+	async toChatHubWorkflowAgents() {
+		await this.page.goto('/home/chat/workflow-agents');
 	}
 }

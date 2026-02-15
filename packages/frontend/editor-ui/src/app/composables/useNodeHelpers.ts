@@ -358,7 +358,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 		const fullNodeIssues: INodeIssues | null = NodeHelpers.getNodeParametersIssues(
 			localNodeType.properties,
 			node,
-			nodeType ?? null,
+			localNodeType,
 		);
 
 		let newIssues: INodeIssueObjectProperty | null = null;
