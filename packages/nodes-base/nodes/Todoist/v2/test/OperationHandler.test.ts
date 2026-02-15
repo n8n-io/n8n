@@ -69,6 +69,17 @@ const createMockContext = (params: Record<string, any> = {}) =>
 		getNode: jest.fn(() => mock<INode>({ typeVersion: 2.1 })),
 	});
 
+const createMockContextWithVersion = (
+	params: Record<string, any> = {},
+	typeVersion: number = 2.1,
+) =>
+	mock<IExecuteFunctions>({
+		getNodeParameter: jest.fn((key: string, _idx?: number, defaultValue?: any) =>
+			key in params ? params[key] : defaultValue,
+		),
+		getNode: jest.fn(() => mock<INode>({ typeVersion })),
+	});
+
 describe('OperationHandler', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -245,6 +256,138 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(mockCtx, '/tasks', {}, undefined);
 				expect(result).toEqual({ data: expectedResponse });
+			});
+		});
+
+		describe('GetAllHandler with API v1 filter endpoint', () => {
+			it('should use /tasks/filter endpoint when filter is set on node version 2.2', async () => {
+				const handler = new GetAllHandler();
+				const mockCtx = createMockContextWithVersion(
+					{
+						returnAll: true,
+						filters: {
+							filter: 'today & #Work',
+						},
+					},
+					2.2,
+				);
+
+				mockTodoistApiGetAllRequest.mockResolvedValue([{ id: '1', content: 'Filtered Task' }]);
+
+				const result = await handler.handleOperation(mockCtx, 0);
+
+				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(
+					mockCtx,
+					'/tasks/filter',
+					expect.objectContaining({
+						query: 'today & #Work',
+					}),
+					undefined,
+				);
+				expect(result).toEqual({ data: [{ id: '1', content: 'Filtered Task' }] });
+			});
+
+			it('should use /tasks endpoint with filter param on node version < 2.2', async () => {
+				const handler = new GetAllHandler();
+				const mockCtx = createMockContextWithVersion(
+					{
+						returnAll: true,
+						filters: {
+							filter: 'today',
+						},
+					},
+					2.1,
+				);
+
+				mockTodoistApiGetAllRequest.mockResolvedValue([{ id: '1', content: 'Task' }]);
+
+				const result = await handler.handleOperation(mockCtx, 0);
+
+				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(
+					mockCtx,
+					'/tasks',
+					expect.objectContaining({
+						filter: 'today',
+					}),
+					undefined,
+				);
+				expect(result).toEqual({ data: [{ id: '1', content: 'Task' }] });
+			});
+
+			it('should use /tasks endpoint when no filter is set on node version 2.2', async () => {
+				const handler = new GetAllHandler();
+				const mockCtx = createMockContextWithVersion(
+					{
+						returnAll: true,
+						filters: {
+							projectId: '123',
+						},
+					},
+					2.2,
+				);
+
+				mockTodoistApiGetAllRequest.mockResolvedValue([]);
+
+				await handler.handleOperation(mockCtx, 0);
+
+				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(
+					mockCtx,
+					'/tasks',
+					expect.objectContaining({
+						project_id: '123',
+					}),
+					undefined,
+				);
+			});
+
+			it('should pass lang parameter alongside filter on API v1', async () => {
+				const handler = new GetAllHandler();
+				const mockCtx = createMockContextWithVersion(
+					{
+						returnAll: true,
+						filters: {
+							filter: 'today',
+							lang: 'en',
+						},
+					},
+					2.2,
+				);
+
+				mockTodoistApiGetAllRequest.mockResolvedValue([]);
+
+				await handler.handleOperation(mockCtx, 0);
+
+				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(
+					mockCtx,
+					'/tasks/filter',
+					expect.objectContaining({
+						query: 'today',
+						lang: 'en',
+					}),
+					undefined,
+				);
+			});
+
+			it('should not include filter param in query string when using filter endpoint', async () => {
+				const handler = new GetAllHandler();
+				const mockCtx = createMockContextWithVersion(
+					{
+						returnAll: false,
+						limit: 5,
+						filters: {
+							filter: 'overdue',
+						},
+					},
+					2.2,
+				);
+
+				mockTodoistApiGetAllRequest.mockResolvedValue([]);
+
+				await handler.handleOperation(mockCtx, 0);
+
+				const calledQs = mockTodoistApiGetAllRequest.mock.calls[0][2];
+				expect(calledQs).toHaveProperty('query', 'overdue');
+				expect(calledQs).not.toHaveProperty('filter');
 			});
 		});
 
