@@ -21,7 +21,6 @@ import {
 	tryToParseUrl,
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
-import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
 
 import { getResolvables } from '../../../utils/utilities';
@@ -409,7 +408,12 @@ export async function prepareFormReturnItem(
 	useWorkflowTimezone: boolean = false,
 ) {
 	const req = context.getRequestObject() as MultiPartFormData.Request;
-	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
+	if (req.contentType !== 'multipart/form-data') {
+		throw new NodeOperationError(
+			context.getNode(),
+			'Form submissions must use multipart/form-data content type',
+		);
+	}
 	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
 	const files = (context.getBodyData().files as IDataObject) ?? {};
 	const { binaryMode } = context.getWorkflowSettings();

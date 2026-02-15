@@ -1003,6 +1003,27 @@ async function parseRequestBody(
 	}
 
 	const { contentType } = req;
+
+	// CVE-2026-21858: Form trigger POST requests MUST use multipart/form-data.
+	// Reject early to prevent Content-Type confusion attacks where an attacker
+	// sends JSON with a crafted "files" object to trigger arbitrary file reads.
+	const isFormTriggerNode = [FORM_TRIGGER_NODE_TYPE, FORM_NODE_TYPE].includes(
+		workflowStartNode.type,
+	);
+	const isWaitFormNode =
+		workflowStartNode.type === WAIT_NODE_TYPE &&
+		workflowStartNode.parameters?.resume === 'form';
+
+	if (
+		(isFormTriggerNode || isWaitFormNode) &&
+		req.method === 'POST' &&
+		contentType !== 'multipart/form-data'
+	) {
+		throw new OperationalError(
+			'Form submissions require multipart/form-data content type',
+		);
+	}
+
 	if (contentType === 'multipart/form-data') {
 		req.body = await parseFormData(req);
 	} else {
