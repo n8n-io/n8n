@@ -73,6 +73,15 @@ export class Salesforce implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'salesforceClientCredentialsApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['clientCredentials'],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -87,6 +96,10 @@ export class Salesforce implements INodeType {
 					{
 						name: 'OAuth2 JWT',
 						value: 'jwt',
+					},
+					{
+						name: 'Client Credentials',
+						value: 'clientCredentials',
 					},
 				],
 				default: 'oAuth2',

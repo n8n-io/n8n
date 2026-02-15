@@ -82,6 +82,27 @@ async function getAccessToken(
 	return await this.helpers.request(options);
 }
 
+async function getClientCredentialsToken(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	credentials: IDataObject,
+): Promise<IDataObject> {
+	const options: IRequestOptions = {
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		method: 'POST',
+		form: {
+			grant_type: 'client_credentials',
+			client_id: credentials.clientId as string,
+			client_secret: credentials.clientSecret as string,
+		},
+		url: `${credentials.url as string}/services/oauth2/token`,
+		json: true,
+	};
+
+	return await this.helpers.request(options);
+}
+
 export async function salesforceApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
@@ -114,6 +135,25 @@ export async function salesforceApiRequest(
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			Object.assign(options, option);
 			return await this.helpers.request(options);
+		} else if (authenticationMethod === 'clientCredentials') {
+			// https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_client_credentials_flow.htm&type=5
+			const credentialsType = 'salesforceClientCredentialsApi';
+			const credentials = await this.getCredentials(credentialsType);
+			const response = await getClientCredentialsToken.call(this, credentials);
+			const { instance_url, access_token } = response;
+			const options = getOptions.call(
+				this,
+				method,
+				uri || endpoint,
+				body,
+				qs,
+				instance_url as string,
+			);
+			this.logger.debug(
+				`Authentication for "Salesforce" node is using "clientCredentials". Invoking URI ${options.uri}`,
+			);
+			options.headers!.Authorization = `Bearer ${access_token}`;
+			Object.assign(options, option);
 		} else {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_web_server_flow.htm&type=5
 			const credentialsType = 'salesforceOAuth2Api';
