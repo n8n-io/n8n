@@ -181,7 +181,12 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		{
 			fallbackValue,
 			refreshFn,
-		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<T | undefined> } = {},
+			validateFn,
+		}: {
+			fallbackValue?: T;
+			refreshFn?: (key: string) => Promise<T | undefined>;
+			validateFn?: (value: T) => boolean;
+		} = {},
 	) {
 		if (!this.cache) await this.init();
 
@@ -190,6 +195,23 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		const value = await this.cache.store.get<T>(key);
 
 		if (value !== undefined) {
+			// If a validation function is provided, check if the cached value is valid
+			if (validateFn && !validateFn(value)) {
+				this.emit('metrics.cache.miss');
+
+				// Invalid cached value - refresh if possible
+				if (refreshFn) {
+					this.emit('metrics.cache.update');
+
+					const refreshValue = await refreshFn(key);
+					await this.set(key, refreshValue);
+
+					return refreshValue;
+				}
+
+				return fallbackValue;
+			}
+
 			this.emit('metrics.cache.hit');
 
 			return value;

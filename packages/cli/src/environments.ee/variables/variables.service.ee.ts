@@ -64,10 +64,36 @@ export class VariablesService {
 	async getAllCached(
 		filters: { globalOnly: boolean } = { globalOnly: false },
 	): Promise<Variables[]> {
-		const variables =
-			(await this.cacheService.get('variables', {
-				refreshFn: async () => await this.findAll(),
-			})) ?? [];
+		const cachedVariables = await this.cacheService.get<Variables[]>('variables', {
+			refreshFn: async () => await this.findAll(),
+		});
+
+		// If cache returns undefined or null, refresh from database
+		// If cache returns an empty array, we need to verify it's actually empty in the DB
+		// This handles the case where Redis cache contains [] but DB has variables
+		let variables: Variables[];
+
+		if (cachedVariables === undefined || cachedVariables === null) {
+			// Cache miss - refresh from database
+			variables = await this.findAll();
+			await this.cacheService.set('variables', variables);
+		} else if (Array.isArray(cachedVariables) && cachedVariables.length === 0) {
+			// Empty array in cache - verify against database to ensure it's truly empty
+			// This prevents stale empty caches from hiding valid variables
+			const dbVariables = await this.findAll();
+
+			if (dbVariables.length > 0) {
+				// Database has variables but cache was empty - refresh cache
+				variables = dbVariables;
+				await this.cacheService.set('variables', variables);
+			} else {
+				// Database is also empty - cache is correct
+				variables = cachedVariables;
+			}
+		} else {
+			// Cache hit with non-empty array
+			variables = cachedVariables;
+		}
 
 		if (filters.globalOnly) {
 			return variables.filter((v) => !v.project);
@@ -89,6 +115,16 @@ export class VariablesService {
 		// TODO: log update cache metric
 		const variables = await this.findAll();
 		await this.cacheService.set('variables', variables);
+	}
+
+	/**
+	 * Force refresh the variables cache from the database.
+	 * This is useful for recovery scenarios where the cache may be stale or empty.
+	 */
+	async refreshCache(): Promise<Variables[]> {
+		const variables = await this.findAll();
+		await this.cacheService.set('variables', variables);
+		return variables;
 	}
 
 	async getAllForUser(
