@@ -39,17 +39,29 @@ export class NodeVmBridge implements RuntimeBridge {
 		});
 	}
 
+	// TODO: Implement proper cache management to prevent unbounded growth
+	// Options to consider:
+	// - LRU cache with size limit
+	// - Cache per execution instance (dispose with execution)
+	// - Execution-scoped cache passed from caller
+	// - Periodic cache cleanup based on usage patterns
+	private scriptCache = new Map<string, vm.Script>();
+
 	execute(code: string, data: Record<string, unknown>): unknown {
 		if (!this.context) throw new Error('Not initialized');
 
 		// Update workflow data for this execution (reuse existing context)
 		this.context.__workflowData = data;
 
-		// Execute expression code
-		const script = new vm.Script(`__n8nExecute(${JSON.stringify(code)})`, {
-			filename: 'expression.js',
-		});
+		// Cache compiled scripts
+		const scriptKey = `__n8nExecute(${JSON.stringify(code)})`;
+		let script = this.scriptCache.get(scriptKey);
+		if (!script) {
+			script = new vm.Script(scriptKey, { filename: 'expression.js' });
+			this.scriptCache.set(scriptKey, script);
+		}
 
+		// Execute expression code
 		return script.runInContext(this.context, {
 			timeout: this.config.timeout,
 			displayErrors: true,
