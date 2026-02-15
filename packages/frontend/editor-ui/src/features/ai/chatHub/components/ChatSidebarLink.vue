@@ -61,9 +61,8 @@ defineSlots<{
 			>
 				<template #activator>
 					<N8nIconButton
+						variant="ghost"
 						icon="ellipsis-vertical"
-						type="tertiary"
-						text
 						:class="$style.actionDropdownTrigger"
 					/>
 				</template>

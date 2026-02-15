@@ -45,9 +45,8 @@ const emit = defineEmits<{
 				{{ node.name }}
 			</N8nHeading>
 			<N8nIconButton
+				variant="ghost"
 				icon="x"
-				type="secondary"
-				text
 				class="ml-auto"
 				@click="emit('close')"
 			></N8nIconButton>

@@ -3,7 +3,11 @@ import { test, expect } from '../../../fixtures/base';
 
 const FILTER_PARAM_NAME = 'conditions';
 
-test.describe('If Node (filter component)', () => {
+test.describe('If Node (filter component)', {
+	annotation: [
+		{ type: 'owner', description: 'NODES' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});

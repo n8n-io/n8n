@@ -26,7 +26,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
-import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import {
 	getLastPublishedVersion,
 	generateVersionName,
@@ -67,7 +67,7 @@ const i18n = useI18n();
 const router = useRouter();
 const toast = useToast();
 
-const autosaveStore = useWorkflowAutosaveStore();
+const saveStore = useWorkflowSaveStore();
 const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
 const workflowActivate = useWorkflowActivate();
 
@@ -132,17 +132,17 @@ const isPersonalSpace = computed(() => projectStore.currentProject?.type === Pro
  */
 const saveBeforePublish = async () => {
 	let saved = false;
-	if (autosaveStore.autoSaveState === AutoSaveState.InProgress && autosaveStore.pendingAutoSave) {
+	if (saveStore.autoSaveState === AutoSaveState.InProgress && saveStore.pendingSave) {
 		autoSaveForPublish.value = true;
 		try {
-			await autosaveStore.pendingAutoSave;
+			await saveStore.pendingSave;
 			saved = true;
 		} catch {
 			// Autosave failed, will attempt manual save below
 		} finally {
 			autoSaveForPublish.value = false;
 		}
-	} else if (autosaveStore.autoSaveState === AutoSaveState.Scheduled) {
+	} else if (saveStore.autoSaveState === AutoSaveState.Scheduled) {
 		cancelAutoSave();
 	}
 
@@ -518,7 +518,7 @@ defineExpose({
 						:class="$style.groupButtonLeft"
 						:loading="autoSaveForPublish"
 						:disabled="!publishButtonConfig.enabled || shouldDisablePublishButton"
-						type="secondary"
+						variant="subtle"
 						data-test-id="workflow-open-publish-modal-button"
 						@click="onPublishButtonClick"
 					>
@@ -552,7 +552,7 @@ defineExpose({
 					<template #activator>
 						<N8nIconButton
 							:class="$style.groupButtonRight"
-							type="secondary"
+							variant="subtle"
 							icon="chevron-down"
 							data-test-id="version-menu-button"
 						/>

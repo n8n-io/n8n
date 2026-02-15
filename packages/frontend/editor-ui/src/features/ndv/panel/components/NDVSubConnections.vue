@@ -322,9 +322,9 @@ defineExpose({
 										</template>
 									</template>
 									<N8nIconButton
+										variant="subtle"
 										size="medium"
 										icon="plus"
-										type="tertiary"
 										:data-test-id="`add-subnode-${getConnectionKey(connection, index)}`"
 									/>
 								</N8nTooltip>

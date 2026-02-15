@@ -378,18 +378,9 @@ onMounted(async () => {
 				!credentialData.value.hasOwnProperty(property.name) &&
 				!credentialType.value.__overwrittenProperties?.includes(property.name)
 			) {
-				// For new httpHeaderAuth credentials, default allowedHttpRequestDomains to 'none'
-				let defaultValue = property.default as CredentialInformation;
-				if (
-					props.mode === 'new' &&
-					credentialTypeName.value === 'httpHeaderAuth' &&
-					property.name === 'allowedHttpRequestDomains'
-				) {
-					defaultValue = 'none';
-				}
 				credentialData.value = {
 					...credentialData.value,
-					[property.name]: defaultValue,
+					[property.name]: property.default as CredentialInformation,
 				};
 			}
 		}
@@ -1165,18 +1156,9 @@ function resetCredentialData(): void {
 	}
 	for (const property of credentialType.value.properties) {
 		if (!credentialType.value.__overwrittenProperties?.includes(property.name)) {
-			// For new httpHeaderAuth credentials, default allowedHttpRequestDomains to 'none'
-			let defaultValue = property.default as CredentialInformation;
-			if (
-				props.mode === 'new' &&
-				credentialTypeName.value === 'httpHeaderAuth' &&
-				property.name === 'allowedHttpRequestDomains'
-			) {
-				defaultValue = 'none';
-			}
 			credentialData.value = {
 				...credentialData.value,
-				[property.name]: defaultValue,
+				[property.name]: property.default as CredentialInformation,
 			};
 		}
 	}
@@ -1251,10 +1233,10 @@ const { width } = useElementSize(credNameRef);
 				</div>
 				<div :class="$style.credActions">
 					<N8nIconButton
+						variant="subtle"
 						v-if="currentCredential && credentialPermissions.delete"
 						:title="i18n.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash-2"
-						type="tertiary"
 						:disabled="isSaving"
 						:loading="isDeleting"
 						data-test-id="credential-delete-button"
