@@ -22,6 +22,7 @@ import { useCredentialsStore } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
 import QuickConnectButton from '../quickConnect/components/QuickConnectButton.vue';
+import QuickConnectConsentDialog from '../quickConnect/components/QuickConnectConsentDialog.vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -87,7 +88,16 @@ const workflowState = injectWorkflowState();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 // Quick connect
-const { isQuickConnectEnabled, getQuickConnectOption, connect, cancelConnect } = useQuickConnect();
+const {
+	isQuickConnectEnabled,
+	getQuickConnectOption,
+	connect,
+	cancelConnect,
+	showConsentDialog,
+	consentDialogOption,
+	onConsentConfirm,
+	onConsentCancel,
+} = useQuickConnect();
 const { isGoogleOAuthType, hasManagedOAuthCredentials } = useCredentialOAuth();
 
 const canCreateCredentials = computed(
@@ -542,14 +552,22 @@ function showStandardEmptyState(type: INodeCredentialDescription): boolean {
 async function onQuickConnectSignIn(credentialTypeName: string) {
 	subscribedToCredentialType.value = credentialTypeName;
 
-	const credential = await connect({
-		credentialTypeName,
-		nodeType: props.node.type,
-		source: 'node',
-	});
+	try {
+		const credential = await connect({
+			credentialTypeName,
+			nodeType: props.node.type,
+			source: 'node',
+		});
 
-	if (credential) {
-		onCredentialSelected(credentialTypeName, credential.id);
+		if (credential) {
+			onCredentialSelected(credentialTypeName, credential.id);
+			toast.showMessage({
+				title: i18n.baseText('quickConnect.credential.created.success'),
+				type: 'success',
+			});
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('quickConnect.credential.created.error'));
 	}
 }
 </script>
@@ -755,6 +773,14 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				</N8nNotice>
 			</N8nInputLabel>
 		</div>
+		<QuickConnectConsentDialog
+			v-if="consentDialogOption"
+			v-model:open="showConsentDialog"
+			:service-name="consentDialogOption.serviceName"
+			:consent-text="consentDialogOption.consentText ?? ''"
+			@confirm="onConsentConfirm"
+			@cancel="onConsentCancel"
+		/>
 	</div>
 </template>
 
