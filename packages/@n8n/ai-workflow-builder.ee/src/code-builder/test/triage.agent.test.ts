@@ -99,7 +99,7 @@ async function collectGenerator(
 
 describe('TriageAgent', () => {
 	it('should execute ask_assistant, emit chunks, and derive outcome from state', async () => {
-		const response = new AIMessage({
+		const firstResponse = new AIMessage({
 			content: '',
 			tool_calls: [
 				{
@@ -109,8 +109,9 @@ describe('TriageAgent', () => {
 				},
 			],
 		});
+		const secondResponse = new AIMessage({ content: '' });
 
-		const llm = createMockLlm(response);
+		const llm = createMockLlm([firstResponse, secondResponse]);
 		const handler = createMockAssistantHandler();
 
 		const agent = new TriageAgent({
@@ -128,7 +129,6 @@ describe('TriageAgent', () => {
 		expect(handler.execute).toHaveBeenCalledTimes(1);
 
 		// ask_assistant emits a "running" chunk then a bundled "completed + text" chunk.
-		// endLoop: true exits immediately — the LLM is NOT called again.
 		const runningChunk = chunks.find(
 			(c) =>
 				c.messages.length === 1 &&
@@ -156,10 +156,11 @@ describe('TriageAgent', () => {
 		expect(runningMsg.toolCallId).toBeDefined();
 		expect(runningMsg.toolCallId).toBe(completedMsg.toolCallId);
 
+		// LLM called twice: once for ask_assistant, once for the follow-up (empty text = exit)
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
 		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		expect(boundModel.invoke).toHaveBeenCalledTimes(1);
+		expect(boundModel.invoke).toHaveBeenCalledTimes(2);
 	});
 
 	it('should execute build_workflow, yield builder chunks, and set buildExecuted', async () => {
@@ -403,7 +404,7 @@ describe('TriageAgent', () => {
 		expect(systemMessage.content).not.toContain('<conversation_history>');
 	});
 
-	it('should exit loop after ask_assistant without calling LLM again', async () => {
+	it('should continue loop after ask_assistant and let LLM respond with text', async () => {
 		const firstResponse = new AIMessage({
 			content: '',
 			tool_calls: [
@@ -415,7 +416,7 @@ describe('TriageAgent', () => {
 			],
 		});
 		const secondResponse = new AIMessage({
-			content: 'This should never be reached',
+			content: 'Based on the diagnosis, you need to re-authenticate.',
 		});
 
 		const llm = createMockLlm([firstResponse, secondResponse]);
@@ -432,23 +433,33 @@ describe('TriageAgent', () => {
 			assistantHandler: handler,
 			buildWorkflow: createMockBuildWorkflow(),
 		});
-		const { result } = await collectGenerator(
+		const { chunks, result } = await collectGenerator(
 			agent.run({ payload: createMockPayload(), userId: 'user-1' }),
 		);
 
-		// ask_assistant has endLoop: true — the loop exits and the LLM is
-		// NOT called a second time, avoiding a duplicate answer.
+		// ask_assistant no longer exits the loop — the LLM is called again
+		// and responds with text, which becomes the final answer.
 		expect(result.assistantSummary).toBe('Missing credentials error');
 		expect(result.buildExecuted).toBeFalsy();
 		expect(handler.execute).toHaveBeenCalledTimes(1);
 
+		// The last chunk is the LLM's text reply
+		const textChunk = chunks.find(
+			(c) =>
+				c.messages.length === 1 &&
+				c.messages[0].type === 'message' &&
+				'text' in c.messages[0] &&
+				c.messages[0].text === 'Based on the diagnosis, you need to re-authenticate.',
+		);
+		expect(textChunk).toBeDefined();
+
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
 		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		expect(boundModel.invoke).toHaveBeenCalledTimes(1);
+		expect(boundModel.invoke).toHaveBeenCalledTimes(2);
 	});
 
-	it('should return outcome with assistantSummary after single ask_assistant call', async () => {
+	it('should return outcome with assistantSummary after ask_assistant followed by text', async () => {
 		const askResponse = new AIMessage({
 			content: '',
 			tool_calls: [
@@ -459,8 +470,9 @@ describe('TriageAgent', () => {
 				},
 			],
 		});
+		const textResponse = new AIMessage({ content: '' });
 
-		const llm = createMockLlm([askResponse]);
+		const llm = createMockLlm([askResponse, textResponse]);
 		const handler = createMockAssistantHandler();
 
 		const agent = new TriageAgent({
@@ -472,11 +484,16 @@ describe('TriageAgent', () => {
 			agent.run({ payload: createMockPayload(), userId: 'user-1' }),
 		);
 
-		// ask_assistant exits the loop immediately (endLoop: true)
+		// ask_assistant sets assistantSummary, then the LLM is called again
 		expect(result.assistantSummary).toBe('Assistant says hi');
 		expect(result.sdkSessionId).toBe('sdk-sess-1');
 		expect(result.buildExecuted).toBeFalsy();
 		expect(handler.execute).toHaveBeenCalledTimes(1);
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(boundModel.invoke).toHaveBeenCalledTimes(2);
 	});
 
 	it('should return empty outcome when max iterations reached without state', async () => {
@@ -660,13 +677,12 @@ describe('TriageAgent', () => {
 		).rejects.toThrow('Assistant service unavailable');
 	});
 
-	it('should set assistantSummary but not buildExecuted when ask_assistant is called', async () => {
+	it('should run two-step diagnosis-then-fix: ask_assistant followed by build_workflow', async () => {
 		const builderChunk: StreamOutput = {
 			messages: [{ role: 'assistant', type: 'message', text: 'Built it' }],
 		};
 
-		// Even though a second response with build_workflow exists, the loop
-		// exits after ask_assistant (endLoop: true), so it is never reached.
+		// Two-step flow: ask_assistant diagnoses, then build_workflow applies the fix.
 		const firstResponse = new AIMessage({
 			content: '',
 			tool_calls: [
@@ -688,21 +704,29 @@ describe('TriageAgent', () => {
 			],
 		});
 
+		const mockBuildWorkflow = jest.fn(createMockBuildWorkflow([builderChunk]));
 		const llm = createMockLlm([firstResponse, secondResponse]);
 		const handler = createMockAssistantHandler();
 
 		const agent = new TriageAgent({
 			llm,
 			assistantHandler: handler,
-			buildWorkflow: createMockBuildWorkflow([builderChunk]),
+			buildWorkflow: mockBuildWorkflow,
 		});
 		const { result } = await collectGenerator(
 			agent.run({ payload: createMockPayload(), userId: 'user-1' }),
 		);
 
+		// Both assistant and build outcomes are set
 		expect(result.assistantSummary).toBe('Assistant says hi');
-		expect(result.buildExecuted).toBeFalsy();
+		expect(result.buildExecuted).toBe(true);
 		expect(handler.execute).toHaveBeenCalledTimes(1);
+
+		// Builder receives enriched payload with diagnosis prepended
+		expect(mockBuildWorkflow).toHaveBeenCalledTimes(1);
+		const [enrichedPayload] = mockBuildWorkflow.mock.calls[0] as unknown as [ChatPayload];
+		expect(enrichedPayload.message).toContain('[Diagnosis]: Assistant says hi');
+		expect(enrichedPayload.message).toContain('test message');
 	});
 
 	it('should only bind build_workflow when mergeAskBuild flag is off', async () => {

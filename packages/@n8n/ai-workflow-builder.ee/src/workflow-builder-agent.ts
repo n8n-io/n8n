@@ -377,10 +377,8 @@ export class WorkflowBuilderAgent {
 		outcome: TriageAgentOutcome,
 		collectedText: string[],
 	) {
-		if (outcome.buildExecuted) {
-			// SessionChatHandler saves — no action needed
-			return;
-		}
+		// Two-step flow: save assistant-exchange even when build also ran,
+		// so the diagnosis context is preserved in conversation history.
 		if (outcome.assistantSummary) {
 			session.conversationEntries.push({
 				type: 'assistant-exchange',
@@ -388,7 +386,16 @@ export class WorkflowBuilderAgent {
 				assistantSummary: outcome.assistantSummary,
 			});
 			session.sdkSessionId = outcome.sdkSessionId;
-		} else {
+		}
+		if (outcome.buildExecuted) {
+			// SessionChatHandler saves the build entry — only persist here
+			// if we also recorded an assistant exchange above.
+			if (outcome.assistantSummary) {
+				await saveCodeBuilderSession(this.checkpointer, threadId, session);
+			}
+			return;
+		}
+		if (!outcome.assistantSummary) {
 			session.conversationEntries.push({
 				type: 'plan',
 				userQuery: userMessage,

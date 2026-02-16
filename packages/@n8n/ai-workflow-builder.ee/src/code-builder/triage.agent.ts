@@ -84,12 +84,12 @@ function buildTriagePrompt(conversationHistory?: TriageConversationEntry[]): str
 		)
 		.section(
 			'routing',
-			`Route each message to exactly ONE of these:
+			`Route each message using one or more of these:
 
 1. **build_workflow** — The user wants to create, modify, or change a workflow.
    Pass the full user request as instructions.
 
-2. **ask_assistant** — The user has a general question about n8n concepts, needs help understanding how something works, or wants guidance on setting up credentials.
+2. **ask_assistant** — The user has a general question about n8n concepts, needs help understanding how something works, wants guidance on setting up credentials, or needs to diagnose a workflow error.
    Pass the user's query faithfully.
 
 3. **Direct reply** — Simple conversational messages that don't need either tool.
@@ -97,7 +97,8 @@ function buildTriagePrompt(conversationHistory?: TriageConversationEntry[]): str
 		)
 		.section(
 			'rules',
-			`- Make exactly one routing decision per message
+			`- For error/debug messages: first call ask_assistant to diagnose, then call build_workflow to apply the fix
+- For pure questions (no fix needed): call ask_assistant and respond with its answer — no follow-up build required
 - When in doubt between ask_assistant and build_workflow, prefer build_workflow for any message that implies changing the workflow
 - Use conversation history to resolve references like "change that" or "the previous node"`,
 		)
@@ -342,7 +343,7 @@ export class TriageAgent {
 
 				state.sdkSessionId = result.sdkSessionId;
 				state.assistantSummary = result.summary;
-				return { content: result.summary, endLoop: true };
+				return { content: result.summary };
 			}
 
 			case 'build_workflow': {
@@ -350,7 +351,20 @@ export class TriageAgent {
 				// CodeWorkflowBuilder.chat() needs full context (workflow state, feature
 				// flags, etc.). The LLM's `instructions` field serves as chain-of-thought
 				// for the routing decision and is useful in LangSmith traces.
-				for await (const chunk of this.buildWorkflow(ctx.payload, ctx.userId, ctx.abortSignal)) {
+				//
+				// When ask_assistant ran earlier in the same loop (two-step diagnosis flow),
+				// prepend its diagnosis so the builder has error context.
+				const enrichedPayload = state.assistantSummary
+					? {
+							...ctx.payload,
+							message: `[Diagnosis]: ${state.assistantSummary}\n\n${ctx.payload.message}`,
+						}
+					: ctx.payload;
+				for await (const chunk of this.buildWorkflow(
+					enrichedPayload,
+					ctx.userId,
+					ctx.abortSignal,
+				)) {
 					enqueue(chunk);
 				}
 				state.buildExecuted = true;

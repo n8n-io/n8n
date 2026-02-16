@@ -722,7 +722,7 @@ describe('WorkflowBuilderAgent', () => {
 			);
 		});
 
-		it('should NOT save session for build outcome', async () => {
+		it('should NOT save session for build-only outcome', async () => {
 			// eslint-disable-next-line require-yield
 			mockTriageAgentRun.mockImplementation(async function* () {
 				return { buildExecuted: true };
@@ -741,6 +741,47 @@ describe('WorkflowBuilderAgent', () => {
 			}
 
 			expect(mockSaveCodeBuilderSession).not.toHaveBeenCalled();
+		});
+
+		it('should save assistant-exchange for two-step diagnosis+build outcome', async () => {
+			mockTriageAgentRun.mockImplementation(async function* () {
+				yield {
+					messages: [{ role: 'assistant', type: 'message', text: 'Diagnosing...' }],
+				} as StreamOutput;
+				return {
+					sdkSessionId: 'sdk-diag',
+					assistantSummary: 'Missing credentials',
+					buildExecuted: true,
+				};
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Fix the Google Sheets error',
+				featureFlags: { codeBuilder: true },
+				workflowContext: { currentWorkflow: { id: 'wf-1' } },
+			};
+
+			for await (const _ of triageAgent.chat(payload, 'user-456')) {
+				// consume
+			}
+
+			expect(mockSaveCodeBuilderSession).toHaveBeenCalledTimes(1);
+			const [, threadId, savedSession] = mockSaveCodeBuilderSession.mock.calls[0] as unknown[];
+			expect(threadId).toBe('test-thread-id');
+			expect(savedSession).toEqual(
+				expect.objectContaining({
+					conversationEntries: [
+						{
+							type: 'assistant-exchange',
+							userQuery: 'Fix the Google Sheets error',
+							assistantSummary: 'Missing credentials',
+						},
+					],
+					sdkSessionId: 'sdk-diag',
+				}),
+			);
 		});
 
 		it('should construct TriageAgent with buildWorkflow function', async () => {
