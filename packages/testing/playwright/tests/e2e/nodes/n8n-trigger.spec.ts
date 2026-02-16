@@ -28,14 +28,12 @@ const makeN8nTriggerWorkflow = (events: TriggerEventType[]) => {
 };
 
 test.describe(
-	'n8n Trigger node in multi-main mode',
+	'n8n Trigger node',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('should fire "activate" event when workflow is published @mode:multi-main', async ({
-			api,
-		}) => {
+		test('should fire "activate" event when workflow is published', async ({ api }) => {
 			const wf = makeN8nTriggerWorkflow(['activate']);
 			const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
 				wf.toJSON() as IWorkflowBase,
@@ -48,9 +46,7 @@ test.describe(
 			expect(execution.status).toBe('success');
 		});
 
-		test('should fire "update" event when active workflow is re-published @mode:multi-main', async ({
-			api,
-		}) => {
+		test('should fire "update" event when active workflow is re-published', async ({ api }) => {
 			const wf = makeN8nTriggerWorkflow(['update']);
 			const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
 				wf.toJSON() as IWorkflowBase,
