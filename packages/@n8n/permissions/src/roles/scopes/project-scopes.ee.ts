@@ -64,6 +64,7 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'credential:update',
 	'credential:delete',
 	'credential:list',
+	'credential:move',
 	'project:list',
 	'project:read',
 	'folder:create',

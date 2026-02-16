@@ -104,7 +104,7 @@ Options:
   --message=<msg>         Commit message
   --target-branch=<name>  Branch to diff against
   --max-diff-lines=<n>    Skip if diff exceeds N lines
-  --test-command=<cmd>    Test command (files appended)
+  --test-command=<cmd>    Test command (files appended). Must match allowlist if configured
   --json, --verbose
 
 Example: playwright-janitor tcr --execute -m="Fix bug"

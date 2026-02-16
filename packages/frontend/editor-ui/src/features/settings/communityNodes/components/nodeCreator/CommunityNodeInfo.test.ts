@@ -48,8 +48,15 @@ vi.mock('@/features/shared/nodeCreator/composables/useViewStacks', () => ({
 	useViewStacks: vi.fn(),
 }));
 
-vi.mock('@/features/integrations/quickConnect/composables/useQuickConnect', () => ({
-	useQuickConnect: vi.fn(() => ref(undefined) as ComputedRef),
+vi.mock('@/features/credentials/quickConnect/composables/useQuickConnect', () => ({
+	useQuickConnect: vi.fn(() => ({
+		isQuickConnectEnabled: ref(false),
+		getQuickConnectOption: vi.fn(() => undefined),
+		getQuickConnectOptionByPackageName: vi.fn(() => undefined),
+		getQuickConnectOptionByCredentialTypes: vi.fn(() => undefined),
+		connect: vi.fn(),
+		cancelConnect: vi.fn(),
+	})),
 }));
 
 describe('CommunityNodeInfo', () => {
@@ -317,17 +324,23 @@ describe('CommunityNodeInfo', () => {
 		describe('Quick connect enabled', () => {
 			beforeEach(async () => {
 				const { useQuickConnect } = await import(
-					'@/features/integrations/quickConnect/composables/useQuickConnect'
+					'@/features/credentials/quickConnect/composables/useQuickConnect'
 				);
-				vi.mocked(useQuickConnect).mockReturnValue(
-					ref({
-						packageName: 'n8n-nodes-test',
-						credentialType: 'some-credentials',
-						text: 'This packages provides trial access',
-						quickConnectType: 'manual',
-						serviceName: 'Test service',
-					}) as ReturnType<typeof useQuickConnect>,
-				);
+				const quickConnectOptionData = {
+					packageName: 'n8n-nodes-test',
+					credentialType: 'some-credentials',
+					text: 'This packages provides trial access',
+					quickConnectType: 'manual',
+					serviceName: 'Test service',
+				};
+				vi.mocked(useQuickConnect).mockReturnValue({
+					isQuickConnectEnabled: ref(true),
+					getQuickConnectOption: vi.fn(() => quickConnectOptionData),
+					getQuickConnectOptionByPackageName: vi.fn(() => quickConnectOptionData),
+					getQuickConnectOptionByCredentialTypes: vi.fn(() => quickConnectOptionData),
+					connect: vi.fn(),
+					cancelConnect: vi.fn(),
+				} as unknown as ReturnType<typeof useQuickConnect>);
 			});
 
 			it('should display quick connect tag', async () => {

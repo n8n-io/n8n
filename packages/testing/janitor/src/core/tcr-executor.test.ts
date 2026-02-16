@@ -462,13 +462,13 @@ describe('TcrExecutor', () => {
 	describe('testCommand config', () => {
 		it('uses testCommand from config when set', () => {
 			// Update config with custom test command
-			const config = defineConfig({
+			const testConfig = defineConfig({
 				rootDir: tempDir,
 				tcr: {
 					testCommand: 'echo "custom test command"',
 				},
 			});
-			setConfig(config);
+			setConfig(testConfig);
 
 			// Create a test file to trigger test execution
 			fs.writeFileSync(
@@ -486,19 +486,90 @@ describe('TcrExecutor', () => {
 
 		it('CLI testCommand overrides config', () => {
 			// Set config with one command
-			const config = defineConfig({
+			const testConfig = defineConfig({
 				rootDir: tempDir,
 				tcr: {
 					testCommand: 'echo "config command"',
 				},
 			});
-			setConfig(config);
+			setConfig(testConfig);
 
 			const tcr = new TcrExecutor();
 			// CLI option should take precedence (tested indirectly through options)
 			const result = tcr.run({ testCommand: 'echo "cli command"', verbose: false });
 
 			expect(result).toBeDefined();
+		});
+	});
+
+	describe('allowlist enforcement', () => {
+		it('rejects test command not in allowlist', () => {
+			const testConfig = defineConfig({
+				rootDir: tempDir,
+				tcr: {
+					testCommand: 'pnpm test:local',
+					allowedTestCommands: ['pnpm test:local'],
+				},
+			});
+			setConfig(testConfig);
+
+			const tcr = new TcrExecutor();
+			const result = tcr.run({ testCommand: 'true', verbose: false });
+
+			expect(result.success).toBe(false);
+			expect(result.failedStep).toBe('test-command-rejected');
+			expect(result.action).toBe('dry-run');
+		});
+
+		it('accepts test command in allowlist', () => {
+			const testConfig = defineConfig({
+				rootDir: tempDir,
+				tcr: {
+					testCommand: 'pnpm test:local',
+					allowedTestCommands: ['pnpm test:local', 'pnpm test:container'],
+				},
+			});
+			setConfig(testConfig);
+
+			const tcr = new TcrExecutor();
+			// Should not fail on test-command-rejected (may fail on other steps)
+			const result = tcr.run({ testCommand: 'pnpm test:container', verbose: false });
+
+			expect(result.failedStep).not.toBe('test-command-rejected');
+		});
+
+		it('allows any command when no allowlist configured', () => {
+			const testConfig = defineConfig({
+				rootDir: tempDir,
+				tcr: {
+					testCommand: 'pnpm test:local',
+				},
+			});
+			setConfig(testConfig);
+
+			const tcr = new TcrExecutor();
+			const result = tcr.run({ testCommand: 'anything', verbose: false });
+
+			expect(result.failedStep).not.toBe('test-command-rejected');
+		});
+	});
+
+	describe('baseline fail-closed', () => {
+		it('blocks commit when git status fails', () => {
+			// Create a change so TCR has something to process
+			fs.writeFileSync(path.join(tempDir, 'pages', 'FailPage.ts'), 'export class FailPage {}');
+
+			// Corrupt the git repo to make git status fail
+			const gitDir = path.join(tempDir, '.git');
+			const headFile = path.join(gitDir, 'HEAD');
+			fs.writeFileSync(headFile, 'corrupted');
+
+			const tcr = new TcrExecutor();
+			const result = tcr.run({ verbose: false });
+
+			// Should fail because git status failed (fail-closed)
+			expect(result.success).toBe(false);
+			expect(result.failedStep).toBe('baseline-modified');
 		});
 	});
 });

@@ -9,10 +9,6 @@ export class WorkflowSharingModal extends BasePage {
 		return this.page.getByTestId('project-sharing-select').filter({ visible: true });
 	}
 
-	getVisibleDropdown() {
-		return this.page.locator('.el-select-dropdown:visible');
-	}
-
 	async addUser(emailOrName: string) {
 		await this.clickByTestId('project-sharing-select');
 		// Try to find by email or name (personal projects now show "Personal space" instead of email)
