@@ -20,10 +20,10 @@ import {
 import { MAX_AI_BUILDER_PROMPT_LENGTH, MAX_MULTI_AGENT_STREAM_ITERATIONS } from '@/constants';
 
 import { parsePlanDecision } from './agents/planner.agent';
-import { TriageAgent } from './agents/triage.agent';
-import type { TriageAgentOutcome } from './agents/triage.agent';
 import type { AssistantHandler } from './assistant';
 import { CodeWorkflowBuilder } from './code-builder';
+import { TriageAgent } from './code-builder/triage.agent';
+import type { TriageAgentOutcome } from './code-builder/triage.agent';
 import {
 	type CodeBuilderSession,
 	loadCodeBuilderSession,

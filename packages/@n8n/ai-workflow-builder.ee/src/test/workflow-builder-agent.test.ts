@@ -44,7 +44,7 @@ jest.mock('@/code-builder', () => ({
 }));
 
 const mockTriageAgentRun = jest.fn();
-jest.mock('@/agents/triage.agent', () => ({
+jest.mock('@/code-builder/triage.agent', () => ({
 	TriageAgent: jest.fn().mockImplementation(() => ({
 		run: mockTriageAgentRun,
 	})),
@@ -761,7 +761,7 @@ describe('WorkflowBuilderAgent', () => {
 			}
 
 			const mockedCtor = jest.requireMock<{ TriageAgent: jest.Mock }>(
-				'@/agents/triage.agent',
+				'@/code-builder/triage.agent',
 			).TriageAgent;
 			expect(mockedCtor).toHaveBeenCalledWith(
 				expect.objectContaining({

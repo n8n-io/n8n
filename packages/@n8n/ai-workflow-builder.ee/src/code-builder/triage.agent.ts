@@ -11,8 +11,8 @@ import { prompt } from '@/prompts/builder';
 import type { StreamChunk, StreamOutput } from '@/types/streaming';
 import type { ChatPayload } from '@/workflow-builder-agent';
 
-import { ASK_ASSISTANT_TOOL } from './ask-assistant.tool';
-import { BUILD_WORKFLOW_TOOL } from './build-workflow.tool';
+import { ASK_ASSISTANT_TOOL } from './tools/ask-assistant.tool';
+import { BUILD_WORKFLOW_TOOL } from './tools/build-workflow.tool';
 
 type TriageConversationEntry =
 	| { type: 'build-request'; message: string }
