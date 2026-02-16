@@ -126,7 +126,7 @@ export abstract class AbstractServer {
 	protected setupPushServer() {}
 
 	private setupHealthCheck() {
-		const healthPath = `/${this.endpointHealth}`;
+		const healthPath = this.endpointHealth;
 		const readinessPath = `${healthPath}/readiness`;
 
 		// main health check should not care about DB connections
