@@ -39,7 +39,7 @@ describe('code-builder-session', () => {
 
 			const session = await loadCodeBuilderSession(checkpointer, threadId);
 
-			expect(session).toEqual({ userMessages: [] });
+			expect(session).toEqual({ conversationEntries: [] });
 		});
 
 		it('should return existing session from checkpointer', async () => {
@@ -48,14 +48,20 @@ describe('code-builder-session', () => {
 
 			// Save a session first
 			await saveCodeBuilderSession(checkpointer, threadId, {
-				userMessages: ['message 1', 'message 2'],
+				conversationEntries: [
+					{ type: 'build-request', message: 'message 1' },
+					{ type: 'build-request', message: 'message 2' },
+				],
 				previousSummary: 'Test summary',
 			});
 
 			// Load it back
 			const session = await loadCodeBuilderSession(checkpointer, threadId);
 
-			expect(session.userMessages).toEqual(['message 1', 'message 2']);
+			expect(session.conversationEntries).toEqual([
+				{ type: 'build-request', message: 'message 1' },
+				{ type: 'build-request', message: 'message 2' },
+			]);
 			expect(session.previousSummary).toBe('Test summary');
 		});
 
@@ -80,7 +86,53 @@ describe('code-builder-session', () => {
 
 			const session = await loadCodeBuilderSession(checkpointer, threadId);
 
-			expect(session).toEqual({ userMessages: [] });
+			expect(session).toEqual({ conversationEntries: [] });
+		});
+
+		it('should migrate legacy userMessages format on load', async () => {
+			const checkpointer = new MemorySaver();
+			const threadId = 'legacy-thread';
+
+			const config = { configurable: { thread_id: threadId } };
+			await checkpointer.put(
+				config,
+				{
+					v: 1,
+					id: 'legacy-id',
+					ts: new Date().toISOString(),
+					channel_values: {
+						codeBuilderSession: {
+							userMessages: ['old msg 1', 'old msg 2'],
+							previousSummary: 'Old summary',
+						},
+					},
+					channel_versions: {},
+					versions_seen: {},
+				},
+				{ source: 'update', step: -1, parents: {} },
+			);
+
+			const session = await loadCodeBuilderSession(checkpointer, threadId);
+
+			expect(session.conversationEntries).toEqual([
+				{ type: 'build-request', message: 'old msg 1' },
+				{ type: 'build-request', message: 'old msg 2' },
+			]);
+			expect(session.previousSummary).toBe('Old summary');
+		});
+
+		it('should preserve sdkSessionId on load', async () => {
+			const checkpointer = new MemorySaver();
+			const threadId = 'sdk-session-thread';
+
+			await saveCodeBuilderSession(checkpointer, threadId, {
+				conversationEntries: [{ type: 'build-request', message: 'test' }],
+				sdkSessionId: 'sdk-123',
+			});
+
+			const session = await loadCodeBuilderSession(checkpointer, threadId);
+
+			expect(session.sdkSessionId).toBe('sdk-123');
 		});
 	});
 
@@ -90,7 +142,10 @@ describe('code-builder-session', () => {
 			const threadId = 'save-test-thread';
 
 			const sessionToSave: CodeBuilderSession = {
-				userMessages: ['test message 1', 'test message 2'],
+				conversationEntries: [
+					{ type: 'build-request', message: 'test message 1' },
+					{ type: 'build-request', message: 'test message 2' },
+				],
 				previousSummary: 'A test summary',
 			};
 
@@ -99,7 +154,10 @@ describe('code-builder-session', () => {
 			// Verify it was saved by loading it back
 			const loadedSession = await loadCodeBuilderSession(checkpointer, threadId);
 
-			expect(loadedSession.userMessages).toEqual(['test message 1', 'test message 2']);
+			expect(loadedSession.conversationEntries).toEqual([
+				{ type: 'build-request', message: 'test message 1' },
+				{ type: 'build-request', message: 'test message 2' },
+			]);
 			expect(loadedSession.previousSummary).toBe('A test summary');
 		});
 
@@ -109,18 +167,24 @@ describe('code-builder-session', () => {
 
 			// Save initial session
 			await saveCodeBuilderSession(checkpointer, threadId, {
-				userMessages: ['initial message'],
+				conversationEntries: [{ type: 'build-request', message: 'initial message' }],
 			});
 
 			// Update session
 			await saveCodeBuilderSession(checkpointer, threadId, {
-				userMessages: ['initial message', 'new message'],
+				conversationEntries: [
+					{ type: 'build-request', message: 'initial message' },
+					{ type: 'build-request', message: 'new message' },
+				],
 				previousSummary: 'New summary',
 			});
 
 			const session = await loadCodeBuilderSession(checkpointer, threadId);
 
-			expect(session.userMessages).toEqual(['initial message', 'new message']);
+			expect(session.conversationEntries).toEqual([
+				{ type: 'build-request', message: 'initial message' },
+				{ type: 'build-request', message: 'new message' },
+			]);
 			expect(session.previousSummary).toBe('New summary');
 		});
 
@@ -145,15 +209,16 @@ describe('code-builder-session', () => {
 
 			// Save session
 			await saveCodeBuilderSession(checkpointer, threadId, {
-				userMessages: ['test'],
+				conversationEntries: [{ type: 'build-request', message: 'test' }],
 			});
 
 			// Verify both session and original data exist
 			const tuple = await checkpointer.getTuple(config);
 			expect(tuple?.checkpoint.channel_values?.existingData).toBe('should be preserved');
 			expect(tuple?.checkpoint.channel_values?.codeBuilderSession).toEqual({
-				userMessages: ['test'],
+				conversationEntries: [{ type: 'build-request', message: 'test' }],
 				previousSummary: undefined,
+				sdkSessionId: undefined,
 			});
 		});
 	});
@@ -170,46 +235,60 @@ describe('code-builder-session', () => {
 			});
 		});
 
-		it('should not compact when messages are below threshold', async () => {
+		it('should not compact when entries are below threshold', async () => {
 			const session: CodeBuilderSession = {
-				userMessages: ['msg1', 'msg2', 'msg3'],
+				conversationEntries: [
+					{ type: 'build-request', message: 'msg1' },
+					{ type: 'build-request', message: 'msg2' },
+					{ type: 'build-request', message: 'msg3' },
+				],
 			};
 
 			const result = await compactSessionIfNeeded(session, fakeLLM, 20);
 
 			// Should return the same session unchanged
-			expect(result.userMessages).toEqual(['msg1', 'msg2', 'msg3']);
+			expect(result.conversationEntries).toHaveLength(3);
 			expect(result.previousSummary).toBeUndefined();
 		});
 
-		it('should compact when messages exceed threshold', async () => {
-			// Create a session with 21 messages (exceeds threshold of 20)
-			const messages = Array.from({ length: 21 }, (_, i) => `message ${i + 1}`);
+		it('should compact when entries exceed threshold', async () => {
+			const entries = Array.from({ length: 21 }, (_, i) => ({
+				type: 'build-request' as const,
+				message: `message ${i + 1}`,
+			}));
 			const session: CodeBuilderSession = {
-				userMessages: messages,
+				conversationEntries: entries,
 			};
 
 			const result = await compactSessionIfNeeded(session, fakeLLM, 20);
 
-			// Should keep only the most recent 11 messages (21 - 10 = 11)
-			expect(result.userMessages.length).toBe(11);
-			expect(result.userMessages[0]).toBe('message 11');
-			expect(result.userMessages[10]).toBe('message 21');
+			expect(result.conversationEntries.length).toBe(11);
+			expect(result.conversationEntries[0]).toEqual({
+				type: 'build-request',
+				message: 'message 11',
+			});
+			expect(result.conversationEntries[10]).toEqual({
+				type: 'build-request',
+				message: 'message 21',
+			});
 
 			// Should have a summary
 			expect(result.previousSummary).toContain('## Previous Conversation Summary');
 		});
 
-		it('should preserve most recent 11 messages when compacting 21', async () => {
-			const messages = Array.from({ length: 21 }, (_, i) => `msg-${i}`);
+		it('should preserve most recent 11 entries when compacting 21', async () => {
+			const entries = Array.from({ length: 21 }, (_, i) => ({
+				type: 'build-request' as const,
+				message: `msg-${i}`,
+			}));
 			const session: CodeBuilderSession = {
-				userMessages: messages,
+				conversationEntries: entries,
 			};
 
 			const result = await compactSessionIfNeeded(session, fakeLLM, 20);
 
 			// Verifies that the 10 oldest are compacted and 11 newest remain
-			expect(result.userMessages).toEqual([
+			expect(result.conversationEntries.map((e) => (e as { message: string }).message)).toEqual([
 				'msg-10',
 				'msg-11',
 				'msg-12',
@@ -225,9 +304,12 @@ describe('code-builder-session', () => {
 		});
 
 		it('should append to existing summary when compacting', async () => {
-			const messages = Array.from({ length: 21 }, (_, i) => `message ${i + 1}`);
+			const entries = Array.from({ length: 21 }, (_, i) => ({
+				type: 'build-request' as const,
+				message: `message ${i + 1}`,
+			}));
 			const session: CodeBuilderSession = {
-				userMessages: messages,
+				conversationEntries: entries,
 				previousSummary: 'Existing summary from earlier compaction',
 			};
 
@@ -240,22 +322,57 @@ describe('code-builder-session', () => {
 		});
 
 		it('should work with custom maxMessages threshold', async () => {
-			const messages = ['msg1', 'msg2', 'msg3', 'msg4', 'msg5', 'msg6'];
+			const entries = ['msg1', 'msg2', 'msg3', 'msg4', 'msg5', 'msg6'].map((msg) => ({
+				type: 'build-request' as const,
+				message: msg,
+			}));
 			const session: CodeBuilderSession = {
-				userMessages: messages,
+				conversationEntries: entries,
 			};
 
 			// With max of 5, should compact when we have 6
 			const result = await compactSessionIfNeeded(session, fakeLLM, 5);
 
-			// Should keep messages after the first 10 (but we only have 6, so it keeps 6-10=0, meaning it keeps none from compaction batch)
-			// Actually: MESSAGES_TO_COMPACT is 10, but we only have 6 messages, so it will try to compact first 10 (all of them)
-			// and keep the rest (none)
-			// Let me verify the logic: oldMessages = slice(0, 10) = ['msg1'...'msg6'] (only 6)
-			// recentMessages = slice(10) = [] (empty)
-			// So this test should result in empty userMessages
-			expect(result.userMessages.length).toBeLessThan(6);
+			expect(result.conversationEntries.length).toBeLessThan(6);
 			expect(result.previousSummary).toBeDefined();
+		});
+
+		it('should compact mixed entry types', async () => {
+			const entries = [
+				...Array.from({ length: 15 }, (_, i) => ({
+					type: 'build-request' as const,
+					message: `build ${i}`,
+				})),
+				...Array.from({ length: 5 }, (_, i) => ({
+					type: 'assistant-exchange' as const,
+					userQuery: `help ${i}`,
+					assistantSummary: `answer ${i}`,
+				})),
+				{ type: 'plan' as const, userQuery: 'plan?', plan: 'Here is the plan' },
+			];
+			const session: CodeBuilderSession = {
+				conversationEntries: entries,
+			};
+
+			const result = await compactSessionIfNeeded(session, fakeLLM, 20);
+
+			expect(result.conversationEntries.length).toBe(11);
+			expect(result.previousSummary).toBeDefined();
+		});
+
+		it('should preserve sdkSessionId through compaction', async () => {
+			const entries = Array.from({ length: 21 }, (_, i) => ({
+				type: 'build-request' as const,
+				message: `msg ${i}`,
+			}));
+			const session: CodeBuilderSession = {
+				conversationEntries: entries,
+				sdkSessionId: 'sdk-keep-me',
+			};
+
+			const result = await compactSessionIfNeeded(session, fakeLLM, 20);
+
+			expect(result.sdkSessionId).toBe('sdk-keep-me');
 		});
 	});
 
