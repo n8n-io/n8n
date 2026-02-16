@@ -243,9 +243,9 @@
 	--icon-color: light-dark(var(--color--neutral-500), var(--color--neutral-300));
 	--icon-color--strong: light-dark(var(--color--neutral-800), var(--color--neutral-white));
 
-	--text-color: light-dark(var(--color--neutral-900), var(--color--neutral-white));
-	--text-color--subtle: light-dark(var(--color--neutral-700), var(--color--neutral-200));
-	--text-color--subtler: light-dark(var(--color--neutral-500), var(--color--neutral-300));
+	--text-color: light-dark(var(--color--neutral-800), var(--color--neutral-white));
+	--text-color--subtle: light-dark(var(--color--neutral-500), var(--color--neutral-250));
+	--text-color--subtler: light-dark(var(--color--neutral-200), var(--color--neutral-400));
 
 	--background--success: light-dark(var(--color--green-50), var(--color--green-950));
 	--border-color--success: light-dark(var(--color--green-200), var(--color--green-800));
