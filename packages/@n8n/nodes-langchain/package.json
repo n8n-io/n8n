@@ -233,7 +233,7 @@
     "@microsoft/agents-a365-tooling-extensions-langchain": "0.1.0-preview.64",
     "@microsoft/agents-activity": "1.1.0-alpha.85",
     "@microsoft/agents-hosting": "1.1.0-alpha.85",
-    "@modelcontextprotocol/sdk": "1.25.2",
+    "@modelcontextprotocol/sdk": "1.26.0",
     "@mozilla/readability": "0.6.0",
     "@n8n/ai-utilities": "workspace:*",
     "@n8n/client-oauth2": "workspace:*",

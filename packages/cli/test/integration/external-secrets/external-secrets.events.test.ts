@@ -23,32 +23,38 @@ const waitForEventHandler = async (ms = 500) => {
 	await new Promise((resolve) => setTimeout(resolve, ms));
 };
 
-const testReloadEvent = async (pubsubEventBus: PubSubEventBus) => {
+const testReloadEvent = async (
+	pubsubEventBus: PubSubEventBus,
+	{ connectsAllProviders = false }: { connectsAllProviders?: boolean } = {},
+) => {
 	const initSpy = jest.spyOn(DummyProvider.prototype, 'init');
 	const connectSpy = jest.spyOn(DummyProvider.prototype, 'connect');
 	const disconnectSpy = jest.spyOn(DummyProvider.prototype, 'disconnect');
 	const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
 
-	const initDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'init');
-	const connectDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'connect');
-	const disconnectDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'disconnect');
-	const updateDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'update');
+	const initAnotherSpy = jest.spyOn(AnotherDummyProvider.prototype, 'init');
+	const connectAnotherSpy = jest.spyOn(AnotherDummyProvider.prototype, 'connect');
+	const disconnectAnotherSpy = jest.spyOn(AnotherDummyProvider.prototype, 'disconnect');
+	const updateAnotherSpy = jest.spyOn(AnotherDummyProvider.prototype, 'update');
 
 	// Emit event and wait for async handler to complete
 	pubsubEventBus.emit('reload-external-secrets-providers');
 	await waitForEventHandler();
 
-	// load enabled provider
 	expect(disconnectSpy).toHaveBeenCalled();
 	expect(initSpy).toHaveBeenCalled();
 	expect(connectSpy).toHaveBeenCalled();
 	expect(updateSpy).toHaveBeenCalled();
 
-	// init disabled provider
-	expect(disconnectDisabledSpy).toHaveBeenCalled();
-	expect(initDisabledSpy).toHaveBeenCalled();
-	expect(connectDisabledSpy).not.toHaveBeenCalled();
-	expect(updateDisabledSpy).not.toHaveBeenCalled();
+	expect(disconnectAnotherSpy).toHaveBeenCalled();
+	expect(initAnotherSpy).toHaveBeenCalled();
+	if (connectsAllProviders) {
+		expect(connectAnotherSpy).toHaveBeenCalled();
+		expect(updateAnotherSpy).toHaveBeenCalled();
+	} else {
+		expect(connectAnotherSpy).not.toHaveBeenCalled();
+		expect(updateAnotherSpy).not.toHaveBeenCalled();
+	}
 };
 
 describe('External Secrets Event Handling', () => {
@@ -143,14 +149,12 @@ describe('External Secrets Event Handling', () => {
 				providerKey: 'my-vault',
 				type: 'dummy',
 				encryptedSettings,
-				isEnabled: true,
 			});
 
 			await connectionRepository.save({
 				providerKey: 'another-vault',
 				type: 'another_dummy',
 				encryptedSettings,
-				isEnabled: false,
 			});
 
 			module = Container.get(ExternalSecretsModule);
@@ -165,6 +169,6 @@ describe('External Secrets Event Handling', () => {
 		});
 
 		it('should reload providers when reload-external-secrets-providers event is emitted', async () =>
-			await testReloadEvent(pubsubEventBus));
+			await testReloadEvent(pubsubEventBus, { connectsAllProviders: true }));
 	});
 });

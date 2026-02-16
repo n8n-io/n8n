@@ -40,7 +40,7 @@ const TRIGGER_NODE_TYPES = new Set([
 /**
  * Check if a node type is a trigger
  */
-function isTriggerNodeType(type: string): boolean {
+export function isTriggerNodeType(type: string): boolean {
 	if (TRIGGER_NODE_TYPES.has(type)) {
 		return true;
 	}
@@ -406,6 +406,45 @@ function formatDiscriminatorInfo(info: DiscriminatorInfo, nodeId: string): strin
 	}
 
 	return lines.join('\n');
+}
+
+/**
+ * Format a single node result with basic info, builder hint, related nodes, and discriminators.
+ * Produces the same text block that the search tool generates for each node.
+ *
+ * Returns `undefined` if the node is not found in the parser.
+ */
+export function formatNodeResult(
+	nodeTypeParser: NodeTypeParser,
+	nodeId: string,
+	version?: number,
+): string | undefined {
+	const nodeType = nodeTypeParser.getNodeType(nodeId, version);
+	if (!nodeType) return undefined;
+
+	const resolvedVersion =
+		version ?? (Array.isArray(nodeType.version) ? Math.max(...nodeType.version) : nodeType.version);
+
+	const triggerTag = isTriggerNodeType(nodeId) ? ' [TRIGGER]' : '';
+	const basicInfo = `- ${nodeId}${triggerTag}\n  Display Name: ${nodeType.displayName}\n  Version: ${resolvedVersion}\n  Description: ${nodeType.description}`;
+
+	const builderHint = formatBuilderHint(nodeTypeParser, nodeId, resolvedVersion);
+
+	const relatedNodesWithHints = getRelatedNodesWithHints(nodeTypeParser, nodeId, resolvedVersion);
+
+	const discInfo = getDiscriminatorInfo(nodeTypeParser, nodeId, resolvedVersion);
+	const discStr = formatDiscriminatorInfo(discInfo, nodeId);
+
+	const parts = [basicInfo];
+	if (builderHint) parts.push(builderHint);
+
+	if (relatedNodesWithHints && relatedNodesWithHints.length > 0) {
+		const relatedNodesStr = formatRelatedNodesWithHints(relatedNodesWithHints);
+		if (relatedNodesStr) parts.push(relatedNodesStr);
+	}
+
+	if (discStr) parts.push(discStr);
+	return parts.join('\n');
 }
 
 /**

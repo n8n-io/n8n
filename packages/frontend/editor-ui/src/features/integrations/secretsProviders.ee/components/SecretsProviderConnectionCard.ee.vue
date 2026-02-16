@@ -1,12 +1,23 @@
 <script lang="ts" setup>
 import { computed, toRef } from 'vue';
 import SecretsProviderImage from './SecretsProviderImage.ee.vue';
-import { N8nActionToggle, N8nBadge, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
+import {
+	N8nActionToggle,
+	N8nBadge,
+	N8nCard,
+	N8nHeading,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
 import { DateTime } from 'luxon';
 import { isDateObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@/app/stores/rbac.store';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
+import { splitName } from '@/features/collaboration/projects/projects.utils';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 const i18n = useI18n();
 const rbacStore = useRBACStore();
@@ -14,6 +25,7 @@ const rbacStore = useRBACStore();
 const props = defineProps<{
 	provider: SecretProviderConnection;
 	providerTypeInfo?: SecretProviderTypeResponse;
+	project?: ProjectListItem | null;
 	canUpdate: boolean;
 }>();
 
@@ -39,6 +51,36 @@ const showDisconnectedBadge = computed(() => {
 });
 
 const canDelete = computed(() => rbacStore.hasScope('externalSecretsProvider:delete'));
+
+const isGlobal = computed(() => provider.value.projects.length === 0);
+
+const projectName = computed(() => {
+	if (props.project) {
+		const { name, email } = splitName(props.project.name ?? undefined);
+		return name ?? email ?? '';
+	}
+	return '';
+});
+
+const badgeIcon = computed<IconOrEmoji>(() => {
+	if (isGlobal.value) {
+		return { type: 'icon', value: 'globe' };
+	}
+	return isIconOrEmoji(props.project?.icon)
+		? props.project.icon
+		: { type: 'icon', value: 'layers' };
+});
+
+const badgeTooltip = computed(() => {
+	if (isGlobal.value) {
+		return i18n.baseText('settings.secretsProviderConnections.badge.tooltip.global');
+	}
+	return i18n.baseText('settings.secretsProviderConnections.badge.tooltip.project', {
+		interpolate: {
+			projectName: projectName.value,
+		},
+	});
+});
 
 const actionDropdownOptions = computed(() => {
 	if (!props.canUpdate) return [];
@@ -134,6 +176,26 @@ function onAction(action: string) {
 			</N8nText>
 		</template>
 		<template #append>
+			<N8nTooltip :class="$style.cardBadge" placement="top">
+				<N8nBadge
+					:class="$style.badge"
+					theme="tertiary"
+					:data-test-id="
+						isGlobal ? 'secrets-provider-global-badge' : 'secrets-provider-project-badge'
+					"
+				>
+					<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
+					<span v-if="!isGlobal" v-n8n-truncate:20="projectName" :class="$style.nowrap">
+						{{ projectName }}
+					</span>
+					<span v-else>
+						{{ i18n.baseText('projects.badge.global') }}
+					</span>
+				</N8nBadge>
+				<template #content>
+					{{ badgeTooltip }}
+				</template>
+			</N8nTooltip>
 			<N8nActionToggle
 				:actions="actionDropdownOptions"
 				data-test-id="secrets-provider-action-toggle"
@@ -158,5 +220,26 @@ function onAction(action: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+}
+
+.cardBadge {
+	margin-right: var(--spacing--3xs);
+}
+
+.badge {
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	background-color: var(--color--background--light-3);
+	border-color: var(--color--foreground);
+	height: 23px;
+
+	& > span {
+		display: flex;
+		gap: var(--spacing--3xs);
+		align-items: center;
+	}
+}
+
+.nowrap {
+	white-space: nowrap !important;
 }
 </style>

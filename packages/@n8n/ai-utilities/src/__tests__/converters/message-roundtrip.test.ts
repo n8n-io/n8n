@@ -408,7 +408,9 @@ describe('message round-trip: LC -> n8n -> LC', () => {
 		it('should round-trip an AIMessage with tool_calls', () => {
 			const original = new AIMessage({
 				content: 'Let me search for that.',
-				tool_calls: [{ id: 'call-1', name: 'search', args: { query: 'weather' } }],
+				tool_calls: [
+					{ type: 'tool_call', id: 'call-1', name: 'search', args: { query: 'weather' } },
+				],
 			});
 
 			const result = roundTrip(original);

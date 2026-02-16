@@ -1,4 +1,4 @@
-import type { CredentialsEntity, User } from '@n8n/db';
+import type { CredentialsEntity, Project, SharedCredentials, User } from '@n8n/db';
 import { CredentialsRepository, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -7,6 +7,8 @@ import type { InstanceSettings } from 'n8n-core';
 import type { GenericValue, IDataObject, INodeProperties } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import type { IDependency } from '@/public-api/types';
 
 import { buildSharedForCredential, toJsonSchema, updateCredential } from '../credentials.service';
@@ -16,6 +18,18 @@ const cipher = new Cipher(mock<InstanceSettings>({ encryptionKey: 'test-encrypti
 Container.set(Cipher, cipher);
 
 describe('CredentialsService', () => {
+	let mockExternalSecretsConfig: ExternalSecretsConfig;
+	const canAccessProviderFromProjectMock = jest.fn();
+	const mockSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>({
+		isProviderAvailableInProject: canAccessProviderFromProjectMock,
+	});
+	beforeEach(() => {
+		mockExternalSecretsConfig = new ExternalSecretsConfig();
+		Container.set(ExternalSecretsConfig, mockExternalSecretsConfig);
+		Container.set(SecretsProviderAccessCheckService, mockSecretsProviderAccessCheckService);
+
+		canAccessProviderFromProjectMock.mockResolvedValue(true);
+	});
 	describe('buildSharedForCredential', () => {
 		it('returns one shared entry when credential is shared with one project', () => {
 			const createdAt = new Date('2024-01-01T00:00:00.000Z');
@@ -415,6 +429,8 @@ describe('CredentialsService', () => {
 			mock(), // userRepository
 			mock(), // credentialsFinderService
 			mock(), // credentialsHelper
+			mock(), // externalSecretsConfig
+			mock(), // externalSecretsProviderAccessCheckService
 		);
 
 		jest.spyOn(credentialsService, 'decrypt');
@@ -432,25 +448,43 @@ describe('CredentialsService', () => {
 				if (serviceClass === Cipher) {
 					return cipher;
 				}
+				if (serviceClass === SecretsProviderAccessCheckService) {
+					return mockSecretsProviderAccessCheckService;
+				}
+				if (serviceClass === ExternalSecretsConfig) {
+					return mockExternalSecretsConfig;
+				}
 				return mock();
 			});
 
-			jest.clearAllMocks();
+			//jest.clearAllMocks();
 
 			ownerUser = { id: 'user-with-permission', role: GLOBAL_OWNER_ROLE } as User;
 			memberUser = { id: 'user-without-permission', role: GLOBAL_MEMBER_ROLE } as User;
 		});
 
 		describe('external secrets', () => {
+			const owningProjectData: Partial<Project> = {
+				id: 'nUnAvqXSO4nw522z',
+				name: 'Test Project',
+				type: 'team',
+				icon: { type: 'icon', value: 'layers' },
+			};
+			const owningProject = {
+				role: 'credential:owner',
+				project: owningProjectData as Project,
+			} as SharedCredentials;
 			it('should throw error when user without permission tries to add external secret expression', async () => {
 				const existingCredential = mock<CredentialsEntity>({
 					id: 'cred-id',
 					name: 'Test Credential',
 					type: 'testApi',
 					isManaged: false,
+					shared: [owningProject],
 				});
 
-				credentialsRepository.findOneBy = jest.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.findOne = jest.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 				// mock credential that doesn't have secret expression yet
 				jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'regular-secret' });
 
@@ -467,9 +501,11 @@ describe('CredentialsService', () => {
 					name: 'Test Credential',
 					type: 'testApi',
 					isManaged: false,
+					shared: [owningProject],
 				});
 
-				credentialsRepository.findOneBy = jest.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.findOne = jest.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
 				// Mock credential that already has secret expression
 				jest
@@ -478,9 +514,39 @@ describe('CredentialsService', () => {
 
 				await expect(
 					updateCredential('cred-id', memberUser, {
-						data: { apiKey: '$secrets.newKey' },
+						data: { apiKey: '{{ $secrets.newKey }}' },
 					}),
 				).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
+			});
+
+			it('should throw error when external secret store referenced in expression is not shared with current project', async () => {
+				const existingCredential = mock<CredentialsEntity>({
+					id: 'UdGtZBYb2TLDgSHy',
+					name: 'Test Credential',
+					type: 'testApi',
+					isManaged: false,
+					shared: [owningProject],
+				});
+				const secretProviderKey = 'vault';
+				const secretExpression = `={{ $secrets.${secretProviderKey}.myKey }}`;
+
+				credentialsRepository.findOne = jest.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
+				jest.mocked(credentialsService.decrypt).mockReturnValue({
+					apiKey: 'currentPlainTextValue',
+				});
+				jest
+					.mocked(mockSecretsProviderAccessCheckService.isProviderAvailableInProject)
+					.mockResolvedValue(false);
+				mockExternalSecretsConfig.externalSecretsForProjects = true;
+
+				await expect(
+					updateCredential(existingCredential.id, ownerUser, {
+						data: { apiKey: secretExpression },
+					}),
+				).rejects.toThrow(
+					'The secret provider "vault" used in "apiKey" does not exist in this project',
+				);
 			});
 
 			it('should allow updates when no external secret expression is being changed', async () => {
@@ -489,9 +555,11 @@ describe('CredentialsService', () => {
 					name: 'Test Credential',
 					type: 'testApi',
 					isManaged: false,
+					shared: [owningProject],
 				});
 
-				credentialsRepository.findOneBy = jest.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.findOne = jest.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
 				// Mock credential that has existing secret expression
 				jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: '{{ $secrets.myKey }}' });
@@ -509,9 +577,11 @@ describe('CredentialsService', () => {
 					name: 'Test Credential',
 					type: 'testApi',
 					isManaged: false,
+					shared: [owningProject],
 				});
 
-				credentialsRepository.findOneBy = jest.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.findOne = jest.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
 				// Mock credential not using any external secret expressions
 				jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'regular-key' });
@@ -529,9 +599,14 @@ describe('CredentialsService', () => {
 					name: 'Test Credential',
 					type: 'testApi',
 					isManaged: false,
+					shared: [owningProject],
 				});
-				credentialsRepository.findOneBy = jest.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.findOne = jest.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 				jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'regular-key' });
+				jest
+					.mocked(mockSecretsProviderAccessCheckService.isProviderAvailableInProject)
+					.mockResolvedValue(true);
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
 				await updateCredential('cred-id', ownerUser, {

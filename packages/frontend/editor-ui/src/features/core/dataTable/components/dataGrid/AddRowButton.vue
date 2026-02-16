@@ -15,8 +15,7 @@ const props = defineProps<{
 <template>
 	<N8nTooltip :content="i18n.baseText('dataTable.addRow.label')">
 		<N8nIconButton
-			text
-			type="tertiary"
+			variant="ghost"
 			icon="plus"
 			:disabled="props.params.disabled"
 			@click="props.params.onClick"
