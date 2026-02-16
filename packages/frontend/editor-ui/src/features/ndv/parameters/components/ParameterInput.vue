@@ -4,12 +4,7 @@ import { computedAsync, useDebounceFn } from '@vueuse/core';
 
 import get from 'lodash/get';
 
-import type {
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	IUpdateInformation,
-	InputSize,
-} from '@/Interface';
+import type { INodeUpdatePropertiesInformation, IUpdateInformation, InputSize } from '@/Interface';
 import type {
 	CodeExecutionMode,
 	EditorType,
@@ -238,10 +233,12 @@ const isFocused = ref(false);
 // Track when we're switching modes to prevent spurious focus events
 const isSwitchingMode = ref(false);
 
-const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
-	expressionLocalResolveCtx.value.nodeName,
-);
-const node = computed(() => contextNode ?? ndvStore.activeNode ?? undefined);
+const node = computed(() => {
+	const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
+		expressionLocalResolveCtx.value.nodeName,
+	);
+	return contextNode ?? ndvStore.activeNode ?? undefined;
+});
 const nodeType = computed(
 	() => node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 );
@@ -278,7 +275,12 @@ const parameterOptions = computed(() => {
 });
 
 const modelValueString = computed<string>(() => {
-	return props.modelValue as string;
+	const value = props.modelValue;
+	// For json type parameters, stringify objects to prevent [object object] display
+	if (props.parameter.type === 'json' && typeof value === 'object' && value !== null) {
+		return JSON.stringify(value);
+	}
+	return value as string;
 });
 
 const modelValueResourceLocator = computed<INodeParameterResourceLocator>(() => {
@@ -435,7 +437,7 @@ const dependentParametersValues = computedAsync(async () => {
 	}
 
 	// Get the resolved parameter values of the current node
-	const currentNodeParameters = ndvStore.activeNode?.parameters;
+	const currentNodeParameters = node.value?.parameters;
 	try {
 		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
 
@@ -740,7 +742,7 @@ async function loadRemoteParameterOptions() {
 	// Get the resolved parameter values of the current node
 
 	try {
-		const currentNodeParameters = (ndvStore.activeNode as INodeUi).parameters;
+		const currentNodeParameters = node.value?.parameters;
 		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			currentNodeParameters,

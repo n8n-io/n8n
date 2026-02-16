@@ -14,6 +14,7 @@ import { WorkflowFinderService } from '../workflow-finder.service';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
+import { EventService } from '@/events/event.service';
 
 @Service()
 export class WorkflowHistoryService {
@@ -21,6 +22,7 @@ export class WorkflowHistoryService {
 		private readonly logger: Logger,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly eventService: EventService,
 	) {}
 
 	async getList(
@@ -165,6 +167,23 @@ export class WorkflowHistoryService {
 		}
 
 		await this.updateVersion(workflowId, versionId, updateData);
+
+		if (updateData.name !== undefined || updateData.description !== undefined) {
+			this.eventService.emit('workflow-version-updated', {
+				user: {
+					id: user.id,
+					email: user.email,
+					firstName: user.firstName,
+					lastName: user.lastName,
+					role: user.role,
+				},
+				workflowId: workflow.id,
+				workflowName: workflow.name,
+				versionId,
+				versionName: updateData.name,
+				versionDescription: updateData.description,
+			});
+		}
 	}
 
 	/**

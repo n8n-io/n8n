@@ -115,7 +115,14 @@ export function useWorkflowActivate() {
 			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion, true);
 
 			if (workflowId === workflowsStore.workflowId) {
-				workflowsStore.setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
+				workflowsStore.setWorkflowVersionData(
+					{
+						versionId: updatedWorkflow.versionId,
+						name: workflowsStore.versionData?.name ?? null,
+						description: workflowsStore.versionData?.description ?? null,
+					},
+					updatedWorkflow.checksum,
+				);
 			}
 
 			void useExternalHooks().run('workflow.published', {

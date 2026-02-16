@@ -114,6 +114,7 @@ export type TestSecretProviderConnectionResponse = z.infer<
  */
 export const reloadSecretProviderConnectionResponseSchema = z.object({
 	success: z.boolean(),
+	providers: z.record(z.string(), z.object({ success: z.boolean() })).optional(),
 });
 export type ReloadSecretProviderConnectionResponse = z.infer<
 	typeof reloadSecretProviderConnectionResponseSchema

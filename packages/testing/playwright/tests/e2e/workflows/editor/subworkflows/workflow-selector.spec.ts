@@ -3,7 +3,11 @@ import { test, expect } from '../../../../../fixtures/base';
 
 const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Sub-workflow';
 
-test.describe('Workflow Selector Parameter', () => {
+test.describe('Workflow Selector Parameter', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		const projectId = await n8n.start.fromNewProjectBlankCanvas();
 

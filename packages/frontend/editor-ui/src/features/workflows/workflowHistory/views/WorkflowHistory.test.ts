@@ -60,6 +60,7 @@ const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 						<button data-test-id="stub-open-button" @click="() => $emit('action', { action: 'open', id })" />
 						<button data-test-id="stub-clone-button" @click="() => $emit('action', { action: 'clone', id })" />
 						<button data-test-id="stub-download-button" @click="() => $emit('action', { action: 'download', id })" />
+						<button data-test-id="stub-name-button" @click="() => $emit('action', { action: 'name', id, data: { formattedCreatedAt: '2024-01-01', versionName: 'Test Version', description: 'Test description' } })" />
 					</div>`,
 			}),
 		},
@@ -259,5 +260,17 @@ describe('WorkflowHistory', () => {
 
 		expect(queryByTestId('workflow-archived-tag')).not.toBeInTheDocument();
 		expect(container.textContent).toContain('Test Workflow');
+	});
+
+	it('should open name version modal when name action is triggered', async () => {
+		route.params.workflowId = workflowId;
+		vi.spyOn(workflowHistoryStore, 'updateWorkflowHistoryVersion').mockResolvedValue(undefined);
+
+		const { getByTestId, container } = renderComponent({ pinia });
+		await userEvent.click(getByTestId('stub-name-button'));
+
+		await flushPromises();
+
+		expect(container).toBeInTheDocument();
 	});
 });

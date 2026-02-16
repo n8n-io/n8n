@@ -158,14 +158,14 @@ describe('WorkflowShareModal.ee.vue', () => {
 	});
 
 	describe('personal space restriction message', () => {
-		it('should show personal space restriction message when in personal space and lacking share permission', async () => {
+		it('should show disabled select with tooltip when in personal space and lacking share permission', async () => {
 			// Mock no share permission
 			mockGetResourcePermissions.mockReturnValue({
 				workflow: { share: false },
 			});
 
-			// Set current project as personal project
-			projectsStore.currentProject = createTestProject({
+			// Set personal project
+			projectsStore.personalProject = createTestProject({
 				id: 'personal-project-id',
 				type: ProjectTypes.Personal,
 			});
@@ -182,17 +182,28 @@ describe('WorkflowShareModal.ee.vue', () => {
 				scopes: [],
 				nodes: [],
 				connections: {},
+				homeProject: {
+					id: 'personal-project-id',
+					name: 'Personal Project',
+					type: ProjectTypes.Personal,
+					icon: null,
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+				},
 			};
 
 			const props = {
 				data: { id: 'workflow-1' },
 			};
-			const { getByText } = renderComponent({ props });
+			const { getByTestId, queryByText } = renderComponent({ props });
 
 			await waitFor(() => {
+				// Should show disabled select with tooltip instead of info tip
+				expect(getByTestId('project-sharing-select')).toBeInTheDocument();
+				// Should not show the old restriction info tip
 				expect(
-					getByText("You don't have permission to share personal workflows"),
-				).toBeInTheDocument();
+					queryByText("You don't have permission to share personal workflows"),
+				).not.toBeInTheDocument();
 			});
 		});
 

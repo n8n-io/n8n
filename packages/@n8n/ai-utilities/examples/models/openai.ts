@@ -1,4 +1,5 @@
 import type { JSONSchema7 } from 'json-schema';
+import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import {
 	BaseChatModel,
@@ -9,16 +10,12 @@ import {
 	type StreamChunk,
 	type Tool,
 	type ToolCall,
-} from '../../src';
-import { parseSSEStream } from '../../src/utils/sse';
+	type TokenUsage,
+	type ProviderTool,
+	type MessageContent,
+} from 'src';
+import { parseSSEStream } from 'src';
 
-// =============================================================================
-// OpenAI API Types
-// =============================================================================
-
-/**
- * OpenAI API tool definition
- */
 export type OpenAITool =
 	| {
 			type: 'function';
@@ -31,14 +28,8 @@ export type OpenAITool =
 			type: 'web_search';
 	  };
 
-/**
- * OpenAI API tool choice
- */
 export type OpenAIToolChoice = 'auto' | 'required' | 'none' | { type: 'function'; name: string };
 
-/**
- * OpenAI Responses API request body
- */
 export interface OpenAIResponsesRequest {
 	model: string;
 	input: string | ResponsesInputItem[];
@@ -54,9 +45,6 @@ export interface OpenAIResponsesRequest {
 	metadata?: Record<string, unknown>;
 }
 
-/**
- * OpenAI Responses API response
- */
 export interface OpenAIResponsesResponse {
 	id: string;
 	object: string;
@@ -81,9 +69,6 @@ export interface OpenAIResponsesResponse {
 	service_tier?: string;
 }
 
-/**
- * OpenAI Responses API output item
- */
 export type ResponsesOutputItem =
 	| {
 			type: 'message';
@@ -110,9 +95,6 @@ export type ResponsesOutputItem =
 			}>;
 	  };
 
-/**
- * OpenAI streaming event types
- */
 export interface OpenAIStreamEvent {
 	type: string;
 	delta?: string;
@@ -121,9 +103,6 @@ export interface OpenAIStreamEvent {
 	response?: Record<string, unknown>;
 }
 
-/**
- * OpenAI API error response
- */
 export interface OpenAIErrorResponse {
 	error: {
 		message: string;
@@ -133,113 +112,51 @@ export interface OpenAIErrorResponse {
 	};
 }
 
-// =============================================================================
-// HTTP Helper Functions
-// =============================================================================
-
-/**
- * Make a POST request to OpenAI API
- */
 async function openAIFetch(
+	fn: RequestConfig['httpRequest'],
 	url: string,
-	apiKey: string,
 	body: OpenAIResponsesRequest,
 ): Promise<OpenAIResponsesResponse> {
-	// Remove undefined values from request body
 	const cleanedBody = Object.fromEntries(
 		Object.entries(body).filter(([_, value]) => value !== undefined),
 	);
-
-	const response = await fetch(url, {
-		method: 'POST',
-		headers: {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			'Content-Type': 'application/json',
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			Authorization: `Bearer ${apiKey}`,
-		},
-		body: JSON.stringify(cleanedBody),
+	const response = await fn('POST', url, cleanedBody, {
+		'Content-Type': 'application/json',
 	});
-
-	if (!response.ok) {
-		const errorData = (await response.json().catch(() => null)) as OpenAIErrorResponse | null;
-		const errorMessage = errorData?.error?.message ?? (await response.text());
-		throw new Error(
-			`OpenAI API request failed: ${response.status} ${response.statusText}\n${errorMessage}`,
-		);
-	}
-
-	return (await response.json()) as OpenAIResponsesResponse;
+	return response.body as OpenAIResponsesResponse;
 }
 
-/**
- * Make a streaming POST request to OpenAI API
- */
 async function openAIFetchStream(
+	fn: RequestConfig['openStream'],
 	url: string,
-	apiKey: string,
 	body: OpenAIResponsesRequest,
 ): Promise<ReadableStream<Uint8Array>> {
-	// Remove undefined values from request body
 	const cleanedBody = Object.fromEntries(
 		Object.entries(body).filter(([_, value]) => value !== undefined),
 	);
-
-	const response = await fetch(url, {
-		method: 'POST',
-		headers: {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			'Content-Type': 'application/json',
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			Authorization: `Bearer ${apiKey}`,
-		},
-		body: JSON.stringify(cleanedBody),
+	const response = await fn('POST', url, cleanedBody, {
+		'Content-Type': 'application/json',
 	});
-
-	if (!response.ok) {
-		const errorData = (await response.json().catch(() => null)) as OpenAIErrorResponse | null;
-		const errorMessage = errorData?.error?.message ?? (await response.text());
-		throw new Error(
-			`OpenAI API request failed: ${response.status} ${response.statusText}\n${errorMessage}`,
-		);
-	}
-
-	if (!response.body) {
-		throw new Error('Response body is null');
-	}
-
 	return response.body;
 }
 
-/**
- * Parse OpenAI streaming events from SSE stream
- * Uses the robust SSE parser and extracts OpenAI-specific event data
- */
 async function* parseOpenAIStreamEvents(
 	body: ReadableStream<Uint8Array>,
 ): AsyncIterable<OpenAIStreamEvent> {
 	for await (const message of parseSSEStream(body)) {
-		// OpenAI sends events in the data field
 		if (!message.data) continue;
-
-		// Skip [DONE] marker
 		if (message.data === '[DONE]') continue;
 
 		try {
 			const event = JSON.parse(message.data);
 			yield event as OpenAIStreamEvent;
 		} catch (e) {
-			// Skip invalid JSON - log warning in development
 			if (process.env.NODE_ENV !== 'production') {
 				console.warn('Failed to parse OpenAI SSE event:', message.data);
 			}
 		}
 	}
 }
-
-// =============================================================================
-// OpenAI Responses API – input/output conversion
-// =============================================================================
 
 type ResponsesInputItem =
 	| { role: 'user'; content: string }
@@ -257,10 +174,6 @@ type ResponsesInputItem =
 	  }
 	| { type: 'function_call_output'; call_id: string; output: string };
 
-/**
- * Convert N8nMessage[] to OpenAI Responses API input and instructions.
- * @see https://platform.openai.com/docs/api-reference/responses/create
- */
 function genericMessagesToResponsesInput(messages: Message[]): {
 	instructions?: string;
 	input: string | ResponsesInputItem[];
@@ -277,7 +190,7 @@ function genericMessagesToResponsesInput(messages: Message[]): {
 			}
 		}
 
-		if (msg.role === 'human') {
+		if (msg.role === 'user') {
 			for (const contentPart of msg.content) {
 				if (contentPart.type === 'text') {
 					inputItems.push({
@@ -289,9 +202,8 @@ function genericMessagesToResponsesInput(messages: Message[]): {
 			continue;
 		}
 
-		if (msg.role === 'ai') {
+		if (msg.role === 'assistant') {
 			for (const contentPart of msg.content) {
-				// Otherwise reconstruct from message content
 				if (contentPart.type === 'text') {
 					inputItems.push({
 						type: 'message',
@@ -360,9 +272,6 @@ function genericMessagesToResponsesInput(messages: Message[]): {
 	return { instructions, input: inputItems };
 }
 
-/**
- * Convert N8nTool to OpenAI Responses API function tool format.
- */
 function genericToolToResponsesTool(tool: Tool): OpenAITool {
 	if (tool.type === 'provider') {
 		if (tool.name === 'web_search') {
@@ -383,9 +292,6 @@ function genericToolToResponsesTool(tool: Tool): OpenAITool {
 	};
 }
 
-/**
- * Parse Responses API output array into text and tool calls.
- */
 function parseResponsesOutput(output: unknown[]): {
 	text: string;
 	toolCalls: ToolCall[];
@@ -421,50 +327,72 @@ function parseResponsesOutput(output: unknown[]): {
 	return { text, toolCalls };
 }
 
-// =============================================================================
-// OpenAI Chat Model (Responses API)
-// =============================================================================
-
-export interface OpenAIChatModelConfig extends ChatModelConfig {
-	/**
-	 * OpenAI API key (defaults to process.env.OPENAI_API_KEY)
-	 */
-	apiKey?: string;
-
-	/**
-	 * Base URL for the API (optional, for proxies)
-	 */
-	baseURL?: string;
+function parseTokenUsage(
+	usage: OpenAIResponsesResponse['usage'] | undefined,
+): TokenUsage | undefined {
+	return usage
+		? {
+				promptTokens: usage.input_tokens ?? 0,
+				completionTokens: usage.output_tokens ?? 0,
+				totalTokens: usage.total_tokens ?? 0,
+				inputTokenDetails: {
+					...(!!usage.input_tokens_details?.cached_tokens && {
+						cacheRead: usage.input_tokens_details.cached_tokens,
+					}),
+				},
+				outputTokenDetails: {
+					...(!!usage.output_tokens_details?.reasoning_tokens && {
+						reasoning: usage.output_tokens_details.reasoning_tokens,
+					}),
+				},
+			}
+		: undefined;
 }
 
-/**
- * N8n chat model implementation using the OpenAI Responses API.
- * Supports text, tools (function calling), and streaming.
- *
- * Note: This model does NOT execute tools automatically. When tool calls are
- * returned by the model, they are passed to the framework (e.g., LangChain)
- * which handles tool execution via its agent loop.
- *
- * @see https://platform.openai.com/docs/api-reference/responses/create
- */
+export interface OpenAIChatModelConfig extends ChatModelConfig {
+	apiKey?: string;
+	baseURL?: string;
+
+	providerTools?: ProviderTool[];
+}
+
+export interface RequestConfig {
+	httpRequest: (
+		method: IHttpRequestMethods,
+		url: string,
+		body?: object,
+		headers?: Record<string, string>,
+	) => Promise<{ body: unknown }>;
+	openStream: (
+		method: IHttpRequestMethods,
+		url: string,
+		body?: object,
+		headers?: Record<string, string>,
+	) => Promise<{ body: ReadableStream<Uint8Array> }>;
+}
+
 export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
-	private apiKey: string;
 	private baseURL: string;
 
-	constructor(modelId: string = 'gpt-4o', config?: OpenAIChatModelConfig) {
+	constructor(
+		modelId: string = 'gpt-4o',
+		private requests: RequestConfig,
+		config?: OpenAIChatModelConfig,
+	) {
 		super('openai', modelId, config);
-		const apiKey = config?.apiKey ?? process.env.OPENAI_API_KEY;
-		if (!apiKey) {
-			throw new Error('OpenAI API key is required. Set OPENAI_API_KEY or pass apiKey in config.');
-		}
-		this.apiKey = apiKey;
 		this.baseURL = config?.baseURL ?? 'https://api.openai.com/v1';
+	}
+
+	private getTools(config?: OpenAIChatModelConfig) {
+		const ownTools = this.tools;
+		const providerTools = config?.providerTools ?? [];
+		return [...ownTools, ...providerTools].map(genericToolToResponsesTool);
 	}
 
 	async generate(messages: Message[], config?: OpenAIChatModelConfig): Promise<GenerateResult> {
 		const merged = this.mergeConfig(config);
 		const { instructions, input } = genericMessagesToResponsesInput(messages);
-		const tools = this.tools.length ? this.tools.map(genericToolToResponsesTool) : undefined;
+		const tools = this.getTools(config);
 		const requestBody: OpenAIResponsesRequest = {
 			model: this.modelId,
 			input,
@@ -478,29 +406,16 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 			stream: false,
 		};
 
-		const response = await openAIFetch(`${this.baseURL}/responses`, this.apiKey, requestBody);
+		const response = await openAIFetch(
+			this.requests.httpRequest,
+			`${this.baseURL}/responses`,
+			requestBody,
+		);
 
 		const { text, toolCalls } = parseResponsesOutput(response.output as unknown[]);
 
-		const usage = response.usage
-			? {
-					promptTokens: response.usage.input_tokens ?? 0,
-					completionTokens: response.usage.output_tokens ?? 0,
-					totalTokens: response.usage.total_tokens ?? 0,
-					input_token_details: {
-						...(!!response.usage.input_tokens_details?.cached_tokens && {
-							cache_read: response.usage.input_tokens_details.cached_tokens,
-						}),
-					},
-					output_token_details: {
-						...(!!response.usage.output_tokens_details?.reasoning_tokens && {
-							reasoning: response.usage.output_tokens_details.reasoning_tokens,
-						}),
-					},
-				}
-			: undefined;
+		const usage = parseTokenUsage(response.usage);
 
-		// Build response metadata
 		const responseMetadata: Record<string, unknown> = {
 			model_provider: 'openai',
 			model: response.model,
@@ -513,11 +428,9 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 			user: response.user,
 			service_tier: response.service_tier,
 			model_name: response.model,
-			// Store raw output for reconstructing messages later
 			output: response.output,
 		};
 
-		// Parse output for reasoning and other content
 		for (const item of response.output as unknown[]) {
 			const o = item as Record<string, unknown>;
 			if (o.type === 'reasoning') {
@@ -525,19 +438,29 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 			}
 		}
 
-		// Create the message object
+		const content: MessageContent[] = [];
+		if (toolCalls.length) {
+			for (const toolCall of toolCalls) {
+				content.push({
+					type: 'tool-call',
+					toolCallId: toolCall.id,
+					toolName: toolCall.name,
+					input: JSON.stringify(toolCall.arguments),
+				});
+			}
+		}
+		content.push({ type: 'text', text });
+
 		const message: Message = {
-			role: 'ai',
-			content: [{ type: 'text', text }],
+			role: 'assistant',
+			content,
 			id: response.id,
 		};
 
 		return {
 			id: response.id,
-			text,
 			finishReason: response.status === 'completed' ? 'stop' : 'other',
 			usage,
-			toolCalls,
 			message,
 			rawResponse: response,
 			providerMetadata: responseMetadata,
@@ -548,7 +471,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 		const merged = this.mergeConfig(config) as OpenAIChatModelConfig;
 		const { instructions, input } = genericMessagesToResponsesInput(messages);
 
-		const tools = this.tools.length ? this.tools.map(genericToolToResponsesTool) : undefined;
+		const tools = this.getTools(config);
 
 		const requestBody: OpenAIResponsesRequest = {
 			model: this.modelId,
@@ -564,21 +487,20 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 		};
 
 		const streamBody = await openAIFetchStream(
+			this.requests.openStream,
 			`${this.baseURL}/responses`,
-			this.apiKey,
 			requestBody,
 		);
 
 		const toolCallBuffers: Record<number, { name: string; arguments: string }> = {};
 
-		// Parse SSE stream
 		for await (const event of parseOpenAIStreamEvents(streamBody)) {
 			const type = event.type;
 
 			if (type === 'response.output_text.delta') {
 				const delta = event.delta;
 				if (delta) {
-					yield { type: 'text-delta', textDelta: delta };
+					yield { type: 'text-delta', delta };
 				}
 			}
 
@@ -591,7 +513,6 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 						arguments: (item.arguments as string) ?? '',
 					};
 				}
-				// Handle reasoning items
 				if (item?.type === 'reasoning') {
 					const summary = (item.summary as Array<Record<string, unknown>>) ?? [];
 					const reasoningText = summary
@@ -599,7 +520,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 						.filter(Boolean)
 						.join('');
 					if (reasoningText) {
-						yield { type: 'text-delta', textDelta: reasoningText };
+						yield { type: 'reasoning-delta', delta: reasoningText };
 					}
 				}
 			}
@@ -607,7 +528,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 			if (type === 'response.reasoning_summary_text.delta') {
 				const delta = event.delta;
 				if (delta) {
-					yield { type: 'text-delta', textDelta: delta };
+					yield { type: 'reasoning-delta', delta };
 				}
 			}
 
@@ -627,11 +548,9 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 					if (buf) {
 						yield {
 							type: 'tool-call-delta',
-							toolCallDelta: {
-								id: (item.call_id as string) ?? (item.id as string),
-								name: buf.name,
-								argumentsDelta: buf.arguments,
-							},
+							id: (item.call_id as string) ?? (item.id as string),
+							name: buf.name,
+							argumentsDelta: buf.arguments,
 						};
 					}
 				}
@@ -641,17 +560,10 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 				const responseData =
 					(event.response as unknown as OpenAIResponsesResponse) ??
 					(event as unknown as OpenAIResponsesResponse);
-				const usage = responseData.usage;
 				yield {
 					type: 'finish',
 					finishReason: 'stop',
-					usage: usage
-						? {
-								promptTokens: usage.input_tokens ?? 0,
-								completionTokens: usage.output_tokens ?? 0,
-								totalTokens: usage.total_tokens ?? 0,
-							}
-						: undefined,
+					usage: parseTokenUsage(responseData.usage),
 				};
 			}
 		}

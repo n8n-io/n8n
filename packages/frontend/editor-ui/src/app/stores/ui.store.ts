@@ -14,6 +14,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+	DELETE_SECRETS_PROVIDER_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
@@ -34,6 +35,7 @@ import {
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 } from '@/app/constants';
 import {
@@ -143,6 +145,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
 				EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 				SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+				DELETE_SECRETS_PROVIDER_MODAL_KEY,
 				DEBUG_PAYWALL_MODAL_KEY,
 				WORKFLOW_HISTORY_VERSION_RESTORE,
 				SETUP_CREDENTIALS_MODAL_KEY,
@@ -157,6 +160,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				WORKFLOW_PUBLISH_MODAL_KEY,
 				WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 				WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+				WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
@@ -271,6 +275,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	});
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
+	// This tracks only structural changes without metadata (name or tags)
+	const hasUnsavedWorkflowChanges = ref<boolean>(false);
 	const dirtyStateSetCount = ref<number>(0);
 	const lastSelectedNode = ref<string | null>(null);
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
@@ -613,13 +619,17 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		processingExecutionResults.value = value;
 	};
 
-	const markStateDirty = () => {
+	const markStateDirty = (type: 'workflow' | 'metadata' = 'workflow') => {
 		dirtyStateSetCount.value++;
 		stateIsDirty.value = true;
+		if (type === 'workflow') {
+			hasUnsavedWorkflowChanges.value = true;
+		}
 	};
 
 	const markStateClean = () => {
 		stateIsDirty.value = false;
+		hasUnsavedWorkflowChanges.value = false;
 	};
 
 	/**
@@ -682,6 +692,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		headerHeight,
 		dirtyStateSetCount: computed(() => dirtyStateSetCount.value),
 		stateIsDirty: computed(() => stateIsDirty.value),
+		hasUnsavedWorkflowChanges: computed(() => hasUnsavedWorkflowChanges.value),
 		isBlankRedirect,
 		activeCredentialType,
 		lastSelectedNode,

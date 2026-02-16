@@ -23,6 +23,11 @@ export type UserLike = {
 	};
 };
 
+export type ProjectSummary = {
+	id: string;
+	name: string;
+};
+
 export type RelayEventMap = {
 	// #region Lifecycle
 
@@ -112,6 +117,7 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflow: IWorkflowDb;
 		publicApi: boolean;
+		deactivatedVersionId: string | null;
 	};
 
 	'workflow-pre-execute': {
@@ -147,6 +153,15 @@ export type RelayEventMap = {
 			| 'integrated'
 			| 'evaluation'
 			| 'chat';
+	};
+
+	'workflow-version-updated': {
+		user: UserLike;
+		workflowId: string;
+		workflowName: string;
+		versionId: string;
+		versionName?: string | null;
+		versionDescription?: string | null;
 	};
 
 	// #endregion
@@ -568,6 +583,43 @@ export type RelayEventMap = {
 
 	'external-secrets-provider-reloaded': {
 		vaultType: string;
+	};
+
+	'external-secrets-connection-created': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-connection-updated': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-connection-deleted': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-connection-tested': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+		isValid: boolean;
+		errorMessage?: string;
+	};
+
+	'external-secrets-connection-reloaded': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
 	};
 
 	// #endregion

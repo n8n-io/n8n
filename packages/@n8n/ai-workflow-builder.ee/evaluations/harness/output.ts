@@ -9,10 +9,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { feedbackKey } from './feedback';
-import type { ExampleResult, Feedback, RunSummary } from './harness-types.js';
-import type { EvalLogger } from './logger.js';
+import type { ExampleResult, Feedback, RunSummary } from './harness-types';
+import type { EvalLogger } from './logger';
 import { selectScoringItems, calculateFiniteAverage } from './score-calculator';
-import type { SimpleWorkflow } from '../../src/types/workflow.js';
+import type { SimpleWorkflow } from '../../src/types/workflow';
 
 /**
  * Interface for saving evaluation artifacts to disk.
@@ -74,6 +74,11 @@ export function createArtifactSaver(options: ArtifactSaverOptions): ArtifactSave
 					JSON.stringify(workflowForExport, null, 2),
 					'utf-8',
 				);
+			}
+
+			// Save generated code if available (e.g., TypeScript SDK code from coding agent)
+			if (result.generatedCode) {
+				fs.writeFileSync(path.join(exampleDir, 'code.ts'), result.generatedCode, 'utf-8');
 			}
 
 			// Save feedback

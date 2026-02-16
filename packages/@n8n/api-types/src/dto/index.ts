@@ -2,7 +2,7 @@ export { GetNodeTypesByIdentifierRequestDto } from './node-types/get-node-types-
 
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
-export { AiBuilderChatRequestDto } from './ai/ai-build-request.dto';
+export { AiBuilderChatRequestDto, type SelectedNodeContext } from './ai/ai-build-request.dto';
 export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dto';
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
 export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.dto';
@@ -132,6 +132,7 @@ export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
 export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.dto';
+export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 
 export {
 	OAuthClientResponseDto,
@@ -152,3 +153,5 @@ export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-se
 export { SetSecretsProviderConnectionIsEnabledDto } from './secrets-provider/set-secrets-provider-connection-is-enabled.dto';
 export { TestSecretsProviderConnectionDto } from './secrets-provider/test-secrets-provider-connection.dto';
 export { UpdateSecretsProviderConnectionDto } from './secrets-provider/update-secrets-provider-connection.dto';
+
+export { CreateQuickConnectCredentialDto } from './quick-connect/create-quick-connect-credential.dto';

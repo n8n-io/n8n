@@ -2,7 +2,11 @@ import { test, expect } from '../../../../../fixtures/base';
 import type { n8nPage } from '../../../../../pages/n8nPage';
 
 // Example of using helper functions inside a test
-test.describe('Debug mode', () => {
+test.describe('Debug mode', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	// Constants to avoid magic strings
 	const URLS = {
 		FAILING: 'https://foo.bar',
