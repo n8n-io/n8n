@@ -198,11 +198,13 @@ export class SecretsProvidersConnectionsService {
 	toPublicConnectionListItem(
 		connection: SecretsProviderConnection,
 	): SecretsProvidersResponses.ConnectionListItem {
+		const secretNames = this.externalSecretsManager.getSecretNames(connection.providerKey);
+
 		return {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
-			secretsCount: this.externalSecretsManager.getSecretNames(connection.providerKey).length,
+			secretsCount: secretNames.length,
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
 				name: access.project.name,
