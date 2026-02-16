@@ -242,7 +242,11 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		if (!hasPermission) return false;
 
 		return (
+			// check if connection settings are filled
 			requiredFieldsFilled.value &&
+			// check if scope is set, either by project or globally
+			(projectIds.value.length > 0 || isSharedGlobally.value) &&
+			// check if there are unsaved changes
 			(settingsUpdated.value || scopeUpdated.value || !isEditMode.value)
 		);
 	});
@@ -284,6 +288,37 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 		selectedProviderType.value = provider;
 		initializeSettings(provider);
+	}
+
+	/**
+	 * Tests connection and shows appropriate toast feedback
+	 * Does not throw - connection save is considered successful even if test fails
+	 */
+	async function testAndShowFeedback(key: string): Promise<void> {
+		await connection.testConnection(key);
+
+		if (connection.connectionState.value === 'connected') {
+			toast.showMessage({
+				title: i18n.baseText(
+					'settings.secretsProviderConnections.modal.testConnection.success.title',
+				),
+				message: i18n.baseText(
+					'settings.secretsProviderConnections.modal.testConnection.success.description',
+					{
+						interpolate: { providerName: connectionName.value },
+					},
+				),
+				type: 'success',
+			});
+		} else {
+			toast.showError(
+				new Error(i18n.baseText('generic.error')),
+				i18n.baseText('generic.error'),
+				i18n.baseText(
+					'settings.secretsProviderConnections.modal.testConnection.error.serviceDisabled',
+				),
+			);
+		}
 	}
 
 	async function loadConnection() {
@@ -341,19 +376,9 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		originalProjectIds.value = [...projectIds.value];
 		originalIsSharedGlobally.value = isSharedGlobally.value;
 
-		// Test connection automatically
+		// Test connection automatically after creation
 		if (providerKey.value) {
-			await connection.testConnection(providerKey.value);
-			if (connection.connectionState.value !== 'connected') {
-				toast.showError(
-					new Error(i18n.baseText('generic.error')),
-					i18n.baseText('generic.error'),
-					i18n.baseText(
-						'settings.secretsProviderConnections.modal.testConnection.error.serviceDisabled',
-					),
-				);
-				return false;
-			}
+			await testAndShowFeedback(providerKey.value);
 		}
 
 		return true;
@@ -372,6 +397,8 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			projectIds: scopeProjectIds,
 		};
 
+		const hasSettingsChanges = settingsUpdated.value;
+
 		const { secretsCount, projects } = await connection.updateConnection(
 			providerKey.value,
 			updateData,
@@ -386,8 +413,10 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		isSharedGlobally.value = projects.length === 0;
 		originalIsSharedGlobally.value = projects.length === 0;
 
-		// Test connection automatically
-		await connection.testConnection(providerKey.value);
+		// Test connection only if settings changed (not just scope/sharing)
+		if (hasSettingsChanges && providerKey.value) {
+			await testAndShowFeedback(providerKey.value);
+		}
 
 		return true;
 	}

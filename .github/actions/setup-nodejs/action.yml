@@ -7,9 +7,9 @@ description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply
 
 inputs:
   node-version:
-    description: 'Node.js version to use. Uses latest 22.x by default.'
+    description: 'Node.js version to use. Pinned to 24.13.1 by default for reproducible builds.'
     required: false
-    default: '22.x'
+    default: '24.13.1'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
@@ -30,10 +30,6 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
         cache: 'pnpm'
-
-    - name: Upgrade npm (keep Node 22) # We need npm 11.5.1 for OIDC
-      run: npm i -g npm@11.5.1
-      shell: bash
 
     - name: Install Aikido SafeChain
       if: runner.os != 'Windows'

@@ -41,7 +41,21 @@ const EXPRESSION_REFERENCE = `Available variables inside \`expr('{{{{ ... }}}}')
 - \`$execution.id\` — unique execution ID
 - \`$execution.mode\` — 'test' or 'production'
 - \`$workflow.id\` — workflow ID
-- \`$workflow.name\` — workflow name`;
+- \`$workflow.name\` — workflow name
+
+String composition — variables MUST always be inside \`{{{{ }}}}\`, never outside as JS variables:
+
+- \`expr('Hello {{{{ $json.name }}}}, welcome!')\` — variable embedded in text
+- \`expr('Report for {{{{ $now.toFormat("MMMM d, yyyy") }}}} - {{{{ $json.title }}}}')\` — multiple variables with method call
+- \`expr('{{{{ $json.firstName }}}} {{{{ $json.lastName }}}}')\` — combining multiple fields
+- \`expr('Total: {{{{ $json.items.length }}}} items, updated {{{{ $now.toISO() }}}}')\` — expressions with method calls
+- \`expr('Status: {{{{ $json.count > 0 ? "active" : "empty" }}}}')\` — inline ternary
+
+Dynamic data from other nodes — \`$()\` MUST always be inside \`{{{{ }}}}\`, never used as plain JavaScript:
+
+- WRONG: \`expr('{{{{ ' + JSON.stringify($('Source').all().map(i => i.json.name)) + ' }}}}')\` — $() outside {{{{ }}}}
+- CORRECT: \`expr('{{{{ $("Source").all().map(i => ({{ option: i.json.name }})) }}}}')\` — $() inside {{{{ }}}}
+- CORRECT: \`expr('{{{{ {{ "fields": [{{ "values": $("Fetch Projects").all().map(i => ({{ option: i.json.name }})) }}] }} }}}}')\` — complex JSON inside {{{{ }}}}`;
 
 /**
  * Additional SDK functions not covered by main workflow patterns
@@ -542,7 +556,7 @@ export default workflow('ai-sentiment', 'AI Sentiment Analyzer')
 // Step 2 sub-steps are numbered sequentially within each path.
 
 const MANDATORY_WORKFLOW_INTRO =
-	'**You MUST follow these steps in order. Do NOT produce visible output until the final step — only tool calls. Use the `think` tool in-between steps (after first step) when you need to reason about results.**';
+	'**You MUST follow these steps in order. Do NOT produce visible output until the final step — only tool calls.**';
 
 // ── Step 1 variants ──────────────────────────────────────────────────────────
 
@@ -639,7 +653,7 @@ search_nodes({{ queries: ["httpRequest", "slack", "schedule trigger", "set", ...
 `;
 
 const REVIEW_RESULTS_BUILD = `
-Use the \`think\` tool to review all results. Do NOT produce visible output in this step. Be EXTREMELY concise.
+Review all results internally. Do NOT produce visible output in this step. Be EXTREMELY concise.
 
 For each service/concept searched, list the matching node(s) found:
 - Note which nodes have [TRIGGER] tags for trigger nodes
@@ -654,7 +668,7 @@ If you have everything you need to build a workflow, continue to step 3, plannin
 `;
 
 const REVIEW_RESULTS_PLAN = `
-Do NOT produce visible output in this step. Only internal thinking or think tool. Be EXTREMELY concise.
+Do NOT produce visible output in this step. Only internal thinking. Be EXTREMELY concise.
 
 For each node searched, list the matching node(s) found:
 - Note which nodes have [TRIGGER] tags for trigger nodes
@@ -670,7 +684,7 @@ If you have everything you need to build a workflow, continue to step 3, plannin
 // ── Step 3 variants ──────────────────────────────────────────────────────────
 
 const DESIGN_WORKFLOW_BUILD = `
-Use the \`think\` tool to make design decisions based on the reviewed results. Do NOT produce visible output in this step.
+Make design decisions internally based on the reviewed results. Do NOT produce visible output in this step.
 
 1. **Select Nodes**: Based on search results AND suggested nodes, choose specific nodes:
    - Use dedicated integration nodes when available (from search)
@@ -750,6 +764,10 @@ Rules:
 - Expressions: use \`expr()\` for any \`{{{{ }}}}\` syntax  — always use single or double quotes, NOT backtick template literals
   - e.g. \`expr('Hello {{{{ $json.name }}}}')\` or \`expr("{{{{ $('Node').item.json.field }}}}")\`
 	- For multiline expressions, use string concatenation: \`expr('Line 1\\n' + 'Line 2 {{{{ $json.value }}}}')\`
+  - WRONG: \`expr('Daily Digest - ' + $now.toFormat('MMMM d') + '\\n' + $json.output)\` — $now and $json are outside {{{{ }}}}
+  - CORRECT: \`expr('Daily Digest - {{{{ $now.toFormat("MMMM d") }}}}\\n{{{{ $json.output }}}}')\` — variables inside {{{{ }}}}
+  - WRONG: \`expr('{{{{ ' + JSON.stringify($('Node').all().map(i => i.json)) + ' }}}}')\` — $() used as JavaScript
+  - CORRECT: \`expr('{{{{ $("Node").all().map(i => i.json) }}}}')\` — $() inside {{{{ }}}} evaluated at runtime
 - Placeholders: use \`placeholder('hint')\` directly as the parameter value, not inside \`expr()\`, objects, or arrays, etc.
 - Every node MUST have an \`output\` property with sample data — following nodes depend on it for expressions
 - String quoting: When a string value contains an apostrophe, use double quotes for that string.
@@ -762,11 +780,13 @@ Rules:
 
 Do NOT produce visible output — only the tool call.
 
-Call \`validate_workflow\` to check your code for errors before finalizing:
+After writing or editing code in the previous step, call \`validate_workflow\` to check for errors:
 
 \`\`\`
 validate_workflow({{ path: "/workflow.js" }})
 \`\`\`
+
+**Only call validate_workflow after you have written or edited code.** Do not call it if no code exists yet.
 
 If errors are reported, fix ALL relevant issues using \`batch_str_replace\` (preferred for multiple fixes) or individual str_replace/insert calls, then call \`validate_workflow\` again. Do not call validate_workflow after each individual fix — batch all fixes first, then validate once. Focus on warnings relevant to your changes and last user request.
 

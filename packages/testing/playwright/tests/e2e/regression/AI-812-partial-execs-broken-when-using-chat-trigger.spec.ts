@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('AI-812-partial-execs-broken-when-using-chat-trigger', () => {
+test.describe('AI-812-partial-execs-broken-when-using-chat-trigger', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Test_chat_partial_execution.json');
 		await n8n.notifications.quickCloseAll();

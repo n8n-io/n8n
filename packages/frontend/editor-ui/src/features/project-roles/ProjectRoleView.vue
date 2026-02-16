@@ -322,10 +322,9 @@ const displayNameValidationRules = [
 <template>
 	<div class="pb-xl" :class="$style.container">
 		<N8nButton
+			variant="ghost"
 			icon="arrow-left"
-			type="secondary"
 			:class="$style.backButton"
-			text
 			@click="() => router.back()"
 		>
 			{{ i18n.baseText('projectRoles.backToRoleList') }}
@@ -336,7 +335,7 @@ const displayNameValidationRules = [
 			</N8nHeading>
 			<div v-if="initialState && !isReadOnly">
 				<N8nButton
-					type="secondary"
+					variant="subtle"
 					:disabled="!hasUnsavedChanges"
 					class="mr-xs"
 					@click="resetForm(initialState)"
@@ -384,13 +383,13 @@ const displayNameValidationRules = [
 			</N8nText>
 
 			<div class="mb-s" :class="$style.presetsContainer">
-				<N8nButton type="secondary" @click="setPreset('project:admin')">
+				<N8nButton variant="subtle" @click="setPreset('project:admin')">
 					{{ i18n.baseText('projectRoles.admin') }}
 				</N8nButton>
-				<N8nButton type="secondary" @click="setPreset('project:editor')">
+				<N8nButton variant="subtle" @click="setPreset('project:editor')">
 					{{ i18n.baseText('projectRoles.editor') }}
 				</N8nButton>
-				<N8nButton type="secondary" @click="setPreset('project:viewer')">
+				<N8nButton variant="subtle" @click="setPreset('project:viewer')">
 					{{ i18n.baseText('projectRoles.viewer') }}
 				</N8nButton>
 			</div>
@@ -444,7 +443,11 @@ const displayNameValidationRules = [
 				</template>
 				<template v-else> {{ i18n.baseText('projectRoles.action.delete.warning') }}</template>
 			</N8nText>
-			<N8nButton type="danger" :disabled="Boolean(initialState?.usedByUsers)" @click="deleteRole">
+			<N8nButton
+				variant="destructive"
+				:disabled="Boolean(initialState?.usedByUsers)"
+				@click="deleteRole"
+			>
 				{{ i18n.baseText('projectRoles.action.delete.button') }}
 			</N8nButton>
 		</div>

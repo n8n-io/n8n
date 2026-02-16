@@ -545,8 +545,8 @@ defineExpose({
 									>
 										<N8nButton
 											v-if="opt.text"
-											type="secondary"
-											size="mini"
+											variant="subtle"
+											size="xsmall"
 											@click="() => onQuickReply(opt)"
 										>
 											{{ opt.text }}

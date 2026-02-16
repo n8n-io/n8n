@@ -148,7 +148,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import type { INodeUi } from '@/Interface';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState } from '@/app/constants';
 
 const nodeViewEventBusEmitMock = vi.hoisted(() => vi.fn());
@@ -275,7 +275,7 @@ describe('AskAssistantBuild', () => {
 				},
 				workflowAutosave: {
 					autoSaveState: AutoSaveState.Idle,
-					pendingAutoSave: null,
+					pendingSave: null,
 				},
 			},
 		});
@@ -349,7 +349,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should disable input when autosave is scheduled', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Scheduled;
 
 			const { container } = renderComponent();
@@ -361,7 +361,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should disable input when autosave is in progress', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
 
 			const { container } = renderComponent();
@@ -373,7 +373,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should not disable input when autosave is idle', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
@@ -386,7 +386,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should disable input when collaboration shouldBeReadOnly is true regardless of autosave state', () => {
 			collaborationStore.shouldBeReadOnly = true;
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
@@ -398,7 +398,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should show autosaving tooltip when autosave is scheduled', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Scheduled;
 
 			const { container } = renderComponent();
@@ -410,7 +410,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should show autosaving tooltip when autosave is in progress', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
 
 			const { container } = renderComponent();
@@ -423,7 +423,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should show read-only tooltip when collaboration shouldBeReadOnly is true', () => {
 			collaborationStore.shouldBeReadOnly = true;
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
@@ -436,7 +436,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should show autosaving tooltip when both autosave is in progress and collaboration is read-only', () => {
 			collaborationStore.shouldBeReadOnly = true;
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
 
 			const { container } = renderComponent();
@@ -449,7 +449,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should not show any tooltip when input is not disabled', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
