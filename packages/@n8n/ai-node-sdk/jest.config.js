@@ -2,5 +2,5 @@
 module.exports = {
 	...require('../../../jest.config'),
 	collectCoverageFrom: ['src/**/*.ts', 'integration-tests/**/*.ts'],
-	coveragePathIgnorePatterns: ['examples'],
+	coveragePathIgnorePatterns: ['examples', 'src/index.ts'],
 };

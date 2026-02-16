@@ -1,5 +1,10 @@
 import {
 	BaseChatModel,
+	getParametersJsonSchema,
+	parseSSEStream,
+	type TokenUsage,
+	type Tool,
+	type ToolCall,
 	type ChatModelConfig,
 	type GenerateResult,
 	type Message,
@@ -7,16 +12,313 @@ import {
 	type ProviderTool,
 	type StreamChunk,
 } from '@n8n/ai-utilities';
+import type { JSONSchema7 } from 'json-schema';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
-import {
-	genericToolToResponsesTool,
-	genericMessagesToResponsesInput,
-	parseResponsesOutput,
-	parseTokenUsage,
-	parseOpenAIStreamEvents,
-} from './helpers';
-import type { OpenAIResponsesRequest, OpenAIResponsesResponse } from './types';
+// Types
+export type OpenAITool =
+	| {
+			type: 'function';
+			name: string;
+			description?: string;
+			parameters: JSONSchema7;
+			strict?: boolean;
+	  }
+	| {
+			type: 'web_search';
+	  };
+
+export type OpenAIToolChoice = 'auto' | 'required' | 'none' | { type: 'function'; name: string };
+
+export type ResponsesInputItem =
+	| { role: 'user'; content: string }
+	| { role: 'user'; content: Array<{ type: 'input_text'; text: string }> }
+	| {
+			type: 'message';
+			role: 'assistant';
+			content: Array<{ type: 'output_text'; text: string }>;
+	  }
+	| {
+			type: 'function_call';
+			call_id: string;
+			name: string;
+			arguments: string;
+	  }
+	| { type: 'function_call_output'; call_id: string; output: string };
+
+export interface OpenAIResponsesRequest {
+	model: string;
+	input: string | ResponsesInputItem[];
+	instructions?: string;
+	max_output_tokens?: number;
+	temperature?: number;
+	top_p?: number;
+	tools?: OpenAITool[];
+	tool_choice?: OpenAIToolChoice;
+	parallel_tool_calls?: boolean;
+	store?: boolean;
+	stream?: boolean;
+	metadata?: Record<string, unknown>;
+}
+
+export interface OpenAIResponsesResponse {
+	id: string;
+	object: string;
+	created_at: string;
+	model: string;
+	output: ResponsesOutputItem[];
+	status: string;
+	usage?: {
+		input_tokens: number;
+		output_tokens: number;
+		total_tokens: number;
+		input_tokens_details?: {
+			cached_tokens?: number;
+		};
+		output_tokens_details?: {
+			reasoning_tokens?: number;
+		};
+	};
+	incomplete_details?: Record<string, unknown>;
+	metadata?: Record<string, unknown>;
+	user?: string;
+	service_tier?: string;
+}
+
+export type ResponsesOutputItem =
+	| {
+			type: 'message';
+			role: 'assistant';
+			id?: string;
+			content: Array<{
+				type: 'output_text';
+				text: string;
+			}>;
+	  }
+	| {
+			type: 'function_call';
+			id?: string;
+			call_id: string;
+			name: string;
+			arguments: string;
+	  }
+	| {
+			type: 'reasoning';
+			id?: string;
+			summary: Array<{
+				type: string;
+				text: string;
+			}>;
+	  };
+
+export interface OpenAIStreamEvent {
+	type: string;
+	delta?: string;
+	output_index?: number;
+	item?: Record<string, unknown>;
+	response?: Record<string, unknown>;
+}
+
+export interface OpenAIErrorResponse {
+	error: {
+		message: string;
+		type: string;
+		code?: string;
+		param?: string;
+	};
+}
+
+// Helpers
+
+export async function* parseOpenAIStreamEvents(
+	body: ReadableStream<Uint8Array>,
+): AsyncIterable<OpenAIStreamEvent> {
+	for await (const message of parseSSEStream(body)) {
+		if (!message.data) continue;
+		if (message.data === '[DONE]') continue;
+
+		try {
+			const event = JSON.parse(message.data as string);
+			yield event as OpenAIStreamEvent;
+		} catch (e) {
+			if (process.env.NODE_ENV !== 'production') {
+				console.warn('Failed to parse OpenAI SSE event:', message.data);
+			}
+		}
+	}
+}
+
+export function genericMessagesToResponsesInput(messages: Message[]): {
+	instructions?: string;
+	input: string | ResponsesInputItem[];
+} {
+	const instructionsParts: string[] = [];
+	const inputItems: ResponsesInputItem[] = [];
+
+	for (const msg of messages) {
+		if (msg.role === 'system') {
+			for (const contentPart of msg.content) {
+				if (contentPart.type === 'text') {
+					instructionsParts.push(contentPart.text);
+				}
+			}
+		}
+
+		if (msg.role === 'user') {
+			for (const contentPart of msg.content) {
+				if (contentPart.type === 'text') {
+					inputItems.push({
+						role: 'user',
+						content: contentPart.text,
+					});
+				}
+			}
+			continue;
+		}
+
+		if (msg.role === 'assistant') {
+			for (const contentPart of msg.content) {
+				if (contentPart.type === 'text') {
+					inputItems.push({
+						type: 'message',
+						role: 'assistant',
+						content: [
+							{
+								type: 'output_text',
+								text: contentPart.text,
+							},
+						],
+					});
+				} else if (contentPart.type === 'tool-call') {
+					if (!contentPart.toolCallId) {
+						throw new Error('Tool call ID is required');
+					}
+					inputItems.push({
+						type: 'function_call',
+						call_id: contentPart.toolCallId,
+						name: contentPart.toolName,
+						arguments: contentPart.input,
+					});
+				} else if (contentPart.type === 'reasoning') {
+					inputItems.push({
+						type: 'message',
+						role: 'assistant',
+						content: [
+							{
+								type: 'output_text',
+								text: contentPart.text,
+							},
+						],
+					});
+				}
+			}
+		}
+
+		if (msg.role === 'tool') {
+			for (const contentPart of msg.content) {
+				if (contentPart.type === 'tool-result') {
+					const output =
+						typeof contentPart.result === 'string'
+							? contentPart.result
+							: JSON.stringify(contentPart.result);
+					inputItems.push({
+						type: 'function_call_output',
+						call_id: contentPart.toolCallId,
+						output,
+					});
+				}
+			}
+		}
+	}
+
+	const instructions = instructionsParts.length > 0 ? instructionsParts.join('\n\n') : undefined;
+
+	const single = inputItems[0];
+	if (
+		inputItems.length === 1 &&
+		single &&
+		'role' in single &&
+		single.role === 'user' &&
+		typeof single.content === 'string'
+	) {
+		return { instructions, input: single.content };
+	}
+	return { instructions, input: inputItems };
+}
+
+export function genericToolToResponsesTool(tool: Tool): OpenAITool {
+	if (tool.type === 'provider') {
+		if (tool.name === 'web_search') {
+			return {
+				type: 'web_search',
+				...tool.args,
+			};
+		}
+		throw new Error(`Unsupported provider tool: ${tool.name}`);
+	}
+	const parameters = getParametersJsonSchema(tool);
+	return {
+		type: 'function',
+		name: tool.name,
+		description: tool.description,
+		parameters,
+		strict: tool.strict,
+	};
+}
+
+export function parseResponsesOutput(output: ResponsesOutputItem[]): {
+	text: string;
+	toolCalls: ToolCall[];
+} {
+	let text = '';
+	const toolCalls: ToolCall[] = [];
+
+	for (const item of output) {
+		if (item.type === 'message' && item.role === 'assistant') {
+			for (const block of item.content) {
+				if (block.type === 'output_text') {
+					text += block.text;
+				}
+			}
+		}
+		if (item.type === 'function_call') {
+			try {
+				toolCalls.push({
+					id: item.call_id,
+					name: item.name,
+					arguments: JSON.parse(item.arguments) as Record<string, unknown>,
+					argumentsRaw: item.arguments,
+				});
+			} catch (e) {
+				throw new Error(`Failed to parse function call arguments: ${item.arguments}`);
+			}
+		}
+	}
+
+	return { text, toolCalls };
+}
+
+export function parseTokenUsage(
+	usage: OpenAIResponsesResponse['usage'] | undefined,
+): TokenUsage | undefined {
+	return usage
+		? {
+				promptTokens: usage.input_tokens ?? 0,
+				completionTokens: usage.output_tokens ?? 0,
+				totalTokens: usage.total_tokens ?? 0,
+				inputTokenDetails: {
+					...(!!usage.input_tokens_details?.cached_tokens && {
+						cacheRead: usage.input_tokens_details.cached_tokens,
+					}),
+				},
+				outputTokenDetails: {
+					...(!!usage.output_tokens_details?.reasoning_tokens && {
+						reasoning: usage.output_tokens_details.reasoning_tokens,
+					}),
+				},
+			}
+		: undefined;
+}
 
 export interface OpenAIChatModelConfig extends ChatModelConfig {
 	apiKey?: string;
