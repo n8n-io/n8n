@@ -78,4 +78,4 @@ class LmChatOpenAiNodeConfig implements ChatModelNodeConfig {
 	}
 }
 
-export class LmChatOpenAiCustomClass extends createChatModelNode(new LmChatOpenAiNodeConfig()) {}
+export const LmChatOpenAiCustomClass = createChatModelNode(new LmChatOpenAiNodeConfig());

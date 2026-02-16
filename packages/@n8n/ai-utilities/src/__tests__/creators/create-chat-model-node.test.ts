@@ -48,10 +48,9 @@ describe('createChatModelNode', () => {
 				getModel: jest.fn(),
 			};
 
-			const NodeClass = createChatModelNode(config);
-			const instance = new NodeClass();
+			const node = createChatModelNode(config);
 
-			expect(instance.description).toEqual(mockDescription);
+			expect(node.description).toEqual(mockDescription);
 		});
 
 		it('creates a node with methods property when provided', () => {
@@ -61,14 +60,13 @@ describe('createChatModelNode', () => {
 				getModel: jest.fn(),
 			};
 
-			const NodeClass = createChatModelNode(config);
-			const instance = new NodeClass();
+			const node = createChatModelNode(config);
 
-			expect(instance.methods).toEqual(mockMethods);
+			expect(node.methods).toEqual(mockMethods);
 		});
 	});
 
-	describe('supplyData with function getModel', () => {
+	describe('supplyData', () => {
 		it('calls getModel function and supplies the model', async () => {
 			const mockModel = {
 				type: 'openai' as const,
@@ -84,10 +82,9 @@ describe('createChatModelNode', () => {
 				getModel: getModelFn,
 			};
 
-			const NodeClass = createChatModelNode(config);
-			const instance = new NodeClass();
+			const node = createChatModelNode(config);
 
-			const result = await (instance as any).supplyData.call(mockContext, 0);
+			const result = await node.supplyData!.call(mockContext, 0);
 
 			expect(getModelFn).toHaveBeenCalledWith(mockContext, 0);
 			expect(supplyModel).toHaveBeenCalledWith(mockContext, mockModel);
@@ -95,43 +92,18 @@ describe('createChatModelNode', () => {
 		});
 	});
 
-	describe('supplyData with static getModel', () => {
-		it('uses static model when getModel is not a function', async () => {
-			const staticModel = {
-				type: 'openai' as const,
-				baseUrl: 'https://api.openai.com',
-				model: 'gpt-4',
-				apiKey: 'static-key',
-			};
-
-			const config: ChatModelNodeConfig = {
-				description: mockDescription,
-				getModel: staticModel as any,
-			};
-
-			const NodeClass = createChatModelNode(config);
-			const instance = new NodeClass();
-
-			const result = await (instance as any).supplyData.call(mockContext, 0);
-
-			expect(supplyModel).toHaveBeenCalledWith(mockContext, staticModel);
-			expect(result).toEqual({ response: { __brand: 'MockModel' } });
-		});
-	});
-
 	describe('node type compliance', () => {
-		it('creates a class that implements INodeType interface', () => {
+		it('creates an object that implements INodeType interface', () => {
 			const config: ChatModelNodeConfig = {
 				description: mockDescription,
 				getModel: jest.fn(),
 			};
 
-			const NodeClass = createChatModelNode(config);
-			const instance = new NodeClass();
+			const node = createChatModelNode(config);
 
-			expect(instance).toHaveProperty('description');
-			expect(instance).toHaveProperty('supplyData');
-			expect(typeof instance.supplyData).toBe('function');
+			expect(node).toHaveProperty('description');
+			expect(node).toHaveProperty('supplyData');
+			expect(typeof node.supplyData).toBe('function');
 		});
 	});
 });

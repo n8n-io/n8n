@@ -13,7 +13,7 @@ export type ModelOptions = {
 	temperature?: number;
 };
 
-export class LmChatOpenAiCustom extends createChatModelNode({
+export const LmChatOpenAiCustom = createChatModelNode({
 	description: {
 		...description,
 		displayName: 'OpenAI Custom',
@@ -75,4 +75,4 @@ export class LmChatOpenAiCustom extends createChatModelNode({
 		);
 		return model;
 	},
-}) {}
+});

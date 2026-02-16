@@ -10,7 +10,7 @@ export type ModelOptions = {
 	temperature?: number;
 };
 
-export class LmChatOpenAiSimple extends createChatModelNode({
+export const LmChatOpenAiSimple = createChatModelNode({
 	description: {
 		displayName: 'OpenAI Simple',
 
@@ -77,4 +77,4 @@ export class LmChatOpenAiSimple extends createChatModelNode({
 			providerTools,
 		};
 	},
-}) {}
+});
