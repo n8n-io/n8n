@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
-import { NodesConfig, TaskRunnersConfig } from '@n8n/config';
+import { NodesConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import set from 'lodash/set';
 import {
@@ -174,9 +174,6 @@ export class Code implements INodeType {
 
 		const isJsLang = language === 'javaScript';
 		const isPyLang = language === 'python' || language === 'pythonNative'; // keep legacy `python` for backwards compatibility
-		const runnersConfig = Container.get(TaskRunnersConfig);
-		const isJsRunner = runnersConfig.enabled;
-
 		if (isPyLang && !Container.get(NodesConfig).pythonEnabled) {
 			throw new PythonDisabledError();
 		}
@@ -185,7 +182,7 @@ export class Code implements INodeType {
 		const workflowMode = this.getMode();
 		const codeParameterName = isPyLang ? 'pythonCode' : 'jsCode';
 
-		if (isJsLang && isJsRunner) {
+		if (isJsLang) {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
 			const sandbox = new JsTaskRunnerSandbox(workflowMode, this);
 			const numInputItems = this.getInputData().length;

@@ -166,7 +166,7 @@ export abstract class BaseCommand<F = never> {
 
 		const taskRunnersConfig = this.globalConfig.taskRunners;
 
-		if (this.needsTaskRunner && taskRunnersConfig.enabled) {
+		if (this.needsTaskRunner) {
 			if (taskRunnersConfig.insecureMode) {
 				this.logger.warn(
 					'TASK RUNNER CONFIGURED TO START IN INSECURE MODE. This is discouraged for production use. Please consider using secure mode instead.',

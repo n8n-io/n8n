@@ -50,8 +50,6 @@ export class TaskRunnerModule {
 	}
 
 	async start() {
-		a.ok(this.runnerConfig.enabled, 'Task runner is disabled');
-
 		const { mode, authToken } = this.runnerConfig;
 
 		if (mode === 'external' && !authToken) throw new MissingAuthTokenError();

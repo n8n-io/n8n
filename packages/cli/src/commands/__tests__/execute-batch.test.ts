@@ -74,7 +74,7 @@ test('should start a task runner when task runners are enabled', async () => {
 	Container.set(
 		GlobalConfig,
 		mock<GlobalConfig>({
-			taskRunners: { enabled: true },
+			taskRunners: {},
 			nodes: {},
 		}),
 	);
