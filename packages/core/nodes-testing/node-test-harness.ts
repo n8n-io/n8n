@@ -219,6 +219,9 @@ export class NodeTestHarness {
 			hooks,
 			// Get from node.parameters
 			currentNodeParameters: undefined,
+			// LangChain nodes check this and call .copy() on it, so it must be
+			// undefined rather than a deep-mock proxy.
+			parentCallbackManager: undefined,
 		});
 		additionalData.credentialsHelper = credentialsHelper;
 
