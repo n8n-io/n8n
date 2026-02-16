@@ -511,7 +511,7 @@ describe('TelemetryEventRelay', () => {
 				provider_key: 'provider-key-123',
 				vault_type: 'gcp',
 				scope: 'global',
-				project_count: 0,
+				project_ids: [],
 			});
 		});
 
@@ -533,7 +533,7 @@ describe('TelemetryEventRelay', () => {
 				provider_key: 'provider-key-123',
 				vault_type: 'gcp',
 				scope: 'project',
-				project_count: 2,
+				project_ids: ['project1', 'project2'],
 			});
 		});
 
@@ -552,7 +552,7 @@ describe('TelemetryEventRelay', () => {
 				provider_key: 'provider-key-123',
 				vault_type: 'aws',
 				scope: 'global',
-				project_count: 0,
+				project_ids: [],
 			});
 		});
 
@@ -571,7 +571,7 @@ describe('TelemetryEventRelay', () => {
 				provider_key: 'provider-key-123',
 				vault_type: 'aws',
 				scope: 'project',
-				project_count: 1,
+				project_ids: ['project1'],
 			});
 		});
 
@@ -590,7 +590,7 @@ describe('TelemetryEventRelay', () => {
 				provider_key: 'provider-key-123',
 				vault_type: 'vault',
 				scope: 'global',
-				project_count: 0,
+				project_ids: [],
 			});
 		});
 
@@ -613,7 +613,7 @@ describe('TelemetryEventRelay', () => {
 				provider_key: 'provider-key-123',
 				vault_type: 'vault',
 				scope: 'project',
-				project_count: 3,
+				project_ids: ['project1', 'project2', 'project3'],
 			});
 		});
 	});

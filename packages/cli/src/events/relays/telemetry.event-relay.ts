@@ -164,7 +164,6 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('Project settings updated', {
 			user_id: userId,
 			role,
-
 			members: members.map(({ userId: user_id, role }) => ({ user_id, role })),
 			project_id: projectId,
 		});
@@ -368,7 +367,7 @@ export class TelemetryEventRelay extends EventRelay {
 			provider_key: providerKey,
 			vault_type: vaultType,
 			scope: projects.length === 0 ? 'global' : 'project',
-			project_count: projects.length,
+			project_ids: projects.map((project) => project.id),
 		});
 	}
 
@@ -383,7 +382,7 @@ export class TelemetryEventRelay extends EventRelay {
 			provider_key: providerKey,
 			vault_type: vaultType,
 			scope: projects.length === 0 ? 'global' : 'project',
-			project_count: projects.length,
+			project_ids: projects.map((project) => project.id),
 		});
 	}
 
@@ -398,7 +397,7 @@ export class TelemetryEventRelay extends EventRelay {
 			provider_key: providerKey,
 			vault_type: vaultType,
 			scope: projects.length === 0 ? 'global' : 'project',
-			project_count: projects.length,
+			project_ids: projects.map((project) => project.id),
 		});
 	}
 
