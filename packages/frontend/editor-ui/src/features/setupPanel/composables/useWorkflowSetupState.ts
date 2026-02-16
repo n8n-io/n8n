@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, watch, type Ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -28,8 +28,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	const workflowState = injectWorkflowState();
 	const toast = useToast();
 	const i18n = useI18n();
-
-	const isInitialTestInProgress = ref(false);
 
 	const sourceNodes = computed(() => nodes?.value ?? workflowsStore.allNodes);
 
@@ -97,7 +95,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				credentialTypeToNodeNames.value,
 				isTrigger,
 				hasTriggerExecutedSuccessfully(node.name),
-				(id) => !credentialsStore.isCredentialTestPassed(id),
+				credentialsStore.isCredentialTestedOk,
 			),
 		),
 	);
@@ -121,79 +119,78 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		);
 	});
 
-	// Plain Set (not reactive) used only as a guard against duplicate in-flight requests
-	const credentialsBeingTested = new Set<string>();
-
 	/**
-	 * Tests a saved credential in the background and writes the result to the credentials store.
+	 * Tests a saved credential in the background.
 	 * Fetches the credential's redacted data first so the backend can unredact and test.
+	 * Skips if the credential is already tested OK or has a test in flight.
+	 * The result is tracked automatically in the credentials store as a side effect of testCredential.
 	 */
 	async function testCredentialInBackground(
 		credentialId: string,
 		credentialName: string,
 		credentialType: string,
 	) {
-		if (credentialsBeingTested.has(credentialId)) return;
-		credentialsBeingTested.add(credentialId);
+		if (
+			credentialsStore.isCredentialTestedOk(credentialId) ||
+			credentialsStore.isCredentialTestPending(credentialId)
+		) {
+			return;
+		}
+
 		try {
 			const credentialResponse = await credentialsStore.getCredentialData({ id: credentialId });
 			if (!credentialResponse?.data || typeof credentialResponse.data === 'string') {
-				credentialsStore.markCredentialTestFailed(credentialId);
+				return;
+			}
+
+			// Re-check after the async fetch — another caller (e.g. CredentialEdit) may have
+			// started or completed a test while we were fetching credential data.
+			if (
+				credentialsStore.isCredentialTestedOk(credentialId) ||
+				credentialsStore.isCredentialTestPending(credentialId)
+			) {
 				return;
 			}
 
 			const { ownedBy, sharedWithProjects, ...data } = credentialResponse.data;
-			const result = await credentialsStore.testCredential({
+			await credentialsStore.testCredential({
 				id: credentialId,
 				name: credentialName,
 				type: credentialType,
 				data: data as ICredentialDataDecryptedObject,
 			});
-			if (result.status === 'OK') {
-				credentialsStore.markCredentialTestPassed(credentialId);
-			} else {
-				credentialsStore.markCredentialTestFailed(credentialId);
-			}
 		} catch {
-			credentialsStore.markCredentialTestFailed(credentialId);
-		} finally {
-			credentialsBeingTested.delete(credentialId);
+			// Test failure is tracked in the store as a side effect
 		}
 	}
 
 	/**
 	 * Auto-test all pre-existing selected credentials on initial load.
 	 * Runs once when nodes become available so checkmarks reflect actual validity.
-	 * Deduplicates by credential ID so shared credentials are only tested once.
+	 * Self-stopping watcher: unsubscribes after the first meaningful invocation.
 	 */
-	let initialTestDone = false;
-	watch(
+	const stopInitialTestWatch = watch(
 		nodesRequiringSetup,
 		(entries) => {
-			if (initialTestDone || entries.length === 0) return;
-			initialTestDone = true;
+			if (entries.length === 0) return;
+			stopInitialTestWatch();
 
-			const seen = new Set<string>();
-			const promises: Promise<void>[] = [];
+			const credentialsToTest = new Map<string, { name: string; type: string }>();
 			for (const { node, credentialTypes } of entries) {
 				for (const credType of credentialTypes) {
 					const credValue = node.credentials?.[credType];
 					const selectedId = typeof credValue === 'string' ? undefined : credValue?.id;
-					if (!selectedId || seen.has(selectedId)) continue;
-					seen.add(selectedId);
+					if (!selectedId || credentialsToTest.has(selectedId)) continue;
 
 					const cred = credentialsStore.getCredentialById(selectedId);
 					if (!cred) continue;
 
-					promises.push(testCredentialInBackground(selectedId, cred.name, credType));
+					credentialsToTest.set(selectedId, { name: cred.name, type: credType });
 				}
 			}
 
-			if (promises.length > 0) {
-				isInitialTestInProgress.value = true;
-				void Promise.all(promises).then(() => {
-					isInitialTestInProgress.value = false;
-				});
+			for (const [id, { name, type }] of credentialsToTest) {
+				void testCredentialInBackground(id, name, type);
 			}
 		},
 		{ immediate: true },
@@ -287,7 +284,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		totalCredentialsMissing,
 		totalNodesRequiringSetup,
 		isAllComplete,
-		isInitialTestInProgress,
 		setCredential,
 		unsetCredential,
 	};

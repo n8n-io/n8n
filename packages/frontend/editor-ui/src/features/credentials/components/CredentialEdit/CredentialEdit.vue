@@ -665,14 +665,6 @@ async function retestCredential() {
 		return;
 	}
 
-	// Skip the API call if the credential was already tested successfully (e.g. by the
-	// setup-panel composable's initial-load check). The store is the single source of truth.
-	if (credentialId.value && credentialsStore.isCredentialTestPassed(credentialId.value)) {
-		authError.value = '';
-		testedSuccessfully.value = true;
-		return;
-	}
-
 	const { ownedBy, sharedWithProjects, ...otherCredData } = credentialData.value;
 	const details: ICredentialsDecrypted = {
 		id: credentialId.value,
@@ -691,15 +683,9 @@ async function testCredential(credentialDetails: ICredentialsDecrypted) {
 	if (result.status === 'Error') {
 		authError.value = result.message;
 		testedSuccessfully.value = false;
-		if (credentialDetails.id) {
-			credentialsStore.markCredentialTestFailed(credentialDetails.id);
-		}
 	} else {
 		authError.value = '';
 		testedSuccessfully.value = true;
-		if (credentialDetails.id) {
-			credentialsStore.markCredentialTestPassed(credentialDetails.id);
-		}
 	}
 
 	scrollToTop();

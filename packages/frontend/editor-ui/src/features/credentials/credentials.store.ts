@@ -41,22 +41,15 @@ export type CredentialsStore = ReturnType<typeof useCredentialsStore>;
 export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const state = ref<ICredentialsState>({ credentialTypes: {}, credentials: {} });
 
-	const credentialsPassedTest = ref(new Set<string>());
+	type CredentialTestStatus = 'pending' | 'success' | 'error';
+	const credentialTestResults = ref(new Map<string, CredentialTestStatus>());
 
-	const markCredentialTestPassed = (id: string) => {
-		const next = new Set(credentialsPassedTest.value);
-		next.add(id);
-		credentialsPassedTest.value = next;
+	const isCredentialTestedOk = (id: string): boolean => {
+		return credentialTestResults.value.get(id) === 'success';
 	};
 
-	const markCredentialTestFailed = (id: string) => {
-		const next = new Set(credentialsPassedTest.value);
-		next.delete(id);
-		credentialsPassedTest.value = next;
-	};
-
-	const isCredentialTestPassed = (id: string): boolean => {
-		return credentialsPassedTest.value.has(id);
+	const isCredentialTestPending = (id: string): boolean => {
+		return credentialTestResults.value.get(id) === 'pending';
 	};
 
 	const rootStore = useRootStore();
@@ -384,6 +377,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		id: string;
 	}): Promise<ICredentialsResponse> => {
 		const { id, data } = params;
+		credentialTestResults.value.delete(id);
 		const credential = await credentialsApi.updateCredential(rootStore.restApiContext, id, data);
 
 		upsertCredential(credential);
@@ -396,6 +390,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		if (deleted) {
 			const { [id]: deletedCredential, ...rest } = state.value.credentials;
 			state.value.credentials = rest;
+			credentialTestResults.value.delete(id);
 		}
 	};
 
@@ -410,7 +405,16 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const testCredential = async (
 		data: ICredentialsDecrypted,
 	): Promise<INodeCredentialTestResult> => {
-		return await credentialsApi.testCredential(rootStore.restApiContext, { credentials: data });
+		if (data.id) {
+			credentialTestResults.value.set(data.id, 'pending');
+		}
+		const result = await credentialsApi.testCredential(rootStore.restApiContext, {
+			credentials: data,
+		});
+		if (data.id) {
+			credentialTestResults.value.set(data.id, result.status === 'OK' ? 'success' : 'error');
+		}
+		return result;
 	};
 
 	const getNewCredentialName = async (params: { credentialTypeName: string }): Promise<string> => {
@@ -470,9 +474,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	return {
 		state,
-		markCredentialTestPassed,
-		markCredentialTestFailed,
-		isCredentialTestPassed,
+		credentialTestResults,
+		isCredentialTestedOk,
+		isCredentialTestPending,
 		getCredentialOwnerName,
 		getCredentialsByType,
 		getCredentialById,

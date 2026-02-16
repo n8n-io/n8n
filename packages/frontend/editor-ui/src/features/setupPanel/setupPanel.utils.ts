@@ -63,17 +63,17 @@ export function buildCredentialRequirement(
 
 /**
  * Checks whether all credential requirements for a node are satisfied
- * (each has a selected credential with no issues and is not pending a test).
+ * (each has a selected credential with no issues and has been tested OK).
  */
 export function isNodeSetupComplete(
 	requirements: NodeCredentialRequirement[],
-	isCredentialPendingTest?: (credentialId: string) => boolean,
+	isCredentialTestedOk?: (credentialId: string) => boolean,
 ): boolean {
 	return requirements.every(
 		(req) =>
 			req.selectedCredentialId &&
 			req.issues.length === 0 &&
-			!isCredentialPendingTest?.(req.selectedCredentialId),
+			(isCredentialTestedOk?.(req.selectedCredentialId) ?? true),
 	);
 }
 
@@ -88,16 +88,13 @@ export function buildNodeSetupState(
 	credentialTypeToNodeNames: Map<string, string[]>,
 	isTrigger = false,
 	hasTriggerExecuted = false,
-	isCredentialPendingTest?: (credentialId: string) => boolean,
+	isCredentialTestedOk?: (credentialId: string) => boolean,
 ): NodeSetupState {
 	const credentialRequirements = credentialTypes.map((credType) =>
 		buildCredentialRequirement(node, credType, getCredentialDisplayName, credentialTypeToNodeNames),
 	);
 
-	const credentialsConfigured = isNodeSetupComplete(
-		credentialRequirements,
-		isCredentialPendingTest,
-	);
+	const credentialsConfigured = isNodeSetupComplete(credentialRequirements, isCredentialTestedOk);
 
 	// For triggers: complete only after successful execution
 	// For regular nodes: complete when credentials are configured

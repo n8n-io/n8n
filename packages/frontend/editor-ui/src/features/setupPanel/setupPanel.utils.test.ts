@@ -229,7 +229,7 @@ describe('setupPanel.utils', () => {
 			expect(isNodeSetupComplete([])).toBe(true);
 		});
 
-		it('should return false when credential is pending test', () => {
+		it('should return false when credential test has not passed', () => {
 			const requirements: NodeCredentialRequirement[] = [
 				{
 					credentialType: 'testApi',
@@ -239,12 +239,12 @@ describe('setupPanel.utils', () => {
 					nodesWithSameCredential: [],
 				},
 			];
-			const isPending = (id: string) => id === 'cred-1';
+			const isTestedOk = () => false;
 
-			expect(isNodeSetupComplete(requirements, isPending)).toBe(false);
+			expect(isNodeSetupComplete(requirements, isTestedOk)).toBe(false);
 		});
 
-		it('should return true when isCredentialPendingTest returns false', () => {
+		it('should return true when isCredentialTestedOk returns true', () => {
 			const requirements: NodeCredentialRequirement[] = [
 				{
 					credentialType: 'testApi',
@@ -254,12 +254,12 @@ describe('setupPanel.utils', () => {
 					nodesWithSameCredential: [],
 				},
 			];
-			const isPending = () => false;
+			const isTestedOk = () => true;
 
-			expect(isNodeSetupComplete(requirements, isPending)).toBe(true);
+			expect(isNodeSetupComplete(requirements, isTestedOk)).toBe(true);
 		});
 
-		it('should be backward-compatible when isCredentialPendingTest is not provided', () => {
+		it('should be backward-compatible when isCredentialTestedOk is not provided', () => {
 			const requirements: NodeCredentialRequirement[] = [
 				{
 					credentialType: 'testApi',
@@ -337,14 +337,14 @@ describe('setupPanel.utils', () => {
 			expect(result.isComplete).toBe(false);
 		});
 
-		it('should mark node incomplete when credential is pending test', () => {
+		it('should mark node incomplete when credential test has not passed', () => {
 			const node = createNode({
 				credentials: {
 					testApi: { id: 'cred-1', name: 'Test' },
 				},
 			});
 			const nodeNames = new Map([['testApi', ['TestNode']]]);
-			const isPending = (id: string) => id === 'cred-1';
+			const isTestedOk = () => false;
 
 			const result = buildNodeSetupState(
 				node,
@@ -353,7 +353,7 @@ describe('setupPanel.utils', () => {
 				nodeNames,
 				false,
 				false,
-				isPending,
+				isTestedOk,
 			);
 
 			expect(result.isComplete).toBe(false);
