@@ -141,6 +141,26 @@ describe('SecretProvidersConnectionsController', () => {
 				);
 				expect(next).not.toHaveBeenCalled();
 			});
+
+			it('should block PATCH requests with projectIds (requires externalSecretsForProjects)', () => {
+				const req = createMockRequest({
+					method: 'PATCH',
+					body: { projectIds: ['project-1'] },
+				});
+				const res = createMockResponse();
+				const next = createMockNextFunction();
+
+				controller.checkFeatureFlag(req, res, next);
+
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Tried to create a project-scoped external secret connection without feature flag enabled',
+				);
+				expect(responseHelper.sendErrorResponse).toHaveBeenCalledWith(
+					res,
+					expect.any(ForbiddenError),
+				);
+				expect(next).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('when both feature flags are enabled', () => {

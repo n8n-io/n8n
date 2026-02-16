@@ -40,7 +40,8 @@ export class SecretProvidersConnectionsController {
 	checkFeatureFlag(req: Request, res: Response, next: NextFunction) {
 		// Project-scoped connections require externalSecretsForProjects
 		const isProjectScopedRequest =
-			req.method === 'POST' && (req.body.projectIds as string[])?.length > 0;
+			(req.method === 'POST' || req.method === 'PATCH') &&
+			(req.body.projectIds as string[])?.length > 0;
 		if (isProjectScopedRequest) {
 			if (!this.config.externalSecretsForProjects) {
 				this.logger.warn(
