@@ -289,6 +289,44 @@ export class WorkflowApiHelper {
 		return result;
 	}
 
+	/** Triggers a manual workflow execution via the REST API and waits for completion. */
+	async runManually(
+		workflowId: string,
+		options?: { timeoutMs?: number },
+	): Promise<ExecutionListResponse> {
+		const timeoutMs = options?.timeoutMs ?? 15000;
+
+		// Fetch the full workflow data
+		const getResponse = await this.api.request.get(`/rest/workflows/${workflowId}`);
+		if (!getResponse.ok()) {
+			throw new TestError(`Failed to get workflow: ${await getResponse.text()}`);
+		}
+		const result = await getResponse.json();
+		const workflowData = result.data ?? result;
+
+		// Find the trigger node
+		const triggerNode = (workflowData.nodes as Array<{ name: string; type: string }>).find(
+			(n) =>
+				n.type.includes('manualTrigger') ||
+				n.type.includes('Trigger') ||
+				n.type.includes('trigger'),
+		);
+
+		const payload = triggerNode
+			? { workflowData, triggerToStartFrom: { name: triggerNode.name } }
+			: { workflowData, triggerToStartFrom: { name: workflowData.nodes[0].name } };
+
+		const runResponse = await this.api.request.post(`/rest/workflows/${workflowId}/run`, {
+			data: payload,
+		});
+
+		if (!runResponse.ok()) {
+			throw new TestError(`Failed to run workflow: ${await runResponse.text()}`);
+		}
+
+		return await this.waitForExecution(workflowId, timeoutMs, 'manual');
+	}
+
 	async getExecutions(workflowId?: string, limit = 20): Promise<ExecutionListResponse[]> {
 		const params = new URLSearchParams();
 		if (workflowId) {
