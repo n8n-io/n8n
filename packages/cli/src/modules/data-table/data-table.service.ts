@@ -719,6 +719,7 @@ export class DataTableService {
 	async generateDataTableCsv(
 		dataTableId: string,
 		projectId: string,
+		includeSystemColumns = true,
 	): Promise<{ csvContent: string; dataTableName: string }> {
 		const dataTable = await this.validateDataTableExists(dataTableId, projectId);
 
@@ -732,7 +733,7 @@ export class DataTableService {
 			columns,
 		);
 
-		const csvContent = this.buildCsvContent(rows, columns);
+		const csvContent = this.buildCsvContent(rows, columns, includeSystemColumns);
 
 		return {
 			csvContent,
@@ -740,26 +741,36 @@ export class DataTableService {
 		};
 	}
 
-	private buildCsvContent(rows: DataTableRowReturn[], columns: DataTableColumn[]): string {
+	private buildCsvContent(
+		rows: DataTableRowReturn[],
+		columns: DataTableColumn[],
+		includeSystemColumns = true,
+	): string {
 		const sortedColumns = [...columns].sort((a, b) => a.index - b.index);
 
 		const userHeaders = sortedColumns.map((col) => col.name);
-		const headers = ['id', ...userHeaders, 'createdAt', 'updatedAt'];
+		const headers = includeSystemColumns
+			? ['id', ...userHeaders, 'createdAt', 'updatedAt']
+			: userHeaders;
 
 		const csvRows: string[] = [headers.map((h) => this.escapeCsvValue(h)).join(',')];
 
 		for (const row of rows) {
 			const values: string[] = [];
 
-			values.push(this.escapeCsvValue(row.id));
+			if (includeSystemColumns) {
+				values.push(this.escapeCsvValue(row.id));
+			}
 
 			for (const column of sortedColumns) {
 				const value = row[column.name];
 				values.push(this.escapeCsvValue(this.formatValueForCsv(value, column.type)));
 			}
 
-			values.push(this.escapeCsvValue(this.formatDateForCsv(row.createdAt)));
-			values.push(this.escapeCsvValue(this.formatDateForCsv(row.updatedAt)));
+			if (includeSystemColumns) {
+				values.push(this.escapeCsvValue(this.formatDateForCsv(row.createdAt)));
+				values.push(this.escapeCsvValue(this.formatDateForCsv(row.updatedAt)));
+			}
 
 			csvRows.push(values.join(','));
 		}
