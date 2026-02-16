@@ -16,7 +16,7 @@ import type { JSONSchema7 } from 'json-schema';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
 // Types
-export type OpenAITool =
+type OpenAITool =
 	| {
 			type: 'function';
 			name: string;
@@ -28,9 +28,9 @@ export type OpenAITool =
 			type: 'web_search';
 	  };
 
-export type OpenAIToolChoice = 'auto' | 'required' | 'none' | { type: 'function'; name: string };
+type OpenAIToolChoice = 'auto' | 'required' | 'none' | { type: 'function'; name: string };
 
-export type ResponsesInputItem =
+type ResponsesInputItem =
 	| { role: 'user'; content: string }
 	| { role: 'user'; content: Array<{ type: 'input_text'; text: string }> }
 	| {
@@ -46,7 +46,7 @@ export type ResponsesInputItem =
 	  }
 	| { type: 'function_call_output'; call_id: string; output: string };
 
-export interface OpenAIResponsesRequest {
+interface OpenAIResponsesRequest {
 	model: string;
 	input: string | ResponsesInputItem[];
 	instructions?: string;
@@ -61,7 +61,7 @@ export interface OpenAIResponsesRequest {
 	metadata?: Record<string, unknown>;
 }
 
-export interface OpenAIResponsesResponse {
+interface OpenAIResponsesResponse {
 	id: string;
 	object: string;
 	created_at: string;
@@ -85,7 +85,7 @@ export interface OpenAIResponsesResponse {
 	service_tier?: string;
 }
 
-export type ResponsesOutputItem =
+type ResponsesOutputItem =
 	| {
 			type: 'message';
 			role: 'assistant';
@@ -111,7 +111,7 @@ export type ResponsesOutputItem =
 			}>;
 	  };
 
-export interface OpenAIStreamEvent {
+interface OpenAIStreamEvent {
 	type: string;
 	delta?: string;
 	output_index?: number;
@@ -119,7 +119,7 @@ export interface OpenAIStreamEvent {
 	response?: Record<string, unknown>;
 }
 
-export interface OpenAIErrorResponse {
+interface OpenAIErrorResponse {
 	error: {
 		message: string;
 		type: string;
@@ -130,7 +130,7 @@ export interface OpenAIErrorResponse {
 
 // Helpers
 
-export async function* parseOpenAIStreamEvents(
+async function* parseOpenAIStreamEvents(
 	body: ReadableStream<Uint8Array>,
 ): AsyncIterable<OpenAIStreamEvent> {
 	for await (const message of parseSSEStream(body)) {
@@ -138,7 +138,7 @@ export async function* parseOpenAIStreamEvents(
 		if (message.data === '[DONE]') continue;
 
 		try {
-			const event = JSON.parse(message.data as string);
+			const event = JSON.parse(message.data);
 			yield event as OpenAIStreamEvent;
 		} catch (e) {
 			if (process.env.NODE_ENV !== 'production') {
@@ -148,7 +148,7 @@ export async function* parseOpenAIStreamEvents(
 	}
 }
 
-export function genericMessagesToResponsesInput(messages: Message[]): {
+function genericMessagesToResponsesInput(messages: Message[]): {
 	instructions?: string;
 	input: string | ResponsesInputItem[];
 } {
@@ -246,7 +246,7 @@ export function genericMessagesToResponsesInput(messages: Message[]): {
 	return { instructions, input: inputItems };
 }
 
-export function genericToolToResponsesTool(tool: Tool): OpenAITool {
+function genericToolToResponsesTool(tool: Tool): OpenAITool {
 	if (tool.type === 'provider') {
 		if (tool.name === 'web_search') {
 			return {
@@ -266,7 +266,7 @@ export function genericToolToResponsesTool(tool: Tool): OpenAITool {
 	};
 }
 
-export function parseResponsesOutput(output: ResponsesOutputItem[]): {
+function parseResponsesOutput(output: ResponsesOutputItem[]): {
 	text: string;
 	toolCalls: ToolCall[];
 } {
@@ -298,7 +298,7 @@ export function parseResponsesOutput(output: ResponsesOutputItem[]): {
 	return { text, toolCalls };
 }
 
-export function parseTokenUsage(
+function parseTokenUsage(
 	usage: OpenAIResponsesResponse['usage'] | undefined,
 ): TokenUsage | undefined {
 	return usage
@@ -320,14 +320,14 @@ export function parseTokenUsage(
 		: undefined;
 }
 
-export interface OpenAIChatModelConfig extends ChatModelConfig {
+interface OpenAIChatModelConfig extends ChatModelConfig {
 	apiKey?: string;
 	baseURL?: string;
 
 	providerTools?: ProviderTool[];
 }
 
-export interface RequestConfig {
+interface RequestConfig {
 	httpRequest: (
 		method: IHttpRequestMethods,
 		url: string,
