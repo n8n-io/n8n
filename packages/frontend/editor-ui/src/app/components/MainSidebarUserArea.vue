@@ -91,7 +91,7 @@ const onUserActionToggle = (action: string) => {
 						data-test-id="user-menu"
 						:class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }"
 					>
-						<N8nIconButton icon="ellipsis" text square type="tertiary" />
+						<N8nIconButton variant="ghost" iconOnly icon="ellipsis" square />
 					</div>
 				</div>
 			</template>

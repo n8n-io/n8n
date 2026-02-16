@@ -8,7 +8,15 @@ import { computed, ref, watch } from 'vue';
 import { ProjectTypes, type ProjectListItem, type ProjectSharingData } from '../projects.types';
 import ProjectSharingInfo from './ProjectSharingInfo.vue';
 
-import { N8nBadge, N8nButton, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nIcon,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 
 const locale = useI18n();
 
@@ -25,6 +33,7 @@ type Props = {
 	canShareGlobally?: boolean;
 	isSharedGlobally?: boolean;
 	allUsersLabel?: string;
+	disabledTooltip?: string;
 };
 
 const props = defineProps<Props>();
@@ -158,37 +167,44 @@ watch(
 </script>
 <template>
 	<div>
-		<N8nSelect
-			v-if="!props.static"
-			:model-value="selectedProject"
-			data-test-id="project-sharing-select"
-			:filterable="true"
-			:filter-method="setFilter"
-			:placeholder="selectPlaceholder"
-			:default-first-option="true"
-			:no-data-text="noDataText"
-			:size="size ?? 'medium'"
-			:disabled="props.readonly"
-			:clearable
-			:popper-class="$style.popper"
-			@update:model-value="onProjectSelected"
-			@clear="emit('clear')"
-		>
-			<template #prefix>
-				<N8nIcon v-if="projectIcon.type === 'icon'" :icon="projectIcon.value" color="text-dark" />
-				<N8nText v-else-if="projectIcon.type === 'emoji'" color="text-light" :class="$style.emoji">
-					{{ projectIcon.value }}
-				</N8nText>
-			</template>
-			<N8nOption
-				v-for="project in sortedProjects"
-				:key="project.id"
-				:value="project.id"
-				:label="project.name ?? ''"
+		<N8nTooltip :disabled="!props.disabledTooltip" placement="top">
+			<template #content>{{ props.disabledTooltip }}</template>
+			<N8nSelect
+				v-if="!props.static || props.disabledTooltip"
+				:model-value="selectedProject"
+				data-test-id="project-sharing-select"
+				:filterable="true"
+				:filter-method="setFilter"
+				:placeholder="selectPlaceholder"
+				:default-first-option="true"
+				:no-data-text="noDataText"
+				:size="size ?? 'medium'"
+				:disabled="props.readonly || !!props.disabledTooltip"
+				:clearable
+				:popper-class="$style.popper"
+				@update:model-value="onProjectSelected"
+				@clear="emit('clear')"
 			>
-				<ProjectSharingInfo :project="project" />
-			</N8nOption>
-		</N8nSelect>
+				<template #prefix>
+					<N8nIcon v-if="projectIcon.type === 'icon'" :icon="projectIcon.value" color="text-dark" />
+					<N8nText
+						v-else-if="projectIcon.type === 'emoji'"
+						color="text-light"
+						:class="$style.emoji"
+					>
+						{{ projectIcon.value }}
+					</N8nText>
+				</template>
+				<N8nOption
+					v-for="project in sortedProjects"
+					:key="project.id"
+					:value="project.id"
+					:label="project.name ?? ''"
+				>
+					<ProjectSharingInfo :project="project" />
+				</N8nOption>
+			</N8nSelect>
+		</N8nTooltip>
 		<ul v-if="selectedProjects" :class="$style.selectedProjects">
 			<li v-if="props.homeProject" :class="$style.project" data-test-id="project-sharing-owner">
 				<ProjectSharingInfo :project="props.homeProject">
@@ -224,10 +240,10 @@ watch(
 					/>
 				</N8nSelect>
 				<N8nButton
+					variant="subtle"
+					iconOnly
 					v-if="!props.static && !(project.id === GLOBAL_GROUP.id && !canShareGlobally)"
-					type="tertiary"
 					native-type="button"
-					square
 					icon="trash-2"
 					:disabled="props.readonly"
 					data-test-id="project-sharing-remove"

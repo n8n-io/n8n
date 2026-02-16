@@ -218,12 +218,11 @@ defineExpose({ focus, select });
 				</template>
 			</DraggableTarget>
 			<N8nButton
+				variant="outline"
+				iconOnly
 				v-if="!isDragging"
-				square
-				outline
-				type="tertiary"
 				icon="external-link"
-				size="mini"
+				size="xsmall"
 				:class="$style['expression-editor-modal-opener']"
 				data-test-id="expander"
 				@click="emit('modal-opener-click')"

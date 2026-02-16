@@ -61,10 +61,11 @@ const isDisabled = computed(
 			:to="isDisabled ? undefined : workflowHistoryRoute"
 		>
 			<N8nIconButton
+				class="n8n-button--highlight"
+				variant="ghost"
 				:disabled="isDisabled"
 				:loading="isWorkflowSaving"
 				data-test-id="workflow-history-button"
-				type="highlight"
 				icon="history"
 				size="medium"
 			/>
