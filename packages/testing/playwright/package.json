@@ -38,6 +38,7 @@
     "@n8n/constants": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/db": "workspace:*",
+    "@playwright/cli": "catalog:e2e",
     "@playwright/test": "catalog:e2e",
     "@types/lodash": "catalog:",
     "eslint-plugin-playwright": "catalog:e2e",
