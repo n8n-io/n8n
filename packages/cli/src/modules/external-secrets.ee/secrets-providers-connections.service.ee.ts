@@ -296,6 +296,7 @@ export class SecretsProvidersConnectionsService {
 
 	async reloadProjectConnectionSecrets(
 		projectId: string,
+		userId: string,
 	): Promise<ReloadSecretProviderConnectionResponse> {
 		const projectConnections = await this.repository.findByProjectId(projectId);
 		const providers: Record<string, { success: boolean }> = {};
@@ -305,6 +306,13 @@ export class SecretsProvidersConnectionsService {
 				try {
 					await this.externalSecretsManager.updateProvider(c.providerKey);
 					providers[c.providerKey] = { success: true };
+
+					this.eventService.emit('external-secrets-connection-reloaded', {
+						userId,
+						providerKey: c.providerKey,
+						vaultType: c.type,
+						...this.extractProjectInfo(c),
+					});
 				} catch (error) {
 					providers[c.providerKey] = { success: false };
 					this.logger.warn(`Failed to reload provider ${c.providerKey}`, {

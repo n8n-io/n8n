@@ -382,17 +382,29 @@ describe('SecretsProvidersConnectionsService', () => {
 	});
 
 	describe('reloadProjectConnectionSecrets', () => {
-		it('should reload all connections for a project', async () => {
+		it('should reload all connections for a project and emit events', async () => {
 			const connections = [
-				{ providerKey: 'conn-1' },
-				{ providerKey: 'conn-2' },
-				{ providerKey: 'conn-3' },
-			] as SecretsProviderConnection[];
+				{
+					providerKey: 'conn-1',
+					type: 'awsSecretsManager',
+					projectAccess: [{ project: { id: 'p1', name: 'Project 1' } }],
+				},
+				{
+					providerKey: 'conn-2',
+					type: 'vault',
+					projectAccess: [{ project: { id: 'p1', name: 'Project 1' } }],
+				},
+				{
+					providerKey: 'conn-3',
+					type: 'gcpSecretsManager',
+					projectAccess: [],
+				},
+			] as unknown as SecretsProviderConnection[];
 
 			mockRepository.findByProjectId.mockResolvedValue(connections);
 			mockExternalSecretsManager.updateProvider.mockResolvedValue(undefined);
 
-			const result = await service.reloadProjectConnectionSecrets('project-1');
+			const result = await service.reloadProjectConnectionSecrets('project-1', 'user-123');
 
 			expect(result).toEqual({
 				success: true,
@@ -407,29 +419,58 @@ describe('SecretsProvidersConnectionsService', () => {
 			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledWith('conn-1');
 			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledWith('conn-2');
 			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledWith('conn-3');
+
+			expect(mockEventService.emit).toHaveBeenCalledTimes(3);
+			expect(mockEventService.emit).toHaveBeenCalledWith('external-secrets-connection-reloaded', {
+				userId: 'user-123',
+				providerKey: 'conn-1',
+				vaultType: 'awsSecretsManager',
+				projects: [{ id: 'p1', name: 'Project 1' }],
+			});
+			expect(mockEventService.emit).toHaveBeenCalledWith('external-secrets-connection-reloaded', {
+				userId: 'user-123',
+				providerKey: 'conn-2',
+				vaultType: 'vault',
+				projects: [{ id: 'p1', name: 'Project 1' }],
+			});
+			expect(mockEventService.emit).toHaveBeenCalledWith('external-secrets-connection-reloaded', {
+				userId: 'user-123',
+				providerKey: 'conn-3',
+				vaultType: 'gcpSecretsManager',
+				projects: [],
+			});
 		});
 
 		it('should return success when project has no connections', async () => {
 			mockRepository.findByProjectId.mockResolvedValue([]);
 
-			const result = await service.reloadProjectConnectionSecrets('empty-project');
+			const result = await service.reloadProjectConnectionSecrets('empty-project', 'user-123');
 
 			expect(result).toEqual({ success: true, providers: {} });
 			expect(mockExternalSecretsManager.updateProvider).not.toHaveBeenCalled();
+			expect(mockEventService.emit).not.toHaveBeenCalled();
 		});
 
-		it('should still attempt all providers when one fails', async () => {
+		it('should still attempt all providers when one fails and log warning', async () => {
 			const connections = [
-				{ providerKey: 'ok-conn' },
-				{ providerKey: 'failing-conn' },
-			] as SecretsProviderConnection[];
+				{
+					providerKey: 'ok-conn',
+					type: 'awsSecretsManager',
+					projectAccess: [{ project: { id: 'p1', name: 'Project 1' } }],
+				},
+				{
+					providerKey: 'failing-conn',
+					type: 'vault',
+					projectAccess: [],
+				},
+			] as unknown as SecretsProviderConnection[];
 
 			mockRepository.findByProjectId.mockResolvedValue(connections);
 			mockExternalSecretsManager.updateProvider
 				.mockResolvedValueOnce(undefined)
 				.mockRejectedValueOnce(new Error('Provider not connected'));
 
-			const result = await service.reloadProjectConnectionSecrets('project-1');
+			const result = await service.reloadProjectConnectionSecrets('project-1', 'user-123');
 
 			expect(result).toEqual({
 				success: false,
@@ -441,6 +482,15 @@ describe('SecretsProvidersConnectionsService', () => {
 			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledTimes(2);
 			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledWith('ok-conn');
 			expect(mockExternalSecretsManager.updateProvider).toHaveBeenCalledWith('failing-conn');
+
+			// Only the successful provider should emit a reload event
+			expect(mockEventService.emit).toHaveBeenCalledTimes(1);
+			expect(mockEventService.emit).toHaveBeenCalledWith('external-secrets-connection-reloaded', {
+				userId: 'user-123',
+				providerKey: 'ok-conn',
+				vaultType: 'awsSecretsManager',
+				projects: [{ id: 'p1', name: 'Project 1' }],
+			});
 		});
 	});
 

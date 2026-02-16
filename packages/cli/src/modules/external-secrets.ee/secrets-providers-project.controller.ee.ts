@@ -52,7 +52,7 @@ export class SecretProvidersProjectController {
 	@Post('/:projectId/connections')
 	@ProjectScope('externalSecretsProvider:create')
 	async createConnection(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
 		@Body body: CreateSecretsProviderConnectionDto,
@@ -61,10 +61,13 @@ export class SecretProvidersProjectController {
 			projectId,
 			providerKey: body.providerKey,
 		});
-		const savedConnection = await this.connectionsService.createConnection({
-			...body,
-			projectIds: [projectId],
-		});
+		const savedConnection = await this.connectionsService.createConnection(
+			{
+				...body,
+				projectIds: [projectId],
+			},
+			req.user.id,
+		);
 		return this.connectionsService.toPublicConnection(savedConnection);
 	}
 
@@ -99,7 +102,7 @@ export class SecretProvidersProjectController {
 	@Patch('/:projectId/connections/:providerKey')
 	@ProjectScope('externalSecretsProvider:update')
 	async updateConnection(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
 		@Param('providerKey') providerKey: string,
@@ -108,7 +111,11 @@ export class SecretProvidersProjectController {
 		this.logger.debug('Updating connection for project', { projectId, providerKey });
 		await this.connectionsService.getConnectionForProject(providerKey, projectId);
 		const { projectIds: _, ...updates } = body;
-		const connection = await this.connectionsService.updateConnection(providerKey, updates);
+		const connection = await this.connectionsService.updateConnection(
+			providerKey,
+			updates,
+			req.user.id,
+		);
 		return this.connectionsService.toPublicConnection(connection);
 	}
 
@@ -131,24 +138,24 @@ export class SecretProvidersProjectController {
 	@Post('/:projectId/connections/:providerKey/test')
 	@ProjectScope('externalSecretsProvider:update')
 	async testConnection(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
 		@Param('providerKey') providerKey: string,
 	): Promise<TestSecretProviderConnectionResponse> {
 		this.logger.debug('Testing connection for project', { projectId, providerKey });
 		await this.connectionsService.getConnectionForProject(providerKey, projectId);
-		return await this.connectionsService.testConnection(providerKey);
+		return await this.connectionsService.testConnection(providerKey, req.user.id);
 	}
 
 	@Post('/:projectId/reload')
 	@ProjectScope('externalSecretsProvider:sync')
 	async reloadConnectionSecrets(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
 	): Promise<ReloadSecretProviderConnectionResponse> {
 		this.logger.debug('Reloading all secrets for project', { projectId });
-		return await this.connectionsService.reloadProjectConnectionSecrets(projectId);
+		return await this.connectionsService.reloadProjectConnectionSecrets(projectId, req.user.id);
 	}
 }

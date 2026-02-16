@@ -36,7 +36,8 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 
 	async findByProjectId(projectId: string): Promise<SecretsProviderConnection[]> {
 		return await this.createQueryBuilder('connection')
-			.innerJoin('connection.projectAccess', 'projectAccess')
+			.innerJoinAndSelect('connection.projectAccess', 'projectAccess')
+			.leftJoinAndSelect('projectAccess.project', 'project')
 			.where('projectAccess.projectId = :projectId', { projectId })
 			.getMany();
 	}
