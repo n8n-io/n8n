@@ -28,7 +28,6 @@ import {
 	CODE_BUILDER_GET_NODE_TYPES_TOOL,
 	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL,
 	CODE_BUILDER_SEARCH_NODES_TOOL,
-	CODE_BUILDER_THINK_TOOL,
 	MAX_AGENT_ITERATIONS,
 	MAX_VALIDATE_ATTEMPTS,
 } from './constants';
@@ -46,7 +45,6 @@ import { WarningTracker } from './state/warning-tracker';
 import { createCodeBuilderGetTool } from './tools/code-builder-get.tool';
 import { createCodeBuilderSearchTool } from './tools/code-builder-search.tool';
 import { createGetSuggestedNodesTool } from './tools/get-suggested-nodes.tool';
-import { createThinkTool } from './tools/think.tool';
 import type { CodeBuilderAgentConfig, TokenUsage } from './types';
 export type { CodeBuilderAgentConfig } from './types';
 import { sanitizeLlmErrorMessage } from '../utils/error-sanitizer';
@@ -143,8 +141,7 @@ export class CodeBuilderAgent {
 		const searchTool = createCodeBuilderSearchTool(this.nodeTypeParser);
 		const getTool = createCodeBuilderGetTool({ nodeDefinitionDirs: config.nodeDefinitionDirs });
 		const suggestedNodesTool = createGetSuggestedNodesTool(this.nodeTypeParser);
-		const thinkTool = createThinkTool();
-		this.tools = [searchTool, getTool, suggestedNodesTool, thinkTool];
+		this.tools = [searchTool, getTool, suggestedNodesTool];
 		this.toolsMap = new Map(this.tools.map((t) => [t.name, t]));
 
 		// Initialize chat setup handler
@@ -170,7 +167,6 @@ export class CodeBuilderAgent {
 					CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.toolName,
 					CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.displayTitle,
 				],
-				[CODE_BUILDER_THINK_TOOL.toolName, CODE_BUILDER_THINK_TOOL.displayTitle],
 			]),
 			validateToolHandler: this.validateToolHandler,
 		});
@@ -305,30 +301,32 @@ export class CodeBuilderAgent {
 			const { workflow } = loopResult;
 			iteration = loopResult.iteration;
 
-			if (!workflow) {
-				throw new Error(
-					`Failed to generate workflow after ${MAX_AGENT_ITERATIONS} iterations. The agent may be stuck in a tool-calling loop.`,
-				);
+			if (workflow) {
+				// Log success
+				this.logger?.info('Code builder agent generated workflow', {
+					userId,
+					nodeCount: workflow.nodes.length,
+					iterations: iteration,
+				});
+
+				// Stream workflow update
+				yield {
+					messages: [
+						{
+							role: 'assistant',
+							type: 'workflow-updated',
+							codeSnippet: JSON.stringify(workflow, null, 2),
+							iterationCount: iteration,
+						} as WorkflowUpdateChunk,
+					],
+				};
+			} else {
+				this.logger?.info('Code builder agent generated EMPTY workflow', {
+					userId,
+					nodeCount: 0,
+					iterations: iteration,
+				});
 			}
-
-			// Log success
-			this.logger?.info('Code builder agent generated workflow', {
-				userId,
-				nodeCount: workflow.nodes.length,
-				iterations: iteration,
-			});
-
-			// Stream workflow update
-			yield {
-				messages: [
-					{
-						role: 'assistant',
-						type: 'workflow-updated',
-						codeSnippet: JSON.stringify(workflow, null, 2),
-						iterationCount: iteration,
-					} as WorkflowUpdateChunk,
-				],
-			};
 
 			// Yield session messages for persistence (includes tool calls and results)
 			yield {
@@ -643,7 +641,14 @@ export class CodeBuilderAgent {
 		}
 		if (dispatchResult.workflowReady) {
 			state.sourceCode = dispatchResult.sourceCode ?? null;
+			state.textEditorValidateAttempts = 0;
 			return { shouldBreak: true };
+		}
+
+		// Increment validate attempts counter when validate_workflow was called but failed
+		const hadValidateCall = toolCalls.some((tc) => tc.name === 'validate_workflow');
+		if (hadValidateCall && !dispatchResult.workflowReady) {
+			state.textEditorValidateAttempts++;
 		}
 
 		// Check for too many validate failures
@@ -669,11 +674,22 @@ export class CodeBuilderAgent {
 
 		const code = textEditorHandler.getWorkflowCode();
 
+		// No code exists — the LLM stopped calling tools without writing code, exit cleanly
+		if (!code) {
+			return { shouldBreak: true };
+		}
+
 		// Skip validation if code exists but no edits since last validation
 		if (!state.hasUnvalidatedEdits && code) {
 			if (state.workflow) {
 				state.sourceCode = code;
 				return { shouldBreak: true };
+			}
+			state.textEditorValidateAttempts++;
+			if (state.textEditorValidateAttempts >= MAX_VALIDATE_ATTEMPTS) {
+				throw new Error(
+					`Failed to generate valid workflow after ${MAX_VALIDATE_ATTEMPTS} validate attempts.`,
+				);
 			}
 			pushValidationFeedback(messages, 'Please use the text editor to fix the validation errors.');
 			return { shouldBreak: false };
@@ -681,6 +697,12 @@ export class CodeBuilderAgent {
 
 		state.textEditorValidateAttempts++;
 		state.hasUnvalidatedEdits = false;
+
+		if (state.textEditorValidateAttempts >= MAX_VALIDATE_ATTEMPTS) {
+			throw new Error(
+				`Failed to generate valid workflow after ${MAX_VALIDATE_ATTEMPTS} validate attempts.`,
+			);
+		}
 
 		const autoFinalizeResult = yield* this.autoFinalizeHandler.execute({
 			code,
@@ -693,6 +715,7 @@ export class CodeBuilderAgent {
 			state.workflow = autoFinalizeResult.workflow;
 			state.parseDuration = autoFinalizeResult.parseDuration ?? 0;
 			state.sourceCode = textEditorHandler.getWorkflowCode() ?? null;
+			state.textEditorValidateAttempts = 0;
 			return { shouldBreak: true };
 		}
 

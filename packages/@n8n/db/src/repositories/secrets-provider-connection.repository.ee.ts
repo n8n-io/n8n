@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, Repository } from '@n8n/typeorm';
 
 import { SecretsProviderConnection } from '../entities';
 
@@ -13,6 +13,20 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 		return await this.find();
 	}
 
+	async hasGlobalProvider(providerKey: string): Promise<boolean> {
+		const count = await this.manager
+			.createQueryBuilder(SecretsProviderConnection, 'connection')
+			.leftJoin('connection.projectAccess', 'access')
+			.where('access.secretsProviderConnectionId IS NULL')
+			.andWhere('connection.providerKey = :providerKey', { providerKey })
+			.getCount();
+
+		return count > 0;
+	}
+
+	/**
+	 * Find all global connections (connections with no project access entries)
+	 */
 	async findGlobalConnections(): Promise<SecretsProviderConnection[]> {
 		return await this.createQueryBuilder('connection')
 			.leftJoin('connection.projectAccess', 'access')
@@ -25,6 +39,28 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 			.innerJoin('connection.projectAccess', 'projectAccess')
 			.where('projectAccess.projectId = :projectId', { projectId })
 			.getMany();
+	}
+
+	/**
+	 * Checks if a provider is accessible from a project.
+	 * A provider is accessible if it's either:
+	 * - A global provider (no project access restrictions), OR
+	 * - Explicitly granted access to the specified project
+	 */
+	async isProviderAvailableInProject(providerKey: string, projectId: string): Promise<boolean> {
+		const count = await this.manager
+			.createQueryBuilder(SecretsProviderConnection, 'connection')
+			.leftJoin('connection.projectAccess', 'access')
+			.where('connection.providerKey = :providerKey', { providerKey })
+			.andWhere(
+				new Brackets((qb) => {
+					qb.where('access.secretsProviderConnectionId IS NULL') // Global provider
+						.orWhere('access.projectId = :projectId', { projectId }); // Project-specific
+				}),
+			)
+			.getCount();
+
+		return count > 0;
 	}
 
 	/**

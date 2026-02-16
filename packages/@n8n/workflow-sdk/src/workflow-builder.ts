@@ -244,7 +244,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const regularNode = node as NodeInstance<string, string, unknown>;
 
 		// Regular node or trigger
-		this.addNodeWithSubnodes(this._nodes, regularNode);
+		const actualKey = this.addNodeWithSubnodes(this._nodes, regularNode) ?? regularNode.name;
 
 		// Also add connection target nodes (e.g., onError handlers)
 		// This is important when re-adding a node that already exists but has new connections
@@ -252,13 +252,45 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Collect pinData from the node if present
 		this._pinData = this.collectPinData(regularNode);
-		this._currentNode = regularNode.name;
+		this._currentNode = actualKey;
 		this._currentOutput = 0;
 
 		return this;
 	}
 
 	to(nodeOrComposite: unknown): WorkflowBuilder {
+		// Handle InputTarget (e.g., mergeNode.input(0))
+		if (isInputTarget(nodeOrComposite)) {
+			const actualNode = nodeOrComposite.node;
+			const actualKey = this.addNodeWithSubnodes(this._nodes, actualNode) ?? actualNode.name;
+
+			// Connect from current node to the target with the specified input index
+			if (this._currentNode) {
+				const currentGraphNode = this._nodes.get(this._currentNode);
+				if (currentGraphNode) {
+					const mainConns =
+						currentGraphNode.connections.get('main') ?? new Map<number, ConnectionTarget[]>();
+					const outputConns: ConnectionTarget[] = mainConns.get(this._currentOutput) ?? [];
+					const alreadyConnected = outputConns.some(
+						(c) => c.node === actualKey && c.index === nodeOrComposite.inputIndex,
+					);
+					if (!alreadyConnected) {
+						outputConns.push({
+							node: actualKey,
+							type: 'main',
+							index: nodeOrComposite.inputIndex,
+						});
+					}
+					mainConns.set(this._currentOutput, outputConns);
+					currentGraphNode.connections.set('main', mainConns);
+				}
+			}
+
+			this._currentNode = actualKey;
+			this._currentOutput = 0;
+			return this;
+		}
+
 		// Handle array of nodes (fan-out pattern)
 		if (Array.isArray(nodeOrComposite)) {
 			return this.handleFanOut(nodeOrComposite);
@@ -301,36 +333,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Remaining type is a regular NodeInstance.
 		const node = nodeOrComposite as NodeInstance<string, string, unknown>;
 
-		// Check if node already exists in the workflow (cycle connection)
-		const existingNode = this._nodes.has(node.name);
-
-		if (existingNode) {
-			// Node already exists - just add the connection, don't re-add the node
-			if (this._currentNode) {
-				const currentGraphNode = this._nodes.get(this._currentNode);
-				if (currentGraphNode) {
-					const mainConns =
-						currentGraphNode.connections.get('main') ?? new Map<number, ConnectionTarget[]>();
-					const outputConnections: ConnectionTarget[] = mainConns.get(this._currentOutput) ?? [];
-					// Check for duplicate connections
-					const alreadyConnected = outputConnections.some((c) => c.node === node.name);
-					if (!alreadyConnected) {
-						mainConns.set(this._currentOutput, [
-							...outputConnections,
-							{ node: node.name, type: 'main', index: 0 },
-						]);
-						currentGraphNode.connections.set('main', mainConns);
-					}
-				}
-			}
-
-			this._currentNode = node.name;
-			this._currentOutput = 0;
-			return this;
-		}
-
-		// Add the new node and its subnodes
-		this.addNodeWithSubnodes(this._nodes, node);
+		// addNodeWithSubnodes is idempotent: returns existing key for same instance,
+		// generates unique name for name collisions, or adds new node.
+		const actualKey = this.addNodeWithSubnodes(this._nodes, node) ?? node.name;
 
 		// Add connection target nodes (e.g., onError handlers)
 		this.addSingleNodeConnectionTargets(this._nodes, node);
@@ -342,20 +347,38 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				const mainConns =
 					currentGraphNode.connections.get('main') ?? new Map<number, ConnectionTarget[]>();
 				const outputConnections: ConnectionTarget[] = mainConns.get(this._currentOutput) ?? [];
-				mainConns.set(this._currentOutput, [
-					...outputConnections,
-					{ node: node.name, type: 'main', index: 0 },
-				]);
-				currentGraphNode.connections.set('main', mainConns);
+				// Check for duplicate connections
+				const alreadyConnected = outputConnections.some((c) => c.node === actualKey);
+				if (!alreadyConnected) {
+					mainConns.set(this._currentOutput, [
+						...outputConnections,
+						{ node: actualKey, type: 'main', index: 0 },
+					]);
+					currentGraphNode.connections.set('main', mainConns);
+				}
 			}
 		}
 
 		// Collect pinData from the node if present
 		this._pinData = this.collectPinData(node);
-		this._currentNode = node.name;
+		this._currentNode = actualKey;
 		this._currentOutput = 0;
 
 		return this;
+	}
+
+	output(): never {
+		throw new Error(
+			'Cannot call .output() on the workflow builder. ' +
+				'Use .output() on a node variable instead: myNode.output(0).to(targetNode)',
+		);
+	}
+
+	input(): never {
+		throw new Error(
+			'Cannot call .input() on the workflow builder. ' +
+				'Use .input() on a node variable instead: myNode.input(1)',
+		);
 	}
 
 	settings(settings: WorkflowSettings): WorkflowBuilder {

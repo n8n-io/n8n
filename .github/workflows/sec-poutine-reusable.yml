@@ -39,6 +39,6 @@ jobs:
 
       - name: Upload SARIF results
         uses: github/codeql-action/upload-sarif@48ab28a6f5dbc2a99bf1e0131198dd8f1df78169 # v3.28.0
-        if: always()
+        if: github.repository == 'n8n-io/n8n'
         with:
           sarif_file: results.sarif
