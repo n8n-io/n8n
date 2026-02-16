@@ -135,6 +135,7 @@ import { CreateSecretsProviderConnectionTables1769433700000 } from '../common/17
 import { CreateWorkflowPublishedVersionTable1769698710000 } from '../common/1769698710000-CreateWorkflowPublishedVersionTable';
 import { ExpandSubjectIDColumnLength1769784356000 } from '../common/1769784356000-ExpandSubjectIDColumnLength';
 import { AddWorkflowUnpublishScopeToCustomRoles1769900001000 } from '../common/1769900001000-AddWorkflowUnpublishScopeToCustomRoles';
+import { CreateChatHubToolsTable1770000000000 } from '../common/1770000000000-CreateChatHubToolsTable';
 import { CreateWorkflowBuilderSessionTable1770220686000 } from '../common/1770220686000-CreateWorkflowBuilderSessionTable';
 import type { Migration } from '../migration-types';
 
@@ -276,6 +277,7 @@ const sqliteMigrations: Migration[] = [
 	CreateWorkflowPublishedVersionTable1769698710000,
 	ExpandSubjectIDColumnLength1769784356000,
 	AddWorkflowUnpublishScopeToCustomRoles1769900001000,
+	CreateChatHubToolsTable1770000000000,
 	CreateWorkflowBuilderSessionTable1770220686000,
 ];
 
