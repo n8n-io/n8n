@@ -491,7 +491,7 @@ export class HttpRequestV3 implements INodeType {
 					let additionalHeaders: IDataObject = {};
 					if (specifyHeaders === 'keypair') {
 						additionalHeaders = await reduceAsync(
-							headerParameters.filter((header) => header.name),
+							headerParameters.filter((header) => header && header.name),
 							parametersToKeyValue,
 						);
 					} else if (specifyHeaders === 'json') {

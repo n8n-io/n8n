@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 
-import { getAllowedDomains, updadeQueryParameterConfig } from '../GenericFunctions';
+import { getAllowedDomains, prepareRequestBody, updadeQueryParameterConfig } from '../GenericFunctions';
 
 describe('updadeQueryParameterConfig', () => {
 	describe('version < 4.3 (legacy behavior)', () => {
@@ -117,5 +117,27 @@ describe('getAllowedDomains', () => {
 		});
 
 		expect(result).toBe('example.com, *.api.io');
+	});
+});
+
+describe('Prepare Request Body', () => {
+	// Regression test for https://github.com/n8n-io/n8n/issues/25567
+
+	it('Should Ignore Null Or Undefined Parameters', async () => {
+		const parameters = [
+			{ name: 'Key1', value: 'value1' },
+			null,
+			undefined,
+			{ name: 'Key2', value: 'value2' },
+		];
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+		const body = await prepareRequestBody(parameters as any, 'json', 4, async (acc, curr) => {
+			// Mock reducer for testing
+			acc[curr.name] = curr.value;
+			await Promise.resolve();
+			return acc;
+		});
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		expect(body).toEqual({ Key1: 'value1', Key2: 'value2' });
 	});
 });
