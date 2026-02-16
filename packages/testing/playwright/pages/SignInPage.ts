@@ -19,7 +19,7 @@ export class SignInPage extends BasePage {
 		return this.page.getByRole('button', { name: /continue with sso/i });
 	}
 
-	async goToSignIn(): Promise<void> {
+	async goto(): Promise<void> {
 		await this.page.goto('/signin');
 	}
 
@@ -46,7 +46,7 @@ export class SignInPage extends BasePage {
 		password: string,
 		waitForWorkflow = false,
 	): Promise<void> {
-		await this.goToSignIn();
+		await this.goto();
 		await this.fillEmail(email);
 		await this.fillPassword(password);
 		await this.clickSubmit();
