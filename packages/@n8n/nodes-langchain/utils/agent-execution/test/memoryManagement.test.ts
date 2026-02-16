@@ -414,6 +414,42 @@ describe('memoryManagement', () => {
 			expect(savedMessages[3].content).toBe('The answer is 4');
 		});
 
+		it('should mark tool messages with hideFromUI flag', async () => {
+			const aiMessage = new AIMessage({
+				content: 'Let me check',
+				tool_calls: [
+					{ id: 'call-abc', name: 'weather', args: { city: 'NYC' }, type: 'tool_call' },
+				],
+			});
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'weather',
+						toolInput: { city: 'NYC' },
+						log: 'Weather',
+						messageLog: [aiMessage],
+						toolCallId: 'call-abc',
+						type: 'tool_call',
+					},
+					observation: 'Sunny, 72°F',
+				},
+			];
+
+			await saveToMemory('What is the weather?', 'It is sunny and 72°F.', mockMemory, steps);
+
+			const savedMessages = mockChatHistory.addMessages.mock.calls[0][0];
+
+			// HumanMessage (index 0) and final AIMessage (index 3) should NOT have hideFromUI
+			expect(savedMessages[0].additional_kwargs.hideFromUI).toBeUndefined();
+			expect(savedMessages[3].additional_kwargs.hideFromUI).toBeUndefined();
+
+			// Tool-related messages (AIMessage with tool_calls at index 1, ToolMessage at index 2)
+			// should have hideFromUI set to true
+			expect(savedMessages[1].additional_kwargs.hideFromUI).toBe(true);
+			expect(savedMessages[2].additional_kwargs.hideFromUI).toBe(true);
+		});
+
 		it('should fall back to string format when addMessages is not available', async () => {
 			// Create a chat history object without addMessages method
 			mockMemory.chatHistory = {} as any;

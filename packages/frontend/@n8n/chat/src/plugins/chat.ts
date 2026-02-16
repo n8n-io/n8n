@@ -270,11 +270,24 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 
 			const previousMessagesResponse = await api.loadPreviousSession(sessionId, options);
 
-			messages.value = (previousMessagesResponse?.data || []).map((message, index) => ({
-				id: `${index}`,
-				text: message.kwargs.content,
-				sender: message.id.includes('HumanMessage') ? 'user' : 'bot',
-			}));
+			messages.value = (previousMessagesResponse?.data || [])
+				.filter((msg) => {
+					// Exclude tool-related messages from the chat UI
+					if (msg.id.includes('ToolMessage')) return false;
+					if (
+						msg.id.includes('AIMessage') &&
+						Array.isArray(msg.kwargs?.additional_kwargs?.tool_calls) &&
+						msg.kwargs.additional_kwargs.tool_calls.length > 0
+					) {
+						return false;
+					}
+					return true;
+				})
+				.map((message, index) => ({
+					id: `${index}`,
+					text: message.kwargs.content,
+					sender: message.id.includes('HumanMessage') ? 'user' : 'bot',
+				}));
 
 			// Always set currentSessionId to preserve manually set sessionIds
 			currentSessionId.value = sessionId;

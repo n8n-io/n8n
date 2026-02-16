@@ -1,4 +1,5 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import pick from 'lodash/pick';
 import {
 	Node,
@@ -820,7 +821,14 @@ export class ChatTrigger extends Node {
 					| BaseChatMemory
 					| undefined;
 				const messages = ((await memory?.chatHistory.getMessages()) ?? [])
-					.filter((message) => !message?.additional_kwargs?.hideFromUI)
+					.filter((message) => {
+						if (message?.additional_kwargs?.hideFromUI) return false;
+						// Exclude tool call messages from chat history to prevent
+						// raw tool JSON from appearing in the UI on session reload
+						if (message instanceof ToolMessage) return false;
+						if (message instanceof AIMessage && message.tool_calls?.length) return false;
+						return true;
+					})
 					.map((message) => message?.toJSON());
 				return {
 					webhookResponse: { data: messages },

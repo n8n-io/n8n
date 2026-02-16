@@ -360,6 +360,65 @@ describe('ChatPlugin', () => {
 			expect(window.localStorage.setItem).not.toHaveBeenCalled();
 		});
 
+		it('should filter out tool call messages from previous session', async () => {
+			const mockSessionId = 'tool-session';
+			const mockMessages: LoadPreviousSessionResponse = {
+				data: [
+					{
+						id: ['langchain_core', 'messages', 'HumanMessage'],
+						kwargs: { content: 'What is the weather?', additional_kwargs: {} },
+						lc: 1,
+						type: 'constructor',
+					},
+					{
+						id: ['langchain_core', 'messages', 'AIMessage'],
+						kwargs: {
+							content: '',
+							additional_kwargs: {
+								tool_calls: [
+									{ id: 'call-123', name: 'weather', args: { city: 'NYC' } },
+								],
+							},
+						},
+						lc: 1,
+						type: 'constructor',
+					},
+					{
+						id: ['langchain_core', 'messages', 'ToolMessage'],
+						kwargs: { content: '{"temp": 72}', additional_kwargs: {} },
+						lc: 1,
+						type: 'constructor',
+					},
+					{
+						id: ['langchain_core', 'messages', 'AIMessage'],
+						kwargs: {
+							content: 'The weather in NYC is 72 degrees.',
+							additional_kwargs: {},
+						},
+						lc: 1,
+						type: 'constructor',
+					},
+				],
+			};
+
+			(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+				mockSessionId,
+			);
+			vi.mocked(api.loadPreviousSession).mockResolvedValueOnce(mockMessages);
+
+			await chatStore.loadPreviousSession?.();
+
+			// Should only contain the user message and final AI response
+			expect(chatStore.messages.value).toHaveLength(2);
+			expect(chatStore.messages.value[0]).toMatchObject({
+				text: 'What is the weather?',
+			});
+			expect(chatStore.messages.value[1]).toMatchObject({
+				text: 'The weather in NYC is 72 degrees.',
+				sender: 'bot',
+			});
+		});
+
 		it('should skip loading if loadPreviousSession is false', async () => {
 			mockOptions.loadPreviousSession = false;
 			chatStore = setupChatStore(mockOptions);

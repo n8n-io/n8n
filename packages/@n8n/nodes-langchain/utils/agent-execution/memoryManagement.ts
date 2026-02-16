@@ -285,7 +285,12 @@ export async function saveToMemory(
 	messages.push(new HumanMessage(input));
 
 	// 2. Tool call sequence (AIMessage with tool_calls → ToolMessage for each)
+	// Mark tool messages as hidden from UI so they don't appear in chat history
+	// when loading previous sessions
 	const toolMessages = buildMessagesFromSteps(newSteps);
+	for (const msg of toolMessages) {
+		msg.additional_kwargs.hideFromUI = true;
+	}
 	messages.push.apply(messages, toolMessages);
 
 	// 3. Final AI response (no tool_calls)
