@@ -58,6 +58,8 @@ export abstract class AbstractServer {
 
 	protected endpointMcpTest: string;
 
+	protected endpointHealth: string;
+
 	protected webhooksEnabled = true;
 
 	protected testWebhooksEnabled = false;
@@ -92,6 +94,8 @@ export abstract class AbstractServer {
 		this.endpointMcp = endpoints.mcp;
 		this.endpointMcpTest = endpoints.mcpTest;
 
+		this.endpointHealth = endpoints.health;
+
 		this.logger = Container.get(Logger);
 	}
 
@@ -122,14 +126,17 @@ export abstract class AbstractServer {
 	protected setupPushServer() {}
 
 	private setupHealthCheck() {
+		const healthPath = this.endpointHealth;
+		const readinessPath = `${healthPath}/readiness`;
+
 		// main health check should not care about DB connections
-		this.app.get('/healthz', (_req, res) => {
+		this.app.get(healthPath, (_req, res) => {
 			res.send({ status: 'ok' });
 		});
 
 		const { connectionState } = this.dbConnection;
 
-		this.app.get('/healthz/readiness', (_req, res) => {
+		this.app.get(readinessPath, (_req, res) => {
 			const { connected, migrated } = connectionState;
 			if (connected && migrated) {
 				res.status(200).send({ status: 'ok' });

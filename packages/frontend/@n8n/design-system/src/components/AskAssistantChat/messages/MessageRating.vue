@@ -160,7 +160,7 @@ function onCancelFeedback() {
 }
 
 .feedbackInput {
-	:global(.el-textarea__inner) {
+	:global(textarea) {
 		resize: none;
 		font-family: var(--font-family);
 		font-size: var(--font-size--sm);
@@ -202,7 +202,7 @@ function onCancelFeedback() {
 	}
 
 	.feedbackInput {
-		:global(.el-textarea__inner) {
+		:global(textarea) {
 			font-size: var(--font-size--2xs);
 
 			&::placeholder {
