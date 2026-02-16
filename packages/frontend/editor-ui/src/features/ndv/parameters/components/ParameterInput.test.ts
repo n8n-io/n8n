@@ -964,4 +964,113 @@ describe('ParameterInput.vue', () => {
 			});
 		});
 	});
+
+	describe('JSON Password Field Validation', () => {
+		const jsonPasswordParameter = createTestNodeProperties({
+			displayName: 'Service Account Key',
+			name: 'serviceAccountKey',
+			type: 'json',
+			default: '',
+			required: true,
+			typeOptions: {
+				password: true,
+			},
+			noDataExpression: true,
+		});
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.runOnlyPendingTimers();
+			vi.useRealTimers();
+		});
+
+		it('renders as a password input', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input[type="password"]');
+			expect(input).toBeInTheDocument();
+		});
+
+		it('shows validation error for invalid JSON input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '{invalid');
+			await vi.advanceTimersByTimeAsync(300);
+
+			expect(queryByTestId('parameter-issues')).toBeInTheDocument();
+		});
+
+		it('does not show validation error for valid JSON input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '{"type": "service_account"}');
+			await vi.advanceTimersByTimeAsync(300);
+
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+		});
+
+		it('does not show validation error for empty input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '');
+			await vi.advanceTimersByTimeAsync(300);
+
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+		});
+
+		it('clears validation error when invalid JSON is corrected', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+
+			await fireEvent.update(input, '{invalid');
+			await vi.advanceTimersByTimeAsync(300);
+			expect(queryByTestId('parameter-issues')).toBeInTheDocument();
+
+			await fireEvent.update(input, '{"valid": true}');
+			await vi.advanceTimersByTimeAsync(300);
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+		});
+	});
 });

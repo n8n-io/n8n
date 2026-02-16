@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, ref, watch, type Ref, type ComponentPublicInstance } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 import type { SecretProviderTypeResponse } from '@n8n/api-types';
 import type { INodeProperties } from 'n8n-workflow';
@@ -9,6 +9,10 @@ import { i18n } from '@n8n/i18n';
 import type { Scope } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import { isComponentPublicInstance } from '@/app/utils/typeGuards';
+interface ParameterInputRef {
+	displaysIssues?: boolean;
+}
 
 export type ConnectionProjectSummary = { id: string; name: string };
 
@@ -49,6 +53,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const originalSettings = ref<Record<string, IUpdateInformation['value']>>({});
 	const isSaving = ref(false);
 	const didSave = ref(false);
+	const parameterInputRefs = ref<Record<string, ParameterInputRef | null>>({});
 
 	// Connection composable (low-level API operations)
 	const connection = useSecretsProviderConnection();
@@ -188,6 +193,12 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		);
 	});
 
+	const hasValidationErrors = computed(() => {
+		return Object.values(parameterInputRefs.value).some(
+			(inputRef) => inputRef?.displaysIssues === true,
+		);
+	});
+
 	// Normalized settings (only properties that should be displayed)
 	const normalizedConnectionSettings = computed(() => {
 		return Object.entries(connectionSettings.value).reduce(
@@ -241,6 +252,9 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		const hasPermission = isEditMode.value ? canUpdate.value : canCreate.value;
 		if (!hasPermission) return false;
 
+		// Check for validation errors (e.g., invalid JSON in password fields)
+		if (hasValidationErrors.value) return false;
+
 		return (
 			// check if connection settings are filled
 			requiredFieldsFilled.value &&
@@ -270,6 +284,16 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		connectionSettings.value = {
 			...connectionSettings.value,
 			[name]: value,
+		};
+	}
+
+	function setParameterInputRef(
+		propertyName: string,
+		el: Element | ComponentPublicInstance | null,
+	) {
+		if (!isComponentPublicInstance(el) || !('displaysIssues' in el)) return;
+		parameterInputRefs.value[propertyName] = {
+			displaysIssues: !!el.displaysIssues,
 		};
 	}
 
@@ -520,6 +544,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		isEditMode,
 		providerTypeOptions,
 		hasUnsavedChanges,
+		hasValidationErrors,
 		canSave,
 		expressionExample,
 		isValidName,
@@ -533,5 +558,6 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		loadConnection,
 		saveConnection,
 		shouldDisplayProperty,
+		setParameterInputRef,
 	};
 }
