@@ -37,6 +37,7 @@ export class CreateChatHubToolsTable1770000000000 implements ReversibleMigration
 		escape,
 		isPostgres,
 		runQuery,
+		runInBatches,
 		parseJson,
 		logger,
 		migrationName,
@@ -149,48 +150,52 @@ export class CreateChatHubToolsTable1770000000000 implements ReversibleMigration
 		}
 
 		// Migrate chat hub sessions
-		const sessions = await runQuery<SessionRow[]>(
+		await runInBatches<SessionRow>(
 			`SELECT "id", "ownerId", "tools" FROM ${sessionsTable} WHERE ${toolsFilter}`,
+			async (sessions) => {
+				for (const session of sessions) {
+					const tools = safeParseTools(session.tools, session.id, 'session');
+					const insertedToolIds = new Set<string>();
+
+					for (const tool of tools) {
+						if (!isValidTool(tool)) continue;
+
+						const toolId = await ensureTool(session.ownerId, tool);
+						if (insertedToolIds.has(toolId)) continue;
+						insertedToolIds.add(toolId);
+
+						await runQuery(
+							`INSERT INTO ${sessionToolsTable} ("sessionId", "toolId") VALUES (:sessionId, :toolId)`,
+							{ sessionId: session.id, toolId },
+						);
+					}
+				}
+			},
 		);
-		for (const session of sessions) {
-			const tools = safeParseTools(session.tools, session.id, 'session');
-			const insertedToolIds = new Set<string>();
-
-			for (const tool of tools) {
-				if (!isValidTool(tool)) continue;
-
-				const toolId = await ensureTool(session.ownerId, tool);
-				if (insertedToolIds.has(toolId)) continue;
-				insertedToolIds.add(toolId);
-
-				await runQuery(
-					`INSERT INTO ${sessionToolsTable} ("sessionId", "toolId") VALUES (:sessionId, :toolId)`,
-					{ sessionId: session.id, toolId },
-				);
-			}
-		}
 
 		// Migrate chat hub agents
-		const agents = await runQuery<AgentRow[]>(
+		await runInBatches<AgentRow>(
 			`SELECT "id", "ownerId", "tools" FROM ${agentsTable} WHERE ${toolsFilter}`,
+			async (agents) => {
+				for (const agent of agents) {
+					const tools = safeParseTools(agent.tools, agent.id, 'agent');
+					const insertedToolIds = new Set<string>();
+
+					for (const tool of tools) {
+						if (!isValidTool(tool)) continue;
+
+						const toolId = await ensureTool(agent.ownerId, tool);
+						if (insertedToolIds.has(toolId)) continue;
+						insertedToolIds.add(toolId);
+
+						await runQuery(
+							`INSERT INTO ${agentToolsTable} ("agentId", "toolId") VALUES (:agentId, :toolId)`,
+							{ agentId: agent.id, toolId },
+						);
+					}
+				}
+			},
 		);
-		for (const agent of agents) {
-			const tools = safeParseTools(agent.tools, agent.id, 'agent');
-			const insertedToolIds = new Set<string>();
-
-			for (const tool of tools) {
-				if (!isValidTool(tool)) continue;
-
-				const toolId = await ensureTool(agent.ownerId, tool);
-				if (insertedToolIds.has(toolId)) continue;
-				insertedToolIds.add(toolId);
-
-				await runQuery(
-					`INSERT INTO ${agentToolsTable} ("agentId", "toolId") VALUES (:agentId, :toolId)`,
-					{ agentId: agent.id, toolId },
-				);
-			}
-		}
 
 		// Drop the tools columns from chat hub sessions and agents
 		await dropColumns(table.sessions, ['tools']);
