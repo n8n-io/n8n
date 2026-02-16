@@ -86,5 +86,5 @@ export const PERSONAL_SPACE_PUBLISHING_SETTING = {
 };
 export const PERSONAL_SPACE_SHARING_SETTING = {
 	key: 'security.personalSpaceSharing',
-	scopes: ['workflow:share', 'credential:share', 'credential:move'],
+	scopes: ['workflow:share', 'credential:share'],
 };
