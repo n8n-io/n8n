@@ -7,7 +7,7 @@ import type { ProviderTool } from 'src/types/tool';
 
 import { OpenAIChatModel } from '../../models/openai';
 import { formatBuiltInTools } from '../common';
-import { description } from './decription';
+import { description } from './description';
 
 export type ModelOptions = {
 	temperature?: number;
