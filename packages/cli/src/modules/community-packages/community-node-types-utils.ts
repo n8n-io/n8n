@@ -20,7 +20,6 @@ export type StrapiCommunityNodeType = {
 	companyName?: string;
 	nodeDescription: INodeTypeDescription;
 	nodeVersions?: Array<{ npmVersion: string; checksum: string }>;
-	/** AI community nodes declare this to indicate which SDK version they target */
 	aiNodeSdkVersion?: number;
 };
 
