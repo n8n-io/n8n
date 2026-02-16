@@ -414,20 +414,8 @@ export async function* createStreamProcessor(
 ): AsyncGenerator<StreamOutput> {
 	const seenInterruptIds = new Set<string>();
 	for await (const event of stream) {
-		// Debug: log raw stream event shape
-		const eventShape = Array.isArray(event)
-			? `[${event.map((e) => (Array.isArray(e) ? `[${String(e.length)}]` : typeof e)).join(',')}] len=${String(event.length)}`
-			: typeof event;
-
-		const streamMode = isSubgraphEvent(event) ? event[1] : isParentEvent(event) ? event[0] : '?';
-		// eslint-disable-next-line no-console
-		console.debug('[stream-processor] Event:', eventShape, 'mode:', streamMode);
-
 		const result = processEvent(event);
 		if (!result) continue;
-
-		// eslint-disable-next-line no-console
-		console.debug('[stream-processor] Yielding result with', result.messages.length, 'messages');
 
 		if (result.interruptId) {
 			if (seenInterruptIds.has(result.interruptId)) {
