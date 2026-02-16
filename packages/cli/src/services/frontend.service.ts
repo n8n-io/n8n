@@ -395,6 +395,9 @@ export class FrontendService {
 		const nodeVersionIdentifiers = this.getNodeVersionIdentifiers(nodes);
 		await this.writeStaticJSON('node-versions', nodeVersionIdentifiers);
 		await this.writeStaticJSON('credentials', credentials);
+
+		// release types to free memory
+		this.loadNodesAndCredentials.releaseTypes();
 	}
 
 	async getSettings(): Promise<FrontendSettings> {
