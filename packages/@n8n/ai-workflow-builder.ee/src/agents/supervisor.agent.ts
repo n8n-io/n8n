@@ -29,12 +29,7 @@ function createSupervisorRoutingSchema(mergeAskBuild: boolean) {
 	});
 }
 
-/**
- * Schema for supervisor routing decision (with assistant enabled)
- */
-export const supervisorRoutingSchema = createSupervisorRoutingSchema(true);
-
-export type SupervisorRouting = z.infer<typeof supervisorRoutingSchema>;
+export type SupervisorRouting = z.infer<ReturnType<typeof createSupervisorRoutingSchema>>;
 
 export interface SupervisorAgentConfig {
 	llm: BaseChatModel;

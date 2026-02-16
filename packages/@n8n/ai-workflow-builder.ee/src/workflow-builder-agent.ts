@@ -332,8 +332,7 @@ export class WorkflowBuilderAgent {
 		// Only reuse the SDK session if the most recent interaction was an
 		// assistant exchange. If build requests or plans happened in between,
 		// the SDK's internal conversation context is stale and would confuse
-		// the assistant (e.g. "Did this answer solve your question?" from an
-		// unrelated earlier exchange).
+		// the assistant.
 		const lastEntry = session?.conversationEntries?.at(-1);
 		const sdkSessionId =
 			lastEntry?.type === 'assistant-exchange' ? session?.sdkSessionId : undefined;
@@ -381,8 +380,6 @@ export class WorkflowBuilderAgent {
 		outcome: TriageAgentOutcome,
 		collectedText: string[],
 	) {
-		// Two-step flow: save assistant-exchange even when build also ran,
-		// so the diagnosis context is preserved in conversation history.
 		if (outcome.assistantSummary) {
 			session.conversationEntries.push({
 				type: 'assistant-exchange',
@@ -392,8 +389,6 @@ export class WorkflowBuilderAgent {
 			session.sdkSessionId = outcome.sdkSessionId;
 		}
 		if (outcome.buildExecuted) {
-			// SessionChatHandler saves the build entry — only persist here
-			// if we also recorded an assistant exchange above.
 			if (outcome.assistantSummary) {
 				await saveCodeBuilderSession(this.checkpointer, threadId, session);
 			}
