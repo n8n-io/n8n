@@ -10,7 +10,11 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { QuickConnectHandlerRegistry } from './handlers/quick-connect.handler';
-import { QuickConnectConfig } from './quick-connect.config';
+import {
+	QuickConnectBackendOption,
+	QuickConnectConfig,
+	QuickConnectOption,
+} from './quick-connect.config';
 import { QuickConnectError } from './quick-connect.errors';
 
 @Service()
@@ -25,11 +29,7 @@ export class QuickConnectService {
 		this.logger = this.logger.scoped('quick-connect');
 	}
 
-	async createCredential(
-		credentialType: string,
-		user: User,
-		projectId?: string,
-	): Promise<{ id: string }> {
+	async createCredential(credentialType: string, user: User, projectId?: string) {
 		const option = this.config.options.find((opt) => opt.credentialType === credentialType);
 		if (!option) {
 			throw new NotFoundError(
@@ -47,7 +47,7 @@ export class QuickConnectService {
 			);
 		}
 
-		if (!option.backendFlowConfig?.secret) {
+		if (!this.isValidBackendConfig(option)) {
 			throw new BadRequestError(
 				`Quick connect is not configured for credential type: ${credentialType}`,
 			);
@@ -66,7 +66,7 @@ export class QuickConnectService {
 
 		let credentialData: ICredentialDataDecryptedObject;
 		try {
-			credentialData = await handler.getCredentialData(option);
+			credentialData = await handler.getCredentialData(option, user);
 		} catch (error) {
 			this.logger.error('Failed to fetch credential data from third-party', {
 				error,
@@ -89,11 +89,20 @@ export class QuickConnectService {
 			user,
 		);
 
+		// this object will have sensitive fields masked,
+		// so no secrets are exposed to the frontend
+		const decryptedCredential = await this.credentialsService.getOne(user, credential.id, true);
 		this.logger.info('Quick connect credential created', {
 			credentialId: credential.id,
 			credentialType,
 		});
 
-		return { id: credential.id };
+		return decryptedCredential;
+	}
+
+	private isValidBackendConfig(config: QuickConnectOption): config is QuickConnectBackendOption {
+		return (
+			typeof config.backendFlowConfig?.secret === 'string' && config.backendFlowConfig.secret !== ''
+		);
 	}
 }
