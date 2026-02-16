@@ -79,6 +79,12 @@ export function addAdditionalFields(
 	// Add the additional fields
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 
+	if (operation === 'editMessageText') {
+		if (!additionalFields.parse_mode) {
+			additionalFields.parse_mode = 'Markdown';
+		}
+	}
+
 	if (operation === 'sendMessage') {
 		const attributionText = 'This message was sent automatically with ';
 		const link = createUtmCampaignLink('n8n-nodes-base.telegram', instanceId);

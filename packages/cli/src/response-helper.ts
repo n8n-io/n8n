@@ -135,8 +135,19 @@ export function sendErrorResponse(res: Response, error: Error) {
 	res.status(httpStatusCode).json(response);
 }
 
-export const isUniqueConstraintError = (error: Error) =>
-	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
+export const isUniqueConstraintError = (error: Error) => {
+	const message = error.message.toLowerCase();
+	const dbConstraintPatterns = [
+		'unique constraint failed', // SQLite
+		'duplicate key value', // PostgreSQL
+		'duplicate entry', // MySQL / MariaDB
+		'er_dup_entry', // MySQL error code
+		'unique_violation', // PostgreSQL error code name
+		'sqlite_constraint_unique', // SQLite error code
+		'violates unique constraint', // PostgreSQL
+	];
+	return dbConstraintPatterns.some((pattern) => message.includes(pattern));
+};
 
 export function reportError(error: Error) {
 	if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
