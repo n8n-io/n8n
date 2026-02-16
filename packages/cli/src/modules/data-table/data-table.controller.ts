@@ -112,6 +112,8 @@ export class DataTableController {
 				throw e;
 			} else if (e instanceof DataTableNameConflictError) {
 				throw new ConflictError(e.message);
+			} else if (e instanceof DataTableValidationError) {
+				throw new BadRequestError(e.message);
 			} else {
 				throw new InternalServerError(e.message, e);
 			}
