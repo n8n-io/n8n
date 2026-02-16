@@ -2,6 +2,7 @@ import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 
 import type {
 	AgentMessageChunk,
+	MessagesCompactedChunk,
 	ToolProgressChunk,
 	WorkflowUpdateChunk,
 	StreamOutput,
@@ -69,7 +70,7 @@ describe('stream-processor', () => {
 				expect(result).toBeNull();
 			});
 
-			it('should skip compact_messages (responder handles user message)', () => {
+			it('should emit messages-compacted event for compact_messages', () => {
 				const chunk = {
 					compact_messages: {
 						messages: [
@@ -82,7 +83,10 @@ describe('stream-processor', () => {
 
 				const result = processStreamChunk('updates', chunk);
 
-				expect(result).toBeNull();
+				expect(result).toBeDefined();
+				expect(result?.messages).toHaveLength(1);
+				const message = result?.messages[0] as MessagesCompactedChunk;
+				expect(message.type).toBe('messages-compacted');
 			});
 
 			it('should handle responder with empty content', () => {

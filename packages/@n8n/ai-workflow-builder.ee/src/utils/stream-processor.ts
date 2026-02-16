@@ -13,6 +13,7 @@ import type {
 } from '../types/planning';
 import type {
 	AgentMessageChunk,
+	MessagesCompactedChunk,
 	PlanChunk,
 	QuestionsChunk,
 	ToolProgressChunk,
@@ -300,7 +301,12 @@ function processToolChunk(chunk: unknown): StreamOutput | null {
 function processUpdatesChunk(nodeUpdate: Record<string, unknown>): StreamOutput | null {
 	if (!nodeUpdate || typeof nodeUpdate !== 'object') return null;
 
-	if (nodeUpdate.delete_messages || nodeUpdate.compact_messages) {
+	if (nodeUpdate.compact_messages) {
+		const compactedChunk: MessagesCompactedChunk = { type: 'messages-compacted' };
+		return { messages: [compactedChunk] };
+	}
+
+	if (nodeUpdate.delete_messages) {
 		return null;
 	}
 

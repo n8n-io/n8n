@@ -529,7 +529,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			? createUserAnswersMessage(planAnswers, messageId)
 			: createUserMessage(userMessage, messageId, undefined, focusedNodeNames ?? []);
 		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
-		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
+		const thinkingKey =
+			userMessage.trim() === '/compact'
+				? 'aiAssistant.thinkingSteps.compacting'
+				: 'aiAssistant.thinkingSteps.thinking';
+		addLoadingAssistantMessage(locale.baseText(thinkingKey));
 		streaming.value = true;
 
 		// Updates page title to show AI is building
