@@ -151,8 +151,9 @@ export class TriageAgent {
 		if (!this.llm.bindTools) {
 			throw new Error('LLM does not support bindTools');
 		}
+		const isMergeAskBuildEnabled = process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD === 'true';
 		const tools =
-			payload.featureFlags?.mergeAskBuild && this.assistantHandler
+			isMergeAskBuildEnabled && this.assistantHandler
 				? [ASK_ASSISTANT_TOOL, BUILD_WORKFLOW_TOOL]
 				: [BUILD_WORKFLOW_TOOL];
 		const llmWithTools = this.llm.bindTools(tools);
