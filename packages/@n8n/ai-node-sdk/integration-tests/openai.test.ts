@@ -1,4 +1,4 @@
-import { LangchainAdapter } from '@n8n/ai-utilities';
+import { LangchainChatModelAdapter } from '@n8n/ai-utilities';
 import { createAgent, HumanMessage } from 'langchain';
 import nock from 'nock';
 
@@ -87,7 +87,7 @@ describe('OpenAI Integration with Langchain Agent', () => {
 			.reply(200, mockFinalResponse);
 
 		const openaiChatModel = new OpenAIChatModel('gpt-4o', createMockHttpRequests(), { baseURL });
-		const chatModel = new LangchainAdapter(openaiChatModel);
+		const chatModel = new LangchainChatModelAdapter(openaiChatModel);
 		const agent = createAgent({
 			model: chatModel,
 			tools: [weatherTool],
@@ -182,7 +182,7 @@ describe('OpenAI Integration with Langchain Agent', () => {
 			});
 
 		const openaiChatModel = new OpenAIChatModel('gpt-4o', createMockHttpRequests(), { baseURL });
-		const chatModel = new LangchainAdapter(openaiChatModel);
+		const chatModel = new LangchainChatModelAdapter(openaiChatModel);
 		const agent = createAgent({
 			model: chatModel,
 			tools: [weatherTool],
