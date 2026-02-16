@@ -4,7 +4,11 @@ import { ChatHubChatPage } from '../../../pages/ChatHubChatPage';
 
 test.use(chatHubTestConfig);
 
-test.describe('Chat user role @capability:proxy', () => {
+test.describe('Chat user role @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'Chat' },
+	],
+}, () => {
 	test('use chat as chat user @auth:chat', async ({ n8n, anthropicApiKey }) => {
 		const ownerN8n = await n8n.start.withUser(INSTANCE_OWNER_CREDENTIALS);
 

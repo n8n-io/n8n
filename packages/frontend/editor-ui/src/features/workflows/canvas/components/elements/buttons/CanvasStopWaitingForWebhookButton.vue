@@ -6,11 +6,11 @@ const i18n = useI18n();
 </script>
 <template>
 	<N8nIconButton
+		variant="subtle"
 		class="stop-execution"
 		icon="square"
 		size="large"
 		:title="i18n.baseText('nodeView.stopWaitingForWebhookCall')"
-		type="secondary"
 		data-test-id="stop-execution-waiting-for-webhook-button"
 	/>
 </template>

@@ -17,6 +17,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 	ProjectRepository,
+	ProjectRelationRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -30,7 +31,7 @@ import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
 
-import type { INode, INodes, IWorkflowSettings, JsonValue } from 'n8n-workflow';
+import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
 import {
 	NodeApiError,
 	PROJECT_ROOT,
@@ -94,6 +95,7 @@ export class WorkflowService {
 		private readonly webhookService: WebhookService,
 		private readonly licenseState: LicenseState,
 		private readonly projectRepository: ProjectRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	async getMany(
@@ -140,9 +142,18 @@ export class WorkflowService {
 		}
 
 		if (includeFolders) {
+			// Restrict folders to projects the user has access to.
+			// Admins with global project:read scope can see all folders, so no filtering needed.
+			const accessibleProjectIds = options?.filter?.projectId
+				? [options.filter.projectId as string]
+				: hasGlobalScope(user, 'project:read')
+					? undefined
+					: (await this.projectRelationRepository.findAllByUser(user.id)).map((r) => r.projectId);
+
 			[workflowsAndFolders, count] = await this.workflowRepository.getWorkflowsAndFoldersWithCount(
 				sharedWorkflowIds,
 				options,
+				accessibleProjectIds,
 			);
 
 			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
@@ -635,7 +646,7 @@ export class WorkflowService {
 
 		await this._detectWebhookConflicts(workflow, versionToActivate);
 
-		this._validateNodes(workflowId, versionToActivate.nodes);
+		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 
 		if (previousActiveVersionId) {
@@ -1011,13 +1022,15 @@ export class WorkflowService {
 		}
 	}
 
-	_validateNodes(workflowId: string, nodes: INode[]) {
+	_validateNodes(workflowId: string, nodes: INode[], connections: IConnections) {
 		const nodesToValidate = nodes.reduce<INodes>((acc, node) => {
 			acc[node.name] = node;
 			return acc;
 		}, {});
+
 		const validation = this.workflowValidationService.validateForActivation(
 			nodesToValidate,
+			connections,
 			this.nodeTypes,
 		);
 

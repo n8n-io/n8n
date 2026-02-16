@@ -28,8 +28,8 @@ export class QuickConnectModule implements ModuleInterface {
 
 	private async registerHandlers() {
 		const { QuickConnectHandlerRegistry } = await import('./handlers/quick-connect.handler');
-		const { SampleHandler } = await import('./handlers/sample.handler');
+		const { FirecrawlHandler } = await import('./handlers/firecrawl.handler');
 		const registry = Container.get(QuickConnectHandlerRegistry);
-		registry.register(Container.get(SampleHandler));
+		registry.register(Container.get(FirecrawlHandler));
 	}
 }

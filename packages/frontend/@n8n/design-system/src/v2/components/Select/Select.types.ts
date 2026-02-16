@@ -83,7 +83,10 @@ export type SelectSlots<
 > = {
 	default(props: { modelValue?: GetModelValue<A, VK, M>; open: boolean }): unknown;
 	item: (props: { item: SelectItemProps }) => unknown;
+	label: (props: { item: SelectItemProps }) => unknown;
 	['item-leading']: SlotProps;
 	['item-label']: (props: { item: SelectItemProps }) => unknown;
 	['item-trailing']: SlotProps;
+	header?: () => unknown;
+	footer?: () => unknown;
 };
