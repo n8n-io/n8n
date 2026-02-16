@@ -4,7 +4,7 @@ import { type IDataObject, type ISupplyDataFunctions } from 'n8n-workflow';
 import type Stream from 'node:stream';
 import { Readable } from 'node:stream';
 
-import { OpenAIChatModel } from '../../models/openai/model';
+import { OpenAIChatModel } from '../../models/openai';
 import { formatBuiltInTools } from '../common';
 import { description } from './description';
 
