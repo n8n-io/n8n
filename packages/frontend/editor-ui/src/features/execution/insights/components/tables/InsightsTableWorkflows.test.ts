@@ -1,12 +1,25 @@
-import { defineComponent } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, within } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
+import { defineComponent, h } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useEmitters } from '@/__tests__/utils';
 import InsightsTableWorkflows from '@/features/execution/insights/components/tables/InsightsTableWorkflows.vue';
 import type { InsightsByWorkflow } from '@n8n/api-types';
+
+vi.mock('@/features/execution/insights/components/InsightsPaywall.vue', async (importOriginal) => {
+	const actual = await importOriginal<Record<string, unknown>>();
+	return {
+		...actual,
+		default: {
+			...defineComponent({
+				render: () => h('div', 'Upgrade to access more detailed insights'),
+			}),
+		},
+	};
+});
 
 const { emitters, addEmitter } = useEmitters<'n8nDataTableServer'>();
 
@@ -368,17 +381,13 @@ describe('InsightsTableWorkflows', () => {
 
 			// Wait for the blurryCover div that contains the paywall to be present
 			await screen.findByTestId('insights-table');
+			await flushPromises();
 			const blurryCover = container.querySelector('[class*="blurryCover"]');
 			expect(blurryCover).toBeInTheDocument();
 
 			// Wait for the async paywall component to load and render
 			// The paywall text should appear once the component loads
-			const paywallText = await screen.findByText(
-				'Upgrade to access more detailed insights',
-				{},
-				{ timeout: 3000 },
-			);
-			expect(paywallText).toBeInTheDocument();
+			expect(screen.getByText('Upgrade to access more detailed insights')).toBeInTheDocument();
 		});
 
 		it('should use sample data when dashboard is not enabled', () => {

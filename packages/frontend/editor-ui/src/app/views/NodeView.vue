@@ -642,15 +642,6 @@ async function onOpenRenameNodeModal(id: string) {
 				},
 			},
 		);
-
-		// Wait till input is displayed
-		await nextTick();
-
-		// Focus and select input content
-		const nameInput = document.querySelector<HTMLInputElement>('.rename-prompt .el-input__inner');
-		nameInput?.focus();
-		nameInput?.select();
-
 		const promptResponse = await promptResponsePromise;
 
 		if (promptResponse.action === MODAL_CONFIRM) {

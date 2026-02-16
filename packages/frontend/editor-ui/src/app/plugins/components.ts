@@ -2,7 +2,7 @@ import type { Plugin } from 'vue';
 
 import 'regenerator-runtime/runtime';
 
-import { ElLoading, ElMessageBox } from 'element-plus';
+import { ElLoading } from 'element-plus';
 import { N8nPlugin } from '@n8n/design-system';
 import { useMessage } from '@/app/composables/useMessage';
 
@@ -15,10 +15,8 @@ export const GlobalComponentsPlugin: Plugin = {
 		app.use(ElLoading);
 
 		app.config.globalProperties.$loading = ElLoading.service;
-		app.config.globalProperties.$msgbox = ElMessageBox;
 		app.config.globalProperties.$alert = messageService.alert;
 		app.config.globalProperties.$confirm = messageService.confirm;
 		app.config.globalProperties.$prompt = messageService.prompt;
-		app.config.globalProperties.$message = messageService.message;
 	},
 };

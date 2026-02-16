@@ -2281,15 +2281,17 @@ const onNameSubmit = async (name: string) => {
 <style lang="scss">
 .add-folder-modal {
 	width: 500px;
-	padding-bottom: 0;
-	.el-message-box__message {
-		font-size: var(--font-size--xl);
-	}
-	.el-message-box__btns {
-		padding: 0 var(--spacing--lg) var(--spacing--lg);
-	}
-	.el-message-box__content {
-		padding: var(--spacing--lg);
-	}
+}
+
+.add-folder-modal .prompt-dialog__description {
+	font-size: var(--font-size--xl);
+}
+
+.add-folder-modal .prompt-dialog__body {
+	padding: var(--spacing--lg) var(--spacing--lg) 0;
+}
+
+.add-folder-modal .prompt-dialog__footer {
+	padding: 0 var(--spacing--lg) var(--spacing--lg);
 }
 </style>
