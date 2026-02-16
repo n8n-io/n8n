@@ -42,7 +42,7 @@ describe('SecretsProvidersConnectionsService', () => {
 	});
 
 	describe('toPublicConnection', () => {
-		it('should map entity to DTO with projects and redacted settings', () => {
+		it('should map entity to DTO with projects, redacted settings, secretsCount, and secrets', () => {
 			const decryptedSettings = { apiKey: 'secret123', region: 'us-east-1' };
 			const redactedSettings = { apiKey: CREDENTIAL_BLANKING_VALUE, region: 'us-east-1' };
 			const mockProvider = {
@@ -74,12 +74,15 @@ describe('SecretsProvidersConnectionsService', () => {
 				provider: mockProvider,
 				settings: {} as any,
 			});
+			mockExternalSecretsManager.getSecretNames.mockReturnValue(['secret-a', 'secret-b']);
 			mockRedactionService.redact.mockReturnValue(redactedSettings);
 
 			expect(service.toPublicConnection(connection)).toEqual({
 				id: '1',
 				name: 'my-aws',
 				type: 'awsSecretsManager',
+				secretsCount: 2,
+				secrets: [{ name: 'secret-a' }, { name: 'secret-b' }],
 				projects: [
 					{ id: 'p1', name: 'Project 1' },
 					{ id: 'p2', name: 'Project 2' },
@@ -92,13 +95,14 @@ describe('SecretsProvidersConnectionsService', () => {
 			expect(mockExternalSecretsManager.getProviderWithSettings).toHaveBeenCalledWith(
 				'awsSecretsManager',
 			);
+			expect(mockExternalSecretsManager.getSecretNames).toHaveBeenCalledWith('my-aws');
 			expect(mockRedactionService.redact).toHaveBeenCalledWith(
 				decryptedSettings,
 				mockProvider.properties,
 			);
 		});
 
-		it('should map entity to DTO without projects', () => {
+		it('should map entity to DTO without projects and with empty secrets', () => {
 			const decryptedSettings = { token: 'secret-token' };
 			const redactedSettings = { token: CREDENTIAL_BLANKING_VALUE };
 			const mockProvider = {
@@ -127,12 +131,15 @@ describe('SecretsProvidersConnectionsService', () => {
 				provider: mockProvider,
 				settings: {} as any,
 			});
+			mockExternalSecretsManager.getSecretNames.mockReturnValue([]);
 			mockRedactionService.redact.mockReturnValue(redactedSettings);
 
 			expect(service.toPublicConnection(connection)).toEqual({
 				id: '2',
 				name: 'my-vault',
 				type: 'vault',
+				secretsCount: 0,
+				secrets: [],
 				projects: [],
 				settings: redactedSettings,
 				createdAt: '2024-01-01T00:00:00.000Z',
@@ -142,7 +149,9 @@ describe('SecretsProvidersConnectionsService', () => {
 	});
 
 	describe('toPublicConnectionListItem', () => {
-		it('should map entity to lightweight DTO without settings', () => {
+		it('should map entity to lightweight DTO with secretsCount but without settings or secrets', () => {
+			mockExternalSecretsManager.getSecretNames.mockReturnValue(['secret-a', 'secret-b']);
+
 			const connection = {
 				id: 1,
 				providerKey: 'my-aws',
@@ -162,6 +171,7 @@ describe('SecretsProvidersConnectionsService', () => {
 				id: '1',
 				name: 'my-aws',
 				type: 'awsSecretsManager',
+				secretsCount: 2,
 				projects: [
 					{ id: 'p1', name: 'Project 1' },
 					{ id: 'p2', name: 'Project 2' },
@@ -170,12 +180,14 @@ describe('SecretsProvidersConnectionsService', () => {
 				updatedAt: '2024-01-02T00:00:00.000Z',
 			});
 
-			// Verify settings are NOT included in list response
+			// Verify settings and secrets are NOT included in list response
 			expect(result).not.toHaveProperty('settings');
+			expect(result).not.toHaveProperty('secrets');
 
 			// Verify no external services were called (no decryption/redaction needed)
 			expect(mockExternalSecretsManager.getProviderWithSettings).not.toHaveBeenCalled();
 			expect(mockRedactionService.redact).not.toHaveBeenCalled();
+			expect(mockExternalSecretsManager.getSecretNames).toHaveBeenCalledWith('my-aws');
 		});
 	});
 
