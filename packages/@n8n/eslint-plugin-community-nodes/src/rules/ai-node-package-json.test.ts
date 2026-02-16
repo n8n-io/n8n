@@ -36,11 +36,6 @@ ruleTester.run('ai-node-package-json', AiNodePackageJsonRule, {
 			filename: 'package.json',
 			code: '{ "name": "n8n-nodes-example", "n8n": { "aiNodeSdkVersion": 42 }, "peerDependencies": { "n8n-workflow": "^1.0.0", "ai-node-sdk": "^1.0.0" } }',
 		},
-		{
-			name: 'aiNodeSdkVersion at root level is not checked (only n8n.aiNodeSdkVersion matters)',
-			filename: 'package.json',
-			code: '{ "name": "n8n-nodes-example", "aiNodeSdkVersion": "wrong-place" }',
-		},
 	],
 	invalid: [
 		{
@@ -99,6 +94,18 @@ ruleTester.run('ai-node-package-json', AiNodePackageJsonRule, {
 				{ messageId: 'invalidSdkVersion', data: { value: 'bad' } },
 				{ messageId: 'missingPeerDep' },
 			],
+		},
+		{
+			name: 'aiNodeSdkVersion at root level instead of inside n8n section',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "aiNodeSdkVersion": 1, "peerDependencies": { "ai-node-sdk": "*" } }',
+			errors: [{ messageId: 'wrongLocation' }, { messageId: 'missingSdkVersion' }],
+		},
+		{
+			name: 'aiNodeSdkVersion at root level without peer dep',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "aiNodeSdkVersion": 1 }',
+			errors: [{ messageId: 'wrongLocation' }],
 		},
 	],
 });
