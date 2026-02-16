@@ -151,12 +151,7 @@ export class TriageAgent {
 		if (!this.llm.bindTools) {
 			throw new Error('LLM does not support bindTools');
 		}
-		const isMergeAskBuildEnabled = process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD === 'true';
-		const tools =
-			isMergeAskBuildEnabled && this.assistantHandler
-				? [ASK_ASSISTANT_TOOL, BUILD_WORKFLOW_TOOL]
-				: [BUILD_WORKFLOW_TOOL];
-		const llmWithTools = this.llm.bindTools(tools);
+		const llmWithTools = this.llm.bindTools([ASK_ASSISTANT_TOOL, BUILD_WORKFLOW_TOOL]);
 
 		const systemContent = buildTriagePrompt(conversationHistory);
 

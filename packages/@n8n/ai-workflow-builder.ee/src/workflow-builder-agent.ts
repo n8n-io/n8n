@@ -261,8 +261,14 @@ export class WorkflowBuilderAgent {
 				return;
 			}
 
-			this.logger?.debug('Routing through triage agent', { userId });
-			yield* this.runTriageAgent(payload, userId, abortSignal);
+			const isMergeAskBuildEnabled = process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD === 'true';
+			if (isMergeAskBuildEnabled && this.assistantHandler) {
+				this.logger?.debug('Routing through triage agent', { userId });
+				yield* this.runTriageAgent(payload, userId, abortSignal);
+			} else {
+				this.logger?.debug('Routing to code workflow builder', { userId });
+				yield* this.runCodeWorkflowBuilder(payload, userId, abortSignal);
+			}
 			return;
 		}
 
@@ -301,11 +307,6 @@ export class WorkflowBuilderAgent {
 		userId: string | undefined,
 		abortSignal: AbortSignal | undefined,
 	) {
-		if (!this.assistantHandler) {
-			yield* this.runCodeWorkflowBuilder(payload, userId, abortSignal);
-			return;
-		}
-
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		const resolvedUserId = userId ?? 'unknown';
 		let session: CodeBuilderSession | undefined;
@@ -318,7 +319,7 @@ export class WorkflowBuilderAgent {
 
 		const triageAgent = new TriageAgent({
 			llm: this.stageLLMs.builder,
-			assistantHandler: this.assistantHandler,
+			assistantHandler: this.assistantHandler!,
 			buildWorkflow: (p, u, s) => this.runCodeWorkflowBuilder(p, u, s),
 			logger: this.logger,
 		});

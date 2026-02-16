@@ -463,9 +463,11 @@ describe('WorkflowBuilderAgent', () => {
 
 	describe('triage agent routing', () => {
 		let triageConfig: WorkflowBuilderAgentConfig;
+		const originalMergeAskBuild = process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD;
 
 		beforeEach(() => {
 			jest.clearAllMocks();
+			process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD = 'true';
 
 			mockGenerateCodeBuilderThreadId.mockReturnValue('test-thread-id');
 			mockLoadCodeBuilderSession.mockResolvedValue({
@@ -478,6 +480,14 @@ describe('WorkflowBuilderAgent', () => {
 				...config,
 				assistantHandler: mock<AssistantHandler>(),
 			};
+		});
+
+		afterEach(() => {
+			if (originalMergeAskBuild !== undefined) {
+				process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD = originalMergeAskBuild;
+			} else {
+				delete process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD;
+			}
 		});
 
 		it('should yield assistant chunks and not call CodeWorkflowBuilder for assistant outcome', async () => {

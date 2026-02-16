@@ -94,20 +94,6 @@ async function collectGenerator(
 }
 
 describe('TriageAgent', () => {
-	const originalMergeAskBuild = process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD;
-
-	beforeEach(() => {
-		process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD = 'true';
-	});
-
-	afterEach(() => {
-		if (originalMergeAskBuild !== undefined) {
-			process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD = originalMergeAskBuild;
-		} else {
-			delete process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD;
-		}
-	});
-
 	it('should execute ask_assistant, emit chunks, and derive outcome from state', async () => {
 		const firstResponse = new AIMessage({
 			content: '',
@@ -737,39 +723,5 @@ describe('TriageAgent', () => {
 		const [enrichedPayload] = mockBuildWorkflow.mock.calls[0] as unknown as [ChatPayload];
 		expect(enrichedPayload.message).toContain('[Diagnosis]: Assistant says hi');
 		expect(enrichedPayload.message).toContain('test message');
-	});
-
-	it('should only bind build_workflow when N8N_ENV_FEAT_MERGE_ASK_BUILD is not set', async () => {
-		const originalEnv = process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD;
-		delete process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD;
-
-		try {
-			const response = new AIMessage({ content: 'Hi' });
-			const llm = createMockLlm(response);
-			const handler = createMockAssistantHandler();
-
-			const agent = new TriageAgent({
-				llm,
-				assistantHandler: handler,
-				buildWorkflow: createMockBuildWorkflow(),
-			});
-			await collectGenerator(
-				agent.run({
-					payload: createMockPayload('test'),
-					userId: 'user-1',
-				}),
-			);
-
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
-			const bindToolsCall = (llm.bindTools as jest.Mock).mock.calls[0][0];
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			expect(bindToolsCall).toHaveLength(1);
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			expect(bindToolsCall[0].name).toBe('build_workflow');
-		} finally {
-			if (originalEnv !== undefined) {
-				process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD = originalEnv;
-			}
-		}
 	});
 });
