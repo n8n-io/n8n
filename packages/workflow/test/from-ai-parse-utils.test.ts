@@ -1,8 +1,12 @@
+/* eslint-disable n8n-local-rules/no-interpolation-in-regular-string */
+import { FROM_AI_AUTO_GENERATED_MARKER } from '../src/constants';
 import {
 	extractFromAICalls,
 	traverseNodeParameters,
 	type FromAIArgument,
 	generateZodSchema,
+	isFromAIOnlyExpression,
+	findDisallowedChatToolExpressions,
 } from '../src/from-ai-parse-utils';
 
 // Note that for historic reasons a lot of testing of this file happens indirectly in `packages/core/test/CreateNodeAsTool.test.ts`
@@ -151,5 +155,116 @@ describe('JSON Type Parsing via generateZodSchema', () => {
 		// When a new valid value is provided, the schema should use it.
 		const newValue = { newKey: 'newValue' };
 		expect(schema.parse(newValue)).toEqual(newValue);
+	});
+});
+
+describe('isFromAIOnlyExpression', () => {
+	it.each([
+		'={{ $fromAI("key", "desc", "string") }}',
+		'={{ $fromAI("key") }}',
+		'={{ $fromAI("key", "a description with (parens)") }}',
+		`={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromAI("key", "desc") }}`,
+		'={{ $fromAI("key", "desc", "number", 5) }}',
+		'={{ $fromAI( "key" ) }}',
+		'={{ $fromAI("key", ``, "boolean") }}',
+		'={{ $fromAI("key", `plain backtick desc`) }}',
+	])('should accept valid $fromAI-only expression: %s', (expr) => {
+		expect(isFromAIOnlyExpression(expr)).toBe(true);
+	});
+
+	it.each([
+		'={{ $fromAI("key") + $env.SECRET }}',
+		'={{ $fromAI("key"); fetch("x") }}',
+		'={{ $fromAI("key") + " extra" }}',
+		'={{ $json.field }}',
+		'={{ $env.SECRET }}',
+		'={{ 1 + 2 }}',
+		'={{ $fromAI("key") && true }}',
+		'={{ $workflow.name }}',
+		'={{ $fromAI(evil()) }}',
+		'={{ $fromAI(require("child_process").exec("rm -rf /")) }}',
+		'={{ $fromAI("key", getSecret()) }}',
+		'={{ $fromAI(`${evil()}`) }}',
+		'={{ $fromAI(`prefix${evil()}suffix`) }}',
+		'={{ $fromAI("key", `${$env.SECRET}`) }}',
+		'={{ $fromAI($env.SECRET) }}',
+		'={{ $fromAI("key", "desc" + $env.SECRET) }}',
+		'={{ $fromAI("key", true ? $env.SECRET : "x") }}',
+		'={{ $fromAI(eval`code`) }}',
+	])('should reject expression with extra content: %s', (expr) => {
+		expect(isFromAIOnlyExpression(expr)).toBe(false);
+	});
+
+	it('should reject plain strings', () => {
+		expect(isFromAIOnlyExpression('just a string')).toBe(false);
+	});
+
+	it('should reject empty expression', () => {
+		expect(isFromAIOnlyExpression('={{ }}')).toBe(false);
+	});
+
+	it('should handle unbalanced parentheses gracefully', () => {
+		expect(isFromAIOnlyExpression('={{ $fromAI("key" }}')).toBe(false);
+	});
+});
+
+describe('findDisallowedChatToolExpressions', () => {
+	it('should return empty array for plain values', () => {
+		expect(findDisallowedChatToolExpressions({ url: 'https://example.com', count: 5 })).toEqual([]);
+	});
+
+	it('should return empty array for $fromAI-only expressions', () => {
+		expect(
+			findDisallowedChatToolExpressions({
+				url: '={{ $fromAI("url", "The URL") }}',
+				body: '={{ $fromAI("body", "Request body") }}',
+			}),
+		).toEqual([]);
+	});
+
+	it('should detect disallowed expressions in flat objects', () => {
+		const result = findDisallowedChatToolExpressions({
+			url: '={{ $env.API_URL }}',
+			name: 'valid',
+		});
+		expect(result).toEqual([{ path: 'url', value: '={{ $env.API_URL }}' }]);
+	});
+
+	it('should detect disallowed expressions in nested objects', () => {
+		const result = findDisallowedChatToolExpressions({
+			options: {
+				headers: {
+					value: '={{ $json.token }}',
+				},
+			},
+		});
+		expect(result).toEqual([{ path: 'options.headers.value', value: '={{ $json.token }}' }]);
+	});
+
+	it('should detect disallowed expressions in arrays', () => {
+		const result = findDisallowedChatToolExpressions({
+			items: ['valid', '={{ $env.SECRET }}'],
+		});
+		expect(result).toEqual([{ path: 'items[1]', value: '={{ $env.SECRET }}' }]);
+	});
+
+	it('should return multiple violations', () => {
+		const result = findDisallowedChatToolExpressions({
+			a: '={{ $env.A }}',
+			b: '={{ $env.B }}',
+			c: '={{ $fromAI("key") }}',
+		});
+		expect(result).toHaveLength(2);
+		expect(result.map((v) => v.path)).toEqual(['a', 'b']);
+	});
+
+	it('should handle mixed valid and invalid in nested arrays of objects', () => {
+		const result = findDisallowedChatToolExpressions({
+			headers: [
+				{ name: 'Auth', value: '={{ $env.TOKEN }}' },
+				{ name: 'Content-Type', value: 'application/json' },
+			],
+		});
+		expect(result).toEqual([{ path: 'headers[0].value', value: '={{ $env.TOKEN }}' }]);
 	});
 });

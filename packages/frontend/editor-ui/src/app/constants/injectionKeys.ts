@@ -23,3 +23,4 @@ export const WorkflowStateKey: InjectionKey<WorkflowState> = Symbol('WorkflowSta
 export const WorkflowDocumentStoreKey: InjectionKey<
 	ShallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>
 > = Symbol('WorkflowDocumentStore');
+export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
