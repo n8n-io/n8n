@@ -10,10 +10,11 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	type IDataObject,
+	type Logger,
 } from 'n8n-workflow';
 
 import { getPromptInputByType, serializeChatHistory } from '@utils/helpers';
-import { getTracingConfig } from '@utils/tracing';
+import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 
 import { getMysqlDataSource } from './other/handlers/mysql';
 import { getPostgresDataSource } from './other/handlers/postgres';
@@ -126,8 +127,15 @@ export async function sqlAgentAgentExecute(
 			}
 
 			let response: IDataObject;
+			const additionalMetadata = buildTracingMetadata(
+				getTracingMetadataValues(options, this.logger),
+			);
+			if (Object.keys(additionalMetadata).length > 0) {
+				this.logger.debug('Tracing metadata', { additionalMetadata });
+			}
+			const tracingConfig = getTracingConfig(this, { additionalMetadata });
 			try {
-				response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
+				response = await agentExecutor.withConfig(tracingConfig).invoke({
 					input,
 					signal: this.getExecutionCancelSignal(),
 					chatHistory,
@@ -152,4 +160,51 @@ export async function sqlAgentAgentExecute(
 	}
 
 	return [returnData];
+}
+
+function getTracingMetadataValues(
+	options: unknown,
+	logger?: Logger,
+): Array<{ key: string; value: unknown }> {
+	if (!options || typeof options !== 'object' || Array.isArray(options)) {
+		return [];
+	}
+
+	const record = options as Record<string, unknown>;
+	const tracingMetadata = record.tracingMetadata;
+	if (!tracingMetadata || typeof tracingMetadata !== 'object' || Array.isArray(tracingMetadata)) {
+		if (tracingMetadata !== undefined) {
+			logger?.warn('Invalid tracing metadata; expected an object.', {
+				tracingMetadataType: typeof tracingMetadata,
+			});
+		}
+		return [];
+	}
+
+	const values = (tracingMetadata as Record<string, unknown>).values;
+	if (!Array.isArray(values)) {
+		if (values !== undefined) {
+			logger?.warn('Invalid tracing metadata values; expected an array.', {
+				valuesType: typeof values,
+			});
+		}
+		return [];
+	}
+
+	const filtered = values.filter((entry): entry is { key: string; value: unknown } => {
+		if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+			return false;
+		}
+		const record = entry as Record<string, unknown>;
+		return typeof record.key === 'string' && record.value !== undefined;
+	});
+
+	if (filtered.length !== values.length) {
+		logger?.warn('Some tracing metadata entries were ignored due to invalid shape.', {
+			totalEntries: values.length,
+			validEntries: filtered.length,
+		});
+	}
+
+	return filtered;
 }
