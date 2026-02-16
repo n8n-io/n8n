@@ -47,7 +47,7 @@
             "type": "object",
             "properties": {
                 "usd": {
-                    "type": "integer"
+                    "type": "number"
                 },
                 "usd_24h_change": {
                     "type": "number"
