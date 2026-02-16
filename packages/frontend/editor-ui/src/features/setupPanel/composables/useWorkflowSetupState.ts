@@ -13,7 +13,6 @@ import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
 import { getNodeCredentialTypes, buildNodeSetupState } from '../setupPanel.utils';
-import { useSetupPanelStore } from '../setupPanel.store';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -29,7 +28,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	const workflowState = injectWorkflowState();
 	const toast = useToast();
 	const i18n = useI18n();
-	const setupPanelStore = useSetupPanelStore();
 
 	const sourceNodes = computed(() => nodes?.value ?? workflowsStore.allNodes);
 
@@ -97,7 +95,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				credentialTypeToNodeNames.value,
 				isTrigger,
 				hasTriggerExecutedSuccessfully(node.name),
-				setupPanelStore.isCredentialPendingTest,
+				credentialsStore.isCredentialTestedOk,
 			),
 		),
 	);
@@ -121,50 +119,63 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		);
 	});
 
-	// Plain Set (not reactive) used only as a guard against duplicate in-flight requests
-	const credentialsBeingTested = new Set<string>();
-
 	/**
-	 * Tests a saved credential in the background and updates the pending test state.
+	 * Tests a saved credential in the background.
 	 * Fetches the credential's redacted data first so the backend can unredact and test.
-	 * On any failure (fetch, test error, non-testable) removes the pending state so the
-	 * credential doesn't get stuck without a checkmark permanently.
+	 * Skips if the credential is already tested OK or has a test in flight.
+	 * The result is tracked automatically in the credentials store as a side effect of testCredential.
 	 */
 	async function testCredentialInBackground(
 		credentialId: string,
 		credentialName: string,
 		credentialType: string,
 	) {
-		if (credentialsBeingTested.has(credentialId)) return;
-		credentialsBeingTested.add(credentialId);
+		if (
+			credentialsStore.isCredentialTestedOk(credentialId) ||
+			credentialsStore.isCredentialTestPending(credentialId)
+		) {
+			return;
+		}
+
 		try {
 			const credentialResponse = await credentialsStore.getCredentialData({ id: credentialId });
 			if (!credentialResponse?.data || typeof credentialResponse.data === 'string') {
-				setupPanelStore.removePendingTest(credentialId);
 				return;
 			}
 
-			const { ownedBy, sharedWithProjects, ...data } = credentialResponse.data;
-			const result = await credentialsStore.testCredential({
+			// Re-check after the async fetch — another caller (e.g. CredentialEdit) may have
+			// started or completed a test while we were fetching credential data.
+			if (
+				credentialsStore.isCredentialTestedOk(credentialId) ||
+				credentialsStore.isCredentialTestPending(credentialId)
+			) {
+				return;
+			}
+
+			const { ownedBy, sharedWithProjects, oauthTokenData, ...data } = credentialResponse.data;
+
+			// OAuth credentials can't be tested via the API — the presence of token data
+			// means the OAuth flow completed successfully, which is the equivalent of a passing test.
+			if (oauthTokenData) {
+				credentialsStore.credentialTestResults.set(credentialId, 'success');
+				return;
+			}
+
+			await credentialsStore.testCredential({
 				id: credentialId,
 				name: credentialName,
 				type: credentialType,
 				data: data as ICredentialDataDecryptedObject,
 			});
-			if (result.status === 'OK') {
-				setupPanelStore.removePendingTest(credentialId);
-			}
 		} catch {
-			setupPanelStore.removePendingTest(credentialId);
-		} finally {
-			credentialsBeingTested.delete(credentialId);
+			// Test failure is tracked in the store as a side effect
 		}
 	}
 
 	/**
 	 * Auto-test all pre-existing selected credentials on initial load.
 	 * Runs once when nodes become available so checkmarks reflect actual validity.
-	 * Subsequent credential selections are handled by setCredential.
+	 * Deduplicates by credential ID so shared credentials are only tested once.
 	 */
 	let initialTestDone = false;
 	watch(
@@ -173,18 +184,22 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			if (initialTestDone || entries.length === 0) return;
 			initialTestDone = true;
 
+			const credentialsToTest = new Map<string, { name: string; type: string }>();
 			for (const { node, credentialTypes } of entries) {
 				for (const credType of credentialTypes) {
 					const credValue = node.credentials?.[credType];
 					const selectedId = typeof credValue === 'string' ? undefined : credValue?.id;
-					if (!selectedId) continue;
+					if (!selectedId || credentialsToTest.has(selectedId)) continue;
 
 					const cred = credentialsStore.getCredentialById(selectedId);
 					if (!cred) continue;
 
-					setupPanelStore.addPendingTest(selectedId);
-					void testCredentialInBackground(selectedId, cred.name, credType);
+					credentialsToTest.set(selectedId, { name: cred.name, type: credType });
 				}
+			}
+
+			for (const [id, { name, type }] of credentialsToTest) {
+				void testCredentialInBackground(id, name, type);
 			}
 		},
 		{ immediate: true },
@@ -206,7 +221,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 		const credentialDetails = { id: credentialId, name: credential.name };
 
-		setupPanelStore.addPendingTest(credentialId);
 		void testCredentialInBackground(credentialId, credential.name, credentialType);
 
 		workflowState.updateNodeProperties({

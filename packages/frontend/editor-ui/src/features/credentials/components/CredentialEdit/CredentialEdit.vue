@@ -66,7 +66,6 @@ import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import get from 'lodash/get';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
-import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 type Props = {
 	modalName: string;
@@ -94,8 +93,6 @@ const telemetry = useTelemetry();
 const router = useRouter();
 const rootStore = useRootStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
-const setupPanelStore = useSetupPanelStore();
-
 const activeTab = ref('connection');
 const authError = ref('');
 const credentialId = ref('');
@@ -689,9 +686,6 @@ async function testCredential(credentialDetails: ICredentialsDecrypted) {
 	} else {
 		authError.value = '';
 		testedSuccessfully.value = true;
-		if (credentialDetails.id) {
-			setupPanelStore.removePendingTest(credentialDetails.id);
-		}
 	}
 
 	scrollToTop();
