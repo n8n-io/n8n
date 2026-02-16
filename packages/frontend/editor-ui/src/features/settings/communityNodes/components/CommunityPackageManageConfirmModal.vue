@@ -269,10 +269,10 @@ onMounted(async () => {
 		</template>
 		<template #footer>
 			<N8nButton
+				variant="subtle"
 				:label="i18n.baseText('settings.communityNodes.confirmModal.cancel')"
 				size="large"
 				float="left"
-				type="secondary"
 				data-test-id="close-button"
 				@click="onClick"
 			/>

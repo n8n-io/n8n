@@ -175,7 +175,7 @@ export function createLangsmithClient(logger?: EvalLogger): LangsmithClientResul
 
 /**
  * Resolve built-in node definition directories from installed node packages.
- * Mirrors `NodeDefinitionGeneratorService.getBuiltinDefinitionDirs()` for use
+ * Mirrors `WorkflowBuilderService.resolveBuiltinNodeDefinitionDirs()` for use
  * in the eval harness where the DI container is not available.
  */
 export function resolveBuiltinNodeDefinitionDirs(): string[] {

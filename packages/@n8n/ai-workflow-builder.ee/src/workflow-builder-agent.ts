@@ -37,10 +37,15 @@ const WORKFLOW_TOO_COMPLEX_ERROR =
 	'Workflow generation stopped: The AI reached the maximum number of steps while building your workflow. This usually means the workflow design became too complex or got stuck in a loop while trying to create the nodes and connections.';
 
 /**
- * Type for the state snapshot with properly typed values
+ * Type for the state snapshot with properly typed values.
+ * Note: Uses WorkflowState.State for backward compatibility.
+ * The actual graph uses ParentGraphState which includes additional fields like introspectionEvents.
  */
 export type TypedStateSnapshot = Omit<StateSnapshot, 'values'> & {
-	values: typeof WorkflowState.State;
+	values: typeof WorkflowState.State & {
+		// Additional fields from ParentGraphState that may be present at runtime
+		introspectionEvents?: unknown[];
+	};
 };
 
 /**
@@ -71,9 +76,7 @@ export interface WorkflowBuilderAgentConfig {
 	/** Callback when generation completes successfully (not aborted) */
 	onGenerationSuccess?: () => Promise<void>;
 	/**
-	 * Ordered list of directories to search for node definitions.
-	 * Built-in dirs come first, then the community dir.
-	 * If not provided, falls back to ~/.n8n/node-definitions.
+	 * Ordered list of directories to search for built-in node definitions.
 	 */
 	nodeDefinitionDirs?: string[];
 	/** Callback for fetching resource locator options */
@@ -92,7 +95,11 @@ export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
 	/** Enable CodeWorkflowBuilder (default: false). When false, uses legacy multi-agent system. */
 	codeBuilder?: boolean;
+	/** Enable pin data generation in code builder (default: true when codeBuilder is true). */
+	pinData?: boolean;
 	planMode?: boolean;
+	/** Enable introspection tool for diagnostic data collection. Disabled by default. */
+	enableIntrospection?: boolean;
 }
 
 export interface ChatPayload {
@@ -271,6 +278,7 @@ export class WorkflowBuilderAgent {
 				workflowId: payload.workflowContext?.currentWorkflow?.id,
 			},
 			onTelemetryEvent: this.onTelemetryEvent,
+			generatePinData: payload.featureFlags?.pinData ?? true,
 		});
 
 		yield* codeWorkflowBuilder.chat(payload, userId ?? 'unknown', abortSignal);

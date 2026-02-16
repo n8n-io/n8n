@@ -2,6 +2,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { BaseMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
+import type { Logger } from '@n8n/backend-common';
 import { createAgent, createMiddleware } from 'langchain';
 import { z } from 'zod';
 
@@ -28,6 +29,12 @@ import {
 import { extractDataTableInfo } from '@/utils/data-table-helpers';
 import type { ChatPayload } from '@/workflow-builder-agent';
 
+import {
+	createIntrospectTool,
+	extractIntrospectionEventsFromMessages,
+	type IntrospectionEvent,
+} from '../tools/introspect.tool';
+
 /**
  * Context required for the responder to generate a response
  */
@@ -44,6 +51,14 @@ export interface ResponderContext {
 	workflowContext?: ChatPayload['workflowContext'];
 	/** Summary of previous conversation (from compaction) */
 	previousSummary?: string;
+}
+
+/**
+ * Result from invokeResponderAgent
+ */
+export interface ResponderResult {
+	response: BaseMessage;
+	introspectionEvents: IntrospectionEvent[];
 }
 
 /**
@@ -194,6 +209,9 @@ const contextInjectionMiddleware = createMiddleware({
 
 export interface ResponderAgentConfig {
 	llm: BaseChatModel;
+	/** Enable introspection tool for diagnostic data collection. */
+	enableIntrospection?: boolean;
+	logger?: Logger;
 }
 
 /**
@@ -203,7 +221,11 @@ export interface ResponderAgentConfig {
  * It handles conversational queries and explanations.
  */
 export function createResponderAgent(config: ResponderAgentConfig) {
-	const systemPromptText = buildResponderPrompt();
+	const tools = config.enableIntrospection ? [createIntrospectTool(config.logger).tool] : [];
+
+	const systemPromptText = buildResponderPrompt({
+		enableIntrospection: config.enableIntrospection,
+	});
 
 	// Use SystemMessage with cache_control for Anthropic prompt caching
 	const systemPrompt = new SystemMessage({
@@ -218,7 +240,7 @@ export function createResponderAgent(config: ResponderAgentConfig) {
 
 	return createAgent({
 		model: config.llm,
-		tools: [], // Responder has no tools
+		tools,
 		systemPrompt,
 		middleware: [contextInjectionMiddleware],
 		contextSchema: responderContextSchema,
@@ -234,13 +256,14 @@ export type ResponderAgentType = ReturnType<typeof createResponderAgent>;
  * Invoke the responder agent with the given context.
  * This is a convenience wrapper that handles context passing.
  *
- * @returns The last AI message from the agent's response
+ * @returns The response message and any introspection events collected
  */
 export async function invokeResponderAgent(
 	agent: ResponderAgentType,
 	context: ResponderContext,
 	config?: RunnableConfig,
-): Promise<BaseMessage> {
+	options?: { enableIntrospection?: boolean },
+): Promise<ResponderResult> {
 	const result = await agent.invoke(
 		{ messages: context.messages },
 		{
@@ -258,10 +281,18 @@ export async function invokeResponderAgent(
 	// Extract the last message from the result
 	// The agent returns { messages: BaseMessage[], ... } after processing
 	const messages = result.messages;
-	if (messages.length === 0) {
-		return new AIMessage({
-			content: 'I encountered an issue generating a response. Please try again.',
-		});
-	}
-	return messages[messages.length - 1];
+
+	// Extract introspection events from tool calls in agent messages
+	const introspectionEvents = options?.enableIntrospection
+		? extractIntrospectionEventsFromMessages(messages)
+		: [];
+
+	const response =
+		messages.length === 0
+			? new AIMessage({
+					content: 'I encountered an issue generating a response. Please try again.',
+				})
+			: messages[messages.length - 1];
+
+	return { response, introspectionEvents };
 }

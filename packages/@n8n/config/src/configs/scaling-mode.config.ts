@@ -3,9 +3,10 @@ import { Config, Env, Nested } from '../decorators';
 @Config
 class HealthConfig {
 	/**
-	 * Whether to enable the worker health check endpoints:
-	 * - `/healthz` (worker alive)
-	 * - `/healthz/readiness` (worker connected to migrated database and connected to Redis)
+	 * Whether to enable the worker health check endpoints.
+	 * The endpoint paths are configurable via N8N_ENDPOINT_HEALTH.
+	 * - liveness probe: checks if worker is alive
+	 * - readiness probe: checks if worker is connected to migrated database and Redis
 	 */
 	@Env('QUEUE_HEALTH_CHECK_ACTIVE')
 	active: boolean = false;

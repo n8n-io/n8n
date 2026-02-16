@@ -9,7 +9,7 @@ import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { AiWorkflowBuilderService } from '@/ai-workflow-builder-agent.service';
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet45, anthropicClaudeSonnet45Think } from '@/llm-config';
+import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { formatMessages } from '@/utils/stream-processor';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
@@ -40,7 +40,6 @@ jest.mock('@/workflow-builder-agent');
 jest.mock('@/session-manager.service');
 jest.mock('@/llm-config', () => ({
 	anthropicClaudeSonnet45: jest.fn(),
-	anthropicClaudeSonnet45Think: jest.fn(),
 }));
 jest.mock('@/utils/stream-processor', () => ({
 	formatMessages: jest.fn(),
@@ -59,9 +58,6 @@ const MockedSessionManagerService = SessionManagerService as jest.MockedClass<
 const anthropicClaudeSonnet45Mock = anthropicClaudeSonnet45 as jest.MockedFunction<
 	typeof anthropicClaudeSonnet45
 >;
-const anthropicClaudeSonnet45ThinkMock = anthropicClaudeSonnet45Think as jest.MockedFunction<
-	typeof anthropicClaudeSonnet45Think
->;
 const formatMessagesMock = formatMessages as jest.MockedFunction<typeof formatMessages>;
 
 describe('AiWorkflowBuilderService', () => {
@@ -77,7 +73,7 @@ describe('AiWorkflowBuilderService', () => {
 
 	const mockNodeTypeDescriptions: INodeTypeDescription[] = [
 		{
-			name: 'TestNode',
+			name: 'n8n-nodes-base.testNode',
 			displayName: 'Test Node',
 			description: 'A test node',
 			version: 1,
@@ -95,7 +91,7 @@ describe('AiWorkflowBuilderService', () => {
 			group: ['transform'],
 		},
 		{
-			name: 'HiddenNode',
+			name: 'n8n-nodes-base.hiddenNode',
 			displayName: 'Hidden Node',
 			description: 'A hidden node',
 			version: 1,
@@ -130,7 +126,7 @@ describe('AiWorkflowBuilderService', () => {
 			group: ['transform'],
 		},
 		{
-			name: 'TestNodeTool',
+			name: 'n8n-nodes-base.testNodeTool',
 			displayName: 'Test Tool Node',
 			description: 'Test tool node description',
 			version: 1,
@@ -145,6 +141,17 @@ describe('AiWorkflowBuilderService', () => {
 					default: '',
 				},
 			],
+			group: ['transform'],
+		},
+		{
+			name: 'community-nodes-test.someNode',
+			displayName: 'Community Node',
+			description: 'A community node that should be filtered out',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [],
 			group: ['transform'],
 		},
 	];
@@ -203,7 +210,6 @@ describe('AiWorkflowBuilderService', () => {
 		});
 
 		anthropicClaudeSonnet45Mock.mockResolvedValue(mockChatAnthropic);
-		anthropicClaudeSonnet45ThinkMock.mockResolvedValue(mockChatAnthropic);
 
 		// Mock onCreditsUpdated callback
 		mockOnCreditsUpdated = jest.fn();
@@ -234,7 +240,7 @@ describe('AiWorkflowBuilderService', () => {
 
 			expect(testService).toBeInstanceOf(AiWorkflowBuilderService);
 			expect(MockedSessionManagerService).toHaveBeenCalledWith(
-				expect.arrayContaining([expect.objectContaining({ name: 'TestNode' })]),
+				expect.arrayContaining([expect.objectContaining({ name: 'n8n-nodes-base.testNode' })]),
 				mockLogger,
 			);
 		});
@@ -262,9 +268,14 @@ describe('AiWorkflowBuilderService', () => {
 			expect(MockedSessionManagerService).toHaveBeenCalledTimes(1);
 			const filteredNodeTypes = MockedSessionManagerService.mock.calls[0][0];
 
-			expect(filteredNodeTypes.find((node) => node.name === 'HiddenNode')).toBeUndefined();
+			expect(
+				filteredNodeTypes.find((node) => node.name === 'n8n-nodes-base.hiddenNode'),
+			).toBeUndefined();
 			expect(
 				filteredNodeTypes.find((node) => node.name === '@n8n/n8n-nodes-langchain.toolVectorStore'),
+			).toBeUndefined();
+			expect(
+				filteredNodeTypes.find((node) => node.name === 'community-nodes-test.someNode'),
 			).toBeUndefined();
 			expect(
 				filteredNodeTypes.find((node) => node.name === 'n8n-nodes-base.dataTable'),
@@ -287,7 +298,9 @@ describe('AiWorkflowBuilderService', () => {
 			expect(MockedSessionManagerService).toHaveBeenCalledTimes(1);
 			const filteredNodeTypes = MockedSessionManagerService.mock.calls[0][0];
 
-			const testToolNode = filteredNodeTypes.find((node) => node.name === 'TestNodeTool');
+			const testToolNode = filteredNodeTypes.find(
+				(node) => node.name === 'n8n-nodes-base.testNodeTool',
+			);
 			expect(testToolNode).toBeDefined();
 			expect(testToolNode?.description).toBe('Test tool node description');
 			expect(testToolNode?.displayName).toBe('Test Tool Node');

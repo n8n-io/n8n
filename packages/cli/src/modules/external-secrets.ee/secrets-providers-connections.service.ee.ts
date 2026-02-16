@@ -18,6 +18,8 @@ import type { IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import type { ProjectSummary } from '@/events/maps/relay.event-map';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 import { SecretsProvidersResponses } from '@/modules/external-secrets.ee/secrets-providers.responses.ee';
@@ -30,10 +32,12 @@ export class SecretsProvidersConnectionsService {
 		private readonly cipher: Cipher,
 		private readonly externalSecretsManager: ExternalSecretsManager,
 		private readonly redactionService: RedactionService,
+		private readonly eventService: EventService,
 	) {}
 
 	async createConnection(
 		proposedConnection: CreateSecretsProviderConnectionDto,
+		userId: string,
 	): Promise<SecretsProviderConnection> {
 		const existing = await this.repository.findOne({
 			where: { providerKey: proposedConnection.providerKey },
@@ -65,9 +69,20 @@ export class SecretsProvidersConnectionsService {
 		}
 
 		// Do a new lookup as we eagerly fill out projects
-		return (await this.repository.findOne({
+		const result = (await this.repository.findOne({
 			where: { providerKey: proposedConnection.providerKey },
 		}))!;
+
+		await this.externalSecretsManager.syncProviderConnection(proposedConnection.providerKey);
+
+		this.eventService.emit('external-secrets-connection-created', {
+			userId,
+			providerKey: result.providerKey,
+			vaultType: result.type,
+			...this.extractProjectInfo(result),
+		});
+
+		return result;
 	}
 
 	async updateConnection(
@@ -77,6 +92,7 @@ export class SecretsProvidersConnectionsService {
 			projectIds?: string[];
 			settings?: IDataObject;
 		},
+		userId: string,
 	): Promise<SecretsProviderConnection> {
 		const connection = await this.repository.findOne({ where: { providerKey } });
 
@@ -104,18 +120,42 @@ export class SecretsProvidersConnectionsService {
 			await this.projectAccessRepository.setProjectAccess(connection.id, updates.projectIds);
 		}
 
-		return (await this.repository.findOne({ where: { providerKey } })) as SecretsProviderConnection;
+		await this.externalSecretsManager.syncProviderConnection(providerKey);
+
+		const result = (await this.repository.findOne({
+			where: { providerKey },
+		})) as SecretsProviderConnection;
+
+		this.eventService.emit('external-secrets-connection-updated', {
+			userId,
+			providerKey: result.providerKey,
+			vaultType: result.type,
+			...this.extractProjectInfo(result),
+		});
+
+		return result;
 	}
 
-	async deleteConnection(providerKey: string): Promise<SecretsProviderConnection> {
+	async deleteConnection(providerKey: string, userId: string): Promise<SecretsProviderConnection> {
 		const connection = await this.repository.findOne({ where: { providerKey } });
 
 		if (!connection) {
 			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
 		}
 
+		const projectInfo = this.extractProjectInfo(connection);
+
 		await this.projectAccessRepository.deleteByConnectionId(connection.id);
 		await this.repository.remove(connection);
+
+		await this.externalSecretsManager.syncProviderConnection(providerKey);
+
+		this.eventService.emit('external-secrets-connection-deleted', {
+			userId,
+			providerKey: connection.providerKey,
+			vaultType: connection.type,
+			...projectInfo,
+		});
 
 		return connection;
 	}
@@ -190,22 +230,56 @@ export class SecretsProvidersConnectionsService {
 		};
 	}
 
-	async testConnection(providerKey: string): Promise<TestSecretProviderConnectionResponse> {
+	async testConnection(
+		providerKey: string,
+		userId: string,
+	): Promise<TestSecretProviderConnectionResponse> {
 		const connection = await this.getConnection(providerKey);
 		const decryptedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
 		const result = await this.externalSecretsManager.testProviderSettings(
 			connection.type,
 			decryptedSettings,
 		);
-		return testSecretProviderConnectionResponseSchema.parse(result);
+		const response = testSecretProviderConnectionResponseSchema.parse(result);
+
+		this.eventService.emit('external-secrets-connection-tested', {
+			userId,
+			providerKey: connection.providerKey,
+			vaultType: connection.type,
+			...this.extractProjectInfo(connection),
+			isValid: response.success,
+			...(response.error && { errorMessage: response.error }),
+		});
+
+		return response;
 	}
 
 	async reloadConnectionSecrets(
 		providerKey: string,
+		userId: string,
 	): Promise<ReloadSecretProviderConnectionResponse> {
-		await this.getConnection(providerKey);
+		const connection = await this.getConnection(providerKey);
 		await this.externalSecretsManager.updateProvider(providerKey);
+
+		this.eventService.emit('external-secrets-connection-reloaded', {
+			userId,
+			providerKey: connection.providerKey,
+			vaultType: connection.type,
+			...this.extractProjectInfo(connection),
+		});
+
 		return reloadSecretProviderConnectionResponseSchema.parse({ success: true });
+	}
+
+	private extractProjectInfo(connection: SecretsProviderConnection): {
+		projects: ProjectSummary[];
+	} {
+		return {
+			projects: connection.projectAccess.map((access) => ({
+				id: access.project.id,
+				name: access.project.name,
+			})),
+		};
 	}
 
 	private encryptConnectionSettings(settings: IDataObject): string {

@@ -271,19 +271,14 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
       class="actions"
     >
       <n8n-button-stub
-        active="false"
-        block="false"
+        class=""
         data-test-id="replace-code-button"
         disabled="false"
-        element="button"
         icon="refresh-cw"
-        label=""
+        icononly="false"
         loading="false"
-        outline="false"
-        size="mini"
-        square="false"
-        text="false"
-        type="primary"
+        size="xsmall"
+        variant="solid"
       />
     </div>
   </div>
@@ -808,19 +803,14 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
     >
       <div>
         <n8n-button-stub
-          active="false"
-          block="false"
+          class=""
           data-test-id="undo-replace-button"
           disabled="false"
-          element="button"
           icon="undo-2"
-          label=""
+          icononly="false"
           loading="false"
-          outline="false"
-          size="mini"
-          square="false"
-          text="false"
-          type="secondary"
+          size="xsmall"
+          variant="subtle"
         />
         <n8n-icon-stub
           class="ml-xs"
@@ -1090,19 +1080,14 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
       class="actions"
     >
       <n8n-button-stub
-        active="false"
-        block="false"
+        class=""
         data-test-id="replace-code-button"
         disabled="false"
-        element="button"
         icon="refresh-cw"
-        label=""
+        icononly="false"
         loading="true"
-        outline="false"
-        size="mini"
-        square="false"
-        text="false"
-        type="secondary"
+        size="xsmall"
+        variant="subtle"
       />
     </div>
   </div>

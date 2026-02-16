@@ -140,36 +140,31 @@ export function addNodeWithSubnodes(
 		}
 	}
 
-	// Check if a node with the same name already exists
+	// Determine the actual map key (may be renamed for duplicate names)
+	let mapKey = nodeInstance.name;
 	const existingNode = nodes.get(nodeInstance.name);
 	if (existingNode) {
 		if (existingNode.instance === nodeInstance) {
 			return undefined;
 		}
 		// Different node instance with same name - generate unique name
-		const uniqueName = generateUniqueName(nodes, nodeInstance.name);
-		const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
-		connectionsMap.set('main', new Map());
-		nodes.set(uniqueName, {
-			instance: nodeInstance,
-			connections: connectionsMap,
-		});
-		return uniqueName;
+		mapKey = generateUniqueName(nodes, nodeInstance.name);
 	}
 
 	// Add the main node
 	const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
 	connectionsMap.set('main', new Map());
-	nodes.set(nodeInstance.name, {
+	nodes.set(mapKey, {
 		instance: nodeInstance,
 		connections: connectionsMap,
 	});
 
 	// Process subnodes if present
 	const subnodes = nodeInstance.config?.subnodes;
-	if (!subnodes) return nodeInstance.name;
+	if (!subnodes) return mapKey;
 
-	// Helper to add a subnode with its AI connection
+	// Helper to add a subnode with its AI connection.
+	// Uses mapKey (the resolved name) for connection targets, not nodeInstance.name.
 	const addSubnode = (subnode: NodeInstance<string, string, unknown>, connectionType: string) => {
 		const subnodeName = resolveSubnodeName(subnode);
 		if (!subnodeName) return;
@@ -186,7 +181,7 @@ export function addNodeWithSubnodes(
 			const existingOutputConns = existingAiConns.get(0) ?? [];
 			existingAiConns.set(0, [
 				...existingOutputConns,
-				{ node: nodeInstance.name, type: connectionType, index: 0 },
+				{ node: mapKey, type: connectionType, index: 0 },
 			]);
 			return;
 		}
@@ -195,7 +190,7 @@ export function addNodeWithSubnodes(
 		const subnodeConns = new Map<string, Map<number, ConnectionTarget[]>>();
 		subnodeConns.set('main', new Map());
 		const aiConnMap = new Map<number, ConnectionTarget[]>();
-		aiConnMap.set(0, [{ node: nodeInstance.name, type: connectionType, index: 0 }]);
+		aiConnMap.set(0, [{ node: mapKey, type: connectionType, index: 0 }]);
 		subnodeConns.set(connectionType, aiConnMap);
 		nodes.set(subnodeName, {
 			instance: subnode,
@@ -242,5 +237,5 @@ export function addNodeWithSubnodes(
 	if (subnodes.textSplitter) addSubnode(subnodes.textSplitter, 'ai_textSplitter');
 	if (subnodes.reranker) addSubnode(subnodes.reranker, 'ai_reranker');
 
-	return nodeInstance.name;
+	return mapKey;
 }

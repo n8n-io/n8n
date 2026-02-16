@@ -100,9 +100,7 @@ export interface CodeBuilderAgentConfig {
 	/** Optional logger */
 	logger?: Logger;
 	/**
-	 * Ordered list of directories to search for node definitions.
-	 * Built-in dirs come first, then the community dir.
-	 * If not provided, falls back to ~/.n8n/node-definitions.
+	 * Ordered list of directories to search for built-in node definitions.
 	 */
 	nodeDefinitionDirs?: string[];
 	/**
@@ -127,4 +125,8 @@ export interface CodeBuilderAgentConfig {
 	 * Optional callback for emitting telemetry events.
 	 */
 	onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
+	/**
+	 * Whether to generate pin data for new nodes. Defaults to true.
+	 */
+	generatePinData?: boolean;
 }

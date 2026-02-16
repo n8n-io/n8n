@@ -183,11 +183,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const trackingSessionId = computed(() => rootStore.pushRef);
 
 	/** Whether the code-builder experiment is enabled for this user */
-	const isCodeBuilder = computed(
-		() =>
-			posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name) ===
-			CODE_WORKFLOW_BUILDER_EXPERIMENT.test,
-	);
+	const isCodeBuilder = computed(() => {
+		const variant = posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name);
+		return (
+			variant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codeNoPinData ||
+			variant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData
+		);
+	});
 
 	const workflowPrompt = computed(() => {
 		const firstUserMessage = chatMessages.value.find(
@@ -755,6 +757,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			payload.resumeData = resumeData;
 		}
 
+		// Clear confirmed nodes from input now that they've been captured
+		// in both the chat UI message and the API payload
+		focusedNodesStore.removeAllConfirmed();
+
 		const retry = createRetryHandler(userMessageId, async () => await sendChatMessage(options));
 
 		// Abort previous streaming request if any
@@ -778,14 +784,15 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 					if (result.shouldClearThinking) {
 						builderThinkingMessage.value = undefined;
-					} else {
-						// Always update thinking message, even when undefined (to clear it)
+					} else if (result.thinkingMessage !== undefined) {
 						builderThinkingMessage.value = result.thinkingMessage;
 					}
+					// When thinkingMessage is undefined and no explicit clear: keep current value.
+					// This preserves "Thinking" from prepareForStreaming during streaming gaps
+					// (e.g., after submitting answers, before first tool call arrives).
 				},
 				() => {
 					stopStreaming();
-					focusedNodesStore.clearAll();
 				},
 				(e) => handleServiceError(e, userMessageId, retry),
 				revertVersion?.id,

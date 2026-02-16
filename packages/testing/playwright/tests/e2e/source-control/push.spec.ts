@@ -19,16 +19,20 @@ async function expectNoChangesToCommit(n8n: n8nPage) {
 
 // Skipped: These tests are flaky. Re-enable when PAY-4365 is resolved.
 // https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
-test.describe('Push resources to Git @capability:source-control @fixme', () => {
+test.describe('Push resources to Git @capability:source-control @fixme', {
+	annotation: [
+		{ type: 'owner', description: 'Lifecycle & Governance' },
+	],
+}, () => {
 	test.fixme();
 
 	let gitRepo: GitRepoHelper;
 
-	test.beforeEach(async ({ n8n, n8nContainer }) => {
+	test.beforeEach(async ({ n8n, services }) => {
 		await n8n.api.enableFeature('sourceControl');
 		await n8n.api.enableFeature('variables');
 
-		gitRepo = await setupGitRepo(n8n, n8nContainer.services.gitea);
+		gitRepo = await setupGitRepo(n8n, services.gitea);
 	});
 
 	test('should push a new workflow', async ({ n8n }) => {
