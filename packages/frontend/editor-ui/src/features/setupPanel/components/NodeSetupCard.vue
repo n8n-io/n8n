@@ -10,7 +10,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSetupPanelStore } from '../setupPanel.store';
 
-import type { NodeSetupState } from '../setupPanel.types';
+import type { NodeCredentialRequirement, NodeSetupState } from '../setupPanel.types';
 import { useNodeExecution } from '@/app/composables/useNodeExecution';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
@@ -58,16 +58,20 @@ const tooltipText = computed(() => {
 });
 
 const onCardMouseEnter = () => {
+	setupPanelStore.setHighlightedNodes([props.state.node.id]);
+};
+
+const onSharedNodesHintEnter = (requirement: NodeCredentialRequirement) => {
 	const ids: string[] = [props.state.node.id];
-	for (const req of props.state.credentialRequirements) {
-		for (const name of req.nodesWithSameCredential) {
-			const node = workflowsStore.getNodeByName(name);
-			if (node) {
-				ids.push(node.id);
-			}
-		}
+	for (const name of requirement.nodesWithSameCredential) {
+		const node = workflowsStore.getNodeByName(name);
+		if (node) ids.push(node.id);
 	}
 	setupPanelStore.setHighlightedNodes(ids);
+};
+
+const onSharedNodesHintLeave = () => {
+	setupPanelStore.setHighlightedNodes([props.state.node.id]);
 };
 
 const onCardMouseLeave = () => {
@@ -218,6 +222,8 @@ onBeforeUnmount(() => {
 						:node-name="state.node.name"
 						:credential-type="requirement.credentialType"
 						:nodes-with-same-credential="requirement.nodesWithSameCredential"
+						@hint-mouse-enter="onSharedNodesHintEnter(requirement)"
+						@hint-mouse-leave="onSharedNodesHintLeave"
 					/>
 					<CredentialPicker
 						create-button-type="secondary"
