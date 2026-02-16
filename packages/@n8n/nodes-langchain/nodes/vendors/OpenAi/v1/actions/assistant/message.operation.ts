@@ -187,10 +187,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const baseURL = (options.baseURL ?? credentials.url) as string;
 	const { openAiDefaultHeaders } = Container.get(AiConfig);
-	const defaultHeaders = mergeCustomHeaders(
-		credentials,
-		(openAiDefaultHeaders ?? {}) as Record<string, string>,
-	);
+	const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 	const timeout = options.timeout;
 
 	const client = new OpenAIClient({

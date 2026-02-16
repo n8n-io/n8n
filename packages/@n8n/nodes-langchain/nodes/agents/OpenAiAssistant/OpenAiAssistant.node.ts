@@ -348,10 +348,7 @@ export class OpenAiAssistant implements INodeType {
 				}
 
 				const { openAiDefaultHeaders } = Container.get(AiConfig);
-				const defaultHeaders = mergeCustomHeaders(
-					credentials,
-					(openAiDefaultHeaders ?? {}) as Record<string, string>,
-				);
+				const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 
 				if (options.baseURL) {
 					checkDomainRestrictions(this, credentials, options.baseURL);
