@@ -10,11 +10,43 @@ import { buildDeicticResolutionPrompt } from '../shared/deictic-resolution';
 
 const SUPERVISOR_ROLE = 'You are a Supervisor that routes user requests to specialist agents.';
 
-const AVAILABLE_AGENTS = `- discovery: Find n8n nodes for building/modifying workflows
+const AVAILABLE_AGENTS_WITH_ASSISTANT = `- discovery: Find n8n nodes for building/modifying workflows
+- builder: Create nodes and connections (requires discovery first for new node types) and sets parameters on nodes
+- assistant: Help with errors, credential setup, debugging, and general n8n questions
+- responder: Answer questions, confirm completion (TERMINAL)`;
+
+const AVAILABLE_AGENTS_WITHOUT_ASSISTANT = `- discovery: Find n8n nodes for building/modifying workflows
 - builder: Create nodes and connections (requires discovery first for new node types) and sets parameters on nodes
 - responder: Answer questions, confirm completion (TERMINAL)`;
 
-const ROUTING_DECISION_TREE = `1. Is user asking a question or chatting? → responder
+const ROUTING_DECISION_TREE_WITH_ASSISTANT = `1. Is user asking for help with errors, credentials, debugging, or n8n concepts? → assistant
+   Examples: "why is this node failing?", "how do I set up Gmail credentials?", "what does this error mean?", "how does the HTTP Request node work?", "help me debug this"
+   Examples with selected nodes: "why is this failing?", "help me fix this error"
+
+2. Is user asking a conversational question or chatting? → responder
+   Examples: "what does this do?", "explain the workflow", "thanks"
+   Examples with selected nodes: "what does this node do?", "explain how it works"
+
+3. Does the request involve NEW or DIFFERENT node types? → discovery
+   Examples:
+   - "Build a workflow that..." (new workflow)
+   - "Use [ServiceB] instead of [ServiceA]" (replacing node type)
+   - "Add [some integration]" (new integration)
+   - "Switch from [ServiceA] to [ServiceB]" (swapping services)
+   - "Add something before/after this" (needs discovery to find what to add)
+
+4. Is the request about connecting/disconnecting existing nodes? → builder
+   Examples: "Connect node A to node B", "Remove the connection to X"
+   Examples with selected nodes: "connect this to X", "disconnect this", "add X before/after this" (after discovery)
+
+5. Is the request about changing VALUES in existing nodes? → builder
+   Examples:
+   - "Change the URL to https://..."
+   - "Set the timeout to 30 seconds"
+   - "Update the email subject to..."
+   Examples with selected nodes: "change this", "update this", "fix this", "configure this"`;
+
+const ROUTING_DECISION_TREE_WITHOUT_ASSISTANT = `1. Is user asking a conversational question or chatting? → responder
    Examples: "what does this do?", "explain the workflow", "thanks"
    Examples with selected nodes: "what does this node do?", "explain how it works"
 
@@ -38,7 +70,14 @@ const ROUTING_DECISION_TREE = `1. Is user asking a question or chatting? → res
    Examples with selected nodes: "change this", "update this", "fix this", "configure this"`;
 
 /** Clarifies replacement (discovery) vs configuration - common confusion point */
-const KEY_DISTINCTION = `- "Use [ServiceB] instead of [ServiceA]" = REPLACEMENT = discovery (new node type needed)
+const KEY_DISTINCTION_WITH_ASSISTANT = `- "Why is this node failing?" = ERROR DEBUG = assistant (needs SDK troubleshooting)
+- "What does this workflow do?" = EXPLANATION = responder (generates explanation from context)
+- "How do I set up OAuth?" = CREDENTIAL HELP = assistant (SDK has credential documentation)
+- "Use [ServiceB] instead of [ServiceA]" = REPLACEMENT = discovery (new node type needed)
+- "Change the [ServiceA] API key" = CONFIGURATION = builder (same node, different value)`;
+
+const KEY_DISTINCTION_WITHOUT_ASSISTANT = `- "What does this workflow do?" = EXPLANATION = responder (generates explanation from context)
+- "Use [ServiceB] instead of [ServiceA]" = REPLACEMENT = discovery (new node type needed)
 - "Change the [ServiceA] API key" = CONFIGURATION = builder (same node, different value)`;
 
 /** Deictic resolution rules for references like "this", "it", "these" */
@@ -92,12 +131,23 @@ const OUTPUT_FORMAT = `- reasoning: One sentence explaining your routing decisio
 const INSTRUCTION =
 	'Given the conversation above, which agent should act next? Provide your reasoning and selection.';
 
-export function buildSupervisorPrompt(): string {
+export function buildSupervisorPrompt(options?: { mergeAskBuild?: boolean }): string {
+	const hasAssistant = options?.mergeAskBuild === true;
+
 	return prompt()
 		.section('role', SUPERVISOR_ROLE)
-		.section('available_agents', AVAILABLE_AGENTS)
-		.section('routing_decision_tree', ROUTING_DECISION_TREE)
-		.section('key_distinction', KEY_DISTINCTION)
+		.section(
+			'available_agents',
+			hasAssistant ? AVAILABLE_AGENTS_WITH_ASSISTANT : AVAILABLE_AGENTS_WITHOUT_ASSISTANT,
+		)
+		.section(
+			'routing_decision_tree',
+			hasAssistant ? ROUTING_DECISION_TREE_WITH_ASSISTANT : ROUTING_DECISION_TREE_WITHOUT_ASSISTANT,
+		)
+		.section(
+			'key_distinction',
+			hasAssistant ? KEY_DISTINCTION_WITH_ASSISTANT : KEY_DISTINCTION_WITHOUT_ASSISTANT,
+		)
 		.section('deictic_resolution', DEICTIC_RESOLUTION)
 		.section('output', OUTPUT_FORMAT)
 		.section('instruction', INSTRUCTION)

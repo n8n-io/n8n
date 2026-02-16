@@ -113,6 +113,8 @@ export interface BuilderFeatureFlags {
 	planMode?: boolean;
 	/** Enable introspection tool for diagnostic data collection. Disabled by default. */
 	enableIntrospection?: boolean;
+	/** Enable merged ask/build experience with assistant subgraph (default: false). */
+	mergeAskBuild?: boolean;
 }
 
 export interface ChatPayload {
@@ -192,6 +194,7 @@ export class WorkflowBuilderAgent {
 			featureFlags,
 			onGenerationSuccess: this.onGenerationSuccess,
 			resourceLocatorCallback: this.resourceLocatorCallback,
+			assistantHandler: this.assistantHandler,
 		});
 	}
 
@@ -459,6 +462,7 @@ export class WorkflowBuilderAgent {
 		const threadConfig: RunnableConfig = {
 			configurable: {
 				thread_id: threadId,
+				userId,
 			},
 		};
 

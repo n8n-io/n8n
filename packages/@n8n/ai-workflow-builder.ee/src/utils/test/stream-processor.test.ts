@@ -243,6 +243,23 @@ describe('stream-processor', () => {
 				expect(result?.messages[0]).toEqual(toolChunk);
 			});
 
+			it('should process assistant message chunks', () => {
+				const messageChunk: AgentMessageChunk = {
+					role: 'assistant',
+					type: 'message',
+					text: 'Here is how to set up credentials...',
+				};
+
+				const result = processStreamChunk('custom', messageChunk);
+
+				expect(result).toBeDefined();
+				expect(result?.messages).toHaveLength(1);
+				const message = result?.messages[0] as AgentMessageChunk;
+				expect(message.role).toBe('assistant');
+				expect(message.type).toBe('message');
+				expect(message.text).toBe('Here is how to set up credentials...');
+			});
+
 			it('should ignore non-tool chunks in custom mode', () => {
 				const chunk = {
 					type: 'something-else',
@@ -1540,6 +1557,18 @@ code
 			const chunk = {
 				supervisor: {
 					messages: [{ content: 'Supervisor internal message' }],
+				},
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeNull();
+		});
+
+		it('should skip assistant_subgraph state updates (text streamed via custom events)', () => {
+			const chunk = {
+				assistant_subgraph: {
+					messages: [{ content: 'Assistant response text' }],
 				},
 			};
 
