@@ -57,7 +57,7 @@ describe('WorkerServer', () => {
 				overwrite: { endpoint: '' },
 			},
 			endpoints: {
-				health: 'internal/health',
+				health: '/internal/health',
 			},
 		});
 		jest.restoreAllMocks();

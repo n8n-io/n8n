@@ -47,6 +47,13 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'projectVariable:create',
 	'projectVariable:update',
 	'projectVariable:delete',
+	'externalSecretsProvider:create',
+	'externalSecretsProvider:read',
+	'externalSecretsProvider:update',
+	'externalSecretsProvider:delete',
+	'externalSecretsProvider:list',
+	'externalSecretsProvider:sync',
+	'externalSecret:list',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -64,6 +71,7 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'credential:update',
 	'credential:delete',
 	'credential:list',
+	'credential:move',
 	'project:list',
 	'project:read',
 	'folder:create',

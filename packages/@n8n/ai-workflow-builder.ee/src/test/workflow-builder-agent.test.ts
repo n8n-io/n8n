@@ -43,6 +43,25 @@ jest.mock('@/code-builder', () => ({
 	})),
 }));
 
+const mockTriageAgentRun = jest.fn();
+jest.mock('@/code-builder/triage.agent', () => ({
+	TriageAgent: jest.fn().mockImplementation(() => ({
+		run: mockTriageAgentRun,
+	})),
+}));
+
+const mockLoadCodeBuilderSession = jest.fn();
+const mockSaveCodeBuilderSession = jest.fn();
+const mockGenerateCodeBuilderThreadId = jest.fn();
+jest.mock('@/code-builder/utils/code-builder-session', () => ({
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+	loadCodeBuilderSession: (...args: unknown[]) => mockLoadCodeBuilderSession(...args),
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+	saveCodeBuilderSession: (...args: unknown[]) => mockSaveCodeBuilderSession(...args),
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+	generateCodeBuilderThreadId: (...args: unknown[]) => mockGenerateCodeBuilderThreadId(...args),
+}));
+
 const mockRandomUUID = jest.fn();
 Object.defineProperty(global, 'crypto', {
 	value: {
@@ -51,6 +70,7 @@ Object.defineProperty(global, 'crypto', {
 	writable: true,
 });
 
+import type { AssistantHandler } from '@/assistant/assistant-handler';
 import { CodeWorkflowBuilder } from '@/code-builder';
 import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 import { ValidationError } from '@/errors';
@@ -420,7 +440,7 @@ describe('WorkflowBuilderAgent', () => {
 			expect(MockedCodeWorkflowBuilder).not.toHaveBeenCalled();
 		});
 
-		it('should route to CodeWorkflowBuilder without plan when codeBuilder enabled but no planMode', async () => {
+		it('should fall back to CodeWorkflowBuilder when no assistantHandler provided', async () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'Create a simple workflow',
@@ -437,6 +457,367 @@ describe('WorkflowBuilderAgent', () => {
 				expect.not.objectContaining({ planOutput: expect.anything() }),
 				expect.any(String),
 				undefined,
+			);
+		});
+	});
+
+	describe('triage agent routing', () => {
+		let triageConfig: WorkflowBuilderAgentConfig;
+		const originalMergeAskBuild = process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD = 'true';
+
+			mockGenerateCodeBuilderThreadId.mockReturnValue('test-thread-id');
+			mockLoadCodeBuilderSession.mockResolvedValue({
+				conversationEntries: [],
+				previousSummary: undefined,
+			});
+			mockSaveCodeBuilderSession.mockResolvedValue(undefined);
+
+			triageConfig = {
+				...config,
+				assistantHandler: mock<AssistantHandler>(),
+			};
+		});
+
+		afterEach(() => {
+			if (originalMergeAskBuild !== undefined) {
+				process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD = originalMergeAskBuild;
+			} else {
+				delete process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD;
+			}
+		});
+
+		it('should yield assistant chunks and not call CodeWorkflowBuilder for assistant outcome', async () => {
+			const chunk1: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Let me help' }],
+			};
+			const chunk2: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Here is the answer' }],
+			};
+
+			mockTriageAgentRun.mockImplementation(async function* () {
+				yield chunk1;
+				yield chunk2;
+				return { assistantSummary: 'Here is the answer', sdkSessionId: 'sdk-1' };
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'How do credentials work?',
+				featureFlags: { codeBuilder: true },
+			};
+
+			const results: StreamOutput[] = [];
+			for await (const output of triageAgent.chat(payload, 'user-456')) {
+				results.push(output);
+			}
+
+			expect(results).toEqual([chunk1, chunk2]);
+		});
+
+		it('should yield builder chunks from TriageAgent for build outcome', async () => {
+			const builderChunk: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Built workflow' }],
+			};
+
+			mockTriageAgentRun.mockImplementation(async function* () {
+				yield builderChunk;
+				return { buildExecuted: true };
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Build me a Slack notification workflow',
+				featureFlags: { codeBuilder: true },
+			};
+
+			const results: StreamOutput[] = [];
+			for await (const output of triageAgent.chat(payload, 'user-456')) {
+				results.push(output);
+			}
+
+			expect(results).toEqual([builderChunk]);
+		});
+
+		it('should yield direct reply chunk for empty outcome', async () => {
+			const chunk: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Here is a plan...' }],
+			};
+
+			mockTriageAgentRun.mockImplementation(async function* () {
+				yield chunk;
+				return {};
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'What approach should I take?',
+				featureFlags: { codeBuilder: true },
+			};
+
+			const results: StreamOutput[] = [];
+			for await (const output of triageAgent.chat(payload, 'user-456')) {
+				results.push(output);
+			}
+
+			expect(results).toEqual([chunk]);
+		});
+
+		it('should pass userId to triage agent run', async () => {
+			// eslint-disable-next-line require-yield
+			mockTriageAgentRun.mockImplementation(async function* () {
+				return {};
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Help me',
+				featureFlags: { codeBuilder: true },
+			};
+
+			for await (const _ of triageAgent.chat(payload, 'user-456')) {
+				// consume
+			}
+
+			expect(mockTriageAgentRun).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: 'user-456' }),
+			);
+		});
+
+		it('should pass abortSignal to triage agent run', async () => {
+			// eslint-disable-next-line require-yield
+			mockTriageAgentRun.mockImplementation(async function* () {
+				return {};
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Help me',
+				featureFlags: { codeBuilder: true },
+			};
+
+			const controller = new AbortController();
+
+			for await (const _ of triageAgent.chat(payload, 'user-456', controller.signal)) {
+				// consume
+			}
+
+			expect(mockTriageAgentRun).toHaveBeenCalledWith(
+				expect.objectContaining({ abortSignal: controller.signal }),
+			);
+		});
+
+		it('should load session and pass sdkSessionId + conversationHistory to triage agent', async () => {
+			mockLoadCodeBuilderSession.mockResolvedValue({
+				conversationEntries: [
+					{ type: 'build-request', message: 'previous build' },
+					{
+						type: 'assistant-exchange',
+						userQuery: 'How does this work?',
+						assistantSummary: 'It works like this',
+					},
+				],
+				previousSummary: undefined,
+				sdkSessionId: 'sdk-prev',
+			});
+
+			// eslint-disable-next-line require-yield
+			mockTriageAgentRun.mockImplementation(async function* () {
+				return { buildExecuted: true };
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Build this',
+				featureFlags: { codeBuilder: true },
+				workflowContext: { currentWorkflow: { id: 'wf-1' } },
+			};
+
+			for await (const _ of triageAgent.chat(payload, 'user-456')) {
+				// consume
+			}
+
+			expect(mockTriageAgentRun).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sdkSessionId: 'sdk-prev',
+					conversationHistory: expect.arrayContaining([
+						{ type: 'build-request', message: 'previous build' },
+					]),
+				}),
+			);
+		});
+
+		it('should save assistant-exchange entry for assistant outcome', async () => {
+			mockTriageAgentRun.mockImplementation(async function* () {
+				yield {
+					messages: [{ role: 'assistant', type: 'message', text: 'Here is help' }],
+				} as StreamOutput;
+				return {
+					sdkSessionId: 'sdk-new',
+					assistantSummary: 'Helped with creds',
+				};
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'How do credentials work?',
+				featureFlags: { codeBuilder: true },
+				workflowContext: { currentWorkflow: { id: 'wf-1' } },
+			};
+
+			for await (const _ of triageAgent.chat(payload, 'user-456')) {
+				// consume
+			}
+
+			expect(mockSaveCodeBuilderSession).toHaveBeenCalledTimes(1);
+			const [, threadId, savedSession] = mockSaveCodeBuilderSession.mock.calls[0] as unknown[];
+			expect(threadId).toBe('test-thread-id');
+			expect(savedSession).toEqual(
+				expect.objectContaining({
+					conversationEntries: [
+						{
+							type: 'assistant-exchange',
+							userQuery: 'How do credentials work?',
+							assistantSummary: 'Helped with creds',
+						},
+					],
+					sdkSessionId: 'sdk-new',
+				}),
+			);
+		});
+
+		it('should save plan entry for empty outcome (direct reply)', async () => {
+			mockTriageAgentRun.mockImplementation(async function* () {
+				yield {
+					messages: [{ role: 'assistant', type: 'message', text: 'Here is a plan' }],
+				} as StreamOutput;
+				return {};
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'What approach should I take?',
+				featureFlags: { codeBuilder: true },
+				workflowContext: { currentWorkflow: { id: 'wf-1' } },
+			};
+
+			for await (const _ of triageAgent.chat(payload, 'user-456')) {
+				// consume
+			}
+
+			expect(mockSaveCodeBuilderSession).toHaveBeenCalledTimes(1);
+			const [, threadId, savedSession] = mockSaveCodeBuilderSession.mock.calls[0] as unknown[];
+			expect(threadId).toBe('test-thread-id');
+			expect(savedSession).toEqual(
+				expect.objectContaining({
+					conversationEntries: [
+						{
+							type: 'plan',
+							userQuery: 'What approach should I take?',
+							plan: 'Here is a plan',
+						},
+					],
+				}),
+			);
+		});
+
+		it('should NOT save session for build-only outcome', async () => {
+			// eslint-disable-next-line require-yield
+			mockTriageAgentRun.mockImplementation(async function* () {
+				return { buildExecuted: true };
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Build a workflow',
+				featureFlags: { codeBuilder: true },
+				workflowContext: { currentWorkflow: { id: 'wf-1' } },
+			};
+
+			for await (const _ of triageAgent.chat(payload, 'user-456')) {
+				// consume
+			}
+
+			expect(mockSaveCodeBuilderSession).not.toHaveBeenCalled();
+		});
+
+		it('should save assistant-exchange for two-step diagnosis+build outcome', async () => {
+			mockTriageAgentRun.mockImplementation(async function* () {
+				yield {
+					messages: [{ role: 'assistant', type: 'message', text: 'Diagnosing...' }],
+				} as StreamOutput;
+				return {
+					sdkSessionId: 'sdk-diag',
+					assistantSummary: 'Missing credentials',
+					buildExecuted: true,
+				};
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Fix the Google Sheets error',
+				featureFlags: { codeBuilder: true },
+				workflowContext: { currentWorkflow: { id: 'wf-1' } },
+			};
+
+			for await (const _ of triageAgent.chat(payload, 'user-456')) {
+				// consume
+			}
+
+			expect(mockSaveCodeBuilderSession).toHaveBeenCalledTimes(1);
+			const [, threadId, savedSession] = mockSaveCodeBuilderSession.mock.calls[0] as unknown[];
+			expect(threadId).toBe('test-thread-id');
+			expect(savedSession).toEqual(
+				expect.objectContaining({
+					conversationEntries: [
+						{
+							type: 'assistant-exchange',
+							userQuery: 'Fix the Google Sheets error',
+							assistantSummary: 'Missing credentials',
+						},
+					],
+					sdkSessionId: 'sdk-diag',
+				}),
+			);
+		});
+
+		it('should construct TriageAgent with buildWorkflow function', async () => {
+			// eslint-disable-next-line require-yield
+			mockTriageAgentRun.mockImplementation(async function* () {
+				return {};
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Test',
+				featureFlags: { codeBuilder: true },
+			};
+
+			for await (const _ of triageAgent.chat(payload, 'user-456')) {
+				// consume
+			}
+
+			const mockedCtor = jest.requireMock<{ TriageAgent: jest.Mock }>(
+				'@/code-builder/triage.agent',
+			).TriageAgent;
+			expect(mockedCtor).toHaveBeenCalledWith(
+				expect.objectContaining({
+					buildWorkflow: expect.any(Function),
+				}),
 			);
 		});
 	});

@@ -153,7 +153,7 @@ export const setupTestServer = ({
 
 		if (endpointGroups?.includes('health')) {
 			const globalConfig = Container.get(GlobalConfig);
-			const healthPath = `/${globalConfig.endpoints.health}`;
+			const healthPath = globalConfig.endpoints.health;
 			const readinessPath = `${healthPath}/readiness`;
 
 			app.get(readinessPath, async (_req, res) => {

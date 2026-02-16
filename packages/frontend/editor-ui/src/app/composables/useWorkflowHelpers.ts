@@ -300,13 +300,7 @@ function resolveParameterImpl<T = IDataObject>(
 export async function resolveRequiredParameters(
 	currentParameter: INodeProperties,
 	parameters: INodeParameters,
-	opts: {
-		connections?: IConnections;
-		targetItem?: TargetItem;
-		inputNodeName?: string;
-		inputRunIndex?: number;
-		inputBranchIndex?: number;
-	} = {},
+	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
 ): Promise<IDataObject | null> {
 	const loadOptionsDependsOn = new Set(currentParameter?.typeOptions?.loadOptionsDependsOn ?? []);
 
