@@ -89,6 +89,24 @@ export function getBooleanLiteralValue(node: TSESTree.Node | null): boolean | nu
 	return typeof value === 'boolean' ? value : null;
 }
 
+/**
+ * Find a property in a JSON ObjectExpression by its quoted key name.
+ * JSON keys are always Literal nodes (e.g. `"name": "value"`),
+ * unlike JS/TS where keys are Identifier nodes — use `findObjectProperty` for those.
+ */
+export function findJsonProperty(
+	obj: TSESTree.ObjectExpression,
+	propertyName: string,
+): TSESTree.Property | null {
+	const property = obj.properties.find(
+		(prop) =>
+			prop.type === AST_NODE_TYPES.Property &&
+			prop.key.type === AST_NODE_TYPES.Literal &&
+			prop.key.value === propertyName,
+	);
+	return property?.type === AST_NODE_TYPES.Property ? property : null;
+}
+
 export function findArrayLiteralProperty(
 	obj: TSESTree.ObjectExpression,
 	propertyName: string,

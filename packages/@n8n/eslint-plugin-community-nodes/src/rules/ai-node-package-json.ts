@@ -1,7 +1,7 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
-import { createRule } from '../utils/index.js';
+import { createRule, findJsonProperty } from '../utils/index.js';
 
 export const AiNodePackageJsonRule = createRule({
 	name: 'ai-node-package-json',
@@ -9,14 +9,14 @@ export const AiNodePackageJsonRule = createRule({
 		type: 'problem',
 		docs: {
 			description:
-				'Enforce consistency between aiNodeSdkVersion and ai-node-sdk peer dependency in community node packages',
+				'Enforce consistency between n8n.aiNodeSdkVersion and ai-node-sdk peer dependency in community node packages',
 		},
 		messages: {
 			missingPeerDep:
-				'Package declares "aiNodeSdkVersion" but is missing "ai-node-sdk" in peerDependencies. Add "ai-node-sdk": "*" to peerDependencies.',
+				'Package declares "n8n.aiNodeSdkVersion" but is missing "ai-node-sdk" in peerDependencies. Add "ai-node-sdk": "*" to peerDependencies.',
 			missingSdkVersion:
-				'Package has "ai-node-sdk" in peerDependencies but is missing "aiNodeSdkVersion" at the top level of package.json.',
-			invalidSdkVersion: '"aiNodeSdkVersion" must be a positive integer, got {{ value }}.',
+				'Package has "ai-node-sdk" in peerDependencies but is missing "aiNodeSdkVersion" in the "n8n" section of package.json.',
+			invalidSdkVersion: '"n8n.aiNodeSdkVersion" must be a positive integer, got {{ value }}.',
 		},
 		schema: [],
 	},
@@ -33,11 +33,20 @@ export const AiNodePackageJsonRule = createRule({
 					return;
 				}
 
-				const aiNodeSdkVersionProp = findProperty(node, 'aiNodeSdkVersion');
-				const peerDependenciesProp = findProperty(node, 'peerDependencies');
+				const n8nProp = findJsonProperty(node, 'n8n');
+				const n8nObject =
+					n8nProp?.value.type === AST_NODE_TYPES.ObjectExpression ? n8nProp.value : null;
 
-				const hasAiNodeSdkVersion = aiNodeSdkVersionProp !== undefined;
-				const hasAiNodeSdkPeerDep = hasPeerDependency(peerDependenciesProp, 'ai-node-sdk');
+				const aiNodeSdkVersionProp = n8nObject
+					? findJsonProperty(n8nObject, 'aiNodeSdkVersion')
+					: null;
+
+				const peerDependenciesProp = findJsonProperty(node, 'peerDependencies');
+
+				const hasAiNodeSdkVersion = aiNodeSdkVersionProp !== null;
+				const hasAiNodeSdkPeerDep =
+					peerDependenciesProp?.value.type === AST_NODE_TYPES.ObjectExpression &&
+					findJsonProperty(peerDependenciesProp.value, 'ai-node-sdk') !== null;
 
 				// Validate aiNodeSdkVersion is a positive integer when present
 				if (hasAiNodeSdkVersion) {
@@ -66,7 +75,7 @@ export const AiNodePackageJsonRule = createRule({
 				// If ai-node-sdk is in peerDependencies, aiNodeSdkVersion must be declared
 				if (hasAiNodeSdkPeerDep && !hasAiNodeSdkVersion) {
 					context.report({
-						node: peerDependenciesProp!,
+						node: peerDependenciesProp,
 						messageId: 'missingSdkVersion',
 					});
 				}
@@ -74,33 +83,6 @@ export const AiNodePackageJsonRule = createRule({
 		};
 	},
 });
-
-function findProperty(
-	node: TSESTree.ObjectExpression,
-	name: string,
-): TSESTree.Property | undefined {
-	return node.properties.find(
-		(property): property is TSESTree.Property =>
-			property.type === AST_NODE_TYPES.Property &&
-			property.key.type === AST_NODE_TYPES.Literal &&
-			property.key.value === name,
-	);
-}
-
-function hasPeerDependency(
-	peerDependenciesProp: TSESTree.Property | undefined,
-	depName: string,
-): boolean {
-	if (!peerDependenciesProp) return false;
-	if (peerDependenciesProp.value.type !== AST_NODE_TYPES.ObjectExpression) return false;
-
-	return peerDependenciesProp.value.properties.some(
-		(property) =>
-			property.type === AST_NODE_TYPES.Property &&
-			property.key.type === AST_NODE_TYPES.Literal &&
-			property.key.value === depName,
-	);
-}
 
 function isPositiveInteger(value: unknown): boolean {
 	return typeof value === 'number' && Number.isInteger(value) && value > 0;

@@ -7,90 +7,94 @@ const ruleTester = new RuleTester();
 ruleTester.run('ai-node-package-json', AiNodePackageJsonRule, {
 	valid: [
 		{
-			name: 'both aiNodeSdkVersion and ai-node-sdk peer dependency present',
+			name: 'both n8n.aiNodeSdkVersion and ai-node-sdk peer dependency present',
 			filename: 'package.json',
-			code: '{ "name": "n8n-nodes-example", "aiNodeSdkVersion": 1, "peerDependencies": { "n8n-workflow": "*", "ai-node-sdk": "*" } }',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "aiNodeSdkVersion": 1 }, "peerDependencies": { "n8n-workflow": "*", "ai-node-sdk": "*" } }',
 		},
 		{
-			name: 'neither aiNodeSdkVersion nor ai-node-sdk present (non-AI package)',
+			name: 'neither n8n.aiNodeSdkVersion nor ai-node-sdk present (non-AI package)',
 			filename: 'package.json',
 			code: '{ "name": "n8n-nodes-example", "version": "1.0.0" }',
 		},
 		{
+			name: 'n8n section without aiNodeSdkVersion and no ai-node-sdk peer dep',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "nodes": [] } }',
+		},
+		{
 			name: 'non-package.json file is ignored',
 			filename: 'some-config.json',
-			code: '{ "aiNodeSdkVersion": 1 }',
+			code: '{ "n8n": { "aiNodeSdkVersion": 1 } }',
 		},
 		{
 			name: 'peerDependencies without ai-node-sdk and no aiNodeSdkVersion',
 			filename: 'package.json',
-			code: '{ "name": "n8n-nodes-example", "peerDependencies": { "n8n-workflow": "*" } }',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "nodes": [] }, "peerDependencies": { "n8n-workflow": "*" } }',
 		},
 		{
 			name: 'aiNodeSdkVersion as a larger positive integer with multiple peer deps',
 			filename: 'package.json',
-			code: '{ "name": "n8n-nodes-example", "aiNodeSdkVersion": 42, "peerDependencies": { "n8n-workflow": "^1.0.0", "ai-node-sdk": "^1.0.0" } }',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "aiNodeSdkVersion": 42 }, "peerDependencies": { "n8n-workflow": "^1.0.0", "ai-node-sdk": "^1.0.0" } }',
 		},
 		{
-			name: 'nested objects with matching property names should be ignored',
+			name: 'aiNodeSdkVersion at root level is not checked (only n8n.aiNodeSdkVersion matters)',
 			filename: 'package.json',
-			code: `{
-				"name": "n8n-nodes-example",
-				"aiNodeSdkVersion": 1,
-				"peerDependencies": { "n8n-workflow": "*", "ai-node-sdk": "*" },
-				"config": {
-					"aiNodeSdkVersion": "not-validated"
-				}
-			}`,
+			code: '{ "name": "n8n-nodes-example", "aiNodeSdkVersion": "wrong-place" }',
 		},
 	],
 	invalid: [
 		{
-			name: 'aiNodeSdkVersion present but ai-node-sdk missing from peerDependencies',
+			name: 'n8n.aiNodeSdkVersion present but ai-node-sdk missing from peerDependencies',
 			filename: 'package.json',
-			code: '{ "name": "n8n-nodes-example", "aiNodeSdkVersion": 1 }',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "aiNodeSdkVersion": 1 } }',
 			errors: [{ messageId: 'missingPeerDep' }],
 		},
 		{
-			name: 'aiNodeSdkVersion present but peerDependencies has other deps only',
+			name: 'n8n.aiNodeSdkVersion present but peerDependencies has other deps only',
 			filename: 'package.json',
-			code: '{ "name": "n8n-nodes-example", "aiNodeSdkVersion": 1, "peerDependencies": { "n8n-workflow": "*" } }',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "aiNodeSdkVersion": 1 }, "peerDependencies": { "n8n-workflow": "*" } }',
 			errors: [{ messageId: 'missingPeerDep' }],
 		},
 		{
-			name: 'ai-node-sdk in peerDependencies but aiNodeSdkVersion missing',
+			name: 'ai-node-sdk in peerDependencies but n8n.aiNodeSdkVersion missing',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "nodes": [] }, "peerDependencies": { "n8n-workflow": "*", "ai-node-sdk": "*" } }',
+			errors: [{ messageId: 'missingSdkVersion' }],
+		},
+		{
+			name: 'ai-node-sdk in peerDependencies but no n8n section at all',
 			filename: 'package.json',
 			code: '{ "name": "n8n-nodes-example", "peerDependencies": { "n8n-workflow": "*", "ai-node-sdk": "*" } }',
 			errors: [{ messageId: 'missingSdkVersion' }],
 		},
 		{
-			name: 'aiNodeSdkVersion is a string instead of integer',
+			name: 'n8n.aiNodeSdkVersion is a string instead of integer',
 			filename: 'package.json',
-			code: '{ "name": "n8n-nodes-example", "aiNodeSdkVersion": "1", "peerDependencies": { "ai-node-sdk": "*" } }',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "aiNodeSdkVersion": "1" }, "peerDependencies": { "ai-node-sdk": "*" } }',
 			errors: [{ messageId: 'invalidSdkVersion', data: { value: '1' } }],
 		},
 		{
-			name: 'aiNodeSdkVersion is zero',
+			name: 'n8n.aiNodeSdkVersion is zero',
 			filename: 'package.json',
-			code: '{ "name": "n8n-nodes-example", "aiNodeSdkVersion": 0, "peerDependencies": { "ai-node-sdk": "*" } }',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "aiNodeSdkVersion": 0 }, "peerDependencies": { "ai-node-sdk": "*" } }',
 			errors: [{ messageId: 'invalidSdkVersion', data: { value: '0' } }],
 		},
 		{
-			name: 'aiNodeSdkVersion is negative (parsed as UnaryExpression, not Literal)',
+			name: 'n8n.aiNodeSdkVersion is negative (parsed as UnaryExpression, not Literal)',
 			filename: 'package.json',
-			code: '{ "name": "n8n-nodes-example", "aiNodeSdkVersion": -1, "peerDependencies": { "ai-node-sdk": "*" } }',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "aiNodeSdkVersion": -1 }, "peerDependencies": { "ai-node-sdk": "*" } }',
 			errors: [{ messageId: 'invalidSdkVersion', data: { value: 'non-literal' } }],
 		},
 		{
-			name: 'aiNodeSdkVersion is a float',
+			name: 'n8n.aiNodeSdkVersion is a float',
 			filename: 'package.json',
-			code: '{ "name": "n8n-nodes-example", "aiNodeSdkVersion": 1.5, "peerDependencies": { "ai-node-sdk": "*" } }',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "aiNodeSdkVersion": 1.5 }, "peerDependencies": { "ai-node-sdk": "*" } }',
 			errors: [{ messageId: 'invalidSdkVersion', data: { value: '1.5' } }],
 		},
 		{
-			name: 'aiNodeSdkVersion is invalid and ai-node-sdk peer dep is missing (two errors)',
+			name: 'n8n.aiNodeSdkVersion is invalid and ai-node-sdk peer dep is missing (two errors)',
 			filename: 'package.json',
-			code: '{ "name": "n8n-nodes-example", "aiNodeSdkVersion": "bad" }',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "aiNodeSdkVersion": "bad" } }',
 			errors: [
 				{ messageId: 'invalidSdkVersion', data: { value: 'bad' } },
 				{ messageId: 'missingPeerDep' },
