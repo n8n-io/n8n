@@ -40,7 +40,7 @@ export const AiNodePackageJsonRule = createRule({
 				const hasAiNodeSdkPeerDep = hasPeerDependency(peerDependenciesProp, 'ai-node-sdk');
 
 				// Validate aiNodeSdkVersion is a positive integer when present
-				if (hasAiNodeSdkVersion && aiNodeSdkVersionProp) {
+				if (hasAiNodeSdkVersion) {
 					const valueNode = aiNodeSdkVersionProp.value;
 					if (valueNode.type !== AST_NODE_TYPES.Literal || !isPositiveInteger(valueNode.value)) {
 						context.report({
@@ -58,7 +58,7 @@ export const AiNodePackageJsonRule = createRule({
 				// If aiNodeSdkVersion is declared, ai-node-sdk must be in peerDependencies
 				if (hasAiNodeSdkVersion && !hasAiNodeSdkPeerDep) {
 					context.report({
-						node: aiNodeSdkVersionProp!,
+						node: aiNodeSdkVersionProp,
 						messageId: 'missingPeerDep',
 					});
 				}
