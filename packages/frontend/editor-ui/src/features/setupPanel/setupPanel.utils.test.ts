@@ -9,6 +9,7 @@ import {
 	isCredentialCardComplete,
 	buildTriggerSetupState,
 	sortCredentialTypeStates,
+	sortNodesByExecutionOrder,
 } from './setupPanel.utils';
 import type { CredentialTypeSetupState, NodeCredentialRequirement } from './setupPanel.types';
 
@@ -815,6 +816,151 @@ describe('setupPanel.utils', () => {
 
 			expect(result).not.toBe(states);
 			expect(states[0].credentialType).toBe('apiB');
+		});
+	});
+
+	describe('sortNodesByExecutionOrder', () => {
+		const makeSetupNode = (name: string, position: [number, number], isTrigger = false) => ({
+			node: createNode({ name, position }),
+			isTrigger,
+			credentialTypes: ['testApi'],
+		});
+
+		it('should return empty array for empty input', () => {
+			const result = sortNodesByExecutionOrder([], {});
+
+			expect(result).toEqual([]);
+		});
+
+		it('should return empty array when there are no triggers', () => {
+			const nodeA = makeSetupNode('A', [200, 0]);
+			const nodeB = makeSetupNode('B', [100, 0]);
+
+			const result = sortNodesByExecutionOrder([nodeA, nodeB], {});
+
+			expect(result).toEqual([]);
+		});
+
+		it('should sort a linear chain by execution order', () => {
+			const trigger = makeSetupNode('Trigger', [0, 0], true);
+			const nodeA = makeSetupNode('A', [100, 0]);
+			const nodeB = makeSetupNode('B', [200, 0]);
+
+			const connections = {
+				Trigger: { main: [[{ node: 'A', type: 'main' as const, index: 0 }]] },
+				A: { main: [[{ node: 'B', type: 'main' as const, index: 0 }]] },
+			};
+
+			const result = sortNodesByExecutionOrder([nodeB, nodeA, trigger], connections);
+
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'A', 'B']);
+		});
+
+		it('should drop orphaned nodes not connected to any trigger', () => {
+			const trigger = makeSetupNode('Trigger', [0, 0], true);
+			const connected = makeSetupNode('Connected', [100, 0]);
+			const orphaned = makeSetupNode('Orphaned', [50, 0]);
+
+			const connections = {
+				Trigger: { main: [[{ node: 'Connected', type: 'main' as const, index: 0 }]] },
+			};
+
+			const result = sortNodesByExecutionOrder([orphaned, connected, trigger], connections);
+
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'Connected']);
+		});
+
+		it('should group nodes by trigger, processing triggers by X position', () => {
+			const triggerA = makeSetupNode('TriggerA', [200, 0], true);
+			const triggerB = makeSetupNode('TriggerB', [0, 0], true);
+			const nodeA = makeSetupNode('A', [300, 0]);
+			const nodeB = makeSetupNode('B', [100, 0]);
+
+			const connections = {
+				TriggerA: { main: [[{ node: 'A', type: 'main' as const, index: 0 }]] },
+				TriggerB: { main: [[{ node: 'B', type: 'main' as const, index: 0 }]] },
+			};
+
+			const result = sortNodesByExecutionOrder([nodeA, triggerA, nodeB, triggerB], connections);
+
+			// TriggerB (x=0) first with its children, then TriggerA (x=200) with its children
+			expect(result.map((n) => n.node.name)).toEqual(['TriggerB', 'B', 'TriggerA', 'A']);
+		});
+
+		it('should handle cycles gracefully', () => {
+			const trigger = makeSetupNode('Trigger', [0, 0], true);
+			const nodeA = makeSetupNode('A', [100, 0]);
+			const nodeB = makeSetupNode('B', [200, 0]);
+
+			const connections = {
+				Trigger: { main: [[{ node: 'A', type: 'main' as const, index: 0 }]] },
+				A: { main: [[{ node: 'B', type: 'main' as const, index: 0 }]] },
+				B: { main: [[{ node: 'A', type: 'main' as const, index: 0 }]] },
+			};
+
+			const result = sortNodesByExecutionOrder([nodeB, nodeA, trigger], connections);
+
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'A', 'B']);
+		});
+
+		it('should traverse through intermediate non-setup nodes', () => {
+			const trigger = makeSetupNode('Trigger', [0, 0], true);
+			const nodeC = makeSetupNode('C', [300, 0]);
+
+			// Trigger → IntermediateNode → C, but IntermediateNode is not in the setup panel
+			const connections = {
+				Trigger: { main: [[{ node: 'IntermediateNode', type: 'main' as const, index: 0 }]] },
+				IntermediateNode: { main: [[{ node: 'C', type: 'main' as const, index: 0 }]] },
+			};
+
+			const result = sortNodesByExecutionOrder([nodeC, trigger], connections);
+
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'C']);
+		});
+
+		it('should follow depth-first order, completing each branch before the next', () => {
+			const trigger = makeSetupNode('Trigger', [0, 0], true);
+			const nodeA = makeSetupNode('A', [100, 0]);
+			const nodeB = makeSetupNode('B', [200, 0]);
+			const nodeC = makeSetupNode('C', [100, 100]);
+			const nodeD = makeSetupNode('D', [200, 100]);
+
+			// Trigger → A → B
+			//         ↘ C → D
+			const connections = {
+				Trigger: {
+					main: [
+						[
+							{ node: 'A', type: 'main' as const, index: 0 },
+							{ node: 'C', type: 'main' as const, index: 0 },
+						],
+					],
+				},
+				A: { main: [[{ node: 'B', type: 'main' as const, index: 0 }]] },
+				C: { main: [[{ node: 'D', type: 'main' as const, index: 0 }]] },
+			};
+
+			const result = sortNodesByExecutionOrder([nodeD, nodeC, nodeB, nodeA, trigger], connections);
+
+			// DFS: completes A→B before visiting C→D
+			// (BFS would produce: Trigger, A, C, B, D)
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'A', 'B', 'C', 'D']);
+		});
+
+		it('should not duplicate nodes reachable from multiple triggers', () => {
+			const triggerA = makeSetupNode('TriggerA', [0, 0], true);
+			const triggerB = makeSetupNode('TriggerB', [100, 100], true);
+			const shared = makeSetupNode('Shared', [200, 50]);
+
+			const connections = {
+				TriggerA: { main: [[{ node: 'Shared', type: 'main' as const, index: 0 }]] },
+				TriggerB: { main: [[{ node: 'Shared', type: 'main' as const, index: 0 }]] },
+			};
+
+			const result = sortNodesByExecutionOrder([shared, triggerB, triggerA], connections);
+
+			// Shared appears only once, under the first trigger (TriggerA, x=0)
+			expect(result.map((n) => n.node.name)).toEqual(['TriggerA', 'Shared', 'TriggerB']);
 		});
 	});
 });

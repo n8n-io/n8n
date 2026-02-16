@@ -35,6 +35,16 @@ vi.mock('@/app/utils/nodes/nodeTransforms', () => ({
 		mockGetNodeTypeDisplayableCredentials(...args),
 }));
 
+// Sorting/filtering by execution order is tested in setupPanel.utils.test.ts.
+// Use a pass-through mock here so non-sorting tests are not affected.
+vi.mock('../setupPanel.utils', async () => {
+	const actual = await vi.importActual('../setupPanel.utils');
+	return {
+		...actual,
+		sortNodesByExecutionOrder: (nodes: unknown[]) => nodes,
+	};
+});
+
 const createNode = (overrides: Partial<INodeUi> = {}): INodeUi =>
 	createTestNode({
 		name: 'TestNode',

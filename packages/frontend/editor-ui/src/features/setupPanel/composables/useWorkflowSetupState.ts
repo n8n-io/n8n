@@ -15,6 +15,7 @@ import {
 	isCredentialCardComplete,
 	buildTriggerSetupState,
 	sortCredentialTypeStates,
+	sortNodesByExecutionOrder,
 } from '../setupPanel.utils';
 
 /**
@@ -53,7 +54,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 	/**
 	 * All non-disabled nodes that either have credential requirements or are triggers.
-	 * Sorted with triggers first, then by X position.
+	 * Sorted by execution order (grouped by trigger, DFS through connections).
 	 */
 	const nodesRequiringSetup = computed(() => {
 		const nodesForSetup = sourceNodes.value
@@ -65,10 +66,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			}))
 			.filter(({ credentialTypes, isTrigger }) => credentialTypes.length > 0 || isTrigger);
 
-		return nodesForSetup.sort(
-			(a, b) =>
-				Number(b.isTrigger) - Number(a.isTrigger) || a.node.position[0] - b.node.position[0],
-		);
+		return sortNodesByExecutionOrder(nodesForSetup, workflowsStore.connectionsBySourceNode);
 	});
 
 	/**
