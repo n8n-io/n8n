@@ -415,7 +415,7 @@ export class SessionManagerService {
 
 	/**
 	 * Reset the code-builder agent context session.
-	 * Called during restore to clear stale agent context (userMessages + summary).
+	 * Called during restore to clear stale agent context (conversationEntries + summary).
 	 */
 	private async resetCodeBuilderSession(workflowId: string, userId: string): Promise<void> {
 		const sessionThreadId = generateCodeBuilderThreadId(workflowId, userId);
@@ -435,7 +435,7 @@ export class SessionManagerService {
 					channel_values: {
 						...existingCheckpoint.channel_values,
 						codeBuilderSession: {
-							userMessages: [],
+							conversationEntries: [],
 							previousSummary: undefined,
 						},
 					},
@@ -446,7 +446,7 @@ export class SessionManagerService {
 					ts: new Date().toISOString(),
 					channel_values: {
 						codeBuilderSession: {
-							userMessages: [],
+							conversationEntries: [],
 							previousSummary: undefined,
 						},
 					},
