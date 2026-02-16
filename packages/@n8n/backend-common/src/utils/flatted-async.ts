@@ -27,10 +27,10 @@
  *   - 75 MB execution: 370ms total GC vs 520ms sync (29% less), despite
  *     440 vs 98 GC events — smaller working set means cheaper collections.
  */
+import { ensureError } from 'n8n-workflow';
 import { Readable } from 'stream';
 import { parser } from 'stream-json';
 import Asm from 'stream-json/Assembler';
-import { ensureError } from 'n8n-workflow';
 
 // 64 KB chunks — selected via benchmarks as the sweet spot for event-loop
 // responsiveness vs scheduling overhead (p95 lag ~4 ms at 50 MB payload).
