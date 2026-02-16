@@ -187,6 +187,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
+	const endpointHealth = computed(() => settings.value.endpointHealth);
+
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
 
@@ -351,6 +353,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		mfa,
 		isDocker,
 		isDevRelease,
+		endpointHealth,
 		isEnterpriseFeatureEnabled,
 		databaseType,
 		planName,

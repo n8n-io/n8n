@@ -14,7 +14,7 @@ const credentialsStore = useCredentialsStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 const node = computed(() => workflowsStore.workflowObject.getNode(name.value));
-const size = 'medium';
+const size = 'small';
 
 const hasResolvableCredential = computed(() => {
 	const nodeCredentials = node.value?.credentials;
@@ -59,7 +59,7 @@ const hasDynamicCredentials = computed(
 					{{ i18n.baseText('node.settings.alwaysOutputData') }}
 				</div>
 			</template>
-			<div data-test-id="canvas-node-status-always-output-data">
+			<div data-test-id="canvas-node-status-always-output-data" :class="$style.icon">
 				<N8nIcon icon="always-output-data" :size="size" />
 			</div>
 		</N8nTooltip>
@@ -76,7 +76,7 @@ const hasDynamicCredentials = computed(
 					{{ i18n.baseText('node.settings.executeOnce') }}
 				</div>
 			</template>
-			<div data-test-id="canvas-node-status-execute-once">
+			<div data-test-id="canvas-node-status-execute-once" :class="$style.icon">
 				<N8nIcon icon="execute-once" :size="size" />
 			</div>
 		</N8nTooltip>
@@ -93,7 +93,7 @@ const hasDynamicCredentials = computed(
 					{{ i18n.baseText('node.settings.retriesOnFailure') }}
 				</div>
 			</template>
-			<div data-test-id="canvas-node-status-retry-on-fail">
+			<div data-test-id="canvas-node-status-retry-on-fail" :class="$style.icon">
 				<N8nIcon icon="retry-on-fail" :size="size" />
 			</div>
 		</N8nTooltip>
@@ -112,7 +112,7 @@ const hasDynamicCredentials = computed(
 					{{ i18n.baseText('node.settings.continuesOnError') }}
 				</div>
 			</template>
-			<div data-test-id="canvas-node-status-continue-on-error">
+			<div data-test-id="canvas-node-status-continue-on-error" :class="$style.icon">
 				<N8nIcon icon="continue-on-error" :size="size" />
 			</div>
 		</N8nTooltip>
@@ -135,7 +135,7 @@ const hasDynamicCredentials = computed(
 					}}
 				</div>
 			</template>
-			<div data-test-id="canvas-node-status-dynamic-credentials">
+			<div data-test-id="canvas-node-status-dynamic-credentials" :class="$style.icon">
 				<N8nIcon icon="key-round" :size="size" />
 			</div>
 		</N8nTooltip>
@@ -149,6 +149,7 @@ const hasDynamicCredentials = computed(
 	right: var(--canvas-node--status-icons--margin);
 	display: flex;
 	flex-direction: row;
+	gap: 1px;
 }
 .tooltipHeader {
 	display: flex;
@@ -159,5 +160,12 @@ const hasDynamicCredentials = computed(
 	font-weight: 600;
 	font-size: inherit;
 	line-height: inherit;
+}
+
+.icon {
+	width: var(--spacing--md);
+	height: var(--spacing--md);
+	display: grid;
+	place-items: center;
 }
 </style>

@@ -691,6 +691,28 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'project-roles/view/:roleSlug',
+				name: VIEWS.PROJECT_ROLE_VIEW,
+				component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
+				props: true,
+				meta: {
+					middleware: ['authenticated', 'enterprise'],
+					middlewareOptions: {
+						enterprise: {
+							feature: EnterpriseEditionFeature.CustomRoles,
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'project-roles',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'project-roles',
 				component: RouterView,
 				children: [

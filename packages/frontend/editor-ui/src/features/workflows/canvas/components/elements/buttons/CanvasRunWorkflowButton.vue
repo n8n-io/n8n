@@ -87,12 +87,12 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 			:disabled="executing || hideTooltip"
 		>
 			<N8nButton
+				variant="solid"
 				:class="$style.button"
 				:loading="executing"
 				:disabled="disabled"
 				:size="size ?? 'large'"
 				icon="flask-conical"
-				type="primary"
 				data-test-id="execute-workflow-button"
 				@mouseenter="$emit('mouseenter', $event)"
 				@mouseleave="$emit('mouseleave', $event)"
@@ -124,7 +124,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 			>
 				<template #activator>
 					<N8nButton
-						type="primary"
+						variant="solid"
 						icon-size="large"
 						:disabled="disabled"
 						:class="$style.chevron"

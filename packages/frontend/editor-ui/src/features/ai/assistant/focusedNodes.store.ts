@@ -25,9 +25,12 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	const chatPanelStateStore = useChatPanelStateStore();
 	const ndvStore = useNDVStore();
 
-	const isFeatureEnabled = computed(() =>
-		posthogStore.isFeatureEnabled(FOCUSED_NODES_EXPERIMENT.name),
-	);
+	const isFeatureEnabled = computed(() => {
+		return posthogStore.isVariantEnabled(
+			FOCUSED_NODES_EXPERIMENT.name,
+			FOCUSED_NODES_EXPERIMENT.variant,
+		);
+	});
 
 	const focusedNodesMap = ref<Record<string, FocusedNode>>({});
 	const canvasSelectedNodeIds = ref<Set<string>>(new Set());
@@ -43,7 +46,11 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	const filteredUnconfirmedNodes = computed(() => {
 		const totalWorkflowNodes = workflowsStore.allNodes.length;
 		const availableNodes = totalWorkflowNodes - confirmedNodes.value.length;
-		if (availableNodes > 0 && unconfirmedNodes.value.length >= availableNodes) {
+		if (
+			confirmedNodes.value.length > 0 &&
+			availableNodes > 0 &&
+			unconfirmedNodes.value.length >= availableNodes
+		) {
 			return [];
 		}
 		return unconfirmedNodes.value;

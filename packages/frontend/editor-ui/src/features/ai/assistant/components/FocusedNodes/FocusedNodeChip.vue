@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { FocusedNode } from '../../focusedNodes.types';
@@ -16,6 +17,7 @@ const emit = defineEmits<{
 	remove: [];
 }>();
 
+const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 
 const isConfirmed = computed(() => props.node.state === 'confirmed');
@@ -42,18 +44,25 @@ function handleRemove(event: MouseEvent) {
 </script>
 
 <template>
-	<span :class="[$style.chip, { [$style.unconfirmed]: isUnconfirmed }]" @click="handleClick">
-		<span :class="[$style.iconWrapper, { [$style.confirmedIcon]: isConfirmed }]">
-			<N8nIcon v-if="isUnconfirmed" icon="plus" size="xsmall" :class="$style.prefixIcon" />
-			<template v-else>
-				<NodeIcon :node-type="nodeType" :size="12" :class="$style.nodeIcon" />
-				<button type="button" :class="$style.removeButton" @click="handleRemove">
-					<N8nIcon icon="x" size="small" />
-				</button>
-			</template>
+	<N8nTooltip
+		:content="i18n.baseText('focusedNodes.unconfirmedTooltip')"
+		:disabled="!isUnconfirmed"
+		placement="top"
+		:show-after="300"
+	>
+		<span :class="[$style.chip, { [$style.unconfirmed]: isUnconfirmed }]" @click="handleClick">
+			<span :class="[$style.iconWrapper, { [$style.confirmedIcon]: isConfirmed }]">
+				<N8nIcon v-if="isUnconfirmed" icon="plus" size="xsmall" :class="$style.prefixIcon" />
+				<template v-else>
+					<NodeIcon :node-type="nodeType" :size="12" :class="$style.nodeIcon" />
+					<button type="button" :class="$style.removeButton" @click="handleRemove">
+						<N8nIcon icon="x" :class="$style.closeIcon" />
+					</button>
+				</template>
+			</span>
+			<span :class="$style.label">{{ truncatedName }}</span>
 		</span>
-		<span :class="$style.label">{{ truncatedName }}</span>
-	</span>
+	</N8nTooltip>
 </template>
 
 <style lang="scss" module>
@@ -94,6 +103,7 @@ function handleRemove(event: MouseEvent) {
 	width: 12px;
 	height: 12px;
 	position: relative;
+	overflow: visible;
 }
 
 .confirmedIcon {
@@ -127,6 +137,11 @@ function handleRemove(event: MouseEvent) {
 	.chip:hover & {
 		display: flex;
 	}
+}
+
+.closeIcon :global(svg) {
+	width: 24px;
+	height: 24px;
 }
 
 .prefixIcon {

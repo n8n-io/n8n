@@ -1,6 +1,6 @@
 {
 	"name": "@n8n/ai-utilities",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Utilities for building AI nodes in n8n",
 	"main": "dist/index.js",
 	"module": "src/index.ts",

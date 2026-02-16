@@ -1,7 +1,11 @@
 import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../../../config/constants';
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Node Creator Navigation', () => {
+test.describe('Node Creator Navigation', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});

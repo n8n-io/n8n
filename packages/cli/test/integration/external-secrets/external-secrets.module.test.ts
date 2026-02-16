@@ -149,14 +149,12 @@ describe('ExternalSecretsModule', () => {
 				providerKey: 'my-vault',
 				type: 'dummy',
 				encryptedSettings,
-				isEnabled: true,
 			});
 
 			await connectionRepository.save({
 				providerKey: 'another-vault',
 				type: 'another_dummy',
 				encryptedSettings,
-				isEnabled: false,
 			});
 		});
 
@@ -164,14 +162,14 @@ describe('ExternalSecretsModule', () => {
 			await module.shutdown();
 		});
 
-		it('should load enabled providers on init', async () => {
+		it('should load and connect all providers on init', async () => {
 			const initSpy = jest.spyOn(DummyProvider.prototype, 'init');
 			const connectSpy = jest.spyOn(DummyProvider.prototype, 'connect');
 			const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
 
-			const initDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'init');
-			const connectDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'connect');
-			const updateDisabledSpy = jest.spyOn(AnotherDummyProvider.prototype, 'update');
+			const initAnotherSpy = jest.spyOn(AnotherDummyProvider.prototype, 'init');
+			const connectAnotherSpy = jest.spyOn(AnotherDummyProvider.prototype, 'connect');
+			const updateAnotherSpy = jest.spyOn(AnotherDummyProvider.prototype, 'update');
 
 			await module.init();
 
@@ -179,17 +177,17 @@ describe('ExternalSecretsModule', () => {
 			expect(connectSpy).toHaveBeenCalled();
 			expect(updateSpy).toHaveBeenCalled();
 
-			expect(initDisabledSpy).toHaveBeenCalled();
-			expect(connectDisabledSpy).not.toHaveBeenCalled();
-			expect(updateDisabledSpy).not.toHaveBeenCalled();
+			expect(initAnotherSpy).toHaveBeenCalled();
+			expect(connectAnotherSpy).toHaveBeenCalled();
+			expect(updateAnotherSpy).toHaveBeenCalled();
 
 			initSpy.mockRestore();
 			connectSpy.mockRestore();
 			updateSpy.mockRestore();
 
-			initDisabledSpy.mockRestore();
-			connectDisabledSpy.mockRestore();
-			updateDisabledSpy.mockRestore();
+			initAnotherSpy.mockRestore();
+			connectAnotherSpy.mockRestore();
+			updateAnotherSpy.mockRestore();
 		});
 
 		it('should disconnect providers after shutdown', async () => {
