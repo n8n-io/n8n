@@ -1,7 +1,13 @@
-import { dispatchCustomEvent } from '@langchain/core/callbacks/dispatch';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
-import { StateGraph, END, START, type MemorySaver, isGraphInterrupt } from '@langchain/langgraph';
+import {
+	StateGraph,
+	END,
+	START,
+	type MemorySaver,
+	isGraphInterrupt,
+	getWriter,
+} from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
@@ -13,6 +19,7 @@ import {
 import { SupervisorAgent } from './agents/supervisor.agent';
 import type { AssistantHandler } from './assistant';
 import {
+	ASSISTANT_SDK_TIMEOUT_MS,
 	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 	MAX_BUILDER_ITERATIONS,
 	MAX_DISCOVERY_ITERATIONS,
@@ -24,12 +31,18 @@ import type { BaseSubgraph } from './subgraphs/subgraph-interface';
 import type { ResourceLocatorCallback } from './types/callbacks';
 import type { CoordinationMetadata, SubgraphPhase } from './types/coordination';
 import {
+	type CoordinationLogEntry,
 	createAssistantMetadata,
 	createErrorMetadata,
 	createResponderMetadata,
 } from './types/coordination';
 import type { StreamChunk } from './types/streaming';
-import { getNextPhaseFromLog, hasBuilderPhaseInLog, hasErrorInLog } from './utils/coordination-log';
+import {
+	getLastCompletedPhase,
+	getNextPhaseFromLog,
+	hasBuilderPhaseInLog,
+	hasErrorInLog,
+} from './utils/coordination-log';
 import { sanitizeLlmErrorMessage } from './utils/error-sanitizer';
 import { processOperations } from './utils/operations-processor';
 import {
@@ -288,10 +301,25 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				// Record start time for timing metrics
 				const startTimestamp = Date.now();
 
-				const hasAssistantPhase = state.coordinationLog.some(
-					(e) => e.phase === 'assistant' && e.status === 'completed',
-				);
-				if (hasAssistantPhase && !hasBuilderPhaseInLog(state.coordinationLog)) {
+				// Only forward assistant response if assistant was the most recently
+				// completed phase (i.e., it ran in the current turn). Stale entries from
+				// previous turns must be ignored to avoid replaying old responses.
+				const lastCompletedPhase = getLastCompletedPhase(state.coordinationLog);
+				const assistantEntry =
+					lastCompletedPhase === 'assistant'
+						? state.coordinationLog.findLast(
+								(e: CoordinationLogEntry) => e.phase === 'assistant' && e.status === 'completed',
+							)
+						: undefined;
+				// Only short-circuit when the assistant actually produced text
+				// (streamed to the frontend via custom events). If the SDK returned
+				// empty text, fall through to the normal responder so it can generate
+				// a meaningful reply instead of silently emitting nothing.
+				if (assistantEntry?.output && !hasBuilderPhaseInLog(state.coordinationLog)) {
+					logger?.debug('[responder] Forwarding assistant response (no credits consumed)', {
+						outputLength: assistantEntry.output.length,
+						outputPreview: assistantEntry.output.substring(0, 100),
+					});
 					return {
 						coordinationLog: [
 							{
@@ -457,21 +485,42 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 						const query = extractUserRequest(state.messages);
 						const userId = (nodeConfig?.configurable?.userId as string) ?? 'unknown';
 
+						const streamWriter = getWriter(nodeConfig);
+
+						let chunksDispatched = 0;
 						const writer = (chunk: StreamChunk) => {
-							if (nodeConfig) {
-								void dispatchCustomEvent('assistant_chunk', chunk, nodeConfig);
+							if (streamWriter) {
+								chunksDispatched++;
+								streamWriter(chunk);
 							}
 						};
 
-						const result = await assistantHandler.execute(
-							{
-								query,
-								workflowJSON: state.workflowJSON,
-								sdkSessionId: state.sdkSessionId,
-							},
-							userId,
-							writer,
-						);
+						const abortController = new AbortController();
+						const timeoutId = setTimeout(() => abortController.abort(), ASSISTANT_SDK_TIMEOUT_MS);
+
+						let result;
+						try {
+							result = await assistantHandler.execute(
+								{
+									query,
+									workflowJSON: state.workflowJSON,
+									sdkSessionId: state.sdkSessionId,
+								},
+								userId,
+								writer,
+								abortController.signal,
+							);
+						} finally {
+							clearTimeout(timeoutId);
+						}
+
+						logger?.debug('[assistant_subgraph] Handler completed', {
+							responseTextLength: result.responseText.length,
+							sdkSessionId: result.sdkSessionId,
+							hasCodeDiff: result.hasCodeDiff,
+							suggestionCount: result.suggestionIds.length,
+							chunksDispatched,
+						});
 
 						return {
 							output: {
