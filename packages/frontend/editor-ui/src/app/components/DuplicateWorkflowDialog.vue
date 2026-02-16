@@ -198,7 +198,7 @@ onMounted(async () => {
 					@click="save"
 				/>
 				<N8nButton
-					type="secondary"
+					variant="subtle"
 					:disabled="isSaving"
 					:label="i18n.baseText('duplicateWorkflowDialog.cancel')"
 					float="right"

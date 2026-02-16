@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { ButtonType } from '../../types/button';
+import type { ButtonVariant } from '../../types/button';
 import N8nButton from '../N8nButton';
 import N8nCallout, { type CalloutTheme } from '../N8nCallout';
 import N8nHeading from '../N8nHeading';
@@ -13,7 +13,7 @@ interface ActionBoxProps {
 	icon?: IconOrEmoji;
 	heading?: string;
 	buttonText?: string;
-	buttonType?: ButtonType;
+	buttonVariant?: ButtonVariant;
 	buttonDisabled?: boolean;
 	buttonIcon?: IconName;
 	description?: string;
@@ -59,7 +59,7 @@ withDefaults(defineProps<ActionBoxProps>(), {
 			</template>
 			<N8nButton
 				:label="buttonText"
-				:type="buttonType"
+				:variant="buttonVariant"
 				:disabled="buttonDisabled"
 				:icon="buttonIcon"
 				size="large"

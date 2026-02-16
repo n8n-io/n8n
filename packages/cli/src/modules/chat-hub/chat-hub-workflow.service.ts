@@ -1112,7 +1112,7 @@ Respond the title only:`,
 		trx: EntityManager,
 		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
-		await this.chatHubSettingsService.ensureModelIsAllowed(model);
+		await this.chatHubSettingsService.ensureModelIsAllowed(model, trx);
 		this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
 		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 

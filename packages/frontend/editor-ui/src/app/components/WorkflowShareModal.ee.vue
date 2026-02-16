@@ -344,7 +344,7 @@ watch(
 				<N8nText v-show="isDirty" color="text-light" size="small" class="mr-xs">
 					{{ i18n.baseText('workflows.shareModal.changesHint') }}
 				</N8nText>
-				<N8nButton v-if="isHomeTeamProject" type="secondary" @click="modalBus.emit('close')">
+				<N8nButton variant="subtle" v-if="isHomeTeamProject" @click="modalBus.emit('close')">
 					{{ i18n.baseText('generic.close') }}
 				</N8nButton>
 				<N8nButton

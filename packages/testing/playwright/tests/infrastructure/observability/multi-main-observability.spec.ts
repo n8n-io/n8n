@@ -50,7 +50,11 @@ test.use({
 	},
 });
 
-test.describe('Multi-main Observability @capability:observability @mode:multi-main', () => {
+test.describe('Multi-main Observability @capability:observability @mode:multi-main', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	/**
 	 * Test: Metrics scraping from multi-main cluster
 	 *

@@ -104,7 +104,15 @@ export class NodeTypeParser {
 			return match ?? null;
 		}
 
-		// Otherwise, return the latest version (last in array)
-		return versions[versions.length - 1];
+		// Otherwise, return the description with the highest max version
+		return versions.reduce((latest, current) => {
+			const latestMax = Array.isArray(latest.version)
+				? Math.max(...latest.version)
+				: latest.version;
+			const currentMax = Array.isArray(current.version)
+				? Math.max(...current.version)
+				: current.version;
+			return currentMax > latestMax ? current : latest;
+		});
 	}
 }

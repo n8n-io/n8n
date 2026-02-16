@@ -9,7 +9,11 @@ const CUSTOM_NODE_NAME = 'E2E Node';
 const CUSTOM_NODE_WITH_N8N_CREDENTIAL = 'E2E Node with native n8n credential';
 const CUSTOM_NODE_WITH_CUSTOM_CREDENTIAL = 'E2E Node with custom credential';
 
-test.describe('Community and custom nodes in canvas', () => {
+test.describe('Community and custom nodes in canvas', {
+	annotation: [
+		{ type: 'owner', description: 'NODES' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.page.route('/types/nodes.json', async (route) => {
 			const response = await route.fetch();
