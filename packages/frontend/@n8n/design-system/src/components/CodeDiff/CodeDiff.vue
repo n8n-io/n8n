@@ -113,8 +113,8 @@ const diffs = computed(() => {
 			</div>
 			<div v-else-if="replaced">
 				<N8nButton
-					type="secondary"
-					size="mini"
+					variant="subtle"
+					size="xsmall"
 					icon="undo-2"
 					data-test-id="undo-replace-button"
 					@click="() => emit('undo')"
@@ -128,8 +128,8 @@ const diffs = computed(() => {
 			</div>
 			<N8nButton
 				v-else
-				:type="replacing ? 'secondary' : 'primary'"
-				size="mini"
+				:variant="replacing ? 'subtle' : 'solid'"
+				size="xsmall"
 				icon="refresh-cw"
 				data-test-id="replace-code-button"
 				:disabled="!content || streaming"

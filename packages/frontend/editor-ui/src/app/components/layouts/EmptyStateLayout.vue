@@ -136,7 +136,7 @@ const handleAppSelectionContinue = () => {
 					<div :class="$style.actionButtons">
 						<ReadyToRunButton type="secondary" size="large" />
 						<N8nButton
-							type="secondary"
+							variant="subtle"
 							icon="file"
 							size="large"
 							data-test-id="start-from-scratch-button"

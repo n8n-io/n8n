@@ -67,7 +67,7 @@ function onCancelFeedback() {
 		<div v-if="showRatingButtons" :class="$style.buttons">
 			<template v-if="!minimal">
 				<N8nButton
-					type="secondary"
+					variant="subtle"
 					size="small"
 					:label="t('assistantChat.builder.thumbsUp')"
 					data-test-id="message-thumbs-up-button"
@@ -75,7 +75,7 @@ function onCancelFeedback() {
 					@click="onRateButton('up')"
 				/>
 				<N8nButton
-					type="secondary"
+					variant="subtle"
 					size="small"
 					data-test-id="message-thumbs-down-button"
 					:label="t('assistantChat.builder.thumbsDown')"
@@ -85,9 +85,8 @@ function onCancelFeedback() {
 			</template>
 			<template v-else>
 				<N8nIconButton
-					type="tertiary"
+					variant="ghost"
 					size="small"
-					text
 					icon="thumbs-up"
 					icon-size="large"
 					:class="$style.ratingButton"
@@ -95,9 +94,8 @@ function onCancelFeedback() {
 					@click="onRateButton('up')"
 				/>
 				<N8nIconButton
-					type="tertiary"
+					variant="ghost"
 					size="small"
-					text
 					icon="thumbs-down"
 					icon-size="large"
 					:class="$style.ratingButton"
@@ -120,13 +118,13 @@ function onCancelFeedback() {
 			/>
 			<div :class="$style.feedbackActions">
 				<N8nButton
-					type="secondary"
+					variant="subtle"
 					size="small"
 					:label="t('generic.cancel')"
 					@click="onCancelFeedback"
 				/>
 				<N8nButton
-					type="primary"
+					variant="solid"
 					size="small"
 					data-test-id="message-submit-feedback-button"
 					:label="t('assistantChat.builder.feedbackSubmit')"

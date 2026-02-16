@@ -57,7 +57,8 @@ type ModuleName =
 	| 'mcp'
 	| 'dynamic-credentials'
 	| 'log-streaming'
-	| 'ldap';
+	| 'ldap'
+	| 'source-control';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

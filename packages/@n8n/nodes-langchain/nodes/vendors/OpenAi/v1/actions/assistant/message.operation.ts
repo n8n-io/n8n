@@ -24,7 +24,7 @@ import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool, getChatMessages } from '../../../helpers/utils';
 import { assistantRLC } from '../descriptions';
-import { getProxyAgent } from '@utils/httpProxyAgent';
+import { getProxyAgent } from '@n8n/ai-utilities';
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
 import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';

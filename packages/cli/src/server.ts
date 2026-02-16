@@ -385,7 +385,7 @@ export class Server extends AbstractServer {
 				'assets',
 				'static',
 				'types',
-				'healthz',
+				this.endpointHealth,
 				'metrics',
 				'e2e',
 				this.restEndpoint,

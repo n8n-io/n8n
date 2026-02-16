@@ -1,10 +1,14 @@
 import { HumanMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
-import { StateGraph, END, START, type MemorySaver } from '@langchain/langgraph';
+import { StateGraph, END, START, type MemorySaver, isGraphInterrupt } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { ResponderAgent } from './agents/responder.agent';
+import {
+	createResponderAgent,
+	invokeResponderAgent,
+	type ResponderAgentType,
+} from './agents/responder.agent';
 import { SupervisorAgent } from './agents/supervisor.agent';
 import {
 	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
@@ -23,6 +27,7 @@ import {
 	isSubgraphPhase,
 } from './types/coordination';
 import { getNextPhaseFromLog, hasErrorInLog } from './utils/coordination-log';
+import { sanitizeLlmErrorMessage } from './utils/error-sanitizer';
 import { processOperations } from './utils/operations-processor';
 import {
 	determineStateAction,
@@ -53,7 +58,7 @@ function isCoordinationLogEntry(
 
 /**
  * Maps routing decisions to graph node names.
- * Used by both supervisor (LLM-based) and process_operations (deterministic) routing.
+ * Used by both supervisor (LLM-based) and route_next_phase (deterministic) routing.
  */
 function routeToNode(next: string): string {
 	const nodeMapping: Record<string, string> = {
@@ -134,9 +139,13 @@ function createSubgraphNodeHandler<
 				coordinationLog: [inProgressEntry, ...outputCoordinationLog],
 			};
 		} catch (error) {
+			if (isGraphInterrupt(error)) {
+				throw error;
+			}
 			logger?.error(`[${name}] ERROR:`, { error });
-			const errorMessage =
+			const rawErrorMessage =
 				error instanceof Error ? error.message : `An error occurred in ${name}: ${String(error)}`;
+			const userFacingMessage = sanitizeLlmErrorMessage(error);
 
 			// Route to responder to report error (terminal)
 			// Include in_progress entry for timing even on errors
@@ -145,7 +154,7 @@ function createSubgraphNodeHandler<
 				nextPhase: 'responder',
 				messages: [
 					new HumanMessage({
-						content: `Error in ${name}: ${errorMessage}`,
+						content: `Error in ${name}: ${userFacingMessage}`,
 						name: 'system_error',
 					}),
 				],
@@ -161,10 +170,10 @@ function createSubgraphNodeHandler<
 						phase,
 						status: 'error' as const,
 						timestamp: Date.now(),
-						summary: `Error: ${errorMessage}`,
+						summary: `Error: ${userFacingMessage}`,
 						metadata: createErrorMetadata({
 							failedSubgraph: phase,
-							errorMessage,
+							errorMessage: rawErrorMessage,
 						}),
 					},
 				],
@@ -193,19 +202,26 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	} = config;
 
 	const supervisorAgent = new SupervisorAgent({ llm: stageLLMs.supervisor });
-	const responderAgent = new ResponderAgent({ llm: stageLLMs.responder });
 
-	// Create subgraph instances
+	// Create Responder agent using LangChain v1 createAgent API
+	const responderAgent: ResponderAgentType = createResponderAgent({
+		llm: stageLLMs.responder,
+		enableIntrospection: featureFlags?.enableIntrospection,
+		logger,
+	});
+
+	// Create Discovery subgraph (discovery + planning)
 	const discoverySubgraph = new DiscoverySubgraph();
-	const builderSubgraph = new BuilderSubgraph();
-
-	// Compile subgraphs with per-stage LLMs
 	const compiledDiscovery = discoverySubgraph.create({
 		parsedNodeTypes,
 		llm: stageLLMs.discovery,
+		plannerLLM: stageLLMs.planner,
 		logger,
 		featureFlags,
 	});
+
+	// Create Builder subgraph (still uses StateGraph pattern)
+	const builderSubgraph = new BuilderSubgraph();
 	const compiledBuilder = builderSubgraph.create({
 		parsedNodeTypes,
 		llm: stageLLMs.builder,
@@ -238,21 +254,23 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				};
 			})
 			// Add Responder Node (synthesizes final user-facing response)
-			// Accepts config as second param to propagate callbacks for tracing
+			// Uses LangChain v1 createAgent API with context injection middleware
 			.addNode('responder', async (state, config) => {
 				// Record start time for timing metrics
 				const startTimestamp = Date.now();
 
-				const response = await responderAgent.invoke(
+				const { response, introspectionEvents } = await invokeResponderAgent(
+					responderAgent,
 					{
 						messages: state.messages,
 						coordinationLog: state.coordinationLog,
 						discoveryContext: state.discoveryContext,
 						workflowJSON: state.workflowJSON,
-						previousSummary: state.previousSummary,
 						workflowContext: state.workflowContext,
+						previousSummary: state.previousSummary,
 					},
 					config,
+					{ enableIntrospection: featureFlags?.enableIntrospection },
 				);
 
 				// Call success callback only when generation completed without errors
@@ -286,6 +304,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 							metadata: createResponderMetadata({ responseLength: responseContent.length }),
 						},
 					],
+					introspectionEvents, // Collected from responder's tool calls
 				};
 			})
 			// Add process_operations node for hybrid operations approach
@@ -297,6 +316,34 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					...result,
 					workflowOperations: [], // Clear operations after processing
 				};
+			})
+			.addNode('route_next_phase', (state) => {
+				const next = getNextPhaseFromLog(state.coordinationLog);
+
+				if (state.planDecision === 'reject') {
+					return {
+						nextPhase: 'responder',
+						planDecision: null,
+						planOutput: null,
+						planFeedback: null,
+						planPrevious: null,
+					};
+				}
+
+				if (state.planDecision === 'modify') {
+					return { nextPhase: 'discovery', planDecision: null, planOutput: null };
+				}
+
+				if (
+					next === 'builder' &&
+					featureFlags?.planMode === true &&
+					state.mode === 'plan' &&
+					!state.planOutput
+				) {
+					return { nextPhase: 'discovery', planDecision: null };
+				}
+
+				return { nextPhase: next, planDecision: null };
 			})
 			// State modification nodes (preprocessing)
 			.addNode('check_state', (state) => ({
@@ -326,7 +373,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 						config,
 					),
 			)
-			// Add Subgraph Nodes (using helper to reduce duplication)
+			// Add Discovery Subgraph Node (discovery + planning)
 			.addNode(
 				'discovery_subgraph',
 				createSubgraphNodeHandler(
@@ -337,6 +384,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					MAX_DISCOVERY_ITERATIONS,
 				),
 			)
+			// Add Builder Subgraph Node (still uses StateGraph pattern)
 			.addNode(
 				'builder_subgraph',
 				createSubgraphNodeHandler(
@@ -350,6 +398,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			// Connect all subgraphs to process_operations
 			.addEdge('discovery_subgraph', 'process_operations')
 			.addEdge('builder_subgraph', 'process_operations')
+			.addEdge('process_operations', 'route_next_phase')
 			// Start flows to check_state (preprocessing)
 			.addEdge(START, 'check_state')
 			// Conditional routing from check_state
@@ -363,6 +412,18 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					clear_error_state: 'clear_error_state',
 					continue: 'supervisor',
 				};
+
+				// In plan mode, skip the supervisor and go directly to discovery
+				// (which contains the planner) when no plan has been generated yet
+				if (
+					state.nextPhase === 'continue' &&
+					featureFlags?.planMode === true &&
+					state.mode === 'plan' &&
+					!state.planOutput
+				) {
+					return 'discovery_subgraph';
+				}
+
 				return routes[state.nextPhase] ?? 'supervisor';
 			})
 			// Route after state modification nodes
@@ -380,9 +441,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			// Conditional Edge for Supervisor (initial routing via LLM)
 			.addConditionalEdges('supervisor', (state) => routeToNode(state.nextPhase))
 			// Deterministic routing after subgraphs complete (based on coordination log)
-			.addConditionalEdges('process_operations', (state) =>
-				routeToNode(getNextPhaseFromLog(state.coordinationLog)),
-			)
+			.addConditionalEdges('route_next_phase', (state) => routeToNode(state.nextPhase))
 			// Responder ends the workflow
 			.addEdge('responder', END)
 			// Compile the graph

@@ -11,6 +11,8 @@ import { useInstalledCommunityPackage } from '../../composables/useInstalledComm
 
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import CommunityNodeUpdateInfo from './CommunityNodeUpdateInfo.vue';
+import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
+import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
 
 const { activeViewStack } = useViewStacks();
 
@@ -27,6 +29,11 @@ const official = ref(false);
 const packageName = computed(() => communityNodeDetails?.packageName);
 const { installedPackage, initInstalledPackage, isUpdateCheckAvailable } =
 	useInstalledCommunityPackage(packageName);
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => {
+	const pkg = packageName.value;
+	return pkg ? getQuickConnectOptionByPackageName(pkg) : undefined;
+});
 
 const nodeTypesStore = useNodeTypesStore();
 
@@ -155,7 +162,16 @@ onMounted(async () => {
 					{{ i18n.baseText('communityNodeInfo.publishedBy', { interpolate: { publisherName } }) }}
 				</N8nText>
 			</div>
+
+			<div v-if="quickConnect">
+				<N8nIcon :class="$style.tooltipIcon" icon="quick-connect" />
+				<N8nText color="text-light" size="xsmall" bold data-test-id="quick-connect-tag">
+					{{ i18n.baseText('communityNodeInfo.quickConnect') }}
+				</N8nText>
+			</div>
 		</div>
+
+		<QuickConnectBanner v-if="quickConnect" :text="quickConnect?.text" />
 		<ContactAdministratorToInstall v-if="!isOwner && !communityNodeDetails?.installed" />
 	</div>
 </template>
@@ -187,7 +203,7 @@ onMounted(async () => {
 	display: flex;
 	align-items: center;
 	justify-content: left;
-	gap: var(--spacing--md);
+	gap: var(--spacing--sm);
 	margin-bottom: var(--spacing--md);
 	flex-wrap: wrap;
 }

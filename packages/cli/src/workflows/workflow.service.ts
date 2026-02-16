@@ -17,6 +17,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 	ProjectRepository,
+	ProjectRelationRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -30,7 +31,7 @@ import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
 
-import type { INode, INodes, IWorkflowSettings, JsonValue } from 'n8n-workflow';
+import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
 import {
 	NodeApiError,
 	PROJECT_ROOT,
@@ -94,6 +95,7 @@ export class WorkflowService {
 		private readonly webhookService: WebhookService,
 		private readonly licenseState: LicenseState,
 		private readonly projectRepository: ProjectRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	async getMany(
@@ -140,9 +142,18 @@ export class WorkflowService {
 		}
 
 		if (includeFolders) {
+			// Restrict folders to projects the user has access to.
+			// Admins with global project:read scope can see all folders, so no filtering needed.
+			const accessibleProjectIds = options?.filter?.projectId
+				? [options.filter.projectId as string]
+				: hasGlobalScope(user, 'project:read')
+					? undefined
+					: (await this.projectRelationRepository.findAllByUser(user.id)).map((r) => r.projectId);
+
 			[workflowsAndFolders, count] = await this.workflowRepository.getWorkflowsAndFoldersWithCount(
 				sharedWorkflowIds,
 				options,
+				accessibleProjectIds,
 			);
 
 			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
@@ -484,10 +495,6 @@ export class WorkflowService {
 		return updatedWorkflow;
 	}
 
-	/**
-	 * Private helper to add a workflow to the active workflow manager
-	 * @param rollBackOptions - Optional rollback options
-	 */
 	private async _addToActiveWorkflowManager(
 		user: User,
 		workflowId: string,
@@ -506,7 +513,6 @@ export class WorkflowService {
 				activeVersionId: null,
 				activeVersion: null,
 			};
-			const previouslyActiveId = workflow.activeVersionId;
 			await this.workflowRepository.update(workflowId, rollbackPayload);
 
 			// Also set it in the returned data
@@ -514,27 +520,10 @@ export class WorkflowService {
 			workflow.activeVersionId = rollbackPayload.activeVersionId;
 			workflow.activeVersion = rollbackPayload.activeVersion;
 
-			if (!workflow.activeVersionId) {
-				// Emit deactivation event since activation failed
-				this.eventService.emit('workflow-deactivated', {
-					user,
-					workflowId,
-					workflow,
-					publicApi,
-				});
-				assert(previouslyActiveId !== null);
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId,
-					versionId: previouslyActiveId,
-					event: 'deactivated',
-					userId: user.id,
-				});
-			}
-			let message;
-			if (error instanceof NodeApiError) message = error.description;
-			message = message ?? (error as Error).message;
-
-			// Now return the original error for UI to display
+			const message =
+				error instanceof NodeApiError
+					? (error.description ?? error.message)
+					: (error as Error).message;
 			throw new BadRequestError(message);
 		} finally {
 			if (didPublish) {
@@ -544,6 +533,13 @@ export class WorkflowService {
 					versionId: workflow.activeVersionId,
 					event: 'activated',
 					userId: user.id,
+				});
+
+				this.eventService.emit('workflow-activated', {
+					user,
+					workflowId,
+					workflow,
+					publicApi,
 				});
 			}
 		}
@@ -625,7 +621,7 @@ export class WorkflowService {
 		}
 
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;
-		const wasActive = workflow.activeVersionId !== null;
+		const previousActiveVersionId = workflow.activeVersionId;
 
 		let versionToActivate: WorkflowHistory;
 		try {
@@ -650,14 +646,28 @@ export class WorkflowService {
 
 		await this._detectWebhookConflicts(workflow, versionToActivate);
 
-		this._validateNodes(workflowId, versionToActivate.nodes);
+		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 
-		if (wasActive) {
+		if (previousActiveVersionId) {
 			await this.activeWorkflowManager.remove(workflowId);
+
+			this.eventService.emit('workflow-deactivated', {
+				user,
+				workflowId,
+				workflow,
+				publicApi,
+				deactivatedVersionId: previousActiveVersionId,
+			});
+			await this.workflowPublishHistoryRepository.addRecord({
+				workflowId,
+				versionId: previousActiveVersionId,
+				event: 'deactivated',
+				userId: user.id,
+			});
 		}
 
-		const activationMode = wasActive ? 'update' : 'activate';
+		const activationMode = previousActiveVersionId ? 'update' : 'activate';
 
 		await this.workflowRepository.update(workflowId, {
 			activeVersionId: versionIdToActivate,
@@ -674,13 +684,6 @@ export class WorkflowService {
 		if (!workflowForActivation) {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 		}
-
-		this.eventService.emit('workflow-activated', {
-			user,
-			workflowId,
-			workflow: workflowForActivation,
-			publicApi,
-		});
 
 		await this._addToActiveWorkflowManager(
 			user,
@@ -731,7 +734,7 @@ export class WorkflowService {
 		options?: { expectedChecksum?: string; publicApi?: boolean },
 	): Promise<WorkflowEntity> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:publish',
+			'workflow:unpublish',
 		]);
 
 		if (!workflow) {
@@ -762,9 +765,11 @@ export class WorkflowService {
 			updatedAt: workflow.updatedAt,
 		});
 
+		const deactivatedVersionId = workflow.activeVersionId;
+
 		await this.workflowPublishHistoryRepository.addRecord({
 			workflowId,
-			versionId: workflow.activeVersionId,
+			versionId: deactivatedVersionId,
 			event: 'deactivated',
 			userId: user.id,
 		});
@@ -779,6 +784,7 @@ export class WorkflowService {
 			workflowId,
 			workflow,
 			publicApi: options?.publicApi ?? false,
+			deactivatedVersionId,
 		});
 
 		return workflow;
@@ -1016,13 +1022,15 @@ export class WorkflowService {
 		}
 	}
 
-	_validateNodes(workflowId: string, nodes: INode[]) {
+	_validateNodes(workflowId: string, nodes: INode[], connections: IConnections) {
 		const nodesToValidate = nodes.reduce<INodes>((acc, node) => {
 			acc[node.name] = node;
 			return acc;
 		}, {});
+
 		const validation = this.workflowValidationService.validateForActivation(
 			nodesToValidate,
+			connections,
 			this.nodeTypes,
 		);
 

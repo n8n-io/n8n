@@ -135,6 +135,10 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		return rbacStore.hasScope('externalSecretsProvider:update') || canUpdateProjectScoped.value;
 	});
 
+	const canDelete = computed(() => {
+		return rbacStore.hasScope('externalSecretsProvider:delete');
+	});
+
 	const canShareGlobally = computed(() => {
 		// Only users with global update permission can share globally or with other projects
 		return rbacStore.hasScope('externalSecretsProvider:update');
@@ -238,7 +242,11 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		if (!hasPermission) return false;
 
 		return (
+			// check if connection settings are filled
 			requiredFieldsFilled.value &&
+			// check if scope is set, either by project or globally
+			(projectIds.value.length > 0 || isSharedGlobally.value) &&
+			// check if there are unsaved changes
 			(settingsUpdated.value || scopeUpdated.value || !isEditMode.value)
 		);
 	});
@@ -282,6 +290,37 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		initializeSettings(provider);
 	}
 
+	/**
+	 * Tests connection and shows appropriate toast feedback
+	 * Does not throw - connection save is considered successful even if test fails
+	 */
+	async function testAndShowFeedback(key: string): Promise<void> {
+		await connection.testConnection(key);
+
+		if (connection.connectionState.value === 'connected') {
+			toast.showMessage({
+				title: i18n.baseText(
+					'settings.secretsProviderConnections.modal.testConnection.success.title',
+				),
+				message: i18n.baseText(
+					'settings.secretsProviderConnections.modal.testConnection.success.description',
+					{
+						interpolate: { providerName: connectionName.value },
+					},
+				),
+				type: 'success',
+			});
+		} else {
+			toast.showError(
+				new Error(i18n.baseText('generic.error')),
+				i18n.baseText('generic.error'),
+				i18n.baseText(
+					'settings.secretsProviderConnections.modal.testConnection.error.serviceDisabled',
+				),
+			);
+		}
+	}
+
 	async function loadConnection() {
 		if (!providerKey.value) return;
 
@@ -315,11 +354,14 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	async function createNewConnection(): Promise<boolean> {
 		if (!selectedProviderType.value) return false;
 
+		// Use current scope state: either global ([]) or project-specific (max 1 project)
+		const scopeProjectIds = isSharedGlobally.value ? [] : projectIds.value.slice(0, 1);
+
 		const connectionData = {
 			providerKey: connectionName.value.trim(),
 			type: selectedProviderType.value.type,
 			settings: normalizedConnectionSettings.value,
-			projectIds: [],
+			projectIds: scopeProjectIds,
 		};
 
 		const { secretsCount } = await connection.createConnection(connectionData);
@@ -331,10 +373,12 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		// Update saved state
 		originalSettings.value = { ...connectionSettings.value };
 		originalConnectionName.value = connectionName.value.trim();
+		originalProjectIds.value = [...projectIds.value];
+		originalIsSharedGlobally.value = isSharedGlobally.value;
 
-		// Test connection automatically
+		// Test connection automatically after creation
 		if (providerKey.value) {
-			await connection.testConnection(providerKey.value);
+			await testAndShowFeedback(providerKey.value);
 		}
 
 		return true;
@@ -353,7 +397,12 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			projectIds: scopeProjectIds,
 		};
 
-		const { secretsCount } = await connection.updateConnection(providerKey.value, updateData);
+		const hasSettingsChanges = settingsUpdated.value;
+
+		const { secretsCount, projects } = await connection.updateConnection(
+			providerKey.value,
+			updateData,
+		);
 
 		providerSecretsCount.value = secretsCount;
 
@@ -361,10 +410,13 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		originalSettings.value = { ...connectionSettings.value };
 		originalConnectionName.value = connectionName.value.trim();
 		originalProjectIds.value = [...projectIds.value];
-		originalIsSharedGlobally.value = isSharedGlobally.value;
+		isSharedGlobally.value = projects.length === 0;
+		originalIsSharedGlobally.value = projects.length === 0;
 
-		// Test connection automatically
-		await connection.testConnection(providerKey.value);
+		// Test connection only if settings changed (not just scope/sharing)
+		if (hasSettingsChanges && providerKey.value) {
+			await testAndShowFeedback(providerKey.value);
+		}
 
 		return true;
 	}
@@ -373,6 +425,34 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		projectIds.value = newProjectIds.slice(0, 1);
 		isSharedGlobally.value = newIsSharedGlobally;
 	}
+
+	/**
+	 * Initialize the modal with project scope when creating from a project context
+	 */
+	function initializeProjectScope() {
+		// Only initialize project scope for new connections (not edit mode)
+		if (!providerKey.value && options.projectId) {
+			const project = projectsStore.myProjects.find((p) => p.id === options.projectId);
+
+			// Initialize scope state
+			projectIds.value = [options.projectId];
+			isSharedGlobally.value = false;
+			originalProjectIds.value = [options.projectId];
+			originalIsSharedGlobally.value = false;
+
+			// Initialize connectionProjects with project info if available
+			if (project?.name) {
+				connectionProjects.value = [
+					{
+						id: project.id,
+						name: project.name,
+					},
+				];
+			}
+		}
+	}
+
+	initializeProjectScope();
 
 	/**
 	 * Saves the connection (creates new or updates existing)
@@ -416,6 +496,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	return {
 		// State refs
 		providerSecretsCount,
+		providerKey,
 		connectionName,
 		connectionNameBlurred,
 		originalConnectionName,
@@ -431,6 +512,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		connectionProjects,
 		sharedWithProjects,
 		canUpdate,
+		canDelete,
 		canShareGlobally,
 		setScopeState,
 

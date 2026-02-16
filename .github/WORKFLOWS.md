@@ -354,8 +354,8 @@ Runs on push to `master` or `1.x`:
 ```
 Push to master/1.x
 ├─ build-github (populate cache)
-├─ unit-test (matrix: Node 20.x, 22.x, 24.3.x)
-│   └─ Coverage only on 22.x
+├─ unit-test (matrix: Node 22.x, 24.13.1, 25.x)
+│   └─ Coverage only on 24.13.1
 ├─ lint
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -394,7 +394,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '22.x'
+  node-version:        # default: '24.13.1'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   build-command:       # default: 'pnpm build'
 ```

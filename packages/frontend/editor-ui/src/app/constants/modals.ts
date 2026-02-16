@@ -19,10 +19,12 @@ export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const PROMPT_MFA_CODE_MODAL_KEY = 'promptMfaCode';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const WORKFLOW_HISTORY_VERSION_UNPUBLISH = 'workflowHistoryVersionUnpublish';
+export const WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY = 'workflowHistoryNameVersion';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
 export const NEW_ASSISTANT_SESSION_MODAL = 'newAssistantSession';
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 export const SECRETS_PROVIDER_CONNECTION_MODAL_KEY = 'secretsProviderConnection';
+export const DELETE_SECRETS_PROVIDER_MODAL_KEY = 'deleteSecretsProvider';
 export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
 	'workflowActivationConflictingWebhook';
 export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
