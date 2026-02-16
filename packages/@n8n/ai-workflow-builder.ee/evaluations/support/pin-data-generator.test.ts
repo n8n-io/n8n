@@ -1,12 +1,12 @@
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '../../src/types/workflow';
 import {
 	identifyPinDataNodes,
 	buildSchemaContexts,
 	workflowToMermaid,
 	generateEvalPinData,
 } from './pin-data-generator';
+import type { SimpleWorkflow } from '../../src/types/workflow';
 
 // ---------------------------------------------------------------------------
 // Helpers

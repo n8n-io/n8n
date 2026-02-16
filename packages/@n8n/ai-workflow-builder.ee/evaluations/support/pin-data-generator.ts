@@ -9,7 +9,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { existsSync, readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
 import {
 	jsonParse,
 	type IDataObject,
@@ -17,6 +16,7 @@ import {
 	type INodeTypeDescription,
 	type IPinData,
 } from 'n8n-workflow';
+import { join } from 'path';
 
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { EvalLogger } from '../harness/logger';

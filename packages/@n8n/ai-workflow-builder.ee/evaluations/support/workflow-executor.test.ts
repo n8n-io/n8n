@@ -1,7 +1,8 @@
 import type { INode, IPinData } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '../../src/types/workflow';
+import { findRepoRoot } from './environment';
 import { executeWorkflowWithPinData } from './workflow-executor';
+import type { SimpleWorkflow } from '../../src/types/workflow';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -46,8 +47,7 @@ function makeSimpleWorkflow(nodes?: INode[]): SimpleWorkflow {
 describe('executeWorkflowWithPinData', () => {
 	describe('error handling — no monorepo root', () => {
 		beforeEach(() => {
-			const envModule = require('./environment') as { findRepoRoot: jest.Mock };
-			envModule.findRepoRoot.mockReturnValue(undefined);
+			jest.mocked(findRepoRoot).mockReturnValue(undefined);
 		});
 
 		it('should return success=false when monorepo root cannot be found', async () => {

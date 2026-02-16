@@ -28,8 +28,8 @@ import type {
 import { createDeferredPromise, createRunExecutionData, NodeHelpers, Workflow } from 'n8n-workflow';
 import path from 'path';
 
-import type { SimpleWorkflow } from '../../src/types/workflow';
 import { findRepoRoot } from './environment';
+import type { SimpleWorkflow } from '../../src/types/workflow';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -96,9 +96,9 @@ class DistNodeTypes implements INodeTypes {
 	getByNameAndVersion(type: string, version?: number): INodeType {
 		const loaded = this.loadNode(type);
 		if ('nodeVersions' in loaded) {
-			return NodeHelpers.getVersionedNodeType(loaded as IVersionedNodeType, version);
+			return NodeHelpers.getVersionedNodeType(loaded, version);
 		}
-		return loaded as INodeType;
+		return loaded;
 	}
 
 	getKnownTypes() {
@@ -220,9 +220,9 @@ async function resolveImports(): Promise<ResolvedImports> {
 	]);
 
 	resolvedImports = {
-		WorkflowExecute: weModule.WorkflowExecute as unknown as ResolvedImports['WorkflowExecute'],
+		WorkflowExecute: weModule.WorkflowExecute as ResolvedImports['WorkflowExecute'],
 		ExecutionLifecycleHooks:
-			hookModule.ExecutionLifecycleHooks as unknown as ResolvedImports['ExecutionLifecycleHooks'],
+			hookModule.ExecutionLifecycleHooks as ResolvedImports['ExecutionLifecycleHooks'],
 		nodeTypes,
 	};
 
@@ -340,7 +340,7 @@ export async function executeWorkflowWithPinData(
 
 		return {
 			success: !hasError && result.status === 'success',
-			error: hasError ? ((resultError as Error)?.message ?? String(resultError)) : undefined,
+			error: hasError ? ((resultError as Error)?.message ?? resultError) : undefined,
 			errorNode: hasError ? findErrorNode(result) : undefined,
 			durationMs: Date.now() - startTime,
 			executedNodes,
