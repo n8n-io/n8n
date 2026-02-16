@@ -1,0 +1,59 @@
+{
+	"name": "AWS SQS Delete Message Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"operation": "deleteMessage",
+				"queue": "https://sqs.us-east-1.amazonaws.com/123456789012/my-queue",
+				"receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxla=="
+			},
+			"type": "n8n-nodes-base.awsSqs",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "node-id",
+			"name": "Delete Message",
+			"credentials": {
+				"aws": {
+					"id": "credential-id",
+					"name": "Test AWS Credentials"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Delete Message": [
+			{
+				"json": {
+					"ResponseMetadata": {
+						"RequestId": "req-delete-123"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Delete Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
