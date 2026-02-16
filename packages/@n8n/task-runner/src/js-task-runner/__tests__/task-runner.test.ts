@@ -273,6 +273,74 @@ describe('TestRunner', () => {
 			expect(runner.dataRequests.size).toBe(0);
 			expect(runner.nodeTypesRequests.size).toBe(0);
 		});
+
+		it('should reject pending RPC calls when task is cancelled', async () => {
+			runner = newTestRunner();
+
+			const taskId = 'test-task';
+			const task = newTaskState(taskId);
+			task.status = 'running';
+			runner.runningTasks.set(taskId, task);
+
+			const rpcReject = jest.fn();
+
+			runner.rpcCalls.set('rpc-1', {
+				callId: 'rpc-1',
+				taskId,
+				resolve: jest.fn(),
+				reject: rpcReject,
+			});
+
+			await runner.taskCancelled(taskId, 'test-reason');
+
+			expect(rpcReject).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Task cancelled: test-reason',
+				}),
+			);
+
+			expect(runner.rpcCalls.size).toBe(0);
+		});
+
+		it('should only reject RPC calls for the cancelled task', async () => {
+			runner = newTestRunner();
+
+			const taskId = 'test-task';
+			const otherTaskId = 'other-task';
+			const task = newTaskState(taskId);
+			task.status = 'running';
+			runner.runningTasks.set(taskId, task);
+
+			const rpcRejectForTask = jest.fn();
+			const rpcRejectForOther = jest.fn();
+
+			runner.rpcCalls.set('rpc-task', {
+				callId: 'rpc-task',
+				taskId,
+				resolve: jest.fn(),
+				reject: rpcRejectForTask,
+			});
+
+			runner.rpcCalls.set('rpc-other', {
+				callId: 'rpc-other',
+				taskId: otherTaskId,
+				resolve: jest.fn(),
+				reject: rpcRejectForOther,
+			});
+
+			await runner.taskCancelled(taskId, 'test-reason');
+
+			expect(rpcRejectForTask).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Task cancelled: test-reason',
+				}),
+			);
+			expect(rpcRejectForOther).not.toHaveBeenCalled();
+
+			// Only the cancelled task's RPC call should be removed
+			expect(runner.rpcCalls.size).toBe(1);
+			expect(runner.rpcCalls.has('rpc-other')).toBe(true);
+		});
 	});
 
 	describe('taskTimedOut', () => {
@@ -336,6 +404,34 @@ describe('TestRunner', () => {
 
 			expect(runner.dataRequests.size).toBe(0);
 			expect(runner.nodeTypesRequests.size).toBe(0);
+		});
+
+		it('should reject pending RPC calls when task times out', async () => {
+			runner = newTestRunner();
+
+			const taskId = 'test-task';
+			const task = newTaskState(taskId);
+			task.status = 'running';
+			runner.runningTasks.set(taskId, task);
+
+			const rpcReject = jest.fn();
+
+			runner.rpcCalls.set('rpc-timeout', {
+				callId: 'rpc-timeout',
+				taskId,
+				resolve: jest.fn(),
+				reject: rpcReject,
+			});
+
+			await runner.taskTimedOut(taskId);
+
+			expect(rpcReject).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Task cancelled: timeout',
+				}),
+			);
+
+			expect(runner.rpcCalls.size).toBe(0);
 		});
 	});
 });

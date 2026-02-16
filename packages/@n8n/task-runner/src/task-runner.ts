@@ -34,6 +34,7 @@ interface NodeTypesRequest {
 
 interface RPCCall {
 	callId: string;
+	taskId: string;
 	resolve: (data: unknown) => void;
 	reject: (error: unknown) => void;
 }
@@ -462,6 +463,7 @@ export abstract class TaskRunner extends EventEmitter {
 		const dataPromise = new Promise((resolve, reject) => {
 			this.rpcCalls.set(callId, {
 				callId,
+				taskId,
 				resolve,
 				reject,
 			});
@@ -593,7 +595,10 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	/**
-	 * Cancels all node type and data requests made by the given task
+	 * Cancels all pending requests (data, node types, and RPC) made by the given task.
+	 * This prevents zombie promises when a task is cancelled or times out -
+	 * particularly important for JS Code nodes which use RPC calls to fetch
+	 * input data on-demand during execution.
 	 */
 	private cancelTaskRequests(taskId: string, reason: string) {
 		for (const [requestId, request] of this.dataRequests.entries()) {
@@ -607,6 +612,13 @@ export abstract class TaskRunner extends EventEmitter {
 			if (request.taskId === taskId) {
 				request.reject(new TaskCancelledError(reason));
 				this.nodeTypesRequests.delete(requestId);
+			}
+		}
+
+		for (const [callId, call] of this.rpcCalls.entries()) {
+			if (call.taskId === taskId) {
+				call.reject(new TaskCancelledError(reason));
+				this.rpcCalls.delete(callId);
 			}
 		}
 	}

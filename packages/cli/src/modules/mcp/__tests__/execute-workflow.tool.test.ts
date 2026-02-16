@@ -1091,18 +1091,10 @@ describe('execute-workflow MCP tool', () => {
 			beforeEach(() => {
 				queueModeMcpService = mockInstance(McpService, {
 					isQueueMode: true,
-					createPendingResponse: jest.fn().mockReturnValue({
-						promise: Promise.resolve({
-							status: 'success',
-							data: { resultData: { runData: {} } },
-						}),
-						resolve: jest.fn(),
-						reject: jest.fn(),
-					}),
 				});
 			});
 
-			test('uses pending response promise in queue mode', async () => {
+			test('always uses activeExecutions.getPostExecutePromise regardless of mode', async () => {
 				const workflow = createWorkflow({
 					activeVersionId: uuid(),
 					nodes: [
@@ -1120,6 +1112,10 @@ describe('execute-workflow MCP tool', () => {
 				(workflowRepository.findById as jest.Mock).mockResolvedValue(workflow);
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
 				(workflowRunner.run as jest.Mock).mockResolvedValue('exec-queue');
+				(activeExecutions.getPostExecutePromise as jest.Mock).mockResolvedValue({
+					status: 'success',
+					data: { resultData: { runData: {} } },
+				});
 
 				const result = await executeWorkflow(
 					user,
@@ -1132,8 +1128,8 @@ describe('execute-workflow MCP tool', () => {
 					undefined,
 				);
 
-				expect(queueModeMcpService.createPendingResponse).toHaveBeenCalledWith('exec-queue');
-				expect(activeExecutions.getPostExecutePromise).not.toHaveBeenCalled();
+				// Should always use activeExecutions.getPostExecutePromise, never createPendingResponse
+				expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith('exec-queue');
 				expect(result).toMatchObject({
 					success: true,
 					executionId: 'exec-queue',
@@ -1158,6 +1154,10 @@ describe('execute-workflow MCP tool', () => {
 				(workflowRepository.findById as jest.Mock).mockResolvedValue(workflow);
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
 				(workflowRunner.run as jest.Mock).mockResolvedValue('exec-mcp-meta');
+				(activeExecutions.getPostExecutePromise as jest.Mock).mockResolvedValue({
+					status: 'success',
+					data: { resultData: {} },
+				});
 
 				await executeWorkflow(
 					user,

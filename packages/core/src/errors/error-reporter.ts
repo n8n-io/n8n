@@ -146,7 +146,12 @@ export class ErrorReporter {
 		// Collect longer stacktraces
 		Error.stackTraceLimit = 50;
 
-		const sentry = await import('@sentry/node');
+		const sentryImportPromise = import('@sentry/node');
+		const sentryTimeoutPromise = new Promise<never>((_, reject) => {
+			setTimeout(() => reject(new Error('Sentry import timeout')), 10000);
+		});
+
+		const sentry = await Promise.race([sentryImportPromise, sentryTimeoutPromise]);
 		const { init, captureException, setTag, requestDataIntegration, rewriteFramesIntegration } =
 			sentry;
 
@@ -321,7 +326,12 @@ export class ErrorReporter {
 
 	private async getEventLoopBlockIntegration(tags: Record<string, string>, threshold?: number) {
 		try {
-			const { eventLoopBlockIntegration } = await import('@sentry/node-native');
+			const importPromise = import('@sentry/node-native');
+			const timeoutPromise = new Promise<never>((_, reject) => {
+				setTimeout(() => reject(new Error('Import timeout')), 5000);
+			});
+
+			const { eventLoopBlockIntegration } = await Promise.race([importPromise, timeoutPromise]);
 			return [
 				eventLoopBlockIntegration({
 					...(threshold ? { threshold } : {}),
@@ -338,7 +348,12 @@ export class ErrorReporter {
 
 	private async getProfilingIntegration() {
 		try {
-			const { nodeProfilingIntegration } = await import('@sentry/profiling-node');
+			const importPromise = import('@sentry/profiling-node');
+			const timeoutPromise = new Promise<never>((_, reject) => {
+				setTimeout(() => reject(new Error('Import timeout')), 5000);
+			});
+
+			const { nodeProfilingIntegration } = await Promise.race([importPromise, timeoutPromise]);
 			return [nodeProfilingIntegration()];
 		} catch {
 			this.logger.warn(

@@ -306,11 +306,13 @@ export const executeWorkflow = async (
 		}, WORKFLOW_EXECUTION_TIMEOUT_MS);
 	});
 
-	// In queue mode, use the MCP service's pending response mechanism
-	// In regular mode, use the standard activeExecutions promise
-	const resultPromise = mcpService.isQueueMode
-		? mcpService.createPendingResponse(executionId).promise
-		: activeExecutions.getPostExecutePromise(executionId);
+	// Always use activeExecutions.getPostExecutePromise() for waiting on execution results.
+	// This promise is resolved by activeExecutions.finalizeExecution() which is called
+	// deterministically in the PCancelable handler (for queue mode) or the workflow
+	// completion handler (for regular mode). This avoids the race condition where the
+	// separate mcp-response message could arrive after the execution was already
+	// finalized/deleted from the DB, causing the pending MCP promise to never resolve.
+	const resultPromise = activeExecutions.getPostExecutePromise(executionId);
 
 	try {
 		const data = await Promise.race([resultPromise, timeoutPromise]);
@@ -332,10 +334,6 @@ export const executeWorkflow = async (
 		};
 	} catch (error) {
 		if (timeoutId) clearTimeout(timeoutId);
-
-		if (mcpService.isQueueMode) {
-			mcpService.removePendingResponse(executionId);
-		}
 
 		if (error instanceof McpExecutionTimeoutError) {
 			try {

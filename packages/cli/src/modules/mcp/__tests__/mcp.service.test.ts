@@ -176,6 +176,68 @@ describe('McpService', () => {
 			});
 		});
 
+		describe('resolveOrCleanupPendingResponse', () => {
+			it('should resolve pending promise and clean up entry', async () => {
+				const executionId = 'exec-cleanup';
+				const deferred = mcpService.createPendingResponse(executionId);
+
+				const runData: IRun = {
+					status: 'success',
+					mode: 'trigger',
+					startedAt: new Date(),
+					finished: true,
+					storedAt: 'db',
+					data: createEmptyRunExecutionData(),
+				};
+
+				mcpService.resolveOrCleanupPendingResponse(executionId, runData);
+
+				const result = await deferred.promise;
+				expect(result).toBe(runData);
+				expect(mcpService.pendingExecutionCount).toBe(0);
+			});
+
+			it('should resolve pending promise with undefined and clean up entry', async () => {
+				const executionId = 'exec-cleanup-undef';
+				const deferred = mcpService.createPendingResponse(executionId);
+
+				mcpService.resolveOrCleanupPendingResponse(executionId, undefined);
+
+				const result = await deferred.promise;
+				expect(result).toBeUndefined();
+				expect(mcpService.pendingExecutionCount).toBe(0);
+			});
+
+			it('should do nothing if no pending response exists', () => {
+				// Should not throw
+				mcpService.resolveOrCleanupPendingResponse('non-existent', undefined);
+				expect(mcpService.pendingExecutionCount).toBe(0);
+			});
+
+			it('should not double-resolve if handleWorkerResponse already resolved', async () => {
+				const executionId = 'exec-double';
+				const deferred = mcpService.createPendingResponse(executionId);
+
+				const runData: IRun = {
+					status: 'success',
+					mode: 'trigger',
+					startedAt: new Date(),
+					finished: true,
+					storedAt: 'db',
+					data: createEmptyRunExecutionData(),
+				};
+
+				// First resolution via handleWorkerResponse
+				mcpService.handleWorkerResponse(executionId, runData);
+				const result = await deferred.promise;
+				expect(result).toBe(runData);
+
+				// Second call should be a no-op (entry already removed)
+				mcpService.resolveOrCleanupPendingResponse(executionId, undefined);
+				expect(mcpService.pendingExecutionCount).toBe(0);
+			});
+		});
+
 		describe('cancelPendingExecution', () => {
 			it('should reject pending promise with cancellation error', async () => {
 				const executionId = 'exec-cancel';

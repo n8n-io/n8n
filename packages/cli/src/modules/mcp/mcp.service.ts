@@ -163,6 +163,24 @@ export class McpService {
 	}
 
 	/**
+	 * Resolve a pending response if it exists, or clean it up.
+	 * Used as a defense-in-depth mechanism to prevent indefinite hangs
+	 * when the primary resolution path (activeExecutions.getPostExecutePromise)
+	 * has already resolved the caller's promise. This ensures stale entries
+	 * in the pendingResponses map are always cleaned up.
+	 */
+	resolveOrCleanupPendingResponse(executionId: string, runData: IRun | undefined): void {
+		const pending = this.pendingResponses.get(executionId);
+		if (!pending) {
+			return;
+		}
+
+		this.logger.debug('Resolving/cleaning up stale pending MCP response', { executionId });
+		pending.promise.resolve(runData);
+		this.pendingResponses.delete(executionId);
+	}
+
+	/**
 	 * Cancel a pending MCP execution.
 	 * Rejects the pending promise and attempts to stop the execution.
 	 */

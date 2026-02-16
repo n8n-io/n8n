@@ -448,8 +448,11 @@ export class ScalingService {
 
 	/**
 	 * Handle MCP response from worker - forward to appropriate MCP handler.
-	 * For MCP Service: fetches execution data from DB and forwards IRun.
+	 * For MCP Service: resolves the pending response with execution data from DB.
 	 * For MCP Trigger: forwards the response directly (tool result from sendResponse hook).
+	 *
+	 * IMPORTANT: This method must ALWAYS resolve or reject pending promises to prevent
+	 * indefinite hangs. Silent returns without resolving are not acceptable.
 	 */
 	private async handleMcpResponse(
 		executionId: string,
@@ -460,6 +463,9 @@ export class ScalingService {
 	): Promise<void> {
 		try {
 			if (mcpType === 'service') {
+				const { McpService } = await import('@/modules/mcp/mcp.service');
+				const mcpService = Container.get(McpService);
+
 				// For MCP Service, fetch execution data from DB
 				const executionData = await this.executionRepository.findSingleExecution(executionId, {
 					includeData: true,
@@ -467,7 +473,15 @@ export class ScalingService {
 				});
 
 				if (!executionData) {
-					this.logger.error('Execution not found in DB for MCP response', { executionId });
+					// Execution may have been finalized and cleaned up already.
+					// The primary resolution path (activeExecutions.getPostExecutePromise)
+					// should have already resolved the caller's promise. Log and clean up
+					// any stale pending response to prevent resource leaks.
+					this.logger.debug(
+						'Execution not found in DB for MCP response - likely already finalized',
+						{ executionId },
+					);
+					mcpService.resolveOrCleanupPendingResponse(executionId, undefined);
 					return;
 				}
 
@@ -482,8 +496,6 @@ export class ScalingService {
 					storedAt: executionData.storedAt,
 				};
 
-				const { McpService } = await import('@/modules/mcp/mcp.service');
-				const mcpService = Container.get(McpService);
 				mcpService.handleWorkerResponse(executionId, runData);
 			} else {
 				// For MCP Trigger, forward the response directly (tool result)
@@ -501,6 +513,19 @@ export class ScalingService {
 				mcpType,
 				error: ensureError(error).message,
 			});
+
+			// Even on error, ensure any pending MCP Service promise is resolved to prevent hangs.
+			// The primary resolution path (activeExecutions.getPostExecutePromise) should handle
+			// the caller, but we clean up stale entries here as defense in depth.
+			if (mcpType === 'service') {
+				try {
+					const { McpService } = await import('@/modules/mcp/mcp.service');
+					const mcpService = Container.get(McpService);
+					mcpService.resolveOrCleanupPendingResponse(executionId, undefined);
+				} catch {
+					// Best-effort cleanup - the primary resolution path should handle this
+				}
+			}
 		}
 	}
 
