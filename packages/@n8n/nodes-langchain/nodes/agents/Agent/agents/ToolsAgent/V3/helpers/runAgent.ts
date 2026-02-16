@@ -86,10 +86,18 @@ export async function runAgent(
 				metadata: buildResponseMetadata(response, itemIndex),
 			};
 		}
-		// Save conversation to memory including any tool call context
+		// Save conversation to memory. Only persist tool call traces when returnIntermediateSteps
+		// is true. This matches V2 AgentExecutor behavior where only the final output was saved.
 		if (memory && input && result?.output) {
 			const previousCount = response?.metadata?.previousRequests?.length;
-			await saveToMemory(input, result.output, memory, steps, previousCount);
+			await saveToMemory(
+				input,
+				result.output,
+				memory,
+				steps,
+				previousCount,
+				options.returnIntermediateSteps === true,
+			);
 		}
 
 		if (options.returnIntermediateSteps && steps.length > 0) {
@@ -107,10 +115,18 @@ export async function runAgent(
 		});
 
 		if ('returnValues' in modelResponse) {
-			// Save conversation to memory including any tool call context
+			// Save conversation to memory. Only persist tool call traces when returnIntermediateSteps
+			// is true. This matches V2 AgentExecutor behavior where only the final output was saved.
 			if (memory && input && modelResponse.returnValues.output) {
 				const previousCount = response?.metadata?.previousRequests?.length;
-				await saveToMemory(input, modelResponse.returnValues.output, memory, steps, previousCount);
+				await saveToMemory(
+					input,
+					modelResponse.returnValues.output,
+					memory,
+					steps,
+					previousCount,
+					options.returnIntermediateSteps === true,
+				);
 			}
 			// Include intermediate steps if requested
 			const result = { ...modelResponse.returnValues };

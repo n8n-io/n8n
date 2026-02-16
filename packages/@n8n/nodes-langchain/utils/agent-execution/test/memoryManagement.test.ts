@@ -363,7 +363,7 @@ describe('memoryManagement', () => {
 		});
 	});
 
-	describe('saveToMemory with steps (message-based storage)', () => {
+	describe('saveToMemory with steps and saveToolSteps=false (default)', () => {
 		let mockChatHistory: any;
 
 		beforeEach(() => {
@@ -378,7 +378,7 @@ describe('memoryManagement', () => {
 			jest.restoreAllMocks();
 		});
 
-		it('should use message-based storage when steps are provided and addMessages is available', async () => {
+		it('should only save final output when saveToolSteps is false (default)', async () => {
 			const aiMessage = new AIMessage({
 				content: 'Let me calculate',
 				tool_calls: [
@@ -400,22 +400,19 @@ describe('memoryManagement', () => {
 				},
 			];
 
+			// Default saveToolSteps=false: should NOT save tool messages to memory
 			await saveToMemory('Calculate 2+2', 'The answer is 4', mockMemory, steps);
 
-			expect(mockChatHistory.addMessages).toHaveBeenCalledTimes(1);
-			const savedMessages = mockChatHistory.addMessages.mock.calls[0][0];
-
-			expect(savedMessages).toHaveLength(4);
-			expect(savedMessages[0]).toBeInstanceOf(HumanMessage);
-			expect(savedMessages[0].content).toBe('Calculate 2+2');
-			expect(savedMessages[1]).toBe(aiMessage);
-			expect(savedMessages[2]).toBeInstanceOf(ToolMessage);
-			expect(savedMessages[3]).toBeInstanceOf(AIMessage);
-			expect(savedMessages[3].content).toBe('The answer is 4');
+			// Should use simple saveContext, NOT addMessages
+			expect(mockMemory.saveContext).toHaveBeenCalledWith(
+				{ input: 'Calculate 2+2' },
+				{ output: 'The answer is 4' },
+			);
+			expect(mockChatHistory.addMessages).not.toHaveBeenCalled();
 		});
 
-		it('should fall back to string format when addMessages is not available', async () => {
-			// Create a chat history object without addMessages method
+		it('should not include [Used tools:] prefix when saveToolSteps is false', async () => {
+			// Even when addMessages is NOT available, saveToolSteps=false should prevent tool pollution
 			mockMemory.chatHistory = {} as any;
 
 			const steps: ToolCallData[] = [
@@ -433,6 +430,133 @@ describe('memoryManagement', () => {
 
 			await saveToMemory('Calculate 2+2', 'The answer is 4', mockMemory, steps);
 
+			// Should only save the final output, no [Used tools:] prefix
+			expect(mockMemory.saveContext).toHaveBeenCalledWith(
+				{ input: 'Calculate 2+2' },
+				{ output: 'The answer is 4' },
+			);
+		});
+
+		it('should not save tool traces for multiple tools when saveToolSteps is false', async () => {
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'date_time',
+						toolInput: {},
+						log: 'Getting date',
+						toolCallId: 'call-1',
+						type: 'tool_call',
+					},
+					observation: '2024-01-01',
+				},
+				{
+					action: {
+						tool: 'report_list',
+						toolInput: { filter: 'active' },
+						log: 'Getting reports',
+						toolCallId: 'call-2',
+						type: 'tool_call',
+					},
+					observation: '{"reports": [{"id": 1, "name": "Q1"}]}',
+				},
+				{
+					action: {
+						tool: 'report_rows',
+						toolInput: { reportId: 1 },
+						log: 'Getting rows',
+						toolCallId: 'call-3',
+						type: 'tool_call',
+					},
+					observation: '{"rows": [{"a": 1}, {"a": 2}]}',
+				},
+			];
+
+			await saveToMemory(
+				'Get me the Q1 report data',
+				'Here is the Q1 report data for 2024.',
+				mockMemory,
+				steps,
+			);
+
+			// Only final output saved, no tool traces
+			expect(mockMemory.saveContext).toHaveBeenCalledWith(
+				{ input: 'Get me the Q1 report data' },
+				{ output: 'Here is the Q1 report data for 2024.' },
+			);
+			expect(mockChatHistory.addMessages).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('saveToMemory with steps and saveToolSteps=true', () => {
+		let mockChatHistory: any;
+
+		beforeEach(() => {
+			jest.spyOn(console, 'log').mockImplementation();
+			mockChatHistory = {
+				addMessages: jest.fn().mockResolvedValue(undefined),
+			};
+			mockMemory.chatHistory = mockChatHistory;
+		});
+
+		afterEach(() => {
+			jest.restoreAllMocks();
+		});
+
+		it('should use message-based storage when saveToolSteps is true and addMessages is available', async () => {
+			const aiMessage = new AIMessage({
+				content: 'Let me calculate',
+				tool_calls: [
+					{ id: 'call-123', name: 'calculator', args: { expression: '2+2' }, type: 'tool_call' },
+				],
+			});
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'calculator',
+						toolInput: { expression: '2+2' },
+						log: 'Calc',
+						messageLog: [aiMessage],
+						toolCallId: 'call-123',
+						type: 'tool_call',
+					},
+					observation: '4',
+				},
+			];
+
+			await saveToMemory('Calculate 2+2', 'The answer is 4', mockMemory, steps, undefined, true);
+
+			expect(mockChatHistory.addMessages).toHaveBeenCalledTimes(1);
+			const savedMessages = mockChatHistory.addMessages.mock.calls[0][0];
+
+			expect(savedMessages).toHaveLength(4);
+			expect(savedMessages[0]).toBeInstanceOf(HumanMessage);
+			expect(savedMessages[0].content).toBe('Calculate 2+2');
+			expect(savedMessages[1]).toBe(aiMessage);
+			expect(savedMessages[2]).toBeInstanceOf(ToolMessage);
+			expect(savedMessages[3]).toBeInstanceOf(AIMessage);
+			expect(savedMessages[3].content).toBe('The answer is 4');
+		});
+
+		it('should fall back to string format when saveToolSteps is true but addMessages is not available', async () => {
+			// Create a chat history object without addMessages method
+			mockMemory.chatHistory = {} as any;
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'calculator',
+						toolInput: { expression: '2+2' },
+						log: 'Calc',
+						toolCallId: 'call-123',
+						type: 'tool_call',
+					},
+					observation: '4',
+				},
+			];
+
+			await saveToMemory('Calculate 2+2', 'The answer is 4', mockMemory, steps, undefined, true);
+
 			expect(mockMemory.saveContext).toHaveBeenCalledWith(
 				{ input: 'Calculate 2+2' },
 				{
@@ -443,7 +567,7 @@ describe('memoryManagement', () => {
 		});
 
 		it('should use saveContext when steps array is empty', async () => {
-			await saveToMemory('Simple question', 'Simple answer', mockMemory, []);
+			await saveToMemory('Simple question', 'Simple answer', mockMemory, [], undefined, true);
 
 			expect(mockMemory.saveContext).toHaveBeenCalledWith(
 				{ input: 'Simple question' },
@@ -483,7 +607,7 @@ describe('memoryManagement', () => {
 			];
 
 			// All steps are from previous turns (previousStepsCount = 1)
-			await saveToMemory('New question', 'New answer', mockMemory, steps, 1);
+			await saveToMemory('New question', 'New answer', mockMemory, steps, 1, true);
 
 			expect(mockMemory.saveContext).toHaveBeenCalledWith(
 				{ input: 'New question' },

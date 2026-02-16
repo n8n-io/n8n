@@ -25,7 +25,8 @@ export const commonOptions: INodeProperties[] = [
 		name: 'returnIntermediateSteps',
 		type: 'boolean',
 		default: false,
-		description: 'Whether or not the output should include intermediate steps the agent took',
+		description:
+			'Whether or not the output should include intermediate steps the agent took. When enabled, tool call traces are also persisted in chat memory. When disabled, only the final assistant response is saved to memory.',
 	},
 	{
 		displayName: 'Automatically Passthrough Binary Images',

@@ -224,21 +224,31 @@ export async function loadMemory(
 /**
  * Saves a conversation turn (user input + agent output) to memory.
  * Uses LangChain-native message types (AIMessage with tool_calls, ToolMessage)
- * when tools are involved, preserving semantic structure for LLMs.
+ * when tools are involved and saveToolSteps is true, preserving semantic structure for LLMs.
+ *
+ * When saveToolSteps is false (default), only the user input and final assistant response
+ * are persisted, matching V2 AgentExecutor behavior where only the final output was saved
+ * via saveContext(). This prevents tool outputs from polluting chat history in memory
+ * backends like Redis.
  *
  * @param input - The user input/prompt
  * @param output - The agent's output/response
  * @param memory - The memory instance to save to
  * @param steps - Optional tool call data to save as proper message sequence
  * @param previousStepsCount - Number of steps from previous turns (to filter out duplicates)
+ * @param saveToolSteps - Whether to persist tool call traces in memory (default: false).
+ *   When false, only user input and final assistant response are saved regardless of steps.
  *
  * @example
  * ```typescript
  * // Simple conversation (no tools)
  * await saveToMemory('What is 2+2?', 'The answer is 4', memory);
  *
- * // With tool calls (saves full message sequence)
+ * // With tool calls but saveToolSteps=false (default): only saves input + final output
  * await saveToMemory('Calculate 2+2', 'The answer is 4', memory, steps, 0);
+ *
+ * // With tool calls and saveToolSteps=true: saves full message sequence
+ * await saveToMemory('Calculate 2+2', 'The answer is 4', memory, steps, 0, true);
  * ```
  */
 export async function saveToMemory(
@@ -247,6 +257,7 @@ export async function saveToMemory(
 	memory?: BaseChatMemory,
 	steps?: ToolCallData[],
 	previousStepsCount?: number,
+	saveToolSteps: boolean = false,
 ): Promise<void> {
 	if (!output || !memory) {
 		return;
@@ -254,6 +265,15 @@ export async function saveToMemory(
 
 	// No tool calls: use simple saveContext (backwards compatible)
 	if (!steps || steps.length === 0) {
+		await memory.saveContext({ input }, { output });
+		return;
+	}
+
+	// When saveToolSteps is false, only save the final conversation pair
+	// (user input + assistant output). This matches V2 AgentExecutor behavior where
+	// LangChain only persisted the final output, preventing tool outputs from polluting
+	// chat history in memory backends like Redis.
+	if (!saveToolSteps) {
 		await memory.saveContext({ input }, { output });
 		return;
 	}
