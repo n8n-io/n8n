@@ -152,7 +152,11 @@ export const setupTestServer = ({
 		}
 
 		if (endpointGroups?.includes('health')) {
-			app.get('/healthz/readiness', async (_req, res) => {
+			const globalConfig = Container.get(GlobalConfig);
+			const healthPath = globalConfig.endpoints.health;
+			const readinessPath = `${healthPath}/readiness`;
+
+			app.get(readinessPath, async (_req, res) => {
 				testDb.isReady()
 					? res.status(200).send({ status: 'ok' })
 					: res.status(503).send({ status: 'error' });

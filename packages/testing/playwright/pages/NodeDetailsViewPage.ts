@@ -652,14 +652,6 @@ export class NodeDetailsViewPage extends BasePage {
 		await searchInput.fill(searchTerm);
 	}
 
-	async searchInputData(searchTerm: string) {
-		// Focus the search input to expand it (it has opacity:0 when collapsed)
-		const searchInput = this.inputPanel.getSearchInput();
-		await searchInput.focus();
-		// Wait for the search input to become visible after focus triggers expansion
-		await searchInput.waitFor({ state: 'visible' });
-		await searchInput.fill(searchTerm);
-	}
 	/**
 	 * Type multiple values into the first available text parameter field
 	 * Useful for testing multiple parameter changes

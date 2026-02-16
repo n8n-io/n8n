@@ -116,7 +116,7 @@ jobs:
         with:
           commit: ${{github.event.pull_request.base.ref}}
           tag: 'n8n@${{ needs.publish-to-npm.outputs.release }}'
-          prerelease: true
+          prerelease: ${{ startsWith(needs.publish-to-npm.outputs.release, '2.') }}
           makeLatest: false
           body: ${{github.event.pull_request.body}}
 

@@ -132,6 +132,12 @@ export {
 } from './core/tcr-executor.js';
 
 export {
+	resolveTestCommand,
+	buildTestCommand,
+	type ResolvedCommand,
+} from './utils/test-command.js';
+
+export {
 	diffFileMethods,
 	formatDiffConsole,
 	formatDiffJSON,

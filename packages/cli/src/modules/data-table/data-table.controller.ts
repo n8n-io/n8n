@@ -3,6 +3,7 @@ import {
 	AddDataTableColumnDto,
 	CreateDataTableDto,
 	DeleteDataTableRowsDto,
+	DownloadDataTableCsvQueryDto,
 	ListDataTableContentQueryDto,
 	ListDataTableQueryDto,
 	MoveDataTableColumnDto,
@@ -302,6 +303,7 @@ export class DataTableController {
 	async downloadDataTableCsv(
 		req: AuthenticatedRequest<{ projectId: string; dataTableId: string }>,
 		_res: Response,
+		@Query query: DownloadDataTableCsvQueryDto,
 	) {
 		try {
 			const { projectId, dataTableId } = req.params;
@@ -310,6 +312,7 @@ export class DataTableController {
 			const { csvContent, dataTableName } = await this.dataTableService.generateDataTableCsv(
 				dataTableId,
 				projectId,
+				query.includeSystemColumns,
 			);
 
 			return {
