@@ -894,6 +894,7 @@ export interface WorkflowBuilder {
 	>(node: N): WorkflowBuilder;
 
 	to<N extends NodeInstance<string, string, unknown>>(node: N): WorkflowBuilder;
+	to(inputTarget: InputTarget): WorkflowBuilder;
 	to(ifElse: IfElseComposite): WorkflowBuilder;
 	to(switchCase: SwitchCaseComposite): WorkflowBuilder;
 	to<T>(splitInBatches: SplitInBatchesBuilder<T>): WorkflowBuilder;
