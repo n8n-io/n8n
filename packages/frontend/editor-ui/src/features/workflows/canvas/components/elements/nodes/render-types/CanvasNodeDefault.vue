@@ -3,7 +3,7 @@ import { computed, ref, useCssModule, watch } from 'vue';
 import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
-import { type CanvasNodeDefaultRender } from '../../../../canvas.types';
+import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';

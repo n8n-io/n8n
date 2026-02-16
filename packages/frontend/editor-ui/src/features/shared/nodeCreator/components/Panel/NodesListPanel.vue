@@ -82,6 +82,13 @@ const isCommunityNodeActionsMode = computed(() => {
 	return communityNodeDetails.value && isActionsMode.value && activeViewStack.value.subcategory;
 });
 
+const viewStackTitle = computed(() => {
+	if (nodeCreatorStore.oppeningContext === 'replacement') {
+		return i18n.baseText('nodeCreator.replaceNode.title');
+	}
+	return activeViewStack.value.title;
+});
+
 function getDefaultActiveIndex(search: string = ''): number {
 	if (activeViewStack.value.mode === 'actions') {
 		// For actions, set the active focus to the first action, not category
@@ -118,12 +125,17 @@ function onTransitionEnd() {
 	void setActiveItemIndex(getDefaultActiveIndex());
 }
 
+function cleanupOppeningContext() {
+	nodeCreatorStore.oppeningContext = null;
+}
+
 onMounted(() => {
 	attachKeydownEvent();
 	void setActiveItemIndex(getDefaultActiveIndex());
 });
 
 onUnmounted(() => {
+	cleanupOppeningContext();
 	detachKeydownEvent();
 });
 
@@ -212,7 +224,7 @@ function onBackButton() {
 						:show-tooltip="false"
 						:size="20"
 					/>
-					<p v-if="activeViewStack.title" :class="$style.title" v-text="activeViewStack.title" />
+					<p v-if="activeViewStack.title" :class="$style.title" v-text="viewStackTitle" />
 
 					<CommunityNodeDocsLink
 						v-if="communityNodeDetails"
