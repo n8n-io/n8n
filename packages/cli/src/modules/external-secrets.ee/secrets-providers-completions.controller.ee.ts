@@ -25,7 +25,10 @@ export class SecretProvidersCompletionsController {
 		const path = req.path;
 
 		if (path.startsWith('/secrets/global')) {
-			if (!this.config.externalSecretsMultipleConnections) {
+			const hasAccess =
+				this.config.externalSecretsMultipleConnections || this.config.externalSecretsForProjects;
+
+			if (!hasAccess) {
 				this.logger.warn('External secrets multiple connections feature is not enabled');
 				sendErrorResponse(
 					res,
