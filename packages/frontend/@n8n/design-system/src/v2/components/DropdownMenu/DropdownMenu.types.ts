@@ -121,6 +121,10 @@ export interface DropdownMenuSlots<T = string, D = never> {
 	loading?: () => void;
 	/** Custom empty state when no items */
 	empty?: () => void;
+	/** Icon or content before the search input (default: search icon) */
+	'search-prefix'?: () => void;
+	/** Icon or content after the search input */
+	'search-suffix'?: () => void;
 }
 
 export interface DropdownMenuItemSlots<T = string, D = never> {

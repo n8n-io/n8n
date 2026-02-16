@@ -275,6 +275,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	});
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
+	// This tracks only structural changes without metadata (name or tags)
+	const hasUnsavedWorkflowChanges = ref<boolean>(false);
 	const dirtyStateSetCount = ref<number>(0);
 	const lastSelectedNode = ref<string | null>(null);
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
@@ -617,13 +619,17 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		processingExecutionResults.value = value;
 	};
 
-	const markStateDirty = () => {
+	const markStateDirty = (type: 'workflow' | 'metadata' = 'workflow') => {
 		dirtyStateSetCount.value++;
 		stateIsDirty.value = true;
+		if (type === 'workflow') {
+			hasUnsavedWorkflowChanges.value = true;
+		}
 	};
 
 	const markStateClean = () => {
 		stateIsDirty.value = false;
+		hasUnsavedWorkflowChanges.value = false;
 	};
 
 	/**
@@ -686,6 +692,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		headerHeight,
 		dirtyStateSetCount: computed(() => dirtyStateSetCount.value),
 		stateIsDirty: computed(() => stateIsDirty.value),
+		hasUnsavedWorkflowChanges: computed(() => hasUnsavedWorkflowChanges.value),
 		isBlankRedirect,
 		activeCredentialType,
 		lastSelectedNode,

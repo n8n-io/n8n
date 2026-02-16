@@ -1,5 +1,6 @@
 {
-	"name": "@n8n/playwright-janitor",
+  "name": "@n8n/playwright-janitor",
+  "private": true,
 	"version": "0.1.0",
 	"description": "Static analysis and architecture enforcement for Playwright test suites",
 	"main": "dist/index.js",
