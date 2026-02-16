@@ -48,9 +48,10 @@ describe('createChatModelNode', () => {
 				getModel: jest.fn(),
 			};
 
-			const node = createChatModelNode(config);
+			const NodeClass = createChatModelNode(config);
+			const instance = new (NodeClass as any)();
 
-			expect(node.description).toEqual(mockDescription);
+			expect(instance.description).toEqual(mockDescription);
 		});
 
 		it('creates a node with methods property when provided', () => {
@@ -60,9 +61,10 @@ describe('createChatModelNode', () => {
 				getModel: jest.fn(),
 			};
 
-			const node = createChatModelNode(config);
+			const NodeClass = createChatModelNode(config);
+			const instance = new (NodeClass as any)();
 
-			expect(node.methods).toEqual(mockMethods);
+			expect(instance.methods).toEqual(mockMethods);
 		});
 	});
 
@@ -82,9 +84,10 @@ describe('createChatModelNode', () => {
 				getModel: getModelFn,
 			};
 
-			const node = createChatModelNode(config);
+			const NodeClass = createChatModelNode(config);
+			const instance = new (NodeClass as any)();
 
-			const result = await node.supplyData!.call(mockContext, 0);
+			const result = await instance.supplyData.call(mockContext, 0);
 
 			expect(getModelFn).toHaveBeenCalledWith(mockContext, 0);
 			expect(supplyModel).toHaveBeenCalledWith(mockContext, mockModel);
@@ -99,11 +102,12 @@ describe('createChatModelNode', () => {
 				getModel: jest.fn(),
 			};
 
-			const node = createChatModelNode(config);
+			const NodeClass = createChatModelNode(config);
+			const instance = new (NodeClass as any)();
 
-			expect(node).toHaveProperty('description');
-			expect(node).toHaveProperty('supplyData');
-			expect(typeof node.supplyData).toBe('function');
+			expect(instance).toHaveProperty('description');
+			expect(instance).toHaveProperty('supplyData');
+			expect(typeof instance.supplyData).toBe('function');
 		});
 	});
 });
