@@ -10,6 +10,7 @@ import type { SelectedNodeContext } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
 	ApplicationError,
+	OperationalError,
 	type INodeTypeDescription,
 	type IRunExecutionData,
 	type ITelemetryTrackProperties,
@@ -36,6 +37,7 @@ import { SessionManagerService } from './session-manager.service';
 import type { ResourceLocatorCallback } from './types/callbacks';
 import type { HITLInterruptValue, PlanOutput } from './types/planning';
 import type { SimpleWorkflow } from './types/workflow';
+import { sanitizeLlmErrorMessage } from './utils/error-sanitizer';
 import { createStreamProcessor, type StreamEvent } from './utils/stream-processor';
 import type { WorkflowState } from './workflow-state';
 
@@ -543,6 +545,12 @@ export class WorkflowBuilderAgent {
 			throw new ValidationError(invalidRequestErrorMessage);
 		}
 
+		if (this.isLlmQuotaOrRateLimitError(error)) {
+			throw new OperationalError(sanitizeLlmErrorMessage(error), {
+				cause: error instanceof Error ? error : undefined,
+			});
+		}
+
 		throw error;
 	}
 
@@ -623,6 +631,15 @@ export class WorkflowBuilderAgent {
 			'status' in error &&
 			error.status === 401
 		);
+	}
+
+	/**
+	 * Checks if the error is a 429 rate-limit / quota-exceeded error from the LLM provider.
+	 * These are transient provider-side issues that users cannot act on, so we wrap them
+	 * in OperationalError (level: warning) to prevent them from reaching Sentry.
+	 */
+	private isLlmQuotaOrRateLimitError(error: unknown): boolean {
+		return !!error && typeof error === 'object' && 'status' in error && error.status === 429;
 	}
 
 	private getInvalidRequestError(error: unknown): string | undefined {
