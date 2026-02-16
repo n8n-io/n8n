@@ -87,6 +87,8 @@ const sizes: Record<InputSize, string> = {
 const sizeClass = computed(() => sizes[props.size]);
 
 // Classes for password type (PostHog privacy)
+const isTextarea = computed(() => props.type === 'textarea');
+
 const containerClasses = computed(() => [
 	'n8n-input', // Global class for backwards compatibility
 	$style.inputContainer,
@@ -96,6 +98,7 @@ const containerClasses = computed(() => [
 		[$style.readonly]: props.readonly,
 		[$style.hasPrepend]: !!slots.prepend,
 		[$style.hasAppend]: !!slots.append,
+		[$style.isTextarea]: isTextarea.value,
 		'ph-no-capture': props.type === 'password',
 	},
 ]);
@@ -105,6 +108,7 @@ const inputWrapperClasses = computed(() => [
 	{
 		[$style.disabled]: props.disabled,
 		[$style.readonly]: props.readonly,
+		[$style.isTextarea]: isTextarea.value,
 	},
 ]);
 
@@ -411,6 +415,10 @@ defineExpose({ focus, blur, select });
 	&.readonly {
 		background-color: var(--color--background--light-3);
 	}
+}
+
+.isTextarea {
+	align-items: flex-start;
 }
 
 .disabled {
