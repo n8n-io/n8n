@@ -39,9 +39,9 @@ export class SecretProvidersProjectController {
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
-	): Promise<SecretsProvidersResponses.Connection[]> {
+	): Promise<SecretsProvidersResponses.ConnectionListItem[]> {
 		this.logger.debug('List all connections within a project', { projectId });
 		const connections = await this.connectionsService.listConnectionsForProject(projectId);
-		return connections.map((c) => this.connectionsService.toPublicConnection(c));
+		return connections.map((c) => this.connectionsService.toPublicConnectionListItem(c));
 	}
 }
