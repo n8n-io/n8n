@@ -6,6 +6,7 @@ import Modal from '@/app/components/Modal.vue';
 
 type Props = {
 	modalName: string;
+	dataTableName: string;
 };
 
 const props = defineProps<Props>();

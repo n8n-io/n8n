@@ -150,6 +150,7 @@ const deleteDataTable = async () => {
 		/>
 		<DownloadDataTableModal
 			:modal-name="DOWNLOAD_DATA_TABLE_MODAL_KEY"
+			:data-table-name="dataTable.name"
 			@confirm="downloadDataTableCsv"
 			@close="() => uiStore.closeModal(DOWNLOAD_DATA_TABLE_MODAL_KEY)"
 		/>

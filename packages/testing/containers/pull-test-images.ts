@@ -36,8 +36,10 @@ async function pullImage(image: string): Promise<PullResult> {
 
 		const duration = ((Date.now() - imageStart) / 1000).toFixed(1);
 		return { image, duration, success: true, cached, pulled };
-	} catch {
+	} catch (error) {
 		const duration = ((Date.now() - imageStart) / 1000).toFixed(1);
+		const message = error instanceof Error ? error.message : String(error);
+		console.error(`   ⚠️  Pull failed for ${image}: ${message}`);
 		return { image, duration, success: false, cached: 0, pulled: 0 };
 	}
 }
