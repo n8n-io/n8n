@@ -122,6 +122,7 @@ function onSearch(value: string) {
 }
 
 function onTransitionEnd() {
+	cleanupOppeningContext();
 	void setActiveItemIndex(getDefaultActiveIndex());
 }
 
