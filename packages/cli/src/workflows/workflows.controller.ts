@@ -441,7 +441,7 @@ export class WorkflowsController {
 		@Body body: UpdateWorkflowDto,
 	) {
 		const forceSave = req.query.forceSave === 'true';
-		const clientId = req.headers['push-ref'] as string | undefined;
+		const clientId = req.headers['push-ref'];
 
 		await this.collaborationService.validateWriteLock(req.user.id, clientId, workflowId, 'update');
 
@@ -501,7 +501,7 @@ export class WorkflowsController {
 	@Delete('/:workflowId')
 	@ProjectScope('workflow:delete')
 	async delete(req: AuthenticatedRequest, _res: Response, @Param('workflowId') workflowId: string) {
-		const clientId = req.headers['push-ref'] as string | undefined;
+		const clientId = req.headers['push-ref'];
 
 		await this.collaborationService.validateWriteLock(req.user.id, clientId, workflowId, 'delete');
 

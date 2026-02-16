@@ -175,8 +175,7 @@ export class CollaborationState {
 	}
 
 	/**
-	 * Acquire write lock forcefully, stealing from same user's other tab if necessary.
-	 * Checks permission before stealing - only same user can force-steal their own lock.
+	 * Acquire write lock forcefully, stealing from same user's other tab.
 	 *
 	 * @returns true if lock was acquired, false if lock is held by different user
 	 */
@@ -185,7 +184,6 @@ export class CollaborationState {
 		clientId: string,
 		userId: User['id'],
 	): Promise<boolean> {
-		// Check if lock exists and belongs to a different user
 		const currentLock = await this.getWriteLock(workflowId);
 
 		if (currentLock && currentLock.userId !== userId) {
@@ -193,8 +191,6 @@ export class CollaborationState {
 			return false;
 		}
 
-		// Either no lock exists, or it's owned by the same user
-		// Set the lock (stealing from own other tab if necessary)
 		await this.setWriteLock(workflowId, clientId, userId);
 		return true;
 	}
