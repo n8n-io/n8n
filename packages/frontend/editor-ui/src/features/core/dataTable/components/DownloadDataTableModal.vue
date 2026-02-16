@@ -18,7 +18,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const includeSystemColumns = ref(true);
+const includeSystemColumns = ref(false);
 
 const onConfirm = () => {
 	emit('confirm', includeSystemColumns.value);

@@ -3809,7 +3809,6 @@
 	"dataTable.download.csv": "Download CSV",
 	"dataTable.download.error": "Failed to download data table",
 	"dataTable.download.modal.title": "Download CSV",
-	"dataTable.download.modal.description": "Choose which columns to include in your CSV export:",
 	"dataTable.download.modal.includeSystemColumns": "Include system columns (id, createdAt, updatedAt)",
 	"dataTable.download.modal.confirm": "Download",
 	"dataTable.download.modal.cancel": "Cancel",
