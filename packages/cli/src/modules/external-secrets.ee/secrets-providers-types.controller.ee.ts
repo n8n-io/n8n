@@ -23,10 +23,10 @@ export class SecretProvidersTypesController {
 
 	@Middleware()
 	checkFeatureFlag(_req: Request, res: Response, next: NextFunction) {
-		if (
-			!this.config.externalSecretsForProjects &&
-			!this.config.externalSecretsMultipleConnections
-		) {
+		const hasAccess =
+			this.config.externalSecretsMultipleConnections || this.config.externalSecretsForProjects;
+
+		if (!hasAccess) {
 			this.logger.warn('Requested beta external secret endpoint without feature flag enabled');
 			sendErrorResponse(
 				res,
