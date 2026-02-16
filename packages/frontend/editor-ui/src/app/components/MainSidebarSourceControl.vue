@@ -139,12 +139,11 @@ function pullWorkfolder() {
 						</div>
 					</template>
 					<N8nButton
+						variant="ghost"
 						:disabled="!hasPullPermission"
 						data-test-id="main-sidebar-source-control-pull"
 						icon="arrow-down"
-						type="tertiary"
 						:size="isCollapsed ? 'small' : 'mini'"
-						text
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.pull')"
 						@click="pullWorkfolder"
@@ -167,13 +166,12 @@ function pullWorkfolder() {
 						</div>
 					</template>
 					<N8nButton
+						variant="ghost"
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
 						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
 						data-test-id="main-sidebar-source-control-push"
 						icon="arrow-up"
-						type="tertiary"
-						text
 						:size="isCollapsed ? 'small' : 'mini'"
 						@click="pushWorkfolder"
 					/>

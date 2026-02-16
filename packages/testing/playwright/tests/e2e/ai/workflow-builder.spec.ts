@@ -30,7 +30,11 @@ test.use({
 	},
 });
 
-test.describe('Workflow Builder @auth:owner @ai @capability:proxy', () => {
+test.describe('Workflow Builder @auth:owner @ai @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
 	test.beforeEach(async ({ setupRequirements, services }) => {
 		await setupRequirements(workflowBuilderEnabledRequirements);
 		await services.proxy.clearAllExpectations();

@@ -60,7 +60,7 @@ const focusInput = async () => {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
-					type="primary"
+					variant="solid"
 					float="right"
 					:disabled="!url || !isValid"
 					data-test-id="confirm-workflow-import-url-button"
@@ -69,7 +69,7 @@ const focusInput = async () => {
 					{{ i18n.baseText('mainSidebar.prompt.import') }}
 				</N8nButton>
 				<N8nButton
-					type="secondary"
+					variant="subtle"
 					float="right"
 					data-test-id="cancel-workflow-import-url-button"
 					@click="closeModal"

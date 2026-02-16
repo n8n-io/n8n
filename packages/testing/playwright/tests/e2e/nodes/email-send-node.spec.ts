@@ -2,7 +2,11 @@ import { test, expect } from '../../../fixtures/base';
 
 test.use({ capability: 'email' });
 
-test('EmailSend node sends via SMTP @capability:email', async ({ api, n8n, services }) => {
+test('EmailSend node sends via SMTP @capability:email', {
+	annotation: [
+		{ type: 'owner', description: 'NODES' },
+	],
+}, async ({ api, n8n, services }) => {
 	// Sign in to use internal APIs for creating credentials and workflows
 	const mailpit = services.mailpit;
 

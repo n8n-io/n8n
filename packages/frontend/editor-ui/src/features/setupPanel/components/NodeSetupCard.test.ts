@@ -44,7 +44,7 @@ vi.mock('@/features/credentials/components/CredentialPicker/CredentialPicker.vue
 			'<button data-test-id="select-btn" @click="$emit(\'credentialSelected\', \'cred-456\')">Select</button>' +
 			'<button data-test-id="deselect-btn" @click="$emit(\'credentialDeselected\')">Deselect</button>' +
 			'</div>',
-		props: ['appName', 'credentialType', 'selectedCredentialId', 'createButtonType'],
+		props: ['appName', 'credentialType', 'selectedCredentialId', 'createButtonVariant'],
 		emits: ['credentialSelected', 'credentialDeselected'],
 	},
 }));

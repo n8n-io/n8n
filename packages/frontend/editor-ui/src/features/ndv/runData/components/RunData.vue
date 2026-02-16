@@ -1500,12 +1500,11 @@ defineExpose({ enterEditMode });
 				</Suspense>
 
 				<N8nIconButton
+					variant="ghost"
 					v-if="displayMode === 'table' && collapsingTableColumnName !== null"
 					:class="$style.resetCollapseButton"
-					text
 					icon="chevrons-up-down"
-					size="xmini"
-					type="tertiary"
+					size="xsmall"
 					@click="emit('collapsingTableColumnChanged', null)"
 				/>
 
@@ -1522,13 +1521,13 @@ defineExpose({ enterEditMode });
 				/>
 
 				<N8nIconButton
+					variant="subtle"
 					v-if="!props.disableEdit && canPinData && !isReadOnlyRoute && !readOnlyEnv"
 					v-show="!editMode.enabled"
 					:title="i18n.baseText('runData.editOutput')"
 					:circle="false"
 					:disabled="node?.disabled"
 					icon="pencil"
-					type="tertiary"
 					data-test-id="ndv-edit-pinned-data"
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
@@ -1548,13 +1547,13 @@ defineExpose({ enterEditMode });
 
 				<div v-if="!props.disableEdit" v-show="editMode.enabled" :class="$style.editModeActions">
 					<N8nButton
-						type="tertiary"
+						variant="subtle"
 						:label="i18n.baseText('runData.editor.cancel')"
 						@click="onClickCancelEdit"
 					/>
 					<N8nButton
+						variant="solid"
 						class="ml-2xs"
-						type="primary"
 						:label="i18n.baseText('runData.editor.save')"
 						@click="onClickSaveEdit"
 					/>
@@ -1601,10 +1600,9 @@ defineExpose({ enterEditMode });
 							{{ i18n.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
 						</template>
 						<N8nIconButton
+							variant="ghost"
 							:icon="linkedRuns ? 'unlink' : 'link'"
 							:class="['linkRun', linkedRuns ? 'linked' : '']"
-							text
-							type="tertiary"
 							size="small"
 							data-test-id="link-run"
 							@click="toggleLinkRuns"
@@ -1830,7 +1828,7 @@ defineExpose({ enterEditMode });
 
 					<div :class="$style.warningActions">
 						<N8nButton
-							outline
+							variant="outline"
 							size="small"
 							:label="i18n.baseText('runData.downloadBinaryData')"
 							@click="downloadJsonData()"

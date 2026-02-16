@@ -255,7 +255,6 @@ async function fetchProjectSecretProviders() {
 	) {
 		return;
 	}
-
 	isLoadingSecretProviders.value = true;
 	try {
 		projectSecretProviders.value = await projectsStore.getProjectSecretProviders(
@@ -285,10 +284,8 @@ function openConnectionModal(
 			providerTypes: secretsProviders.providerTypes.value,
 			existingProviderNames: existingNames,
 			projectId: projectsStore.currentProjectId,
-			onClose: async (saved?: boolean) => {
-				if (saved) {
-					await fetchProjectSecretProviders();
-				}
+			onClose: async () => {
+				await fetchProjectSecretProviders();
 			},
 		},
 	});
@@ -310,12 +307,22 @@ watch(secretsSearch, () => {
 	currentPage.value = 0;
 });
 
+// Fetch project secret providers when currentProjectId is available
+watch(
+	() => projectsStore.currentProjectId,
+	async (newProjectId) => {
+		if (newProjectId && showExternalSecretsSection.value) {
+			await fetchProjectSecretProviders();
+		}
+	},
+	{ immediate: true },
+);
+
 onMounted(async () => {
 	if (!showExternalSecretsSection.value) return;
 	await Promise.all([
 		secretsProviders.fetchProviderTypes(),
 		secretsProviders.fetchActiveConnections(),
-		fetchProjectSecretProviders(),
 	]);
 });
 
@@ -482,7 +489,7 @@ defineExpose({
 	background-color: var(--color--background--light-3);
 	position: relative;
 
-	&:not(:has(+ .groupHeaderRow))::before {
+	&:not(:last-child):not(:has(+ .groupHeaderRow))::before {
 		content: '';
 		position: absolute;
 		bottom: 0;

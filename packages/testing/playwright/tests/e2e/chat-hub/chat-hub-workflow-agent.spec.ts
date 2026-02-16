@@ -7,7 +7,11 @@ import { NodeDetailsViewPage } from '../../../pages/NodeDetailsViewPage';
 
 test.use(chatHubTestConfig);
 
-test.describe('Workflow agent @capability:proxy', () => {
+test.describe('Workflow agent @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'Chat' },
+	],
+}, () => {
 	test('manage workflow agents @auth:admin', async ({ n8n, agentWorkflow }) => {
 		const agentsPage = new ChatHubWorkflowAgentsPage(n8n.page);
 		const chatPage = new ChatHubChatPage(n8n.page);

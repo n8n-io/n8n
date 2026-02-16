@@ -224,10 +224,10 @@ watch(
 					/>
 				</N8nSelect>
 				<N8nButton
+					variant="subtle"
+					iconOnly
 					v-if="!props.static && !(project.id === GLOBAL_GROUP.id && !canShareGlobally)"
-					type="tertiary"
 					native-type="button"
-					square
 					icon="trash-2"
 					:disabled="props.readonly"
 					data-test-id="project-sharing-remove"

@@ -71,10 +71,6 @@ export class AIAssistantPage extends BasePage {
 		return this.page.getByTestId('quick-replies').locator('button');
 	}
 
-	getQuickReplies() {
-		return this.page.getByTestId('quick-replies');
-	}
-
 	getNewAssistantSessionModal() {
 		return this.page.getByTestId('new-assistant-session-modal');
 	}

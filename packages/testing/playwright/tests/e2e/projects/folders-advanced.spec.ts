@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Folders - Advanced Operations', () => {
+test.describe('Folders - Advanced Operations', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test.describe('Duplicate workflows', () => {
 		test('should duplicate workflow within root folder from personal projects', async ({ n8n }) => {
 			const { id: projectId } = await n8n.api.projects.createProject();
