@@ -63,10 +63,9 @@ describe('createChatMemoryNode', () => {
 				getMemory: jest.fn(),
 			};
 
-			const NodeClass = createChatMemoryNode(config);
-			const instance = new NodeClass();
+			const node = createChatMemoryNode(config);
 
-			expect(instance.description).toEqual(mockDescription);
+			expect(node.description).toEqual(mockDescription);
 		});
 
 		it('creates a node with methods property when provided', () => {
@@ -76,10 +75,9 @@ describe('createChatMemoryNode', () => {
 				getMemory: jest.fn(),
 			};
 
-			const NodeClass = createChatMemoryNode(config);
-			const instance = new NodeClass();
+			const node = createChatMemoryNode(config);
 
-			expect(instance.methods).toEqual(mockMethods);
+			expect(node.methods).toEqual(mockMethods);
 		});
 	});
 
@@ -92,10 +90,9 @@ describe('createChatMemoryNode', () => {
 				getMemory: getMemoryFn,
 			};
 
-			const NodeClass = createChatMemoryNode(config);
-			const instance = new NodeClass();
+			const node = createChatMemoryNode(config);
 
-			const result = await (instance as any).supplyData.call(mockContext, 0);
+			const result = await node.supplyData!.call(mockContext, 0);
 
 			expect(getMemoryFn).toHaveBeenCalledWith(mockContext, 0);
 			expect(supplyMemory).toHaveBeenCalledWith(mockContext, mockMemory, undefined);
@@ -114,10 +111,9 @@ describe('createChatMemoryNode', () => {
 				getMemory: getMemoryFn,
 			};
 
-			const NodeClass = createChatMemoryNode(config);
-			const instance = new NodeClass();
+			const node = createChatMemoryNode(config);
 
-			const result = await (instance as any).supplyData.call(mockContext, 0);
+			const result = await node.supplyData!.call(mockContext, 0);
 
 			expect(getMemoryFn).toHaveBeenCalledWith(mockContext, 0);
 			expect(supplyMemory).toHaveBeenCalledWith(mockContext, mockMemory, undefined);
@@ -140,10 +136,9 @@ describe('createChatMemoryNode', () => {
 				memoryOptions,
 			};
 
-			const NodeClass = createChatMemoryNode(config);
-			const instance = new NodeClass();
+			const node = createChatMemoryNode(config);
 
-			await (instance as any).supplyData.call(mockContext, 0);
+			await node.supplyData!.call(mockContext, 0);
 
 			expect(supplyMemory).toHaveBeenCalledWith(mockContext, mockMemory, memoryOptions);
 		});
@@ -156,10 +151,9 @@ describe('createChatMemoryNode', () => {
 				getMemory: getMemoryFn,
 			};
 
-			const NodeClass = createChatMemoryNode(config);
-			const instance = new NodeClass();
+			const node = createChatMemoryNode(config);
 
-			await (instance as any).supplyData.call(mockContext, 0);
+			await node.supplyData!.call(mockContext, 0);
 
 			expect(supplyMemory).toHaveBeenCalledWith(mockContext, mockMemory, undefined);
 		});
@@ -178,10 +172,9 @@ describe('createChatMemoryNode', () => {
 				memoryOptions,
 			};
 
-			const NodeClass = createChatMemoryNode(config);
-			const instance = new NodeClass();
+			const node = createChatMemoryNode(config);
 
-			await (instance as any).supplyData.call(mockContext, 0);
+			await node.supplyData!.call(mockContext, 0);
 
 			expect(supplyMemory).toHaveBeenCalledWith(mockContext, mockMemory, {
 				closeFunction,
@@ -190,18 +183,17 @@ describe('createChatMemoryNode', () => {
 	});
 
 	describe('node type compliance', () => {
-		it('creates a class that implements INodeType interface', () => {
+		it('creates an object that implements INodeType interface', () => {
 			const config: ChatMemoryNodeConfig = {
 				description: mockDescription,
 				getMemory: jest.fn(),
 			};
 
-			const NodeClass = createChatMemoryNode(config);
-			const instance = new NodeClass();
+			const node = createChatMemoryNode(config);
 
-			expect(instance).toHaveProperty('description');
-			expect(instance).toHaveProperty('supplyData');
-			expect(typeof instance.supplyData).toBe('function');
+			expect(node).toHaveProperty('description');
+			expect(node).toHaveProperty('supplyData');
+			expect(typeof node.supplyData).toBe('function');
 		});
 	});
 });

@@ -47,6 +47,7 @@
   "dependencies": {
     "@clack/prompts": "^0.11.0",
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
+    "@n8n/ai-node-sdk": "workspace:*",
     "@oclif/core": "^4.5.2",
     "change-case": "^5.4.4",
     "eslint-import-resolver-typescript": "^4.4.3",

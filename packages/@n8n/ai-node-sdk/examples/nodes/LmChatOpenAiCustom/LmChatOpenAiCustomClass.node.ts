@@ -1,14 +1,12 @@
+import { createChatModelNode } from '@n8n/ai-utilities';
+import type { ChatModelNodeConfig, ProviderTool } from '@n8n/ai-utilities';
 import { type IDataObject, type ISupplyDataFunctions } from 'n8n-workflow';
 import type Stream from 'node:stream';
 import { Readable } from 'node:stream';
 
-import { createChatModelNode } from 'src/creators/create-chat-model-node';
-import type { ChatModelNodeConfig } from 'src/types/creators';
-import type { ProviderTool } from 'src/types/tool';
-
-import { OpenAIChatModel } from '../../models/openai';
+import { OpenAIChatModel } from '../../models/openai/model';
 import { formatBuiltInTools } from '../common';
-import { description } from './decription';
+import { description } from './description';
 
 export type ModelOptions = {
 	temperature?: number;
@@ -78,4 +76,4 @@ class LmChatOpenAiNodeConfig implements ChatModelNodeConfig {
 	}
 }
 
-export class LmChatOpenAiCustomClass extends createChatModelNode(new LmChatOpenAiNodeConfig()) {}
+export const LmChatOpenAiCustomClass = createChatModelNode(new LmChatOpenAiNodeConfig());

@@ -33,21 +33,3 @@ export interface ChatMemoryNodeConfig extends AiNode {
 	getMemory: GetChatMemoryFn;
 	memoryOptions?: ChatMemoryOptions;
 }
-
-interface UndextendableNode {
-	description: never;
-	methods: never;
-	supplyData: never;
-	execute: never;
-}
-
-// This class is never used as a real class, only as a type
-// Trying to extend supplyData, methods or description will result in a type error
-class UnextendableNodeClass implements UndextendableNode {
-	description = null as never;
-	methods = null as never;
-	supplyData = null as never;
-	execute = null as never;
-}
-
-export type UnextendableNodeType = typeof UnextendableNodeClass;

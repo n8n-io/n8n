@@ -1,19 +1,18 @@
+import { createChatModelNode } from '@n8n/ai-utilities';
+import type { ProviderTool } from '@n8n/ai-utilities';
 import { type IDataObject, type ISupplyDataFunctions } from 'n8n-workflow';
 import type Stream from 'node:stream';
 import { Readable } from 'node:stream';
 
-import { createChatModelNode } from 'src/creators/create-chat-model-node';
-import type { ProviderTool } from 'src/types/tool';
-
-import { OpenAIChatModel } from '../../models/openai';
+import { OpenAIChatModel } from '../../models/openai/model';
 import { formatBuiltInTools } from '../common';
-import { description } from './decription';
+import { description } from './description';
 
 export type ModelOptions = {
 	temperature?: number;
 };
 
-export class LmChatOpenAiCustom extends createChatModelNode({
+export const LmChatOpenAiCustom = createChatModelNode({
 	description: {
 		...description,
 		displayName: 'OpenAI Custom',
@@ -75,4 +74,4 @@ export class LmChatOpenAiCustom extends createChatModelNode({
 		);
 		return model;
 	},
-}) {}
+});

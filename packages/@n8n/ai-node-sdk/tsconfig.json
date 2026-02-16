@@ -1,0 +1,9 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"compilerOptions": {
+		"rootDir": ".",
+		"baseUrl": ".",
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+	},
+	"include": ["src/**/*.ts", "examples/**/*.ts", "integration-tests/**/*.ts"]
+}

@@ -1,0 +1,41 @@
+{
+	"name": "@n8n/ai-node-sdk",
+	"version": "0.1.0",
+	"description": "SDK for building AI nodes in n8n",
+	"main": "dist/index.js",
+	"module": "src/index.ts",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"example:run": "tsx examples/run.ts",
+		"clean": "rimraf dist .turbo",
+		"dev": "pnpm watch",
+		"typecheck": "tsc --noEmit",
+		"build": "tsc -p tsconfig.build.json",
+		"build:examples": "tsc --build tsconfig.examples.json",
+		"format": "biome format --write .",
+		"format:check": "biome ci .",
+		"lint": "eslint . --quiet",
+		"lint:fix": "eslint . --fix",
+		"watch": "tsc -p tsconfig.build.json --watch",
+		"test": "jest",
+		"test:unit": "jest",
+		"test:dev": "jest --watch"
+	},
+	"files": [
+		"dist"
+	],
+	"dependencies": {
+		"@n8n/ai-utilities": "workspace:*"
+	},
+	"devDependencies": {
+		"@n8n/typescript-config": "workspace:*",
+		"@types/json-schema": "^7.0.15",
+		"n8n-workflow": "workspace:*",
+		"tsx": "catalog:",
+		"zod": "catalog:",
+		"langchain": "catalog:",
+		"@langchain/core": "catalog:",
+		"dotenv": "catalog:",
+		"axios": "catalog:"
+	}
+}
