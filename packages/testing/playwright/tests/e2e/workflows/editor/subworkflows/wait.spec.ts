@@ -6,7 +6,11 @@ import { test, expect } from '../../../../../fixtures/base';
 import { resolveFromRoot } from '../../../../../utils/path-helper';
 import { retryUntil } from '../../../../../utils/retry-utils';
 
-test.describe('Parent that does not wait for sub-workflow', () => {
+test.describe('Parent that does not wait for sub-workflow', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test('should not wait for the sub-workflow', async ({ api }) => {
 		const childWorkflowId = (
 			await api.workflows.importWorkflowFromFile('subworkflow-wait-child.json')

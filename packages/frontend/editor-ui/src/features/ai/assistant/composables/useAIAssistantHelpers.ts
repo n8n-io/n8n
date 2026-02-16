@@ -209,7 +209,7 @@ export const useAIAssistantHelpers = () => {
 		propsToRemove.forEach((key) => {
 			delete nodeForLLM[key as keyof INode];
 		});
-		if (options?.trimParameterValues) {
+		if (options?.excludeParameterValues) {
 			nodeForLLM.parameters = removeParameterValues(nodeForLLM.parameters);
 		} else {
 			nodeForLLM.parameters = await workflowHelpers.getNodeParametersWithResolvedExpressions(
@@ -228,7 +228,7 @@ export const useAIAssistantHelpers = () => {
 		}
 		// Get all referenced nodes and their schemas
 		const referencedNodeNames = getReferencedNodes(node);
-		const schemas = getNodesSchemas(referencedNodeNames, options?.trimParameterValues);
+		const { schemas } = getNodesSchemas(referencedNodeNames, options?.excludeParameterValues);
 
 		const nodeType = nodeTypesStore.getNodeType(node.type);
 
@@ -242,7 +242,7 @@ export const useAIAssistantHelpers = () => {
 		}
 		let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = {};
 		// Only include input data if the node references it and we are allowed to send it
-		if (!options?.trimParameterValues) {
+		if (!options?.excludeParameterValues) {
 			const ndvInput = ndvStore.ndvInputData;
 			if (isNodeReferencingInputData(node) && ndvInput?.length) {
 				const inputData = ndvStore.ndvInputData[0].json;
@@ -294,14 +294,18 @@ export const useAIAssistantHelpers = () => {
 	/**
 	 * Get the schema for the referenced nodes as expected by the AI assistant
 	 * @param nodeNames The names of the nodes to get the schema for
-	 * @returns An array of NodeExecutionSchema objects
+	 * @returns schemas and list of node names whose schema was derived from pin data
 	 */
 	function getNodesSchemas(nodeNames: string[], excludeValues?: boolean) {
 		const schemas: ChatRequest.NodeExecutionSchema[] = [];
+		const pinnedNodeNames: string[] = [];
 		for (const name of nodeNames) {
 			const node = workflowsStore.getNodeByName(name);
 			if (!node) {
 				continue;
+			}
+			if (workflowsStore.pinDataByNodeName(node.name)) {
+				pinnedNodeNames.push(node.name);
 			}
 			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
 			const schema = getSchemaForExecutionData(
@@ -314,7 +318,7 @@ export const useAIAssistantHelpers = () => {
 				schema,
 			});
 		}
-		return schemas;
+		return { schemas, pinnedNodeNames };
 	}
 
 	function getCurrentViewDescription(view: VIEWS) {
@@ -337,6 +341,7 @@ export const useAIAssistantHelpers = () => {
 	 * @param data The execution result data to simplify
 	 * @param options Options for simplification
 	 * @param options.compact If true, removes large inputOverride fields (> 2000 bytes)
+	 * @param options.removeParameterValues If true, removes parameter values but keeps errors and metadata
 	 **/
 	function simplifyResultData(
 		data: IRunExecutionData['resultData'],
@@ -347,9 +352,9 @@ export const useAIAssistantHelpers = () => {
 			runData: {},
 		};
 
-		// Handle optional error (can contain node parameter values, so we omit it if removeParameterValues is true)
+		// Handle optional error - always pass through the full error for debugging context
 		if (data.error) {
-			simplifiedResultData.error = removeParameterValues ? undefined : data.error;
+			simplifiedResultData.error = data.error;
 		}
 
 		// Early return if runData is not present
@@ -363,8 +368,12 @@ export const useAIAssistantHelpers = () => {
 			simplifiedResultData.runData[key] = taskDataArray.map((taskData) => {
 				const { data: _taskDataContent, ...taskDataWithoutData } = taskData;
 
-				// If compact mode is enabled, remove large inputOverride fields
-				if (compact && taskDataWithoutData.inputOverride) {
+				// When privacy is OFF (removeParameterValues), always remove inputOverride
+				// as it can contain parameter values
+				if (removeParameterValues) {
+					delete taskDataWithoutData.inputOverride;
+				} else if (compact && taskDataWithoutData.inputOverride) {
+					// If compact mode is enabled, remove large inputOverride fields
 					try {
 						const inputOverrideStr = JSON.stringify(taskDataWithoutData.inputOverride);
 						const sizeInBytes = new Blob([inputOverrideStr]).size;
@@ -402,10 +411,10 @@ export const useAIAssistantHelpers = () => {
 		options?: AssistantProcessOptions,
 	): Promise<Partial<IWorkflowDb>> => {
 		let nodes: INode[] = workflow.nodes;
-		if (options?.trimParameterValues) {
+		if (options?.excludeParameterValues) {
 			nodes = await Promise.all(
 				workflow.nodes.map(
-					async (node) => await processNodeForAssistant(node, [], { trimParameterValues: true }),
+					async (node) => await processNodeForAssistant(node, [], { excludeParameterValues: true }),
 				),
 			);
 		}
@@ -488,6 +497,7 @@ export const useAIAssistantHelpers = () => {
 			// Uses a WeakSet to track visited objects and prevent infinite recursion on cycles
 			const extractExpressions = async (
 				params: unknown,
+				path: string = '',
 				visited = new WeakSet<object>(),
 			): Promise<void> => {
 				if (typeof params === 'string' && params.startsWith('=')) {
@@ -517,6 +527,7 @@ export const useAIAssistantHelpers = () => {
 						expression: trimmedExpression,
 						resolvedValue: trimValue(resolved),
 						nodeType: node.type,
+						parameterPath: path,
 					});
 				} else if (Array.isArray(params)) {
 					// Check if we've already visited this array to prevent cycles
@@ -524,8 +535,8 @@ export const useAIAssistantHelpers = () => {
 						return;
 					}
 					visited.add(params);
-					for (const item of params) {
-						await extractExpressions(item, visited);
+					for (let i = 0; i < params.length; i++) {
+						await extractExpressions(params[i], `${path}[${i}]`, visited);
 					}
 				} else if (typeof params === 'object' && params !== null) {
 					// Check if we've already visited this object to prevent cycles
@@ -533,13 +544,14 @@ export const useAIAssistantHelpers = () => {
 						return;
 					}
 					visited.add(params);
-					for (const value of Object.values(params)) {
-						await extractExpressions(value, visited);
+					for (const [key, value] of Object.entries(params)) {
+						const newPath = path ? `${path}.${key}` : key;
+						await extractExpressions(value, newPath, visited);
 					}
 				}
 			};
 
-			await extractExpressions(node.parameters);
+			await extractExpressions(node.parameters, '');
 
 			// Only add to map if node has expressions
 			if (nodeExpressions.length > 0) {

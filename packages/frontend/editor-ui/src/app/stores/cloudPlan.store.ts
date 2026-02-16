@@ -22,17 +22,12 @@ const DEFAULT_STATE: CloudPlanState = {
 	loadingPlan: false,
 };
 
-const DYNAMIC_TRIAL_BANNER_DISMISSED_KEY = 'n8n-dynamic-trial-banner-dismissed';
-
 export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
 	const state = reactive<CloudPlanState>(DEFAULT_STATE);
 	const currentUserCloudInfo = ref<Cloud.UserAccount | null>(null);
-	const isDynamicTrialBannerDismissed = ref<boolean>(
-		localStorage.getItem(DYNAMIC_TRIAL_BANNER_DISMISSED_KEY) === 'true',
-	);
 
 	const now = ref<number>(Date.now());
 
@@ -42,7 +37,51 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		state.usage = null;
 	};
 
-	const userIsTrialing = computed(() => state.data?.metadata?.group === 'trial');
+	const userIsTrialing = computed(() => state.data?.userIsTrialing ?? false);
+
+	const bannerConfig = computed(() => state.data?.bannerConfig);
+
+	// Whether forceShow is enabled - shows banner even if previously dismissed
+	const bannerForceShow = computed(() => bannerConfig.value?.forceShow === true);
+
+	// Check if TRIAL banner was previously dismissed
+	const isBannerDismissed = computed(() => {
+		const dismissed = settingsStore.permanentlyDismissedBanners;
+
+		return dismissed.includes('TRIAL') || dismissed.includes('TRIAL_OVER');
+	});
+
+	// Whether to show trial banner:
+	// - bannerConfig must exist (backend wants to show banner)
+	// - If not dismissible, always show (regardless of previous dismissal)
+	// - If dismissible: show if forceShow is true OR banner was not previously dismissed
+	const shouldShowBanner = computed(() => {
+		if (!bannerConfig.value) return false;
+		if (!bannerDismissible.value) return true;
+		return bannerForceShow.value || !isBannerDismissed.value;
+	});
+
+	// If timeLeft is set, show it; otherwise hide
+	const bannerTimeLeft = computed(() => ({
+		show: !!bannerConfig.value?.timeLeft,
+		text: bannerConfig.value?.timeLeft?.text,
+	}));
+
+	// If showExecutions is true, show the executions section
+	const showExecutions = computed(() => bannerConfig.value?.showExecutions === true);
+
+	const bannerCta = computed(() => ({
+		text: bannerConfig.value?.cta?.text ?? 'Upgrade Now',
+		icon: bannerConfig.value?.cta?.icon ?? 'zap',
+		size: bannerConfig.value?.cta?.size ?? 'small',
+		style: bannerConfig.value?.cta?.style ?? 'success',
+		href: bannerConfig.value?.cta?.href,
+	}));
+
+	// Banner icon (left side info icon) - undefined means no icon
+	const bannerIcon = computed(() => bannerConfig.value?.icon);
+
+	const bannerDismissible = computed(() => bannerConfig.value?.dismissible ?? true);
 
 	const currentPlanData = computed(() => state.data);
 
@@ -68,26 +107,9 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		return information.which_of_these_do_you_feel_comfortable_doing.length;
 	});
 
-	const dynamicTrialBannerText = computed(() => {
-		return currentUserCloudInfo.value?.trialBannerData?.bannerText;
-	});
-
-	const shouldShowDynamicTrialBanner = computed(() => {
-		return (
-			dynamicTrialBannerText.value !== undefined &&
-			dynamicTrialBannerText.value !== '' &&
-			!isDynamicTrialBannerDismissed.value
-		);
-	});
-
-	const dismissDynamicTrialBanner = () => {
-		isDynamicTrialBannerDismissed.value = true;
-		localStorage.setItem(DYNAMIC_TRIAL_BANNER_DISMISSED_KEY, 'true');
-	};
-
 	const trialExpired = computed(
 		() =>
-			state.data?.metadata?.group === 'trial' &&
+			state.data?.userIsTrialing &&
 			DateTime.now().toMillis() >= DateTime.fromISO(state.data?.expirationDate).toMillis(),
 	);
 
@@ -264,8 +286,14 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		getAutoLoginCode,
 		selectedApps,
 		codingSkill,
-		dynamicTrialBannerText,
-		shouldShowDynamicTrialBanner,
-		dismissDynamicTrialBanner,
+		shouldShowBanner,
+		bannerConfig,
+		bannerForceShow,
+		isBannerDismissed,
+		bannerTimeLeft,
+		showExecutions,
+		bannerCta,
+		bannerIcon,
+		bannerDismissible,
 	};
 });

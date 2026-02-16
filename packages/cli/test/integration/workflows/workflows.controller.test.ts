@@ -224,6 +224,7 @@ describe('POST /workflows', () => {
 				'workflow:publish',
 				'workflow:read',
 				'workflow:share',
+				'workflow:unpublish',
 				'workflow:update',
 			].sort(),
 		);
@@ -1109,6 +1110,7 @@ describe('GET /workflows', () => {
 					'workflow:move',
 					'workflow:publish',
 					'workflow:read',
+					'workflow:unpublish',
 					'workflow:update',
 				].sort(),
 			);
@@ -1122,6 +1124,7 @@ describe('GET /workflows', () => {
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:publish',
+					'workflow:unpublish',
 				].sort(),
 			);
 		}
@@ -1144,6 +1147,7 @@ describe('GET /workflows', () => {
 				'workflow:execute-chat',
 				'workflow:publish',
 				'workflow:read',
+				'workflow:unpublish',
 				'workflow:update',
 			]);
 
@@ -1158,6 +1162,7 @@ describe('GET /workflows', () => {
 					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unpublish',
 					'workflow:update',
 				].sort(),
 			);
@@ -2268,6 +2273,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:move',
 					'workflow:publish',
 					'workflow:read',
+					'workflow:unpublish',
 					'workflow:update',
 				].sort(),
 			);
@@ -2281,6 +2287,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:publish',
+					'workflow:unpublish',
 				].sort(),
 			);
 
@@ -2308,6 +2315,7 @@ describe('GET /workflows?includeFolders=true', () => {
 				'workflow:execute-chat',
 				'workflow:publish',
 				'workflow:read',
+				'workflow:unpublish',
 				'workflow:update',
 			]);
 
@@ -2322,6 +2330,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unpublish',
 					'workflow:update',
 				].sort(),
 			);
@@ -3833,6 +3842,139 @@ describe('POST /workflows/:workflowId/activate', () => {
 			versionId: workflow.versionId,
 			workflowId: workflow.id,
 		});
+	});
+
+	test('should emit only activation event when activating inactive workflow', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const emitSpy = jest.spyOn(eventService, 'emit');
+
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId });
+
+		expect(emitSpy).toHaveBeenCalledWith(
+			'workflow-activated',
+			expect.objectContaining({
+				workflowId: workflow.id,
+				workflow: expect.objectContaining({
+					activeVersionId: workflow.versionId,
+				}),
+			}),
+		);
+
+		expect(emitSpy).not.toHaveBeenCalledWith('workflow-deactivated', expect.anything());
+	});
+
+	test('should emit both deactivation and activation events when updating active workflow', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+		const oldVersionId = workflow.activeVersionId!;
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		const emitSpy = jest.spyOn(eventService, 'emit');
+
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: newVersionId });
+
+		// Should emit deactivation event for the old version FIRST
+		expect(emitSpy).toHaveBeenCalledWith(
+			'workflow-deactivated',
+			expect.objectContaining({
+				workflowId: workflow.id,
+				deactivatedVersionId: oldVersionId,
+			}),
+		);
+
+		// Should emit activation event for the new version AFTER
+		expect(emitSpy).toHaveBeenCalledWith(
+			'workflow-activated',
+			expect.objectContaining({
+				workflowId: workflow.id,
+				workflow: expect.objectContaining({
+					activeVersionId: newVersionId,
+				}),
+			}),
+		);
+
+		const deactivationCallIndex = emitSpy.mock.calls.findIndex(
+			(call) => call[0] === 'workflow-deactivated',
+		);
+		const activationCallIndex = emitSpy.mock.calls.findIndex(
+			(call) => call[0] === 'workflow-activated',
+		);
+		expect(deactivationCallIndex).toBeLessThan(activationCallIndex);
+	});
+
+	test('should emit only deactivation event when activation fails on active workflow', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+		const oldVersionId = workflow.activeVersionId!;
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		// Mock activeWorkflowManager.add to fail
+		const addSpy = jest
+			.spyOn(activeWorkflowManagerLike, 'add')
+			.mockRejectedValueOnce(new Error('Failed to add workflow'));
+
+		const emitSpy = jest.spyOn(eventService, 'emit');
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: newVersionId });
+
+		expect(response.statusCode).toBe(400);
+
+		// Should emit deactivation event for the old version
+		expect(emitSpy).toHaveBeenCalledWith(
+			'workflow-deactivated',
+			expect.objectContaining({
+				workflowId: workflow.id,
+				deactivatedVersionId: oldVersionId,
+			}),
+		);
+
+		// Should NOT emit activation event (activation failed)
+		expect(emitSpy).not.toHaveBeenCalledWith('workflow-activated', expect.anything());
+
+		// Verify workflow is deactivated in database
+		const updatedWorkflow = await workflowRepository.findOne({
+			where: { id: workflow.id },
+		});
+		expect(updatedWorkflow?.active).toBe(false);
+		expect(updatedWorkflow?.activeVersionId).toBeNull();
+
+		addSpy.mockRestore();
+	});
+
+	test('should emit no events when activation fails on inactive workflow', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		// Mock activeWorkflowManager.add to fail
+		const addSpy = jest
+			.spyOn(activeWorkflowManagerLike, 'add')
+			.mockRejectedValueOnce(new Error('Failed to add workflow'));
+
+		const emitSpy = jest.spyOn(eventService, 'emit');
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId });
+
+		expect(response.statusCode).toBe(400);
+
+		// Should NOT emit any workflow events
+		expect(emitSpy).not.toHaveBeenCalledWith('workflow-activated', expect.anything());
+		expect(emitSpy).not.toHaveBeenCalledWith('workflow-deactivated', expect.anything());
+
+		// Verify workflow remains inactive
+		const updatedWorkflow = await workflowRepository.findOne({
+			where: { id: workflow.id },
+		});
+		expect(updatedWorkflow?.active).toBe(false);
+		expect(updatedWorkflow?.activeVersionId).toBeNull();
+
+		addSpy.mockRestore();
 	});
 
 	test('should not activate an archived workflow', async () => {

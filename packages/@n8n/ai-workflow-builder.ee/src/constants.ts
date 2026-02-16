@@ -45,6 +45,18 @@ export const AVG_CHARS_PER_TOKEN_ANTHROPIC = 3.5;
 export const MAX_NODE_EXAMPLE_CHARS = 5000 * AVG_CHARS_PER_TOKEN_ANTHROPIC;
 
 /**
+ * Max characters for execution data truncation in tool responses.
+ * Prevents tool responses from becoming too large and filling up the context.
+ */
+export const MAX_EXECUTION_DATA_CHARS = 10000;
+
+/**
+ * Max characters for AI response in conversation context.
+ * Used when including previous AI responses to provide context.
+ */
+export const MAX_AI_RESPONSE_CHARS = 500;
+
+/**
  * Maximum iterations for subgraph tool loops.
  * Prevents infinite loops when agents keep calling tools without finishing.
  */

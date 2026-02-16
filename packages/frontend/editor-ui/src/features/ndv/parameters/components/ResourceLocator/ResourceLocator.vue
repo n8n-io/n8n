@@ -1055,14 +1055,6 @@ function removeOverride() {
 						hasMultipleModes && canBeContentOverride && !isContentOverride,
 				}"
 			>
-				<div
-					:class="[
-						$style.background,
-						{
-							[$style.backgroundOverride]: showOverrideButton,
-						},
-					]"
-				></div>
 				<div v-if="hasMultipleModes" :class="$style.modeSelector">
 					<N8nSelect
 						:model-value="selectedMode"
@@ -1156,6 +1148,8 @@ function removeOverride() {
 									<template v-if="isListMode" #suffix>
 										<N8nIcon
 											icon="chevron-down"
+											color="text-light"
+											size="medium"
 											:class="{
 												[$style.selectIcon]: true,
 												[$style.isReverse]: resourceDropdownVisible,

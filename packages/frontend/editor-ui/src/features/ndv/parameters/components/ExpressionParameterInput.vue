@@ -218,12 +218,11 @@ defineExpose({ focus, select });
 				</template>
 			</DraggableTarget>
 			<N8nButton
+				variant="outline"
+				iconOnly
 				v-if="!isDragging"
-				square
-				outline
-				type="tertiary"
 				icon="external-link"
-				size="mini"
+				size="xsmall"
 				:class="$style['expression-editor-modal-opener']"
 				data-test-id="expander"
 				@click="emit('modal-opener-click')"
@@ -306,6 +305,8 @@ defineExpose({ focus, select });
 
 .focused :global(.cm-editor) {
 	border-color: var(--color--secondary);
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
 }
 
 .focused > .expression-editor-modal-opener {

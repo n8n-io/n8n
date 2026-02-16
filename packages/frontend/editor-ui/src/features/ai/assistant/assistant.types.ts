@@ -23,6 +23,28 @@ export namespace ChatRequest {
 		expression: string;
 		resolvedValue?: unknown;
 		nodeType: string;
+		/** Parameter path where the expression is located (e.g., 'url', 'headers.authorization') */
+		parameterPath?: string;
+	}
+
+	/**
+	 * Context for a node selected/focused by the user.
+	 * Used for focused nodes feature - allows user to select specific nodes
+	 * for the AI to prioritize in its responses.
+	 *
+	 * Note: Only contains additional context not already in currentWorkflow.nodes.
+	 * The LLM should look up full node details (type, parameters, etc.) by matching
+	 * the `name` field against currentWorkflow.nodes[].name.
+	 */
+	export interface SelectedNodeContext {
+		/** Node display name - use to look up full node in currentWorkflow.nodes */
+		name: string;
+		/** Configuration issues/validation errors on the node (not in currentWorkflow) */
+		issues?: Record<string, string[]>;
+		/** Names of nodes that connect INTO this node (pre-resolved for convenience) */
+		incomingConnections: string[];
+		/** Names of nodes that this node connects TO (pre-resolved for convenience) */
+		outgoingConnections: string[];
 	}
 
 	export interface WorkflowContext {
@@ -30,6 +52,12 @@ export namespace ChatRequest {
 		currentWorkflow?: Partial<IWorkflowDb>;
 		executionData?: IRunExecutionData['resultData'];
 		expressionValues?: Record<string, ExpressionValue[]>;
+		/** Whether execution schema values were excluded (redacted) for privacy */
+		valuesExcluded?: boolean;
+		/** Node names whose output schema was derived from pin data */
+		pinnedNodes?: string[];
+		/** Nodes explicitly selected/focused by the user for AI context */
+		selectedNodes?: SelectedNodeContext[];
 	}
 
 	export interface ExecutionResultData {
@@ -97,6 +125,9 @@ export namespace ChatRequest {
 
 	export interface BuilderFeatureFlags {
 		templateExamples?: boolean;
+		codeBuilder?: boolean;
+		pinData?: boolean;
+		planMode?: boolean;
 	}
 
 	export interface UserChatMessage {
@@ -108,6 +139,10 @@ export namespace ChatRequest {
 		context?: UserContext;
 		workflowContext?: WorkflowContext;
 		featureFlags?: BuilderFeatureFlags;
+		/** Builder mode: 'build' for direct generation, 'plan' for planning first */
+		mode?: 'build' | 'plan';
+		/** Resume payload for LangGraph interrupt() */
+		resumeData?: unknown;
 	}
 
 	export interface UserContext {
@@ -188,6 +223,26 @@ export namespace ChatRequest {
 		suggestionId?: string;
 	}
 
+	// API-only types for Plan Mode messages
+	export interface ApiQuestionsMessage {
+		role: 'assistant';
+		type: 'questions';
+		questions: PlanMode.PlannerQuestion[];
+		introMessage?: string;
+	}
+
+	export interface ApiPlanMessage {
+		role: 'assistant';
+		type: 'plan';
+		plan: PlanMode.PlanOutput;
+	}
+
+	export interface ApiUserAnswersMessage {
+		role: 'user';
+		type: 'user_answers';
+		answers: PlanMode.QuestionResponse[];
+	}
+
 	// API-only types
 	export type MessageResponse =
 		| ((
@@ -199,6 +254,9 @@ export namespace ChatRequest {
 				| ChatUI.WorkflowUpdatedMessage
 				| ToolMessage
 				| ChatUI.ErrorMessage
+				| ApiQuestionsMessage
+				| ApiPlanMessage
+				| ApiUserAnswersMessage
 		  ) & {
 				quickReplies?: ChatUI.QuickReply[];
 		  })
@@ -244,8 +302,105 @@ export namespace AskAiRequest {
 	}
 }
 
+// ============================================================================
+// Plan Mode Types
+// ============================================================================
+
+export namespace PlanMode {
+	export type QuestionType = 'single' | 'multi' | 'text';
+
+	export interface PlannerQuestion {
+		id: string;
+		question: string;
+		type: QuestionType;
+		options?: string[];
+	}
+
+	export interface QuestionResponse {
+		questionId: string;
+		question: string;
+		selectedOptions: string[];
+		customText?: string;
+		skipped?: boolean;
+	}
+
+	export interface PlanStep {
+		description: string;
+		subSteps?: string[];
+		suggestedNodes?: string[];
+	}
+
+	export interface PlanOutput {
+		summary: string;
+		trigger: string;
+		steps: PlanStep[];
+		additionalSpecs?: string[];
+	}
+
+	export interface QuestionsMessageData {
+		questions: PlannerQuestion[];
+		introMessage?: string;
+	}
+
+	export interface PlanMessageData {
+		plan: PlanOutput;
+	}
+
+	export interface UserAnswersMessageData {
+		answers: QuestionResponse[];
+	}
+
+	export type QuestionsMessage = ChatUI.CustomMessage & {
+		customType: 'questions';
+		data: QuestionsMessageData;
+	};
+
+	export type PlanMessage = ChatUI.CustomMessage & {
+		customType: 'plan';
+		data: PlanMessageData;
+	};
+
+	export type UserAnswersMessage = ChatUI.CustomMessage & {
+		role: 'user';
+		customType: 'user_answers';
+		data: UserAnswersMessageData;
+	};
+
+	export type PlanModeMessage = QuestionsMessage | PlanMessage | UserAnswersMessage;
+}
+
+// Type guards for Plan Mode custom messages
+export function isPlanModeQuestionsMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is PlanMode.QuestionsMessage {
+	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'questions';
+}
+
+export function isPlanModePlanMessage(msg: ChatUI.AssistantMessage): msg is PlanMode.PlanMessage {
+	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'plan';
+}
+
+export function isPlanModeUserAnswersMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is PlanMode.UserAnswersMessage {
+	return (
+		msg.type === 'custom' &&
+		msg.role === 'user' &&
+		'customType' in msg &&
+		msg.customType === 'user_answers'
+	);
+}
+
+export function isPlanModeMessage(msg: ChatUI.AssistantMessage): msg is PlanMode.PlanModeMessage {
+	return (
+		isPlanModeQuestionsMessage(msg) ||
+		isPlanModePlanMessage(msg) ||
+		isPlanModeUserAnswersMessage(msg)
+	);
+}
+
 export type AssistantProcessOptions = {
-	trimParameterValues?: boolean;
+	excludeParameterValues?: boolean;
 };
 
 // Type guards for ChatRequest messages
@@ -300,4 +455,20 @@ export function isEndSessionMessage(
 	msg: ChatRequest.MessageResponse,
 ): msg is ChatUI.EndSessionMessage {
 	return 'type' in msg && msg.type === 'event' && msg.eventName === 'end-session';
+}
+
+export function isQuestionsMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.ApiQuestionsMessage {
+	return 'type' in msg && msg.type === 'questions' && 'questions' in msg;
+}
+
+export function isPlanMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.ApiPlanMessage {
+	return 'type' in msg && msg.type === 'plan' && 'plan' in msg;
+}
+
+export function isUserAnswersMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.ApiUserAnswersMessage {
+	return 'type' in msg && msg.type === 'user_answers' && 'answers' in msg;
 }

@@ -181,9 +181,8 @@ const onViewSelected = (selected: string) => {
 		</div>
 		<div v-else :class="$style.controlsContainer">
 			<N8nIconButton
+				variant="ghost"
 				v-if="canBeOpenedInFocusPanel"
-				type="tertiary"
-				text
 				size="small"
 				icon-size="large"
 				icon="panel-right"
@@ -221,9 +220,8 @@ const onViewSelected = (selected: string) => {
 			/>
 
 			<N8nIconButton
+				variant="ghost"
 				v-if="showDelete && onDelete"
-				type="tertiary"
-				text
 				size="small"
 				icon-size="large"
 				icon="trash-2"
@@ -237,12 +235,11 @@ const onViewSelected = (selected: string) => {
 </template>
 
 <style lang="scss" module>
-$container-height: 22px;
-
 .container {
 	display: flex;
-	min-height: $container-height;
-	max-height: $container-height;
+	min-height: var(--parameter-input-options--height, 22px);
+	max-height: var(--parameter-input-options--height, 22px);
+	overflow: hidden;
 }
 
 .loader {

@@ -10,7 +10,7 @@ on:
         default: ''
 
 env:
-  DOCKER_IMAGE: ghcr.io/n8n-io/n8n:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+  DOCKER_IMAGE: ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
 
 jobs:
   prepare:
@@ -43,9 +43,9 @@ jobs:
           enable-docker-cache: true
         env:
           INCLUDE_TEST_CONTROLLER: 'true'
-          IMAGE_BASE_NAME: ghcr.io/n8n-io/n8n
+          IMAGE_BASE_NAME: ghcr.io/${{ github.repository }}
           IMAGE_TAG: pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
-          RUNNERS_IMAGE_BASE_NAME: ghcr.io/n8n-io/runners
+          RUNNERS_IMAGE_BASE_NAME: ghcr.io/${{ github.repository_owner }}/runners
 
       - name: Generate shard matrix
         id: generate-matrix
@@ -59,7 +59,7 @@ jobs:
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-pull
-      docker-image: ghcr.io/n8n-io/n8n:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+      docker-image: ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
       test-command: pnpm --filter=n8n-playwright test:container:sqlite:e2e tests/e2e/building-blocks/workflow-entry-points.spec.ts
       shards: 1
       runner: blacksmith-2vcpu-ubuntu-2204
@@ -77,7 +77,7 @@ jobs:
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-pull
-      docker-image: ghcr.io/n8n-io/n8n:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+      docker-image: ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:e2e
       shards: 16
       runner: blacksmith-2vcpu-ubuntu-2204
@@ -118,8 +118,11 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Delete images from GHCR
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_ORG: ${{ github.repository_owner }}
+          GHCR_REPO: ${{ github.event.repository.name }}
         run: |
           if [ -n "${{ github.event.pull_request.number }}" ]; then
             echo "PR context: cleaning all images for PR ${{ github.event.pull_request.number }}"

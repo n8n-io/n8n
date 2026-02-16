@@ -8,9 +8,22 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
+import { CodeWorkflowBuilder } from '@/code-builder';
 import type { CoordinationLogEntry } from '@/types/coordination';
+import type { StreamChunk, WorkflowUpdateChunk } from '@/types/streaming';
 import type { SimpleWorkflow } from '@/types/workflow';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
+
+/** Type guard for SimpleWorkflow */
+function isSimpleWorkflow(value: unknown): value is SimpleWorkflow {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'name' in value &&
+		'nodes' in value &&
+		'connections' in value
+	);
+}
 
 import {
 	argsToStageModels,
@@ -25,17 +38,19 @@ import {
 	getDefaultTestCaseIds,
 } from './csv-prompt-loader';
 import { sendWebhookNotification } from './webhook';
+import { WorkflowGenerationError } from '../errors';
 import {
 	consumeGenerator,
 	extractSubgraphMetrics,
 	getChatPayload,
 } from '../harness/evaluation-helpers';
 import { createLogger } from '../harness/logger';
-import type { GenerationCollectors } from '../harness/runner';
+import type { GenerationCollectors, SubgraphMetricsCollector } from '../harness/runner';
 import { TokenUsageTrackingHandler } from '../harness/token-tracking-handler';
 import {
 	runEvaluation,
 	createConsoleLifecycle,
+	mergeLifecycles,
 	createLLMJudgeEvaluator,
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
@@ -44,10 +59,19 @@ import {
 	type TestCase,
 	type Evaluator,
 	type EvaluationContext,
+	type GenerationResult,
 } from '../index';
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
-import { EVAL_TYPES, EVAL_USERS } from '../support/constants';
+import { createIntrospectionAnalysisLifecycle } from '../lifecycles/introspection-analysis';
+import { AGENT_TYPES, EVAL_TYPES, EVAL_USERS } from '../support/constants';
 import { setupTestEnvironment, createAgent, type ResolvedStageLLMs } from '../support/environment';
+
+/**
+ * Type guard for workflow update chunks from streaming output.
+ */
+function isWorkflowUpdateChunk(chunk: StreamChunk): chunk is WorkflowUpdateChunk {
+	return chunk.type === 'workflow-updated';
+}
 
 /**
  * Type guard to check if state values contain a coordination log.
@@ -61,7 +85,29 @@ function hasCoordinationLog(
 }
 
 /**
- * Create a workflow generator function.
+ * Report subgraph metrics from coordination log and workflow.
+ */
+function reportSubgraphMetrics(
+	collector: SubgraphMetricsCollector,
+	stateValues: unknown,
+	workflow: SimpleWorkflow,
+): void {
+	const coordinationLog = hasCoordinationLog(stateValues) ? stateValues.coordinationLog : undefined;
+	const nodeCount = workflow.nodes?.length;
+	const metrics = extractSubgraphMetrics(coordinationLog, nodeCount);
+
+	if (
+		metrics.discoveryDurationMs !== undefined ||
+		metrics.builderDurationMs !== undefined ||
+		metrics.responderDurationMs !== undefined ||
+		metrics.nodeCount !== undefined
+	) {
+		collector(metrics);
+	}
+}
+
+/**
+ * Create a workflow generator function for the multi-agent system.
  * LangSmith tracing is handled via traceable() in the runner.
  * Callbacks are passed explicitly from the runner to ensure correct trace context
  * under high concurrency (avoids AsyncLocalStorage race conditions).
@@ -71,6 +117,7 @@ function createWorkflowGenerator(
 	llms: ResolvedStageLLMs,
 	featureFlags?: BuilderFeatureFlags,
 ): (prompt: string, collectors?: GenerationCollectors) => Promise<SimpleWorkflow> {
+
 	return async (prompt: string, collectors?: GenerationCollectors): Promise<SimpleWorkflow> => {
 		const runId = generateRunId();
 
@@ -116,23 +163,138 @@ function createWorkflowGenerator(
 
 		// Extract and report subgraph metrics from coordination log
 		if (collectors?.subgraphMetrics) {
-			const coordinationLog = hasCoordinationLog(state.values)
-				? state.values.coordinationLog
-				: undefined;
-			const nodeCount = workflow.nodes?.length;
-			const metrics = extractSubgraphMetrics(coordinationLog, nodeCount);
+			reportSubgraphMetrics(collectors.subgraphMetrics, state.values, workflow);
+		}
 
-			if (
-				metrics.discoveryDurationMs !== undefined ||
-				metrics.builderDurationMs !== undefined ||
-				metrics.responderDurationMs !== undefined ||
-				metrics.nodeCount !== undefined
-			) {
-				collectors.subgraphMetrics(metrics);
+		// Report introspection events
+		collectors?.introspectionEvents?.(state.values.introspectionEvents ?? []);
+
+		return workflow;
+	};
+}
+
+/**
+ * Create evaluators based on suite type.
+ */
+function createEvaluators(params: {
+	suite: string;
+	judgeLlm: ResolvedStageLLMs['judge'];
+	parsedNodeTypes: Parameters<typeof createProgrammaticEvaluator>[0];
+	numJudges: number;
+}): Array<Evaluator<EvaluationContext>> {
+	const { suite, judgeLlm, parsedNodeTypes, numJudges } = params;
+	const evaluators: Array<Evaluator<EvaluationContext>> = [];
+
+	switch (suite) {
+		case 'llm-judge':
+			evaluators.push(createLLMJudgeEvaluator(judgeLlm, parsedNodeTypes));
+			evaluators.push(createProgrammaticEvaluator(parsedNodeTypes));
+			break;
+		case 'pairwise':
+			evaluators.push(createPairwiseEvaluator(judgeLlm, { numJudges }));
+			evaluators.push(createProgrammaticEvaluator(parsedNodeTypes));
+			break;
+		case 'programmatic':
+			evaluators.push(createProgrammaticEvaluator(parsedNodeTypes));
+			break;
+		case 'similarity':
+			evaluators.push(createSimilarityEvaluator());
+			break;
+	}
+
+	return evaluators;
+}
+
+/**
+ * Create a CodeWorkflowBuilder generator function.
+ * Uses the CodeWorkflowBuilder which coordinates planning and coding agents to generate
+ * workflows via TypeScript SDK code and emits workflow JSON directly in the stream.
+ * Returns GenerationResult including the source code for artifact saving.
+ *
+ * @param timeoutMs - Optional timeout in milliseconds. When provided, the agent will be
+ *                    aborted if it exceeds this duration. This ensures the generator
+ *                    actually stops instead of continuing to run after timeout rejection.
+ */
+function createCodeWorkflowBuilderGenerator(
+	parsedNodeTypes: INodeTypeDescription[],
+	llms: ResolvedStageLLMs,
+	timeoutMs?: number,
+	nodeDefinitionDirs?: string[],
+): (prompt: string, collectors?: GenerationCollectors) => Promise<GenerationResult> {
+	// Subgraph metrics are not applicable since CodeWorkflowBuilder doesn't use coordination logs.
+	return async (prompt: string, collectors?: GenerationCollectors): Promise<GenerationResult> => {
+		const runId = generateRunId();
+
+		// Accumulate token usage across all LLM calls
+		let totalInputTokens = 0;
+		let totalOutputTokens = 0;
+
+		const builder = new CodeWorkflowBuilder({
+			llm: llms.builder,
+			nodeTypes: parsedNodeTypes,
+			nodeDefinitionDirs,
+			onTokenUsage: collectors?.tokenUsage
+				? (usage) => {
+						totalInputTokens += usage.inputTokens;
+						totalOutputTokens += usage.outputTokens;
+					}
+				: undefined,
+		});
+
+		const payload = getChatPayload({
+			evalType: EVAL_TYPES.LANGSMITH,
+			message: prompt,
+			workflowId: runId,
+			featureFlags: { codeBuilder: true },
+		});
+
+		let workflow: SimpleWorkflow | null = null;
+		let generatedCode: string | undefined;
+
+		// Create an AbortController to properly cancel the agent on timeout or error.
+		// Without this, the agent continues running even after Promise.race rejects,
+		// causing the full timeout duration to elapse before the error surfaces.
+		const abortController = new AbortController();
+		let timeoutId: NodeJS.Timeout | undefined;
+
+		if (timeoutMs !== undefined && timeoutMs > 0) {
+			timeoutId = setTimeout(() => {
+				abortController.abort(new Error(`CodeWorkflowBuilder timed out after ${timeoutMs}ms`));
+			}, timeoutMs);
+		}
+
+		try {
+			for await (const output of builder.chat(
+				payload,
+				EVAL_USERS.LANGSMITH,
+				abortController.signal,
+			)) {
+				for (const message of output.messages) {
+					if (isWorkflowUpdateChunk(message)) {
+						const parsed: unknown = JSON.parse(message.codeSnippet);
+						if (isSimpleWorkflow(parsed)) {
+							workflow = parsed;
+							generatedCode = message.sourceCode;
+						}
+					}
+				}
+			}
+		} finally {
+			if (timeoutId !== undefined) {
+				clearTimeout(timeoutId);
 			}
 		}
 
-		return workflow;
+		if (!workflow) {
+			throw new WorkflowGenerationError('CodeWorkflowBuilder did not produce a workflow');
+		}
+
+		// Report accumulated token usage
+		if (collectors?.tokenUsage && (totalInputTokens > 0 || totalOutputTokens > 0)) {
+			collectors.tokenUsage({ inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
+		}
+
+		return { workflow, generatedCode };
 	};
 }
 
@@ -199,7 +361,6 @@ export async function runV2Evaluation(): Promise<void> {
 
 	// Setup environment with per-stage model configuration
 	const logger = createLogger(args.verbose);
-	const lifecycle = createConsoleLifecycle({ verbose: args.verbose, logger });
 	const stageModels = argsToStageModels(args);
 	const env = await setupTestEnvironment(stageModels, logger);
 
@@ -208,49 +369,50 @@ export async function runV2Evaluation(): Promise<void> {
 		throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
 	}
 
-	// Create workflow generator with per-stage LLMs
-	const generateWorkflow = createWorkflowGenerator(
-		env.parsedNodeTypes,
-		env.llms,
-		args.featureFlags,
-	);
+	// Create workflow generator based on agent type
+	const generateWorkflow =
+		args.agent === AGENT_TYPES.CODE_BUILDER
+			? createCodeWorkflowBuilderGenerator(
+					env.parsedNodeTypes,
+					env.llms,
+					args.timeoutMs,
+					env.nodeDefinitionDirs,
+				)
+			: createWorkflowGenerator(env.parsedNodeTypes, env.llms, args.featureFlags);
 
-	// Create evaluators based on mode (using judge LLM for evaluation)
-	const evaluators: Array<Evaluator<EvaluationContext>> = [];
-
-	switch (args.suite) {
-		case 'llm-judge':
-			evaluators.push(createLLMJudgeEvaluator(env.llms.judge, env.parsedNodeTypes));
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'pairwise':
-			evaluators.push(
-				createPairwiseEvaluator(env.llms.judge, {
-					numJudges: args.numJudges,
-				}),
-			);
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'programmatic':
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'similarity':
-			evaluators.push(createSimilarityEvaluator());
-			break;
-	}
+	// Create evaluators based on suite type
+	const evaluators = createEvaluators({
+		suite: args.suite,
+		judgeLlm: env.llms.judge,
+		parsedNodeTypes: env.parsedNodeTypes,
+		numJudges: args.numJudges,
+	});
 
 	const llmCallLimiter = pLimit(args.concurrency);
+
+	// Merge console lifecycle with optional introspection analysis lifecycle
+	const mergedLifecycle = mergeLifecycles(
+		createConsoleLifecycle({ verbose: args.verbose, logger }),
+		args.suite === 'introspection'
+			? createIntrospectionAnalysisLifecycle({
+					judgeLlm: env.llms.judge,
+					outputDir: args.outputDir,
+					logger,
+				})
+			: undefined,
+	);
 
 	const baseConfig = {
 		generateWorkflow,
 		evaluators,
-		lifecycle,
+		lifecycle: mergedLifecycle,
 		logger,
 		outputDir: args.outputDir,
 		outputCsv: args.outputCsv,
 		suite: args.suite,
 		timeoutMs: args.timeoutMs,
 		context: { llmCallLimiter },
+		passThreshold: args.suite === 'introspection' ? 0 : undefined,
 	};
 
 	const config: RunConfig =
@@ -279,6 +441,7 @@ export async function runV2Evaluation(): Promise<void> {
 					...baseConfig,
 					mode: 'local',
 					dataset: loadTestCases(args),
+					concurrency: args.concurrency,
 				};
 
 	// Run evaluation

@@ -35,7 +35,6 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'externalSecretsProvider:list',
 	'externalSecretsProvider:sync',
 	'externalSecret:list',
-	'externalSecret:use',
 	'ldap:manage',
 	'ldap:sync',
 	'license:manage',

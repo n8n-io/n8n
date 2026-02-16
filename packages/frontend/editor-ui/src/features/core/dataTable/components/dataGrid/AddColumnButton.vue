@@ -28,14 +28,24 @@ type FormError = {
 	description?: string;
 };
 
-const props = defineProps<{
-	// the params key is needed so that we can pass this directly to ag-grid as column
-	params: {
-		onAddColumn: (column: DataTableColumnCreatePayload) => Promise<AddColumnResponse>;
-	};
-	popoverId?: string;
-	useTextTrigger?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		// the params key is needed so that we can pass this directly to ag-grid as column
+		params: {
+			onAddColumn: (column: DataTableColumnCreatePayload) => Promise<AddColumnResponse>;
+			disabled?: boolean;
+		};
+		popoverId?: string;
+		useTextTrigger?: boolean;
+		disabled?: boolean;
+	}>(),
+	{
+		disabled: false,
+	},
+);
+
+// Use disabled from params if available (when used as AG Grid header), otherwise use prop
+const isDisabled = computed(() => props.params?.disabled ?? props.disabled);
 
 const i18n = useI18n();
 const { getIconForType } = useDataTableTypes();
@@ -107,8 +117,9 @@ const handlePopoverOpenChange = async (open: boolean) => {
 		return;
 	}
 	popoverOpen.value = open;
-	// Focus name input when opening popover
+	// Reset error state and focus name input when opening popover
 	if (open) {
+		error.value = null;
 		await nextTick(() => {
 			nameInputRef.value?.focus();
 		});
@@ -142,16 +153,20 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 			>
 				<template #trigger>
 					<template v-if="props.useTextTrigger">
-						<N8nButton data-test-id="data-table-add-column-trigger-button" type="tertiary">
+						<N8nButton
+							variant="subtle"
+							data-test-id="data-table-add-column-trigger-button"
+							:disabled="isDisabled"
+						>
 							{{ i18n.baseText('dataTable.addColumn.label') }}
 						</N8nButton>
 					</template>
 					<template v-else>
 						<N8nIconButton
+							variant="ghost"
 							data-test-id="data-table-add-column-trigger-button"
-							text
 							icon="plus"
-							type="tertiary"
+							:disabled="isDisabled"
 						/>
 					</template>
 				</template>
@@ -218,8 +233,8 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 								</N8nSelect>
 							</N8nInputLabel>
 							<N8nButton
+								variant="solid"
 								data-test-id="data-table-add-column-submit-button"
-								type="primary"
 								class="mt-m"
 								size="large"
 								:disabled="!columnName || !columnType || !!error"

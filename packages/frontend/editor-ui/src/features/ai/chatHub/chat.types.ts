@@ -46,7 +46,8 @@ export type MessagingState =
 	| 'waitingFirstChunk'
 	| 'receiving'
 	| 'missingCredentials'
-	| 'missingAgent';
+	| 'missingAgent'
+	| 'waitingForApproval';
 
 export interface ChatMessage extends ChatHubMessageDto {
 	responses: ChatMessageId[];

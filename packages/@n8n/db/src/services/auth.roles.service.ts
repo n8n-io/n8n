@@ -5,8 +5,9 @@ import {
 	ALL_SCOPES,
 	ALL_ROLES,
 	scopeInformation,
-	PERSONAL_SPACE_PUBLISHING_SETTING_KEY,
+	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PROJECT_OWNER_ROLE_SLUG,
+	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
 
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -103,10 +104,32 @@ export class AuthRolesService {
 		}
 	}
 
-	private async shouldPersonalOwnerHavePublishScope(): Promise<boolean> {
-		const setting = await this.settingsRepository.findByKey(PERSONAL_SPACE_PUBLISHING_SETTING_KEY);
-		// Default to true if setting doesn't exist (backward compatibility)
-		return setting?.value === 'true' || setting === null;
+	private async getPersonalOwnerSettingsScopes() {
+		const settingKeys = [PERSONAL_SPACE_PUBLISHING_SETTING.key, PERSONAL_SPACE_SHARING_SETTING.key];
+		const rows = (await this.settingsRepository.findByKeys(settingKeys)) ?? [];
+		const personalSpacePublishingValue = rows.find(
+			(r) => r.key === PERSONAL_SPACE_PUBLISHING_SETTING.key,
+		)?.value;
+		const personalSpaceSharingValue = rows.find(
+			(r) => r.key === PERSONAL_SPACE_SHARING_SETTING.key,
+		)?.value;
+
+		const scopes = [];
+
+		// Default to true when setting is missing for backward compatibility (existing instances without these settings)
+		if (personalSpacePublishingValue === 'true' || personalSpacePublishingValue === undefined) {
+			scopes.push(...PERSONAL_SPACE_PUBLISHING_SETTING.scopes);
+			this.logger.debug(
+				`${PERSONAL_SPACE_PUBLISHING_SETTING.key} is enabled - allowing ${PERSONAL_SPACE_PUBLISHING_SETTING.scopes.join(', ')} scopes to ${PROJECT_OWNER_ROLE_SLUG} role`,
+			);
+		}
+		if (personalSpaceSharingValue === 'true' || personalSpaceSharingValue === undefined) {
+			scopes.push(...PERSONAL_SPACE_SHARING_SETTING.scopes);
+			this.logger.debug(
+				`${PERSONAL_SPACE_SHARING_SETTING.key} is enabled - allowing ${PERSONAL_SPACE_SHARING_SETTING.scopes.join(', ')} scopes to ${PROJECT_OWNER_ROLE_SLUG} role`,
+			);
+		}
+		return scopes;
 	}
 
 	/**
@@ -119,17 +142,12 @@ export class AuthRolesService {
 		roleSlug: string,
 		defaultScopes: string[],
 	): Promise<string[]> {
+		const scopes = [...defaultScopes];
 		// Special handling for project:personalOwner role
 		if (roleSlug === PROJECT_OWNER_ROLE_SLUG) {
-			const shouldHavePublish = await this.shouldPersonalOwnerHavePublishScope();
-			if (shouldHavePublish) {
-				this.logger.debug(
-					`Personal space publishing is enabled - adding workflow:publish scope to ${PROJECT_OWNER_ROLE_SLUG} role`,
-				);
-				return [...defaultScopes, 'workflow:publish'];
-			}
+			scopes.push(...(await this.getPersonalOwnerSettingsScopes()));
 		}
-		return defaultScopes;
+		return scopes;
 	}
 
 	private async syncRoles() {

@@ -209,8 +209,8 @@ defineExpose({
 		committedSpokenMessage.value = '';
 		attachments.value = [];
 	},
-	setText: (text: string) => {
-		message.value = text;
+	appendText: (text: string) => {
+		message.value += text;
 	},
 	addAttachments: (files: File[]) => {
 		attachments.value.push(...files);
@@ -366,24 +366,21 @@ defineExpose({
 							placement="top"
 						>
 							<N8nIconButton
-								native-type="button"
-								type="secondary"
+								variant="ghost"
 								:disabled="messagingState !== 'idle' || !canUploadFiles"
 								icon="paperclip"
 								icon-size="large"
-								text
 								@click.stop="onAttach"
 							/>
 						</N8nTooltip>
 						<N8nIconButton
 							v-if="speechInput.isSupported"
-							native-type="button"
+							variant="outline"
 							:title="
 								speechInput.isListening.value
 									? i18n.baseText('chatHub.chat.prompt.button.stopRecording')
 									: i18n.baseText('chatHub.chat.prompt.button.voiceInput')
 							"
-							type="secondary"
 							:disabled="messagingState !== 'idle'"
 							:icon="speechInput.isListening.value ? 'square' : 'mic'"
 							:class="{ [$style.recording]: speechInput.isListening.value }"
@@ -392,7 +389,7 @@ defineExpose({
 						/>
 						<N8nIconButton
 							v-if="messagingState !== 'receiving'"
-							native-type="submit"
+							type="submit"
 							:disabled="messagingState !== 'idle' || !message.trim()"
 							:title="i18n.baseText('chatHub.chat.prompt.button.send')"
 							:loading="messagingState === 'waitingFirstChunk'"
@@ -455,6 +452,10 @@ defineExpose({
 	flex-direction: column;
 	gap: var(--spacing--md);
 	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+	--input--border-color: transparent;
+	--input--border-color--hover: transparent;
+	--input--border-color--focus: transparent;
+	--input--color--background: transparent;
 
 	&:focus-within,
 	&:hover:has(textarea:not(:disabled)) {
@@ -465,8 +466,6 @@ defineExpose({
 		font-size: var(--font-size--md);
 		line-height: 1.5em;
 		resize: none;
-		background-color: transparent !important;
-		border: none !important;
 		padding: 0 !important;
 	}
 

@@ -1,5 +1,6 @@
 import { inProduction } from '@n8n/backend-common';
 
+import { getCommunityNodeTypes } from '../community-node-types-utils';
 import { CommunityNodeTypesService } from '../community-node-types.service';
 
 jest.mock('@n8n/backend-common', () => ({
@@ -164,8 +165,16 @@ describe('CommunityNodeTypesService', () => {
 
 		it('should process nodeTypes normally when array has content', () => {
 			const mockNodeTypes = [
-				{ name: 'test-node-1', version: '1.0.0' },
-				{ name: 'test-node-2', version: '1.1.0' },
+				{
+					name: 'test-node-1',
+					version: '1.0.0',
+					nodeDescription: { name: 'test-node-1', usableAsTool: false },
+				},
+				{
+					name: 'test-node-2',
+					version: '1.1.0',
+					nodeDescription: { name: 'test-node-2', usableAsTool: false },
+				},
 			];
 			const setCommunityNodeTypesSpy = jest.spyOn(service as any, 'setCommunityNodeTypes');
 
@@ -249,18 +258,21 @@ describe('CommunityNodeTypesService', () => {
 					packageName: 'n8n-nodes-air',
 					checksum: 'checksum-air',
 					npmVersion: '1.0.0',
+					nodeDescription: { name: 'n8n-nodes-air.air', usableAsTool: false },
 				},
 				{
 					name: 'n8n-nodes-airparser.airparser',
 					packageName: 'n8n-nodes-airparser',
 					checksum: 'checksum-airparser',
 					npmVersion: '2.0.0',
+					nodeDescription: { name: 'n8n-nodes-airparser.airparser', usableAsTool: false },
 				},
 				{
 					name: 'n8n-nodes-example.example',
 					packageName: 'n8n-nodes-example',
 					checksum: 'checksum-example',
 					npmVersion: '3.0.0',
+					nodeDescription: { name: 'n8n-nodes-example.example', usableAsTool: false },
 				},
 			];
 
@@ -316,16 +328,19 @@ describe('CommunityNodeTypesService', () => {
 					name: 'n8n-nodes-test.test',
 					packageName: 'n8n-nodes-test',
 					checksum: 'checksum-test',
+					nodeDescription: { name: 'n8n-nodes-test.test', usableAsTool: false },
 				},
 				{
 					name: 'n8n-nodes-testing.testing',
 					packageName: 'n8n-nodes-testing',
 					checksum: 'checksum-testing',
+					nodeDescription: { name: 'n8n-nodes-testing.testing', usableAsTool: false },
 				},
 				{
 					name: 'n8n-nodes-tester.tester',
 					packageName: 'n8n-nodes-tester',
 					checksum: 'checksum-tester',
+					nodeDescription: { name: 'n8n-nodes-tester.tester', usableAsTool: false },
 				},
 			];
 
@@ -338,6 +353,277 @@ describe('CommunityNodeTypesService', () => {
 			expect(testResult?.packageName).toBe('n8n-nodes-test');
 			expect(testingResult?.packageName).toBe('n8n-nodes-testing');
 			expect(testerResult?.packageName).toBe('n8n-nodes-tester');
+		});
+	});
+
+	describe('getCommunityNodeTypes', () => {
+		beforeEach(() => {
+			communityPackagesServiceMock.getAllInstalledPackages = jest.fn().mockResolvedValue([]);
+		});
+
+		it('should create AI tool versions for nodes with usableAsTool flag', async () => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-test.test',
+					packageName: 'n8n-nodes-test',
+					nodeDescription: {
+						name: 'test-node-preview',
+						displayName: 'Test Node',
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: true,
+						codex: {
+							subcategories: {
+								Tools: ['Custom Tools'],
+							},
+							resources: { primaryDocumentation: [{ url: 'https://example.com' }] },
+						},
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result.length).toBe(2); // original + tool version
+
+			const originalNode = result.find((n) => n.name === 'n8n-nodes-test.test');
+			const toolNode = result.find((n) => n.name === 'n8n-nodes-test.testTool');
+
+			expect(originalNode).toBeDefined();
+			expect(toolNode).toBeDefined();
+			expect(toolNode?.name).toBe('n8n-nodes-test.testTool');
+			expect(toolNode?.nodeDescription.name).toBe('test-node-previewTool');
+			expect(toolNode?.nodeDescription.displayName).toBe('Test Node Tool');
+			expect(toolNode?.nodeDescription.inputs).toEqual([]);
+			expect(toolNode?.nodeDescription.outputs).toEqual(['ai_tool']);
+			expect(toolNode?.nodeDescription.codex?.categories).toEqual(['AI']);
+			expect(toolNode?.nodeDescription.codex?.subcategories).toEqual({
+				AI: ['Tools'],
+				Tools: ['Custom Tools'],
+			});
+		});
+
+		it('should not create AI tool versions for nodes without usableAsTool flag', async () => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-test.test',
+					packageName: 'n8n-nodes-test',
+					nodeDescription: {
+						name: 'test-node-preview',
+						displayName: 'Test Node',
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: false,
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result.length).toBe(1); // only original
+
+			const toolNode = result.find((n) => n.name === 'n8n-nodes-test.testTool');
+			expect(toolNode).toBeUndefined();
+		});
+
+		it('should not create AI tool version for node with tool in type', async () => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-test.testTool',
+					packageName: 'n8n-nodes-test',
+					nodeDescription: {
+						name: 'test-node-previewTool',
+						displayName: 'Test Node',
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: true,
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result.length).toBe(1); // only original
+
+			const toolNode = result.find((n) => n.name === 'n8n-nodes-test.testToolTool');
+			expect(toolNode).toBeUndefined();
+		});
+
+		it('should use default "Other Tools" when codex subcategories are not defined', async () => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-test.test',
+					packageName: 'n8n-nodes-test',
+					nodeDescription: {
+						name: 'test-node-preview',
+						displayName: 'Test Node',
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: true,
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+			const toolNode = result.find((n) => n.name === 'n8n-nodes-test.testTool');
+
+			expect(toolNode).toBeDefined();
+			expect(toolNode?.nodeDescription.codex?.subcategories?.Tools).toEqual(['Other Tools']);
+		});
+
+		it('should preserve original codex resources when creating tool version', async () => {
+			const mockResources = {
+				primaryDocumentation: [{ url: 'https://example.com/docs' }],
+			};
+
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-test.test',
+					packageName: 'n8n-nodes-test',
+					nodeDescription: {
+						name: 'test-node-preview',
+						displayName: 'Test Node',
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: true,
+						codex: {
+							resources: mockResources,
+						},
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+			const toolNode = result.find((n) => n.name === 'n8n-nodes-test.testTool');
+
+			expect(toolNode?.nodeDescription.codex?.resources).toEqual(mockResources);
+		});
+
+		it('should not include Recommended Tools subcategory in tool version', async () => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-test.test',
+					packageName: 'n8n-nodes-test',
+					nodeDescription: {
+						name: 'test-node-preview',
+						displayName: 'Test Node',
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: true,
+						codex: {
+							resources: {
+								primaryDocumentation: [{ url: 'https://example.com/docs' }],
+							},
+							subcategories: {
+								AI: ['Tools'],
+								Tools: ['Recommended Tools', 'Other Tools'],
+							},
+						},
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+			const toolNode = result.find((n) => n.name === 'n8n-nodes-test.testTool');
+
+			expect(toolNode?.nodeDescription.codex?.subcategories?.Tools).not.toContain(
+				'Recommended Tools',
+			);
+		});
+
+		it('should handle multiple nodes with usableAsTool flag', async () => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-test1.test1',
+					packageName: 'n8n-nodes-test1',
+					nodeDescription: {
+						name: 'test-node-1-preview',
+						displayName: 'Test Node 1',
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: true,
+					},
+				},
+				{
+					name: 'n8n-nodes-test2.test2',
+					packageName: 'n8n-nodes-test2',
+					nodeDescription: {
+						name: 'test-node-2-preview',
+						displayName: 'Test Node 2',
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: true,
+					},
+				},
+				{
+					name: 'n8n-nodes-test3.test3',
+					packageName: 'n8n-nodes-test3',
+					nodeDescription: {
+						name: 'test-node-3-preview',
+						displayName: 'Test Node 3',
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: false,
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result.length).toBe(5); // 3 original + 2 tool versions
+
+			expect(result.find((n) => n.name === 'n8n-nodes-test1.test1Tool')).toBeDefined();
+			expect(result.find((n) => n.name === 'n8n-nodes-test2.test2Tool')).toBeDefined();
+			expect(result.find((n) => n.name === 'n8n-nodes-test3.test3Tool')).toBeUndefined();
+		});
+
+		it('should not mutate original node type when creating tool version', async () => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-test.test',
+					packageName: 'n8n-nodes-test',
+					nodeDescription: {
+						name: 'test-node-preview',
+						displayName: 'Test Node',
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: true,
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+
+			const originalNode = result.find((n) => n.name === 'n8n-nodes-test.test');
+			const toolNode = result.find((n) => n.name === 'n8n-nodes-test.testTool');
+
+			// Ensure original node is not modified
+			expect(originalNode?.name).toBe('n8n-nodes-test.test');
+			expect(originalNode?.nodeDescription.name).toBe('test-node-preview');
+			expect(originalNode?.nodeDescription.displayName).toBe('Test Node');
+			expect(originalNode?.nodeDescription.inputs).toEqual(['main']);
+			expect(originalNode?.nodeDescription.outputs).toEqual(['main']);
+
+			// Ensure tool node has correct modifications
+			expect(toolNode?.name).toBe('n8n-nodes-test.testTool');
+			expect(toolNode?.nodeDescription.name).toBe('test-node-previewTool');
+			expect(toolNode?.nodeDescription.displayName).toBe('Test Node Tool');
 		});
 	});
 

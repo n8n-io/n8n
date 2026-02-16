@@ -1,5 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { projectRLC } from './common.descriptions';
+
 export const actionOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -154,35 +156,13 @@ export const actionFields: INodeProperties[] = [
 	//         action:getAll
 	// ----------------------------------
 	{
-		displayName: 'Project',
-		name: 'projectId',
-		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		required: true,
+		...projectRLC,
 		displayOptions: {
 			show: {
 				resource: ['action'],
 				operation: ['getAll'],
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a project...',
-				typeOptions: {
-					searchListMethod: 'getProjects',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				placeholder: 'e.g. abc123',
-			},
-		],
 		routing: {
 			send: {
 				type: 'query',
@@ -190,42 +170,19 @@ export const actionFields: INodeProperties[] = [
 				value: '={{ $value }}',
 			},
 		},
-		description: 'The Currents project',
 	},
 
 	// ----------------------------------
 	//         action:create
 	// ----------------------------------
 	{
-		displayName: 'Project',
-		name: 'projectId',
-		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		required: true,
+		...projectRLC,
 		displayOptions: {
 			show: {
 				resource: ['action'],
 				operation: ['create'],
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a project...',
-				typeOptions: {
-					searchListMethod: 'getProjects',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				placeholder: 'e.g. abc123',
-			},
-		],
 		routing: {
 			send: {
 				type: 'query',
@@ -233,7 +190,6 @@ export const actionFields: INodeProperties[] = [
 				value: '={{ $value }}',
 			},
 		},
-		description: 'The Currents project',
 	},
 
 	// ----------------------------------

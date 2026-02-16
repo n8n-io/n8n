@@ -179,7 +179,7 @@ describe('GlobalConfig', () => {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
-			indexingEnabled: false,
+			indexingEnabled: true,
 			useWorkflowPublicationService: false,
 		},
 		endpoints: {
@@ -217,6 +217,7 @@ describe('GlobalConfig', () => {
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
+			health: 'healthz',
 		},
 		cache: {
 			backend: 'auto',

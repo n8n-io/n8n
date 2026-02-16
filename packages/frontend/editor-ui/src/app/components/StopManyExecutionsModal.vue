@@ -144,7 +144,7 @@ function closeModal() {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
-					type="tertiary"
+					variant="subtle"
 					:label="i18n.baseText('executionStopManyModal.button.close')"
 					data-test-id="sme-close-button"
 					@click="closeModal"

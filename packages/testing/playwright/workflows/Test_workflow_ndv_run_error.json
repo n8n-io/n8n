@@ -3,7 +3,7 @@
 	"nodes": [
 		{
 			"parameters": {
-				"jsCode": "\nreturn [\n  {\n    \"field\": \"the same\"\n  }\n];"
+				"jsCode": "\nreturn [\n  {\n    \"field\": \"first\"\n  },\n  {\n    \"field\": \"second\"\n  }\n];"
 			},
 			"id": "38c14c4a-7af1-4b04-be76-f8e474c95569",
 			"name": "Break pairedItem chain",

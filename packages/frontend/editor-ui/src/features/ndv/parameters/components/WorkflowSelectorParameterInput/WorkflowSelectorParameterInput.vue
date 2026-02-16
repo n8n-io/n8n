@@ -374,13 +374,6 @@ const onAddResourceClicked = async () => {
 					[$style.multipleModes]: true,
 				}"
 			>
-				<div
-					:class="{
-						[$style.background]: true,
-						[$style.backgroundWithIssuesAndShowResourceLink]:
-							showOpenResourceLink && parameterIssues?.length,
-					}"
-				/>
 				<div :class="$style.modeSelector">
 					<N8nSelect
 						:model-value="selectedMode"
