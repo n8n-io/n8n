@@ -569,7 +569,8 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					state.nextPhase === 'continue' &&
 					featureFlags?.planMode === true &&
 					state.mode === 'plan' &&
-					!state.planOutput
+					!state.planOutput &&
+					!mergeAskBuild
 				) {
 					return 'discovery_subgraph';
 				}
