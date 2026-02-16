@@ -6,7 +6,6 @@ import { N8nTooltip } from '@n8n/design-system';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import TriggerExecuteButton from '../TriggerExecuteButton.vue';
-import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 
 import type { CredentialTypeSetupState } from '../../setupPanel.types';
 import SetupCard from './SetupCard.vue';
@@ -26,16 +25,7 @@ const i18n = useI18n();
 
 const setupCard = ref<InstanceType<typeof SetupCard> | null>(null);
 
-const cardTitle = computed(() => {
-	if (props.state.isGenericAuth) {
-		return i18n.baseText('setupPanel.cardTitle.generic', {
-			interpolate: { credentialName: props.state.credentialDisplayName },
-		});
-	}
-	return i18n.baseText('setupPanel.cardTitle.service', {
-		interpolate: { serviceName: getAppNameFromCredType(props.state.credentialDisplayName) },
-	});
-});
+const cardTitle = computed(() => props.state.nodeNames[0] ?? '');
 
 const nodeNamesTooltip = computed(() => props.state.nodeNames.join(', '));
 

@@ -57,31 +57,12 @@ describe('CredentialTypeSetupCard', () => {
 	});
 
 	describe('rendering', () => {
-		it('should render card title with "Connect to" for service credentials', () => {
+		it('should render card title as the first node name', () => {
 			const { getByTestId } = renderComponent({
-				props: { state: createState(), expanded: true },
+				props: { state: createState({ nodeNames: ['OpenAI', 'GPT Node'] }), expanded: true },
 			});
 
-			expect(getByTestId('credential-type-setup-card-header')).toHaveTextContent(
-				'Connect to OpenAI',
-			);
-		});
-
-		it('should render card title with "Set up" for generic auth credentials', () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					state: createState({
-						credentialType: 'httpBasicAuth',
-						credentialDisplayName: 'Basic Auth',
-						isGenericAuth: true,
-					}),
-					expanded: true,
-				},
-			});
-
-			expect(getByTestId('credential-type-setup-card-header')).toHaveTextContent(
-				'Set up Basic Auth',
-			);
+			expect(getByTestId('credential-type-setup-card-header')).toHaveTextContent('OpenAI');
 		});
 
 		it('should render credential picker when expanded', () => {
