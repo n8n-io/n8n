@@ -176,24 +176,6 @@ export function buildTriggerSetupState(
 	};
 }
 
-/**
- * Sorts credential type states by the leftmost X position of any node that uses them.
- */
-export function sortCredentialTypeStates(
-	states: CredentialTypeSetupState[],
-	getNodeByName: (name: string) => INodeUi | null | undefined,
-): CredentialTypeSetupState[] {
-	return [...states].sort((a, b) => {
-		const aMinX = Math.min(
-			...a.nodeNames.map((name) => getNodeByName(name)?.position[0] ?? Infinity),
-		);
-		const bMinX = Math.min(
-			...b.nodeNames.map((name) => getNodeByName(name)?.position[0] ?? Infinity),
-		);
-		return aMinX - bMinX;
-	});
-}
-
 interface SetupNode {
 	node: INodeUi;
 	isTrigger: boolean;

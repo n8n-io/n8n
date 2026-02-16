@@ -14,7 +14,6 @@ import {
 	groupCredentialsByType,
 	isCredentialCardComplete,
 	buildTriggerSetupState,
-	sortCredentialTypeStates,
 	sortNodesByExecutionOrder,
 } from '../setupPanel.utils';
 
@@ -79,7 +78,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 	/**
 	 * Credential type states — one entry per unique credential type.
-	 * Sorted by leftmost node X position.
+	 * Preserves execution order from nodesWithCredentials (Map insertion order).
 	 * Cards with embedded triggers have isComplete recomputed to include trigger execution.
 	 */
 	const credentialTypeStates = computed(() => {
@@ -92,9 +91,8 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			getCredentialDisplayName,
 			isGenericAuthType,
 		);
-		const sorted = sortCredentialTypeStates(grouped, (name) => workflowsStore.getNodeByName(name));
 		// Only embed the first trigger; extras become standalone trigger cards.
-		return sorted.map((state) => {
+		return grouped.map((state) => {
 			const triggerNodes = state.triggerNodes.slice(0, 1);
 			return {
 				...state,
@@ -132,9 +130,14 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	});
 
 	/**
-	 * Ordered list of all setup cards: credential-type cards first, then trigger cards.
+	 * Ordered list of all setup cards, interleaved by execution order.
 	 */
 	const setupCards = computed<SetupCardItem[]>(() => {
+		const nodeExecutionIndex = new Map<string, number>();
+		nodesRequiringSetup.value.forEach(({ node }, index) => {
+			nodeExecutionIndex.set(node.name, index);
+		});
+
 		const credentials: SetupCardItem[] = credentialTypeStates.value.map((state) => ({
 			type: 'credential' as const,
 			state,
@@ -143,7 +146,18 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			type: 'trigger' as const,
 			state,
 		}));
-		return [...credentials, ...triggers];
+
+		return [...credentials, ...triggers].sort((a, b) => {
+			const aIdx =
+				a.type === 'credential'
+					? Math.min(...a.state.nodeNames.map((n) => nodeExecutionIndex.get(n) ?? Infinity))
+					: (nodeExecutionIndex.get(a.state.node.name) ?? Infinity);
+			const bIdx =
+				b.type === 'credential'
+					? Math.min(...b.state.nodeNames.map((n) => nodeExecutionIndex.get(n) ?? Infinity))
+					: (nodeExecutionIndex.get(b.state.node.name) ?? Infinity);
+			return aIdx - bIdx;
+		});
 	});
 
 	const totalCredentialsMissing = computed(() => {

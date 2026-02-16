@@ -248,18 +248,19 @@ describe('useWorkflowSetupState', () => {
 			expect(setupCards.value[0].type).toBe('trigger');
 		});
 
-		it('should order credentials first, then standalone triggers', () => {
-			const regularNode = createNode({
-				name: 'Regular',
-				type: 'n8n-nodes-base.regular',
-				position: [0, 0],
-			});
+		it('should interleave credential and trigger cards by execution order', () => {
+			// Trigger comes first in allNodes (= execution order since sort is mocked as pass-through)
 			const triggerNode = createNode({
 				name: 'ManualTrigger',
 				type: 'n8n-nodes-base.manualTrigger',
 				position: [100, 0],
 			});
-			workflowsStore.allNodes = [regularNode, triggerNode];
+			const regularNode = createNode({
+				name: 'Regular',
+				type: 'n8n-nodes-base.regular',
+				position: [0, 0],
+			});
+			workflowsStore.allNodes = [triggerNode, regularNode];
 			nodeTypesStore.isTriggerNode = vi.fn(
 				(type: string) => type === 'n8n-nodes-base.manualTrigger',
 			);
@@ -278,10 +279,10 @@ describe('useWorkflowSetupState', () => {
 
 			const { setupCards } = useWorkflowSetupState();
 
-			const credCards = setupCards.value.filter((c) => c.type === 'credential');
-			expect(credCards.length).toBeGreaterThan(0);
-			expect(setupCards.value[0].type).toBe('credential');
-			expect(setupCards.value[setupCards.value.length - 1].type).toBe('trigger');
+			// Trigger appears first (execution order), credential card second
+			expect(setupCards.value).toHaveLength(2);
+			expect(setupCards.value[0].type).toBe('trigger');
+			expect(setupCards.value[1].type).toBe('credential');
 		});
 
 		it('should exclude disabled nodes', () => {
@@ -441,28 +442,30 @@ describe('useWorkflowSetupState', () => {
 			expect(credentialTypeStates.value[0].isComplete).toBe(false);
 		});
 
-		it('should be sorted by leftmost node X position', () => {
-			const nodeRight = createNode({ name: 'RightNode', position: [300, 0] });
-			const nodeLeft = createNode({ name: 'LeftNode', position: [100, 0] });
-			workflowsStore.allNodes = [nodeRight, nodeLeft];
+		it('should preserve execution order from nodesWithCredentials (Map insertion order)', () => {
+			const nodeA = createNode({ name: 'NodeA', position: [300, 0] });
+			const nodeB = createNode({ name: 'NodeB', position: [100, 0] });
+			// sortNodesByExecutionOrder is mocked as pass-through, so allNodes order = execution order
+			workflowsStore.allNodes = [nodeA, nodeB];
 			mockGetNodeTypeDisplayableCredentials.mockImplementation((_store, node) => {
-				if ((node as INodeUi).name === 'RightNode') return [{ name: 'rightApi' }];
-				if ((node as INodeUi).name === 'LeftNode') return [{ name: 'leftApi' }];
+				if ((node as INodeUi).name === 'NodeA') return [{ name: 'apiA' }];
+				if ((node as INodeUi).name === 'NodeB') return [{ name: 'apiB' }];
 				return [];
 			});
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Test',
 			});
 			workflowsStore.getNodeByName = vi.fn((name: string) => {
-				if (name === 'RightNode') return nodeRight;
-				if (name === 'LeftNode') return nodeLeft;
+				if (name === 'NodeA') return nodeA;
+				if (name === 'NodeB') return nodeB;
 				return null;
 			});
 
 			const { credentialTypeStates } = useWorkflowSetupState();
 
-			expect(credentialTypeStates.value[0].credentialType).toBe('leftApi');
-			expect(credentialTypeStates.value[1].credentialType).toBe('rightApi');
+			// NodeA comes first in execution order despite higher X position
+			expect(credentialTypeStates.value[0].credentialType).toBe('apiA');
+			expect(credentialTypeStates.value[1].credentialType).toBe('apiB');
 		});
 	});
 
