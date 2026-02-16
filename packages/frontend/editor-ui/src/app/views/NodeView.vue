@@ -2009,32 +2009,25 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
-			<N8nCallout
-				v-if="collaborationStore.shouldBeReadOnly && collaborationStore.isCurrentUserWriter"
-				theme="info"
-				icon="lock"
-				:class="$style.readOnlyEnvironmentNotification"
-			>
-				<template #default>
-					<span>{{ i18n.baseText('collaboration.anotherTabIsEditing') }}</span>
-					<N8nButton
-						size="small"
-						type="secondary"
-						style="margin-left: var(--spacing--xs); cursor: pointer"
-						@click="onAcquireEditingClick"
-					>
-						{{ i18n.baseText('collaboration.acquireEditing') }}
-					</N8nButton>
-				</template>
-			</N8nCallout>
-
-			<N8nCanvasCollaborationPill
+			<div
 				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentTabWriter"
-				:first-name="collaborationStore.currentWriter.user.firstName"
-				:is-another-tab="isWriterAnotherTab"
-				:last-name="collaborationStore.currentWriter.user.lastName"
 				:class="$style.canvasCenterPill"
-			/>
+			>
+				<N8nCanvasCollaborationPill
+					:first-name="collaborationStore.currentWriter.user.firstName"
+					:is-another-tab="isWriterAnotherTab"
+					:last-name="collaborationStore.currentWriter.user.lastName"
+				/>
+
+				<N8nButton
+					v-if="isWriterAnotherTab"
+					size="xsmall"
+					type="secondary"
+					@click="onAcquireEditingClick"
+				>
+					{{ i18n.baseText('collaboration.acquireEditing') }}
+				</N8nButton>
+			</div>
 
 			<N8nCanvasThinkingPill
 				v-if="builderStore.streaming"
@@ -2158,5 +2151,9 @@ onBeforeUnmount(() => {
 	top: 50%;
 	transform: translate(-50%, -50%);
 	z-index: 10;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 </style>
