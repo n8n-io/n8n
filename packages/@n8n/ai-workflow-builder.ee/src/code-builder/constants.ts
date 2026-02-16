@@ -14,7 +14,7 @@ export const MAX_VALIDATE_ATTEMPTS = 10;
 
 /** Instruction appended to validation/parse error messages with steps to fix */
 export const FIX_VALIDATION_ERRORS_INSTRUCTION = `
-Use the think tool to analyze ALL errors at once, then act:
+Analyze the errors, then use the editor tool to apply fixes:
 1. Which errors are relevant to the last user request? If NONE, stop — do not fix unrelated warnings.
 2. Use search_nodes and get_node_types to look up the correct node schema (if not already fetched)
 3. Use batch_str_replace to fix ALL identified issues atomically in one call (preferred), or use individual str_replace/insert calls
@@ -106,9 +106,4 @@ export const CODE_BUILDER_GET_NODE_TYPES_TOOL: BuilderToolBase = {
 export const CODE_BUILDER_GET_SUGGESTED_NODES_TOOL: BuilderToolBase = {
 	toolName: 'get_suggested_nodes',
 	displayTitle: 'Getting suggested nodes',
-};
-
-export const CODE_BUILDER_THINK_TOOL: BuilderToolBase = {
-	toolName: 'think',
-	displayTitle: 'Reasoning',
 };

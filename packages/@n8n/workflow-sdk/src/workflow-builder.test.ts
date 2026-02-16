@@ -265,6 +265,24 @@ describe('Workflow Builder', () => {
 		});
 	});
 
+	describe('.output() / .input() error guidance', () => {
+		it('should throw a clear error when calling .output() on the workflow builder', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const wf = workflow('test-id', 'Test Workflow').add(t);
+			expect(() => (wf as unknown as { output: (n: number) => void }).output(0)).toThrow(
+				'Cannot call .output() on the workflow builder',
+			);
+		});
+
+		it('should throw a clear error when calling .input() on the workflow builder', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const wf = workflow('test-id', 'Test Workflow').add(t);
+			expect(() => (wf as unknown as { input: (n: number) => void }).input(1)).toThrow(
+				'Cannot call .input() on the workflow builder',
+			);
+		});
+	});
+
 	describe('.to()', () => {
 		it('should chain nodes with connections', () => {
 			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });

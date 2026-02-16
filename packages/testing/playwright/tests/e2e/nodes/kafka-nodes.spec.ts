@@ -4,7 +4,11 @@ import { test, expect } from '../../../fixtures/base';
 
 test.use({ capability: 'kafka' });
 
-test.describe('Kafka Nodes', () => {
+test.describe('Kafka Nodes', {
+	annotation: [
+		{ type: 'owner', description: 'NODES' },
+	],
+}, () => {
 	test('Kafka node publishes messages to topic @capability:kafka', async ({
 		api,
 		n8n,

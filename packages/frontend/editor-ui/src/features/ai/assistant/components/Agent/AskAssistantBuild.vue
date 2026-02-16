@@ -4,7 +4,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState } from '@/app/constants';
 import { computed, watch, ref, nextTick, useSlots } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -25,6 +25,7 @@ import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { VIEWS } from '@/app/constants';
 import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useErrorHandler } from '@/app/composables/useErrorHandler';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { jsonParse } from 'n8n-workflow';
@@ -56,7 +57,7 @@ const usersStore = useUsersStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const historyStore = useHistoryStore();
 const collaborationStore = useCollaborationStore();
-const workflowAutosaveStore = useWorkflowAutosaveStore();
+const workflowAutosaveStore = useWorkflowSaveStore();
 const settingsStore = useSettingsStore();
 const telemetry = useTelemetry();
 const slots = useSlots();
@@ -398,11 +399,11 @@ watch(
 	},
 );
 
-// Reset initial generation flag when streaming ends
+// Reset initial generation flag and fit canvas when streaming ends
 // Note: Saving is handled by auto-save in NodeView.vue
 watch(
 	() => builderStore.streaming,
-	(isStreaming, wasStreaming) => {
+	async (isStreaming, wasStreaming) => {
 		// Only process when streaming just ended (was streaming, now not)
 		if (!wasStreaming || isStreaming) {
 			return;
@@ -410,6 +411,12 @@ watch(
 
 		if (builderStore.initialGeneration && workflowsStore.workflow.nodes.length > 0) {
 			builderStore.initialGeneration = false;
+		}
+
+		// Zoom to fit all nodes after generation completes
+		if (accumulatedNodeIdsToTidyUp.value.length > 0) {
+			await nextTick();
+			canvasEventBus.emit('fitView');
 		}
 	},
 );

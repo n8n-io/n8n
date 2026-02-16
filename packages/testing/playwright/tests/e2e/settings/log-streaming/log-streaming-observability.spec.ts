@@ -14,7 +14,11 @@ import { test, expect } from '../../../../fixtures/base';
 // Worker-scoped fixtures must be at top level
 test.use({ capability: 'observability' });
 
-test.describe('Log Streaming to VictoriaLogs @capability:observability', () => {
+test.describe('Log Streaming to VictoriaLogs @capability:observability', {
+	annotation: [
+		{ type: 'owner', description: 'Lifecycle & Governance' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		// Enable log streaming feature for the test
 		await n8n.api.enableFeature('logStreaming');
