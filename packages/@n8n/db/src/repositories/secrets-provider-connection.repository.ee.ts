@@ -94,7 +94,8 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 		projectId: string,
 	): Promise<SecretsProviderConnection | null> {
 		return await this.createQueryBuilder('connection')
-			.innerJoin('connection.projectAccess', 'projectAccess')
+			.innerJoinAndSelect('connection.projectAccess', 'projectAccess')
+			.leftJoinAndSelect('projectAccess.project', 'project')
 			.where('connection.providerKey = :providerKey', { providerKey })
 			.andWhere('projectAccess.projectId = :projectId', { projectId })
 			.getOne();
