@@ -824,7 +824,7 @@ describe('POST /executions/stop', () => {
 			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(3);
 
-		const workflow = await createWorkflow({}, user1);
+		await createWorkflow({}, user1);
 
 		const response = await authUser1Agent
 			.post('/executions/stop')
@@ -876,7 +876,7 @@ describe('POST /executions/stop', () => {
 			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(1);
 
-		const workflow = await createWorkflow({}, user1);
+		await createWorkflow({}, user1);
 		const startedAfter = '2024-01-01T00:00:00.000Z';
 		const startedBefore = '2024-12-31T23:59:59.999Z';
 
