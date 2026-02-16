@@ -400,7 +400,7 @@ describe('TriageAgent', () => {
 		expect(systemMessage.content).not.toContain('<conversation_history>');
 	});
 
-	it('should continue loop after ask_assistant and let LLM respond with text', async () => {
+	it('should suppress redundant LLM text when ask_assistant already handled the response', async () => {
 		const firstResponse = new AIMessage({
 			content: '',
 			tool_calls: [
@@ -433,26 +433,130 @@ describe('TriageAgent', () => {
 			agent.run({ payload: createMockPayload(), userId: 'user-1' }),
 		);
 
-		// ask_assistant no longer exits the loop — the LLM is called again
-		// and responds with text, which becomes the final answer.
+		// ask_assistant sets handledResponse — the LLM's follow-up text is suppressed
 		expect(result.assistantSummary).toBe('Missing credentials error');
 		expect(result.buildExecuted).toBeFalsy();
 		expect(handler.execute).toHaveBeenCalledTimes(1);
 
-		// The last chunk is the LLM's text reply
-		const textChunk = chunks.find(
+		// Tool progress chunks (running + bundled completed+text) are still present
+		const runningChunk = chunks.find(
+			(c) =>
+				c.messages.length === 1 &&
+				c.messages[0].type === 'tool' &&
+				'status' in c.messages[0] &&
+				c.messages[0].status === 'running',
+		);
+		expect(runningChunk).toBeDefined();
+
+		const bundledChunk = chunks.find(
+			(c) =>
+				c.messages.length === 2 &&
+				c.messages[0].type === 'tool' &&
+				'status' in c.messages[0] &&
+				c.messages[0].status === 'completed',
+		);
+		expect(bundledChunk).toBeDefined();
+
+		// The LLM's redundant follow-up text is NOT yielded
+		const redundantTextChunk = chunks.find(
 			(c) =>
 				c.messages.length === 1 &&
 				c.messages[0].type === 'message' &&
 				'text' in c.messages[0] &&
 				c.messages[0].text === 'Based on the diagnosis, you need to re-authenticate.',
 		);
-		expect(textChunk).toBeDefined();
+		expect(redundantTextChunk).toBeUndefined();
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
 		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		expect(boundModel.invoke).toHaveBeenCalledTimes(2);
+	});
+
+	it('should emit transition text when LLM includes text alongside a tool call', async () => {
+		const firstResponse = new AIMessage({
+			content: 'Let me check that for you.',
+			tool_calls: [
+				{
+					id: 'tc-1',
+					name: 'ask_assistant',
+					args: { query: 'How does the HTTP node work?' },
+				},
+			],
+		});
+		const secondResponse = new AIMessage({ content: '' });
+
+		const llm = createMockLlm([firstResponse, secondResponse]);
+		const handler = createMockAssistantHandler();
+
+		const agent = new TriageAgent({
+			llm,
+			assistantHandler: handler,
+			buildWorkflow: createMockBuildWorkflow(),
+		});
+		const { chunks } = await collectGenerator(
+			agent.run({ payload: createMockPayload(), userId: 'user-1' }),
+		);
+
+		// Transition text IS yielded as an AgentMessageChunk
+		const transitionChunk = chunks.find(
+			(c) =>
+				c.messages.length === 1 &&
+				c.messages[0].type === 'message' &&
+				'text' in c.messages[0] &&
+				c.messages[0].text === 'Let me check that for you.',
+		);
+		expect(transitionChunk).toBeDefined();
+
+		// ask_assistant tool chunks are also yielded
+		const runningChunk = chunks.find(
+			(c) =>
+				c.messages.length === 1 &&
+				c.messages[0].type === 'tool' &&
+				'status' in c.messages[0] &&
+				c.messages[0].status === 'running',
+		);
+		expect(runningChunk).toBeDefined();
+	});
+
+	it('should yield LLM text after unknown tool (handledResponse not set)', async () => {
+		const firstResponse = new AIMessage({
+			content: '',
+			tool_calls: [
+				{
+					id: 'tc-1',
+					name: 'unknown_tool',
+					args: {},
+				},
+			],
+		});
+		const secondResponse = new AIMessage({
+			content: 'Sorry, let me help directly.',
+		});
+
+		const llm = createMockLlm([firstResponse, secondResponse]);
+		const handler = createMockAssistantHandler();
+		const mockLogger = { warn: jest.fn(), debug: jest.fn() };
+
+		const agent = new TriageAgent({
+			llm,
+			assistantHandler: handler,
+			buildWorkflow: createMockBuildWorkflow(),
+			logger: mockLogger as unknown as TriageAgent extends { logger?: infer L } ? L : never,
+		});
+		const { chunks } = await collectGenerator(
+			agent.run({ payload: createMockPayload(), userId: 'user-1' }),
+		);
+
+		// unknown_tool doesn't set handledResponse, so the LLM's text IS yielded
+		const textChunk = chunks.find(
+			(c) =>
+				c.messages.length === 1 &&
+				c.messages[0].type === 'message' &&
+				'text' in c.messages[0] &&
+				c.messages[0].text === 'Sorry, let me help directly.',
+		);
+		expect(textChunk).toBeDefined();
 	});
 
 	it('should return outcome with assistantSummary after ask_assistant followed by text', async () => {

@@ -55,6 +55,8 @@ interface ToolResult {
 	content: string;
 	/** When true, exit the agent loop immediately — don't send the result back to the LLM. */
 	endLoop?: boolean;
+	/** Tool already streamed user-facing output. Suppresses redundant LLM text at loop exit. */
+	handledResponse?: boolean;
 }
 
 /** Mutable state tracked across agent loop iterations */
@@ -87,10 +89,10 @@ function buildTriagePrompt(conversationHistory?: TriageConversationEntry[]): str
 			`Route each message using one or more of these:
 
 1. **build_workflow** — The user wants to create, modify, or change a workflow.
-   Pass the full user request as instructions.
+   You may include a brief transition before calling (e.g., "Let me build that for you.").
 
 2. **ask_assistant** — The user has a general question about n8n concepts, needs help understanding how something works, wants guidance on setting up credentials, or needs to diagnose a workflow error.
-   Pass the user's query faithfully.
+   You may include a brief transition before calling (e.g., "Let me look into that.").
 
 3. **Direct reply** — Simple conversational messages that don't need either tool.
    Respond with helpful text directly.`,
@@ -98,9 +100,11 @@ function buildTriagePrompt(conversationHistory?: TriageConversationEntry[]): str
 		.section(
 			'rules',
 			`- For error/debug messages: first call ask_assistant to diagnose, then call build_workflow to apply the fix
-- For pure questions (no fix needed): call ask_assistant and respond with its answer — no follow-up build required
+- For pure questions (no fix needed): call ask_assistant — its response will be shown directly to the user
 - When in doubt between ask_assistant and build_workflow, prefer build_workflow for any message that implies changing the workflow
-- Use conversation history to resolve references like "change that" or "the previous node"`,
+- Use conversation history to resolve references like "change that" or "the previous node"
+- Tool responses are shown directly to the user. After a tool completes, either call another tool or respond with an empty message. Never repeat, summarize, or rephrase tool output.
+- Keep transition text before tool calls to one sentence maximum.`,
 		)
 		.sectionIf(conversationHistory && conversationHistory.length > 0, 'conversation history', () =>
 			conversationHistory!
@@ -164,6 +168,7 @@ export class TriageAgent {
 		const state: TriageAgentState = { sdkSessionId };
 
 		let reachedMaxIterations = true;
+		let responseHandled = false;
 
 		for (let iteration = 0; iteration < MAX_TRIAGE_ITERATIONS; iteration++) {
 			const response: AIMessageChunk = await llmWithTools.invoke(messages, {
@@ -172,19 +177,20 @@ export class TriageAgent {
 			messages.push(response);
 
 			const toolCalls = response.tool_calls ?? [];
+			const text = extractTextContent(new AIMessage({ content: response.content })) ?? '';
+
+			// Emit text when it adds value:
+			// - WITH tool calls: transition text ("Let me check...")
+			// - WITHOUT tool calls + no prior tool output: final response
+			// Suppress when tools already spoke and no more tools coming
+			if (text && (toolCalls.length > 0 || !responseHandled)) {
+				yield this.wrapChunk({ role: 'assistant', type: 'message', text });
+			}
 
 			if (toolCalls.length === 0) {
-				this.logger?.debug('[TriageAgent] No tool call, responding with text', {
+				this.logger?.debug('[TriageAgent] No tool call, exiting loop', {
 					iteration: iteration + 1,
 				});
-				const text = extractTextContent(new AIMessage({ content: response.content })) ?? '';
-				if (text) {
-					yield this.wrapChunk({
-						role: 'assistant',
-						type: 'message',
-						text,
-					});
-				}
 				reachedMaxIterations = false;
 				break;
 			}
@@ -196,6 +202,8 @@ export class TriageAgent {
 				});
 				const toolCallId = toolCall.id ?? `tc-${iteration}`;
 				const result = yield* this.executeToolWithStreaming(toolCall, ctx, state);
+
+				if (result.handledResponse) responseHandled = true;
 
 				this.logger?.debug('[TriageAgent] Tool completed', {
 					toolName: toolCall.name,
@@ -339,7 +347,7 @@ export class TriageAgent {
 
 				state.sdkSessionId = result.sdkSessionId;
 				state.assistantSummary = result.summary;
-				return { content: result.summary };
+				return { content: result.summary, handledResponse: true };
 			}
 
 			case 'build_workflow': {
@@ -364,7 +372,7 @@ export class TriageAgent {
 					enqueue(chunk);
 				}
 				state.buildExecuted = true;
-				return { content: 'Workflow built.', endLoop: true };
+				return { content: 'Workflow built.', endLoop: true, handledResponse: true };
 			}
 
 			default:
