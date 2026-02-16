@@ -40,14 +40,14 @@ function fromLcRole(role: LangchainMessages.MessageType): N8nMessages.MessageRol
 	switch (role) {
 		case 'system':
 			return 'system';
-		case 'human':
-			return 'human';
-		case 'ai':
-			return 'ai';
+		case 'user':
+			return 'user';
+		case 'assistant':
+			return 'assistant';
 		case 'tool':
 			return 'tool';
 		default:
-			return 'human';
+			return 'user';
 	}
 }
 function isTextBlock(
@@ -84,7 +84,7 @@ function isInvalidToolCallBlock(
 function isToolResultBlock(
 	block: LangchainMessages.ContentBlock,
 ): block is LangchainMessages.ContentBlock.Tools.ServerToolCallResult {
-	return block.type === 'tool-result';
+	return block.type === 'server_tool_call_result';
 }
 function isCitationBlock(block: unknown): block is LangchainMessages.ContentBlock.Citation {
 	return (
@@ -224,7 +224,7 @@ export function fromLcMessage(msg: LangchainMessages.BaseMessage): N8nMessages.M
 			content.push(...mappedToolsCalls);
 		}
 		return {
-			role: 'ai',
+			role: 'assistant',
 			content,
 			id: msg.id,
 			name: msg.name,
@@ -240,7 +240,7 @@ export function fromLcMessage(msg: LangchainMessages.BaseMessage): N8nMessages.M
 	}
 	if (LangchainMessages.HumanMessage.isInstance(msg)) {
 		return {
-			role: 'human',
+			role: 'user',
 			content: fromLcContent(msg.content),
 			id: msg.id,
 			name: msg.name,
@@ -257,7 +257,7 @@ export function fromLcMessage(msg: LangchainMessages.BaseMessage): N8nMessages.M
 	throw new Error(`Provided message is not a valid Langchain message: ${JSON.stringify(msg)}`);
 }
 
-function toLcContent(block: N8nMessages.MessageContent): LangchainMessages.ContentBlock | null {
+export function toLcContent(block: N8nMessages.MessageContent): LangchainMessages.ContentBlock {
 	if (isN8nTextBlock(block)) {
 		return { type: 'text', text: block.text };
 	}
@@ -309,13 +309,11 @@ function toLcContent(block: N8nMessages.MessageContent): LangchainMessages.Conte
 			value: block.value,
 		} as LangchainMessages.ContentBlock.NonStandard;
 	}
-	return null;
+	throw new Error(`Failed to convert to Langchain content block: ${JSON.stringify(block)}`);
 }
 
 export function toLcMessage(message: Message): LangchainMessages.BaseMessage {
-	const lcContent = message.content
-		.map(toLcContent)
-		.filter((c): c is LangchainMessages.ContentBlock => c !== null);
+	const lcContent = message.content.map(toLcContent);
 
 	switch (message.role) {
 		case 'system':
@@ -324,18 +322,21 @@ export function toLcMessage(message: Message): LangchainMessages.BaseMessage {
 				id: message.id,
 				name: message.name,
 			});
-		case 'human':
+		case 'user':
 			return new LangchainMessages.HumanMessage({
 				content: lcContent,
 				id: message.id,
 				name: message.name,
 			});
-		case 'ai': {
-			const toolCalls = message.content.filter(isN8nToolCallBlock).map((c) => ({
-				id: c.toolCallId,
-				name: c.toolName,
-				args: jsonParse<Record<string, unknown>>(c.input, { fallbackValue: {} }),
-			}));
+		case 'assistant': {
+			const toolCalls: LangchainMessages.ToolCall[] = message.content
+				.filter(isN8nToolCallBlock)
+				.map((c) => ({
+					type: 'tool_call',
+					id: c.toolCallId,
+					name: c.toolName,
+					args: jsonParse<Record<string, unknown>>(c.input, { fallbackValue: {} }),
+				}));
 			const nonToolContent = lcContent.filter((c) => c.type !== 'tool_call');
 			return new LangchainMessages.AIMessage({
 				content: nonToolContent,

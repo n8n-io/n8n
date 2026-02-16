@@ -77,7 +77,9 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 			return;
 		}
 
-		onMessageReceivedHandlers.value.forEach((handler) => handler(parsedData));
+		onMessageReceivedHandlers.value.forEach((handler) => {
+			handler(parsedData);
+		});
 	}
 
 	const url = getConnectionUrl();

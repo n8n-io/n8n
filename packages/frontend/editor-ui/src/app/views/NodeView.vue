@@ -1805,7 +1805,6 @@ onMounted(async () => {
 
 	// Register callback for collaboration store to refresh canvas when workflow updates arrive
 	collaborationStore.setRefreshCanvasCallback(async (workflow) => {
-		// Refresh the canvas with updated workflow
 		await initializeWorkspace(workflow);
 	});
 
@@ -1959,7 +1958,7 @@ onBeforeUnmount(() => {
 				<template v-if="containsChatTriggerNodes">
 					<CanvasChatButton
 						v-if="isLogsPanelOpen"
-						type="tertiary"
+						variant="ghost"
 						:label="i18n.baseText('chat.hide')"
 						:class="$style.chatButton"
 						@click="logsStore.toggleOpen(false)"
@@ -1970,7 +1969,7 @@ onBeforeUnmount(() => {
 						:shortcut="{ keys: ['c'] }"
 					>
 						<CanvasChatButton
-							:type="isRunWorkflowButtonVisible ? 'secondary' : 'primary'"
+							:variant="isRunWorkflowButtonVisible ? 'outline' : 'solid'"
 							:label="i18n.baseText('chat.open')"
 							:class="$style.chatButton"
 							@click="onOpenChat"

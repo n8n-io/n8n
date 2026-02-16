@@ -6,14 +6,21 @@ import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import type { LangsmithExampleFilters } from '../harness/harness-types';
 import { DEFAULTS } from '../support/constants';
-import type { StageModels } from '../support/environment.js';
+import type { StageModels } from '../support/environment';
 
-export type EvaluationSuite = 'llm-judge' | 'pairwise' | 'programmatic' | 'similarity';
+export type EvaluationSuite =
+	| 'llm-judge'
+	| 'pairwise'
+	| 'programmatic'
+	| 'similarity'
+	| 'introspection';
 export type EvaluationBackend = 'local' | 'langsmith';
+export type AgentType = 'multi-agent' | 'code-builder';
 
 export interface EvaluationArgs {
 	suite: EvaluationSuite;
 	backend: EvaluationBackend;
+	agent: AgentType;
 
 	verbose: boolean;
 	repetitions: number;
@@ -77,8 +84,11 @@ const modelIdSchema = z.enum(AVAILABLE_MODELS as [ModelId, ...ModelId[]]);
 
 const cliSchema = z
 	.object({
-		suite: z.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity']).default('llm-judge'),
+		suite: z
+			.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity', 'introspection'])
+			.default('llm-judge'),
 		backend: z.enum(['local', 'langsmith']).default('local'),
+		agent: z.enum(['code-builder', 'multi-agent']).default('code-builder'),
 
 		verbose: z.boolean().default(false),
 		repetitions: z.coerce.number().int().positive().default(DEFAULTS.REPETITIONS),
@@ -149,9 +159,15 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		key: 'suite',
 		kind: 'string',
 		group: 'eval',
-		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity)',
+		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity|introspection)',
 	},
 	'--backend': { key: 'backend', kind: 'string', group: 'eval', desc: 'Backend (local|langsmith)' },
+	'--agent': {
+		key: 'agent',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Agent type (code-builder|multi-agent)',
+	},
 	'--max-examples': {
 		key: 'maxExamples',
 		kind: 'string',
@@ -437,14 +453,19 @@ function parseCli(argv: string[]): {
 
 function parseFeatureFlags(args: {
 	templateExamples: boolean;
+	suite: EvaluationSuite;
 }): BuilderFeatureFlags | undefined {
 	const templateExamplesFromEnv = process.env.EVAL_FEATURE_TEMPLATE_EXAMPLES === 'true';
 	const templateExamples = templateExamplesFromEnv || args.templateExamples;
 
-	if (!templateExamples) return undefined;
+	// Auto-enable introspection for introspection suite
+	const enableIntrospection = args.suite === 'introspection';
+
+	if (!templateExamples && !enableIntrospection) return undefined;
 
 	return {
 		templateExamples: templateExamples || undefined,
+		enableIntrospection: enableIntrospection || undefined,
 	};
 }
 
@@ -512,6 +533,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 
 	const featureFlags = parseFeatureFlags({
 		templateExamples: parsed.templateExamples,
+		suite: parsed.suite,
 	});
 
 	const filters = parseFilters({
@@ -529,6 +551,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 	return {
 		suite: parsed.suite,
 		backend: parsed.backend,
+		agent: parsed.agent,
 		verbose: parsed.verbose,
 		repetitions: parsed.repetitions,
 		concurrency: parsed.concurrency,

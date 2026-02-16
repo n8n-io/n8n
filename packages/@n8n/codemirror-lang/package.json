@@ -19,9 +19,9 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
-      "import": "./src/index.ts",
-      "types": "./dist/index.d.ts"
+      "import": "./src/index.ts"
     },
     "./*": "./*"
   },
@@ -31,8 +31,8 @@
     "generate:expressions:grammar": "lezer-generator --typeScript --output src/expressions/grammar.ts src/expressions/expressions.grammar",
     "generate": "pnpm generate:expressions:grammar && pnpm format",
     "build": "tsc -p tsconfig.build.json",
-    "test": "jest",
-    "test:unit": "jest",
+    "test": "vitest run",
+    "test:unit": "vitest run",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "format": "biome format --write src test",
@@ -45,6 +45,8 @@
   },
   "devDependencies": {
     "@lezer/generator": "catalog:",
-    "@n8n/typescript-config": "workspace:*"
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "vitest": "catalog:"
   }
 }

@@ -1,5 +1,3 @@
-import type { Request, Page } from '@playwright/test';
-
 import type { n8nPage } from '../pages/n8nPage';
 
 /**
@@ -64,25 +62,5 @@ export class NodeDetailsViewComposer {
 		await addResourceItem.waitFor({ state: 'visible' });
 
 		await addResourceItem.click();
-	}
-
-	/**
-	 * Creates a new sub-workflow with redirect handling
-	 * @param paramName - The parameter name for the resource locator
-	 * @returns Promise with request data and new window page
-	 */
-	async createNewSubworkflowWithRedirect(
-		paramName: string,
-	): Promise<{ request: Request; page: Page }> {
-		const subWorkflowPagePromise = this.n8n.page.waitForEvent('popup');
-
-		const [request] = await Promise.all([
-			this.n8n.page.waitForRequest('**/rest/workflows'),
-			this.createNewSubworkflow(paramName),
-		]);
-
-		const page = await subWorkflowPagePromise;
-
-		return { request, page };
 	}
 }
