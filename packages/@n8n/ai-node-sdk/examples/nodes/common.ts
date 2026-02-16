@@ -1,6 +1,5 @@
+import type { ProviderTool } from '@n8n/ai-utilities';
 import type { IDataObject } from 'n8n-workflow';
-
-import type { ProviderTool } from 'src/types/tool';
 
 const toArray = (str: string) =>
 	str

@@ -1,3 +1,4 @@
+import { LangchainAdapter } from '@n8n/ai-utilities';
 import { createAgent, HumanMessage } from 'langchain';
 import nock from 'nock';
 
@@ -11,7 +12,6 @@ import {
 	weatherTool,
 } from './openai.fixtures';
 import { OpenAIChatModel } from '../examples/models/openai';
-import { LangchainAdapter } from '../src/adapters/langchain-chat-model';
 
 describe('OpenAI Integration with Langchain Agent', () => {
 	const baseURL = 'https://api.openai.com/v1';

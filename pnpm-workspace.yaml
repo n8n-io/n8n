@@ -44,6 +44,7 @@ catalog:
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.3
+  dotenv: 17.2.3
   eslint: 9.29.0
   fast-glob: 3.2.12
   fastest-levenshtein: 1.0.16

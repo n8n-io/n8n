@@ -1,3 +1,4 @@
+import { supplyModel, type ProviderTool } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type IDataObject,
@@ -8,9 +9,6 @@ import {
 } from 'n8n-workflow';
 import type Stream from 'node:stream';
 import { Readable } from 'node:stream';
-
-import { supplyModel } from 'src/suppliers/supplyModel';
-import type { ProviderTool } from 'src/types/tool';
 
 import { OpenAIChatModel } from '../../models/openai';
 import { formatBuiltInTools } from '../common';

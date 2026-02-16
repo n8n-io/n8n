@@ -1,14 +1,13 @@
+import type { ProviderTool } from '@n8n/ai-utilities';
+import { supplyModel } from '@n8n/ai-utilities';
 import {
-	NodeConnectionTypes,
-	type IDataObject,
 	type INodeType,
 	type INodeTypeDescription,
-	type ISupplyDataFunctions,
+	NodeConnectionTypes,
 	type SupplyData,
+	type IDataObject,
+	type ISupplyDataFunctions,
 } from 'n8n-workflow';
-
-import { supplyModel } from 'src/suppliers/supplyModel';
-import type { ProviderTool } from 'src/types/tool';
 
 import { formatBuiltInTools } from '../common';
 import { openAiProperties } from '../properties';
