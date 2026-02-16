@@ -175,13 +175,14 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	/**
 	 * Auto-test all pre-existing selected credentials on initial load.
 	 * Runs once when nodes become available so checkmarks reflect actual validity.
-	 * Self-stopping watcher: unsubscribes after the first meaningful invocation.
+	 * Deduplicates by credential ID so shared credentials are only tested once.
 	 */
-	const stopInitialTestWatch = watch(
+	let initialTestDone = false;
+	watch(
 		nodesRequiringSetup,
 		(entries) => {
-			if (entries.length === 0) return;
-			stopInitialTestWatch();
+			if (initialTestDone || entries.length === 0) return;
+			initialTestDone = true;
 
 			const credentialsToTest = new Map<string, { name: string; type: string }>();
 			for (const { node, credentialTypes } of entries) {
