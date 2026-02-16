@@ -844,7 +844,7 @@ describe('SessionManagerService', () => {
 				checkpoint: {
 					channel_values: {
 						codeBuilderSession: {
-							userMessages: ['old message'],
+							conversationEntries: [{ type: 'build-request', message: 'old message' }],
 							previousSummary: 'old summary',
 						},
 					},
@@ -883,7 +883,7 @@ describe('SessionManagerService', () => {
 				expect.objectContaining({
 					channel_values: expect.objectContaining({
 						codeBuilderSession: {
-							userMessages: [],
+							conversationEntries: [],
 							previousSummary: undefined,
 						},
 					}),

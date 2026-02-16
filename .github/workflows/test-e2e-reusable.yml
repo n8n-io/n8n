@@ -116,6 +116,9 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || inputs.runner }}
     timeout-minutes: 30
+    permissions:
+      packages: read
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -142,6 +145,10 @@ jobs:
 
       - name: Install Browsers
         run: pnpm turbo run install-browsers --filter=n8n-playwright
+
+      - name: Login to GHCR
+        if: ${{ inputs.test-mode == 'docker-pull' }}
+        uses: ./.github/actions/docker-registry-login
 
       - name: Pre-pull Test Container Images
         if: ${{ !contains(inputs.test-command, 'test:local') }}

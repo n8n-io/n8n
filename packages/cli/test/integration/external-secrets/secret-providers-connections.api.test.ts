@@ -132,6 +132,8 @@ describe('Secret Providers Connections API', () => {
 				id: expect.any(String),
 				name: 'aws-prod',
 				type: 'awsSecretsManager',
+				secretsCount: 2,
+				secrets: [{ name: 'test1' }, { name: 'test2' }],
 				projects: [],
 				settings: expect.any(Object),
 				createdAt: expect.any(String),
