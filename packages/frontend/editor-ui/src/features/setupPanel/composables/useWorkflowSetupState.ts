@@ -152,7 +152,15 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				return;
 			}
 
-			const { ownedBy, sharedWithProjects, ...data } = credentialResponse.data;
+			const { ownedBy, sharedWithProjects, oauthTokenData, ...data } = credentialResponse.data;
+
+			// OAuth credentials can't be tested via the API — the presence of token data
+			// means the OAuth flow completed successfully, which is the equivalent of a passing test.
+			if (oauthTokenData) {
+				credentialsStore.credentialTestResults.set(credentialId, 'success');
+				return;
+			}
+
 			await credentialsStore.testCredential({
 				id: credentialId,
 				name: credentialName,
