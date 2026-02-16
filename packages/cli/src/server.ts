@@ -350,6 +350,7 @@ export class Server extends AbstractServer {
 					errorMessage: 'The contentSecurityPolicy is not valid JSON.',
 				},
 			);
+			const crossOriginOpenerPolicy = Container.get(SecurityConfig).crossOriginOpenerPolicy;
 			const cspReportOnly = Container.get(SecurityConfig).contentSecurityPolicyReportOnly;
 			const securityHeadersMiddleware = helmet({
 				contentSecurityPolicy: isEmpty(cspDirectives)
@@ -377,6 +378,9 @@ export class Server extends AbstractServer {
 							preload: false,
 						}
 					: false,
+				crossOriginOpenerPolicy: {
+					policy: crossOriginOpenerPolicy,
+				},
 			});
 
 			// Route all UI urls to index.html to support history-api

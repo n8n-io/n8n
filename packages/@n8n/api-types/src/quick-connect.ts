@@ -5,4 +5,5 @@ export type QuickConnectOption = {
 	quickConnectType: string;
 	serviceName: string;
 	consentText?: string;
+	config?: Record<string, string>;
 };
