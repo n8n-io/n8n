@@ -76,7 +76,10 @@ export class CsvParserService {
 						return;
 					}
 
-					// Collect first non-empty value per column (sample up to N rows)
+					// Collect first non-empty value per column (sample up to N rows).
+					// `columnNames` is already populated by the `columns` header callback (which fires
+					// before any `data` events) when hasHeaders=true, or built incrementally by
+					// processRowWithoutHeaders on the first row otherwise.
 					if (rowCount <= this.TYPE_INFERENCE_SAMPLE_SIZE) {
 						for (const colName of columnNames) {
 							if (!firstNonEmptyValues.has(colName)) {

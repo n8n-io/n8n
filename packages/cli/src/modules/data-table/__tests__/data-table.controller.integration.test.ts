@@ -4324,6 +4324,24 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 			expect(row).not.toHaveProperty('notes');
 		}
 	});
+
+	test('should reject CSV import when all columns are discarded (empty columns array)', async () => {
+		const csvContent = 'name,age\nAlice,30\nBob,25';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'test.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		const payload = {
+			name: 'Empty Columns Import',
+			columns: [] as DataTableCreateColumnSchema[],
+			fileId,
+		};
+
+		await authOwnerAgent.post(`/projects/${ownerProject.id}/data-tables`).send(payload).expect(400);
+	});
 });
 
 describe('Source Control read-only mode', () => {

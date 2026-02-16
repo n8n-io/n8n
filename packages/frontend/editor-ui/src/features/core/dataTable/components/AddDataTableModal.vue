@@ -255,13 +255,17 @@ const onSubmit = async () => {
 				route.params.projectId as string,
 			);
 		} else if (creationMode.value === 'import' && uploadedFileId.value) {
+			const hasColumnChanges = csvColumns.value.some(
+				(col) => !col.included || col.name !== col.csvColumnName.replace(/\s+/g, '_'),
+			);
+
 			newDataTable = await dataTableStore.createDataTable(
 				dataTableName.value,
 				route.params.projectId as string,
 				includedColumns.value.map((col) => ({
 					name: col.name,
 					type: col.type,
-					csvColumnName: col.csvColumnName,
+					...(hasColumnChanges ? { csvColumnName: col.csvColumnName } : {}),
 				})),
 				uploadedFileId.value,
 				hasHeaders.value,
@@ -395,7 +399,7 @@ const redirectToDataTables = () => {
 					</div>
 
 					<div :class="$style.columnHeaders">
-						<div />
+						<div :aria-label="i18n.baseText('dataTable.import.includeColumn')" />
 						<div :class="$style.columnHeaderLabel">
 							{{ i18n.baseText('dataTable.import.columnName') }}
 						</div>
@@ -618,6 +622,15 @@ const redirectToDataTables = () => {
 .columnTypeWrapper {
 	display: flex;
 	align-items: center;
+
+	:global(.column-type-excluded.n8n-select) {
+		/* stylelint-disable-next-line @n8n/css-var-naming */
+		--el-disabled-bg-color: var(--color--background--light-3);
+		--input--color--background--disabled: var(--color--background--light-3);
+		pointer-events: none;
+		cursor: not-allowed;
+		opacity: 0.6;
+	}
 }
 
 .inputError {
@@ -684,16 +697,5 @@ const redirectToDataTables = () => {
 
 .fileName {
 	font-weight: var(--font-weight--regular);
-}
-</style>
-
-<style lang="scss">
-.column-type-excluded.n8n-select {
-	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--el-disabled-bg-color: var(--color--background--light-3);
-	--input--color--background--disabled: var(--color--background--light-3);
-	pointer-events: none;
-	cursor: not-allowed;
-	opacity: 0.6;
 }
 </style>
