@@ -382,7 +382,7 @@ export class FrontendService {
 		 */
 		const { types } = this.loadNodesAndCredentials;
 		if (types.nodes.length === 0 && types.credentials.length === 0) {
-			return this.loadNodesAndCredentials.postProcessLoaders();
+			return await this.loadNodesAndCredentials.postProcessLoaders();
 		}
 
 		this.overwriteCredentialsProperties();
@@ -395,9 +395,6 @@ export class FrontendService {
 		const nodeVersionIdentifiers = this.getNodeVersionIdentifiers(nodes);
 		await this.writeStaticJSON('node-versions', nodeVersionIdentifiers);
 		await this.writeStaticJSON('credentials', credentials);
-
-		// release types to free memory
-		this.loadNodesAndCredentials.releaseTypes();
 	}
 
 	async getSettings(): Promise<FrontendSettings> {
@@ -624,7 +621,7 @@ export class FrontendService {
 		const filePath = path.join(staticCacheDir, `types/${name}.json`);
 		const stream = createWriteStream(filePath, 'utf-8');
 
-		return new Promise<void>((resolve, reject) => {
+		return await new Promise<void>((resolve, reject) => {
 			stream.on('error', reject);
 			stream.on('finish', resolve);
 
