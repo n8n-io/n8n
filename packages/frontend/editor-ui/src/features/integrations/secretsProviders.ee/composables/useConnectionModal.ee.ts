@@ -9,6 +9,7 @@ import { i18n } from '@n8n/i18n';
 import type { Scope } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 export type ConnectionProjectSummary = { id: string; name: string };
 
@@ -37,6 +38,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const rbacStore = useRBACStore();
 	const toast = useToast();
 	const projectsStore = useProjectsStore();
+	const { check: checkDevFeatureFlag } = useEnvFeatureFlag();
 
 	// State
 	const providerKey = ref<string | undefined>(options.providerKey?.value);
@@ -147,12 +149,22 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	// Computed - State
 	const isEditMode = computed(() => !!providerKey.value);
 
-	const providerTypeOptions = computed(() =>
-		providerTypes.value.map((type) => ({
+	const providerTypeOptions = computed(() => {
+		const prvdrTypeOptions = providerTypes.value.map((type) => ({
 			label: type.displayName,
 			value: type.type,
-		})),
-	);
+		}));
+
+		if (checkDevFeatureFlag.value('EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS')) {
+			// infisical has been deprecated for a long time.
+			// In order to be able to fully remove the code for it
+			// we are no longer showing users the option to create connections to infisical.
+			// Any previously existing connections will keep working for now.
+			return prvdrTypeOptions.filter((opt) => opt.value !== 'infisical');
+		}
+
+		return prvdrTypeOptions;
+	});
 
 	const settingsUpdated = computed(() => {
 		return Object.keys(connectionSettings.value).some((key) => {
