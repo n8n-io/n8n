@@ -1,5 +1,10 @@
 name: 'CI Filter'
-description: 'Filter CI jobs by changed files and validate results. Zero dependencies.'
+description: |
+  Filter CI jobs by changed files and validate results.
+
+  Modes:
+    - filter: Determines which jobs to run based on changed files and a provided filter definition.
+    - validate: Checks the results of required jobs and fails if any of them failed or were cancelled.
 
 inputs:
   mode:
