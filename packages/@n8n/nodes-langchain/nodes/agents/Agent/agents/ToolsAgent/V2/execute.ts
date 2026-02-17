@@ -16,6 +16,7 @@ import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 
+import { serializeIntermediateSteps } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import {
 	getOptionalOutputParser,
@@ -348,6 +349,12 @@ export async function toolsAgentExecute(
 					response.output as string,
 				);
 				response.output = parsedOutput?.output ?? parsedOutput;
+			}
+
+			// Serialize messageLog entries from LangChain class instances to plain objects
+			// so that downstream expressions see the same structure as the UI data browser.
+			if (response.intermediateSteps) {
+				serializeIntermediateSteps(response.intermediateSteps);
 			}
 
 			// Omit internal keys before returning the result.
