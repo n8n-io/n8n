@@ -35,6 +35,14 @@ vi.mock('@/app/composables/useWorkflowUpdate', () => ({
 	}),
 }));
 
+// Mock focusedNodes store to prevent defineStore from failing during module load
+vi.mock('@/features/ai/assistant/focusedNodes.store', () => ({
+	useFocusedNodesStore: vi.fn().mockReturnValue({
+		buildContextPayload: vi.fn().mockReturnValue([]),
+		isFeatureEnabled: false,
+	}),
+}));
+
 // Mock ExecuteMessage component
 vi.mock('./ExecuteMessage.vue', () => ({
 	default: defineComponent({
@@ -160,6 +168,15 @@ vi.mock('@/app/event-bus', () => ({
 		on: vi.fn(),
 		off: vi.fn(),
 		emit: vi.fn(),
+	},
+}));
+
+const canvasEventBusEmitMock = vi.hoisted(() => vi.fn());
+vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
+	canvasEventBus: {
+		emit: canvasEventBusEmitMock,
+		on: vi.fn(),
+		off: vi.fn(),
 	},
 }));
 
@@ -789,6 +806,68 @@ describe('AskAssistantBuild', () => {
 
 			// Verify initialGeneration flag was NOT reset since workflow is still empty
 			expect(builderStore.initialGeneration).toBe(true);
+		});
+	});
+
+	describe('zoom to fit after streaming ends', () => {
+		it('should emit fitView when streaming ends and new nodes were added', async () => {
+			const newWorkflow = {
+				nodes: [
+					{
+						id: 'new-node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						position: [0, 0] as [number, number],
+						typeVersion: 1,
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
+
+			updateWorkflowMock.mockResolvedValue({ success: true, newNodeIds: ['new-node-1'] });
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			renderComponent();
+
+			// Start streaming and trigger a workflow update with new nodes
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify(newWorkflow),
+				},
+			];
+			await flushPromises();
+
+			canvasEventBusEmitMock.mockClear();
+
+			// End streaming
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			expect(canvasEventBusEmitMock).toHaveBeenCalledWith('fitView');
+		});
+
+		it('should NOT emit fitView when streaming ends without new nodes', async () => {
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			renderComponent();
+
+			// Start and end streaming without any workflow updates
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			canvasEventBusEmitMock.mockClear();
+
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			expect(canvasEventBusEmitMock).not.toHaveBeenCalledWith('fitView');
 		});
 	});
 

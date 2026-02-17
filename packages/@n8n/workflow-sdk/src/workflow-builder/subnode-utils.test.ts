@@ -297,6 +297,52 @@ describe('addNodeWithSubnodes', () => {
 		});
 	});
 
+	describe('duplicate parent names with shared subnodes', () => {
+		it('processes subnodes for auto-renamed nodes', () => {
+			const nodes = new Map<string, GraphNode>();
+			const sharedModel = createSubnode({ name: 'Shared Model', type: 'lmChatOpenAi' });
+
+			// Two agents with IDENTICAL names, sharing the same model
+			const agent1 = createNode({
+				name: 'Agent',
+				config: { subnodes: { model: sharedModel } } as unknown as NodeInstance<
+					string,
+					string,
+					unknown
+				>['config'],
+			});
+			const agent2 = createNode({
+				name: 'Agent',
+				config: { subnodes: { model: sharedModel } } as unknown as NodeInstance<
+					string,
+					string,
+					unknown
+				>['config'],
+			});
+
+			const key1 = addNodeWithSubnodes(nodes, agent1);
+			const key2 = addNodeWithSubnodes(nodes, agent2);
+
+			// First agent keeps its name, second gets renamed
+			expect(key1).toBe('Agent');
+			expect(key2).toBe('Agent 1');
+
+			// Shared model should exist and connect to BOTH agents using their map keys
+			const modelConns = nodes.get('Shared Model')?.connections.get('ai_languageModel');
+			const connections = modelConns?.get(0) ?? [];
+			expect(connections).toContainEqual({
+				node: 'Agent',
+				type: 'ai_languageModel',
+				index: 0,
+			});
+			expect(connections).toContainEqual({
+				node: 'Agent 1',
+				type: 'ai_languageModel',
+				index: 0,
+			});
+		});
+	});
+
 	describe('plain object subnodes (no top-level .name)', () => {
 		it('derives name from config.name for plain object subnodes', () => {
 			const nodes = new Map<string, GraphNode>();

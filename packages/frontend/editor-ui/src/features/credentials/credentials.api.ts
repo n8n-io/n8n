@@ -9,11 +9,29 @@ import type {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 import axios from 'axios';
+import { sleep } from 'n8n-workflow';
 import type { CreateCredentialDto } from '@n8n/api-types';
 
+async function fetchCredentialTypesJsonWithRetry(url: string, retries = 5, delay = 500) {
+	for (let attempt = 0; attempt < retries; attempt++) {
+		const response = await axios.get(url, { withCredentials: true });
+
+		if (
+			typeof response.data === 'object' &&
+			response.data !== null &&
+			Array.isArray(response.data)
+		) {
+			return response.data;
+		}
+
+		await sleep(delay * attempt);
+	}
+
+	throw new Error('Could not fetch credential types');
+}
+
 export async function getCredentialTypes(baseUrl: string): Promise<ICredentialType[]> {
-	const { data } = await axios.get(baseUrl + 'types/credentials.json', { withCredentials: true });
-	return data;
+	return await fetchCredentialTypesJsonWithRetry(baseUrl + 'types/credentials.json');
 }
 
 export async function getCredentialsNewName(
