@@ -13,7 +13,7 @@ import {
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import { useQuickConnect } from '@/features/integrations/quickConnect/composables/useQuickConnect';
+import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
 const {
 	activeViewStack,
@@ -25,7 +25,11 @@ const {
 
 const { communityNodeDetails } = activeViewStack;
 const packageName = computed(() => activeViewStack.communityNodeDetails?.packageName);
-const quickConnect = useQuickConnect({ packageName });
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => {
+	const pkg = packageName.value;
+	return pkg ? getQuickConnectOptionByPackageName(pkg) : undefined;
+});
 
 const nodeCreatorStore = useNodeCreatorStore();
 const { installNode, loading } = useInstallNode();

@@ -2,7 +2,11 @@ import { nanoid } from 'nanoid';
 
 import { expect, test } from '../../../fixtures/base';
 
-test.describe('User API Service', () => {
+test.describe('User API Service', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test.describe('Internal API (Cookie Auth)', () => {
 		test('should create a user with default values', async ({ api }) => {
 			const user = await api.users.create();

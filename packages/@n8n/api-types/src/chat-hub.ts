@@ -1,10 +1,11 @@
 import type { Scope } from '@n8n/permissions';
 import {
-	type JINA_AI_TOOL_NODE_TYPE,
-	type SERP_API_TOOL_NODE_TYPE,
-	type INode,
+	CHAT_TOOL_NODE_TYPE,
 	type ChunkType,
+	DATA_TABLE_TOOL_NODE_TYPE,
+	type INode,
 	INodeSchema,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -76,8 +77,6 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	cohere: 'cohereApi',
 	mistralCloud: 'mistralCloudApi',
 };
-
-export type ChatHubAgentTool = typeof JINA_AI_TOOL_NODE_TYPE | typeof SERP_API_TOOL_NODE_TYPE;
 
 /**
  * Chat Hub conversation model configuration
@@ -326,7 +325,6 @@ export class ChatHubSendMessageRequest extends Z.class({
 			name: z.string(),
 		}),
 	),
-	tools: z.array(INodeSchema),
 	attachments: z.array(chatAttachmentSchema),
 	agentName: z.string().optional(),
 	timeZone: TimeZoneSchema,
@@ -367,7 +365,7 @@ export class ChatHubUpdateConversationRequest extends Z.class({
 			name: z.string(),
 		})
 		.optional(),
-	tools: z.array(INodeSchema).optional(),
+	toolIds: z.array(z.string().uuid()).optional(),
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
@@ -390,7 +388,7 @@ export interface ChatHubSessionDto {
 	agentIcon: AgentIconOrEmoji | null;
 	createdAt: string;
 	updatedAt: string;
-	tools: INode[];
+	toolIds: string[];
 }
 
 export type ChatMessageContentChunk =
@@ -467,7 +465,7 @@ export interface ChatHubAgentDto {
 	credentialId: string | null;
 	provider: ChatHubLLMProvider;
 	model: string;
-	tools: INode[];
+	toolIds: string[];
 	createdAt: string;
 	updatedAt: string;
 }
@@ -480,7 +478,7 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	credentialId: z.string(),
 	provider: chatHubLLMProviderSchema,
 	model: z.string().max(64),
-	tools: z.array(INodeSchema),
+	toolIds: z.array(z.string().uuid()),
 }) {}
 
 export class ChatHubUpdateAgentRequest extends Z.class({
@@ -491,7 +489,7 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	credentialId: z.string().optional(),
 	provider: chatHubLLMProviderSchema.optional(),
 	model: z.string().max(64).optional(),
-	tools: z.array(INodeSchema).optional(),
+	toolIds: z.array(z.string().uuid()).optional(),
 }) {}
 
 export interface MessageChunk {
@@ -614,3 +612,35 @@ export const chatHubMessageWithButtonsSchema = z.object({
 });
 
 export type ChatHubMessageWithButtons = z.infer<typeof chatHubMessageWithButtonsSchema>;
+
+/**
+ * DTO for a configured chat hub tool
+ */
+export interface ChatHubToolDto {
+	definition: INode;
+	enabled: boolean;
+}
+
+/** Tool types blocked for ALL users in the Chat Hub. */
+export const ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES: string[] = [CHAT_TOOL_NODE_TYPE];
+
+/** Additional tool types blocked for chat-only users (global:chatUser). */
+export const CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES: string[] = [
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+	DATA_TABLE_TOOL_NODE_TYPE,
+];
+
+/**
+ * Request schema for creating a chat hub tool
+ */
+export class ChatHubCreateToolRequest extends Z.class({
+	definition: INodeSchema,
+}) {}
+
+/**
+ * Request schema for updating a chat hub tool
+ */
+export class ChatHubUpdateToolRequest extends Z.class({
+	definition: INodeSchema.optional(),
+	enabled: z.boolean().optional(),
+}) {}

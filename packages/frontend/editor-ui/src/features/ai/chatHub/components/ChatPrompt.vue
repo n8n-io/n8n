@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useToast } from '@/app/composables/useToast';
-import { providerDisplayNames, TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
-import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
+import { providerDisplayNames } from '@/features/ai/chatHub/constants';
+import type { ChatHubLLMProvider, ChatModelDto, ChatSessionId } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import {
 	N8nIconButton,
@@ -12,30 +12,32 @@ import {
 	N8nCallout,
 } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
-import type { INode } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import ToolsSelector from './ToolsSelector.vue';
 import { isLlmProviderModel, createMimeTypes } from '@/features/ai/chatHub/chat.utils';
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
-import { useUIStore } from '@/app/stores/ui.store';
 import type { MessagingState } from '@/features/ai/chatHub/chat.types';
+import { useChatStore } from '@/features/ai/chatHub/chat.store';
 
-const { selectedModel, selectedTools, messagingState, showCreditsClaimedCallout } = defineProps<{
+const props = defineProps<{
 	messagingState: MessagingState;
 	isNewSession: boolean;
 	isToolsSelectable: boolean;
 	selectedModel: ChatModelDto | null;
-	selectedTools: INode[] | null;
+	checkedToolIds: string[];
+	sessionId?: ChatSessionId;
+	customAgentId?: string;
 	showCreditsClaimedCallout: boolean;
 	aiCreditsQuota: string;
 }>();
+
+const chatStore = useChatStore();
 
 const emit = defineEmits<{
 	submit: [message: string, attachments: File[]];
 	stop: [];
 	selectModel: [];
-	selectTools: [INode[]];
 	setCredentials: [ChatHubLLMProvider];
 	editAgent: [agentId: string];
 	dismissCreditsCallout: [];
@@ -49,7 +51,6 @@ const attachments = ref<File[]>([]);
 
 const toast = useToast();
 const i18n = useI18n();
-const uiStore = useUIStore();
 
 const speechInput = useSpeechRecognition({
 	continuous: true,
@@ -58,33 +59,33 @@ const speechInput = useSpeechRecognition({
 });
 
 const placeholder = computed(() => {
-	if (selectedModel) {
+	if (props.selectedModel) {
 		return i18n.baseText('chatHub.chat.prompt.placeholder.withModel', {
-			interpolate: { model: selectedModel.name ?? 'a model' },
+			interpolate: { model: props.selectedModel.name ?? 'a model' },
 		});
 	}
 	return i18n.baseText('chatHub.chat.prompt.placeholder.selectModel');
 });
 
 const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
-	isLlmProviderModel(selectedModel?.model) ? selectedModel?.model.provider : undefined,
+	isLlmProviderModel(props.selectedModel?.model) ? props.selectedModel?.model.provider : undefined,
 );
 
 const acceptedMimeTypes = computed(() =>
-	createMimeTypes(selectedModel?.metadata.inputModalities ?? []),
+	createMimeTypes(props.selectedModel?.metadata.inputModalities ?? []),
 );
 
 const canUploadFiles = computed(() => !!acceptedMimeTypes.value);
 
-const showMisisngAgentCallout = computed(() => messagingState === 'missingAgent');
+const showMisisngAgentCallout = computed(() => props.messagingState === 'missingAgent');
 const showMissingCredentialsCallout = computed(
-	() => messagingState === 'missingCredentials' && !!llmProvider.value,
+	() => props.messagingState === 'missingCredentials' && !!llmProvider.value,
 );
 const calloutVisible = computed(() => {
 	return (
 		showMisisngAgentCallout.value ||
 		showMissingCredentialsCallout.value ||
-		showCreditsClaimedCallout
+		props.showCreditsClaimedCallout
 	);
 });
 
@@ -187,19 +188,21 @@ watch(speechInput.error, (event) => {
 	}
 });
 
-function onSelectTools() {
-	if (selectedModel?.model.provider === 'custom-agent') {
-		emit('editAgent', selectedModel.model.agentId);
+async function handleToolToggle(toolId: string) {
+	if (props.customAgentId) {
+		await chatStore.toggleCustomAgentTool(props.customAgentId, toolId);
 		return;
 	}
-
-	uiStore.openModalWithData({
-		name: TOOLS_SELECTOR_MODAL_KEY,
-		data: {
-			selected: selectedTools,
-			onConfirm: (newTools: INode[]) => emit('selectTools', newTools),
-		},
-	});
+	if (props.sessionId) {
+		// Existing session: toggle per-session tool
+		await chatStore.toggleSessionTool(props.sessionId, toolId);
+		return;
+	}
+	// New session: toggle global enabled state
+	const tool = chatStore.configuredTools.find((t) => t.definition.id === toolId);
+	if (tool) {
+		await chatStore.toggleToolEnabled(toolId, !tool.enabled);
+	}
 }
 
 defineExpose({
@@ -344,15 +347,15 @@ defineExpose({
 					<div :class="$style.tools">
 						<ToolsSelector
 							:class="$style.toolsButton"
-							:selected="selectedTools ?? []"
+							:checked-tool-ids="checkedToolIds"
+							:custom-agent-id="customAgentId"
 							:disabled="messagingState !== 'idle' || !isToolsSelectable"
 							:disabled-tooltip="
 								isToolsSelectable
 									? undefined
 									: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
 							"
-							transparent-bg
-							@click="onSelectTools"
+							@toggle="handleToolToggle"
 						/>
 					</div>
 					<div :class="$style.actions">
@@ -366,24 +369,21 @@ defineExpose({
 							placement="top"
 						>
 							<N8nIconButton
-								native-type="button"
-								type="secondary"
+								variant="ghost"
 								:disabled="messagingState !== 'idle' || !canUploadFiles"
 								icon="paperclip"
 								icon-size="large"
-								text
 								@click.stop="onAttach"
 							/>
 						</N8nTooltip>
 						<N8nIconButton
 							v-if="speechInput.isSupported"
-							native-type="button"
+							variant="outline"
 							:title="
 								speechInput.isListening.value
 									? i18n.baseText('chatHub.chat.prompt.button.stopRecording')
 									: i18n.baseText('chatHub.chat.prompt.button.voiceInput')
 							"
-							type="secondary"
 							:disabled="messagingState !== 'idle'"
 							:icon="speechInput.isListening.value ? 'square' : 'mic'"
 							:class="{ [$style.recording]: speechInput.isListening.value }"
@@ -392,7 +392,7 @@ defineExpose({
 						/>
 						<N8nIconButton
 							v-if="messagingState !== 'receiving'"
-							native-type="submit"
+							type="submit"
 							:disabled="messagingState !== 'idle' || !message.trim()"
 							:title="i18n.baseText('chatHub.chat.prompt.button.send')"
 							:loading="messagingState === 'waitingFirstChunk'"
@@ -470,6 +470,10 @@ defineExpose({
 		line-height: 1.5em;
 		resize: none;
 		padding: 0 !important;
+	}
+
+	:global(.n8n-input) > div {
+		padding: 0;
 	}
 
 	&.calloutVisible {

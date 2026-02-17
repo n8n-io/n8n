@@ -34,7 +34,11 @@ const isDeleting = ref(false);
 const credentialsCount = ref(0);
 const isLoadingCredentials = ref(true);
 
-const deleteEnabled = computed(() => confirmationText.value === props.data.providerName);
+const shouldShowConfirmation = computed(() => credentialsCount.value > 0);
+
+const deleteEnabled = computed(
+	() => !shouldShowConfirmation.value || confirmationText.value === props.data.providerName,
+);
 
 const credentialsPageUrl = computed(() => ({
 	name: VIEWS.CREDENTIALS,
@@ -124,7 +128,7 @@ function onCancel() {
 		width="540px"
 	>
 		<template #content>
-			<div :class="$style.content">
+			<div v-if="shouldShowConfirmation" :class="$style.content">
 				<N8nText size="medium" color="text-base">
 					{{
 						i18n.baseText('settings.secretsProviderConnections.delete.description', {
@@ -169,15 +173,20 @@ function onCancel() {
 					</N8nInputLabel>
 				</div>
 			</div>
+			<div v-else :class="$style.content">
+				<N8nText size="medium" color="text-base">
+					{{ i18n.baseText('settings.secretsProviderConnections.delete.description.noImpact') }}
+				</N8nText>
+			</div>
 		</template>
 
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="secondary" @click="onCancel">
+				<N8nButton variant="subtle" @click="onCancel">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
 				<N8nButton
-					type="danger"
+					variant="destructive"
 					:disabled="!deleteEnabled"
 					:loading="isDeleting"
 					data-test-id="confirm-delete-button"

@@ -118,12 +118,12 @@ const fillForm = async (container: Element, name: string, description = '') => {
 };
 
 const waitForEditButtonsToBe = async (
-	getByText: RenderResult['getByText'],
+	getByRole: RenderResult['getByRole'],
 	state: 'enabled' | 'disabled',
 ) =>
 	await waitFor(() => {
-		const discardButton = getByText('Discard changes');
-		const saveButton = getByText('Save', { selector: 'button' });
+		const discardButton = getByRole('button', { name: 'Discard changes' });
+		const saveButton = getByRole('button', { name: 'Save' });
 
 		if (state === 'disabled') {
 			expect(saveButton).toBeDisabled();
@@ -161,10 +161,10 @@ describe('ProjectRoleView', () => {
 
 	describe('New Role Creation', () => {
 		it('should render new role form when no roleSlug prop provided', () => {
-			const { getByText, getByPlaceholderText } = renderComponent();
+			const { getByText, getByPlaceholderText, getByRole } = renderComponent();
 
 			expect(getByText('New Role')).toBeInTheDocument();
-			expect(getByText('Create', { selector: 'button' })).toBeInTheDocument();
+			expect(getByRole('button', { name: 'Create' })).toBeInTheDocument();
 			expect(getByText('Role name')).toBeInTheDocument();
 			expect(getByText('Description')).toBeInTheDocument();
 			expect(getByPlaceholderText('Optional')).toBeInTheDocument();
@@ -193,10 +193,10 @@ describe('ProjectRoleView', () => {
 			const mockCreatedRole = { ...mockExistingRole, slug: 'new-role-slug' };
 			rolesStore.createProjectRole.mockResolvedValueOnce(mockCreatedRole);
 
-			const { container, getByText } = renderComponent();
+			const { container, getByRole } = renderComponent();
 
 			await fillForm(container, 'New Test Role', 'A new test role');
-			await userEvent.click(getByText('Create', { selector: 'button' }));
+			await userEvent.click(getByRole('button', { name: 'Create' }));
 
 			await waitFor(() => {
 				expect(rolesStore.createProjectRole).toHaveBeenCalledWith({
@@ -221,10 +221,10 @@ describe('ProjectRoleView', () => {
 			const error = new Error('Creation failed');
 			rolesStore.createProjectRole.mockRejectedValueOnce(error);
 
-			const { container, getByText } = renderComponent();
+			const { container, getByRole } = renderComponent();
 
 			await fillForm(container, 'Test Role');
-			await userEvent.click(getByText('Create', { selector: 'button' }));
+			await userEvent.click(getByRole('button', { name: 'Create' }));
 
 			await waitFor(() => {
 				expect(mockShowError).toHaveBeenCalledWith(error, 'Error creating role');
@@ -236,7 +236,7 @@ describe('ProjectRoleView', () => {
 		it('should fetch and display existing role when roleSlug is provided', async () => {
 			setupEditingRole();
 
-			const { getByText, getByDisplayValue } = await setupEditingRoleComponent();
+			const { getByText, getByDisplayValue, getByRole } = await setupEditingRoleComponent();
 
 			await waitFor(() => {
 				expect(rolesStore.fetchRoleBySlug).toHaveBeenCalledWith({ slug: 'test-role' });
@@ -244,7 +244,7 @@ describe('ProjectRoleView', () => {
 
 			await waitFor(() => {
 				expect(getByText('Role "Test Role"')).toBeInTheDocument();
-				expect(getByText('Save', { selector: 'button' })).toBeInTheDocument();
+				expect(getByRole('button', { name: 'Save' })).toBeInTheDocument();
 				expect(getByDisplayValue('Test Role')).toBeInTheDocument();
 				expect(getByDisplayValue('A test role for testing')).toBeInTheDocument();
 			});
@@ -266,13 +266,13 @@ describe('ProjectRoleView', () => {
 			setupEditingRole();
 			rolesStore.updateProjectRole.mockResolvedValueOnce(updatedRole);
 
-			const { container, getByText } = await setupEditingRoleComponent();
+			const { container, getByRole } = await setupEditingRoleComponent();
 
 			await waitFor(() => expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled());
 			await waitForFormPopulation(container, 'Test Role');
 
 			await fillForm(container, 'Updated Role');
-			await userEvent.click(getByText('Save', { selector: 'button' }));
+			await userEvent.click(getByRole('button', { name: 'Save' }));
 
 			await waitFor(() => {
 				expect(rolesStore.updateProjectRole).toHaveBeenCalledWith('test-role', {
@@ -293,13 +293,13 @@ describe('ProjectRoleView', () => {
 			setupEditingRole();
 			rolesStore.updateProjectRole.mockRejectedValueOnce(error);
 
-			const { getByText, container } = await setupEditingRoleComponent();
+			const { getByRole, container } = await setupEditingRoleComponent();
 
 			await waitFor(() => expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled());
 			await waitForFormPopulation(container, 'Test Role');
 
 			await fillForm(container, 'Updated Role');
-			await userEvent.click(getByText('Save', { selector: 'button' }));
+			await userEvent.click(getByRole('button', { name: 'Save' }));
 
 			await waitFor(() => {
 				expect(mockShowError).toHaveBeenCalledWith(error, 'Error updating role');
@@ -367,33 +367,33 @@ describe('ProjectRoleView', () => {
 	describe('Action Buttons', () => {
 		describe('Editing Mode (initialState exists)', () => {
 			it('should render discard changes and save buttons when editing existing role', async () => {
-				const { getByText } = await setupEditingRoleComponent();
+				const { getByRole } = await setupEditingRoleComponent();
 
 				await waitFor(() => {
-					expect(getByText('Discard changes')).toBeInTheDocument();
-					expect(getByText('Save', { selector: 'button' })).toBeInTheDocument();
+					expect(getByRole('button', { name: 'Discard changes' })).toBeInTheDocument();
+					expect(getByRole('button', { name: 'Save' })).toBeInTheDocument();
 				});
 			});
 
 			it('should disable discard changes and save buttons when no unsaved changes', async () => {
-				const { getByText } = await setupEditingRoleComponent();
-				await waitForEditButtonsToBe(getByText, 'disabled');
+				const { getByRole } = await setupEditingRoleComponent();
+				await waitForEditButtonsToBe(getByRole, 'disabled');
 			});
 
 			it('should enable discard changes and save buttons when there are unsaved changes', async () => {
-				const { container, getByText } = await setupEditingRoleComponent();
+				const { container, getByRole } = await setupEditingRoleComponent();
 				await waitForFormPopulation(container, 'Test Role');
 
 				await fillForm(container, 'Modified Role');
-				await waitForEditButtonsToBe(getByText, 'enabled');
+				await waitForEditButtonsToBe(getByRole, 'enabled');
 			});
 
 			it('should reset form to initial state when discard changes is clicked', async () => {
-				const { container, getByText } = await setupEditingRoleComponent();
+				const { container, getByRole } = await setupEditingRoleComponent();
 				await waitForFormPopulation(container, 'Test Role');
 
 				await fillForm(container, 'Modified Role');
-				await userEvent.click(getByText('Discard changes'));
+				await userEvent.click(getByRole('button', { name: 'Discard changes' }));
 
 				const { nameInput } = getFormElements(container);
 				await waitFor(() => {
@@ -405,11 +405,11 @@ describe('ProjectRoleView', () => {
 				const updatedRole = { ...mockExistingRole, displayName: 'Updated Role' };
 				rolesStore.updateProjectRole.mockResolvedValueOnce(updatedRole);
 
-				const { container, getByText } = await setupEditingRoleComponent();
+				const { container, getByRole } = await setupEditingRoleComponent();
 				await waitForFormPopulation(container, 'Test Role');
 
 				await fillForm(container, 'Updated Role');
-				await userEvent.click(getByText('Save', { selector: 'button' }));
+				await userEvent.click(getByRole('button', { name: 'Save' }));
 
 				await waitFor(() => {
 					expect(rolesStore.updateProjectRole).toHaveBeenCalledWith('test-role', {
@@ -423,21 +423,21 @@ describe('ProjectRoleView', () => {
 
 		describe('Creation Mode (no initialState)', () => {
 			it('should render only create button when creating new role', () => {
-				const { getByText, queryByText } = renderComponent();
+				const { getByRole, queryByRole } = renderComponent();
 
-				expect(getByText('Create', { selector: 'button' })).toBeInTheDocument();
-				expect(queryByText('Discard changes')).not.toBeInTheDocument();
-				expect(queryByText('Save', { selector: 'button' })).not.toBeInTheDocument();
+				expect(getByRole('button', { name: 'Create' })).toBeInTheDocument();
+				expect(queryByRole('button', { name: 'Discard changes' })).not.toBeInTheDocument();
+				expect(queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
 			});
 
 			it('should call handleSubmit when create button is clicked', async () => {
 				const mockCreatedRole = { ...mockExistingRole, slug: 'new-role-slug' };
 				rolesStore.createProjectRole.mockResolvedValueOnce(mockCreatedRole);
 
-				const { container, getByText } = renderComponent();
+				const { container, getByRole } = renderComponent();
 
 				await fillForm(container, 'New Test Role');
-				await userEvent.click(getByText('Create', { selector: 'button' }));
+				await userEvent.click(getByRole('button', { name: 'Create' }));
 
 				await waitFor(() => {
 					expect(rolesStore.createProjectRole).toHaveBeenCalledWith({
@@ -453,40 +453,40 @@ describe('ProjectRoleView', () => {
 
 	describe('Form states', () => {
 		it('should disable buttons when form matches initial state', async () => {
-			const { getByText } = await setupEditingRoleComponent();
-			await waitForEditButtonsToBe(getByText, 'disabled');
+			const { getByRole } = await setupEditingRoleComponent();
+			await waitForEditButtonsToBe(getByRole, 'disabled');
 		});
 
 		it('should enable buttons when displayName is changed', async () => {
-			const { container, getByText } = await setupEditingRoleComponent();
+			const { container, getByRole } = await setupEditingRoleComponent();
 			await waitForFormPopulation(container, 'Test Role');
 
 			await fillForm(container, 'Changed Name');
-			await waitForEditButtonsToBe(getByText, 'enabled');
+			await waitForEditButtonsToBe(getByRole, 'enabled');
 		});
 
 		it('should enable buttons when description is changed', async () => {
-			const { container, getByText } = await setupEditingRoleComponent();
+			const { container, getByRole } = await setupEditingRoleComponent();
 			await waitFor(() => {
 				const { descriptionInput } = getFormElements(container);
 				expect(descriptionInput?.value).toBe('A test role for testing');
 			});
 
 			await fillForm(container, 'Test Role', 'Changed description');
-			await waitForEditButtonsToBe(getByText, 'enabled');
+			await waitForEditButtonsToBe(getByRole, 'enabled');
 		});
 
 		it('should enable buttons when scopes are changed', async () => {
-			const { getByText, getByTestId } = await setupEditingRoleComponent();
+			const { getByRole, getByTestId } = await setupEditingRoleComponent();
 			await waitFor(() => {
-				const discardButton = getByText('Discard changes');
+				const discardButton = getByRole('button', { name: 'Discard changes' });
 				expect(discardButton).toBeDisabled();
 			});
 
 			const scopeCheckbox = getByTestId('scope-checkbox-project:update');
 
 			await userEvent.click(scopeCheckbox);
-			await waitForEditButtonsToBe(getByText, 'enabled');
+			await waitForEditButtonsToBe(getByRole, 'enabled');
 		});
 	});
 
@@ -494,10 +494,10 @@ describe('ProjectRoleView', () => {
 		it('should handle empty description', async () => {
 			rolesStore.createProjectRole.mockResolvedValue({ ...mockExistingRole, slug: 'new-slug' });
 
-			const { container, getByText } = renderComponent();
+			const { container, getByRole } = renderComponent();
 
 			await fillForm(container, 'Test Role');
-			await userEvent.click(getByText('Create', { selector: 'button' }));
+			await userEvent.click(getByRole('button', { name: 'Create' }));
 
 			await waitFor(() => {
 				expect(rolesStore.createProjectRole).toHaveBeenCalledWith({
@@ -513,10 +513,10 @@ describe('ProjectRoleView', () => {
 			const mockCreatedRole = { ...mockExistingRole, slug: 'new-role' };
 			rolesStore.createProjectRole.mockResolvedValueOnce(mockCreatedRole);
 
-			const { container, getByText } = renderComponent();
+			const { container, getByRole } = renderComponent();
 
 			await fillForm(container, 'New Role');
-			await userEvent.click(getByText('Create', { selector: 'button' }));
+			await userEvent.click(getByRole('button', { name: 'Create' }));
 
 			await waitFor(() => {
 				expect(rolesStore.createProjectRole).toHaveBeenCalled();

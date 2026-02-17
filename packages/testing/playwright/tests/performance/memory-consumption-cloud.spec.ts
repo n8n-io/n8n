@@ -8,7 +8,11 @@ test.use({
 	},
 });
 
-test.describe('Memory Consumption @capability:observability', () => {
+test.describe('Memory Consumption @capability:observability', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test('Memory consumption baseline with starter plan resources', async ({
 		n8nContainer,
 		services,
