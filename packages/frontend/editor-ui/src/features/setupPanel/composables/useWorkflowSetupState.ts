@@ -68,7 +68,11 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			}))
 			.filter(({ credentialTypes, isTrigger }) => credentialTypes.length > 0 || isTrigger);
 
-		return sortNodesByExecutionOrder(nodesForSetup, workflowsStore.connectionsBySourceNode);
+		return sortNodesByExecutionOrder(
+			nodesForSetup,
+			workflowsStore.connectionsBySourceNode,
+			workflowsStore.connectionsByDestinationNode,
+		);
 	});
 
 	/**
