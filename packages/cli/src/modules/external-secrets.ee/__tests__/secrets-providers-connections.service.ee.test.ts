@@ -149,6 +149,63 @@ describe('SecretsProvidersConnectionsService', () => {
 			expect(mockExternalSecretsManager.getProviderProperties).toHaveBeenCalledWith('vault');
 			expect(mockExternalSecretsManager.getProvider).toHaveBeenCalledWith('my-vault');
 		});
+
+		it('should use state "initializing" when provider instance is not in registry', () => {
+			const mockProperties: INodeProperties[] = [
+				{ name: 'token', type: 'string', displayName: 'Token', default: '' },
+			];
+			const redactedSettings = { token: CREDENTIAL_BLANKING_VALUE };
+
+			mockExternalSecretsManager.getProviderProperties.mockReturnValue(mockProperties);
+			mockExternalSecretsManager.getProvider.mockReturnValue(undefined);
+			mockExternalSecretsManager.getSecretNames.mockReturnValue([]);
+			mockRedactionService.redact.mockReturnValue(redactedSettings);
+
+			const connection = {
+				id: 3,
+				providerKey: 'not-synced-yet',
+				type: 'vault',
+				encryptedSettings: '{}',
+				projectAccess: [],
+				createdAt: new Date('2024-01-01'),
+				updatedAt: new Date('2024-01-02'),
+			} as unknown as SecretsProviderConnection;
+
+			const result = service.toPublicConnection(connection);
+
+			expect(result.state).toBe('initializing');
+			expect(mockExternalSecretsManager.getProvider).toHaveBeenCalledWith('not-synced-yet');
+		});
+
+		it('should pass through state "error" from provider instance', () => {
+			const mockProperties: INodeProperties[] = [
+				{ name: 'key', type: 'string', displayName: 'Key', default: '' },
+			];
+			const redactedSettings = { key: CREDENTIAL_BLANKING_VALUE };
+			const mockProvider = {
+				state: 'error' as const,
+				properties: mockProperties,
+			} as SecretsProvider;
+
+			mockExternalSecretsManager.getProviderProperties.mockReturnValue(mockProperties);
+			mockExternalSecretsManager.getProvider.mockReturnValue(mockProvider);
+			mockExternalSecretsManager.getSecretNames.mockReturnValue([]);
+			mockRedactionService.redact.mockReturnValue(redactedSettings);
+
+			const connection = {
+				id: 4,
+				providerKey: 'failing-vault',
+				type: 'vault',
+				encryptedSettings: '{}',
+				projectAccess: [],
+				createdAt: new Date('2024-01-01'),
+				updatedAt: new Date('2024-01-02'),
+			} as unknown as SecretsProviderConnection;
+
+			const result = service.toPublicConnection(connection);
+
+			expect(result.state).toBe('error');
+		});
 	});
 
 	describe('toPublicConnectionListItem', () => {
@@ -215,6 +272,27 @@ describe('SecretsProvidersConnectionsService', () => {
 
 			expect(result.state).toBe('initializing');
 			expect(mockExternalSecretsManager.getProvider).toHaveBeenCalledWith('not-synced-yet');
+		});
+
+		it('should pass through state "error" from provider instance', () => {
+			const mockProviderInstance = { state: 'error' as const } as SecretsProvider;
+			mockExternalSecretsManager.getProvider.mockReturnValue(mockProviderInstance);
+			mockExternalSecretsManager.getSecretNames.mockReturnValue([]);
+
+			const connection = {
+				id: 3,
+				providerKey: 'failing-connection',
+				type: 'awsSecretsManager',
+				encryptedSettings: '{}',
+				projectAccess: [],
+				createdAt: new Date('2024-01-01'),
+				updatedAt: new Date('2024-01-02'),
+			} as unknown as SecretsProviderConnection;
+
+			const result = service.toPublicConnectionListItem(connection);
+
+			expect(result.state).toBe('error');
+			expect(mockExternalSecretsManager.getProvider).toHaveBeenCalledWith('failing-connection');
 		});
 	});
 
