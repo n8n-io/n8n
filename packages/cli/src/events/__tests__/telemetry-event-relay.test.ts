@@ -508,7 +508,6 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User created external secrets connection', {
 				user_id: 'user123',
-				provider_key: 'provider-key-123',
 				vault_type: 'gcp',
 				scope: 'global',
 				project_ids: [],
@@ -530,7 +529,6 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User created external secrets connection', {
 				user_id: 'user123',
-				provider_key: 'provider-key-123',
 				vault_type: 'gcp',
 				scope: 'project',
 				project_ids: ['project1', 'project2'],
@@ -549,7 +547,6 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User updated external secrets connection', {
 				user_id: 'user123',
-				provider_key: 'provider-key-123',
 				vault_type: 'aws',
 				scope: 'global',
 				project_ids: [],
@@ -568,7 +565,6 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User updated external secrets connection', {
 				user_id: 'user123',
-				provider_key: 'provider-key-123',
 				vault_type: 'aws',
 				scope: 'project',
 				project_ids: ['project1'],
@@ -587,7 +583,6 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User deleted external secrets connection', {
 				user_id: 'user123',
-				provider_key: 'provider-key-123',
 				vault_type: 'vault',
 				scope: 'global',
 				project_ids: [],
@@ -610,7 +605,6 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User deleted external secrets connection', {
 				user_id: 'user123',
-				provider_key: 'provider-key-123',
 				vault_type: 'vault',
 				scope: 'project',
 				project_ids: ['project1', 'project2', 'project3'],
