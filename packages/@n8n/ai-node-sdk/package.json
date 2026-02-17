@@ -11,7 +11,6 @@
 		"dev": "pnpm watch",
 		"typecheck": "tsc --noEmit",
 		"build": "tsc -p tsconfig.build.json",
-		"build:examples": "tsc --build tsconfig.examples.json",
 		"format": "biome format --write .",
 		"format:check": "biome ci .",
 		"lint": "eslint . --quiet",

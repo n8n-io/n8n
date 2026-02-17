@@ -8,5 +8,5 @@
 		"baseUrl": ".",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},
-	"include": ["src/**/*.ts", "examples/**/*.ts", "integration-tests/**/*.ts"]
+	"include": ["src/**/*.ts"]
 }
