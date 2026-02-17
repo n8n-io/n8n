@@ -5,6 +5,7 @@ import { CredentialModal } from './components/CredentialModal';
 
 export class TemplateCredentialSetupPage extends BasePage {
 	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
+
 	getTitle(titleText: string): Locator {
 		return this.page.getByRole('heading', { name: titleText, level: 1 });
 	}

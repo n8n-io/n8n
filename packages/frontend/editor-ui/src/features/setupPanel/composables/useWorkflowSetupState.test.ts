@@ -53,6 +53,16 @@ vi.mock('@/app/utils/nodes/nodeTransforms', () => ({
 		mockGetNodeTypeDisplayableCredentials(...args),
 }));
 
+// Sorting/filtering by execution order is tested in setupPanel.utils.test.ts.
+// Use a pass-through mock here so non-sorting tests are not affected.
+vi.mock('@/app/utils/workflowUtils', async () => {
+	const actual = await vi.importActual('@/app/utils/workflowUtils');
+	return {
+		...actual,
+		sortNodesByExecutionOrder: (nodes: unknown[]) => nodes,
+	};
+});
+
 const createNode = (overrides: Partial<INodeUi> = {}): INodeUi =>
 	createTestNode({
 		name: 'TestNode',
@@ -227,18 +237,6 @@ describe('useWorkflowSetupState', () => {
 			expect(credTypes).toContain('oauth2Api');
 		});
 
-		it('should sort nodes by X position (left to right)', () => {
-			const nodeA = createNode({ name: 'Right', position: [300, 0] });
-			const nodeB = createNode({ name: 'Left', position: [100, 0] });
-			const nodeC = createNode({ name: 'Middle', position: [200, 0] });
-			workflowsStore.allNodes = [nodeA, nodeB, nodeC];
-			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'testApi' }]);
-
-			const { nodeSetupStates } = useWorkflowSetupState();
-
-			expect(nodeSetupStates.value.map((s) => s.node.name)).toEqual(['Left', 'Middle', 'Right']);
-		});
-
 		it('should fall back to credential type name when display name is not found', () => {
 			const node = createNode({ name: 'TestNode' });
 			workflowsStore.allNodes = [node];
@@ -381,27 +379,6 @@ describe('useWorkflowSetupState', () => {
 			const { nodeSetupStates } = useWorkflowSetupState();
 
 			expect(nodeSetupStates.value[0].isTrigger).toBe(false);
-		});
-
-		it('should sort trigger nodes before non-trigger nodes', () => {
-			const regularNode = createNode({
-				name: 'Regular',
-				type: 'n8n-nodes-base.regular',
-				position: [0, 0],
-			});
-			const triggerNode = createNode({
-				name: 'Trigger',
-				type: 'n8n-nodes-base.trigger',
-				position: [100, 0],
-			});
-			workflowsStore.allNodes = [regularNode, triggerNode];
-			nodeTypesStore.isTriggerNode = vi.fn((type: string) => type === 'n8n-nodes-base.trigger');
-			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'testApi' }]);
-
-			const { nodeSetupStates } = useWorkflowSetupState();
-
-			expect(nodeSetupStates.value[0].node.name).toBe('Trigger');
-			expect(nodeSetupStates.value[1].node.name).toBe('Regular');
 		});
 
 		it('should mark trigger as incomplete when credentials configured but no execution data', () => {

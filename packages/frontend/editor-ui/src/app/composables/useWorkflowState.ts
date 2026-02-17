@@ -62,7 +62,7 @@ export function useWorkflowState() {
 
 	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
 		if (data.setStateDirty) {
-			uiStore.markStateDirty();
+			uiStore.markStateDirty('metadata');
 		}
 		ws.workflow.name = data.newName;
 		ws.workflowObject.name = data.newName;

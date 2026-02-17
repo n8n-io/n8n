@@ -379,7 +379,10 @@ export function findOneFromModelsResponse(
 	return undefined;
 }
 
-export function createSessionFromStreamingState(streaming: ChatStreamingState): ChatHubSessionDto {
+export function createSessionFromStreamingState(
+	streaming: ChatStreamingState,
+	toolIds: string[],
+): ChatHubSessionDto {
 	return {
 		id: streaming.sessionId,
 		title: 'New Chat',
@@ -390,7 +393,7 @@ export function createSessionFromStreamingState(streaming: ChatStreamingState): 
 		agentIcon: streaming.agent.icon,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
-		tools: streaming.tools,
+		toolIds,
 		...flattenModel(streaming.agent.model),
 	};
 }
