@@ -19,7 +19,10 @@ import type {
 	ChatSendMessageResponse,
 	ChatReconnectResponse,
 	WorkflowExecutionStatus,
+	ChatHubUpdateToolRequest,
+	ChatHubToolDto,
 } from '@n8n/api-types';
+import type { INode } from 'n8n-workflow';
 
 export const fetchChatModelsApi = async (
 	context: IRestApiContext,
@@ -287,3 +290,31 @@ export async function revokeDynamicCredential(
 		`/credentials/${credentialId}/revoke?resolverId=${encodeURIComponent(resolverId)}&authSource=cookie`,
 	);
 }
+
+export const fetchToolsApi = async (context: IRestApiContext): Promise<ChatHubToolDto[]> => {
+	return await makeRestApiRequest<ChatHubToolDto[]>(context, 'GET', '/chat/tools');
+};
+
+export const createToolApi = async (
+	context: IRestApiContext,
+	definition: INode,
+): Promise<ChatHubToolDto> => {
+	return await makeRestApiRequest<ChatHubToolDto>(context, 'POST', '/chat/tools', { definition });
+};
+
+export const updateToolApi = async (
+	context: IRestApiContext,
+	toolId: string,
+	updates: ChatHubUpdateToolRequest,
+): Promise<ChatHubToolDto> => {
+	return await makeRestApiRequest<ChatHubToolDto>(
+		context,
+		'PATCH',
+		`/chat/tools/${toolId}`,
+		updates,
+	);
+};
+
+export const deleteToolApi = async (context: IRestApiContext, toolId: string): Promise<void> => {
+	await makeRestApiRequest(context, 'DELETE', `/chat/tools/${toolId}`);
+};

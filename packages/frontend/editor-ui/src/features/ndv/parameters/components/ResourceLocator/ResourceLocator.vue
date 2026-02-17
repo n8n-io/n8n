@@ -35,6 +35,7 @@ import {
 } from 'n8n-workflow';
 import {
 	computed,
+	inject,
 	nextTick,
 	onBeforeUnmount,
 	onMounted,
@@ -54,6 +55,7 @@ import {
 	type FromAIOverride,
 } from '../../utils/fromAIOverride.utils';
 import { completeExpressionSyntax } from '@/app/utils/expressions';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import FromAiOverrideButton from '../ParameterInputOverrides/FromAiOverrideButton.vue';
 import FromAiOverrideField from '../ParameterInputOverrides/FromAiOverrideField.vue';
@@ -159,6 +161,7 @@ const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
 const appName = computed(() => {
 	if (!props.node) {
@@ -271,7 +274,11 @@ const urlValue = computedAsync(async () => {
 		const value = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
 		if (typeof value === 'string') {
 			const expression = currentMode.value.url.replace(/\{\{\$value\}\}/g, value);
-			const resolved = await workflowHelpers.resolveExpression(expression);
+			const resolved = await workflowHelpers.resolveExpression(
+				expression,
+				{},
+				expressionLocalResolveCtx?.value ?? {},
+			);
 
 			return typeof resolved === 'string' ? resolved : null;
 		}
@@ -418,6 +425,7 @@ const handleAddResourceClick = async () => {
 	const resolvedNodeParameters = await workflowHelpers.resolveRequiredParameters(
 		props.parameter,
 		currentRequestParams.value.parameters,
+		expressionLocalResolveCtx?.value ?? {},
 	);
 
 	if (!resolvedNodeParameters || !addNewResourceMethodName) {
@@ -785,6 +793,7 @@ async function loadResources() {
 		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			params.parameters,
+			expressionLocalResolveCtx?.value ?? {},
 		)) as INodeParameters;
 		const loadOptionsMethod = getPropertyArgument(currentMode.value, 'searchListMethod') as string;
 

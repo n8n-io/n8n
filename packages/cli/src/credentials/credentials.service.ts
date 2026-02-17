@@ -515,6 +515,7 @@ export class CredentialsService {
 				projectOwningCredential.projectId,
 				data.data,
 				this.externalSecretsProviderAccessCheckService,
+				'update',
 			);
 		}
 
@@ -1007,6 +1008,7 @@ export class CredentialsService {
 				opts.projectId,
 				opts.data as ICredentialDataDecryptedObject,
 				this.externalSecretsProviderAccessCheckService,
+				'create',
 			);
 		}
 		const encryptedCredential = this.createEncryptedData({

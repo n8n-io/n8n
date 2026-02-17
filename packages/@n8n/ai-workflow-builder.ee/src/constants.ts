@@ -62,4 +62,11 @@ export const MAX_AI_RESPONSE_CHARS = 500;
  */
 export const MAX_BUILDER_ITERATIONS = 100;
 export const MAX_DISCOVERY_ITERATIONS = 50;
+export const MAX_TRIAGE_ITERATIONS = 10;
 export const MAX_MULTI_AGENT_STREAM_ITERATIONS = MAX_BUILDER_ITERATIONS + MAX_DISCOVERY_ITERATIONS;
+
+/**
+ * Separator used by the backend stream protocol (packages/cli/src/constants.ts:145).
+ * Duplicated here so the ai-workflow-builder package doesn't need a dependency on packages/cli.
+ */
+export const STREAM_SEPARATOR = '⧉⇋⇋➽⌑⧉§§\n';
