@@ -2,6 +2,7 @@
 import {
 	computed,
 	defineAsyncComponent,
+	inject,
 	nextTick,
 	onActivated,
 	onBeforeMount,
@@ -145,8 +146,7 @@ import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { injectStrict } from '@/app/utils/injectStrict';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { WorkflowIdKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 
@@ -214,7 +214,8 @@ const collaborationStore = useCollaborationStore();
 const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 const chatPanelStore = useChatPanelStore();
 
-const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowDocumentStoreRef = inject(WorkflowDocumentStoreKey, null);
+const workflowDocumentStore = computed(() => workflowDocumentStoreRef?.value ?? null);
 const workflowState = injectWorkflowState();
 
 // Initialize activity detection for collaboration
@@ -791,10 +792,14 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: Workf
 
 	resetWorkspace();
 
-	await initializeWorkspace({
+	const { workflowDocumentStore: newStore } = await initializeWorkspace({
 		...workflowData,
 		nodes: getNodesWithNormalizedPosition<INodeUi>(workflowData.nodes),
 	} as IWorkflowDb);
+
+	if (workflowDocumentStoreRef && newStore) {
+		workflowDocumentStoreRef.value = newStore;
+	}
 
 	fitView();
 }
@@ -1188,7 +1193,7 @@ async function onOpenExecutionPreview(json: {
 	await importWorkflowExact(json);
 
 	workflowState.setWorkflowExecutionData(data);
-	workflowState.setWorkflowPinData({});
+	workflowDocumentStore.value?.setPinData({});
 
 	canvasStore.stopLoading();
 
@@ -1293,7 +1298,7 @@ const isOnlyChatTriggerNodeActive = computed(() => {
 const chatTriggerNodePinnedData = computed(() => {
 	if (!chatTriggerNode.value) return null;
 
-	return workflowDocumentStore?.pinData?.[chatTriggerNode.value.name];
+	return workflowDocumentStore.value?.pinData?.[chatTriggerNode.value.name];
 });
 
 function onOpenChat() {

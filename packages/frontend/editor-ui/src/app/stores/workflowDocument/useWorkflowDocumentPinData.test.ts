@@ -284,7 +284,7 @@ describe('useWorkflowDocumentPinData', () => {
 
 			renamePinDataNode('OldName', 'NewName');
 
-			const pairedItem = pinData.value.Node2[0].pairedItem as {
+			const pairedItem = pinData.value.Node2[0].pairedItem as unknown as {
 				sourceOverwrite: { previousNode: string };
 			};
 			expect(pairedItem.sourceOverwrite.previousNode).toBe('NewName');
