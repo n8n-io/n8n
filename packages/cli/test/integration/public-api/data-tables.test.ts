@@ -1628,7 +1628,7 @@ describe('Filter Parameter Validation', () => {
 		});
 
 		test('should fail to transfer non-existent data table', async () => {
-			const response = await authOwnerAgent.put(`/data-tables/non-existent-id/transfer`).send({
+			const response = await authOwnerAgent.put('/data-tables/non-existent-id/transfer').send({
 				destinationProjectId: destinationProject.id,
 			});
 
