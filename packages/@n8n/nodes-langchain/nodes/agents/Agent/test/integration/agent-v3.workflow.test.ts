@@ -1,7 +1,6 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import path from 'node:path';
 import type { WorkflowTestData } from 'n8n-workflow';
-import { getInputs } from '../../utils';
 
 /**
  * Helper to create a standard OpenAI chat completion response.
@@ -65,39 +64,6 @@ describe('Agent V3 Integration', () => {
 
 	const testHarness = new NodeTestHarness({
 		additionalPackagePaths: [path.dirname(require.resolve('n8n-nodes-base'))],
-	});
-
-	// CI diagnostic: log getInputs.toString() and check for }}
-	beforeAll(() => {
-		const fnStr = getInputs.toString();
-		const hasBraces = fnStr.includes('}}');
-		console.log(`[CI-DIAG] getInputs.toString() length: ${fnStr.length}`);
-		console.log(`[CI-DIAG] contains }}: ${hasBraces}`);
-		if (hasBraces) {
-			const matches = [...fnStr.matchAll(/\}\}/g)];
-			console.log(`[CI-DIAG] }} count: ${matches.length}`);
-			matches.forEach((m) => {
-				const ctx = fnStr.substring(Math.max(0, m.index! - 20), m.index! + 10);
-				console.log(`[CI-DIAG] }} at ${m.index}: ...${ctx}...`);
-			});
-		}
-		// Also check what AgentV3.description.inputs looks like
-		const { AgentV3 } = require('../../V3/AgentV3.node');
-		const instance = new AgentV3({
-			name: 'agent',
-			displayName: 'Agent',
-			group: ['transform'],
-			description: '',
-		});
-		const inputs = instance.description.inputs as string;
-		console.log(`[CI-DIAG] AgentV3 inputs length: ${inputs.length}`);
-		console.log(`[CI-DIAG] AgentV3 inputs first 300 chars: ${inputs.substring(0, 300)}`);
-		const inputsBraces = [...inputs.matchAll(/\}\}/g)];
-		console.log(`[CI-DIAG] AgentV3 inputs }} count: ${inputsBraces.length}`);
-		inputsBraces.forEach((m) => {
-			const ctx = inputs.substring(Math.max(0, m.index! - 20), m.index! + 10);
-			console.log(`[CI-DIAG] inputs }} at ${m.index}: ...${ctx}...`);
-		});
 	});
 
 	describe('Phase 1: Basic Completion', () => {

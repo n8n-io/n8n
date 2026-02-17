@@ -1115,13 +1115,24 @@ export function getNodeInputs(
 
 	// Calculate the outputs dynamically
 	try {
-		return (workflow.expression.getSimpleParameterValue(
+		const result = workflow.expression.getSimpleParameterValue(
 			node,
 			nodeTypeData.inputs,
 			'internal',
 			{},
-		) || []) as NodeConnectionType[];
+		);
+		if (node.type?.includes('agent') || node.type?.includes('Agent')) {
+			console.log(
+				`[CI-DIAG-INPUTS] node=${node.name} type=${node.type} result=${JSON.stringify(result)?.substring(0, 500)}`,
+			);
+		}
+		return (result || []) as NodeConnectionType[];
 	} catch (e) {
+		if (node.type?.includes('agent') || node.type?.includes('Agent')) {
+			console.log(
+				`[CI-DIAG-INPUTS] CATCH node=${node.name} type=${node.type} error=${String(e).substring(0, 300)}`,
+			);
+		}
 		console.warn('Could not calculate inputs dynamically for node: ', node.name);
 		return [];
 	}
