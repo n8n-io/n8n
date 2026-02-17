@@ -12,7 +12,7 @@ import type { ProjectSharingData } from '@/features/collaboration/projects/proje
 
 export type ConnectionProjectSummary = { id: string; name: string };
 
-const CONNECTION_NAME_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const CONNECTION_NAME_REGEX = /^[a-zA-Z][a-zA-Z0-9]*$/;
 interface UseConnectionModalOptions {
 	providerTypes: Ref<SecretProviderTypeResponse[]>;
 	existingProviderNames?: Ref<string[]>;
@@ -273,15 +273,6 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		};
 	}
 
-	function hyphenateConnectionName(name: string): string {
-		return name
-			.trim()
-			.replace(/\s+/g, '-')
-			.replace(/([a-z])([A-Z])/g, '$1-$2')
-			.replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
-			.toLowerCase();
-	}
-
 	function selectProviderType(providerTypeKey: string) {
 		const provider = providerTypes.value.find((type) => type.type === providerTypeKey);
 		if (!provider) return;
@@ -529,7 +520,6 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		// Methods
 		updateSettings,
 		selectProviderType,
-		hyphenateConnectionName,
 		loadConnection,
 		saveConnection,
 		shouldDisplayProperty,
