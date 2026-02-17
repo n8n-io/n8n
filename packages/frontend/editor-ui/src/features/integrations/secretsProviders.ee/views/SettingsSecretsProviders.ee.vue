@@ -93,7 +93,7 @@ async function handleReload(providerKey: string) {
 			}),
 			type: 'success',
 		});
-		await secretsProviders.fetchActiveConnections();
+		await secretsProviders.fetchConnection(providerKey);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
 	}
