@@ -57,6 +57,12 @@ export class ExtractFromFile implements INodeType {
 						description: 'Transform a JSON file into output items',
 					},
 					{
+						name: 'Extract From JSONL',
+						value: 'fromJsonl',
+						action: 'Extract from JSONL',
+						description: 'Transform a JSONL file into output items',
+					},
+					{
 						name: 'Extract From ODS',
 						value: 'ods',
 						action: 'Extract from ODS',
@@ -125,7 +131,9 @@ export class ExtractFromFile implements INodeType {
 			});
 		}
 
-		if (['binaryToPropery', 'fromJson', 'text', 'fromIcs', 'xml'].includes(operation)) {
+		if (
+			['binaryToPropery', 'fromJson', 'fromJsonl', 'text', 'fromIcs', 'xml'].includes(operation)
+		) {
 			returnData = await moveTo.execute.call(this, items, operation);
 		}
 
