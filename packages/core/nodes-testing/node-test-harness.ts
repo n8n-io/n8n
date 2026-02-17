@@ -264,6 +264,16 @@ export class NodeTestHarness {
 			}
 			const resultData = runData[nodeName].map((nodeData) => {
 				if (nodeData.data === undefined) {
+					// Log diagnostic info for debugging CI failures
+					console.log(
+						`[NodeTestHarness] Node "${nodeName}" has undefined data.`,
+						`Error: ${nodeData.error?.message ?? 'none'}`,
+						`Status: ${result.status}`,
+						`Finished: ${result.finished}`,
+					);
+					if (nodeData.error) {
+						console.log(`[NodeTestHarness] Full error:`, nodeData.error);
+					}
 					return null;
 				}
 				// TODO: iterate all runIndexes
