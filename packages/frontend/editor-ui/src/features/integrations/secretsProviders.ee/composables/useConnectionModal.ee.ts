@@ -273,15 +273,6 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		};
 	}
 
-	function hyphenateConnectionName(name: string): string {
-		return name
-			.trim()
-			.replace(/\s+/g, '-')
-			.replace(/([a-z])([A-Z])/g, '$1-$2')
-			.replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
-			.toLowerCase();
-	}
-
 	function selectProviderType(providerTypeKey: string) {
 		const provider = providerTypes.value.find((type) => type.type === providerTypeKey);
 		if (!provider) return;
@@ -529,7 +520,6 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		// Methods
 		updateSettings,
 		selectProviderType,
-		hyphenateConnectionName,
 		loadConnection,
 		saveConnection,
 		shouldDisplayProperty,

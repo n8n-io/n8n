@@ -67,7 +67,6 @@ const mockConnectionModal = {
 	canShareGlobally: { value: true },
 	projectIds: { value: [] as string[] },
 	sharedWithProjects: { value: [] as ProjectSharingData[] },
-	hyphenateConnectionName: vi.fn((name) => name),
 	selectProviderType: vi.fn(),
 	updateSettings: vi.fn(),
 	loadConnection: vi.fn(),
