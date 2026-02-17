@@ -229,7 +229,7 @@ const {
 }
 
 .beta {
-	margin-top: var(--spacing--3xs);
+	margin-top: 2px;
 	margin-left: var(--spacing--3xs);
 }
 

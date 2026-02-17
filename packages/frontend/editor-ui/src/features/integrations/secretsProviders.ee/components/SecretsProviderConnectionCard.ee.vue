@@ -18,9 +18,12 @@ import ProjectIcon from '@/features/collaboration/projects/components/ProjectIco
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 const i18n = useI18n();
 const rbacStore = useRBACStore();
+const { check: checkDevFeatureFlag } = useEnvFeatureFlag();
+const isProjectScopedSecretsEnabled = checkDevFeatureFlag.value('EXTERNAL_SECRETS_FOR_PROJECTS');
 
 const props = defineProps<{
 	provider: SecretProviderConnection;
@@ -90,11 +93,13 @@ const actionDropdownOptions = computed(() => {
 			label: i18n.baseText('generic.edit'),
 			value: 'edit',
 		},
-		{
+	];
+	if (isProjectScopedSecretsEnabled) {
+		options.push({
 			label: i18n.baseText('settings.secretsProviderConnections.actions.share'),
 			value: 'share',
-		},
-	];
+		});
+	}
 
 	if (canDelete.value) {
 		options.push({
@@ -118,7 +123,7 @@ function onAction(action: string) {
 </script>
 
 <template>
-	<N8nCard :class="$style.card" hoverable>
+	<N8nCard :class="$style.card">
 		<template v-if="providerTypeInfo" #prepend>
 			<SecretsProviderImage
 				:class="$style.providerImage"
@@ -158,7 +163,7 @@ function onAction(action: string) {
 								})
 							: i18n.baseText('settings.externalSecrets.card.secretsCount', {
 									interpolate: {
-										count: `${provider.secretsCount ?? 0}`,
+										count: `${provider.secretsCount}`,
 									},
 								})
 					}}
@@ -209,6 +214,12 @@ function onAction(action: string) {
 .card {
 	--card--padding: var(--spacing--2xs);
 	padding-left: var(--spacing--sm);
+	transition: box-shadow 0.3s ease;
+	cursor: pointer;
+
+	&:hover {
+		box-shadow: var(--shadow--card-hover);
+	}
 }
 
 .providerImage {
@@ -230,7 +241,8 @@ function onAction(action: string) {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	background-color: var(--color--background--light-3);
 	border-color: var(--color--foreground);
-	height: 23px;
+	height: var(--spacing--lg);
+	cursor: pointer;
 
 	& > span {
 		display: flex;

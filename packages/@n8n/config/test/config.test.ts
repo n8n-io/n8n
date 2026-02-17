@@ -217,7 +217,7 @@ describe('GlobalConfig', () => {
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
-			health: 'healthz',
+			health: '/healthz',
 		},
 		cache: {
 			backend: 'auto',
@@ -566,6 +566,35 @@ describe('GlobalConfig', () => {
 
 			expect(globalConfig.taskRunners.enabled).toEqual(true);
 			expect(globalConfig.database.type).toEqual('postgresdb');
+		});
+	});
+
+	describe('health endpoint transformation', () => {
+		it('should add leading slash if not present', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: 'healthz',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/healthz');
+		});
+
+		it('should keep leading slash if already present', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: '/custom-health',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/custom-health');
+		});
+
+		it('should add leading slash to paths with multiple segments', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: 'api/v1/health',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/api/v1/health');
 		});
 	});
 });

@@ -231,13 +231,17 @@ const onInputScroll = (event: WheelEvent) => {
 	padding: var(--spacing--2xs) var(--spacing--2xs) 0 var(--spacing--2xs);
 	cursor: default;
 
-	.el-textarea {
+	.n8n-input {
 		height: 100%;
+		align-items: stretch;
 
-		.el-textarea__inner {
-			height: 100%;
-			resize: unset;
+		> div {
+			align-items: stretch;
 		}
+	}
+
+	textarea {
+		resize: unset;
 	}
 }
 
