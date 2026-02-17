@@ -45,6 +45,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
+import { ChatHubToolService } from './chat-hub-tool.service';
 import { CHATHUB_EXTRACTOR_NAME, ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 import { ChatHubMessage } from './chat-hub-message.entity';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
@@ -78,6 +79,7 @@ export class ChatHubWorkflowService {
 		private readonly chatHubAgentService: ChatHubAgentService,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
+		private readonly chatHubToolService: ChatHubToolService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly cipher: Cipher,
 	) {
@@ -1112,7 +1114,7 @@ Respond the title only:`,
 		trx: EntityManager,
 		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
-		await this.chatHubSettingsService.ensureModelIsAllowed(model);
+		await this.chatHubSettingsService.ensureModelIsAllowed(model, trx);
 		this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
 		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 
@@ -1175,7 +1177,7 @@ Respond the title only:`,
 			},
 		};
 
-		const { tools } = agent;
+		const tools = await this.chatHubToolService.getToolDefinitionsForAgent(agentId, trx);
 
 		return await this.prepareBaseChatWorkflow(
 			user,

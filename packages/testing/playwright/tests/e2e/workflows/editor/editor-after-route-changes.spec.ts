@@ -1,6 +1,10 @@
 import { test, expect } from '../../../../fixtures/base';
 
-test.describe('Editor zoom should work after route changes', () => {
+test.describe('Editor zoom should work after route changes', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.api.enableFeature('debugInEditor');
 		await n8n.api.enableFeature('workflowHistory');

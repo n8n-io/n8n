@@ -62,7 +62,7 @@ export function useWorkflowState() {
 
 	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
 		if (data.setStateDirty) {
-			uiStore.markStateDirty();
+			uiStore.markStateDirty('metadata');
 		}
 		ws.workflow.name = data.newName;
 		ws.workflowObject.name = data.newName;
@@ -131,6 +131,10 @@ export function useWorkflowState() {
 
 	function setWorkflowTagIds(tags: string[]) {
 		ws.workflow.tags = tags;
+
+		if (ws.workflow.id && workflowsListStore.workflowsById[ws.workflow.id]) {
+			workflowsListStore.workflowsById[ws.workflow.id].tags = tags;
+		}
 	}
 
 	function setWorkflowProperty<K extends keyof IWorkflowDb>(key: K, value: IWorkflowDb[K]) {

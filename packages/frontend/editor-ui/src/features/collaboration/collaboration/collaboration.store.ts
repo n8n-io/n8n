@@ -278,7 +278,8 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				refreshCanvasCallback(updatedWorkflow);
 			}
 			return true;
-		} catch {
+		} catch (error) {
+			console.error('[Collaboration] Error in handleWorkflowUpdate:', error);
 			return false;
 		}
 	}

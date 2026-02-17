@@ -76,6 +76,22 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 					],
 				},
 			},
+			builderHint: {
+				...args.meta.builderHint,
+				inputs: {
+					ai_embedding: { required: true },
+					ai_document: {
+						required: true,
+						displayOptions: { show: { mode: ['insert'] } },
+					},
+					ai_reranker: {
+						required: true,
+						displayOptions: {
+							show: { mode: ['load', 'retrieve', 'retrieve-as-tool'], useReranker: [true] },
+						},
+					},
+				},
+			},
 			credentials: args.meta.credentials,
 
 			inputs: `={{

@@ -89,8 +89,11 @@ const modalTitle = computed(() => {
 
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
 
-const isPersonalSpace = computed(
-	() => projectsStore.currentProject?.type === ProjectTypes.Personal,
+const isPersonalSpaceRestricted = computed(
+	() =>
+		workflow.value.homeProject?.type === ProjectTypes.Personal &&
+		workflow.value.homeProject?.id === projectsStore.personalProject?.id &&
+		!workflowPermissions.value.share,
 );
 
 const workflowOwnerName = computed(() =>
@@ -261,20 +264,15 @@ watch(
 			</div>
 			<div v-else :class="$style.container">
 				<N8nInfoTip
-					v-if="!workflowPermissions.share && !isHomeTeamProject"
+					v-if="!workflowPermissions.share && !isHomeTeamProject && !isPersonalSpaceRestricted"
 					:bold="false"
 					class="mb-s"
 				>
-					<template v-if="isPersonalSpace">
-						{{ i18n.baseText('workflows.shareModal.info.personalSpaceRestricted') }}
-					</template>
-					<template v-else>
-						{{
-							i18n.baseText('workflows.shareModal.info.sharee', {
-								interpolate: { workflowOwnerName },
-							})
-						}}
-					</template>
+					{{
+						i18n.baseText('workflows.shareModal.info.sharee', {
+							interpolate: { workflowOwnerName },
+						})
+					}}
 				</N8nInfoTip>
 				<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
 					<div>
@@ -285,6 +283,11 @@ watch(
 							:roles="workflowRoles"
 							:readonly="!workflowPermissions.share"
 							:static="isHomeTeamProject || !workflowPermissions.share"
+							:disabled-tooltip="
+								isPersonalSpaceRestricted
+									? i18n.baseText('workflows.shareModal.info.personalSpaceRestricted')
+									: undefined
+							"
 							:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
 							:empty-options-text="i18n.baseText('workflows.shareModel.select.notFound')"
 							@project-added="onProjectAdded"
@@ -344,7 +347,7 @@ watch(
 				<N8nText v-show="isDirty" color="text-light" size="small" class="mr-xs">
 					{{ i18n.baseText('workflows.shareModal.changesHint') }}
 				</N8nText>
-				<N8nButton v-if="isHomeTeamProject" type="secondary" @click="modalBus.emit('close')">
+				<N8nButton variant="subtle" v-if="isHomeTeamProject" @click="modalBus.emit('close')">
 					{{ i18n.baseText('generic.close') }}
 				</N8nButton>
 				<N8nButton

@@ -4,7 +4,11 @@ import { CredentialModal } from '../../../pages/components/CredentialModal';
 
 test.use(chatHubTestConfig);
 
-test.describe('Basic conversation @capability:proxy', () => {
+test.describe('Basic conversation @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'Chat' },
+	],
+}, () => {
 	test('new chat with pre-configured credentials', async ({ n8n, anthropicCredential: _ }) => {
 		const page = new ChatHubChatPage(n8n.page);
 

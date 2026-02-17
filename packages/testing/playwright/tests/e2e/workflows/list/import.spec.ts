@@ -1,7 +1,11 @@
 import { test, expect } from '../../../../fixtures/base';
 import onboardingWorkflow from '../../../../workflows/Onboarding_workflow.json';
 
-test.describe('Import workflow', () => {
+test.describe('Import workflow', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.describe('From URL', () => {
 		test.beforeEach(async ({ n8n }) => {
 			await n8n.page.route('**/rest/workflows/from-url*', async (route) => {
@@ -94,8 +98,7 @@ test.describe('Import workflow', () => {
 
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(5);
 
-			const connections = n8n.page.getByTestId('edge');
-			await expect(connections).toHaveCount(5);
+			await expect(n8n.canvas.nodeConnections()).toHaveCount(5);
 		});
 	});
 });

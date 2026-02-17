@@ -22,7 +22,11 @@ import { test, expect } from '../../../fixtures/base';
  * - Start: should NOT shift (rightEdge 96 < insertX ~158)
  * - Middle, End: should shift right (position >= insertX)
  */
-test.describe('PAY-4367: Node shifting in cyclic workflows', () => {
+test.describe('PAY-4367: Node shifting in cyclic workflows', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test('should not shift nodes to the left of insertion point in cyclic workflow', async ({
 		n8n,
 	}) => {

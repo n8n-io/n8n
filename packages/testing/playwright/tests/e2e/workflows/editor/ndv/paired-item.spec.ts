@@ -1,6 +1,10 @@
 import { test, expect } from '../../../../../fixtures/base';
 
-test.describe('NDV Paired Items', () => {
+test.describe('NDV Paired Items', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test('maps paired input and output items', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Test_workflow_5.json');
 		await n8n.canvas.clickZoomToFitButton();

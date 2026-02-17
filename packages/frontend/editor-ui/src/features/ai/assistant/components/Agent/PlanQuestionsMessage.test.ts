@@ -144,4 +144,56 @@ describe('PlanQuestionsMessage', () => {
 		const button = getByTestId('plan-mode-questions-next');
 		expect(button.hasAttribute('disabled')).toBe(true);
 	});
+
+	it('shows Skip label when no answer is selected', () => {
+		const { getByTestId } = render({
+			questions: [singleQuestion, textQuestion],
+		});
+
+		const button = getByTestId('plan-mode-questions-next');
+		expect(button.textContent?.trim()).toBe('Skip');
+	});
+
+	it('shows Next label after selecting an answer', async () => {
+		const { getByText, getByTestId } = render({
+			questions: [singleQuestion, textQuestion],
+		});
+
+		await fireEvent.click(getByText('Gmail'));
+
+		const button = getByTestId('plan-mode-questions-next');
+		expect(button.textContent?.trim()).toBe('Next');
+	});
+
+	it('allows skipping a question without answering and marks it as skipped', async () => {
+		const { getByTestId, emitted } = render({
+			questions: [singleQuestion],
+		});
+
+		// Click skip without selecting any option
+		await fireEvent.click(getByTestId('plan-mode-questions-next'));
+
+		expect(emitted().submit).toHaveLength(1);
+		expect(emitted().submit[0]).toEqual([
+			[
+				expect.objectContaining({
+					questionId: 'q1',
+					skipped: true,
+					selectedOptions: [],
+				}),
+			],
+		]);
+	});
+
+	it('navigates to next question when skipping without an answer', async () => {
+		const { getByText, getByTestId } = render({
+			questions: [singleQuestion, textQuestion],
+		});
+
+		// Click Skip without answering
+		await fireEvent.click(getByTestId('plan-mode-questions-next'));
+
+		// Should now show second question
+		expect(getByText('Any other requirements?')).toBeTruthy();
+	});
 });

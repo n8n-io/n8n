@@ -3,7 +3,7 @@ import type { ChatHistory } from '../../types/memory';
 import type { Message } from '../../types/message';
 
 describe('WindowedChatMemory', () => {
-	const createMessage = (role: 'human' | 'ai', text: string): Message => ({
+	const createMessage = (role: 'user' | 'assistant', text: string): Message => ({
 		role,
 		content: [{ type: 'text', text }],
 	});
@@ -38,7 +38,7 @@ describe('WindowedChatMemory', () => {
 		});
 
 		it('should return all messages when under window size', async () => {
-			const msgs = [createMessage('human', 'Hello'), createMessage('ai', 'Hi!')];
+			const msgs = [createMessage('user', 'Hello'), createMessage('assistant', 'Hi!')];
 			const history = createMockHistory(msgs);
 			const memory = new WindowedChatMemory(history, { windowSize: 5 });
 
@@ -49,12 +49,12 @@ describe('WindowedChatMemory', () => {
 
 		it('should return only last N pairs when over window size', async () => {
 			const msgs = [
-				createMessage('human', 'Message 1'),
-				createMessage('ai', 'Response 1'),
-				createMessage('human', 'Message 2'),
-				createMessage('ai', 'Response 2'),
-				createMessage('human', 'Message 3'),
-				createMessage('ai', 'Response 3'),
+				createMessage('user', 'Message 1'),
+				createMessage('assistant', 'Response 1'),
+				createMessage('user', 'Message 2'),
+				createMessage('assistant', 'Response 2'),
+				createMessage('user', 'Message 3'),
+				createMessage('assistant', 'Response 3'),
 			];
 			const history = createMockHistory(msgs);
 			const memory = new WindowedChatMemory(history, { windowSize: 2 });
@@ -76,7 +76,7 @@ describe('WindowedChatMemory', () => {
 			// Add 25 messages (more than default 10 pairs = 20 messages)
 			const msgs: Message[] = [];
 			for (let i = 1; i <= 25; i++) {
-				msgs.push(createMessage(i % 2 === 1 ? 'human' : 'ai', `Message ${i}`));
+				msgs.push(createMessage(i % 2 === 1 ? 'user' : 'assistant', `Message ${i}`));
 			}
 			await history.addMessages(msgs);
 
@@ -95,8 +95,8 @@ describe('WindowedChatMemory', () => {
 			await memory.saveTurn('Hello!', 'Hi there!');
 
 			expect(history.addMessages).toHaveBeenCalledWith([
-				{ role: 'human', content: [{ type: 'text', text: 'Hello!' }] },
-				{ role: 'ai', content: [{ type: 'text', text: 'Hi there!' }] },
+				{ role: 'user', content: [{ type: 'text', text: 'Hello!' }] },
+				{ role: 'assistant', content: [{ type: 'text', text: 'Hi there!' }] },
 			]);
 		});
 	});
