@@ -41,6 +41,7 @@ type Props = NodeProps<CanvasNodeData> & {
 	eventBus?: EventBus<CanvasEventBusEvents>;
 	hovered?: boolean;
 	nearbyHovered?: boolean;
+	highlighted?: boolean;
 };
 
 const slots = defineSlots<{
@@ -102,6 +103,7 @@ const classes = computed(() => ({
 	[style.canvasNode]: true,
 	[style.showToolbar]: showToolbar.value,
 	hovered: props.hovered,
+	highlighted: props.highlighted,
 	selected: props.selected,
 	waiting: props.data.execution.waiting || props.data.execution.status === 'waiting',
 	running: props.data.execution.running || props.data.execution.waitingForNext,
