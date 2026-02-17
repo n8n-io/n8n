@@ -33,8 +33,14 @@ import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialE
 import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
-import { shouldAutoPublishWorkflow, type AutoPublishMode } from 'n8n-workflow';
-import { ensureError, jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
+import type { AutoPublishMode } from 'n8n-workflow';
+import {
+	shouldAutoPublishWorkflow,
+	ensureError,
+	jsonParse,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
@@ -62,6 +68,8 @@ import {
 	getProjectExportPath,
 	getWorkflowExportPath,
 	isValidDataTableColumnType,
+	mergeRemoteCrendetialDataIntoLocalCredentialData,
+	sanitizeCredentialData,
 } from './source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
 import type {
@@ -407,6 +415,7 @@ export class SourceControlImportService {
 				id: true,
 				name: true,
 				type: true,
+				data: true,
 				isGlobal: true,
 				shared: {
 					project: {
@@ -430,12 +439,27 @@ export class SourceControlImportService {
 			where:
 				this.sourceControlScopedService.getCredentialsInAdminProjectsFromContextFilter(context),
 		});
+
 		return localCredentials.map((local) => {
 			const remoteOwnerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
+
+			let data: Record<string, unknown> = {};
+			try {
+				const credentials = new Credentials(
+					{ id: local.id, name: local.name },
+					local.type,
+					local.data,
+				);
+				data = sanitizeCredentialData(credentials.getData());
+			} catch {
+				// Credential data may not be decryptable (e.g. empty or corrupted data)
+			}
+
 			return {
 				id: local.id,
 				name: local.name,
 				type: local.type,
+				data,
 				filename: getCredentialExportPath(local.id, this.credentialExportFolder),
 				ownedBy: remoteOwnerProject ? getOwnerFromProject(remoteOwnerProject) : undefined,
 				isGlobal: local.isGlobal,
@@ -975,15 +999,25 @@ export class SourceControlImportService {
 
 				const { name, type, data, id, isGlobal = false } = credential;
 				const newCredentialObject = new Credentials({ id, name }, type);
+
 				if (existingCredential?.data) {
-					newCredentialObject.data = existingCredential.data;
+					// Credential exists - merge expressions from remote while preserving local plain values
+					const existingDecrypted = new Credentials(
+						{ id: existingCredential.id, name: existingCredential.name },
+						existingCredential.type,
+						existingCredential.data,
+					);
+					const localData = existingDecrypted.getData();
+					const mergedData = mergeRemoteCrendetialDataIntoLocalCredentialData({
+						local: localData,
+						remote: data,
+					});
+					newCredentialObject.setData(mergedData);
 				} else {
-					/**
-					 * Edge case: Do not import `oauthTokenData`, so that that the
-					 * pulling instance reconnects instead of trying to use stubbed values.
-					 */
-					const { oauthTokenData, ...rest } = data;
-					newCredentialObject.setData(rest);
+					// This is a safe guard, in principle remote data should already be sanitized
+					// This prevents importing invalid data that should have not been synched in the first place
+					const sanitizedData = sanitizeCredentialData(data);
+					newCredentialObject.setData(sanitizedData);
 				}
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);

@@ -11,6 +11,7 @@ import {
 } from 'n8n-workflow';
 
 import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
+import { mergeCustomHeaders } from '@utils/helpers';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
@@ -186,6 +187,7 @@ export class LmChatOpenAi implements INodeType {
 					},
 				},
 				default: 'gpt-5-mini',
+				builderHint: { message: 'Always default to latest mini model gpt-5-mini' },
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { gte: 1.2 } }],
@@ -197,6 +199,7 @@ export class LmChatOpenAi implements INodeType {
 				name: 'model',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: 'gpt-5-mini' },
+				builderHint: { message: 'Always default to latest mini model gpt-5-mini' },
 				required: true,
 				modes: [
 					{
@@ -760,17 +763,10 @@ export class LmChatOpenAi implements INodeType {
 				bodyTimeout: timeout,
 			}),
 		};
-		if (
-			credentials.header &&
-			typeof credentials.headerName === 'string' &&
-			credentials.headerName &&
-			typeof credentials.headerValue === 'string'
-		) {
-			configuration.defaultHeaders = {
-				...configuration.defaultHeaders,
-				[credentials.headerName]: credentials.headerValue,
-			};
-		}
+		configuration.defaultHeaders = mergeCustomHeaders(
+			credentials,
+			(configuration.defaultHeaders ?? {}) as Record<string, string>,
+		);
 
 		// Extra options to send to OpenAI, that are not directly supported by LangChain
 		const modelKwargs: Record<string, unknown> = {};

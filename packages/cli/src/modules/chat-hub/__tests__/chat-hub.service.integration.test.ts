@@ -48,6 +48,7 @@ beforeEach(async () => {
 		'ChatHubMessage',
 		'ChatHubSession',
 		'ChatHubAgent',
+		'ChatHubTool',
 		'ExecutionEntity',
 		'WorkflowEntity',
 		'SharedCredentials',
@@ -105,28 +106,24 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			const session2 = await sessionsRepository.createChatSession({
 				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 2',
 				lastMessageAt: new Date('2025-01-02T00:00:00Z'),
-				tools: [],
 			});
 			const session3 = await sessionsRepository.createChatSession({
 				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 3',
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-				tools: [],
 			});
 			await sessionsRepository.createChatSession({
 				id: crypto.randomUUID(),
 				ownerId: admin.id,
 				title: 'admin session',
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-				tools: [],
 			});
 
 			const conversations = await chatHubService.getConversations(member.id, 20);
@@ -147,7 +144,6 @@ describe('chatHub', () => {
 				provider: 'openai',
 				model: 'gpt-4',
 				credentialId: null,
-				tools: [],
 			});
 
 			await sessionsRepository.createChatSession({
@@ -157,7 +153,6 @@ describe('chatHub', () => {
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
 				provider: 'custom-agent',
 				agentId: agent.id,
-				tools: [],
 			});
 
 			const conversations = await chatHubService.getConversations(member.id, 20);
@@ -198,7 +193,6 @@ describe('chatHub', () => {
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
 				provider: 'n8n',
 				workflowId: workflow.id,
-				tools: [],
 			});
 
 			const conversations = await chatHubService.getConversations(member.id, 20);
@@ -213,7 +207,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 1',
 					lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-					tools: [],
 				});
 
 				const conversations = await chatHubService.getConversations(member.id, 10);
@@ -229,7 +222,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 1',
 					lastMessageAt: new Date('2025-01-05T00:00:00Z'),
-					tools: [],
 				});
 
 				const session2 = await sessionsRepository.createChatSession({
@@ -237,7 +229,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 2',
 					lastMessageAt: new Date('2025-01-04T00:00:00Z'),
-					tools: [],
 				});
 
 				const session3 = await sessionsRepository.createChatSession({
@@ -245,7 +236,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 3',
 					lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-					tools: [],
 				});
 
 				const session4 = await sessionsRepository.createChatSession({
@@ -253,7 +243,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 4',
 					lastMessageAt: new Date('2025-01-02T00:00:00Z'),
-					tools: [],
 				});
 
 				// First page
@@ -281,7 +270,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'Session 1',
 					lastMessageAt: sameDate,
-					tools: [],
 				});
 
 				const session2 = await sessionsRepository.createChatSession({
@@ -289,7 +277,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'Session 2',
 					lastMessageAt: sameDate,
-					tools: [],
 				});
 
 				const session3 = await sessionsRepository.createChatSession({
@@ -297,7 +284,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'Session 3',
 					lastMessageAt: sameDate,
-					tools: [],
 				});
 
 				// Fetch first page
@@ -320,7 +306,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 1',
 					lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-					tools: [],
 				});
 
 				const nonExistentCursor = '00000000-0000-0000-0000-000000000000';
@@ -336,7 +321,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'Member Session',
 					lastMessageAt: new Date('2025-01-02T00:00:00Z'),
-					tools: [],
 				});
 
 				const adminSession = await sessionsRepository.createChatSession({
@@ -344,7 +328,6 @@ describe('chatHub', () => {
 					ownerId: admin.id,
 					title: 'Admin Session',
 					lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-					tools: [],
 				});
 
 				await expect(
@@ -358,7 +341,6 @@ describe('chatHub', () => {
 						id: crypto.randomUUID(),
 						ownerId: member.id,
 						title: 'Session with date',
-						tools: [],
 					}),
 				).rejects.toThrow();
 			});
@@ -378,7 +360,6 @@ describe('chatHub', () => {
 				ownerId: admin.id,
 				title: 'admin session',
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-				tools: [],
 			});
 			await expect(chatHubService.getConversation(member.id, session.id)).rejects.toThrow(
 				'Chat session not found',
@@ -391,7 +372,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			const conversation = await chatHubService.getConversation(member.id, session.id);
 			expect(conversation).toBeDefined();
@@ -410,7 +390,6 @@ describe('chatHub', () => {
 				provider: 'openai',
 				model: 'gpt-4',
 				credentialId: null,
-				tools: [],
 			});
 
 			const session = await sessionsRepository.createChatSession({
@@ -420,7 +399,6 @@ describe('chatHub', () => {
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
 				provider: 'custom-agent',
 				agentId: agent.id,
-				tools: [],
 			});
 
 			const conversation = await chatHubService.getConversation(member.id, session.id);
@@ -461,7 +439,6 @@ describe('chatHub', () => {
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
 				provider: 'n8n',
 				workflowId: workflow.id,
-				tools: [],
 			});
 
 			const conversation = await chatHubService.getConversation(member.id, session.id);
@@ -475,7 +452,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			const ids = [
 				crypto.randomUUID(),
@@ -554,7 +530,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			await messagesRepository.createChatMessage({
 				id: ids[0],
@@ -642,7 +617,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 
 			await messagesRepository.createChatMessage({
@@ -708,7 +682,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			await messagesRepository.createChatMessage({
 				id: ids[0],
@@ -791,7 +764,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			await messagesRepository.createChatMessage({
 				id: ids[0],
@@ -985,7 +957,6 @@ describe('chatHub', () => {
 							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
 						},
 						previousMessageId: null,
-						tools: [],
 						attachments: [],
 					},
 					{
@@ -1053,7 +1024,6 @@ describe('chatHub', () => {
 							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
 						},
 						previousMessageId: null,
-						tools: [],
 						attachments: [],
 					},
 					{
@@ -1133,7 +1103,6 @@ describe('chatHub', () => {
 							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
 						},
 						previousMessageId: null,
-						tools: [],
 						attachments: [],
 					},
 					{
@@ -1182,7 +1151,6 @@ describe('chatHub', () => {
 							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
 						},
 						previousMessageId: null,
-						tools: [],
 						attachments: [],
 					},
 					{
@@ -1369,7 +1337,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -1487,7 +1454,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -1619,7 +1585,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -1813,7 +1778,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -1949,7 +1913,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2091,7 +2054,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2178,7 +2140,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: waitingMessageId, // Reference the waiting message
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2265,7 +2226,6 @@ describe('chatHub', () => {
 								model: { provider: 'n8n', workflowId: workflow.id },
 								credentials: {},
 								previousMessageId: null,
-								tools: [],
 								attachments: [],
 							},
 							{
@@ -2393,7 +2353,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2528,7 +2487,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2644,7 +2602,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2760,7 +2717,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{

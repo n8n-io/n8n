@@ -93,6 +93,12 @@ export class ToolVectorStore implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
+		builderHint: {
+			inputs: {
+				ai_vectorStore: { required: true },
+				ai_languageModel: { required: true },
+			},
+		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{

@@ -131,9 +131,17 @@ describe('PubSubRegistry', () => {
 		);
 		pubSubRegistry.init();
 
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, activeVersionId });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', {
+			workflowId,
+			activeVersionId,
+			activationMode: 'activate',
+		});
 		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1);
-		expect(onLeaderInstanceSpy).toHaveBeenCalledWith({ workflowId, activeVersionId });
+		expect(onLeaderInstanceSpy).toHaveBeenCalledWith({
+			workflowId,
+			activeVersionId,
+			activationMode: 'activate',
+		});
 
 		pubsubEventBus.emit('restart-event-bus');
 		expect(onFollowerInstanceSpy).not.toHaveBeenCalled();
@@ -153,7 +161,11 @@ describe('PubSubRegistry', () => {
 		);
 		followerPubSubRegistry.init();
 
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, activeVersionId });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', {
+			workflowId,
+			activeVersionId,
+			activationMode: 'activate',
+		});
 		expect(onLeaderInstanceSpy).not.toHaveBeenCalled();
 
 		pubsubEventBus.emit('restart-event-bus');
@@ -177,9 +189,17 @@ describe('PubSubRegistry', () => {
 		);
 		pubSubRegistry.init();
 
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, activeVersionId });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', {
+			workflowId,
+			activeVersionId,
+			activationMode: 'activate',
+		});
 		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1);
-		expect(onLeaderInstanceSpy).toHaveBeenCalledWith({ workflowId, activeVersionId });
+		expect(onLeaderInstanceSpy).toHaveBeenCalledWith({
+			workflowId,
+			activeVersionId,
+			activationMode: 'activate',
+		});
 	});
 
 	it('should handle dynamic role changes at runtime', () => {
@@ -197,19 +217,35 @@ describe('PubSubRegistry', () => {
 		pubSubRegistry.init();
 
 		// Initially as follower, event should be ignored
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, activeVersionId });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', {
+			workflowId,
+			activeVersionId,
+			activationMode: 'activate',
+		});
 		expect(onLeaderInstanceSpy).not.toHaveBeenCalled();
 
 		// Change role to leader
 		instanceSettings.instanceRole = 'leader';
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, activeVersionId });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', {
+			workflowId,
+			activeVersionId,
+			activationMode: 'activate',
+		});
 		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1);
-		expect(onLeaderInstanceSpy).toHaveBeenCalledWith({ workflowId, activeVersionId });
+		expect(onLeaderInstanceSpy).toHaveBeenCalledWith({
+			workflowId,
+			activeVersionId,
+			activationMode: 'activate',
+		});
 
 		// Change back to follower
 		onLeaderInstanceSpy.mockClear();
 		instanceSettings.instanceRole = 'follower';
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, activeVersionId });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', {
+			workflowId,
+			activeVersionId,
+			activationMode: 'activate',
+		});
 		expect(onLeaderInstanceSpy).not.toHaveBeenCalled();
 	});
 

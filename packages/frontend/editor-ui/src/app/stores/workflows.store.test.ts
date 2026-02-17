@@ -2123,6 +2123,71 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.workflow.nodes[1].credentials).toBeUndefined();
 		});
 
+		it('should not assign credential to nodes where displayOptions do not match current parameters', () => {
+			const credential = { id: 'cred-1', name: 'Header Auth Credential' };
+			const credentialType = 'httpHeaderAuth';
+
+			workflowsStore.setNodes([
+				createTestNode({
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+				}),
+				createTestNode({
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					parameters: { authentication: 'none' },
+				}),
+			]);
+
+			getNodeType.mockImplementation((nodeType: string) => {
+				if (nodeType === 'n8n-nodes-base.httpRequest') {
+					return {
+						credentials: [{ name: 'httpHeaderAuth', required: false }],
+						inputs: [],
+						group: [],
+						webhooks: [],
+						properties: [],
+					};
+				}
+				// Webhook supports httpHeaderAuth but only when authentication = 'headerAuth'
+				return {
+					credentials: [
+						{
+							name: 'httpHeaderAuth',
+							required: false,
+							displayOptions: { show: { authentication: ['headerAuth'] } },
+						},
+					],
+					inputs: [],
+					group: [],
+					webhooks: [],
+					properties: [
+						{
+							displayName: 'Authentication',
+							name: 'authentication',
+							type: 'options',
+							default: 'none',
+							options: [
+								{ name: 'None', value: 'none' },
+								{ name: 'Header Auth', value: 'headerAuth' },
+							],
+						},
+					],
+				};
+			});
+
+			const result = workflowsStore.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'HTTP Request',
+			});
+
+			expect(result).toBe(0); // Webhook should NOT get the credential (authentication is 'none')
+			expect(workflowsStore.workflow.nodes[1].credentials).toBeUndefined();
+		});
+
 		it('should return 0 when there are no matching nodes', () => {
 			const credential = { id: 'cred-1', name: 'Test Credential' };
 			const credentialType = 'slackApi';

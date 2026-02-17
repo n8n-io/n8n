@@ -1390,6 +1390,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			expression: '={{ "hello world" }}',
 			resolvedValue: 'hello world',
 			nodeType: 'n8n-nodes-base.httpRequest',
+			parameterPath: 'url',
 		});
 	});
 
@@ -1947,5 +1948,121 @@ describe('extractExpressionsFromWorkflow', () => {
 		expect(result['Executed Node 2']).toBeDefined();
 		expect(result['Not Executed']).toBeUndefined();
 		expect(Object.keys(result)).toHaveLength(2);
+	});
+
+	it('Should include parameterPath for simple parameters', async () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						url: '={{ "hello world" }}',
+					},
+					id: 'node1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['HTTP Request']).toBeDefined();
+		expect(result['HTTP Request'][0]).toEqual({
+			expression: '={{ "hello world" }}',
+			resolvedValue: 'hello world',
+			nodeType: 'n8n-nodes-base.httpRequest',
+			parameterPath: 'url',
+		});
+	});
+
+	it('Should include parameterPath for nested object parameters', async () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						headers: {
+							authorization: '={{ "token" }}',
+						},
+					},
+					id: 'node1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['HTTP Request']).toBeDefined();
+		expect(result['HTTP Request'][0].parameterPath).toBe('headers.authorization');
+	});
+
+	it('Should include parameterPath for array parameters', async () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						assignments: {
+							assignments: [
+								{
+									id: '1',
+									name: 'field1',
+									value: '={{ "value1" }}',
+									type: 'string',
+								},
+								{
+									id: '2',
+									name: 'field2',
+									value: '={{ "value2" }}',
+									type: 'string',
+								},
+							],
+						},
+					},
+					id: 'node1',
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['Edit Fields']).toBeDefined();
+		expect(result['Edit Fields'].length).toBe(2);
+		expect(result['Edit Fields'][0].parameterPath).toBe('assignments.assignments[0].value');
+		expect(result['Edit Fields'][1].parameterPath).toBe('assignments.assignments[1].value');
+	});
+
+	it('Should include parameterPath for resource locator values', async () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						documentId: {
+							__rl: true,
+							value: '={{ "doc-id" }}',
+							mode: 'id',
+						},
+					},
+					id: 'node1',
+					name: 'Google Sheets',
+					type: 'n8n-nodes-base.googleSheets',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['Google Sheets']).toBeDefined();
+		expect(result['Google Sheets'][0].parameterPath).toBe('documentId.value');
 	});
 });

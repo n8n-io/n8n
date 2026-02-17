@@ -563,5 +563,74 @@ describe('Cache Control Helpers', () => {
 			}>;
 			expect(lastContent[0].cache_control).toEqual({ type: 'ephemeral' });
 		});
+
+		it('should not add cache_control to ToolMessage with empty string content', () => {
+			const messages = [new ToolMessage({ content: '', tool_call_id: '1' })];
+
+			applySubgraphCacheMarkers(messages);
+
+			// Empty string content should remain unchanged — no cache_control added
+			expect(messages[0].content).toBe('');
+		});
+
+		it('should not add cache_control to empty content when non-empty messages precede it', () => {
+			const messages = [
+				new HumanMessage('user request'),
+				new AIMessage('response'),
+				new ToolMessage({ content: '', tool_call_id: '1' }),
+			];
+
+			applySubgraphCacheMarkers(messages);
+
+			// First message should stay as string (not the last user/tool)
+			expect(typeof messages[0].content).toBe('string');
+			// Empty tool message should remain unchanged
+			expect(messages[2].content).toBe('');
+		});
+	});
+
+	describe('applyCacheControlMarkers - empty content handling', () => {
+		it('should not add cache_control to last message with empty string content', () => {
+			const messages = [new ToolMessage({ content: '', tool_call_id: '1' })];
+
+			applyCacheControlMarkers(messages, [0], '');
+
+			// Empty content should remain unchanged
+			expect(messages[0].content).toBe('');
+		});
+
+		it('should not add cache_control to second-to-last message with empty string content', () => {
+			const messages = [
+				new ToolMessage({ content: '', tool_call_id: '1' }),
+				new HumanMessage('user message'),
+			];
+
+			applyCacheControlMarkers(messages, [0, 1], '\n<workflow/>');
+
+			// Empty tool message should stay as empty string
+			expect(messages[0].content).toBe('');
+
+			// Non-empty last message should still get the marker
+			const content1 = messages[1].content as Array<{
+				cache_control?: { type: string };
+			}>;
+			expect(content1[0].cache_control).toEqual({ type: 'ephemeral' });
+		});
+
+		it('should not add cache_control to array content block with empty text', () => {
+			const toolMessage = new ToolMessage({ content: '', tool_call_id: '1' });
+			toolMessage.content = [{ type: 'text' as const, text: '' }];
+
+			const messages = [toolMessage];
+
+			applyCacheControlMarkers(messages, [0], '');
+
+			// Empty text block should NOT get cache_control
+			const content = messages[0].content as Array<{
+				text: string;
+				cache_control?: { type: string };
+			}>;
+			expect(content[0].cache_control).toBeUndefined();
+		});
 	});
 });

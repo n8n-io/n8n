@@ -33,6 +33,13 @@ vi.mock('./composables/useAIAssistantHelpers', () => ({
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({
 		getVariant: vi.fn().mockReturnValue('control'),
+		isFeatureEnabled: vi.fn().mockReturnValue(false),
+	}),
+}));
+
+vi.mock('@/features/ai/assistant/focusedNodes.store', () => ({
+	useFocusedNodesStore: () => ({
+		buildContextPayload: vi.fn().mockReturnValue([]),
 	}),
 }));
 
@@ -358,7 +365,10 @@ describe('builder.utils', () => {
 			});
 			mockSimplifyResultData.mockReturnValue({ runData: {} });
 			mockExtractExpressionsFromWorkflow.mockResolvedValue({});
-			mockGetNodesSchemas.mockReturnValue([{ nodeName: 'Node 1', schema: {} }]);
+			mockGetNodesSchemas.mockReturnValue({
+				schemas: [{ nodeName: 'Node 1', schema: {} }],
+				pinnedNodeNames: [],
+			});
 		});
 
 		it('should include executionData and expressionValues when allowSendingParameterValues is true', async () => {

@@ -11,6 +11,7 @@ import { Container } from '@n8n/di';
 import { UnexpectedError, type ExecutionStatus } from 'n8n-workflow';
 
 import {
+	createAnnotationTags,
 	createdExecutionWithStatus,
 	createErrorExecution,
 	createExecution,
@@ -58,6 +59,9 @@ beforeEach(async () => {
 		'WorkflowEntity',
 		'CredentialsEntity',
 		'ExecutionEntity',
+		'ExecutionAnnotation',
+		'AnnotationTagEntity',
+		'AnnotationTagMapping',
 		'Settings',
 	]);
 
@@ -569,5 +573,136 @@ describe('GET /executions', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.length).toBe(6);
 		expect(response.body.nextCursor).toBe(null);
+	});
+});
+
+describe('GET /executions/:id/tags', () => {
+	test('should fail due to missing API Key', testWithAPIKey('get', '/executions/1/tags', null));
+
+	test('should fail due to invalid API Key', testWithAPIKey('get', '/executions/1/tags', 'abcXYZ'));
+
+	test('should return 404 for non-existent execution', async () => {
+		const response = await authOwnerAgent.get('/executions/999/tags');
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return empty array for execution with no tags', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authOwnerAgent.get(`/executions/${execution.id}/tags`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual([]);
+	});
+
+	test('member should not get tags from execution in inaccessible workflow', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.get(`/executions/${execution.id}/tags`);
+
+		expect(response.statusCode).toBe(404);
+	});
+});
+
+describe('PUT /executions/:id/tags', () => {
+	test('should fail due to missing API Key', testWithAPIKey('put', '/executions/1/tags', null));
+
+	test('should fail due to invalid API Key', testWithAPIKey('put', '/executions/1/tags', 'abcXYZ'));
+
+	test('should return 404 for non-existent execution', async () => {
+		const response = await authOwnerAgent.put('/executions/999/tags').send([]);
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should set tags on execution', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createSuccessfulExecution(workflow);
+		const [tag] = await createAnnotationTags(['dataset']);
+
+		const response = await authOwnerAgent
+			.put(`/executions/${execution.id}/tags`)
+			.send([{ id: tag.id }]);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveLength(1);
+		expect(response.body[0].name).toBe('dataset');
+		expect(response.body[0].id).toBe(tag.id);
+	});
+
+	test('should replace existing tags', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createSuccessfulExecution(workflow);
+		const [tag1, tag2] = await createAnnotationTags(['tag1', 'tag2']);
+
+		// Set first tag
+		await authOwnerAgent.put(`/executions/${execution.id}/tags`).send([{ id: tag1.id }]);
+
+		// Replace with second tag
+		const response = await authOwnerAgent
+			.put(`/executions/${execution.id}/tags`)
+			.send([{ id: tag2.id }]);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveLength(1);
+		expect(response.body[0].name).toBe('tag2');
+	});
+
+	test('should clear tags with empty array', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createSuccessfulExecution(workflow);
+		const [tag] = await createAnnotationTags(['dataset']);
+
+		// Set tag first
+		await authOwnerAgent.put(`/executions/${execution.id}/tags`).send([{ id: tag.id }]);
+
+		// Clear with empty array
+		const response = await authOwnerAgent.put(`/executions/${execution.id}/tags`).send([]);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual([]);
+	});
+
+	test('should return 404 for non-existent tag IDs', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authOwnerAgent
+			.put(`/executions/${execution.id}/tags`)
+			.send([{ id: 'nonexistent-tag-id' }]);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Some tags not found');
+	});
+
+	test('member should not update tags on execution in inaccessible workflow', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.put(`/executions/${execution.id}/tags`).send([]);
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('GET should return tags after PUT', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createSuccessfulExecution(workflow);
+		const [tag1, tag2] = await createAnnotationTags(['important', 'reviewed']);
+
+		// Set tags
+		await authOwnerAgent
+			.put(`/executions/${execution.id}/tags`)
+			.send([{ id: tag1.id }, { id: tag2.id }]);
+
+		// GET should return the same tags
+		const response = await authOwnerAgent.get(`/executions/${execution.id}/tags`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveLength(2);
+		expect(response.body.map((t: { name: string }) => t.name).sort()).toEqual([
+			'important',
+			'reviewed',
+		]);
 	});
 });

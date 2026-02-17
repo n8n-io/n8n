@@ -12,7 +12,7 @@ on:
         description: Version of node to use.
         required: false
         type: string
-        default: 22.x
+        default: 24.13.1
       collectCoverage:
         required: false
         default: false

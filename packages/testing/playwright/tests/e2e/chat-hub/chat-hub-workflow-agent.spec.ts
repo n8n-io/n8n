@@ -7,7 +7,11 @@ import { NodeDetailsViewPage } from '../../../pages/NodeDetailsViewPage';
 
 test.use(chatHubTestConfig);
 
-test.describe('Workflow agent @capability:proxy', () => {
+test.describe('Workflow agent @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'Chat' },
+	],
+}, () => {
 	test('manage workflow agents @auth:admin', async ({ n8n, agentWorkflow }) => {
 		const agentsPage = new ChatHubWorkflowAgentsPage(n8n.page);
 		const chatPage = new ChatHubChatPage(n8n.page);
@@ -92,8 +96,8 @@ test.describe('Workflow agent @capability:proxy', () => {
 		await n8n.projectSettings.getVisiblePopoverOption(memberEmail).click();
 		await expect(n8n.projectSettings.getMembersTable()).toContainText(memberEmail);
 		await n8n.projectSettings.getRoleDropdownFor(memberEmail).click();
-		await n8n.projectSettings.getVisiblePopoverMenuItem('Project Chat User').click();
-		await expect(n8n.notifications.getSuccessNotifications()).toBeVisible();
+		await n8n.projectSettings.getVisiblePopoverOption('Project Chat User').click();
+		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
 
 		// Verify that the agent is visible and usable to member after sharing
 		await memberN8n.page.reload();

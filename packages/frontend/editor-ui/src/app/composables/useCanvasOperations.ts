@@ -2301,6 +2301,7 @@ export function useCanvasOperations() {
 				resolveNodeWebhook(node, nodeTypeDescription);
 			}
 		});
+
 		workflowsStore.setNodes(data.nodes);
 		workflowsStore.setConnections(data.connections);
 		workflowState.setWorkflowProperty('createdAt', data.createdAt);

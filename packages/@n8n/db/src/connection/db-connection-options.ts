@@ -100,8 +100,6 @@ export class DbConnectionOptions {
 			};
 		}
 
-		const { statementTimeoutMs } = postgresConfig;
-
 		return {
 			type: 'postgres',
 			...this.getCommonOptions(),
@@ -110,10 +108,10 @@ export class DbConnectionOptions {
 			poolSize: postgresConfig.poolSize,
 			migrations: postgresMigrations,
 			connectTimeoutMS: postgresConfig.connectionTimeoutMs,
+			statementTimeout: postgresConfig.statementTimeoutMs,
 			ssl,
 			extra: {
 				idleTimeoutMillis: postgresConfig.idleTimeoutMs,
-				...(statementTimeoutMs > 0 && { options: `-c statement_timeout=${statementTimeoutMs}` }),
 			},
 		};
 	}

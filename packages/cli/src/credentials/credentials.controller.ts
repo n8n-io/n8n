@@ -74,6 +74,7 @@ export class CredentialsController {
 			includeData: query.includeData,
 			onlySharedWithMe: query.onlySharedWithMe,
 			includeGlobal: query.includeGlobal,
+			externalSecretsStore: query.externalSecretsStore,
 		});
 		credentials.forEach((c) => {
 			// @ts-expect-error: This is to emulate the old behavior of removing the shared
@@ -229,14 +230,13 @@ export class CredentialsController {
 			throw new BadRequestError('Managed credentials cannot be updated');
 		}
 
-		const decryptedData = this.credentialsService.decrypt(credential, true);
 		// We never want to allow users to change the oauthTokenData
 		delete body.data?.oauthTokenData;
 
 		const preparedCredentialData = await this.credentialsService.prepareUpdateData(
 			req.user,
 			req.body,
-			decryptedData,
+			credential,
 		);
 		const newCredentialData = this.credentialsService.createEncryptedData({
 			id: credential.id,
