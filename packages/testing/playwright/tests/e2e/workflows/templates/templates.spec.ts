@@ -135,7 +135,11 @@ async function setupDynamicTemplateRoutes(n8n: n8nPage, hostname: string) {
 	});
 }
 
-test.describe('Workflow templates', () => {
+test.describe('Workflow templates', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.describe('For api.n8n.io', () => {
 		test('Opens website when clicking templates sidebar link', async ({
 			n8n,
@@ -175,9 +179,7 @@ test.describe('Workflow templates', () => {
 			await setupRequirements(createTemplateHostRequirements());
 			await n8n.navigate.toTemplates();
 
-			await expect(n8n.page.getByRole('heading', { name: /workflow.*templates/i })).toBeVisible({
-				timeout: 10000,
-			});
+			await expect(n8n.templates.getPageHeading()).toBeVisible({ timeout: 10000 });
 		});
 	});
 

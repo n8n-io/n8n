@@ -6,7 +6,11 @@ test.beforeEach(async ({ n8nContainer }) => {
 	await n8nContainer.services.kent.clear();
 });
 
-test.describe('Sentry baseline', () => {
+test.describe('Sentry baseline', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test('frontend error is captured', async ({ n8n, n8nContainer }) => {
 		const kent = n8nContainer.services.kent;
 		await n8n.navigate.toHome();

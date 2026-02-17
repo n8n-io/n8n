@@ -170,6 +170,11 @@ body[data-theme='dark'] {
 		vertical-align: middle;
 	}
 
+	img {
+		max-width: 100%;
+		height: auto;
+	}
+
 	/*
 		Remove border on iframes (all)
 	*/

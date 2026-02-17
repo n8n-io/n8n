@@ -1,20 +1,16 @@
-import set from 'lodash/set';
 import {
 	NodeOperationError,
 	NodeConnectionTypes,
 	type IExecuteFunctions,
-	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	type INode,
 	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
 	AI_TRANSFORM_JS_CODE,
+	ensureError,
 } from 'n8n-workflow';
 
-import { JavaScriptSandbox } from '../Code/JavaScriptSandbox';
-import { getSandboxContext } from '../Code/Sandbox';
-import { standardizeOutput } from '../Code/utils';
-
-const { CODE_ENABLE_STDOUT } = process.env;
+import { JsTaskRunnerSandbox } from '../Code/JsTaskRunnerSandbox';
 
 export class AiTransform implements INodeType {
 	description: INodeTypeDescription = {
@@ -83,68 +79,33 @@ export class AiTransform implements INodeType {
 
 	async execute(this: IExecuteFunctions) {
 		const workflowMode = this.getMode();
-
 		const node = this.getNode();
+		const code = getValidatedCode(this, node);
 
-		const codeParameterName = 'jsCode';
+		const sandbox = new JsTaskRunnerSandbox(workflowMode, this);
+		return [await sandbox.runCodeAllItems(code)];
+	}
+}
 
-		const getSandbox = (index = 0) => {
-			let code = '';
-			try {
-				code = this.getNodeParameter(codeParameterName, index) as string;
-
-				if (!code) {
-					const instructions = this.getNodeParameter('instructions', index) as string;
-					if (!instructions) {
-						throw new NodeOperationError(node, 'Missing instructions to generate code', {
-							description:
-								"Enter your prompt in the 'Instructions' parameter and click 'Generate code'",
-						});
-					}
-					throw new NodeOperationError(node, 'Missing code for data transformation', {
-						description: "Click the 'Generate code' button to create the code",
-					});
-				}
-			} catch (error) {
-				if (error instanceof NodeOperationError) throw error;
-
-				throw new NodeOperationError(node, error);
-			}
-
-			const context = getSandboxContext.call(this, index);
-
-			context.items = context.$input.all();
-
-			const Sandbox = JavaScriptSandbox;
-			const sandbox = new Sandbox(context, code, this.helpers);
-			sandbox.on(
-				'output',
-				workflowMode === 'manual'
-					? this.sendMessageToUI.bind(this)
-					: CODE_ENABLE_STDOUT === 'true'
-						? (...args) =>
-								console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args)
-						: () => {},
-			);
-			return sandbox;
-		};
-
-		const sandbox = getSandbox();
-		let items: INodeExecutionData[];
-		try {
-			items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
-		} catch (error) {
-			if (!this.continueOnFail()) {
-				set(error, 'node', node);
-				throw error;
-			}
-			items = [{ json: { error: error.message } }];
+function getValidatedCode(executeFunctions: IExecuteFunctions, node: INode): string {
+	try {
+		const code = executeFunctions.getNodeParameter(AI_TRANSFORM_JS_CODE, 0) as string;
+		if (code) {
+			return code;
 		}
 
-		for (const item of items) {
-			standardizeOutput(item.json);
+		const instructions = executeFunctions.getNodeParameter('instructions', 0) as string;
+		if (!instructions) {
+			throw new NodeOperationError(node, 'Missing instructions to generate code', {
+				description: "Enter your prompt in the 'Instructions' parameter and click 'Generate code'",
+			});
 		}
+		throw new NodeOperationError(node, 'Missing code for data transformation', {
+			description: "Click the 'Generate code' button to create the code",
+		});
+	} catch (error: unknown) {
+		if (error instanceof NodeOperationError) throw error;
 
-		return [items];
+		throw new NodeOperationError(node, ensureError(error));
 	}
 }

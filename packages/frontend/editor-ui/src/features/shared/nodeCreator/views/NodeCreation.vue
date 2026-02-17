@@ -141,9 +141,9 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
+				variant="subtle"
 				size="large"
 				icon="plus"
-				type="tertiary"
 				data-test-id="node-creator-plus-button"
 				@click="openNodeCreator"
 			/>
@@ -154,9 +154,9 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
+				variant="subtle"
 				size="large"
 				icon="search"
-				type="tertiary"
 				data-test-id="command-bar-button"
 				@click="openCommandBar"
 			/>
@@ -167,8 +167,8 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
+				variant="subtle"
 				size="large"
-				type="tertiary"
 				icon="sticky-note"
 				data-test-id="add-sticky-button"
 				@click="addStickyNote"
@@ -180,7 +180,7 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
-				type="tertiary"
+				variant="subtle"
 				size="large"
 				icon="panel-right"
 				:class="focusPanelActive ? $style.activeButton : ''"
@@ -192,9 +192,9 @@ function openCommandBar(event: MouseEvent) {
 		<N8nTooltip v-if="chatPanelStore.canShowAiButtonOnCanvas" placement="left">
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
 			<N8nButton
-				type="tertiary"
+				variant="subtle"
+				iconOnly
 				size="large"
-				square
 				:class="$style.icon"
 				data-test-id="ask-assistant-canvas-action-button"
 				@click="onAskAssistantButtonClick"

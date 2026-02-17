@@ -8,6 +8,7 @@ import { z } from 'zod';
 import {
 	escapeSingleCurlyBrackets,
 	getConnectedTools,
+	mergeCustomHeaders,
 	unwrapNestedOutput,
 	getSessionId,
 } from '../helpers';
@@ -483,5 +484,118 @@ describe('getSessionId', () => {
 
 		const sessionId = getSessionId(mockCtx, 0);
 		expect(sessionId).toBe('customSessionId');
+	});
+});
+
+describe('mergeCustomHeaders', () => {
+	it('should merge custom header when credential has header enabled', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: 'X-Custom-Header',
+			headerValue: 'custom-value',
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({
+			'Content-Type': 'application/json',
+			'X-Custom-Header': 'custom-value',
+		});
+	});
+
+	it('should return original headers when header option is disabled', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: false,
+			headerName: 'X-Custom-Header',
+			headerValue: 'custom-value',
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ 'Content-Type': 'application/json' });
+	});
+
+	it('should return original headers when headerName is empty', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: '',
+			headerValue: 'custom-value',
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ 'Content-Type': 'application/json' });
+	});
+
+	it('should return original headers when headerName is not a string', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: 123,
+			headerValue: 'custom-value',
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ 'Content-Type': 'application/json' });
+	});
+
+	it('should return original headers when headerValue is not a string', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: 'X-Custom-Header',
+			headerValue: 123,
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ 'Content-Type': 'application/json' });
+	});
+
+	it('should return original headers when credential has no header properties', () => {
+		const credentials = {
+			apiKey: 'test-key',
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ 'Content-Type': 'application/json' });
+	});
+
+	it('should handle empty defaultHeaders', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: 'X-Api-Key',
+			headerValue: 'my-api-key',
+		};
+
+		const result = mergeCustomHeaders(credentials, {});
+
+		expect(result).toEqual({ 'X-Api-Key': 'my-api-key' });
+	});
+
+	it('should override existing header with same name', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: 'Authorization',
+			headerValue: 'Bearer new-token',
+		};
+		const defaultHeaders = { Authorization: 'Bearer old-token' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ Authorization: 'Bearer new-token' });
 	});
 });

@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Chat session ID reset', () => {
+test.describe('Chat session ID reset', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Test_chat_partial_execution.json');
 		await n8n.notifications.quickCloseAll();

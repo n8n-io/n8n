@@ -1,6 +1,7 @@
 import type {
 	ChatHubUpdateAgentRequest,
 	ChatHubCreateAgentRequest,
+	ChatHubAgentDto,
 	ChatModelDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -11,6 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
+import { ChatHubToolService } from './chat-hub-tool.service';
 import { getModelMetadata } from './chat-hub.constants';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -21,6 +23,7 @@ export class ChatHubAgentService {
 		private readonly logger: Logger,
 		private readonly chatAgentRepository: ChatHubAgentRepository,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
+		private readonly chatHubToolService: ChatHubToolService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -52,6 +55,16 @@ export class ChatHubAgentService {
 		return await this.chatAgentRepository.getManyByUserId(userId);
 	}
 
+	async getAgentsByUserIdAsDtos(userId: string): Promise<ChatHubAgentDto[]> {
+		const agents = await this.chatAgentRepository.getManyByUserIdWithToolIds(userId);
+		return agents.map((agent) =>
+			this.toDto(
+				agent,
+				(agent.tools ?? []).map((t) => t.id),
+			),
+		);
+	}
+
 	async getAgentById(id: string, userId: string, trx?: EntityManager): Promise<ChatHubAgent> {
 		const agent = await this.chatAgentRepository.getOneById(id, userId, trx);
 		if (!agent) {
@@ -60,7 +73,14 @@ export class ChatHubAgentService {
 		return agent;
 	}
 
-	async createAgent(user: User, data: ChatHubCreateAgentRequest): Promise<ChatHubAgent> {
+	async getAgentByIdAsDto(id: string, userId: string): Promise<ChatHubAgentDto> {
+		const agent = await this.getAgentById(id, userId);
+		const toolIds = await this.chatHubToolService.getToolIdsForAgent(agent.id);
+
+		return this.toDto(agent, toolIds);
+	}
+
+	async createAgent(user: User, data: ChatHubCreateAgentRequest): Promise<ChatHubAgentDto> {
 		// Ensure user has access to the credential being saved
 		await this.chatHubCredentialsService.ensureCredentialAccess(user, data.credentialId);
 
@@ -76,18 +96,21 @@ export class ChatHubAgentService {
 			credentialId: data.credentialId,
 			provider: data.provider,
 			model: data.model,
-			tools: data.tools,
 		});
 
+		if (data.toolIds.length > 0) {
+			await this.chatHubToolService.setAgentTools(id, data.toolIds);
+		}
+
 		this.logger.debug(`Chat agent created: ${id} by user ${user.id}`);
-		return agent;
+		return this.toDto(agent, data.toolIds);
 	}
 
 	async updateAgent(
 		id: string,
 		user: User,
 		updates: ChatHubUpdateAgentRequest,
-	): Promise<ChatHubAgent> {
+	): Promise<ChatHubAgentDto> {
 		// First check if the agent exists and belongs to the user
 		const existingAgent = await this.chatAgentRepository.getOneById(id, user.id);
 		if (!existingAgent) {
@@ -108,12 +131,33 @@ export class ChatHubAgentService {
 		if (updates.credentialId !== undefined) updateData.credentialId = updates.credentialId ?? null;
 		if (updates.provider !== undefined) updateData.provider = updates.provider;
 		if (updates.model !== undefined) updateData.model = updates.model ?? null;
-		if (updates.tools !== undefined) updateData.tools = updates.tools;
-
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
 
+		if (updates.toolIds !== undefined) {
+			await this.chatHubToolService.setAgentTools(id, updates.toolIds);
+		}
+
 		this.logger.debug(`Chat agent updated: ${id} by user ${user.id}`);
-		return agent;
+		const toolIds = await this.chatHubToolService.getToolIdsForAgent(agent.id);
+
+		return this.toDto(agent, toolIds);
+	}
+
+	private toDto(agent: ChatHubAgent, toolIds: string[]): ChatHubAgentDto {
+		return {
+			id: agent.id,
+			name: agent.name,
+			description: agent.description,
+			icon: agent.icon,
+			systemPrompt: agent.systemPrompt,
+			ownerId: agent.ownerId,
+			credentialId: agent.credentialId,
+			provider: agent.provider,
+			model: agent.model,
+			toolIds,
+			createdAt: agent.createdAt.toISOString(),
+			updatedAt: agent.updatedAt.toISOString(),
+		};
 	}
 
 	async deleteAgent(id: string, userId: string): Promise<void> {
