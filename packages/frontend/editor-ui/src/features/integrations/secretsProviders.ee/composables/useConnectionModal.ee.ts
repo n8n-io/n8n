@@ -12,7 +12,7 @@ import type { ProjectSharingData } from '@/features/collaboration/projects/proje
 
 export type ConnectionProjectSummary = { id: string; name: string };
 
-const CONNECTION_NAME_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const CONNECTION_NAME_REGEX = /^[a-zA-Z][a-zA-Z0-9]*$/;
 interface UseConnectionModalOptions {
 	providerTypes: Ref<SecretProviderTypeResponse[]>;
 	existingProviderNames?: Ref<string[]>;

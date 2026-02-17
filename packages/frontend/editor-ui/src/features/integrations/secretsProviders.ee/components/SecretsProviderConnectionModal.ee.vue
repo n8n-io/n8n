@@ -137,7 +137,6 @@ function handleConnectionNameUpdate(value: string) {
 }
 
 function handleConnectionNameBlur() {
-	modal.connectionName.value = modal.hyphenateConnectionName(modal.connectionName.value);
 	modal.connectionNameBlurred.value = true;
 }
 
