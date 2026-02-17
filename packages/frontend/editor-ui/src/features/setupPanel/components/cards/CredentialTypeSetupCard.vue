@@ -136,7 +136,7 @@ onBeforeUnmount(() => {
 		</template>
 
 		<template #card-description>
-			<N8nText size="medium" color="text-base" class="pl-xs pr-xs">
+			<N8nText v-if="triggerNode" size="medium" color="text-base" class="pl-xs pr-xs">
 				{{ i18n.baseText('setupPanel.trigger.credential.note') }}
 			</N8nText>
 		</template>
@@ -169,7 +169,7 @@ onBeforeUnmount(() => {
 					</N8nTooltip>
 				</div>
 				<CredentialPicker
-					create-button-type="secondary"
+					create-button-variant="subtle"
 					:class="$style['credential-picker']"
 					:app-name="state.credentialDisplayName"
 					:credential-type="state.credentialType"
