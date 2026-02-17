@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onBeforeUnmount } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import TriggerExecuteButton from '../TriggerExecuteButton.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 import type { TriggerSetupState } from '../../setupPanel.types';
 import SetupCard from './SetupCard.vue';
@@ -18,6 +19,7 @@ const expanded = defineModel<boolean>('expanded', { default: false });
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const setupPanelStore = useSetupPanelStore();
 
 const setupCard = ref<InstanceType<typeof SetupCard> | null>(null);
 
@@ -33,6 +35,18 @@ const telemetryPayload = computed(() => ({
 const onExecuted = () => {
 	setupCard.value?.markInteracted();
 };
+
+const onCardMouseEnter = () => {
+	setupPanelStore.setHighlightedNodes([props.state.node.id]);
+};
+
+const onCardMouseLeave = () => {
+	setupPanelStore.clearHighlightedNodes();
+};
+
+onBeforeUnmount(() => {
+	setupPanelStore.clearHighlightedNodes();
+});
 </script>
 
 <template>
@@ -43,6 +57,8 @@ const onExecuted = () => {
 		:title="state.node.name"
 		:telemetry-payload="telemetryPayload"
 		card-test-id="trigger-setup-card"
+		@mouseenter="onCardMouseEnter"
+		@mouseleave="onCardMouseLeave"
 	>
 		<template #icon>
 			<NodeIcon :node-type="nodeType" :size="16" />

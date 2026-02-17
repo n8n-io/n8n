@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onBeforeUnmount } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nTooltip } from '@n8n/design-system';
 
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
-import TriggerExecuteButton from '../TriggerExecuteButton.vue';
+import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
 
-import type { CredentialTypeSetupState } from '../../setupPanel.types';
+import type {
+	NodeCredentialRequirement,
+	CredentialTypeSetupState,
+} from '@/features/setupPanel/setupPanel.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import SetupCard from './SetupCard.vue';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
 
 const props = defineProps<{
 	state: CredentialTypeSetupState;
@@ -25,10 +29,13 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const setupPanelStore = useSetupPanelStore();
 
 const setupCard = ref<InstanceType<typeof SetupCard> | null>(null);
 
 const nodeNames = computed(() => props.state.nodes.map((node) => node.name));
+
+const firstNode = computed(() => props.state.nodes[0]);
 
 // Only the workflow's first trigger (by X position) can be executed from setup cards.
 const triggerNode = computed(() => {
@@ -64,6 +71,27 @@ const onCredentialDeselected = () => {
 	setupCard.value?.markInteracted();
 	emit('credentialDeselected', props.state.credentialType);
 };
+
+const onCardMouseEnter = () => {
+	setupPanelStore.setHighlightedNodes([firstNode.value.id]);
+};
+
+const onCardMouseLeave = () => {
+	setupPanelStore.clearHighlightedNodes();
+};
+
+const onSharedNodesHintEnter = () => {
+	const ids = props.state.nodes.map((node) => node.id);
+	setupPanelStore.setHighlightedNodes(ids);
+};
+
+const onSharedNodesHintLeave = () => {
+	setupPanelStore.setHighlightedNodes([firstNode.value.id]);
+};
+
+onBeforeUnmount(() => {
+	setupPanelStore.clearHighlightedNodes();
+});
 </script>
 
 <template>
@@ -75,6 +103,8 @@ const onCredentialDeselected = () => {
 		:show-footer="showFooter"
 		:telemetry-payload="telemetryPayload"
 		card-test-id="credential-type-setup-card"
+		@mouseenter="onCardMouseEnter"
+		@mouseleave="onCardMouseLeave"
 	>
 		<template #icon>
 			<CredentialIcon :credential-type-name="state.credentialType" :size="16" />
@@ -97,6 +127,8 @@ const onCredentialDeselected = () => {
 						<span
 							data-test-id="credential-type-setup-card-nodes-hint"
 							:class="$style['nodes-hint']"
+							@mouseenter="onSharedNodesHintEnter(state.nodeCredentialRequirement)"
+							@mouseleave="onSharedNodesHintLeave"
 						>
 							{{
 								i18n.baseText('setupPanel.usedInNodes', {
