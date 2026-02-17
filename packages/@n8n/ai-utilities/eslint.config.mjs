@@ -1,7 +1,7 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 
-export default defineConfig(nodeConfig, globalIgnores(['scripts/**']), {
+export default defineConfig(nodeConfig, globalIgnores(['scripts/**', 'dist_examples/**']), {
 	rules: {
 		'@typescript-eslint/no-explicit-any': 'warn',
 		'@typescript-eslint/no-unsafe-assignment': 'warn',
