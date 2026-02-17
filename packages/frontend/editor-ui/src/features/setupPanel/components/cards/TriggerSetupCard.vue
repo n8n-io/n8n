@@ -70,6 +70,7 @@ onBeforeUnmount(() => {
 		v-model:expanded="expanded"
 		:is-complete="state.isComplete"
 		:title="state.node.name"
+		:show-callout="isInListeningState"
 		:telemetry-payload="telemetryPayload"
 		card-test-id="trigger-setup-card"
 		@mouseenter="onCardMouseEnter"
@@ -88,7 +89,6 @@ onBeforeUnmount(() => {
 		</template>
 		<template #callout>
 			<N8nCallout
-				v-if="isInListeningState"
 				data-test-id="trigger-listening-callout"
 				theme="secondary"
 				:class="$style.callout"

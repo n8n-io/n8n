@@ -115,6 +115,7 @@ onBeforeUnmount(() => {
 		:is-complete="state.isComplete"
 		:title="cardTitle"
 		:show-footer="showFooter"
+		:show-callout="!!triggerNode && isInListeningState"
 		:telemetry-payload="telemetryPayload"
 		card-test-id="credential-type-setup-card"
 		@mouseenter="onCardMouseEnter"
@@ -126,7 +127,6 @@ onBeforeUnmount(() => {
 
 		<template #callout>
 			<N8nCallout
-				v-if="triggerNode && isInListeningState"
 				data-test-id="trigger-listening-callout"
 				theme="secondary"
 				:class="$style.callout"

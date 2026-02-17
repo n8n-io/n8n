@@ -12,10 +12,12 @@ const props = withDefaults(
 		cardTestId: string;
 		title: string;
 		showFooter?: boolean;
+		showCallout?: boolean;
 		telemetryPayload?: Record<string, unknown>;
 	}>(),
 	{
 		showFooter: true,
+		showCallout: false,
 		telemetryPayload: () => ({}),
 	},
 );
@@ -101,7 +103,11 @@ defineExpose({ markInteracted });
 		<template v-if="expanded">
 			<slot name="card-description" />
 			<Transition name="callout-fade">
-				<slot name="callout" />
+				<div v-if="showCallout" :class="$style['callout-grid']">
+					<div :class="$style['callout-inner']">
+						<slot name="callout" />
+					</div>
+				</div>
 			</Transition>
 			<slot />
 
@@ -206,16 +212,29 @@ defineExpose({ markInteracted });
 		justify-content: space-between;
 	}
 }
+
+.callout-grid {
+	display: grid;
+	grid-template-rows: 1fr;
+}
+
+.callout-inner {
+	overflow: hidden;
+	min-height: 0;
+}
 </style>
 
 <style lang="scss" scoped>
 .callout-fade-enter-active,
 .callout-fade-leave-active {
-	transition: opacity 100ms ease;
+	transition:
+		grid-template-rows 200ms ease,
+		opacity 200ms ease;
 }
 
 .callout-fade-enter-from,
 .callout-fade-leave-to {
+	grid-template-rows: 0fr;
 	opacity: 0;
 }
 </style>
