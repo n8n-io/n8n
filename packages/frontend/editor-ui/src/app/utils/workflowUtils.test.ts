@@ -1,4 +1,8 @@
-import { removeWorkflowExecutionData, convertWorkflowTagsToIds } from './workflowUtils';
+import {
+	removeWorkflowExecutionData,
+	convertWorkflowTagsToIds,
+	sortNodesByExecutionOrder,
+} from './workflowUtils';
 import type { IWorkflowDb } from '@/Interface';
 import type { INodeIssues } from 'n8n-workflow';
 
@@ -145,6 +149,139 @@ describe('workflowUtils', () => {
 				notes: 'Some notes',
 				disabled: true,
 			});
+		});
+	});
+
+	describe('sortNodesByExecutionOrder', () => {
+		const makeNode = (name: string, position: [number, number], isTrigger = false) => ({
+			node: { name, position },
+			isTrigger,
+		});
+
+		it('should return empty array for empty input', () => {
+			expect(sortNodesByExecutionOrder([], {})).toEqual([]);
+		});
+
+		it('should return empty array when there are no triggers', () => {
+			const nodeA = makeNode('A', [200, 0]);
+			const nodeB = makeNode('B', [100, 0]);
+
+			expect(sortNodesByExecutionOrder([nodeA, nodeB], {})).toEqual([]);
+		});
+
+		it('should sort a linear chain by execution order', () => {
+			const trigger = makeNode('Trigger', [0, 0], true);
+			const nodeA = makeNode('A', [100, 0]);
+			const nodeB = makeNode('B', [200, 0]);
+
+			const connections = {
+				Trigger: { main: [[{ node: 'A', type: 'main' as const, index: 0 }]] },
+				A: { main: [[{ node: 'B', type: 'main' as const, index: 0 }]] },
+			};
+
+			const result = sortNodesByExecutionOrder([nodeB, nodeA, trigger], connections);
+
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'A', 'B']);
+		});
+
+		it('should drop orphaned nodes not connected to any trigger', () => {
+			const trigger = makeNode('Trigger', [0, 0], true);
+			const connected = makeNode('Connected', [100, 0]);
+			const orphaned = makeNode('Orphaned', [50, 0]);
+
+			const connections = {
+				Trigger: { main: [[{ node: 'Connected', type: 'main' as const, index: 0 }]] },
+			};
+
+			const result = sortNodesByExecutionOrder([orphaned, connected, trigger], connections);
+
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'Connected']);
+		});
+
+		it('should group nodes by trigger, processing triggers by X position', () => {
+			const triggerA = makeNode('TriggerA', [200, 0], true);
+			const triggerB = makeNode('TriggerB', [0, 0], true);
+			const nodeA = makeNode('A', [300, 0]);
+			const nodeB = makeNode('B', [100, 0]);
+
+			const connections = {
+				TriggerA: { main: [[{ node: 'A', type: 'main' as const, index: 0 }]] },
+				TriggerB: { main: [[{ node: 'B', type: 'main' as const, index: 0 }]] },
+			};
+
+			const result = sortNodesByExecutionOrder([nodeA, triggerA, nodeB, triggerB], connections);
+
+			expect(result.map((n) => n.node.name)).toEqual(['TriggerB', 'B', 'TriggerA', 'A']);
+		});
+
+		it('should handle cycles gracefully', () => {
+			const trigger = makeNode('Trigger', [0, 0], true);
+			const nodeA = makeNode('A', [100, 0]);
+			const nodeB = makeNode('B', [200, 0]);
+
+			const connections = {
+				Trigger: { main: [[{ node: 'A', type: 'main' as const, index: 0 }]] },
+				A: { main: [[{ node: 'B', type: 'main' as const, index: 0 }]] },
+				B: { main: [[{ node: 'A', type: 'main' as const, index: 0 }]] },
+			};
+
+			const result = sortNodesByExecutionOrder([nodeB, nodeA, trigger], connections);
+
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'A', 'B']);
+		});
+
+		it('should traverse through intermediate nodes not in the input list', () => {
+			const trigger = makeNode('Trigger', [0, 0], true);
+			const nodeC = makeNode('C', [300, 0]);
+
+			const connections = {
+				Trigger: { main: [[{ node: 'IntermediateNode', type: 'main' as const, index: 0 }]] },
+				IntermediateNode: { main: [[{ node: 'C', type: 'main' as const, index: 0 }]] },
+			};
+
+			const result = sortNodesByExecutionOrder([nodeC, trigger], connections);
+
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'C']);
+		});
+
+		it('should follow depth-first order, completing each branch before the next', () => {
+			const trigger = makeNode('Trigger', [0, 0], true);
+			const nodeA = makeNode('A', [100, 0]);
+			const nodeB = makeNode('B', [200, 0]);
+			const nodeC = makeNode('C', [100, 100]);
+			const nodeD = makeNode('D', [200, 100]);
+
+			const connections = {
+				Trigger: {
+					main: [
+						[
+							{ node: 'A', type: 'main' as const, index: 0 },
+							{ node: 'C', type: 'main' as const, index: 0 },
+						],
+					],
+				},
+				A: { main: [[{ node: 'B', type: 'main' as const, index: 0 }]] },
+				C: { main: [[{ node: 'D', type: 'main' as const, index: 0 }]] },
+			};
+
+			const result = sortNodesByExecutionOrder([nodeD, nodeC, nodeB, nodeA, trigger], connections);
+
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'A', 'B', 'C', 'D']);
+		});
+
+		it('should not duplicate nodes reachable from multiple triggers', () => {
+			const triggerA = makeNode('TriggerA', [0, 0], true);
+			const triggerB = makeNode('TriggerB', [100, 100], true);
+			const shared = makeNode('Shared', [200, 50]);
+
+			const connections = {
+				TriggerA: { main: [[{ node: 'Shared', type: 'main' as const, index: 0 }]] },
+				TriggerB: { main: [[{ node: 'Shared', type: 'main' as const, index: 0 }]] },
+			};
+
+			const result = sortNodesByExecutionOrder([shared, triggerB, triggerA], connections);
+
+			expect(result.map((n) => n.node.name)).toEqual(['TriggerA', 'Shared', 'TriggerB']);
 		});
 	});
 });

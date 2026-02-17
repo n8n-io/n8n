@@ -464,7 +464,7 @@ export class LoadNodesAndCredentials {
 		return loader;
 	}
 
-	async postProcessLoaders() {
+	async postProcessLoaders({ releaseTypes = true }: { releaseTypes?: boolean } = {}) {
 		this.known = { nodes: {}, credentials: {} };
 		this.loaded = { nodes: {}, credentials: {} };
 		this.types = { nodes: [], credentials: [] };
@@ -554,6 +554,10 @@ export class LoadNodesAndCredentials {
 
 		for (const postProcessor of this.postProcessors) {
 			await postProcessor();
+		}
+
+		if (releaseTypes) {
+			this.releaseTypes();
 		}
 	}
 

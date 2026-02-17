@@ -376,15 +376,6 @@ export class FrontendService {
 	}
 
 	async generateTypes() {
-		/*
-		 * If there are no types and credentials, they have been released from memory
-		 * we trigger a re-initialization of the types to ensure they are loaded in memory, post processing triggers type regeneration
-		 */
-		const { types } = this.loadNodesAndCredentials;
-		if (types.nodes.length === 0 && types.credentials.length === 0) {
-			return await this.loadNodesAndCredentials.postProcessLoaders();
-		}
-
 		this.overwriteCredentialsProperties();
 
 		const { staticCacheDir } = this.instanceSettings;
@@ -395,9 +386,6 @@ export class FrontendService {
 		const nodeVersionIdentifiers = this.getNodeVersionIdentifiers(nodes);
 		await this.writeStaticJSON('node-versions', nodeVersionIdentifiers);
 		await this.writeStaticJSON('credentials', credentials);
-
-		// release types to free memory
-		this.loadNodesAndCredentials.releaseTypes();
 	}
 
 	async getSettings(): Promise<FrontendSettings> {

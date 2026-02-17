@@ -145,9 +145,8 @@ export class WorkflowBuilderService {
 			};
 		};
 
-		await this.loadNodesAndCredentials.postProcessLoaders();
+		await this.loadNodesAndCredentials.postProcessLoaders({ releaseTypes: false });
 		const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
-		this.loadNodesAndCredentials.releaseTypes();
 
 		// Use persistent session storage if feature flag is enabled
 		const sessionStorage = this.config.ai.persistBuilderSessions

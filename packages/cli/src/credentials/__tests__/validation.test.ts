@@ -267,7 +267,7 @@ describe('Credentials Validation', () => {
 			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(true);
 
 			await expect(
-				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService),
+				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 			).resolves.toBeUndefined();
 
 			expect(accessCheckService.isProviderAvailableInProject).toHaveBeenCalledWith(
@@ -283,7 +283,7 @@ describe('Credentials Validation', () => {
 			};
 
 			await expect(
-				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService),
+				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 			).resolves.toBeUndefined();
 		});
 
@@ -294,7 +294,12 @@ describe('Credentials Validation', () => {
 
 			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(true);
 
-			await validateAccessToReferencedSecretProviders(projectId, data, accessCheckService);
+			await validateAccessToReferencedSecretProviders(
+				projectId,
+				data,
+				accessCheckService,
+				'create',
+			);
 
 			expect(accessCheckService.isProviderAvailableInProject).toHaveBeenCalledWith(
 				'vault',
@@ -311,7 +316,7 @@ describe('Credentials Validation', () => {
 			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(true);
 
 			await expect(
-				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService),
+				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 			).resolves.toBeUndefined();
 
 			expect((accessCheckService.isProviderAvailableInProject as jest.Mock).mock.calls).toEqual([
@@ -328,7 +333,7 @@ describe('Credentials Validation', () => {
 			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
 
 			await expect(
-				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService),
+				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 			).rejects.toThrow(
 				'The secret provider "vault" used in "apiKey" does not exist in this project',
 			);
@@ -343,7 +348,7 @@ describe('Credentials Validation', () => {
 			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
 
 			await expect(
-				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService),
+				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 			).rejects.toThrow(
 				'The secret providers "outsideProvider" (used in "apiKey"), "anotherOutsideProvider" (used in "anotherApiKey") do not exist in this project',
 			);
@@ -358,7 +363,7 @@ describe('Credentials Validation', () => {
 				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(true);
 
 				await expect(
-					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService),
+					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 				).resolves.toBeUndefined();
 
 				expect(accessCheckService.isProviderAvailableInProject).toHaveBeenCalledWith(
@@ -375,7 +380,7 @@ describe('Credentials Validation', () => {
 				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
 
 				await expect(
-					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService),
+					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 				).rejects.toThrow(
 					'The secret provider "vault" used in "apiKey" does not exist in this project',
 				);
@@ -394,7 +399,12 @@ describe('Credentials Validation', () => {
 
 				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(true);
 
-				await validateAccessToReferencedSecretProviders(projectId, data, accessCheckService);
+				await validateAccessToReferencedSecretProviders(
+					projectId,
+					data,
+					accessCheckService,
+					'create',
+				);
 			});
 
 			it('should throw with nested field path when external secrets referenced in nested objects are inaccessible', async () => {
@@ -409,7 +419,7 @@ describe('Credentials Validation', () => {
 				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
 
 				await expect(
-					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService),
+					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 				).rejects.toThrow(
 					'The secret provider "vault" used in "config.database.password" does not exist in this project',
 				);
@@ -425,7 +435,7 @@ describe('Credentials Validation', () => {
 			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
 
 			await expect(
-				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService),
+				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 			).rejects.toThrow(
 				'The secret provider "vault" used in "apiKey", "password" does not exist in this project',
 			);
@@ -441,7 +451,7 @@ describe('Credentials Validation', () => {
 			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
 
 			await expect(
-				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService),
+				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 			).rejects.toThrow(
 				'The secret providers "vault" (used in "apiKey"), "aws" (used in "token", "password") do not exist in this project',
 			);
@@ -453,7 +463,7 @@ describe('Credentials Validation', () => {
 			};
 
 			await expect(
-				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService),
+				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 			).rejects.toThrow(
 				'Could not find a valid external secret vault name inside "={{ $secrets.!invalid }}" used in "apiKey"',
 			);
@@ -465,10 +475,59 @@ describe('Credentials Validation', () => {
 			};
 
 			await expect(
-				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService),
+				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 			).rejects.toThrow(
 				'Could not find a valid external secret vault name inside "={{ $secrets[\'\'] }}" used in "token',
 			);
+		});
+
+		describe('source parameter', () => {
+			it('should include "in this project" in error message when source is "create"', async () => {
+				const data = {
+					apiKey: '={{ $secrets.vault.mykey }}',
+				};
+
+				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
+
+				await expect(
+					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
+				).rejects.toThrow(
+					'The secret provider "vault" used in "apiKey" does not exist in this project',
+				);
+			});
+
+			it('should include "in this project" in error message when source is "update"', async () => {
+				const data = {
+					apiKey: '={{ $secrets.vault.mykey }}',
+				};
+
+				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
+
+				await expect(
+					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'update'),
+				).rejects.toThrow(
+					'The secret provider "vault" used in "apiKey" does not exist in this project',
+				);
+			});
+
+			it('should include "in the destination project" in error message when source is "transfer"', async () => {
+				const data = {
+					apiKey: '={{ $secrets.vault.mykey }}',
+				};
+
+				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
+
+				await expect(
+					validateAccessToReferencedSecretProviders(
+						projectId,
+						data,
+						accessCheckService,
+						'transfer',
+					),
+				).rejects.toThrow(
+					'The secret provider "vault" used in "apiKey" does not exist in the destination project',
+				);
+			});
 		});
 	});
 });
