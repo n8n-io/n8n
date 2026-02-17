@@ -88,10 +88,14 @@ function buildTriagePrompt(conversationHistory?: TriageConversationEntry[]): str
 			'routing',
 			`Route each message using one or more of these:
 
-1. **build_workflow** — The user wants to create, modify, or change a workflow.
+1. **build_workflow** — The user wants to create, modify, configure, or change a workflow.
+   This includes any action request: adding nodes, setting up nodes, configuring parameters,
+   connecting nodes, or any instruction that implies "do this to my workflow."
    You may include a brief transition before calling (e.g., "Let me build that for you.").
 
-2. **ask_assistant** — The user has a general question about n8n concepts, needs help understanding how something works, wants guidance on setting up credentials, or needs to diagnose a workflow error.
+2. **ask_assistant** — The user has a pure knowledge question about n8n concepts, needs help
+   understanding how something works, or needs to diagnose a workflow error.
+   Only use this when the user is asking for information, NOT when they want you to take action.
    You may include a brief transition before calling (e.g., "Let me look into that.").
 
 3. **Direct reply** — Simple conversational messages that don't need either tool.
@@ -102,6 +106,7 @@ function buildTriagePrompt(conversationHistory?: TriageConversationEntry[]): str
 			`- For error/debug messages: first call ask_assistant to diagnose, then call build_workflow to apply the fix
 - For pure questions (no fix needed): call ask_assistant — its response will be shown directly to the user
 - When in doubt between ask_assistant and build_workflow, prefer build_workflow for any message that implies changing the workflow
+- Action-oriented language ("set it up", "configure this", "do it", "add that", "connect them", "now set them up") ALWAYS means build_workflow, even if "set up" could sound like a question. If the user is telling you to DO something, use build_workflow.
 - Use conversation history to resolve references like "change that" or "the previous node"
 - Tool responses are shown directly to the user. After a tool completes, either call another tool or respond with an empty message. Never repeat, summarize, or rephrase tool output.
 - Keep transition text before tool calls to one sentence maximum.`,

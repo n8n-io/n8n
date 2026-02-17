@@ -29,9 +29,10 @@ import { BuilderSubgraph } from './subgraphs/builder.subgraph';
 import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
 import type { ResourceLocatorCallback } from './types/callbacks';
-import type { CoordinationMetadata, SubgraphPhase } from './types/coordination';
 import {
 	type CoordinationLogEntry,
+	type CoordinationMetadata,
+	type SubgraphPhase,
 	createAssistantMetadata,
 	createErrorMetadata,
 	createResponderMetadata,

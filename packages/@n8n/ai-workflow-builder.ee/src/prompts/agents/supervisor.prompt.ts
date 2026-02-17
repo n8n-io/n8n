@@ -12,22 +12,28 @@ const SUPERVISOR_ROLE = 'You are a Supervisor that routes user requests to speci
 
 const AVAILABLE_AGENTS_WITH_ASSISTANT = `- discovery: Find n8n nodes for building/modifying workflows
 - builder: Create nodes and connections (requires discovery first for new node types) and sets parameters on nodes
-- assistant: Help with errors, credential setup, debugging, and general n8n questions
+- assistant: Answer pure knowledge questions about errors, debugging, and n8n concepts (NOT for action requests)
 - responder: Answer questions, confirm completion (TERMINAL)`;
 
 const AVAILABLE_AGENTS_WITHOUT_ASSISTANT = `- discovery: Find n8n nodes for building/modifying workflows
 - builder: Create nodes and connections (requires discovery first for new node types) and sets parameters on nodes
 - responder: Answer questions, confirm completion (TERMINAL)`;
 
-const ROUTING_DECISION_TREE_WITH_ASSISTANT = `1. Is user asking for help with errors, credentials, debugging, or n8n concepts? → assistant
+const ROUTING_DECISION_TREE_WITH_ASSISTANT = `1. Is the user asking you to DO something to the workflow (create, modify, configure, set up nodes)? → discovery or builder
+   IMPORTANT: If the message is an action request (imperative/instructional tone), it goes to discovery or builder, NOT assistant.
+   Examples: "set them up", "configure the node", "now add a Slack node", "connect these", "do it"
+   Continue to steps 3-5 to choose between discovery and builder.
+
+2. Is user asking a pure KNOWLEDGE QUESTION about errors, credentials, debugging, or n8n concepts? → assistant
+   Only route here when the user is asking for information, NOT when they want you to take action.
    Examples: "why is this node failing?", "how do I set up Gmail credentials?", "what does this error mean?", "how does the HTTP Request node work?", "help me debug this"
    Examples with selected nodes: "why is this failing?", "help me fix this error"
 
-2. Is user asking a conversational question or chatting? → responder
+3. Is user asking a conversational question or chatting? → responder
    Examples: "what does this do?", "explain the workflow", "thanks"
    Examples with selected nodes: "what does this node do?", "explain how it works"
 
-3. Does the request involve NEW or DIFFERENT node types? → discovery
+4. Does the request involve NEW or DIFFERENT node types? → discovery
    Examples:
    - "Build a workflow that..." (new workflow)
    - "Use [ServiceB] instead of [ServiceA]" (replacing node type)
@@ -35,11 +41,11 @@ const ROUTING_DECISION_TREE_WITH_ASSISTANT = `1. Is user asking for help with er
    - "Switch from [ServiceA] to [ServiceB]" (swapping services)
    - "Add something before/after this" (needs discovery to find what to add)
 
-4. Is the request about connecting/disconnecting existing nodes? → builder
+5. Is the request about connecting/disconnecting existing nodes? → builder
    Examples: "Connect node A to node B", "Remove the connection to X"
    Examples with selected nodes: "connect this to X", "disconnect this", "add X before/after this" (after discovery)
 
-5. Is the request about changing VALUES in existing nodes? → builder
+6. Is the request about changing VALUES in existing nodes? → builder
    Examples:
    - "Change the URL to https://..."
    - "Set the timeout to 30 seconds"
@@ -73,6 +79,8 @@ const ROUTING_DECISION_TREE_WITHOUT_ASSISTANT = `1. Is user asking a conversatio
 const KEY_DISTINCTION_WITH_ASSISTANT = `- "Why is this node failing?" = ERROR DEBUG = assistant (needs SDK troubleshooting)
 - "What does this workflow do?" = EXPLANATION = responder (generates explanation from context)
 - "How do I set up OAuth?" = CREDENTIAL HELP = assistant (SDK has credential documentation)
+- "Set up OAuth on this node" = ACTION REQUEST = builder (user wants you to configure, not explain)
+- "Now set them up for this workflow" = ACTION REQUEST = builder (imperative tone = action, not question)
 - "Use [ServiceB] instead of [ServiceA]" = REPLACEMENT = discovery (new node type needed)
 - "Change the [ServiceA] API key" = CONFIGURATION = builder (same node, different value)`;
 
