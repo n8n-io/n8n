@@ -6,6 +6,10 @@
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -16,7 +20,7 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { mapLegacyConnectionsToCanvasConnections } from '@/features/workflows/canvas/canvas.utils';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import { NodeHelpers, type IConnections, type INode } from 'n8n-workflow';
+import { NodeHelpers, type IConnections, type INode, type IPinData } from 'n8n-workflow';
 import isEqual from 'lodash/isEqual';
 
 export interface UpdateWorkflowOptions {
@@ -354,9 +358,12 @@ export function useWorkflowUpdate() {
 			updateWorkflowNameIfNeeded(workflowData.name, options?.isInitialGeneration);
 
 			// Merge pin data from workflow data with existing pin data
-			if (workflowData.pinData) {
-				workflowsStore.setWorkflowPinData({
-					...workflowsStore.workflow.pinData,
+			if (workflowData.pinData && workflowsStore.workflowId) {
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowsStore.workflowId),
+				);
+				workflowDocumentStore.setPinData({
+					...(workflowDocumentStore.pinData as IPinData),
 					...workflowData.pinData,
 				});
 			}

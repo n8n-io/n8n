@@ -10,6 +10,13 @@ import {
 } from '@/app/constants';
 import { stringSizeInBytes, toMegaBytes } from '@/app/utils/typesUtils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import {
+	injectWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+	getPinDataSize,
+} from '@/app/stores/workflowDocument.store';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -45,6 +52,12 @@ export function usePinnedData(
 ) {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const uiStore = useUIStore();
+	const workflowDocumentStore =
+		injectWorkflowDocumentStore() ??
+		(workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: null);
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
@@ -59,7 +72,7 @@ export function usePinnedData(
 
 	const data = computed<IPinData[string] | undefined>(() => {
 		const targetNode = unref(node);
-		return targetNode ? workflowsStore.pinDataByNodeName(targetNode.name) : undefined;
+		return targetNode ? workflowDocumentStore?.pinDataByNodeName(targetNode.name) : undefined;
 	});
 
 	const hasData = computed<boolean>(() => {
@@ -164,11 +177,12 @@ export function usePinnedData(
 
 		if (typeof data === 'object') data = JSON.stringify(data);
 
-		const { pinData: currentPinData, ...workflowObjectWithoutPinData } = workflowObject.value;
+		const { pinData: _pinData, ...workflowObjectWithoutPinData } = workflowObject.value;
+		const currentPinData = (workflowDocumentStore?.pinData ?? {}) as IPinData;
 		const workflowJson = jsonStringify(workflowObjectWithoutPinData, { replaceCircularRefs: true });
 
 		const newPinData = { ...currentPinData, [targetNode.name]: data };
-		const newPinDataSize = workflowsStore.getPinDataSize(newPinData);
+		const newPinDataSize = getPinDataSize(newPinData);
 
 		if (newPinDataSize > getMaxPinnedDataSize()) {
 			toast.showError(
@@ -265,7 +279,18 @@ export function usePinnedData(
 			throw new Error('Data too large');
 		}
 
-		workflowsStore.pinData({ node: targetNode, data: data as INodeExecutionData[] });
+		if (workflowDocumentStore) {
+			const nodeName = targetNode.name;
+			// Update metadata timestamp for existing pinned data
+			if (
+				(workflowDocumentStore.pinData[nodeName] ?? []).length > 0 &&
+				workflowsStore.nodeMetadata[nodeName]
+			) {
+				workflowsStore.nodeMetadata[nodeName].pinnedDataLastUpdatedAt = Date.now();
+			}
+			workflowDocumentStore.pinNodeData(nodeName, data as INodeExecutionData[]);
+			uiStore.markStateDirty();
+		}
 		onSetDataSuccess({ source });
 	}
 
@@ -289,7 +314,13 @@ export function usePinnedData(
 		}
 
 		onUnsetData({ source });
-		workflowsStore.unpinData({ node: targetNode });
+		if (workflowDocumentStore) {
+			workflowDocumentStore.unpinNodeData(targetNode.name);
+			if (workflowsStore.nodeMetadata[targetNode.name]) {
+				workflowsStore.nodeMetadata[targetNode.name].pinnedDataLastRemovedAt = Date.now();
+			}
+			uiStore.markStateDirty();
+		}
 	}
 
 	return {

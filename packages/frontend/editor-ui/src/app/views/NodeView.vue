@@ -146,6 +146,7 @@ import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { injectStrict } from '@/app/utils/injectStrict';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 
@@ -213,6 +214,7 @@ const collaborationStore = useCollaborationStore();
 const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 const chatPanelStore = useChatPanelStore();
 
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowState = injectWorkflowState();
 
 // Initialize activity detection for collaboration
@@ -1291,7 +1293,7 @@ const isOnlyChatTriggerNodeActive = computed(() => {
 const chatTriggerNodePinnedData = computed(() => {
 	if (!chatTriggerNode.value) return null;
 
-	return workflowsStore.pinDataByNodeName(chatTriggerNode.value.name);
+	return workflowDocumentStore?.pinData?.[chatTriggerNode.value.name];
 });
 
 function onOpenChat() {
