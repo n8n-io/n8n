@@ -705,7 +705,11 @@ describe('Expression', () => {
 
 			const timezone = workflow.settings?.timezone ?? 'UTC';
 			const expression = new Expression(timezone);
-			const result = expression.getParameterValue('={{ $json.text.toUpperCase() }}', data, false);
+			const result = expression.resolveSimpleParameterValue(
+				'={{ $json.text.toUpperCase() }}',
+				data,
+				false,
+			);
 
 			expect(result).toBe('HELLO');
 		});
@@ -745,14 +749,12 @@ describe('Expression', () => {
 
 			const timezone = workflow.settings?.timezone ?? 'UTC';
 			const expression = new Expression(timezone);
-			const result = expression.getParameterValue(
-				{
-					sum: '={{ $json.a + $json.b }}',
-					product: '={{ $json.a * $json.b }}',
-				},
-				data,
-				false,
-			);
+
+			// Manually resolve each property since getParameterValue moved to WorkflowExpression
+			const result = {
+				sum: expression.resolveSimpleParameterValue('={{ $json.a + $json.b }}', data, false),
+				product: expression.resolveSimpleParameterValue('={{ $json.a * $json.b }}', data, false),
+			};
 
 			expect(result).toEqual({ sum: 3, product: 2 });
 		});

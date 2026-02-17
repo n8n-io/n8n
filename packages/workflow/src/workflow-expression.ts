@@ -1,5 +1,5 @@
 import { Expression } from './expression';
-import { getGlobalState } from './global-state';
+import { isExpression } from './expressions/expression-helpers';
 import type {
 	IExecuteData,
 	INode,
@@ -20,8 +20,7 @@ export class WorkflowExpression {
 	private readonly expression: Expression;
 
 	constructor(private readonly workflow: Workflow) {
-		const timezone = workflow.settings?.timezone ?? getGlobalState().defaultTimezone;
-		this.expression = new Expression(timezone);
+		this.expression = new Expression(workflow.timezone);
 	}
 
 	/**
@@ -82,6 +81,69 @@ export class WorkflowExpression {
 		selfData = {},
 		contextNodeName?: string,
 	): NodeParameterValueType {
+		// Helper function which returns true when the parameter is a complex one or array
+		const isComplexParameter = (value: NodeParameterValueType) => {
+			return typeof value === 'object';
+		};
+
+		// Early return for simple non-expression values (performance optimization + timezone correctness)
+		if (!isComplexParameter(parameterValue) && !isExpression(parameterValue)) {
+			return parameterValue;
+		}
+
+		// Handle arrays - recursively resolve each element
+		if (Array.isArray(parameterValue)) {
+			return parameterValue.map((item) =>
+				this.getParameterValue(
+					item as NodeParameterValueType,
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					activeNodeName,
+					connectionInputData,
+					mode,
+					additionalKeys,
+					executeData,
+					returnObjectAsString,
+					selfData,
+					contextNodeName,
+				),
+			) as NodeParameterValue[] | INodeParameters[];
+		}
+
+		// Handle null/undefined
+		if (parameterValue === null || parameterValue === undefined) {
+			return parameterValue;
+		}
+
+		// Handle non-array objects - recursively resolve each property
+		if (typeof parameterValue === 'object') {
+			const returnData: INodeParameters = {};
+			for (const [key, value] of Object.entries(parameterValue)) {
+				returnData[key] = this.getParameterValue(
+					value as NodeParameterValueType,
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					activeNodeName,
+					connectionInputData,
+					mode,
+					additionalKeys,
+					executeData,
+					returnObjectAsString,
+					selfData,
+					contextNodeName,
+				);
+			}
+
+			if (returnObjectAsString && typeof returnData === 'object') {
+				return this.expression.convertObjectValueToString(returnData);
+			}
+
+			return returnData;
+		}
+
+		// For expressions and complex values, create WorkflowDataProxy
 		const dataProxy = new WorkflowDataProxy(
 			this.workflow,
 			runExecutionData,
@@ -99,7 +161,12 @@ export class WorkflowExpression {
 		);
 		const data = dataProxy.getDataProxy();
 
-		return this.expression.getParameterValue(parameterValue, data, returnObjectAsString);
+		// Simple expression value - delegate to Expression
+		return this.expression.resolveSimpleParameterValue(
+			parameterValue as NodeParameterValue,
+			data,
+			returnObjectAsString,
+		);
 	}
 
 	/**
