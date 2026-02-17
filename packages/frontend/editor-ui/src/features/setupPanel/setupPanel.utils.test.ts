@@ -270,8 +270,8 @@ describe('setupPanel.utils', () => {
 
 			const result = groupCredentialsByType(
 				[
-					{ node: nodeA, credentialTypes: ['slackApi'], isTrigger: false },
-					{ node: nodeB, credentialTypes: ['slackApi'], isTrigger: false },
+					{ node: nodeA, credentialTypes: ['slackApi'] },
+					{ node: nodeB, credentialTypes: ['slackApi'] },
 				],
 				displayNameLookup,
 				isGenericAuthLookup,
@@ -280,7 +280,7 @@ describe('setupPanel.utils', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].credentialType).toBe('slackApi');
 			expect(result[0].credentialDisplayName).toBe('Display: slackApi');
-			expect(result[0].nodeNames).toEqual(['NodeA', 'NodeB']);
+			expect(result[0].nodes.map((n) => n.name)).toEqual(['NodeA', 'NodeB']);
 		});
 
 		it('should pick selectedCredentialId from the first node that has it', () => {
@@ -292,8 +292,8 @@ describe('setupPanel.utils', () => {
 
 			const result = groupCredentialsByType(
 				[
-					{ node: nodeA, credentialTypes: ['slackApi'], isTrigger: false },
-					{ node: nodeB, credentialTypes: ['slackApi'], isTrigger: false },
+					{ node: nodeA, credentialTypes: ['slackApi'] },
+					{ node: nodeB, credentialTypes: ['slackApi'] },
 				],
 				displayNameLookup,
 				isGenericAuthLookup,
@@ -314,8 +314,8 @@ describe('setupPanel.utils', () => {
 
 			const result = groupCredentialsByType(
 				[
-					{ node: nodeA, credentialTypes: ['slackApi'], isTrigger: false },
-					{ node: nodeB, credentialTypes: ['slackApi'], isTrigger: false },
+					{ node: nodeA, credentialTypes: ['slackApi'] },
+					{ node: nodeB, credentialTypes: ['slackApi'] },
 				],
 				displayNameLookup,
 				isGenericAuthLookup,
@@ -324,18 +324,18 @@ describe('setupPanel.utils', () => {
 			expect(result[0].issues).toEqual(['Token expired', 'Rate limited']);
 		});
 
-		it('should collect all nodeNames in the group', () => {
+		it('should collect all nodes in the group', () => {
 			const nodes = ['A', 'B', 'C'].map((name) =>
 				createNode({ name, credentials: { api: { id: `cred-${name}`, name } } }),
 			);
 
 			const result = groupCredentialsByType(
-				nodes.map((node) => ({ node, credentialTypes: ['api'], isTrigger: false })),
+				nodes.map((node) => ({ node, credentialTypes: ['api'] })),
 				displayNameLookup,
 				isGenericAuthLookup,
 			);
 
-			expect(result[0].nodeNames).toEqual(['A', 'B', 'C']);
+			expect(result[0].nodes.map((n) => n.name)).toEqual(['A', 'B', 'C']);
 		});
 
 		it('should set isComplete to true when selectedCredentialId exists and no issues', () => {
@@ -345,7 +345,7 @@ describe('setupPanel.utils', () => {
 			});
 
 			const result = groupCredentialsByType(
-				[{ node, credentialTypes: ['slackApi'], isTrigger: false }],
+				[{ node, credentialTypes: ['slackApi'] }],
 				displayNameLookup,
 				isGenericAuthLookup,
 			);
@@ -357,7 +357,7 @@ describe('setupPanel.utils', () => {
 			const node = createNode({ name: 'NodeA' });
 
 			const result = groupCredentialsByType(
-				[{ node, credentialTypes: ['slackApi'], isTrigger: false }],
+				[{ node, credentialTypes: ['slackApi'] }],
 				displayNameLookup,
 				isGenericAuthLookup,
 			);
@@ -373,7 +373,7 @@ describe('setupPanel.utils', () => {
 			});
 
 			const result = groupCredentialsByType(
-				[{ node, credentialTypes: ['slackApi'], isTrigger: false }],
+				[{ node, credentialTypes: ['slackApi'] }],
 				displayNameLookup,
 				isGenericAuthLookup,
 			);
@@ -397,7 +397,7 @@ describe('setupPanel.utils', () => {
 			});
 
 			const result = groupCredentialsByType(
-				[{ node, credentialTypes: ['slackApi', 'githubApi'], isTrigger: false }],
+				[{ node, credentialTypes: ['slackApi', 'githubApi'] }],
 				displayNameLookup,
 				isGenericAuthLookup,
 			);
@@ -406,39 +406,23 @@ describe('setupPanel.utils', () => {
 			expect(result.map((s) => s.credentialType)).toEqual(['slackApi', 'githubApi']);
 		});
 
-		it('should initialize triggerNodes as empty array for non-trigger nodes', () => {
+		it('should include all nodes in nodes array', () => {
 			const node = createNode({
 				name: 'NodeA',
 				credentials: { slackApi: { id: 'cred-1', name: 'Slack' } },
 			});
 
 			const result = groupCredentialsByType(
-				[{ node, credentialTypes: ['slackApi'], isTrigger: false }],
+				[{ node, credentialTypes: ['slackApi'] }],
 				displayNameLookup,
 				isGenericAuthLookup,
 			);
 
-			expect(result[0].triggerNodes).toEqual([]);
+			expect(result[0].nodes).toHaveLength(1);
+			expect(result[0].nodes[0].name).toBe('NodeA');
 		});
 
-		it('should populate triggerNodes for trigger nodes', () => {
-			const triggerNode = createNode({
-				name: 'SlackTrigger',
-				type: 'n8n-nodes-base.slackTrigger',
-				credentials: { slackApi: { id: 'cred-1', name: 'Slack' } },
-			});
-
-			const result = groupCredentialsByType(
-				[{ node: triggerNode, credentialTypes: ['slackApi'], isTrigger: true }],
-				displayNameLookup,
-				isGenericAuthLookup,
-			);
-
-			expect(result[0].triggerNodes).toHaveLength(1);
-			expect(result[0].triggerNodes[0].name).toBe('SlackTrigger');
-		});
-
-		it('should add trigger node to existing credential group', () => {
+		it('should add all nodes to the same credential group', () => {
 			const regularNode = createNode({
 				name: 'SlackNode',
 				credentials: { slackApi: { id: 'cred-1', name: 'Slack' } },
@@ -451,112 +435,109 @@ describe('setupPanel.utils', () => {
 
 			const result = groupCredentialsByType(
 				[
-					{ node: regularNode, credentialTypes: ['slackApi'], isTrigger: false },
-					{ node: triggerNode, credentialTypes: ['slackApi'], isTrigger: true },
+					{ node: regularNode, credentialTypes: ['slackApi'] },
+					{ node: triggerNode, credentialTypes: ['slackApi'] },
 				],
 				displayNameLookup,
 				isGenericAuthLookup,
 			);
 
 			expect(result).toHaveLength(1);
-			expect(result[0].nodeNames).toEqual(['SlackNode', 'SlackTrigger']);
-			expect(result[0].triggerNodes).toHaveLength(1);
-			expect(result[0].triggerNodes[0].name).toBe('SlackTrigger');
+			expect(result[0].nodes.map((n) => n.name)).toEqual(['SlackNode', 'SlackTrigger']);
 		});
 	});
 
 	describe('isCredentialCardComplete', () => {
+		const isTrigger = (type: string) => type.includes('Trigger');
+
 		it('should return true when credential is set, no issues, and no triggers', () => {
+			const slackNode = createNode({ name: 'SlackNode', type: 'n8n-nodes-base.slack' });
 			const state: CredentialTypeSetupState = {
 				credentialType: 'slackApi',
 				credentialDisplayName: 'Slack',
 				selectedCredentialId: 'cred-1',
 				issues: [],
-				nodeNames: ['SlackNode'],
-				triggerNodes: [],
+				nodes: [slackNode],
 				isComplete: false,
 				isGenericAuth: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => false)).toBe(true);
+			expect(isCredentialCardComplete(state, () => false, isTrigger)).toBe(true);
 		});
 
 		it('should return false when credential is missing', () => {
+			const slackNode = createNode({ name: 'SlackNode', type: 'n8n-nodes-base.slack' });
 			const state: CredentialTypeSetupState = {
 				credentialType: 'slackApi',
 				credentialDisplayName: 'Slack',
 				selectedCredentialId: undefined,
 				issues: [],
-				nodeNames: ['SlackNode'],
-				triggerNodes: [],
+				nodes: [slackNode],
 				isComplete: false,
 				isGenericAuth: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true)).toBe(false);
+			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(false);
 		});
 
 		it('should return false when there are issues', () => {
+			const slackNode = createNode({ name: 'SlackNode', type: 'n8n-nodes-base.slack' });
 			const state: CredentialTypeSetupState = {
 				credentialType: 'slackApi',
 				credentialDisplayName: 'Slack',
 				selectedCredentialId: 'cred-1',
 				issues: ['Token expired'],
-				nodeNames: ['SlackNode'],
-				triggerNodes: [],
+				nodes: [slackNode],
 				isComplete: false,
 				isGenericAuth: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true)).toBe(false);
+			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(false);
 		});
 
 		it('should return false when trigger has not executed', () => {
-			const triggerNode = createNode({ name: 'SlackTrigger' });
+			const triggerNode = createNode({ name: 'SlackTrigger', type: 'n8n-nodes-base.slackTrigger' });
 			const state: CredentialTypeSetupState = {
 				credentialType: 'slackApi',
 				credentialDisplayName: 'Slack',
 				selectedCredentialId: 'cred-1',
 				issues: [],
-				nodeNames: ['SlackTrigger'],
-				triggerNodes: [triggerNode],
+				nodes: [triggerNode],
 				isComplete: false,
 				isGenericAuth: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => false)).toBe(false);
+			expect(isCredentialCardComplete(state, () => false, isTrigger)).toBe(false);
 		});
 
 		it('should return true when credential is set and all triggers have executed', () => {
-			const triggerNode = createNode({ name: 'SlackTrigger' });
+			const triggerNode = createNode({ name: 'SlackTrigger', type: 'n8n-nodes-base.slackTrigger' });
 			const state: CredentialTypeSetupState = {
 				credentialType: 'slackApi',
 				credentialDisplayName: 'Slack',
 				selectedCredentialId: 'cred-1',
 				issues: [],
-				nodeNames: ['SlackTrigger'],
-				triggerNodes: [triggerNode],
+				nodes: [triggerNode],
 				isComplete: false,
 				isGenericAuth: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true)).toBe(true);
+			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(true);
 		});
 
 		it('should return true when single embedded trigger has executed', () => {
-			const trigger = createNode({ name: 'Trigger1' });
+			const trigger = createNode({ name: 'Trigger1', type: 'n8n-nodes-base.slackTrigger' });
 			const state: CredentialTypeSetupState = {
 				credentialType: 'slackApi',
 				credentialDisplayName: 'Slack',
 				selectedCredentialId: 'cred-1',
 				issues: [],
-				nodeNames: ['Trigger1'],
-				triggerNodes: [trigger],
+				nodes: [trigger],
 				isComplete: false,
 				isGenericAuth: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true)).toBe(true);
+			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(true);
 		});
 	});
 
@@ -586,8 +567,7 @@ describe('setupPanel.utils', () => {
 					credentialDisplayName: 'Slack',
 					selectedCredentialId: 'cred-1',
 					issues: [],
-					nodeNames: ['Trigger'],
-					triggerNodes: [],
+					nodes: [node],
 					isComplete: true,
 					isGenericAuth: false,
 				},
@@ -606,8 +586,7 @@ describe('setupPanel.utils', () => {
 					credentialDisplayName: 'Slack',
 					selectedCredentialId: undefined,
 					issues: [],
-					nodeNames: ['Trigger'],
-					triggerNodes: [],
+					nodes: [node],
 					isComplete: false,
 					isGenericAuth: false,
 				},
@@ -626,8 +605,7 @@ describe('setupPanel.utils', () => {
 					credentialDisplayName: 'Slack',
 					selectedCredentialId: 'cred-1',
 					issues: [],
-					nodeNames: ['Trigger'],
-					triggerNodes: [],
+					nodes: [node],
 					isComplete: true,
 					isGenericAuth: false,
 				},
@@ -636,8 +614,7 @@ describe('setupPanel.utils', () => {
 					credentialDisplayName: 'GitHub',
 					selectedCredentialId: 'cred-2',
 					issues: [],
-					nodeNames: ['Trigger'],
-					triggerNodes: [],
+					nodes: [node],
 					isComplete: true,
 					isGenericAuth: false,
 				},
@@ -668,20 +645,12 @@ describe('setupPanel.utils', () => {
 			const nodeB = createNode({ name: 'NodeB', position: [100, 0] });
 			const nodeC = createNode({ name: 'NodeC', position: [200, 0] });
 
-			const nodeMap = new Map<string, INodeUi>([
-				['NodeA', nodeA],
-				['NodeB', nodeB],
-				['NodeC', nodeC],
-			]);
-			const getNodeByName = (name: string) => nodeMap.get(name);
-
 			const states: CredentialTypeSetupState[] = [
 				{
 					credentialType: 'apiA',
 					credentialDisplayName: 'A',
 					issues: [],
-					nodeNames: ['NodeA'],
-					triggerNodes: [],
+					nodes: [nodeA],
 					isComplete: true,
 					isGenericAuth: false,
 				},
@@ -689,8 +658,7 @@ describe('setupPanel.utils', () => {
 					credentialType: 'apiB',
 					credentialDisplayName: 'B',
 					issues: [],
-					nodeNames: ['NodeB'],
-					triggerNodes: [],
+					nodes: [nodeB],
 					isComplete: true,
 					isGenericAuth: false,
 				},
@@ -698,14 +666,13 @@ describe('setupPanel.utils', () => {
 					credentialType: 'apiC',
 					credentialDisplayName: 'C',
 					issues: [],
-					nodeNames: ['NodeC'],
-					triggerNodes: [],
+					nodes: [nodeC],
 					isComplete: true,
 					isGenericAuth: false,
 				},
 			];
 
-			const result = sortCredentialTypeStates(states, getNodeByName);
+			const result = sortCredentialTypeStates(states);
 
 			expect(result.map((s) => s.credentialType)).toEqual(['apiB', 'apiC', 'apiA']);
 		});
@@ -715,20 +682,12 @@ describe('setupPanel.utils', () => {
 			const nodeB = createNode({ name: 'NodeB', position: [50, 0] });
 			const nodeC = createNode({ name: 'NodeC', position: [200, 0] });
 
-			const nodeMap = new Map<string, INodeUi>([
-				['NodeA', nodeA],
-				['NodeB', nodeB],
-				['NodeC', nodeC],
-			]);
-			const getNodeByName = (name: string) => nodeMap.get(name);
-
 			const states: CredentialTypeSetupState[] = [
 				{
 					credentialType: 'apiX',
 					credentialDisplayName: 'X',
 					issues: [],
-					nodeNames: ['NodeA', 'NodeB'],
-					triggerNodes: [],
+					nodes: [nodeA, nodeB],
 					isComplete: true,
 					isGenericAuth: false,
 				},
@@ -736,59 +695,28 @@ describe('setupPanel.utils', () => {
 					credentialType: 'apiY',
 					credentialDisplayName: 'Y',
 					issues: [],
-					nodeNames: ['NodeC'],
-					triggerNodes: [],
+					nodes: [nodeC],
 					isComplete: true,
 					isGenericAuth: false,
 				},
 			];
 
-			const result = sortCredentialTypeStates(states, getNodeByName);
+			const result = sortCredentialTypeStates(states);
 
 			// apiX min is 50 (NodeB), apiY min is 200 (NodeC) -> apiX first
 			expect(result.map((s) => s.credentialType)).toEqual(['apiX', 'apiY']);
 		});
 
-		it('should handle unknown node names by treating their position as Infinity', () => {
-			const nodeA = createNode({ name: 'NodeA', position: [100, 0] });
-
-			const nodeMap = new Map<string, INodeUi>([['NodeA', nodeA]]);
-			const getNodeByName = (name: string) => nodeMap.get(name);
-
-			const states: CredentialTypeSetupState[] = [
-				{
-					credentialType: 'apiUnknown',
-					credentialDisplayName: 'Unknown',
-					issues: [],
-					nodeNames: ['MissingNode'],
-					triggerNodes: [],
-					isComplete: true,
-					isGenericAuth: false,
-				},
-				{
-					credentialType: 'apiKnown',
-					credentialDisplayName: 'Known',
-					issues: [],
-					nodeNames: ['NodeA'],
-					triggerNodes: [],
-					isComplete: true,
-					isGenericAuth: false,
-				},
-			];
-
-			const result = sortCredentialTypeStates(states, getNodeByName);
-
-			expect(result.map((s) => s.credentialType)).toEqual(['apiKnown', 'apiUnknown']);
-		});
-
 		it('should not mutate the original array', () => {
+			const nodeA = createNode({ name: 'NodeA', position: [100, 0] });
+			const nodeB = createNode({ name: 'NodeB', position: [200, 0] });
+
 			const states: CredentialTypeSetupState[] = [
 				{
 					credentialType: 'apiB',
 					credentialDisplayName: 'B',
 					issues: [],
-					nodeNames: ['NodeB'],
-					triggerNodes: [],
+					nodes: [nodeB],
 					isComplete: true,
 					isGenericAuth: false,
 				},
@@ -796,22 +724,13 @@ describe('setupPanel.utils', () => {
 					credentialType: 'apiA',
 					credentialDisplayName: 'A',
 					issues: [],
-					nodeNames: ['NodeA'],
-					triggerNodes: [],
+					nodes: [nodeA],
 					isComplete: true,
 					isGenericAuth: false,
 				},
 			];
 
-			const nodeA = createNode({ name: 'NodeA', position: [100, 0] });
-			const nodeB = createNode({ name: 'NodeB', position: [200, 0] });
-			const nodeMap = new Map<string, INodeUi>([
-				['NodeA', nodeA],
-				['NodeB', nodeB],
-			]);
-			const getNodeByName = (name: string) => nodeMap.get(name);
-
-			const result = sortCredentialTypeStates(states, getNodeByName);
+			const result = sortCredentialTypeStates(states);
 
 			expect(result).not.toBe(states);
 			expect(states[0].credentialType).toBe('apiB');

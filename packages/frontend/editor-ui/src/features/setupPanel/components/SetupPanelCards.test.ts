@@ -73,8 +73,12 @@ const createCredentialCard = (
 		credentialDisplayName: 'OpenAI',
 		selectedCredentialId: undefined,
 		issues: [],
-		nodeNames: ['OpenAI'],
-		triggerNodes: [],
+		nodes: [
+			createTestNode({
+				name: 'OpenAI',
+				type: 'n8n-nodes-base.openAi',
+			}) as INodeUi,
+		],
 		isComplete: false,
 		isGenericAuth: false,
 		...overrides,

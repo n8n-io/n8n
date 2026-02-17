@@ -78,21 +78,17 @@ export function isNodeSetupComplete(requirements: NodeCredentialRequirement[]): 
  * Returns one CredentialTypeSetupState per unique credential type.
  */
 export function groupCredentialsByType(
-	nodesWithCredentials: Array<{ node: INodeUi; credentialTypes: string[]; isTrigger: boolean }>,
+	nodesWithCredentials: Array<{ node: INodeUi; credentialTypes: string[] }>,
 	getCredentialDisplayName: (type: string) => string,
 	isGenericAuthType: (type: string) => boolean,
 ): CredentialTypeSetupState[] {
 	const map = new Map<string, CredentialTypeSetupState>();
 
-	for (const { node, credentialTypes, isTrigger } of nodesWithCredentials) {
+	for (const { node, credentialTypes } of nodesWithCredentials) {
 		for (const credType of credentialTypes) {
 			const existing = map.get(credType);
 			if (existing) {
-				existing.nodeNames.push(node.name);
-
-				if (isTrigger) {
-					existing.triggerNodes.push(node);
-				}
+				existing.nodes.push(node);
 
 				const nodeIssues = node.issues?.credentials?.[credType];
 				if (nodeIssues) {
@@ -124,8 +120,7 @@ export function groupCredentialsByType(
 					credentialDisplayName: getCredentialDisplayName(credType),
 					selectedCredentialId,
 					issues: issueMessages,
-					nodeNames: [node.name],
-					triggerNodes: isTrigger ? [node] : [],
+					nodes: [node],
 					isComplete: false,
 					isGenericAuth: isGenericAuthType(credType),
 				});
@@ -147,10 +142,12 @@ export function groupCredentialsByType(
 export function isCredentialCardComplete(
 	credState: CredentialTypeSetupState,
 	hasTriggerExecuted: (nodeName: string) => boolean,
+	isTriggerNode: (nodeType: string) => boolean,
 ): boolean {
 	const credentialComplete = !!credState.selectedCredentialId && credState.issues.length === 0;
 	if (!credentialComplete) return false;
-	return credState.triggerNodes.every((node) => hasTriggerExecuted(node.name));
+	const triggerNodes = credState.nodes.filter((node) => isTriggerNode(node.type));
+	return triggerNodes.every((node) => hasTriggerExecuted(node.name));
 }
 
 /**
@@ -179,15 +176,10 @@ export function buildTriggerSetupState(
  */
 export function sortCredentialTypeStates(
 	states: CredentialTypeSetupState[],
-	getNodeByName: (name: string) => INodeUi | null | undefined,
 ): CredentialTypeSetupState[] {
 	return [...states].sort((a, b) => {
-		const aMinX = Math.min(
-			...a.nodeNames.map((name) => getNodeByName(name)?.position[0] ?? Infinity),
-		);
-		const bMinX = Math.min(
-			...b.nodeNames.map((name) => getNodeByName(name)?.position[0] ?? Infinity),
-		);
+		const aMinX = Math.min(...a.nodes.map((node) => node.position[0]));
+		const bMinX = Math.min(...b.nodes.map((node) => node.position[0]));
 		return aMinX - bMinX;
 	});
 }

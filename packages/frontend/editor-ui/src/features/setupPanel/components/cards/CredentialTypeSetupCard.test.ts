@@ -1,10 +1,12 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestNode } from '@/__tests__/mocks';
+import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import CredentialTypeSetupCard from './CredentialTypeSetupCard.vue';
 import type { CredentialTypeSetupState } from '../../setupPanel.types';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INodeUi } from '@/Interface';
 
 vi.mock('@/features/credentials/components/CredentialPicker/CredentialPicker.vue', () => ({
@@ -44,22 +46,38 @@ const createState = (
 	credentialDisplayName: 'OpenAI',
 	selectedCredentialId: undefined,
 	issues: [],
-	nodeNames: ['OpenAI'],
-	triggerNodes: [],
+	nodes: [
+		createTestNode({
+			name: 'OpenAI',
+			type: 'n8n-nodes-base.openAi',
+		}) as INodeUi,
+	],
 	isComplete: false,
 	isGenericAuth: false,
 	...overrides,
 });
 
 describe('CredentialTypeSetupCard', () => {
+	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+
 	beforeEach(() => {
 		createTestingPinia();
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+		nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);
 	});
 
 	describe('rendering', () => {
 		it('should render card title as the first node name', () => {
 			const { getByTestId } = renderComponent({
-				props: { state: createState({ nodeNames: ['OpenAI', 'GPT Node'] }), expanded: true },
+				props: {
+					state: createState({
+						nodes: [
+							createTestNode({ name: 'OpenAI', type: 'n8n-nodes-base.openAi' }) as INodeUi,
+							createTestNode({ name: 'GPT Node', type: 'n8n-nodes-base.openAi' }) as INodeUi,
+						],
+					}),
+					expanded: true,
+				},
 			});
 
 			expect(getByTestId('credential-type-setup-card-header')).toHaveTextContent('OpenAI');
@@ -91,7 +109,10 @@ describe('CredentialTypeSetupCard', () => {
 
 		it('should show nodes hint when credential is used by multiple nodes', () => {
 			const state = createState({
-				nodeNames: ['OpenAI', 'GPT Node'],
+				nodes: [
+					createTestNode({ name: 'OpenAI', type: 'n8n-nodes-base.openAi' }) as INodeUi,
+					createTestNode({ name: 'GPT Node', type: 'n8n-nodes-base.openAi' }) as INodeUi,
+				],
 			});
 
 			const { getByTestId } = renderComponent({
@@ -102,9 +123,7 @@ describe('CredentialTypeSetupCard', () => {
 		});
 
 		it('should not show nodes hint when credential is used by a single node', () => {
-			const state = createState({
-				nodeNames: ['OpenAI'],
-			});
+			const state = createState();
 
 			const { queryByTestId } = renderComponent({
 				props: { state, expanded: true },
@@ -194,7 +213,7 @@ describe('CredentialTypeSetupCard', () => {
 	});
 
 	describe('trigger section', () => {
-		it('should not render trigger buttons when triggerNodes is empty', () => {
+		it('should not render trigger buttons when there are no trigger nodes', () => {
 			const { queryByTestId } = renderComponent({
 				props: { state: createState(), expanded: true },
 			});
@@ -202,7 +221,10 @@ describe('CredentialTypeSetupCard', () => {
 			expect(queryByTestId('trigger-execute-button')).not.toBeInTheDocument();
 		});
 
-		it('should render trigger execute buttons when triggerNodes has entries', () => {
+		it('should render trigger execute buttons when nodes include triggers', () => {
+			nodeTypesStore.isTriggerNode = vi.fn(
+				(type: string) => type === 'n8n-nodes-base.slackTrigger',
+			);
 			const triggerNode = createTestNode({
 				name: 'SlackTrigger',
 				type: 'n8n-nodes-base.slackTrigger',
@@ -210,7 +232,7 @@ describe('CredentialTypeSetupCard', () => {
 
 			const { getByTestId } = renderComponent({
 				props: {
-					state: createState({ triggerNodes: [triggerNode] }),
+					state: createState({ nodes: [triggerNode] }),
 					expanded: true,
 				},
 			});
@@ -219,6 +241,9 @@ describe('CredentialTypeSetupCard', () => {
 		});
 
 		it('should render multiple trigger execute buttons for multiple triggers', () => {
+			nodeTypesStore.isTriggerNode = vi.fn(
+				(type: string) => type === 'n8n-nodes-base.slackTrigger',
+			);
 			const trigger1 = createTestNode({
 				name: 'Trigger1',
 				type: 'n8n-nodes-base.slackTrigger',
@@ -230,7 +255,7 @@ describe('CredentialTypeSetupCard', () => {
 
 			const { getAllByTestId } = renderComponent({
 				props: {
-					state: createState({ triggerNodes: [trigger1, trigger2] }),
+					state: createState({ nodes: [trigger1, trigger2] }),
 					expanded: true,
 				},
 			});
@@ -239,6 +264,9 @@ describe('CredentialTypeSetupCard', () => {
 		});
 
 		it('should not render trigger buttons when collapsed', () => {
+			nodeTypesStore.isTriggerNode = vi.fn(
+				(type: string) => type === 'n8n-nodes-base.slackTrigger',
+			);
 			const triggerNode = createTestNode({
 				name: 'SlackTrigger',
 				type: 'n8n-nodes-base.slackTrigger',
@@ -246,7 +274,7 @@ describe('CredentialTypeSetupCard', () => {
 
 			const { queryByTestId } = renderComponent({
 				props: {
-					state: createState({ triggerNodes: [triggerNode] }),
+					state: createState({ nodes: [triggerNode] }),
 					expanded: false,
 				},
 			});

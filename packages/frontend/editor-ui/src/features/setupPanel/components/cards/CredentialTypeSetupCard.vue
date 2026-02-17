@@ -8,6 +8,7 @@ import CredentialPicker from '@/features/credentials/components/CredentialPicker
 import TriggerExecuteButton from '../TriggerExecuteButton.vue';
 
 import type { CredentialTypeSetupState } from '../../setupPanel.types';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import SetupCard from './SetupCard.vue';
 
 const props = defineProps<{
@@ -22,19 +23,26 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const nodeTypesStore = useNodeTypesStore();
 
 const setupCard = ref<InstanceType<typeof SetupCard> | null>(null);
 
-const cardTitle = computed(() => props.state.nodeNames[0] ?? '');
+const nodeNames = computed(() => props.state.nodes.map((node) => node.name));
 
-const nodeNamesTooltip = computed(() => props.state.nodeNames.join(', '));
+const triggerNodes = computed(() =>
+	props.state.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
+);
 
-const showFooter = computed(() => props.state.triggerNodes.length > 0 || props.state.isComplete);
+const cardTitle = computed(() => nodeNames.value[0] ?? '');
+
+const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
+
+const showFooter = computed(() => triggerNodes.value.length > 0 || props.state.isComplete);
 
 const telemetryPayload = computed(() => ({
 	type: 'credential',
 	credential_type: props.state.credentialType,
-	related_nodes_count: props.state.nodeNames.length,
+	related_nodes_count: nodeNames.value.length,
 }));
 
 const onCredentialSelected = (credentialId: string) => {
@@ -75,7 +83,7 @@ const onCredentialDeselected = () => {
 					>
 						{{ i18n.baseText('setupPanel.credentialLabel') }}
 					</label>
-					<N8nTooltip v-if="state.nodeNames.length > 1" placement="top">
+					<N8nTooltip v-if="nodeNames.length > 1" placement="top">
 						<template #content>
 							{{ nodeNamesTooltip }}
 						</template>
@@ -85,7 +93,7 @@ const onCredentialDeselected = () => {
 						>
 							{{
 								i18n.baseText('setupPanel.usedInNodes', {
-									interpolate: { count: String(state.nodeNames.length) },
+									interpolate: { count: String(nodeNames.length) },
 								})
 							}}
 						</span>
@@ -104,9 +112,9 @@ const onCredentialDeselected = () => {
 		</div>
 
 		<template #footer-actions>
-			<div v-if="state.triggerNodes.length > 0" :class="$style['footer-trigger-buttons']">
+			<div v-if="triggerNodes.length > 0" :class="$style['footer-trigger-buttons']">
 				<TriggerExecuteButton
-					v-for="triggerNode in state.triggerNodes"
+					v-for="triggerNode in triggerNodes"
 					:key="triggerNode.id"
 					:node="triggerNode"
 					@executed="setupCard?.markInteracted()"

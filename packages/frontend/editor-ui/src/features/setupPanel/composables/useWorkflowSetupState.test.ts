@@ -130,8 +130,9 @@ describe('useWorkflowSetupState', () => {
 			const credCards = setupCards.value.filter((c) => c.type === 'credential');
 			expect(credCards).toHaveLength(1);
 			if (credCards[0].type === 'credential') {
-				expect(credCards[0].state.nodeNames).toContain('OpenAI1');
-				expect(credCards[0].state.nodeNames).toContain('OpenAI2');
+				const nodeNames = credCards[0].state.nodes.map((n) => n.name);
+				expect(nodeNames).toContain('OpenAI1');
+				expect(nodeNames).toContain('OpenAI2');
 			}
 		});
 
@@ -179,8 +180,11 @@ describe('useWorkflowSetupState', () => {
 			expect(triggerCards).toHaveLength(0);
 			expect(credCards).toHaveLength(1);
 			if (credCards[0].type === 'credential') {
-				expect(credCards[0].state.triggerNodes).toHaveLength(1);
-				expect(credCards[0].state.triggerNodes[0].name).toBe('SlackTrigger');
+				const triggerNodes = credCards[0].state.nodes.filter((n) =>
+					nodeTypesStore.isTriggerNode(n.type),
+				);
+				expect(triggerNodes).toHaveLength(1);
+				expect(triggerNodes[0].name).toBe('SlackTrigger');
 			}
 		});
 
@@ -215,8 +219,11 @@ describe('useWorkflowSetupState', () => {
 			// Only one credential card with the first trigger embedded
 			expect(credCards).toHaveLength(1);
 			if (credCards[0].type === 'credential') {
-				expect(credCards[0].state.triggerNodes).toHaveLength(1);
-				expect(credCards[0].state.triggerNodes[0].name).toBe('SlackTrigger1');
+				const triggerNodes = credCards[0].state.nodes.filter((n) =>
+					nodeTypesStore.isTriggerNode(n.type),
+				);
+				expect(triggerNodes).toHaveLength(1);
+				expect(triggerNodes[0].name).toBe('SlackTrigger1');
 			}
 
 			// Second trigger becomes a standalone trigger card
@@ -316,7 +323,7 @@ describe('useWorkflowSetupState', () => {
 			expect(credentialTypeStates.value[0].credentialType).toBe('openAiApi');
 		});
 
-		it('should include all nodes sharing the credential type in nodeNames', () => {
+		it('should include all nodes sharing the credential type', () => {
 			const node1 = createNode({ name: 'Node1', position: [0, 0] });
 			const node2 = createNode({ name: 'Node2', position: [100, 0] });
 			workflowsStore.allNodes = [node1, node2];
@@ -332,7 +339,8 @@ describe('useWorkflowSetupState', () => {
 
 			const { credentialTypeStates } = useWorkflowSetupState();
 
-			expect(credentialTypeStates.value[0].nodeNames).toEqual(['Node1', 'Node2']);
+			const nodeNames = credentialTypeStates.value[0].nodes.map((n) => n.name);
+			expect(nodeNames).toEqual(['Node1', 'Node2']);
 		});
 
 		it('should mark isComplete true when credential is set without issues (non-trigger node)', () => {
@@ -372,7 +380,10 @@ describe('useWorkflowSetupState', () => {
 			const { credentialTypeStates } = useWorkflowSetupState();
 
 			expect(credentialTypeStates.value[0].isComplete).toBe(false);
-			expect(credentialTypeStates.value[0].triggerNodes).toHaveLength(1);
+			const triggerNodes = credentialTypeStates.value[0].nodes.filter((n) =>
+				nodeTypesStore.isTriggerNode(n.type),
+			);
+			expect(triggerNodes).toHaveLength(1);
 		});
 
 		it('should mark isComplete true when credential is set and embedded trigger has executed', () => {
@@ -393,7 +404,10 @@ describe('useWorkflowSetupState', () => {
 			const { credentialTypeStates } = useWorkflowSetupState();
 
 			expect(credentialTypeStates.value[0].isComplete).toBe(true);
-			expect(credentialTypeStates.value[0].triggerNodes).toHaveLength(1);
+			const triggerNodes = credentialTypeStates.value[0].nodes.filter((n) =>
+				nodeTypesStore.isTriggerNode(n.type),
+			);
+			expect(triggerNodes).toHaveLength(1);
 		});
 
 		it('should mark isComplete false when credential is missing', () => {
@@ -999,8 +1013,9 @@ describe('useWorkflowSetupState', () => {
 			const credCards = setupCards.value.filter((c) => c.type === 'credential');
 			expect(credCards).toHaveLength(1);
 			if (credCards[0].type === 'credential') {
-				expect(credCards[0].state.nodeNames).toContain('CustomNode');
-				expect(credCards[0].state.nodeNames).not.toContain('StoreNode');
+				const nodeNames = credCards[0].state.nodes.map((n) => n.name);
+				expect(nodeNames).toContain('CustomNode');
+				expect(nodeNames).not.toContain('StoreNode');
 			}
 		});
 
@@ -1022,13 +1037,13 @@ describe('useWorkflowSetupState', () => {
 			const { credentialTypeStates } = useWorkflowSetupState(nodesRef);
 
 			expect(credentialTypeStates.value).toHaveLength(1);
-			expect(credentialTypeStates.value[0].nodeNames).toEqual(['Node1']);
+			expect(credentialTypeStates.value[0].nodes.map((n) => n.name)).toEqual(['Node1']);
 
 			nodesRef.value = [node1, node2];
 			await nextTick();
 
 			expect(credentialTypeStates.value).toHaveLength(1);
-			expect(credentialTypeStates.value[0].nodeNames).toEqual(['Node1', 'Node2']);
+			expect(credentialTypeStates.value[0].nodes.map((n) => n.name)).toEqual(['Node1', 'Node2']);
 		});
 	});
 });

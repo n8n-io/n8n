@@ -15,10 +15,8 @@ export interface CredentialTypeSetupState {
 	credentialDisplayName: string;
 	selectedCredentialId?: string;
 	issues: string[];
-	/** All node names that require this credential type */
-	nodeNames: string[];
-	/** Trigger nodes within this credential group (for embedded execute buttons) */
-	triggerNodes: INodeUi[];
+	/** All nodes that require this credential type */
+	nodes: INodeUi[];
 	isComplete: boolean;
 	/** Whether this is a generic auth type (e.g. Basic Auth, OAuth2) vs a service-specific one */
 	isGenericAuth: boolean;

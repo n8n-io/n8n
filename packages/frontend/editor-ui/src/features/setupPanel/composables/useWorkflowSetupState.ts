@@ -86,24 +86,29 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 */
 	const credentialTypeStates = computed(() => {
 		const grouped = groupCredentialsByType(
-			nodesWithCredentials.value.map(({ node, credentialTypes, isTrigger }) => ({
+			nodesWithCredentials.value.map(({ node, credentialTypes }) => ({
 				node,
 				credentialTypes,
-				isTrigger,
 			})),
 			getCredentialDisplayName,
 			isGenericAuthType,
 		);
-		const sorted = sortCredentialTypeStates(grouped, (name) => workflowsStore.getNodeByName(name));
+		const sorted = sortCredentialTypeStates(grouped);
 		// Only embed the first trigger; extras become standalone trigger cards.
 		return sorted.map((state) => {
-			const triggerNodes = state.triggerNodes.slice(0, 1);
+			const triggerNodesInGroup = state.nodes.filter((node) => isTriggerNode(node));
+			const firstTrigger = triggerNodesInGroup[0];
+			const nodes =
+				triggerNodesInGroup.length > 1
+					? state.nodes.filter((node) => !isTriggerNode(node) || node === firstTrigger)
+					: state.nodes;
 			return {
 				...state,
-				triggerNodes,
+				nodes,
 				isComplete: isCredentialCardComplete(
-					{ ...state, triggerNodes },
+					{ ...state, nodes },
 					hasTriggerExecutedSuccessfully,
+					(nodeType) => nodeTypesStore.isTriggerNode(nodeType),
 				),
 			};
 		});
@@ -116,8 +121,10 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	const triggerStates = computed(() => {
 		const coveredTriggerNames = new Set<string>();
 		for (const credState of credentialTypeStates.value) {
-			for (const triggerNode of credState.triggerNodes) {
-				coveredTriggerNames.add(triggerNode.name);
+			for (const node of credState.nodes) {
+				if (isTriggerNode(node)) {
+					coveredTriggerNames.add(node.name);
+				}
 			}
 		}
 
@@ -172,12 +179,12 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 		const credentialDetails = { id: credentialId, name: credential.name };
 
-		for (const nodeName of credState.nodeNames) {
-			const node = workflowsStore.getNodeByName(nodeName);
+		for (const stateNode of credState.nodes) {
+			const node = workflowsStore.getNodeByName(stateNode.name);
 			if (!node) continue;
 
 			workflowState.updateNodeProperties({
-				name: nodeName,
+				name: stateNode.name,
 				properties: {
 					credentials: {
 						...node.credentials,
@@ -197,15 +204,15 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		const credState = credentialTypeStates.value.find((s) => s.credentialType === credentialType);
 		if (!credState) return;
 
-		for (const nodeName of credState.nodeNames) {
-			const node = workflowsStore.getNodeByName(nodeName);
+		for (const stateNode of credState.nodes) {
+			const node = workflowsStore.getNodeByName(stateNode.name);
 			if (!node) continue;
 
 			const updatedCredentials = { ...node.credentials };
 			delete updatedCredentials[credentialType];
 
 			workflowState.updateNodeProperties({
-				name: nodeName,
+				name: stateNode.name,
 				properties: {
 					credentials: updatedCredentials,
 				},
