@@ -188,6 +188,7 @@ export class EnterpriseCredentialsService {
 				destinationProject.id,
 				decryptedData,
 				this.externalSecretsProviderAccessCheckService,
+				'transfer',
 			);
 		}
 
