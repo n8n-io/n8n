@@ -12,10 +12,21 @@ export class CreateWorkflowBuilderSessionTable1770220686000 implements Reversibl
 				column('workflowId').varchar(36).notNull,
 				column('userId').varchar(36).notNull,
 				column('messages').json.notNull.default("'[]'"),
-				column('previousSummary').text,
+				column('previousSummary').text.comment(
+					'Summary of prior conversation from compaction (/compact or auto-compact)',
+				),
 			)
-			.withUniqueConstraintOn(['workflowId', 'userId'])
-			.withIndexOn(['workflowId', 'userId']).withTimestamps;
+			.withForeignKey('workflowId', {
+				tableName: 'workflow_entity',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withForeignKey('userId', {
+				tableName: 'user',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withUniqueConstraintOn(['workflowId', 'userId']).withTimestamps;
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {

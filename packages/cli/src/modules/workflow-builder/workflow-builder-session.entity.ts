@@ -1,6 +1,14 @@
 import type { StoredMessage } from '@langchain/core/messages';
 import { JsonColumn, WithTimestamps } from '@n8n/db';
-import { Column, Entity, Index, PrimaryGeneratedColumn, Unique } from '@n8n/typeorm';
+import {
+	Column,
+	Entity,
+	JoinColumn,
+	ManyToOne,
+	PrimaryGeneratedColumn,
+	Unique,
+} from '@n8n/typeorm';
+import type { Relation } from '@n8n/typeorm';
 
 export interface IWorkflowBuilderSession {
 	id: string;
@@ -15,7 +23,6 @@ export interface IWorkflowBuilderSession {
 
 @Entity({ name: 'workflow_builder_session' })
 @Unique(['workflowId', 'userId'])
-@Index(['workflowId', 'userId'])
 export class WorkflowBuilderSession extends WithTimestamps implements IWorkflowBuilderSession {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
@@ -23,8 +30,16 @@ export class WorkflowBuilderSession extends WithTimestamps implements IWorkflowB
 	@Column({ type: 'varchar', length: 36 })
 	workflowId: string;
 
+	@ManyToOne('WorkflowEntity', { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'workflowId' })
+	workflow?: Relation<object>;
+
 	@Column({ type: 'varchar', length: 36 })
 	userId: string;
+
+	@ManyToOne('User', { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'userId' })
+	user?: Relation<object>;
 
 	/** Serialized LangChain messages in StoredMessage format */
 	@JsonColumn({ default: '[]' })
