@@ -7,6 +7,8 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			silent: true,
 			globals: true,
 			environment: 'node',
+			reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],
+			outputFile: { junit: './junit.xml' },
 			...(process.env.COVERAGE_ENABLED === 'true'
 				? {
 						coverage: {

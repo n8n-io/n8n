@@ -84,7 +84,8 @@ const homeProject = computed<ProjectSharingData | undefined>(
 const isHomeTeamProject = computed(() => homeProject.value?.type === ProjectTypes.Team);
 const isPersonalSpaceRestricted = computed(
 	() =>
-		projectsStore.currentProject?.type === ProjectTypes.Personal &&
+		homeProject.value?.type === ProjectTypes.Personal &&
+		homeProject.value?.id === projectsStore.personalProject?.id &&
 		!props.credentialPermissions.share,
 );
 const credentialRoleTranslations = computed<Record<string, string>>(() => {
@@ -154,23 +155,22 @@ function goToUpgrade() {
 			/>
 		</div>
 		<div v-else>
-			<N8nInfoTip v-if="credentialPermissions.share" :bold="false" class="mb-s">
+			<N8nInfoTip
+				v-if="credentialPermissions.share || isPersonalSpaceRestricted"
+				:bold="false"
+				class="mb-s"
+			>
 				{{ i18n.baseText('credentialEdit.credentialSharing.info.owner') }}
 			</N8nInfoTip>
 			<N8nInfoTip v-else-if="isHomeTeamProject" :bold="false" class="mb-s">
 				{{ i18n.baseText('credentialEdit.credentialSharing.info.sharee.team') }}
 			</N8nInfoTip>
 			<N8nInfoTip v-else :bold="false" class="mb-s">
-				<template v-if="isPersonalSpaceRestricted">
-					{{ i18n.baseText('credentialEdit.credentialSharing.info.personalSpaceRestricted') }}
-				</template>
-				<template v-else>
-					{{
-						i18n.baseText('credentialEdit.credentialSharing.info.sharee.personal', {
-							interpolate: { credentialOwnerName },
-						})
-					}}
-				</template>
+				{{
+					i18n.baseText('credentialEdit.credentialSharing.info.sharee.personal', {
+						interpolate: { credentialOwnerName },
+					})
+				}}
 			</N8nInfoTip>
 			<ProjectSharing
 				v-model="sharedWithProjects"
@@ -179,6 +179,11 @@ function goToUpgrade() {
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
 				:static="!credentialPermissions.share"
+				:disabled-tooltip="
+					isPersonalSpaceRestricted
+						? i18n.baseText('credentialEdit.credentialSharing.info.personalSpaceRestricted')
+						: undefined
+				"
 				:placeholder="sharingSelectPlaceholder"
 				:can-share-globally="canShareGlobally"
 				:is-shared-globally="isSharedGlobally"

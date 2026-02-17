@@ -224,7 +224,7 @@ describe('TestRunnerService', () => {
 				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
 			} catch (error) {
 				expect(error).toBeInstanceOf(TestRunError);
-				expect(error.code).toBe('TEST_CASES_NOT_FOUND');
+				expect(error.code).toBe('CANT_FETCH_TEST_CASES');
 			}
 		});
 

@@ -99,7 +99,7 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 	const hasBeenPublished = !!workflowsStore.workflow.activeVersion;
 	const hasChanges =
 		workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId ||
-		uiStore.stateIsDirty;
+		uiStore.hasUnsavedWorkflowChanges;
 
 	// Not published states
 	if (!hasBeenPublished) {

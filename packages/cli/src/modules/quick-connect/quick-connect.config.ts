@@ -19,6 +19,12 @@ const quickConnectOptionSchema = z.object({
 
 export type QuickConnectOption = z.infer<typeof quickConnectOptionSchema>;
 
+const quickConnectBackendOptionSchema = quickConnectOptionSchema.required({
+	backendFlowConfig: true,
+});
+
+export type QuickConnectBackendOption = z.infer<typeof quickConnectBackendOptionSchema>;
+
 const quickConnectOptionsSchema = z.string().pipe(
 	z.preprocess((input: string) => {
 		try {

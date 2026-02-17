@@ -66,6 +66,7 @@ import { type ContextMenuAction } from '@/features/shared/contextMenu/composable
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 const $style = useCssModule();
 
@@ -164,6 +165,7 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const chatPanelStateStore = useChatPanelStateStore();
+const setupPanelStore = useSetupPanelStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
@@ -212,6 +214,7 @@ const classes = computed(() => ({
 	[$style.canvas]: true,
 	[$style.ready]: !props.loading && isPaneReady.value,
 	[$style.isExperimentalNdvActive]: isExperimentalNdvActive.value,
+	spotlightActive: setupPanelStore.isHighlightActive,
 }));
 
 /**
@@ -1054,6 +1057,7 @@ defineExpose({
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"
 					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
+					:highlighted="setupPanelStore.highlightedNodeIds.has(nodeProps.id)"
 					@delete="onDeleteNode"
 					@run="onRunNode"
 					@select="onSelectNode"
@@ -1168,5 +1172,21 @@ defineExpose({
 .minimap-enter-from,
 .minimap-leave-to {
 	opacity: 0;
+}
+
+.spotlightActive {
+	:deep(.vue-flow__edges) {
+		opacity: 0.2;
+		transition: opacity 0.15s ease;
+	}
+
+	:deep(.vue-flow__node) {
+		opacity: 0.2;
+		transition: opacity 0.15s ease;
+	}
+
+	:deep(.vue-flow__node:has(.highlighted)) {
+		opacity: 1;
+	}
 }
 </style>
