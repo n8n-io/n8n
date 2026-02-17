@@ -5,7 +5,7 @@ import { GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, OperationalError } from 'n8n-workflow';
 
 jest.mock('@/tools/add-node.tool', () => ({
 	createAddNodeTool: jest.fn().mockReturnValue({ tool: { name: 'add_node' } }),
@@ -301,6 +301,49 @@ describe('WorkflowBuilderAgent', () => {
 				const generator = agent.chat(mockPayload);
 				await generator.next();
 			}).rejects.toThrow(unknownError);
+		});
+
+		it('should wrap 429 quota errors in OperationalError', async () => {
+			const quotaError = Object.assign(
+				new Error('You exceeded your current quota, please check your plan and billing details.'),
+				{ status: 429 },
+			);
+
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw quotaError;
+				})();
+			});
+
+			await expect(async () => {
+				const generator = agent.chat(mockPayload);
+				await generator.next();
+			}).rejects.toThrow(OperationalError);
+		});
+
+		it('should set level to warning on OperationalError from 429 quota error', async () => {
+			const quotaError = Object.assign(new Error('You exceeded your current quota'), {
+				status: 429,
+			});
+
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw quotaError;
+				})();
+			});
+
+			let thrownError: unknown;
+			try {
+				const generator = agent.chat(mockPayload);
+				await generator.next();
+				fail('Expected an error to be thrown');
+			} catch (error) {
+				thrownError = error;
+			}
+			expect(thrownError).toBeInstanceOf(OperationalError);
+			expect((thrownError as OperationalError).level).toBe('warning');
 		});
 	});
 

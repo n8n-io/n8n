@@ -15,6 +15,7 @@ on:
       - packages/cli/test/shared/db/**
       - packages/@n8n/db/**
       - packages/cli/**/__tests__/**
+      - packages/testing/containers/services/postgres.ts
       - .github/workflows/test-db.yml
       - .github/docker-compose.yml
 

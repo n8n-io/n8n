@@ -424,15 +424,16 @@ export class TestRunnerService {
 		const triggerNode = this.findEvaluationTriggerNode(workflow);
 		assert(triggerNode);
 
-		const triggerOutputData = execution.data.resultData.runData[triggerNode.name][0];
+		const triggerOutputData = execution.data.resultData.runData[triggerNode.name]?.[0];
 
-		if (triggerOutputData?.error) {
+		if (!triggerOutputData || triggerOutputData.error) {
 			throw new TestRunError('CANT_FETCH_TEST_CASES', {
-				message: triggerOutputData.error.message,
+				message:
+					triggerOutputData?.error?.message ?? 'Evaluation trigger node did not produce any output',
 			});
 		}
 
-		const triggerOutput = triggerOutputData?.data?.[NodeConnectionTypes.Main]?.[0];
+		const triggerOutput = triggerOutputData.data?.[NodeConnectionTypes.Main]?.[0];
 
 		if (!triggerOutput || triggerOutput.length === 0) {
 			throw new TestRunError('TEST_CASES_NOT_FOUND');
