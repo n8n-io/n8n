@@ -2973,7 +2973,7 @@
 	"settings.secretsProviderConnections.modal.testConnection.error": "Connection unsuccessful, please check your {providerName} settings",
 	"settings.secretsProviderConnections.modal.testConnection.error.serviceDisabled": "Connection unsuccessful. The provider could not be reached.",
 	"settings.secretsProviderConnections.modal.validation.connectionName.required": "Secret store name is required. Enter a unique name for your secret store.",
-	"settings.secretsProviderConnections.modal.validation.connectionName.format": "Secret store name must contain only lowercase letters, numbers, and hyphens (e.g., \"aws-production\")",
+	"settings.secretsProviderConnections.modal.validation.connectionName.format": "Name must start with a letter and use only letters or numbers (e.g., \"awsProduction\").",
 	"settings.secretsProviderConnections.modal.connectionName.hint": "Enter a unique name for your secret store. This can not be changed later.",
 	"settings.secretsProviderConnections.modal.connectionName.unique": "A secret store with this name already exists. Enter a unique name for your secret store.",
 	"settings.secretsProviderConnections.state.disconnected": "Disconnected",
