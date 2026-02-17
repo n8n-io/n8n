@@ -7,17 +7,11 @@ const table = {
 } as const;
 
 /**
- * Creates the chat_memory and chat_memory_sessions tables for storing agent memory entries
- * separately from chat UI messages. This allows:
- * - Supporting persistent Simple Memory Node functionality without Chat hub in the mix
- * - Separation between what the agent remembers vs what the user sees
- * - Memory branching on edit/retry via turnId correlation on Chat hub
- * - Flexible formats for session IDs (not just UUIDs)
- * - Project-scoped memory for access control
- *
- * The turnId is a correlation ID representing a single request-response execution cycle.
- * It's generated before workflow execution starts, so it can be used to link memory entries
- * to AI messages without requiring the AI message to exist first (avoiding FK constraint issues).
+ * Creates the 'chat_memory' and 'chat_memory_sessions' tables for storing persistent
+ * agent memory entries from Simple Memory node on n8n's database.
+ * - Supporting persistent Simple Memory Node functionality without having to configure external databases.
+ * - Memory branching on Workflow Agent's edit/retry via turnId correlation on Chat hub executions.
+ * - Access to memory is project scoped, knowing session ID and having execution access to the project is enough.
  */
 export class CreateChatMemoryTables1772700000000 implements ReversibleMigration {
 	async up({
@@ -28,9 +22,13 @@ export class CreateChatMemoryTables1772700000000 implements ReversibleMigration 
 		// Create chat_memory_sessions table (parent table for memory sessions)
 		await createTable(table.memorySessions)
 			.withColumns(
-				column('sessionKey').varchar(255).primary.notNull,
+				column('sessionKey')
+					.varchar(255)
+					.primary.notNull.comment(
+						'Unique key for the memory session, referenced by memory entries. User defined.',
+					),
 				column('projectId').varchar(36).notNull.comment('Project this memory session belongs to'),
-				column('workflowId').varchar(36).comment('Which workflow created this session, if known'),
+				column('workflowId').varchar(36).comment('Workflow that created this session, if known'),
 			)
 			.withForeignKey('projectId', {
 				tableName: 'project',
@@ -45,9 +43,7 @@ export class CreateChatMemoryTables1772700000000 implements ReversibleMigration 
 			.withColumns(
 				column('id').uuid.primary.notNull,
 				column('sessionKey').varchar(255).notNull,
-				column('turnId').uuid.comment(
-					'Correlation ID linking memory to an AI message turn (no FK constraint)',
-				),
+				column('turnId').uuid.comment('Correlation ID linking memory to an AI message turn'),
 				column('role')
 					.varchar(16)
 					.notNull.comment('ChatMemoryRole: "human", "ai", "system", "tool"'),
