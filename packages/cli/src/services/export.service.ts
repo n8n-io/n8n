@@ -144,6 +144,18 @@ export class ExportService {
 				continue;
 			}
 
+			// Check if table exists
+			try {
+				await this.dataSource.query(
+					`SELECT 1 FROM ${this.dataSource.driver.escape(tableName)} LIMIT 1`,
+				);
+			} catch (error) {
+				this.logger.info(
+					`   ⚠️  Skipping table: ${tableName} (${metadata.name}) as it does not exist or is not accessible`,
+				);
+				continue;
+			}
+
 			const entityName = metadata.name.toLowerCase();
 
 			this.logger.info(`\n📊 Processing table: ${tableName} (${entityName})`);
