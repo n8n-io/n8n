@@ -123,7 +123,7 @@ function onAction(action: string) {
 </script>
 
 <template>
-	<N8nCard :class="$style.card" hoverable>
+	<N8nCard :class="$style.card">
 		<template v-if="providerTypeInfo" #prepend>
 			<SecretsProviderImage
 				:class="$style.providerImage"
@@ -214,6 +214,12 @@ function onAction(action: string) {
 .card {
 	--card--padding: var(--spacing--2xs);
 	padding-left: var(--spacing--sm);
+	transition: box-shadow 0.3s ease;
+	cursor: pointer;
+
+	&:hover {
+		box-shadow: var(--shadow--card-hover);
+	}
 }
 
 .providerImage {
