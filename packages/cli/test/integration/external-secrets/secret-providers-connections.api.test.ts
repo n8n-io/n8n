@@ -133,6 +133,7 @@ describe('Secret Providers Connections API', () => {
 				name: 'awsProd',
 				type: 'awsSecretsManager',
 				secretsCount: 2,
+				state: 'connected',
 				secrets: [{ name: 'test1' }, { name: 'test2' }],
 				projects: [],
 				settings: expect.any(Object),
@@ -421,6 +422,7 @@ describe('Secret Providers Connections API', () => {
 					id: expect.any(String),
 					name: expect.any(String),
 					type: expect.any(String),
+					state: expect.any(String),
 					projects: expect.any(Array),
 					createdAt: expect.any(String),
 					updatedAt: expect.any(String),
@@ -464,6 +466,7 @@ describe('Secret Providers Connections API', () => {
 				id: expect.any(String),
 				name: 'getTest',
 				type: 'awsSecretsManager',
+				state: expect.any(String),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
