@@ -210,6 +210,8 @@ export class SecretsProvidersConnectionsService {
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
 			secretsCount: secretNames.length,
+			// Provider may not be registered yet in multi-main setups.
+			// When that's the case the default state is 'initializing'.
 			state: connectionInstance?.state ?? 'initializing',
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
@@ -232,6 +234,8 @@ export class SecretsProvidersConnectionsService {
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
 			secretsCount: secretNames.length,
+			// Provider may not be registered yet in multi-main setups.
+			// When that's the case the default state is 'initializing'.
 			state: connectionInstance?.state ?? 'initializing',
 			secrets: secretNames.map((name) => ({ name })),
 			projects: connection.projectAccess.map((access) => ({
