@@ -73,7 +73,7 @@ defineExpose({ markInteracted });
 			{
 				[$style.collapsed]: !expanded,
 				[$style.completed]: isComplete,
-				[$style['no-footer']]: !showFooter,
+				[$style['no-footer']]: !showFooter && expanded,
 			},
 		]"
 	>
