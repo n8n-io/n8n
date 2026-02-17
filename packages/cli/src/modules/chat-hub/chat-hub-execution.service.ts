@@ -94,7 +94,7 @@ export class ChatHubExecutionService {
 		previousMessageId: ChatMessageId,
 		retryOfMessageId: ChatMessageId | null,
 		responseMode: ChatTriggerResponseMode,
-		turnId: ChatMessageId | null = null,
+		turnId: ChatMessageId,
 	) {
 		const executionMode = model.provider === 'n8n' ? 'webhook' : 'chat';
 		const { id: workflowId } = workflowData;
@@ -156,7 +156,7 @@ export class ChatHubExecutionService {
 		retryOfMessageId: ChatMessageId | null,
 		executionMode: WorkflowExecuteMode,
 		responseMode: ChatTriggerResponseMode,
-		turnId: ChatMessageId | null = null,
+		turnId: ChatMessageId,
 	) {
 		this.logger.debug(
 			`Starting execution of workflow "${workflowData.name}" with ID ${workflowData.id}`,
@@ -368,7 +368,7 @@ export class ChatHubExecutionService {
 		retryOfMessageId: string | null,
 		executionMode: WorkflowExecuteMode,
 		responseMode: NonStreamingResponseMode,
-		turnId: string | null = null,
+		turnId: string,
 	) {
 		// 1. Start the workflow execution
 		const running = await this.workflowExecutionService.executeChatWorkflow(

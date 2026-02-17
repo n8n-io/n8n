@@ -798,7 +798,7 @@ export class ChatHubService {
 		sessionId: ChatSessionId,
 		previousMessageId: ChatMessageId,
 		retryOfMessageId: ChatMessageId | null,
-		turnId: ChatMessageId | null,
+		turnId: ChatMessageId,
 		originalPreviousMessageId: ChatMessageId | null,
 		credentials: INodeCredentials,
 		humanMessage: string,
