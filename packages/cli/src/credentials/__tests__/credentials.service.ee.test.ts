@@ -112,7 +112,7 @@ describe('EnterpriseCredentialsService', () => {
 				);
 
 				await expect(service.transferOne(user, credentialId, destinationProjectId)).rejects.toThrow(
-					'The secret provider "vault" used in "apiKey" does not exist in the destination projectt',
+					'The secret provider "vault" used in "apiKey" does not exist in the destination project',
 				);
 
 				expect(credentialsService.decrypt).toHaveBeenCalledWith(credential, true);
