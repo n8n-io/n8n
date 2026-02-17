@@ -235,7 +235,8 @@ function onAction(action: string) {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	background-color: var(--color--background--light-3);
 	border-color: var(--color--foreground);
-	height: 23px;
+	height: var(--spacing--lg);
+	cursor: pointer;
 
 	& > span {
 		display: flex;
