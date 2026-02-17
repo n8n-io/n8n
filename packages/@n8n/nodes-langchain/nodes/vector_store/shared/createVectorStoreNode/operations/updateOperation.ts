@@ -3,8 +3,7 @@ import type { VectorStore } from '@langchain/core/vectorstores';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { logAiEvent } from '@utils/helpers';
-import { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { logAiEvent, N8nJsonLoader } from '@n8n/ai-utilities';
 
 import { processDocument } from '../../processDocuments';
 import type { VectorStoreNodeConstructorArgs } from '../types';

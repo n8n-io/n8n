@@ -99,7 +99,12 @@ function pullWorkfolder() {
 			:class="$style.connected"
 			data-test-id="main-sidebar-source-control-connected"
 		>
-			<N8nTooltip :disabled="!isCollapsed" :show-after="tooltipOpenDelay" placement="right">
+			<N8nTooltip
+				:disabled="!isCollapsed"
+				:show-after="tooltipOpenDelay"
+				placement="right"
+				:avoid-collisions="false"
+			>
 				<template #content>
 					<div>
 						{{ currentBranch }}
@@ -118,7 +123,7 @@ function pullWorkfolder() {
 					}}</N8nText>
 				</span>
 			</N8nTooltip>
-			<div>
+			<div :class="$style.buttonContainer">
 				<N8nTooltip
 					:disabled="!isCollapsed && hasPullPermission"
 					:show-after="tooltipOpenDelay"
@@ -134,12 +139,11 @@ function pullWorkfolder() {
 						</div>
 					</template>
 					<N8nButton
+						variant="ghost"
 						:disabled="!hasPullPermission"
 						data-test-id="main-sidebar-source-control-pull"
 						icon="arrow-down"
-						type="tertiary"
 						:size="isCollapsed ? 'small' : 'mini'"
-						text
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.pull')"
 						@click="pullWorkfolder"
@@ -162,13 +166,12 @@ function pullWorkfolder() {
 						</div>
 					</template>
 					<N8nButton
+						variant="ghost"
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
 						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
 						data-test-id="main-sidebar-source-control-push"
 						icon="arrow-up"
-						type="tertiary"
-						text
 						:size="isCollapsed ? 'small' : 'mini'"
 						@click="pushWorkfolder"
 					/>
@@ -223,11 +226,21 @@ function pullWorkfolder() {
 		gap: var(--spacing--3xs);
 		padding-right: 0;
 
+		> span:first-child {
+			width: 100%;
+		}
+
 		.icon {
 			width: 100%;
 			padding: var(--spacing--3xs) 0;
 			justify-content: center;
 		}
 	}
+}
+
+.buttonContainer {
+	display: flex;
+	align-items: center;
+	justify-content: justify-end;
 }
 </style>

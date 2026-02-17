@@ -90,6 +90,24 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		});
 	}
 
+	async getSharedPersonalCredentialsCount(): Promise<number> {
+		return await this.createQueryBuilder('sc')
+			.innerJoin('sc.project', 'project')
+			.where('sc.role = :role', { role: 'credential:owner' })
+			.andWhere('project.type = :type', { type: 'personal' })
+			.andWhere((qb) => {
+				const subQuery = qb
+					.subQuery()
+					.select('1')
+					.from(SharedCredentials, 'other')
+					.where('other.credentialsId = sc.credentialsId')
+					.andWhere('other.projectId != sc.projectId')
+					.getQuery();
+				return `EXISTS ${subQuery}`;
+			})
+			.getCount();
+	}
+
 	async findCredentialsWithOptions(
 		where: FindOptionsWhere<SharedCredentials> = {},
 		trx?: EntityManager,
@@ -100,7 +118,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 			where,
 			relations: {
 				credentials: {
-					shared: { project: { projectRelations: { user: true } } },
+					shared: { project: true },
 				},
 			},
 		});

@@ -60,6 +60,7 @@
 			gap: var(--spacing--2xs);
 			scroll-padding: 40px;
 			scroll-margin: 40px;
+			cursor: pointer;
 
 			&.strikethrough {
 				text-decoration: line-through;
@@ -84,7 +85,8 @@
 			color: var(--autocomplete--item--color--selected);
 		}
 
-		> .cm-section-header {
+		> .cm-section-header,
+		completion-section {
 			padding: var(--spacing--4xs) var(--spacing--3xs);
 			border-bottom: 1px solid var(--autocomplete--section-header--border-color);
 			background-color: var(--color--background--light-3);
@@ -96,13 +98,21 @@
 			margin-top: var(--spacing--2xs);
 		}
 
-		.cm-section-title {
+		.cm-section-title,
+		completion-section {
 			color: var(--color--text--shade-1);
 			font-family: var(--font-family);
 			font-weight: var(--font-weight--bold);
 			font-size: var(--font-size--3xs);
 			text-transform: uppercase;
 			padding: var(--spacing--5xs) var(--spacing--4xs);
+			opacity: 1;
+		}
+		completion-section {
+			padding: var(--spacing--3xs) var(--spacing--2xs);
+			&:not(:first-child) {
+				margin-top: var(--spacing--2xs);
+			}
 		}
 	}
 }

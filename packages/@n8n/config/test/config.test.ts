@@ -68,14 +68,6 @@ describe('GlobalConfig', () => {
 				maxQueryExecutionTime: 0,
 				options: 'error',
 			},
-			mysqldb: {
-				database: 'n8n',
-				host: 'localhost',
-				password: '',
-				port: 3306,
-				user: 'root',
-				poolSize: 10,
-			},
 			postgresdb: {
 				database: 'n8n',
 				host: 'localhost',
@@ -84,6 +76,8 @@ describe('GlobalConfig', () => {
 				port: 5432,
 				schema: 'public',
 				connectionTimeoutMs: 20_000,
+				idleTimeoutMs: 30_000,
+				statementTimeoutMs: 5 * 60 * 1000,
 				ssl: {
 					ca: '',
 					cert: '',
@@ -92,7 +86,6 @@ describe('GlobalConfig', () => {
 					rejectUnauthorized: true,
 				},
 				user: 'postgres',
-				idleTimeoutMs: 30_000,
 			},
 			sqlite: {
 				database: 'database.sqlite',
@@ -169,6 +162,7 @@ describe('GlobalConfig', () => {
 		templates: {
 			enabled: true,
 			host: 'https://api.n8n.io/api/',
+			dynamicTemplatesHost: 'https://dynamic-templates.n8n.io/templates',
 		},
 		versionNotifications: {
 			enabled: true,
@@ -185,7 +179,8 @@ describe('GlobalConfig', () => {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
-			indexingEnabled: false,
+			indexingEnabled: true,
+			useWorkflowPublicationService: false,
 		},
 		endpoints: {
 			metrics: {
@@ -222,6 +217,7 @@ describe('GlobalConfig', () => {
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
+			health: '/healthz',
 		},
 		cache: {
 			backend: 'auto',
@@ -233,6 +229,11 @@ describe('GlobalConfig', () => {
 				prefix: 'cache',
 				ttl: 3600000,
 			},
+		},
+		chatHub: {
+			executionContextTtl: 3600,
+			maxBufferedChunks: 1000,
+			streamStateTtl: 300,
 		},
 		queue: {
 			health: {
@@ -254,6 +255,10 @@ describe('GlobalConfig', () => {
 					slotsRefreshInterval: 5_000,
 					slotsRefreshTimeout: 1_000,
 					dnsResolveStrategy: 'LOOKUP',
+					keepAlive: false,
+					keepAliveDelay: 5000,
+					keepAliveInterval: 5000,
+					reconnectOnFailover: true,
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
@@ -284,6 +289,9 @@ describe('GlobalConfig', () => {
 			frontendDsn: '',
 			environment: '',
 			deploymentName: '',
+			profilesSampleRate: 0,
+			tracesSampleRate: 0,
+			eventLoopBlockThreshold: 500,
 		},
 		logging: {
 			level: 'info',
@@ -410,6 +418,7 @@ describe('GlobalConfig', () => {
 		ai: {
 			enabled: false,
 			timeout: 3600000,
+			allowSendingParameterValues: true,
 		},
 		workflowHistoryCompaction: {
 			batchDelayMs: 1_000,
@@ -452,7 +461,6 @@ describe('GlobalConfig', () => {
 			...defaultConfig,
 			database: {
 				logging: defaultConfig.database.logging,
-				mysqldb: defaultConfig.database.mysqldb,
 				postgresdb: {
 					...defaultConfig.database.postgresdb,
 					host: 'some-host',
@@ -512,6 +520,24 @@ describe('GlobalConfig', () => {
 		expect(mockFs.readFileSync).toHaveBeenCalled();
 	});
 
+	it('should warn when _FILE env variable value contains whitespace', () => {
+		const passwordFile = '/path/to/postgres/password';
+		process.env = {
+			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
+		};
+		mockFs.readFileSync
+			.calledWith(passwordFile, 'utf8')
+			.mockReturnValueOnce('password-from-file\n');
+
+		const config = Container.get(GlobalConfig);
+		expect(config.database.postgresdb.password).toBe('password-from-file');
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining(
+				'DB_POSTGRESDB_PASSWORD_FILE contains leading or trailing whitespace',
+			),
+		);
+	});
+
 	it('should handle invalid numbers', () => {
 		process.env = {
 			DB_LOGGING_MAX_EXECUTION_TIME: 'abcd',
@@ -540,6 +566,35 @@ describe('GlobalConfig', () => {
 
 			expect(globalConfig.taskRunners.enabled).toEqual(true);
 			expect(globalConfig.database.type).toEqual('postgresdb');
+		});
+	});
+
+	describe('health endpoint transformation', () => {
+		it('should add leading slash if not present', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: 'healthz',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/healthz');
+		});
+
+		it('should keep leading slash if already present', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: '/custom-health',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/custom-health');
+		});
+
+		it('should add leading slash to paths with multiple segments', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: 'api/v1/health',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/api/v1/health');
 		});
 	});
 });

@@ -9,9 +9,14 @@ export function createExecutionRef(workflowId: string, executionId: string): Exe
 	return { workflowId, executionId };
 }
 
+export type WorkflowSnapshot = Pick<
+	IWorkflowBase,
+	'id' | 'name' | 'nodes' | 'connections' | 'settings'
+>;
+
 export type ExecutionDataPayload = {
 	data: string;
-	workflowData: IWorkflowBase;
+	workflowData: WorkflowSnapshot;
 	workflowVersionId: string | null;
 };
 

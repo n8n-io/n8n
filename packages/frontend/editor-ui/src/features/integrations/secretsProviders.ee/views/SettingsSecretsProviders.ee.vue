@@ -2,10 +2,13 @@
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useSecretsProviders } from '../composables/useSecretsProviders';
+import { useSecretsProvidersList } from '../composables/useSecretsProvidersList.ee';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { computed, onMounted } from 'vue';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import {
 	N8nActionBox,
+	N8nButton,
 	N8nHeading,
 	N8nIcon,
 	N8nLink,
@@ -15,26 +18,95 @@ import {
 import SecretsProviderConnectionCard from '../components/SecretsProviderConnectionCard.ee.vue';
 import SecretsProvidersEmptyState from '../components/SecretsProvidersEmptyState.ee.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useUIStore } from '@/app/stores/ui.store';
+import {
+	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+	DELETE_SECRETS_PROVIDER_MODAL_KEY,
+} from '@/app/constants/modals';
 import { I18nT } from 'vue-i18n';
+import type { SecretProviderConnection } from '@n8n/api-types';
 
 const i18n = useI18n();
-const secretsProviders = useSecretsProviders();
+const secretsProviders = useSecretsProvidersList();
+const projectsStore = useProjectsStore();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const uiStore = useUIStore();
 
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
 
+function getProjectForProvider(provider: SecretProviderConnection): ProjectListItem | null {
+	if (!provider || provider.projects.length === 0) return null;
+
+	return (
+		projectsStore.projects.find((p: ProjectListItem) => p.id === provider.projects[0].id) ?? null
+	);
+}
+
 function getProviderTypeInfo(providerType: string) {
 	return secretsProviders.providerTypes.value.find((type) => type.type === providerType);
+}
+
+function openConnectionModal(
+	providerKey?: string,
+	activeTab: 'connection' | 'sharing' = 'connection',
+) {
+	const existingNames = secretsProviders.activeProviders.value.map((provider) => provider.name);
+
+	uiStore.openModalWithData({
+		name: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+		data: {
+			activeTab,
+			providerKey,
+			providerTypes: secretsProviders.providerTypes.value,
+			existingProviderNames: existingNames,
+			onClose: async () => {
+				await secretsProviders.fetchActiveConnections();
+			},
+		},
+	});
+}
+
+function handleCardClick(providerKey: string) {
+	openConnectionModal(providerKey, 'connection');
+}
+
+function handleEdit(providerKey: string) {
+	openConnectionModal(providerKey, 'connection');
+}
+
+function handleShare(providerKey: string) {
+	openConnectionModal(providerKey, 'sharing');
+}
+
+function handleDelete(providerKey: string) {
+	const provider = secretsProviders.activeProviders.value.find((p) => p.name === providerKey);
+
+	if (!provider) return;
+
+	uiStore.openModalWithData({
+		name: DELETE_SECRETS_PROVIDER_MODAL_KEY,
+		data: {
+			providerKey: provider.name,
+			providerName: provider.name,
+			secretsCount: provider.secretsCount ?? 0,
+			onConfirm: async () => {
+				await secretsProviders.fetchActiveConnections();
+			},
+		},
+	});
 }
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.secretsProviderConnections.title'));
 	if (!secretsProviders.isEnterpriseExternalSecretsEnabled.value) return;
 	try {
-		await secretsProviders.fetchProviderTypes();
-		await secretsProviders.fetchActiveConnections();
+		await Promise.all([
+			secretsProviders.fetchProviderTypes(),
+			secretsProviders.fetchActiveConnections(),
+			projectsStore.getAllProjects(),
+		]);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
 	}
@@ -71,13 +143,24 @@ function goToUpgrade() {
 						</span>
 					</N8nLink>
 				</N8nText>
+				<N8nButton
+					v-if="hasActiveProviders && secretsProviders.canCreate.value"
+					:class="$style.addButton"
+					type="primary"
+					@click="openConnectionModal()"
+					><N8nIcon icon="plus" />
+					{{ i18n.baseText('settings.secretsProviderConnections.buttons.addSecretsStore') }}
+				</N8nButton>
 			</div>
 		</div>
 		<div
 			v-if="secretsProviders.isEnterpriseExternalSecretsEnabled.value"
 			data-test-id="secrets-provider-connections-content-licensed"
 		>
-			<div v-if="secretsProviders.isLoading.value" data-test-id="secrets-providers-loading">
+			<div
+				v-if="secretsProviders.isLoading.value && !hasActiveProviders"
+				data-test-id="secrets-providers-loading"
+			>
 				<div v-for="i in 3" :key="i" class="mb-2xs">
 					<N8nLoading variant="p" :rows="1" />
 				</div>
@@ -85,6 +168,8 @@ function goToUpgrade() {
 			<SecretsProvidersEmptyState
 				v-else-if="!hasActiveProviders"
 				:provider-types="secretsProviders.providerTypes.value"
+				:can-create="secretsProviders.canCreate.value"
+				@add-secrets-store="openConnectionModal()"
 			/>
 			<div v-else>
 				<SecretsProviderConnectionCard
@@ -93,6 +178,12 @@ function goToUpgrade() {
 					class="mb-2xs"
 					:provider="provider"
 					:provider-type-info="getProviderTypeInfo(provider.type)"
+					:project="getProjectForProvider(provider)"
+					:can-update="secretsProviders.canUpdate.value"
+					@click="handleCardClick(provider.name)"
+					@edit="handleEdit"
+					@share="handleShare"
+					@delete="handleDelete"
 				/>
 			</div>
 		</div>
@@ -136,6 +227,11 @@ function goToUpgrade() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.addButton {
+	align-self: flex-end;
+	margin-top: var(--spacing--lg);
 }
 
 .link {

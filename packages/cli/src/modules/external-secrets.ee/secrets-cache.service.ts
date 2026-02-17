@@ -34,7 +34,7 @@ export class ExternalSecretsSecretsCache {
 	/**
 	 * Refresh secrets from a specific provider
 	 */
-	private async refreshProvider(name: string, provider: SecretsProvider): Promise<void> {
+	async refreshProvider(name: string, provider: SecretsProvider): Promise<void> {
 		// Only refresh connected providers
 		if (provider.state !== 'connected') {
 			return;

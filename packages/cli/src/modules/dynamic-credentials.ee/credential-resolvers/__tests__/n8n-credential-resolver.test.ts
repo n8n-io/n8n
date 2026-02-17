@@ -226,26 +226,5 @@ describe('N8NCredentialResolver', () => {
 				expect(mockStorage.deleteAllCredentialData).toHaveBeenCalledWith(handle);
 			});
 		});
-
-		describe('validateIdentity', () => {
-			it('should validate JWT with browserId set to false', async () => {
-				const identity = 'jwt-token-to-validate';
-				const handle = testHelpers.createHandle({});
-
-				await resolver.validateIdentity(identity, handle);
-
-				// Verify N8NIdentifier was called with browserId=false
-				expect(mockIdentifier.resolve).toHaveBeenCalledWith(
-					{
-						identity: 'jwt-token-to-validate',
-						version: 1,
-						metadata: {
-							browserId: false,
-						},
-					},
-					{},
-				);
-			});
-		});
 	});
 });

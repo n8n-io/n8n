@@ -30,6 +30,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	CHAT_NODE_TYPE,
 	CHAT_TOOL_NODE_TYPE,
+	CHAT_HITL_TOOL_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	IN_PROGRESS_EXECUTION_ID,
 	RESPOND_TO_WEBHOOK_NODE_TYPE,
@@ -236,7 +237,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			}
 
 			const triggers = workflowData.nodes.filter(
-				(node) => node.type.toLowerCase().includes('trigger') && !node.disabled,
+				(node) => !node.disabled && node.type.toLowerCase().includes('trigger'),
 			);
 			const chatTriggerNode = triggers.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
 			const chatTriggerNodeOptions = chatTriggerNode?.parameters?.options as IDataObject;
@@ -249,6 +250,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 						!node.disabled &&
 						(node.type === CHAT_NODE_TYPE ||
 							node.type === CHAT_TOOL_NODE_TYPE ||
+							node.type === CHAT_HITL_TOOL_NODE_TYPE ||
 							node.type === RESPOND_TO_WEBHOOK_NODE_TYPE),
 				);
 				if (!responseNodes?.length) {
@@ -561,8 +563,21 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 		});
 
+		let resolvedTriggerNode = triggerNode ?? workflowsStore.selectedTriggerNodeName;
+
+		// When no trigger is explicitly selected (e.g. chat trigger is the only trigger
+		// and the Run button doesn't offer it for selection), resolve it from the workflow.
+		if (!resolvedTriggerNode) {
+			const triggers = Object.values(workflowObject.value.nodes).filter(
+				(node) => !node.disabled && node.type.toLowerCase().includes('trigger'),
+			);
+			if (triggers.length === 1) {
+				resolvedTriggerNode = triggers[0].name;
+			}
+		}
+
 		void runWorkflow({
-			triggerNode: triggerNode ?? workflowsStore.selectedTriggerNodeName,
+			triggerNode: resolvedTriggerNode,
 		});
 	}
 

@@ -19,7 +19,11 @@ test.use({
 		},
 	},
 });
-test.describe('Large Data Size Performance - Cloud Resources', () => {
+test.describe('Large Data Size Performance - Cloud Resources', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test('Code Node with 30000 items', async ({ n8n }, testInfo) => {
 		const itemCount = 30000;
 		await setupPerformanceTest(n8n, itemCount);

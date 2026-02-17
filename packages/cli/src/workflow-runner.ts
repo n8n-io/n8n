@@ -37,6 +37,7 @@ import {
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
+import { ExternalHooks } from '@/external-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
@@ -64,6 +65,7 @@ export class WorkflowRunner {
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly storageConfig: StorageConfig,
+		private readonly externalHooks: ExternalHooks,
 	) {}
 
 	/** The process did error */
@@ -173,7 +175,14 @@ export class WorkflowRunner {
 				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
 
 		if (shouldEnqueue) {
-			await this.enqueueExecution(executionId, workflowId, data, loadStaticData, realtime);
+			await this.enqueueExecution(
+				executionId,
+				workflowId,
+				data,
+				loadStaticData,
+				realtime,
+				restartExecutionId,
+			);
 		} else {
 			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
 		}
@@ -252,7 +261,6 @@ export class WorkflowRunner {
 				workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 			workflowSettings,
 		});
-		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
 
@@ -340,7 +348,7 @@ export class WorkflowRunner {
 					if (workflowExecution.isCanceled) {
 						fullRunData.finished = false;
 					}
-					fullRunData.status = this.activeExecutions.getStatus(executionId);
+
 					this.activeExecutions.resolveExecutionResponsePromise(executionId);
 					this.activeExecutions.finalizeExecution(executionId, fullRunData);
 				})
@@ -373,6 +381,7 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		realtime?: boolean,
+		restartExecutionId?: string,
 	): Promise<void> {
 		const jobData: JobData = {
 			workflowId,
@@ -380,6 +389,13 @@ export class WorkflowRunner {
 			loadStaticData: !!loadStaticData,
 			pushRef: data.pushRef,
 			streamingEnabled: data.streamingEnabled,
+			restartExecutionId,
+			// MCP-specific fields for queue mode support
+			isMcpExecution: data.isMcpExecution,
+			mcpType: data.mcpType,
+			mcpSessionId: data.mcpSessionId,
+			mcpMessageId: data.mcpMessageId,
+			mcpToolCall: data.mcpToolCall,
 		};
 
 		if (!this.scalingService) {
@@ -458,27 +474,56 @@ export class WorkflowRunner {
 						lifecycleHooks,
 					);
 
-					reject(error);
+					this.scalingService.popJobResult(executionId);
+
+					return reject(error);
 				}
 
-				const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
-					includeData: true,
-					unflattenData: true,
-				});
-				if (!fullExecutionData) {
-					return reject(new Error(`Could not find execution with id "${executionId}"`));
-				}
+				const jobResult = this.scalingService.popJobResult(executionId);
 
-				const runData: IRun = {
-					finished: fullExecutionData.finished,
-					mode: fullExecutionData.mode,
-					startedAt: fullExecutionData.startedAt,
-					stoppedAt: fullExecutionData.stoppedAt,
-					status: fullExecutionData.status,
-					data: fullExecutionData.data,
-					jobId: job.id.toString(),
-					storedAt: fullExecutionData.storedAt,
-				};
+				let runData: IRun;
+
+				if (!jobResult || this.needsFullExecutionData(data.executionMode, executionId)) {
+					const fullExecutionData = await this.executionRepository.findSingleExecution(
+						executionId,
+						{
+							includeData: true,
+							unflattenData: true,
+						},
+					);
+					if (!fullExecutionData) {
+						return reject(new Error(`Could not find execution with id "${executionId}"`));
+					}
+
+					runData = {
+						finished: fullExecutionData.finished,
+						mode: fullExecutionData.mode,
+						startedAt: fullExecutionData.startedAt,
+						stoppedAt: fullExecutionData.stoppedAt,
+						status: fullExecutionData.status,
+						data: fullExecutionData.data,
+						jobId: job.id.toString(),
+						storedAt: fullExecutionData.storedAt,
+					};
+				} else {
+					runData = {
+						finished: jobResult.success,
+						mode: data.executionMode,
+						startedAt: jobResult.startedAt,
+						stoppedAt: jobResult.stoppedAt,
+						status: jobResult.status,
+						data: createRunExecutionData({
+							resultData: {
+								runData: {},
+								lastNodeExecuted: jobResult.lastNodeExecuted,
+								error: jobResult.error,
+								metadata: jobResult.metadata,
+							},
+						}),
+						jobId: job.id.toString(),
+						storedAt: this.storageConfig.modeTag,
+					};
+				}
 
 				this.activeExecutions.finalizeExecution(executionId, runData);
 
@@ -497,5 +542,26 @@ export class WorkflowRunner {
 		});
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+	}
+
+	/**
+	 * Whether main must retrieve full execution data from the DB on job completion.
+	 *
+	 * Full data is needed when:
+	 * - `integrated` mode: parent workflow needs child execution output data
+	 * - `lastNode` response mode: webhook response is built from the last node's output
+	 * - `workflow.postExecute` hook: external hooks receive full execution data
+	 *
+	 * In all other cases we can skip the DB fetch and use the lightweight
+	 * result summary sent by the worker via the job progress message.
+	 */
+	private needsFullExecutionData(executionMode: WorkflowExecuteMode, executionId: string): boolean {
+		if (!process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING) return true;
+
+		return (
+			executionMode === 'integrated' ||
+			this.activeExecutions.getResponseMode(executionId) === 'lastNode' ||
+			this.externalHooks.hasHook('workflow.postExecute')
+		);
 	}
 }

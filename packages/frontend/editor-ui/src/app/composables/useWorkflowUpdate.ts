@@ -16,7 +16,7 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { mapLegacyConnectionsToCanvasConnections } from '@/features/workflows/canvas/canvas.utils';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import type { IConnections, INode } from 'n8n-workflow';
+import { NodeHelpers, type IConnections, type INode } from 'n8n-workflow';
 import isEqual from 'lodash/isEqual';
 
 export interface UpdateWorkflowOptions {
@@ -46,27 +46,52 @@ export function useWorkflowUpdate() {
 	const nodeHelpers = useNodeHelpers();
 
 	/**
-	 * Categorize nodes into those to update, add, or remove
+	 * Categorize nodes into those to update, add, or remove.
+	 *
+	 * Uses name+type fallback matching when IDs don't match. This handles the case
+	 * where the workflow SDK regenerates node IDs during re-parsing (e.g., when the
+	 * AI builder makes corrections to workflow code). Without this fallback, nodes
+	 * with new IDs but the same name+type would be incorrectly categorized as "new",
+	 * triggering maxNodes validation errors for nodes like ChatTrigger.
 	 */
 	function categorizeNodes(workflowData: WorkflowDataUpdate) {
-		const newNodesById = new Map(workflowData.nodes?.map((n) => [n.id, n]) ?? []);
 		const existingNodesById = new Map(workflowsStore.allNodes.map((n) => [n.id, n]));
+
+		// Add name+type index for fallback matching when IDs differ
+		const existingNodesByNameType = new Map(
+			workflowsStore.allNodes.map((n) => [`${n.type}::${n.name}`, n]),
+		);
 
 		const nodesToUpdate: Array<{ existing: INodeUi; updated: INode }> = [];
 		const nodesToAdd: INode[] = [];
 		const nodesToRemove: INodeUi[] = [];
+		const processedExistingIds = new Set<string>();
 
 		workflowData.nodes?.forEach((newNode) => {
-			const existing = existingNodesById.get(newNode.id);
+			// First try to match by ID
+			let existing = existingNodesById.get(newNode.id);
+
+			// Fallback: match by name + type (handles ID regeneration)
+			if (!existing) {
+				const nameTypeKey = `${newNode.type}::${newNode.name}`;
+				existing = existingNodesByNameType.get(nameTypeKey);
+			}
+
 			if (existing) {
-				nodesToUpdate.push({ existing, updated: newNode });
+				// Update node, preserving the existing ID for consistency
+				nodesToUpdate.push({
+					existing,
+					updated: { ...newNode, id: existing.id },
+				});
+				processedExistingIds.add(existing.id);
 			} else {
 				nodesToAdd.push(newNode);
 			}
 		});
 
+		// Nodes to remove: exist in current but not matched by new workflow
 		existingNodesById.forEach((node, id) => {
-			if (!newNodesById.has(id)) {
+			if (!processedExistingIds.has(id)) {
 				nodesToRemove.push(node);
 			}
 		});
@@ -83,19 +108,19 @@ export function useWorkflowUpdate() {
 	): Promise<void> {
 		if (nodesToUpdate.length === 0) return;
 
-		// Track successful renames (nodeId -> newName)
+		// Track successful renames (nodeId -> actualNewName after uniquification)
 		const renamedNodes = new Map<string, string>();
 
 		// First handle renames via canvasOperations (handles pinData, metadata, etc.)
 		for (const { existing, updated } of nodesToUpdate) {
 			if (existing.name !== updated.name) {
-				const success = await canvasOperations.renameNode(existing.name, updated.name, {
+				const actualNewName = await canvasOperations.renameNode(existing.name, updated.name, {
 					trackHistory: true,
 					trackBulk: false,
 					showErrorToast: false,
 				});
-				if (success) {
-					renamedNodes.set(existing.id, updated.name);
+				if (actualNewName) {
+					renamedNodes.set(existing.id, actualNewName);
 				}
 			}
 		}
@@ -115,6 +140,21 @@ export function useWorkflowUpdate() {
 				position: existing.position,
 				name: nodeName, // Keep actual name (old if rename failed)
 			});
+
+			// Resolve parameters with defaults to ensure all parameter values are properly initialized
+			// This is necessary because AI builder may send partial parameters without defaults
+			const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			if (nodeTypeDescription) {
+				const resolvedParameters = NodeHelpers.getNodeParameters(
+					nodeTypeDescription.properties ?? [],
+					node.parameters,
+					true, // returnDefaults
+					false,
+					node,
+					nodeTypeDescription,
+				);
+				node.parameters = resolvedParameters ?? {};
+			}
 
 			// Mark node as dirty if parameters changed
 			if (!isEqual(existing.parameters, updated.parameters)) {
@@ -315,6 +355,14 @@ export function useWorkflowUpdate() {
 			const newNodeIds = addedNodes.map((n) => n.id);
 			await updateConnections(workflowData.connections ?? {});
 			updateWorkflowNameIfNeeded(workflowData.name, options?.isInitialGeneration);
+
+			// Merge pin data from workflow data with existing pin data
+			if (workflowData.pinData) {
+				workflowsStore.setWorkflowPinData({
+					...workflowsStore.workflow.pinData,
+					...workflowData.pinData,
+				});
+			}
 
 			builderStore.setBuilderMadeEdits(true);
 

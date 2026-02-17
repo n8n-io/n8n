@@ -8,16 +8,24 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
 
+import { AiController, type FlushableResponse } from '../ai.controller';
+
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import type { AiUsageService } from '@/services/ai-usage.service';
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { AiService } from '@/services/ai.service';
-
-import { AiController, type FlushableResponse } from '../ai.controller';
 
 describe('AiController', () => {
 	const aiService = mock<AiService>();
 	const workflowBuilderService = mock<WorkflowBuilderService>();
-	const controller = new AiController(aiService, workflowBuilderService, mock(), mock());
+	const aiUsageService = mock<AiUsageService>();
+	const controller = new AiController(
+		aiService,
+		workflowBuilderService,
+		mock(),
+		mock(),
+		aiUsageService,
+	);
 
 	const request = mock<AuthenticatedRequest>({
 		user: { id: 'user123' },
@@ -430,6 +438,7 @@ describe('AiController', () => {
 			const payload = {
 				workflowId: 'workflow123',
 				messageId: 'message456',
+				codeBuilder: true,
 			};
 
 			workflowBuilderService.truncateMessagesAfter.mockResolvedValue(true);
@@ -440,6 +449,7 @@ describe('AiController', () => {
 				payload.workflowId,
 				request.user,
 				payload.messageId,
+				payload.codeBuilder,
 			);
 			expect(result).toEqual({ success: true });
 		});
@@ -486,6 +496,7 @@ describe('AiController', () => {
 				payload.workflowId,
 				request.user,
 				payload.messageId,
+				undefined,
 			);
 		});
 	});

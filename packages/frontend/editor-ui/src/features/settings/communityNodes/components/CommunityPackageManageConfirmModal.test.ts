@@ -10,8 +10,8 @@ import { STORES } from '@n8n/stores';
 import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY } from '../communityNodes.constants';
 
 const fetchWorkflowsWithNodesIncluded = vi.fn();
-vi.mock('@/app/stores/workflows.store', () => ({
-	useWorkflowsStore: vi.fn(() => ({
+vi.mock('@/app/stores/workflowsList.store', () => ({
+	useWorkflowsListStore: vi.fn(() => ({
 		fetchWorkflowsWithNodesIncluded,
 	})),
 }));
@@ -165,7 +165,7 @@ describe('CommunityPackageManageConfirmModal', () => {
 		expect(screen.getByText('Package includes: TestNode')).toBeInTheDocument();
 	});
 
-	it('should notinclude table with affected workflows', async () => {
+	it('should not include table with affected workflows', async () => {
 		useSettingsStore().setSettings({ ...defaultSettings, communityNodesEnabled: true });
 
 		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
@@ -193,5 +193,30 @@ describe('CommunityPackageManageConfirmModal', () => {
 		expect(
 			screen.getByText('Nodes from this package are not used in any workflows'),
 		).toBeInTheDocument();
+	});
+
+	it('should not show warning if it is not defined', async () => {
+		useSettingsStore().setSettings({ ...defaultSettings, communityNodesEnabled: true });
+
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
+		nodeTypesStore.getCommunityNodeAttributes = vi.fn().mockResolvedValue({ npmVersion: '1.5.0' });
+
+		fetchWorkflowsWithNodesIncluded.mockResolvedValue({
+			data: [],
+		});
+
+		// uninstall mode does not have a warning
+		const screen = renderComponent({
+			props: {
+				modalName: 'test-modal',
+				activePackageName: 'n8n-nodes-test',
+				mode: 'uninstall',
+			},
+		});
+
+		await flushPromises();
+
+		const testId = screen.queryByTestId('communityPackageManageConfirmModal-warning');
+		expect(testId).not.toBeInTheDocument();
 	});
 });

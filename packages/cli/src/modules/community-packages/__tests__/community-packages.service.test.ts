@@ -10,12 +10,7 @@ import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path, { join } from 'node:path';
 
-import {
-	NODE_PACKAGE_PREFIX,
-	NPM_COMMAND_TOKENS,
-	NPM_PACKAGE_STATUS_GOOD,
-	RESPONSE_ERROR_MESSAGES,
-} from '@/constants';
+import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -23,14 +18,15 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
 import { mockPackageName, mockPackagePair } from '@test-integration/utils';
 
-import type { CommunityPackagesConfig } from '../community-packages.config';
 import { getCommunityNodeTypes } from '../community-node-types-utils';
+import type { CommunityPackagesConfig } from '../community-packages.config';
 import { CommunityPackagesService } from '../community-packages.service';
 import type { CommunityPackages } from '../community-packages.types';
 import { InstalledNodes } from '../installed-nodes.entity';
 import { InstalledNodesRepository } from '../installed-nodes.repository';
 import { InstalledPackages } from '../installed-packages.entity';
 import { InstalledPackagesRepository } from '../installed-packages.repository';
+import { executeNpmCommand } from '../npm-utils';
 
 jest.mock('node:fs/promises');
 jest.mock('node:child_process');
@@ -38,8 +34,11 @@ jest.mock('axios');
 jest.mock('../community-node-types-utils', () => ({
 	getCommunityNodeTypes: jest.fn().mockResolvedValue([]),
 }));
+jest.mock('../npm-utils', () => ({
+	...jest.requireActual('../npm-utils'),
+	executeNpmCommand: jest.fn(),
+}));
 
-type ExecFileOptions = NonNullable<Parameters<typeof execFile>[2]>;
 type ExecFileCallback = NonNullable<Parameters<typeof execFile>[3]>;
 
 const execMock: typeof execFile = ((...args) => {
@@ -146,54 +145,6 @@ describe('CommunityPackagesService', () => {
 			expect(parsed.packageName).toBe(`${scope}/${name}`);
 			expect(parsed.scope).toBe(scope);
 			expect(parsed.version).toBe(version);
-		});
-	});
-
-	describe('executeCommand()', () => {
-		beforeEach(() => {
-			mocked(execFile).mockImplementation(execMock);
-		});
-
-		test('should call command with valid options', async () => {
-			const execMock = ((...args) => {
-				const arg = args[2] as ExecFileOptions;
-				expect(arg.cwd).toBeDefined();
-				expect(arg.env).toBeDefined();
-				// PATH or NODE_PATH may be undefined depending on environment so we don't check for these keys.
-				const cb = args[args.length - 1] as ExecFileCallback;
-				cb(null, 'Done', '');
-			}) as typeof execFile;
-
-			mocked(execFile).mockImplementation(execMock);
-
-			await communityPackagesService.executeNpmCommand(['ls']);
-
-			expect(execFile).toHaveBeenCalled();
-		});
-
-		test('should make sure folder exists', async () => {
-			mocked(execFile).mockImplementation(execMock);
-
-			await communityPackagesService.executeNpmCommand(['ls']);
-
-			expect(execFile).toHaveBeenCalled();
-		});
-
-		test('should throw especial error when package is not found', async () => {
-			const erroringExecMock = ((...args) => {
-				const cb = args[args.length - 1] as ExecFileCallback;
-				const msg = `Something went wrong - ${NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR}. Aborting.`;
-				cb(new Error(msg), '', '');
-				return undefined as any;
-			}) as typeof execFile;
-
-			mocked(execFile).mockImplementation(erroringExecMock);
-
-			const call = async () => await communityPackagesService.executeNpmCommand(['ls']);
-
-			await expect(call).rejects.toThrowError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
-
-			expect(execFile).toHaveBeenCalled();
 		});
 	});
 
@@ -409,7 +360,7 @@ describe('CommunityPackagesService', () => {
 			const actualCallback = args[args.length - 1] as ExecFileCallback;
 
 			if (command === 'npm' && cmdArgs?.[0] === 'pack') {
-				actualCallback(null, { stdout: testBlockTarballName } as never, '');
+				actualCallback(null, testBlockTarballName, '');
 			} else {
 				actualCallback(null, 'Done', '');
 			}
@@ -419,6 +370,12 @@ describe('CommunityPackagesService', () => {
 			jest.clearAllMocks();
 
 			mocked(execFile).mockImplementation(execMockForThisBlock);
+			mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
+				if (args[0] === 'pack') {
+					return testBlockTarballName;
+				}
+				return 'Done';
+			});
 
 			mocked(readFile).mockResolvedValue(
 				JSON.stringify({
@@ -462,28 +419,26 @@ describe('CommunityPackagesService', () => {
 				path.join(nodesDownloadDir, 'n8n-nodes-test-latest.tgz'),
 			);
 
-			expect(execFile).toHaveBeenCalledTimes(3);
-			expect(execFile).toHaveBeenNthCalledWith(
+			// Check executeNpmCommand was called for npm commands
+			expect(executeNpmCommand).toHaveBeenCalledTimes(2);
+			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				1,
-				'npm',
 				['pack', `${PACKAGE_NAME}@latest`, `--registry=${testBlockRegistry}`, '--quiet'],
 				{ cwd: testBlockDownloadDir },
-				expect.any(Function),
 			);
 
-			expect(execFile).toHaveBeenNthCalledWith(
+			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				2,
+				['install', ...testBlockNpmInstallArgs.split(' ')],
+				{ cwd: testBlockPackageDir },
+			);
+
+			// Check execFile was called only for tar command
+			expect(execFile).toHaveBeenCalledTimes(1);
+			expect(execFile).toHaveBeenCalledWith(
 				'tar',
 				['-xzf', testBlockTarballName, '-C', testBlockPackageDir, '--strip-components=1'],
 				{ cwd: testBlockDownloadDir },
-				expect.any(Function),
-			);
-
-			expect(execFile).toHaveBeenNthCalledWith(
-				3,
-				'npm',
-				['install', ...testBlockNpmInstallArgs.split(' ')],
-				{ cwd: testBlockPackageDir },
 				expect.any(Function),
 			);
 

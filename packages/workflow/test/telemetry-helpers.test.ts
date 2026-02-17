@@ -3,13 +3,16 @@ import { mock } from 'vitest-mock-extended';
 
 import { nodeTypes } from './ExpressionExtensions/helpers';
 import type { NodeTypes } from './node-types';
-import { STICKY_NODE_TYPE } from '../src/constants';
+import {
+	MCP_CLIENT_NODE_TYPE,
+	MCP_CLIENT_TOOL_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '../src/constants';
 import { ApplicationError, ExpressionError, NodeApiError } from '../src/errors';
 import type {
 	IConnections,
 	INode,
 	INodeTypeDescription,
-	INodeTypes,
 	IRun,
 	IRunData,
 	NodeConnectionType,
@@ -46,6 +49,33 @@ describe('getDomainBase should return protocol plus domain', () => {
 			const { full, protocolPlusDomain } = url;
 			expect(getDomainBase(full)).toBe(protocolPlusDomain);
 		}
+	});
+
+	test('should handle multi-level TLDs correctly', () => {
+		// Test cases for multi-level TLDs (country codes, special services)
+		const testCases = [
+			{ input: 'https://api.example.co.uk/path', expected: 'example.co.uk' },
+			{ input: 'https://user.service.com.au/api', expected: 'service.com.au' },
+			{ input: 'https://api.example.co.jp/test', expected: 'example.co.jp' },
+			{ input: 'https://test.example.gov.uk/data', expected: 'example.gov.uk' },
+			{ input: 'https://sub.domain.org.nz/path', expected: 'domain.org.nz' },
+			{ input: 'api.example.co.uk/path', expected: 'example.co.uk' },
+		];
+
+		testCases.forEach(({ input, expected }) => {
+			expect(getDomainBase(input)).toBe(expected);
+		});
+	});
+
+	test('should handle edge cases', () => {
+		// Single word domains, localhost, etc.
+		expect(getDomainBase('https://localhost/path')).toBe('localhost');
+		expect(getDomainBase('https://example/path')).toBe('example');
+	});
+
+	test('should handle IP addresses', () => {
+		expect(getDomainBase('https://192.168.1.1/path')).toBe('192.168.1.1');
+		expect(getDomainBase('https://[::1]/path')).toBe('[::1]');
 	});
 });
 
@@ -938,7 +968,6 @@ describe('generateNodesGraph', () => {
 						credential_type: 'httpBasicAuth',
 						credential_set: true,
 						domain_base: 'google.com',
-						domain_path: '/path/test',
 					},
 				},
 				notes: {},
@@ -993,7 +1022,6 @@ describe('generateNodesGraph', () => {
 						credential_type: 'activeCampaignApi',
 						credential_set: true,
 						domain_base: 'google.com',
-						domain_path: '/path/test',
 					},
 				},
 				notes: {},
@@ -1198,7 +1226,6 @@ describe('generateNodesGraph', () => {
 						position: [600, 240],
 						credential_set: false,
 						domain_base: '',
-						domain_path: '',
 					},
 				},
 				notes: {},
@@ -1833,6 +1860,162 @@ describe('generateNodesGraph', () => {
 			evaluationTriggerNodeNames: [],
 		});
 	});
+
+	test('should handle MCP Client node with authentication method', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						authentication: 'bearerAuth',
+					},
+					id: 'mcp-client-node-id',
+					name: 'MCP Client Node',
+					type: MCP_CLIENT_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-node-id',
+						type: MCP_CLIENT_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'bearerAuth',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client node without authentication method (default to none)', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'mcp-client-node-id',
+					name: 'MCP Client Node',
+					type: MCP_CLIENT_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-node-id',
+						type: MCP_CLIENT_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'none',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client Tool node with authentication method', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {
+						authentication: 'bearerAuth',
+					},
+					id: 'mcp-client-tool-node-id',
+					name: 'MCP Client Tool Node',
+					type: MCP_CLIENT_TOOL_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_TOOL_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-tool-node-id',
+						type: MCP_CLIENT_TOOL_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'bearerAuth',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Tool Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	test('should handle MCP Client Tool node without authentication method (default to none)', () => {
+		const workflow: Partial<IWorkflowBase> = {
+			nodes: [
+				{
+					parameters: {},
+					id: 'mcp-client-tool-node-id',
+					name: 'MCP Client Tool Node',
+					type: MCP_CLIENT_TOOL_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 100],
+				},
+			],
+			connections: {},
+			pinData: {},
+		};
+
+		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({
+			nodeGraph: {
+				node_types: [MCP_CLIENT_TOOL_NODE_TYPE],
+				node_connections: [],
+				nodes: {
+					'0': {
+						id: 'mcp-client-tool-node-id',
+						type: MCP_CLIENT_TOOL_NODE_TYPE,
+						version: 1,
+						position: [100, 100],
+						mcp_client_auth_method: 'none',
+					},
+				},
+				notes: {},
+				is_pinned: false,
+			},
+			nameIndices: { 'MCP Client Tool Node': '0' },
+			webhookNodeNames: [],
+			evaluationTriggerNodeNames: [],
+		});
+	});
 });
 
 describe('extractLastExecutedNodeCredentialData', () => {
@@ -2109,42 +2292,42 @@ function validUrls(idMaker: typeof alphanumericId | typeof email, char = CHAR) {
 	return [
 		{
 			full: `https://test.com/api/v1/users/${firstId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users?id=${firstId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: '/api/v1/users',
 		},
 		{
 			full: `https://test.com/api/v1/users?id=${firstId}&post=${secondId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: '/api/v1/users',
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}`,
 		},
 	];
@@ -2164,7 +2347,7 @@ function malformedUrls(idMaker: typeof numericId | typeof email, char = CHAR) {
 		},
 		{
 			full: `htp://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'htp://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{

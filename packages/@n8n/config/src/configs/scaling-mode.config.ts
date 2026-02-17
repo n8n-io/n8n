@@ -3,9 +3,10 @@ import { Config, Env, Nested } from '../decorators';
 @Config
 class HealthConfig {
 	/**
-	 * Whether to enable the worker health check endpoints:
-	 * - `/healthz` (worker alive)
-	 * - `/healthz/readiness` (worker connected to migrated database and connected to Redis)
+	 * Whether to enable the worker health check endpoints.
+	 * The endpoint paths are configurable via N8N_ENDPOINT_HEALTH.
+	 * - liveness probe: checks if worker is alive
+	 * - readiness probe: checks if worker is connected to migrated database and Redis
 	 */
 	@Env('QUEUE_HEALTH_CHECK_ACTIVE')
 	active: boolean = false;
@@ -76,6 +77,22 @@ class RedisConfig {
 	/** Whether to enable dual-stack hostname resolution for Redis connections. */
 	@Env('QUEUE_BULL_REDIS_DUALSTACK')
 	dualStack: boolean = false;
+
+	/** Whether to enable TCP keep-alive on Redis connections. */
+	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE')
+	keepAlive: boolean = false;
+
+	/** TCP keep-alive initial delay in milliseconds. */
+	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE_DELAY')
+	keepAliveDelay: number = 5000;
+
+	/** TCP keep-alive interval in milliseconds. */
+	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE_INTERVAL')
+	keepAliveInterval: number = 5000;
+
+	/** Whether to reconnect to Redis on READONLY errors i.e., failover events. */
+	@Env('QUEUE_BULL_REDIS_RECONNECT_ON_FAILOVER')
+	reconnectOnFailover: boolean = true;
 }
 
 @Config

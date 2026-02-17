@@ -17,12 +17,14 @@ const mockProviders = ref([]);
 const mockActiveProviders = ref([] as SecretProviderConnection[]);
 const mockIsLoading = ref(false);
 
-vi.mock('../composables/useSecretsProviders', () => ({
-	useSecretsProviders: () => ({
+vi.mock('../composables/useSecretsProvidersList.ee', () => ({
+	useSecretsProvidersList: () => ({
 		providerTypes: computed(() => mockProviders.value),
 		activeProviders: computed(() => mockActiveProviders.value),
 		fetchProviderTypes: mockFetchProviders,
 		fetchActiveConnections: mockFetchActiveConnections,
+		canCreate: computed(() => true),
+		canUpdate: computed(() => true),
 		isLoading: computed(() => mockIsLoading.value),
 		isEnterpriseExternalSecretsEnabled: computed(() => mockIsEnterpriseEnabled.value),
 		secrets: computed(() => ({})),
@@ -91,6 +93,7 @@ describe('SettingsSecretsProviders', () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
 		mockIsEnterpriseEnabled.value = true;
 		mockIsLoading.value = true;
+		mockActiveProviders.value = [];
 
 		const { getByTestId, queryByTestId } = renderComponent({ pinia });
 
@@ -111,10 +114,7 @@ describe('SettingsSecretsProviders', () => {
 	});
 
 	it('should render provider cards when there are active providers', () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
-		mockIsEnterpriseEnabled.value = true;
-		mockIsLoading.value = false;
-		mockActiveProviders.value = [
+		const activeProviders: SecretProviderConnection[] = [
 			{
 				id: '1',
 				name: 'aws-prod',
@@ -130,6 +130,11 @@ describe('SettingsSecretsProviders', () => {
 			},
 		];
 
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+		mockIsEnterpriseEnabled.value = true;
+		mockIsLoading.value = false;
+		mockActiveProviders.value = activeProviders;
+
 		const { queryByTestId } = renderComponent({ pinia });
 
 		// Should not show empty state or loading state when providers exist
@@ -138,10 +143,7 @@ describe('SettingsSecretsProviders', () => {
 	});
 
 	it('should render multiple provider cards', () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
-		mockIsEnterpriseEnabled.value = true;
-		mockIsLoading.value = false;
-		mockActiveProviders.value = [
+		const activeProviders: SecretProviderConnection[] = [
 			{
 				id: '1',
 				name: 'aws-prod',
@@ -169,6 +171,11 @@ describe('SettingsSecretsProviders', () => {
 				updatedAt: '2024-01-22T10:00:00Z',
 			},
 		];
+
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+		mockIsEnterpriseEnabled.value = true;
+		mockIsLoading.value = false;
+		mockActiveProviders.value = activeProviders;
 
 		const { queryByTestId } = renderComponent({ pinia });
 

@@ -1,12 +1,45 @@
+import { screen } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import SecretsProviderConnectionCard from './SecretsProviderConnectionCard.ee.vue';
-import type { SecretProviderConnection } from '@n8n/api-types';
+import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
 import { DateTime } from 'luxon';
-import { MOCK_PROVIDER_TYPES } from '../composables/useSecretsProviders.mock';
+import { createTestingPinia } from '@pinia/testing';
+
+export const MOCK_PROVIDER_TYPES: SecretProviderTypeResponse[] = [
+	{
+		type: 'awsSecretsManager',
+		displayName: 'AWS Secrets Manager',
+		icon: 'aws-secrets-manager',
+		properties: [],
+	},
+	{
+		type: 'gcpSecretsManager',
+		displayName: 'GCP Secrets Manager',
+		icon: 'gcp-secrets-manager',
+		properties: [],
+	},
+	{
+		type: 'azureKeyVault',
+		displayName: 'Azure Key Vault',
+		icon: 'azure-key-vault',
+		properties: [],
+	},
+	{
+		type: 'vault',
+		displayName: 'HashiCorp Vault',
+		icon: 'vault',
+		properties: [],
+	},
+];
 
 const renderComponent = createComponentRenderer(SecretsProviderConnectionCard);
 
 describe('SecretsProviderConnectionCard', () => {
+	let pinia: ReturnType<typeof createTestingPinia>;
+
+	beforeEach(() => {
+		pinia = createTestingPinia();
+	});
 	const mockProvider: SecretProviderConnection = {
 		id: 'test-id-123',
 		name: 'aws-production',
@@ -28,26 +61,29 @@ describe('SecretsProviderConnectionCard', () => {
 
 	it('should render provider name in header', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
-		const { getByText } = renderComponent({
-			props: { provider: mockProvider, providerTypeInfo },
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
-		expect(getByText('aws-production')).toBeInTheDocument();
+		expect(getByTestId('secrets-provider-name')).toHaveTextContent('aws-production');
 	});
 
 	it('should display provider display name', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
-		const { getByText } = renderComponent({
-			props: { provider: mockProvider, providerTypeInfo },
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
-		expect(getByText('AWS Secrets Manager')).toBeInTheDocument();
+		expect(getByTestId('secrets-provider-display-name')).toHaveTextContent('AWS Secrets Manager');
 	});
 
 	it('should render provider image component', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 		const { getByTestId } = renderComponent({
-			props: { provider: mockProvider, providerTypeInfo },
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
 		expect(getByTestId('secrets-provider-image')).toBeInTheDocument();
@@ -61,11 +97,12 @@ describe('SecretsProviderConnectionCard', () => {
 		};
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
-		const { container } = renderComponent({
-			props: { provider: providerWithNoSecrets, providerTypeInfo },
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: { provider: providerWithNoSecrets, providerTypeInfo, canUpdate: true },
 		});
 
-		expect(container.textContent).toContain('0 secrets');
+		expect(getByTestId('secrets-provider-secrets-count')).toHaveTextContent('0 secrets');
 	});
 
 	it('should display singular "secret" for count of 1', () => {
@@ -76,21 +113,22 @@ describe('SecretsProviderConnectionCard', () => {
 		};
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
-		const { container } = renderComponent({
-			props: { provider: providerWithOneSecret, providerTypeInfo },
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: { provider: providerWithOneSecret, providerTypeInfo, canUpdate: true },
 		});
 
-		expect(container.textContent).toContain('1 secret');
-		expect(container.textContent).not.toContain('1 secrets');
+		expect(getByTestId('secrets-provider-secrets-count')).toHaveTextContent('1 secret');
 	});
 
 	it('should display plural "secrets" for count greater than 1', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
-		const { container } = renderComponent({
-			props: { provider: mockProvider, providerTypeInfo },
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
-		expect(container.textContent).toContain('5 secrets');
+		expect(getByTestId('secrets-provider-secrets-count')).toHaveTextContent('5 secrets');
 	});
 
 	it('should format date correctly for different dates', () => {
@@ -100,11 +138,62 @@ describe('SecretsProviderConnectionCard', () => {
 		};
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
-		const { container } = renderComponent({
-			props: { provider: recentProvider, providerTypeInfo },
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: { provider: recentProvider, providerTypeInfo, canUpdate: true },
 		});
 
 		const expectedDate = DateTime.fromISO('2024-12-25T10:30:00.000Z').toFormat('dd LLL yyyy');
-		expect(container.textContent).toContain(expectedDate);
+		expect(getByTestId('secrets-provider-created-at')).toHaveTextContent(expectedDate);
+	});
+
+	it('should show disconnected badge when state is error', () => {
+		const disconnectedProvider: SecretProviderConnection = {
+			...mockProvider,
+			state: 'error',
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: { provider: disconnectedProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(getByTestId('disconnected-badge')).toHaveTextContent('Disconnected');
+	});
+
+	it('should not show badge when connection is in connected state', () => {
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		const { queryByTestId } = renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(queryByTestId('disconnected-badge')).not.toBeInTheDocument();
+	});
+
+	it('should show edit action when user has update permission', () => {
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(getByTestId('secrets-provider-action-toggle')).toBeInTheDocument();
+		expect(screen.getByTestId('action-edit')).toBeInTheDocument();
+	});
+
+	it('should not show edit action when user lacks update permission', () => {
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: false },
+		});
+
+		expect(getByTestId('secrets-provider-action-toggle')).toBeInTheDocument();
+		expect(screen.queryAllByTestId('action-edit').length).toBe(0);
 	});
 });

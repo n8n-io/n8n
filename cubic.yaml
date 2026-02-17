@@ -41,57 +41,6 @@ reviews:
 
     Approve if reasonably tested. Let humans handle edge cases.
   custom_rules:
-    - name: Prefer Typeguards over Type casting
-      description: |-
-        - Rule Statement:
-        Never use `as` keyword for type narrowing; instead, prefer type guards, type annotations, or the `satisfies` keyword.
-
-        Only use `as` for the following legitimate cases:
-          - DOM element assertions (e.g., `document.getElementById('foo') as HTMLButtonElement`)
-          - Event type assertions (e.g., `e as MouseEvent`)
-          - Const assertions (`as const`)
-          - Type widening (e.g., `(['a', 'b'] as string[]).includes('c')`)
-          - Generic constraints where no alternative exists
-
-        For type narrowing, use type guard functions. For type checking without losing inference, prefer `satisfies`. For simple type specification, prefer type annotations (`const x: A = y`) over casting (`const x = y as A`).
-
-        - Detection Criteria:
-          - Identify all usages of the `as` keyword in TypeScript code that perform type assertions (e.g., `expr as SomeType`).
-          - Exclude any usages in tests such as unit test files (*.test.ts or *.spec.ts) or e2e tests under cypress/ folder.
-          - Exclude usages where the assertion matches `as const`.
-          - Exclude assertions where:
-            - The assertion widens a literal/union type to a broader type (e.g., string literal array to string[])
-            - The left-hand side is a call to a DOM API (e.g., `document.getElementById`, `document.querySelector`, `document.createElement`)
-            - The assertion is applied to a variable named `e` or `event` and the type being asserted ends with `Event`
-          - Flag other usages and suggest alternatives: type guards for narrowing, type annotations for simple typing, or `satisfies` for type verification.
-          - Setting type of empty value  (for example `[] as string[]`)
-
-        - Example Violation:
-          ```typescript
-          function handleShape(shape: Shape) {
-            // Direct type casting without a type guard
-            const rect = shape as Rectangle;
-            return rect.width * rect.height;
-          }
-          ```
-
-        - Example Allowed:
-          ```typescript
-          // DOM element assertion
-          const button = document.getElementById('submit') as HTMLButtonElement;
-
-          // Event assertion
-          function handle(e: Event) {
-            const mouse = e as MouseEvent;
-            console.log(mouse.clientX);
-          }
-
-          // as const usage
-          const config = { mode: "readonly" } as const;
-
-          // setting types of empty array
-          const arr = [] as string[]
-          ```
     - name: Tests
       description: |-
         BE REASONABLE when evaluating test coverage:
@@ -154,6 +103,55 @@ reviews:
         - Decorator order should be: route decorator → `@Licensed` → scope decorators
         - Enterprise features not properly isolated in modules (newer features should use the module system)
         - Enterprise code accessible outside of `*.ee.ts` files or licensed modules
+    - name: Use DTOs for Request Body Validation
+      description: |-
+        - Rule Statement:
+        Controller endpoints that accept request bodies must use the `@Body` decorator with a DTO class for runtime validation. TypeScript types alone provide no runtime validation - only `@Body` with a Zod-based DTO (extending `Z.class`) validates incoming data.
+
+        - Detection Criteria:
+        Only flag in `*.controller.ts` files when there is positive evidence the developer intended to accept a body but didn't use the pattern:
+
+          1. Parameter named `payload`, `body`, or `data` without `@Body` decorator
+          2. Direct `req.body` access in a controller method
+          3. `@Body` decorator with a type not ending in `Dto` (indicates unawareness of the DTO pattern)
+
+        Do NOT flag:
+          - `@Body` with a type ending in `Dto` (developer knows the pattern)
+          - POST/PUT/PATCH endpoints without body parameters (may legitimately have no body)
+          - Webhook controllers
+          - Existing unchanged code
+
+        - Example Violation:
+          ```typescript
+          @Post('/')
+          async create(req: AuthenticatedRequest, payload: CreateUser) {
+            // payload is undefined - missing @Body decorator
+          }
+
+          @Post('/')
+          async create(req: AuthenticatedRequest) {
+            const data = req.body; // No runtime validation
+          }
+
+          @Post('/')
+          async create(@Body payload: CreateUser) {
+            // Type doesn't end in Dto - likely missing Zod validation
+          }
+          ```
+
+        - Example Allowed:
+          ```typescript
+          @Post('/')
+          async create(@Body payload: CreateUserDto) { ... }
+
+          @Post('/activate')
+          async activate(req: AuthenticatedRequest) {
+            // Legitimately no body needed
+          }
+          ```
+
+        - Recommendation:
+        Use `@Body` decorator with a DTO class from `@n8n/api-types` or a local `dto/` directory. DTOs must extend `Z.class` from `zod-class` for runtime validation.
 
         **Input Validation & Injection Prevention:**
         - Unsanitized user input flowing to file paths

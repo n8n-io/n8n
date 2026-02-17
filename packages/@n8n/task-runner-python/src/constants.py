@@ -14,6 +14,7 @@ BROKER_TASK_OFFER_ACCEPT = "broker:taskofferaccept"
 BROKER_TASK_SETTINGS = "broker:tasksettings"
 BROKER_TASK_CANCEL = "broker:taskcancel"
 BROKER_RPC_RESPONSE = "broker:rpcresponse"
+BROKER_DRAIN = "broker:drain"
 RUNNER_INFO = "runner:info"
 RUNNER_TASK_OFFER = "runner:taskoffer"
 RUNNER_TASK_ACCEPTED = "runner:taskaccepted"
@@ -77,6 +78,8 @@ ENV_SENTRY_DSN = "N8N_SENTRY_DSN"
 ENV_N8N_VERSION = "N8N_VERSION"
 ENV_ENVIRONMENT = "ENVIRONMENT"
 ENV_DEPLOYMENT_NAME = "DEPLOYMENT_NAME"
+ENV_SENTRY_PROFILES_SAMPLE_RATE = "N8N_SENTRY_PROFILES_SAMPLE_RATE"
+ENV_SENTRY_TRACES_SAMPLE_RATE = "N8N_SENTRY_TRACES_SAMPLE_RATE"
 
 # Sentry
 SENTRY_TAG_SERVER_TYPE_KEY = "server_type"
@@ -179,6 +182,7 @@ ERROR_NAME_MANGLED_ATTRIBUTE = "Access to name-mangled attributes (pattern: _Cla
 ERROR_DYNAMIC_IMPORT = (
     "Dynamic __import__() calls are not allowed for security reasons."
 )
+ERROR_MATCH_PATTERN_ATTRIBUTE = "Match pattern extracting attribute '{attr}' is disallowed, because it can be used to bypass security restrictions."
 ERROR_WINDOWS_NOT_SUPPORTED = (
     "Error: This task runner is not supported on Windows. "
     "Please use a Unix-like system (Linux or macOS)."

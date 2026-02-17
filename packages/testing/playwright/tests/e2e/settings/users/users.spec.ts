@@ -1,7 +1,11 @@
 import { INSTANCE_OWNER_CREDENTIALS } from '../../../../config/test-users';
 import { test, expect } from '../../../../fixtures/base';
 
-test.describe('Users Settings', () => {
+test.describe('Users Settings', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test('should prevent non-owners to access UM settings', async ({ n8n }) => {
 		// This creates a new user in the same context, so the cookies are refreshed and owner is no longer logged in
 		await n8n.api.users.create();
