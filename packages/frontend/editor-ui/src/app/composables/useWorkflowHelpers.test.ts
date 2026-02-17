@@ -25,8 +25,7 @@ import {
 	NodeConnectionTypes,
 	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
-import type { AssignmentCollectionValue, IConnections, IPinData } from 'n8n-workflow';
-import { ref } from 'vue';
+import type { AssignmentCollectionValue, IConnections } from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
 import { SLACK_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '../constants';
@@ -35,32 +34,10 @@ import {
 	useWorkflowState,
 	type WorkflowState,
 } from '@/app/composables/useWorkflowState';
-
-const mockWorkflowDocumentStorePinData = ref<IPinData>({});
-
-vi.mock('@/app/stores/workflowDocument.store', async () => {
-	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
-	return {
-		...actual,
-		useWorkflowDocumentStore: vi.fn(() => ({
-			get pinData() {
-				return mockWorkflowDocumentStorePinData.value;
-			},
-			setPinData: vi.fn((newPinData: IPinData) => {
-				mockWorkflowDocumentStorePinData.value = newPinData;
-			}),
-			setTags: vi.fn(),
-			addTags: vi.fn(),
-			removeTag: vi.fn(),
-			pinNodeData: vi.fn(),
-			unpinNodeData: vi.fn(),
-			renamePinDataNode: vi.fn(),
-			pinDataByNodeName: vi.fn(),
-			getPinDataSnapshot: vi.fn(() => ({ ...mockWorkflowDocumentStorePinData.value })),
-			getNodePinData: vi.fn((nodeName: string) => mockWorkflowDocumentStorePinData.value[nodeName]),
-		})),
-	};
-});
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 vi.mock('@/app/composables/useWorkflowState', async () => {
 	const actual = await vi.importActual('@/app/composables/useWorkflowState');
@@ -93,7 +70,7 @@ describe('useWorkflowHelpers', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
-		mockWorkflowDocumentStorePinData.value = {};
+		workflowsStore.workflowId = '';
 	});
 
 	describe('getNodeParametersWithResolvedExpressions', () => {
@@ -1019,9 +996,12 @@ describe('useWorkflowHelpers', () => {
 			const runIndex = 0;
 
 			workflowsStore.workflowId = 'test-workflow';
-			mockWorkflowDocumentStorePinData.value = {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('test-workflow'),
+			);
+			vi.mocked(workflowDocumentStore.getPinDataSnapshot).mockReturnValue({
 				ParentNode: [{ json: { key: 'value' } }],
-			};
+			});
 
 			const result = executeData({}, parentNodes, currentNode, inputName, runIndex);
 
