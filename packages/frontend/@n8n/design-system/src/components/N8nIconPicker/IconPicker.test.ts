@@ -4,36 +4,45 @@ import { createRouter, createWebHistory } from 'vue-router';
 import IconPicker from '.';
 
 // Mock the lazy-loaded data modules
+// lucideIconData now exports metadata only (no SVG bodies)
 vi.mock('./lucideIconData', () => ({
 	lucideIcons: {
 		smile: {
-			body: '<circle cx="12" cy="12" r="10"/>',
 			keywords: ['smile', 'happy', 'face'],
 			categories: ['emoji'],
 		},
 		star: {
-			body: '<polygon points="12 2 15 9 22 9 17 14 18 21 12 17 6 21 7 14 2 9 9 9"/>',
 			keywords: ['star', 'favorite', 'bookmark'],
 			categories: ['shapes'],
 		},
 		heart: {
-			body: '<path d="M12 21C12 21 3 13 3 8C3 5 5 3 8 3"/>',
 			keywords: ['heart', 'love', 'like'],
 			categories: ['shapes'],
 		},
 		palette: {
-			body: '<circle cx="13.5" cy="6.5" r=".5"/>',
 			keywords: ['palette', 'color', 'paint'],
 			categories: ['design'],
 		},
 		// Blocklisted icon — should be filtered out by ICON_PICKER_BLOCKLIST
 		settings: {
-			body: '<circle cx="12" cy="12" r="3"/>',
 			keywords: ['settings', 'gear', 'preferences'],
 			categories: ['development'],
 		},
 	},
 	lucideCategories: ['design', 'development', 'emoji', 'shapes'],
+}));
+
+// Mock @iconify/json — provides SVG bodies at runtime
+vi.mock('@iconify/json/json/lucide.json', () => ({
+	default: {
+		icons: {
+			smile: { body: '<circle cx="12" cy="12" r="10"/>' },
+			star: { body: '<polygon points="12 2 15 9 22 9 17 14 18 21 12 17 6 21 7 14 2 9 9 9"/>' },
+			heart: { body: '<path d="M12 21C12 21 3 13 3 8C3 5 5 3 8 3"/>' },
+			palette: { body: '<circle cx="13.5" cy="6.5" r=".5"/>' },
+			settings: { body: '<circle cx="12" cy="12" r="3"/>' },
+		},
+	},
 }));
 
 vi.mock('./emojiData', () => ({

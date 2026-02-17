@@ -95,7 +95,7 @@ const resolvedComponent = computed(
 		null,
 );
 
-// Fallback: dynamically load Lucide icon SVG body for icons not in the registry
+// Fallback: dynamically load Lucide icon SVG body from @iconify/json for icons not in the registry
 const fallbackBody = ref<string | null>(null);
 
 watch(
@@ -106,8 +106,9 @@ watch(
 			return;
 		}
 		try {
-			const { lucideIcons } = await import('../N8nIconPicker/lucideIconData');
-			fallbackBody.value = lucideIcons[iconName]?.body ?? null;
+			const iconifyMod = await import('@iconify/json/json/lucide.json');
+			const icons = iconifyMod.default?.icons ?? iconifyMod.icons;
+			fallbackBody.value = icons[iconName]?.body ?? null;
 		} catch {
 			fallbackBody.value = null;
 		}

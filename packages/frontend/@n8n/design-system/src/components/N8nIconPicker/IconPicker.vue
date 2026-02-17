@@ -4,6 +4,7 @@
 import { onClickOutside } from '@vueuse/core';
 import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, computed, watch, nextTick } from 'vue';
+import IconShuffle from '~icons/lucide/shuffle';
 
 import type { EmojiSection } from './emojiData';
 import { ICON_PICKER_BLOCKLIST } from './iconPickerBlocklist';
@@ -23,8 +24,9 @@ import { useIconPickerSearch } from './useIconPickerSearch';
 
 /**
  * Icon picker with support for all Lucide icons and emojis.
- * Icon and emoji data is lazy-loaded on first popup open.
- * Icons render as raw SVGs from a generated data file.
+ * Data is prefetched on hover over the trigger button and cached for instant popup open.
+ * Icons render as raw SVGs sourced from @iconify/json (via unplugin-icons ecosystem).
+ * Search metadata (keywords, categories) comes from a generated data file.
  * Emojis use emojibase-data with categories and skin tone support.
  */
 defineOptions({ name: 'N8nIconPicker' });
@@ -71,11 +73,24 @@ async function loadData() {
 	if (dataLoaded.value || dataLoading.value) return;
 	dataLoading.value = true;
 	try {
-		const [lucideMod, emojiMod] = await Promise.all([
+		const [metaMod, iconifyMod, emojiMod] = await Promise.all([
 			import('./lucideIconData'),
+			import('@iconify/json/json/lucide.json'),
 			import('./emojiData'),
 		]);
-		lucideData.value = lucideMod.lucideIcons;
+
+		// Merge SVG bodies from @iconify/json with search metadata from our generated file
+		const meta = metaMod.lucideIcons;
+		const iconifyIcons = iconifyMod.default?.icons ?? iconifyMod.icons;
+		const merged: Record<string, LucideIcon> = {};
+		for (const [name, m] of Object.entries(meta)) {
+			const body = iconifyIcons[name]?.body;
+			if (body) {
+				merged[name] = { body, keywords: m.keywords, categories: m.categories };
+			}
+		}
+
+		lucideData.value = merged;
 		rawEmojiSections.value = emojiMod.emojiSections;
 		dataLoaded.value = true;
 	} finally {
@@ -196,7 +211,7 @@ function humanizeIconName(name: string): string {
 		role="button"
 		aria-haspopup="true"
 	>
-		<div :class="$style['icon-picker-button']">
+		<div :class="$style['icon-picker-button']" @pointerenter="loadData">
 			<N8nTooltip placement="right" data-test-id="icon-picker-tooltip" :disabled="isReadOnly">
 				<template #content>
 					{{ props.buttonTooltip ?? t('iconPicker.button.defaultToolTip') }}
@@ -290,18 +305,7 @@ function humanizeIconName(name: string): string {
 					data-test-id="icon-picker-random"
 					@click="selectedTab === 'icons' ? selectRandomIcon() : selectRandomEmoji()"
 				>
-					<svg
-						:class="$style.shuffleIcon"
-						xmlns="http://www.w3.org/2000/svg"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					>
-						<path d="m18 14l4 4l-4 4m0-20l4 4l-4 4" />
-						<path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22M2 6h1.972a4 4 0 0 1 3.6 2.2M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45" />
-					</svg>
+					<IconShuffle :class="$style.shuffleIcon" />
 				</N8nButton>
 			</N8nTooltip>
 			</div>
