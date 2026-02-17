@@ -59,7 +59,6 @@ describe('WorkflowBuilderService', () => {
 				credentials: [],
 			},
 			postProcessLoaders: jest.fn().mockResolvedValue(undefined),
-			releaseTypes: jest.fn(),
 			addPostProcessor: jest.fn(),
 		} as unknown as LoadNodesAndCredentials;
 
