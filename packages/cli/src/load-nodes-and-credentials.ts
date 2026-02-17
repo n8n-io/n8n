@@ -557,15 +557,20 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
+	private parseFullNodeType(fullNodeType: string): [string, string] {
+		const lastDotIndex = fullNodeType.lastIndexOf('.');
+		return [fullNodeType.substring(0, lastDotIndex), fullNodeType.substring(lastDotIndex + 1)];
+	}
+
 	recognizesNode(fullNodeType: string): boolean {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const [packageName, nodeType] = this.parseFullNodeType(fullNodeType);
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		return !!loader && nodeType in loader.known.nodes;
 	}
 
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const [packageName, nodeType] = this.parseFullNodeType(fullNodeType);
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		if (!loader) {
