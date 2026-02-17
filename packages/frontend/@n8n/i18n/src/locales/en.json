@@ -3838,6 +3838,7 @@
 	"dataTable.import.columnNamePlaceholder": "Enter column name",
 	"dataTable.import.duplicateColumnName": "Column name must be unique",
 	"dataTable.import.systemColumnName": "{columnName} is a reserved column",
+	"dataTable.import.includeColumn": "Include",
 	"dataTable.import.invalidColumnName": "Only alphabetical and non-leading numbers and underscores allowed",
 	"dataTable.delete.confirm.message": "Are you sure you want to delete the data table '{name}'? This action cannot be undone.",
 	"dataTable.delete.error": "Error deleting data table",
