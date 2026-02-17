@@ -9,6 +9,7 @@ import { extractTextContent } from '@/code-builder/utils/content-extractors';
 import { MAX_TRIAGE_ITERATIONS } from '@/constants';
 import { prompt } from '@/prompts/builder';
 import type { StreamChunk, StreamOutput } from '@/types/streaming';
+import { buildSelectedNodesSummary, buildWorkflowSummary } from '@/utils/context-builders';
 import type { ChatPayload } from '@/workflow-builder-agent';
 
 import { ASK_ASSISTANT_TOOL } from './tools/ask-assistant.tool';
@@ -77,13 +78,30 @@ function conversationEntryToString(entry: TriageConversationEntry): string {
 	}
 }
 
-function buildTriagePrompt(conversationHistory?: TriageConversationEntry[]): string {
+function buildTriagePrompt(
+	conversationHistory?: TriageConversationEntry[],
+	workflowContext?: ChatPayload['workflowContext'],
+): string {
+	const selectedNodesSummary = buildSelectedNodesSummary(workflowContext);
+	const currentWorkflow = workflowContext?.currentWorkflow;
+	const workflowNodes = currentWorkflow?.nodes ?? [];
+	const hasWorkflow = workflowNodes.length > 0;
+	const workflowSummary = hasWorkflow
+		? buildWorkflowSummary({
+				name: currentWorkflow?.name ?? '',
+				nodes: workflowNodes,
+				connections: currentWorkflow?.connections ?? {},
+			})
+		: '';
+
 	return prompt()
 		.section(
 			'role',
 			'You are a triage agent for the n8n workflow builder. ' +
 				'Your job is to classify each user message and route it to the right handler.',
 		)
+		.sectionIf(!!selectedNodesSummary, 'selected_nodes', () => selectedNodesSummary)
+		.sectionIf(hasWorkflow, 'workflow_summary', () => workflowSummary)
 		.section(
 			'routing',
 			`Route each message using one or more of these:
@@ -114,8 +132,8 @@ General rules:
 - When in doubt between ask_assistant and build_workflow, prefer build_workflow for any message that implies changing the workflow
 - Action-oriented language ("set it up", "configure this", "do it", "add that", "connect them", "now set them up") ALWAYS means build_workflow, even if "set up" could sound like a question. If the user is telling you to DO something, use build_workflow.
 - Polite wrappers like "help me", "can you", "could you" followed by an action verb are action requests → build_workflow.
-- References like "this", "it", "that": resolve using conversation history. With action verbs ("fix this", "change it", "set that up") → build_workflow. With question words ("what is this?", "why is this?", "how does this work?") → ask_assistant.
-- Use conversation history to resolve references like "change that" or "the previous node"
+- When <selected_nodes> is present, resolve "this", "it", "that" to the selected node(s). With action verbs ("fix this", "change it") → build_workflow. With question words ("what is this?", "why is this failing?") → ask_assistant.
+- When no nodes are selected, resolve references using conversation history and <workflow_summary>.
 - Tool responses are shown directly to the user. After a tool completes, either call another tool or respond with an empty message. Never repeat, summarize, or rephrase tool output.
 - Keep transition text before tool calls to one sentence maximum.`,
 		)
@@ -175,7 +193,7 @@ export class TriageAgent {
 		}
 		const llmWithTools = this.llm.bindTools([ASK_ASSISTANT_TOOL, BUILD_WORKFLOW_TOOL]);
 
-		const systemContent = buildTriagePrompt(conversationHistory);
+		const systemContent = buildTriagePrompt(conversationHistory, payload.workflowContext);
 
 		const messages: BaseMessage[] = [
 			new SystemMessage(systemContent),

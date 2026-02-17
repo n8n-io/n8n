@@ -777,6 +777,152 @@ describe('TriageAgent', () => {
 		).rejects.toThrow('Assistant service unavailable');
 	});
 
+	it('should include selected nodes in system message when workflowContext has selectedNodes', async () => {
+		const response = new AIMessage({ content: 'Noted.' });
+		const llm = createMockLlm(response);
+		const handler = createMockAssistantHandler();
+
+		const agent = new TriageAgent({
+			llm,
+			assistantHandler: handler,
+			buildWorkflow: createMockBuildWorkflow(),
+		});
+		await collectGenerator(
+			agent.run({
+				payload: {
+					id: 'msg-1',
+					message: 'fix this',
+					workflowContext: {
+						selectedNodes: [
+							{
+								name: 'HTTP Request',
+								issues: {},
+								incomingConnections: [],
+								outgoingConnections: ['Slack'],
+							},
+						],
+						currentWorkflow: {
+							nodes: [
+								{
+									id: '1',
+									name: 'HTTP Request',
+									type: 'n8n-nodes-base.httpRequest',
+									typeVersion: 1,
+									position: [0, 0],
+									parameters: {},
+								},
+								{
+									id: '2',
+									name: 'Slack',
+									type: 'n8n-nodes-base.slack',
+									typeVersion: 1,
+									position: [200, 0],
+									parameters: {},
+								},
+							],
+							connections: {},
+						},
+					},
+				},
+				userId: 'user-1',
+			}),
+		);
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		const invokeArgs = (boundModel.invoke as jest.Mock).mock.calls[0][0];
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const systemMessage = invokeArgs[0];
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).toContain('<selected_nodes>');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).toContain('HTTP Request');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).toContain('<workflow_summary>');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).toContain('Slack');
+	});
+
+	it('should include workflow summary without selected nodes when only workflow is present', async () => {
+		const response = new AIMessage({ content: 'Noted.' });
+		const llm = createMockLlm(response);
+		const handler = createMockAssistantHandler();
+
+		const agent = new TriageAgent({
+			llm,
+			assistantHandler: handler,
+			buildWorkflow: createMockBuildWorkflow(),
+		});
+		await collectGenerator(
+			agent.run({
+				payload: {
+					id: 'msg-1',
+					message: 'add a node',
+					workflowContext: {
+						currentWorkflow: {
+							nodes: [
+								{
+									id: '1',
+									name: 'Webhook',
+									type: 'n8n-nodes-base.webhook',
+									typeVersion: 1,
+									position: [0, 0],
+									parameters: {},
+								},
+							],
+							connections: {},
+						},
+					},
+				},
+				userId: 'user-1',
+			}),
+		);
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		const invokeArgs = (boundModel.invoke as jest.Mock).mock.calls[0][0];
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const systemMessage = invokeArgs[0];
+
+		// No selected nodes data should appear (only the tag name reference in rules)
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).not.toContain('node(s) selected:');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).toContain('existing nodes:');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).toContain('Webhook');
+	});
+
+	it('should not include workflow context sections when no workflowContext is provided', async () => {
+		const response = new AIMessage({ content: 'Reply.' });
+		const llm = createMockLlm(response);
+		const handler = createMockAssistantHandler();
+
+		const agent = new TriageAgent({
+			llm,
+			assistantHandler: handler,
+			buildWorkflow: createMockBuildWorkflow(),
+		});
+		await collectGenerator(agent.run({ payload: createMockPayload(), userId: 'user-1' }));
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		const invokeArgs = (boundModel.invoke as jest.Mock).mock.calls[0][0];
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const systemMessage = invokeArgs[0];
+
+		// No node names or workflow summary content should appear
+		// (the rules section references <selected_nodes> as a tag name, but no actual node data)
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).not.toContain('existing nodes:');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).not.toContain('node(s) selected:');
+	});
+
 	it('should run two-step diagnosis-then-fix: ask_assistant followed by build_workflow', async () => {
 		const builderChunk: StreamOutput = {
 			messages: [{ role: 'assistant', type: 'message', text: 'Built it' }],
