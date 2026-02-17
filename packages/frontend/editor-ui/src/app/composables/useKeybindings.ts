@@ -180,21 +180,31 @@ export const useKeybindings = (
 		};
 	}
 
+	// Resolution strategy:
+	// 1. Prefer `byKey` (event.key) so shortcuts follow the logical character
+	//    produced by the active keyboard layout (works correctly for QWERTY,
+	//    Dvorak, and most non-ANSI layouts).
+	// 2. For letter keys (KeyA–KeyZ), do NOT fall back to `byCode` (physical key
+	//    position). Falling back to `byCode` can remap one letter to another on
+	//    alternative layouts (e.g. Colemak), causing unintended matches such as
+	//    CMD+R triggering the CMD+S handler.
+	// 3. Use `byLayout` (Keyboard Layout Map API) as a layout-aware fallback
+	//    when available. This helps in cases where `event.key` is unreliable
+	//    (e.g. certain macOS modifier combinations or dead keys).
+	// 4. For non-letter keys (arrows, function keys, etc.), allow `byCode` as a
+	//    last resort to ensure consistent physical-key behavior across layouts.
 	function onKeyDown(event: KeyboardEvent) {
 		if (ignoreKeyPresses.value || isDisabled.value) return;
 
 		const { byKey, byCode, byLayout } = toShortcutString(event);
 
-		// Prefer `byKey` over `byCode` so that:
-		// - ANSI layouts work correctly
-		// - Dvorak works correctly
-		// - Non-ansi layouts work correctly
-		// Fall back to `byLayout` (Keyboard Layout Map API) for layouts like
-		// Colemak where macOS Alt+key produces dead keys
-		const handler =
-			normalizedKeymap.value[byKey] ??
-			normalizedKeymap.value[byCode] ??
-			(byLayout ? normalizedKeymap.value[byLayout] : undefined);
+		const isLetterKey = typeof event.code === 'string' && event.code.startsWith('Key'); // KeyA..KeyZ
+
+		const handlerFromKey = normalizedKeymap.value[byKey];
+		const handlerFromLayout = byLayout ? normalizedKeymap.value[byLayout] : undefined;
+		const handlerFromCode = !isLetterKey ? normalizedKeymap.value[byCode] : undefined;
+
+		const handler = handlerFromKey ?? handlerFromLayout ?? handlerFromCode;
 		const run =
 			typeof handler === 'function' ? handler : handler?.disabled() ? undefined : handler?.run;
 
