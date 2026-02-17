@@ -24,7 +24,7 @@
 		"lint": "eslint . --quiet",
 		"lint:fix": "eslint . --fix",
 		"watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
-		"test": "jest",
+		"test": "jest --passWithNoTests",
 		"test:unit": "jest",
 		"test:dev": "jest --watch"
 	},
