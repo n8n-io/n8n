@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { INodeExecutionData, IPinData } from 'n8n-workflow';
-import { useWorkflowDocumentPinData, getPinDataSize } from './useWorkflowDocumentPinData';
+import {
+	useWorkflowDocumentPinData,
+	getPinDataSize,
+	type PinDataAction,
+} from './useWorkflowDocumentPinData';
 import { dataPinningEventBus } from '@/app/event-bus';
 
 vi.mock('@/app/event-bus', () => ({
@@ -9,6 +13,20 @@ vi.mock('@/app/event-bus', () => ({
 	},
 }));
 
+/**
+ * Creates the composable wired through a spy onChange.
+ * The spy calls handleAction, simulating the store's unified dispatcher.
+ */
+function createPinData() {
+	const onChangeSpy = vi.fn<(action: PinDataAction) => void>();
+	const composable = useWorkflowDocumentPinData(onChangeSpy);
+
+	// Wire the spy to call handleAction, simulating the store's onChange dispatcher
+	onChangeSpy.mockImplementation(composable.handleAction);
+
+	return { ...composable, onChangeSpy };
+}
+
 describe('useWorkflowDocumentPinData', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -16,14 +34,14 @@ describe('useWorkflowDocumentPinData', () => {
 
 	describe('initial state', () => {
 		it('should start with empty pin data', () => {
-			const { pinData } = useWorkflowDocumentPinData();
+			const { pinData } = createPinData();
 			expect(pinData.value).toEqual({});
 		});
 	});
 
 	describe('setPinData', () => {
 		it('should set pin data with json-key objects', () => {
-			const { pinData, setPinData } = useWorkflowDocumentPinData();
+			const { pinData, setPinData } = createPinData();
 			const data: IPinData = {
 				Node1: [{ json: { key: 'value' } }],
 			};
@@ -33,8 +51,20 @@ describe('useWorkflowDocumentPinData', () => {
 			expect(pinData.value).toEqual({ Node1: [{ json: { key: 'value' } }] });
 		});
 
+		it('should route through onChange', () => {
+			const { setPinData, onChangeSpy } = createPinData();
+			const data: IPinData = { Node1: [{ json: { key: 'value' } }] };
+
+			setPinData(data);
+
+			expect(onChangeSpy).toHaveBeenCalledWith({
+				name: 'setPinData',
+				payload: { pinData: data },
+			});
+		});
+
 		it('should normalize items without json key wrapper', () => {
-			const { pinData, setPinData } = useWorkflowDocumentPinData();
+			const { pinData, setPinData } = createPinData();
 			const data = {
 				Node1: [{ key: 'value' } as unknown as INodeExecutionData],
 			};
@@ -45,7 +75,7 @@ describe('useWorkflowDocumentPinData', () => {
 		});
 
 		it('should emit pin-data event', () => {
-			const { setPinData } = useWorkflowDocumentPinData();
+			const { setPinData } = createPinData();
 			const data: IPinData = {
 				Node1: [{ json: { key: 'value' } }],
 			};
@@ -58,7 +88,7 @@ describe('useWorkflowDocumentPinData', () => {
 		});
 
 		it('should replace existing pin data entirely', () => {
-			const { pinData, setPinData } = useWorkflowDocumentPinData();
+			const { pinData, setPinData } = createPinData();
 			setPinData({ Node1: [{ json: { a: 1 } }] });
 			setPinData({ Node2: [{ json: { b: 2 } }] });
 
@@ -69,15 +99,27 @@ describe('useWorkflowDocumentPinData', () => {
 
 	describe('pinNodeData', () => {
 		it('should pin data for a specific node', () => {
-			const { pinData, pinNodeData } = useWorkflowDocumentPinData();
+			const { pinData, pinNodeData } = createPinData();
 
 			pinNodeData('Node1', [{ json: { key: 'value' } }]);
 
 			expect(pinData.value).toEqual({ Node1: [{ json: { key: 'value' } }] });
 		});
 
+		it('should route through onChange', () => {
+			const { pinNodeData, onChangeSpy } = createPinData();
+			const data = [{ json: { key: 'value' } }];
+
+			pinNodeData('Node1', data);
+
+			expect(onChangeSpy).toHaveBeenCalledWith({
+				name: 'pinNodeData',
+				payload: { nodeName: 'Node1', data },
+			});
+		});
+
 		it('should normalize data by stripping runtime properties', () => {
-			const { pinData, pinNodeData } = useWorkflowDocumentPinData();
+			const { pinData, pinNodeData } = createPinData();
 			const data = [
 				{
 					json: { key: 'value' },
@@ -101,7 +143,7 @@ describe('useWorkflowDocumentPinData', () => {
 		});
 
 		it('should wrap items without json key in { json: item }', () => {
-			const { pinData, pinNodeData } = useWorkflowDocumentPinData();
+			const { pinData, pinNodeData } = createPinData();
 			const data = [{ key: 'value' } as unknown as INodeExecutionData];
 
 			pinNodeData('Node1', data);
@@ -112,7 +154,7 @@ describe('useWorkflowDocumentPinData', () => {
 		});
 
 		it('should preserve existing nodes when pinning a new one', () => {
-			const { pinData, pinNodeData } = useWorkflowDocumentPinData();
+			const { pinData, pinNodeData } = createPinData();
 			pinNodeData('Node1', [{ json: { a: 1 } }]);
 			pinNodeData('Node2', [{ json: { b: 2 } }]);
 
@@ -123,7 +165,7 @@ describe('useWorkflowDocumentPinData', () => {
 		});
 
 		it('should overwrite existing pin data for the same node', () => {
-			const { pinData, pinNodeData } = useWorkflowDocumentPinData();
+			const { pinData, pinNodeData } = createPinData();
 			pinNodeData('Node1', [{ json: { a: 1 } }]);
 			pinNodeData('Node1', [{ json: { a: 2 } }]);
 
@@ -131,7 +173,7 @@ describe('useWorkflowDocumentPinData', () => {
 		});
 
 		it('should emit pin-data event with normalized data', () => {
-			const { pinNodeData } = useWorkflowDocumentPinData();
+			const { pinNodeData } = createPinData();
 			pinNodeData('Node1', [{ json: { key: 'value' } }]);
 
 			expect(dataPinningEventBus.emit).toHaveBeenCalledWith('pin-data', {
@@ -140,7 +182,7 @@ describe('useWorkflowDocumentPinData', () => {
 		});
 
 		it('should handle non-array input by wrapping in array', () => {
-			const { pinData, pinNodeData } = useWorkflowDocumentPinData();
+			const { pinData, pinNodeData } = createPinData();
 			const data = { json: { key: 'value' } } as unknown as INodeExecutionData[];
 
 			pinNodeData('Node1', data);
@@ -151,7 +193,7 @@ describe('useWorkflowDocumentPinData', () => {
 
 	describe('unpinNodeData', () => {
 		it('should remove pin data for a specific node', () => {
-			const { pinData, pinNodeData, unpinNodeData } = useWorkflowDocumentPinData();
+			const { pinData, pinNodeData, unpinNodeData } = createPinData();
 			pinNodeData('Node1', [{ json: { a: 1 } }]);
 			pinNodeData('Node2', [{ json: { b: 2 } }]);
 
@@ -160,8 +202,21 @@ describe('useWorkflowDocumentPinData', () => {
 			expect(pinData.value).toEqual({ Node2: [{ json: { b: 2 } }] });
 		});
 
+		it('should route through onChange', () => {
+			const { pinNodeData, unpinNodeData, onChangeSpy } = createPinData();
+			pinNodeData('Node1', [{ json: { a: 1 } }]);
+			onChangeSpy.mockClear();
+
+			unpinNodeData('Node1');
+
+			expect(onChangeSpy).toHaveBeenCalledWith({
+				name: 'unpinNodeData',
+				payload: { nodeName: 'Node1' },
+			});
+		});
+
 		it('should emit unpin-data event', () => {
-			const { pinNodeData, unpinNodeData } = useWorkflowDocumentPinData();
+			const { pinNodeData, unpinNodeData } = createPinData();
 			pinNodeData('Node1', [{ json: { a: 1 } }]);
 			vi.mocked(dataPinningEventBus.emit).mockClear();
 
@@ -173,7 +228,7 @@ describe('useWorkflowDocumentPinData', () => {
 		});
 
 		it('should handle unpinning a non-existent node gracefully', () => {
-			const { pinData, unpinNodeData } = useWorkflowDocumentPinData();
+			const { pinData, unpinNodeData } = createPinData();
 
 			unpinNodeData('NonExistent');
 
@@ -183,7 +238,7 @@ describe('useWorkflowDocumentPinData', () => {
 
 	describe('renamePinDataNode', () => {
 		it('should rename a node key in pin data', () => {
-			const { pinData, pinNodeData, renamePinDataNode } = useWorkflowDocumentPinData();
+			const { pinData, pinNodeData, renamePinDataNode } = createPinData();
 			pinNodeData('OldName', [{ json: { key: 'value' } }]);
 
 			renamePinDataNode('OldName', 'NewName');
@@ -192,8 +247,19 @@ describe('useWorkflowDocumentPinData', () => {
 			expect(pinData.value).toEqual({ NewName: [{ json: { key: 'value' } }] });
 		});
 
+		it('should route through onChange', () => {
+			const { renamePinDataNode, onChangeSpy } = createPinData();
+
+			renamePinDataNode('OldName', 'NewName');
+
+			expect(onChangeSpy).toHaveBeenCalledWith({
+				name: 'renamePinDataNode',
+				payload: { oldName: 'OldName', newName: 'NewName' },
+			});
+		});
+
 		it('should not modify pin data if old name does not exist', () => {
-			const { pinData, pinNodeData, renamePinDataNode } = useWorkflowDocumentPinData();
+			const { pinData, pinNodeData, renamePinDataNode } = createPinData();
 			pinNodeData('Node1', [{ json: { key: 'value' } }]);
 
 			renamePinDataNode('NonExistent', 'NewName');
@@ -203,7 +269,7 @@ describe('useWorkflowDocumentPinData', () => {
 		});
 
 		it('should update pairedItem sourceOverwrite references', () => {
-			const { pinData, setPinData, renamePinDataNode } = useWorkflowDocumentPinData();
+			const { pinData, setPinData, renamePinDataNode } = createPinData();
 			setPinData({
 				Node2: [
 					{
@@ -225,7 +291,7 @@ describe('useWorkflowDocumentPinData', () => {
 		});
 
 		it('should update pairedItem array sourceOverwrite references', () => {
-			const { pinData, setPinData, renamePinDataNode } = useWorkflowDocumentPinData();
+			const { pinData, setPinData, renamePinDataNode } = createPinData();
 			setPinData({
 				Node2: [
 					{
@@ -246,7 +312,7 @@ describe('useWorkflowDocumentPinData', () => {
 
 			renamePinDataNode('OldName', 'NewName');
 
-			const pairedItems = pinData.value.Node2[0].pairedItem as Array<{
+			const pairedItems = pinData.value.Node2[0].pairedItem as unknown as Array<{
 				sourceOverwrite: { previousNode: string };
 			}>;
 			expect(pairedItems[0].sourceOverwrite.previousNode).toBe('NewName');
@@ -254,7 +320,7 @@ describe('useWorkflowDocumentPinData', () => {
 		});
 
 		it('should skip numeric pairedItem values', () => {
-			const { pinData, setPinData, renamePinDataNode } = useWorkflowDocumentPinData();
+			const { pinData, setPinData, renamePinDataNode } = createPinData();
 			setPinData({
 				Node2: [
 					{
@@ -271,13 +337,13 @@ describe('useWorkflowDocumentPinData', () => {
 
 	describe('pinDataByNodeName', () => {
 		it('should return undefined for non-existent node', () => {
-			const { pinDataByNodeName } = useWorkflowDocumentPinData();
+			const { pinDataByNodeName } = createPinData();
 
 			expect(pinDataByNodeName('NonExistent')).toBeUndefined();
 		});
 
 		it('should return unwrapped json values', () => {
-			const { pinNodeData, pinDataByNodeName } = useWorkflowDocumentPinData();
+			const { pinNodeData, pinDataByNodeName } = createPinData();
 			pinNodeData('Node1', [{ json: { key: 'value1' } }, { json: { key: 'value2' } }]);
 
 			const result = pinDataByNodeName('Node1');
@@ -288,7 +354,7 @@ describe('useWorkflowDocumentPinData', () => {
 
 	describe('getPinDataSnapshot', () => {
 		it('should return a mutable shallow copy', () => {
-			const { pinData, pinNodeData, getPinDataSnapshot } = useWorkflowDocumentPinData();
+			const { pinData, pinNodeData, getPinDataSnapshot } = createPinData();
 			pinNodeData('Node1', [{ json: { key: 'value' } }]);
 
 			const snapshot = getPinDataSnapshot();
@@ -302,13 +368,13 @@ describe('useWorkflowDocumentPinData', () => {
 
 	describe('getNodePinData', () => {
 		it('should return undefined for non-existent node', () => {
-			const { getNodePinData } = useWorkflowDocumentPinData();
+			const { getNodePinData } = createPinData();
 
 			expect(getNodePinData('NonExistent')).toBeUndefined();
 		});
 
 		it('should return raw pin data for a node', () => {
-			const { pinNodeData, getNodePinData } = useWorkflowDocumentPinData();
+			const { pinNodeData, getNodePinData } = createPinData();
 			pinNodeData('Node1', [{ json: { key: 'value' } }]);
 
 			const result = getNodePinData('Node1');

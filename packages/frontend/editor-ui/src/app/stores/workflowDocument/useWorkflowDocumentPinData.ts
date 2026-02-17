@@ -16,6 +16,17 @@ export type PinDataAction =
 	| UnpinNodeDataAction
 	| RenamePinDataNodeAction;
 
+const PIN_DATA_ACTION_NAMES = new Set<string>([
+	'setPinData',
+	'pinNodeData',
+	'unpinNodeData',
+	'renamePinDataNode',
+]);
+
+export function isPinDataAction(action: { name: string }): action is PinDataAction {
+	return PIN_DATA_ACTION_NAMES.has(action.name);
+}
+
 /**
  * Normalize an array of node execution data items by stripping runtime properties.
  * Only keeps json, binary, and pairedItem.
@@ -65,10 +76,13 @@ export function getPinDataSize(
 }
 
 /**
- * Composable that encapsulates all pin data state and actions
+ * Composable that encapsulates pin data state, public API, and mutation logic
  * for a workflow document store.
+ *
+ * Accepts an `onChange` callback that routes actions through the store's
+ * unified dispatcher for CRDT migration readiness.
  */
-export function useWorkflowDocumentPinData() {
+export function useWorkflowDocumentPinData(onChange: (action: PinDataAction) => void) {
 	const pinData = ref<IPinData>({});
 
 	function setPinData(newPinData: IPinData) {
@@ -103,7 +117,11 @@ export function useWorkflowDocumentPinData() {
 		return pinData.value[nodeName];
 	}
 
-	function onChange(action: PinDataAction) {
+	/**
+	 * Apply a pin data action to the state.
+	 * Called by the store's unified onChange dispatcher.
+	 */
+	function handleAction(action: PinDataAction) {
 		if (action.name === 'setPinData') {
 			const normalized = normalizePinData(action.payload.pinData);
 			pinData.value = normalized;
@@ -155,5 +173,6 @@ export function useWorkflowDocumentPinData() {
 		pinDataByNodeName,
 		getPinDataSnapshot,
 		getNodePinData,
+		handleAction,
 	};
 }
