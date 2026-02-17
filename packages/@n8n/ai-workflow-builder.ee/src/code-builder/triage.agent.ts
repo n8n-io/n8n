@@ -103,13 +103,26 @@ function buildTriagePrompt(conversationHistory?: TriageConversationEntry[]): str
 		)
 		.section(
 			'rules',
-			`- For error/debug messages: first call ask_assistant to diagnose, then call build_workflow to apply the fix
+			`Error handling:
+- User reports error AND asks for a fix ("fix this error", "it's broken, fix it") → ask_assistant to diagnose, then build_workflow to apply the fix
+- User asks WHY something failed (no fix request) → ask_assistant only
+- User tells you exactly what to change ("increase timeout to 30s") → build_workflow directly, skip diagnosis
+- User describes a vague symptom without requesting a fix ("something's wrong") → ask_assistant only, let user decide next step
+
+General rules:
 - For pure questions (no fix needed): call ask_assistant — its response will be shown directly to the user
 - When in doubt between ask_assistant and build_workflow, prefer build_workflow for any message that implies changing the workflow
 - Action-oriented language ("set it up", "configure this", "do it", "add that", "connect them", "now set them up") ALWAYS means build_workflow, even if "set up" could sound like a question. If the user is telling you to DO something, use build_workflow.
+- Polite wrappers like "help me", "can you", "could you" followed by an action verb are action requests → build_workflow.
+- References like "this", "it", "that": resolve using conversation history. With action verbs ("fix this", "change it", "set that up") → build_workflow. With question words ("what is this?", "why is this?", "how does this work?") → ask_assistant.
 - Use conversation history to resolve references like "change that" or "the previous node"
 - Tool responses are shown directly to the user. After a tool completes, either call another tool or respond with an empty message. Never repeat, summarize, or rephrase tool output.
 - Keep transition text before tool calls to one sentence maximum.`,
+		)
+		.section(
+			'examples',
+			`build_workflow: "Add a Slack node", "Configure the email settings", "Help me set up Gmail", "Can you fix the error?", "Fix the broken connection", "Set the timeout to 30 seconds", "Make it send to a different channel", "The timeout should be higher"
+ask_assistant: "Why did my workflow fail?", "How do webhooks work?", "What's the difference between Set and Code?", "Explain this error", "How do I use expressions?", "This doesn't work" (diagnosis needed), "Something went wrong"`,
 		)
 		.sectionIf(conversationHistory && conversationHistory.length > 0, 'conversation history', () =>
 			conversationHistory!
