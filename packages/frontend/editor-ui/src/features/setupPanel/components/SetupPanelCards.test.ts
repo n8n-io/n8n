@@ -18,12 +18,15 @@ const mockIsAllComplete = computed(
 	() => mockSetupCards.value.length > 0 && mockSetupCards.value.every((c) => c.state.isComplete),
 );
 
+const mockFirstTriggerName = ref<string | null>(null);
+
 vi.mock('../composables/useWorkflowSetupState', () => ({
 	useWorkflowSetupState: () => ({
 		setupCards: mockSetupCards,
 		isAllComplete: mockIsAllComplete,
 		setCredential: mockSetCredential,
 		unsetCredential: mockUnsetCredential,
+		firstTriggerName: mockFirstTriggerName,
 	}),
 }));
 
@@ -45,7 +48,7 @@ vi.mock('./cards/CredentialTypeSetupCard.vue', () => ({
 			'<button data-test-id="select-credential-btn" @click="$emit(\'credentialSelected\', { credentialType: state.credentialType, credentialId: \'cred-123\' })">Select</button>' +
 			'<button data-test-id="deselect-credential-btn" @click="$emit(\'credentialDeselected\', state.credentialType)">Deselect</button>' +
 			'</div>',
-		props: ['state'],
+		props: ['state', 'firstTriggerName'],
 		emits: ['credentialSelected', 'credentialDeselected'],
 	},
 }));
@@ -89,6 +92,7 @@ describe('SetupPanelCards', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		mockSetupCards.value = [];
+		mockFirstTriggerName.value = null;
 		mockSetCredential.mockReset();
 		mockUnsetCredential.mockReset();
 	});

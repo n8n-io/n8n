@@ -13,6 +13,7 @@ import SetupCard from './SetupCard.vue';
 
 const props = defineProps<{
 	state: CredentialTypeSetupState;
+	firstTriggerName?: string | null;
 }>();
 
 const expanded = defineModel<boolean>('expanded', { default: false });
@@ -29,17 +30,21 @@ const setupCard = ref<InstanceType<typeof SetupCard> | null>(null);
 
 const nodeNames = computed(() => props.state.nodes.map((node) => node.name));
 
-// Only the first trigger node is embedded in this card; extras get standalone cards.
-const triggerNodes = computed(() => {
-	const first = props.state.nodes.find((node) => nodeTypesStore.isTriggerNode(node.type));
-	return first ? [first] : [];
+// Only the workflow's first trigger (by X position) can be executed from setup cards.
+const triggerNode = computed(() => {
+	if (!props.firstTriggerName) return null;
+	return (
+		props.state.nodes.find(
+			(node) => nodeTypesStore.isTriggerNode(node.type) && node.name === props.firstTriggerName,
+		) ?? null
+	);
 });
 
 const cardTitle = computed(() => nodeNames.value[0] ?? '');
 
 const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 
-const showFooter = computed(() => triggerNodes.value.length > 0 || props.state.isComplete);
+const showFooter = computed(() => triggerNode.value !== null || props.state.isComplete);
 
 const telemetryPayload = computed(() => ({
 	type: 'credential',
@@ -114,14 +119,11 @@ const onCredentialDeselected = () => {
 		</div>
 
 		<template #footer-actions>
-			<div v-if="triggerNodes.length > 0" :class="$style['footer-trigger-buttons']">
-				<TriggerExecuteButton
-					v-for="triggerNode in triggerNodes"
-					:key="triggerNode.id"
-					:node="triggerNode"
-					@executed="setupCard?.markInteracted()"
-				/>
-			</div>
+			<TriggerExecuteButton
+				v-if="triggerNode"
+				:node="triggerNode"
+				@executed="setupCard?.markInteracted()"
+			/>
 		</template>
 	</SetupCard>
 </template>
@@ -164,11 +166,5 @@ const onCredentialDeselected = () => {
 
 .credential-picker {
 	flex: 1;
-}
-
-.footer-trigger-buttons {
-	display: flex;
-	gap: var(--spacing--2xs);
-	margin-left: auto;
 }
 </style>

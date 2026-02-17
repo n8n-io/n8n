@@ -72,6 +72,15 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	});
 
 	/**
+	 * The name of the first (leftmost) trigger in the workflow.
+	 * Only this trigger can be executed from setup cards; others are treated as regular nodes.
+	 */
+	const firstTriggerName = computed(() => {
+		const first = nodesRequiringSetup.value.find(({ isTrigger }) => isTrigger);
+		return first?.node.name ?? null;
+	});
+
+	/**
 	 * All nodes that have credential requirements (includes both triggers and regular nodes).
 	 * Sorted by X position.
 	 */
@@ -94,15 +103,18 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			isGenericAuthType,
 		);
 		const sorted = sortCredentialTypeStates(grouped);
-		// Keep all nodes for display, but only the first trigger is "embedded"
-		// (shown with execute button). Extra triggers become standalone trigger cards.
+		// Only the workflow's first trigger (leftmost) can be executed from setup cards.
+		// It gets an embedded execute button and affects card completion.
+		// Other triggers are treated as regular nodes (credentials only, no execute).
 		const isTriggerNodeType = (nodeType: string) => nodeTypesStore.isTriggerNode(nodeType);
 		return sorted.map((state) => {
-			const firstTrigger = state.nodes.find((node) => isTriggerNode(node));
+			const embeddedTrigger = state.nodes.find(
+				(node) => isTriggerNode(node) && node.name === firstTriggerName.value,
+			);
 			// For completion check, only consider the embedded (first) trigger
-			const nodesForCompletion = firstTrigger
-				? state.nodes.filter((node) => !isTriggerNode(node) || node === firstTrigger)
-				: state.nodes;
+			const nodesForCompletion = embeddedTrigger
+				? state.nodes.filter((node) => !isTriggerNode(node) || node === embeddedTrigger)
+				: state.nodes.filter((node) => !isTriggerNode(node));
 			return {
 				...state,
 				isComplete: isCredentialCardComplete(
@@ -119,18 +131,17 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 * Triggers with credentials are embedded into the credential card instead.
 	 */
 	const triggerStates = computed(() => {
-		// Only the first trigger per credential card is "covered" (embedded).
-		// Extra triggers become standalone trigger cards.
-		const coveredTriggerNames = new Set<string>();
-		for (const credState of credentialTypeStates.value) {
-			const firstTrigger = credState.nodes.find((node) => isTriggerNode(node));
-			if (firstTrigger) {
-				coveredTriggerNames.add(firstTrigger.name);
-			}
-		}
+		// Only the first trigger can get a standalone trigger card.
+		// Check if it's already embedded in a credential card.
+		if (!firstTriggerName.value) return [];
+
+		const isFirstTriggerEmbedded = credentialTypeStates.value.some((credState) =>
+			credState.nodes.some((node) => isTriggerNode(node) && node.name === firstTriggerName.value),
+		);
+		if (isFirstTriggerEmbedded) return [];
 
 		return nodesRequiringSetup.value
-			.filter(({ isTrigger, node }) => isTrigger && !coveredTriggerNames.has(node.name))
+			.filter(({ isTrigger, node }) => isTrigger && node.name === firstTriggerName.value)
 			.map(({ node, credentialTypes }) =>
 				buildTriggerSetupState(
 					node,
@@ -227,6 +238,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		setupCards,
 		credentialTypeStates,
 		triggerStates,
+		firstTriggerName,
 		totalCredentialsMissing,
 		totalCardsRequiringSetup,
 		isAllComplete,

@@ -12,7 +12,8 @@ import type { SetupCardItem } from '../setupPanel.types';
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
-const { setupCards, isAllComplete, setCredential, unsetCredential } = useWorkflowSetupState();
+const { setupCards, isAllComplete, setCredential, unsetCredential, firstTriggerName } =
+	useWorkflowSetupState();
 
 watch(isAllComplete, (allComplete) => {
 	if (allComplete) {
@@ -69,6 +70,7 @@ const cardKey = (card: SetupCardItem): string => {
 				<CredentialTypeSetupCard
 					v-else
 					:state="card.state"
+					:first-trigger-name="firstTriggerName"
 					:expanded="index === 0"
 					@credential-selected="onCredentialSelected"
 					@credential-deselected="onCredentialDeselected"

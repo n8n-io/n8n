@@ -188,7 +188,7 @@ describe('useWorkflowSetupState', () => {
 			}
 		});
 
-		it('should only embed first trigger into credential card and create standalone cards for extras', () => {
+		it('should only allow executing first trigger; other triggers get no standalone cards', () => {
 			const trigger1 = createNode({
 				name: 'SlackTrigger1',
 				type: 'n8n-nodes-base.slackTrigger',
@@ -226,9 +226,9 @@ describe('useWorkflowSetupState', () => {
 				]);
 			}
 
-			// Only the first trigger is "covered"; the second becomes a standalone trigger card
-			expect(triggerCards).toHaveLength(1);
-			expect(triggerCards[0].state.node.name).toBe('SlackTrigger2');
+			// No standalone trigger cards — only the first trigger is executable,
+			// and it's already embedded in the credential card
+			expect(triggerCards).toHaveLength(0);
 		});
 
 		it('should produce only trigger card for trigger without credentials', () => {
@@ -965,7 +965,7 @@ describe('useWorkflowSetupState', () => {
 			expect(totalCardsRequiringSetup.value).toBe(1);
 		});
 
-		it('should produce credential card + standalone trigger for two triggers sharing a credential', () => {
+		it('should produce only credential card for two triggers sharing a credential (no standalone card for second trigger)', () => {
 			const trigger1 = createNode({
 				name: 'SlackTrigger1',
 				type: 'n8n-nodes-base.slackTrigger',
@@ -990,8 +990,8 @@ describe('useWorkflowSetupState', () => {
 
 			const { totalCardsRequiringSetup } = useWorkflowSetupState();
 
-			// 1 credential card (first trigger embedded) + 1 standalone trigger card
-			expect(totalCardsRequiringSetup.value).toBe(2);
+			// 1 credential card with first trigger embedded; second trigger gets no card
+			expect(totalCardsRequiringSetup.value).toBe(1);
 		});
 	});
 

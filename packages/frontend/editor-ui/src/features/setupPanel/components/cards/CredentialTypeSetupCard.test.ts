@@ -221,7 +221,7 @@ describe('CredentialTypeSetupCard', () => {
 			expect(queryByTestId('trigger-execute-button')).not.toBeInTheDocument();
 		});
 
-		it('should render trigger execute buttons when nodes include triggers', () => {
+		it('should render trigger execute button when firstTriggerName matches a trigger in nodes', () => {
 			nodeTypesStore.isTriggerNode = vi.fn(
 				(type: string) => type === 'n8n-nodes-base.slackTrigger',
 			);
@@ -233,6 +233,7 @@ describe('CredentialTypeSetupCard', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					state: createState({ nodes: [triggerNode] }),
+					firstTriggerName: 'SlackTrigger',
 					expanded: true,
 				},
 			});
@@ -240,7 +241,27 @@ describe('CredentialTypeSetupCard', () => {
 			expect(getByTestId('trigger-execute-button')).toBeInTheDocument();
 		});
 
-		it('should only render one trigger execute button even with multiple trigger nodes', () => {
+		it('should not render trigger execute button when firstTriggerName does not match', () => {
+			nodeTypesStore.isTriggerNode = vi.fn(
+				(type: string) => type === 'n8n-nodes-base.slackTrigger',
+			);
+			const triggerNode = createTestNode({
+				name: 'SlackTrigger2',
+				type: 'n8n-nodes-base.slackTrigger',
+			}) as INodeUi;
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					state: createState({ nodes: [triggerNode] }),
+					firstTriggerName: 'SlackTrigger1',
+					expanded: true,
+				},
+			});
+
+			expect(queryByTestId('trigger-execute-button')).not.toBeInTheDocument();
+		});
+
+		it('should only render execute button for the first trigger even with multiple trigger nodes', () => {
 			nodeTypesStore.isTriggerNode = vi.fn(
 				(type: string) => type === 'n8n-nodes-base.slackTrigger',
 			);
@@ -256,11 +277,11 @@ describe('CredentialTypeSetupCard', () => {
 			const { getAllByTestId } = renderComponent({
 				props: {
 					state: createState({ nodes: [trigger1, trigger2] }),
+					firstTriggerName: 'Trigger1',
 					expanded: true,
 				},
 			});
 
-			// Only the first trigger is embedded; extras become standalone cards
 			expect(getAllByTestId('trigger-execute-button')).toHaveLength(1);
 		});
 
@@ -276,7 +297,28 @@ describe('CredentialTypeSetupCard', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
 					state: createState({ nodes: [triggerNode] }),
+					firstTriggerName: 'SlackTrigger',
 					expanded: false,
+				},
+			});
+
+			expect(queryByTestId('trigger-execute-button')).not.toBeInTheDocument();
+		});
+
+		it('should not render trigger buttons when firstTriggerName is null', () => {
+			nodeTypesStore.isTriggerNode = vi.fn(
+				(type: string) => type === 'n8n-nodes-base.slackTrigger',
+			);
+			const triggerNode = createTestNode({
+				name: 'SlackTrigger',
+				type: 'n8n-nodes-base.slackTrigger',
+			}) as INodeUi;
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					state: createState({ nodes: [triggerNode] }),
+					firstTriggerName: null,
+					expanded: true,
 				},
 			});
 
