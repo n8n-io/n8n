@@ -113,43 +113,29 @@ export class LoadNodesAndCredentials {
 	}
 
 	/**
-	 * Collects and returns a snapshot of all node and credential types from loaders.
+	 * Returns a snapshot copy of the current node and credential types.
+	 * If types have been released from memory, re-runs postProcessLoaders to
+	 * repopulate them first, then releases after snapshotting.
+	 *
+	 * When called during post-processing (types already populated), returns a
+	 * snapshot without releasing — other post-processors may still need the types.
 	 *
 	 * WARNING: Holding types in memory is very consuming. Use sparingly and only
 	 * where the caller genuinely needs its own copy (e.g. the AI workflow builder
 	 * service or the frontend service writing static JSON files).
 	 */
 	async collectTypes(): Promise<Types> {
-		const types: Types = { nodes: [], credentials: [] };
-
-		for (const loader of Object.values(this.loaders)) {
-			await loader.ensureTypesLoaded();
-
-			const { packageName } = loader;
-
-			types.nodes = types.nodes.concat(
-				loader.types.nodes.map(({ name, ...rest }) => ({
-					...rest,
-					name: `${packageName}.${name}`,
-				})),
-			);
-
-			types.credentials = types.credentials.concat(
-				loader.types.credentials.map((credential) => ({
-					...credential,
-					supportedNodes:
-						loader instanceof PackageDirectoryLoader
-							? credential.supportedNodes?.map((nodeName) => `${packageName}.${nodeName}`)
-							: undefined,
-				})),
-			);
+		const needsReload = this.types.nodes.length === 0 && this.types.credentials.length === 0;
+		if (needsReload) {
+			await this.postProcessLoaders();
 		}
-
-		// Release loader types back out of memory
-		for (const loader of Object.values(this.loaders)) {
-			loader.releaseTypes();
+		const types: Types = {
+			nodes: [...this.types.nodes],
+			credentials: [...this.types.credentials],
+		};
+		if (needsReload) {
+			this.releaseTypes();
 		}
-
 		return types;
 	}
 
