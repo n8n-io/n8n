@@ -47,10 +47,15 @@ export async function execute(
 	runQueries: QueryRunner,
 	nodeOptions: IDataObject,
 ): Promise<INodeExecutionData[]> {
-	let returnData: INodeExecutionData[] = [];
 	const items = replaceEmptyStringsByNulls(inputItems, nodeOptions.replaceEmptyStrings as boolean);
 
+	const errorItems: INodeExecutionData[] = [];
 	const queries: QueryWithValues[] = [];
+	// Track which original item index each query corresponds to.
+	// runQueries uses the query array index for pairedItem, so we need this
+	// to remap results back to the correct input items when some items are
+	// filtered out due to preparation errors.
+	const queryToItemIndex: number[] = [];
 
 	for (let i = 0; i < items.length; i++) {
 		try {
@@ -91,11 +96,12 @@ export async function execute(
 			}
 
 			queries.push(preparedQuery);
+			queryToItemIndex.push(i);
 		} catch (error) {
 			if (!this.continueOnFail()) {
-				throw error;
+				throw new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
 			}
-			returnData.push({
+			errorItems.push({
 				json: { message: (error as Error).message, error: { ...(error as Error) } },
 				pairedItem: { item: i },
 			});
@@ -103,10 +109,30 @@ export async function execute(
 	}
 
 	if (queries.length === 0) {
-		return returnData;
+		return errorItems;
 	}
 
-	returnData = await runQueries(queries);
+	const queryResults = await runQueries(queries);
 
-	return returnData;
+	// runQueries assigns pairedItem using the query array index (0..n-1). When
+	// some items failed during preparation and were excluded from `queries`,
+	// those indices no longer match the original input item indices. Remap
+	// single-object pairedItem references back to the correct original index.
+	const remappedResults = queryResults.map((result) => {
+		const pairedItem = result.pairedItem;
+		if (
+			pairedItem !== undefined &&
+			typeof pairedItem === 'object' &&
+			!Array.isArray(pairedItem) &&
+			pairedItem.item !== undefined
+		) {
+			const originalIndex = queryToItemIndex[pairedItem.item];
+			if (originalIndex !== undefined) {
+				return { ...result, pairedItem: { item: originalIndex } };
+			}
+		}
+		return result;
+	});
+
+	return [...errorItems, ...remappedResults];
 }
