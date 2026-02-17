@@ -112,6 +112,47 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
+	/**
+	 * Collects and returns a snapshot of all node and credential types from loaders.
+	 *
+	 * WARNING: Holding types in memory is very consuming. Use sparingly and only
+	 * where the caller genuinely needs its own copy (e.g. the AI workflow builder
+	 * service or the frontend service writing static JSON files).
+	 */
+	async collectTypes(): Promise<Types> {
+		const types: Types = { nodes: [], credentials: [] };
+
+		for (const loader of Object.values(this.loaders)) {
+			await loader.ensureTypesLoaded();
+
+			const { packageName } = loader;
+
+			types.nodes = types.nodes.concat(
+				loader.types.nodes.map(({ name, ...rest }) => ({
+					...rest,
+					name: `${packageName}.${name}`,
+				})),
+			);
+
+			types.credentials = types.credentials.concat(
+				loader.types.credentials.map((credential) => ({
+					...credential,
+					supportedNodes:
+						loader instanceof PackageDirectoryLoader
+							? credential.supportedNodes?.map((nodeName) => `${packageName}.${nodeName}`)
+							: undefined,
+				})),
+			);
+		}
+
+		// Release loader types back out of memory
+		for (const loader of Object.values(this.loaders)) {
+			loader.releaseTypes();
+		}
+
+		return types;
+	}
+
 	isKnownNode(type: string) {
 		return type in this.known.nodes;
 	}
@@ -464,7 +505,7 @@ export class LoadNodesAndCredentials {
 		return loader;
 	}
 
-	async postProcessLoaders({ releaseTypes = true }: { releaseTypes?: boolean } = {}) {
+	async postProcessLoaders() {
 		this.known = { nodes: {}, credentials: {} };
 		this.loaded = { nodes: {}, credentials: {} };
 		this.types = { nodes: [], credentials: [] };
@@ -556,9 +597,7 @@ export class LoadNodesAndCredentials {
 			await postProcessor();
 		}
 
-		if (releaseTypes) {
-			this.releaseTypes();
-		}
+		this.releaseTypes();
 	}
 
 	recognizesNode(fullNodeType: string): boolean {

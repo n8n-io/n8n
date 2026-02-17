@@ -61,14 +61,12 @@ describe('WorkflowBuilderService', () => {
 				nodes: [],
 				credentials: [],
 			},
-			// Simulate real postProcessLoaders: populate types, then release unless told not to
-			postProcessLoaders: jest.fn().mockImplementation(async ({ releaseTypes = true } = {}) => {
-				mockLoadNodesAndCredentials.types.nodes = [...mockNodeTypeDescriptions];
-				mockLoadNodesAndCredentials.types.credentials = [];
-				if (releaseTypes) {
-					mockLoadNodesAndCredentials.types.nodes = [];
-					mockLoadNodesAndCredentials.types.credentials = [];
-				}
+			// postProcessLoaders always releases types from memory
+			postProcessLoaders: jest.fn().mockResolvedValue(undefined),
+			// collectTypes returns a snapshot copy for callers that need types
+			collectTypes: jest.fn().mockResolvedValue({
+				nodes: mockNodeTypeDescriptions,
+				credentials: [],
 			}),
 			addPostProcessor: jest.fn(),
 		} as unknown as LoadNodesAndCredentials;

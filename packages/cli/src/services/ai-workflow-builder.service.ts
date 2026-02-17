@@ -143,8 +143,8 @@ export class WorkflowBuilderService {
 			};
 		};
 
-		await this.loadNodesAndCredentials.postProcessLoaders({ releaseTypes: false });
-		const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
+		await this.loadNodesAndCredentials.postProcessLoaders();
+		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 
 		this.service = new AiWorkflowBuilderService(
 			nodeTypeDescriptions,
