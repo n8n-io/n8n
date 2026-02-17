@@ -33,6 +33,7 @@ vi.mock('./composables/useAIAssistantHelpers', () => ({
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({
 		getVariant: vi.fn().mockReturnValue('control'),
+		isFeatureEnabled: vi.fn().mockReturnValue(false),
 	}),
 }));
 

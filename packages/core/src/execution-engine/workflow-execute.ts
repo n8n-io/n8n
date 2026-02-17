@@ -1251,6 +1251,12 @@ export class WorkflowExecute {
 			);
 		}
 
+		if (nodeType.supplyData) {
+			throw new ApplicationError(
+				`The node "${node.type}" has a "supplyData" method but no "execute" method.`,
+			);
+		}
+
 		const isDeclarativeNode = nodeType.description.requestDefaults !== undefined;
 		if (nodeType.webhook && !isDeclarativeNode) {
 			// Check if the node have requestDefaults(Declarative Node),
