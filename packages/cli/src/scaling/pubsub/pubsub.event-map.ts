@@ -1,5 +1,5 @@
 import type { ChatHubMessageStatus, PushMessage, WorkerStatus } from '@n8n/api-types';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
 	// #region Lifecycle
@@ -61,6 +61,7 @@ export type PubSubCommandMap = {
 	'add-webhooks-triggers-and-pollers': {
 		workflowId: string;
 		activeVersionId: string;
+		activationMode: WorkflowActivateMode;
 	};
 
 	'remove-triggers-and-pollers': {
