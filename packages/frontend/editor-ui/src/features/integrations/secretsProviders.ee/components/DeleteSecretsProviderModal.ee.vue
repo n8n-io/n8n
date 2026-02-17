@@ -182,11 +182,11 @@ function onCancel() {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="secondary" @click="onCancel">
+				<N8nButton variant="subtle" @click="onCancel">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
 				<N8nButton
-					type="danger"
+					variant="destructive"
 					:disabled="!deleteEnabled"
 					:loading="isDeleting"
 					data-test-id="confirm-delete-button"
