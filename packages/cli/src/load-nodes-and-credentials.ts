@@ -130,8 +130,8 @@ export class LoadNodesAndCredentials {
 			await this.postProcessLoaders();
 		}
 		const types: Types = {
-			nodes: [...this.types.nodes],
-			credentials: [...this.types.credentials],
+			nodes: this.types.nodes,
+			credentials: this.types.credentials,
 		};
 		if (needsReload) {
 			this.releaseTypes();
