@@ -29,7 +29,8 @@
     "@types/json-schema": "^7.0.15",
     "jest-mock-extended": "^3.0.4",
     "@types/mime-types": "catalog:",
-    "tsx": "catalog:"
+    "tsx": "catalog:",
+    "axios": "catalog:"
   },
   "dependencies": {
     "zod": "catalog:",
