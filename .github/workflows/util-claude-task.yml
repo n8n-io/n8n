@@ -7,10 +7,6 @@ on:
         description: 'Task description - what should Claude do?'
         required: true
         type: string
-      user_token:
-        description: 'Your GitHub PAT (required for PR authorship - you cannot approve PRs you author)'
-        required: true
-        type: string
 
 jobs:
   run-claude-task:
@@ -22,13 +18,9 @@ jobs:
       issues: write
 
     steps:
-      - name: Mask user token
-        run: echo "::add-mask::${{ inputs.user_token }}"
-
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          token: ${{ inputs.user_token }}
           ref: master
           fetch-depth: 1
 
@@ -44,18 +36,11 @@ jobs:
           git checkout -b "$BRANCH_NAME"
 
       - name: Configure git author
-        env:
-          GH_TOKEN: ${{ inputs.user_token }}
         run: |
-          # Set git author from the authenticated user (token owner)
-          USER_DATA=$(gh api user)
-          USER_NAME=$(echo "$USER_DATA" | jq -r '.name // .login')
-          USER_LOGIN=$(echo "$USER_DATA" | jq -r '.login')
-          USER_ID=$(echo "$USER_DATA" | jq -r '.id')
-          USER_EMAIL="${USER_ID}+${USER_LOGIN}@users.noreply.github.com"
-          git config user.name "$USER_NAME"
-          git config user.email "$USER_EMAIL"
-          echo "Git author configured as: $USER_NAME <$USER_EMAIL>"
+          # Set git author from the user who triggered the workflow
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+          echo "Git author configured as: ${{ github.actor }}"
 
       - name: Prepare Claude prompt
         env:
@@ -86,15 +71,47 @@ jobs:
             echo 'EOF'
           } >> "$GITHUB_ENV"
 
+      - name: Install Playwright browser
+        run: npx playwright install chromium
+
       - name: Run Claude
         id: claude
         uses: anthropics/claude-code-action@1b8ee3b94104046d71fde52ec3557651ad8c0d71 # v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ inputs.user_token }}
+          github_token: ${{ github.token }}
           prompt: ${{ env.CLAUDE_PROMPT }}
+          mcp_config: |
+            {
+              "mcpServers": {
+                "linear": {
+                  "command": "npx",
+                  "args": [
+                    "-y",
+                    "mcp-remote",
+                    "https://mcp.linear.app/sse",
+                    "--header",
+                    "Authorization:${AUTH_HEADER}"
+                  ],
+                  "env": {
+                    "AUTH_HEADER": "Bearer ${{ secrets.MCP_LINEAR_API_KEY }}"
+                  }
+                },
+                "notion": {
+                  "command": "npx",
+                  "args": ["-y", "@notionhq/notion-mcp-server"],
+                  "env": {
+                    "OPENAPI_MCP_HEADERS": "{\"Authorization\":\"Bearer ${{ secrets.MCP_NOTION_TOKEN }}\",\"Notion-Version\":\"2025-02-19\"}"
+                  }
+                },
+                "playwright": {
+                  "command": "npx",
+                  "args": ["@playwright/mcp@latest", "--headless"]
+                }
+              }
+            }
           claude_args: |
-            --allowedTools Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,TodoWrite
+            --allowedTools Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,TodoWrite,mcp__linear__*,mcp__notion__*,mcp__playwright__*
 
       - name: Extract PR title
         run: |
@@ -111,13 +128,12 @@ jobs:
 
       - name: Push branch and create PR
         env:
-          GH_TOKEN: ${{ inputs.user_token }}
+          GH_TOKEN: ${{ github.token }}
           INPUT_TASK: ${{ inputs.task }}
           TRIGGERED_BY: ${{ github.actor }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           if ! git diff --quiet master; then
-            git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
             git push -u origin "$BRANCH_NAME"
 
             {
