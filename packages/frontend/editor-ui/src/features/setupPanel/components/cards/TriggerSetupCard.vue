@@ -90,7 +90,7 @@ onBeforeUnmount(() => {
 			<N8nCallout
 				v-if="isInListeningState"
 				data-test-id="trigger-listening-callout"
-				theme="info"
+				theme="secondary"
 				:class="$style.callout"
 			>
 				{{ listeningHint }}

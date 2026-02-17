@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onBeforeUnmount } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nCallout, N8nTooltip } from '@n8n/design-system';
+import { N8nCallout, N8nText, N8nTooltip } from '@n8n/design-system';
 
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
@@ -128,14 +128,19 @@ onBeforeUnmount(() => {
 			<N8nCallout
 				v-if="triggerNode && isInListeningState"
 				data-test-id="trigger-listening-callout"
-				theme="info"
+				theme="secondary"
 				:class="$style.callout"
 			>
 				{{ listeningHint }}
 			</N8nCallout>
 		</template>
 
-		<div :class="$style.content" class="pb-s">
+		<template #card-description>
+			<N8nText size="medium" color="text-base" class="pl-xs pr-xs">
+				{{ i18n.baseText('setupPanel.trigger.credential.note') }}
+			</N8nText>
+		</template>
+		<div :class="$style.content">
 			<div :class="$style['credential-container']">
 				<div :class="$style['credential-label-row']">
 					<label
@@ -197,7 +202,7 @@ onBeforeUnmount(() => {
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--sm);
 	padding: 0 var(--spacing--xs);
 }
 

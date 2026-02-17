@@ -71,6 +71,7 @@ defineExpose({ markInteracted });
 			{
 				[$style.collapsed]: !expanded,
 				[$style.completed]: isComplete,
+				[$style['no-footer']]: !showFooter,
 			},
 		]"
 	>
@@ -98,7 +99,10 @@ defineExpose({ markInteracted });
 		</header>
 
 		<template v-if="expanded">
-			<slot name="callout" />
+			<slot name="card-description" />
+			<Transition name="callout-fade">
+				<slot name="callout" />
+			</Transition>
 			<slot />
 
 			<footer v-if="showFooter" :class="$style.footer">
@@ -119,10 +123,14 @@ defineExpose({ markInteracted });
 	width: 100%;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 	background-color: var(--color--background--light-2);
 	border: var(--border);
 	border-radius: var(--radius);
+
+	&.no-footer {
+		padding-bottom: var(--spacing--xs);
+	}
 }
 
 .header {
@@ -152,7 +160,7 @@ defineExpose({ markInteracted });
 	}
 
 	.card:not(.collapsed) & {
-		margin-bottom: var(--spacing--sm);
+		margin-bottom: var(--spacing--5xs);
 	}
 }
 
@@ -197,5 +205,17 @@ defineExpose({ markInteracted });
 	.footer {
 		justify-content: space-between;
 	}
+}
+</style>
+
+<style lang="scss" scoped>
+.callout-fade-enter-active,
+.callout-fade-leave-active {
+	transition: opacity 100ms ease;
+}
+
+.callout-fade-enter-from,
+.callout-fade-leave-to {
+	opacity: 0;
 }
 </style>
