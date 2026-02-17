@@ -483,8 +483,6 @@ describe('FrontendService', () => {
 
 	describe('generateTypes', () => {
 		it('should write node versions file with generated identifiers', async () => {
-			const { service } = createMockService();
-
 			const testNodes = [
 				{ name: 'n8n-nodes-base.single', version: 1 },
 				{ name: 'n8n-nodes-base.multi', version: [1, 2] },
@@ -494,6 +492,8 @@ describe('FrontendService', () => {
 				nodes: testNodes,
 				credentials: [],
 			});
+
+			const { service } = createMockService();
 
 			const writeStaticJSONSpy = jest
 				.spyOn(service as any, 'writeStaticJSON')
