@@ -1,6 +1,6 @@
+import { ApplicationError } from '@n8n/errors';
 import { DateTime, Duration, Interval } from 'luxon';
 
-import { ApplicationError } from '@n8n/errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
@@ -11,11 +11,9 @@ import { extendSyntax } from './extensions/expression-extension';
 import { extendedFunctions } from './extensions/extended-functions';
 import type {
 	IDataObject,
-	INodeParameterResourceLocator,
 	INodeParameters,
 	IWorkflowDataProxyData,
 	NodeParameterValue,
-	NodeParameterValueType,
 } from './interfaces';
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&
