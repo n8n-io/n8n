@@ -277,8 +277,8 @@ const sqliteMigrations: Migration[] = [
 	CreateWorkflowPublishedVersionTable1769698710000,
 	ExpandSubjectIDColumnLength1769784356000,
 	AddWorkflowUnpublishScopeToCustomRoles1769900001000,
-	ExpandProviderIdColumnLength1770000000000,
 	CreateChatHubToolsTable1770000000000,
+	ExpandProviderIdColumnLength1770000000000,
 ];
 
 export { sqliteMigrations };
