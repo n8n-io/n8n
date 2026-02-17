@@ -596,8 +596,6 @@ export class LoadNodesAndCredentials {
 		for (const postProcessor of this.postProcessors) {
 			await postProcessor();
 		}
-
-		this.releaseTypes();
 	}
 
 	recognizesNode(fullNodeType: string): boolean {

@@ -598,7 +598,7 @@ describe('LoadNodesAndCredentials', () => {
 			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
 		});
 
-		it('should always release types after post-processing', async () => {
+		it('should keep types in memory after post-processing for post-processors to read', async () => {
 			const mockLoader = mock<DirectoryLoader>({
 				packageName: 'test-package',
 				directory: '/test/dir',
@@ -616,8 +616,8 @@ describe('LoadNodesAndCredentials', () => {
 
 			await instance.postProcessLoaders();
 
-			expect(instance.types.nodes).toHaveLength(0);
-			expect(instance.types.credentials).toHaveLength(0);
+			expect(instance.types.nodes).toHaveLength(1);
+			expect(instance.types.nodes[0].name).toBe('test-package.TestNode');
 		});
 
 		it('should call createAiTools and createHitlTools', async () => {

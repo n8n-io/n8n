@@ -678,10 +678,13 @@ describe('WorkflowBuilderService', () => {
 			} as INodeTypeDescription;
 
 			const updatedNodeTypes = [...mockNodeTypeDescriptions, newNodeType];
-			mockLoadNodesAndCredentials.types.nodes = updatedNodeTypes;
+			(mockLoadNodesAndCredentials.collectTypes as jest.Mock).mockResolvedValueOnce({
+				nodes: updatedNodeTypes,
+				credentials: [],
+			});
 
 			// Trigger refresh (simulating post-processor callback after community package install)
-			service.refreshNodeTypes();
+			await service.refreshNodeTypes();
 
 			// Verify updateNodeTypes was called on existing service with new node types
 			expect(mockAiService.updateNodeTypes).toHaveBeenCalledWith(updatedNodeTypes);
@@ -690,24 +693,12 @@ describe('WorkflowBuilderService', () => {
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledTimes(1);
 		});
 
-		it('should do nothing if service is not yet initialized', () => {
-			// Simulate new node types being available
-			const newNodeType = {
-				name: 'n8n-nodes-community.elevenLabs',
-				displayName: 'ElevenLabs',
-				description: 'ElevenLabs community node',
-				version: 1,
-				defaults: {},
-				inputs: [],
-				outputs: [],
-				properties: [],
-				group: ['transform'],
-			} as INodeTypeDescription;
-
-			mockLoadNodesAndCredentials.types.nodes = [...mockNodeTypeDescriptions, newNodeType];
-
+		it('should do nothing if service is not yet initialized', async () => {
 			// Trigger refresh before service is initialized - should not throw
-			expect(() => service.refreshNodeTypes()).not.toThrow();
+			await expect(service.refreshNodeTypes()).resolves.not.toThrow();
+
+			// collectTypes should not be called since service doesn't exist yet
+			expect(mockLoadNodesAndCredentials.collectTypes).not.toHaveBeenCalled();
 
 			// Verify no service was created
 			expect(MockedAiWorkflowBuilderService).not.toHaveBeenCalled();
