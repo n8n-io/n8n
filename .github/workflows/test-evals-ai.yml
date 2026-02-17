@@ -139,7 +139,7 @@ jobs:
     with:
       branch: ${{ needs.determine-config.outputs.branch }}
       suite: pairwise
-      dataset: notion-pairwise-fresh
+      dataset: notion-spec-evals
       repetitions: ${{ fromJson(needs.determine-config.outputs.spec_repetitions) }}
       judges: ${{ fromJson(needs.determine-config.outputs.spec_judges) }}
       experiment_name_prefix: ${{ needs.determine-config.outputs.experiment_prefix }}

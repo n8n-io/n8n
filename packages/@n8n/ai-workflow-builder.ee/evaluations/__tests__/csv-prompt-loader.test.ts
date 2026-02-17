@@ -28,10 +28,10 @@ describe('csv-prompt-loader', () => {
 		}
 	});
 
-	it('should load dos/donts into context when present', () => {
+	it('should load specs into context when present', () => {
 		const csvPath = writeTempCsv(
 			'pairwise.csv',
-			'id,prompt,dos,donts\npw-1,"Create a workflow","Must use Notion","No HTTP Request"\n',
+			'id,prompt,specs\npw-1,"Create a workflow","Must use Notion\nDo not use HTTP Request"\n',
 		);
 
 		const testCases = loadTestCasesFromCsv(csvPath);
@@ -39,12 +39,12 @@ describe('csv-prompt-loader', () => {
 			{
 				id: 'pw-1',
 				prompt: 'Create a workflow',
-				context: { dos: 'Must use Notion', donts: 'No HTTP Request' },
+				context: { specs: 'Must use Notion\nDo not use HTTP Request' },
 			},
 		]);
 	});
 
-	it('should load prompts without context when dos/donts are absent', () => {
+	it('should load prompts without context when specs are absent', () => {
 		const csvPath = writeTempCsv('llm.csv', 'id,prompt\nllm-1,"Create a workflow"\n');
 
 		const testCases = loadTestCasesFromCsv(csvPath);
@@ -54,7 +54,7 @@ describe('csv-prompt-loader', () => {
 	it('should support header column re-ordering', () => {
 		const csvPath = writeTempCsv(
 			'reorder.csv',
-			'prompt,id,donts,dos\n"Create a workflow","pw-1","No HTTP Request","Must use Notion"\n',
+			'prompt,id,specs\n"Create a workflow","pw-1","Must use Notion"\n',
 		);
 
 		const testCases = loadTestCasesFromCsv(csvPath);
@@ -62,15 +62,15 @@ describe('csv-prompt-loader', () => {
 			{
 				id: 'pw-1',
 				prompt: 'Create a workflow',
-				context: { dos: 'Must use Notion', donts: 'No HTTP Request' },
+				context: { specs: 'Must use Notion' },
 			},
 		]);
 	});
 
-	it('should support do/dont header aliases', () => {
+	it('should support spec header alias', () => {
 		const csvPath = writeTempCsv(
 			'aliases.csv',
-			'id,prompt,do,dont\npw-1,"Create a workflow","Must use Notion","No HTTP Request"\n',
+			'id,prompt,spec\npw-1,"Create a workflow","Must use Notion"\n',
 		);
 
 		const testCases = loadTestCasesFromCsv(csvPath);
@@ -78,15 +78,15 @@ describe('csv-prompt-loader', () => {
 			{
 				id: 'pw-1',
 				prompt: 'Create a workflow',
-				context: { dos: 'Must use Notion', donts: 'No HTTP Request' },
+				context: { specs: 'Must use Notion' },
 			},
 		]);
 	});
 
-	it('should not create context when dos/donts columns are present but empty', () => {
+	it('should not create context when specs column is present but empty', () => {
 		const csvPath = writeTempCsv(
 			'empty-context.csv',
-			'id,prompt,dos,donts\npw-1,"Create a workflow",,\n',
+			'id,prompt,specs\npw-1,"Create a workflow",\n',
 		);
 
 		const testCases = loadTestCasesFromCsv(csvPath);
