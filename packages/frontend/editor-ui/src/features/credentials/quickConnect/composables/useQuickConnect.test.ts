@@ -9,7 +9,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
 import merge from 'lodash/merge';
-import * as i18n from '@n8n/i18n';
+import type * as i18n from '@n8n/i18n';
 
 vi.mock('@/app/stores/posthog.store');
 vi.mock('@/app/composables/useTelemetry', () => {
