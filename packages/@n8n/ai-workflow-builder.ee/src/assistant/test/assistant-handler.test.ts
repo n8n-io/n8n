@@ -342,7 +342,7 @@ describe('AssistantHandler', () => {
 		expect(result.summary.endsWith('...')).toBe(true);
 	});
 
-	it('should throw on non-ok SDK response', async () => {
+	it('should throw on non-ok SDK response and still emit Done', async () => {
 		const response = createMockSdkResponse([], false, 500);
 		const client = createMockClient(response);
 		const handler = new AssistantHandler(client);
@@ -350,9 +350,16 @@ describe('AssistantHandler', () => {
 		await expect(handler.execute({ query: 'test' }, 'user-1', writer)).rejects.toThrow(
 			'Assistant SDK returned HTTP 500',
 		);
+
+		// "Done" must still be emitted so the frontend clears the thinking indicator
+		const doneChunk = writtenChunks.find(
+			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
+		);
+		expect(doneChunk).toBeDefined();
+		expect(doneChunk!.customDisplayTitle).toBe('Done');
 	});
 
-	it('should throw when response body is null', async () => {
+	it('should throw when response body is null and still emit Done', async () => {
 		const response = { ok: true, status: 200, body: null } as unknown as Response;
 		const client = createMockClient(response);
 		const handler = new AssistantHandler(client);
@@ -360,6 +367,13 @@ describe('AssistantHandler', () => {
 		await expect(handler.execute({ query: 'test' }, 'user-1', writer)).rejects.toThrow(
 			'Assistant SDK response has no body',
 		);
+
+		// "Done" must still be emitted so the frontend clears the thinking indicator
+		const doneChunk = writtenChunks.find(
+			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
+		);
+		expect(doneChunk).toBeDefined();
+		expect(doneChunk!.customDisplayTitle).toBe('Done');
 	});
 
 	it('should return immediately without error when signal is pre-aborted', async () => {
@@ -500,5 +514,81 @@ describe('AssistantHandler', () => {
 				user: { firstName: 'User' },
 			}),
 		);
+	});
+
+	it('should emit "Done" tool status even when remaining buffer causes an error', async () => {
+		// Simulate an SDK response where the stream ends with non-JSON garbage
+		// (e.g., a plain-text error from the SDK). The "Done" chunk must still be
+		// emitted so the frontend clears the thinking indicator.
+		const encoder = new TextEncoder();
+		const validChunk = JSON.stringify({
+			sessionId: 'sess-1',
+			messages: [{ role: 'assistant', type: 'message', text: 'Some response' }],
+		} satisfies SdkStreamChunk);
+		const trailingGarbage = 'Internal Server Error';
+
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(encoder.encode(validChunk + STREAM_SEPARATOR + trailingGarbage));
+				controller.close();
+			},
+		});
+
+		const response = { ok: true, status: 200, body: stream } as unknown as Response;
+		const client = createMockClient(response);
+		const handler = new AssistantHandler(client);
+
+		await expect(handler.execute({ query: 'test' }, 'user-1', writer)).rejects.toThrow(
+			'Assistant SDK error',
+		);
+
+		// Even though the call threw, the "Done" chunk should have been emitted
+		const doneChunk = writtenChunks.find(
+			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
+		);
+		expect(doneChunk).toBeDefined();
+		expect(doneChunk!.customDisplayTitle).toBe('Done');
+
+		// The text message should also have been written before the error
+		const textChunk = writtenChunks.find(
+			(c): c is AgentMessageChunk => c.type === 'message' && 'text' in c,
+		);
+		expect(textChunk).toBeDefined();
+		expect(textChunk!.text).toBe('Some response');
+	});
+
+	it('should emit "Done" tool status even when reader.read() throws', async () => {
+		// Simulate a network error mid-stream
+		let readCount = 0;
+		const encoder = new TextEncoder();
+		const stream = new ReadableStream<Uint8Array>({
+			pull(controller) {
+				readCount++;
+				if (readCount === 1) {
+					const chunk = JSON.stringify({
+						sessionId: 'sess-1',
+						messages: [{ role: 'assistant', type: 'message', text: 'Partial' }],
+					} satisfies SdkStreamChunk);
+					controller.enqueue(encoder.encode(chunk + STREAM_SEPARATOR));
+				} else {
+					controller.error(new Error('Network failure'));
+				}
+			},
+		});
+
+		const response = { ok: true, status: 200, body: stream } as unknown as Response;
+		const client = createMockClient(response);
+		const handler = new AssistantHandler(client);
+
+		await expect(handler.execute({ query: 'test' }, 'user-1', writer)).rejects.toThrow(
+			'Network failure',
+		);
+
+		// "Done" must still be emitted despite the read error
+		const doneChunk = writtenChunks.find(
+			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
+		);
+		expect(doneChunk).toBeDefined();
+		expect(doneChunk!.customDisplayTitle).toBe('Done');
 	});
 });

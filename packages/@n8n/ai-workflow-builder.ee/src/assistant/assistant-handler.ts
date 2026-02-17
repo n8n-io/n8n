@@ -54,8 +54,18 @@ export class AssistantHandler {
 			status: 'running',
 		});
 
-		const response = await this.callSdk(payload, userId);
-		return await this.consumeSdkStream(response, writer, abortSignal, toolCallId);
+		try {
+			const response = await this.callSdk(payload, userId);
+			return await this.consumeSdkStream(response, writer, abortSignal, toolCallId);
+		} finally {
+			await writer({
+				type: 'tool',
+				toolName: 'assistant',
+				toolCallId,
+				customDisplayTitle: 'Done',
+				status: 'completed',
+			});
+		}
 	}
 
 	/**
@@ -210,14 +220,6 @@ export class AssistantHandler {
 				throw new Error(`Assistant SDK error: ${remaining.substring(0, 500)}`);
 			}
 		}
-
-		await writer({
-			type: 'tool',
-			toolName: 'assistant',
-			toolCallId,
-			customDisplayTitle: 'Done',
-			status: 'completed',
-		});
 
 		const responseText = state.collectedTexts.join('\n');
 		const summary =
