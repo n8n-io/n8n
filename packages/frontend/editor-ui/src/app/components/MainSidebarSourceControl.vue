@@ -123,7 +123,7 @@ function pullWorkfolder() {
 					}}</N8nText>
 				</span>
 			</N8nTooltip>
-			<div>
+			<div :class="$style.buttonContainer">
 				<N8nTooltip
 					:disabled="!isCollapsed && hasPullPermission"
 					:show-after="tooltipOpenDelay"
@@ -236,5 +236,11 @@ function pullWorkfolder() {
 			justify-content: center;
 		}
 	}
+}
+
+.buttonContainer {
+	display: flex;
+	align-items: center;
+	justify-content: justify-end;
 }
 </style>

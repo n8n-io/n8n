@@ -95,6 +95,7 @@ onMounted(async () => {
 	padding: var(--chat--message--padding);
 	border-radius: var(--chat--message--border-radius);
 	scroll-margin: 3rem;
+	overflow: hidden;
 
 	.chat-message-actions {
 		position: absolute;
