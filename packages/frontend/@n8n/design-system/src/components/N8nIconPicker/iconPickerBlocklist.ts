@@ -59,6 +59,23 @@ export const ICON_PICKER_BLOCKLIST: ReadonlySet<string> = new Set([
 
 	// --- Source Control / Environment ---
 	'git-branch', // Branch / environment indicator
+	'git-branch-plus',
+	'git-commit-horizontal',
+	'git-commit-vertical',
+	'git-compare',
+	'git-compare-arrows',
+	'git-fork',
+	'git-graph',
+	'git-merge',
+	'git-pull-request',
+	'git-pull-request-arrow',
+	'git-pull-request-closed',
+	'git-pull-request-create',
+	'git-pull-request-create-arrow',
+	'git-pull-request-draft',
+	'folder-git',
+	'folder-git-2',
+	'merge',
 	'arrow-down', // Pull from remote button
 	'arrow-up', // Push to remote button
 
