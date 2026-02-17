@@ -12,8 +12,8 @@ import type {
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	WorkflowExpression,
 } from 'n8n-workflow';
-import type { WorkflowExpression } from 'n8n-workflow/src/workflow-expression';
 
 import { HookContext } from '../hook-context';
 

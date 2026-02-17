@@ -13,8 +13,12 @@ import type {
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { ApplicationError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
-import type { WorkflowExpression } from 'n8n-workflow/src/workflow-expression';
+import {
+	ApplicationError,
+	ExpressionError,
+	NodeConnectionTypes,
+	type WorkflowExpression,
+} from 'n8n-workflow';
 
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 

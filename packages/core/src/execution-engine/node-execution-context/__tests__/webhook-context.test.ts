@@ -10,8 +10,8 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 	WorkflowExecuteMode,
+	WorkflowExpression,
 } from 'n8n-workflow';
-import type { WorkflowExpression } from 'n8n-workflow/src/workflow-expression';
 
 import { WebhookContext } from '../webhook-context';
 
