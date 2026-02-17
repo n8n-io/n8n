@@ -234,7 +234,7 @@ const { width } = useElementSize(nameRef);
 							data-test-id="secrets-provider-delete-button"
 							@click="handleDelete"
 						/>
-						<template #content>Delete</template>
+						<template #content>{{ i18n.baseText('generic.delete') }}</template>
 					</N8nTooltip>
 					<SaveButton
 						:saved="!modal.hasUnsavedChanges.value && modal.isEditMode.value"
