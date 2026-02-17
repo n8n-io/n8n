@@ -114,11 +114,12 @@ catalogs:
     eslint-plugin-storybook: ^10.1.11
     storybook: ^10.1.11
   e2e:
-    '@playwright/test': 1.57.0
+    '@playwright/cli': 0.1.0
+    '@playwright/test': 1.58.0
     '@currents/playwright': ^1.15.3
     eslint-plugin-playwright: 2.2.2
-    playwright: 1.57.0
-    playwright-core: 1.57.0
+    playwright: 1.58.0
+    playwright-core: 1.58.0
   sentry:
     '@sentry/node': '^10.36.0'
     '@sentry/node-native': '^10.36.0'

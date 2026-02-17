@@ -19,7 +19,6 @@
 		"dev": "pnpm watch",
 		"typecheck": "tsc --noEmit",
 		"build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json",
-		"build:examples": "tsc --build tsconfig.examples.json",
 		"format": "biome format --write .",
 		"format:check": "biome ci .",
 		"lint": "eslint . --quiet",
@@ -36,13 +35,6 @@
 		"@n8n/ai-utilities": "workspace:*"
 	},
 	"devDependencies": {
-		"@n8n/typescript-config": "workspace:*",
-		"@types/json-schema": "^7.0.15",
-		"n8n-workflow": "workspace:*",
-		"tsx": "catalog:",
-		"zod": "catalog:",
-		"langchain": "catalog:",
-		"@langchain/core": "catalog:",
-		"axios": "catalog:"
+		"@n8n/typescript-config": "workspace:*"
 	}
 }

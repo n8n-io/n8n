@@ -1,16 +1,15 @@
-import { supplyModel, type ProviderTool } from '@n8n/ai-utilities';
 import {
-	NodeConnectionTypes,
-	type IDataObject,
 	type INodeType,
 	type INodeTypeDescription,
-	type ISupplyDataFunctions,
+	NodeConnectionTypes,
 	type SupplyData,
+	type IDataObject,
+	type ISupplyDataFunctions,
 } from 'n8n-workflow';
-import type Stream from 'node:stream';
-import { Readable } from 'node:stream';
 
-import { OpenAIChatModel } from '../../models/openai';
+import type { ProviderTool } from 'src';
+import { supplyModel } from 'src';
+
 import { formatBuiltInTools } from '../common';
 import { openAiProperties } from '../properties';
 
@@ -18,17 +17,16 @@ export type ModelOptions = {
 	temperature?: number;
 };
 
-export class LmChatOpenAiCustom implements INodeType {
+export class LmChatOpenAiSimple implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'OpenAI Custom',
-
-		name: 'lmChatOpenAiCustom',
+		displayName: 'OpenAI Simple',
+		name: 'lmChatOpenAiSimple',
 		icon: 'fa:robot',
 		group: ['transform'],
 		version: [1],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
-			name: 'Custom OpenAI',
+			name: 'OpenAI Simple',
 		},
 		codex: {
 			categories: ['assistant'],
@@ -76,49 +74,13 @@ export class LmChatOpenAiCustom implements INodeType {
 			providerTools.push(...builtInToolsParams);
 		}
 
-		const model = new OpenAIChatModel(
-			modelName,
-			{
-				httpRequest: async (method, url, body, headers) => {
-					const response = await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						'openAiApi',
-						{
-							url,
-							method,
-							body,
-							headers,
-						},
-					);
-					return {
-						body: response,
-					};
-				},
-				openStream: async (method, url, body, headers) => {
-					const response = (await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						'openAiApi',
-						{
-							method,
-							url,
-							body,
-							headers,
-							encoding: 'stream',
-						},
-					)) as Stream.Readable;
-					return {
-						body: Readable.toWeb(response) as ReadableStream<Uint8Array<ArrayBufferLike>>,
-					};
-				},
-			},
-			{
-				baseURL: credentials.url as string,
-				apiKey: credentials.apiKey as string,
-				providerTools,
-				temperature: options.temperature,
-			},
-		);
-
-		return supplyModel(this, model);
+		return supplyModel(this, {
+			type: 'openai',
+			baseUrl: credentials.url as string,
+			apiKey: credentials.apiKey as string,
+			model: modelName,
+			temperature: options.temperature,
+			providerTools,
+		});
 	}
 }

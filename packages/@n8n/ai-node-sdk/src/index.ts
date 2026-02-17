@@ -1,4 +1,3 @@
-export { logWrapper } from '@n8n/ai-utilities';
 export { parseSSEStream } from '@n8n/ai-utilities';
 export type { ChatModel, ChatModelConfig } from '@n8n/ai-utilities';
 export type { GenerateResult, StreamChunk, TokenUsage, FinishReason } from '@n8n/ai-utilities';

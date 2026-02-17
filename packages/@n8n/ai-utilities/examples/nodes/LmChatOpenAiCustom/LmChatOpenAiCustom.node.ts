@@ -1,14 +1,17 @@
-import type { ProviderTool } from '@n8n/ai-utilities';
-import { supplyModel } from '@n8n/ai-utilities';
 import {
+	NodeConnectionTypes,
+	type IDataObject,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionTypes,
-	type SupplyData,
-	type IDataObject,
 	type ISupplyDataFunctions,
+	type SupplyData,
 } from 'n8n-workflow';
+import type Stream from 'node:stream';
+import { Readable } from 'node:stream';
 
+import { supplyModel, type ProviderTool } from 'src';
+
+import { OpenAIChatModel } from '../../models/openai';
 import { formatBuiltInTools } from '../common';
 import { openAiProperties } from '../properties';
 
@@ -16,16 +19,17 @@ export type ModelOptions = {
 	temperature?: number;
 };
 
-export class LmChatOpenAiSimple implements INodeType {
+export class LmChatOpenAiCustom implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'OpenAI Simple',
-		name: 'lmChatOpenAiSimple',
+		displayName: 'OpenAI Custom',
+
+		name: 'lmChatOpenAiCustom',
 		icon: 'fa:robot',
 		group: ['transform'],
 		version: [1],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
-			name: 'OpenAI Simple',
+			name: 'Custom OpenAI',
 		},
 		codex: {
 			categories: ['assistant'],
@@ -73,13 +77,49 @@ export class LmChatOpenAiSimple implements INodeType {
 			providerTools.push(...builtInToolsParams);
 		}
 
-		return supplyModel(this, {
-			type: 'openai',
-			baseUrl: credentials.url as string,
-			apiKey: credentials.apiKey as string,
-			model: modelName,
-			temperature: options.temperature,
-			providerTools,
-		});
+		const model = new OpenAIChatModel(
+			modelName,
+			{
+				httpRequest: async (method, url, body, headers) => {
+					const response = await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'openAiApi',
+						{
+							url,
+							method,
+							body,
+							headers,
+						},
+					);
+					return {
+						body: response,
+					};
+				},
+				openStream: async (method, url, body, headers) => {
+					const response = (await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'openAiApi',
+						{
+							method,
+							url,
+							body,
+							headers,
+							encoding: 'stream',
+						},
+					)) as Stream.Readable;
+					return {
+						body: Readable.toWeb(response) as ReadableStream<Uint8Array<ArrayBufferLike>>,
+					};
+				},
+			},
+			{
+				baseURL: credentials.url as string,
+				apiKey: credentials.apiKey as string,
+				providerTools,
+				temperature: options.temperature,
+			},
+		);
+
+		return supplyModel(this, model);
 	}
 }

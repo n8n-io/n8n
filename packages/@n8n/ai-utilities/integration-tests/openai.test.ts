@@ -1,6 +1,7 @@
-import { LangchainChatModelAdapter } from '@n8n/ai-utilities';
 import { createAgent, HumanMessage } from 'langchain';
 import nock from 'nock';
+
+import { LangchainChatModelAdapter } from 'src';
 
 import {
 	createMockHttpRequests,

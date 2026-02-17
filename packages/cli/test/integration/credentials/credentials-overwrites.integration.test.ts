@@ -1,4 +1,4 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -7,6 +7,7 @@ import { Cipher } from 'n8n-core';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialTypes } from '@/credential-types';
 import type { ICredentialsOverwrite } from '@/interfaces';
+import { FrontendService } from '@/services/frontend.service';
 
 describe('CredentialsOverwrites - Integration Tests', () => {
 	let credentialsOverwrites: CredentialsOverwrites;
@@ -16,6 +17,9 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 	let credentialTypes: CredentialTypes;
 
 	beforeAll(async () => {
+		// Mock FrontendService to prevent initialization issues during tests
+		mockInstance(FrontendService);
+
 		// Initialize real database
 		await testDb.init();
 
