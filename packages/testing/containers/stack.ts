@@ -1,6 +1,6 @@
 import getPort from 'get-port';
 import type { StartedNetwork, StartedTestContainer, StoppedTestContainer } from 'testcontainers';
-import { Network, TestContainers } from 'testcontainers';
+import { Network } from 'testcontainers';
 
 import { createElapsedLogger, pollContainerHttpEndpoint } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
@@ -107,10 +107,6 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	log(`Starting: ${uniqueProjectName}`);
 
 	const telemetry = createTelemetryRecorder(config);
-
-	if (external) {
-		await TestContainers.exposeHostPorts(5678, 5679);
-	}
 
 	let network: StartedNetwork;
 	try {

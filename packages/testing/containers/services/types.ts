@@ -1,7 +1,7 @@
 import type { StartedTestContainer, StartedNetwork } from 'testcontainers';
 
-/** Hostname that containers use to reach the host machine via TestContainers.exposeHostPorts() */
-export const EXTERNAL_HOST = 'host.testcontainers.internal';
+/** Hostname that containers use to reach the host machine (Docker Desktop built-in) */
+export const EXTERNAL_HOST = 'host.docker.internal';
 
 export const SERVICE_NAMES = [
 	'postgres',
