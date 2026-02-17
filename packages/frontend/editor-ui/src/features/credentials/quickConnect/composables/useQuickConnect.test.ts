@@ -9,6 +9,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
 import merge from 'lodash/merge';
+import i18n from '@n8n/i18n';
 
 vi.mock('@/app/stores/posthog.store');
 vi.mock('@/app/composables/useTelemetry', () => {
@@ -43,7 +44,7 @@ const { mockI18nBaseText } = vi.hoisted(() => ({
 	mockI18nBaseText: vi.fn((key: string) => key),
 }));
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@n8n/i18n')>();
+	const actual = await importOriginal<typeof i18n>();
 	return {
 		...actual,
 		useI18n: () => ({
