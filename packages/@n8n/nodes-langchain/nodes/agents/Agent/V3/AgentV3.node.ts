@@ -35,7 +35,7 @@ export class AgentV3 implements INodeType {
 			},
 			inputs: `={{
 				((hasOutputParser, needsFallback) => {
-					${getInputs.toString().replace(/\}\}/g, '} }')};
+					${getInputs.toString()};
 					return getInputs(true, hasOutputParser, needsFallback);
 				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true, $parameter.needsFallback !== undefined && $parameter.needsFallback === true)
 			}}`,

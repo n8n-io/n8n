@@ -47,15 +47,6 @@ const isTypeError = (error: unknown): error is TypeError =>
 
 // Make sure that error get forwarded
 setErrorHandler((error: Error) => {
-	// Temporary CI diagnostic: log non-expression errors that get silently swallowed
-	if (!isExpressionError(error)) {
-		console.log(
-			`[CI-DIAG3] Swallowed expression error: ${error?.constructor?.name}: ${String(error?.message ?? error).substring(0, 500)}`,
-		);
-		if (error?.stack) {
-			console.log(`[CI-DIAG3] Stack: ${error.stack.substring(0, 500)}`);
-		}
-	}
 	if (isExpressionError(error)) throw error;
 });
 
