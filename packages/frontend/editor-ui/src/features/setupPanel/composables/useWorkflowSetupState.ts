@@ -12,6 +12,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
 import { getNodeCredentialTypes, buildNodeSetupState } from '../setupPanel.utils';
+import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -48,7 +49,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 * Get nodes that require setup:
 	 * - Nodes with credential requirements
 	 * - Trigger nodes (regardless of credentials)
-	 * Sorted with triggers first, then by X position.
+	 * Sorted by execution order (grouped by trigger, DFS through connections).
 	 */
 	const nodesRequiringSetup = computed(() => {
 		const nodesForSetup = sourceNodes.value
@@ -60,10 +61,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			}))
 			.filter(({ credentialTypes, isTrigger }) => credentialTypes.length > 0 || isTrigger);
 
-		return nodesForSetup.sort(
-			(a, b) =>
-				Number(b.isTrigger) - Number(a.isTrigger) || a.node.position[0] - b.node.position[0],
-		);
+		return sortNodesByExecutionOrder(nodesForSetup, workflowsStore.connectionsBySourceNode);
 	});
 
 	/**
