@@ -348,7 +348,6 @@ onMounted(async () => {
 									<N8nInput
 										data-test-id="provider-name"
 										:model-value="modal.connectionName.value"
-										:max-width="width - 10"
 										:readonly="modal.isEditMode.value"
 										:disabled="modal.isEditMode.value"
 										aria-required="true"
