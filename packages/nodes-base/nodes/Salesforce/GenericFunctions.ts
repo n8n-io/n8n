@@ -40,7 +40,7 @@ function getOptions(
 	return options;
 }
 
-async function getAccessToken(
+async function getJwtToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	credentials: IDataObject,
 ): Promise<IDataObject> {
@@ -103,6 +103,23 @@ async function getClientCredentialsToken(
 	return await this.helpers.request(options);
 }
 
+async function getBearerCredentials(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	authenticationMethod: string,
+): Promise<IDataObject> {
+	if (authenticationMethod === 'jwt') {
+		// https://help.salesforce.com/articleView?id=remoteaccess_oauth_jwt_flow.htm&type=5
+		const credentialsType = 'salesforceJwtApi';
+		const credentials = await this.getCredentials(credentialsType);
+		return await getJwtToken.call(this, credentials);
+	} else {
+		// https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_client_credentials_flow.htm&type=5
+		const credentialsType = 'salesforceClientCredentialsApi';
+		const credentials = await this.getCredentials(credentialsType);
+		return await getClientCredentialsToken.call(this, credentials);
+	}
+}
+
 export async function salesforceApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
@@ -115,11 +132,8 @@ export async function salesforceApiRequest(
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
 	try {
-		if (authenticationMethod === 'jwt') {
-			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_jwt_flow.htm&type=5
-			const credentialsType = 'salesforceJwtApi';
-			const credentials = await this.getCredentials(credentialsType);
-			const response = await getAccessToken.call(this, credentials);
+		if (authenticationMethod === 'jwt' || authenticationMethod === 'clientCredentials') {
+			const response = await getBearerCredentials.call(this, authenticationMethod);
 			const { instance_url, access_token } = response;
 			const options = getOptions.call(
 				this,
@@ -130,27 +144,7 @@ export async function salesforceApiRequest(
 				instance_url as string,
 			);
 			this.logger.debug(
-				`Authentication for "Salesforce" node is using "jwt". Invoking URI ${options.uri}`,
-			);
-			options.headers!.Authorization = `Bearer ${access_token}`;
-			Object.assign(options, option);
-			return await this.helpers.request(options);
-		} else if (authenticationMethod === 'clientCredentials') {
-			// https://help.salesforce.com/s/articleView?id=xcloud.remoteaccess_oauth_client_credentials_flow.htm&type=5
-			const credentialsType = 'salesforceClientCredentialsApi';
-			const credentials = await this.getCredentials(credentialsType);
-			const response = await getClientCredentialsToken.call(this, credentials);
-			const { instance_url, access_token } = response;
-			const options = getOptions.call(
-				this,
-				method,
-				uri || endpoint,
-				body,
-				qs,
-				instance_url as string,
-			);
-			this.logger.debug(
-				`Authentication for "Salesforce" node is using "clientCredentials". Invoking URI ${options.uri}`,
+				`Authentication for "Salesforce" node is using "${authenticationMethod}". Invoking URI ${options.uri}`,
 			);
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			Object.assign(options, option);
