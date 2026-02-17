@@ -203,12 +203,14 @@ export class SecretsProvidersConnectionsService {
 		connection: SecretsProviderConnection,
 	): SecretsProvidersResponses.ConnectionListItem {
 		const secretNames = this.externalSecretsManager.getSecretNames(connection.providerKey);
+		const connectionInstance = this.externalSecretsManager.getProvider(connection.providerKey);
 
 		return {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
 			secretsCount: secretNames.length,
+			state: connectionInstance?.state ?? 'initializing',
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
 				name: access.project.name,
@@ -223,12 +225,14 @@ export class SecretsProvidersConnectionsService {
 		const { provider } = this.externalSecretsManager.getProviderWithSettings(connection.type);
 		const redactedSettings = this.redactionService.redact(decryptedSettings, provider.properties);
 		const secretNames = this.externalSecretsManager.getSecretNames(connection.providerKey);
+		const connectionInstance = this.externalSecretsManager.getProvider(connection.providerKey);
 
 		return {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
 			secretsCount: secretNames.length,
+			state: connectionInstance?.state ?? 'initializing',
 			secrets: secretNames.map((name) => ({ name })),
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
