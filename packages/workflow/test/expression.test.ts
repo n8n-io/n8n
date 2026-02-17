@@ -11,6 +11,8 @@ import { ExpressionError } from '../src/errors/expression.error';
 import { extendSyntax } from '../src/extensions/expression-extension';
 import type { INodeExecutionData } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
+import { WorkflowDataProxy } from '../src/workflow-data-proxy';
+import { Expression } from '../src/expression';
 
 describe('Expression', () => {
 	describe('getParameterValue()', () => {
@@ -565,5 +567,178 @@ describe('Expression', () => {
 				vi.useRealTimers();
 			});
 		}
+	});
+
+	describe('resolveSimpleParameterValue with IWorkflowDataProxyData', () => {
+		it('should evaluate expression with provided IWorkflowDataProxyData', () => {
+			const nodeTypes = Helpers.NodeTypes();
+			const workflow = new Workflow({
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'TestNode',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			// Create WorkflowDataProxy to get IWorkflowDataProxyData
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				null,
+				0,
+				0,
+				'TestNode',
+				[{ json: { value: 42 } }],
+				{},
+				'manual',
+				{},
+			);
+			const data = dataProxy.getDataProxy();
+
+			// Test Expression with new API
+			const expression = new Expression(workflow);
+			const result = expression.resolveSimpleParameterValue('={{ $json.value * 2 }}', data, false);
+
+			expect(result).toBe(84);
+		});
+
+		it('should handle non-expression values', () => {
+			const nodeTypes = Helpers.NodeTypes();
+			const workflow = new Workflow({
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'TestNode',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				null,
+				0,
+				0,
+				'TestNode',
+				[],
+				{},
+				'manual',
+				{},
+			);
+			const data = dataProxy.getDataProxy();
+
+			const expression = new Expression(workflow);
+
+			// Non-expression value should be returned as-is
+			expect(expression.resolveSimpleParameterValue('plain string', data, false)).toBe(
+				'plain string',
+			);
+			expect(expression.resolveSimpleParameterValue(123, data, false)).toBe(123);
+			expect(expression.resolveSimpleParameterValue(true, data, false)).toBe(true);
+		});
+	});
+
+	describe('getParameterValue with IWorkflowDataProxyData', () => {
+		it('should evaluate simple expression with provided IWorkflowDataProxyData', () => {
+			const nodeTypes = Helpers.NodeTypes();
+			const workflow = new Workflow({
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'TestNode',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				null,
+				0,
+				0,
+				'TestNode',
+				[{ json: { text: 'hello' } }],
+				{},
+				'manual',
+				{},
+			);
+			const data = dataProxy.getDataProxy();
+
+			const expression = new Expression(workflow);
+			const result = expression.getParameterValue('={{ $json.text.toUpperCase() }}', data, false);
+
+			expect(result).toBe('HELLO');
+		});
+
+		it('should evaluate complex parameter with provided IWorkflowDataProxyData', () => {
+			const nodeTypes = Helpers.NodeTypes();
+			const workflow = new Workflow({
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'TestNode',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				null,
+				0,
+				0,
+				'TestNode',
+				[{ json: { a: 1, b: 2 } }],
+				{},
+				'manual',
+				{},
+			);
+			const data = dataProxy.getDataProxy();
+
+			const expression = new Expression(workflow);
+			const result = expression.getParameterValue(
+				{
+					sum: '={{ $json.a + $json.b }}',
+					product: '={{ $json.a * $json.b }}',
+				},
+				data,
+				false,
+			);
+
+			expect(result).toEqual({ sum: 3, product: 2 });
+		});
 	});
 });
