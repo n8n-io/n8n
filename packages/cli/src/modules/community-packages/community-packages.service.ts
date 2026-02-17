@@ -321,6 +321,7 @@ export class CommunityPackagesService {
 			}
 
 			await this.loadNodesAndCredentials.postProcessLoaders();
+			this.loadNodesAndCredentials.releaseTypes();
 		} else {
 			this.logger.warn(
 				'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
@@ -429,6 +430,7 @@ export class CommunityPackagesService {
 					payload: { packageName, packageVersion },
 				});
 				await this.loadNodesAndCredentials.postProcessLoaders();
+				this.loadNodesAndCredentials.releaseTypes();
 				this.logger.info(`Community package installed: ${packageName}`);
 				return installedPackage;
 			} catch (error) {
@@ -467,6 +469,7 @@ export class CommunityPackagesService {
 		await this.loadNodesAndCredentials.unloadPackage(packageName);
 		await this.loadNodesAndCredentials.loadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
+		this.loadNodesAndCredentials.releaseTypes();
 		this.logger.info(`Community package installed: ${packageName}`);
 	}
 
@@ -474,6 +477,7 @@ export class CommunityPackagesService {
 		await this.deletePackageDirectory(packageName);
 		await this.loadNodesAndCredentials.unloadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
+		this.loadNodesAndCredentials.releaseTypes();
 		this.logger.info(`Community package uninstalled: ${packageName}`);
 	}
 
