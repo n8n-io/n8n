@@ -13,30 +13,27 @@ const { mockExecute, mockComposableState } = vi.hoisted(() => ({
 	mockExecute: vi.fn(),
 	mockComposableState: {
 		isExecuting: false,
-		isListening: false,
-		isListeningForWorkflowEvents: false,
-		hasIssues: false,
-		disabledReason: '',
+		isButtonDisabled: false,
+		label: 'Test node',
+		buttonIcon: 'flask-conical' as const,
+		tooltipText: '',
+		isInListeningState: false,
+		listeningHint: '',
 	},
 }));
 
-vi.mock('@/app/composables/useNodeExecution', async () => {
-	const { ref, computed } = await import('vue');
+vi.mock('@/features/setupPanel/composables/useTriggerExecution', async () => {
+	const { computed } = await import('vue');
 	return {
-		useNodeExecution: vi.fn(() => ({
+		useTriggerExecution: vi.fn(() => ({
 			isExecuting: computed(() => mockComposableState.isExecuting),
-			isListening: computed(() => mockComposableState.isListening),
-			isListeningForWorkflowEvents: computed(
-				() => mockComposableState.isListeningForWorkflowEvents,
-			),
-			buttonLabel: ref('Test node'),
-			buttonIcon: ref('flask-conical'),
-			disabledReason: computed(() => mockComposableState.disabledReason),
-			isTriggerNode: ref(false),
-			hasIssues: computed(() => mockComposableState.hasIssues),
-			shouldGenerateCode: ref(false),
+			isButtonDisabled: computed(() => mockComposableState.isButtonDisabled),
+			label: computed(() => mockComposableState.label),
+			buttonIcon: computed(() => mockComposableState.buttonIcon),
+			tooltipText: computed(() => mockComposableState.tooltipText),
 			execute: mockExecute,
-			stopExecution: vi.fn(),
+			isInListeningState: computed(() => mockComposableState.isInListeningState),
+			listeningHint: computed(() => mockComposableState.listeningHint),
 		})),
 	};
 });
@@ -63,10 +60,12 @@ describe('TriggerSetupCard', () => {
 	beforeEach(() => {
 		mockExecute.mockClear();
 		mockComposableState.isExecuting = false;
-		mockComposableState.isListening = false;
-		mockComposableState.isListeningForWorkflowEvents = false;
-		mockComposableState.hasIssues = false;
-		mockComposableState.disabledReason = '';
+		mockComposableState.isButtonDisabled = false;
+		mockComposableState.label = 'Test node';
+		mockComposableState.buttonIcon = 'flask-conical';
+		mockComposableState.tooltipText = '';
+		mockComposableState.isInListeningState = false;
+		mockComposableState.listeningHint = '';
 		createTestingPinia();
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(
@@ -181,8 +180,8 @@ describe('TriggerSetupCard', () => {
 			expect(getByTestId('trigger-execute-button')).toBeInTheDocument();
 		});
 
-		it('should disable test button when node has issues', () => {
-			mockComposableState.hasIssues = true;
+		it('should disable test button when isButtonDisabled is true', () => {
+			mockComposableState.isButtonDisabled = true;
 
 			const { getByTestId } = renderComponent({
 				props: { state: createState(), expanded: true },
@@ -201,7 +200,7 @@ describe('TriggerSetupCard', () => {
 			expect(getByTestId('trigger-execute-button')).toBeDisabled();
 		});
 
-		it('should enable test button when node has no issues and is not executing', () => {
+		it('should enable test button when isButtonDisabled is false', () => {
 			const { getByTestId } = renderComponent({
 				props: { state: createState(), expanded: true },
 			});
@@ -219,6 +218,40 @@ describe('TriggerSetupCard', () => {
 			await userEvent.click(getByTestId('trigger-execute-button'));
 
 			expect(mockExecute).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('listening callout', () => {
+		it('should show callout when in listening state', () => {
+			mockComposableState.isInListeningState = true;
+			mockComposableState.listeningHint = 'Waiting for you to call the Test URL';
+
+			const { getByTestId } = renderComponent({
+				props: { state: createState(), expanded: true },
+			});
+
+			const callout = getByTestId('trigger-listening-callout');
+			expect(callout).toBeInTheDocument();
+			expect(callout).toHaveTextContent('Waiting for you to call the Test URL');
+		});
+
+		it('should not show callout when not in listening state', () => {
+			const { queryByTestId } = renderComponent({
+				props: { state: createState(), expanded: true },
+			});
+
+			expect(queryByTestId('trigger-listening-callout')).not.toBeInTheDocument();
+		});
+
+		it('should not show callout when collapsed', () => {
+			mockComposableState.isInListeningState = true;
+			mockComposableState.listeningHint = 'Listening...';
+
+			const { queryByTestId } = renderComponent({
+				props: { state: createState(), expanded: false },
+			});
+
+			expect(queryByTestId('trigger-listening-callout')).not.toBeInTheDocument();
 		});
 	});
 });

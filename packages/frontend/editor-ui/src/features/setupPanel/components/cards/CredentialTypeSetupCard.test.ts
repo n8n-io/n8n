@@ -31,11 +31,40 @@ vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 vi.mock('../TriggerExecuteButton.vue', () => ({
 	default: {
 		template:
-			'<button data-test-id="trigger-execute-button" @click="$emit(\'executed\')">Test</button>',
-		props: ['node'],
-		emits: ['executed'],
+			'<button data-test-id="trigger-execute-button" :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>',
+		props: ['label', 'icon', 'disabled', 'loading', 'tooltipText'],
+		emits: ['click'],
 	},
 }));
+
+const { mockExecute, mockComposableState } = vi.hoisted(() => ({
+	mockExecute: vi.fn(),
+	mockComposableState: {
+		isExecuting: false,
+		isButtonDisabled: false,
+		label: 'Test node',
+		buttonIcon: 'flask-conical' as const,
+		tooltipText: '',
+		isInListeningState: false,
+		listeningHint: '',
+	},
+}));
+
+vi.mock('@/features/setupPanel/composables/useTriggerExecution', async () => {
+	const { computed } = await import('vue');
+	return {
+		useTriggerExecution: vi.fn(() => ({
+			isExecuting: computed(() => mockComposableState.isExecuting),
+			isButtonDisabled: computed(() => mockComposableState.isButtonDisabled),
+			label: computed(() => mockComposableState.label),
+			buttonIcon: computed(() => mockComposableState.buttonIcon),
+			tooltipText: computed(() => mockComposableState.tooltipText),
+			execute: mockExecute,
+			isInListeningState: computed(() => mockComposableState.isInListeningState),
+			listeningHint: computed(() => mockComposableState.listeningHint),
+		})),
+	};
+});
 
 const renderComponent = createComponentRenderer(CredentialTypeSetupCard);
 
@@ -61,6 +90,14 @@ describe('CredentialTypeSetupCard', () => {
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
 	beforeEach(() => {
+		mockExecute.mockClear();
+		mockComposableState.isExecuting = false;
+		mockComposableState.isButtonDisabled = false;
+		mockComposableState.label = 'Test node';
+		mockComposableState.buttonIcon = 'flask-conical';
+		mockComposableState.tooltipText = '';
+		mockComposableState.isInListeningState = false;
+		mockComposableState.listeningHint = '';
 		createTestingPinia();
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);
@@ -323,6 +360,64 @@ describe('CredentialTypeSetupCard', () => {
 			});
 
 			expect(queryByTestId('trigger-execute-button')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('listening callout', () => {
+		it('should show callout when trigger node is listening', () => {
+			nodeTypesStore.isTriggerNode = vi.fn(
+				(type: string) => type === 'n8n-nodes-base.slackTrigger',
+			);
+			mockComposableState.isInListeningState = true;
+			mockComposableState.listeningHint = 'Go to Slack and create an event';
+
+			const triggerNode = createTestNode({
+				name: 'SlackTrigger',
+				type: 'n8n-nodes-base.slackTrigger',
+			}) as INodeUi;
+
+			const { getByTestId } = renderComponent({
+				props: {
+					state: createState({ nodes: [triggerNode] }),
+					firstTriggerName: 'SlackTrigger',
+					expanded: true,
+				},
+			});
+
+			const callout = getByTestId('trigger-listening-callout');
+			expect(callout).toBeInTheDocument();
+			expect(callout).toHaveTextContent('Go to Slack and create an event');
+		});
+
+		it('should not show callout when not listening', () => {
+			nodeTypesStore.isTriggerNode = vi.fn(
+				(type: string) => type === 'n8n-nodes-base.slackTrigger',
+			);
+			const triggerNode = createTestNode({
+				name: 'SlackTrigger',
+				type: 'n8n-nodes-base.slackTrigger',
+			}) as INodeUi;
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					state: createState({ nodes: [triggerNode] }),
+					firstTriggerName: 'SlackTrigger',
+					expanded: true,
+				},
+			});
+
+			expect(queryByTestId('trigger-listening-callout')).not.toBeInTheDocument();
+		});
+
+		it('should not show callout when there is no trigger node', () => {
+			mockComposableState.isInListeningState = true;
+			mockComposableState.listeningHint = 'Some hint';
+
+			const { queryByTestId } = renderComponent({
+				props: { state: createState(), expanded: true },
+			});
+
+			expect(queryByTestId('trigger-listening-callout')).not.toBeInTheDocument();
 		});
 	});
 });

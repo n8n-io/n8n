@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, onBeforeUnmount } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nCallout, N8nIcon, N8nTooltip } from '@n8n/design-system';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import TriggerExecuteButton from '../TriggerExecuteButton.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 
 import type { TriggerSetupState } from '../../setupPanel.types';
 import SetupCard from './SetupCard.vue';
@@ -23,6 +24,19 @@ const setupPanelStore = useSetupPanelStore();
 
 const setupCard = ref<InstanceType<typeof SetupCard> | null>(null);
 
+const nodeRef = computed(() => props.state.node);
+
+const {
+	isExecuting,
+	isButtonDisabled,
+	label,
+	buttonIcon,
+	tooltipText,
+	execute,
+	isInListeningState,
+	listeningHint,
+} = useTriggerExecution(nodeRef);
+
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),
 );
@@ -32,7 +46,8 @@ const telemetryPayload = computed(() => ({
 	node_type: props.state.node.type,
 }));
 
-const onExecuted = () => {
+const onExecuteClick = async () => {
+	await execute();
 	setupCard.value?.markInteracted();
 };
 
@@ -71,8 +86,31 @@ onBeforeUnmount(() => {
 				<N8nIcon icon="zap" size="small" color="text-light" />
 			</N8nTooltip>
 		</template>
+		<template #callout>
+			<N8nCallout
+				v-if="isInListeningState"
+				data-test-id="trigger-listening-callout"
+				theme="info"
+				:class="$style.callout"
+			>
+				{{ listeningHint }}
+			</N8nCallout>
+		</template>
 		<template #footer-actions>
-			<TriggerExecuteButton :node="state.node" @executed="onExecuted" />
+			<TriggerExecuteButton
+				:label="label"
+				:icon="buttonIcon"
+				:disabled="isButtonDisabled"
+				:loading="isExecuting"
+				:tooltip-text="tooltipText"
+				@click="onExecuteClick"
+			/>
 		</template>
 	</SetupCard>
 </template>
+
+<style module lang="scss">
+.callout {
+	margin: 0 var(--spacing--xs);
+}
+</style>

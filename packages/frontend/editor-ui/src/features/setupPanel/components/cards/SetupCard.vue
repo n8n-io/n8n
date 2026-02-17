@@ -98,6 +98,7 @@ defineExpose({ markInteracted });
 		</header>
 
 		<template v-if="expanded">
+			<slot name="callout" />
 			<slot />
 
 			<footer v-if="showFooter" :class="$style.footer">

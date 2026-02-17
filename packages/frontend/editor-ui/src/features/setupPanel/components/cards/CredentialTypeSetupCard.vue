@@ -1,18 +1,16 @@
 <script setup lang="ts">
 import { computed, ref, onBeforeUnmount } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nTooltip } from '@n8n/design-system';
+import { N8nCallout, N8nTooltip } from '@n8n/design-system';
 
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
 
-import type {
-	NodeCredentialRequirement,
-	CredentialTypeSetupState,
-} from '@/features/setupPanel/setupPanel.types';
+import type { CredentialTypeSetupState } from '@/features/setupPanel/setupPanel.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
 
 const props = defineProps<{
@@ -47,6 +45,17 @@ const triggerNode = computed(() => {
 	);
 });
 
+const {
+	isExecuting,
+	isButtonDisabled,
+	label,
+	buttonIcon,
+	tooltipText,
+	execute,
+	isInListeningState,
+	listeningHint,
+} = useTriggerExecution(triggerNode);
+
 const cardTitle = computed(() => nodeNames.value[0] ?? '');
 
 const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
@@ -70,6 +79,11 @@ const onCredentialSelected = (credentialId: string) => {
 const onCredentialDeselected = () => {
 	setupCard.value?.markInteracted();
 	emit('credentialDeselected', props.state.credentialType);
+};
+
+const onExecuteClick = async () => {
+	await execute();
+	setupCard.value?.markInteracted();
 };
 
 const onCardMouseEnter = () => {
@@ -110,6 +124,17 @@ onBeforeUnmount(() => {
 			<CredentialIcon :credential-type-name="state.credentialType" :size="16" />
 		</template>
 
+		<template #callout>
+			<N8nCallout
+				v-if="triggerNode && isInListeningState"
+				data-test-id="trigger-listening-callout"
+				theme="info"
+				:class="$style.callout"
+			>
+				{{ listeningHint }}
+			</N8nCallout>
+		</template>
+
 		<div :class="$style.content" class="pb-s">
 			<div :class="$style['credential-container']">
 				<div :class="$style['credential-label-row']">
@@ -127,7 +152,7 @@ onBeforeUnmount(() => {
 						<span
 							data-test-id="credential-type-setup-card-nodes-hint"
 							:class="$style['nodes-hint']"
-							@mouseenter="onSharedNodesHintEnter(state.nodeCredentialRequirement)"
+							@mouseenter="onSharedNodesHintEnter"
 							@mouseleave="onSharedNodesHintLeave"
 						>
 							{{
@@ -153,14 +178,22 @@ onBeforeUnmount(() => {
 		<template #footer-actions>
 			<TriggerExecuteButton
 				v-if="triggerNode"
-				:node="triggerNode"
-				@executed="setupCard?.markInteracted()"
+				:label="label"
+				:icon="buttonIcon"
+				:disabled="isButtonDisabled"
+				:loading="isExecuting"
+				:tooltip-text="tooltipText"
+				@click="onExecuteClick"
 			/>
 		</template>
 	</SetupCard>
 </template>
 
 <style module lang="scss">
+.callout {
+	margin: 0 var(--spacing--xs);
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
