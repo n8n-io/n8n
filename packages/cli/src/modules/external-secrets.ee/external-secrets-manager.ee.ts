@@ -281,7 +281,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 	@OnPubSubEvent('reload-external-secrets-providers')
 	async reloadAllProviders(): Promise<void> {
-		if (this.config.externalSecretsForProjects) {
+		if (this.config.externalSecretsForProjects || this.config.externalSecretsMultipleConnections) {
 			await this.reloadProvidersFromConnectionsRepo();
 			return;
 		}
