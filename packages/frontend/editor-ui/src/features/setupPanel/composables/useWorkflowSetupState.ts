@@ -5,7 +5,10 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { NodeSetupState } from '../setupPanel.types';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import {
+	useCredentialsStore,
+	listenForCredentialChanges,
+} from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
@@ -287,6 +290,25 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		});
 		nodeHelpers.updateNodeCredentialIssuesByName(nodeName);
 	};
+
+	/**
+	 * When a credential is deleted, unset it from ALL nodes that reference it.
+	 * This is the symmetric counterpart to setCredential's auto-assignment.
+	 */
+	listenForCredentialChanges({
+		store: credentialsStore,
+		onCredentialDeleted: (deletedCredentialId) => {
+			for (const { node, credentialTypes } of nodesRequiringSetup.value) {
+				for (const credType of credentialTypes) {
+					const credValue = node.credentials?.[credType];
+					const selectedId = typeof credValue === 'string' ? undefined : credValue?.id;
+					if (selectedId === deletedCredentialId) {
+						unsetCredential(node.name, credType);
+					}
+				}
+			}
+		},
+	});
 
 	return {
 		nodeSetupStates,
