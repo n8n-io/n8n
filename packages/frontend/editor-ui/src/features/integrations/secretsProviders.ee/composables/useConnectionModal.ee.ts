@@ -294,13 +294,16 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		if (!providerKey.value) return;
 
 		try {
-			const { name, type, settings, projects } = await connection.getConnection(providerKey.value);
+			const { name, type, settings, projects, secretsCount } = await connection.getConnection(
+				providerKey.value,
+			);
 
 			connectionName.value = name;
 			originalConnectionName.value = name;
 			connectionNameBlurred.value = true;
 			connectionSettings.value = { ...settings };
 			originalSettings.value = { ...settings };
+			providerSecretsCount.value = secretsCount;
 
 			connectionProjects.value = projects ?? [];
 			projectIds.value = (projects ?? []).map((p) => p.id);
