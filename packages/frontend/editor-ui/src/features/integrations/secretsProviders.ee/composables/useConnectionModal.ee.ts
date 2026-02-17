@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, ref, watch, type Ref, type ComponentPublicInstance } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 import type { SecretProviderTypeResponse } from '@n8n/api-types';
 import type { INodeProperties } from 'n8n-workflow';
@@ -9,10 +9,12 @@ import { i18n } from '@n8n/i18n';
 import type { Scope } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import { isComponentPublicInstance } from '@/app/utils/typeGuards';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 export type ConnectionProjectSummary = { id: string; name: string };
 
-const CONNECTION_NAME_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const CONNECTION_NAME_REGEX = /^[a-zA-Z][a-zA-Z0-9]*$/;
 interface UseConnectionModalOptions {
 	providerTypes: Ref<SecretProviderTypeResponse[]>;
 	existingProviderNames?: Ref<string[]>;
@@ -37,6 +39,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const rbacStore = useRBACStore();
 	const toast = useToast();
 	const projectsStore = useProjectsStore();
+	const { check: checkDevFeatureFlag } = useEnvFeatureFlag();
 
 	// State
 	const providerKey = ref<string | undefined>(options.providerKey?.value);
@@ -49,6 +52,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const originalSettings = ref<Record<string, IUpdateInformation['value']>>({});
 	const isSaving = ref(false);
 	const didSave = ref(false);
+	const parameterValidationStates = ref<Record<string, boolean>>({});
 
 	// Connection composable (low-level API operations)
 	const connection = useSecretsProviderConnection();
@@ -147,12 +151,22 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	// Computed - State
 	const isEditMode = computed(() => !!providerKey.value);
 
-	const providerTypeOptions = computed(() =>
-		providerTypes.value.map((type) => ({
+	const providerTypeOptions = computed(() => {
+		const prvdrTypeOptions = providerTypes.value.map((type) => ({
 			label: type.displayName,
 			value: type.type,
-		})),
-	);
+		}));
+
+		if (checkDevFeatureFlag.value('EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS')) {
+			// infisical has been deprecated for a long time.
+			// In order to be able to fully remove the code for it
+			// we are no longer showing users the option to create connections to infisical.
+			// Any previously existing connections will keep working for now.
+			return prvdrTypeOptions.filter((opt) => opt.value !== 'infisical');
+		}
+
+		return prvdrTypeOptions;
+	});
 
 	const settingsUpdated = computed(() => {
 		return Object.keys(connectionSettings.value).some((key) => {
@@ -186,6 +200,10 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 					return value !== undefined && value !== null && value !== '';
 				}) ?? true
 		);
+	});
+
+	const hasValidationErrors = computed(() => {
+		return Object.values(parameterValidationStates.value).some((isValid) => !isValid);
 	});
 
 	// Normalized settings (only properties that should be displayed)
@@ -241,6 +259,8 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		const hasPermission = isEditMode.value ? canUpdate.value : canCreate.value;
 		if (!hasPermission) return false;
 
+		if (hasValidationErrors.value) return false;
+
 		return (
 			// check if connection settings are filled
 			requiredFieldsFilled.value &&
@@ -273,13 +293,12 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		};
 	}
 
-	function hyphenateConnectionName(name: string): string {
-		return name
-			.trim()
-			.replace(/\s+/g, '-')
-			.replace(/([a-z])([A-Z])/g, '$1-$2')
-			.replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
-			.toLowerCase();
+	function setParameterValidationState(
+		propertyName: string,
+		el: Element | ComponentPublicInstance | null,
+	) {
+		if (!isComponentPublicInstance(el) || !('displaysIssues' in el)) return;
+		parameterValidationStates.value[propertyName] = !el.displaysIssues;
 	}
 
 	function selectProviderType(providerTypeKey: string) {
@@ -290,48 +309,20 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		initializeSettings(provider);
 	}
 
-	/**
-	 * Tests connection and shows appropriate toast feedback
-	 * Does not throw - connection save is considered successful even if test fails
-	 */
-	async function testAndShowFeedback(key: string): Promise<void> {
-		await connection.testConnection(key);
-
-		if (connection.connectionState.value === 'connected') {
-			toast.showMessage({
-				title: i18n.baseText(
-					'settings.secretsProviderConnections.modal.testConnection.success.title',
-				),
-				message: i18n.baseText(
-					'settings.secretsProviderConnections.modal.testConnection.success.description',
-					{
-						interpolate: { providerName: connectionName.value },
-					},
-				),
-				type: 'success',
-			});
-		} else {
-			toast.showError(
-				new Error(i18n.baseText('generic.error')),
-				i18n.baseText('generic.error'),
-				i18n.baseText(
-					'settings.secretsProviderConnections.modal.testConnection.error.serviceDisabled',
-				),
-			);
-		}
-	}
-
 	async function loadConnection() {
 		if (!providerKey.value) return;
 
 		try {
-			const { name, type, settings, projects } = await connection.getConnection(providerKey.value);
+			const { name, type, settings, projects, secretsCount } = await connection.getConnection(
+				providerKey.value,
+			);
 
 			connectionName.value = name;
 			originalConnectionName.value = name;
 			connectionNameBlurred.value = true;
 			connectionSettings.value = { ...settings };
 			originalSettings.value = { ...settings };
+			providerSecretsCount.value = secretsCount;
 
 			connectionProjects.value = projects ?? [];
 			projectIds.value = (projects ?? []).map((p) => p.id);
@@ -378,7 +369,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 		// Test connection automatically after creation
 		if (providerKey.value) {
-			await testAndShowFeedback(providerKey.value);
+			await connection.testConnection(providerKey.value);
 		}
 
 		return true;
@@ -415,7 +406,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 		// Test connection only if settings changed (not just scope/sharing)
 		if (hasSettingsChanges && providerKey.value) {
-			await testAndShowFeedback(providerKey.value);
+			await connection.testConnection(providerKey.value);
 		}
 
 		return true;
@@ -520,6 +511,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		isEditMode,
 		providerTypeOptions,
 		hasUnsavedChanges,
+		hasValidationErrors,
 		canSave,
 		expressionExample,
 		isValidName,
@@ -529,9 +521,9 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		// Methods
 		updateSettings,
 		selectProviderType,
-		hyphenateConnectionName,
 		loadConnection,
 		saveConnection,
 		shouldDisplayProperty,
+		setParameterValidationState,
 	};
 }
