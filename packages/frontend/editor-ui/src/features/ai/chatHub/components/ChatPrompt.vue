@@ -304,6 +304,7 @@ defineExpose({
 				<template #trailingContent>
 					<N8nButton
 						type="warning"
+						native-type="button"
 						size="small"
 						data-testid="dynamic-credentials-connect-button"
 						@click="emit('openDynamicCredentials')"

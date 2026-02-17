@@ -739,7 +739,11 @@ function onFilesDropped(files: File[]) {
 			:class="$style.mainContentResizer"
 			:width="artifacts.viewerSize.value"
 			:style="{
-				width: artifacts.isViewerVisible.value ? `${artifacts.viewerSize.value}px` : '100%',
+				width: artifacts.isViewerVisible.value
+					? `${artifacts.viewerSize.value}px`
+					: isDynamicCredentialsDrawerOpen
+						? 'calc(100% - 340px)'
+						: '100%',
 			}"
 			:supported-directions="['right']"
 			:is-resizing-enabled="true"
