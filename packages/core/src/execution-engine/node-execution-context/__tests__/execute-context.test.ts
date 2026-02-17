@@ -9,12 +9,12 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	ICredentialsHelper,
-	Expression,
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import { ApplicationError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import type { WorkflowExpression } from 'n8n-workflow/src/workflow-expression';
 
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
@@ -41,7 +41,7 @@ describe('ExecuteContext', () => {
 		},
 	});
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
 	const node: INode = {
 		id: 'test-node-id',

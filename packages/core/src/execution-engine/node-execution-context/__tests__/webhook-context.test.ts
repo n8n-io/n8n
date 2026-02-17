@@ -1,7 +1,6 @@
 import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import type {
-	Expression,
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	INode,
@@ -12,6 +11,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import type { WorkflowExpression } from 'n8n-workflow/src/workflow-expression';
 
 import { WebhookContext } from '../webhook-context';
 
@@ -34,7 +34,7 @@ describe('WebhookContext', () => {
 		},
 	});
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
 	const node = mock<INode>({
 		credentials: {

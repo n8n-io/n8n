@@ -1,6 +1,5 @@
 import { mock } from 'jest-mock-extended';
 import type {
-	Expression,
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	INode,
@@ -11,6 +10,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import type { WorkflowExpression } from 'n8n-workflow/src/workflow-expression';
 
 import { PollContext } from '../poll-context';
 
@@ -33,7 +33,7 @@ describe('PollContext', () => {
 		},
 	});
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
 	const node = mock<INode>({
 		credentials: {

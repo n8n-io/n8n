@@ -1,6 +1,5 @@
 import { mock } from 'jest-mock-extended';
 import type {
-	Expression,
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	INode,
@@ -9,6 +8,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
+import type { WorkflowExpression } from 'n8n-workflow/src/workflow-expression';
 
 import { LoadOptionsContext } from '../load-options-context';
 
@@ -31,7 +31,7 @@ describe('LoadOptionsContext', () => {
 		},
 	});
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
 	const node = mock<INode>({
 		credentials: {
