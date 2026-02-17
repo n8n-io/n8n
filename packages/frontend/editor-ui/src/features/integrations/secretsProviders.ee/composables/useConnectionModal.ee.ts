@@ -10,6 +10,7 @@ import type { Scope } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 export type ConnectionProjectSummary = { id: string; name: string };
 
@@ -38,6 +39,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const rbacStore = useRBACStore();
 	const toast = useToast();
 	const projectsStore = useProjectsStore();
+	const { check: checkDevFeatureFlag } = useEnvFeatureFlag();
 
 	// State
 	const providerKey = ref<string | undefined>(options.providerKey?.value);
@@ -149,12 +151,22 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	// Computed - State
 	const isEditMode = computed(() => !!providerKey.value);
 
-	const providerTypeOptions = computed(() =>
-		providerTypes.value.map((type) => ({
+	const providerTypeOptions = computed(() => {
+		const prvdrTypeOptions = providerTypes.value.map((type) => ({
 			label: type.displayName,
 			value: type.type,
-		})),
-	);
+		}));
+
+		if (checkDevFeatureFlag.value('EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS')) {
+			// infisical has been deprecated for a long time.
+			// In order to be able to fully remove the code for it
+			// we are no longer showing users the option to create connections to infisical.
+			// Any previously existing connections will keep working for now.
+			return prvdrTypeOptions.filter((opt) => opt.value !== 'infisical');
+		}
+
+		return prvdrTypeOptions;
+	});
 
 	const settingsUpdated = computed(() => {
 		return Object.keys(connectionSettings.value).some((key) => {
@@ -297,48 +309,20 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		initializeSettings(provider);
 	}
 
-	/**
-	 * Tests connection and shows appropriate toast feedback
-	 * Does not throw - connection save is considered successful even if test fails
-	 */
-	async function testAndShowFeedback(key: string): Promise<void> {
-		await connection.testConnection(key);
-
-		if (connection.connectionState.value === 'connected') {
-			toast.showMessage({
-				title: i18n.baseText(
-					'settings.secretsProviderConnections.modal.testConnection.success.title',
-				),
-				message: i18n.baseText(
-					'settings.secretsProviderConnections.modal.testConnection.success.description',
-					{
-						interpolate: { providerName: connectionName.value },
-					},
-				),
-				type: 'success',
-			});
-		} else {
-			toast.showError(
-				new Error(i18n.baseText('generic.error')),
-				i18n.baseText('generic.error'),
-				i18n.baseText(
-					'settings.secretsProviderConnections.modal.testConnection.error.serviceDisabled',
-				),
-			);
-		}
-	}
-
 	async function loadConnection() {
 		if (!providerKey.value) return;
 
 		try {
-			const { name, type, settings, projects } = await connection.getConnection(providerKey.value);
+			const { name, type, settings, projects, secretsCount } = await connection.getConnection(
+				providerKey.value,
+			);
 
 			connectionName.value = name;
 			originalConnectionName.value = name;
 			connectionNameBlurred.value = true;
 			connectionSettings.value = { ...settings };
 			originalSettings.value = { ...settings };
+			providerSecretsCount.value = secretsCount;
 
 			connectionProjects.value = projects ?? [];
 			projectIds.value = (projects ?? []).map((p) => p.id);
@@ -385,7 +369,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 		// Test connection automatically after creation
 		if (providerKey.value) {
-			await testAndShowFeedback(providerKey.value);
+			await connection.testConnection(providerKey.value);
 		}
 
 		return true;
@@ -422,7 +406,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 		// Test connection only if settings changed (not just scope/sharing)
 		if (hasSettingsChanges && providerKey.value) {
-			await testAndShowFeedback(providerKey.value);
+			await connection.testConnection(providerKey.value);
 		}
 
 		return true;

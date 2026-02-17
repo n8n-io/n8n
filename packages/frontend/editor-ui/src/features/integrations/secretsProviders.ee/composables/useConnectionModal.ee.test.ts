@@ -4,6 +4,14 @@ import { vi } from 'vitest';
 import type { SecretProviderTypeResponse } from '@n8n/api-types';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
+// Mock feature flag composable
+const { useEnvFeatureFlag } = vi.hoisted(() => ({
+	useEnvFeatureFlag: vi.fn(),
+}));
+vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
+	useEnvFeatureFlag,
+}));
+
 // Mock dependencies
 const mockConnection = {
 	getConnection: vi.fn(),
@@ -79,6 +87,10 @@ describe('useConnectionModal', () => {
 		});
 		mockShowError.mockClear();
 		mockShowMessage.mockClear();
+		// Mock feature flag to return false by default
+		useEnvFeatureFlag.mockReturnValue({
+			check: ref(() => false),
+		});
 	});
 
 	describe('initialization', () => {
@@ -190,6 +202,66 @@ describe('useConnectionModal', () => {
 				projectIds: [],
 			});
 			expect(mockConnection.testConnection).toHaveBeenCalledWith('existingKey');
+		});
+	});
+
+	describe('infisical deprecation', () => {
+		beforeEach(() => {
+			useEnvFeatureFlag.mockReturnValue({
+				check: ref((key: string) => key === 'EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS'),
+			});
+		});
+		it('should not provide option to create new infisical connection if new feature flag is enabled', () => {
+			const providerTypesWithInfisical = ref([
+				...mockProviderTypes,
+				{
+					type: 'infisical',
+					displayName: 'Infisical',
+					icon: 'infisical',
+					properties: [],
+				} as SecretProviderTypeResponse,
+			]);
+
+			const { providerTypeOptions } = useConnectionModal({
+				...defaultOptions,
+				providerTypes: providerTypesWithInfisical,
+			});
+
+			expect(providerTypeOptions.value.find((opt) => opt.value === 'infisical')).toBeUndefined();
+			expect(providerTypeOptions.value.length).toEqual(1);
+			expect(providerTypeOptions.value[0].value).toEqual('awsSecretsManager');
+		});
+
+		it('should still set selectedProviderType to infisical on existing infisical connection', async () => {
+			const providerTypesWithInfisical = ref([
+				...mockProviderTypes,
+				{
+					type: 'infisical',
+					displayName: 'Infisical',
+					icon: 'infisical',
+					properties: [],
+				} as SecretProviderTypeResponse,
+			]);
+
+			// Mock existing infisical connection
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'infisical-id',
+				name: 'infisical-connection',
+				type: 'infisical',
+				settings: {},
+			});
+
+			const options = {
+				...defaultOptions,
+				providerTypes: providerTypesWithInfisical,
+				providerKey: ref('infisical-key'),
+			};
+
+			const { selectedProviderType, loadConnection } = useConnectionModal(options);
+
+			await loadConnection();
+
+			expect(selectedProviderType.value?.type).toBe('infisical');
 		});
 	});
 
