@@ -18,6 +18,8 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { EventService } from '@/events/event.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
+import type { Push } from '@/push';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -369,6 +371,93 @@ describe('ActiveWorkflowManager', () => {
 				);
 				expect(executeErrorWorkflowSpy).toHaveBeenCalledWith(executionError, workflowData, mode);
 			});
+		});
+	});
+
+	describe('handleAddWebhooksTriggersAndPollers', () => {
+		const push = mock<Push>();
+		const publisher = mock<Publisher>();
+		const activationErrorsService = mock<ActivationErrorsService>();
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			activeWorkflowManager = new ActiveWorkflowManager(
+				mockLogger(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRepository,
+				activationErrorsService,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				instanceSettings,
+				publisher,
+				mock(),
+				push,
+				mock(),
+				mock(),
+			);
+		});
+
+		test('should deactivate workflow when shouldDeactivateOnActivationError returns true', async () => {
+			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Plugin not found'));
+			jest
+				.spyOn(activeWorkflowManager as never, 'shouldDeactivateOnActivationError')
+				.mockResolvedValue(true as never);
+
+			await activeWorkflowManager.handleAddWebhooksTriggersAndPollers({
+				workflowId: 'wf-1',
+				activeVersionId: 'v1',
+			});
+
+			expect(workflowRepository.update).toHaveBeenCalledWith('wf-1', {
+				active: false,
+				activeVersionId: null,
+			});
+			expect(activationErrorsService.register).not.toHaveBeenCalled();
+			expect(push.broadcast).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'workflowFailedToActivate' }),
+			);
+		});
+
+		test('should keep workflow published when shouldDeactivateOnActivationError returns false', async () => {
+			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Plugin not found'));
+			jest
+				.spyOn(activeWorkflowManager as never, 'shouldDeactivateOnActivationError')
+				.mockResolvedValue(false as never);
+
+			await activeWorkflowManager.handleAddWebhooksTriggersAndPollers({
+				workflowId: 'wf-1',
+				activeVersionId: 'v1',
+			});
+
+			expect(workflowRepository.update).not.toHaveBeenCalled();
+			expect(activationErrorsService.register).toHaveBeenCalledWith('wf-1', 'Plugin not found');
+			expect(push.broadcast).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'workflowFailedToActivate' }),
+			);
+		});
+
+		test('should broadcast activation on success', async () => {
+			jest.spyOn(activeWorkflowManager, 'add').mockResolvedValue({
+				triggersAndPollers: true,
+				webhooks: true,
+			});
+
+			await activeWorkflowManager.handleAddWebhooksTriggersAndPollers({
+				workflowId: 'wf-1',
+				activeVersionId: 'v1',
+			});
+
+			expect(workflowRepository.update).not.toHaveBeenCalled();
+			expect(push.broadcast).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'workflowActivated' }),
+			);
 		});
 	});
 });

@@ -326,6 +326,42 @@ describe('CommunityPackagesService', () => {
 		});
 	});
 
+	describe('isNodeFromMissingPackage()', () => {
+		test('should return false when no packages are missing', () => {
+			setMissingPackages([]);
+			expect(communityPackagesService.isNodeFromMissingPackage('n8n-nodes-test.MyNode')).toBe(
+				false,
+			);
+		});
+
+		test('should return true when node belongs to a missing package', () => {
+			setMissingPackages(['n8n-nodes-test@0.1.0']);
+			expect(communityPackagesService.isNodeFromMissingPackage('n8n-nodes-test.MyNode')).toBe(
+				true,
+			);
+		});
+
+		test('should return false when node does not belong to any missing package', () => {
+			setMissingPackages(['n8n-nodes-test@0.1.0']);
+			expect(
+				communityPackagesService.isNodeFromMissingPackage('n8n-nodes-other.MyNode'),
+			).toBe(false);
+		});
+
+		test('should handle multiple missing packages', () => {
+			setMissingPackages(['n8n-nodes-a@0.1.0', 'n8n-nodes-b@0.2.0']);
+			expect(communityPackagesService.isNodeFromMissingPackage('n8n-nodes-a.NodeOne')).toBe(
+				true,
+			);
+			expect(communityPackagesService.isNodeFromMissingPackage('n8n-nodes-b.NodeTwo')).toBe(
+				true,
+			);
+			expect(communityPackagesService.isNodeFromMissingPackage('n8n-nodes-c.NodeThree')).toBe(
+				false,
+			);
+		});
+	});
+
 	const setMissingPackages = (missingPackages: string[]) => {
 		Object.assign(communityPackagesService, { missingPackages });
 	};
