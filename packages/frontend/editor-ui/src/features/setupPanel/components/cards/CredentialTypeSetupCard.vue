@@ -29,9 +29,11 @@ const setupCard = ref<InstanceType<typeof SetupCard> | null>(null);
 
 const nodeNames = computed(() => props.state.nodes.map((node) => node.name));
 
-const triggerNodes = computed(() =>
-	props.state.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
-);
+// Only the first trigger node is embedded in this card; extras get standalone cards.
+const triggerNodes = computed(() => {
+	const first = props.state.nodes.find((node) => nodeTypesStore.isTriggerNode(node.type));
+	return first ? [first] : [];
+});
 
 const cardTitle = computed(() => nodeNames.value[0] ?? '');
 

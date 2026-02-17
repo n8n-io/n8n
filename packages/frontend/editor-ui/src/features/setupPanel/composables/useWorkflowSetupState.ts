@@ -94,21 +94,21 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			isGenericAuthType,
 		);
 		const sorted = sortCredentialTypeStates(grouped);
-		// Only embed the first trigger; extras become standalone trigger cards.
+		// Keep all nodes for display, but only the first trigger is "embedded"
+		// (shown with execute button). Extra triggers become standalone trigger cards.
+		const isTriggerNodeType = (nodeType: string) => nodeTypesStore.isTriggerNode(nodeType);
 		return sorted.map((state) => {
-			const triggerNodesInGroup = state.nodes.filter((node) => isTriggerNode(node));
-			const firstTrigger = triggerNodesInGroup[0];
-			const nodes =
-				triggerNodesInGroup.length > 1
-					? state.nodes.filter((node) => !isTriggerNode(node) || node === firstTrigger)
-					: state.nodes;
+			const firstTrigger = state.nodes.find((node) => isTriggerNode(node));
+			// For completion check, only consider the embedded (first) trigger
+			const nodesForCompletion = firstTrigger
+				? state.nodes.filter((node) => !isTriggerNode(node) || node === firstTrigger)
+				: state.nodes;
 			return {
 				...state,
-				nodes,
 				isComplete: isCredentialCardComplete(
-					{ ...state, nodes },
+					{ ...state, nodes: nodesForCompletion },
 					hasTriggerExecutedSuccessfully,
-					(nodeType) => nodeTypesStore.isTriggerNode(nodeType),
+					isTriggerNodeType,
 				),
 			};
 		});
@@ -119,12 +119,13 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 * Triggers with credentials are embedded into the credential card instead.
 	 */
 	const triggerStates = computed(() => {
+		// Only the first trigger per credential card is "covered" (embedded).
+		// Extra triggers become standalone trigger cards.
 		const coveredTriggerNames = new Set<string>();
 		for (const credState of credentialTypeStates.value) {
-			for (const node of credState.nodes) {
-				if (isTriggerNode(node)) {
-					coveredTriggerNames.add(node.name);
-				}
+			const firstTrigger = credState.nodes.find((node) => isTriggerNode(node));
+			if (firstTrigger) {
+				coveredTriggerNames.add(firstTrigger.name);
 			}
 		}
 

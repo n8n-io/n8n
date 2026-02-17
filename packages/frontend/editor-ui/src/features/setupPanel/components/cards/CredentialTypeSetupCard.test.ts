@@ -240,7 +240,7 @@ describe('CredentialTypeSetupCard', () => {
 			expect(getByTestId('trigger-execute-button')).toBeInTheDocument();
 		});
 
-		it('should render multiple trigger execute buttons for multiple triggers', () => {
+		it('should only render one trigger execute button even with multiple trigger nodes', () => {
 			nodeTypesStore.isTriggerNode = vi.fn(
 				(type: string) => type === 'n8n-nodes-base.slackTrigger',
 			);
@@ -260,7 +260,8 @@ describe('CredentialTypeSetupCard', () => {
 				},
 			});
 
-			expect(getAllByTestId('trigger-execute-button')).toHaveLength(2);
+			// Only the first trigger is embedded; extras become standalone cards
+			expect(getAllByTestId('trigger-execute-button')).toHaveLength(1);
 		});
 
 		it('should not render trigger buttons when collapsed', () => {

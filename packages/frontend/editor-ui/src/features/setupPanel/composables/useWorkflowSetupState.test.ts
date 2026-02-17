@@ -216,17 +216,17 @@ describe('useWorkflowSetupState', () => {
 			const credCards = setupCards.value.filter((c) => c.type === 'credential');
 			const triggerCards = setupCards.value.filter((c) => c.type === 'trigger');
 
-			// Only one credential card with the first trigger embedded
+			// One credential card with ALL nodes (both triggers included for display)
 			expect(credCards).toHaveLength(1);
 			if (credCards[0].type === 'credential') {
-				const triggerNodes = credCards[0].state.nodes.filter((n) =>
-					nodeTypesStore.isTriggerNode(n.type),
-				);
-				expect(triggerNodes).toHaveLength(1);
-				expect(triggerNodes[0].name).toBe('SlackTrigger1');
+				expect(credCards[0].state.nodes).toHaveLength(2);
+				expect(credCards[0].state.nodes.map((n) => n.name)).toEqual([
+					'SlackTrigger1',
+					'SlackTrigger2',
+				]);
 			}
 
-			// Second trigger becomes a standalone trigger card
+			// Only the first trigger is "covered"; the second becomes a standalone trigger card
 			expect(triggerCards).toHaveLength(1);
 			expect(triggerCards[0].state.node.name).toBe('SlackTrigger2');
 		});
