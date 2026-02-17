@@ -6,7 +6,7 @@ import { ChatMemorySession } from './chat-memory-session.entity';
 
 export interface CreateMemorySessionData {
 	sessionKey: string;
-	chatHubSessionId?: string | null;
+	projectId: string;
 	workflowId?: string | null;
 }
 
@@ -23,7 +23,7 @@ export class ChatMemorySessionRepository extends Repository<ChatMemorySession> {
 		const em = trx ?? this.manager;
 		await em.insert(ChatMemorySession, {
 			sessionKey: data.sessionKey,
-			chatHubSessionId: data.chatHubSessionId ?? null,
+			projectId: data.projectId,
 			workflowId: data.workflowId ?? null,
 		});
 	}

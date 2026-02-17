@@ -3,19 +3,15 @@ import type {
 	INode,
 	Workflow,
 	IWorkflowExecuteAdditionalData,
-	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 export function getChatMemoryHelperFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	workflow: Workflow,
 	node: INode,
-	mode: WorkflowExecuteMode,
 ): Partial<ChatMemoryProxyFunctions> {
-	const chatMemoryProxyProvider = additionalData['chat-hub']?.chatMemoryProxyProvider;
+	const chatMemoryProxyProvider = additionalData['chat-memory']?.chatMemoryProxyProvider;
 	if (!chatMemoryProxyProvider) return {};
-
-	const ownerId = mode !== 'manual' ? additionalData.userId : undefined;
 
 	return {
 		getChatMemoryProxy: async (
@@ -29,7 +25,6 @@ export function getChatMemoryHelperFunctions(
 				sessionId,
 				turnId,
 				previousTurnIds,
-				ownerId,
 			),
 	};
 }

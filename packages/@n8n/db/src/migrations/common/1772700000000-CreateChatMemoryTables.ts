@@ -3,7 +3,6 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const table = {
 	memory: 'chat_memory',
 	memorySessions: 'chat_memory_sessions',
-	chatHubSessions: 'chat_hub_sessions',
 	messages: 'chat_hub_messages',
 } as const;
 
@@ -14,6 +13,7 @@ const table = {
  * - Separation between what the agent remembers vs what the user sees
  * - Memory branching on edit/retry via turnId correlation on Chat hub
  * - Flexible formats for session IDs (not just UUIDs)
+ * - Project-scoped memory for access control
  *
  * The turnId is a correlation ID representing a single request-response execution cycle.
  * It's generated before workflow execution starts, so it can be used to link memory entries
@@ -29,16 +29,16 @@ export class CreateChatMemoryTables1772700000000 implements ReversibleMigration 
 		await createTable(table.memorySessions)
 			.withColumns(
 				column('sessionKey').varchar(255).primary.notNull,
-				column('chatHubSessionId').uuid.comment(
-					'Optional link to chat_hub_sessions for chat hub context',
-				),
+				column('projectId').varchar(36).notNull.comment('Project this memory session belongs to'),
 				column('workflowId').varchar(36).comment('Which workflow created this session, if known'),
 			)
-			.withForeignKey('chatHubSessionId', {
-				tableName: table.chatHubSessions,
+			.withForeignKey('projectId', {
+				tableName: 'project',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			}).withTimestamps;
+
+		await createIndex(table.memorySessions, ['projectId']);
 
 		// Create chat_memory table (to store actual memory entries)
 		await createTable(table.memory)
@@ -80,6 +80,7 @@ export class CreateChatMemoryTables1772700000000 implements ReversibleMigration 
 		await dropColumns(table.messages, ['turnId']);
 		await dropIndex(table.memory, ['sessionKey', 'turnId']);
 		await dropTable(table.memory);
+		await dropIndex(table.memorySessions, ['projectId']);
 		await dropTable(table.memorySessions);
 	}
 }

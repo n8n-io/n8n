@@ -29,7 +29,7 @@ export class ChatMemoryCleanupService {
 		private readonly memoryRepository: ChatMemoryRepository,
 		private readonly memorySessionRepository: ChatMemorySessionRepository,
 	) {
-		this.logger = this.logger.scoped('chat-hub');
+		this.logger = this.logger.scoped('chat-memory');
 	}
 
 	private get isEnabled() {

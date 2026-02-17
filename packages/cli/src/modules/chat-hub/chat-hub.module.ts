@@ -1,6 +1,6 @@
 import { ExecutionsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule, OnShutdown } from '@n8n/decorators';
+import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
@@ -17,9 +17,6 @@ export class ChatHubModule implements ModuleInterface {
 		if (!isQueueMode || isWorker) {
 			await import('./chat-hub-execution-watcher.service');
 		}
-
-		const { ChatMemoryCleanupService } = await import('./chat-memory-cleanup.service');
-		Container.get(ChatMemoryCleanupService).startCleanup();
 	}
 
 	async settings() {
@@ -35,28 +32,7 @@ export class ChatHubModule implements ModuleInterface {
 		const { ChatHubMessage } = await import('./chat-hub-message.entity');
 		const { ChatHubAgent } = await import('./chat-hub-agent.entity');
 		const { ChatHubTool } = await import('./chat-hub-tool.entity');
-		const { ChatMemorySession } = await import('./chat-memory-session.entity');
-		const { ChatMemory } = await import('./chat-memory.entity');
 
-		return [
-			ChatHubSession,
-			ChatHubMessage,
-			ChatHubAgent,
-			ChatHubTool,
-			ChatMemorySession,
-			ChatMemory,
-		];
-	}
-
-	async context() {
-		const { ChatMemoryProxyService } = await import('./chat-memory-proxy.service');
-
-		return { chatMemoryProxyProvider: Container.get(ChatMemoryProxyService) };
-	}
-
-	@OnShutdown()
-	async shutdown() {
-		const { ChatMemoryCleanupService } = await import('./chat-memory-cleanup.service');
-		Container.get(ChatMemoryCleanupService).stopCleanup();
+		return [ChatHubSession, ChatHubMessage, ChatHubAgent, ChatHubTool];
 	}
 }

@@ -56,11 +56,11 @@ export class ChatMemoryMessageHistory extends BaseChatMessageHistory {
 	private asHumanMessage(entry: ChatMemoryEntry): HumanMessage {
 		if (isHumanMessage(entry.content)) {
 			const humanData = entry.content;
-			return new HumanMessage({ content: humanData.content, name: undefined });
+			return new HumanMessage({ content: humanData.content, name: entry.name });
 		} else {
 			return new HumanMessage({
 				content: JSON.stringify(entry.content),
-				name: undefined,
+				name: entry.name,
 			});
 		}
 	}
@@ -71,12 +71,12 @@ export class ChatMemoryMessageHistory extends BaseChatMessageHistory {
 			return new AIMessage({
 				content: aiData.content,
 				tool_calls: aiData.toolCalls,
-				name: undefined,
+				name: entry.name,
 			});
 		} else {
 			return new AIMessage({
 				content: JSON.stringify(entry.content),
-				name: undefined,
+				name: entry.name,
 			});
 		}
 	}

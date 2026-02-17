@@ -118,9 +118,6 @@ export interface ChatMemoryEntry {
  * Service interface for interacting with chat memory.
  */
 export interface IChatMemoryService {
-	/** Get session owner ID (the user who owns the session), or undefined for anonymous sessions */
-	getOwnerId(): string | undefined;
-
 	/**
 	 * Get memory entries for this session.
 	 * Memory is loaded based on the current message chain if turnId / previousTurnIds are used,

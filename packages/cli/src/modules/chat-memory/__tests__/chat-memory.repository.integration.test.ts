@@ -1,11 +1,11 @@
-import { testDb, testModules } from '@n8n/backend-test-utils';
+import { testDb, testModules, createTeamProject } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
 import { ChatMemoryRepository } from '../chat-memory.repository';
 import { ChatMemorySessionRepository } from '../chat-memory-session.repository';
 
 beforeAll(async () => {
-	await testModules.loadModules(['chat-hub']);
+	await testModules.loadModules(['chat-memory']);
 	await testDb.init();
 });
 
@@ -20,17 +20,20 @@ afterAll(async () => {
 describe('ChatMemoryRepository', () => {
 	let memoryRepository: ChatMemoryRepository;
 	let memorySessionRepository: ChatMemorySessionRepository;
+	let testProjectId: string;
 
-	beforeAll(() => {
+	beforeAll(async () => {
 		memoryRepository = Container.get(ChatMemoryRepository);
 		memorySessionRepository = Container.get(ChatMemorySessionRepository);
+		const project = await createTeamProject('Memory Repo Test Project');
+		testProjectId = project.id;
 	});
 
 	const createTestSession = async (sessionKey?: string) => {
 		const key = sessionKey ?? `session-${crypto.randomUUID()}`;
 		await memorySessionRepository.createSession({
 			sessionKey: key,
-			chatHubSessionId: null,
+			projectId: testProjectId,
 			workflowId: null,
 		});
 		return key;

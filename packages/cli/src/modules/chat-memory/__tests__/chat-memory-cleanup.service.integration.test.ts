@@ -1,4 +1,4 @@
-import { testDb, testModules } from '@n8n/backend-test-utils';
+import { testDb, testModules, createTeamProject } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
 import { ChatMemoryCleanupService } from '../chat-memory-cleanup.service';
@@ -6,7 +6,7 @@ import { ChatMemoryRepository } from '../chat-memory.repository';
 import { ChatMemorySessionRepository } from '../chat-memory-session.repository';
 
 beforeAll(async () => {
-	await testModules.loadModules(['chat-hub']);
+	await testModules.loadModules(['chat-memory']);
 	await testDb.init();
 });
 
@@ -22,11 +22,14 @@ describe('ChatMemoryCleanupService integration', () => {
 	let cleanupService: ChatMemoryCleanupService;
 	let memoryRepository: ChatMemoryRepository;
 	let memorySessionRepository: ChatMemorySessionRepository;
+	let testProjectId: string;
 
-	beforeAll(() => {
+	beforeAll(async () => {
 		cleanupService = Container.get(ChatMemoryCleanupService);
 		memoryRepository = Container.get(ChatMemoryRepository);
 		memorySessionRepository = Container.get(ChatMemorySessionRepository);
+		const project = await createTeamProject('Cleanup Test Project');
+		testProjectId = project.id;
 	});
 
 	describe('runCleanup', () => {
@@ -35,7 +38,7 @@ describe('ChatMemoryCleanupService integration', () => {
 				const sessionKey = `session-${crypto.randomUUID()}`;
 				await memorySessionRepository.createSession({
 					sessionKey,
-					chatHubSessionId: null,
+					projectId: testProjectId,
 					workflowId: null,
 				});
 
@@ -78,11 +81,11 @@ describe('ChatMemoryCleanupService integration', () => {
 				const sessionKey = `session-${crypto.randomUUID()}`;
 				await memorySessionRepository.createSession({
 					sessionKey,
-					chatHubSessionId: null,
+					projectId: testProjectId,
 					workflowId: null,
 				});
 
-				// Create a memory entry without expiresAt (authenticated session)
+				// Create a memory entry without expiresAt
 				const memoryId = crypto.randomUUID();
 				await memoryRepository.createMemoryEntry({
 					id: memoryId,
@@ -107,7 +110,7 @@ describe('ChatMemoryCleanupService integration', () => {
 				const sessionKey = `session-${crypto.randomUUID()}`;
 				await memorySessionRepository.createSession({
 					sessionKey,
-					chatHubSessionId: null,
+					projectId: testProjectId,
 					workflowId: null,
 				});
 
@@ -121,7 +124,7 @@ describe('ChatMemoryCleanupService integration', () => {
 				const sessionKey = `session-${crypto.randomUUID()}`;
 				await memorySessionRepository.createSession({
 					sessionKey,
-					chatHubSessionId: null,
+					projectId: testProjectId,
 					workflowId: null,
 				});
 
@@ -146,7 +149,7 @@ describe('ChatMemoryCleanupService integration', () => {
 				const sessionKey = `session-${crypto.randomUUID()}`;
 				await memorySessionRepository.createSession({
 					sessionKey,
-					chatHubSessionId: null,
+					projectId: testProjectId,
 					workflowId: null,
 				});
 
@@ -183,7 +186,7 @@ describe('ChatMemoryCleanupService integration', () => {
 				for (const sessionKey of sessionKeys) {
 					await memorySessionRepository.createSession({
 						sessionKey,
-						chatHubSessionId: null,
+						projectId: testProjectId,
 						workflowId: null,
 					});
 				}
@@ -192,7 +195,7 @@ describe('ChatMemoryCleanupService integration', () => {
 				const keptSessionKey = `session-${crypto.randomUUID()}`;
 				await memorySessionRepository.createSession({
 					sessionKey: keptSessionKey,
-					chatHubSessionId: null,
+					projectId: testProjectId,
 					workflowId: null,
 				});
 				await memoryRepository.createMemoryEntry({
@@ -218,7 +221,7 @@ describe('ChatMemoryCleanupService integration', () => {
 				const sessionKey = `session-${crypto.randomUUID()}`;
 				await memorySessionRepository.createSession({
 					sessionKey,
-					chatHubSessionId: null,
+					projectId: testProjectId,
 					workflowId: null,
 				});
 
@@ -264,7 +267,7 @@ describe('ChatMemoryCleanupService integration', () => {
 				const emptySessionKey = `session-${crypto.randomUUID()}`;
 				await memorySessionRepository.createSession({
 					sessionKey: emptySessionKey,
-					chatHubSessionId: null,
+					projectId: testProjectId,
 					workflowId: null,
 				});
 
@@ -272,7 +275,7 @@ describe('ChatMemoryCleanupService integration', () => {
 				const memorySessionKey = `session-${crypto.randomUUID()}`;
 				await memorySessionRepository.createSession({
 					sessionKey: memorySessionKey,
-					chatHubSessionId: null,
+					projectId: testProjectId,
 					workflowId: null,
 				});
 				await memoryRepository.createMemoryEntry({
@@ -289,7 +292,7 @@ describe('ChatMemoryCleanupService integration', () => {
 				const expiredMemorySessionKey = `session-${crypto.randomUUID()}`;
 				await memorySessionRepository.createSession({
 					sessionKey: expiredMemorySessionKey,
-					chatHubSessionId: null,
+					projectId: testProjectId,
 					workflowId: null,
 				});
 				await memoryRepository.createMemoryEntry({

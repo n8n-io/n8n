@@ -5,7 +5,6 @@ import { ChatMemoryMessageHistory } from './ChatMemoryMessageHistory';
 
 describe('ChatMemoryMessageHistory', () => {
 	const createMockMemoryService = (): jest.Mocked<IChatMemoryService> => ({
-		getOwnerId: jest.fn(),
 		getMemory: jest.fn(),
 		addHumanMessage: jest.fn(),
 		addAIMessage: jest.fn(),

@@ -13,7 +13,7 @@ declare module 'n8n-workflow' {
 		hooks?: ExecutionLifecycleHooks;
 		externalSecretsProxy: ExternalSecretsProxy;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
-		'chat-hub'?: { chatMemoryProxyProvider: ChatMemoryProxyProvider };
+		'chat-memory'?: { chatMemoryProxyProvider: ChatMemoryProxyProvider };
 		// Project ID is currently only added on the additionalData if the user
 		// has data table listing permission for that project. We should consider
 		// that only data tables belonging to their respective projects are shown.

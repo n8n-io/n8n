@@ -41,6 +41,7 @@ import {
 	EditMessagePayload,
 	PreparedChatWorkflow,
 } from './chat-hub.types';
+import { ChatMemorySessionRepository } from '../chat-memory/chat-memory-session.repository';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { ChatStreamService } from './chat-stream.service';
@@ -68,6 +69,7 @@ export class ChatHubService {
 		private readonly chatHubTitleService: ChatHubTitleService,
 		private readonly chatHubToolService: ChatHubToolService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
+		private readonly chatMemorySessionRepository: ChatMemorySessionRepository,
 		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
@@ -319,6 +321,8 @@ export class ChatHubService {
 		await this.messageRepository.manager.transaction(async (trx) => {
 			await this.ensureConversation(userId, sessionId, trx);
 			await this.chatHubAttachmentService.deleteAllBySessionId(sessionId, trx);
+			// Explicitly clean up memory for this session since there's no FK cascade
+			await this.chatMemorySessionRepository.deleteBySessionKey(sessionId, trx);
 			await this.sessionRepository.deleteChatHubSession(sessionId, trx);
 		});
 	}
@@ -883,5 +887,4 @@ export class ChatHubService {
 			toolIds,
 		};
 	}
-
 }
