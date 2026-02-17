@@ -257,8 +257,7 @@ describe('useConnectionModal', () => {
 				providerKey: ref('infisical-key'),
 			};
 
-			const { selectedProviderType, providerTypeOptions, loadConnection } =
-				useConnectionModal(options);
+			const { selectedProviderType, loadConnection } = useConnectionModal(options);
 
 			await loadConnection();
 
