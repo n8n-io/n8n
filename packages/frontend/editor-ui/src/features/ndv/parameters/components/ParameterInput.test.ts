@@ -978,15 +978,6 @@ describe('ParameterInput.vue', () => {
 			noDataExpression: true,
 		});
 
-		beforeEach(() => {
-			vi.useFakeTimers();
-		});
-
-		afterEach(() => {
-			vi.runOnlyPendingTimers();
-			vi.useRealTimers();
-		});
-
 		it('renders as a password input', async () => {
 			const { container } = renderComponent({
 				props: {
@@ -1013,7 +1004,6 @@ describe('ParameterInput.vue', () => {
 			await nextTick();
 			const input = container.querySelector('input') as HTMLInputElement;
 			await fireEvent.update(input, '{invalid');
-			await vi.advanceTimersByTimeAsync(300);
 
 			expect(queryByTestId('parameter-issues')).toBeInTheDocument();
 		});
@@ -1030,7 +1020,6 @@ describe('ParameterInput.vue', () => {
 			await nextTick();
 			const input = container.querySelector('input') as HTMLInputElement;
 			await fireEvent.update(input, '{"type": "service_account"}');
-			await vi.advanceTimersByTimeAsync(300);
 
 			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
 		});
@@ -1047,7 +1036,6 @@ describe('ParameterInput.vue', () => {
 			await nextTick();
 			const input = container.querySelector('input') as HTMLInputElement;
 			await fireEvent.update(input, '');
-			await vi.advanceTimersByTimeAsync(300);
 
 			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
 		});
@@ -1065,11 +1053,9 @@ describe('ParameterInput.vue', () => {
 			const input = container.querySelector('input') as HTMLInputElement;
 
 			await fireEvent.update(input, '{invalid');
-			await vi.advanceTimersByTimeAsync(300);
 			expect(queryByTestId('parameter-issues')).toBeInTheDocument();
 
 			await fireEvent.update(input, '{"valid": true}');
-			await vi.advanceTimersByTimeAsync(300);
 			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
 		});
 	});
