@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { N8nButton2, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 
 defineProps<{
 	editedNodesCount: number;
@@ -30,7 +30,7 @@ const i18n = useI18n();
 				})
 			}}
 		</span>
-		<N8nButton2
+		<N8nButton
 			variant="ghost"
 			size="small"
 			:loading="loading"
@@ -39,7 +39,7 @@ const i18n = useI18n();
 		>
 			{{ i18n.baseText('aiAssistant.builder.reviewChanges.button') }}
 			<N8nIcon icon="arrow-up-right" size="small" />
-		</N8nButton2>
+		</N8nButton>
 	</div>
 </template>
 
