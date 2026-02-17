@@ -16,6 +16,8 @@ import {
 	buildTriggerSetupState,
 } from '../setupPanel.utils';
 
+import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
+
 /**
  * Composable that manages workflow setup state for credential configuration.
  * Cards are grouped by credential type (one card per unique credential type)
@@ -51,8 +53,10 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	};
 
 	/**
-	 * All non-disabled nodes that either have credential requirements or are triggers.
-	 * Sorted by X position (left-to-right on the canvas).
+	 * Get nodes that require setup:
+	 * - Nodes with credential requirements
+	 * - Trigger nodes (regardless of credentials)
+	 * Sorted by execution order (grouped by trigger, DFS through connections).
 	 */
 	const nodesRequiringSetup = computed(() => {
 		const nodesForSetup = sourceNodes.value
@@ -64,7 +68,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			}))
 			.filter(({ credentialTypes, isTrigger }) => credentialTypes.length > 0 || isTrigger);
 
-		return nodesForSetup.sort((a, b) => a.node.position[0] - b.node.position[0]);
+		return sortNodesByExecutionOrder(nodesForSetup, workflowsStore.connectionsBySourceNode);
 	});
 
 	/**

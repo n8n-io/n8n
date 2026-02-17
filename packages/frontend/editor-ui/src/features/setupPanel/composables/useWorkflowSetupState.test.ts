@@ -35,6 +35,16 @@ vi.mock('@/app/utils/nodes/nodeTransforms', () => ({
 		mockGetNodeTypeDisplayableCredentials(...args),
 }));
 
+// Sorting/filtering by execution order is tested in setupPanel.utils.test.ts.
+// Use a pass-through mock here so non-sorting tests are not affected.
+vi.mock('@/app/utils/workflowUtils', async () => {
+	const actual = await vi.importActual('@/app/utils/workflowUtils');
+	return {
+		...actual,
+		sortNodesByExecutionOrder: (nodes: unknown[]) => nodes,
+	};
+});
+
 const createNode = (overrides: Partial<INodeUi> = {}): INodeUi =>
 	createTestNode({
 		name: 'TestNode',
@@ -445,28 +455,29 @@ describe('useWorkflowSetupState', () => {
 			expect(credentialTypeStates.value[0].isComplete).toBe(false);
 		});
 
-		it('should be sorted by leftmost node X position', () => {
-			const nodeRight = createNode({ name: 'RightNode', position: [300, 0] });
-			const nodeLeft = createNode({ name: 'LeftNode', position: [100, 0] });
-			workflowsStore.allNodes = [nodeRight, nodeLeft];
+		it('should preserve execution order from nodesRequiringSetup', () => {
+			const nodeA = createNode({ name: 'NodeA', position: [300, 0] });
+			const nodeB = createNode({ name: 'NodeB', position: [100, 0] });
+			// sortNodesByExecutionOrder is mocked as pass-through, so order matches allNodes
+			workflowsStore.allNodes = [nodeA, nodeB];
 			mockGetNodeTypeDisplayableCredentials.mockImplementation((_store, node) => {
-				if ((node as INodeUi).name === 'RightNode') return [{ name: 'rightApi' }];
-				if ((node as INodeUi).name === 'LeftNode') return [{ name: 'leftApi' }];
+				if ((node as INodeUi).name === 'NodeA') return [{ name: 'apiA' }];
+				if ((node as INodeUi).name === 'NodeB') return [{ name: 'apiB' }];
 				return [];
 			});
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Test',
 			});
 			workflowsStore.getNodeByName = vi.fn((name: string) => {
-				if (name === 'RightNode') return nodeRight;
-				if (name === 'LeftNode') return nodeLeft;
+				if (name === 'NodeA') return nodeA;
+				if (name === 'NodeB') return nodeB;
 				return null;
 			});
 
 			const { credentialTypeStates } = useWorkflowSetupState();
 
-			expect(credentialTypeStates.value[0].credentialType).toBe('leftApi');
-			expect(credentialTypeStates.value[1].credentialType).toBe('rightApi');
+			expect(credentialTypeStates.value[0].credentialType).toBe('apiA');
+			expect(credentialTypeStates.value[1].credentialType).toBe('apiB');
 		});
 	});
 
