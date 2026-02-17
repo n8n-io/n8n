@@ -55,8 +55,8 @@ vi.mock('@/app/utils/nodes/nodeTransforms', () => ({
 
 // Sorting/filtering by execution order is tested in setupPanel.utils.test.ts.
 // Use a pass-through mock here so non-sorting tests are not affected.
-vi.mock('../setupPanel.utils', async () => {
-	const actual = await vi.importActual('../setupPanel.utils');
+vi.mock('@/app/utils/workflowUtils', async () => {
+	const actual = await vi.importActual('@/app/utils/workflowUtils');
 	return {
 		...actual,
 		sortNodesByExecutionOrder: (nodes: unknown[]) => nodes,
