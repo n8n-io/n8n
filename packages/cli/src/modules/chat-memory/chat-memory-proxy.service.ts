@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	ChatMemoryProxyProvider,
@@ -20,7 +21,7 @@ import { ChatMemory } from './chat-memory.entity';
 import { ChatMemoryRepository } from './chat-memory.repository';
 
 const ALLOWED_NODES = [MEMORY_BUFFER_WINDOW_NODE_TYPE] as const;
-const NAME_FALLBACK = 'Workflow Chat';
+const NAME_FALLBACK = 'AI';
 
 type AllowedNode = (typeof ALLOWED_NODES)[number];
 
@@ -34,6 +35,7 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 		private readonly memoryRepository: ChatMemoryRepository,
 		private readonly memorySessionRepository: ChatMemorySessionRepository,
 		private readonly ownershipService: OwnershipService,
+		private readonly userRepository: UserRepository,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('chat-memory');
@@ -56,11 +58,12 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 		sessionKey: string,
 		turnId: string | null,
 		previousTurnIds: string[] | null,
+		userId?: string,
 	): Promise<IChatMemoryService> {
 		this.validateRequest(node);
 
 		const workflowId = workflow.id;
-		const agentName = this.extractAgentName(workflow);
+		const agentName = this.extractAgentName(workflow, node);
 		const projectId = await this.getProjectId(workflow);
 		const service = this.makeChatMemoryOperations(
 			sessionKey,
@@ -69,6 +72,7 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 			projectId,
 			workflowId,
 			agentName,
+			userId,
 		);
 
 		await service.ensureSession();
@@ -78,9 +82,9 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 
 	/**
 	 * Extract agent name from the chat trigger node's agentName parameter,
-	 * falling back to workflow name if not set.
+	 * falling back to connected agent node name, then workflow name.
 	 */
-	private extractAgentName(workflow: Workflow): string {
+	private extractAgentName(workflow: Workflow, node: INode): string {
 		const chatTriggerNode = Object.values(workflow.nodes).find(
 			(n) => n.type === CHAT_TRIGGER_NODE_TYPE,
 		);
@@ -90,6 +94,15 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 			chatTriggerNode.parameters.agentName.trim() !== ''
 		) {
 			return String(chatTriggerNode.parameters.agentName);
+		}
+
+		// Try the name of the connected agent node (memory -> agent via ai_memory)
+		const childNames = workflow.getChildNodes(node.name, 'ALL', 1);
+		const connectedAgent = childNames
+			.map((name) => workflow.nodes[name])
+			.find((n) => n !== undefined);
+		if (connectedAgent?.name && connectedAgent.name.trim() !== '') {
+			return connectedAgent.name;
 		}
 
 		if (workflow.name && workflow.name.trim() !== '') {
@@ -105,10 +118,12 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 		previousTurnIds: string[] | null,
 		projectId: string,
 		workflowId: string | undefined,
-		_agentName: string,
+		agentName: string,
+		userId: string | undefined,
 	): IChatMemoryService {
 		const memoryRepository = this.memoryRepository;
 		const memorySessionRepository = this.memorySessionRepository;
+		const userRepository = this.userRepository;
 		const logger = this.logger;
 
 		// turnId is a correlation ID generated before chat workflow execution starts.
@@ -148,13 +163,19 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 
 			async addHumanMessage(content: string): Promise<void> {
 				const id = uuid();
+				let userName = 'User';
+				if (userId) {
+					const user = await userRepository.findOneBy({ id: userId });
+					userName = user?.firstName ?? 'User';
+				}
+
 				await memoryRepository.createMemoryEntry({
 					id,
 					sessionKey,
 					turnId,
 					role: 'human',
 					content: { content },
-					name: 'User',
+					name: userName,
 				});
 				logger.debug('Added human message to memory', {
 					sessionKey,
@@ -171,7 +192,7 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 					turnId,
 					role: 'ai',
 					content: { content, toolCalls },
-					name: 'AI',
+					name: agentName,
 				});
 				logger.debug('Added AI message to memory', {
 					sessionKey,

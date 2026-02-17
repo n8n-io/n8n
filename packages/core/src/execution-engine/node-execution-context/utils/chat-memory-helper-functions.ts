@@ -25,6 +25,7 @@ export function getChatMemoryHelperFunctions(
 				sessionId,
 				turnId,
 				previousTurnIds,
+				additionalData.userId,
 			),
 	};
 }

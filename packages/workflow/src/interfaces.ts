@@ -1021,6 +1021,7 @@ export type ChatMemoryProxyProvider = {
 		sessionId: string,
 		turnId: string | null,
 		previousTurnIds: string[],
+		userId: string | undefined,
 	): Promise<IChatMemoryService>;
 };
 

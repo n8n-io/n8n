@@ -1,10 +1,13 @@
 import { testDb, testModules, createWorkflow, createTeamProject } from '@n8n/backend-test-utils';
+import { GLOBAL_MEMBER_ROLE, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	MEMORY_BUFFER_WINDOW_NODE_TYPE,
 	Workflow,
 	CHAT_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
 	type INode,
+	type IConnections,
 } from 'n8n-workflow';
 
 import { ChatMemoryProxyService, isAllowedNode } from '../chat-memory-proxy.service';
@@ -53,6 +56,8 @@ describe('ChatMemoryProxyService', () => {
 		const createTestWorkflowInDb = async (overrides?: {
 			name?: string;
 			agentName?: string;
+			extraNodes?: INode[];
+			connections?: IConnections;
 		}) => {
 			const nodes: INode[] = [
 				{
@@ -73,6 +78,7 @@ describe('ChatMemoryProxyService', () => {
 					position: [200, 0],
 					parameters: {},
 				},
+				...(overrides?.extraNodes ?? []),
 			];
 
 			const dbWorkflow = await createWorkflow(
@@ -84,7 +90,7 @@ describe('ChatMemoryProxyService', () => {
 				id: dbWorkflow.id,
 				name: dbWorkflow.name,
 				nodes,
-				connections: {},
+				connections: overrides?.connections ?? {},
 				active: true,
 				nodeTypes: {
 					getByName: () => undefined,
@@ -422,6 +428,118 @@ describe('ChatMemoryProxyService', () => {
 				// Both should have the same generated turnId
 				expect(entries[0].turnId).toBe(entries[1].turnId);
 				expect(entries[0].turnId).not.toBeNull();
+			});
+		});
+
+		describe('name resolution', () => {
+			it('should use user firstName for human message name', async () => {
+				const userRepository = Container.get(UserRepository);
+				const { user } = await userRepository.createUserWithProject({
+					email: `test-${crypto.randomUUID()}@example.com`,
+					firstName: 'Jaakko',
+					lastName: 'Test',
+					role: GLOBAL_MEMBER_ROLE,
+				});
+
+				const workflow = await createTestWorkflowInDb({ name: 'My Agent' });
+				const node = createMemoryNode();
+				const sessionKey = `session-${crypto.randomUUID()}`;
+
+				const proxy = await proxyService.getChatMemoryProxy(
+					workflow,
+					node,
+					sessionKey,
+					null,
+					null,
+					user.id,
+				);
+
+				await proxy.addHumanMessage('Hello from user');
+
+				const entries = await memoryRepository.find({ where: { sessionKey } });
+				expect(entries).toHaveLength(1);
+				expect(entries[0].name).toBe('Jaakko');
+			});
+
+			it('should use agent name from chat trigger for AI message name', async () => {
+				const workflow = await createTestWorkflowInDb({ agentName: 'My Custom Agent' });
+				const node = createMemoryNode();
+				const sessionKey = `session-${crypto.randomUUID()}`;
+
+				const proxy = await proxyService.getChatMemoryProxy(workflow, node, sessionKey, null, null);
+
+				await proxy.addAIMessage('Hello from agent', []);
+
+				const entries = await memoryRepository.find({ where: { sessionKey } });
+				expect(entries).toHaveLength(1);
+				expect(entries[0].name).toBe('My Custom Agent');
+			});
+
+			it('should use connected agent node name when no agentName param', async () => {
+				const agentNode: INode = {
+					id: 'agent-1',
+					name: 'Sales Assistant',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					position: [400, 0],
+					parameters: {},
+				};
+
+				const connections: IConnections = {
+					Memory: {
+						ai_memory: [
+							[{ node: 'Sales Assistant', type: NodeConnectionTypes.AiMemory, index: 0 }],
+						],
+					},
+				};
+
+				const workflow = await createTestWorkflowInDb({
+					extraNodes: [agentNode],
+					connections,
+				});
+				const node = createMemoryNode();
+				const sessionKey = `session-${crypto.randomUUID()}`;
+
+				const proxy = await proxyService.getChatMemoryProxy(workflow, node, sessionKey, null, null);
+
+				await proxy.addAIMessage('Hello from agent', []);
+
+				const entries = await memoryRepository.find({ where: { sessionKey } });
+				expect(entries).toHaveLength(1);
+				expect(entries[0].name).toBe('Sales Assistant');
+			});
+
+			it('should fall back to workflow name when no agentName and no connected agent', async () => {
+				const workflow = await createTestWorkflowInDb({ name: 'Customer Support Bot' });
+				const node = createMemoryNode();
+				const sessionKey = `session-${crypto.randomUUID()}`;
+
+				const proxy = await proxyService.getChatMemoryProxy(workflow, node, sessionKey, null, null);
+
+				await proxy.addAIMessage('Hello', []);
+
+				const entries = await memoryRepository.find({ where: { sessionKey } });
+				expect(entries).toHaveLength(1);
+				expect(entries[0].name).toBe('Customer Support Bot');
+			});
+
+			it('should fall back to User/workflow-name when userId is not provided', async () => {
+				const workflow = await createTestWorkflowInDb({ name: 'Test Bot' });
+				const node = createMemoryNode();
+				const sessionKey = `session-${crypto.randomUUID()}`;
+
+				const proxy = await proxyService.getChatMemoryProxy(workflow, node, sessionKey, null, null);
+
+				await proxy.addHumanMessage('Hello');
+				await proxy.addAIMessage('Hi there', []);
+
+				const entries = await memoryRepository.find({
+					where: { sessionKey },
+					order: { createdAt: 'ASC' },
+				});
+				expect(entries).toHaveLength(2);
+				expect(entries[0].name).toBe('User');
+				expect(entries[1].name).toBe('Test Bot');
 			});
 		});
 	});
