@@ -1,8 +1,5 @@
 import { Expression } from './expression';
 import { getGlobalState } from './global-state';
-import { WorkflowDataProxy } from './workflow-data-proxy';
-import { createEmptyRunExecutionData } from './run-execution-data-factory';
-
 import type {
 	IExecuteData,
 	INode,
@@ -15,7 +12,9 @@ import type {
 	WorkflowExecuteMode,
 } from './interfaces';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+import { createEmptyRunExecutionData } from './run-execution-data-factory';
 import type { Workflow } from './workflow';
+import { WorkflowDataProxy } from './workflow-data-proxy';
 
 export class WorkflowExpression {
 	private readonly expression: Expression;
