@@ -10,9 +10,6 @@ import type { Scope } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
-interface ParameterValidationState {
-	displaysIssues?: boolean;
-}
 
 export type ConnectionProjectSummary = { id: string; name: string };
 
@@ -53,7 +50,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const originalSettings = ref<Record<string, IUpdateInformation['value']>>({});
 	const isSaving = ref(false);
 	const didSave = ref(false);
-	const parameterValidationStates = ref<Record<string, ParameterValidationState | null>>({});
+	const parameterValidationStates = ref<Record<string, boolean>>({});
 
 	// Connection composable (low-level API operations)
 	const connection = useSecretsProviderConnection();
@@ -194,9 +191,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	});
 
 	const hasValidationErrors = computed(() => {
-		return Object.values(parameterValidationStates.value).some(
-			(state) => state?.displaysIssues === true,
-		);
+		return Object.values(parameterValidationStates.value).some((isValid) => !isValid);
 	});
 
 	// Normalized settings (only properties that should be displayed)
@@ -291,9 +286,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		el: Element | ComponentPublicInstance | null,
 	) {
 		if (!isComponentPublicInstance(el) || !('displaysIssues' in el)) return;
-		parameterValidationStates.value[propertyName] = {
-			displaysIssues: !!el.displaysIssues,
-		};
+		parameterValidationStates.value[propertyName] = !el.displaysIssues;
 	}
 
 	function hyphenateConnectionName(name: string): string {
