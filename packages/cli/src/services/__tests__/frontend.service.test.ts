@@ -490,7 +490,7 @@ describe('FrontendService', () => {
 				{ name: 'n8n-nodes-base.multi', version: [1, 2] },
 			];
 
-			(loadNodesAndCredentials.collectTypes as jest.Mock).mockResolvedValueOnce({
+			(loadNodesAndCredentials.collectTypes as jest.Mock).mockResolvedValue({
 				nodes: testNodes,
 				credentials: [],
 			});
