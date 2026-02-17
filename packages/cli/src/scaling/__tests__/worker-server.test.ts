@@ -56,6 +56,9 @@ describe('WorkerServer', () => {
 			credentials: {
 				overwrite: { endpoint: '' },
 			},
+			endpoints: {
+				health: '/internal/health',
+			},
 		});
 		jest.restoreAllMocks();
 	});
@@ -116,7 +119,7 @@ describe('WorkerServer', () => {
 
 			await workerServer.init({ health: true, overwrites: true, metrics: true });
 
-			expect(app.get).toHaveBeenCalledWith('/healthz', expect.any(Function));
+			expect(app.get).toHaveBeenCalledWith('/internal/health', expect.any(Function));
 			expect(app.post).toHaveBeenCalledWith(
 				`/${CREDENTIALS_OVERWRITE_ENDPOINT}`,
 				rawBodyReader,
@@ -170,7 +173,7 @@ describe('WorkerServer', () => {
 
 			await workerServer.init({ health: true, overwrites: false, metrics: true });
 
-			expect(app.get).toHaveBeenCalledWith('/healthz', expect.any(Function));
+			expect(app.get).toHaveBeenCalledWith('/internal/health', expect.any(Function));
 			expect(app.post).not.toHaveBeenCalled();
 			expect(prometheusMetricsService.init).toHaveBeenCalledWith(app);
 		});

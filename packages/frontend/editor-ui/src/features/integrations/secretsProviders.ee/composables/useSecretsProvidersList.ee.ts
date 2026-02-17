@@ -5,13 +5,8 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useRBACStore } from '@/app/stores/rbac.store';
 import * as secretsProviderApi from '@n8n/rest-api-client';
-import {
-	mockGetSecretProviderConnections,
-	mockGetSecretProviderTypes,
-} from './useSecretsProviders.mock';
 
-export function useSecretsProvidersList(options?: { useMockApi?: boolean }) {
-	const USE_MOCK_API = options?.useMockApi ?? true;
+export function useSecretsProvidersList() {
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 	const rbacStore = useRBACStore();
@@ -29,13 +24,9 @@ export function useSecretsProvidersList(options?: { useMockApi?: boolean }) {
 	async function fetchProviderTypes() {
 		isLoadingProviderTypes.value = true;
 		try {
-			if (USE_MOCK_API) {
-				providerTypes.value = await mockGetSecretProviderTypes();
-			} else {
-				providerTypes.value = await secretsProviderApi.getSecretProviderTypes(
-					rootStore.restApiContext,
-				);
-			}
+			providerTypes.value = await secretsProviderApi.getSecretProviderTypes(
+				rootStore.restApiContext,
+			);
 		} finally {
 			isLoadingProviderTypes.value = false;
 		}
@@ -48,13 +39,9 @@ export function useSecretsProvidersList(options?: { useMockApi?: boolean }) {
 
 		isLoadingActiveConnections.value = true;
 		try {
-			if (USE_MOCK_API) {
-				activeConnections.value = await mockGetSecretProviderConnections();
-			} else {
-				activeConnections.value = await secretsProviderApi.getSecretProviderConnections(
-					rootStore.restApiContext,
-				);
-			}
+			activeConnections.value = await secretsProviderApi.getSecretProviderConnections(
+				rootStore.restApiContext,
+			);
 		} catch {
 			activeConnections.value = [];
 		} finally {

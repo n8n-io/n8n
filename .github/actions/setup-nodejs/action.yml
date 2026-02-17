@@ -7,19 +7,17 @@ description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply
 
 inputs:
   node-version:
-    description: 'Node.js version to use. Uses latest 22.x by default.'
+    description: 'Node.js version to use. Pinned to 24.13.1 by default for reproducible builds.'
     required: false
-    default: '22.x'
+    default: '24.13.1'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
     default: 'false'
-    type: boolean
   build-command:
     description: 'Command to execute for building the project or an optional command. Leave empty to skip build step.'
     required: false
     default: 'pnpm build'
-    type: string
 
 runs:
   using: 'composite'

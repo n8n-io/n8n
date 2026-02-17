@@ -51,10 +51,14 @@ const hitlForToolsTestConfig = {
 } as const;
 
 test.use(hitlForToolsTestConfig);
-test.describe('HITL for Tools @capability:proxy', () => {
-	test.beforeEach(async ({ n8n, proxyServer }) => {
-		await proxyServer.clearAllExpectations();
-		await proxyServer.loadExpectations('hitl-for-tools');
+test.describe('HITL for Tools @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
+	test.beforeEach(async ({ n8n, services }) => {
+		await services.proxy.clearAllExpectations();
+		await services.proxy.loadExpectations('hitl-for-tools');
 		await n8n.canvas.openNewWorkflow();
 	});
 

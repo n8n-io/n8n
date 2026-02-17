@@ -1,5 +1,13 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import {
+	filterAuthorsOption,
+	filterBranchesOption,
+	filterGroupsOption,
+	filterTagsOption,
+	projectRLC,
+} from './common.descriptions';
+
 export const projectOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -78,36 +86,13 @@ export const projectFields: INodeProperties[] = [
 	//         project:get
 	// ----------------------------------
 	{
-		displayName: 'Project',
-		name: 'projectId',
-		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		required: true,
+		...projectRLC,
 		displayOptions: {
 			show: {
 				resource: ['project'],
 				operation: ['get', 'getInsights'],
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a project...',
-				typeOptions: {
-					searchListMethod: 'getProjects',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				placeholder: 'e.g. abc123',
-			},
-		],
-		description: 'The Currents project',
 	},
 
 	// ----------------------------------
@@ -193,45 +178,9 @@ export const projectFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Authors',
-				name: 'authors',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'authors',
-					},
-				},
-				description: 'Filter by commit author names (comma-separated)',
-			},
-			{
-				displayName: 'Branches',
-				name: 'branches',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'branches',
-					},
-				},
-				description: 'Filter by branch names (comma-separated)',
-			},
-			{
-				displayName: 'Groups',
-				name: 'groups',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'groups',
-					},
-				},
-				description: 'Filter by group names (comma-separated)',
-			},
+			filterAuthorsOption,
+			filterBranchesOption,
+			filterGroupsOption,
 			{
 				displayName: 'Resolution',
 				name: 'resolution',
@@ -250,19 +199,7 @@ export const projectFields: INodeProperties[] = [
 				},
 				description: 'Time resolution for metrics',
 			},
-			{
-				displayName: 'Tags',
-				name: 'tags',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'tags',
-					},
-				},
-				description: 'Filter by tags (comma-separated)',
-			},
+			filterTagsOption,
 		],
 	},
 ];

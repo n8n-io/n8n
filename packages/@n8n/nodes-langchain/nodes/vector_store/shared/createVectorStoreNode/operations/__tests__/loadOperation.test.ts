@@ -9,13 +9,13 @@ import { mock } from 'jest-mock-extended';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { logAiEvent } from '@utils/helpers';
+import { logAiEvent } from '@n8n/ai-utilities';
 
 import type { VectorStoreNodeConstructorArgs } from '../../types';
 import { handleLoadOperation } from '../loadOperation';
 
 // Mock helper functions from external modules
-jest.mock('@utils/helpers', () => ({
+jest.mock('@n8n/ai-utilities', () => ({
 	getMetadataFiltersValues: jest.fn().mockReturnValue({ testFilter: 'value' }),
 	logAiEvent: jest.fn(),
 }));

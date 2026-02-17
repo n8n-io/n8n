@@ -20,7 +20,7 @@ import * as ResponseHelper from '@/response-helper';
 import { RedisClientService } from '@/services/redis-client.service';
 
 export type WorkerServerEndpointsConfig = {
-	/** Whether the `/healthz` endpoint is enabled. */
+	/** Whether the health check endpoint is enabled. */
 	health: boolean;
 
 	/** Whether the [credentials overwrites endpoint](https://docs.n8n.io/embed/configuration/#credential-overwrites) is enabled. */
@@ -102,10 +102,13 @@ export class WorkerServer {
 		const { health, overwrites, metrics } = this.endpointsConfig;
 
 		if (health) {
-			this.app.get('/healthz', async (_, res) => {
+			const healthPath = this.globalConfig.endpoints.health;
+			const readinessPath = `${healthPath}/readiness`;
+
+			this.app.get(healthPath, async (_, res) => {
 				res.send({ status: 'ok' });
 			});
-			this.app.get('/healthz/readiness', async (_, res) => {
+			this.app.get(readinessPath, async (_, res) => {
 				await this.readiness(_, res);
 			});
 		}

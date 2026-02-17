@@ -25,6 +25,7 @@ import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import { N8nAlert } from '@n8n/design-system';
+import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 
 import {
 	N8nButton,
@@ -535,7 +536,7 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
 	selectProjectNameIfMatchesDefault();
 
-	await userRoleProvisioningStore.getProvisioningConfig();
+	await Promise.all([userRoleProvisioningStore.getProvisioningConfig(), rolesStore.fetchRoles()]);
 });
 </script>
 
@@ -549,7 +550,7 @@ onMounted(async () => {
 				</N8nText>
 				<div :class="$style.headerButtons">
 					<N8nButton
-						type="secondary"
+						variant="subtle"
 						native-type="button"
 						:disabled="!isDirty"
 						class="mr-2xs"
@@ -559,7 +560,7 @@ onMounted(async () => {
 					>
 					<N8nButton
 						:disabled="!isValid || !isDirty"
-						type="primary"
+						variant="solid"
 						data-test-id="project-settings-save-button"
 						@click.stop.prevent="onSubmit"
 						>{{ i18n.baseText('projects.settings.button.save') }}</N8nButton
@@ -609,7 +610,10 @@ onMounted(async () => {
 					@validate="isValid = $event"
 				/>
 			</fieldset>
-			<fieldset>
+
+			<ProjectExternalSecrets :class="$style.externalSecrets" />
+
+			<fieldset id="projectMembers">
 				<h3>
 					<label for="projectMembers">{{
 						i18n.baseText('projects.settings.projectMembers')
@@ -668,7 +672,6 @@ onMounted(async () => {
 						@update:options="onUpdateMembersTableOptions"
 						@update:role="onUpdateMemberRole"
 						@action="onMembersListAction"
-						@show-upgrade-dialog="upgradeDialogVisible = true"
 					/>
 				</div>
 			</fieldset>
@@ -678,7 +681,7 @@ onMounted(async () => {
 					i18n.baseText('projects.settings.danger.message')
 				}}</small>
 				<N8nButton
-					type="tertiary"
+					variant="subtle"
 					size="large"
 					native-type="button"
 					data-test-id="project-settings-delete-button"
@@ -755,6 +758,11 @@ onMounted(async () => {
 
 .upgrade {
 	cursor: pointer;
+}
+
+.externalSecrets {
+	max-width: 100%;
+	overflow: hidden;
 }
 
 .membersInputRow {

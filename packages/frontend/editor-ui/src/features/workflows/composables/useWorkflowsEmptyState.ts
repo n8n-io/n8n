@@ -37,7 +37,7 @@ export function useWorkflowsEmptyState() {
 
 	const showRecommendedTemplatesInline = computed(() => {
 		return (
-			recommendedTemplatesStore.isFeatureEnabled() &&
+			recommendedTemplatesStore.isFeatureEnabled &&
 			!readOnlyEnv.value &&
 			projectPermissions.value.workflow.create
 		);

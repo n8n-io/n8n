@@ -179,7 +179,7 @@ describe('GlobalConfig', () => {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
-			indexingEnabled: false,
+			indexingEnabled: true,
 			useWorkflowPublicationService: false,
 		},
 		endpoints: {
@@ -217,6 +217,7 @@ describe('GlobalConfig', () => {
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
+			health: '/healthz',
 		},
 		cache: {
 			backend: 'auto',
@@ -228,6 +229,11 @@ describe('GlobalConfig', () => {
 				prefix: 'cache',
 				ttl: 3600000,
 			},
+		},
+		chatHub: {
+			executionContextTtl: 3600,
+			maxBufferedChunks: 1000,
+			streamStateTtl: 300,
 		},
 		queue: {
 			health: {
@@ -285,6 +291,7 @@ describe('GlobalConfig', () => {
 			deploymentName: '',
 			profilesSampleRate: 0,
 			tracesSampleRate: 0,
+			eventLoopBlockThreshold: 500,
 		},
 		logging: {
 			level: 'info',
@@ -411,6 +418,7 @@ describe('GlobalConfig', () => {
 		ai: {
 			enabled: false,
 			timeout: 3600000,
+			allowSendingParameterValues: true,
 		},
 		workflowHistoryCompaction: {
 			batchDelayMs: 1_000,
@@ -558,6 +566,35 @@ describe('GlobalConfig', () => {
 
 			expect(globalConfig.taskRunners.enabled).toEqual(true);
 			expect(globalConfig.database.type).toEqual('postgresdb');
+		});
+	});
+
+	describe('health endpoint transformation', () => {
+		it('should add leading slash if not present', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: 'healthz',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/healthz');
+		});
+
+		it('should keep leading slash if already present', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: '/custom-health',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/custom-health');
+		});
+
+		it('should add leading slash to paths with multiple segments', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: 'api/v1/health',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/api/v1/health');
 		});
 	});
 });

@@ -223,7 +223,6 @@ export class ActiveWorkflowManager {
 				throw error;
 			}
 		}
-		await this.webhookService.populateCache();
 
 		await this.workflowStaticDataService.saveStaticData(workflow);
 

@@ -898,4 +898,70 @@ describe('ParameterInput.vue', () => {
 			expect(mockBuilderState.trackWorkflowBuilderJourney).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('multi-line string handling', () => {
+		test('should replace all newlines with pipes in single-line string display', async () => {
+			const multiLineValue = 'line1\nline2\nline3';
+			const { container } = renderComponent({
+				props: {
+					path: 'description',
+					parameter: createTestNodeProperties({
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+					}),
+					modelValue: multiLineValue,
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await waitFor(() => {
+				expect(input.value).toBe('line1|line2|line3');
+			});
+		});
+
+		test('should preserve newlines in multi-row textarea', async () => {
+			const multiLineValue = 'line1\nline2\nline3';
+			const { container } = renderComponent({
+				props: {
+					path: 'description',
+					parameter: createTestNodeProperties({
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						typeOptions: { rows: 5 },
+					}),
+					modelValue: multiLineValue,
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await nextTick();
+			const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+			expect(textarea.value).toBe(multiLineValue);
+		});
+
+		test('should handle consecutive newlines correctly', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'test',
+					parameter: createTestNodeProperties({
+						displayName: 'Test',
+						name: 'test',
+						type: 'string',
+					}),
+					modelValue: 'a\n\n\nb',
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await waitFor(() => {
+				expect(input.value).toBe('a|||b');
+			});
+		});
+	});
 });

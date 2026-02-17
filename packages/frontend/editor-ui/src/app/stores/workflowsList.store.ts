@@ -210,11 +210,15 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		removeWorkflow(id);
 	}
 
-	async function archiveWorkflowInList(id: string): Promise<IWorkflowDb> {
+	async function archiveWorkflowInList(
+		id: string,
+		expectedChecksum?: string,
+	): Promise<IWorkflowDb> {
 		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
 			rootStore.restApiContext,
 			'POST',
 			`/workflows/${id}/archive`,
+			{ expectedChecksum },
 		);
 		if (!updatedWorkflow.checksum) {
 			throw new Error('Failed to archive workflow');

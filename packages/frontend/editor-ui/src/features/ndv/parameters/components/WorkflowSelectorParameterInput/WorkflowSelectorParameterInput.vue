@@ -374,13 +374,6 @@ const onAddResourceClicked = async () => {
 					[$style.multipleModes]: true,
 				}"
 			>
-				<div
-					:class="{
-						[$style.background]: true,
-						[$style.backgroundWithIssuesAndShowResourceLink]:
-							showOpenResourceLink && parameterIssues?.length,
-					}"
-				/>
 				<div :class="$style.modeSelector">
 					<N8nSelect
 						:model-value="selectedMode"
@@ -450,10 +443,9 @@ const onAddResourceClicked = async () => {
 									@blur="onInputBlur"
 								>
 									<template v-if="isListMode" #suffix>
-										<i
+										<N8nIcon
+											icon="chevron-down"
 											:class="{
-												['el-input__icon']: true,
-												['el-icon-arrow-down']: true,
 												[$style.selectIcon]: true,
 												[$style.isReverse]: isDropdownVisible,
 											}"

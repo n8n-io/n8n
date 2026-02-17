@@ -7,7 +7,7 @@ import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { N8nStructuredOutputParser } from './N8nStructuredOutputParser';
-import { logAiEvent } from '../helpers';
+import { logAiEvent } from '@n8n/ai-utilities';
 
 export class N8nOutputFixingParser extends BaseOutputParser {
 	lc_namespace = ['langchain', 'output_parsers', 'fix'];

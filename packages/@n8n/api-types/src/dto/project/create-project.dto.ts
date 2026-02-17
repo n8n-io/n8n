@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import { projectIconSchema, projectNameSchema } from '../../schemas/project.schema';
+import { Z } from '../../zod-class';
 
 export class CreateProjectDto extends Z.class({
 	name: projectNameSchema,

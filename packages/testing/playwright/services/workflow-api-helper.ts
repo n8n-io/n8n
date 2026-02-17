@@ -198,6 +198,16 @@ export class WorkflowApiHelper {
 					// Extract HTTP method from webhook node, default to GET
 					webhookMethod = (node.parameters.httpMethod as typeof webhookMethod) ?? 'GET';
 				}
+
+				// Handle MCP Trigger nodes - make their paths unique
+				// Note: webhookId is required for isFullPath: true webhooks to work correctly.
+				// Without it, the webhook path becomes workflowId/nodeName/path instead of just path.
+				if (node.type === '@n8n/n8n-nodes-langchain.mcpTrigger') {
+					const mcpId = nanoid(idLength);
+					const currentPath = (node.parameters.path as string) ?? 'mcp';
+					node.parameters.path = `${currentPath}-${mcpId}`;
+					node.webhookId = mcpId;
+				}
 			}
 		}
 

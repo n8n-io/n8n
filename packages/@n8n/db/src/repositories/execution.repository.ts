@@ -37,7 +37,6 @@ import {
 	migrateRunExecutionData,
 	UnexpectedError,
 } from 'n8n-workflow';
-import * as a from 'node:assert/strict';
 
 import {
 	AnnotationTagEntity,
@@ -62,6 +61,12 @@ class PostgresLiveRowsRetrievalError extends UnexpectedError {
 	constructor(rows: unknown) {
 		super('Failed to retrieve live execution rows in Postgres', { extra: { rows } });
 	}
+}
+
+export interface UpdateExecutionConditions {
+	requireStatus?: ExecutionStatus;
+	requireNotFinished?: boolean;
+	requireNotCanceled?: boolean;
 }
 
 export interface IGetExecutionsQueryFilter {
@@ -361,28 +366,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async setRunning(executionId: string) {
 		const startedAt = new Date();
 
-		return await this.manager.transaction(async (manager) => {
-			// Update status, set startedAt only if not already set (preserves original for resumed executions)
-			await manager
-				.createQueryBuilder()
-				.update(ExecutionEntity)
-				.set({
-					status: 'running',
-					startedAt: () => 'COALESCE(startedAt, :startedAt)',
-				})
-				.setParameter('startedAt', DateUtils.mixedDateToUtcDatetimeString(startedAt))
-				.where('id = :id', { id: executionId })
-				.execute();
+		await this.update({ id: executionId }, { status: 'running', startedAt });
 
-			// Fetch the actual startedAt
-			const { startedAt: actualStartedAt } = await manager.findOneOrFail(ExecutionEntity, {
-				select: ['startedAt'],
-				where: { id: executionId },
-			});
-
-			a.ok(actualStartedAt);
-			return actualStartedAt;
-		});
+		return startedAt;
 	}
 
 	/**
@@ -390,13 +376,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 *
 	 * @param executionId - The ID of the execution to update
 	 * @param execution - Partial execution data to update
-	 * @param requireStatus - Optional status requirement. If provided, update only succeeds if execution has this status
-	 * @returns true if update succeeded, false if no execution was found or requireStatus condition was not met
+	 * @param conditions - Optional conditions that must be met for the update to proceed.
+	 *   `requireStatus`: only update if execution has this exact status.
+	 *   `requireNotFinished`: only update if `finished = false`.
+	 *   `requireNotCanceled`: only update if `status != 'canceled'`.
+	 *   Note: `requireStatus` and `requireNotCanceled` both constrain the `status` column,
+	 *   so combining them is not supported.
+	 * @returns true if update succeeded, false if no rows matched (execution not found or conditions not met)
 	 */
 	async updateExistingExecution(
 		executionId: string,
 		execution: Partial<IExecutionResponse>,
-		requireStatus?: ExecutionStatus,
+		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
 		const {
 			id,
@@ -416,13 +407,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		return await this.manager.transaction(async (tx) => {
 			if (Object.keys(executionInformation).length > 0) {
-				const whereCondition: { id: string; status?: ExecutionStatus } = { id: executionId };
-				if (requireStatus) whereCondition.status = requireStatus;
+				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
+				if (conditions?.requireNotFinished) whereCondition.finished = false;
+				if (conditions?.requireNotCanceled)
+					whereCondition.status = Not('canceled') as FindOperator<ExecutionStatus>;
 
 				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
 				const executionTableAffectedRows = result.affected ?? 0;
 
-				// If requireStatus was set and the update failed, abort the
+				// If conditions were set and the update failed, abort the
 				// transaction early and return false.
 				if (executionTableAffectedRows === 0) {
 					return false;
@@ -829,40 +823,35 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}
 		>,
 	) {
-		return rawExecutionsWithTags.reduce(
-			(
-				acc,
-				{
-					annotation_id: _,
-					annotation_vote: vote,
-					annotation_tags_id: tagId,
-					annotation_tags_name: tagName,
-					...row
-				},
-			) => {
-				const existingExecution = acc.find((e) => e.id === row.id);
+		const summariesById = new Map<string, ExecutionSummary>();
 
-				if (existingExecution) {
-					if (tagId) {
-						existingExecution.annotation = existingExecution.annotation ?? {
-							vote,
-							tags: [] as Array<{ id: string; name: string }>,
-						};
-						existingExecution.annotation.tags.push({ id: tagId, name: tagName });
-					}
-				} else {
-					acc.push({
-						...row,
-						annotation: {
-							vote,
-							tags: tagId ? [{ id: tagId, name: tagName }] : [],
-						},
-					});
-				}
-				return acc;
-			},
-			[] as ExecutionSummary[],
-		);
+		for (const {
+			annotation_id: _,
+			annotation_vote: vote,
+			annotation_tags_id: tagId,
+			annotation_tags_name: tagName,
+			...row
+		} of rawExecutionsWithTags) {
+			let execution = summariesById.get(row.id);
+			if (!execution) {
+				execution = {
+					...row,
+					annotation: {
+						vote,
+						tags: tagId ? [{ id: tagId, name: tagName }] : [],
+					},
+				};
+				summariesById.set(row.id, execution);
+			} else if (tagId) {
+				execution.annotation = execution.annotation ?? {
+					vote,
+					tags: [] as Array<{ id: string; name: string }>,
+				};
+				execution.annotation.tags.push({ id: tagId, name: tagName });
+			}
+		}
+
+		return [...summariesById.values()];
 	}
 
 	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {

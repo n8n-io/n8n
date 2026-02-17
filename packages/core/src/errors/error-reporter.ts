@@ -8,6 +8,8 @@ import { AxiosError } from 'axios';
 import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
+import { Tracing, SentryTracing } from '@/observability';
+
 type SentryIntegration = 'Redis' | 'Postgres' | 'Http' | 'Express';
 
 type ErrorReporterInitOptions = {
@@ -20,6 +22,9 @@ type ErrorReporterInitOptions = {
 
 	/** Whether to enable event loop block detection, if Sentry is enabled. */
 	withEventLoopBlockDetection: boolean;
+
+	/** Threshold in ms for event loop block detection. Only used if `withEventLoopBlockDetection` is true. */
+	eventLoopBlockThreshold?: number;
 
 	/** Sample rate for Sentry traces (0.0 to 1.0). 0 means disabled */
 	tracesSampleRate: number;
@@ -38,6 +43,9 @@ type ErrorReporterInitOptions = {
 	 * whether they are actually enabled or not.
 	 */
 	eligibleIntegrations?: Partial<Record<SentryIntegration, boolean>>;
+
+	/** Health endpoint path */
+	healthEndpoint?: string;
 };
 
 const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
@@ -56,7 +64,10 @@ export class ErrorReporter {
 
 	private beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
 
-	constructor(private readonly logger: Logger) {
+	constructor(
+		private readonly logger: Logger,
+		private readonly tracing: Tracing,
+	) {
 		// eslint-disable-next-line @typescript-eslint/unbound-method
 		this.report = this.defaultReport;
 	}
@@ -102,9 +113,11 @@ export class ErrorReporter {
 		serverName,
 		releaseDate,
 		withEventLoopBlockDetection,
+		eventLoopBlockThreshold,
 		profilesSampleRate,
 		tracesSampleRate,
 		eligibleIntegrations = {},
+		healthEndpoint = '/healthz',
 	}: ErrorReporterInitOptions) {
 		if (inTest) return;
 
@@ -137,8 +150,15 @@ export class ErrorReporter {
 		// Collect longer stacktraces
 		Error.stackTraceLimit = 50;
 
-		const { init, captureException, setTag } = await import('@sentry/node');
-		const { requestDataIntegration, rewriteFramesIntegration } = await import('@sentry/node');
+		const sentry = await import('@sentry/node');
+		const {
+			init,
+			captureException,
+			setTag,
+			setUser,
+			requestDataIntegration,
+			rewriteFramesIntegration,
+		} = sentry;
 
 		// Most of the integrations are listed here:
 		// https://docs.sentry.io/platforms/javascript/guides/node/configuration/integrations/
@@ -156,6 +176,8 @@ export class ErrorReporter {
 			tracingIntegrations
 				.filter((integrationName) => !!eligibleIntegrations[integrationName])
 				.forEach((integrationName) => enabledIntegrations.add(integrationName));
+
+			this.tracing.setTracingImplementation(new SentryTracing(sentry));
 		}
 
 		const isProfilingEnabled = profilesSampleRate > 0;
@@ -166,10 +188,13 @@ export class ErrorReporter {
 		const eventLoopBlockIntegration = withEventLoopBlockDetection
 			? // The EventLoopBlockIntegration doesn't automatically include the
 				// same tags, so we set them explicitly.
-				await this.getEventLoopBlockIntegration({
-					server_name: serverName,
-					server_type: serverType,
-				})
+				await this.getEventLoopBlockIntegration(
+					{
+						server_name: serverName,
+						server_type: serverType,
+					},
+					eventLoopBlockThreshold,
+				)
 			: [];
 
 		const profilingIntegration = isProfilingEnabled ? await this.getProfilingIntegration() : [];
@@ -182,6 +207,8 @@ export class ErrorReporter {
 			...(isTracingEnabled ? { tracesSampleRate } : {}),
 			...(isProfilingEnabled ? { profilesSampleRate, profileLifecycle: 'trace' } : {}),
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
+			ignoreTransactions: [`GET ${healthEndpoint}`, 'GET /metrics'],
+			ignoreSpans: [`GET ${healthEndpoint}`, 'GET /metrics'],
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => enabledIntegrations.has(name)),
 				rewriteFramesIntegration({ root: '/' }),
@@ -200,6 +227,10 @@ export class ErrorReporter {
 		});
 
 		setTag('server_type', serverType);
+
+		if (serverName) {
+			setUser({ id: serverName });
+		}
 
 		this.report = (error, options) => captureException(error, options);
 		this.beforeSendFilter = beforeSendFilter;
@@ -302,11 +333,12 @@ export class ErrorReporter {
 		if (tags) event.tags = { ...event.tags, ...tags };
 	}
 
-	private async getEventLoopBlockIntegration(tags: Record<string, string>) {
+	private async getEventLoopBlockIntegration(tags: Record<string, string>, threshold?: number) {
 		try {
 			const { eventLoopBlockIntegration } = await import('@sentry/node-native');
 			return [
 				eventLoopBlockIntegration({
+					...(threshold ? { threshold } : {}),
 					staticTags: tags,
 				}),
 			];
