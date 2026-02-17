@@ -255,18 +255,19 @@ describe('useWorkflowSetupState', () => {
 			expect(setupCards.value[0].type).toBe('trigger');
 		});
 
-		it('should order credentials first, then standalone triggers', () => {
-			const regularNode = createNode({
-				name: 'Regular',
-				type: 'n8n-nodes-base.regular',
-				position: [0, 0],
-			});
+		it('should sort cards by primary node execution order, interleaving credential and trigger cards', () => {
+			// Trigger comes before regular node in execution order
 			const triggerNode = createNode({
 				name: 'ManualTrigger',
 				type: 'n8n-nodes-base.manualTrigger',
+				position: [0, 0],
+			});
+			const regularNode = createNode({
+				name: 'Regular',
+				type: 'n8n-nodes-base.regular',
 				position: [100, 0],
 			});
-			workflowsStore.allNodes = [regularNode, triggerNode];
+			workflowsStore.allNodes = [triggerNode, regularNode];
 			nodeTypesStore.isTriggerNode = vi.fn(
 				(type: string) => type === 'n8n-nodes-base.manualTrigger',
 			);
@@ -285,10 +286,11 @@ describe('useWorkflowSetupState', () => {
 
 			const { setupCards } = useWorkflowSetupState();
 
-			const credCards = setupCards.value.filter((c) => c.type === 'credential');
-			expect(credCards.length).toBeGreaterThan(0);
-			expect(setupCards.value[0].type).toBe('credential');
-			expect(setupCards.value[setupCards.value.length - 1].type).toBe('trigger');
+			// Trigger card first (ManualTrigger at index 0 in execution order),
+			// then credential card (Regular at index 1)
+			expect(setupCards.value).toHaveLength(2);
+			expect(setupCards.value[0].type).toBe('trigger');
+			expect(setupCards.value[1].type).toBe('credential');
 		});
 
 		it('should exclude disabled nodes', () => {

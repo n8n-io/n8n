@@ -152,7 +152,8 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	});
 
 	/**
-	 * Ordered list of all setup cards: credential-type cards first, then trigger cards.
+	 * Ordered list of all setup cards, sorted by the position of each card's
+	 * primary node (first node / trigger node) in the execution order.
 	 */
 	const setupCards = computed<SetupCardItem[]>(() => {
 		const credentials: SetupCardItem[] = credentialTypeStates.value.map((state) => ({
@@ -163,7 +164,15 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			type: 'trigger' as const,
 			state,
 		}));
-		return [...credentials, ...triggers];
+
+		const executionOrder = nodesRequiringSetup.value.map(({ node }) => node.name);
+		const primaryNodeName = (card: SetupCardItem): string =>
+			card.type === 'trigger' ? card.state.node.name : (card.state.nodes[0]?.name ?? '');
+
+		return [...credentials, ...triggers].sort(
+			(a, b) =>
+				executionOrder.indexOf(primaryNodeName(a)) - executionOrder.indexOf(primaryNodeName(b)),
+		);
 	});
 
 	const totalCredentialsMissing = computed(() => {
