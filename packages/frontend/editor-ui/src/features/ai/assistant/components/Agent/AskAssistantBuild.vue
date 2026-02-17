@@ -4,7 +4,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState } from '@/app/constants';
 import { computed, watch, ref, nextTick, useSlots } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -25,6 +25,7 @@ import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { VIEWS } from '@/app/constants';
 import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useErrorHandler } from '@/app/composables/useErrorHandler';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { jsonParse } from 'n8n-workflow';
@@ -56,7 +57,7 @@ const usersStore = useUsersStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const historyStore = useHistoryStore();
 const collaborationStore = useCollaborationStore();
-const workflowAutosaveStore = useWorkflowAutosaveStore();
+const workflowAutosaveStore = useWorkflowSaveStore();
 const settingsStore = useSettingsStore();
 const telemetry = useTelemetry();
 const slots = useSlots();
@@ -207,10 +208,6 @@ const disabledTooltip = computed(() => {
 		return i18n.baseText('aiAssistant.builder.disabledTooltip.readOnly');
 	}
 	return undefined;
-});
-
-const isPlanModeSelectorDisabled = computed(() => {
-	return builderStore.streaming || isChatInputDisabled.value;
 });
 
 /**
@@ -402,11 +399,11 @@ watch(
 	},
 );
 
-// Reset initial generation flag when streaming ends
+// Reset initial generation flag and fit canvas when streaming ends
 // Note: Saving is handled by auto-save in NodeView.vue
 watch(
 	() => builderStore.streaming,
-	(isStreaming, wasStreaming) => {
+	async (isStreaming, wasStreaming) => {
 		// Only process when streaming just ended (was streaming, now not)
 		if (!wasStreaming || isStreaming) {
 			return;
@@ -414,6 +411,12 @@ watch(
 
 		if (builderStore.initialGeneration && workflowsStore.workflow.nodes.length > 0) {
 			builderStore.initialGeneration = false;
+		}
+
+		// Zoom to fit all nodes after generation completes
+		if (accumulatedNodeIdsToTidyUp.value.length > 0) {
+			await nextTick();
+			canvasEventBus.emit('fitView');
 		}
 	},
 );
@@ -529,13 +532,6 @@ defineExpose({
 					/>
 				</div>
 			</template>
-			<template v-if="builderStore.isPlanModeAvailable" #before-actions>
-				<PlanModeSelector
-					:model-value="builderStore.builderMode"
-					:disabled="isPlanModeSelectorDisabled"
-					@update:model-value="builderStore.setBuilderMode"
-				/>
-			</template>
 			<template #inputHeader>
 				<Transition name="slide">
 					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />
@@ -548,12 +544,13 @@ defineExpose({
 				<BuildModeEmptyState />
 			</template>
 			<template #custom-message="{ message }">
-				<!-- Show questions form only if not yet answered; hide completely when answered -->
+				<!-- Always render questions message; when answered, collapse to intro text only -->
 				<PlanQuestionsMessage
-					v-if="isPlanModeQuestionsMessage(message) && !isQuestionsAnswered(message)"
+					v-if="isPlanModeQuestionsMessage(message)"
 					:questions="message.data.questions"
 					:intro-message="message.data.introMessage"
 					:disabled="builderStore.streaming"
+					:answered="isQuestionsAnswered(message)"
 					@submit="builderStore.resumeWithQuestionsAnswers"
 				/>
 				<PlanDisplayMessage
@@ -600,7 +597,14 @@ defineExpose({
 					@stop="onStop"
 					@upgrade-click="onUpgradeClick"
 					@vue:mounted="registerFocus(() => suggestionsInputRef?.focusInput())"
-				/>
+				>
+					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+						<PlanModeSelector
+							:model-value="builderStore.builderMode"
+							@update:model-value="builderStore.setBuilderMode"
+						/>
+					</template>
+				</ChatInputWithMention>
 			</template>
 			<template #inputPlaceholder>
 				<ChatInputWithMention
@@ -616,7 +620,14 @@ defineExpose({
 					@submit="onCustomInputSubmit"
 					@stop="builderStore.abortStreaming"
 					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
-				/>
+				>
+					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+						<PlanModeSelector
+							:model-value="builderStore.builderMode"
+							@update:model-value="builderStore.setBuilderMode"
+						/>
+					</template>
+				</ChatInputWithMention>
 			</template>
 		</N8nAskAssistantChat>
 	</div>

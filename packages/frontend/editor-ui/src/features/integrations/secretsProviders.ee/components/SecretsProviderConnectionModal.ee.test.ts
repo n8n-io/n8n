@@ -32,6 +32,7 @@ const createMockConnectionData = (overrides: Partial<SecretProviderConnection> =
 // Create the mock object that will be returned
 const mockConnection = {
 	connectionState: { value: 'initializing' },
+	connectionError: { value: undefined },
 	isLoading: { value: false },
 	isTesting: { value: false },
 	getConnection: vi.fn(),
@@ -51,9 +52,11 @@ const mockConnectionModal = {
 	isSaving: { value: false },
 	didSave: { value: false },
 	providerSecretsCount: { value: 0 },
+	providerKey: { value: '' },
 	connection: {
 		isLoading: { value: false },
 		connectionState: { value: 'initializing' },
+		connectionError: { value: undefined },
 	},
 	providerTypeOptions: { value: [] },
 	connectionSettings: { value: {} },
@@ -62,10 +65,10 @@ const mockConnectionModal = {
 	connectionProjects: { value: [] as ConnectionProjectSummary[] },
 	isSharedGlobally: { value: false },
 	canUpdate: { value: true },
+	canDelete: { value: true },
 	canShareGlobally: { value: true },
 	projectIds: { value: [] as string[] },
 	sharedWithProjects: { value: [] as ProjectSharingData[] },
-	hyphenateConnectionName: vi.fn((name) => name),
 	selectProviderType: vi.fn(),
 	updateSettings: vi.fn(),
 	loadConnection: vi.fn(),
@@ -84,7 +87,9 @@ vi.mock('../composables/useConnectionModal.ee', () => ({
 			...mockConnectionModal,
 			isEditMode: { value: isEditMode },
 			connectionName: { value: isEditMode ? 'test-123' : '' },
+			providerKey: { value: isEditMode ? 'test-123' : '' },
 			canUpdate: { value: isEditMode }, // Edit mode requires update permission
+			canDelete: { value: true },
 		};
 	}),
 }));
@@ -114,11 +119,18 @@ const mockProjectsStore = {
 	teamProjects: mockProjects,
 	fetchProject: vi.fn(),
 	getAvailableProjects: vi.fn(),
-	getAllProjects: vi.fn(),
 };
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: vi.fn(() => mockProjectsStore),
+}));
+
+vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
+	useEnvFeatureFlag: vi.fn(() => ({
+		check: {
+			value: vi.fn((flag: string) => flag === 'EXTERNAL_SECRETS_FOR_PROJECTS'),
+		},
+	})),
 }));
 
 const initialState = {
@@ -335,8 +347,8 @@ describe('SecretsProviderConnectionModal', () => {
 
 			await nextTick();
 
-			const errorCallout = container.querySelector('[data-test-id="connection-error-callout"]');
-			expect(errorCallout).toBeInTheDocument();
+			const errorBanner = container.querySelector('[data-test-id="connection-error-banner"]');
+			expect(errorBanner).toBeInTheDocument();
 		});
 	});
 

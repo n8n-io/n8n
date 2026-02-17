@@ -1,7 +1,7 @@
 import type { protos, SecretManagerServiceClient as GcpClient } from '@google-cloud/secret-manager';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { ensureError, jsonParse, type INodeProperties } from 'n8n-workflow';
+import { ensureError, jsonParse, UserError, type INodeProperties } from 'n8n-workflow';
 
 import type {
 	GcpSecretsManagerContext,
@@ -21,7 +21,7 @@ export class GcpSecretsManager extends SecretsProvider {
 		{
 			displayName: 'Service Account Key',
 			name: 'serviceAccountKey',
-			type: 'string',
+			type: 'json',
 			default: '',
 			required: true,
 			typeOptions: { password: true },
@@ -156,13 +156,24 @@ export class GcpSecretsManager extends SecretsProvider {
 		return Object.keys(this.cachedSecrets);
 	}
 
-	private parseSecretAccountKey(privateKey: string): GcpSecretAccountKey {
-		const parsed = jsonParse<RawGcpSecretAccountKey>(privateKey, { fallbackValue: {} });
+	private parseSecretAccountKey(serviceAccountKey: string): GcpSecretAccountKey {
+		const secretAccountKey = jsonParse<RawGcpSecretAccountKey>(serviceAccountKey, {
+			fallbackValue: {},
+		});
+		const clientEmail = secretAccountKey.client_email?.trim();
+		const privateKey = secretAccountKey.private_key?.trim();
+		const projectId = secretAccountKey.project_id?.trim();
+
+		if (!clientEmail || !privateKey) {
+			throw new UserError(
+				'Service account key must contain "client_email" and "private_key" fields. Use the downloaded service account JSON key file from Google Cloud Console.',
+			);
+		}
 
 		return {
-			projectId: parsed?.project_id ?? '',
-			clientEmail: parsed?.client_email ?? '',
-			privateKey: parsed?.private_key ?? '',
+			projectId: projectId ?? '',
+			clientEmail,
+			privateKey,
 		};
 	}
 }

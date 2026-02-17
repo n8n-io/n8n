@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.7.0",
+  "version": "2.9.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -94,7 +94,7 @@
       "@mistralai/mistralai": "^1.10.0",
       "@n8n/typeorm>@sentry/node": "catalog:sentry",
       "@types/node": "^20.17.50",
-      "axios": "1.12.0",
+      "axios": "1.13.5",
       "chokidar": "4.0.3",
       "esbuild": "^0.25.0",
       "expr-eval@2.0.2": "npm:expr-eval-fork@3.0.0",
@@ -126,13 +126,16 @@
       "glob@7": "7.2.3",
       "jws@3": "3.2.2",
       "jws@4": "4.0.1",
-      "qs@6": "6.14.1",
+      "qs@6": "6.14.2",
       "@smithy/config-resolver": ">=4.4.0",
       "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0",
       "diff": "8.0.3",
       "undici@6": "^6.23.0",
       "undici@7": "^7.18.2",
-      "tar": "^7.5.4",
+      "tar": "^7.5.7",
+      "fast-xml-parser@5": "5.3.4",
+      "hono": "4.11.7",
+      "langsmith": ">=0.4.6",
       "lodash-es": "4.17.23"
     },
     "patchedDependencies": {

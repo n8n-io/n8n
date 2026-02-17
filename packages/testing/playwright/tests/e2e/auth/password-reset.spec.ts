@@ -2,7 +2,11 @@ import { test, expect } from '../../../fixtures/base';
 
 test.use({ capability: 'email' });
 
-test('Password reset email is delivered @capability:email', async ({ api, services }) => {
+test('Password reset email is delivered @capability:email', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, async ({ api, services }) => {
 	const ownerEmail = 'nathan@n8n.io';
 	const res = await api.request.post('/rest/forgot-password', {
 		data: { email: ownerEmail },

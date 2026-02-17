@@ -60,6 +60,7 @@ export interface IEnterpriseSettings {
 		};
 	};
 	customRoles: boolean;
+	personalSpacePolicy: boolean;
 }
 
 export interface FrontendSettings {
@@ -75,6 +76,7 @@ export interface FrontendSettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
+	endpointHealth: string;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;

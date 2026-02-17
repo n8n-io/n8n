@@ -78,7 +78,10 @@ const SettingsSourceControl = async () =>
 const SettingsExternalSecrets = async () => {
 	const { check } = useEnvFeatureFlag();
 
-	if (check.value('EXTERNAL_SECRETS_FOR_PROJECTS')) {
+	if (
+		check.value('EXTERNAL_SECRETS_FOR_PROJECTS') ||
+		check.value('EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS')
+	) {
 		return await import(
 			'@/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.ee.vue'
 		);
@@ -685,6 +688,28 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'resolvers',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'project-roles/view/:roleSlug',
+				name: VIEWS.PROJECT_ROLE_VIEW,
+				component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
+				props: true,
+				meta: {
+					middleware: ['authenticated', 'enterprise'],
+					middlewareOptions: {
+						enterprise: {
+							feature: EnterpriseEditionFeature.CustomRoles,
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'project-roles',
 							};
 						},
 					},
