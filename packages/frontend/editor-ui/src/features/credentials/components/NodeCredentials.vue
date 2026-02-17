@@ -194,7 +194,12 @@ watch(
 			allOptions[0],
 		);
 
-		onCredentialSelected(mostRecentCredential.type, mostRecentCredential.id, false, false);
+		onCredentialSelected(
+			mostRecentCredential.type,
+			mostRecentCredential.id,
+			false, // showAuthOptions
+			false, // isUserAction
+		);
 	},
 	{ immediate: true },
 );
