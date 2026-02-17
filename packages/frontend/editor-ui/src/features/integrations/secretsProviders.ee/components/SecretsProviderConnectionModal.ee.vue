@@ -321,14 +321,7 @@ const { width } = useElementSize(nameRef);
 									data-test-id="connection-error-callout"
 								>
 									{{
-										i18n.baseText(
-											'settings.secretsProviderConnections.modal.testConnection.error',
-											{
-												interpolate: {
-													providerName: modal.connectionName.value,
-												},
-											},
-										)
+										i18n.baseText('settings.secretsProviderConnections.modal.testConnection.error')
 									}}
 								</N8nCallout>
 
