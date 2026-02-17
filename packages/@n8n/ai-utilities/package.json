@@ -6,7 +6,6 @@
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
   "scripts": {
-    "example:run": "tsx examples/run.ts",
     "clean": "rimraf dist .turbo",
     "dev": "pnpm run watch",
     "typecheck": "tsc --noEmit",
