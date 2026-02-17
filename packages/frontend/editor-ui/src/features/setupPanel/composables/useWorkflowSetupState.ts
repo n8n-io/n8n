@@ -11,11 +11,8 @@ import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
-import {
-	getNodeCredentialTypes,
-	buildNodeSetupState,
-	sortNodesByExecutionOrder,
-} from '../setupPanel.utils';
+import { getNodeCredentialTypes, buildNodeSetupState } from '../setupPanel.utils';
+import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
