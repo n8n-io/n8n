@@ -222,8 +222,8 @@ export class SecretsProvidersConnectionsService {
 
 	toPublicConnection(connection: SecretsProviderConnection): SecretsProvidersResponses.Connection {
 		const decryptedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
-		const { provider } = this.externalSecretsManager.getProviderWithSettings(connection.type);
-		const redactedSettings = this.redactionService.redact(decryptedSettings, provider.properties);
+		const properties = this.externalSecretsManager.getProviderProperties(connection.type);
+		const redactedSettings = this.redactionService.redact(decryptedSettings, properties);
 		const secretNames = this.externalSecretsManager.getSecretNames(connection.providerKey);
 		const connectionInstance = this.externalSecretsManager.getProvider(connection.providerKey);
 
