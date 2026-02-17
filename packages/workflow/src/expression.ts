@@ -9,7 +9,6 @@ import { isExpression } from './expressions/expression-helpers';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
 import { extendedFunctions } from './extensions/extended-functions';
-import { getGlobalState } from './global-state';
 import type {
 	IDataObject,
 	INodeParameterResourceLocator,
