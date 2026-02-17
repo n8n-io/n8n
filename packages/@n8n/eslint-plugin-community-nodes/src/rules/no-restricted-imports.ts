@@ -14,6 +14,8 @@ const allowedModules = [
 	'zod',
 	'crypto',
 	'node:crypto',
+	'node:stream',
+	'@n8n/ai-node-sdk',
 ];
 
 const isModuleAllowed = (modulePath: string): boolean => {

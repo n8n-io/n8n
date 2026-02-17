@@ -1,5 +1,7 @@
 import { customTemplate } from './declarative/custom/template';
 import { githubIssuesTemplate } from './declarative/github-issues/template';
+import { customChatModelTemplate } from './programmatic/ai/model-ai-custom/template';
+import { openaiChatModelTemplate } from './programmatic/ai/model-openai-compatible/template';
 import { exampleTemplate } from './programmatic/example/template';
 
 export const templates = {
@@ -9,6 +11,8 @@ export const templates = {
 	},
 	programmatic: {
 		example: exampleTemplate,
+		openaiChatModel: openaiChatModelTemplate,
+		customChatModel: customChatModelTemplate,
 	},
 } as const;
 

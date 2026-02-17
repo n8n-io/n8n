@@ -4,7 +4,13 @@ import { camelCase } from 'change-case';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { declarativeTemplatePrompt, nodeNamePrompt, nodeTypePrompt } from './prompts';
+import {
+	chatModelTypePrompt,
+	declarativeTemplatePrompt,
+	nodeNamePrompt,
+	nodeTypePrompt,
+	programmaticNodeTypePrompt,
+} from './prompts';
 import { createIntro } from './utils';
 import type { TemplateData, TemplateWithRun } from '../../template/core';
 import { getTemplate, isTemplateName, isTemplateType, templates } from '../../template/templates';
@@ -33,7 +39,13 @@ export default class New extends Command {
 		}),
 		'skip-install': Flags.boolean({ description: 'Skip installing dependencies' }),
 		template: Flags.string({
-			options: ['declarative/github-issues', 'declarative/custom', 'programmatic/example'] as const,
+			options: [
+				'declarative/github-issues',
+				'declarative/custom',
+				'programmatic/example',
+				'programmatic/openai-chat-model',
+				'programmatic/custom-chat-model',
+			] as const,
 		}),
 	};
 
@@ -77,10 +89,26 @@ export default class New extends Command {
 		} else if (type === 'declarative') {
 			const chosenTemplate = await declarativeTemplatePrompt();
 			template = getTemplate('declarative', chosenTemplate) as TemplateWithRun;
+		} else if (type === 'programmatic') {
+			const programmaticNodeType = await programmaticNodeTypePrompt();
+
+			if (programmaticNodeType === 'basic') {
+				template = templates.programmatic.example;
+			} else if (programmaticNodeType === 'chatModel') {
+				const chatModelType = await chatModelTypePrompt();
+				if (chatModelType === 'openaiCompatible') {
+					template = templates.programmatic.openaiChatModel as TemplateWithRun;
+				} else if (chatModelType === 'custom') {
+					template = templates.programmatic.customChatModel as TemplateWithRun;
+				}
+			} else if (programmaticNodeType === 'chatMemory') {
+				return onCancel('Chat Memory nodes are not yet implemented');
+			}
 		}
 
 		const config = (await template.prompts?.()) ?? {};
-		const packageManager = (await detectPackageManager()) ?? 'npm';
+		// const packageManager = (await detectPackageManager()) ?? 'npm';
+		const packageManager: 'npm' | 'yarn' | 'pnpm' = 'pnpm';
 		const templateData: TemplateData = {
 			destinationPath: destination,
 			nodePackageName: nodeName,
@@ -88,7 +116,7 @@ export default class New extends Command {
 			user: tryReadGitUser(),
 			packageManager: {
 				name: packageManager,
-				installCommand: packageManager === 'npm' ? 'ci' : 'install',
+				installCommand: (packageManager as string) === 'npm' ? 'ci' : 'install',
 			},
 		};
 		const copyingSpinner = spinner();
@@ -123,6 +151,15 @@ export default class New extends Command {
 			installingSpinner.start('Installing dependencies');
 
 			try {
+				await delayAtLeast(
+					runCommand(packageManager, ['link', '@n8n/ai-node-sdk'], {
+						cwd: destination,
+						printOutput: ({ stdout, stderr }) => {
+							log.error(stdout.concat(stderr).toString());
+						},
+					}),
+					1000,
+				);
 				await delayAtLeast(
 					runCommand(packageManager, ['install'], {
 						cwd: destination,
