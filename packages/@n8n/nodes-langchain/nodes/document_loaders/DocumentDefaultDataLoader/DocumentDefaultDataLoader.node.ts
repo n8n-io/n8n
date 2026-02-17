@@ -63,7 +63,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 			},
 		},
 
-		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
+		inputs: `={{ ((parameter) => { ${getInputs.toString().replace(/\}\}/g, '} }')}; return getInputs(parameter) })($parameter) }}`,
 
 		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],

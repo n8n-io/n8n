@@ -26,7 +26,7 @@ export class AgentToolV2 implements INodeType {
 			},
 			inputs: `={{
 				((hasOutputParser, needsFallback) => {
-					${getInputs.toString()};
+					${getInputs.toString().replace(/\}\}/g, '} }')};
 					return getInputs(false, hasOutputParser, needsFallback)
 				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true, $parameter.needsFallback !== undefined && $parameter.needsFallback === true)
 			}}`,

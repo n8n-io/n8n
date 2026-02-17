@@ -278,7 +278,7 @@ export class AgentV1 implements INodeType {
 			},
 			inputs: `={{
 				((agent, hasOutputParser) => {
-					${getInputs.toString()};
+					${getInputs.toString().replace(/\}\}/g, '} }')};
 					return getInputs(agent, hasOutputParser)
 				})($parameter.agent, $parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true)
 			}}`,

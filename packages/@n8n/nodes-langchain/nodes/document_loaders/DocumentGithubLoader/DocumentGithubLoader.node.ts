@@ -63,7 +63,7 @@ export class DocumentGithubLoader implements INodeType {
 			},
 		],
 
-		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
+		inputs: `={{ ((parameter) => { ${getInputs.toString().replace(/\}\}/g, '} }')}; return getInputs(parameter) })($parameter) }}`,
 		inputNames: ['Text Splitter'],
 
 		outputs: [NodeConnectionTypes.AiDocument],
