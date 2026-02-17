@@ -450,7 +450,8 @@ div[class*='info'] > span > span:last-child {
 
 <style lang="scss" scoped>
 .settings-usage-and-plan {
-	:deep(.el-dialog__wrapper) {
+	:deep(.el-overlay-dialog) {
+		color: red;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -459,9 +460,9 @@ div[class*='info'] > span > span:last-child {
 			margin: 0;
 
 			.el-dialog__footer {
-				button {
-					margin-left: var(--spacing--xs);
-				}
+				display: flex;
+				justify-content: flex-end;
+				gap: var(--spacing--2xs);
 			}
 		}
 	}
