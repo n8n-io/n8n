@@ -83,6 +83,8 @@ export interface JanitorConfig {
 		testCommand: string;
 		/** Number of Playwright workers. Always appended to test command. @default 1 */
 		workerCount?: number;
+		/** Allowlist of permitted test commands. When set, --test-command must match. */
+		allowedTestCommands?: string[];
 	};
 }
 

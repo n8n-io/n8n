@@ -331,6 +331,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		data: ICredentialsDecrypted,
 		projectId?: string,
 		uiContext?: string,
+		options?: { skipStoreUpdate?: boolean },
 	): Promise<ICredentialsResponse> => {
 		const settingsStore = useSettingsStore();
 		const credential = await credentialsApi.createNewCredential(rootStore.restApiContext, {
@@ -347,16 +348,18 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			credential.homeProject = data.homeProject as ProjectSharingData;
 		}
 
-		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
-			upsertCredential(credential);
-			if (data.sharedWithProjects) {
-				await setCredentialSharedWith({
-					credentialId: credential.id,
-					sharedWithProjects: data.sharedWithProjects,
-				});
+		if (!options?.skipStoreUpdate) {
+			if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
+				upsertCredential(credential);
+				if (data.sharedWithProjects) {
+					await setCredentialSharedWith({
+						credentialId: credential.id,
+						sharedWithProjects: data.sharedWithProjects,
+					});
+				}
+			} else {
+				upsertCredential(credential);
 			}
-		} else {
-			upsertCredential(credential);
 		}
 		return credential;
 	};

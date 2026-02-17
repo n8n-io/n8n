@@ -67,7 +67,6 @@ const mockConnectionModal = {
 	canShareGlobally: { value: true },
 	projectIds: { value: [] as string[] },
 	sharedWithProjects: { value: [] as ProjectSharingData[] },
-	hyphenateConnectionName: vi.fn((name) => name),
 	selectProviderType: vi.fn(),
 	updateSettings: vi.fn(),
 	loadConnection: vi.fn(),
@@ -122,6 +121,14 @@ const mockProjectsStore = {
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: vi.fn(() => mockProjectsStore),
+}));
+
+vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
+	useEnvFeatureFlag: vi.fn(() => ({
+		check: {
+			value: vi.fn((flag: string) => flag === 'EXTERNAL_SECRETS_FOR_PROJECTS'),
+		},
+	})),
 }));
 
 const initialState = {

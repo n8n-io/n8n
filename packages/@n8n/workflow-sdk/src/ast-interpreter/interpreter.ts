@@ -17,6 +17,7 @@ import {
 	validateMemberExpression,
 	validateIdentifier,
 	isAllowedSDKFunction,
+	isAutoRenameableSDKFunction,
 	isAllowedMethod,
 	getSafeJSONMethod,
 	getSafeStringMethod,
@@ -36,12 +37,24 @@ export type SDKFunctions = Record<string, (...args: any[]) => unknown>;
 class SDKInterpreter {
 	private sdkFunctions: Map<string, (...args: unknown[]) => unknown>;
 	private variables: Map<string, unknown>;
+	private renamedVariables: Map<string, string> = new Map();
 	private sourceCode: string;
 
 	constructor(sdkFunctions: SDKFunctions, sourceCode: string) {
 		this.sdkFunctions = new Map(Object.entries(sdkFunctions));
 		this.variables = new Map();
 		this.sourceCode = sourceCode;
+	}
+
+	private generateSafeName(name: string): string {
+		const base = 'my' + name.charAt(0).toUpperCase() + name.slice(1);
+		let candidate = base;
+		let counter = 1;
+		while (this.variables.has(candidate) || this.sdkFunctions.has(candidate)) {
+			candidate = `${base}${counter}`;
+			counter++;
+		}
+		return candidate;
 	}
 
 	/**
@@ -96,6 +109,14 @@ class SDKInterpreter {
 
 			// Check for SDK function name collisions
 			if (isAllowedSDKFunction(name)) {
+				if (isAutoRenameableSDKFunction(name)) {
+					// Auto-rename subnode variables that collide with SDK function names
+					const safeName = this.generateSafeName(name);
+					const value = declarator.init ? this.evaluate(declarator.init) : undefined;
+					this.renamedVariables.set(name, safeName);
+					this.variables.set(safeName, value);
+					continue;
+				}
 				throw new SecurityError(
 					`'${name}' is a reserved SDK function name and cannot be used as a variable name. ` +
 						`Use a different name like 'my${name.charAt(0).toUpperCase() + name.slice(1)}'.`,
@@ -142,6 +163,8 @@ class SDKInterpreter {
 				return this.visitLogicalExpression(node);
 			case 'ConditionalExpression':
 				return this.visitConditionalExpression(node);
+			case 'AssignmentExpression':
+				return this.visitAssignmentExpression(node);
 			default:
 				throw new UnsupportedNodeError(node.type, node.loc ?? undefined, this.sourceCode);
 		}
@@ -163,11 +186,14 @@ class SDKInterpreter {
 
 			if (this.sdkFunctions.has(name)) {
 				func = this.sdkFunctions.get(name);
-			} else if (this.variables.has(name)) {
-				// Could be calling a variable that holds a function
-				func = this.variables.get(name);
 			} else {
-				throw new UnknownIdentifierError(name, node.callee.loc ?? undefined, this.sourceCode);
+				// Check variables, including auto-renamed ones
+				const resolvedName = this.renamedVariables.get(name) ?? name;
+				if (this.variables.has(resolvedName)) {
+					func = this.variables.get(resolvedName);
+				} else {
+					throw new UnknownIdentifierError(name, node.callee.loc ?? undefined, this.sourceCode);
+				}
 			}
 		} else if (node.callee.type === 'MemberExpression') {
 			// Method call: wf.add(...), node.to(...), etc.
@@ -368,9 +394,10 @@ class SDKInterpreter {
 		// Check for dangerous globals
 		validateIdentifier(name, this.getVariableNames(), node, this.sourceCode);
 
-		// Check if it's a declared variable
-		if (this.variables.has(name)) {
-			return this.variables.get(name);
+		// Check if it's a declared variable (including auto-renamed ones)
+		const resolvedName = this.renamedVariables.get(name) ?? name;
+		if (this.variables.has(resolvedName)) {
+			return this.variables.get(resolvedName);
 		}
 
 		// Check if it's an SDK function
@@ -561,6 +588,9 @@ class SDKInterpreter {
 
 		switch (node.operator) {
 			case '+':
+				if (typeof left === 'string' || typeof right === 'string') {
+					return String(left) + String(right);
+				}
 				return (left as number) + (right as number);
 			case '-':
 				return (left as number) - (right as number);
@@ -628,6 +658,65 @@ class SDKInterpreter {
 	private visitConditionalExpression(node: ESTree.ConditionalExpression): unknown {
 		const test = this.evaluate(node.test);
 		return test ? this.evaluate(node.consequent) : this.evaluate(node.alternate);
+	}
+
+	/**
+	 * Visit an assignment expression.
+	 * Only allows simple property assignment (obj.prop = value).
+	 */
+	private visitAssignmentExpression(node: ESTree.AssignmentExpression): unknown {
+		if (node.operator !== '=') {
+			throw new UnsupportedNodeError(
+				`Assignment operator '${node.operator}' is not allowed. Only '=' is permitted.`,
+				node.loc ?? undefined,
+				this.sourceCode,
+			);
+		}
+
+		if (node.left.type !== 'MemberExpression') {
+			throw new UnsupportedNodeError(
+				'Only property assignment (e.g., obj.prop = value) is allowed. Variable reassignment is not permitted.',
+				node.loc ?? undefined,
+				this.sourceCode,
+			);
+		}
+
+		validateMemberExpression(node.left, this.sourceCode);
+
+		if (node.left.object.type === 'Super') {
+			throw new UnsupportedNodeError(
+				'super keyword is not supported in SDK code',
+				node.left.object.loc ?? undefined,
+				this.sourceCode,
+			);
+		}
+
+		const obj = this.evaluate(node.left.object);
+
+		if (obj === null || obj === undefined) {
+			throw new InterpreterError(
+				`Cannot assign property on ${String(obj)}`,
+				node.loc ?? undefined,
+				this.sourceCode,
+			);
+		}
+
+		let propName: string | number;
+		if (node.left.property.type === 'Identifier' && !node.left.computed) {
+			propName = node.left.property.name;
+		} else if (node.left.property.type === 'Literal') {
+			propName = node.left.property.value as string | number;
+		} else {
+			throw new UnsupportedNodeError(
+				'Dynamic property assignment',
+				node.left.property.loc ?? undefined,
+				this.sourceCode,
+			);
+		}
+
+		const value = this.evaluate(node.right);
+		(obj as Record<string | number, unknown>)[propName] = value;
+		return value;
 	}
 
 	/**
