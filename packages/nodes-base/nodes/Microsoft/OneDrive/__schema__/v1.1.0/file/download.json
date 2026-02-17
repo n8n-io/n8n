@@ -1,27 +1,30 @@
 {
     "type": "object",
     "properties": {
-        "_createTime": {
-            "type": "string"
-        },
-        "_id": {
-            "type": "string"
-        },
-        "_name": {
-            "type": "string"
-        },
-        "_updateTime": {
-            "type": "string"
-        },
-        "createTime": {
+        "createdDateTime": {
             "type": "string"
         },
         "id": {
             "type": "string"
         },
-        "updateTime": {
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "mimeType": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "path": {
+            "type": "string"
+        },
+        "size": {
+            "type": "integer"
+        },
+        "webUrl": {
             "type": "string"
         }
     },
-    "version": 4
+    "version": 1
 }
