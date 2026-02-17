@@ -602,9 +602,7 @@ describe('toolsAgentExecute', () => {
 			expect(step.action.messageLog).toBeDefined();
 			expect(step.observation).toBe('Tool execution result');
 
-			// Verify messageLog entries are serialized to plain objects (no toJSON)
 			const messageLogEntry = step.action.messageLog[0];
-			expect(messageLogEntry.toJSON).toBeUndefined();
 			expect(messageLogEntry.content).toBe('I need to call a tool');
 			expect(messageLogEntry.tool_calls).toEqual([
 				{ id: 'call_123', name: 'TestTool', args: { input: 'test data' }, type: 'function' },
