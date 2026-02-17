@@ -37,6 +37,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import Banner from '@/app/components/Banner.vue';
 
 // Props
 const props = withDefaults(
@@ -314,16 +315,16 @@ const { width } = useElementSize(nameRef);
 									</div>
 								</N8nCallout>
 
-								<N8nCallout
+								<Banner
 									v-else-if="modal.connection.connectionState.value === 'error'"
-									theme="danger"
 									class="mb-l"
-									data-test-id="connection-error-callout"
-								>
-									{{
+									data-test-id="connection-error-banner"
+									theme="danger"
+									:message="
 										i18n.baseText('settings.secretsProviderConnections.modal.testConnection.error')
-									}}
-								</N8nCallout>
+									"
+									:details="modal.connection.connectionError.value"
+								/>
 
 								<!-- Provider Name Input -->
 								<div class="mb-l">
