@@ -14,7 +14,6 @@ import {
 	groupCredentialsByType,
 	isCredentialCardComplete,
 	buildTriggerSetupState,
-	sortCredentialTypeStates,
 } from '../setupPanel.utils';
 
 /**
@@ -53,7 +52,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 	/**
 	 * All non-disabled nodes that either have credential requirements or are triggers.
-	 * Sorted with triggers first, then by X position.
+	 * Sorted by X position (left-to-right on the canvas).
 	 */
 	const nodesRequiringSetup = computed(() => {
 		const nodesForSetup = sourceNodes.value
@@ -65,10 +64,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			}))
 			.filter(({ credentialTypes, isTrigger }) => credentialTypes.length > 0 || isTrigger);
 
-		return nodesForSetup.sort(
-			(a, b) =>
-				Number(b.isTrigger) - Number(a.isTrigger) || a.node.position[0] - b.node.position[0],
-		);
+		return nodesForSetup.sort((a, b) => a.node.position[0] - b.node.position[0]);
 	});
 
 	/**
@@ -90,7 +86,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 	/**
 	 * Credential type states — one entry per unique credential type.
-	 * Sorted by leftmost node X position.
+	 * Ordered by leftmost node X position (inherited from nodesWithCredentials iteration order).
 	 * Cards with embedded triggers have isComplete recomputed to include trigger execution.
 	 */
 	const credentialTypeStates = computed(() => {
@@ -102,12 +98,11 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			getCredentialDisplayName,
 			isGenericAuthType,
 		);
-		const sorted = sortCredentialTypeStates(grouped);
 		// Only the workflow's first trigger (leftmost) can be executed from setup cards.
 		// It gets an embedded execute button and affects card completion.
 		// Other triggers are treated as regular nodes (credentials only, no execute).
 		const isTriggerNodeType = (nodeType: string) => nodeTypesStore.isTriggerNode(nodeType);
-		return sorted.map((state) => {
+		return grouped.map((state) => {
 			const embeddedTrigger = state.nodes.find(
 				(node) => isTriggerNode(node) && node.name === firstTriggerName.value,
 			);

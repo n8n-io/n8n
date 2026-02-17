@@ -170,16 +170,3 @@ export function buildTriggerSetupState(
 		isComplete: allCredentialsComplete && hasTriggerExecuted,
 	};
 }
-
-/**
- * Sorts credential type states by the leftmost X position of any node that uses them.
- */
-export function sortCredentialTypeStates(
-	states: CredentialTypeSetupState[],
-): CredentialTypeSetupState[] {
-	return [...states].sort((a, b) => {
-		const aMinX = Math.min(...a.nodes.map((node) => node.position[0]));
-		const bMinX = Math.min(...b.nodes.map((node) => node.position[0]));
-		return aMinX - bMinX;
-	});
-}

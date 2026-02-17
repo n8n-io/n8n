@@ -8,7 +8,6 @@ import {
 	groupCredentialsByType,
 	isCredentialCardComplete,
 	buildTriggerSetupState,
-	sortCredentialTypeStates,
 } from './setupPanel.utils';
 import type { CredentialTypeSetupState, NodeCredentialRequirement } from './setupPanel.types';
 
@@ -636,104 +635,6 @@ describe('setupPanel.utils', () => {
 			const result = buildTriggerSetupState(node, ['unknownApi'], [], true);
 
 			expect(result.isComplete).toBe(true);
-		});
-	});
-
-	describe('sortCredentialTypeStates', () => {
-		it('should sort by the leftmost node X position in each group', () => {
-			const nodeA = createNode({ name: 'NodeA', position: [300, 0] });
-			const nodeB = createNode({ name: 'NodeB', position: [100, 0] });
-			const nodeC = createNode({ name: 'NodeC', position: [200, 0] });
-
-			const states: CredentialTypeSetupState[] = [
-				{
-					credentialType: 'apiA',
-					credentialDisplayName: 'A',
-					issues: [],
-					nodes: [nodeA],
-					isComplete: true,
-					isGenericAuth: false,
-				},
-				{
-					credentialType: 'apiB',
-					credentialDisplayName: 'B',
-					issues: [],
-					nodes: [nodeB],
-					isComplete: true,
-					isGenericAuth: false,
-				},
-				{
-					credentialType: 'apiC',
-					credentialDisplayName: 'C',
-					issues: [],
-					nodes: [nodeC],
-					isComplete: true,
-					isGenericAuth: false,
-				},
-			];
-
-			const result = sortCredentialTypeStates(states);
-
-			expect(result.map((s) => s.credentialType)).toEqual(['apiB', 'apiC', 'apiA']);
-		});
-
-		it('should use the minimum X position when a group has multiple nodes', () => {
-			const nodeA = createNode({ name: 'NodeA', position: [500, 0] });
-			const nodeB = createNode({ name: 'NodeB', position: [50, 0] });
-			const nodeC = createNode({ name: 'NodeC', position: [200, 0] });
-
-			const states: CredentialTypeSetupState[] = [
-				{
-					credentialType: 'apiX',
-					credentialDisplayName: 'X',
-					issues: [],
-					nodes: [nodeA, nodeB],
-					isComplete: true,
-					isGenericAuth: false,
-				},
-				{
-					credentialType: 'apiY',
-					credentialDisplayName: 'Y',
-					issues: [],
-					nodes: [nodeC],
-					isComplete: true,
-					isGenericAuth: false,
-				},
-			];
-
-			const result = sortCredentialTypeStates(states);
-
-			// apiX min is 50 (NodeB), apiY min is 200 (NodeC) -> apiX first
-			expect(result.map((s) => s.credentialType)).toEqual(['apiX', 'apiY']);
-		});
-
-		it('should not mutate the original array', () => {
-			const nodeA = createNode({ name: 'NodeA', position: [100, 0] });
-			const nodeB = createNode({ name: 'NodeB', position: [200, 0] });
-
-			const states: CredentialTypeSetupState[] = [
-				{
-					credentialType: 'apiB',
-					credentialDisplayName: 'B',
-					issues: [],
-					nodes: [nodeB],
-					isComplete: true,
-					isGenericAuth: false,
-				},
-				{
-					credentialType: 'apiA',
-					credentialDisplayName: 'A',
-					issues: [],
-					nodes: [nodeA],
-					isComplete: true,
-					isGenericAuth: false,
-				},
-			];
-
-			const result = sortCredentialTypeStates(states);
-
-			expect(result).not.toBe(states);
-			expect(states[0].credentialType).toBe('apiB');
 		});
 	});
 });
