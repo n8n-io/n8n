@@ -280,6 +280,29 @@ describe('ExportService', () => {
 
 			await expect(exportService.exportEntities(outputDir)).rejects.toThrow('Permission denied');
 		});
+
+		it('should skip non-existent tables', async () => {
+			const outputDir = '/test/output';
+
+			// Mock queries: migrations fails, User table fails (not found), Workflow table succeeds (empty)
+			jest
+				.mocked(mockDataSource.query)
+				.mockImplementationOnce(async (query: string) => {
+					if (query.includes('migrations')) throw new Error('Table not found');
+					return [];
+				})
+				.mockRejectedValueOnce(new Error('relation "user" does not exist')) // User table fails
+				.mockResolvedValueOnce([]); // Workflow table succeeds
+
+			await exportService.exportEntities(outputDir);
+
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				expect.stringContaining('Skipping table: user (User) as it does not exist'),
+			);
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				expect.stringContaining('Completed export for workflow_entity'),
+			);
+		});
 	});
 
 	describe('clearExistingEntityFiles', () => {
