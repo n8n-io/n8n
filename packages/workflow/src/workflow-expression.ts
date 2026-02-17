@@ -1,4 +1,5 @@
 import { Expression } from './expression';
+import { getGlobalState } from './global-state';
 import { WorkflowDataProxy } from './workflow-data-proxy';
 import { createEmptyRunExecutionData } from './run-execution-data-factory';
 
@@ -20,7 +21,8 @@ export class WorkflowExpression {
 	private readonly expression: Expression;
 
 	constructor(private readonly workflow: Workflow) {
-		this.expression = new Expression(this.workflow);
+		const timezone = workflow.settings?.timezone ?? getGlobalState().defaultTimezone;
+		this.expression = new Expression(timezone);
 	}
 
 	/**

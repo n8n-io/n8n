@@ -18,8 +18,6 @@ import type {
 	NodeParameterValue,
 	NodeParameterValueType,
 } from './interfaces';
-import type { Workflow } from './workflow';
-
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&
 	Object.keys(process).length === 1 &&
@@ -170,7 +168,7 @@ const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T =
 };
 
 export class Expression {
-	constructor(private readonly workflow: Workflow) {}
+	constructor(private readonly timezone: string) {}
 
 	static initializeGlobalContext(data: IDataObject) {
 		/**
@@ -333,7 +331,7 @@ export class Expression {
 		if (value instanceof Date) {
 			// We don't want to use JSON.stringify for dates since it disregards workflow timezone
 			result = DateTime.fromJSDate(value, {
-				zone: this.workflow.settings?.timezone ?? getGlobalState().defaultTimezone,
+				zone: this.timezone,
 			}).toISO();
 		} else if (DateTime.isDateTime(value)) {
 			result = value.toString();

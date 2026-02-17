@@ -15,6 +15,18 @@ import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 import { Expression } from '../src/expression';
 
 describe('Expression', () => {
+	describe('constructor', () => {
+		it('should accept timezone string', () => {
+			const expression = new Expression('America/New_York');
+			expect(expression).toBeInstanceOf(Expression);
+		});
+
+		it('should accept UTC timezone', () => {
+			const expression = new Expression('UTC');
+			expect(expression).toBeInstanceOf(Expression);
+		});
+	});
+
 	describe('getParameterValue()', () => {
 		const nodeTypes = Helpers.NodeTypes();
 		const workflow = new Workflow({
@@ -605,7 +617,8 @@ describe('Expression', () => {
 			const data = dataProxy.getDataProxy();
 
 			// Test Expression with new API
-			const expression = new Expression(workflow);
+			const timezone = workflow.settings?.timezone ?? 'UTC';
+			const expression = new Expression(timezone);
 			const result = expression.resolveSimpleParameterValue('={{ $json.value * 2 }}', data, false);
 
 			expect(result).toBe(84);
@@ -644,7 +657,8 @@ describe('Expression', () => {
 			);
 			const data = dataProxy.getDataProxy();
 
-			const expression = new Expression(workflow);
+			const timezone = workflow.settings?.timezone ?? 'UTC';
+			const expression = new Expression(timezone);
 
 			// Non-expression value should be returned as-is
 			expect(expression.resolveSimpleParameterValue('plain string', data, false)).toBe(
@@ -689,7 +703,8 @@ describe('Expression', () => {
 			);
 			const data = dataProxy.getDataProxy();
 
-			const expression = new Expression(workflow);
+			const timezone = workflow.settings?.timezone ?? 'UTC';
+			const expression = new Expression(timezone);
 			const result = expression.getParameterValue('={{ $json.text.toUpperCase() }}', data, false);
 
 			expect(result).toBe('HELLO');
@@ -728,7 +743,8 @@ describe('Expression', () => {
 			);
 			const data = dataProxy.getDataProxy();
 
-			const expression = new Expression(workflow);
+			const timezone = workflow.settings?.timezone ?? 'UTC';
+			const expression = new Expression(timezone);
 			const result = expression.getParameterValue(
 				{
 					sum: '={{ $json.a + $json.b }}',
