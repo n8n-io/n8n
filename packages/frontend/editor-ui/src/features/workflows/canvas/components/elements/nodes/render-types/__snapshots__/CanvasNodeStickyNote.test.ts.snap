@@ -18,11 +18,11 @@ exports[`CanvasNodeStickyNote > should render node correctly 1`] = `
     </div>
   </div>
   <div class="sticky-textarea" style="display: none;">
-    <div class="n8n-input inputContainer large">
+    <div class="n8n-input inputContainer large isTextarea">
       <!-- Prepend slot (outside input container, before) -->
       <!--v-if-->
       <!-- Input wrapper (holds border, contains prefix/input/suffix) -->
-      <div class="inputWrapper">
+      <div class="inputWrapper isTextarea">
         <!-- Prefix slot -->
         <!--v-if-->
         <!-- Input element -->

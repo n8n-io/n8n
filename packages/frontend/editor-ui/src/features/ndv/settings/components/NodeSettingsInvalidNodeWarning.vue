@@ -16,6 +16,7 @@ import { computed, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 import ContactAdministratorToInstall from '@/features/settings/communityNodes/components/ContactAdministratorToInstall.vue';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
 const { node, previewMode = false } = defineProps<{ node: INodeUi; previewMode?: boolean }>();
 
@@ -35,6 +36,8 @@ const isVerifiedCommunityNode = computed(
 );
 const npmPackage = computed(() => removePreviewToken(node.type.split('.')[0]));
 const isOwner = computed(() => usersStore.isInstanceOwner);
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => getQuickConnectOptionByPackageName(npmPackage.value));
 
 const { installNode, loading } = useInstallNode();
 
@@ -65,6 +68,10 @@ async function onInstallClick() {
 			type: 'verified',
 			packageName: npmPackage.value,
 			nodeType: node.type,
+			telemetry: {
+				source: 'missing node modal source',
+				hasQuickConnect: quickConnect.value !== undefined,
+			},
 		});
 	} else {
 		uiStore.openModalWithData({
@@ -109,9 +116,9 @@ watch(isNodeDefined, () => {
 			</I18nT>
 			<div v-if="isOwner" :class="$style.communityNodeActionsContainer">
 				<N8nButton
+					variant="solid"
 					v-if="isOwner"
 					icon="hard-drive-download"
-					type="primary"
 					data-test-id="install-community-node-button"
 					:loading="loading"
 					:disabled="loading"
@@ -120,8 +127,8 @@ watch(isNodeDefined, () => {
 					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installButton.label') }}
 				</N8nButton>
 				<N8nButton
+					variant="subtle"
 					icon="external-link"
-					type="secondary"
 					@click="onViewDetailsClick"
 					data-test-id="view-details-button"
 				>

@@ -3,8 +3,9 @@ const fs = require('fs');
 const path = require('path');
 
 function copyTokenizerJsonFiles(baseDir) {
+	const targetBaseDir = process.argv[3] || 'dist';
 	// Make sure the target directory exists
-	const targetDir = path.resolve(baseDir, 'dist', 'utils', 'tokenizer');
+	const targetDir = path.resolve(baseDir, targetBaseDir, 'utils', 'tokenizer');
 	if (!fs.existsSync(targetDir)) {
 		fs.mkdirSync(targetDir, { recursive: true });
 	}
@@ -12,7 +13,7 @@ function copyTokenizerJsonFiles(baseDir) {
 	const files = glob.sync('src/utils/tokenizer/*.json', { cwd: baseDir });
 	for (const file of files) {
 		const sourcePath = path.resolve(baseDir, file);
-		const targetPath = path.resolve(baseDir, 'dist', file.replace('src/', ''));
+		const targetPath = path.resolve(baseDir, targetBaseDir, file.replace('src/', ''));
 		fs.copyFileSync(sourcePath, targetPath);
 		console.log(`Copied: ${file} -> ${targetPath.replace(baseDir, '')}`);
 	}

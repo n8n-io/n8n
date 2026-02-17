@@ -4,7 +4,11 @@ import { ChatHubPersonalAgentsPage } from '../../../pages/ChatHubPersonalAgentsP
 
 test.use(chatHubTestConfig);
 
-test.describe('Personal agent @capability:proxy', () => {
+test.describe('Personal agent @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'Chat' },
+	],
+}, () => {
 	test('create personal agent and start conversation @auth:owner', async ({
 		n8n,
 		anthropicCredential: _,

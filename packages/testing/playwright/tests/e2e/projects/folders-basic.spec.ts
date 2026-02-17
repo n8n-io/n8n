@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Folders - Basic Operations', () => {
+test.describe('Folders - Basic Operations', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	const FOLDER_CREATED_NOTIFICATION = 'Folder created';
 	test('should create folder from the workflows page using addResource dropdown', async ({
 		n8n,

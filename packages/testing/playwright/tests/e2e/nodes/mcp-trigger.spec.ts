@@ -14,7 +14,11 @@ import type { McpSession } from '../../../services/mcp-api-helper';
  * - Error handling
  */
 
-test.describe('MCP Trigger Node', () => {
+test.describe('MCP Trigger Node', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
 	test.describe('Streamable HTTP Transport', () => {
 		test('should initialize session and return mcp-session-id', async ({ api }) => {
 			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(

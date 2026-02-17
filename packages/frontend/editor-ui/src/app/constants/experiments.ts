@@ -59,6 +59,12 @@ export const EXECUTION_LOGIC_V2_EXPERIMENT = {
 
 export const TAMPER_PROOF_INVITE_LINKS = createExperiment('061_tamper_proof_invite_links');
 
+export const EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT = createExperiment(
+	'063_empty_state_builder_prompt',
+);
+
+export const FOCUSED_NODES_EXPERIMENT = createExperiment('064_focused_nodes');
+
 export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_0', {
 	control: 'control',
 	variantResources: 'variant-resources',
@@ -77,11 +83,13 @@ export const SETUP_PANEL = createExperiment('069_setup_panel', {
 	variant: 'variant',
 });
 
-export const QUICK_CONNECT_EXPERIMENT = {
-	name: '073_quick_connect',
+export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_workflow_builder', {
 	control: 'control',
-	variant: 'variant',
-};
+	codeNoPinData: 'code-no-pin-data',
+	codePinData: 'code-pin-data',
+});
+
+export const QUICK_CONNECT_EXPERIMENT = createExperiment('073_quick_connect');
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
@@ -99,4 +107,8 @@ export const EXPERIMENTS_TO_TRACK = [
 	SIDEBAR_EXPANDED_EXPERIMENT.name,
 	EMPTY_STATE_EXPERIMENT.name,
 	SETUP_PANEL.name,
+	CODE_WORKFLOW_BUILDER_EXPERIMENT.name,
+	EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT.name,
+	FOCUSED_NODES_EXPERIMENT.name,
+	QUICK_CONNECT_EXPERIMENT.name,
 ];
