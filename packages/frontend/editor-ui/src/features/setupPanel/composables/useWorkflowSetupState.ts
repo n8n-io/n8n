@@ -13,6 +13,7 @@ import { useI18n } from '@n8n/i18n';
 
 import { getNodeCredentialTypes, buildNodeSetupState } from '../setupPanel.utils';
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
+import { HTTP_REQUEST_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -152,6 +153,13 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			);
 
 			if (needsThisCredential) {
+				// For HTTP Request nodes, only auto-assign if the URL matches
+				if (state.node.type === HTTP_REQUEST_NODE_TYPE) {
+					const sourceUrl = (node.parameters?.url as string) ?? '';
+					const targetUrl = (state.node.parameters?.url as string) ?? '';
+					if (sourceUrl !== targetUrl) continue;
+				}
+
 				const targetNode = workflowsStore.getNodeByName(state.node.name);
 				if (targetNode) {
 					workflowState.updateNodeProperties({

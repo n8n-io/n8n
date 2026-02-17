@@ -742,6 +742,121 @@ describe('useWorkflowSetupState', () => {
 			);
 		});
 
+		it('should auto-assign credential to HTTP Request nodes with the same URL', () => {
+			const node1 = createNode({
+				name: 'HTTP1',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [0, 0],
+				parameters: { url: 'https://api.example.com' },
+			});
+			const node2 = createNode({
+				name: 'HTTP2',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [100, 0],
+				parameters: { url: 'https://api.example.com' },
+			});
+			workflowsStore.allNodes = [node1, node2];
+			workflowsStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP1') return node1;
+				if (name === 'HTTP2') return node2;
+				return null;
+			});
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
+				id: 'cred-1',
+				name: 'My Header Auth',
+			});
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				displayName: 'Header Auth',
+			});
+
+			const { setCredential } = useWorkflowSetupState();
+			setCredential('HTTP1', 'httpHeaderAuth', 'cred-1');
+
+			expect(mockUpdateNodeProperties).toHaveBeenCalledTimes(2);
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'HTTP2' }),
+			);
+			expect(mockShowMessage).toHaveBeenCalled();
+		});
+
+		it('should NOT auto-assign credential to HTTP Request nodes with different URLs', () => {
+			const node1 = createNode({
+				name: 'HTTP1',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [0, 0],
+				parameters: { url: 'https://api.example.com' },
+			});
+			const node2 = createNode({
+				name: 'HTTP2',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [100, 0],
+				parameters: { url: 'https://other-api.example.com' },
+			});
+			workflowsStore.allNodes = [node1, node2];
+			workflowsStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP1') return node1;
+				if (name === 'HTTP2') return node2;
+				return null;
+			});
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
+				id: 'cred-1',
+				name: 'My Header Auth',
+			});
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				displayName: 'Header Auth',
+			});
+
+			const { setCredential } = useWorkflowSetupState();
+			setCredential('HTTP1', 'httpHeaderAuth', 'cred-1');
+
+			// Should only update HTTP1, not HTTP2 (different URL)
+			expect(mockUpdateNodeProperties).toHaveBeenCalledTimes(1);
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'HTTP1' }),
+			);
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it('should still auto-assign to non-HTTP-Request nodes regardless of URL', () => {
+			const httpNode = createNode({
+				name: 'HTTP1',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [0, 0],
+				parameters: { url: 'https://api.example.com' },
+			});
+			const regularNode = createNode({
+				name: 'RegularNode',
+				type: 'n8n-nodes-base.testNode',
+				position: [100, 0],
+			});
+			workflowsStore.allNodes = [httpNode, regularNode];
+			workflowsStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP1') return httpNode;
+				if (name === 'RegularNode') return regularNode;
+				return null;
+			});
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
+				id: 'cred-1',
+				name: 'My Header Auth',
+			});
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				displayName: 'Header Auth',
+			});
+
+			const { setCredential } = useWorkflowSetupState();
+			setCredential('HTTP1', 'httpHeaderAuth', 'cred-1');
+
+			// Should update both - regular node is not an HTTP Request, so URL check doesn't apply
+			expect(mockUpdateNodeProperties).toHaveBeenCalledTimes(2);
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'RegularNode' }),
+			);
+			expect(mockShowMessage).toHaveBeenCalled();
+		});
+
 		it('should not auto-assign to nodes that already have the credential set', () => {
 			const node1 = createNode({ name: 'OpenAI1', position: [0, 0] });
 			const node2 = createNode({
