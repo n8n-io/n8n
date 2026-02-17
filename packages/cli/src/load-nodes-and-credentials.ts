@@ -113,12 +113,9 @@ export class LoadNodesAndCredentials {
 	}
 
 	/**
-	 * Returns a snapshot copy of the current node and credential types.
+	 * Returns the current node and credential types.
 	 * If types have been released from memory, re-runs postProcessLoaders to
 	 * repopulate them first, then releases after snapshotting.
-	 *
-	 * When called during post-processing (types already populated), returns a
-	 * snapshot without releasing — other post-processors may still need the types.
 	 *
 	 * WARNING: Holding types in memory is very consuming. Use sparingly and only
 	 * where the caller genuinely needs its own copy (e.g. the AI workflow builder
