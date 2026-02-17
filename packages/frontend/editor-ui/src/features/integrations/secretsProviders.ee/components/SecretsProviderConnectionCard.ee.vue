@@ -102,7 +102,7 @@ const actionDropdownOptions = computed(() => {
 		});
 	}
 
-	if (provider.value.state !== 'error') {
+	if (provider.value.state === 'connected') {
 		options.push({
 			label: i18n.baseText('settings.externalSecrets.card.actionDropdown.reload'),
 			value: 'reload',
