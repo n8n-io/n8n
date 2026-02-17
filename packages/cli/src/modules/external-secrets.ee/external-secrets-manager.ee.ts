@@ -153,23 +153,23 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		this.broadcastReload();
 	}
 
-	async updateProvider(provider: string): Promise<void> {
-		const providerInstance = this.providerRegistry.get(provider);
+	async updateProvider(providerKey: string): Promise<void> {
+		const providerInstance = this.providerRegistry.get(providerKey);
 
 		if (!providerInstance) {
-			throw new NotFoundError(`Provider "${provider}" not found`);
+			throw new NotFoundError(`Provider "${providerKey}" not found`);
 		}
 
 		if (providerInstance.state !== 'connected') {
-			throw new UnexpectedError(`Provider "${provider}" is not connected`);
+			throw new UnexpectedError(`Provider "${providerKey}" is not connected`);
 		}
 
 		await providerInstance.update();
 		this.broadcastReload();
-		this.logger.debug(`Updated provider ${provider}`);
+		this.logger.debug(`Updated provider ${providerKey}`);
 
 		this.eventService.emit('external-secrets-provider-reloaded', {
-			vaultType: provider,
+			vaultType: providerKey,
 		});
 	}
 
@@ -281,7 +281,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 	@OnPubSubEvent('reload-external-secrets-providers')
 	async reloadAllProviders(): Promise<void> {
-		if (this.config.externalSecretsForProjects) {
+		if (this.config.externalSecretsForProjects || this.config.externalSecretsMultipleConnections) {
 			await this.reloadProvidersFromConnectionsRepo();
 			return;
 		}

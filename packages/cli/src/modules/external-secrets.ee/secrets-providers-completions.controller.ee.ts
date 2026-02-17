@@ -21,15 +21,32 @@ export class SecretProvidersCompletionsController {
 	}
 
 	@Middleware()
-	checkFeatureFlag(_req: Request, res: Response, next: NextFunction) {
-		if (!this.config.externalSecretsForProjects) {
-			this.logger.warn('External secrets for projects feature is not enabled');
-			sendErrorResponse(
-				res,
-				new ForbiddenError('External secrets for projects feature is not enabled'),
-			);
-			return;
+	checkFeatureFlag(req: Request, res: Response, next: NextFunction) {
+		const path = req.path;
+
+		if (path.startsWith('/secrets/global')) {
+			const hasAccess =
+				this.config.externalSecretsMultipleConnections || this.config.externalSecretsForProjects;
+
+			if (!hasAccess) {
+				this.logger.warn('External secrets multiple connections feature is not enabled');
+				sendErrorResponse(
+					res,
+					new ForbiddenError('External secrets multiple connections feature is not enabled'),
+				);
+				return;
+			}
+		} else if (path.startsWith('/secrets/project/')) {
+			if (!this.config.externalSecretsForProjects) {
+				this.logger.warn('External secrets for projects feature is not enabled');
+				sendErrorResponse(
+					res,
+					new ForbiddenError('External secrets for projects feature is not enabled'),
+				);
+				return;
+			}
 		}
+
 		next();
 	}
 
