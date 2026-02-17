@@ -291,9 +291,6 @@ export const postgresMigrations: Migration[] = [
 	ExpandSubjectIDColumnLength1769784356000,
 	AddWorkflowUnpublishScopeToCustomRoles1769900001000,
 	CreateChatHubToolsTable1770000000000,
-<<<<<<< HEAD
 	CreateWorkflowBuilderSessionTable1770220686000,
-=======
 	ExpandProviderIdColumnLength1770000000000,
->>>>>>> b97fe12ba204008c193513e2fe336c7ec118f054
 ];
