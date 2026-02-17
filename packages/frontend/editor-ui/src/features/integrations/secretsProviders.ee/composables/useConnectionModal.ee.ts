@@ -293,48 +293,20 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		initializeSettings(provider);
 	}
 
-	/**
-	 * Tests connection and shows appropriate toast feedback
-	 * Does not throw - connection save is considered successful even if test fails
-	 */
-	async function testAndShowFeedback(key: string): Promise<void> {
-		await connection.testConnection(key);
-
-		if (connection.connectionState.value === 'connected') {
-			toast.showMessage({
-				title: i18n.baseText(
-					'settings.secretsProviderConnections.modal.testConnection.success.title',
-				),
-				message: i18n.baseText(
-					'settings.secretsProviderConnections.modal.testConnection.success.description',
-					{
-						interpolate: { providerName: connectionName.value },
-					},
-				),
-				type: 'success',
-			});
-		} else {
-			toast.showError(
-				new Error(i18n.baseText('generic.error')),
-				i18n.baseText('generic.error'),
-				i18n.baseText(
-					'settings.secretsProviderConnections.modal.testConnection.error.serviceDisabled',
-				),
-			);
-		}
-	}
-
 	async function loadConnection() {
 		if (!providerKey.value) return;
 
 		try {
-			const { name, type, settings, projects } = await connection.getConnection(providerKey.value);
+			const { name, type, settings, projects, secretsCount } = await connection.getConnection(
+				providerKey.value,
+			);
 
 			connectionName.value = name;
 			originalConnectionName.value = name;
 			connectionNameBlurred.value = true;
 			connectionSettings.value = { ...settings };
 			originalSettings.value = { ...settings };
+			providerSecretsCount.value = secretsCount;
 
 			connectionProjects.value = projects ?? [];
 			projectIds.value = (projects ?? []).map((p) => p.id);
@@ -381,7 +353,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 		// Test connection automatically after creation
 		if (providerKey.value) {
-			await testAndShowFeedback(providerKey.value);
+			await connection.testConnection(providerKey.value);
 		}
 
 		return true;
@@ -418,7 +390,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 		// Test connection only if settings changed (not just scope/sharing)
 		if (hasSettingsChanges && providerKey.value) {
-			await testAndShowFeedback(providerKey.value);
+			await connection.testConnection(providerKey.value);
 		}
 
 		return true;
