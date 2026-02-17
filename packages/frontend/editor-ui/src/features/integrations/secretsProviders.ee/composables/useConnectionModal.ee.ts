@@ -10,7 +10,7 @@ import type { Scope } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
-interface ParameterInputRef {
+interface ParameterValidationState {
 	displaysIssues?: boolean;
 }
 
@@ -53,7 +53,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const originalSettings = ref<Record<string, IUpdateInformation['value']>>({});
 	const isSaving = ref(false);
 	const didSave = ref(false);
-	const parameterInputRefs = ref<Record<string, ParameterInputRef | null>>({});
+	const parameterValidationStates = ref<Record<string, ParameterValidationState | null>>({});
 
 	// Connection composable (low-level API operations)
 	const connection = useSecretsProviderConnection();
@@ -194,8 +194,8 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	});
 
 	const hasValidationErrors = computed(() => {
-		return Object.values(parameterInputRefs.value).some(
-			(inputRef) => inputRef?.displaysIssues === true,
+		return Object.values(parameterValidationStates.value).some(
+			(state) => state?.displaysIssues === true,
 		);
 	});
 
@@ -252,7 +252,6 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		const hasPermission = isEditMode.value ? canUpdate.value : canCreate.value;
 		if (!hasPermission) return false;
 
-		// Check for validation errors (e.g., invalid JSON in password fields)
 		if (hasValidationErrors.value) return false;
 
 		return (
@@ -287,12 +286,12 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		};
 	}
 
-	function setParameterInputRef(
+	function setParameterValidationState(
 		propertyName: string,
 		el: Element | ComponentPublicInstance | null,
 	) {
 		if (!isComponentPublicInstance(el) || !('displaysIssues' in el)) return;
-		parameterInputRefs.value[propertyName] = {
+		parameterValidationStates.value[propertyName] = {
 			displaysIssues: !!el.displaysIssues,
 		};
 	}
@@ -558,6 +557,6 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		loadConnection,
 		saveConnection,
 		shouldDisplayProperty,
-		setParameterInputRef,
+		setParameterValidationState,
 	};
 }

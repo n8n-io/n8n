@@ -391,7 +391,7 @@ const { width } = useElementSize(nameRef);
 									<N8nNotice v-if="property.type === 'notice'" :content="property.displayName" />
 									<ParameterInputExpanded
 										v-else
-										:ref="(el) => modal.setParameterInputRef(property.name, el)"
+										:ref="(el) => modal.setParameterValidationState(property.name, el)"
 										class="mb-l"
 										:parameter="property"
 										:value="modal.connectionSettings.value[property.name]"
