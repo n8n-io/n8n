@@ -1115,23 +1115,33 @@ export function getNodeInputs(
 
 	// Calculate the outputs dynamically
 	try {
+		const isAgent = node.type?.includes('agent') || node.type?.includes('Agent');
+		if (isAgent) {
+			const inputsStr =
+				typeof nodeTypeData.inputs === 'string' ? nodeTypeData.inputs : 'NOT-STRING';
+			console.log(
+				`[CI-DIAG2] node=${node.name} inputsType=${typeof nodeTypeData.inputs} inputsLen=${inputsStr.length} first200=${inputsStr.substring(0, 200)}`,
+			);
+			console.log(
+				`[CI-DIAG2] node=${node.name} params=${JSON.stringify(node.parameters)?.substring(0, 300)}`,
+			);
+		}
 		const result = workflow.expression.getSimpleParameterValue(
 			node,
 			nodeTypeData.inputs,
 			'internal',
 			{},
 		);
-		if (node.type?.includes('agent') || node.type?.includes('Agent')) {
+		if (isAgent) {
 			console.log(
-				`[CI-DIAG-INPUTS] node=${node.name} type=${node.type} result=${JSON.stringify(result)?.substring(0, 500)}`,
+				`[CI-DIAG2] node=${node.name} resultType=${typeof result} result=${JSON.stringify(result)?.substring(0, 500)}`,
 			);
 		}
 		return (result || []) as NodeConnectionType[];
 	} catch (e) {
-		if (node.type?.includes('agent') || node.type?.includes('Agent')) {
-			console.log(
-				`[CI-DIAG-INPUTS] CATCH node=${node.name} type=${node.type} error=${String(e).substring(0, 300)}`,
-			);
+		const isAgent = node.type?.includes('agent') || node.type?.includes('Agent');
+		if (isAgent) {
+			console.log(`[CI-DIAG2] CATCH node=${node.name} error=${String(e).substring(0, 500)}`);
 		}
 		console.warn('Could not calculate inputs dynamically for node: ', node.name);
 		return [];
