@@ -90,6 +90,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				variant="solid"
 				:class="$style.button"
 				:loading="executing"
+				:iconOnly="executing"
 				:disabled="disabled"
 				:size="size ?? 'large'"
 				icon="flask-conical"
@@ -174,6 +175,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 .chevron {
 	width: 40px;
+	height: var(--spacing--2xl);
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
 }

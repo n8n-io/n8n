@@ -20,6 +20,7 @@ export type StrapiCommunityNodeType = {
 	companyName?: string;
 	nodeDescription: INodeTypeDescription;
 	nodeVersions?: Array<{ npmVersion: string; checksum: string }>;
+	aiNodeSdkVersion?: number;
 };
 
 export type CommunityNodesMetadata = Pick<
@@ -39,10 +40,12 @@ function getUrl(environment: 'staging' | 'production'): string {
 export async function getCommunityNodeTypes(
 	environment: 'staging' | 'production',
 	qs: { filters?: StrapiFilters; fields?: string[] } = {},
+	aiNodeSdkVersion: number,
 ): Promise<StrapiCommunityNodeType[]> {
 	const url = getUrl(environment);
 	const params = {
 		...qs,
+		includeAiNodesSdkVersion: aiNodeSdkVersion,
 		pagination: {
 			page: 1,
 			pageSize: 25,
@@ -53,10 +56,12 @@ export async function getCommunityNodeTypes(
 
 export async function getCommunityNodesMetadata(
 	environment: 'staging' | 'production',
+	aiNodeSdkVersion: number,
 ): Promise<CommunityNodesMetadata[]> {
 	const url = getUrl(environment);
 	const params = {
 		fields: ['npmVersion', 'name', 'updatedAt'],
+		includeAiNodesSdkVersion: aiNodeSdkVersion,
 		pagination: {
 			page: 1,
 			pageSize: 500,

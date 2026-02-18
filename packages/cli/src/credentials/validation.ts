@@ -140,6 +140,7 @@ export async function validateAccessToReferencedSecretProviders(
 	projectId: string,
 	data: ICredentialDataDecryptedObject,
 	externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
+	source: 'create' | 'update' | 'transfer',
 ) {
 	const secretPaths = getAllKeyPaths(data, '', [], containsExternalSecretExpression);
 	if (secretPaths.length === 0) {
@@ -198,11 +199,13 @@ export async function validateAccessToReferencedSecretProviders(
 		const formatCredentialPropertyList = (properties: string[]): string => {
 			return properties.map((f) => `"${f}"`).join(', ');
 		};
+		const errorMessageSuffix =
+			source === 'transfer' ? 'in the destination project' : 'in this project';
 		if (inaccessibleProviders.size === 1) {
 			const [providerKey, credentialProperties] = Array.from(inaccessibleProviders.entries())[0];
 			const credentialPropertyList = formatCredentialPropertyList(credentialProperties);
 			throw new BadRequestError(
-				`The secret provider "${providerKey}" used in ${credentialPropertyList} does not exist in this project`,
+				`The secret provider "${providerKey}" used in ${credentialPropertyList} does not exist ${errorMessageSuffix}`,
 			);
 		} else {
 			const providerDetails = Array.from(inaccessibleProviders.entries())
@@ -212,7 +215,7 @@ export async function validateAccessToReferencedSecretProviders(
 				})
 				.join(', ');
 			throw new BadRequestError(
-				`The secret providers ${providerDetails} do not exist in this project`,
+				`The secret providers ${providerDetails} do not exist ${errorMessageSuffix}`,
 			);
 		}
 	}
