@@ -84,7 +84,7 @@ describe('AddScalingFieldsToTestRun Migration', () => {
 			is_nullable: string;
 			column_default: string | null;
 		}> = await context.queryRunner.query(
-			`SELECT column_name, is_nullable, column_default FROM information_schema.columns WHERE table_name = $1 AND column_name = $2`,
+			'SELECT column_name, is_nullable, column_default FROM information_schema.columns WHERE table_name = $1 AND column_name = $2',
 			[`${context.tablePrefix}test_run`, columnName],
 		);
 		return rows[0];
@@ -127,10 +127,11 @@ describe('AddScalingFieldsToTestRun Migration', () => {
 
 			const postContext = createTestMigrationContext(dataSource);
 			const tableName = postContext.escape.tableName('test_run');
-			const rows = await postContext.runQuery(
-				`SELECT * FROM ${tableName} WHERE ${postContext.escape.columnName('id')} = :id`,
-				{ id: testRunId },
-			);
+			const rows: Array<{ runningInstanceId: string | null; cancelRequested: boolean | null }> =
+				await postContext.runQuery(
+					`SELECT * FROM ${tableName} WHERE ${postContext.escape.columnName('id')} = :id`,
+					{ id: testRunId },
+				);
 			expect(rows[0].runningInstanceId).toBeNull();
 			expect(Boolean(rows[0].cancelRequested)).toBe(false);
 
