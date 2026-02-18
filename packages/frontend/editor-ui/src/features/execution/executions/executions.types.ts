@@ -66,6 +66,7 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 export interface IExecutionPushResponse {
 	executionId?: string;
 	waitingForWebhook?: boolean;
+	token?: string;
 }
 
 export interface IExecutionResponse extends IExecutionBase {

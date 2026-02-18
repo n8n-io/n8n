@@ -333,7 +333,13 @@ describe('handleHostedChatResponse', () => {
 		const responseMode = 'hostedChat';
 
 		(res.send as jest.Mock).mockImplementation((data) => {
-			expect(data).toEqual({ executionStarted: true, executionId });
+			expect(data).toEqual({
+				executionStarted: true,
+				executionId,
+				token: expect.any(String),
+			});
+			// Token is a JWT with 3 parts separated by dots
+			expect(data.token.split('.')).toHaveLength(3);
 		});
 
 		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);

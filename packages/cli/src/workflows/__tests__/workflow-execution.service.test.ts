@@ -78,6 +78,7 @@ const secondHackerNewsNode: INode = {
 describe('WorkflowExecutionService', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRunner = mock<WorkflowRunner>();
+	const mockChatTokenService = { generateToken: jest.fn().mockReturnValue('mock-token') };
 	const workflowExecutionService = new WorkflowExecutionService(
 		mock(),
 		mock(),
@@ -90,6 +91,7 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		mock(),
 		mock(),
+		mockChatTokenService as any,
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
@@ -155,7 +157,7 @@ describe('WorkflowExecutionService', () => {
 				userId,
 				dirtyNodeNames: runPayload.dirtyNodeNames,
 			});
-			expect(result).toEqual({ executionId });
+			expect(result).toEqual({ executionId, token: 'mock-token' });
 		});
 
 		test('removes runData if the destination node is a trigger', async () => {
@@ -188,7 +190,7 @@ describe('WorkflowExecutionService', () => {
 				workflowData: runPayload.workflowData,
 				userId,
 			});
-			expect(result).toEqual({ executionId });
+			expect(result).toEqual({ executionId, token: 'mock-token' });
 		});
 
 		test('should start from pinned trigger', async () => {
@@ -248,7 +250,7 @@ describe('WorkflowExecutionService', () => {
 				userId,
 				triggerToStartFrom: { name: pinnedTrigger.name },
 			});
-			expect(result).toEqual({ executionId });
+			expect(result).toEqual({ executionId, token: 'mock-token' });
 		});
 
 		test('should ignore pinned trigger and start from unexecuted trigger', async () => {
@@ -304,7 +306,7 @@ describe('WorkflowExecutionService', () => {
 				// pass unexecuted trigger to start from
 				triggerToStartFrom: runPayload.triggerToStartFrom,
 			});
-			expect(result).toEqual({ executionId });
+			expect(result).toEqual({ executionId, token: 'mock-token' });
 		});
 
 		test('should drop runData when triggerToStartFrom is present and execute as full known-trigger run', async () => {
@@ -369,7 +371,7 @@ describe('WorkflowExecutionService', () => {
 			expect(callArgs.workflowData.active).toBe(false);
 			expect(callArgs.workflowData.activeVersionId).toBe(null);
 			expect(callArgs.executionMode).toBe('manual');
-			expect(result).toEqual({ executionId });
+			expect(result).toEqual({ executionId, token: 'mock-token' });
 		});
 
 		test('should pass workflowIsActive to testWebhooks.needsWebhook', async () => {
@@ -409,6 +411,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mockChatTokenService as any,
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -590,6 +593,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mock(),
+				{ generateToken: jest.fn().mockReturnValue('mock-token') } as any,
 			);
 		});
 
@@ -735,6 +739,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mock(),
+				{ generateToken: jest.fn().mockReturnValue('mock-token') } as any,
 			);
 
 			await service.executeErrorWorkflow(
