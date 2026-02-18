@@ -14,7 +14,7 @@ import {
 	buildSimplifiedExecutionContext,
 	buildWorkflowSummary,
 } from '../utils/context-builders';
-import { summarizeCoordinationLog } from '../utils/coordination-log';
+import { getCurrentTurnEntries, summarizeCoordinationLog } from '../utils/coordination-log';
 import type { ChatPayload } from '../workflow-builder-agent';
 
 const ROUTING_OPTIONS_WITH_ASSISTANT = ['responder', 'discovery', 'builder', 'assistant'] as const;
@@ -94,9 +94,10 @@ export class SupervisorAgent {
 			contextParts.push('</workflow_summary>');
 		}
 
-		if (context.coordinationLog.length > 0) {
+		const currentTurnLog = getCurrentTurnEntries(context.coordinationLog);
+		if (currentTurnLog.length > 0) {
 			contextParts.push('<completed_phases>');
-			contextParts.push(summarizeCoordinationLog(context.coordinationLog));
+			contextParts.push(summarizeCoordinationLog(currentTurnLog));
 			contextParts.push('</completed_phases>');
 		}
 
