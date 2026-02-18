@@ -22,6 +22,7 @@ pnpm test
 pnpm dev
 ```
 
+
 ## Usage
 
-For public SDK documentation and examples on building AI nodes, see `@n8n/ai-node-sdk`.
+For public SDK documentation see `@n8n/ai-node-sdk`.

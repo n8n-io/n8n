@@ -14,7 +14,6 @@
 		"./*": "./*"
 	},
 	"scripts": {
-		"example:run": "tsx examples/run.ts",
 		"clean": "rimraf dist .turbo",
 		"dev": "pnpm watch",
 		"typecheck": "tsc --noEmit",
@@ -25,7 +24,7 @@
 		"lint:fix": "eslint . --fix",
 		"watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
 		"test": "jest --passWithNoTests",
-		"test:unit": "jest",
+		"test:unit": "jest --passWithNoTests",
 		"test:dev": "jest --watch"
 	},
 	"files": [
