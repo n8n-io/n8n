@@ -41,18 +41,20 @@ describe('QuickConnectService', () => {
 		type: 'testCredentialType',
 	};
 
-	const createMockOption = (overrides: Partial<QuickConnectOption> = {}): QuickConnectOption => ({
-		packageName: '@n8n/test-package',
-		credentialType: 'testCredentialType',
-		text: 'Test Quick connect',
-		quickConnectType: 'backend',
-		serviceName: 'Test Service',
-		consentText: 'Allow access?',
-		backendFlowConfig: {
-			secret: 'test-secret',
-		},
-		...overrides,
-	});
+	const createMockOption = (overrides: Partial<QuickConnectOption> = {}): QuickConnectOption =>
+		// @ts-expect-error default values overrides for test scenario produce TS error
+		({
+			packageName: '@n8n/test-package',
+			credentialType: 'testCredentialType',
+			text: 'Test Quick connect',
+			quickConnectType: 'backend',
+			serviceName: 'Test Service',
+			consentText: 'Allow access?',
+			backendFlowConfig: {
+				secret: 'test-secret',
+			},
+			...overrides,
+		});
 
 	const createMockHandler = (
 		credentialType: string,
