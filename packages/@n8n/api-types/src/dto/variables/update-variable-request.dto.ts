@@ -4,7 +4,7 @@ import { VARIABLE_KEY_MAX_LENGTH, variableTypeSchema, variableValueSchema } from
 import { Z } from '../../zod-class';
 
 /**
- * Please not that on the CreateVariableRequestDto we have made this regex
+ * Please note that on the CreateVariableRequestDto we have made this regex
  * stricter by not allowing variable keys to start with a number, as that would break dot notation.
  * The Update DTO still supports it for backwards compatibility.
  */
