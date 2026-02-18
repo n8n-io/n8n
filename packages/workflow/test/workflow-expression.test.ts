@@ -1,4 +1,5 @@
 import * as Helpers from './helpers';
+import type { NodeParameterValueType } from '../src';
 import { Workflow } from '../src/workflow';
 
 describe('WorkflowExpression', () => {
@@ -22,7 +23,7 @@ describe('WorkflowExpression', () => {
 		});
 		const expression = workflow.expression;
 
-		const evaluate = (value: unknown) =>
+		const evaluate = (value: NodeParameterValueType) =>
 			expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', {});
 
 		it('should resolve $parameter["&key"] sibling reference within an object', () => {
