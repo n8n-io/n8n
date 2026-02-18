@@ -102,7 +102,10 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	async function fetchGlobalSecrets() {
 		if (rbacStore.hasScope('externalSecret:list')) {
 			try {
-				state.secrets = checkDevFeatureFlag.value('EXTERNAL_SECRETS_FOR_PROJECTS')
+				const betaFeatureEnabled =
+					checkDevFeatureFlag.value('EXTERNAL_SECRETS_FOR_PROJECTS') ||
+					checkDevFeatureFlag.value('EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS');
+				state.secrets = betaFeatureEnabled
 					? await externalSecretsApi.getGlobalExternalSecrets(rootStore.restApiContext)
 					: await externalSecretsApi.getExternalSecrets(rootStore.restApiContext);
 			} catch {
