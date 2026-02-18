@@ -1,0 +1,49 @@
+name: Ensure release-candidate branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Latest release version (e.g. 2.8.1 or n8n@2.8.1)'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        description: 'Latest release version (e.g. 2.8.1 or n8n@2.8.1)'
+        required: true
+        type: string
+    outputs:
+      branch:
+        description: 'release-candidate branch name (e.g. release-candidate/2.8.x)'
+        value: ${{ jobs.ensure.outputs.branch }}
+
+jobs:
+  ensure:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    outputs:
+      branch: ${{ steps.rc.outputs.branch }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup Scripting NodeJS
+        uses: ./.github/actions/setup-github-actions-nodejs
+
+      - name: Ensure release-candidate branch exists
+        id: rc
+        env:
+          VERSION: ${{ inputs.version }}
+        run: node ./.github/scripts/create-release-candidate-branch.mjs
+
+      - name: Print branch
+        run: |
+          echo "Release-candidate branch: ${{ steps.rc.outputs.branch }}"
