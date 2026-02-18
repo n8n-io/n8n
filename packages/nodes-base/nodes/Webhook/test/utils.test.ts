@@ -1,3 +1,4 @@
+import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 import {
 	ApplicationError,
@@ -15,14 +16,15 @@ import {
 	configuredOutputs,
 	generateBasicAuthToken,
 	generateFormPostBasicAuthToken,
+	getAuthHeadersToRedact,
 	getResponseCode,
 	getResponseData,
 	handleFormData,
 	isIpAllowed,
+	redactHeaders,
 	setupOutputConnection,
 	validateWebhookAuthentication,
 } from '../utils';
-import { mock } from 'jest-mock-extended';
 
 jest.mock('jsonwebtoken', () => ({
 	verify: jest.fn(),
@@ -818,5 +820,102 @@ describe('Auth token generation', () => {
 			expect(token1).not.toBe(token2);
 			expect(token1).not.toBe(token3);
 		});
+	});
+});
+
+describe('redactHeaders', () => {
+	it('should do nothing when headersToRedact is empty', () => {
+		const headers: Record<string, unknown> = {
+			authorization: 'Bearer secret-token',
+			'content-type': 'application/json',
+		};
+		redactHeaders(headers, new Set());
+		expect(headers.authorization).toBe('Bearer secret-token');
+		expect(headers['content-type']).toBe('application/json');
+	});
+
+	it('should redact matching headers', () => {
+		const headers: Record<string, unknown> = {
+			authorization: 'Bearer secret-token',
+			'content-type': 'application/json',
+		};
+		redactHeaders(headers, new Set(['authorization']));
+		expect(headers.authorization).toBe('**hidden**');
+		expect(headers['content-type']).toBe('application/json');
+	});
+
+	it('should handle case-insensitive matching', () => {
+		const headers: Record<string, unknown> = {
+			Authorization: 'Bearer secret-token',
+		};
+		redactHeaders(headers, new Set(['authorization']));
+		expect(headers.Authorization).toBe('**hidden**');
+	});
+
+	it('should redact multiple headers', () => {
+		const headers: Record<string, unknown> = {
+			authorization: 'Basic base64string',
+			'x-auth-token': 'some-token',
+			'content-type': 'application/json',
+		};
+		redactHeaders(headers, new Set(['authorization', 'x-auth-token']));
+		expect(headers.authorization).toBe('**hidden**');
+		expect(headers['x-auth-token']).toBe('**hidden**');
+		expect(headers['content-type']).toBe('application/json');
+	});
+});
+
+describe('getAuthHeadersToRedact', () => {
+	it('should return empty set for authentication "none"', async () => {
+		const ctx: Partial<IWebhookFunctions> = {
+			getNodeParameter: jest.fn().mockReturnValue('none'),
+		};
+		const result = await getAuthHeadersToRedact(ctx as IWebhookFunctions, 'authentication');
+		expect(result.size).toBe(0);
+	});
+
+	it('should return authorization and x-auth-token for basicAuth', async () => {
+		const ctx: Partial<IWebhookFunctions> = {
+			getNodeParameter: jest.fn().mockReturnValue('basicAuth'),
+		};
+		const result = await getAuthHeadersToRedact(ctx as IWebhookFunctions, 'authentication');
+		expect(result).toEqual(new Set(['authorization', 'x-auth-token']));
+	});
+
+	it('should return authorization for bearerAuth', async () => {
+		const ctx: Partial<IWebhookFunctions> = {
+			getNodeParameter: jest.fn().mockReturnValue('bearerAuth'),
+		};
+		const result = await getAuthHeadersToRedact(ctx as IWebhookFunctions, 'authentication');
+		expect(result).toEqual(new Set(['authorization']));
+	});
+
+	it('should return authorization for jwtAuth', async () => {
+		const ctx: Partial<IWebhookFunctions> = {
+			getNodeParameter: jest.fn().mockReturnValue('jwtAuth'),
+		};
+		const result = await getAuthHeadersToRedact(ctx as IWebhookFunctions, 'authentication');
+		expect(result).toEqual(new Set(['authorization']));
+	});
+
+	it('should return custom header name for headerAuth', async () => {
+		const ctx: Partial<IWebhookFunctions> = {
+			getNodeParameter: jest.fn().mockReturnValue('headerAuth'),
+			getCredentials: jest.fn().mockResolvedValue({
+				name: 'X-My-Secret',
+				value: 'secret-value',
+			}),
+		};
+		const result = await getAuthHeadersToRedact(ctx as IWebhookFunctions, 'authentication');
+		expect(result).toEqual(new Set(['x-my-secret']));
+	});
+
+	it('should return empty set for headerAuth when credentials cannot be fetched', async () => {
+		const ctx: Partial<IWebhookFunctions> = {
+			getNodeParameter: jest.fn().mockReturnValue('headerAuth'),
+			getCredentials: jest.fn().mockRejectedValue(new Error('no credentials')),
+		};
+		const result = await getAuthHeadersToRedact(ctx as IWebhookFunctions, 'authentication');
+		expect(result.size).toBe(0);
 	});
 });

@@ -138,3 +138,6 @@ export const BINARY_IN_JSON_PROPERTY = '_files';
 
 export const BINARY_MODE_SEPARATE = 'separate';
 export const BINARY_MODE_COMBINED = 'combined';
+
+/** Replacement value for redacted sensitive data in execution output. */
+export const REDACTED = '**hidden**';

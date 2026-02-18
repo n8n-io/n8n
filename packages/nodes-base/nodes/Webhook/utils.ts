@@ -2,13 +2,14 @@ import basicAuth from 'basic-auth';
 import { rm } from 'fs/promises';
 import jwt from 'jsonwebtoken';
 import { WorkflowConfigurationError } from 'n8n-workflow';
-import type {
-	IWebhookFunctions,
-	INodeExecutionData,
-	IDataObject,
-	ICredentialDataDecryptedObject,
-	MultiPartFormData,
-	INode,
+import {
+	REDACTED,
+	type IWebhookFunctions,
+	type INodeExecutionData,
+	type IDataObject,
+	type ICredentialDataDecryptedObject,
+	type MultiPartFormData,
+	type INode,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { createHmac, timingSafeEqual } from 'node:crypto';
@@ -451,4 +452,45 @@ export function generateBasicAuthToken(
 		.digest('hex');
 
 	return token;
+}
+
+export async function getAuthHeadersToRedact(
+	ctx: IWebhookFunctions,
+	authPropertyName: string,
+): Promise<Set<string>> {
+	const authentication = ctx.getNodeParameter(authPropertyName) as string;
+
+	switch (authentication) {
+		case 'basicAuth':
+			return new Set(['authorization', 'x-auth-token']);
+		case 'bearerAuth':
+			return new Set(['authorization']);
+		case 'jwtAuth':
+			return new Set(['authorization']);
+		case 'headerAuth': {
+			let credentials: ICredentialDataDecryptedObject | undefined;
+			try {
+				credentials = await ctx.getCredentials<ICredentialDataDecryptedObject>('httpHeaderAuth');
+			} catch {}
+			if (credentials?.name) {
+				return new Set([(credentials.name as string).toLowerCase()]);
+			}
+			return new Set();
+		}
+		default:
+			return new Set();
+	}
+}
+
+export function redactHeaders(
+	headers: Record<string, unknown>,
+	headersToRedact: Set<string>,
+): void {
+	if (headersToRedact.size === 0) return;
+
+	for (const headerName of Object.keys(headers)) {
+		if (headersToRedact.has(headerName.toLowerCase())) {
+			headers[headerName] = REDACTED;
+		}
+	}
 }

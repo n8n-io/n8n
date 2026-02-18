@@ -32,8 +32,10 @@ import { WebhookAuthorizationError } from './error';
 import {
 	checkResponseModeConfiguration,
 	configuredOutputs,
+	getAuthHeadersToRedact,
 	handleFormData,
 	isIpAllowed,
+	redactHeaders,
 	setupOutputConnection,
 	validateWebhookAuthentication,
 } from './utils';
@@ -245,6 +247,9 @@ export class Webhook extends Node {
 			}
 			throw error;
 		}
+
+		const headersToRedact = await getAuthHeadersToRedact(context, this.authPropertyName);
+		redactHeaders(req.headers, headersToRedact);
 
 		const prepareOutput = setupOutputConnection(context, requestMethod, {
 			jwtPayload: validationData,
