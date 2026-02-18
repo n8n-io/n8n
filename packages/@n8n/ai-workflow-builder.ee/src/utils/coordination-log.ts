@@ -186,6 +186,23 @@ export function getNextPhaseFromLog(log: CoordinationLogEntry[]): RoutingDecisio
 }
 
 /**
+ * Get entries from the current turn only.
+ * A turn ends when the responder completes, so current-turn entries
+ * are those after the last completed responder entry.
+ * This prevents stale entries from previous turns leaking into context.
+ */
+export function getCurrentTurnEntries(log: CoordinationLogEntry[]): CoordinationLogEntry[] {
+	const lastResponderIndex = log.findLastIndex(
+		(entry) => entry.phase === 'responder' && entry.status === 'completed',
+	);
+
+	// No previous responder completion — entire log is the current turn
+	if (lastResponderIndex === -1) return log;
+
+	return log.slice(lastResponderIndex + 1);
+}
+
+/**
  * Build a summary of completed phases for debugging/logging
  */
 export function summarizeCoordinationLog(log: CoordinationLogEntry[]): string {
