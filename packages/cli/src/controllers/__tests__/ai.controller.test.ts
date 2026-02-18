@@ -433,6 +433,37 @@ describe('AiController', () => {
 		});
 	});
 
+	describe('clearSession', () => {
+		it('should call workflowBuilderService.clearSession with correct parameters', async () => {
+			const payload = {
+				workflowId: 'workflow123',
+			};
+
+			workflowBuilderService.clearSession.mockResolvedValue(undefined);
+
+			const result = await controller.clearSession(request, response, payload);
+
+			expect(workflowBuilderService.clearSession).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+			);
+			expect(result).toEqual({ success: true });
+		});
+
+		it('should throw InternalServerError when service throws an error', async () => {
+			const payload = {
+				workflowId: 'workflow123',
+			};
+
+			const mockError = new Error('Database error');
+			workflowBuilderService.clearSession.mockRejectedValue(mockError);
+
+			await expect(controller.clearSession(request, response, payload)).rejects.toThrow(
+				InternalServerError,
+			);
+		});
+	});
+
 	describe('truncateMessages', () => {
 		it('should call workflowBuilderService.truncateMessagesAfter with correct parameters', async () => {
 			const payload = {

@@ -7,7 +7,15 @@ const baseQuickConnectSchema = z.object({
 	text: z.string(),
 	quickConnectType: z.string(),
 	consentText: z.string().optional(),
+	config: z.never().optional(),
 	backendFlowConfig: z.never().optional(),
+});
+
+const pineconeQuickConnectOptionSchema = baseQuickConnectOptionSchema.extend({
+	quickConnectType: z.literal('pinecone'),
+	config: z.object({
+		integrationId: z.string(),
+	}),
 });
 
 const firecrawlQuickConnectSchema = baseQuickConnectSchema.extend({
@@ -20,7 +28,11 @@ const firecrawlQuickConnectSchema = baseQuickConnectSchema.extend({
 
 export type FirecrawlQuickConnect = z.infer<typeof firecrawlQuickConnectSchema>;
 
-const quickConnectOptionSchema = z.union([firecrawlQuickConnectSchema, baseQuickConnectSchema]);
+const quickConnectOptionSchema = z.union([
+	firecrawlQuickConnectSchema,
+	pineconeQuickConnectOptionSchema
+	baseQuickConnectSchema,
+]);
 
 export type QuickConnectOption = z.infer<typeof quickConnectOptionSchema>;
 

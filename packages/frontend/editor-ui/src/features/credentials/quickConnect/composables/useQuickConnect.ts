@@ -1,54 +1,44 @@
-import type { QuickConnectOption } from '@n8n/api-types';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import type { QuickConnectOption, QuickConnectPineconeOption } from '@n8n/api-types';
 import { QUICK_CONNECT_EXPERIMENT } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
+import type { ICredentialsResponse } from '../../credentials.types';
 import { useCredentialOAuth } from '../../composables/useCredentialOAuth';
 import { useCredentialsStore } from '../../credentials.store';
-import type { ICredentialsResponse } from '../../credentials.types';
-import { createQuickConnectCredential } from '../quickConnect.api';
+import { useToast } from '@/app/composables/useToast';
+import { useI18n } from '@n8n/i18n';
+
+async function connectToPinecone(quickConnectOption: QuickConnectPineconeOption) {
+	const { ConnectPopup } = await import('@pinecone-database/connect');
+
+	return await new Promise<string>((resolve, reject) => {
+		const popup = ConnectPopup({
+			onConnect: ({ key }) => resolve(key),
+			onCancel: reject,
+			integrationId: String(quickConnectOption.config.integrationId),
+		});
+
+		popup.open();
+	});
+}
 
 export function useQuickConnect() {
-	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
-	const credentialsStore = useCredentialsStore();
-	const projectsStore = useProjectsStore();
 	const posthogStore = usePostHog();
 	const telemetry = useTelemetry();
+	const toast = useToast();
+	const i18n = useI18n();
+	const credentialsStore = useCredentialsStore();
+	const projectsStore = useProjectsStore();
 	const { isOAuthCredentialType, createAndAuthorize, cancelAuthorize } = useCredentialOAuth();
 
 	const isQuickConnectEnabled = computed(() =>
 		posthogStore.isVariantEnabled(QUICK_CONNECT_EXPERIMENT.name, QUICK_CONNECT_EXPERIMENT.variant),
 	);
-
-	const showConsentDialog = ref(false);
-	const consentDialogOption = ref<QuickConnectOption | null>(null);
-	let resolveConsentPromise: ((confirmed: boolean) => void) | null = null;
-
-	async function requestConsent(option: QuickConnectOption): Promise<boolean> {
-		consentDialogOption.value = option;
-		showConsentDialog.value = true;
-		return await new Promise<boolean>((resolve) => {
-			resolveConsentPromise = resolve;
-		});
-	}
-
-	function onConsentConfirm() {
-		showConsentDialog.value = false;
-		resolveConsentPromise?.(true);
-		resolveConsentPromise = null;
-	}
-
-	function onConsentCancel() {
-		showConsentDialog.value = false;
-		consentDialogOption.value = null;
-		resolveConsentPromise?.(false);
-		resolveConsentPromise = null;
-	}
 
 	const optionsByCredentialType = computed(() => {
 		const map = new Map<string, QuickConnectOption>();
@@ -101,16 +91,15 @@ export function useQuickConnect() {
 		return undefined;
 	}
 
-	// TODO: telemetry
-	async function createBackendCredential(
-		option: QuickConnectOption,
-	): Promise<ICredentialsResponse> {
-		const credential = await createQuickConnectCredential(rootStore.restApiContext, {
-			credentialType: option.credentialType,
-			projectId: projectsStore.currentProject?.id,
-		});
-		credentialsStore.upsertCredential(credential);
-		return credential;
+	async function getApiKey(quickConnectOption: QuickConnectOption): Promise<string> {
+		switch (quickConnectOption.quickConnectType) {
+			case 'pinecone':
+				return await connectToPinecone(quickConnectOption as QuickConnectPineconeOption);
+			default:
+				throw new Error(
+					`Quick connect for type ${quickConnectOption.quickConnectType} is not implemented`,
+				);
+		}
 	}
 
 	async function connect(connectParams: {
@@ -126,18 +115,36 @@ export function useQuickConnect() {
 			node_type: nodeType,
 		});
 
-		const option = getQuickConnectOption(credentialTypeName, nodeType);
-		if (option) {
-			if (option.quickConnectType === 'backend' && option.consentText) {
-				const confirmed = await requestConsent(option);
-				if (!confirmed) {
-					return null;
-				}
-
-				return await createBackendCredential(option);
+		const quickConnectOption = getQuickConnectOption(credentialTypeName, nodeType);
+		if (quickConnectOption) {
+			const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
+			if (!credentialType) {
+				return null;
 			}
 
-			return null;
+			try {
+				const apiKey = await getApiKey(quickConnectOption);
+				const credential = await credentialsStore.createNewCredential(
+					{
+						id: '',
+						name: credentialType.displayName,
+						type: credentialTypeName,
+						data: {
+							apiKey,
+							allowedHttpRequestDomains: 'none',
+						},
+					},
+					projectsStore.currentProject?.id,
+				);
+
+				return credential;
+			} catch (error) {
+				toast.showError(
+					error,
+					i18n.baseText('credentialEdit.credentialEdit.showError.createCredential.title'),
+				);
+				return null;
+			}
 		}
 
 		if (isOAuthCredentialType(credentialTypeName)) {
@@ -155,9 +162,5 @@ export function useQuickConnect() {
 		getQuickConnectOptionByCredentialTypes,
 		connect,
 		cancelConnect: cancelAuthorize,
-		showConsentDialog,
-		consentDialogOption,
-		onConsentConfirm,
-		onConsentCancel,
 	};
 }
