@@ -1,4 +1,4 @@
-import type { QuickConnectOption } from '@n8n/api-types';
+import type { QuickConnectOption, QuickConnectPineconeOption } from '@n8n/api-types';
 import { QUICK_CONNECT_EXPERIMENT } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -12,14 +12,14 @@ import { useCredentialsStore } from '../../credentials.store';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
-async function connectToPinecone(quickConnectOption: QuickConnectOption) {
+async function connectToPinecone(quickConnectOption: QuickConnectPineconeOption) {
 	const { ConnectPopup } = await import('@pinecone-database/connect');
 
 	return await new Promise<string>((resolve, reject) => {
 		const popup = ConnectPopup({
 			onConnect: ({ key }) => resolve(key),
 			onCancel: reject,
-			integrationId: String(quickConnectOption.config?.integrationId),
+			integrationId: String(quickConnectOption.config.integrationId),
 		});
 
 		popup.open();
@@ -95,7 +95,6 @@ export function useQuickConnect() {
 		switch (quickConnectOption.quickConnectType) {
 			case 'pinecone':
 				return await connectToPinecone(quickConnectOption);
-				break;
 			default:
 				throw new Error(
 					`Quick connect for type ${quickConnectOption.quickConnectType} is not implemented`,
