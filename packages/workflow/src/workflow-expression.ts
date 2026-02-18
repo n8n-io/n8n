@@ -42,6 +42,10 @@ export class WorkflowExpression {
 		selfData = {},
 		contextNodeName?: string,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+		if (!isExpression(parameterValue)) {
+			return parameterValue;
+		}
+
 		const dataProxy = new WorkflowDataProxy(
 			this.workflow,
 			runExecutionData,
