@@ -320,7 +320,7 @@ export async function runLocalSubgraphEvaluation(
 		logger.info('Write-back complete');
 	}
 
-	lifecycle?.onEnd?.(summary);
+	await lifecycle?.onEnd?.(summary);
 
 	return summary;
 }

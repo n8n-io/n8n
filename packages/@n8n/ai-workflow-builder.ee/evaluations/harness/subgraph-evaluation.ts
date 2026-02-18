@@ -495,7 +495,7 @@ export async function runSubgraphEvaluation(config: SubgraphEvaluationConfig): P
 		await writeBackToLangSmithDataset(lsClient, writeBackEntries, logger);
 	}
 
-	lifecycle?.onEnd?.(summary);
+	await lifecycle?.onEnd?.(summary);
 
 	return summary;
 }

@@ -65,7 +65,7 @@ import {
 	type GenerationResult,
 	createSubgraphRunner,
 	createResponderEvaluator,
-	EvaluationLifecycle,
+	type EvaluationLifecycle,
 	runLocalSubgraphEvaluation,
 	runSubgraphEvaluation,
 } from '../index';
@@ -77,7 +77,7 @@ import {
 	createAgent,
 	resolveNodesBasePath,
 	type ResolvedStageLLMs,
-	TestEnvironment,
+	type TestEnvironment,
 } from '../support/environment';
 import { generateEvalPinData } from '../support/pin-data-generator';
 
