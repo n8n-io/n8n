@@ -1,4 +1,5 @@
 import { testDb, testModules, createWorkflow, createTeamProject } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { GLOBAL_MEMBER_ROLE, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
@@ -12,6 +13,8 @@ import {
 
 import { ChatMemoryProxyService, isAllowedNode } from '../chat-memory-proxy.service';
 import { ChatMemorySessionRepository } from '../chat-memory-session.repository';
+import { ChatMemorySizeValidator } from '../chat-memory-size-validator.service';
+import { ChatMemoryStorageLimitError } from '../errors/chat-memory-storage-limit.error';
 import { ChatMemoryRepository } from '../chat-memory.repository';
 
 beforeAll(async () => {
@@ -467,6 +470,43 @@ describe('ChatMemoryProxyService', () => {
 				// Both should have the same generated turnId
 				expect(entries[0].turnId).toBe(entries[1].turnId);
 				expect(entries[0].turnId).not.toBeNull();
+			});
+		});
+
+		describe('size limit enforcement', () => {
+			it('should throw ChatMemoryStorageLimitError when size limit is exceeded', async () => {
+				const globalConfig = Container.get(GlobalConfig);
+				const sizeValidator = Container.get(ChatMemorySizeValidator);
+
+				// Set a very low limit to trigger the error
+				const originalMaxSize = globalConfig.chatHub.chatMemoryMaxSize;
+				globalConfig.chatHub.chatMemoryMaxSize = 0;
+				sizeValidator.reset();
+
+				try {
+					const workflow = await createTestWorkflowInDb();
+					const node = createMemoryNode();
+					const sessionKey = `session-${crypto.randomUUID()}`;
+
+					const proxy = await proxyService.getChatMemoryProxy(
+						workflow,
+						node,
+						sessionKey,
+						null,
+						null,
+					);
+
+					await expect(proxy.addHumanMessage('Hello')).rejects.toThrow(ChatMemoryStorageLimitError);
+					await expect(proxy.addAIMessage('Response', [])).rejects.toThrow(
+						ChatMemoryStorageLimitError,
+					);
+					await expect(proxy.addToolMessage('call-1', 'search', {}, {})).rejects.toThrow(
+						ChatMemoryStorageLimitError,
+					);
+				} finally {
+					globalConfig.chatHub.chatMemoryMaxSize = originalMaxSize;
+					sizeValidator.reset();
+				}
 			});
 		});
 

@@ -248,6 +248,8 @@ describe('GlobalConfig', () => {
 			executionContextTtl: 3600,
 			maxBufferedChunks: 1000,
 			streamStateTtl: 300,
+			chatMemoryMaxSize: 104857600,
+			chatMemorySizeCheckCacheDuration: 5000,
 		},
 		queue: {
 			health: {

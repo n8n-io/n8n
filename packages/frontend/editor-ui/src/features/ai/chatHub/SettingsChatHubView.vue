@@ -9,6 +9,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { N8nHeading } from '@n8n/design-system';
 import { CHAT_PROVIDER_SETTINGS_MODAL_KEY } from './constants';
 import ChatProvidersTable from './components/ChatProvidersTable.vue';
+import ChatMemoryUsageBar from './components/ChatMemoryUsageBar.vue';
 import {
 	type ChatHubLLMProvider,
 	type ChatProviderSettingsDto,
@@ -33,12 +34,21 @@ const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
 
 const disabled = computed(() => !isOwner.value && !isAdmin.value);
+const chatMemoryMaxSize = computed(() => settingsStore.settings?.chatMemory?.maxSize ?? 0);
 
 const fetchSettings = async () => {
 	try {
 		await chatStore.fetchAllChatSettings();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.chatHub.providers.fetching.error'));
+	}
+};
+
+const fetchMemoryUsage = async () => {
+	try {
+		await chatStore.fetchMemoryUsage();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.chatHub.memoryUsage.error'));
 	}
 };
 
@@ -88,6 +98,7 @@ onMounted(async () => {
 	}
 	await Promise.all([
 		fetchSettings(),
+		fetchMemoryUsage(),
 		credentialsStore.fetchAllCredentials(),
 		credentialsStore.fetchCredentialTypes(false),
 	]);
@@ -98,6 +109,11 @@ onMounted(async () => {
 		<N8nHeading size="2xlarge" :class="$style.title">
 			{{ i18n.baseText('settings.chatHub') }}
 		</N8nHeading>
+		<ChatMemoryUsageBar
+			:usage="chatStore.memoryUsage"
+			:max-size-bytes="chatMemoryMaxSize"
+			:loading="chatStore.memoryUsageLoading"
+		/>
 		<div :class="$style.container">
 			<ChatProvidersTable
 				:data-test-id="'chat-providers-table'"

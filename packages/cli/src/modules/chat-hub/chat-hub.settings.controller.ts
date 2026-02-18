@@ -7,8 +7,11 @@ import {
 	ChatHubLLMProvider,
 	chatHubLLMProviderSchema,
 	UpdateChatSettingsRequest,
+	type ChatMemorySizeResult,
 } from '@n8n/api-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ChatMemorySizeValidator } from '@/modules/chat-memory/chat-memory-size-validator.service';
+import { ChatMemoryRepository } from '@/modules/chat-memory/chat-memory.repository';
 
 @RestController('/chat')
 export class ChatHubSettingsController {
@@ -16,6 +19,8 @@ export class ChatHubSettingsController {
 		private readonly settings: ChatHubSettingsService,
 		private readonly logger: Logger,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly sizeValidator: ChatMemorySizeValidator,
+		private readonly memoryRepository: ChatMemoryRepository,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -60,5 +65,18 @@ export class ChatHubSettingsController {
 		}
 
 		return await this.settings.getProviderSettings(payload.provider);
+	}
+
+	@Get('/memory-usage')
+	@GlobalScope('chatHub:manage')
+	async getMemoryUsage(): Promise<ChatMemorySizeResult> {
+		const fetchSizeFn = async () => await this.memoryRepository.findChatMemorySize();
+		const sizeData = await this.sizeValidator.getCachedSizeData(fetchSizeFn);
+		const quotaStatus = this.sizeValidator.sizeToState(sizeData.totalBytes);
+
+		return {
+			totalBytes: sizeData.totalBytes,
+			quotaStatus,
+		};
 	}
 }

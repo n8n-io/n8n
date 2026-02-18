@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In, LessThan, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
@@ -17,7 +18,10 @@ export interface CreateMemoryEntryData {
 
 @Service()
 export class ChatMemoryRepository extends Repository<ChatMemory> {
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private readonly globalConfig: GlobalConfig,
+	) {
 		super(ChatMemory, dataSource.manager);
 	}
 
@@ -93,5 +97,34 @@ export class ChatMemoryRepository extends Repository<ChatMemory> {
 			expiresAt: LessThan(new Date()),
 		});
 		return result.affected ?? 0;
+	}
+
+	/**
+	 * Get the total size in bytes of the chat_memory table.
+	 */
+	async findChatMemorySize(): Promise<{ totalBytes: number }> {
+		const dbType = this.globalConfig.database.type;
+		let sql: string;
+
+		switch (dbType) {
+			case 'sqlite':
+				sql =
+					"SELECT COALESCE(SUM(pgsize), 0) AS table_bytes FROM dbstat WHERE name = 'chat_memory'";
+				break;
+
+			case 'postgresdb': {
+				const schemaName = this.globalConfig.database.postgresdb?.schema ?? 'public';
+				sql = `SELECT pg_total_relation_size('"${schemaName}"."chat_memory"') AS table_bytes`;
+				break;
+			}
+
+			default:
+				return { totalBytes: 0 };
+		}
+
+		const result = (await this.query(sql)) as Array<{ table_bytes: number | string | null }>;
+		const totalBytes = Number(result[0]?.table_bytes ?? 0);
+
+		return { totalBytes };
 	}
 }

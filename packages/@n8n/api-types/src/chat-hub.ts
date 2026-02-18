@@ -665,3 +665,16 @@ export class ChatHubUpdateToolRequest extends Z.class({
 	definition: INodeSchema.optional(),
 	enabled: z.boolean().optional(),
 }) {}
+
+/**
+ * Chat memory size status
+ */
+export type ChatMemorySizeStatus = 'ok' | 'warn' | 'error';
+
+/**
+ * Response for chat memory usage endpoint
+ */
+export interface ChatMemorySizeResult {
+	totalBytes: number;
+	quotaStatus: ChatMemorySizeStatus;
+}

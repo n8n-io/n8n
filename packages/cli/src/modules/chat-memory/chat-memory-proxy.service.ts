@@ -18,6 +18,7 @@ import { v4 as uuid } from 'uuid';
 import { OwnershipService } from '@/services/ownership.service';
 
 import { ChatMemorySessionRepository } from './chat-memory-session.repository';
+import { ChatMemorySizeValidator } from './chat-memory-size-validator.service';
 import { ChatMemory } from './chat-memory.entity';
 import { ChatMemoryRepository } from './chat-memory.repository';
 
@@ -37,9 +38,16 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 		private readonly memorySessionRepository: ChatMemorySessionRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly userRepository: UserRepository,
+		private readonly sizeValidator: ChatMemorySizeValidator,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('chat-memory');
+	}
+
+	private async validateSize(): Promise<void> {
+		await this.sizeValidator.validateSize(
+			async () => await this.memoryRepository.findChatMemorySize(),
+		);
 	}
 
 	private validateRequest(node: INode) {
@@ -133,6 +141,7 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 		const memorySessionRepository = this.memorySessionRepository;
 		const userRepository = this.userRepository;
 		const logger = this.logger;
+		const validateSize = async () => await this.validateSize();
 
 		// turnId is a correlation ID generated before chat workflow execution starts.
 		// It links memory entries created during this execution to the AI message that will be saved later.
@@ -170,6 +179,7 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 			},
 
 			async addHumanMessage(content: string): Promise<void> {
+				await validateSize();
 				const id = uuid();
 				let userName = 'User';
 				if (userId) {
@@ -194,6 +204,7 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 			},
 
 			async addAIMessage(content: string, toolCalls: IToolCall[]): Promise<void> {
+				await validateSize();
 				const id = uuid();
 				await memoryRepository.createMemoryEntry({
 					id,
@@ -217,6 +228,7 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 				toolInput: unknown,
 				toolOutput: unknown,
 			): Promise<void> {
+				await validateSize();
 				const id = uuid();
 				await memoryRepository.createMemoryEntry({
 					id,

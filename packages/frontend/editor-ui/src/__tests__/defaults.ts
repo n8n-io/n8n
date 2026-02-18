@@ -121,6 +121,9 @@ export const defaultSettings: FrontendSettings = {
 	dataTables: {
 		maxSize: 0,
 	},
+	chatMemory: {
+		maxSize: 0,
+	},
 	workflowCallerPolicyDefaultOption: 'any',
 	workflowTagsDisabled: false,
 	variables: {

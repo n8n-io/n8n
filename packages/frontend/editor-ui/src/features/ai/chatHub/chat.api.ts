@@ -21,6 +21,7 @@ import type {
 	WorkflowExecutionStatus,
 	ChatHubUpdateToolRequest,
 	ChatHubToolDto,
+	ChatMemorySizeResult,
 } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 
@@ -317,4 +318,10 @@ export const updateToolApi = async (
 
 export const deleteToolApi = async (context: IRestApiContext, toolId: string): Promise<void> => {
 	await makeRestApiRequest(context, 'DELETE', `/chat/tools/${toolId}`);
+};
+
+export const fetchChatMemoryUsageApi = async (
+	context: IRestApiContext,
+): Promise<ChatMemorySizeResult> => {
+	return await makeRestApiRequest<ChatMemorySizeResult>(context, 'GET', '/chat/memory-usage');
 };
