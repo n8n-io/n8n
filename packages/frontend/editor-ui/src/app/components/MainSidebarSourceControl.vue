@@ -202,6 +202,12 @@ function pullWorkfolder() {
 	gap: var(--spacing--3xs);
 }
 
+.buttonContainer {
+	display: flex;
+	align-items: center;
+	justify-content: justify-end;
+}
+
 .connected {
 	display: flex;
 	align-items: center;
@@ -236,11 +242,9 @@ function pullWorkfolder() {
 			justify-content: center;
 		}
 	}
-}
 
-.buttonContainer {
-	display: flex;
-	align-items: center;
-	justify-content: justify-end;
+	.buttonContainer {
+		justify-content: center;
+	}
 }
 </style>
