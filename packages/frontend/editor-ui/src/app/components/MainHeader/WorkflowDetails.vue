@@ -58,7 +58,6 @@ const props = defineProps<{
 	name: IWorkflowDb['name'];
 	meta: IWorkflowDb['meta'];
 	scopes: IWorkflowDb['scopes'];
-	active: IWorkflowDb['active'];
 	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
 	description?: IWorkflowDb['description'];
@@ -222,7 +221,7 @@ function onNameSubmit(name: string) {
 }
 
 async function handleArchiveWorkflow() {
-	if (props.active) {
+	if (workflowDocumentStore?.value?.active) {
 		const archiveConfirmed = await message.confirm(
 			locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
 				interpolate: { workflowName: props.name },

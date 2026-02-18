@@ -57,10 +57,7 @@ import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { getWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -590,7 +587,7 @@ export function useWorkflowHelpers() {
 			nodes,
 			pinData: workflowsStore.pinnedWorkflowData,
 			connections: workflowConnections,
-			active: workflowsStore.isWorkflowActive,
+			active: getWorkflowDocumentStore(workflowsStore.workflowId).active,
 			settings: workflowsStore.workflow.settings,
 			tags: workflowsStore.workflowTags,
 			versionId: workflowsStore.workflow.versionId,
@@ -868,8 +865,16 @@ export function useWorkflowHelpers() {
 
 		if (workflow.activeVersion) {
 			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
+			getWorkflowDocumentStore(workflowId).setActiveState({
+				activeVersionId: workflow.activeVersion.versionId,
+				activeVersion: workflow.activeVersion,
+			});
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
+			getWorkflowDocumentStore(workflowId).setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
 		}
 	}
 
@@ -1008,10 +1013,12 @@ export function useWorkflowHelpers() {
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = convertWorkflowTagsToIds(tags);
 
-		// Initialize workflowDocumentStore with tags (single source of truth)
-		const workflowDocumentId = createWorkflowDocumentId(workflowData.id);
-		const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+		const workflowDocumentStore = getWorkflowDocumentStore(workflowData.id);
 		workflowDocumentStore.setTags(tagIds);
+		workflowDocumentStore.setActiveState({
+			activeVersionId: workflowData.activeVersionId,
+			activeVersion: workflowData.activeVersion ?? null,
+		});
 		tagsStore.upsertTags(tags);
 
 		return { workflowDocumentStore };

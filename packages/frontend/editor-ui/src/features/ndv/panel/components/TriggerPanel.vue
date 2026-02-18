@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, inject, ref } from 'vue';
 import { computedAsync } from '@vueuse/core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -24,6 +24,7 @@ import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { isTriggerPanelObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 import {
 	N8nButton,
@@ -52,6 +53,7 @@ const emit = defineEmits<{
 const nodesTypeStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 const ndvStore = useNDVStore();
 
 const router = useRouter();
@@ -190,7 +192,7 @@ const isActivelyPolling = computed(() => {
 });
 
 const isWorkflowActive = computed(() => {
-	return workflowsStore.isWorkflowActive;
+	return workflowDocumentStore?.value?.active ?? false;
 });
 
 const listeningTitle = computed(() => {

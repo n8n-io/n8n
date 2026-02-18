@@ -1,6 +1,8 @@
 import { defineStore, getActivePinia, type StoreGeneric } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { ref, readonly, inject } from 'vue';
+import { ref, readonly, computed, inject } from 'vue';
+import { createEventHook } from '@vueuse/core';
+import type { WorkflowHistory } from '@n8n/rest-api-client';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 // Pinia internal type - _s is the store registry Map
@@ -24,6 +26,37 @@ type AddTagsAction = Action<'addTags', { tags: string[] }>;
 type RemoveTagAction = Action<'removeTag', { tagId: string }>;
 
 type WorkflowDocumentAction = SetTagsAction | AddTagsAction | RemoveTagAction;
+
+/**
+ * Active State
+ */
+
+interface ActiveState {
+	activeVersionId: string | null;
+	activeVersion: WorkflowHistory | null;
+}
+
+function useActiveState() {
+	const activeVersionId = ref<string | null>(null);
+	const activeVersion = ref<WorkflowHistory | null>(null);
+	const active = computed(() => activeVersionId.value !== null);
+
+	const activeStateChanged = createEventHook<ActiveState>();
+
+	function setActiveState(state: ActiveState) {
+		activeVersionId.value = state.activeVersionId;
+		activeVersion.value = state.activeVersion;
+		void activeStateChanged.trigger(state);
+	}
+
+	return {
+		active,
+		activeVersionId: readonly(activeVersionId),
+		activeVersion: readonly(activeVersion),
+		setActiveState,
+		onActiveStateChanged: activeStateChanged.on,
+	};
+}
 
 /**
  * Gets the store ID for a workflow document store.
@@ -79,6 +112,11 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			}
 		}
 
+		/**
+		 * Active State
+		 */
+		const activeState = useActiveState();
+
 		return {
 			workflowId,
 			workflowVersion,
@@ -86,6 +124,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			setTags,
 			addTags,
 			removeTag,
+			...activeState,
 		};
 	})();
 }
@@ -125,4 +164,15 @@ export function disposeWorkflowDocumentStore(id: string) {
 export function injectWorkflowDocumentStore() {
 	const storeRef = inject(WorkflowDocumentStoreKey, null);
 	return storeRef?.value ?? null;
+}
+
+/**
+ * Resolves the workflow document store by workflow ID.
+ * Uses Pinia's store deduplication — returns the existing instance if already created.
+ *
+ * Use this in composables that may be instantiated outside the WorkflowLayout
+ * provide tree (e.g., modals rendered at the app root).
+ */
+export function getWorkflowDocumentStore(workflowId: string) {
+	return useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 }

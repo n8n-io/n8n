@@ -17,6 +17,7 @@ export async function workflowDeactivated({ data }: WorkflowDeactivated) {
 			if (!updatedWorkflow.checksum) {
 				throw new Error('Failed to fetch workflow');
 			}
+			// initializeWorkspace calls initState which sets the document store
 			await initializeWorkspace(updatedWorkflow);
 		}
 	}

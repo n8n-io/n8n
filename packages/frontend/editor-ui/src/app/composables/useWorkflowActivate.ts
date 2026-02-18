@@ -17,6 +17,7 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import type { INode } from 'n8n-workflow';
 import type { ResponseError } from '@n8n/rest-api-client/utils';
 import type { findWebhook } from '@n8n/rest-api-client/api/webhooks';
+import { getWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -113,6 +114,10 @@ export function useWorkflowActivate() {
 			}
 
 			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion, true);
+			getWorkflowDocumentStore(workflowId).setActiveState({
+				activeVersionId: updatedWorkflow.activeVersion.versionId,
+				activeVersion: updatedWorkflow.activeVersion,
+			});
 
 			if (workflowId === workflowsStore.workflowId) {
 				workflowsStore.setWorkflowVersionData(
@@ -148,6 +153,10 @@ export function useWorkflowActivate() {
 				// Only update workflow state to inactive if this is not a validation error
 				if (!error.meta?.validationError) {
 					workflowsStore.setWorkflowInactive(workflowId);
+					getWorkflowDocumentStore(workflowId).setActiveState({
+						activeVersionId: null,
+						activeVersion: null,
+					});
 				}
 			}
 			return { success: false };
@@ -179,6 +188,10 @@ export function useWorkflowActivate() {
 				workflowId === workflowsStore.workflowId ? workflowsStore.workflowChecksum : undefined;
 
 			await workflowsStore.deactivateWorkflow(workflowId, expectedChecksum);
+			getWorkflowDocumentStore(workflowId).setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
 
 			void useExternalHooks().run('workflow.unpublished', {
 				workflowId,

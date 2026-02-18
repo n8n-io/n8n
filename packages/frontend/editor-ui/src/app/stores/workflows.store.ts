@@ -187,8 +187,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	});
 
-	const isWorkflowActive = computed(() => workflow.value.activeVersionId !== null);
-
 	const workflowTriggerNodes = computed(() =>
 		workflow.value.nodes.filter((node: INodeUi) => {
 			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
@@ -792,24 +790,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	) {
 		workflowsListStore.setWorkflowActiveInCache(targetWorkflowId, activeVersion);
 
-		if (targetWorkflowId === workflow.value.id) {
-			if (clearDirtyState) {
-				uiStore.markStateClean();
-			}
-			workflow.value.active = true;
-			workflow.value.activeVersionId = activeVersion.versionId;
-			workflow.value.activeVersion = activeVersion;
+		if (targetWorkflowId === workflow.value.id && clearDirtyState) {
+			uiStore.markStateClean();
 		}
 	}
 
 	function setWorkflowInactive(targetWorkflowId: string) {
 		workflowsListStore.setWorkflowInactiveInCache(targetWorkflowId);
-
-		if (targetWorkflowId === workflow.value.id) {
-			workflow.value.active = false;
-			workflow.value.activeVersionId = null;
-			workflow.value.activeVersion = null;
-		}
 	}
 
 	function setIsArchived(isArchived: boolean) {
@@ -1836,7 +1823,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowTags,
 		isNewWorkflow,
 		isWorkflowSaved,
-		isWorkflowActive,
 		workflowTriggerNodes,
 		currentWorkflowHasWebhookNode,
 		getWorkflowRunData,

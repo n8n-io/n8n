@@ -4,7 +4,7 @@ import WorkflowHistoryButton from '@/features/workflows/workflowHistory/componen
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import {
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
@@ -43,6 +43,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowVersionFormModalEventBusEvents } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
@@ -59,6 +60,7 @@ const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>(
 
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 const collaborationStore = useCollaborationStore();
 const projectStore = useProjectsStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
@@ -96,9 +98,9 @@ type WorkflowPublishState =
 	| 'published-invalid-trigger'; // Published but no trigger nodes
 
 const workflowPublishState = computed((): WorkflowPublishState => {
-	const hasBeenPublished = !!workflowsStore.workflow.activeVersion;
+	const hasBeenPublished = !!activeVersion.value;
 	const hasChanges =
-		workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId ||
+		workflowsStore.workflow.versionId !== activeVersion.value?.versionId ||
 		uiStore.hasUnsavedWorkflowChanges;
 
 	// Not published states
@@ -172,6 +174,7 @@ const onPublishButtonClick = async () => {
 };
 
 const publishButtonConfig = computed(() => {
+	console.log(workflowPublishState.value);
 	// Handle permission-denied state first
 	if (!hasPublishPermission.value) {
 		const defaultConfigForNoPermission = {
@@ -184,7 +187,7 @@ const publishButtonConfig = computed(() => {
 				: i18n.baseText('workflows.publish.permissionDenied'),
 			showVersionInfo: false,
 		};
-		const isWorkflowPublished = !!workflowsStore.workflow.activeVersion;
+		const isWorkflowPublished = !!activeVersion.value;
 		if (isWorkflowPublished) {
 			return {
 				...defaultConfigForNoPermission,
@@ -296,7 +299,10 @@ const shouldDisablePublishButton = computed(() => {
 	);
 });
 
-const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
+const activeVersion = computed(() => workflowDocumentStore?.value?.activeVersion ?? null);
+watch(activeVersion, (newVersion, oldVersion) => {
+	console.log('Active version changed:', newVersion, oldVersion);
+});
 
 const activeVersionName = computed(() => {
 	if (!activeVersion.value) {
