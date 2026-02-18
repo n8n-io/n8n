@@ -8,6 +8,11 @@ defineProps<{
 	nodesWithSameCredential: string[];
 }>();
 
+const emit = defineEmits<{
+	hintMouseEnter: [];
+	hintMouseLeave: [];
+}>();
+
 const i18n = useI18n();
 </script>
 
@@ -24,7 +29,12 @@ const i18n = useI18n();
 			<template #content>
 				{{ nodesWithSameCredential.join(', ') }}
 			</template>
-			<span data-test-id="node-setup-card-shared-nodes-hint" :class="$style['shared-nodes-hint']">
+			<span
+				data-test-id="node-setup-card-shared-nodes-hint"
+				:class="$style['shared-nodes-hint']"
+				@mouseenter="emit('hintMouseEnter')"
+				@mouseleave="emit('hintMouseLeave')"
+			>
 				{{
 					i18n.baseText('setupPanel.usedInNodes', {
 						interpolate: {

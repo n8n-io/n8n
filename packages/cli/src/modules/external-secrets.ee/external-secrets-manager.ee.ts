@@ -4,7 +4,7 @@ import { SecretsProviderConnectionRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Cipher, type IExternalSecretsManager } from 'n8n-core';
-import { jsonParse, UnexpectedError, type IDataObject } from 'n8n-workflow';
+import { jsonParse, UnexpectedError, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -92,6 +92,14 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 	getProvider(provider: string): SecretsProvider | undefined {
 		return this.providerRegistry.get(provider);
+	}
+
+	getProviderProperties(providerType: string): INodeProperties[] {
+		const ProviderClass = this.providersFactory.getProvider(providerType);
+		if (!ProviderClass) {
+			throw new NotFoundError(`Provider type "${providerType}" not found`);
+		}
+		return new ProviderClass().properties;
 	}
 
 	hasProvider(provider: string): boolean {

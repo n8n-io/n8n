@@ -11,6 +11,7 @@ import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTags
 import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import type { DragTarget, DropTarget, FolderListItem } from '@/features/core/folders/folders.types';
 import { useFolders } from '@/features/core/folders/composables/useFolders';
 import { useMessage } from '@/app/composables/useMessage';
@@ -143,6 +144,7 @@ const readyToRunStore = useReadyToRunStore();
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const projectPages = useProjectPages();
+const { next: nextFetch } = useLatestFetch();
 const {
 	showRecommendedTemplatesInline,
 	emptyStateHeading: emptyListHeading,
@@ -587,7 +589,7 @@ const initialize = async () => {
 	await setFiltersFromQueryString();
 
 	currentFolderId.value = route.params.folderId as string | null;
-	const [resourcesPage] = await Promise.all([
+	await Promise.all([
 		fetchWorkflows(),
 		workflowsListStore.fetchActiveWorkflows(),
 		usageStore.getLicenseInfo(),
@@ -597,8 +599,6 @@ const initialize = async () => {
 		),
 	]);
 	breadcrumbsLoading.value = false;
-	workflowsAndFolders.value = resourcesPage;
-	loading.value = false;
 };
 
 /**
@@ -608,6 +608,8 @@ const initialize = async () => {
  * - Path to the current folder (if not cached)
  */
 const fetchWorkflows = async () => {
+	const isCurrent = nextFetch();
+
 	// We debounce here so that fast enough fetches don't trigger
 	// the placeholder graphics for a few milliseconds, which would cause a flicker
 	const delayedLoading = debounce(() => {
@@ -649,6 +651,8 @@ const fetchWorkflows = async () => {
 			projectPages.isSharedSubPage,
 		);
 
+		if (!isCurrent()) return [];
+
 		foldersStore.cacheFolders(
 			fetchedResources
 				.filter((resource) => resource.resource === 'folder')
@@ -673,15 +677,18 @@ const fetchWorkflows = async () => {
 
 		return fetchedResources;
 	} catch (error) {
+		if (!isCurrent()) return [];
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
 		// redirect to the project page if the folder is not found
 		void router.push({ name: VIEWS.PROJECTS_FOLDERS, params: { projectId: routeProjectId } });
 		return [];
 	} finally {
 		delayedLoading.cancel();
-		loading.value = false;
-		if (breadcrumbsLoading.value) {
-			breadcrumbsLoading.value = false;
+		if (isCurrent()) {
+			loading.value = false;
+			if (breadcrumbsLoading.value) {
+				breadcrumbsLoading.value = false;
+			}
 		}
 	}
 };

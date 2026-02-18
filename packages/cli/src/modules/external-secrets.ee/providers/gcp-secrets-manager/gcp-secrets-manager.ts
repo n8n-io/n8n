@@ -21,7 +21,7 @@ export class GcpSecretsManager extends SecretsProvider {
 		{
 			displayName: 'Service Account Key',
 			name: 'serviceAccountKey',
-			type: 'string',
+			type: 'json',
 			default: '',
 			required: true,
 			typeOptions: { password: true },
