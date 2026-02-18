@@ -35,8 +35,11 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Setup Scripting NodeJS
-        uses: ./.github/actions/setup-github-actions-nodejs
+      - name: Setup NodeJS
+        uses: ./.github/actions/setup-nodejs
+        with:
+          install-command: npm install --prefix=.github/scripts --no-package-lock
+          build-command: ''
 
       - name: Ensure release-candidate branch exists
         id: rc
