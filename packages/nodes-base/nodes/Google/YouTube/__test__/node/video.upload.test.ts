@@ -114,4 +114,51 @@ describe('Test YouTube, video => upload', () => {
 		});
 		expect(fromSpy).toHaveBeenCalledTimes(1);
 	});
+
+	it('should prefer incoming binary mimeType over metadata mimeType when streaming', async () => {
+		const items = [{ json: { data: 'test' } }];
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+
+		const buffer = Buffer.alloc(5, 'a');
+		mockExecuteFunctions.helpers.assertBinaryData = jest.fn(() => ({
+			id: 'binary-id',
+			mimeType: 'video/mp4',
+		}));
+		mockExecuteFunctions.helpers.getBinaryStream = jest.fn(() => Readable.from([buffer]));
+		mockExecuteFunctions.helpers.getBinaryMetadata = jest.fn(() => ({
+			fileSize: buffer.length,
+			mimeType: 'application/mp4',
+		}));
+
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
+			switch (key) {
+				case 'resource':
+					return 'video';
+				case 'operation':
+					return 'upload';
+				case 'title':
+					return 'test';
+				case 'categoryId':
+					return '11';
+				case 'options':
+					return {};
+				case 'binaryProperty':
+					return 'data';
+				default:
+			}
+		});
+
+		await youTube.execute.call(mockExecuteFunctions);
+
+		expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
+			'POST',
+			'/upload/youtube/v3/videos',
+			expect.any(Object),
+			expect.any(Object),
+			undefined,
+			expect.objectContaining({
+				headers: expect.objectContaining({ 'X-Upload-Content-Type': 'video/mp4' }),
+			}),
+		);
+	});
 });

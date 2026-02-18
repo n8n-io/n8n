@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 import { Readable } from 'stream';
+import { lookup as lookupMimeType } from 'mime-types';
 
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
@@ -838,7 +839,7 @@ export class YouTube implements INodeType {
 
 						const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 
-						let mimeType: string;
+						let mimeType: string | undefined;
 						let contentLength: number;
 						let fileContent: Readable;
 
@@ -847,12 +848,31 @@ export class YouTube implements INodeType {
 							fileContent = await this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
 							const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
 							contentLength = metadata.fileSize;
-							mimeType = metadata.mimeType ?? binaryData.mimeType;
+							// Prefer incoming binary mimeType over stored metadata mimeType
+							mimeType = binaryData.mimeType ?? metadata.mimeType;
 						} else {
 							const buffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 							fileContent = Readable.from(buffer);
 							contentLength = buffer.length;
 							mimeType = binaryData.mimeType;
+						}
+
+						if (!mimeType) {
+							const fileName = (binaryData as unknown as { fileName?: unknown }).fileName;
+							const detected = lookupMimeType(typeof fileName === 'string' ? fileName : '');
+							if (typeof detected === 'string') {
+								mimeType = detected;
+							}
+						}
+
+						if (!mimeType) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Could not determine file mime type for upload',
+								{
+									itemIndex: i,
+								},
+							);
 						}
 
 						const payload = {
