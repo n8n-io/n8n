@@ -11,6 +11,8 @@ import {
 } from '../config/test-users';
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
+import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
+import { McpApiHelper } from './mcp-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
@@ -45,9 +47,11 @@ export class ApiHelpers {
 	request: APIRequestContext;
 	workflows: WorkflowApiHelper;
 	webhooks: WebhookApiHelper;
+	mcp: McpApiHelper;
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
 	variables: VariablesApiHelper;
+	externalSecrets: ExternalSecretsApiHelper;
 	users: UserApiHelper;
 	tags: TagApiHelper;
 	roles: RoleApiHelper;
@@ -59,9 +63,11 @@ export class ApiHelpers {
 		this.request = requestContext;
 		this.workflows = new WorkflowApiHelper(this);
 		this.webhooks = new WebhookApiHelper(this);
+		this.mcp = new McpApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
+		this.externalSecrets = new ExternalSecretsApiHelper(this);
 		this.users = new UserApiHelper(this);
 		this.tags = new TagApiHelper(this);
 		this.roles = new RoleApiHelper(this);
@@ -73,14 +79,14 @@ export class ApiHelpers {
 	// ===== MAIN SETUP METHODS =====
 
 	/**
-	 * Setup test environment based on test tags (recommended approach)
+	 * Setup test environment based on test tags
 	 * @param tags - Array of test tags (e.g., ['@db:reset', '@auth:owner'])
 	 * @param memberIndex - Which member to use (if auth role is 'member')
 	 *
 	 * Examples:
-	 * - ['@db:reset'] = reset DB, manual signin required
 	 * - ['@db:reset', '@auth:owner'] = reset DB + signin as owner
 	 * - ['@auth:admin'] = signin as admin (no reset)
+	 * - ['@auth:none'] = no signin (unauthenticated)
 	 */
 	async setupFromTags(tags: string[], memberIndex: number = 0): Promise<LoginResponseData | null> {
 		const shouldReset = this.shouldResetDatabase(tags);
@@ -101,6 +107,14 @@ export class ApiHelpers {
 
 		// No setup required
 		return null;
+	}
+
+	/**
+	 * Check if database should be reset based on tags
+	 */
+	private shouldResetDatabase(tags: string[]): boolean {
+		const lowerTags = tags.map((tag) => tag.toLowerCase());
+		return lowerTags.includes(DB_TAGS.RESET.toLowerCase());
 	}
 
 	/**
@@ -256,12 +270,6 @@ export class ApiHelpers {
 		return userApi;
 	}
 
-	async get(path: string, params?: URLSearchParams) {
-		const response = await this.request.get(path, { params });
-		const { data } = await response.json();
-		return data;
-	}
-
 	/**
 	 * Check if n8n is healthy
 	 * @returns True if n8n is healthy, false otherwise
@@ -307,42 +315,6 @@ export class ApiHelpers {
 		if (!response.ok()) {
 			throw new TestError(
 				`Failed to create syslog destination: ${response.status()} ${await response.text()}`,
-			);
-		}
-
-		const result = await response.json();
-		// Handle both direct response and {data: ...} wrapped response
-		return result.data ?? result;
-	}
-
-	/**
-	 * Create a webhook destination for log streaming.
-	 * Requires the logStreaming feature to be enabled.
-	 *
-	 * @param config - Webhook destination configuration
-	 * @returns Created destination data
-	 */
-	async createWebhookDestination(config: {
-		url: string;
-		method?: 'POST' | 'GET' | 'PUT' | 'PATCH';
-		label?: string;
-		subscribedEvents?: string[];
-		sendPayload?: boolean;
-	}): Promise<{ id: string }> {
-		const response = await this.request.post('/rest/eventbus/destination', {
-			data: {
-				__type: '$$MessageEventBusDestinationWebhook',
-				url: config.url,
-				method: config.method ?? 'POST',
-				label: config.label ?? 'Webhook Destination',
-				subscribedEvents: config.subscribedEvents ?? ['*'], // All events
-				sendPayload: config.sendPayload ?? true,
-			},
-		});
-
-		if (!response.ok()) {
-			throw new TestError(
-				`Failed to create webhook destination: ${response.status()} ${await response.text()}`,
 			);
 		}
 
@@ -409,6 +381,45 @@ export class ApiHelpers {
 		}
 	}
 
+	// ===== MCP API KEY METHODS =====
+
+	/**
+	 * Rotate the MCP API key for the authenticated user.
+	 * Creates a new API key and invalidates the old one.
+	 *
+	 * @returns The new MCP API key data
+	 */
+	async rotateMcpApiKey(): Promise<{ id: string; apiKey: string; userId: string }> {
+		const response = await this.request.post('/rest/mcp/api-key/rotate');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to rotate MCP API key: ${response.status()} ${await response.text()}`,
+			);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/**
+	 * Enable or disable MCP access for the instance.
+	 * Uses the MCP settings endpoint to toggle access.
+	 *
+	 * @param enabled - Whether MCP access should be enabled
+	 */
+	async setMcpAccess(enabled: boolean): Promise<void> {
+		const response = await this.request.patch('/rest/mcp/settings', {
+			data: { mcpAccessEnabled: enabled },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to set MCP access: ${response.status()} ${await response.text()}`,
+			);
+		}
+	}
+
 	// ===== PRIVATE METHODS =====
 
 	private async loginAndSetCookies(
@@ -464,14 +475,9 @@ export class ApiHelpers {
 
 	// ===== TAG PARSING METHODS =====
 
-	private shouldResetDatabase(tags: string[]): boolean {
-		const lowerTags = tags.map((tag) => tag.toLowerCase());
-		return lowerTags.includes(DB_TAGS.RESET.toLowerCase());
-	}
-
 	/**
 	 * Get the role from the tags
-	 * @param tags - Array of test tags (e.g., ['@db:reset', '@auth:owner'])
+	 * @param tags - Array of test tags (e.g., ['@auth:owner'])
 	 * @returns The role from the tags, or 'owner' if no role is found
 	 */
 	getRoleFromTags(tags: string[]): UserRole | null {

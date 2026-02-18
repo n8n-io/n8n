@@ -1,8 +1,10 @@
 import type { Client as LangsmithClient } from 'langsmith/client';
 import type pLimit from 'p-limit';
 
-import type { EvalLogger } from './logger.js';
-import type { SimpleWorkflow } from '../../src/types/workflow.js';
+import type { EvalLogger } from './logger';
+import type { GenerationCollectors } from './runner';
+import type { IntrospectionEvent } from '../../src/tools/introspect.tool.js';
+import type { SimpleWorkflow } from '../../src/types/workflow';
 
 export type LlmCallLimiter = ReturnType<typeof pLimit>;
 
@@ -31,6 +33,11 @@ export interface EvaluationContext {
 	 * Note: timeouts are best-effort unless underlying calls support cancellation (AbortSignal).
 	 */
 	timeoutMs?: number;
+	/**
+	 * Generated TypeScript SDK code for code-level evaluators.
+	 * Populated from GenerationResult when available.
+	 */
+	generatedCode?: string;
 }
 
 /** Context attached to an individual test case (prompt is provided separately). */
@@ -95,18 +102,33 @@ export interface TestCase {
 	referenceWorkflows?: SimpleWorkflow[];
 }
 
+/** Evaluation suite types supported by the harness */
+export type EvaluationSuite =
+	| 'llm-judge'
+	| 'pairwise'
+	| 'programmatic'
+	| 'similarity'
+	| 'introspection';
+
 /**
  * Configuration for an evaluation run.
  */
 export interface RunConfigBase {
-	/** Function to generate workflow from prompt */
-	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;
+	/** Function to generate workflow from prompt. May return GenerationResult with source code. Optional collectors receive metrics. */
+	generateWorkflow: (
+		prompt: string,
+		collectors?: GenerationCollectors,
+	) => Promise<SimpleWorkflow | GenerationResult>;
 	/** Evaluators to run on each generated workflow */
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	/** Global context available to all evaluators */
 	context?: GlobalRunContext;
 	/** Directory for JSON output files */
 	outputDir?: string;
+	/** CSV file path for evaluation results */
+	outputCsv?: string;
+	/** Evaluation suite (used for CSV formatting). If not set, auto-detected from feedback. */
+	suite?: EvaluationSuite;
 	/** Threshold for pass/fail classification of an example score (0-1). */
 	passThreshold?: number;
 	/** Timeout for generation/evaluator operations (ms). */
@@ -122,6 +144,8 @@ export interface LocalRunConfig extends RunConfigBase {
 	/** Local mode requires an in-memory dataset */
 	dataset: TestCase[];
 	langsmithOptions?: never;
+	/** Number of examples to run in parallel (default: 1 for sequential) */
+	concurrency?: number;
 }
 
 export interface LangsmithRunConfig extends RunConfigBase {
@@ -164,6 +188,20 @@ export interface LangsmithExampleFilters {
 }
 
 /**
+ * Subgraph timing metrics extracted from coordination log.
+ */
+export interface SubgraphMetrics {
+	/** Time spent in discovery subgraph (ms) */
+	discoveryDurationMs?: number;
+	/** Time spent in builder subgraph (ms) */
+	builderDurationMs?: number;
+	/** Time spent in responder generating the final response (ms) */
+	responderDurationMs?: number;
+	/** Number of nodes in the final workflow */
+	nodeCount?: number;
+}
+
+/**
  * Result of evaluating a single example.
  */
 export interface ExampleResult {
@@ -178,8 +216,42 @@ export interface ExampleResult {
 	generationDurationMs?: number;
 	/** Time spent running evaluators, when known. */
 	evaluationDurationMs?: number;
+	/** Input tokens used during workflow generation */
+	generationInputTokens?: number;
+	/** Output tokens used during workflow generation */
+	generationOutputTokens?: number;
+	/** Subgraph timing and workflow metrics */
+	subgraphMetrics?: SubgraphMetrics;
+	/** Introspection events reported by the agent during workflow generation */
+	introspectionEvents?: IntrospectionEvent[];
 	workflow?: SimpleWorkflow;
+	/** Generated source code (e.g., TypeScript SDK code from coding agent) */
+	generatedCode?: string;
 	error?: string;
+}
+
+/**
+ * Result from workflow generation that may include source code.
+ * Used by generators that produce code (e.g., coding agent).
+ */
+export interface GenerationResult {
+	workflow: SimpleWorkflow;
+	/** Source code that generated the workflow (e.g., TypeScript SDK code) */
+	generatedCode?: string;
+}
+
+/**
+ * Type guard to check if a generation result is a GenerationResult object.
+ */
+export function isGenerationResult(
+	value: SimpleWorkflow | GenerationResult,
+): value is GenerationResult {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'workflow' in value &&
+		typeof value.workflow === 'object'
+	);
 }
 
 /**
@@ -212,5 +284,5 @@ export interface EvaluationLifecycle {
 	onEvaluatorComplete(name: string, feedback: Feedback[]): void;
 	onEvaluatorError(name: string, error: Error): void;
 	onExampleComplete(index: number, result: ExampleResult): void;
-	onEnd(summary: RunSummary): void;
+	onEnd(summary: RunSummary): void | Promise<void>;
 }

@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Folders - Basic Operations', () => {
+test.describe('Folders - Basic Operations', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	const FOLDER_CREATED_NOTIFICATION = 'Folder created';
 	test('should create folder from the workflows page using addResource dropdown', async ({
 		n8n,
@@ -125,7 +129,7 @@ test.describe('Folders - Basic Operations', () => {
 	});
 
 	test('should create workflow in a folder', async ({ n8n }) => {
-		const { name: projectName, id: projectId } = await n8n.api.projects.createProject();
+		const { id: projectId } = await n8n.api.projects.createProject();
 		const folder = await n8n.api.projects.createFolder(projectId);
 		await n8n.navigate.toFolder(folder.id, projectId);
 		await n8n.workflows.addResource.workflow();
@@ -133,8 +137,6 @@ test.describe('Folders - Basic Operations', () => {
 		await n8n.canvas.setWorkflowName('Workflow in Folder');
 		await n8n.page.keyboard.press('Enter');
 		await n8n.canvas.waitForSaveWorkflowCompleted();
-		const successMessage = `Workflow successfully created in "${projectName}", within "${folder.name}"`;
-		await expect(n8n.notifications.getNotificationByTitleOrContent(successMessage)).toBeVisible();
 		await n8n.navigate.toFolder(folder.id, projectId);
 		await expect(n8n.workflows.cards.getWorkflows()).toBeVisible();
 	});

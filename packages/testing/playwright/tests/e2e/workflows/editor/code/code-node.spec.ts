@@ -7,7 +7,11 @@ import {
 } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 
-test.describe('Code node', () => {
+test.describe('Code node', {
+	annotation: [
+		{ type: 'owner', description: 'NODES' },
+	],
+}, () => {
 	test.describe('Code editor', () => {
 		test.beforeEach(async ({ n8n }) => {
 			await n8n.start.fromBlankCanvas();
@@ -86,6 +90,9 @@ return
 			const firstLintError = n8n.ndv.getLintErrors().first();
 			await expect(firstLintError).toBeVisible();
 			await firstLintError.hover({ force: true });
+
+			// Wait for lint tooltip to appear after hover
+			await expect(n8n.ndv.getLintTooltip()).toBeVisible({ timeout: 5000 });
 			await expect(n8n.ndv.getLintTooltip()).toContainText(
 				'`.itemMatching()` expects an item index to be passed in as its argument.',
 			);

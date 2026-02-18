@@ -8,11 +8,14 @@ import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import assert from 'assert';
 import { Client as TracingClient } from 'langsmith';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
+import { z } from 'zod';
 
+import { AssistantHandler } from '@/assistant';
 import { LLMServiceError } from '@/errors';
 import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
+import type { HITLInterruptValue } from '@/types/planning';
 import {
 	BuilderFeatureFlags,
 	WorkflowBuilderAgent,
@@ -25,7 +28,8 @@ type OnTelemetryEvent = (event: string, properties: ITelemetryTrackProperties) =
 
 @Service()
 export class AiWorkflowBuilderService {
-	private readonly parsedNodeTypes: INodeTypeDescription[];
+	private nodeTypes: INodeTypeDescription[];
+
 	private sessionManager: SessionManagerService;
 
 	constructor(
@@ -37,10 +41,21 @@ export class AiWorkflowBuilderService {
 		private readonly n8nVersion?: string,
 		private readonly onCreditsUpdated?: OnCreditsUpdated,
 		private readonly onTelemetryEvent?: OnTelemetryEvent,
+		private readonly nodeDefinitionDirs?: string[],
 		private readonly resourceLocatorCallbackFactory?: ResourceLocatorCallbackFactory,
 	) {
-		this.parsedNodeTypes = this.filterNodeTypes(parsedNodeTypes);
-		this.sessionManager = new SessionManagerService(this.parsedNodeTypes, logger);
+		this.nodeTypes = this.filterNodeTypes(parsedNodeTypes);
+		this.sessionManager = new SessionManagerService(this.nodeTypes, logger);
+	}
+
+	/**
+	 * Update the node types available to the AI workflow builder.
+	 * Called when community packages are installed, updated, or uninstalled.
+	 * This preserves existing sessions while making new node types available.
+	 */
+	updateNodeTypes(nodeTypes: INodeTypeDescription[]) {
+		this.nodeTypes = this.filterNodeTypes(nodeTypes);
+		this.sessionManager.updateNodeTypes(this.nodeTypes);
 	}
 
 	private static async getAnthropicClaudeModel({
@@ -92,10 +107,12 @@ export class AiWorkflowBuilderService {
 				// Extract baseUrl from client configuration
 				const baseUrl = this.client.getApiProxyBaseUrl();
 
-				const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
+				const modelConfig = {
 					baseUrl: baseUrl + '/anthropic',
 					authHeaders,
-				});
+				};
+
+				const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel(modelConfig);
 
 				const tracingClient = new TracingClient({
 					apiKey: '-',
@@ -113,9 +130,8 @@ export class AiWorkflowBuilderService {
 			}
 
 			// If base URL is not set, use environment variables
-			const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
-				apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
-			});
+			const envConfig = { apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '' };
+			const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel(envConfig);
 
 			return { anthropicClaude };
 		} catch (error) {
@@ -139,8 +155,13 @@ export class AiWorkflowBuilderService {
 			'@n8n/n8n-nodes-langchain.code',
 		]);
 
+		const isBuiltInNode = (name: string) =>
+			name.startsWith('n8n-nodes-base.') || name.startsWith('@n8n/');
+
 		const visibleNodeTypes = nodeTypes.filter(
 			(nodeType) =>
+				// Only include built-in nodes (community nodes are not supported)
+				isBuiltInNode(nodeType.name) &&
 				// We filter out hidden nodes, except for the Data Table node which has custom hiding logic
 				// See more details in DataTable.node.ts#L29
 				!ignoredTypes.has(nodeType.name) &&
@@ -172,21 +193,30 @@ export class AiWorkflowBuilderService {
 		// Create resource locator callback scoped to this user if factory is provided
 		const resourceLocatorCallback = this.resourceLocatorCallbackFactory?.(user.id);
 
+		const assistantHandler = this.client
+			? new AssistantHandler(this.client, this.logger)
+			: undefined;
+
 		const agent = new WorkflowBuilderAgent({
-			parsedNodeTypes: this.parsedNodeTypes,
-			// Use the same model for all stages in production
+			parsedNodeTypes: this.nodeTypes,
+			// Use the same model for all stages
 			stageLLMs: {
 				supervisor: anthropicClaude,
 				responder: anthropicClaude,
 				discovery: anthropicClaude,
 				builder: anthropicClaude,
-				configurator: anthropicClaude,
 				parameterUpdater: anthropicClaude,
+				planner: anthropicClaude,
 			},
 			logger: this.logger,
 			checkpointer: this.sessionManager.getCheckpointer(),
 			tracer: tracingClient
-				? new LangChainTracer({ client: tracingClient, projectName: 'n8n-workflow-builder' })
+				? new LangChainTracer({
+						client: tracingClient,
+						projectName: featureFlags?.codeBuilder
+							? 'code-workflow-builder'
+							: 'n8n-workflow-builder',
+					})
 				: undefined,
 			instanceUrl: this.instanceUrl,
 			runMetadata: {
@@ -194,7 +224,10 @@ export class AiWorkflowBuilderService {
 				featureFlags: featureFlags ?? {},
 			},
 			onGenerationSuccess: async () => await this.onGenerationSuccess(user, authHeaders),
+			nodeDefinitionDirs: this.nodeDefinitionDirs,
 			resourceLocatorCallback,
+			onTelemetryEvent: this.onTelemetryEvent,
+			assistantHandler,
 		});
 
 		return { agent };
@@ -227,19 +260,89 @@ export class AiWorkflowBuilderService {
 		const { agent } = await this.getAgent(user, payload.id, payload.featureFlags);
 		const userId = user?.id?.toString();
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
+		const isCodeBuilder = payload.featureFlags?.codeBuilder ?? false;
 
-		for await (const output of agent.chat(payload, userId, abortSignal)) {
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
+
+		const pendingHitl = payload.resumeData
+			? this.sessionManager.getAndClearPendingHitl(threadId)
+			: undefined;
+
+		// Store HITL interactions for session replay.
+		// Command.update messages don't persist when a subgraph node interrupts multiple times.
+		if (pendingHitl && payload.resumeData) {
+			this.storeHitlInteraction(threadId, pendingHitl, payload.resumeData);
+		}
+
+		const resumeInterrupt = pendingHitl?.value;
+		const agentPayload = resumeInterrupt ? { ...payload, resumeInterrupt } : payload;
+
+		for await (const output of agent.chat(agentPayload, userId, abortSignal)) {
+			const streamHitl = this.extractHitlFromStreamOutput(output);
+			if (streamHitl) {
+				this.sessionManager.setPendingHitl(threadId, streamHitl, payload.id);
+			}
+
 			yield output;
 		}
 
 		// Track telemetry after stream completes (onGenerationSuccess is called by the agent)
 		if (this.onTelemetryEvent && userId) {
 			try {
-				await this.trackBuilderReplyTelemetry(agent, workflowId, userId, payload.id);
+				await this.trackBuilderReplyTelemetry(agent, workflowId, userId, payload.id, isCodeBuilder);
 			} catch (error) {
 				this.logger?.error('Failed to track builder reply telemetry', { error });
 			}
 		}
+	}
+
+	private storeHitlInteraction(
+		threadId: string,
+		pendingHitl: { value: HITLInterruptValue; triggeringMessageId?: string },
+		resumeData: unknown,
+	): void {
+		if (pendingHitl.value.type === 'questions') {
+			this.sessionManager.addHitlEntry(threadId, {
+				type: 'questions_answered',
+				afterMessageId: pendingHitl.triggeringMessageId,
+				interrupt: pendingHitl.value,
+				answers: resumeData,
+			});
+		} else if (pendingHitl.value.type === 'plan') {
+			const decision = resumeData as { action?: string; feedback?: string };
+			// Only store non-approve decisions; approved plans survive in the checkpoint
+			if (decision.action === 'reject' || decision.action === 'modify') {
+				this.sessionManager.addHitlEntry(threadId, {
+					type: 'plan_decided',
+					afterMessageId: pendingHitl.triggeringMessageId,
+					plan: pendingHitl.value.plan,
+					decision: decision.action,
+					feedback: decision.feedback,
+				});
+			}
+		}
+	}
+
+	private extractLastAiMessageContent(messages: BaseMessage[]): string {
+		const lastAiMessage = messages.findLast(
+			(m: BaseMessage): m is AIMessage => m instanceof AIMessage,
+		);
+		return typeof lastAiMessage?.content === 'string'
+			? lastAiMessage.content
+			: JSON.stringify(lastAiMessage?.content ?? '');
+	}
+
+	private extractUniqueToolNames(messages: BaseMessage[]): string[] {
+		const toolMessages = messages.filter(
+			(m: BaseMessage): m is ToolMessage => m instanceof ToolMessage,
+		);
+		return [
+			...new Set(
+				toolMessages
+					.map((m: ToolMessage) => m.name)
+					.filter((name: string | undefined): name is string => name !== undefined),
+			),
+		];
 	}
 
 	private async trackBuilderReplyTelemetry(
@@ -247,55 +350,37 @@ export class AiWorkflowBuilderService {
 		workflowId: string | undefined,
 		userId: string,
 		userMessageId: string,
+		isCodeBuilder: boolean,
 	): Promise<void> {
 		if (!this.onTelemetryEvent) return;
 
 		const state = await agent.getState(workflowId, userId);
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
+		const messages = state?.values?.messages ?? [];
 
-		// extract the last message that was sent to the user for telemetry
-		const lastAiMessage = state.values.messages.findLast(
-			(m: BaseMessage): m is AIMessage => m instanceof AIMessage,
-		);
-		const messageAi =
-			typeof lastAiMessage?.content === 'string'
-				? lastAiMessage.content
-				: JSON.stringify(lastAiMessage?.content ?? '');
-
-		const toolMessages = state.values.messages.filter(
-			(m: BaseMessage): m is ToolMessage => m instanceof ToolMessage,
-		);
-		const toolsCalled = [
-			...new Set(
-				toolMessages
-					.map((m: ToolMessage) => m.name)
-					.filter((name: string | undefined): name is string => name !== undefined),
-			),
-		];
-
-		// Build telemetry properties
 		const properties: ITelemetryTrackProperties = {
 			user_id: userId,
 			instance_id: this.instanceId,
 			workflow_id: workflowId,
 			sequence_id: threadId,
-			message_ai: messageAi,
-			tools_called: toolsCalled,
-			techniques_categories: state.values.techniqueCategories,
-			validations: state.values.validationHistory,
-			// Only include templates_selected when templates were actually used
-			...(state.values.templateIds.length > 0 && {
+			message_ai: this.extractLastAiMessageContent(messages),
+			tools_called: this.extractUniqueToolNames(messages),
+			techniques_categories: state?.values?.techniqueCategories,
+			validations: state?.values?.validationHistory,
+			...((state?.values?.templateIds?.length ?? 0) > 0 && {
 				templates_selected: state.values.templateIds,
 			}),
 			user_message_id: userMessageId,
+			code_builder: isCodeBuilder,
 		};
 
 		this.onTelemetryEvent('Builder replied to user message', properties);
 	}
 
-	async getSessions(workflowId: string | undefined, user?: IUser) {
+	async getSessions(workflowId: string | undefined, user?: IUser, codeBuilder?: boolean) {
 		const userId = user?.id?.toString();
-		return await this.sessionManager.getSessions(workflowId, userId);
+		const agentType = codeBuilder ? 'code-builder' : undefined;
+		return await this.sessionManager.getSessions(workflowId, userId, agentType);
 	}
 
 	async getBuilderInstanceCredits(
@@ -320,7 +405,76 @@ export class AiWorkflowBuilderService {
 		workflowId: string,
 		user: IUser,
 		messageId: string,
+		codeBuilder?: boolean,
 	): Promise<boolean> {
-		return await this.sessionManager.truncateMessagesAfter(workflowId, user.id, messageId);
+		const agentType = codeBuilder ? 'code-builder' : undefined;
+		return await this.sessionManager.truncateMessagesAfter(
+			workflowId,
+			user.id,
+			messageId,
+			agentType,
+		);
+	}
+
+	private static readonly questionsInterruptSchema = z.object({
+		type: z.literal('questions'),
+		introMessage: z.string().optional(),
+		questions: z.array(
+			z.object({
+				id: z.string(),
+				question: z.string(),
+				type: z.enum(['single', 'multi', 'text']),
+				options: z.array(z.string()).optional(),
+			}),
+		),
+	});
+
+	private static readonly planInterruptSchema = z.object({
+		type: z.literal('plan'),
+		plan: z.object({
+			summary: z.string(),
+			trigger: z.string(),
+			steps: z.array(
+				z.object({
+					description: z.string(),
+					subSteps: z.array(z.string()).optional(),
+					suggestedNodes: z.array(z.string()).optional(),
+				}),
+			),
+			additionalSpecs: z.array(z.string()).optional(),
+		}),
+	});
+
+	private extractHitlFromStreamOutput(output: unknown): HITLInterruptValue | null {
+		if (typeof output !== 'object' || output === null) return null;
+		if (!('messages' in output)) return null;
+
+		const messages = (output as { messages?: unknown }).messages;
+		if (!Array.isArray(messages)) return null;
+
+		for (const message of messages) {
+			if (typeof message !== 'object' || message === null) continue;
+			const m = message as Record<string, unknown>;
+
+			if (m.type === 'questions') {
+				const parsed = AiWorkflowBuilderService.questionsInterruptSchema.safeParse(m);
+				if (parsed.success) return parsed.data;
+				this.logger?.warn('[HITL] Invalid questions interrupt data', {
+					errors: parsed.error.errors,
+				});
+				continue;
+			}
+
+			if (m.type === 'plan') {
+				const parsed = AiWorkflowBuilderService.planInterruptSchema.safeParse(m);
+				if (parsed.success) return parsed.data;
+				this.logger?.warn('[HITL] Invalid plan interrupt data', {
+					errors: parsed.error.errors,
+				});
+				continue;
+			}
+		}
+
+		return null;
 	}
 }

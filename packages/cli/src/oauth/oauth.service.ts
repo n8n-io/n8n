@@ -19,6 +19,7 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { OAuthRequest } from '@/requests';
+import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import {
@@ -74,6 +75,15 @@ export class OauthService {
 		private readonly cipher: Cipher,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
+
+	private validateOAuthUrlOrThrow(url: string): void {
+		try {
+			validateOAuthUrl(url);
+		} catch (e) {
+			this.logger.error('Invalid OAuth URL', { url, error: e });
+			throw e;
+		}
+	}
 
 	getBaseUrl(oauthVersion: OauthVersion) {
 		const restUrl = `${this.urlService.getInstanceBaseUrl()}/${this.globalConfig.endpoints.rest}`;
@@ -214,7 +224,7 @@ export class OauthService {
 			throw new UnexpectedError(errorMessage);
 		}
 
-		// user validation not required for dynamic credentials
+		// Dynamic credentials: skip user validation (e.g. embed/iframe flows) as they do not contain an n8n user
 		if (decryptedState.origin === 'dynamic-credential') {
 			return {
 				...decoded,
@@ -222,8 +232,15 @@ export class OauthService {
 			};
 		}
 
-		// if we skip auth on oauth callback, we cannot validate user id
-		if (!skipAuthOnOAuthCallback && decryptedState.userId !== req.user?.id) {
+		// Static credentials: skip user validation only when N8N_SKIP_AUTH_ON_OAUTH_CALLBACK is true (e.g. embed/iframe)
+		if (skipAuthOnOAuthCallback) {
+			return {
+				...decoded,
+				...decryptedState,
+			};
+		}
+
+		if (req.user?.id === undefined || decryptedState.userId !== req.user.id) {
 			throw new AuthError('Unauthorized');
 		}
 
@@ -315,9 +332,9 @@ export class OauthService {
 		const toUpdate: ICredentialDataDecryptedObject = {};
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
-			const serverUrl = new URL(oauthCredentials.serverUrl);
+			const serverUrl = oauthCredentials.serverUrl.replace(/\/$/, ''); // Remove trailing slash
 			const { data } = await axios.get<unknown>(
-				`${serverUrl.origin}/.well-known/oauth-authorization-server`,
+				`${serverUrl}/.well-known/oauth-authorization-server`,
 			);
 			const metadataValidation = oAuthAuthorizationServerMetadataSchema.safeParse(data);
 			if (!metadataValidation.success) {
@@ -387,6 +404,9 @@ export class OauthService {
 			}
 		}
 
+		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');
+		this.validateOAuthUrlOrThrow(oauthCredentials.accessTokenUrl ?? '');
+
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
 		const [csrfSecret, state] = this.createCsrfState(csrfData);
 
@@ -431,6 +451,10 @@ export class OauthService {
 	): Promise<string> {
 		const oauthCredentials: OAuth1CredentialData =
 			await this.getOAuthCredentials<OAuth1CredentialData>(credential);
+
+		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');
+		this.validateOAuthUrlOrThrow(oauthCredentials.requestTokenUrl ?? '');
+		this.validateOAuthUrlOrThrow(oauthCredentials.accessTokenUrl ?? '');
 
 		const [csrfSecret, state] = this.createCsrfState(csrfData);
 

@@ -5,7 +5,11 @@ const NO_CREDENTIALS_MESSAGE = 'Add your credential';
 const INVALID_CREDENTIALS_MESSAGE = 'Check your credential';
 const MODE_SELECTOR_LIST = 'From list';
 
-test.describe('Resource Locator', () => {
+test.describe('Resource Locator', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});

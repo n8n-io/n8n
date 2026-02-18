@@ -24,6 +24,7 @@
 		"utils/**/*.ts"
 	],
 	"references": [
+		{ "path": "../ai-utilities/tsconfig.build.json" },
 		{ "path": "../../core/tsconfig.build.json" },
 		{ "path": "../../nodes-base/tsconfig.build.cjs.json" },
 		{ "path": "../../workflow/tsconfig.build.esm.json" }

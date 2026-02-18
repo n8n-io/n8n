@@ -23,7 +23,7 @@ export interface DiscoveryContext {
 		 * resource/operation pattern (Gmail, Notion, Google Sheets, etc.).
 		 *
 		 * Used by Builder to set initialParameters: { resource, operation }
-		 * which then enables Configurator to filter properties correctly.
+		 * which then enables it to filter properties correctly when configuring.
 		 *
 		 * Only present for nodes that follow the resource/operation pattern.
 		 */

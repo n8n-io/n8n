@@ -95,7 +95,7 @@ export class MessageEventBusDestinationSyslog
 				JSON.stringify(serializedMessage),
 				{
 					severity: msg.eventName.toLowerCase().endsWith('error') ? Severity.Error : Severity.Debug,
-					msgid: msg.id,
+					msgid: msg.id.length > 32 ? msg.id.replace(/-/g, '').substring(0, 32) : msg.id,
 					timestamp: msg.ts.toJSDate(),
 				},
 				async (error) => {

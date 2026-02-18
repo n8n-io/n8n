@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 /**
  * DTO for OAuth client response (excludes sensitive data like clientSecret)

@@ -40,6 +40,12 @@ interface ParsedFeedback {
 		averageScore: number;
 		feedback: Array<{ key: string; score: number }>;
 	}>;
+	subgraphMetrics?: {
+		nodeCount?: number;
+		discoveryDurationMs?: number;
+		builderDurationMs?: number;
+		responderDurationMs?: number;
+	};
 }
 
 /** Type for parsed summary JSON */
@@ -52,6 +58,10 @@ interface ParsedSummary {
 	evaluatorAverages: Record<string, number>;
 	results: Array<{
 		prompt: string;
+		nodeCount?: number;
+		discoveryDurationMs?: number;
+		builderDurationMs?: number;
+		responderDurationMs?: number;
 	}>;
 }
 
@@ -243,6 +253,43 @@ describe('Artifact Saver', () => {
 			expect(fs.existsSync(workflowPath)).toBe(false);
 		});
 
+		it('should include subgraph metrics in feedback.json when present', () => {
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
+			const result = createMockResult({
+				subgraphMetrics: {
+					nodeCount: 7,
+					discoveryDurationMs: 350,
+					builderDurationMs: 900,
+					responderDurationMs: 200,
+				},
+			});
+
+			saver.saveExample(result);
+
+			const exampleDir = findExampleDir(tempDir, '001');
+			const feedbackPath = path.join(exampleDir, 'feedback.json');
+			const feedback = jsonParse<ParsedFeedback>(fs.readFileSync(feedbackPath, 'utf-8'));
+
+			expect(feedback.subgraphMetrics).toBeDefined();
+			expect(feedback.subgraphMetrics?.nodeCount).toBe(7);
+			expect(feedback.subgraphMetrics?.discoveryDurationMs).toBe(350);
+			expect(feedback.subgraphMetrics?.builderDurationMs).toBe(900);
+			expect(feedback.subgraphMetrics?.responderDurationMs).toBe(200);
+		});
+
+		it('should not include subgraph metrics in feedback.json when not present', () => {
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
+			const result = createMockResult(); // No subgraphMetrics
+
+			saver.saveExample(result);
+
+			const exampleDir = findExampleDir(tempDir, '001');
+			const feedbackPath = path.join(exampleDir, 'feedback.json');
+			const feedback = jsonParse<ParsedFeedback>(fs.readFileSync(feedbackPath, 'utf-8'));
+
+			expect(feedback.subgraphMetrics).toBeUndefined();
+		});
+
 		it('should pad example index in directory name', () => {
 			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
 
@@ -315,6 +362,42 @@ describe('Artifact Saver', () => {
 
 			expect(savedSummary.results[0].prompt.length).toBeLessThan(longPrompt.length);
 			expect(savedSummary.results[0].prompt).toContain('...');
+		});
+
+		it('should include subgraph metrics in summary results when present', () => {
+			const saver = createArtifactSaver({ outputDir: tempDir, logger: silentLogger });
+			const results = [
+				createMockResult({
+					index: 1,
+					subgraphMetrics: {
+						nodeCount: 5,
+						discoveryDurationMs: 250,
+						builderDurationMs: 750,
+						responderDurationMs: 150,
+					},
+				}),
+				createMockResult({
+					index: 2,
+					// No subgraphMetrics
+				}),
+			];
+
+			saver.saveSummary(createMockSummary(), results);
+
+			const summaryPath = path.join(tempDir, 'summary.json');
+			const savedSummary = jsonParse<ParsedSummary>(fs.readFileSync(summaryPath, 'utf-8'));
+
+			// First result should have subgraph metrics
+			expect(savedSummary.results[0].nodeCount).toBe(5);
+			expect(savedSummary.results[0].discoveryDurationMs).toBe(250);
+			expect(savedSummary.results[0].builderDurationMs).toBe(750);
+			expect(savedSummary.results[0].responderDurationMs).toBe(150);
+
+			// Second result should not have subgraph metrics
+			expect(savedSummary.results[1].nodeCount).toBeUndefined();
+			expect(savedSummary.results[1].discoveryDurationMs).toBeUndefined();
+			expect(savedSummary.results[1].builderDurationMs).toBeUndefined();
+			expect(savedSummary.results[1].responderDurationMs).toBeUndefined();
 		});
 	});
 });

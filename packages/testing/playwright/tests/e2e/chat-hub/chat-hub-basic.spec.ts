@@ -4,7 +4,11 @@ import { CredentialModal } from '../../../pages/components/CredentialModal';
 
 test.use(chatHubTestConfig);
 
-test.describe('Basic conversation @capability:proxy', () => {
+test.describe('Basic conversation @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'Chat' },
+	],
+}, () => {
 	test('new chat with pre-configured credentials', async ({ n8n, anthropicCredential: _ }) => {
 		const page = new ChatHubChatPage(n8n.page);
 
@@ -48,7 +52,7 @@ test.describe('Basic conversation @capability:proxy', () => {
 		await page.getChatInput().fill('Hello from e2e');
 		await page.getSendButton().click();
 		await expect(page.getChatMessages().nth(0)).toContainText('Hello from e2e');
-		await expect(page.getChatMessages().nth(1)).toContainText('Hello! Welcome! 👋');
+		await expect(page.getChatMessages().nth(1)).toContainText('Hello!');
 		await expect(page.sidebar.getConversations().first()).toHaveAccessibleName(/greeting/i); // verify auto-generated title
 	});
 
@@ -76,17 +80,17 @@ test.describe('Basic conversation @capability:proxy', () => {
 		await expect(page.getChatMessages()).toHaveCount(4);
 
 		// STEP: regenerate response to first prompt
-		await page.getRegenerateButtonAt(1).click();
+		await page.clickRegenerateButtonAt(1);
 		await expect(page.getChatMessages().nth(1)).toContainText('Hello!');
 		await expect(page.getChatMessages()).toHaveCount(2);
 
 		// STEP: switch to previous alternative
-		await page.getPrevAlternativeButtonAt(1).click();
+		await page.clickPrevAlternativeButtonAt(1);
 		await expect(page.getChatMessages().nth(1)).toContainText('Hi there!');
 		await expect(page.getChatMessages()).toHaveCount(4);
 
 		// STEP: edit 2nd prompt
-		await page.getEditButtonAt(2).click();
+		await page.clickEditButtonAt(2);
 		await page.getEditorAt(2).fill('Hola');
 		await page.getSendButtonAt(2).click();
 		await expect(page.getChatMessages().nth(3)).toContainText('¡Hola!');

@@ -66,24 +66,53 @@ test('enterprise feature @licensed', ...)           // Requires enterprise licen
 | `@licensed` | Enterprise license features | Tests for features behind license flags at startup |
 | `@cloud:X` | Resource constraints (trial, enterprise) | Performance tests with memory/CPU limits |
 | `@chaostest` | Chaos engineering tests | Tests that intentionally break things |
-| `@db:reset` | ⚠️ Deprecated - use `test.use()` pattern | Legacy isolation pattern |
+| `@auth:X` | Authentication role (owner, admin, member, none) | Tests requiring specific user role |
+| `@db:reset` | Reset database before each test (container-only) | Tests that need fresh DB state per test (e.g., MFA tests) |
 
 ### Worker Isolation (Fresh Database)
-If tests need a clean database state, use `test.use()` at the top level of the file with a unique capability config instead of the deprecated `@db:reset` tag:
+
+Tests that need their own isolated database should use `test.use()` with a unique capability config. This gives the test file its own container with a fresh database:
 
 ```typescript
 // my-isolated-tests.spec.ts
 import { test, expect } from '../fixtures/base';
 
-// Must be top-level, not inside describe block
-test.use({ capability: { env: { _ISOLATION: 'my-isolated-tests' } } });
+// Unique value breaks worker cache → fresh container with clean DB
+test.use({ capability: { env: { TEST_ISOLATION: 'my-test-name' } } });
 
-test('test with clean state', async ({ n8n }) => {
-  // Fresh container with reset database
+test.describe('My isolated tests', () => {
+  test.describe.configure({ mode: 'serial' }); // If tests depend on each other's data
+
+  test('test with clean state', async ({ n8n }) => {
+    // Fresh container with reset database
+  });
 });
 ```
 
-> **Deprecated:** `@db:reset` tag causes CI issues (separate workers, sequential execution). Use `test.use()` pattern above instead.
+**How it works:** The `capability` option is scoped to the worker level. When you pass a unique value via `test.use()`, Playwright creates a new worker with a fresh container. Each container starts with a clean database automatically.
+
+### Per-Test Database Reset (@db:reset)
+
+If tests within the same file need a fresh database before **each test** (not just the file), add `@db:reset` to the describe block. **Note:** This tag is container-only - tests with `@db:reset` won't run in local mode.
+
+```typescript
+// my-stateful-tests.spec.ts
+import { test, expect } from '../fixtures/base';
+
+test.use({ capability: { env: { TEST_ISOLATION: 'my-stateful-tests' } } });
+
+test.describe('My stateful tests @db:reset', () => {
+  test('test 1', async ({ n8n }) => {
+    // Fresh database (reset before this test)
+  });
+
+  test('test 2', async ({ n8n }) => {
+    // Fresh database again (reset before this test too)
+  });
+});
+```
+
+**When to use `@db:reset`:** When tests modify shared state that would break subsequent tests (e.g., enabling MFA, creating users, changing settings). Since resetting the database would affect all parallel tests in local mode, these tests are excluded from local runs and only execute in container mode where each worker has its own isolated database.
 
 ### Enterprise Features (@licensed)
 Use the `@licensed` tag for tests that require enterprise features which are **only available when the license is present at startup**. This differs from features that can be enabled/disabled at runtime.
@@ -285,6 +314,90 @@ node scripts/import-victoria-data.mjs --start victoria-metrics-export.jsonl vict
 3. Query locally:
    - **Metrics UI:** http://localhost:8428/vmui/
    - **Logs UI:** http://localhost:9428/select/vmui/
+
+## Janitor (Static Analysis & Inventory)
+
+Janitor enforces test architecture patterns and provides codebase discovery for devs and AI.
+
+### Quick Commands
+
+```bash
+# Static analysis (run all rules)
+npx tsx scripts/janitor/index.ts
+
+# Dead code removal
+npx tsx scripts/janitor/index.ts --rule=dead-code              # Find unused
+npx tsx scripts/janitor/index.ts --rule=dead-code --fix        # Preview
+npx tsx scripts/janitor/index.ts --rule=dead-code --fix --write # Remove
+
+# Inventory (codebase discovery)
+npx tsx scripts/janitor/index.ts --inventory              # Summary
+npx tsx scripts/janitor/index.ts --inventory --verbose    # Full details
+npx tsx scripts/janitor/index.ts --describe=CanvasPage    # Single class
+npx tsx scripts/janitor/index.ts --list-pages             # All page objects
+
+# File-level impact analysis (find affected tests)
+npx tsx scripts/janitor/index.ts --impact=pages/CanvasPage.ts
+npx tsx scripts/janitor/index.ts --impact=pages/CanvasPage.ts --tests | xargs playwright test
+
+# Method-level impact analysis (precise test selection)
+npx tsx scripts/janitor/index.ts --method-impact=CanvasPage.addNode           # Find tests using method
+npx tsx scripts/janitor/index.ts --method-impact=WorkflowsPage.addFolder --verbose  # Show line-by-line usages
+npx tsx scripts/janitor/index.ts --method-impact=CanvasPage.addNode --tests   # For piping to playwright
+npx tsx scripts/janitor/index.ts --method-index                               # Full method usage index
+```
+
+### Rules
+
+| Rule | What it enforces |
+|------|------------------|
+| `selector-purity` | Tests use page objects, not raw locators |
+| `scope-lockdown` | Page locators scoped to container |
+| `boundary-protection` | Pages don't import other pages |
+| `dead-code` | No unused methods/properties [fixable] |
+
+Run `--list` for all rules and options.
+
+### Method-Level Impact Analysis
+
+When modifying a page object method, use `--method-impact` to find exactly which tests need to run:
+
+```bash
+# Example: modifying WorkflowsPage.addFolder()
+npx tsx scripts/janitor/index.ts --method-impact=WorkflowsPage.addFolder
+
+# Output:
+# Method: WorkflowsPage.addFolder()
+# Total usages: 7
+# Affected test files: 2
+#   - tests/e2e/projects/folders-basic.spec.ts (3 usages)
+#   - tests/e2e/projects/folders-operations.spec.ts (4 usages)
+
+# Run only affected tests
+npx tsx scripts/janitor/index.ts --method-impact=WorkflowsPage.addFolder --tests | xargs playwright test
+```
+
+This works by understanding the fixture pattern (`n8n.workflows.addFolder()` → `WorkflowsPage.addFolder`) and scanning test files for actual method calls, not just imports.
+
+Use `--method-index` to see all tracked methods and their usage counts across the test suite.
+
+### For AI-Assisted Test Writing
+
+```bash
+# Generate context for AI
+npx tsx scripts/janitor/index.ts --inventory --json > .playwright-inventory.json
+npx tsx scripts/janitor/index.ts --describe=CanvasPage
+
+# Validate AI output
+npx tsx scripts/janitor/index.ts --file=tests/new-test.spec.ts
+```
+
+### Key Conventions
+
+- **Entry points**: All tests start with `n8n.start.*` (see `TestEntryComposer`)
+- **Page objects**: UI interactions go through `n8n.canvas`, `n8n.ndv`, etc.
+- **API helpers**: Backend operations via `n8n.api.*`
+- **Composables**: Multi-step flows via `n8n.flows.*`
 
 ## Writing Tests
 For guidelines on writing new tests, see [CONTRIBUTING.md](./CONTRIBUTING.md).

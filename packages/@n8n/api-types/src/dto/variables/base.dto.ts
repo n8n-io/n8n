@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 export const KEY_NAME_REGEX = /^[A-Za-z0-9_]+$/;
 export const KEY_MAX_LENGTH = 50;

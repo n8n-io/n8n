@@ -8,12 +8,12 @@ import N8nIconButton from '../../N8nIconButton';
 import N8nInput from '../../N8nInput';
 
 interface Props {
-	style?: 'regular' | 'minimal';
+	minimal?: boolean;
 	showFeedback?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-	style: 'regular',
+	minimal: false,
 	showFeedback: true,
 });
 
@@ -63,11 +63,11 @@ function onCancelFeedback() {
 </script>
 
 <template>
-	<div :class="[$style.rating, $style[style]]">
+	<div :class="[$style.rating, { [$style.minimal]: minimal }]">
 		<div v-if="showRatingButtons" :class="$style.buttons">
-			<template v-if="style === 'regular'">
+			<template v-if="!minimal">
 				<N8nButton
-					type="secondary"
+					variant="subtle"
 					size="small"
 					:label="t('assistantChat.builder.thumbsUp')"
 					data-test-id="message-thumbs-up-button"
@@ -75,7 +75,7 @@ function onCancelFeedback() {
 					@click="onRateButton('up')"
 				/>
 				<N8nButton
-					type="secondary"
+					variant="subtle"
 					size="small"
 					data-test-id="message-thumbs-down-button"
 					:label="t('assistantChat.builder.thumbsDown')"
@@ -85,9 +85,8 @@ function onCancelFeedback() {
 			</template>
 			<template v-else>
 				<N8nIconButton
-					type="tertiary"
+					variant="ghost"
 					size="small"
-					text
 					icon="thumbs-up"
 					icon-size="large"
 					:class="$style.ratingButton"
@@ -95,9 +94,8 @@ function onCancelFeedback() {
 					@click="onRateButton('up')"
 				/>
 				<N8nIconButton
-					type="tertiary"
+					variant="ghost"
 					size="small"
-					text
 					icon="thumbs-down"
 					icon-size="large"
 					:class="$style.ratingButton"
@@ -120,13 +118,13 @@ function onCancelFeedback() {
 			/>
 			<div :class="$style.feedbackActions">
 				<N8nButton
-					type="secondary"
+					variant="subtle"
 					size="small"
 					:label="t('generic.cancel')"
 					@click="onCancelFeedback"
 				/>
 				<N8nButton
-					type="primary"
+					variant="solid"
 					size="small"
 					data-test-id="message-submit-feedback-button"
 					:label="t('assistantChat.builder.feedbackSubmit')"
@@ -147,6 +145,7 @@ function onCancelFeedback() {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--2xs);
+	width: 100%;
 }
 
 .buttons {
@@ -161,7 +160,7 @@ function onCancelFeedback() {
 }
 
 .feedbackInput {
-	:global(.el-textarea__inner) {
+	:global(textarea) {
 		resize: none;
 		font-family: var(--font-family);
 		font-size: var(--font-size--sm);
@@ -203,7 +202,7 @@ function onCancelFeedback() {
 	}
 
 	.feedbackInput {
-		:global(.el-textarea__inner) {
+		:global(textarea) {
 			font-size: var(--font-size--2xs);
 
 			&::placeholder {

@@ -181,10 +181,10 @@ onBeforeMount(() => {
 	>
 		<template #trigger>
 			<N8nButton
+				variant="subtle"
+				iconOnly
 				icon="funnel"
-				type="tertiary"
 				size="medium"
-				square
 				:active="!!countSelectedFilterProps"
 				data-test-id="executions-filter-button"
 				:class="$style.filterButton"
@@ -263,7 +263,7 @@ onBeforeMount(() => {
 							id="execution-filter-start-date"
 							v-model="filter.startDate"
 							type="datetime"
-							:teleported="false"
+							:teleported="teleported"
 							:format="DATE_TIME_MASK"
 							:placeholder="locale.baseText('executionsFilter.startDate')"
 							data-test-id="executions-filter-start-date-picker"
@@ -273,7 +273,7 @@ onBeforeMount(() => {
 							id="execution-filter-end-date"
 							v-model="filter.endDate"
 							type="datetime"
-							:teleported="false"
+							:teleported="teleported"
 							:format="DATE_TIME_MASK"
 							:placeholder="locale.baseText('executionsFilter.endDate')"
 							data-test-id="executions-filter-end-date-picker"
@@ -402,10 +402,10 @@ onBeforeMount(() => {
 					</div>
 				</div>
 				<N8nButton
+					variant="ghost"
 					v-if="!!countSelectedFilterProps"
 					:class="$style.resetBtn"
 					size="large"
-					text
 					data-test-id="executions-filter-reset-button"
 					@click="onFilterReset"
 				>

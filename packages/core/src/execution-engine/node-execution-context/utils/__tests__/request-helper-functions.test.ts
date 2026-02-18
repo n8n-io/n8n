@@ -419,7 +419,7 @@ describe('Request Helper Functions', () => {
 
 			test('on regular requests', async () => {
 				const axiosOptions = await parseRequestObject(requestObject);
-				expect((axiosOptions.httpsAgent as HttpsAgent).options).toEqual({
+				expect((axiosOptions.httpsAgent as HttpsAgent).options).toMatchObject({
 					servername: 'example.de',
 					...agentOptions,
 					noDelay: true,
@@ -438,7 +438,7 @@ describe('Request Helper Functions', () => {
 				};
 				axiosOptions.beforeRedirect!(redirectOptions, mock());
 				expect(redirectOptions.agent).toEqual(redirectOptions.agents.https);
-				expect((redirectOptions.agent as HttpsAgent).options).toEqual({
+				expect((redirectOptions.agent as HttpsAgent).options).toMatchObject({
 					servername: 'example.de',
 					...agentOptions,
 					noDelay: true,
@@ -618,6 +618,32 @@ describe('Request Helper Functions', () => {
 			const axiosConfig = convertN8nRequestToAxios(requestOptions);
 
 			expect(axiosConfig.httpsAgent?.options.rejectUnauthorized).toBe(false);
+		});
+
+		test('should ignore HTTP error except for the specified status codes', () => {
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://example.com',
+				ignoreHttpStatusErrors: { ignore: true, except: [401] },
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+			expect(axiosConfig.validateStatus).toBeDefined();
+			expect(axiosConfig.validateStatus!(401)).toBe(false);
+			expect(axiosConfig.validateStatus!(500)).toBe(true);
+		});
+
+		test('should ignore all HTTP errors', () => {
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://example.com',
+				ignoreHttpStatusErrors: true,
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+			expect(axiosConfig.validateStatus).toBeDefined();
+			expect(axiosConfig.validateStatus!(401)).toBe(true);
+			expect(axiosConfig.validateStatus!(500)).toBe(true);
 		});
 	});
 

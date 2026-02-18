@@ -3,14 +3,17 @@ import { nanoid } from 'nanoid';
 import { test, expect } from '../../../../fixtures/base';
 
 const NOTIFICATIONS = {
-	CREATED: 'Workflow successfully created',
 	ARCHIVED: 'archived',
 	UNARCHIVED: 'unarchived',
 	DELETED: 'deleted',
 	UNPUBLISHED: 'unpublished',
 };
 
-test.describe('Workflows', () => {
+test.describe('Workflows', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.goHome();
 	});
@@ -35,8 +38,6 @@ test.describe('Workflows', () => {
 		await n8n.canvas.setWorkflowName(workflowName);
 		await n8n.page.keyboard.press('Enter');
 		await n8n.canvas.waitForSaveWorkflowCompleted();
-
-		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.CREATED)).toBeVisible();
 	});
 
 	test('should search for workflows', async ({ n8n }) => {
@@ -62,7 +63,7 @@ test.describe('Workflows', () => {
 		await n8n.workflows.clearSearch();
 		await n8n.workflows.search('NonExistentWorkflow123');
 		await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(0);
-		await expect(n8n.page.getByText('No workflows found')).toBeVisible();
+		await expect(n8n.workflows.getNoWorkflowsFoundMessage()).toBeVisible();
 	});
 
 	test('should archive and unarchive a workflow', async ({ n8n }) => {

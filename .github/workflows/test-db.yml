@@ -1,0 +1,98 @@
+name: "Test: DB Postgres"
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - packages/cli/src/databases/**
+      - packages/cli/src/modules/*/database/**
+      - packages/cli/src/modules/**/*.entity.ts
+      - packages/cli/src/modules/**/*.repository.ts
+      - packages/cli/test/integration/**
+      - packages/cli/test/migration/**
+      - packages/cli/test/shared/db/**
+      - packages/@n8n/db/**
+      - packages/cli/**/__tests__/**
+      - packages/testing/containers/services/postgres.ts
+      - .github/workflows/test-db.yml
+      - .github/docker-compose.yml
+
+concurrency:
+  group: db-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_OPTIONS: "--max-old-space-size=3072"
+
+jobs:
+  build:
+    name: Install & Build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    if: github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+
+  sqlite-pooled:
+    name: SQLite Pooled
+    needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    timeout-minutes: 20
+    env:
+      DB_TYPE: sqlite
+      DB_SQLITE_POOL_SIZE: 4
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Test SQLite Pooled
+        working-directory: packages/cli
+        run: pnpm test:sqlite
+
+      - name: Test SQLite Pooled Migrations
+        working-directory: packages/cli
+        run: pnpm test:sqlite:migrations:tc
+
+  postgres:
+    name: Postgres
+    needs: build
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 20
+    env:
+      TEST_IMAGE_POSTGRES: postgres:16
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Pre-pull Test Container Images
+        run: npx tsx packages/testing/containers/pull-test-images.ts || true
+
+      - name: Test Postgres Integration
+        working-directory: packages/cli
+        run: pnpm test:postgres:integration:tc
+
+      - name: Test Postgres Migrations
+        working-directory: packages/cli
+        run: pnpm test:postgres:migrations:tc
+
+  notify-on-failure:
+    name: Notify Slack on failure
+    runs-on: ubuntu-latest
+    needs: [sqlite-pooled, postgres]
+    steps:
+      - name: Notify Slack on failure
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+        if: failure() && github.ref == 'refs/heads/master'
+        with:
+          status: ${{ job.status }}
+          channel: "#alerts-build"
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: Postgres or SQLite tests failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})

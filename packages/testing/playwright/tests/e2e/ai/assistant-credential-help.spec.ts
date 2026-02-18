@@ -9,7 +9,11 @@ import {
 } from '../../../config/constants';
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('AI Assistant::enabled', () => {
+test.describe('AI Assistant::enabled', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
 	test.describe('Credential Help', () => {
 		test('should start credential help from node credential', async ({
 			n8n,

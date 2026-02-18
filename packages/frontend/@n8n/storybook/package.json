@@ -38,6 +38,7 @@
     "typescript": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
+    "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
   },

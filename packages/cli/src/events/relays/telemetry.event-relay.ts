@@ -24,7 +24,6 @@ import {
 	toExecutionContextEstablishmentHookParameter,
 } from 'n8n-workflow';
 import os from 'node:os';
-import { get as pslGet } from 'psl';
 
 import { Telemetry } from '../../telemetry';
 import { EventRelay } from './event-relay';
@@ -90,6 +89,12 @@ export class TelemetryEventRelay extends EventRelay {
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
 			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
+			'external-secrets-connection-created': (event) =>
+				this.externalSecretsConnectionCreated(event),
+			'external-secrets-connection-updated': (event) =>
+				this.externalSecretsConnectionUpdated(event),
+			'external-secrets-connection-deleted': (event) =>
+				this.externalSecretsConnectionDeleted(event),
 			'public-api-invoked': (event) => this.publicApiInvoked(event),
 			'public-api-key-created': (event) => this.publicApiKeyCreated(event),
 			'public-api-key-deleted': (event) => this.publicApiKeyDeleted(event),
@@ -142,6 +147,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
 			'history-compacted': (event) => this.historyCompacted(event),
+			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
 		});
 	}
 
@@ -158,7 +164,6 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('Project settings updated', {
 			user_id: userId,
 			role,
-
 			members: members.map(({ userId: user_id, role }) => ({ user_id, role })),
 			project_id: projectId,
 		});
@@ -348,6 +353,45 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['external-secrets-provider-reloaded']) {
 		this.telemetry.track('User reloaded external secrets', {
 			vault_type: vaultType,
+		});
+	}
+
+	private externalSecretsConnectionCreated({
+		userId,
+		vaultType,
+		projects,
+	}: RelayEventMap['external-secrets-connection-created']) {
+		this.telemetry.track('User created external secrets connection', {
+			user_id: userId,
+			vault_type: vaultType,
+			scope: projects.length === 0 ? 'global' : 'project',
+			project_ids: projects.map((project) => project.id),
+		});
+	}
+
+	private externalSecretsConnectionUpdated({
+		userId,
+		vaultType,
+		projects,
+	}: RelayEventMap['external-secrets-connection-updated']) {
+		this.telemetry.track('User updated external secrets connection', {
+			user_id: userId,
+			vault_type: vaultType,
+			scope: projects.length === 0 ? 'global' : 'project',
+			project_ids: projects.map((project) => project.id),
+		});
+	}
+
+	private externalSecretsConnectionDeleted({
+		userId,
+		vaultType,
+		projects,
+	}: RelayEventMap['external-secrets-connection-deleted']) {
+		this.telemetry.track('User deleted external secrets connection', {
+			user_id: userId,
+			vault_type: vaultType,
+			scope: projects.length === 0 ? 'global' : 'project',
+			project_ids: projects.map((project) => project.id),
 		});
 	}
 
@@ -916,15 +960,16 @@ export class TelemetryEventRelay extends EventRelay {
 
 					this.telemetry.track('Manual node exec finished', telemetryPayload);
 				} else {
-					nodeGraphResult.webhookNodeNames.forEach((name: string) => {
+					for (const name of nodeGraphResult.webhookNodeNames) {
 						const execJson = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
 							?.json as { headers?: { origin?: string } };
 						if (execJson?.headers?.origin && execJson.headers.origin !== '') {
+							const { get: pslGet } = await import('psl');
 							manualExecEventProperties.webhook_domain = pslGet(
 								execJson.headers.origin.replace(/^https?:\/\//, ''),
 							);
 						}
-					});
+					}
 
 					this.telemetry.track('Manual workflow exec finished', manualExecEventProperties);
 				}
@@ -1380,5 +1425,20 @@ export class TelemetryEventRelay extends EventRelay {
 				this.globalConfig.workflowHistoryCompaction.trimmingTimeWindowDays,
 		});
 	}
+	// #endregion
+
+	// #region Instance Policies
+
+	private instancePoliciesUpdated({
+		user,
+		settingName,
+		value,
+	}: RelayEventMap['instance-policies-updated']) {
+		this.telemetry.track('User updated instance policies', {
+			user_id: user.id,
+			[settingName]: value,
+		});
+	}
+
 	// #endregion
 }

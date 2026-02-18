@@ -326,6 +326,7 @@ describe('FromAiParametersModal', () => {
 			currentNodeParameters: {},
 			credentials: undefined,
 			projectId: 'test-project-id',
+			workflowId: 'test-workflow',
 		});
 	});
 
