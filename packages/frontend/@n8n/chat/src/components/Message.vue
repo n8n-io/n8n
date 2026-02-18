@@ -6,6 +6,7 @@ import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 
 import ChatFile from './ChatFile.vue';
 import MarkdownRenderer from './MarkdownRenderer.vue';
+import MessageActions from './MessageActions.vue';
 
 const props = defineProps<{
 	message: ChatMessage;
@@ -69,8 +70,12 @@ onMounted(async () => {
 
 <template>
 	<div ref="messageContainer" class="chat-message" :class="classes">
-		<div v-if="!!$slots.beforeMessage" class="chat-message-actions">
+		<div
+			v-if="!!$slots.beforeMessage || options?.enableMessageActions"
+			class="chat-message-actions"
+		>
 			<slot name="beforeMessage" v-bind="{ message }" />
+			<MessageActions :message="message" />
 		</div>
 		<slot>
 			<template v-if="message.type === 'component' && messageComponents[message.key]">

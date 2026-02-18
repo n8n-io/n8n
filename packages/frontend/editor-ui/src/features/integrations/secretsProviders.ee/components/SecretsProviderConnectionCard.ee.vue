@@ -35,6 +35,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	edit: [providerKey: string];
 	share: [providerKey: string];
+	reload: [providerKey: string];
 	delete: [providerKey: string];
 }>();
 
@@ -101,6 +102,13 @@ const actionDropdownOptions = computed(() => {
 		});
 	}
 
+	if (provider.value.state === 'connected') {
+		options.push({
+			label: i18n.baseText('settings.externalSecrets.card.actionDropdown.reload'),
+			value: 'reload',
+		});
+	}
+
 	if (canDelete.value) {
 		options.push({
 			label: i18n.baseText('generic.delete'),
@@ -116,6 +124,8 @@ function onAction(action: string) {
 		emit('edit', provider.value.name);
 	} else if (action === 'share') {
 		emit('share', provider.value.name);
+	} else if (action === 'reload') {
+		emit('reload', provider.value.name);
 	} else if (action === 'delete') {
 		emit('delete', provider.value.name);
 	}
