@@ -1,10 +1,8 @@
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import axios from 'axios';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import type { QuickConnectBackendOption } from '../quick-connect.config';
-import type { IQuickConnectHandler } from './quick-connect.handler';
+import { FirecrawlQuickConnect } from '../quick-connect.config';
+import { IQuickConnectHandler } from './handler.interface';
 
 const FIRECRAWL_API_BASE_URL = 'https://api.firecrawl.dev';
 
@@ -14,26 +12,26 @@ interface FirecrawlCreateUserResponse {
 
 @Service()
 export class FirecrawlHandler implements IQuickConnectHandler {
-	readonly credentialType = 'firecrawlApi';
+	private config: FirecrawlQuickConnect;
 
-	async getCredentialData(
-		config: QuickConnectBackendOption,
-		user: User,
-	): Promise<ICredentialDataDecryptedObject> {
-		const secret = config.backendFlowConfig.secret;
-		const response = await axios.post<FirecrawlCreateUserResponse>(
-			`${FIRECRAWL_API_BASE_URL}/admin/integration/create-user`,
-			{ email: user.email },
-			{
-				headers: {
-					Authorization: `Bearer ${secret}`,
-					'Content-Type': 'application/json',
-				},
+	setConfig(config: FirecrawlQuickConnect) {
+		this.config = config;
+	}
+
+	async getApiKey({ email }: User) {
+		const secret = this.config.backendFlowConfig.secret;
+		const response = await fetch(`${FIRECRAWL_API_BASE_URL}/admin/integration/create-user`, {
+			method: 'POST',
+			headers: {
+				authorization: `Bearer ${secret}`,
+				contentType: 'application/json',
 			},
-		);
+			body: JSON.stringify({ email }),
+		});
+		const json = (await response.json()) as FirecrawlCreateUserResponse;
 
 		return {
-			apiKey: response.data.apiKey,
+			apiKey: json.apiKey,
 		};
 	}
 }
