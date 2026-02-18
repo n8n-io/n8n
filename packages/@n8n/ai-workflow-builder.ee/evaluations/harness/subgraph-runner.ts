@@ -1,7 +1,7 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage, AIMessage } from '@langchain/core/messages';
 
-import { ResponderAgent } from '@/agents/responder.agent';
+import { createResponderAgent, invokeResponderAgent } from '@/agents/responder.agent';
 import type { ResponderContext } from '@/agents/responder.agent';
 import type { CoordinationLogEntry } from '@/types/coordination';
 import type { DiscoveryContext } from '@/types/discovery-types';
@@ -97,7 +97,7 @@ export function extractPreComputedState(inputs: Record<string, unknown>): PreCom
 /**
  * Create a function that runs only the targeted subgraph with pre-computed state.
  *
- * For the responder subgraph: instantiates ResponderAgent, calls invoke()
+ * For the responder subgraph: creates the agent via createResponderAgent, invokes it
  * with the pre-computed state, and returns the response text.
  */
 export function createSubgraphRunner(config: SubgraphRunnerConfig): SubgraphRunFn {
@@ -106,7 +106,7 @@ export function createSubgraphRunner(config: SubgraphRunnerConfig): SubgraphRunF
 	switch (subgraph) {
 		case 'responder':
 			return async (state: PreComputedState): Promise<SubgraphResult> => {
-				const agent = new ResponderAgent({ llm: llms.responder });
+				const agent = createResponderAgent({ llm: llms.responder });
 
 				const context: ResponderContext = {
 					messages: state.messages,
@@ -116,11 +116,11 @@ export function createSubgraphRunner(config: SubgraphRunnerConfig): SubgraphRunF
 					previousSummary: state.previousSummary,
 				};
 
-				const result = await agent.invoke(context);
-				const content =
-					typeof result.content === 'string' ? result.content : JSON.stringify(result.content);
+				const result = await invokeResponderAgent(agent, context);
+				const { content } = result.response;
+				const response = typeof content === 'string' ? content : JSON.stringify(content);
 
-				return { response: content };
+				return { response };
 			};
 
 		default:
