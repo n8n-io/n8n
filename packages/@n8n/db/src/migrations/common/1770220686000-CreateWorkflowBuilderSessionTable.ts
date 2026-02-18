@@ -10,7 +10,7 @@ export class CreateWorkflowBuilderSessionTable1770220686000 implements Reversibl
 			.withColumns(
 				column('id').uuid.primary.autoGenerate,
 				column('workflowId').varchar(36).notNull,
-				column('userId').varchar(36).notNull,
+				column('userId').uuid.notNull,
 				column('messages').json.notNull.default("'[]'"),
 				column('previousSummary').text.comment(
 					'Summary of prior conversation from compaction (/compact or auto-compact)',
