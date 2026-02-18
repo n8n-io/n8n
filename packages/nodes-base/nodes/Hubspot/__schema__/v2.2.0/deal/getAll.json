@@ -19,6 +19,9 @@
                         "source": {
                             "type": "string"
                         },
+                        "sourceId": {
+                            "type": "string"
+                        },
                         "timestamp": {
                             "type": "integer"
                         },
@@ -79,5 +82,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
