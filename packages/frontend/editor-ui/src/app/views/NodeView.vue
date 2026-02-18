@@ -794,6 +794,7 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: Workf
 
 	const { workflowDocumentStore: newStore } = await initializeWorkspace({
 		...workflowData,
+		id: isDemoRoute.value ? 'demo' : workflowData.id,
 		nodes: getNodesWithNormalizedPosition<INodeUi>(workflowData.nodes),
 	} as IWorkflowDb);
 
