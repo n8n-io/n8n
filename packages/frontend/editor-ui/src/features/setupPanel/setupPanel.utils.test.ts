@@ -229,6 +229,50 @@ describe('setupPanel.utils', () => {
 			expect(isNodeSetupComplete([])).toBe(true);
 		});
 
+		it('should return false when credential test has not passed', () => {
+			const requirements: NodeCredentialRequirement[] = [
+				{
+					credentialType: 'testApi',
+					credentialDisplayName: 'Test',
+					selectedCredentialId: 'cred-1',
+					issues: [],
+					nodesWithSameCredential: [],
+				},
+			];
+			const isTestedOk = () => false;
+
+			expect(isNodeSetupComplete(requirements, isTestedOk)).toBe(false);
+		});
+
+		it('should return true when isCredentialTestedOk returns true', () => {
+			const requirements: NodeCredentialRequirement[] = [
+				{
+					credentialType: 'testApi',
+					credentialDisplayName: 'Test',
+					selectedCredentialId: 'cred-1',
+					issues: [],
+					nodesWithSameCredential: [],
+				},
+			];
+			const isTestedOk = () => true;
+
+			expect(isNodeSetupComplete(requirements, isTestedOk)).toBe(true);
+		});
+
+		it('should be backward-compatible when isCredentialTestedOk is not provided', () => {
+			const requirements: NodeCredentialRequirement[] = [
+				{
+					credentialType: 'testApi',
+					credentialDisplayName: 'Test',
+					selectedCredentialId: 'cred-1',
+					issues: [],
+					nodesWithSameCredential: [],
+				},
+			];
+
+			expect(isNodeSetupComplete(requirements)).toBe(true);
+		});
+
 		it('should return false if any one of multiple requirements is incomplete', () => {
 			const requirements: NodeCredentialRequirement[] = [
 				{
@@ -290,6 +334,28 @@ describe('setupPanel.utils', () => {
 			const result = buildNodeSetupState(node, ['apiA', 'apiB'], displayNameLookup, nodeNames);
 
 			expect(result.credentialRequirements).toHaveLength(2);
+			expect(result.isComplete).toBe(false);
+		});
+
+		it('should mark node incomplete when credential test has not passed', () => {
+			const node = createNode({
+				credentials: {
+					testApi: { id: 'cred-1', name: 'Test' },
+				},
+			});
+			const nodeNames = new Map([['testApi', ['TestNode']]]);
+			const isTestedOk = () => false;
+
+			const result = buildNodeSetupState(
+				node,
+				['testApi'],
+				displayNameLookup,
+				nodeNames,
+				false,
+				false,
+				isTestedOk,
+			);
+
 			expect(result.isComplete).toBe(false);
 		});
 	});
