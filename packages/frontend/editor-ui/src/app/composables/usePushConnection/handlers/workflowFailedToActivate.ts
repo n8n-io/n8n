@@ -7,7 +7,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 
 export async function workflowFailedToActivate(
 	{ data }: WorkflowFailedToActivate,
-	options: { workflowState: WorkflowState },
+	_options: { workflowState: WorkflowState },
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const documentStore = injectWorkflowDocumentStore();
@@ -18,7 +18,6 @@ export async function workflowFailedToActivate(
 
 	workflowsStore.setWorkflowInactive(data.workflowId);
 	documentStore?.setActiveState({ activeVersionId: null, activeVersion: null });
-	options.workflowState.setActive(null);
 
 	const toast = useToast();
 	const i18n = useI18n();

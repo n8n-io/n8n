@@ -590,9 +590,7 @@ export function useWorkflowHelpers() {
 			nodes,
 			pinData: workflowsStore.pinnedWorkflowData,
 			connections: workflowConnections,
-			active: useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflowId, workflowsStore.workflow.versionId),
-			).active,
+			active: useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)).active,
 			settings: workflowsStore.workflow.settings,
 			tags: workflowsStore.workflowTags,
 			versionId: workflowsStore.workflow.versionId,
@@ -864,7 +862,6 @@ export function useWorkflowHelpers() {
 		}
 
 		if (isCurrentWorkflow) {
-			workflowState.setActive(workflow.activeVersionId);
 			uiStore.markStateClean();
 		}
 
@@ -963,7 +960,6 @@ export function useWorkflowHelpers() {
 	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
 		const ws = overrideWorkflowState ?? workflowState;
 		workflowsListStore.addWorkflow(workflowData);
-		ws.setActive(workflowData.activeVersionId);
 		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowsStore.setDescription(workflowData.description);
 		ws.setWorkflowId(workflowData.id);
@@ -1021,7 +1017,7 @@ export function useWorkflowHelpers() {
 		const tagIds = convertWorkflowTagsToIds(tags);
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowData.id, workflowData.versionId),
+			createWorkflowDocumentId(workflowData.id),
 		);
 		workflowDocumentStore.setTags(tagIds);
 		workflowDocumentStore.setActiveState({
