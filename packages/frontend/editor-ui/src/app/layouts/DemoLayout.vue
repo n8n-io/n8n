@@ -1,9 +1,10 @@
 <script lang="ts" setup>
-import { provide, computed } from 'vue';
+import { provide, computed, shallowRef } from 'vue';
 import { useRoute } from 'vue-router';
 import BaseLayout from './BaseLayout.vue';
 import DemoFooter from '@/features/execution/logs/components/DemoFooter.vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { WorkflowIdKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const route = useRoute();
 
@@ -12,7 +13,12 @@ const workflowId = computed(() => {
 	return (Array.isArray(name) ? name[0] : name) as string;
 });
 
+const currentWorkflowDocumentStore = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
+
 provide(WorkflowIdKey, workflowId);
+provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
 </script>
 
 <template>
