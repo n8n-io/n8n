@@ -1,0 +1,19 @@
+{
+	"node": "n8n-nodes-base.modelsLab",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Transform", "AI"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/modelslab/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.modelslab/"
+			}
+		]
+	},
+	"alias": ["AI", "Images", "Generation", "Flux", "Stable Diffusion", "DALL-E Alternative"]
+}
