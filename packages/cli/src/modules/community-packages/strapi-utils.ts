@@ -38,6 +38,7 @@ interface PaginationRequestParams {
 		page: number;
 		pageSize: number;
 	};
+	includeAiNodesSdkVersion?: number;
 }
 
 const REQUEST_TIMEOUT_MS = 6000;

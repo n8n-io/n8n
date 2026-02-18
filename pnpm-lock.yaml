@@ -1852,6 +1852,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 1.26.0
         version: 1.26.0(zod@3.25.67)
+      '@n8n/ai-utilities':
+        specifier: workspace:*
+        version: link:../@n8n/ai-utilities
       '@n8n/ai-workflow-builder':
         specifier: workspace:*
         version: link:../@n8n/ai-workflow-builder.ee
