@@ -40,10 +40,15 @@ const onSSOLogin = async () => {
 
 <style lang="scss" module>
 .ssoLogin {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
 	text-align: center;
 }
 
 .divider {
+	width: 100%;
 	position: relative;
 	text-transform: uppercase;
 
