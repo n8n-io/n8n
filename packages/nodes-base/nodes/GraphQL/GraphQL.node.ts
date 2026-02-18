@@ -508,6 +508,7 @@ export class GraphQL implements INodeType {
 						{
 							tokenType: 'Bearer',
 						},
+						itemIndex,
 					);
 					// since we are using `resolveWithFullResponse: true`, we need to grab the body
 					response = response.body;

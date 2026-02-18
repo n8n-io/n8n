@@ -828,6 +828,7 @@ export interface RequestHelperFunctions {
 		credentialsType: string,
 		requestOptions: IHttpRequestOptions,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
+		itemIndex?: number,
 	): Promise<any>;
 	requestWithAuthenticationPaginated(
 		this: IAllExecuteFunctions,
@@ -872,6 +873,7 @@ export interface RequestHelperFunctions {
 		credentialsType: string,
 		requestOptions: IRequestOptions,
 		oAuth2Options?: IOAuth2Options,
+		itemIndex?: number,
 	): Promise<any>;
 	refreshOAuth2Token(
 		this: IAllExecuteFunctions,

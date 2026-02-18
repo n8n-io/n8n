@@ -1007,9 +1007,15 @@ export class HttpRequestV1 implements INodeType {
 				requestOAuth1.catch(() => {});
 				requestPromises.push(requestOAuth1);
 			} else if (oAuth2Api) {
-				const requestOAuth2 = this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
-					tokenType: 'Bearer',
-				});
+				const requestOAuth2 = this.helpers.requestOAuth2.call(
+					this,
+					'oAuth2Api',
+					requestOptions,
+					{
+						tokenType: 'Bearer',
+					},
+					itemIndex,
+				);
 				requestOAuth2.catch(() => {});
 				requestPromises.push(requestOAuth2);
 			} else {

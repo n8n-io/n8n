@@ -28,6 +28,7 @@ import {
 	proxyRequestToAxios,
 	refreshOAuth2Token,
 	removeEmptyBody,
+	requestOAuth2,
 } from '../request-helper-functions';
 
 describe('Request Helper Functions', () => {
@@ -1237,6 +1238,306 @@ describe('Request Helper Functions', () => {
 			).rejects.toThrow('Node does not have credential type');
 			expect(
 				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('requestOAuth2', () => {
+		const baseUrl = 'https://example.com';
+
+		// These must be created fresh per test to avoid shared WeakMap cache state
+		let mockThisFn: ReturnType<typeof mockDeep<IAllExecuteFunctions>>;
+		let mockNodeFn: ReturnType<typeof mockDeep<INode>>;
+		let mockAdditionalDataFn: ReturnType<typeof mockDeep<IWorkflowExecuteAdditionalData>>;
+
+		const makeCredentials = (overrides: Record<string, unknown> = {}) => ({
+			clientId: 'test-client-id',
+			clientSecret: 'test-client-secret',
+			grantType: 'clientCredentials',
+			accessTokenUrl: `${baseUrl}/token`,
+			authentication: 'body',
+			scope: 'openid',
+			oauthTokenData: undefined as Record<string, unknown> | undefined,
+			...overrides,
+		});
+
+		/** Nock interceptor for a client_credentials token endpoint */
+		const mockTokenEndpoint = (path: string) =>
+			nock(baseUrl)
+				.post(path, (body: Record<string, string>) => body.grant_type === 'client_credentials')
+				.reply(200, { access_token: `token-for-${path}`, token_type: 'Bearer' });
+
+		beforeEach(() => {
+			nock.cleanAll();
+			// Create fresh mocks each test so the WeakMap-based token cache is isolated
+			mockThisFn = mockDeep<IAllExecuteFunctions>();
+			mockNodeFn = mockDeep<INode>();
+			mockAdditionalDataFn = mockDeep<IWorkflowExecuteAdditionalData>();
+			mockNodeFn.name = 'test-node';
+			mockNodeFn.credentials = {
+				oAuth2Api: { id: 'cred-1', name: 'OAuth2 Cred' },
+			};
+			mockThisFn.helpers.httpRequest.mockImplementation(async () => {
+				return { success: true };
+			});
+			mockThisFn.helpers.request.mockImplementation(async () => {
+				return { success: true };
+			});
+		});
+
+		test('should pass itemIndex to getCredentials', async () => {
+			const credentials = makeCredentials({
+				oauthTokenData: { access_token: 'existing-token' },
+			});
+			mockThisFn.getCredentials.mockResolvedValue(credentials);
+
+			await requestOAuth2.call(
+				mockThisFn,
+				'oAuth2Api',
+				{ url: `${baseUrl}/api`, method: 'GET' },
+				mockNodeFn,
+				mockAdditionalDataFn,
+				undefined,
+				false,
+				42,
+			);
+
+			expect(mockThisFn.getCredentials).toHaveBeenCalledWith('oAuth2Api', 42);
+		});
+
+		test('should acquire token for clientCredentials when no token exists', async () => {
+			mockThisFn.getCredentials.mockResolvedValue(makeCredentials());
+			mockTokenEndpoint('/token');
+
+			await requestOAuth2.call(
+				mockThisFn,
+				'oAuth2Api',
+				{ url: `${baseUrl}/api`, method: 'GET' },
+				mockNodeFn,
+				mockAdditionalDataFn,
+			);
+
+			// Should persist token to DB for static credentials (first acquisition)
+			expect(
+				mockAdditionalDataFn.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledTimes(1);
+			expect(nock.pendingMocks()).toHaveLength(0);
+		});
+
+		test('should reuse cached token for same fingerprint across calls', async () => {
+			mockThisFn.getCredentials.mockResolvedValue(makeCredentials());
+
+			// First call: acquire token
+			mockTokenEndpoint('/token');
+
+			await requestOAuth2.call(
+				mockThisFn,
+				'oAuth2Api',
+				{ url: `${baseUrl}/api`, method: 'GET' },
+				mockNodeFn,
+				mockAdditionalDataFn,
+			);
+
+			// Second call with same credentials (same fingerprint, same additionalData)
+			mockThisFn.getCredentials.mockResolvedValue(makeCredentials());
+
+			// No nock — should reuse cached token
+			await requestOAuth2.call(
+				mockThisFn,
+				'oAuth2Api',
+				{ url: `${baseUrl}/api`, method: 'GET' },
+				mockNodeFn,
+				mockAdditionalDataFn,
+			);
+
+			// Only one DB save (first acquisition)
+			expect(
+				mockAdditionalDataFn.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledTimes(1);
+		});
+
+		test('should acquire separate tokens for different fingerprints (dynamic credentials)', async () => {
+			// Item 0: tenant-a
+			mockThisFn.getCredentials.mockResolvedValue(
+				makeCredentials({ accessTokenUrl: `${baseUrl}/tenant-a/token` }),
+			);
+			mockTokenEndpoint('/tenant-a/token');
+
+			await requestOAuth2.call(
+				mockThisFn,
+				'oAuth2Api',
+				{ url: `${baseUrl}/api`, method: 'GET' },
+				mockNodeFn,
+				mockAdditionalDataFn,
+				undefined,
+				false,
+				0,
+			);
+
+			// Item 1: tenant-b (different accessTokenUrl = different fingerprint)
+			mockThisFn.getCredentials.mockResolvedValue(
+				makeCredentials({ accessTokenUrl: `${baseUrl}/tenant-b/token` }),
+			);
+			mockTokenEndpoint('/tenant-b/token');
+
+			await requestOAuth2.call(
+				mockThisFn,
+				'oAuth2Api',
+				{ url: `${baseUrl}/api`, method: 'GET' },
+				mockNodeFn,
+				mockAdditionalDataFn,
+				undefined,
+				false,
+				1,
+			);
+
+			// Both token endpoints were hit
+			expect(nock.pendingMocks()).toHaveLength(0);
+			// First token saves to DB (cache was empty), second does NOT (dynamic)
+			expect(
+				mockAdditionalDataFn.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledTimes(1);
+		});
+
+		test('should reuse in-memory cached token when same fingerprint appears again', async () => {
+			// Item 0: tenant-a
+			mockThisFn.getCredentials.mockResolvedValue(
+				makeCredentials({ accessTokenUrl: `${baseUrl}/tenant-a/token` }),
+			);
+			mockTokenEndpoint('/tenant-a/token');
+
+			await requestOAuth2.call(
+				mockThisFn,
+				'oAuth2Api',
+				{ url: `${baseUrl}/api`, method: 'GET' },
+				mockNodeFn,
+				mockAdditionalDataFn,
+				undefined,
+				false,
+				0,
+			);
+
+			// Item 1: tenant-b
+			mockThisFn.getCredentials.mockResolvedValue(
+				makeCredentials({ accessTokenUrl: `${baseUrl}/tenant-b/token` }),
+			);
+			mockTokenEndpoint('/tenant-b/token');
+
+			await requestOAuth2.call(
+				mockThisFn,
+				'oAuth2Api',
+				{ url: `${baseUrl}/api`, method: 'GET' },
+				mockNodeFn,
+				mockAdditionalDataFn,
+				undefined,
+				false,
+				1,
+			);
+
+			// Item 2: tenant-a again — should reuse cached token, no new HTTP call
+			mockThisFn.getCredentials.mockResolvedValue(
+				makeCredentials({ accessTokenUrl: `${baseUrl}/tenant-a/token` }),
+			);
+
+			// No nock for tenant-a/token — if it makes a request, nock will throw
+			await requestOAuth2.call(
+				mockThisFn,
+				'oAuth2Api',
+				{ url: `${baseUrl}/api`, method: 'GET' },
+				mockNodeFn,
+				mockAdditionalDataFn,
+				undefined,
+				false,
+				2,
+			);
+
+			// Only first call persists to DB
+			expect(
+				mockAdditionalDataFn.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledTimes(1);
+		});
+
+		test('should use DB-stored token optimistically for first call in execution', async () => {
+			mockThisFn.getCredentials.mockResolvedValue(
+				makeCredentials({
+					oauthTokenData: { access_token: 'db-stored-token', token_type: 'Bearer' },
+				}),
+			);
+
+			// No nock — should NOT make a token request since DB has a valid token
+			await requestOAuth2.call(
+				mockThisFn,
+				'oAuth2Api',
+				{ url: `${baseUrl}/api`, method: 'GET' },
+				mockNodeFn,
+				mockAdditionalDataFn,
+			);
+
+			expect(
+				mockAdditionalDataFn.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
+		});
+
+		test('should acquire new token when cache has other fingerprints even if DB token exists', async () => {
+			// Item 0: tenant-a (no DB token)
+			mockThisFn.getCredentials.mockResolvedValue(
+				makeCredentials({ accessTokenUrl: `${baseUrl}/tenant-a/token` }),
+			);
+			mockTokenEndpoint('/tenant-a/token');
+
+			await requestOAuth2.call(
+				mockThisFn,
+				'oAuth2Api',
+				{ url: `${baseUrl}/api`, method: 'GET' },
+				mockNodeFn,
+				mockAdditionalDataFn,
+				undefined,
+				false,
+				0,
+			);
+
+			// Item 1: tenant-b, but DB has tenant-a's token (simulating DB persistence)
+			mockThisFn.getCredentials.mockResolvedValue(
+				makeCredentials({
+					accessTokenUrl: `${baseUrl}/tenant-b/token`,
+					oauthTokenData: { access_token: 'token-a', token_type: 'Bearer' },
+				}),
+			);
+			mockTokenEndpoint('/tenant-b/token');
+
+			await requestOAuth2.call(
+				mockThisFn,
+				'oAuth2Api',
+				{ url: `${baseUrl}/api`, method: 'GET' },
+				mockNodeFn,
+				mockAdditionalDataFn,
+				undefined,
+				false,
+				1,
+			);
+
+			// Both nock interceptors consumed — tenant-b got its own token
+			expect(nock.pendingMocks()).toHaveLength(0);
+		});
+
+		test('should not alter behavior for authorizationCode grant', async () => {
+			mockThisFn.getCredentials.mockResolvedValue(
+				makeCredentials({
+					grantType: 'authorizationCode',
+					oauthTokenData: { access_token: 'auth-code-token', token_type: 'Bearer' },
+				}),
+			);
+
+			await requestOAuth2.call(
+				mockThisFn,
+				'oAuth2Api',
+				{ url: `${baseUrl}/api`, method: 'GET' },
+				mockNodeFn,
+				mockAdditionalDataFn,
+			);
+
+			expect(
+				mockAdditionalDataFn.credentialsHelper.updateCredentialsOauthTokenData,
 			).not.toHaveBeenCalled();
 		});
 	});

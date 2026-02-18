@@ -86,6 +86,38 @@ axios.defaults.paramsSerializer = (params) => {
 // Axios proxy option has problems: https://github.com/axios/axios/issues/4531
 axios.defaults.proxy = false;
 
+/**
+ * Per-execution token cache for OAuth2 client credentials grant.
+ * Keyed by a fingerprint of the credential values that affect token acquisition
+ * (accessTokenUrl, clientId, clientSecret, scope). This ensures that dynamic
+ * credentials (with expressions evaluated per-item) acquire separate tokens
+ * per unique set of credential values within a single workflow execution.
+ */
+const executionOAuth2TokenCache = new WeakMap<
+	IWorkflowExecuteAdditionalData,
+	Map<string, ClientOAuth2TokenData>
+>();
+
+function getOAuth2TokenCache(
+	additionalData: IWorkflowExecuteAdditionalData,
+): Map<string, ClientOAuth2TokenData> {
+	let cache = executionOAuth2TokenCache.get(additionalData);
+	if (!cache) {
+		cache = new Map();
+		executionOAuth2TokenCache.set(additionalData, cache);
+	}
+	return cache;
+}
+
+function oAuth2CredentialFingerprint(credentials: OAuth2CredentialData): string {
+	return [
+		credentials.accessTokenUrl,
+		credentials.clientId,
+		credentials.clientSecret ?? '',
+		credentials.scope ?? '',
+	].join('\0');
+}
+
 function validateUrl(url?: string): boolean {
 	if (!url) return false;
 	try {
@@ -931,11 +963,13 @@ export async function requestOAuth2(
 	additionalData: IWorkflowExecuteAdditionalData,
 	oAuth2Options?: IOAuth2Options,
 	isN8nRequest = false,
+	itemIndex?: number,
 ) {
 	removeEmptyBody(requestOptions);
 
 	const credentials = (await this.getCredentials(
 		credentialsType,
+		itemIndex,
 	)) as unknown as OAuth2CredentialData;
 
 	// Only the OAuth2 with authorization code grant needs connection
@@ -946,34 +980,53 @@ export async function requestOAuth2(
 	const oAuthClient = createOAuth2Client(credentials);
 
 	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
-	// if it's the first time using the credentials, get the access token and save it into the DB.
-	if (
-		credentials.grantType === 'clientCredentials' &&
-		(oauthTokenData === undefined ||
+	// For client credentials grant, use fingerprint-based token caching to support
+	// dynamic credentials (expressions evaluated per-item, e.g. multi-tenant OAuth2).
+	if (credentials.grantType === 'clientCredentials') {
+		const fingerprint = oAuth2CredentialFingerprint(credentials);
+		const tokenCache = getOAuth2TokenCache(additionalData);
+		const cachedToken = tokenCache.get(fingerprint);
+
+		const hasNoToken =
+			oauthTokenData === undefined ||
 			Object.keys(oauthTokenData).length === 0 ||
-			oauthTokenData.access_token === '') // stub
-	) {
-		const { data } = await oAuthClient.credentials.getToken();
-		// Find the credentials
-		if (!node.credentials?.[credentialsType]) {
-			throw new ApplicationError('Node does not have credential type', {
-				extra: { nodeName: node.name },
-				tags: { credentialType: credentialsType },
-			});
+			oauthTokenData.access_token === '';
+
+		if (cachedToken) {
+			// Reuse token from this execution's in-memory cache (matches current credential values)
+			oauthTokenData = cachedToken;
+		} else if (hasNoToken || tokenCache.size > 0) {
+			// Acquire new token when:
+			// - No token exists at all (first use), OR
+			// - Cache already has entries for other fingerprints (dynamic credentials),
+			//   meaning the DB-stored token belongs to a different set of credential values
+			const { data } = await oAuthClient.credentials.getToken();
+
+			// Only persist to DB for static credentials (no other fingerprints in cache)
+			if (tokenCache.size === 0) {
+				if (!node.credentials?.[credentialsType]) {
+					throw new ApplicationError('Node does not have credential type', {
+						extra: { nodeName: node.name },
+						tags: { credentialType: credentialsType },
+					});
+				}
+				const nodeCredentials = node.credentials[credentialsType];
+				credentials.oauthTokenData = data;
+				await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
+					nodeCredentials,
+					credentialsType,
+					credentials as unknown as ICredentialDataDecryptedObject,
+					additionalData,
+				);
+			}
+
+			oauthTokenData = data;
+			tokenCache.set(fingerprint, data);
+		} else {
+			// First call in this execution, DB has a valid token: use it optimistically.
+			// If credential values don't match (wrong tenant), the 401 handler will re-acquire.
+			tokenCache.set(fingerprint, oauthTokenData);
 		}
-
-		const nodeCredentials = node.credentials[credentialsType];
-		credentials.oauthTokenData = data;
-
-		// Save the refreshed token
-		await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
-			nodeCredentials,
-			credentialsType,
-			credentials as unknown as ICredentialDataDecryptedObject,
-			additionalData,
-		);
-
-		oauthTokenData = data;
 	}
 
 	const accessToken =
@@ -1032,6 +1085,10 @@ export async function requestOAuth2(
 				// instead of refreshing it.
 				if (credentials.grantType === 'clientCredentials') {
 					newToken = await token.client.credentials.getToken();
+					// Update in-memory token cache for this fingerprint
+					const refreshFingerprint = oAuth2CredentialFingerprint(credentials);
+					const refreshTokenCache = getOAuth2TokenCache(additionalData);
+					refreshTokenCache.set(refreshFingerprint, newToken.data);
 				} else {
 					newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
 				}
@@ -1110,6 +1167,10 @@ export async function requestOAuth2(
 				// instead of refreshing it.
 				if (credentials.grantType === 'clientCredentials') {
 					newToken = await token.client.credentials.getToken();
+					// Update in-memory token cache for this fingerprint
+					const refreshFingerprint = oAuth2CredentialFingerprint(credentials);
+					const refreshTokenCache = getOAuth2TokenCache(additionalData);
+					refreshTokenCache.set(refreshFingerprint, newToken.data);
 				} else {
 					newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
 				}
@@ -1318,6 +1379,7 @@ export async function httpRequestWithAuthentication(
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
+	itemIndex?: number,
 ) {
 	removeEmptyBody(requestOptions);
 
@@ -1342,14 +1404,17 @@ export async function httpRequestWithAuthentication(
 				additionalData,
 				additionalCredentialOptions?.oauth2,
 				true,
+				itemIndex,
 			);
 		}
 
 		if (additionalCredentialOptions?.credentialsDecrypted) {
 			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
 		} else {
-			credentialsDecrypted =
-				await this.getCredentials<ICredentialDataDecryptedObject>(credentialsType);
+			credentialsDecrypted = await this.getCredentials<ICredentialDataDecryptedObject>(
+				credentialsType,
+				itemIndex,
+			);
 		}
 
 		if (credentialsDecrypted === undefined) {
@@ -1455,6 +1520,7 @@ export async function requestWithAuthentication(
 				additionalData,
 				additionalCredentialOptions?.oauth2,
 				false,
+				itemIndex,
 			);
 		}
 
@@ -1792,6 +1858,7 @@ export const getRequestHelperFunctions = (
 			credentialsType,
 			requestOptions,
 			additionalCredentialOptions,
+			itemIndex,
 		): Promise<any> {
 			return await httpRequestWithAuthentication.call(
 				this,
@@ -1801,6 +1868,7 @@ export const getRequestHelperFunctions = (
 				node,
 				additionalData,
 				additionalCredentialOptions,
+				itemIndex,
 			);
 		},
 
@@ -1853,6 +1921,7 @@ export const getRequestHelperFunctions = (
 			credentialsType: string,
 			requestOptions: IRequestOptions,
 			oAuth2Options?: IOAuth2Options,
+			itemIndex?: number,
 		): Promise<any> {
 			return await requestOAuth2.call(
 				this,
@@ -1861,6 +1930,8 @@ export const getRequestHelperFunctions = (
 				node,
 				additionalData,
 				oAuth2Options,
+				undefined,
+				itemIndex,
 			);
 		},
 	};

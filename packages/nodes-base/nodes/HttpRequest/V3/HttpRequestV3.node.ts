@@ -766,6 +766,7 @@ export class HttpRequestV3 implements INodeType {
 							{
 								tokenType: 'Bearer',
 							},
+							itemIndex,
 						);
 						requestOAuth2.catch(() => {});
 						requestPromises.push(requestOAuth2);

@@ -92,9 +92,15 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 
 	if (genericType === 'oAuth2Api') {
 		return async (options: IHttpRequestOptions) => {
-			return await ctx.helpers.requestOAuth2.call(ctx, 'oAuth2Api', options, {
-				tokenType: 'Bearer',
-			});
+			return await ctx.helpers.requestOAuth2.call(
+				ctx,
+				'oAuth2Api',
+				options,
+				{
+					tokenType: 'Bearer',
+				},
+				itemIndex,
+			);
 		};
 	}
 
