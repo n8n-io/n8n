@@ -566,7 +566,7 @@ importers:
         version: 3.0.1
       axios:
         specifier: 1.13.5
-        version: 1.13.5
+        version: 1.13.5(debug@4.4.3)
       jest-mock-extended:
         specifier: ^3.0.4
         version: 3.0.4(jest@29.7.0(@types/node@20.19.21)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.21)(typescript@5.9.2)))(typescript@5.9.2)
