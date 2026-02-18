@@ -223,6 +223,18 @@ onMounted(async () => {
 			input.focus();
 		});
 	}
+	if (props.mode === 'new') {
+		// This validation rule is not added for "edit" mode
+		// since we added this rule a while after variables were released
+		// and we want to add the "don't start with number" validation in a backwards-compatible manner.
+		keyValidationRules.push({
+			name: 'MATCH_REGEX',
+			config: {
+				regex: /^[A-Za-z_]/,
+				message: i18n.baseText('variables.editing.key.error.regex-no-start-with-number'),
+			},
+		});
+	}
 });
 </script>
 

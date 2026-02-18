@@ -3750,6 +3750,7 @@
 	"variables.editing.key.placeholder": "Enter a name",
 	"variables.editing.value.placeholder": "Enter a value",
 	"variables.editing.key.error.regex": "This field may contain only letters, numbers, and underscores",
+	"variables.editing.key.error.regex-no-start-with-number": "The key cannot start with a number",
 	"variables.row.button.save": "Save",
 	"variables.row.button.cancel": "Cancel",
 	"variables.row.button.edit": "Edit",
