@@ -149,4 +149,82 @@ describe('Ftp', () => {
 			}),
 		);
 	});
+
+	describe('SFTP rename (move) operation', () => {
+		let posixRename: jest.Mock;
+		let rename: jest.Mock;
+		let connect: jest.Mock;
+		let end: jest.Mock;
+
+		beforeEach(() => {
+			posixRename = jest.fn();
+			rename = jest.fn();
+			connect = jest.fn();
+			end = jest.fn();
+
+			jest.spyOn(sftpModule, 'default').mockImplementation(
+				() =>
+					({
+						connect,
+						posixRename,
+						rename,
+						end,
+					}) as unknown as sftp,
+			);
+
+			executeFunctions.getCredentials.mockResolvedValue({
+				host: 'test.com',
+				port: 22,
+				username: 'test',
+				password: 'test',
+			});
+
+			executeFunctions.getNodeParameter.mockImplementation((parameterName, _idx, defaultValue) => {
+				switch (parameterName) {
+					case 'operation':
+						return 'rename';
+					case 'protocol':
+						return 'sftp';
+					case 'options.timeout':
+						return 10000;
+					case 'oldPath':
+						return '/source/file.txt';
+					case 'newPath':
+						return '/target/file.txt';
+					case 'options':
+						return {};
+					default:
+						return defaultValue;
+				}
+			});
+		});
+
+		it('should use posixRename when the server supports the extension', async () => {
+			posixRename.mockResolvedValue('OK');
+
+			await new Ftp().execute.call(executeFunctions);
+
+			expect(posixRename).toHaveBeenCalledWith('/source/file.txt', '/target/file.txt');
+			expect(rename).not.toHaveBeenCalled();
+		});
+
+		it('should fall back to rename when posixRename extension is not supported', async () => {
+			posixRename.mockRejectedValue(new Error('Server does not support this extended request'));
+			rename.mockResolvedValue('OK');
+
+			await new Ftp().execute.call(executeFunctions);
+
+			expect(posixRename).toHaveBeenCalledWith('/source/file.txt', '/target/file.txt');
+			expect(rename).toHaveBeenCalledWith('/source/file.txt', '/target/file.txt');
+		});
+
+		it('should propagate posixRename errors that are not about extension support', async () => {
+			posixRename.mockRejectedValue(new Error('Permission denied'));
+
+			await expect(new Ftp().execute.call(executeFunctions)).rejects.toThrow('Permission denied');
+
+			expect(posixRename).toHaveBeenCalledWith('/source/file.txt', '/target/file.txt');
+			expect(rename).not.toHaveBeenCalled();
+		});
+	});
 });
