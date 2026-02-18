@@ -1,6 +1,6 @@
 import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { ToolMessage } from '@langchain/core/messages';
+import type { BaseMessage, ToolMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
@@ -220,6 +220,7 @@ export class WorkflowBuilderAgent {
 		userId?: string,
 		abortSignal?: AbortSignal,
 		externalCallbacks?: Callbacks,
+		historicalMessages?: BaseMessage[],
 	) {
 		this.validateMessageLength(payload.message);
 
@@ -253,7 +254,13 @@ export class WorkflowBuilderAgent {
 					userId,
 					action: decision.action,
 				});
-				yield* this.runMultiAgentSystem(payload, userId, abortSignal, externalCallbacks);
+				yield* this.runMultiAgentSystem(
+					payload,
+					userId,
+					abortSignal,
+					externalCallbacks,
+					historicalMessages,
+				);
 				return;
 			}
 
@@ -262,7 +269,13 @@ export class WorkflowBuilderAgent {
 				this.logger?.debug('Plan mode with code builder, routing to multi-agent for planning', {
 					userId,
 				});
-				yield* this.runMultiAgentSystem(payload, userId, abortSignal, externalCallbacks);
+				yield* this.runMultiAgentSystem(
+					payload,
+					userId,
+					abortSignal,
+					externalCallbacks,
+					historicalMessages,
+				);
 				return;
 			}
 
@@ -279,7 +292,13 @@ export class WorkflowBuilderAgent {
 
 		// Fall back to legacy multi-agent system
 		this.logger?.debug('Routing to legacy multi-agent system', { userId });
-		yield* this.runMultiAgentSystem(payload, userId, abortSignal, externalCallbacks);
+		yield* this.runMultiAgentSystem(
+			payload,
+			userId,
+			abortSignal,
+			externalCallbacks,
+			historicalMessages,
+		);
 	}
 
 	private async *runCodeWorkflowBuilder(
@@ -409,6 +428,7 @@ export class WorkflowBuilderAgent {
 		userId: string | undefined,
 		abortSignal: AbortSignal | undefined,
 		externalCallbacks: Callbacks | undefined,
+		historicalMessages?: BaseMessage[],
 	) {
 		const { agent, threadConfig, streamConfig } = this.setupAgentAndConfigs(
 			payload,
@@ -418,7 +438,7 @@ export class WorkflowBuilderAgent {
 		);
 
 		try {
-			const stream = await this.createAgentStream(payload, streamConfig, agent);
+			const stream = await this.createAgentStream(payload, streamConfig, agent, historicalMessages);
 			yield* this.processAgentStream(stream, agent, threadConfig);
 		} catch (error: unknown) {
 			this.handleStreamError(error);
@@ -481,6 +501,7 @@ export class WorkflowBuilderAgent {
 		payload: ChatPayload,
 		streamConfig: RunnableConfig,
 		agent: ReturnType<typeof this.createWorkflow>,
+		historicalMessages?: BaseMessage[],
 	): Promise<AsyncIterable<StreamEvent>> {
 		const additionalKwargs: Record<string, unknown> = {};
 		if (payload.versionId) additionalKwargs.versionId = payload.versionId;
@@ -488,14 +509,18 @@ export class WorkflowBuilderAgent {
 		if (payload.resumeData !== undefined) additionalKwargs.resumeData = payload.resumeData;
 
 		const humanMessage = new HumanMessage({
+			id: payload.id,
 			content: payload.message,
 			additional_kwargs: additionalKwargs,
 		});
 
 		const workflowJSON = this.getDefaultWorkflowJSON(payload);
 		const workflowContext = payload.workflowContext;
-
 		const mode = payload.mode ?? 'build';
+
+		// Include historical messages (from persistent storage) along with the new message.
+		// The messagesStateReducer will properly merge these with any existing checkpoint state.
+		const messages = [...(historicalMessages ?? []), humanMessage];
 
 		const stream = payload.resumeData
 			? await agent.stream(
@@ -522,7 +547,7 @@ export class WorkflowBuilderAgent {
 				)
 			: await agent.stream(
 					{
-						messages: [humanMessage],
+						messages,
 						workflowJSON,
 						workflowOperations: [],
 						workflowContext,
