@@ -1393,6 +1393,7 @@ Respond the title only:`,
 						...node.parameters,
 						turnId,
 						previousTurnIds: this.extractPreviousTurnIds(history),
+						memoryTtlMinutes: 0, // Chat Hub memory never expires
 					},
 				};
 			}

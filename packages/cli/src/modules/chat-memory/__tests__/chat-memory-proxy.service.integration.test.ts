@@ -100,13 +100,13 @@ describe('ChatMemoryProxyService', () => {
 			});
 		};
 
-		const createMemoryNode = (): INode => ({
+		const createMemoryNode = (paramOverrides?: Record<string, number>): INode => ({
 			id: 'memory-1',
 			name: 'Memory',
 			type: MEMORY_BUFFER_WINDOW_NODE_TYPE,
 			typeVersion: 1.3,
 			position: [200, 0],
-			parameters: {},
+			parameters: { ...paramOverrides },
 		});
 
 		beforeAll(async () => {
@@ -180,9 +180,9 @@ describe('ChatMemoryProxyService', () => {
 		});
 
 		describe('memory operations', () => {
-			it('should not set expiresAt on memory entries', async () => {
+			it('should not set expiresAt when memoryTtlMinutes is 0', async () => {
 				const workflow = await createTestWorkflowInDb();
-				const node = createMemoryNode();
+				const node = createMemoryNode({ memoryTtlMinutes: 0 });
 				const sessionKey = `session-${crypto.randomUUID()}`;
 
 				const proxy = await proxyService.getChatMemoryProxy(workflow, node, sessionKey, null, null);
@@ -193,6 +193,45 @@ describe('ChatMemoryProxyService', () => {
 				expect(entries).toHaveLength(1);
 				expect(entries[0].role).toBe('human');
 				expect(entries[0].content).toEqual({ content: 'Hello, world!' });
+				expect(entries[0].expiresAt).toBeNull();
+			});
+
+			it('should set expiresAt when memoryTtlMinutes is set', async () => {
+				const workflow = await createTestWorkflowInDb();
+				const node = createMemoryNode({ memoryTtlMinutes: 60 });
+				const sessionKey = `session-${crypto.randomUUID()}`;
+
+				const before = Date.now();
+				const proxy = await proxyService.getChatMemoryProxy(workflow, node, sessionKey, null, null);
+
+				await proxy.addHumanMessage('Hello with TTL');
+				await proxy.addAIMessage('Response with TTL', []);
+				await proxy.addToolMessage('call-1', 'search', { q: 'test' }, { result: 'ok' });
+
+				const entries = await memoryRepository.find({ where: { sessionKey } });
+				expect(entries).toHaveLength(3);
+
+				const sixtyMinutesMs = 60 * 60 * 1000;
+				for (const entry of entries) {
+					expect(entry.expiresAt).not.toBeNull();
+					const expiresAtMs = entry.expiresAt!.getTime();
+					// expiresAt should be roughly 60 minutes from now (allow 10s tolerance)
+					expect(expiresAtMs).toBeGreaterThanOrEqual(before + sixtyMinutesMs - 10_000);
+					expect(expiresAtMs).toBeLessThanOrEqual(Date.now() + sixtyMinutesMs + 10_000);
+				}
+			});
+
+			it('should default to no expiration when memoryTtlMinutes is not set', async () => {
+				const workflow = await createTestWorkflowInDb();
+				const node = createMemoryNode(); // No memoryTtlMinutes — backward compat
+				const sessionKey = `session-${crypto.randomUUID()}`;
+
+				const proxy = await proxyService.getChatMemoryProxy(workflow, node, sessionKey, null, null);
+
+				await proxy.addHumanMessage('Backward compat message');
+
+				const entries = await memoryRepository.find({ where: { sessionKey } });
+				expect(entries).toHaveLength(1);
 				expect(entries[0].expiresAt).toBeNull();
 			});
 

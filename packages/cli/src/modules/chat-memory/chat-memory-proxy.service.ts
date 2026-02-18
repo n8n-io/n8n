@@ -1,3 +1,4 @@
+import { Time } from '@n8n/constants';
 import { Logger } from '@n8n/backend-common';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -65,6 +66,11 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 		const workflowId = workflow.id;
 		const agentName = this.extractAgentName(workflow, node);
 		const projectId = await this.getProjectId(workflow);
+		const memoryTtlMinutes = (node.parameters.memoryTtlMinutes as number | undefined) ?? 0;
+		const getExpiresAt = (): Date | null =>
+			memoryTtlMinutes > 0
+				? new Date(Date.now() + memoryTtlMinutes * Time.minutes.toMilliseconds)
+				: null;
 		const service = this.makeChatMemoryOperations(
 			sessionKey,
 			turnId,
@@ -73,6 +79,7 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 			workflowId,
 			agentName,
 			userId,
+			getExpiresAt,
 		);
 
 		await service.ensureSession();
@@ -120,6 +127,7 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 		workflowId: string | undefined,
 		agentName: string,
 		userId: string | undefined,
+		getExpiresAt: () => Date | null,
 	): IChatMemoryService {
 		const memoryRepository = this.memoryRepository;
 		const memorySessionRepository = this.memorySessionRepository;
@@ -176,6 +184,7 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 					role: 'human',
 					content: { content },
 					name: userName,
+					expiresAt: getExpiresAt(),
 				});
 				logger.debug('Added human message to memory', {
 					sessionKey,
@@ -193,6 +202,7 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 					role: 'ai',
 					content: { content, toolCalls },
 					name: agentName,
+					expiresAt: getExpiresAt(),
 				});
 				logger.debug('Added AI message to memory', {
 					sessionKey,
@@ -215,6 +225,7 @@ export class ChatMemoryProxyService implements ChatMemoryProxyProvider {
 					role: 'tool',
 					content: { toolCallId, toolName, toolInput, toolOutput },
 					name: toolName,
+					expiresAt: getExpiresAt(),
 				});
 				logger.debug('Added tool message to memory', {
 					sessionKey,

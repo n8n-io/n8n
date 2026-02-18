@@ -132,6 +132,22 @@ export class MemoryBufferWindow implements INodeType {
 				},
 			},
 			{
+				displayName: 'Memory Expiration (Minutes)',
+				name: 'memoryTtlMinutes',
+				type: 'number',
+				typeOptions: { minValue: 0 },
+				default: 60,
+				noDataExpression: true,
+				description:
+					'Minutes before memory entries expire and are cleaned up. Set to 0 to never expire.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.4 } }],
+						persistentMemory: [true],
+					},
+				},
+			},
+			{
 				// Hidden parameter for turnId - injected by Chat Hub service before workflow execution.
 				// This is a correlation ID generated BEFORE the workflow runs, linking memory entries
 				// to the AI message that will be created for this execution turn.
