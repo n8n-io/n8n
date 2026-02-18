@@ -8,7 +8,6 @@ import { useCredentialsStore } from '../../credentials.store';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { within } from '@testing-library/vue';
 import type { ICredentialType } from 'n8n-workflow';
-import * as permissionsModule from '@n8n/permissions';
 
 const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
@@ -181,16 +180,6 @@ const googleBigQueryOAuth2Api: ICredentialType = {
 	supportedNodes: ['n8n-nodes-base.googleBigQuery'],
 };
 
-vi.mock('@n8n/permissions', () => ({
-	getResourcePermissions: vi.fn(() => ({
-		credential: {
-			create: true,
-			update: true,
-		},
-	})),
-	hasScope: vi.fn(() => true),
-}));
-
 const renderComponent = createComponentRenderer(CredentialEdit, {
 	pinia: createTestingPinia({
 		initialState: {
@@ -224,6 +213,33 @@ describe('CredentialEdit', () => {
 				modalName: CREDENTIAL_EDIT_MODAL_KEY,
 				mode: 'new',
 			},
+			pinia: createTestingPinia({
+				initialState: {
+					[STORES.UI]: {
+						modalsById: {
+							[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
+						},
+					},
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: {
+								sharing: true,
+								externalSecrets: false,
+							},
+							templates: {
+								host: '',
+							},
+						},
+					},
+					[STORES.PROJECTS]: {
+						personalProject: {
+							id: 'personal-project',
+							type: 'personal',
+							scopes: ['credential:create', 'credential:read'],
+						},
+					},
+				},
+			}),
 		});
 		await retry(() => expect(queryByTestId('credential-save-button')).toBeInTheDocument());
 	});
@@ -339,108 +355,5 @@ describe('CredentialEdit', () => {
 		expect(
 			within(getByTestId('credential-edit-dialog')).getByTestId('oauth-connect-button'),
 		).toBeInTheDocument();
-	});
-
-	describe('Dynamic Credentials Section', () => {
-		test('should not display dynamic credentials section when feature flag is disabled', async () => {
-			const credentialsStore = mockedStore(useCredentialsStore);
-
-			credentialsStore.state.credentialTypes = {
-				testCredential: {
-					name: 'testCredential',
-					displayName: 'Test Credential',
-					properties: [],
-				} as ICredentialType,
-			};
-
-			const { queryByTestId } = renderComponent({
-				props: {
-					modalName: CREDENTIAL_EDIT_MODAL_KEY,
-					mode: 'new',
-				},
-				pinia: createTestingPinia({
-					initialState: {
-						[STORES.UI]: {
-							modalsById: {
-								[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
-							},
-						},
-						[STORES.SETTINGS]: {
-							settings: {
-								enterprise: {
-									sharing: false,
-									externalSecrets: false,
-								},
-								envFeatureFlags: {
-									N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: false,
-								},
-							},
-						},
-					},
-				}),
-			});
-
-			await retry(() => expect(queryByTestId('credential-save-button')).toBeInTheDocument());
-			expect(queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
-		});
-
-		test('should not display dynamic credentials section when user lacks permissions', async () => {
-			// Mock permissions to deny create and update
-			vi.mocked(permissionsModule.getResourcePermissions).mockReturnValueOnce({
-				credential: {
-					create: false,
-					update: false,
-					read: false,
-					delete: false,
-					share: false,
-					list: false,
-					move: false,
-				},
-			} as permissionsModule.PermissionsRecord);
-
-			const credentialsStore = mockedStore(useCredentialsStore);
-
-			credentialsStore.state.credentialTypes = {
-				testCredential: {
-					name: 'testCredential',
-					displayName: 'Test Credential',
-					properties: [],
-				} as ICredentialType,
-			};
-
-			const { queryByTestId, getByTestId } = renderComponent({
-				props: {
-					modalName: CREDENTIAL_EDIT_MODAL_KEY,
-					mode: 'new',
-				},
-				pinia: createTestingPinia({
-					initialState: {
-						[STORES.UI]: {
-							modalsById: {
-								[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
-							},
-						},
-						[STORES.SETTINGS]: {
-							settings: {
-								enterprise: {
-									sharing: false,
-									externalSecrets: false,
-								},
-								envFeatureFlags: {
-									N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
-								},
-							},
-						},
-					},
-				}),
-			});
-
-			await retry(() => expect(getByTestId('credential-edit-dialog')).toBeInTheDocument());
-			expect(queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
-		});
-
-		// TODO: Add test for "should display the toggle switch in the dynamic credentials section"
-		// This requires properly mocking the credential store in edit mode which is complex.
-		// The functionality is covered by the negative test cases above.
 	});
 });

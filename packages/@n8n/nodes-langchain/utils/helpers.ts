@@ -1,80 +1,18 @@
-import type { BaseChatMemory } from '@langchain/classic/memory';
-import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseMessage } from '@langchain/core/messages';
 import { type DynamicStructuredTool, type StructuredTool, Tool } from '@langchain/core/tools';
 import type { JSONSchema7 } from 'json-schema';
 import { StructuredToolkit, type SupplyDataToolResponse } from 'n8n-core';
 import type {
-	AiEvent,
-	IDataObject,
+	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ISupplyDataFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, jsonStringify } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { ZodType } from 'zod';
 
 import { N8nTool } from './N8nTool';
 import { convertJsonSchemaToZod } from './schemaParsing';
-
-function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): obj is T {
-	return methodNames.every(
-		(methodName) =>
-			typeof obj === 'object' &&
-			obj !== null &&
-			methodName in obj &&
-			typeof (obj as Record<string | symbol, unknown>)[methodName] === 'function',
-	);
-}
-
-export function getMetadataFiltersValues(
-	ctx: IExecuteFunctions | ISupplyDataFunctions,
-	itemIndex: number,
-): Record<string, never> | undefined {
-	const options = ctx.getNodeParameter('options', itemIndex, {});
-
-	if (options.metadata) {
-		const { metadataValues: metadata } = options.metadata as {
-			metadataValues: Array<{
-				name: string;
-				value: string;
-			}>;
-		};
-		if (metadata.length > 0) {
-			return metadata.reduce((acc, { name, value }) => ({ ...acc, [name]: value }), {});
-		}
-	}
-
-	if (options.searchFilterJson) {
-		return ctx.getNodeParameter('options.searchFilterJson', itemIndex, '', {
-			ensureType: 'object',
-		}) as Record<string, never>;
-	}
-
-	return undefined;
-}
-
-export function isBaseChatMemory(obj: unknown) {
-	return hasMethods<BaseChatMemory>(obj, 'loadMemoryVariables', 'saveContext');
-}
-
-export function isBaseChatMessageHistory(obj: unknown) {
-	return hasMethods<BaseChatMessageHistory>(obj, 'getMessages', 'addMessage');
-}
-
-export function isChatInstance(model: unknown): model is BaseChatModel {
-	const namespace = (model as BaseLLM)?.lc_namespace ?? [];
-
-	return namespace.includes('chat_models');
-}
-
-export function isToolsInstance(model: unknown): model is Tool {
-	const namespace = (model as Tool)?.lc_namespace ?? [];
-
-	return namespace.includes('tools');
-}
 
 export function getPromptInputByType(options: {
 	ctx: IExecuteFunctions | ISupplyDataFunctions;
@@ -95,10 +33,17 @@ export function getPromptInputByType(options: {
 	}
 
 	if (input === undefined) {
-		const key = promptType === 'auto' ? 'chatInput' : 'guardrailsInput';
-		throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
-			description: `Expected to find the prompt in an input field called '${key}' (this is what the ${promptType === 'auto' ? 'chat trigger node' : 'guardrails node'} node outputs). To use something else, change the 'Prompt' parameter`,
-		});
+		if (promptType === 'auto' || promptType === 'guardrails') {
+			const key = promptType === 'auto' ? 'chatInput' : 'guardrailsInput';
+			throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
+				description: `Expected to find the prompt in an input field called '${key}' (this is what the ${promptType === 'auto' ? 'chat trigger node' : 'guardrails node'} node outputs). To use something else, change the 'Prompt' parameter`,
+			});
+		} else {
+			throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
+				description:
+					'The prompt field is empty or the expression used could not be resolved. Please check the configured prompt value.',
+			});
+		}
 	}
 
 	return input;
@@ -157,18 +102,6 @@ export function getSessionId(
 	}
 
 	return sessionId;
-}
-
-export function logAiEvent(
-	executeFunctions: IExecuteFunctions | ISupplyDataFunctions,
-	event: AiEvent,
-	data?: IDataObject,
-) {
-	try {
-		executeFunctions.logAiEvent(event, data ? jsonStringify(data) : undefined);
-	} catch (error) {
-		executeFunctions.logger.debug(`Error logging AI event: ${event}`);
-	}
 }
 
 export function serializeChatHistory(chatHistory: BaseMessage[]): string {
@@ -293,6 +226,28 @@ export const getConnectedTools = async (
 };
 
 /**
+ * Merges custom credential headers into an existing defaultHeaders object.
+ * Used by OpenAI and other LangChain nodes that pass `configuration.defaultHeaders`.
+ */
+export function mergeCustomHeaders(
+	credentials: ICredentialDataDecryptedObject,
+	defaultHeaders: Record<string, string>,
+): Record<string, string> {
+	if (
+		credentials.header &&
+		typeof credentials.headerName === 'string' &&
+		credentials.headerName &&
+		typeof credentials.headerValue === 'string'
+	) {
+		return {
+			...defaultHeaders,
+			[credentials.headerName]: credentials.headerValue,
+		};
+	}
+	return defaultHeaders;
+}
+
+/**
  * Sometimes model output is wrapped in an additional object property.
  * This function unwraps the output if it is in the format { output: { output: { ... } } }
  */
@@ -309,51 +264,4 @@ export function unwrapNestedOutput(output: Record<string, unknown>): Record<stri
 	}
 
 	return output;
-}
-
-/**
- * Detects if a text contains a character that repeats sequentially for a specified threshold.
- * This is used to prevent performance issues with tiktoken on highly repetitive content.
- * @param text The text to check
- * @param threshold The minimum number of sequential repeats to detect (default: 1000)
- * @returns true if a character repeats sequentially for at least the threshold amount
- */
-export function hasLongSequentialRepeat(text: string, threshold = 1000): boolean {
-	try {
-		// Validate inputs
-		if (
-			text === null ||
-			typeof text !== 'string' ||
-			text.length === 0 ||
-			threshold <= 0 ||
-			text.length < threshold
-		) {
-			return false;
-		}
-		// Use string iterator to avoid creating array copy (memory efficient)
-		const iterator = text[Symbol.iterator]();
-		let prev = iterator.next();
-
-		if (prev.done) {
-			return false;
-		}
-
-		let count = 1;
-		for (const char of iterator) {
-			if (char === prev.value) {
-				count++;
-				if (count >= threshold) {
-					return true;
-				}
-			} else {
-				count = 1;
-				prev = { value: char, done: false };
-			}
-		}
-
-		return false;
-	} catch (error) {
-		// On any error, return false to allow normal processing
-		return false;
-	}
 }

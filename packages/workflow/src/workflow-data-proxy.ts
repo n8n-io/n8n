@@ -25,6 +25,7 @@ import type {
 	WorkflowExecuteMode,
 	ProxyInput,
 	INode,
+	INodeType,
 } from './interfaces';
 import * as NodeHelpers from './node-helpers';
 import { createResultError, createResultOk } from './result';
@@ -185,7 +186,16 @@ export class WorkflowDataProxy {
 	}
 
 	private buildAgentToolInfo(node: INode) {
-		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const nodeType: INodeType | undefined = this.workflow.nodeTypes.getByNameAndVersion(
+			node.type,
+			node.typeVersion,
+		);
+		if (!nodeType) {
+			return {
+				name: node.name,
+				type: node.type,
+			};
+		}
 		const type = nodeType.description.displayName;
 		const params = NodeHelpers.getNodeParameters(
 			nodeType.description.properties,
@@ -1079,7 +1089,12 @@ export class WorkflowDataProxy {
 		const handleTool = (throwOnError = true) => {
 			const fallbackValue = that.additionalKeys?.['$tool'];
 			try {
-				return handleFromAi('tool', '', 'string', fallbackValue);
+				const toolName = handleFromAi('tool', '');
+				const toolParameters = handleFromAi('toolParameters', '');
+				return {
+					name: toolName ?? fallbackValue?.name,
+					parameters: toolParameters ?? fallbackValue?.parameters,
+				};
 			} catch (error) {
 				const isNoExecutionDataError =
 					error instanceof ExpressionError && error.context.type === 'no_execution_data';
@@ -1506,7 +1521,7 @@ export class WorkflowDataProxy {
 
 				return that.getNodeExecutionData(nodeName, false, outputIndex, runIndex);
 			},
-			$tool: '', // Placeholder
+			$tool: {}, // Placeholder
 			$json: {}, // Placeholder
 			$node: this.nodeGetter(),
 			$self: this.selfGetter(),

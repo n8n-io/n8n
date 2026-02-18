@@ -4,6 +4,8 @@ import { test, expect } from '../../../../fixtures/base';
 import type { TestRequirements } from '../../../../Types';
 import { resolveFromRoot } from '../../../../utils/path-helper';
 
+test.use({ capability: { env: { TEST_ISOLATION: 'template-credentials-setup' } } });
+
 const TEMPLATE_HOST = 'https://api.n8n.io/api/';
 const TEMPLATE_ID = 1205;
 const TEMPLATE_WITHOUT_CREDS_ID = 1344;
@@ -27,7 +29,10 @@ const ecommerceCollection = JSON.parse(
 function createTemplateRequirements(): TestRequirements {
 	return {
 		storage: {
-			N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '055_template_setup_experience': 'control' }),
+			N8N_EXPERIMENT_OVERRIDES: JSON.stringify({
+				'055_template_setup_experience': 'control',
+				'069_setup_panel': 'control',
+			}),
 		},
 		config: {
 			settings: {
@@ -54,7 +59,11 @@ function createTemplateRequirements(): TestRequirements {
 	};
 }
 
-test.describe('Template credentials setup @db:reset', () => {
+test.describe('Template credentials setup @db:reset', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ setupRequirements }) => {
 		await setupRequirements(createTemplateRequirements());
 	});
@@ -149,7 +158,10 @@ test.describe('Template credentials setup @db:reset', () => {
 	}) => {
 		await setupRequirements({
 			storage: {
-				N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '055_template_setup_experience': 'control' }),
+				N8N_EXPERIMENT_OVERRIDES: JSON.stringify({
+					'055_template_setup_experience': 'control',
+					'069_setup_panel': 'control',
+				}),
 			},
 			config: {
 				settings: {

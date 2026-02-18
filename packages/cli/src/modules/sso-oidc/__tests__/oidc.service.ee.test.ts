@@ -644,5 +644,253 @@ describe('OidcService', () => {
 			// Should not instantiate EnvHttpProxyAgent when no proxy is configured
 			expect(EnvHttpProxyAgent).not.toHaveBeenCalled();
 		});
+
+		it.each([
+			{ envVar: 'HTTP_PROXY', value: 'http://proxy.example.com:8080' },
+			{ envVar: 'HTTPS_PROXY', value: 'https://proxy.example.com:8443' },
+			{ envVar: 'ALL_PROXY', value: 'http://all-proxy.example.com:8888' },
+		])(
+			'should call discovery with customFetch option when $envVar is configured',
+			async ({ envVar, value }) => {
+				process.env[envVar] = value;
+
+				const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+				const clientId = 'test-client';
+				const clientSecret = 'test-secret';
+
+				global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+
+				const discoverySpy = jest.spyOn(client, 'discovery').mockResolvedValue({
+					serverMetadata: () => ({ issuer: 'https://example.com' }),
+				} as unknown as client.Configuration);
+
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+				await (oidcService as any).createProxyAwareConfiguration(
+					discoveryUrl,
+					clientId,
+					clientSecret,
+				);
+
+				expect(discoverySpy).toHaveBeenCalledWith(
+					discoveryUrl,
+					clientId,
+					clientSecret,
+					undefined,
+					expect.objectContaining({
+						[client.customFetch]: expect.any(Function),
+					}),
+				);
+
+				discoverySpy.mockRestore();
+			},
+		);
+
+		it('should call discovery without customFetch option when no proxy is configured', async () => {
+			delete process.env.HTTP_PROXY;
+			delete process.env.HTTPS_PROXY;
+			delete process.env.ALL_PROXY;
+
+			const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+			const clientId = 'test-client';
+			const clientSecret = 'test-secret';
+
+			global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+
+			const discoverySpy = jest.spyOn(client, 'discovery').mockResolvedValue({
+				serverMetadata: () => ({ issuer: 'https://example.com' }),
+			} as unknown as client.Configuration);
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			await (oidcService as any).createProxyAwareConfiguration(
+				discoveryUrl,
+				clientId,
+				clientSecret,
+			);
+
+			// Should be called with only 3 arguments (no options object)
+			expect(discoverySpy).toHaveBeenCalledWith(discoveryUrl, clientId, clientSecret);
+
+			discoverySpy.mockRestore();
+		});
+
+		it.each([
+			{ envVar: 'HTTP_PROXY', value: 'http://proxy.example.com:8080' },
+			{ envVar: 'HTTPS_PROXY', value: 'https://proxy.example.com:8443' },
+			{ envVar: 'ALL_PROXY', value: 'http://all-proxy.example.com:8888' },
+		])(
+			'should set customFetch on returned configuration when $envVar is configured',
+			async ({ envVar, value }) => {
+				process.env[envVar] = value;
+
+				const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+				const clientId = 'test-client';
+				const clientSecret = 'test-secret';
+
+				global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+
+				const mockConfiguration = {
+					serverMetadata: () => ({ issuer: 'https://example.com' }),
+				} as unknown as client.Configuration;
+
+				jest.spyOn(client, 'discovery').mockResolvedValue(mockConfiguration);
+
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+				const result = await (oidcService as any).createProxyAwareConfiguration(
+					discoveryUrl,
+					clientId,
+					clientSecret,
+				);
+
+				// Verify customFetch was set on the configuration
+				expect(result[client.customFetch]).toBeDefined();
+				expect(typeof result[client.customFetch]).toBe('function');
+			},
+		);
+
+		it('should not set customFetch on returned configuration when no proxy is configured', async () => {
+			delete process.env.HTTP_PROXY;
+			delete process.env.HTTPS_PROXY;
+			delete process.env.ALL_PROXY;
+
+			const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+			const clientId = 'test-client';
+			const clientSecret = 'test-secret';
+
+			global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+
+			const mockConfiguration = {
+				serverMetadata: () => ({ issuer: 'https://example.com' }),
+			} as unknown as client.Configuration;
+
+			jest.spyOn(client, 'discovery').mockResolvedValue(mockConfiguration);
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			const result = await (oidcService as any).createProxyAwareConfiguration(
+				discoveryUrl,
+				clientId,
+				clientSecret,
+			);
+
+			// customFetch should not have been set on the configuration
+			expect(result[client.customFetch]).toBeUndefined();
+		});
+
+		it.each([
+			{ envVar: 'HTTP_PROXY', value: 'http://proxy.example.com:8080' },
+			{ envVar: 'HTTPS_PROXY', value: 'https://proxy.example.com:8443' },
+			{ envVar: 'ALL_PROXY', value: 'http://all-proxy.example.com:8888' },
+		])(
+			'should use proxy agent dispatcher in customFetch when $envVar is configured',
+			async ({ envVar, value }) => {
+				process.env[envVar] = value;
+
+				const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+				const clientId = 'test-client';
+				const clientSecret = 'test-secret';
+
+				const mockProxyAgent = { type: 'proxy-agent' };
+				(EnvHttpProxyAgent as unknown as jest.Mock).mockImplementation(() => mockProxyAgent);
+
+				const fetchSpy = jest.fn().mockResolvedValue(createMockResponse());
+				global.fetch = fetchSpy;
+
+				const mockConfiguration = {
+					serverMetadata: () => ({ issuer: 'https://example.com' }),
+				} as unknown as client.Configuration;
+
+				jest.spyOn(client, 'discovery').mockResolvedValue(mockConfiguration);
+
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+				const result = await (oidcService as any).createProxyAwareConfiguration(
+					discoveryUrl,
+					clientId,
+					clientSecret,
+				);
+
+				// Get the customFetch function and call it
+				const customFetch = result[client.customFetch];
+				const testUrl = 'https://example.com/test';
+				const testOptions = { method: 'GET' };
+
+				await customFetch(testUrl, testOptions);
+
+				// Verify fetch was called with dispatcher option
+				expect(fetchSpy).toHaveBeenCalledWith(testUrl, {
+					...testOptions,
+					dispatcher: mockProxyAgent,
+				});
+			},
+		);
+
+		it('should handle multiple proxy env vars with priority (first match)', async () => {
+			// Set multiple proxy variables - any of them should trigger proxy mode
+			process.env.HTTP_PROXY = 'http://http-proxy.example.com:8080';
+			process.env.HTTPS_PROXY = 'https://https-proxy.example.com:8443';
+
+			const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+			const clientId = 'test-client';
+			const clientSecret = 'test-secret';
+
+			global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			await (oidcService as any).createProxyAwareConfiguration(
+				discoveryUrl,
+				clientId,
+				clientSecret,
+			);
+
+			// EnvHttpProxyAgent should be instantiated once regardless of how many proxy vars are set
+			expect(EnvHttpProxyAgent).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			{ envVar: 'HTTP_PROXY', value: 'http://proxy.example.com:8080' },
+			{ envVar: 'HTTPS_PROXY', value: 'https://proxy.example.com:8443' },
+			{ envVar: 'ALL_PROXY', value: 'http://all-proxy.example.com:8888' },
+		])(
+			'should pass through fetch options correctly when $envVar is configured',
+			async ({ envVar, value }) => {
+				process.env[envVar] = value;
+
+				const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+				const clientId = 'test-client';
+				const clientSecret = 'test-secret';
+
+				const mockProxyAgent = { type: 'proxy-agent' };
+				(EnvHttpProxyAgent as unknown as jest.Mock).mockImplementation(() => mockProxyAgent);
+
+				const fetchSpy = jest.fn().mockResolvedValue(createMockResponse());
+				global.fetch = fetchSpy;
+
+				const mockConfiguration = {} as client.Configuration;
+				jest.spyOn(client, 'discovery').mockResolvedValue(mockConfiguration);
+
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+				const result = await (oidcService as any).createProxyAwareConfiguration(
+					discoveryUrl,
+					clientId,
+					clientSecret,
+				);
+
+				const customFetch = result[client.customFetch];
+				const testUrl = 'https://example.com/token';
+				const testOptions = {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+					body: 'grant_type=authorization_code&code=test',
+				};
+
+				await customFetch(testUrl, testOptions);
+
+				// Verify all original options are preserved and dispatcher is added
+				expect(fetchSpy).toHaveBeenCalledWith(testUrl, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+					body: 'grant_type=authorization_code&code=test',
+					dispatcher: mockProxyAgent,
+				});
+			},
+		);
 	});
 });

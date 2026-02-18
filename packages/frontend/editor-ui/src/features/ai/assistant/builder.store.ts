@@ -1,5 +1,7 @@
 import type { VIEWS } from '@/app/constants';
+import { CODE_WORKFLOW_BUILDER_EXPERIMENT } from '@/app/constants';
 import { BUILDER_ENABLED_VIEWS } from './constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { isToolMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
@@ -14,6 +16,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useBuilderMessages } from './composables/useBuilderMessages';
 import {
 	chatWithBuilder,
+	clearBuilderSession,
 	getAiSessions,
 	getBuilderCredits,
 	truncateBuilderMessages,
@@ -39,6 +42,13 @@ import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
+import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
+import type { PlanMode } from '@/features/ai/assistant/assistant.types';
+import {
+	isPlanModePlanMessage,
+	isPlanModeQuestionsMessage,
+} from '@/features/ai/assistant/assistant.types';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -48,13 +58,16 @@ export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
  */
 export type WorkflowBuilderJourneyEventType =
 	| 'user_clicked_todo'
+	| 'user_clicked_unpin_all'
 	| 'field_focus_placeholder_in_ndv'
 	| 'no_placeholder_values_left'
 	| 'revert_version_from_builder'
 	| 'browser_notification_ask_permission'
 	| 'browser_notification_accept'
 	| 'browser_notification_dismiss'
-	| 'browser_generation_done_notified';
+	| 'browser_generation_done_notified'
+	| 'user_switched_builder_mode'
+	| 'user_clicked_implement_plan';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -65,6 +78,7 @@ interface WorkflowBuilderJourneyEventProperties {
 	revert_version_id?: string;
 	no_versions_reverted?: number;
 	completion_type?: 'workflow-ready' | 'input-needed';
+	mode?: 'plan' | 'build';
 }
 
 interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
@@ -78,12 +92,14 @@ interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
 interface EndOfStreamingTrackingPayload {
 	userMessageId: string;
 	startWorkflowJson: string;
+	revertVersion?: { id: string; createdAt: string };
+	planApproved?: boolean;
 }
 
 interface UserSubmittedBuilderMessageTrackingPayload
 	extends ITelemetryTrackProperties,
 		TodosTrackingPayload {
-	source: 'chat' | 'canvas';
+	source: 'chat' | 'canvas' | 'empty-state';
 	message: string;
 	session_id: string;
 	start_workflow_json: string;
@@ -96,6 +112,8 @@ interface UserSubmittedBuilderMessageTrackingPayload
 	execution_status?: string;
 	error_message?: string;
 	error_node_type?: string;
+	code_builder?: boolean;
+	mode?: 'plan' | 'build';
 }
 
 export const useBuilderStore = defineStore(STORES.BUILDER, () => {
@@ -105,12 +123,16 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const builderThinkingMessage = ref<string | undefined>();
 	const streamingAbortController = ref<AbortController | null>(null);
 	const initialGeneration = ref<boolean>(false);
+	const builderMode = ref<'build' | 'plan'>('build');
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
 	const manualExecStatsInBetweenMessages = ref<{ success: number; error: number }>({
 		success: 0,
 		error: 0,
 	});
+
+	// Track whether a successful full execution has occurred in this session
+	const hasHadSuccessfulExecution = ref(false);
 
 	// Track whether AI Builder made edits since last save (resets after each save)
 	const aiBuilderMadeEdits = ref(false);
@@ -141,11 +163,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const uiStore = useUIStore();
 	const router = useRouter();
 	const workflowSaver = useWorkflowSaving({ router });
+	const posthogStore = usePostHog();
+	const focusedNodesStore = useFocusedNodesStore();
 
 	// Composables
 	const {
 		processAssistantMessages,
 		createUserMessage,
+		createUserAnswersMessage,
 		createAssistantMessage,
 		createErrorMessage,
 		clearMessages,
@@ -154,9 +179,18 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		getRunningTools,
 	} = useBuilderMessages();
 
-	const { workflowTodos, getTodosToTrack } = useBuilderTodos();
+	const { workflowTodos, getTodosToTrack, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
 	const trackingSessionId = computed(() => rootStore.pushRef);
+
+	/** Whether the code-builder experiment is enabled for this user */
+	const isCodeBuilder = computed(() => {
+		const variant = posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name);
+		return (
+			variant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codeNoPinData ||
+			variant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData
+		);
+	});
 
 	const workflowPrompt = computed(() => {
 		const firstUserMessage = chatMessages.value.find(
@@ -200,6 +234,49 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	const hasMessages = computed(() => chatMessages.value.length > 0);
 
+	const isPlanModeAvailable = computed(() => {
+		const variant = posthogStore.getVariant(AI_BUILDER_PLAN_MODE_EXPERIMENT.name);
+		return variant === true || variant === AI_BUILDER_PLAN_MODE_EXPERIMENT.variant;
+	});
+
+	/**
+	 * Finds the last interrupt message (questions or plan) by searching backwards.
+	 * This is more robust than checking only the last message, because error messages
+	 * or other messages can be appended after an interrupt.
+	 */
+	const pendingInterruptMessage = computed(() => {
+		for (let i = chatMessages.value.length - 1; i >= 0; i--) {
+			const msg = chatMessages.value[i];
+			if (isPlanModeQuestionsMessage(msg) || isPlanModePlanMessage(msg)) {
+				return msg;
+			}
+			// Stop searching if we hit a user message — any interrupt before that is already resolved
+			if (msg.role === 'user') break;
+		}
+		return null;
+	});
+
+	const isInterrupted = computed(() => pendingInterruptMessage.value !== null);
+
+	/**
+	 * True when there's a pending plan awaiting user decision.
+	 * Unlike questions, users can still type in chat when a plan is pending.
+	 */
+	const hasPendingPlan = computed(() => {
+		const msg = pendingInterruptMessage.value;
+		return msg ? isPlanModePlanMessage(msg) : false;
+	});
+
+	/**
+	 * True when chat input should be disabled.
+	 * Only questions require disabling input (user must answer via UI).
+	 * Plans allow chat input (typing a message means modifying the plan).
+	 */
+	const shouldDisableChatInput = computed(() => {
+		const msg = pendingInterruptMessage.value;
+		return msg ? isPlanModeQuestionsMessage(msg) : false;
+	});
+
 	// Chat management functions
 	/**
 	 * Resets the entire chat session to initial state.
@@ -212,10 +289,33 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		initialGeneration.value = false;
 		lastUserMessageId.value = undefined;
 		loadedSessionsForWorkflowId.value = undefined;
+		hasHadSuccessfulExecution.value = false;
+		builderMode.value = 'build';
+	}
+
+	/**
+	 * Explicitly clear the backend session for the current workflow.
+	 * Only called when the user explicitly requests a clear (e.g. /clear command).
+	 * This deletes persisted messages so they won't be reloaded on next visit.
+	 */
+	function clearBackendSession() {
+		const workflowId = workflowsStore.workflowId;
+		if (workflowId) {
+			void clearBuilderSession(rootStore.restApiContext, workflowId);
+		}
+	}
+
+	function setBuilderMode(mode: 'build' | 'plan') {
+		if (mode === 'plan' && !isPlanModeAvailable.value) return;
+		builderMode.value = mode;
+		trackWorkflowBuilderJourney('user_switched_builder_mode', { mode });
 	}
 
 	function incrementManualExecutionStats(type: 'success' | 'error') {
 		manualExecStatsInBetweenMessages.value[type]++;
+		if (type === 'success') {
+			hasHadSuccessfulExecution.value = true;
+		}
 	}
 
 	function resetManualExecutionStats() {
@@ -257,13 +357,16 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return;
 		}
 
-		const { userMessageId } = currentStreamingMessage.value;
+		const { userMessageId, planApproved } = currentStreamingMessage.value;
 
 		telemetry.track('End of response from builder', {
 			user_message_id: userMessageId,
 			workflow_id: workflowsStore.workflowId,
 			session_id: trackingSessionId.value,
 			tab_visible: document.visibilityState === 'visible',
+			code_builder: isCodeBuilder.value,
+			mode: builderMode.value,
+			...(planApproved ? { plan_approved: true } : {}),
 			...getWorkflowModifications(currentStreamingMessage.value),
 			...payload,
 			...getTodosToTrack(),
@@ -335,9 +438,18 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		trackEndBuilderResponse(payload);
 
-		// Capture userMessageId before clearing currentStreamingMessage
+		// Capture state before clearing currentStreamingMessage
 		const userMessageId = currentStreamingMessage.value?.userMessageId;
+		const { revertVersion } = currentStreamingMessage.value ?? {};
 		currentStreamingMessage.value = undefined;
+
+		// Only show "Restore version" on user messages that triggered a workflow modification.
+		// During planning or question phases no workflow changes happen, so skip it.
+		if (userMessageId && revertVersion && hasWorkflowUpdateInCurrentBatch(userMessageId)) {
+			chatMessages.value = chatMessages.value.map((msg) =>
+				msg.id === userMessageId ? { ...msg, revertVersion } : msg,
+			);
+		}
 
 		const wasAborted = payload && 'aborted' in payload && payload.aborted;
 
@@ -410,11 +522,18 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function prepareForStreaming(
 		userMessage: string,
 		messageId: string,
-		revertVersion?: { id: string; createdAt: string },
+		focusedNodeNames?: string[],
+		planAnswers?: PlanMode.QuestionResponse[],
 	) {
-		const userMsg = createUserMessage(userMessage, messageId, revertVersion);
+		const userMsg = planAnswers
+			? createUserAnswersMessage(planAnswers, messageId)
+			: createUserMessage(userMessage, messageId, undefined, focusedNodeNames ?? []);
 		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
-		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
+		const thinkingKey =
+			userMessage.trim() === '/compact'
+				? 'aiAssistant.thinkingSteps.compacting'
+				: 'aiAssistant.thinkingSteps.thinking';
+		addLoadingAssistantMessage(locale.baseText(thinkingKey));
 		streaming.value = true;
 
 		// Updates page title to show AI is building
@@ -441,13 +560,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	function trackUserSubmittedBuilderMessage(options: {
 		text: string;
-		source: 'chat' | 'canvas';
+		source: 'chat' | 'canvas' | 'empty-state';
 		type: 'message' | 'execution';
 		userMessageId: string;
 		currentWorkflowJson: string;
 		errorMessage?: string;
 		errorNodeType?: string;
 		executionStatus?: string;
+		mode?: 'plan' | 'build';
 	}) {
 		const {
 			text,
@@ -458,6 +578,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			errorMessage,
 			errorNodeType,
 			executionStatus,
+			mode,
 		} = options;
 
 		const trackingPayload: UserSubmittedBuilderMessageTrackingPayload = {
@@ -470,6 +591,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			manual_exec_success_count_since_prev_msg: manualExecStatsInBetweenMessages.value.success,
 			manual_exec_error_count_since_prev_msg: manualExecStatsInBetweenMessages.value.error,
 			user_message_id: userMessageId,
+			code_builder: isCodeBuilder.value,
+			mode,
 			...getTodosToTrack(),
 		};
 
@@ -494,6 +617,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		telemetry.track('User submitted builder message', trackingPayload);
+
+		const focusedCount = focusedNodesStore.confirmedNodes.length;
+		if (focusedCount > 0) {
+			const deicticPatterns = /\b(this node|this|it|these nodes|these|that node|that)\b/i;
+			const hasDeicticRef = deicticPatterns.test(text);
+
+			telemetry.track('ai.focusedNodes.chatSent', {
+				focused_count: focusedCount,
+				has_deictic_ref: hasDeicticRef,
+			});
+		}
 	}
 
 	/**
@@ -538,16 +672,29 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	async function sendChatMessage(options: {
 		text: string;
-		source?: 'chat' | 'canvas';
+		source?: 'chat' | 'canvas' | 'empty-state';
 		quickReplyType?: string;
 		initialGeneration?: boolean;
 		type?: 'message' | 'execution';
 		errorMessage?: string;
 		errorNodeType?: string;
 		executionStatus?: string;
+		resumeData?: unknown;
+		mode?: 'build' | 'plan';
+		/** Plan mode answers for custom message display */
+		planAnswers?: PlanMode.QuestionResponse[];
 	}) {
 		if (streaming.value) {
 			return;
+		}
+
+		const focusedNodeNames = focusedNodesStore.confirmedNodes.map((n) => n.nodeName);
+
+		// If there's a pending plan and user is sending a chat message (not a resumeData action),
+		// automatically treat it as a plan modification request.
+		// Avoid mutating the caller's object - reassign to a shallow copy.
+		if (hasPendingPlan.value && options.resumeData === undefined) {
+			options = { ...options, resumeData: { action: 'modify', feedback: options.text } };
 		}
 
 		let revertVersion;
@@ -568,6 +715,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			type = 'message',
 			errorNodeType,
 			executionStatus,
+			resumeData,
+			mode,
 		} = options;
 
 		// Set initial generation flag if provided
@@ -578,9 +727,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		lastUserMessageId.value = userMessageId;
 		const currentWorkflowJson = getWorkflowSnapshot();
 
+		const planApproved =
+			typeof resumeData === 'object' &&
+			resumeData !== null &&
+			'action' in resumeData &&
+			(resumeData as { action: string }).action === 'approve';
+
 		currentStreamingMessage.value = {
 			userMessageId,
 			startWorkflowJson: currentWorkflowJson,
+			revertVersion,
+			...(planApproved ? { planApproved: true } : {}),
 		};
 
 		trackUserSubmittedBuilderMessage({
@@ -592,19 +749,34 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			errorMessage,
 			errorNodeType,
 			executionStatus,
+			mode: builderMode.value,
 		});
 
 		resetManualExecutionStats();
 
-		prepareForStreaming(text, userMessageId, revertVersion);
+		prepareForStreaming(text, userMessageId, focusedNodeNames, options.planAnswers);
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
+		const modeForPayload =
+			resumeData !== undefined
+				? mode
+				: (mode ?? (builderMode.value === 'plan' ? 'plan' : undefined));
 		const payload = await createBuilderPayload(text, userMessageId, {
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
 			nodesForSchema: Object.keys(workflowsStore.nodesByName),
+			mode: modeForPayload,
+			isPlanModeEnabled: isPlanModeAvailable.value,
+			allowSendingParameterValues: settings.settings.ai.allowSendingParameterValues,
 		});
+		if (resumeData !== undefined) {
+			payload.resumeData = resumeData;
+		}
+
+		// Clear confirmed nodes from input now that they've been captured
+		// in both the chat UI message and the API payload
+		focusedNodesStore.removeAllConfirmed();
 
 		const retry = createRetryHandler(userMessageId, async () => await sendChatMessage(options));
 
@@ -629,12 +801,16 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 					if (result.shouldClearThinking) {
 						builderThinkingMessage.value = undefined;
-					} else {
-						// Always update thinking message, even when undefined (to clear it)
+					} else if (result.thinkingMessage !== undefined) {
 						builderThinkingMessage.value = result.thinkingMessage;
 					}
+					// When thinkingMessage is undefined and no explicit clear: keep current value.
+					// This preserves "Thinking" from prepareForStreaming during streaming gaps
+					// (e.g., after submitting answers, before first tool call arrives).
 				},
-				() => stopStreaming(),
+				() => {
+					stopStreaming();
+				},
 				(e) => handleServiceError(e, userMessageId, retry),
 				revertVersion?.id,
 				streamingAbortController.value?.signal,
@@ -642,6 +818,59 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		} catch (e: unknown) {
 			handleServiceError(e, userMessageId, retry);
 		}
+	}
+
+	async function resumeWithQuestionsAnswers(answers: PlanMode.QuestionResponse[]) {
+		if (!isInterrupted.value) return;
+
+		const text = locale.baseText('aiAssistant.builder.planMode.actions.submitAnswers');
+		await sendChatMessage({
+			text,
+			resumeData: answers,
+			planAnswers: answers,
+		});
+	}
+
+	async function resumeWithPlanDecision(decision: {
+		action: 'approve' | 'reject' | 'modify';
+		feedback?: string;
+	}) {
+		if (!isInterrupted.value) return;
+
+		const feedback = decision.feedback?.trim();
+
+		if (decision.action === 'approve') {
+			trackWorkflowBuilderJourney('user_clicked_implement_plan');
+			await sendChatMessage({
+				text: locale.baseText('aiAssistant.builder.planMode.actions.implement'),
+				resumeData: decision,
+				mode: 'build',
+			});
+			// Only switch mode after the message is sent successfully
+			builderMode.value = 'build';
+			return;
+		}
+
+		if (decision.action === 'modify') {
+			await sendChatMessage({
+				text: feedback
+					? locale.baseText('aiAssistant.builder.planMode.actions.modifyWithFeedback', {
+							interpolate: { feedback },
+						})
+					: locale.baseText('aiAssistant.builder.planMode.actions.modify'),
+				resumeData: decision,
+			});
+			return;
+		}
+
+		await sendChatMessage({
+			text: feedback
+				? locale.baseText('aiAssistant.builder.planMode.actions.rejectWithFeedback', {
+						interpolate: { feedback },
+					})
+				: locale.baseText('aiAssistant.builder.planMode.actions.reject'),
+			resumeData: decision,
+		});
 	}
 
 	/**
@@ -675,7 +904,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		isLoadingSessions.value = true;
 		try {
-			const response = await getAiSessions(rootStore.restApiContext, workflowId);
+			const response = await getAiSessions(
+				rootStore.restApiContext,
+				workflowId,
+				isCodeBuilder.value,
+			);
 			loadedSessionsForWorkflowId.value = workflowId;
 			const sessions = response.sessions || [];
 
@@ -722,6 +955,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return [];
 		} finally {
 			isLoadingSessions.value = false;
+		}
+	}
+
+	function unpinAllNodes() {
+		const pinData = workflowsStore.workflow.pinData;
+		if (!pinData) return;
+		for (const nodeName of Object.keys(pinData)) {
+			const node = workflowsStore.getNodeByName(nodeName);
+			if (node) {
+				workflowsStore.unpinData({ node });
+			}
 		}
 	}
 
@@ -804,6 +1048,21 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		},
 	);
 
+	// Set default builder mode based on canvas state once nodes are loaded.
+	// Watches both workflowId and nodes.length so it fires when:
+	// - A new workflow is opened (workflowId changes, even if nodes stay empty)
+	// - Nodes are loaded after workflow reset (nodes.length changes)
+	// Only applies when the chat is fresh (no messages) so it doesn't interfere
+	// with an active conversation.
+	watch(
+		[() => workflowsStore.workflowId, () => workflowsStore.workflow.nodes?.length ?? 0],
+		([, nodesCount]) => {
+			if (chatMessages.value.length > 0) return;
+			if (!isPlanModeAvailable.value) return;
+			builderMode.value = nodesCount === 0 ? 'plan' : 'build';
+		},
+	);
+
 	/**
 	 * Tracks workflow builder journey events for telemetry
 	 * @param eventType - The type of event being tracked
@@ -865,7 +1124,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		workflowState.setWorkflowProperty('updatedAt', updatedWorkflow.updatedAt);
 
 		// 2. Truncate messages in backend session (removes message with messageId and all after)
-		await truncateBuilderMessages(rootStore.restApiContext, workflowId, messageId);
+		await truncateBuilderMessages(
+			rootStore.restApiContext,
+			workflowId,
+			messageId,
+			isCodeBuilder.value || undefined,
+		);
 
 		// 3. Truncate local chat messages - find user message with matching messageId
 		// and remove it along with all messages after it
@@ -879,6 +1143,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		if (msgIndex !== -1) {
 			chatMessages.value = chatMessages.value.slice(0, msgIndex);
 		}
+
+		builderMode.value = 'build';
 
 		// 4. Track telemetry event for version restore
 		trackWorkflowBuilderJourney('revert_version_from_builder', {
@@ -907,6 +1173,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		streaming,
 		builderThinkingMessage,
 		isAIBuilderEnabled,
+		isCodeBuilder,
+		builderMode,
+		isPlanModeAvailable,
+		isInterrupted,
+		hasPendingPlan,
+		shouldDisableChatInput,
 		workflowPrompt,
 		toolMessages,
 		workflowMessages,
@@ -919,12 +1191,18 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasNoCreditsRemaining,
 		hasMessages,
 		workflowTodos,
+		hasTodosHiddenByPinnedData,
+		hasHadSuccessfulExecution,
 		lastUserMessageId,
 
 		// Methods
+		unpinAllNodes,
 		abortStreaming,
 		resetBuilderChat,
+		setBuilderMode,
 		sendChatMessage,
+		resumeWithQuestionsAnswers,
+		resumeWithPlanDecision,
 		loadSessions,
 		getWorkflowSnapshot,
 		fetchBuilderCredits,
@@ -939,6 +1217,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// Version management
 		restoreToVersion,
 		clearExistingWorkflow,
+		// Session management
+		clearBackendSession,
 		// Title management for AI builder
 		clearDoneIndicatorTitle,
 	};

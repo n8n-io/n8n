@@ -1,3 +1,4 @@
+import type { InstanceSettings } from 'n8n-core';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
@@ -15,12 +16,15 @@ describe('CommunityPackagesController', () => {
 	const communityPackagesService = mock<CommunityPackagesService>();
 	const eventService = mock<EventService>();
 	const communityNodeTypesService = mock<CommunityNodeTypesService>();
+	const instanceSettings = mock<InstanceSettings>();
+	(instanceSettings as any).nodesDownloadDir = '/tmp/n8n-nodes-download';
 
 	const controller = new CommunityPackagesController(
 		push,
 		communityPackagesService,
 		eventService,
 		communityNodeTypesService,
+		instanceSettings,
 	);
 
 	beforeEach(() => {

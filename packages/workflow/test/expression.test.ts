@@ -200,19 +200,27 @@ describe('Expression', () => {
 			});
 
 			it('should block __defineGetter__ on Object', () => {
-				expect(evaluate('={{Object.__defineGetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
 			});
 
 			it('should block __defineSetter__ on Object', () => {
-				expect(evaluate('={{Object.__defineSetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.__defineSetter__}}')).toThrow(
+					'Cannot access "__defineSetter__" due to security concerns',
+				);
 			});
 
 			it('should block __lookupGetter__ on Object', () => {
-				expect(evaluate('={{Object.__lookupGetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.__lookupGetter__}}')).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
 			});
 
 			it('should block __lookupSetter__ on Object', () => {
-				expect(evaluate('={{Object.__lookupSetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.__lookupSetter__}}')).toThrow(
+					'Cannot access "__lookupSetter__" due to security concerns',
+				);
 			});
 
 			it('should allow safe Object methods', () => {
@@ -256,11 +264,15 @@ describe('Expression', () => {
 			});
 
 			it('should block __defineGetter__ on Error', () => {
-				expect(evaluate('={{Error.__defineGetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{Error.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
 			});
 
 			it('should block __defineSetter__ on Error', () => {
-				expect(evaluate('={{Error.__defineSetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{Error.__defineSetter__}}')).toThrow(
+					'Cannot access "__defineSetter__" due to security concerns',
+				);
 			});
 
 			it('should prevent setting Error.prepareStackTrace via assignment', () => {
@@ -278,11 +290,15 @@ describe('Expression', () => {
 
 		describe('Error subclass security wrappers', () => {
 			it('should block __defineGetter__ on TypeError', () => {
-				expect(evaluate('={{TypeError.__defineGetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{TypeError.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
 			});
 
 			it('should block __defineGetter__ on SyntaxError', () => {
-				expect(evaluate('={{SyntaxError.__defineGetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{SyntaxError.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
 			});
 
 			it('should block prepareStackTrace on all error types', () => {
@@ -333,8 +349,7 @@ describe('Expression', () => {
 
 			it('should block __defineGetter__ bypass attack', () => {
 				// Alternative attack using __defineGetter__ to set prepareStackTrace
-				// Attack fails because __defineGetter__ is undefined,
-				// calling undefined(...) throws TypeError
+				// Attack fails because __defineGetter__ is blocked at AST level
 				const payload = `={{(() => {
 					Error.__defineGetter__('prepareStackTrace', function() {
 						return (e, stack) => 'ATTACK_WORKED';
@@ -342,9 +357,10 @@ describe('Expression', () => {
 					return new Error().stack;
 				})()}}`;
 
-				// Attack is blocked - calling undefined() throws, result is undefined
-				const result = evaluate(payload);
-				expect(result).toBeUndefined();
+				// Attack is blocked at AST parsing level
+				expect(() => evaluate(payload)).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
 			});
 
 			it('should block getOwnPropertyDescriptor bypass attempt', () => {
@@ -379,23 +395,65 @@ describe('Expression', () => {
 					return empty['win'];
 				})()}}`;
 
-				expect(evaluate(payload)).toBeUndefined();
+				// Now blocked at AST level when trying to call __lookupGetter__
+				expect(() => evaluate(payload)).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
 			});
 
 			it('should block __lookupGetter__ as bare identifier', () => {
-				expect(evaluate('={{__lookupGetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{__lookupGetter__}}')).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
 			});
 
 			it('should block __lookupSetter__ as bare identifier', () => {
-				expect(evaluate('={{__lookupSetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{__lookupSetter__}}')).toThrow(
+					'Cannot access "__lookupSetter__" due to security concerns',
+				);
 			});
 
 			it('should block __defineGetter__ as bare identifier', () => {
-				expect(evaluate('={{__defineGetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
 			});
 
 			it('should block __defineSetter__ as bare identifier', () => {
-				expect(evaluate('={{__defineSetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{__defineSetter__}}')).toThrow(
+					'Cannot access "__defineSetter__" due to security concerns',
+				);
+			});
+
+			it('should block __lookupGetter__ on object literals', () => {
+				expect(() => evaluate('={{{}.__lookupGetter__("__proto__")}}')).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
+			});
+
+			it('should block prototype pollution RCE via __lookupGetter__ on object literal', () => {
+				const payload = `={{(() => {
+					const getProto = {}.__lookupGetter__("__proto__");
+					const setProto = getProto.call(new Set());
+					if (!setProto._has) {
+						setProto._has = setProto.has;
+						setProto.has = function (a) {
+							if (["construct" + "or"].includes(a)) {
+								return false;
+							}
+							try {
+								return this._has(a);
+							} catch {
+								return false;
+							}
+						};
+					}
+					return setProto;
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
 			});
 
 			it('should block TOCTOU bypass via custom toString()', () => {

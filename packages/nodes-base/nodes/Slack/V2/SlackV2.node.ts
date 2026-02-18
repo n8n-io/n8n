@@ -1429,6 +1429,101 @@ export class SlackV2 implements INodeType {
 
 						responseData = responseData.usergroup;
 					}
+					//https://api.slack.com/methods/usergroups.users.update
+					if (operation === 'updateUsers') {
+						const userGroupId = this.getNodeParameter('userGroupId', i) as string;
+
+						const usersToAdd = this.getNodeParameter('users', i) as string[];
+
+						const options = this.getNodeParameter('options', i);
+
+						// First, get the current list of users in the group
+						const currentGroupData = await slackApiRequest.call(
+							this,
+							'GET',
+							'/usergroups.list',
+							{},
+							{ ...qs, include_users: true, usergroup: userGroupId },
+						);
+
+						// Find the specific user group from the list
+						const currentGroup = currentGroupData.usergroups.find(
+							(group: IDataObject) => group.id === userGroupId,
+						);
+
+						// Get existing users or default to empty array
+						const existingUsers = (currentGroup?.users as string[]) || [];
+
+						// Merge existing users with new users, removing duplicates
+						const allUsers = [...new Set([...existingUsers, ...usersToAdd])];
+
+						const body: IDataObject = {
+							usergroup: userGroupId,
+							users: allUsers.join(','),
+						};
+
+						Object.assign(body, options);
+
+						responseData = await slackApiRequest.call(
+							this,
+							'POST',
+							'/usergroups.users.update',
+							body,
+							qs,
+						);
+
+						responseData = responseData.usergroup;
+					}
+					//https://api.slack.com/methods/usergroups.list
+					if (operation === 'getUsers') {
+						const userGroupId = this.getNodeParameter('userGroupId', i) as string;
+
+						const options = this.getNodeParameter('options', i);
+
+						const resolveData = options.resolveData ?? true;
+
+						// Get the user group with user list
+						const groupData = await slackApiRequest.call(
+							this,
+							'GET',
+							'/usergroups.list',
+							{},
+							{ ...qs, include_users: true, usergroup: userGroupId },
+						);
+
+						// Find the specific user group
+						const userGroup = groupData.usergroups.find(
+							(group: IDataObject) => group.id === userGroupId,
+						);
+
+						if (!userGroup) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`User group with ID "${userGroupId}" not found`,
+							);
+						}
+
+						const userIds = (userGroup.users as string[]) || [];
+
+						if (resolveData && userIds.length > 0) {
+							// Fetch full user details for each user
+							const users: IDataObject[] = [];
+							for (const userId of userIds) {
+								const { user } = await slackApiRequest.call(
+									this,
+									'GET',
+									'/users.info',
+									{},
+									{ user: userId },
+								);
+								users.push(user as IDataObject);
+							}
+							responseData = users;
+						} else {
+							// Return just the user IDs
+							responseData = userIds.map((userId: string) => ({ id: userId }));
+						}
+					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),

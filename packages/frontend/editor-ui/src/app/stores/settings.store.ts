@@ -9,6 +9,7 @@ import type {
 import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
+import * as aiUsageApi from '@n8n/rest-api-client/api/ai-usage';
 import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
 import { INSECURE_CONNECTION_WARNING } from '@/app/constants';
 import { STORES } from '@n8n/stores';
@@ -115,6 +116,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const aiCreditsQuota = computed(() => settings.value.aiCredits?.credits);
 
+	const isAiDataSharingEnabled = computed(
+		() => settings.value.ai?.allowSendingParameterValues ?? true,
+	);
+
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
 
 	const isPersonalizationSurveyEnabled = computed(
@@ -181,6 +186,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
+
+	const endpointHealth = computed(() => settings.value.endpointHealth);
 
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
@@ -328,6 +335,16 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		moduleSettings.value = fetched;
 	};
 
+	const updateAiDataSharingSettings = async (allowSendingParameterValues: boolean) => {
+		const rootStore = useRootStore();
+		await aiUsageApi.updateAiUsageSettings(rootStore.restApiContext, {
+			allowSendingParameterValues,
+		});
+		if (settings.value.ai) {
+			settings.value.ai.allowSendingParameterValues = allowSendingParameterValues;
+		}
+	};
+
 	return {
 		settings,
 		userManagement,
@@ -336,6 +353,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		mfa,
 		isDocker,
 		isDevRelease,
+		endpointHealth,
 		isEnterpriseFeatureEnabled,
 		databaseType,
 		planName,
@@ -388,6 +406,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiAssistantOrBuilderEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
+		isAiDataSharingEnabled,
 		reset,
 		getTimezones,
 		testTemplatesEndpoint,
@@ -398,6 +417,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		initialize,
 		getModuleSettings,
 		moduleSettings,
+		updateAiDataSharingSettings,
 		isMFAEnforcementLicensed,
 		isMFAEnforced,
 		activeModules,

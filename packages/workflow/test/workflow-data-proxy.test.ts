@@ -14,6 +14,8 @@ import {
 	type IWorkflowDataProxyAdditionalKeys,
 	type WorkflowExecuteMode,
 	type WorkflowSettingsBinaryMode,
+	type INodeType,
+	type INodeTypes,
 } from '../src/interfaces';
 import { BINARY_MODE_COMBINED } from '../src/constants';
 import {
@@ -259,6 +261,7 @@ describe('WorkflowDataProxy', () => {
 			mode: 'manual',
 			startedAt: new Date(),
 			status: 'success',
+			storedAt: 'db',
 		});
 
 		describe('Default behavior (no binaryMode or separate mode)', () => {
@@ -1060,20 +1063,22 @@ describe('WorkflowDataProxy', () => {
 				additionalKeys,
 			});
 
-		test('Behaves like $fromAI("tool") when execution data exists', () => {
-			// $tool should behave the same as $fromAI('tool') when execution data is available
+		test('Returns object with name and parameters when execution data exists', () => {
 			const proxy = getToolProxy();
 			const toolValue = proxy.$tool;
-			const fromAiToolValue = proxy.$fromAI('tool');
-			// Both should return the same value (or both undefined if tool key doesn't exist)
-			expect(toolValue).toEqual(fromAiToolValue);
+			// $tool should now return an object with name and parameters
+			expect(toolValue).toBeDefined();
+			expect(typeof toolValue).toBe('object');
+			expect(toolValue).toHaveProperty('name');
+			expect(toolValue).toHaveProperty('parameters');
 		});
 
 		test('Works consistently across different items', () => {
 			const proxy0 = getToolProxy(0);
 			const proxy1 = getToolProxy(1);
-			// Both should behave consistently
-			expect(typeof proxy0.$tool).toBe(typeof proxy1.$tool);
+			// Both should return objects
+			expect(typeof proxy0.$tool).toBe('object');
+			expect(typeof proxy1.$tool).toBe('object');
 		});
 
 		test('Falls back to additionalKeys when no execution data exists', () => {
@@ -1115,25 +1120,29 @@ describe('WorkflowDataProxy', () => {
 				[], // Empty connectionInputData - this triggers no_execution_data error
 				{},
 				'manual',
-				{ $tool: 'fallback-tool-value' }, // Fallback value
+				{ $tool: { name: 'fallback-tool', parameters: 'fallback-params' } }, // Fallback value
 				undefined,
 			);
 
 			const proxy = dataProxy.getDataProxy();
 
 			// Should return the fallback value since there's no execution data
-			expect(proxy.$tool).toEqual('fallback-tool-value');
+			expect(proxy.$tool).toEqual({ name: 'fallback-tool', parameters: 'fallback-params' });
 		});
 
 		test('Uses execution data when available, ignoring fallback', () => {
 			// When execution data exists, it should use that instead of fallback
-			const proxy = getToolProxy(0, { $tool: 'fallback-tool-value' });
-			// Should use the actual value from execution data (or undefined if tool key doesn't exist)
+			const proxy = getToolProxy(0, {
+				$tool: { name: 'fallback-tool', parameters: 'fallback-params' },
+			});
+			// Should use the actual value from execution data
 			// The fallback should be ignored when execution data is available
 			const toolValue = proxy.$tool;
-			const fromAiToolValue = proxy.$fromAI('tool');
-			// Both should return the same value (execution data takes precedence over fallback)
-			expect(toolValue).toEqual(fromAiToolValue);
+			// Should return an object with name and parameters from execution data
+			expect(toolValue).toBeDefined();
+			expect(typeof toolValue).toBe('object');
+			expect(toolValue).toHaveProperty('name');
+			expect(toolValue).toHaveProperty('parameters');
 		});
 	});
 
@@ -1163,6 +1172,7 @@ describe('WorkflowDataProxy', () => {
 					mode: 'manual',
 					startedAt: new Date(),
 					status: 'success',
+					storedAt: 'db',
 				},
 				'Execute Workflow',
 				'manual',
@@ -1491,6 +1501,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'Send a text message');
@@ -1553,6 +1564,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'Process Data');
@@ -1611,6 +1623,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'End Node');
@@ -1698,6 +1711,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'Real Node');
@@ -1737,6 +1751,160 @@ describe('WorkflowDataProxy', () => {
 
 			expect(error).toBeDefined();
 			expect(error).toBeInstanceOf(ExpressionError);
+		});
+	});
+
+	describe('buildAgentToolInfo', () => {
+		it('should return basic info when nodeType is null', () => {
+			const mockWorkflowWithNullNodeType = new Workflow({
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Node1',
+						type: 'n8n-nodes-base.unknownNode',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes: {
+					getByNameAndVersion: () => undefined as unknown as INodeType,
+				} as unknown as INodeTypes,
+				settings: {},
+			});
+
+			const dataProxy = new WorkflowDataProxy(
+				mockWorkflowWithNullNodeType,
+				null,
+				0,
+				0,
+				'Node1',
+				[],
+				{},
+				'integrated',
+				{},
+			);
+
+			const node: INode = {
+				id: 'node1',
+				name: 'Node1',
+				type: 'n8n-nodes-base.unknownNode',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const result = (dataProxy as any).buildAgentToolInfo(node);
+
+			expect(result).toEqual({
+				name: 'Node1',
+				type: 'n8n-nodes-base.unknownNode',
+			});
+		});
+
+		it('should return full info when nodeType is valid', () => {
+			const mockWorkflow = new Workflow({
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Node1',
+						type: 'n8n-nodes-base.testNode',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes: Helpers.NodeTypes(),
+				settings: {},
+			});
+
+			const dataProxy = new WorkflowDataProxy(
+				mockWorkflow,
+				null,
+				0,
+				0,
+				'Node1',
+				[],
+				{},
+				'integrated',
+				{},
+			);
+
+			const node: INode = {
+				id: 'node1',
+				name: 'Node1',
+				type: 'n8n-nodes-base.testNode',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const result = (dataProxy as any).buildAgentToolInfo(node);
+
+			expect(result).toHaveProperty('name');
+			expect(result).toHaveProperty('type');
+			expect(result.name).toBe('Node1');
+		});
+
+		it('should handle undefined nodeType gracefully', () => {
+			const mockWorkflowWithUndefinedNodeType = new Workflow({
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Node1',
+						type: 'n8n-nodes-base.missingNode',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes: {
+					getByNameAndVersion: () => undefined as unknown as INodeType,
+				} as unknown as INodeTypes,
+				settings: {},
+			});
+
+			const dataProxy = new WorkflowDataProxy(
+				mockWorkflowWithUndefinedNodeType,
+				null,
+				0,
+				0,
+				'Node1',
+				[],
+				{},
+				'integrated',
+				{},
+			);
+
+			const node: INode = {
+				id: 'node1',
+				name: 'Node1',
+				type: 'n8n-nodes-base.missingNode',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const result = (dataProxy as any).buildAgentToolInfo(node);
+
+			expect(result).toEqual({
+				name: 'Node1',
+				type: 'n8n-nodes-base.missingNode',
+			});
+			expect(result).not.toHaveProperty('displayName');
+			expect(result).not.toHaveProperty('params');
 		});
 	});
 });

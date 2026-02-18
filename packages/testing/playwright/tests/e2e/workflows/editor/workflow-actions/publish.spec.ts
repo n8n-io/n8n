@@ -5,7 +5,11 @@ import {
 } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 
-test.describe('Workflow Publish', () => {
+test.describe('Workflow Publish', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});
@@ -21,7 +25,7 @@ test.describe('Workflow Publish', () => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.waitForSaveWorkflowCompleted();
 
-		await expect(n8n.canvas.getPublishedIndicator()).not.toBeVisible();
+		await expect(n8n.canvas.getPublishedIndicator()).toBeHidden();
 
 		await n8n.canvas.publishWorkflow();
 
@@ -74,6 +78,18 @@ test.describe('Workflow Publish', () => {
 		test('successfully publishes a workflow without webhook conflicts', async ({ api }) => {
 			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 				'webhook-origin-isolation.json',
+			);
+
+			cleanupWorkflowIds.push(workflowId);
+
+			await expect(
+				api.workflows.activate(workflowId, createdWorkflow.versionId!),
+			).resolves.not.toThrow();
+		});
+
+		test('successfully publishes a workflow containing wait node', async ({ api }) => {
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'webhook-publish-with-wait-node.json',
 			);
 
 			cleanupWorkflowIds.push(workflowId);

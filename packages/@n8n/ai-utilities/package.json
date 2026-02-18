@@ -1,0 +1,53 @@
+{
+  "name": "@n8n/ai-utilities",
+  "version": "0.3.0",
+  "description": "Utilities for building AI nodes in n8n",
+  "aiNodeSdkVersion": 1,
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "example:run": "tsx examples/run.ts",
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm run watch",
+    "typecheck": "tsc --noEmit",
+    "copy-tokenizer-json": "node scripts/copy-tokenizer-json.js .",
+    "build:examples": "tsc --build tsconfig.examples.json && tsc-alias -p tsconfig.examples.json && pnpm copy-tokenizer-json ./dist_examples/src/",
+    "build": "tsc --build tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc-watch -p tsconfig.build.json",
+    "test": "jest",
+    "test:unit": "jest",
+    "test:dev": "jest --watch"
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@types/json-schema": "^7.0.15",
+    "jest-mock-extended": "^3.0.4",
+    "@types/mime-types": "catalog:",
+    "tsx": "catalog:"
+  },
+  "dependencies": {
+    "zod": "catalog:",
+    "zod-to-json-schema": "catalog:",
+    "@langchain/core": "catalog:",
+    "@langchain/classic": "1.0.5",
+    "@langchain/community": "catalog:",
+    "@langchain/textsplitters": "1.0.1",
+    "@langchain/openai": "catalog:",
+    "langchain": "catalog:",
+    "@n8n/config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "n8n-workflow": "workspace:*",
+    "tmp-promise": "3.0.3",
+    "js-tiktoken": "catalog:",
+    "https-proxy-agent": "catalog:",
+    "proxy-from-env": "^1.1.0",
+    "undici": "^6.21.0"
+  }
+}

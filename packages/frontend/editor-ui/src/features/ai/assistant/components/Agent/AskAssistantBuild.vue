@@ -4,9 +4,9 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState } from '@/app/constants';
-import { computed, watch, ref } from 'vue';
+import { computed, watch, ref, nextTick, useSlots } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -16,6 +16,8 @@ import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-syst
 import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
+import ChatInputWithMention from '../FocusedNodes/ChatInputWithMention.vue';
+import MessageFocusedNodesChips from '../FocusedNodes/MessageFocusedNodesChips.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 import { useToast } from '@/app/composables/useToast';
@@ -23,12 +25,28 @@ import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { VIEWS } from '@/app/constants';
 import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useErrorHandler } from '@/app/composables/useErrorHandler';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { jsonParse } from 'n8n-workflow';
 import shuffle from 'lodash/shuffle';
+import AISettingsButton from '@/features/ai/assistant/components/Chat/AISettingsButton.vue';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 
-import { N8nAskAssistantChat, N8nText } from '@n8n/design-system';
+import { N8nAskAssistantChat } from '@n8n/design-system';
+import BuildModeEmptyState from './BuildModeEmptyState.vue';
+import {
+	isPlanModePlanMessage,
+	isPlanModeQuestionsMessage,
+	isPlanModeUserAnswersMessage,
+	type PlanMode,
+} from '../../assistant.types';
+import PlanDisplayMessage from './PlanDisplayMessage.vue';
+import PlanModeSelector from './PlanModeSelector.vue';
+import PlanQuestionsMessage from './PlanQuestionsMessage.vue';
+import UserAnswersMessage from './UserAnswersMessage.vue';
 
 const emit = defineEmits<{
 	close: [];
@@ -39,9 +57,13 @@ const usersStore = useUsersStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const historyStore = useHistoryStore();
 const collaborationStore = useCollaborationStore();
-const workflowAutosaveStore = useWorkflowAutosaveStore();
+const workflowAutosaveStore = useWorkflowSaveStore();
+const settingsStore = useSettingsStore();
 const telemetry = useTelemetry();
+const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
+const assistantStore = useAssistantStore();
+const chatPanelStateStore = useChatPanelStateStore();
 const router = useRouter();
 const i18n = useI18n();
 const route = useRoute();
@@ -63,6 +85,9 @@ onDocumentVisible(() => {
 const processedWorkflowUpdates = ref(new Set<string>());
 const accumulatedNodeIdsToTidyUp = ref<string[]>([]);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
+const chatInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
+const suggestionsInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
+const inputText = ref('');
 
 const notificationsPermissionsBannerTriggered = ref(false);
 
@@ -73,6 +98,14 @@ watch(
 			notificationsPermissionsBannerTriggered.value = true;
 		}
 	},
+);
+
+const showSettingsButton = computed(() => {
+	return assistantStore.canManageAISettings;
+});
+
+const allowSendingParameterValues = computed(
+	() => settingsStore.settings.ai.allowSendingParameterValues,
 );
 
 const shouldShowNotificationBanner = computed(() => {
@@ -103,34 +136,50 @@ const loadingMessage = computed(() => {
 });
 const currentRoute = computed(() => route.name);
 const showExecuteMessage = computed(() => {
-	const builderUpdatedWorkflowMessageIndex = builderStore.chatMessages.findLastIndex(
+	const messages = builderStore.chatMessages;
+	const builderUpdatedWorkflowMessageIndex = messages.findLastIndex(
 		(msg) =>
 			msg.type === 'workflow-updated' ||
 			(msg.type === 'tool' && msg.toolName === 'update_node_parameters'),
 	);
 
 	// Check if there's an error message or task aborted message after the last workflow update
-	const messagesAfterUpdate = builderStore.chatMessages.slice(
-		builderUpdatedWorkflowMessageIndex + 1,
-	);
+	const messagesAfterUpdate = messages.slice(builderUpdatedWorkflowMessageIndex + 1);
 	const hasErrorAfterUpdate = messagesAfterUpdate.some((msg) => msg.type === 'error');
 	const hasTaskAbortedAfterUpdate = messagesAfterUpdate.some((msg) => isTaskAbortedMessage(msg));
+
+	// Hide when the last assistant message is a question or plan awaiting user action
+	const lastAssistantMessage = messages.findLast((msg) => msg.role === 'assistant');
+	const hasPendingInteraction =
+		lastAssistantMessage &&
+		(isPlanModeQuestionsMessage(lastAssistantMessage) ||
+			isPlanModePlanMessage(lastAssistantMessage));
 
 	return (
 		!builderStore.streaming &&
 		workflowsStore.workflow.nodes.length > 0 &&
 		builderUpdatedWorkflowMessageIndex > -1 &&
 		!hasErrorAfterUpdate &&
-		!hasTaskAbortedAfterUpdate
+		!hasTaskAbortedAfterUpdate &&
+		!hasPendingInteraction
 	);
 });
 const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsRemaining = computed(() => builderStore.creditsRemaining);
 const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 
+// Use different completion message for code-builder
+const thinkingCompletionMessage = computed(() =>
+	builderStore.isCodeBuilder
+		? i18n.baseText('aiAssistant.builder.thinkingCompletionMessage.codeBuilder')
+		: undefined,
+);
+
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
-	// we don't show the suggestions if there are already messages
-	return builderStore.hasMessages ? undefined : shuffle(WORKFLOW_SUGGESTIONS);
+	if (builderStore.hasMessages || workflowsStore.workflow.nodes.length > 0) {
+		return undefined;
+	}
+	return shuffle(WORKFLOW_SUGGESTIONS);
 });
 
 const isAutosaving = computed(() => {
@@ -144,8 +193,12 @@ const isInputDisabled = computed(() => {
 	return collaborationStore.shouldBeReadOnly || isAutosaving.value;
 });
 
+const isChatInputDisabled = computed(() => {
+	return isInputDisabled.value || builderStore.shouldDisableChatInput;
+});
+
 const disabledTooltip = computed(() => {
-	if (!isInputDisabled.value) {
+	if (!isChatInputDisabled.value) {
 		return undefined;
 	}
 	if (isAutosaving.value) {
@@ -156,6 +209,35 @@ const disabledTooltip = computed(() => {
 	}
 	return undefined;
 });
+
+/**
+ * Check if questions have been answered (there's a user_answers message after this questions message)
+ */
+function isQuestionsAnswered(questionsMessage: { id?: string }): boolean {
+	const messages = builderStore.chatMessages;
+	const questionsIndex = messages.findIndex((m) => m.id === questionsMessage.id);
+	if (questionsIndex === -1) return false;
+
+	for (let i = questionsIndex + 1; i < messages.length; i++) {
+		if (isPlanModeUserAnswersMessage(messages[i])) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * Check if this plan message is the last one and nothing has been sent after it.
+ * Only the latest plan with no subsequent messages should show the "Implement" button,
+ * because the HITL interrupt only works for the pending plan.
+ */
+function isLastPlanMessage(message: PlanMode.PlanMessage): boolean {
+	const messages = builderStore.chatMessages;
+	const idx = messages.findLastIndex((m) => m.id === message.id);
+	if (idx === -1) return false;
+	// Check that no user message or other content exists after this plan
+	return !messages.slice(idx + 1).some((m) => m.role === 'user');
+}
 
 async function onUserMessage(content: string) {
 	// Record activity to maintain write lock while building
@@ -171,6 +253,13 @@ async function onUserMessage(content: string) {
 		text: content,
 		initialGeneration: isInitialGeneration,
 	});
+}
+
+async function onCustomInputSubmit() {
+	if (!inputText.value.trim()) return;
+	const content = inputText.value;
+	inputText.value = '';
+	await onUserMessage(content);
 }
 
 function onNewWorkflow() {
@@ -310,11 +399,11 @@ watch(
 	},
 );
 
-// Reset initial generation flag when streaming ends
+// Reset initial generation flag and fit canvas when streaming ends
 // Note: Saving is handled by auto-save in NodeView.vue
 watch(
 	() => builderStore.streaming,
-	(isStreaming, wasStreaming) => {
+	async (isStreaming, wasStreaming) => {
 		// Only process when streaming just ended (was streaming, now not)
 		if (!wasStreaming || isStreaming) {
 			return;
@@ -322,6 +411,12 @@ watch(
 
 		if (builderStore.initialGeneration && workflowsStore.workflow.nodes.length > 0) {
 			builderStore.initialGeneration = false;
+		}
+
+		// Zoom to fit all nodes after generation completes
+		if (accumulatedNodeIdsToTidyUp.value.length > 0) {
+			await nextTick();
+			canvasEventBus.emit('fitView');
 		}
 	},
 );
@@ -335,6 +430,10 @@ async function onRestoreConfirm(versionId: string, messageId: string) {
 		if (!updatedWorkflow) {
 			return;
 		}
+
+		processedWorkflowUpdates.value.clear();
+		accumulatedNodeIdsToTidyUp.value = [];
+
 		builderStore.clearExistingWorkflow();
 		// Reload the workflow to reflect the restored state
 		nodeViewEventBus.emit('importWorkflowData', {
@@ -344,6 +443,9 @@ async function onRestoreConfirm(versionId: string, messageId: string) {
 			trackEvents: false,
 			setStateDirty: false,
 		});
+
+		await nextTick();
+		builderStore.builderMode = 'build';
 	} catch (e: unknown) {
 		toast.showMessage({
 			type: 'error',
@@ -374,9 +476,23 @@ watch(currentRoute, () => {
 	}
 });
 
+// Refocus chat input when a canvas node is clicked while chat is open
+watch(
+	() => chatPanelStateStore.focusRequested,
+	() => {
+		void nextTick(() => {
+			suggestionsInputRef.value?.focusInput() ??
+				chatInputRef.value?.focusInput() ??
+				n8nChatRef.value?.focusInput();
+		});
+	},
+);
+
 defineExpose({
 	focusInput: () => {
-		n8nChatRef.value?.focusInput();
+		suggestionsInputRef.value?.focusInput() ??
+			chatInputRef.value?.focusInput() ??
+			n8nChatRef.value?.focusInput();
 	},
 });
 </script>
@@ -389,6 +505,7 @@ defineExpose({
 			:messages="builderStore.chatMessages"
 			:streaming="builderStore.streaming"
 			:loading-message="loadingMessage"
+			:thinking-completion-message="thinkingCompletionMessage"
 			:mode="i18n.baseText('aiAssistant.builder.mode')"
 			:show-stop="true"
 			:scroll-on-new-message="true"
@@ -399,7 +516,7 @@ defineExpose({
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			:workflow-id="workflowsStore.workflowId"
 			:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
-			:disabled="isInputDisabled"
+			:disabled="isChatInputDisabled"
 			:disabled-tooltip="disabledTooltip"
 			@close="emit('close')"
 			@message="onUserMessage"
@@ -409,8 +526,18 @@ defineExpose({
 			@restore-confirm="onRestoreConfirm"
 			@show-version="onShowVersion"
 		>
+			<template #focused-nodes-chips="{ message }">
+				<MessageFocusedNodesChips :focused-node-names="message.focusedNodeNames" />
+			</template>
 			<template #header>
-				<slot name="header" />
+				<div :class="{ [$style.header]: true, [$style['with-slot']]: !!slots.header }">
+					<slot name="header" />
+					<AISettingsButton
+						v-if="showSettingsButton"
+						:show-usability-notice="!allowSendingParameterValues"
+						:disabled="builderStore.streaming"
+					/>
+				</div>
 			</template>
 			<template #inputHeader>
 				<Transition name="slide">
@@ -421,9 +548,93 @@ defineExpose({
 				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
 			</template>
 			<template #placeholder>
-				<N8nText :class="$style.topText"
-					>{{ i18n.baseText('aiAssistant.builder.assistantPlaceholder') }}
-				</N8nText>
+				<BuildModeEmptyState />
+			</template>
+			<template #custom-message="{ message }">
+				<!-- Always render questions message; when answered, collapse to intro text only -->
+				<PlanQuestionsMessage
+					v-if="isPlanModeQuestionsMessage(message)"
+					:questions="message.data.questions"
+					:intro-message="message.data.introMessage"
+					:disabled="builderStore.streaming"
+					:answered="isQuestionsAnswered(message)"
+					@submit="builderStore.resumeWithQuestionsAnswers"
+				/>
+				<PlanDisplayMessage
+					v-else-if="isPlanModePlanMessage(message)"
+					:message="message"
+					:disabled="builderStore.streaming"
+					:show-actions="isLastPlanMessage(message)"
+					@decision="builderStore.resumeWithPlanDecision"
+				/>
+				<UserAnswersMessage
+					v-else-if="isPlanModeUserAnswersMessage(message)"
+					:answers="message.data.answers"
+				/>
+			</template>
+			<template
+				#suggestions-input="{
+					modelValue,
+					onUpdateModelValue,
+					placeholder,
+					disabled: slotDisabled,
+					disabledTooltip: slotDisabledTooltip,
+					streaming: slotStreaming,
+					creditsQuota: slotCreditsQuota,
+					creditsRemaining: slotCreditsRemaining,
+					showAskOwnerTooltip: slotShowAskOwnerTooltip,
+					onSubmit,
+					onStop,
+					onUpgradeClick,
+					registerFocus,
+				}"
+			>
+				<ChatInputWithMention
+					ref="suggestionsInputRef"
+					:model-value="modelValue"
+					:placeholder="placeholder"
+					:disabled="slotDisabled"
+					:disabled-tooltip="slotDisabledTooltip"
+					:streaming="slotStreaming"
+					:credits-quota="slotCreditsQuota"
+					:credits-remaining="slotCreditsRemaining"
+					:show-ask-owner-tooltip="slotShowAskOwnerTooltip"
+					@update:model-value="onUpdateModelValue"
+					@submit="onSubmit"
+					@stop="onStop"
+					@upgrade-click="onUpgradeClick"
+					@vue:mounted="registerFocus(() => suggestionsInputRef?.focusInput())"
+				>
+					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+						<PlanModeSelector
+							:model-value="builderStore.builderMode"
+							@update:model-value="builderStore.setBuilderMode"
+						/>
+					</template>
+				</ChatInputWithMention>
+			</template>
+			<template #inputPlaceholder>
+				<ChatInputWithMention
+					ref="chatInputRef"
+					v-model="inputText"
+					:placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
+					:disabled="isInputDisabled"
+					:disabled-tooltip="disabledTooltip"
+					:streaming="builderStore.streaming"
+					:credits-quota="creditsQuota"
+					:credits-remaining="creditsRemaining"
+					:show-ask-owner-tooltip="showAskOwnerTooltip"
+					@submit="onCustomInputSubmit"
+					@stop="builderStore.abortStreaming"
+					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
+				>
+					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+						<PlanModeSelector
+							:model-value="builderStore.builderMode"
+							@update:model-value="builderStore.setBuilderMode"
+						/>
+					</template>
+				</ChatInputWithMention>
 			</template>
 		</N8nAskAssistantChat>
 	</div>
@@ -447,8 +658,15 @@ defineExpose({
 	width: 100%;
 }
 
-.topText {
-	color: var(--color--text);
+.header {
+	display: flex;
+	justify-content: end;
+	align-items: center;
+	flex: 1;
+
+	&.with-slot {
+		justify-content: space-between;
+	}
 }
 
 .newWorkflowButtonWrapper {

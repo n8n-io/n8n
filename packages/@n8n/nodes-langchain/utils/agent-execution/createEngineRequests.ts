@@ -142,7 +142,7 @@ function extractThinkingMetadata(
 									const toolCallIndex = msgToolCalls.findIndex(
 										(tc) => tc.id === toolCall.toolCallId,
 									);
-									if (toolCallIndex !== -1 && toolCallIndex < signatures.length) {
+									if (toolCallIndex > 0 && toolCallIndex < signatures.length) {
 										thoughtSignature = signatures[toolCallIndex];
 									}
 								}
@@ -227,8 +227,7 @@ export function createEngineRequests(
 					// omit hitlParameters, because they are destructured into the input instead
 					...omit(input, 'hitlParameters'),
 					...(input.hitlParameters as IDataObject),
-					// stringify parameters so that they can be accessed with $fromAI method
-					toolParameters: JSON.stringify(input.toolParameters),
+					toolParameters: input.toolParameters,
 				};
 			}
 

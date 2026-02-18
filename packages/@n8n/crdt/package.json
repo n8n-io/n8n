@@ -1,6 +1,6 @@
 {
   "name": "@n8n/crdt",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "CRDT abstraction layer for n8n collaborative editing",
   "scripts": {
     "clean": "rimraf dist .turbo",

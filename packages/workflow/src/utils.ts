@@ -374,6 +374,10 @@ const unsafeObjectProperties = new Set([
 	'binding',
 	'_load',
 	'prepareStackTrace',
+	'__lookupGetter__',
+	'__lookupSetter__',
+	'__defineGetter__',
+	'__defineSetter__',
 ]);
 
 /**

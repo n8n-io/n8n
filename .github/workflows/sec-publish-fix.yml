@@ -1,24 +1,3 @@
-# Publish security fix from n8n-io/n8n-private to n8n-io/n8n
-#
-# On PR merge to n8n-private's master:
-#
-# 1. Cherrypick the squashed commit onto n8n's master
-# 2. Sync n8n's master onto n8n-private's master
-#
-# Before:
-#   private master: A -- B -- C -- D       (D = security fix)
-#   public master:  A -- B -- C -- E       (E = normal development)
-#
-# After:
-#   private master: A -- B -- C -- E -- D'
-#   public master:  A -- B -- C -- E -- D'
-#
-# On cherrypick conflict:
-#
-# 1. Run "Security: Sync from Public" workflow
-# 2. Rebase your branch: `git checkout fix-123 && git rebase master`
-# 3. Reopen PR and merge again
-
 name: 'Security: Publish fix'
 
 on:
@@ -49,21 +28,28 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.generate_token.outputs.token }}
 
-      - name: Cherry-pick to public repo
+      - name: Open PR to public repo
         run: |
           COMMIT_TO_PUBLISH=$(git rev-parse HEAD)
+          BRANCH_NAME="private-$(date +%Y%m%d-%H%M%S)"
+
           git remote add public-repo https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/n8n-io/n8n.git
           git fetch public-repo master
-          git checkout public-repo/master
+          git checkout -b "$BRANCH_NAME" public-repo/master
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git cherry-pick "$COMMIT_TO_PUBLISH"
-          git push public-repo HEAD:master
-
-      - name: Sync public back to private
-        run: |
-          git fetch public-repo master
-          git push origin public-repo/master:master --force
+          git push public-repo "$BRANCH_NAME"
+          gh pr create \
+            --repo n8n-io/n8n \
+            --base master \
+            --head "$BRANCH_NAME" \
+            --title "$PR_TITLE" \
+            --body "Cherry-picked from n8n-private. Original PR: $PR_URL"
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
 
       - name: Notify on failure
         if: failure()
@@ -72,4 +58,4 @@ jobs:
           status: ${{ job.status }}
           channel: '#alerts-security'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: 'Security fix cherry-pick failed. Run "Security: Sync from Public" workflow, rebase your branch, reopen PR. (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})'
+          message: 'Security fix PR creation failed. Run "Security: Sync from Public" workflow, rebase your branch, reopen PR. (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})'

@@ -130,6 +130,15 @@ import { AddWorkflowPublishScopeToProjectRoles1766064542000 } from '../common/17
 import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
 import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
 import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/1768901721000-AddDynamicCredentialUserEntryTable';
+import { AddPublishedVersionIdToWorkflowDependency1769000000000 } from '../common/1769000000000-AddPublishedVersionIdToWorkflowDependency';
+import { CreateSecretsProviderConnectionTables1769433700000 } from '../common/1769433700000-CreateSecretsProvidersConnectionTables';
+import { CreateWorkflowPublishedVersionTable1769698710000 } from '../common/1769698710000-CreateWorkflowPublishedVersionTable';
+import { ExpandSubjectIDColumnLength1769784356000 } from '../common/1769784356000-ExpandSubjectIDColumnLength';
+import { AddWorkflowUnpublishScopeToCustomRoles1769900001000 } from '../common/1769900001000-AddWorkflowUnpublishScopeToCustomRoles';
+import { CreateChatHubToolsTable1770000000000 } from '../common/1770000000000-CreateChatHubToolsTable';
+import { ExpandProviderIdColumnLength1770000000000 } from '../common/1770000000000-ExpandProviderIdColumnLength';
+import { CreateWorkflowBuilderSessionTable1770220686000 } from '../common/1770220686000-CreateWorkflowBuilderSessionTable';
+import { AddScalingFieldsToTestRun1771417407753 } from '../common/1771417407753-AddScalingFieldsToTestRun';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -265,6 +274,15 @@ const sqliteMigrations: Migration[] = [
 	ExpandModelColumnLength1768402473068,
 	AddStoredAtToExecutionEntity1768557000000,
 	AddDynamicCredentialUserEntryTable1768901721000,
+	AddPublishedVersionIdToWorkflowDependency1769000000000,
+	CreateSecretsProviderConnectionTables1769433700000,
+	CreateWorkflowPublishedVersionTable1769698710000,
+	ExpandSubjectIDColumnLength1769784356000,
+	AddWorkflowUnpublishScopeToCustomRoles1769900001000,
+	CreateChatHubToolsTable1770000000000,
+	ExpandProviderIdColumnLength1770000000000,
+	CreateWorkflowBuilderSessionTable1770220686000,
+	AddScalingFieldsToTestRun1771417407753,
 ];
 
 export { sqliteMigrations };

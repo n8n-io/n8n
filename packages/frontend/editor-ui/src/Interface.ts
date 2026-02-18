@@ -8,7 +8,7 @@ import type {
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
-import type { NodeCreatorTag, BinaryMetadata } from '@n8n/design-system';
+import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
 import type {
 	GenericValue,
 	IConnections,
@@ -59,7 +59,6 @@ import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentia
 import type { BulkCommand, Undoable } from '@/app/models/history';
 
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
-import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 import type {
 	BaseFolderItem,
 	FolderListItem,
@@ -195,6 +194,7 @@ export interface IStartRunData {
 		name: string;
 		data?: ITaskData;
 	};
+	chatSessionId?: string;
 	agentRequest?: {
 		query: AgentRequestQuery;
 		tool: {
@@ -293,6 +293,7 @@ export type WorkflowResource = BaseResource & {
 	readOnly: boolean;
 	parentFolder?: ResourceParentFolder;
 	settings?: Partial<IWorkflowSettings>;
+	hasResolvableCredentials?: boolean;
 };
 
 export type VariableResource = BaseResource & {
@@ -313,6 +314,7 @@ export type CredentialsResource = BaseResource & {
 	readOnly: boolean;
 	needsSetup: boolean;
 	isGlobal?: boolean;
+	isResolvable?: boolean;
 };
 
 // Base resource types that are always available
@@ -347,6 +349,7 @@ export type WorkflowListItem = Omit<
 > & {
 	resource: 'workflow';
 	description?: string;
+	hasResolvableCredentials?: boolean;
 };
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
@@ -868,7 +871,9 @@ export type CloudUpdateLinkSourceType =
 	| 'ai-builder-sidebar'
 	| 'ai-builder-canvas'
 	| 'custom-roles'
-	| 'main-sidebar';
+	| 'main-sidebar'
+	| 'chat-hub'
+	| 'empty-state-builder-prompt';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -943,7 +948,10 @@ export type EnterpriseEditionFeatureKey =
 	| 'AdvancedPermissions'
 	| 'ApiKeyScopes'
 	| 'EnforceMFA'
-	| 'Provisioning';
+	| 'NamedVersions'
+	| 'Provisioning'
+	| 'PersonalSpacePolicy'
+	| 'CustomRoles';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 

@@ -15,6 +15,7 @@ import dateformat from 'dateformat';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
@@ -46,6 +47,8 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -106,10 +109,12 @@ const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
 const mcp = useMcp();
+const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
 const mcpStore = useMCPStore();
@@ -288,6 +293,18 @@ const isWorkflowPublished = computed(() => {
 	return props.data.activeVersionId !== null;
 });
 
+const hasDynamicCredentials = computed(() => {
+	return isDynamicCredentialsEnabled.value && props.data.hasResolvableCredentials;
+});
+
+const isResolverMissing = computed(() => {
+	return (
+		isDynamicCredentialsEnabled.value &&
+		props.data.hasResolvableCredentials &&
+		!props.data.settings?.credentialResolverId
+	);
+});
+
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
 		const route = router.resolve({
@@ -444,7 +461,7 @@ async function deleteWorkflow() {
 	}
 
 	try {
-		await workflowsStore.deleteWorkflow(props.data.id);
+		await workflowsListStore.deleteWorkflow(props.data.id);
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
 		return;
@@ -580,6 +597,34 @@ const tags = computed(
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
+				<N8nTooltip v-if="hasDynamicCredentials" placement="top">
+					<template #content>
+						<div :class="$style.tooltipContent">
+							<strong>{{ locale.baseText('workflows.dynamic.tooltipTitle') }}</strong>
+							<span>{{ locale.baseText('workflows.dynamic.tooltip') }}</span>
+						</div>
+					</template>
+					<N8nBadge
+						theme="tertiary"
+						class="ml-3xs pl-3xs pr-3xs"
+						data-test-id="workflow-card-dynamic-credentials"
+					>
+						<span :class="$style.dynamicBadgeText">
+							<N8nIcon icon="key-round" size="medium" />
+							{{ locale.baseText('credentials.dynamic.badge') }}
+						</span>
+					</N8nBadge>
+				</N8nTooltip>
+				<N8nBadge
+					v-if="isResolverMissing"
+					theme="warning"
+					class="ml-3xs pl-3xs pr-3xs"
+					data-test-id="workflow-card-resolver-missing"
+				>
+					<span :class="$style.resolverMissingBadge">
+						{{ locale.baseText('workflows.dynamic.resolverMissing') }}
+					</span>
+				</N8nBadge>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
@@ -693,13 +738,11 @@ const tags = computed(
 }
 
 .cardHeading {
+	display: flex;
+	align-items: center;
 	font-size: var(--font-size--sm);
 	word-break: break-word;
 	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
-
-	span {
-		color: var(--color--text--tint-1);
-	}
 }
 
 .cardHeadingArchived {
@@ -762,6 +805,28 @@ const tags = computed(
 	&:hover {
 		color: var(--color--text);
 	}
+}
+
+.dynamicBadgeText {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--3xs);
+	height: 18px;
+}
+
+.resolverMissingBadge {
+	display: inline-flex;
+	align-items: center;
+	font-size: var(--font-size--3xs);
+	height: 18px;
+	color: var(--color--warning);
+}
+
+.tooltipContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 .publishIndicator {

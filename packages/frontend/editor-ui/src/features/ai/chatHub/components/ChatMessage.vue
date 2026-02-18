@@ -1,10 +1,22 @@
 <script setup lang="ts">
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
-import type { AgentIconOrEmoji, ChatMessageId, ChatModelDto } from '@n8n/api-types';
+import type {
+	AgentIconOrEmoji,
+	ChatMessageContentChunk,
+	ChatMessageId,
+	ChatModelDto,
+} from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
-import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	onBeforeMount,
+	ref,
+	useTemplateRef,
+	watch,
+	type ComponentPublicInstance,
+} from 'vue';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
 import { unflattenModel, splitMarkdownIntoChunks } from '@/features/ai/chatHub/chat.utils';
@@ -15,6 +27,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
+import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
 
 interface MergedAttachment {
 	isNew: boolean;
@@ -32,7 +45,6 @@ const {
 	minHeight,
 	cachedAgentDisplayName,
 	cachedAgentIcon,
-	containerWidth,
 } = defineProps<{
 	message: ChatMessage;
 	compact: boolean;
@@ -45,7 +57,6 @@ const {
 	 * minHeight allows scrolling agent's response to the top while it is being generated
 	 */
 	minHeight?: number;
-	containerWidth: number;
 }>();
 
 const emit = defineEmits<{
@@ -54,6 +65,7 @@ const emit = defineEmits<{
 	update: [content: string, keptAttachmentIndices: number[], newFiles: File[]];
 	regenerate: [message: ChatMessage];
 	switchAlternative: [messageId: ChatMessageId];
+	openArtifact: [title: string];
 }>();
 
 const chatStore = useChatStore();
@@ -64,20 +76,65 @@ const i18n = useI18n();
 const editedText = ref('');
 const newFiles = ref<File[]>([]);
 const removedExistingIndices = ref<Set<number>>(new Set());
-const fileInputRef = useTemplateRef('fileInputRef');
-const textareaRef = useTemplateRef('textarea');
-const messageContent = computed(() => message.content);
+const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
+const textareaRef = useTemplateRef<InstanceType<typeof N8nInput>>('textarea');
+const markdownChunkRefs = useTemplateRef<
+	Array<ComponentPublicInstance<{
+		hoveredCodeBlockActions: HTMLElement | null;
+		getHoveredCodeBlockContent: () => string | undefined;
+	}> | null>
+>('markdownChunk');
 
-const messageChunks = computed(() => {
-	// Handle error case with no content
-	if (message.status === 'error' && !message.content) {
-		return [i18n.baseText('chatHub.message.error.unknown')];
+const activeCodeBlockTeleport = computed<{
+	target: HTMLElement;
+	content: string;
+} | null>(() => {
+	const refs = markdownChunkRefs.value;
+	if (!refs || !Array.isArray(refs)) {
+		return null;
 	}
 
-	return splitMarkdownIntoChunks(message.content).filter((chunk) => chunk.trim() !== '');
+	for (const chunkRef of refs) {
+		if (chunkRef?.hoveredCodeBlockActions) {
+			const content = chunkRef.getHoveredCodeBlockContent();
+			if (content) {
+				return { target: chunkRef.hoveredCodeBlockActions, content };
+			}
+		}
+	}
+	return null;
 });
 
-const speech = useSpeechSynthesis(messageContent, {
+const messageChunks = computed(() =>
+	message.content.flatMap<ChatMessageContentChunk>((chunk, index, arr) => {
+		if (chunk.type === 'hidden') {
+			return [];
+		}
+
+		if (chunk.type === 'with-buttons') {
+			return [chunk];
+		}
+
+		if (chunk.type === 'artifact-create' || chunk.type === 'artifact-edit') {
+			const prev = arr[index - 1];
+			return prev?.type === chunk.type && prev.command.title === chunk.command.title ? [] : [chunk]; // dedupe command
+		}
+
+		// Handle error case with no content
+		if (message.status === 'error' && !chunk.content) {
+			return [{ type: 'text', content: i18n.baseText('chatHub.message.error.unknown') }];
+		}
+
+		return splitMarkdownIntoChunks(chunk.content).flatMap((content) =>
+			content.trim() === '' ? [] : [{ type: 'text', content }],
+		);
+	}),
+);
+const text = computed(() =>
+	messageChunks.value.flatMap((chunk) => (chunk.type === 'text' ? [chunk.content] : [])).join(''),
+);
+
+const speech = useSpeechSynthesis(text, {
 	pitch: 1,
 	rate: 1,
 	volume: 1,
@@ -113,8 +170,14 @@ const mergedAttachments = computed(() => [
 ]);
 
 const hideMessage = computed(() => {
-	return message.status === 'success' && message.content === '';
+	return (
+		message.status === 'success' &&
+		text.value === '' &&
+		!message.content.some((c) => c.type === 'with-buttons')
+	);
 });
+
+const shouldShowTypingIndicator = computed(() => message.status === 'running');
 
 function handleEdit() {
 	emit('startEdit');
@@ -214,7 +277,7 @@ function handleSwitchAlternative(messageId: ChatMessageId) {
 watch(
 	() => isEditing,
 	(editing) => {
-		editedText.value = editing ? message.content : '';
+		editedText.value = editing ? text.value : '';
 		newFiles.value = [];
 		removedExistingIndices.value = new Set();
 	},
@@ -250,7 +313,6 @@ onBeforeMount(() => {
 		]"
 		:style="{
 			minHeight: minHeight ? `${minHeight}px` : undefined,
-			'--container--width': `${containerWidth}px`,
 		}"
 		:data-message-id="message.id"
 		:data-test-id="`chat-message-${message.id}`"
@@ -294,18 +356,16 @@ onBeforeMount(() => {
 				<div :class="$style.editFooter">
 					<N8nIconButton
 						v-if="message.type === 'human'"
-						native-type="button"
-						type="secondary"
+						variant="ghost"
 						icon="paperclip"
-						text
 						@click.stop="handleAttachClick"
 					/>
 					<div :class="$style.editActions">
-						<N8nButton type="secondary" size="small" @click="handleCancelEdit">
+						<N8nButton variant="subtle" size="small" @click="handleCancelEdit">
 							{{ i18n.baseText('chatHub.message.edit.cancel') }}
 						</N8nButton>
 						<N8nButton
-							type="primary"
+							variant="solid"
 							size="small"
 							:disabled="!editedText.trim() || isEditSubmitting"
 							:loading="isEditSubmitting"
@@ -327,16 +387,24 @@ onBeforeMount(() => {
 							:href="attachment.downloadUrl"
 						/>
 					</div>
-					<div v-if="message.type === 'human'">{{ message.content }}</div>
-					<ChatMarkdownChunk
-						v-for="(chunk, index) in messageChunks"
-						v-else
-						:key="index"
-						:source="chunk"
-						:container-width="containerWidth"
-					/>
+					<div v-if="message.type === 'human'">
+						{{ text }}
+					</div>
+					<div v-else :class="$style.markdownContent">
+						<ChatMarkdownChunk
+							v-for="(chunk, index) in messageChunks"
+							ref="markdownChunk"
+							:key="index"
+							:source="chunk"
+							:is-buttons-disabled="message.status !== 'waiting'"
+							@open-artifact="emit('openArtifact', $event)"
+						/>
+						<Teleport v-if="activeCodeBlockTeleport" :to="activeCodeBlockTeleport.target">
+							<CopyButton :content="activeCodeBlockTeleport.content" />
+						</Teleport>
+					</div>
 				</div>
-				<ChatTypingIndicator v-if="message.status === 'running'" :class="$style.typingIndicator" />
+				<ChatTypingIndicator v-if="shouldShowTypingIndicator" :class="$style.typingIndicator" />
 				<ChatMessageActions
 					v-else
 					:is-speech-synthesis-available="speech.isSupported.value"
@@ -347,17 +415,29 @@ onBeforeMount(() => {
 					@edit="handleEdit"
 					@regenerate="handleRegenerate"
 					@read-aloud="handleReadAloud"
-					@switchAlternative="handleSwitchAlternative"
+					@switch-alternative="handleSwitchAlternative"
 				/>
 			</template>
 		</div>
 	</div>
 </template>
-
 <style lang="scss" module>
 .message {
 	position: relative;
 	scroll-margin-block: var(--spacing--sm);
+}
+
+.markdownContent {
+	> *:last-child > *:last-child {
+		margin-bottom: 0;
+	}
+	> *:first-child > *:first-child {
+		margin-top: 0;
+	}
+}
+
+.codeBlockActions > * {
+	margin-top: -2px;
 }
 
 .avatar {
@@ -374,6 +454,7 @@ onBeforeMount(() => {
 	color: var(--color--text--tint-1);
 
 	.compact & {
+		margin-left: calc(-1 * var(--spacing--2xs));
 		position: static;
 		margin-bottom: var(--spacing--xs);
 	}
@@ -383,13 +464,20 @@ onBeforeMount(() => {
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
+
+	@media (hover: hover) {
+		&:hover .actions,
+		&:focus-within .actions {
+			opacity: 1;
+			pointer-events: auto;
+		}
+	}
 }
 
 .attachments {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
-	padding-bottom: var(--spacing--2xs);
 
 	.chatMessage & {
 		margin-top: var(--spacing--xs);
@@ -399,17 +487,21 @@ onBeforeMount(() => {
 .chatMessage {
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--2xs);
 	position: relative;
 	overflow-wrap: break-word;
 	font-size: var(--font-size--sm);
 	line-height: 1.5;
 
 	.user & {
-		max-width: fit-content;
 		padding: var(--spacing--2xs) var(--spacing--sm);
 		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
 		white-space-collapse: preserve-breaks;
+		width: fit-content;
+		max-width: 100%;
+		font-size: var(--font-size--md);
+		line-height: var(--line-height--xl);
 	}
 }
 
@@ -419,10 +511,26 @@ onBeforeMount(() => {
 	background-color: var(--color--danger--tint-4);
 	border: var(--border-width) var(--border-style) var(--color--danger--tint-3);
 	color: var(--color--danger);
+
+	p,
+	a {
+		color: var(--color--danger);
+	}
 }
 
 .actions {
 	margin-top: var(--spacing--2xs);
+	transition: opacity 0.15s;
+
+	@media (hover: hover) {
+		opacity: 0;
+		pointer-events: none;
+
+		&:hover {
+			opacity: 1;
+			pointer-events: auto;
+		}
+	}
 }
 
 .editContainer {

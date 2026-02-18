@@ -115,9 +115,6 @@ const accordionIcon = computed((): { color: IconColor; icon: IconName } | undefi
 });
 const currentWorkflowId = computed(() => workflowsStore.workflowId);
 
-const workflowName = computed(() => workflowsStore.workflowName);
-const currentWorkflowTagIds = computed(() => workflowsStore.workflowTags);
-
 watch(workflowSettings, (newSettings: IWorkflowSettings) => {
 	updateSettings(newSettings);
 });
@@ -175,11 +172,9 @@ async function onSaveWorkflowClick(): Promise<void> {
 	}
 	const saved = await workflowSaving.saveCurrentWorkflow({
 		id: currentId,
-		name: workflowName.value,
-		tags: currentWorkflowTagIds.value,
 	});
 	if (saved) {
-		await npsSurveyStore.fetchPromptsData();
+		await npsSurveyStore.showNpsSurveyIfPossible();
 	}
 }
 </script>

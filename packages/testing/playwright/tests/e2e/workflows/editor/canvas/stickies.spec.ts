@@ -1,6 +1,10 @@
 import { test, expect } from '../../../../../fixtures/base';
 
-test.describe('Canvas Actions', () => {
+test.describe('Canvas Actions', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test('adds sticky to canvas with default text and position', async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 		await expect(n8n.canvas.sticky.getAddButton()).toBeVisible();

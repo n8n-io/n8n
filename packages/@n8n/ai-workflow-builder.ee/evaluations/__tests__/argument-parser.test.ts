@@ -1,6 +1,22 @@
-import { parseEvaluationArgs } from '../cli/argument-parser';
+import { parseEvaluationArgs, type EvaluationSuite } from '../cli/argument-parser';
 
 describe('argument-parser', () => {
+	describe('suite options', () => {
+		it('accepts all valid suite options', () => {
+			const validSuites: EvaluationSuite[] = [
+				'llm-judge',
+				'pairwise',
+				'programmatic',
+				'similarity',
+			];
+
+			for (const suite of validSuites) {
+				const args = parseEvaluationArgs(['--suite', suite]);
+				expect(args.suite).toBe(suite);
+			}
+		});
+	});
+
 	it('parses numeric flags like --max-examples and --concurrency', () => {
 		const args = parseEvaluationArgs([
 			'--suite',
@@ -98,6 +114,43 @@ describe('argument-parser', () => {
 				'https://hooks.example.com/api/v1/notify?token=abc123',
 			]);
 			expect(args.webhookUrl).toBe('https://hooks.example.com/api/v1/notify?token=abc123');
+		});
+	});
+
+	describe('--webhook-secret', () => {
+		it('parses valid webhook secret', () => {
+			const args = parseEvaluationArgs([
+				'--webhook-secret',
+				'my-secure-secret-key-1234567890',
+			]);
+			expect(args.webhookSecret).toBe('my-secure-secret-key-1234567890');
+		});
+
+		it('parses webhook secret with inline = syntax', () => {
+			const args = parseEvaluationArgs([
+				'--webhook-secret=another-secret-key-12345678',
+			]);
+			expect(args.webhookSecret).toBe('another-secret-key-12345678');
+		});
+
+		it('rejects secret shorter than 16 characters', () => {
+			expect(() => parseEvaluationArgs(['--webhook-secret', 'short'])).toThrow();
+		});
+
+		it('allows webhook secret to be undefined when not provided', () => {
+			const args = parseEvaluationArgs([]);
+			expect(args.webhookSecret).toBeUndefined();
+		});
+
+		it('can be combined with webhook URL', () => {
+			const args = parseEvaluationArgs([
+				'--webhook-url',
+				'https://example.com/webhook',
+				'--webhook-secret',
+				'my-secure-secret-key-1234567890',
+			]);
+			expect(args.webhookUrl).toBe('https://example.com/webhook');
+			expect(args.webhookSecret).toBe('my-secure-secret-key-1234567890');
 		});
 	});
 });

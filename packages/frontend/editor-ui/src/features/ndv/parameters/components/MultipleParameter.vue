@@ -184,9 +184,9 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				}}</N8nText>
 			</div>
 			<N8nButton
+				style="width: 100%"
+				variant="subtle"
 				v-if="!isReadOnly"
-				type="tertiary"
-				block
 				:label="addButtonText"
 				@click="addItem()"
 			/>

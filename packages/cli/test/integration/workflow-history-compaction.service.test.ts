@@ -8,6 +8,7 @@ import { InstanceSettings } from 'n8n-core';
 import { sleep, type INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { EventService } from '@/events/event.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 
 describe('compacting cycle', () => {
@@ -65,6 +66,7 @@ describe('compacting cycle', () => {
 			instanceSettings,
 			Container.get(DbConnection),
 			Container.get(WorkflowHistoryRepository),
+			Container.get(EventService),
 		);
 	});
 
@@ -199,6 +201,7 @@ describe('compacting cycle', () => {
 			instanceSettings,
 			Container.get(DbConnection),
 			Container.get(WorkflowHistoryRepository),
+			Container.get(EventService),
 		);
 
 		// Expect wf1 and wf2 to be handled in the first batch, with wf3 untouched due to the long delay after batching

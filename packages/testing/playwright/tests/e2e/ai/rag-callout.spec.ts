@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('RAG callout experiment', () => {
+test.describe('RAG callout experiment', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
 	test.describe('NDV callout', () => {
 		test('should show callout and open template on click', async ({ n8n }) => {
 			await n8n.start.fromBlankCanvas();
