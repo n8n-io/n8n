@@ -43,7 +43,10 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowVersionFormModalEventBusEvents } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
-import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
@@ -60,7 +63,7 @@ const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>(
 
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
+const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(props.id));
 const collaborationStore = useCollaborationStore();
 const projectStore = useProjectsStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
@@ -174,7 +177,6 @@ const onPublishButtonClick = async () => {
 };
 
 const publishButtonConfig = computed(() => {
-	console.log(workflowPublishState.value);
 	// Handle permission-denied state first
 	if (!hasPublishPermission.value) {
 		const defaultConfigForNoPermission = {
@@ -299,10 +301,7 @@ const shouldDisablePublishButton = computed(() => {
 	);
 });
 
-const activeVersion = computed(() => workflowDocumentStore?.value?.activeVersion ?? null);
-watch(activeVersion, (newVersion, oldVersion) => {
-	console.log('Active version changed:', newVersion, oldVersion);
-});
+const activeVersion = computed(() => workflowDocumentStore?.activeVersion ?? null);
 
 const activeVersionName = computed(() => {
 	if (!activeVersion.value) {

@@ -1,7 +1,6 @@
 import { defineStore, getActivePinia, type StoreGeneric } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { ref, readonly, computed, inject } from 'vue';
-import { createEventHook } from '@vueuse/core';
 import type { WorkflowHistory } from '@n8n/rest-api-client';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
@@ -31,7 +30,7 @@ type WorkflowDocumentAction = SetTagsAction | AddTagsAction | RemoveTagAction;
  * Active State
  */
 
-interface ActiveState {
+interface useWorkflowDocumentActiveState {
 	activeVersionId: string | null;
 	activeVersion: WorkflowHistory | null;
 }
@@ -41,12 +40,9 @@ function useActiveState() {
 	const activeVersion = ref<WorkflowHistory | null>(null);
 	const active = computed(() => activeVersionId.value !== null);
 
-	const activeStateChanged = createEventHook<ActiveState>();
-
-	function setActiveState(state: ActiveState) {
+	function setActiveState(state: useWorkflowDocumentActiveState) {
 		activeVersionId.value = state.activeVersionId;
 		activeVersion.value = state.activeVersion;
-		void activeStateChanged.trigger(state);
 	}
 
 	return {
@@ -54,7 +50,6 @@ function useActiveState() {
 		activeVersionId: readonly(activeVersionId),
 		activeVersion: readonly(activeVersion),
 		setActiveState,
-		onActiveStateChanged: activeStateChanged.on,
 	};
 }
 
@@ -164,15 +159,4 @@ export function disposeWorkflowDocumentStore(id: string) {
 export function injectWorkflowDocumentStore() {
 	const storeRef = inject(WorkflowDocumentStoreKey, null);
 	return storeRef?.value ?? null;
-}
-
-/**
- * Resolves the workflow document store by workflow ID.
- * Uses Pinia's store deduplication — returns the existing instance if already created.
- *
- * Use this in composables that may be instantiated outside the WorkflowLayout
- * provide tree (e.g., modals rendered at the app root).
- */
-export function getWorkflowDocumentStore(workflowId: string) {
-	return useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 }

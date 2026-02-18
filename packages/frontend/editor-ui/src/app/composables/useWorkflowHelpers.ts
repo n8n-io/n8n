@@ -57,7 +57,10 @@ import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
-import { getWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -587,7 +590,9 @@ export function useWorkflowHelpers() {
 			nodes,
 			pinData: workflowsStore.pinnedWorkflowData,
 			connections: workflowConnections,
-			active: getWorkflowDocumentStore(workflowsStore.workflowId).active,
+			active: useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId, workflowsStore.workflow.versionId),
+			).active,
 			settings: workflowsStore.workflow.settings,
 			tags: workflowsStore.workflowTags,
 			versionId: workflowsStore.workflow.versionId,
@@ -863,15 +868,17 @@ export function useWorkflowHelpers() {
 			uiStore.markStateClean();
 		}
 
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+
 		if (workflow.activeVersion) {
 			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
-			getWorkflowDocumentStore(workflowId).setActiveState({
+			workflowDocumentStore.setActiveState({
 				activeVersionId: workflow.activeVersion.versionId,
 				activeVersion: workflow.activeVersion,
 			});
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
-			getWorkflowDocumentStore(workflowId).setActiveState({
+			workflowDocumentStore.setActiveState({
 				activeVersionId: null,
 				activeVersion: null,
 			});
@@ -1013,7 +1020,9 @@ export function useWorkflowHelpers() {
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = convertWorkflowTagsToIds(tags);
 
-		const workflowDocumentStore = getWorkflowDocumentStore(workflowData.id);
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowData.id, workflowData.versionId),
+		);
 		workflowDocumentStore.setTags(tagIds);
 		workflowDocumentStore.setActiveState({
 			activeVersionId: workflowData.activeVersionId,
