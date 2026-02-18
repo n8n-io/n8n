@@ -12,8 +12,8 @@ ENV SHELL=/bin/sh
 
 WORKDIR /home/node
 
-COPY ./compiled /usr/local/lib/node_modules/n8n
-COPY docker/images/n8n/docker-entrypoint.sh /
+COPY --link ./compiled /usr/local/lib/node_modules/n8n
+COPY --link docker/images/n8n/docker-entrypoint.sh /
 
 RUN cd /usr/local/lib/node_modules/n8n && \
     npm rebuild sqlite3 && \

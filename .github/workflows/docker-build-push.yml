@@ -126,7 +126,7 @@ jobs:
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
+          sbom: false # Disabled - inline SBOM with provenance:false creates malformed attestation layers (invalid tar header on pull). Security scanning is handled by Trivy.
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.n8n_tags }}
 
@@ -142,7 +142,7 @@ jobs:
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
+          sbom: false # Disabled - inline SBOM with provenance:false creates malformed attestation layers (invalid tar header on pull). Security scanning is handled by Trivy.
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_tags }}
 
@@ -158,9 +158,45 @@ jobs:
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
+          sbom: false # Disabled - inline SBOM with provenance:false creates malformed attestation layers (invalid tar header on pull). Security scanning is handled by Trivy.
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
+
+      - name: Validate pushed image layers
+        if: needs.determine-build-context.outputs.push_enabled == 'true'
+        run: |
+          # Verify that all image layers have valid tar media types (no malformed attestation blobs)
+          validate_image() {
+            local TAG=$1
+            local NAME=$2
+            if [[ -z "$TAG" ]]; then return; fi
+
+            echo "Validating $NAME layers: $TAG"
+            MANIFEST=$(docker buildx imagetools inspect "$TAG" --raw 2>/dev/null || echo '{}')
+
+            # For single-platform manifests, check layer media types
+            echo "$MANIFEST" | node -e "
+              const manifest = JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8'));
+              const layers = manifest.layers || [];
+              for (const [i, layer] of layers.entries()) {
+                const mt = layer.mediaType || '';
+                if (mt && !mt.includes('tar') && !mt.includes('gzip') && !mt.includes('zstd')) {
+                  console.error('ERROR: $NAME layer ' + i + ' has non-tar media type: ' + mt);
+                  process.exit(1);
+                }
+              }
+              console.log('  OK: ' + layers.length + ' layers validated');
+            "
+          }
+
+          FIRST_N8N_TAG=$(echo "${{ steps.determine-tags.outputs.n8n_tags }}" | cut -d',' -f1)
+          FIRST_RUNNERS_TAG=$(echo "${{ steps.determine-tags.outputs.runners_tags }}" | cut -d',' -f1)
+          FIRST_DISTROLESS_TAG=$(echo "${{ steps.determine-tags.outputs.runners_distroless_tags }}" | cut -d',' -f1)
+
+          validate_image "$FIRST_N8N_TAG" "n8n"
+          validate_image "$FIRST_RUNNERS_TAG" "runners"
+          validate_image "$FIRST_DISTROLESS_TAG" "runners-distroless"
+          echo "All image layers validated successfully"
 
   create_multi_arch_manifest:
     name: Create Multi-Arch Manifest
