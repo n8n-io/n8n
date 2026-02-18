@@ -16,7 +16,7 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
-import { InstanceSettings } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
 
 const SHARING_SCOPES = PERSONAL_SPACE_SHARING_SETTING.scopes;
