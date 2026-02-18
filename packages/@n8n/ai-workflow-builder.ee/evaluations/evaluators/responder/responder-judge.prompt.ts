@@ -26,22 +26,22 @@ function buildForbiddenPhrasesSection(): string {
 function buildTypeSpecificGuidance(evalType: ResponderEvalType): string {
 	switch (evalType) {
 		case 'workflow_summary':
-			return [
-				'Additionally evaluate:',
-				'- Does the response accurately describe the workflow that was built?',
-				'- Are all key nodes and their purposes mentioned?',
-				'- Is the explanation of the workflow flow logical and complete?',
-				'- Does it explain how the workflow addresses the user request?',
-				'- Are setup instructions (credentials, placeholders) clearly provided?',
-			].join('\n');
+			return `
+				Additionally evaluate:
+				- Does the response accurately describe the workflow that was built?
+				- Are all key nodes and their purposes mentioned?
+				- Is the explanation of the workflow flow logical and complete?
+				- Does it explain how the workflow addresses the user request?
+				- Are setup instructions (credentials, placeholders) clearly provided?
+			`;
 
 		case 'datatable_instructions':
-			return [
-				'Additionally evaluate:',
-				'- Are the data table creation instructions clear and actionable?',
-				'- Do the column names/types match what the workflow expects?',
-				'- Is the user told exactly what to create manually?',
-			].join('\n');
+			return `
+				Additionally evaluate:
+				- Are the data table creation instructions clear and actionable?
+				- Do the column names/types match what the workflow expects?
+				- Is the user told exactly what to create manually?
+			`;
 
 		case 'general_response':
 			return '';
@@ -89,37 +89,37 @@ export function buildResponderJudgePrompt(args: {
 		)
 		.section(
 			'task',
-			[
-				'Evaluate the responder output against the provided criteria.',
-				'Score each dimension from 0.0 to 1.0.',
-				'',
-				'Return your evaluation as JSON with this exact structure:',
-				'```json',
-				'{',
-				'  "relevance": { "score": 0.0, "comment": "..." },',
-				'  "accuracy": { "score": 0.0, "comment": "..." },',
-				'  "completeness": { "score": 0.0, "comment": "..." },',
-				'  "clarity": { "score": 0.0, "comment": "..." },',
-				'  "tone": { "score": 0.0, "comment": "..." },',
-				'  "criteriaMatch": { "score": 0.0, "comment": "..." },',
-				'  "forbiddenPhrases": { "score": 0.0, "comment": "..." },',
-				'  "overallScore": 0.0,',
-				'  "summary": "..."',
-				'}',
-				'```',
-			].join('\n'),
+			`
+				Evaluate the responder output against the provided criteria.
+				Score each dimension from 0.0 to 1.0.
+
+				Return your evaluation as JSON with this exact structure:
+				\`\`\`json
+				{
+				  "relevance": { "score": 0.0, "comment": "..." },
+				  "accuracy": { "score": 0.0, "comment": "..." },',
+				  "completeness": { "score": 0.0, "comment": "..." },
+				  "clarity": { "score": 0.0, "comment": "..." },
+				  "tone": { "score": 0.0, "comment": "..." },',
+				  "criteriaMatch": { "score": 0.0, "comment": "..." },
+				  "forbiddenPhrases": { "score": 0.0, "comment": "..." },
+				  "overallScore": 0.0,',
+				  "summary": "..."
+				}
+				\`\`\`
+				`,
 		)
 		.section(
 			'dimensions',
-			[
-				'**relevance** (0-1): Does the response address the user request?',
-				"**accuracy** (0-1): Is the information factually correct? If a workflow is provided, verify that the responder's claims about the workflow (nodes, integrations, actions) match what was actually built.",
-				'**completeness** (0-1): Does it cover everything needed?',
-				'**clarity** (0-1): Is the response well-structured and easy to understand?',
-				'**tone** (0-1): Is the tone professional and helpful?',
-				'**criteriaMatch** (0-1): Does it satisfy the specific evaluation criteria below?',
-				'**forbiddenPhrases** (0-1): 1.0 if no forbidden phrases are present, 0.0 if any are found.',
-			].join('\n'),
+			`
+				**relevance** (0-1): Does the response address the user request?'
+				**accuracy** (0-1): Is the information factually correct? If a workflow is provided, verify that the responder's claims about the workflow (nodes, integrations, actions) match what was actually built."
+				**completeness** (0-1): Does it cover everything needed?
+				**clarity** (0-1): Is the response well-structured and easy to understand?
+				**tone** (0-1): Is the tone professional and helpful?',
+				**criteriaMatch** (0-1): Does it satisfy the specific evaluation criteria below?
+				**forbiddenPhrases** (0-1): 1.0 if no forbidden phrases are present, 0.0 if any are found.
+				`,
 		)
 		.section('forbiddenPhrases', buildForbiddenPhrasesSection())
 		.section('userPrompt', userPrompt)
