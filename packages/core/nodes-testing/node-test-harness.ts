@@ -219,7 +219,6 @@ export class NodeTestHarness {
 			hooks,
 			// Get from node.parameters
 			currentNodeParameters: undefined,
-			parentCallbackManager: undefined,
 		});
 		additionalData.credentialsHelper = credentialsHelper;
 
