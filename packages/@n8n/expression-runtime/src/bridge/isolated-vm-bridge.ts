@@ -1,11 +1,16 @@
 import ivm from 'isolated-vm';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import type { RuntimeBridge, BridgeConfig } from '../types';
 
 // Create require function for resolving module paths (works in both CJS and ESM)
 const require = createRequire(import.meta.url);
+
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * IsolatedVmBridge - Runtime bridge using isolated-vm for secure expression evaluation.
@@ -82,16 +87,16 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	}
 
 	/**
-	 * Load external libraries (Lodash, Luxon) into the isolate.
+	 * Load runtime bundle into the isolate.
 	 *
-	 * This evaluates the browser/global builds of these libraries inside the isolate,
-	 * treating it like a browser environment where libraries attach to global scope.
-	 *
-	 * Lodash exposes: _ (global)
-	 * Luxon exposes: luxon (global)
+	 * The runtime bundle includes:
+	 * - Vendor libraries (Lodash, Luxon)
+	 * - SafeObject and SafeError wrappers
+	 * - createDeepLazyProxy function
+	 * - __data object initialization
 	 *
 	 * @private
-	 * @throws {Error} If context not initialized or library loading fails
+	 * @throws {Error} If context not initialized or bundle loading fails
 	 */
 	private async loadVendorLibraries(): Promise<void> {
 		if (!this.context) {
@@ -99,33 +104,20 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		}
 
 		try {
-			// Load Lodash
-			// Use lodash.min.js (UMD build that works in browser-like environment)
-			const lodashPath = require.resolve('lodash/lodash.min.js');
-			const lodashSource = fs.readFileSync(lodashPath, 'utf-8');
-			await this.context.eval(lodashSource);
+			// Load runtime bundle (includes vendor libraries + proxy system)
+			// Path: dist/bundle/runtime.iife.js
+			const runtimeBundlePath = path.join(__dirname, '../../dist/bundle/runtime.iife.js');
+			const runtimeBundle = fs.readFileSync(runtimeBundlePath, 'utf-8');
+
+			// Evaluate bundle in isolate context
+			// This makes all exported globals available (_, luxon, SafeObject, createDeepLazyProxy, __data)
+			await this.context.eval(runtimeBundle);
 
 			if (this.config.debug) {
-				console.log('[IsolatedVmBridge] Loaded lodash from:', lodashPath);
+				console.log('[IsolatedVmBridge] Runtime bundle loaded from:', runtimeBundlePath);
 			}
 
-			// Load Luxon
-			// Luxon doesn't export the global build in package.json, so we construct the path manually
-			// 1. Resolve main entry point: build/node/luxon.js
-			// 2. Strip the /build/node/luxon.js part
-			// 3. Append /build/global/luxon.min.js
-			const luxonNodePath = require.resolve('luxon');
-			const luxonBasePath = luxonNodePath.replace(/[/\\]build[/\\]node[/\\]luxon\.js$/, '');
-			const luxonPath = path.join(luxonBasePath, 'build', 'global', 'luxon.min.js');
-			const luxonSource = fs.readFileSync(luxonPath, 'utf-8');
-			await this.context.eval(luxonSource);
-
-			if (this.config.debug) {
-				console.log('[IsolatedVmBridge] Loaded luxon from:', luxonPath);
-			}
-
-			// Verify libraries loaded correctly
-			// In the isolate, lodash exposes _ and luxon exposes luxon as globals
+			// Verify vendor libraries loaded correctly
 			const hasLodash = await this.context.eval('typeof _ !== "undefined"');
 			const hasLuxon = await this.context.eval('typeof luxon !== "undefined"');
 
@@ -138,24 +130,46 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			}
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			throw new Error(`Failed to load vendor libraries: ${errorMessage}`);
+			throw new Error(`Failed to load runtime bundle: ${errorMessage}`);
 		}
 	}
 
 	/**
-	 * Define the proxy system in the isolate.
+	 * Verify the proxy system loaded correctly.
 	 *
-	 * This will be implemented in Step 2.
-	 * The proxy system enables lazy loading of workflow data across the isolate boundary.
+	 * The proxy system is loaded as part of the runtime bundle in loadVendorLibraries().
+	 * This method verifies all required components are available.
 	 *
 	 * @private
+	 * @throws {Error} If context not initialized or proxy system verification fails
 	 */
 	private async defineProxySystem(): Promise<void> {
-		// TODO: Step 2 - Load proxy creation bundle into isolate
-		// This will load the TypeScript-compiled IIFE that creates deep lazy proxies
-		// Pattern:
-		// const proxyBundle = fs.readFileSync(path.join(__dirname, '../../dist/bundle/proxy.iife.js'), 'utf-8');
-		// await this.context.eval(proxyBundle);
+		if (!this.context) {
+			throw new Error('Context not initialized');
+		}
+
+		try {
+			// Verify proxy system components loaded correctly
+			const hasProxyCreator = await this.context.eval('typeof createDeepLazyProxy !== "undefined"');
+			const hasData = await this.context.eval('typeof __data !== "undefined"');
+			const hasSafeObject = await this.context.eval('typeof SafeObject !== "undefined"');
+			const hasSafeError = await this.context.eval('typeof SafeError !== "undefined"');
+
+			if (!hasProxyCreator || !hasData || !hasSafeObject || !hasSafeError) {
+				throw new Error(
+					`Proxy system verification failed: ` +
+						`createDeepLazyProxy=${hasProxyCreator}, __data=${hasData}, ` +
+						`SafeObject=${hasSafeObject}, SafeError=${hasSafeError}`,
+				);
+			}
+
+			if (this.config.debug) {
+				console.log('[IsolatedVmBridge] Proxy system verified successfully');
+			}
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			throw new Error(`Failed to verify proxy system: ${errorMessage}`);
+		}
 	}
 
 	/**
