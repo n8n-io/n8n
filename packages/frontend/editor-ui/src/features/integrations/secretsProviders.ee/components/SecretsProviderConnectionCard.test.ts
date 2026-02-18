@@ -196,4 +196,30 @@ describe('SecretsProviderConnectionCard', () => {
 		expect(getByTestId('secrets-provider-action-toggle')).toBeInTheDocument();
 		expect(screen.queryAllByTestId('action-edit').length).toBe(0);
 	});
+
+	it('should show reload action when provider is connected', () => {
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.getByTestId('action-reload')).toBeInTheDocument();
+	});
+
+	it('should not show reload action when provider is in error state', () => {
+		const errorProvider: SecretProviderConnection = {
+			...mockProvider,
+			state: 'error',
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: errorProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.queryByTestId('action-reload')).not.toBeInTheDocument();
+	});
 });

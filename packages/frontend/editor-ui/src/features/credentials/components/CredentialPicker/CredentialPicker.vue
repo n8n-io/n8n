@@ -188,6 +188,9 @@ listenForModalChanges({
 	onModalClosed(modalName) {
 		if (modalName === CREDENTIAL_EDIT_MODAL_KEY && wasModalOpenedFromHere.value) {
 			wasModalOpenedFromHere.value = false;
+			if (props.selectedCredentialId) {
+				emit('credentialSelected', props.selectedCredentialId);
+			}
 		}
 	},
 });
