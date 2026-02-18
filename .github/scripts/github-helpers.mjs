@@ -12,8 +12,8 @@ export const RELEASE_TRACKS = /** @type { const } */ ([
 export const RELEASE_PREFIX = 'n8n@';
 
 /**
- * Given a list of tags, return the highest semver for tags like "release/2.7.0".
- * Returns the *tag string* (e.g. "release/2.7.0") or null.
+ * Given a list of tags, return the highest semver for tags like "n8n@2.7.0".
+ * Returns the *tag string* (e.g. "n8n@2.7.0") or null.
  *
  * @param {string[]} tags
  * */
@@ -42,7 +42,7 @@ export function ensureReleaseTrack(track) {
 
 /**
  * Resolve a release track tag (stable/beta/legacy) to the corresponding
- * release-candidate/<major>.<minor>.x branch, based on the release/<x.y.z> tag
+ * release-candidate/<major>.<minor>.x branch, based on the n8n@<x.y.z> tag
  * pointing at the same commit.
  *
  * Returns null if the track tag or release tag is missing.
