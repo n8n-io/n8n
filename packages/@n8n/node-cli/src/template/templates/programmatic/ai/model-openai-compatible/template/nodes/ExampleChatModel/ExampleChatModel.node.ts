@@ -10,7 +10,7 @@ export class ExampleChatModel implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Example Chat Model',
 		name: 'exampleChatModel',
-		icon: { light: 'file:example.svg', dark: 'file:example.dark.svg' },
+		icon: { light: 'file:../../icons/example.svg', dark: 'file:../../icons/example.dark.svg' },
 		group: ['transform'],
 		version: [1],
 		description: 'Chat model node for OpenAI API compatible providers',

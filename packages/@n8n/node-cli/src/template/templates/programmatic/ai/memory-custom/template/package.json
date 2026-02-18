@@ -31,11 +31,9 @@
 		"n8nNodesApiVersion": 1,
 		"aiNodeSdkVersion": 1,
 		"strict": true,
-		"credentials": [
-			"dist/credentials/ExampleApi.credentials.js"
-		],
+		"credentials": [],
 		"nodes": [
-			"dist/nodes/Example/ExampleChatModel.node.js"
+			"dist/nodes/ExampleChatMemory/ExampleChatMemory.node.js"
 		]
 	},
 	"devDependencies": {

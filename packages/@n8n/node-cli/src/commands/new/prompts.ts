@@ -74,7 +74,7 @@ export const programmaticNodeTypePrompt = async () =>
 
 export const chatModelTypePrompt = async () =>
 	await withCancelHandler(
-		select<'openaiCompatible' | 'custom'>({
+		select<'openaiCompatible' | 'custom' | 'customExample'>({
 			message: 'What type of chat model?',
 			options: [
 				{
@@ -86,6 +86,11 @@ export const chatModelTypePrompt = async () =>
 					label: 'Custom',
 					value: 'custom',
 					hint: 'Custom chat model implementation',
+				},
+				{
+					label: 'Custom Example',
+					value: 'customExample',
+					hint: 'OpenAI chat model example implementation',
 				},
 			],
 			initialValue: 'openaiCompatible',

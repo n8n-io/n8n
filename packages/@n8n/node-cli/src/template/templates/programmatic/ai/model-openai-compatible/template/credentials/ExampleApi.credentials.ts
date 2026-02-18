@@ -4,12 +4,15 @@ import type {
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
+	Icon,
 } from 'n8n-workflow';
 
-export class Example implements ICredentialType {
+export class ExampleApi implements ICredentialType {
 	name = 'exampleApi';
 
 	displayName = 'Example API';
+
+	icon: Icon = { light: 'file:../icons/example.svg', dark: 'file:../icons/example.dark.svg' };
 
 	properties: INodeProperties[] = [
 		{

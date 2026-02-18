@@ -29,10 +29,10 @@
 	],
 	"n8n": {
 		"n8nNodesApiVersion": 1,
-		"n8nAiNodeSdkVersion": 1,
+		"aiNodeSdkVersion": 1,
 		"strict": true,
 		"credentials": [
-			"dist/credentials/Example.credentials.js"
+			"dist/credentials/ExampleApi.credentials.js"
 		],
 		"nodes": [
 			"dist/nodes/Example/ExampleChatModel.node.js"

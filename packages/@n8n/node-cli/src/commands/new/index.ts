@@ -45,6 +45,8 @@ export default class New extends Command {
 				'programmatic/example',
 				'programmatic/openai-chat-model',
 				'programmatic/custom-chat-model',
+				'programmatic/custom-chat-model-example',
+				'programmatic/custom-chat-memory',
 			] as const,
 		}),
 	};
@@ -100,15 +102,16 @@ export default class New extends Command {
 					template = templates.programmatic.openaiChatModel as TemplateWithRun;
 				} else if (chatModelType === 'custom') {
 					template = templates.programmatic.customChatModel as TemplateWithRun;
+				} else if (chatModelType === 'customExample') {
+					template = templates.programmatic.customChatModelExample as TemplateWithRun;
 				}
 			} else if (programmaticNodeType === 'chatMemory') {
-				return onCancel('Chat Memory nodes are not yet implemented');
+				template = templates.programmatic.customChatMemory as TemplateWithRun;
 			}
 		}
 
 		const config = (await template.prompts?.()) ?? {};
-		// const packageManager = (await detectPackageManager()) ?? 'npm';
-		const packageManager: 'npm' | 'yarn' | 'pnpm' = 'pnpm';
+		const packageManager = (await detectPackageManager()) ?? 'npm';
 		const templateData: TemplateData = {
 			destinationPath: destination,
 			nodePackageName: nodeName,
@@ -151,15 +154,6 @@ export default class New extends Command {
 			installingSpinner.start('Installing dependencies');
 
 			try {
-				await delayAtLeast(
-					runCommand(packageManager, ['link', '@n8n/ai-node-sdk'], {
-						cwd: destination,
-						printOutput: ({ stdout, stderr }) => {
-							log.error(stdout.concat(stderr).toString());
-						},
-					}),
-					1000,
-				);
 				await delayAtLeast(
 					runCommand(packageManager, ['install'], {
 						cwd: destination,

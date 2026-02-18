@@ -1,48 +1,38 @@
-import {
-	NodeConnectionTypes,
-	type IDataObject,
-	type INodeType,
-	type INodeTypeDescription,
-	type ISupplyDataFunctions,
-	type SupplyData,
+import type {
+	INodeType,
+	INodeTypeDescription,
+	ISupplyDataFunctions,
+	IDataObject,
 } from 'n8n-workflow';
-import type Stream from 'node:stream';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { ProviderTool, supplyModel } from '@n8n/ai-node-sdk';
+import { OpenAIChatModel } from './model';
+import { openAiProperties } from './properties';
+import { formatBuiltInTools } from './common';
 
-import { supplyModel, type ProviderTool } from 'src';
-
-import { OpenAIChatModel } from '../../models/openai';
-import { formatBuiltInTools } from '../common';
-import { openAiProperties } from '../properties';
-
-export type ModelOptions = {
+type ModelOptions = {
 	temperature?: number;
 };
 
-export class LmChatOpenAiCustom implements INodeType {
+export class ExampleChatModel implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'OpenAI Custom',
-
-		name: 'lmChatOpenAiCustom',
-		icon: 'fa:robot',
+		displayName: 'Example Chat Model',
+		name: 'exampleChatModel',
+		icon: { light: 'file:../../icons/example.svg', dark: 'file:../../icons/example.dark.svg' },
 		group: ['transform'],
 		version: [1],
-		description: 'For advanced usage with an AI chain',
+		description: 'Custom Chat Model Node',
 		defaults: {
-			name: 'Custom OpenAI',
+			name: 'Example Chat Model',
 		},
 		codex: {
 			categories: ['assistant'],
 			subcategories: {
 				AI: ['Language Models', 'Root Nodes'],
-				// eslint-disable-next-line @typescript-eslint/naming-convention
 				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {
-				primaryDocumentation: [
-					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/',
-					},
-				],
+				primaryDocumentation: [],
 			},
 		},
 
@@ -52,7 +42,7 @@ export class LmChatOpenAiCustom implements INodeType {
 		outputNames: ['Model'],
 		credentials: [
 			{
-				name: 'openAiApi',
+				name: 'exampleApi',
 				required: true,
 			},
 		],
@@ -64,8 +54,8 @@ export class LmChatOpenAiCustom implements INodeType {
 		properties: openAiProperties,
 	};
 
-	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('openAiApi');
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
+		const credentials = await this.getCredentials('exampleApi');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as ModelOptions;
 		const providerTools: ProviderTool[] = [];
@@ -82,7 +72,7 @@ export class LmChatOpenAiCustom implements INodeType {
 				httpRequest: async (method, url, body, headers) => {
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'openAiApi',
+						'exampleApi',
 						{
 							url,
 							method,
@@ -95,9 +85,9 @@ export class LmChatOpenAiCustom implements INodeType {
 					};
 				},
 				openStream: async (method, url, body, headers) => {
-					const response = (await this.helpers.httpRequestWithAuthentication.call(
+					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
-						'openAiApi',
+						'exampleApi',
 						{
 							method,
 							url,
@@ -105,7 +95,7 @@ export class LmChatOpenAiCustom implements INodeType {
 							headers,
 							encoding: 'stream',
 						},
-					)) as Stream.Readable;
+					);
 					return {
 						body: response,
 					};

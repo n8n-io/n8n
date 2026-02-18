@@ -1,6 +1,4 @@
-import type { JSONSchema7 } from 'json-schema';
 import type { IHttpRequestMethods } from 'n8n-workflow';
-
 import {
 	BaseChatModel,
 	getParametersJsonSchema,
@@ -14,7 +12,7 @@ import {
 	type MessageContent,
 	type ProviderTool,
 	type StreamChunk,
-} from 'src';
+} from '@n8n/ai-node-sdk';
 
 // Types
 type OpenAITool =
@@ -22,7 +20,7 @@ type OpenAITool =
 			type: 'function';
 			name: string;
 			description?: string;
-			parameters: JSONSchema7;
+			parameters: unknown;
 			strict?: boolean;
 	  }
 	| {
@@ -132,10 +130,9 @@ async function* parseOpenAIStreamEvents(
 		try {
 			const event = JSON.parse(message.data);
 			yield event as OpenAIStreamEvent;
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (e) {
-			if (process.env.NODE_ENV !== 'production') {
-				console.warn('Failed to parse OpenAI SSE event:', message.data);
-			}
+			// ignore error
 		}
 	}
 }
@@ -281,6 +278,7 @@ function parseResponsesOutput(output: ResponsesOutputItem[]): {
 					arguments: JSON.parse(item.arguments) as Record<string, unknown>,
 					argumentsRaw: item.arguments,
 				});
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			} catch (e) {
 				throw new Error(`Failed to parse function call arguments: ${item.arguments}`);
 			}

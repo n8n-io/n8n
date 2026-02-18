@@ -1,19 +1,17 @@
 import type { INodeType, INodeTypeDescription, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { supplyModel } from '@n8n/ai-node-sdk';
-import Stream from 'node:stream';
 import { CustomChatModel } from './model';
 
 type ModelOptions = {
 	temperature?: number;
 };
 
-// eslint-disable-next-line @n8n/community-nodes/node-usable-as-tool
 export class ExampleChatModel implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Example Chat Model',
 		name: 'exampleChatModel',
-		icon: { light: 'file:example.svg', dark: 'file:example.dark.svg' },
+		icon: { light: 'file:../../icons/example.svg', dark: 'file:../../icons/example.dark.svg' },
 		group: ['transform'],
 		version: [1],
 		description: 'Custom Chat Model Node',
@@ -94,11 +92,11 @@ export class ExampleChatModel implements INodeType {
 				},
 				openStream: async () => {
 					// make a request to the API using this.helpers.httpRequestWithAuthentication.call
-					const mockStream = new Stream.Readable();
-					mockStream.push('Hello');
-					mockStream.push('World');
-					mockStream.push('!');
-					mockStream.push(null);
+					const mockStream = (async function* () {
+						yield 'Hello ';
+						yield 'World';
+						yield '!';
+					})();
 					return {
 						body: mockStream,
 					};

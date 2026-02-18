@@ -6,7 +6,6 @@ import {
 	Message,
 	StreamChunk,
 } from '@n8n/ai-node-sdk';
-import Stream from 'node:stream';
 
 interface ModelConfig extends ChatModelConfig {
 	url: string;
@@ -34,7 +33,7 @@ interface RequestConfig {
 		url: string,
 		body?: object,
 		headers?: Record<string, string>,
-	) => Promise<{ body: Stream.Readable }>;
+	) => Promise<{ body: AsyncIterableIterator<string> }>;
 }
 
 export class CustomChatModel extends BaseChatModel<ModelConfig> {
