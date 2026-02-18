@@ -9,6 +9,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -42,6 +43,7 @@ export function useWorkflowUpdate() {
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const builderStore = useBuilderStore();
+	const uiStore = useUIStore();
 	const canvasOperations = useCanvasOperations();
 	const nodeHelpers = useNodeHelpers();
 
@@ -105,11 +107,12 @@ export function useWorkflowUpdate() {
 	 */
 	async function updateExistingNodes(
 		nodesToUpdate: Array<{ existing: INodeUi; updated: INode }>,
-	): Promise<void> {
-		if (nodesToUpdate.length === 0) return;
+	): Promise<boolean> {
+		if (nodesToUpdate.length === 0) return false;
 
 		// Track successful renames (nodeId -> actualNewName after uniquification)
 		const renamedNodes = new Map<string, string>();
+		let hasChanges = false;
 
 		// First handle renames via canvasOperations (handles pinData, metadata, etc.)
 		for (const { existing, updated } of nodesToUpdate) {
@@ -121,6 +124,7 @@ export function useWorkflowUpdate() {
 				});
 				if (actualNewName) {
 					renamedNodes.set(existing.id, actualNewName);
+					hasChanges = true;
 				}
 			}
 		}
@@ -159,6 +163,7 @@ export function useWorkflowUpdate() {
 			// Mark node as dirty if parameters changed
 			if (!isEqual(existing.parameters, updated.parameters)) {
 				workflowState.resetParametersLastUpdatedAt(nodeName);
+				hasChanges = true;
 			}
 		}
 
@@ -170,6 +175,8 @@ export function useWorkflowUpdate() {
 			const nodeName = renamedNodes.get(existing.id) ?? existing.name;
 			nodeHelpers.updateNodeParameterIssuesByName(nodeName);
 		}
+
+		return hasChanges;
 	}
 
 	/**
@@ -349,7 +356,15 @@ export function useWorkflowUpdate() {
 
 			const { nodesToUpdate, nodesToAdd, nodesToRemove } = categorizeNodes(workflowData);
 
-			await updateExistingNodes(nodesToUpdate);
+			const existingNodesChanged = await updateExistingNodes(nodesToUpdate);
+
+			// Mark state dirty when existing nodes are modified (e.g., parameter changes).
+			// addNewNodes/removeStaleNodes already mark dirty via canvasOperations,
+			// but updateExistingNodes uses setNodes() which does not.
+			if (existingNodesChanged) {
+				uiStore.markStateDirty();
+			}
+
 			removeStaleNodes(nodesToRemove);
 			const addedNodes = await addNewNodes(nodesToAdd);
 			const newNodeIds = addedNodes.map((n) => n.id);
