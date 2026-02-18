@@ -62,7 +62,10 @@ export { type GitCommitInfo } from './source-control/push-work-folder-response.d
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
-export { CreateVariableRequestDto } from './variables/create-variable-request.dto';
+export {
+	CreateVariableRequestDto,
+	NEW_VARIABLE_KEY_REGEX,
+} from './variables/create-variable-request.dto';
 export { UpdateVariableRequestDto } from './variables/update-variable-request.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
