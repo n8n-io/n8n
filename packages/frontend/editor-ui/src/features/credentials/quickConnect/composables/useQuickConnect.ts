@@ -94,7 +94,7 @@ export function useQuickConnect() {
 	async function getApiKey(quickConnectOption: QuickConnectOption): Promise<string> {
 		switch (quickConnectOption.quickConnectType) {
 			case 'pinecone':
-				return await connectToPinecone(quickConnectOption);
+				return await connectToPinecone(quickConnectOption as QuickConnectPineconeOption);
 			default:
 				throw new Error(
 					`Quick connect for type ${quickConnectOption.quickConnectType} is not implemented`,
