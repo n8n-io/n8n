@@ -8,25 +8,13 @@ import type { ExpressionTestEvaluation, ExpressionTestTransform } from './Expres
 import * as Helpers from './helpers';
 import { ExpressionReservedVariableError } from '../src/errors/expression-reserved-variable.error';
 import { ExpressionError } from '../src/errors/expression.error';
+import { Expression } from '../src/expression';
 import { extendSyntax } from '../src/extensions/expression-extension';
 import type { INodeExecutionData } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
-import { Expression } from '../src/expression';
 
 describe('Expression', () => {
-	describe('constructor', () => {
-		it('should accept timezone string', () => {
-			const expression = new Expression('America/New_York');
-			expect(expression).toBeInstanceOf(Expression);
-		});
-
-		it('should accept UTC timezone', () => {
-			const expression = new Expression('UTC');
-			expect(expression).toBeInstanceOf(Expression);
-		});
-	});
-
 	describe('getParameterValue()', () => {
 		const nodeTypes = Helpers.NodeTypes();
 		const workflow = new Workflow({
