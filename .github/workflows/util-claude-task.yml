@@ -93,6 +93,41 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install chromium
 
+      - name: Create MCP config
+        run: |
+          cat > /tmp/mcp-config.json << 'MCPEOF'
+          {
+            "mcpServers": {
+              "linear": {
+                "command": "npx",
+                "args": [
+                  "-y",
+                  "mcp-remote",
+                  "https://mcp.linear.app/sse",
+                  "--header",
+                  "Authorization:${AUTH_HEADER}"
+                ],
+                "env": {
+                  "AUTH_HEADER": "Bearer MCP_LINEAR_API_KEY_PLACEHOLDER"
+                }
+              },
+              "notion": {
+                "command": "npx",
+                "args": ["-y", "@notionhq/notion-mcp-server"],
+                "env": {
+                  "OPENAPI_MCP_HEADERS": "{\"Authorization\":\"Bearer MCP_NOTION_TOKEN_PLACEHOLDER\",\"Notion-Version\":\"2025-02-19\"}"
+                }
+              },
+              "playwright": {
+                "command": "npx",
+                "args": ["@playwright/mcp@latest", "--headless"]
+              }
+            }
+          }
+          MCPEOF
+          sed -i "s|MCP_LINEAR_API_KEY_PLACEHOLDER|${{ secrets.MCP_LINEAR_API_KEY }}|g" /tmp/mcp-config.json
+          sed -i "s|MCP_NOTION_TOKEN_PLACEHOLDER|${{ secrets.MCP_NOTION_TOKEN }}|g" /tmp/mcp-config.json
+
       - name: Run Claude
         id: claude
         uses: anthropics/claude-code-action@1b8ee3b94104046d71fde52ec3557651ad8c0d71 # v1
@@ -100,37 +135,8 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ github.token }}
           prompt: ${{ env.CLAUDE_PROMPT }}
-          mcp_config: |
-            {
-              "mcpServers": {
-                "linear": {
-                  "command": "npx",
-                  "args": [
-                    "-y",
-                    "mcp-remote",
-                    "https://mcp.linear.app/sse",
-                    "--header",
-                    "Authorization:${AUTH_HEADER}"
-                  ],
-                  "env": {
-                    "AUTH_HEADER": "Bearer ${{ secrets.MCP_LINEAR_API_KEY }}"
-                  }
-                },
-                "notion": {
-                  "command": "npx",
-                  "args": ["-y", "@notionhq/notion-mcp-server"],
-                  "env": {
-                    "OPENAPI_MCP_HEADERS": "{\"Authorization\":\"Bearer ${{ secrets.MCP_NOTION_TOKEN }}\",\"Notion-Version\":\"2025-02-19\"}"
-                  }
-                },
-                "playwright": {
-                  "command": "npx",
-                  "args": ["@playwright/mcp@latest", "--headless"]
-                }
-              }
-            }
           claude_args: |
-            --allowedTools Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,TodoWrite,mcp__linear__*,mcp__notion__*,mcp__playwright__*
+            --mcp-config /tmp/mcp-config.json --allowedTools Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,TodoWrite,mcp__linear__*,mcp__notion__*,mcp__playwright__*
 
       - name: Extract PR title
         run: |
