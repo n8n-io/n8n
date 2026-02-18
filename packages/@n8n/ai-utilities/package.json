@@ -2,7 +2,6 @@
 	"name": "@n8n/ai-utilities",
 	"version": "0.3.0",
 	"description": "Utilities for building AI nodes in n8n",
-	"aiNodeSdkVersion": 1,
 	"types": "dist/esm/index.d.ts",
 	"module": "dist/esm/index.js",
 	"main": "dist/cjs/index.js",
