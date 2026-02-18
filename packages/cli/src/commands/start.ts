@@ -301,14 +301,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (flags.tunnel) {
 			this.logger.error('');
-			this.logger.error('========================================================');
 			this.logger.error('The --tunnel option is no longer available.');
 			this.logger.error('The tunnel service (hooks.n8n.cloud) has been shut down.');
 			this.logger.error('');
 			this.logger.error(
 				'For local development with webhooks, consider using a third-party tunneling service such as ngrok or Cloudflare Tunnel.',
 			);
-			this.logger.error('========================================================');
 			this.logger.error('');
 			process.exit(1);
 		}
