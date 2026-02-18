@@ -209,7 +209,7 @@ const handleClick = (event: MouseEvent) => {
 		--button--height: 2.25rem;
 		--button--padding: 0 var(--spacing--sm);
 		--button--radius: var(--radius--xs);
-		--button--font-size: var(--font-size--md);
+		--button--font-size: var(--font-size--sm);
 	}
 
 	&.xlarge {
