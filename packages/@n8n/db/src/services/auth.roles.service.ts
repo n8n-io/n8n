@@ -12,7 +12,6 @@ import {
 
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { InstanceSettings } from 'n8n-core';
 
 import { Scope } from '../entities';
 import { RoleRepository, ScopeRepository, SettingsRepository } from '../repositories';
@@ -24,7 +23,6 @@ export class AuthRolesService {
 		private readonly scopeRepository: ScopeRepository,
 		private readonly roleRepository: RoleRepository,
 		private readonly settingsRepository: SettingsRepository,
-		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	private async syncScopes() {
@@ -223,12 +221,6 @@ export class AuthRolesService {
 	}
 
 	async init() {
-		// Only sync on the leader instance to avoid race conditions in multi-main setups
-		if (this.instanceSettings.isMultiMain && !this.instanceSettings.isLeader) {
-			this.logger.debug('Skipping AuthRolesService initialization - not the leader instance');
-			return;
-		}
-
 		this.logger.debug('Initializing AuthRolesService...');
 		await this.syncScopes();
 		await this.syncRoles();

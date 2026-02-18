@@ -333,13 +333,7 @@ export class E2EController {
 		// Re-initialize scopes and roles after truncation so that foreign keys
 		// from users and project relations can be created safely, especially
 		// on databases that strictly enforce foreign keys like Postgres.
-		// Call sync methods directly to bypass leader check in multi-main setups,
-		// since roles must exist before creating users after truncation.
-		const authRolesService = Container.get(AuthRolesService);
-		// @ts-expect-error - Accessing private methods to bypass leader check in e2e reset scenario
-		await authRolesService.syncScopes();
-		// @ts-expect-error - Accessing private methods to bypass leader check in e2e reset scenario
-		await authRolesService.syncRoles();
+		await Container.get(AuthRolesService).init();
 	}
 
 	private async setupUserManagement(

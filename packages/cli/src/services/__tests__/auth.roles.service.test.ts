@@ -16,9 +16,6 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
-import type { InstanceSettings } from 'n8n-core';
-import { mock } from 'jest-mock-extended';
-
 const SHARING_SCOPES = PERSONAL_SPACE_SHARING_SETTING.scopes;
 
 describe('AuthRolesService', () => {
@@ -26,14 +23,12 @@ describe('AuthRolesService', () => {
 	const scopeRepository = mockInstance(ScopeRepository);
 	const roleRepository = mockInstance(RoleRepository);
 	const settingsRepository = mockInstance(SettingsRepository);
-	const instanceSettings = mock<InstanceSettings>({ instanceRole: 'leader' });
 
 	const authRolesService = new AuthRolesService(
 		logger,
 		scopeRepository,
 		roleRepository,
 		settingsRepository,
-		instanceSettings,
 	);
 
 	// Helper functions for creating test data
@@ -101,8 +96,6 @@ describe('AuthRolesService', () => {
 		jest.restoreAllMocks();
 		// AuthRolesService uses findByKeys; default to [] so missing settings => undefined => backward compat (grant scopes)
 		settingsRepository.findByKeys.mockResolvedValue([]);
-		// Default to leader for most tests
-		instanceSettings.instanceRole = 'leader';
 	});
 
 	describe('init - syncScopes', () => {

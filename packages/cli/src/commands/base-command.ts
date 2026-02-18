@@ -146,7 +146,11 @@ export abstract class BaseCommand<F = never> {
 		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
 		// Only run on main instance - workers should not modify auth roles/scopes as they may have
 		// different code versions, and scope sync would incorrectly delete scopes they don't know about.
-		if (this.instanceSettings.instanceType === 'main') {
+		// In multi-main setups, only sync on the leader instance to avoid race conditions.
+		if (
+			this.instanceSettings.instanceType === 'main' &&
+			(!this.instanceSettings.isMultiMain || this.instanceSettings.isLeader)
+		) {
 			await Container.get(AuthRolesService).init();
 		}
 
