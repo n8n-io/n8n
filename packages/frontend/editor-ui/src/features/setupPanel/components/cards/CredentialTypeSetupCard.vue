@@ -35,7 +35,7 @@ const nodeNames = computed(() => props.state.nodes.map((node) => node.name));
 
 const firstNode = computed(() => props.state.nodes[0]);
 
-// Only the workflow's first trigger (by X position) can be executed from setup cards.
+// Only the workflow's first trigger (by execution order) can be executed from setup cards.
 const triggerNode = computed(() => {
 	if (!props.firstTriggerName) return null;
 	return (
