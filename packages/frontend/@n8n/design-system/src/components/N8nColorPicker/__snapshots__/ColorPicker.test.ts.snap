@@ -70,21 +70,26 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
     >
       <!-- Prepend slot (outside input container, before) -->
       <!--v-if-->
-      <!-- Prefix slot -->
-      <!--v-if-->
-      <!-- Input element -->
-      <input
-        autocomplete="off"
-        class="input"
-        name="color-picker"
-        placeholder=""
-        type="text"
-        value=""
-      />
-      <!-- Suffix slot -->
-      <!--v-if-->
-      <!-- Clear button -->
-      <!--v-if-->
+      <!-- Input wrapper (holds border, contains prefix/input/suffix) -->
+      <div
+        class="inputWrapper"
+      >
+        <!-- Prefix slot -->
+        <!--v-if-->
+        <!-- Input element -->
+        <input
+          autocomplete="off"
+          class="input"
+          name="color-picker"
+          placeholder=""
+          type="text"
+          value=""
+        />
+        <!-- Suffix slot -->
+        <!--v-if-->
+        <!-- Clear button -->
+        <!--v-if-->
+      </div>
       <!-- Append slot (outside input container, after) -->
       <!--v-if-->
     </div>

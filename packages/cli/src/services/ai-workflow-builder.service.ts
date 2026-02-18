@@ -5,7 +5,9 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
+import * as fs from 'fs';
 import { InstanceSettings } from 'n8n-core';
+import * as path from 'path';
 import type {
 	INodeCredentials,
 	INodeParameters,
@@ -49,7 +51,7 @@ export class WorkflowBuilderService {
 		// Register a post-processor to update node types when they change.
 		// This ensures newly installed/updated/uninstalled community packages are recognized
 		// while preserving existing sessions.
-		this.loadNodesAndCredentials.addPostProcessor(async () => this.refreshNodeTypes());
+		this.loadNodesAndCredentials.addPostProcessor(async () => await this.refreshNodeTypes());
 	}
 
 	/**
@@ -57,9 +59,9 @@ export class WorkflowBuilderService {
 	 * Called automatically when postProcessLoaders() runs (e.g., after community package changes).
 	 * This preserves existing sessions while making new node types available.
 	 */
-	refreshNodeTypes() {
+	async refreshNodeTypes() {
 		if (this.service) {
-			const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
+			const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 			this.service.updateNodeTypes(nodeTypeDescriptions);
 		}
 	}
@@ -142,8 +144,7 @@ export class WorkflowBuilderService {
 		};
 
 		await this.loadNodesAndCredentials.postProcessLoaders();
-		const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
-		this.loadNodesAndCredentials.releaseTypes();
+		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 
 		this.service = new AiWorkflowBuilderService(
 			nodeTypeDescriptions,
@@ -154,10 +155,28 @@ export class WorkflowBuilderService {
 			N8N_VERSION,
 			onCreditsUpdated,
 			onTelemetryEvent,
+			this.resolveBuiltinNodeDefinitionDirs(),
 			resourceLocatorCallbackFactory,
 		);
 
 		return this.service;
+	}
+
+	private resolveBuiltinNodeDefinitionDirs(): string[] {
+		const dirs: string[] = [];
+		for (const packageId of ['n8n-nodes-base', '@n8n/n8n-nodes-langchain']) {
+			try {
+				const packageJsonPath = require.resolve(`${packageId}/package.json`);
+				const distDir = path.dirname(packageJsonPath);
+				const nodeDefsDir = path.join(distDir, 'dist', 'node-definitions');
+				if (fs.existsSync(nodeDefsDir)) {
+					dirs.push(nodeDefsDir);
+				}
+			} catch {
+				// Package not installed, skip
+			}
+		}
+		return dirs;
 	}
 
 	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
@@ -165,9 +184,9 @@ export class WorkflowBuilderService {
 		yield* service.chat(payload, user, abortSignal);
 	}
 
-	async getSessions(workflowId: string | undefined, user: IUser) {
+	async getSessions(workflowId: string | undefined, user: IUser, codeBuilder?: boolean) {
 		const service = await this.getService();
-		const sessions = await service.getSessions(workflowId, user);
+		const sessions = await service.getSessions(workflowId, user, codeBuilder);
 		return sessions;
 	}
 
@@ -180,8 +199,9 @@ export class WorkflowBuilderService {
 		workflowId: string,
 		user: IUser,
 		messageId: string,
+		codeBuilder?: boolean,
 	): Promise<boolean> {
 		const service = await this.getService();
-		return await service.truncateMessagesAfter(workflowId, user, messageId);
+		return await service.truncateMessagesAfter(workflowId, user, messageId, codeBuilder);
 	}
 }

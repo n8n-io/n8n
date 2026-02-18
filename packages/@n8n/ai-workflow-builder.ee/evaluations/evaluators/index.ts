@@ -19,3 +19,4 @@ export {
 	createResponderEvaluator,
 	type ResponderEvaluationContext,
 } from './responder';
+export { createExecutionEvaluator } from './execution';

@@ -15,19 +15,21 @@
 export { runEvaluation } from './harness/runner';
 
 // Types
-export type {
-	Feedback,
-	EvaluationContext,
-	TestCaseContext,
-	GlobalRunContext,
-	Evaluator,
-	TestCase,
-	RunConfig,
-	ExampleResult,
-	RunSummary,
-	EvaluationLifecycle,
-	LangsmithOptions,
-	SubgraphExampleOutput,
+export {
+	isGenerationResult,
+	type Feedback,
+	type EvaluationContext,
+	type TestCaseContext,
+	type GlobalRunContext,
+	type Evaluator,
+	type TestCase,
+	type RunConfig,
+	type ExampleResult,
+	type RunSummary,
+	type EvaluationLifecycle,
+	type LangsmithOptions,
+	type GenerationResult,
+	type SubgraphExampleOutput,
 } from './harness/harness-types';
 
 // Lifecycle
@@ -45,6 +47,7 @@ export {
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
 	createResponderEvaluator,
+	createExecutionEvaluator,
 	type PairwiseEvaluatorOptions,
 	type SimilarityEvaluatorOptions,
 	type ResponderEvaluationContext,
@@ -58,6 +61,11 @@ export {
 } from './harness/subgraph-runner';
 export { runSubgraphEvaluation } from './harness/subgraph-evaluation';
 export { runLocalSubgraphEvaluation } from './harness/subgraph-evaluation-local';
+// Introspection lifecycle
+export {
+	createIntrospectionAnalysisLifecycle,
+	type IntrospectionAnalysisOptions,
+} from './lifecycles/introspection-analysis';
 
 // Output
 export {

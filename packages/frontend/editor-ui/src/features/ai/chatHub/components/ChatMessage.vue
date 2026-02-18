@@ -111,7 +111,11 @@ const messageChunks = computed(() =>
 			return [];
 		}
 
-		if (chunk.type !== 'text') {
+		if (chunk.type === 'with-buttons') {
+			return [chunk];
+		}
+
+		if (chunk.type === 'artifact-create' || chunk.type === 'artifact-edit') {
 			const prev = arr[index - 1];
 			return prev?.type === chunk.type && prev.command.title === chunk.command.title ? [] : [chunk]; // dedupe command
 		}
@@ -121,8 +125,8 @@ const messageChunks = computed(() =>
 			return [{ type: 'text', content: i18n.baseText('chatHub.message.error.unknown') }];
 		}
 
-		return splitMarkdownIntoChunks(chunk.content).flatMap((chunk) =>
-			chunk.trim() === '' ? [] : [{ type: 'text', content: chunk }],
+		return splitMarkdownIntoChunks(chunk.content).flatMap((content) =>
+			content.trim() === '' ? [] : [{ type: 'text', content }],
 		);
 	}),
 );
@@ -166,7 +170,11 @@ const mergedAttachments = computed(() => [
 ]);
 
 const hideMessage = computed(() => {
-	return message.status === 'success' && text.value === '';
+	return (
+		message.status === 'success' &&
+		text.value === '' &&
+		!message.content.some((c) => c.type === 'with-buttons')
+	);
 });
 
 const shouldShowTypingIndicator = computed(() => message.status === 'running');
@@ -348,18 +356,16 @@ onBeforeMount(() => {
 				<div :class="$style.editFooter">
 					<N8nIconButton
 						v-if="message.type === 'human'"
-						native-type="button"
-						type="secondary"
+						variant="ghost"
 						icon="paperclip"
-						text
 						@click.stop="handleAttachClick"
 					/>
 					<div :class="$style.editActions">
-						<N8nButton type="secondary" size="small" @click="handleCancelEdit">
+						<N8nButton variant="subtle" size="small" @click="handleCancelEdit">
 							{{ i18n.baseText('chatHub.message.edit.cancel') }}
 						</N8nButton>
 						<N8nButton
-							type="primary"
+							variant="solid"
 							size="small"
 							:disabled="!editedText.trim() || isEditSubmitting"
 							:loading="isEditSubmitting"
@@ -390,6 +396,7 @@ onBeforeMount(() => {
 							ref="markdownChunk"
 							:key="index"
 							:source="chunk"
+							:is-buttons-disabled="message.status !== 'waiting'"
 							@open-artifact="emit('openArtifact', $event)"
 						/>
 						<Teleport v-if="activeCodeBlockTeleport" :to="activeCodeBlockTeleport.target">

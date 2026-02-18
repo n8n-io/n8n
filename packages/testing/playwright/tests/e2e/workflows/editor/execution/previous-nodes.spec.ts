@@ -1,7 +1,11 @@
 import { test, expect } from '../../../../../fixtures/base';
 
 // Flaky in multi-main mode: "execute previous nodes" also executes the current node
-test.describe('Execute previous nodes @fixme', () => {
+test.describe('Execute previous nodes @fixme', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test.fixme();
 
 	test('should execute only previous nodes and not the current node', async ({ n8n }) => {

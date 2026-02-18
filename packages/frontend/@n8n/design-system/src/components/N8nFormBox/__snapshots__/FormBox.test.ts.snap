@@ -82,21 +82,27 @@ exports[`FormBox > should render the component 1`] = `
                 >
                   <!-- Prepend slot (outside input container, before) -->
                   <!--v-if-->
-                  <!-- Prefix slot -->
-                  <!--v-if-->
-                  <!-- Input element -->
-                  <input
-                    autocomplete="email"
-                    class="input"
-                    name="name"
-                    placeholder=""
-                    type="text"
-                    value=""
-                  />
-                  <!-- Suffix slot -->
-                  <!--v-if-->
-                  <!-- Clear button -->
-                  <!--v-if-->
+                  <!-- Input wrapper (holds border, contains prefix/input/suffix) -->
+                  <div
+                    class="inputWrapper"
+                  >
+                    <!-- Prefix slot -->
+                    <!--v-if-->
+                    <!-- Input element -->
+                    <input
+                      autocomplete="email"
+                      class="input"
+                      id="name"
+                      name="name"
+                      placeholder=""
+                      type="text"
+                      value=""
+                    />
+                    <!-- Suffix slot -->
+                    <!--v-if-->
+                    <!-- Clear button -->
+                    <!--v-if-->
+                  </div>
                   <!-- Append slot (outside input container, after) -->
                   <!--v-if-->
                 </div>
@@ -162,21 +168,27 @@ exports[`FormBox > should render the component 1`] = `
                 >
                   <!-- Prepend slot (outside input container, before) -->
                   <!--v-if-->
-                  <!-- Prefix slot -->
-                  <!--v-if-->
-                  <!-- Input element -->
-                  <input
-                    autocomplete="email"
-                    class="input"
-                    name="email"
-                    placeholder=""
-                    type="email"
-                    value=""
-                  />
-                  <!-- Suffix slot -->
-                  <!--v-if-->
-                  <!-- Clear button -->
-                  <!--v-if-->
+                  <!-- Input wrapper (holds border, contains prefix/input/suffix) -->
+                  <div
+                    class="inputWrapper"
+                  >
+                    <!-- Prefix slot -->
+                    <!--v-if-->
+                    <!-- Input element -->
+                    <input
+                      autocomplete="email"
+                      class="input"
+                      id="email"
+                      name="email"
+                      placeholder=""
+                      type="email"
+                      value=""
+                    />
+                    <!-- Suffix slot -->
+                    <!--v-if-->
+                    <!-- Clear button -->
+                    <!--v-if-->
+                  </div>
                   <!-- Append slot (outside input container, after) -->
                   <!--v-if-->
                 </div>
@@ -242,21 +254,27 @@ exports[`FormBox > should render the component 1`] = `
                 >
                   <!-- Prepend slot (outside input container, before) -->
                   <!--v-if-->
-                  <!-- Prefix slot -->
-                  <!--v-if-->
-                  <!-- Input element -->
-                  <input
-                    autocomplete="current-password"
-                    class="input"
-                    name="password"
-                    placeholder=""
-                    type="password"
-                    value=""
-                  />
-                  <!-- Suffix slot -->
-                  <!--v-if-->
-                  <!-- Clear button -->
-                  <!--v-if-->
+                  <!-- Input wrapper (holds border, contains prefix/input/suffix) -->
+                  <div
+                    class="inputWrapper"
+                  >
+                    <!-- Prefix slot -->
+                    <!--v-if-->
+                    <!-- Input element -->
+                    <input
+                      autocomplete="current-password"
+                      class="input"
+                      id="password"
+                      name="password"
+                      placeholder=""
+                      type="password"
+                      value=""
+                    />
+                    <!-- Suffix slot -->
+                    <!--v-if-->
+                    <!-- Clear button -->
+                    <!--v-if-->
+                  </div>
                   <!-- Append slot (outside input container, after) -->
                   <!--v-if-->
                 </div>

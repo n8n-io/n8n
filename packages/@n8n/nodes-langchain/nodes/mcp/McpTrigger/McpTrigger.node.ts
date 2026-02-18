@@ -1,12 +1,11 @@
+import { McpServer, MCP_LIST_TOOLS_REQUEST_MARKER } from './McpServer';
+import type { CompressionResponse } from './transport';
 import { WebhookAuthorizationError } from 'n8n-nodes-base/dist/nodes/Webhook/error';
 import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook/utils';
 import type { INodeTypeDescription, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
 import { NodeConnectionTypes, Node, nodeNameToToolName } from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
-
-import type { CompressionResponse } from './FlushingTransport';
-import { McpServerManager, MCP_LIST_TOOLS_REQUEST_MARKER } from './McpServer';
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';
@@ -51,7 +50,7 @@ export class McpTrigger extends Node {
 					"This trigger has two modes: test and production.<br /><br /><b>Use test mode while you build your workflow</b>. Click the 'execute step' button, then make an MCP request to the test URL. The executions will show up in the editor.<br /><br /><b>Use production mode to run your workflow automatically</b>. Since your workflow is activated, you can make requests to the production URL. These executions will show up in the <a data-key='executions'>executions list</a>, but not the editor.",
 			},
 			activationHint:
-				'Once you’ve finished building your workflow, run it without having to click this button by using the production URL.',
+				"Once you've finished building your workflow, run it without having to click this button by using the production URL.",
 		},
 		inputs: [
 			{
@@ -153,68 +152,43 @@ export class McpTrigger extends Node {
 			}
 			throw error;
 		}
-		const node = context.getNode();
-		// Get a url/tool friendly name for the server, based on the node name
-		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
 
-		const mcpServerManager: McpServerManager = McpServerManager.instance(context.logger);
+		const node = context.getNode();
+		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
+		const mcpServer = McpServer.instance(context.logger);
 
 		if (webhookName === 'setup') {
-			// Sets up the transport and opens the long-lived connection. This resp
-			// will stay streaming, and is the channel that sends the events
-
-			// Prior to version 2.0, we use different paths for the setup and messages.
 			const postUrl =
 				node.typeVersion < 2
 					? req.path.replace(new RegExp(`/${MCP_SSE_SETUP_PATH}$`), `/${MCP_SSE_MESSAGES_PATH}`)
 					: req.path;
 
-			// Get connected tools and pass them to the transport for multi-main support
-			// This ensures tools are registered even if POST requests are forwarded from other mains
 			const connectedTools = await getConnectedTools(context, true);
-			await mcpServerManager.createServerWithSSETransport(
-				serverName,
-				postUrl,
-				resp,
-				connectedTools,
-			);
+			await mcpServer.handleSetupRequest(req, resp, serverName, postUrl, connectedTools);
 
 			return { noWebhookResponse: true };
 		} else if (webhookName === 'default') {
-			// Here we handle POST and DELETE requests.
-			// POST can be either:
-			// 1) Client calls in an established session using the SSE transport, or
-			// 2) Client calls in an established session using the StreamableHTTPServerTransport
-			// 3) Session setup requests using the StreamableHTTPServerTransport
-			// DELETE is used to terminate the session using the StreamableHTTPServerTransport
-
 			if (req.method === 'DELETE') {
-				await mcpServerManager.handleDeleteRequest(req, resp);
+				await mcpServer.handleDeleteRequest(req, resp);
 			} else {
-				// Check if there is a session and a transport is already established
-				const sessionId = mcpServerManager.getSessionId(req);
+				const sessionId = mcpServer.getSessionId(req);
 
 				context.logger.debug('MCP POST request received for existing session');
 
 				if (sessionId) {
-					// Session exists - either handle locally or recreate transport for StreamableHTTP
-					// For StreamableHTTP, if transport doesn't exist locally, it will be recreated
 					const connectedTools = await getConnectedTools(context, true);
 					const { wasToolCall, toolCallInfo, messageId, relaySessionId, needsListToolsRelay } =
-						await mcpServerManager.handlePostMessage(req, resp, connectedTools, serverName);
+						await mcpServer.handlePostMessage(req, resp, connectedTools, serverName);
+
 					if (wasToolCall) {
-						// Include tool call info and messageId in workflowData for queue mode execution
-						// The messageId is the JSONRPC request ID, needed to correlate worker responses
-						// Always include messageId when present for proper correlation, even without toolCallInfo
 						const workflowData = {
 							...(toolCallInfo && { mcpToolCall: toolCallInfo }),
 							...(messageId && { mcpMessageId: messageId }),
 						};
 						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
 					}
+
 					if (needsListToolsRelay && relaySessionId && messageId) {
-						// List tools request in SSE queue mode needs to be relayed to the main with the transport
-						// Return the relay info so CLI can publish mcp-response with the marker
 						const workflowData = {
 							mcpListToolsRelay: {
 								sessionId: relaySessionId,
@@ -225,16 +199,8 @@ export class McpTrigger extends Node {
 						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
 					}
 				} else {
-					// If no session is established, this is a setup request
-					// for the StreamableHTTPServerTransport, so we create a new transport
-					// Get connected tools and pass them for multi-main support
 					const connectedTools = await getConnectedTools(context, true);
-					await mcpServerManager.createServerWithStreamableHTTPTransport(
-						serverName,
-						resp,
-						req,
-						connectedTools,
-					);
+					await mcpServer.handleStreamableHttpSetup(req, resp, serverName, connectedTools);
 				}
 			}
 

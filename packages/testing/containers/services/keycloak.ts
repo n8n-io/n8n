@@ -306,7 +306,14 @@ export const keycloak: Service<KeycloakResult> = {
 		}
 	},
 
-	env(): Record<string, string> {
+	env(result: KeycloakResult, external?: boolean): Record<string, string> {
+		if (external) {
+			return {
+				N8N_OIDC_DISCOVERY_URL: result.meta.discoveryUrl,
+				N8N_OIDC_CLIENT_ID: result.meta.clientId,
+				N8N_OIDC_CLIENT_SECRET: result.meta.clientSecret,
+			};
+		}
 		return {
 			NODE_EXTRA_CA_CERTS: N8N_KEYCLOAK_CERT_PATH,
 			NO_PROXY: `localhost,127.0.0.1,${HOSTNAME},host.docker.internal`,

@@ -1,3 +1,4 @@
+export { Z, type ZodClass } from './zod-class';
 export type * from './datetime';
 export * from './dto';
 export type * from './push';
@@ -6,6 +7,7 @@ export type * from './frontend-settings';
 export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
+export type * from './quick-connect';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -50,7 +52,6 @@ export {
 	type AgentIconOrEmoji,
 	agentIconOrEmojiSchema,
 	type MessageChunk,
-	type ChatHubAgentTool,
 	UpdateChatSettingsRequest,
 	type ChatProviderSettingsDto,
 	type ChatSendMessageResponse,
@@ -60,6 +61,14 @@ export {
 	type ChatArtifactCreateCommand,
 	type ChatArtifactEditCommand,
 	type ChatMessageContentChunk,
+	type ChatHubMessageButton,
+	chatHubMessageWithButtonsSchema,
+	type ChatHubMessageWithButtons,
+	type ChatHubToolDto,
+	ChatHubCreateToolRequest,
+	ChatHubUpdateToolRequest,
+	ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES,
+	CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES,
 } from './chat-hub';
 
 export type {

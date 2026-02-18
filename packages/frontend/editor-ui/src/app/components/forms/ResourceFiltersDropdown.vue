@@ -113,8 +113,8 @@ onBeforeMount(async () => {
 	<N8nPopover width="304px" :content-class="$style['popover-content']">
 		<template #trigger>
 			<N8nButton
+				variant="subtle"
 				icon="funnel"
-				type="tertiary"
 				size="small"
 				:active="hasFilters"
 				:class="{
@@ -172,6 +172,7 @@ onBeforeMount(async () => {
 .filter-button {
 	height: 30px;
 	align-items: center;
+	padding: 0;
 
 	&.no-label {
 		width: 30px;

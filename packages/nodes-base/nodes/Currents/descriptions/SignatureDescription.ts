@@ -1,5 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { projectRLC } from './common.descriptions';
+
 export const signatureOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -44,35 +46,13 @@ export const signatureFields: INodeProperties[] = [
 	//         signature:generate
 	// ----------------------------------
 	{
-		displayName: 'Project',
-		name: 'projectId',
-		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		required: true,
+		...projectRLC,
 		displayOptions: {
 			show: {
 				resource: ['signature'],
 				operation: ['generate'],
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a project...',
-				typeOptions: {
-					searchListMethod: 'getProjects',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				placeholder: 'e.g. abc123',
-			},
-		],
 		routing: {
 			send: {
 				type: 'body',
@@ -80,7 +60,6 @@ export const signatureFields: INodeProperties[] = [
 				value: '={{ $value }}',
 			},
 		},
-		description: 'The Currents project',
 	},
 	{
 		displayName: 'Spec File Path',

@@ -13,6 +13,7 @@ export const LOG_SCOPES = [
 	'pruning',
 	'pubsub',
 	'push',
+	'quick-connect',
 	'redis',
 	'scaling',
 	'waiting-executions',

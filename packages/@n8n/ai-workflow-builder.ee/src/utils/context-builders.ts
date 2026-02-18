@@ -5,6 +5,7 @@ import { MAX_AI_RESPONSE_CHARS } from '../constants';
 import { mermaidStringify } from '../tools/utils/mermaid.utils';
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
+import type { QuestionResponse } from '../types/planning';
 import type { SimpleWorkflow } from '../types/workflow';
 import type { ChatPayload } from '../workflow-builder-agent';
 import { isTriggerNodeType } from './node-helpers';
@@ -175,6 +176,20 @@ function getMessageContent(message: BaseMessage): string {
 }
 
 /**
+ * Extract structured Q&A answers from a HumanMessage's resumeData, if present.
+ * Returns null when the message doesn't carry question answers.
+ */
+function getQuestionAnswers(message: BaseMessage | undefined): QuestionResponse[] | null {
+	if (!message) return null;
+	const resumeData: unknown = message.additional_kwargs?.resumeData;
+	if (!Array.isArray(resumeData) || resumeData.length === 0) return null;
+	// Validate the first element looks like a QuestionResponse
+	const first = resumeData[0] as Record<string, unknown>;
+	if (typeof first !== 'object' || !('question' in first)) return null;
+	return resumeData as QuestionResponse[];
+}
+
+/**
  * Build conversation context for subgraphs (Builder)
  * Provides history so agents understand what happened before the current request
  *
@@ -221,36 +236,14 @@ export function buildConversationContext(
 		parts.push('');
 	}
 
-	// 4. Last AI response (what was offered/said before user's current request)
-	// This helps understand what the user is responding to
-	if (lastUserMessage) {
-		const lastUserIndex = messages.lastIndexOf(lastUserMessage);
-		if (lastUserIndex > 0) {
-			// Find the AI message right before the last user message
-			for (let i = lastUserIndex - 1; i >= 0; i--) {
-				if (messages[i] instanceof AIMessage) {
-					const aiContent = getMessageContent(messages[i]);
-					if (aiContent) {
-						// Truncate if too long, keep the most relevant part (usually at the end)
-						const truncatedContent =
-							aiContent.length > MAX_AI_RESPONSE_CHARS
-								? '...' + aiContent.slice(-MAX_AI_RESPONSE_CHARS)
-								: aiContent;
-						parts.push(`Last AI response: "${truncatedContent}"`);
-						parts.push('');
-					}
-					break;
-				}
-			}
-		}
-	}
-
-	// 5. Current request (last HumanMessage)
-	if (lastUserMessage) {
-		const currentContent = getMessageContent(lastUserMessage);
-		if (currentContent) {
-			parts.push(`Current request: "${currentContent}"`);
-		}
+	// 4. Check if the last user message contains Q&A answers (from clarification questions).
+	// When present, format them as readable Q&A pairs instead of showing the raw JSON
+	// "Last AI response" and the generic "Current request: Submit answers".
+	const qaAnswers = lastUserMessage ? getQuestionAnswers(lastUserMessage) : null;
+	if (qaAnswers && lastUserMessage) {
+		appendQAPairs(parts, qaAnswers, humanMessages, lastUserMessage, firstUserMessage);
+	} else {
+		appendLastExchange(parts, messages, lastUserMessage);
 	}
 
 	return parts.join('\n');
@@ -258,6 +251,71 @@ export function buildConversationContext(
 
 function capitalizeFirst(str: string): string {
 	return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/** Format Q&A answers as readable pairs and include the triggering user request. */
+function appendQAPairs(
+	parts: string[],
+	qaAnswers: QuestionResponse[],
+	humanMessages: BaseMessage[],
+	lastUserMessage: BaseMessage,
+	firstUserMessage: BaseMessage | undefined,
+): void {
+	parts.push('Clarification Q&A:');
+	for (const answer of qaAnswers) {
+		if (answer.skipped) continue;
+		const responseParts: string[] = [];
+		if (answer.selectedOptions.length > 0) responseParts.push(answer.selectedOptions.join(', '));
+		if (answer.customText?.trim()) responseParts.push(answer.customText.trim());
+		const response = responseParts.length > 0 ? responseParts.join(', ') : '(no answer)';
+		parts.push(`- Q: ${answer.question}`);
+		parts.push(`  A: ${response}`);
+	}
+	parts.push('');
+
+	// Still show the user's original text request that triggered the questions
+	// (the non-resume message before this one, e.g. "also send it to S or T")
+	const previousNonResumeMessage = [...humanMessages]
+		.reverse()
+		.find((msg) => msg !== lastUserMessage && !msg.additional_kwargs?.resumeData);
+	if (previousNonResumeMessage && previousNonResumeMessage !== firstUserMessage) {
+		const prevContent = getMessageContent(previousNonResumeMessage);
+		if (prevContent) {
+			parts.push(`Current request: "${prevContent}"`);
+		}
+	}
+}
+
+/** Append "Last AI response" and "Current request" from the raw message history. */
+function appendLastExchange(
+	parts: string[],
+	messages: BaseMessage[],
+	lastUserMessage: BaseMessage | undefined,
+): void {
+	if (!lastUserMessage) return;
+
+	const lastUserIndex = messages.lastIndexOf(lastUserMessage);
+	if (lastUserIndex > 0) {
+		for (let i = lastUserIndex - 1; i >= 0; i--) {
+			if (messages[i] instanceof AIMessage) {
+				const aiContent = getMessageContent(messages[i]);
+				if (aiContent) {
+					const truncatedContent =
+						aiContent.length > MAX_AI_RESPONSE_CHARS
+							? '...' + aiContent.slice(-MAX_AI_RESPONSE_CHARS)
+							: aiContent;
+					parts.push(`Last AI response: "${truncatedContent}"`);
+					parts.push('');
+				}
+				break;
+			}
+		}
+	}
+
+	const currentContent = getMessageContent(lastUserMessage);
+	if (currentContent) {
+		parts.push(`Current request: "${currentContent}"`);
+	}
 }
 
 // ============================================================================
@@ -476,6 +534,110 @@ export function buildSimplifiedExecutionContext(
 	}
 
 	return SUCCESS_STATUS;
+}
+
+// ============================================================================
+// SELECTED NODES CONTEXT BUILDERS
+// ============================================================================
+
+/**
+ * Build selected nodes context block for agents.
+ * This provides context about nodes the user has explicitly selected/focused,
+ * enabling deictic resolution ("this node", "it") and focused responses.
+ *
+ * Note: Only includes additional context (issues, connections) not in currentWorkflow.nodes.
+ * Full node details (type, parameters) should be looked up by name in currentWorkflow.nodes.
+ */
+export function buildSelectedNodesContextBlock(
+	workflowContext: ChatPayload['workflowContext'] | undefined,
+): string {
+	const selectedNodes = workflowContext?.selectedNodes;
+	if (!selectedNodes || selectedNodes.length === 0) return '';
+
+	const parts: string[] = [];
+	parts.push('<selected_nodes>');
+	parts.push('The user has explicitly selected the following node(s) for you to focus on.');
+	parts.push(
+		'When the user says "this node", "it", "this", or similar deictic references, they refer to these selected nodes.',
+	);
+	parts.push(
+		'Look up full node details (type, parameters) by matching the name in <current_workflow_json>.',
+	);
+	parts.push('');
+
+	for (const node of selectedNodes) {
+		parts.push(`<node name="${escapeXmlAttr(node.name)}">`);
+
+		if (node.issues && Object.keys(node.issues).length > 0) {
+			parts.push('  <issues>');
+			for (const [param, issues] of Object.entries(node.issues)) {
+				for (const issue of issues) {
+					parts.push(
+						`    <issue parameter="${escapeXmlAttr(param)}">${escapeXmlContent(issue)}</issue>`,
+					);
+				}
+			}
+			parts.push('  </issues>');
+		}
+
+		if (node.incomingConnections.length > 0) {
+			parts.push(
+				`  <incoming_connections>${node.incomingConnections.map(escapeXmlContent).join(', ')}</incoming_connections>`,
+			);
+		}
+		if (node.outgoingConnections.length > 0) {
+			parts.push(
+				`  <outgoing_connections>${node.outgoingConnections.map(escapeXmlContent).join(', ')}</outgoing_connections>`,
+			);
+		}
+
+		parts.push('</node>');
+		parts.push('');
+	}
+
+	parts.push('</selected_nodes>');
+
+	return parts.join('\n');
+}
+
+/**
+ * Build a concise summary of selected nodes for routing decisions.
+ * Used by Supervisor to understand user intent without full node details.
+ */
+export function buildSelectedNodesSummary(
+	workflowContext: ChatPayload['workflowContext'] | undefined,
+): string {
+	const selectedNodes = workflowContext?.selectedNodes;
+	if (!selectedNodes || selectedNodes.length === 0) return '';
+
+	const nodeList = selectedNodes.map((n) => `- "${n.name}"`).join('\n');
+
+	const hasIssues = selectedNodes.some((n) => n.issues && Object.keys(n.issues).length > 0);
+
+	let summary = `User has ${selectedNodes.length} node(s) selected:\n${nodeList}`;
+	if (hasIssues) {
+		summary += '\nNote: Some selected nodes have configuration issues.';
+	}
+
+	return summary;
+}
+
+/**
+ * Escape XML attribute value (replaces quotes, ampersand, less-than, greater-than)
+ */
+function escapeXmlAttr(str: string): string {
+	return str
+		.replace(/&/g, '&amp;')
+		.replace(/"/g, '&quot;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;');
+}
+
+/**
+ * Escape XML content (replaces ampersand, less-than, greater-than)
+ */
+function escapeXmlContent(str: string): string {
+	return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // ============================================================================

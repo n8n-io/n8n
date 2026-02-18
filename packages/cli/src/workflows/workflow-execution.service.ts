@@ -152,6 +152,7 @@ export class WorkflowExecutionService {
 					pushRef,
 					triggerToStartFrom: payload.triggerToStartFrom,
 					destinationNode: payload.destinationNode,
+					chatSessionId: payload.chatSessionId,
 					workflowIsActive,
 				}))
 			) {
@@ -172,11 +173,13 @@ export class WorkflowExecutionService {
 
 		// Case 3: Full execution from an unknown trigger.
 		if (isFullExecutionFromUnknownTrigger(payload)) {
-			const pinnedTrigger = this.selectPinnedTrigger(
-				payload.workflowData,
-				payload.destinationNode.nodeName,
-				payload.workflowData.pinData ?? {},
-			);
+			const pinnedTrigger = payload.destinationNode
+				? this.selectPinnedTrigger(
+						payload.workflowData,
+						payload.destinationNode.nodeName,
+						payload.workflowData.pinData ?? {},
+					)
+				: undefined;
 
 			if (
 				pinnedTrigger === undefined &&

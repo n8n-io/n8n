@@ -4,10 +4,11 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Middleware, Param, RestController } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-
 import { ExternalSecretsConfig } from './external-secrets.config';
 import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee';
+
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { sendErrorResponse } from '@/response-helper';
 
 @RestController('/secret-providers/completions')
 export class SecretProvidersCompletionsController {
@@ -20,11 +21,32 @@ export class SecretProvidersCompletionsController {
 	}
 
 	@Middleware()
-	checkFeatureFlag(_req: Request, _res: Response, next: NextFunction) {
-		if (!this.config.externalSecretsForProjects) {
-			this.logger.warn('External secrets for projects feature is not enabled');
-			throw new BadRequestError('External secrets for projects feature is not enabled');
+	checkFeatureFlag(req: Request, res: Response, next: NextFunction) {
+		const path = req.path;
+
+		if (path.startsWith('/secrets/global')) {
+			const hasAccess =
+				this.config.externalSecretsMultipleConnections || this.config.externalSecretsForProjects;
+
+			if (!hasAccess) {
+				this.logger.warn('External secrets multiple connections feature is not enabled');
+				sendErrorResponse(
+					res,
+					new ForbiddenError('External secrets multiple connections feature is not enabled'),
+				);
+				return;
+			}
+		} else if (path.startsWith('/secrets/project/')) {
+			if (!this.config.externalSecretsForProjects) {
+				this.logger.warn('External secrets for projects feature is not enabled');
+				sendErrorResponse(
+					res,
+					new ForbiddenError('External secrets for projects feature is not enabled'),
+				);
+				return;
+			}
 		}
+
 		next();
 	}
 
@@ -43,7 +65,7 @@ export class SecretProvidersCompletionsController {
 		_res: Response,
 		@Param('projectId') projectId: string,
 	): Promise<SecretCompletionsResponse> {
-		this.logger.debug('Listing secrets for project');
+		this.logger.debug('Listing secrets for project', { projectId });
 		const connections = await this.connectionsService.getProjectCompletions(projectId);
 		return this.connectionsService.toSecretCompletionsResponse(connections);
 	}

@@ -24,6 +24,7 @@ import { useRecentResources } from '@/features/shared/commandBar/composables/use
 import { usePostHog } from '@/app/stores/posthog.store';
 import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -77,7 +78,10 @@ const SettingsSourceControl = async () =>
 const SettingsExternalSecrets = async () => {
 	const { check } = useEnvFeatureFlag();
 
-	if (check.value('EXTERNAL_SECRETS_FOR_PROJECTS')) {
+	if (
+		check.value('EXTERNAL_SECRETS_FOR_PROJECTS') ||
+		check.value('EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS')
+	) {
 		return await import(
 			'@/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.ee.vue'
 		);
@@ -605,12 +609,8 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.SECURITY_SETTINGS,
 				component: SecuritySettingsView,
 				meta: {
-					middleware: ['authenticated', 'custom', 'rbac'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
-						custom: () => {
-							const { check } = useEnvFeatureFlag();
-							return check.value('PERSONAL_SECURITY_SETTINGS');
-						},
 						rbac: {
 							scope: ['securitySettings:manage'],
 						},
@@ -679,8 +679,8 @@ export const routes: RouteRecordRaw[] = [
 					middleware: ['authenticated', 'custom'],
 					middlewareOptions: {
 						custom: () => {
-							const { check } = useEnvFeatureFlag();
-							return check.value('DYNAMIC_CREDENTIALS');
+							const { isEnabled } = useDynamicCredentials();
+							return isEnabled.value;
 						},
 					},
 					telemetry: {
@@ -688,6 +688,28 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'resolvers',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'project-roles/view/:roleSlug',
+				name: VIEWS.PROJECT_ROLE_VIEW,
+				component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
+				props: true,
+				meta: {
+					middleware: ['authenticated', 'enterprise'],
+					middlewareOptions: {
+						enterprise: {
+							feature: EnterpriseEditionFeature.CustomRoles,
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'project-roles',
 							};
 						},
 					},

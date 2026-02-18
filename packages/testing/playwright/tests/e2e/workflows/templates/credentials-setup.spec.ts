@@ -29,7 +29,10 @@ const ecommerceCollection = JSON.parse(
 function createTemplateRequirements(): TestRequirements {
 	return {
 		storage: {
-			N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '055_template_setup_experience': 'control' }),
+			N8N_EXPERIMENT_OVERRIDES: JSON.stringify({
+				'055_template_setup_experience': 'control',
+				'069_setup_panel': 'control',
+			}),
 		},
 		config: {
 			settings: {
@@ -56,7 +59,11 @@ function createTemplateRequirements(): TestRequirements {
 	};
 }
 
-test.describe('Template credentials setup @db:reset', () => {
+test.describe('Template credentials setup @db:reset', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ setupRequirements }) => {
 		await setupRequirements(createTemplateRequirements());
 	});
@@ -151,7 +158,10 @@ test.describe('Template credentials setup @db:reset', () => {
 	}) => {
 		await setupRequirements({
 			storage: {
-				N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '055_template_setup_experience': 'control' }),
+				N8N_EXPERIMENT_OVERRIDES: JSON.stringify({
+					'055_template_setup_experience': 'control',
+					'069_setup_panel': 'control',
+				}),
 			},
 			config: {
 				settings: {

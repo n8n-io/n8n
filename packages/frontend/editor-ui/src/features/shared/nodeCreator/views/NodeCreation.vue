@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
-import { computed, defineAsyncComponent, nextTick } from 'vue';
+import { defineAsyncComponent, nextTick } from 'vue';
 import { getMidCanvasPosition } from '@/app/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
@@ -24,7 +24,6 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
-import { useSettingsStore } from '@/app/stores/settings.store';
 
 type Props = {
 	nodeViewScale: number;
@@ -54,13 +53,8 @@ const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
-const settingsStore = useSettingsStore();
 
 const { getAddedNodesAndConnections } = useActions();
-
-const allowSendingParameterValues = computed(
-	() => settingsStore.settings.ai.allowSendingParameterValues,
-);
 
 function openNodeCreator() {
 	emit('toggleNodeCreator', {
@@ -108,8 +102,8 @@ function toggleFocusPanel() {
 }
 
 async function onAskAssistantButtonClick() {
-	// Only start builder mode if it's enabled and parameter values can be sent
-	if (builderStore.isAIBuilderEnabled && allowSendingParameterValues.value) {
+	// Start builder mode if enabled; privacy setting is respected at payload creation level
+	if (builderStore.isAIBuilderEnabled) {
 		await chatPanelStore.toggle({ mode: 'builder' });
 	} else {
 		await chatPanelStore.toggle({ mode: 'assistant' });
@@ -147,9 +141,9 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
+				variant="subtle"
 				size="large"
 				icon="plus"
-				type="tertiary"
 				data-test-id="node-creator-plus-button"
 				@click="openNodeCreator"
 			/>
@@ -160,9 +154,9 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
+				variant="subtle"
 				size="large"
 				icon="search"
-				type="tertiary"
 				data-test-id="command-bar-button"
 				@click="openCommandBar"
 			/>
@@ -173,8 +167,8 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
+				variant="subtle"
 				size="large"
-				type="tertiary"
 				icon="sticky-note"
 				data-test-id="add-sticky-button"
 				@click="addStickyNote"
@@ -186,7 +180,7 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
-				type="tertiary"
+				variant="subtle"
 				size="large"
 				icon="panel-right"
 				:class="focusPanelActive ? $style.activeButton : ''"
@@ -198,9 +192,9 @@ function openCommandBar(event: MouseEvent) {
 		<N8nTooltip v-if="chatPanelStore.canShowAiButtonOnCanvas" placement="left">
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
 			<N8nButton
-				type="tertiary"
+				variant="subtle"
+				iconOnly
 				size="large"
-				square
 				:class="$style.icon"
 				data-test-id="ask-assistant-canvas-action-button"
 				@click="onAskAssistantButtonClick"
