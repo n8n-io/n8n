@@ -82,7 +82,7 @@ describe('SecretsProviderConnectionRepository', () => {
 			]);
 		});
 
-		it('filters by types when provided', async () => {
+		it('filters by provider keys when provided', async () => {
 			await Promise.all([
 				createConnection('globalAws', 'awsSecretsManager'),
 				createConnection('globalVault', 'hashicorpVault'),
@@ -90,7 +90,7 @@ describe('SecretsProviderConnectionRepository', () => {
 			]);
 
 			const connections = await connectionRepository.findGlobalConnections({
-				types: ['awsSecretsManager', 'hashicorpVault'],
+				providerKeys: ['globalAws', 'globalVault'],
 			});
 
 			expect(connections).toHaveLength(2);
@@ -127,7 +127,7 @@ describe('SecretsProviderConnectionRepository', () => {
 			]);
 		});
 
-		it('filters by types when provided', async () => {
+		it('filters by provider keys when provided', async () => {
 			await Promise.all([
 				createConnection('projAws', 'awsSecretsManager', [project1.id]),
 				createConnection('projVault', 'hashicorpVault', [project1.id]),
@@ -135,7 +135,7 @@ describe('SecretsProviderConnectionRepository', () => {
 			]);
 
 			const connections = await connectionRepository.findByProjectId(project1.id, {
-				types: ['awsSecretsManager', 'gcpSecretsManager'],
+				providerKeys: ['projAws', 'projGcp'],
 			});
 
 			expect(connections).toHaveLength(2);

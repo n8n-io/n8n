@@ -182,21 +182,19 @@ export class SecretsProvidersConnectionsService {
 	}
 
 	async getGlobalCompletions(): Promise<SecretsProviderConnection[]> {
-		const connectedProviders = this.providerRegistry.getConnected();
-		const connectedProviderNames = connectedProviders.map((provider) => provider.name);
-		const connections = await this.repository.findGlobalConnections({
-			types: connectedProviderNames,
+		const connectedProviderKeys = this.providerRegistry.getConnectedNames();
+
+		return await this.repository.findGlobalConnections({
+			providerKeys: connectedProviderKeys,
 		});
-		return connections;
 	}
 
 	async getProjectCompletions(projectId: string): Promise<SecretsProviderConnection[]> {
-		const connectedProviders = this.providerRegistry.getConnected();
-		const connectedProviderNames = connectedProviders.map((provider) => provider.name);
-		const connections = await this.repository.findByProjectId(projectId, {
-			types: connectedProviderNames,
+		const connectedProviderKeys = this.providerRegistry.getConnectedNames();
+
+		return await this.repository.findByProjectId(projectId, {
+			providerKeys: connectedProviderKeys,
 		});
-		return connections;
 	}
 
 	async listConnectionsForProject(projectId: string): Promise<SecretsProviderConnection[]> {

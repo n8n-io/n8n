@@ -32,16 +32,16 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 	 * @returns Promise resolving to all matching SecretsProviderConnection entities.
 	 */
 	async findGlobalConnections({
-		types,
-	}: { types?: Array<SecretsProviderConnection['type']> } = {}): Promise<
+		providerKeys,
+	}: { providerKeys?: Array<SecretsProviderConnection['providerKey']> } = {}): Promise<
 		SecretsProviderConnection[]
 	> {
 		const connectionQuery = this.createQueryBuilder('connection')
 			.leftJoin('connection.projectAccess', 'access')
 			.where('access.secretsProviderConnectionId IS NULL');
 
-		if (types && types.length > 0) {
-			connectionQuery.andWhere('connection.type IN (:...types)', { types });
+		if (providerKeys && providerKeys.length > 0) {
+			connectionQuery.andWhere('connection.providerKey IN (:...providerKeys)', { providerKeys });
 		}
 
 		return await connectionQuery.getMany();
@@ -60,15 +60,15 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 	 */
 	async findByProjectId(
 		projectId: string,
-		{ types }: { types?: Array<SecretsProviderConnection['type']> } = {},
+		{ providerKeys }: { providerKeys?: Array<SecretsProviderConnection['providerKey']> } = {},
 	): Promise<SecretsProviderConnection[]> {
 		const connectionQuery = this.createQueryBuilder('connection')
 			.innerJoinAndSelect('connection.projectAccess', 'projectAccess')
 			.leftJoinAndSelect('projectAccess.project', 'project')
 			.where('projectAccess.projectId = :projectId', { projectId });
 
-		if (types && types.length > 0) {
-			connectionQuery.andWhere('connection.type IN (:...types)', { types });
+		if (providerKeys && providerKeys.length > 0) {
+			connectionQuery.andWhere('connection.providerKey IN (:...providerKeys)', { providerKeys });
 		}
 
 		return await connectionQuery.getMany();
