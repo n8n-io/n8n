@@ -20,6 +20,7 @@ import {
 	CREDENTIAL_EMPTY_VALUE,
 	IconOrEmojiSchema,
 	isResourceLocatorValue,
+	jsonParse,
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
@@ -199,6 +200,7 @@ const remoteParameterOptionsLoadingIssues = ref<string | null>(null);
 const textEditDialogVisible = ref(false);
 const editDialogClosing = ref(false);
 const tempValue = ref('');
+const jsonValidationError = ref<string | null>(null);
 const activeCredentialType = ref('');
 const dateTimePickerOptions = ref({
 	shortcuts: [
@@ -261,6 +263,10 @@ const isResourceLocatorParameter = computed<boolean>(() => {
 
 const isSecretParameter = computed<boolean>(() => {
 	return getTypeOption('password') === true;
+});
+
+const isJsonPasswordField = computed<boolean>(() => {
+	return props.parameter.type === 'json' && isSecretParameter.value;
 });
 
 const hasRemoteMethod = computed<boolean>(() => {
@@ -472,6 +478,12 @@ const getStringInputType = computed(() => {
 });
 
 const getIssues = computed<string[]>(() => {
+	const validationError = jsonValidationError.value;
+
+	if (validationError) {
+		return [validationError];
+	}
+
 	if (props.hideIssues || !node.value) {
 		return [];
 	}
@@ -1076,6 +1088,30 @@ function onResourceLocatorDrop(data: string) {
 	emit('drop', data);
 }
 
+function validateJsonPassword(value: string) {
+	if (!isJsonPasswordField.value || isModelValueExpression.value) {
+		jsonValidationError.value = null;
+		return;
+	}
+
+	if (!value || !value.trim()) {
+		jsonValidationError.value = null;
+		return;
+	}
+
+	try {
+		jsonParse(value);
+		jsonValidationError.value = null;
+	} catch (error) {
+		jsonValidationError.value = i18n.baseText('parameterInput.invalidJson');
+	}
+}
+
+function onJsonPasswordFieldChange(value: string) {
+	validateJsonPassword(value);
+	onUpdateTextInputDebounced(value);
+}
+
 function onUpdateTextInput(value: string) {
 	if (
 		props.parameter.type === 'string' &&
@@ -1227,7 +1263,7 @@ const isSingleLineInput = computed(() => {
 
 defineExpose({
 	isSingleLineInput,
-	displaysIssues: displayIssues.value,
+	displaysIssues: displayIssues,
 	focusInput: async () => await setFocus(),
 	selectInput: () => selectInput(),
 });
@@ -1492,7 +1528,7 @@ onUpdated(async () => {
 						/>
 
 						<JsonEditor
-							v-else-if="parameter.type === 'json' && codeEditDialogVisible"
+							v-else-if="parameter.type === 'json' && codeEditDialogVisible && !isSecretParameter"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -1635,7 +1671,7 @@ onUpdated(async () => {
 				</JsEditor>
 
 				<JsonEditor
-					v-else-if="parameter.type === 'json' && !codeEditDialogVisible"
+					v-else-if="parameter.type === 'json' && !codeEditDialogVisible && !isSecretParameter"
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly"
 					:rows="editorRows"
@@ -1683,7 +1719,11 @@ onUpdated(async () => {
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
 					data-test-id="parameter-input-field"
-					@update:model-value="onUpdateTextInputDebounced($event)"
+					@update:model-value="
+						isJsonPasswordField
+							? onJsonPasswordFieldChange($event)
+							: onUpdateTextInputDebounced($event)
+					"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"

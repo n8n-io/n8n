@@ -7,6 +7,7 @@ import {
 
 const allowedModules = [
 	'n8n-workflow',
+	'ai-node-sdk',
 	'lodash',
 	'moment',
 	'p-limit',

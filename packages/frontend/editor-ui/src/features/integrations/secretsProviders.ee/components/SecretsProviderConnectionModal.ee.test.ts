@@ -32,6 +32,7 @@ const createMockConnectionData = (overrides: Partial<SecretProviderConnection> =
 // Create the mock object that will be returned
 const mockConnection = {
 	connectionState: { value: 'initializing' },
+	connectionError: { value: undefined },
 	isLoading: { value: false },
 	isTesting: { value: false },
 	getConnection: vi.fn(),
@@ -55,6 +56,7 @@ const mockConnectionModal = {
 	connection: {
 		isLoading: { value: false },
 		connectionState: { value: 'initializing' },
+		connectionError: { value: undefined },
 	},
 	providerTypeOptions: { value: [] },
 	connectionSettings: { value: {} },
@@ -345,8 +347,8 @@ describe('SecretsProviderConnectionModal', () => {
 
 			await nextTick();
 
-			const errorCallout = container.querySelector('[data-test-id="connection-error-callout"]');
-			expect(errorCallout).toBeInTheDocument();
+			const errorBanner = container.querySelector('[data-test-id="connection-error-banner"]');
+			expect(errorBanner).toBeInTheDocument();
 		});
 	});
 
