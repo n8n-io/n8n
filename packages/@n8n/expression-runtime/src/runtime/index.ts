@@ -327,7 +327,8 @@ function resetDataProxies(): void {
 	globalThis.__data = {};
 
 	// Verify callbacks are available
-	if (typeof globalThis.__getValueAtPath !== 'function') {
+	// Note: ivm.Reference may not be typeof 'function', check for existence
+	if (!globalThis.__getValueAtPath) {
 		throw new Error('__getValueAtPath callback not registered');
 	}
 
@@ -386,7 +387,7 @@ function resetDataProxies(): void {
 	// -------------------------------------------------------------------------
 
 	// Check if $items exists and is a function
-	if (typeof globalThis.__callFunctionAtPath === 'function') {
+	if (globalThis.__callFunctionAtPath) {
 		try {
 			const itemsValue = globalThis.__getValueAtPath.applySync(null, [['$items']], {
 				arguments: { copy: true },

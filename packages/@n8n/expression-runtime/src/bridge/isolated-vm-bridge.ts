@@ -208,49 +208,212 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	}
 
 	/**
+	 * Register callback functions for cross-isolate communication.
+	 *
+	 * Creates three ivm.Reference callbacks that the runtime bundle uses
+	 * to fetch data from the host process:
+	 *
+	 * - __getValueAtPath: Returns metadata or primitive for a property path
+	 * - __getArrayElement: Returns individual array elements
+	 * - __callFunctionAtPath: Executes functions in host context
+	 *
+	 * These callbacks are called synchronously from isolate proxy traps.
+	 *
+	 * @param data - Current workflow data to use for callback responses
+	 * @private
+	 */
+	private registerCallbacks(data: Record<string, unknown>): void {
+		if (!this.context) {
+			throw new Error('Context not initialized');
+		}
+
+		// Callback 1: Get value/metadata at path
+		// Used by createDeepLazyProxy when accessing properties
+		const getValueAtPath = new ivm.Reference((path: string[]) => {
+			// Navigate to value
+			let value: unknown = data;
+			for (const key of path) {
+				value = (value as Record<string, unknown>)?.[key];
+				if (value === undefined || value === null) {
+					return value;
+				}
+			}
+
+			// Handle functions - return metadata marker
+			if (typeof value === 'function') {
+				const fnString = value.toString();
+				// Block native functions for security
+				if (fnString.includes('[native code]')) {
+					return undefined;
+				}
+				return { __isFunction: true, __name: path[path.length - 1] };
+			}
+
+			// Handle arrays
+			if (Array.isArray(value)) {
+				const smallArrayThreshold = 100;
+				if (value.length <= smallArrayThreshold) {
+					// Small array: return with data
+					return {
+						__isArray: true,
+						__length: value.length,
+						__data: value,
+					};
+				} else {
+					// Large array: return metadata only
+					return {
+						__isArray: true,
+						__length: value.length,
+						__data: null,
+					};
+				}
+			}
+
+			// Handle objects - return metadata with keys
+			if (value !== null && typeof value === 'object') {
+				return {
+					__isObject: true,
+					__keys: Object.keys(value),
+				};
+			}
+
+			// Primitive value
+			return value;
+		});
+
+		// Callback 2: Get array element at index
+		// Used by array proxy when accessing numeric indices
+		const getArrayElement = new ivm.Reference((path: string[], index: number) => {
+			// Navigate to array
+			let arr: unknown = data;
+			for (const key of path) {
+				arr = (arr as Record<string, unknown>)?.[key];
+			}
+
+			if (!Array.isArray(arr)) {
+				return undefined;
+			}
+
+			const element = arr[index];
+
+			// If element is object/array, return metadata
+			if (element !== null && typeof element === 'object') {
+				if (Array.isArray(element)) {
+					const smallArrayThreshold = 100;
+					return {
+						__isArray: true,
+						__length: element.length,
+						__data: element.length <= smallArrayThreshold ? element : null,
+					};
+				}
+				return {
+					__isObject: true,
+					__keys: Object.keys(element),
+				};
+			}
+
+			// Primitive element
+			return element;
+		});
+
+		// Callback 3: Call function at path with arguments
+		// Used when expressions invoke functions from workflow data
+		const callFunctionAtPath = new ivm.Reference((path: string[], ...args: unknown[]) => {
+			// Navigate to function
+			let fn: unknown = data;
+			for (const key of path) {
+				fn = (fn as Record<string, unknown>)?.[key];
+			}
+
+			if (typeof fn !== 'function') {
+				throw new Error(`${path.join('.')} is not a function`);
+			}
+
+			// Execute function in host context
+			return (fn as Function)(...args);
+		});
+
+		// Register all callbacks in isolate global context
+		this.context.global.setSync('__getValueAtPath', getValueAtPath);
+		this.context.global.setSync('__getArrayElement', getArrayElement);
+		this.context.global.setSync('__callFunctionAtPath', callFunctionAtPath);
+
+		if (this.config.debug) {
+			console.log('[IsolatedVmBridge] Callbacks registered successfully');
+		}
+	}
+
+	/**
 	 * Execute JavaScript code in the isolated context.
 	 *
-	 * This will be implemented in Step 4.
-	 * Will handle:
-	 * - Script compilation and caching
-	 * - Callback registration (ivm.Reference)
-	 * - Proxy initialization with workflow data
-	 * - Timeout enforcement
-	 * - Error translation
+	 * Flow:
+	 * 1. Register callbacks as ivm.Reference for cross-isolate communication
+	 * 2. Call resetDataProxies() to initialize workflow data proxies
+	 * 3. Compile script (with caching for performance)
+	 * 4. Execute with timeout enforcement
+	 * 5. Return result (copied from isolate)
 	 *
 	 * @param code - JavaScript expression to evaluate
-	 * @param data - Workflow data (e.g., { $json: {...} })
+	 * @param data - Workflow data (e.g., { $json: {...}, $runIndex: 0 })
 	 * @returns Result of the expression
+	 * @throws {Error} If bridge not initialized or execution fails
 	 */
 	execute(code: string, data: Record<string, unknown>): unknown {
 		if (!this.initialized || !this.context) {
 			throw new Error('Bridge not initialized. Call initialize() first.');
 		}
 
-		// TODO: Step 4 - Implement execution
-		// 1. Register callbacks as ivm.Reference
-		// 2. Reset proxies with new data
-		// 3. Compile/cache script
-		// 4. Execute with timeout
-		// 5. Return result
+		try {
+			// Step 1: Register callbacks with current data context
+			this.registerCallbacks(data);
 
-		throw new Error('execute() not implemented yet (Step 4)');
+			// Step 2: Reset proxies for this evaluation
+			// This initializes $json, $binary, etc. as lazy proxies
+			this.resetDataProxies();
+
+			// Step 3: Compile and execute script
+			let script = this.scriptCache.get(code);
+			if (!script) {
+				script = this.isolate.compileScriptSync(code);
+				this.scriptCache.set(code, script);
+
+				if (this.config.debug) {
+					console.log('[IsolatedVmBridge] Script compiled and cached');
+				}
+			}
+
+			// Step 4: Execute with timeout and copy result back
+			const result = script.runSync(this.context, {
+				timeout: this.config.timeout,
+				copy: true,
+			});
+
+			if (this.config.debug) {
+				console.log('[IsolatedVmBridge] Expression executed successfully');
+			}
+
+			return result;
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			throw new Error(`Expression evaluation failed: ${errorMessage}`);
+		}
 	}
 
 	/**
 	 * Get data synchronously from host (used by lazy proxies).
 	 *
-	 * This is not directly called from host code - it's invoked via ivm.Reference
-	 * from within the isolate when proxies need to fetch data.
+	 * Note: This method is not used in the current implementation.
+	 * Data access is handled via the three registered callbacks:
+	 * __getValueAtPath, __getArrayElement, __callFunctionAtPath.
 	 *
-	 * Will be implemented alongside execute() in Step 4-5.
+	 * Kept for RuntimeBridge interface compatibility.
 	 *
-	 * @param path - Property path (e.g., "user.email")
-	 * @returns Value at path or undefined
+	 * @param _path - Property path (unused)
+	 * @returns undefined
+	 * @deprecated Use callback-based approach instead
 	 */
 	getDataSync(_path: string): unknown {
-		// TODO: Step 5 - Implement data fetching callback
-		// This will be called from isolate via ivm.Reference
+		// Callbacks handle all data access in isolated-vm implementation
 		return undefined;
 	}
 
