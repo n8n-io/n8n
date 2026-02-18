@@ -163,6 +163,13 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	 * Opens assistant with credential help context
 	 */
 	async function openWithCredHelp(credentialType: ICredentialType) {
+		if (isMergeAskBuildEnabled.value) {
+			const question = `How do I set up the credentials for ${credentialType.displayName}?`;
+			await open({ mode: 'builder' });
+			const builderStore = useBuilderStore();
+			await builderStore.sendChatMessage({ text: question });
+			return;
+		}
 		const assistantStore = useAssistantStore();
 		await assistantStore.initCredHelp(credentialType);
 		await open({ mode: 'assistant' });
@@ -172,6 +179,13 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	 * Opens assistant with error helper context
 	 */
 	async function openWithErrorHelper(context: ChatRequest.ErrorContext) {
+		if (isMergeAskBuildEnabled.value) {
+			const errorText = `I'm getting an error on the "${context.node.name}" node: ${context.error.message}`;
+			await open({ mode: 'builder' });
+			const builderStore = useBuilderStore();
+			await builderStore.sendChatMessage({ text: errorText });
+			return;
+		}
 		const assistantStore = useAssistantStore();
 		await assistantStore.initErrorHelper(context);
 		await open({ mode: 'assistant' });
