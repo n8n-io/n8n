@@ -599,8 +599,6 @@ export function createMockHttpRequests() {
 			body?: object,
 			headers?: Record<string, string>,
 		) => {
-			const { Readable } = await import('stream');
-
 			const response = await axios({
 				method,
 				url,
@@ -618,9 +616,7 @@ export function createMockHttpRequests() {
 				ok: response.status >= 200 && response.status < 300,
 				status: response.status,
 				statusText: response.statusText,
-				body: Readable.toWeb(response.data as Readable) as ReadableStream<
-					Uint8Array<ArrayBufferLike>
-				>,
+				body: response.data,
 			};
 		},
 	};
