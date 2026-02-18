@@ -430,6 +430,10 @@ async function onRestoreConfirm(versionId: string, messageId: string) {
 		if (!updatedWorkflow) {
 			return;
 		}
+
+		processedWorkflowUpdates.value.clear();
+		accumulatedNodeIdsToTidyUp.value = [];
+
 		builderStore.clearExistingWorkflow();
 		// Reload the workflow to reflect the restored state
 		nodeViewEventBus.emit('importWorkflowData', {
@@ -439,6 +443,9 @@ async function onRestoreConfirm(versionId: string, messageId: string) {
 			trackEvents: false,
 			setStateDirty: false,
 		});
+
+		await nextTick();
+		builderStore.builderMode = 'build';
 	} catch (e: unknown) {
 		toast.showMessage({
 			type: 'error',
