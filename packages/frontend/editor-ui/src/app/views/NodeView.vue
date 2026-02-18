@@ -2144,27 +2144,6 @@ onBeforeUnmount(() => {
 		transform: none;
 	}
 
-	button {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-
-		&:first-child {
-			margin: 0;
-		}
-
-		@include mixins.breakpoint('xs-only') {
-			text-indent: -10000px;
-			width: 42px;
-			height: 42px;
-			padding: 0;
-
-			span {
-				margin: 0;
-			}
-		}
-	}
-
 	.chatButton {
 		align-self: stretch;
 	}

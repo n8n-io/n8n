@@ -4,6 +4,7 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { BUILDER_ENABLED_VIEWS } from '../constants';
 import type { VIEWS } from '@/app/constants';
 
@@ -18,11 +19,20 @@ export function useAskModeCoachmark() {
 	const settingsStore = useSettingsStore();
 	const route = useRoute();
 	const { isCalloutDismissed, dismissCallout } = useCalloutHelpers();
+	const { check } = useEnvFeatureFlag();
 
 	const isBuildMode = computed(() => chatPanelStore.isBuilderModeActive);
 
+	const isMergeAskBuildEnabled = computed(
+		() =>
+			check.value('MERGE_ASK_BUILD') &&
+			settingsStore.isAiAssistantEnabled &&
+			builderStore.isAIBuilderEnabled,
+	);
+
 	// Show toggle only when both modes are available in current view
 	const canToggleModes = computed(() => {
+		if (isMergeAskBuildEnabled.value) return false;
 		return (
 			settingsStore.isAiAssistantEnabled &&
 			builderStore.isAIBuilderEnabled &&
@@ -51,6 +61,7 @@ export function useAskModeCoachmark() {
 
 	return {
 		isBuildMode,
+		isMergeAskBuildEnabled,
 		canToggleModes,
 		shouldShowCoachmark,
 		onDismissCoachmark,

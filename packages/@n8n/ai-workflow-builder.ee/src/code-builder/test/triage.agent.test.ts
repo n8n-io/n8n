@@ -400,7 +400,7 @@ describe('TriageAgent', () => {
 		expect(systemMessage.content).not.toContain('<conversation_history>');
 	});
 
-	it('should continue loop after ask_assistant and let LLM respond with text', async () => {
+	it('should suppress redundant LLM text when ask_assistant already handled the response', async () => {
 		const firstResponse = new AIMessage({
 			content: '',
 			tool_calls: [
@@ -433,26 +433,130 @@ describe('TriageAgent', () => {
 			agent.run({ payload: createMockPayload(), userId: 'user-1' }),
 		);
 
-		// ask_assistant no longer exits the loop — the LLM is called again
-		// and responds with text, which becomes the final answer.
+		// ask_assistant sets handledResponse — the LLM's follow-up text is suppressed
 		expect(result.assistantSummary).toBe('Missing credentials error');
 		expect(result.buildExecuted).toBeFalsy();
 		expect(handler.execute).toHaveBeenCalledTimes(1);
 
-		// The last chunk is the LLM's text reply
-		const textChunk = chunks.find(
+		// Tool progress chunks (running + bundled completed+text) are still present
+		const runningChunk = chunks.find(
+			(c) =>
+				c.messages.length === 1 &&
+				c.messages[0].type === 'tool' &&
+				'status' in c.messages[0] &&
+				c.messages[0].status === 'running',
+		);
+		expect(runningChunk).toBeDefined();
+
+		const bundledChunk = chunks.find(
+			(c) =>
+				c.messages.length === 2 &&
+				c.messages[0].type === 'tool' &&
+				'status' in c.messages[0] &&
+				c.messages[0].status === 'completed',
+		);
+		expect(bundledChunk).toBeDefined();
+
+		// The LLM's redundant follow-up text is NOT yielded
+		const redundantTextChunk = chunks.find(
 			(c) =>
 				c.messages.length === 1 &&
 				c.messages[0].type === 'message' &&
 				'text' in c.messages[0] &&
 				c.messages[0].text === 'Based on the diagnosis, you need to re-authenticate.',
 		);
-		expect(textChunk).toBeDefined();
+		expect(redundantTextChunk).toBeUndefined();
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
 		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		expect(boundModel.invoke).toHaveBeenCalledTimes(2);
+	});
+
+	it('should emit transition text when LLM includes text alongside a tool call', async () => {
+		const firstResponse = new AIMessage({
+			content: 'Let me check that for you.',
+			tool_calls: [
+				{
+					id: 'tc-1',
+					name: 'ask_assistant',
+					args: { query: 'How does the HTTP node work?' },
+				},
+			],
+		});
+		const secondResponse = new AIMessage({ content: '' });
+
+		const llm = createMockLlm([firstResponse, secondResponse]);
+		const handler = createMockAssistantHandler();
+
+		const agent = new TriageAgent({
+			llm,
+			assistantHandler: handler,
+			buildWorkflow: createMockBuildWorkflow(),
+		});
+		const { chunks } = await collectGenerator(
+			agent.run({ payload: createMockPayload(), userId: 'user-1' }),
+		);
+
+		// Transition text IS yielded as an AgentMessageChunk
+		const transitionChunk = chunks.find(
+			(c) =>
+				c.messages.length === 1 &&
+				c.messages[0].type === 'message' &&
+				'text' in c.messages[0] &&
+				c.messages[0].text === 'Let me check that for you.',
+		);
+		expect(transitionChunk).toBeDefined();
+
+		// ask_assistant tool chunks are also yielded
+		const runningChunk = chunks.find(
+			(c) =>
+				c.messages.length === 1 &&
+				c.messages[0].type === 'tool' &&
+				'status' in c.messages[0] &&
+				c.messages[0].status === 'running',
+		);
+		expect(runningChunk).toBeDefined();
+	});
+
+	it('should yield LLM text after unknown tool (handledResponse not set)', async () => {
+		const firstResponse = new AIMessage({
+			content: '',
+			tool_calls: [
+				{
+					id: 'tc-1',
+					name: 'unknown_tool',
+					args: {},
+				},
+			],
+		});
+		const secondResponse = new AIMessage({
+			content: 'Sorry, let me help directly.',
+		});
+
+		const llm = createMockLlm([firstResponse, secondResponse]);
+		const handler = createMockAssistantHandler();
+		const mockLogger = { warn: jest.fn(), debug: jest.fn() };
+
+		const agent = new TriageAgent({
+			llm,
+			assistantHandler: handler,
+			buildWorkflow: createMockBuildWorkflow(),
+			logger: mockLogger as unknown as TriageAgent extends { logger?: infer L } ? L : never,
+		});
+		const { chunks } = await collectGenerator(
+			agent.run({ payload: createMockPayload(), userId: 'user-1' }),
+		);
+
+		// unknown_tool doesn't set handledResponse, so the LLM's text IS yielded
+		const textChunk = chunks.find(
+			(c) =>
+				c.messages.length === 1 &&
+				c.messages[0].type === 'message' &&
+				'text' in c.messages[0] &&
+				c.messages[0].text === 'Sorry, let me help directly.',
+		);
+		expect(textChunk).toBeDefined();
 	});
 
 	it('should return outcome with assistantSummary after ask_assistant followed by text', async () => {
@@ -671,6 +775,152 @@ describe('TriageAgent', () => {
 		await expect(
 			collectGenerator(agent.run({ payload: createMockPayload(), userId: 'user-1' })),
 		).rejects.toThrow('Assistant service unavailable');
+	});
+
+	it('should include selected nodes in system message when workflowContext has selectedNodes', async () => {
+		const response = new AIMessage({ content: 'Noted.' });
+		const llm = createMockLlm(response);
+		const handler = createMockAssistantHandler();
+
+		const agent = new TriageAgent({
+			llm,
+			assistantHandler: handler,
+			buildWorkflow: createMockBuildWorkflow(),
+		});
+		await collectGenerator(
+			agent.run({
+				payload: {
+					id: 'msg-1',
+					message: 'fix this',
+					workflowContext: {
+						selectedNodes: [
+							{
+								name: 'HTTP Request',
+								issues: {},
+								incomingConnections: [],
+								outgoingConnections: ['Slack'],
+							},
+						],
+						currentWorkflow: {
+							nodes: [
+								{
+									id: '1',
+									name: 'HTTP Request',
+									type: 'n8n-nodes-base.httpRequest',
+									typeVersion: 1,
+									position: [0, 0],
+									parameters: {},
+								},
+								{
+									id: '2',
+									name: 'Slack',
+									type: 'n8n-nodes-base.slack',
+									typeVersion: 1,
+									position: [200, 0],
+									parameters: {},
+								},
+							],
+							connections: {},
+						},
+					},
+				},
+				userId: 'user-1',
+			}),
+		);
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		const invokeArgs = (boundModel.invoke as jest.Mock).mock.calls[0][0];
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const systemMessage = invokeArgs[0];
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).toContain('<selected_nodes>');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).toContain('HTTP Request');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).toContain('<workflow_summary>');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).toContain('Slack');
+	});
+
+	it('should include workflow summary without selected nodes when only workflow is present', async () => {
+		const response = new AIMessage({ content: 'Noted.' });
+		const llm = createMockLlm(response);
+		const handler = createMockAssistantHandler();
+
+		const agent = new TriageAgent({
+			llm,
+			assistantHandler: handler,
+			buildWorkflow: createMockBuildWorkflow(),
+		});
+		await collectGenerator(
+			agent.run({
+				payload: {
+					id: 'msg-1',
+					message: 'add a node',
+					workflowContext: {
+						currentWorkflow: {
+							nodes: [
+								{
+									id: '1',
+									name: 'Webhook',
+									type: 'n8n-nodes-base.webhook',
+									typeVersion: 1,
+									position: [0, 0],
+									parameters: {},
+								},
+							],
+							connections: {},
+						},
+					},
+				},
+				userId: 'user-1',
+			}),
+		);
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		const invokeArgs = (boundModel.invoke as jest.Mock).mock.calls[0][0];
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const systemMessage = invokeArgs[0];
+
+		// No selected nodes data should appear (only the tag name reference in rules)
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).not.toContain('node(s) selected:');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).toContain('existing nodes:');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).toContain('Webhook');
+	});
+
+	it('should not include workflow context sections when no workflowContext is provided', async () => {
+		const response = new AIMessage({ content: 'Reply.' });
+		const llm = createMockLlm(response);
+		const handler = createMockAssistantHandler();
+
+		const agent = new TriageAgent({
+			llm,
+			assistantHandler: handler,
+			buildWorkflow: createMockBuildWorkflow(),
+		});
+		await collectGenerator(agent.run({ payload: createMockPayload(), userId: 'user-1' }));
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		const invokeArgs = (boundModel.invoke as jest.Mock).mock.calls[0][0];
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const systemMessage = invokeArgs[0];
+
+		// No node names or workflow summary content should appear
+		// (the rules section references <selected_nodes> as a tag name, but no actual node data)
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).not.toContain('existing nodes:');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		expect(systemMessage.content).not.toContain('node(s) selected:');
 	});
 
 	it('should run two-step diagnosis-then-fix: ask_assistant followed by build_workflow', async () => {
