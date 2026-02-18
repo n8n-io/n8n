@@ -155,12 +155,13 @@ export function useBuilderMessages() {
 			: -1;
 
 		if (existingIndex !== -1) {
-			// Update existing tool message - merge updates array
+			// Update existing tool message - merge updates array and update display title
 			const existing = messages[existingIndex] as ChatUI.ToolMessage;
 			const toolMessage: ChatUI.ToolMessage = {
 				...existing,
 				id: `${messageId}-${msg.toolCallId}`,
 				status: msg.status,
+				customDisplayTitle: msg.customDisplayTitle ?? existing.customDisplayTitle,
 				updates: [...(existing.updates || []), ...(msg.updates || [])],
 			};
 			messages[existingIndex] = toolMessage as ChatUI.AssistantMessage;

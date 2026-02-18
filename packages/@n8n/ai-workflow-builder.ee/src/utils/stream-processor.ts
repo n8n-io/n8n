@@ -66,6 +66,7 @@ const SKIPPED_NODES = [
 	'auto_compact_messages',
 	'builder_subgraph',
 	'discovery_subgraph',
+	'assistant_subgraph',
 ];
 
 /**
@@ -284,12 +285,20 @@ function processAgentNodeUpdate(nodeName: string, update: unknown): StreamOutput
 	return { messages: [messageChunk] };
 }
 
-/** Handle custom tool progress chunk */
-function processToolChunk(chunk: unknown): StreamOutput | null {
-	const typed = chunk as ToolProgressChunk;
-	if (typed?.type !== 'tool') return null;
+/** Handle custom event chunks (tool progress + assistant messages) */
+function processCustomChunk(chunk: unknown): StreamOutput | null {
+	if (!chunk || typeof chunk !== 'object') return null;
+	const typed = chunk as { type?: string };
 
-	return { messages: [typed] };
+	if (typed.type === 'tool') {
+		return { messages: [typed as ToolProgressChunk] };
+	}
+
+	if (typed.type === 'message' && 'role' in typed && 'text' in typed) {
+		return { messages: [typed as AgentMessageChunk] };
+	}
+
+	return null;
 }
 
 // ============================================================================
@@ -339,7 +348,7 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 	}
 
 	if (streamMode === 'custom') {
-		return processToolChunk(chunk);
+		return processCustomChunk(chunk);
 	}
 
 	return null;
