@@ -73,7 +73,7 @@ onBeforeUnmount(() => {
 		<N8nPopover
 			v-model:open="isPopoverVisible"
 			side="top"
-			width="240px"
+			width="auto"
 			:content-class="$style.popover"
 			:enable-scrolling="false"
 			@before-enter="onMouseEnter"
@@ -135,7 +135,6 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .popover {
-	min-width: 240px;
 	margin-bottom: calc(-1 * var(--spacing--2xs));
 	margin-left: calc(-1 * var(--spacing--5xs));
 }
