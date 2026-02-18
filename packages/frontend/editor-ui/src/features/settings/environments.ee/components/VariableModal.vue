@@ -40,7 +40,6 @@ const projectsStore = useProjectsStore();
 
 const modalBus = createEventBus();
 const loading = ref(false);
-const validateOnBlur = ref(false);
 const keyInputRef = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
 const keyValidationRules: Array<Rule | RuleGroup> = [
@@ -181,8 +180,6 @@ function closeModal() {
 }
 
 async function handleSubmit() {
-	validateOnBlur.value = true;
-
 	if (!isValid.value) {
 		return;
 	}
@@ -251,7 +248,7 @@ onMounted(async () => {
 					data-test-id="variable-modal-key-input"
 					:placeholder="i18n.baseText('variables.editing.key.placeholder')"
 					required
-					:validate-on-blur="validateOnBlur"
+					:validate-on-blur="true"
 					:validation-rules="keyValidationRules"
 					@validate="(value: boolean) => (formValidation.key = value)"
 				/>
@@ -281,7 +278,7 @@ onMounted(async () => {
 					type="textarea"
 					:autosize="{ minRows: 3, maxRows: 6 }"
 					:maxlength="VALUE_MAX_LENGTH"
-					:validate-on-blur="validateOnBlur"
+					:validate-on-blur="true"
 					:validation-rules="valueValidationRules"
 					@validate="(value: boolean) => (formValidation.value = value)"
 				/>
