@@ -157,7 +157,7 @@ jobs:
               }
             }
           claude_args: |
-            --mcp-config /tmp/mcp-config.json
+            --model ${{ inputs.model }} --mcp-config /tmp/mcp-config.json
 
       - name: Extract PR title
         run: |
