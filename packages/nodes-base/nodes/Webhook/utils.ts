@@ -2,13 +2,14 @@ import basicAuth from 'basic-auth';
 import { rm } from 'fs/promises';
 import jwt from 'jsonwebtoken';
 import { WorkflowConfigurationError } from 'n8n-workflow';
-import type {
-	IWebhookFunctions,
-	INodeExecutionData,
-	IDataObject,
-	ICredentialDataDecryptedObject,
-	MultiPartFormData,
-	INode,
+import {
+	REDACTED,
+	type IWebhookFunctions,
+	type INodeExecutionData,
+	type IDataObject,
+	type ICredentialDataDecryptedObject,
+	type MultiPartFormData,
+	type INode,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { createHmac, timingSafeEqual } from 'node:crypto';
@@ -358,6 +359,7 @@ export async function validateWebhookAuthentication(
 export async function handleFormData(
 	context: IWebhookFunctions,
 	prepareOutput: (data: INodeExecutionData) => INodeExecutionData[][],
+	headers: Record<string, unknown>,
 ) {
 	const req = context.getRequestObject() as MultiPartFormData.Request;
 	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
@@ -366,7 +368,7 @@ export async function handleFormData(
 
 	const returnItem: INodeExecutionData = {
 		json: {
-			headers: req.headers,
+			headers,
 			params: req.params,
 			query: req.query,
 			body: data,
@@ -451,4 +453,47 @@ export function generateBasicAuthToken(
 		.digest('hex');
 
 	return token;
+}
+
+export async function getAuthHeadersToRedact(
+	ctx: IWebhookFunctions,
+	authPropertyName: string,
+): Promise<Set<string>> {
+	const authentication = ctx.getNodeParameter(authPropertyName) as string;
+
+	switch (authentication) {
+		case 'basicAuth':
+			return new Set(['authorization', 'x-auth-token']);
+		case 'bearerAuth':
+			return new Set(['authorization']);
+		case 'jwtAuth':
+			return new Set(['authorization']);
+		case 'headerAuth': {
+			let credentials: ICredentialDataDecryptedObject | undefined;
+			try {
+				credentials = await ctx.getCredentials<ICredentialDataDecryptedObject>('httpHeaderAuth');
+			} catch {}
+			if (credentials?.name) {
+				return new Set([(credentials.name as string).toLowerCase()]);
+			}
+			return new Set();
+		}
+		default:
+			return new Set();
+	}
+}
+
+export function redactHeaders(
+	headers: Record<string, unknown>,
+	headersToRedact: Set<string>,
+): Record<string, unknown> {
+	if (headersToRedact.size === 0) return headers;
+
+	const redacted = { ...headers };
+	for (const headerName of Object.keys(redacted)) {
+		if (headersToRedact.has(headerName.toLowerCase())) {
+			redacted[headerName] = REDACTED;
+		}
+	}
+	return redacted;
 }

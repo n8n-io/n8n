@@ -32,8 +32,10 @@ import { WebhookAuthorizationError } from './error';
 import {
 	checkResponseModeConfiguration,
 	configuredOutputs,
+	getAuthHeadersToRedact,
 	handleFormData,
 	isIpAllowed,
+	redactHeaders,
 	setupOutputConnection,
 	validateWebhookAuthentication,
 } from './utils';
@@ -246,21 +248,24 @@ export class Webhook extends Node {
 			throw error;
 		}
 
+		const headersToRedact = await getAuthHeadersToRedact(context, this.authPropertyName);
+		const safeHeaders = redactHeaders(req.headers, headersToRedact);
+
 		const prepareOutput = setupOutputConnection(context, requestMethod, {
 			jwtPayload: validationData,
 		});
 
 		if (options.binaryData) {
-			return await this.handleBinaryData(context, prepareOutput);
+			return await this.handleBinaryData(context, prepareOutput, safeHeaders);
 		}
 
 		if (req.contentType === 'multipart/form-data') {
-			return await handleFormData(context, prepareOutput);
+			return await handleFormData(context, prepareOutput, safeHeaders);
 		}
 
 		if (nodeVersion > 1 && !req.body && !options.rawBody) {
 			try {
-				return await this.handleBinaryData(context, prepareOutput);
+				return await this.handleBinaryData(context, prepareOutput, safeHeaders);
 			} catch (error) {}
 		}
 
@@ -270,7 +275,7 @@ export class Webhook extends Node {
 
 		const response: INodeExecutionData = {
 			json: {
-				headers: req.headers,
+				headers: safeHeaders,
 				params: req.params,
 				query: req.query,
 				body: req.body,
@@ -318,6 +323,7 @@ export class Webhook extends Node {
 	private async handleBinaryData(
 		context: IWebhookFunctions,
 		prepareOutput: (data: INodeExecutionData) => INodeExecutionData[][],
+		headers: Record<string, unknown>,
 	): Promise<IWebhookResponseData> {
 		const req = context.getRequestObject();
 		const options = context.getNodeParameter('options', {}) as IDataObject;
@@ -330,7 +336,7 @@ export class Webhook extends Node {
 
 			const returnItem: INodeExecutionData = {
 				json: {
-					headers: req.headers,
+					headers,
 					params: req.params,
 					query: req.query,
 					body: {},
