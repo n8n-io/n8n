@@ -1115,13 +1115,12 @@ export function getNodeInputs(
 
 	// Calculate the outputs dynamically
 	try {
-		const result = workflow.expression.getSimpleParameterValue(
+		return (workflow.expression.getSimpleParameterValue(
 			node,
 			nodeTypeData.inputs,
 			'internal',
 			{},
-		);
-		return (result || []) as NodeConnectionType[];
+		) || []) as NodeConnectionType[];
 	} catch (e) {
 		console.warn('Could not calculate inputs dynamically for node: ', node.name);
 		return [];

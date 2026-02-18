@@ -15,10 +15,7 @@ import {
 import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFields';
 
 /**
- * Dynamic input configuration generation based on node parameters.
- * This function is stringified via .toString() and embedded in n8n expression strings.
- * Coverage instrumentation must be disabled because the injected coverage counters
- * don't exist in the expression evaluation sandbox and cause TypeError at runtime.
+ * Dynamic input configuration generation based on node parameters
  */
 /* istanbul ignore next */
 export function getInputs(parameters: IDataObject) {

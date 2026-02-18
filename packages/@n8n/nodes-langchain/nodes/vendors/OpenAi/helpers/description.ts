@@ -34,9 +34,6 @@ export const prettifyOperation = (resource: string, operation: string) => {
 	return `${capitalize(operation)} ${capitalize(resource)}`;
 };
 
-// This function is stringified via .toString() and embedded in n8n expression strings.
-// Coverage instrumentation must be disabled because the injected coverage counters
-// don't exist in the expression evaluation sandbox and cause TypeError at runtime.
 /* istanbul ignore next */
 export const configureNodeInputs = (
 	resource: string,

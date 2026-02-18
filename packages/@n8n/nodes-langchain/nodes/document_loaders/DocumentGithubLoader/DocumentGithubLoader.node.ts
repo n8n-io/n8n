@@ -13,9 +13,6 @@ import {
 	type INodeInputConfiguration,
 } from 'n8n-workflow';
 
-// This function is stringified via .toString() and embedded in n8n expression strings.
-// Coverage instrumentation must be disabled because the injected coverage counters
-// don't exist in the expression evaluation sandbox and cause TypeError at runtime.
 /* istanbul ignore next */
 function getInputs(parameters: IDataObject) {
 	const inputs: INodeInputConfiguration[] = [];

@@ -33,9 +33,6 @@ import { toolsAgentExecute } from '../agents/ToolsAgent/V1/execute';
 
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
-// This function is stringified via .toString() and embedded in n8n expression strings.
-// Coverage instrumentation must be disabled because the injected coverage counters
-// don't exist in the expression evaluation sandbox and cause TypeError at runtime.
 /* istanbul ignore next */
 function getInputs(
 	agent:
