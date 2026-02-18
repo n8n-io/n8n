@@ -41,7 +41,7 @@ export const ngrok: Service<NgrokResult> = {
 		};
 	},
 
-	async start(network, projectName, config?: unknown): Promise<NgrokResult> {
+	async start(network, projectName, config?: unknown, ctx?: StartContext): Promise<NgrokResult> {
 		const { tunnelTarget, proxyHops } = config as { tunnelTarget: string; proxyHops: number };
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
 
@@ -54,7 +54,7 @@ export const ngrok: Service<NgrokResult> = {
 		}
 
 		try {
-			const container = await new GenericContainer(TEST_CONTAINER_IMAGES.ngrok)
+			let builder = new GenericContainer(TEST_CONTAINER_IMAGES.ngrok)
 				.withNetwork(network)
 				.withNetworkAliases('ngrok')
 				.withName(`${projectName}-ngrok`)
@@ -69,8 +69,16 @@ export const ngrok: Service<NgrokResult> = {
 					'com.docker.compose.service': 'ngrok',
 				})
 				.withReuse()
-				.withLogConsumer(consumer)
-				.start();
+				.withLogConsumer(consumer);
+
+			// On Linux, host.docker.internal is not available without explicit mapping
+			if (ctx?.external) {
+				builder = builder.withExtraHosts([
+					{ host: 'host.docker.internal', ipAddress: 'host-gateway' },
+				]);
+			}
+
+			const container = await builder.start();
 
 			const hostPort = container.getMappedPort(API_PORT);
 			const host = container.getHost();

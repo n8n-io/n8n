@@ -41,12 +41,17 @@ export const cloudflared: Service<CloudflaredResult> = {
 		};
 	},
 
-	async start(network, projectName, config?: unknown): Promise<CloudflaredResult> {
+	async start(
+		network,
+		projectName,
+		config?: unknown,
+		ctx?: StartContext,
+	): Promise<CloudflaredResult> {
 		const { tunnelTarget, proxyHops } = config as { tunnelTarget: string; proxyHops: number };
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 		try {
-			const container = await new GenericContainer(TEST_CONTAINER_IMAGES.cloudflared)
+			let builder = new GenericContainer(TEST_CONTAINER_IMAGES.cloudflared)
 				.withNetwork(network)
 				.withNetworkAliases('cloudflared')
 				.withName(`${projectName}-cloudflared`)
@@ -65,8 +70,16 @@ export const cloudflared: Service<CloudflaredResult> = {
 					'com.docker.compose.service': 'cloudflared',
 				})
 				.withReuse()
-				.withLogConsumer(consumer)
-				.start();
+				.withLogConsumer(consumer);
+
+			// On Linux, host.docker.internal is not available without explicit mapping
+			if (ctx?.external) {
+				builder = builder.withExtraHosts([
+					{ host: 'host.docker.internal', ipAddress: 'host-gateway' },
+				]);
+			}
+
+			const container = await builder.start();
 
 			const hostPort = container.getMappedPort(METRICS_PORT);
 			const response = await fetch(`http://${container.getHost()}:${hostPort}/quicktunnel`);
