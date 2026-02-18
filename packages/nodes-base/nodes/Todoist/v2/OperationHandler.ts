@@ -315,7 +315,11 @@ export class GetAllHandler implements OperationHandler {
 			assertParamIsNumber('limit', limit, ctx.getNode());
 		}
 
-		const data = await todoistApiGetAllRequest(ctx, '/tasks', qs, limit);
+		// Use the /tasks/filter endpoint when a filter is provided
+		// https://developer.todoist.com/api/v1/#tag/Tasks/operation/get_tasks_by_filter_api_v1_tasks_filter_get
+		const endpoint = filters.filter ? '/tasks/filter' : '/tasks';
+
+		const data = await todoistApiGetAllRequest(ctx, endpoint, qs, limit);
 
 		return { data };
 	}
