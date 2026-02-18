@@ -1,10 +1,8 @@
 // Main exports
 export { ExpressionEvaluator } from './evaluator/expression-evaluator';
-export { NodeVmBridge } from './bridge/node-vm-bridge';
 
-// Proxy exports
-export { createWorkflowDataProxy, createProxyCallbacks, createDeepLazyProxy } from './proxy';
-export type { ProxyCallbacks, ProxyOptions, ValueMetadata } from './proxy';
+// Bridge exports
+export { IsolatedVmBridge } from './bridge/isolated-vm-bridge';
 
 // Types
 export type {

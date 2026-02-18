@@ -211,8 +211,8 @@ export class Expression {
 
 		if (!this.vmEvaluator) {
 			// Dynamic import to avoid loading expression-runtime in browser environments
-			const { ExpressionEvaluator, NodeVmBridge } = await import('@n8n/expression-runtime');
-			const bridge = new NodeVmBridge({ timeout: 5000 });
+			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
+			const bridge = new IsolatedVmBridge({ timeout: 5000 });
 			this.vmEvaluator = new ExpressionEvaluator({ bridge });
 			await this.vmEvaluator.initialize();
 		}

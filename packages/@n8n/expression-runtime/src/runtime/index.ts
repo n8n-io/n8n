@@ -241,7 +241,24 @@ function createDeepLazyProxy(basePath: string[] = []): any {
 									arguments: { copy: true },
 									result: { copy: true },
 								});
-								arrTarget[arrProp] = element;
+								// Handle element metadata (arrays and objects need proxies)
+								if (element && typeof element === 'object' && element.__isArray) {
+									// Small array with data
+									if (element.__data) {
+										arrTarget[arrProp] = element.__data;
+									} else {
+										// Large array: create nested array proxy
+										const elementPath = [...path, String(index)];
+										arrTarget[arrProp] = createDeepLazyProxy(elementPath);
+									}
+								} else if (element && typeof element === 'object' && element.__isObject) {
+									// Object metadata: create nested proxy
+									const elementPath = [...path, String(index)];
+									arrTarget[arrProp] = createDeepLazyProxy(elementPath);
+								} else {
+									// Primitive element
+									arrTarget[arrProp] = element;
+								}
 							}
 							return arrTarget[arrProp];
 						}

@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
-import { NodeVmBridge } from '../bridge/node-vm-bridge';
+import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
 
-describe('Integration: ExpressionEvaluator + NodeVmBridge', () => {
+describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 	let evaluator: ExpressionEvaluator;
 
 	beforeAll(async () => {
-		const bridge = new NodeVmBridge({ timeout: 5000 });
+		const bridge = new IsolatedVmBridge({ timeout: 5000 });
 		evaluator = new ExpressionEvaluator({ bridge });
 		await evaluator.initialize();
 	});
@@ -92,5 +92,31 @@ describe('Integration: ExpressionEvaluator + NodeVmBridge', () => {
 		);
 
 		expect(result).toBe('January 15, 2024');
+	});
+
+	it('should invoke functions from workflow data', async () => {
+		const data = {
+			$items: function () {
+				return 'items-result';
+			},
+		};
+
+		const result = evaluator.evaluate('$items()', data);
+
+		expect(result).toBe('items-result');
+	});
+
+	it('should handle large arrays with lazy loading', async () => {
+		const data = {
+			$json: {
+				// Create array with 200 items (> 100 threshold)
+				items: Array.from({ length: 200 }, (_, i) => ({ id: i })),
+			},
+		};
+
+		// Access element beyond small array threshold
+		const result = evaluator.evaluate('$json.items[150].id', data);
+
+		expect(result).toBe(150);
 	});
 });

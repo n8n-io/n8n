@@ -10,10 +10,9 @@
  *
  * A bridge manages communication between the host process and the isolated context.
  * Different bridge implementations support different isolation mechanisms:
- * - IsolatedVmBridge: Uses isolated-vm for Node.js backend (Phase 1.1)
+ * - IsolatedVmBridge: Uses isolated-vm for Node.js backend (secure isolation with memory limits)
  * - WebWorkerBridge: Uses Web Workers for browser frontend (Phase 2+)
  * - Task Runner: TBD - May use IsolatedVmBridge locally or direct evaluation (Phase 2+)
- * - NodeVmBridge: Uses Node.js vm module for testing (Phase 1.1)
  */
 export interface RuntimeBridge {
 	/**
@@ -44,7 +43,6 @@ export interface RuntimeBridge {
 	 * IMPORTANT: This must be SYNCHRONOUS for lazy-loading proxies to work.
 	 * - IsolatedVmBridge: Uses ivm.Reference for synchronous callbacks
 	 * - WebWorkerBridge: Must pre-fetch data (no lazy loading in Phase 1)
-	 * - NodeVmBridge: Direct synchronous call
 	 *
 	 * @param path - Property path (e.g., "user.email")
 	 * @returns Value at the path, or undefined if not found.

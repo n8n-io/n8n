@@ -18,7 +18,6 @@ export interface RuntimeHostInterface {
 	 *
 	 * IMPORTANT: This is SYNCHRONOUS because JavaScript Proxy traps cannot be async.
 	 * - IsolatedVmBridge: Uses ivm.Reference for true sync callbacks
-	 * - NodeVmBridge: Direct synchronous call
 	 * - WebWorkerBridge: Not supported - must pre-fetch all data
 	 *
 	 * @param path - Property path to fetch (e.g., "user.email", "items[0].json")
