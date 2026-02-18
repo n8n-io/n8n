@@ -179,6 +179,9 @@ export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 		microsoftAzureMonitorOAuth2Api: {
 			tokenExpiredStatusCode: 403,
 		},
+		microsoftTeamsOAuth2Api: {
+			tokenExpiredStatusCode: 403,
+		},
 		microsoftDynamicsOAuth2Api: {
 			property: 'id_token',
 		},
