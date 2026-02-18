@@ -300,8 +300,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		if (flags.tunnel) {
-			this.log(
-				'\nThe --tunnel option is no longer available. The tunnel service (hooks.n8n.cloud) has been shut down.\nFor local development with webhooks, consider using a third-party tunneling service such as ngrok or Cloudflare Tunnel.',
+			this.logger.error(
+				'The --tunnel option is no longer available. The tunnel service (hooks.n8n.cloud) has been shut down. For local development with webhooks, consider using a third-party tunneling service such as ngrok or Cloudflare Tunnel.',
 			);
 			process.exit(1);
 		}
