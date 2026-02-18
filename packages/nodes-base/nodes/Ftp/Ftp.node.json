@@ -15,7 +15,7 @@
 			}
 		]
 	},
-	"alias": ["SFTP", "FTP", "Binary", "File", "Transfer"],
+	"alias": ["SFTP", "FTP", "Binary", "File", "Transfer", "Move", "Rename"],
 	"subcategories": {
 		"Core Nodes": ["Files", "Helpers"]
 	}
