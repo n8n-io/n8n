@@ -109,18 +109,30 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 
 			// Listen for OAuth callback via BroadcastChannel
 			const oauthChannel = new BroadcastChannel('oauth-callback');
-			const receiveMessage = async (event: MessageEvent) => {
-				if (event.data === 'success') {
-					oauthChannel.removeEventListener('message', receiveMessage);
-					oauthChannel.close();
-					if (oauthPopup) {
-						oauthPopup.close();
-					}
-					await fetchStatus();
-				}
+			let settled = false;
+
+			const settle = async () => {
+				if (settled) return;
+				settled = true;
+				oauthChannel.close();
+				clearInterval(pollInterval);
+				await fetchStatus();
 				cred.isConnecting = false;
 			};
-			oauthChannel.addEventListener('message', receiveMessage);
+
+			oauthChannel.addEventListener('message', async (event: MessageEvent) => {
+				if (event.data === 'success') {
+					if (oauthPopup) oauthPopup.close();
+					await settle();
+				}
+			});
+
+			// Fallback: poll for popup closed (handles cross-origin dev env)
+			const pollInterval = setInterval(() => {
+				if (oauthPopup?.closed) {
+					void settle();
+				}
+			}, 500);
 		} catch {
 			cred.error = 'Failed to start authorization';
 			cred.isConnecting = false;
