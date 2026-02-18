@@ -28,6 +28,7 @@ import {
 	updateToolApi,
 	deleteToolApi,
 	fetchChatMemoryUsageApi,
+	clearChatMemoryApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -325,6 +326,12 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			memoryUsageLoading.value = false;
 		}
 		return memoryUsage.value;
+	}
+
+	async function clearMemory(olderThanHours?: number) {
+		const result = await clearChatMemoryApi(rootStore.restApiContext, olderThanHours);
+		await fetchMemoryUsage();
+		return result;
 	}
 
 	async function addConfiguredTool(tool: INode): Promise<ChatHubToolDto> {
@@ -1296,6 +1303,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		memoryUsage,
 		memoryUsageLoading,
 		fetchMemoryUsage,
+		clearMemory,
 
 		/**
 		 * conversations

@@ -91,6 +91,20 @@ async function onRefreshWorkflows() {
 	await fetchSettings();
 }
 
+async function onClearMemory(olderThanHours: number | undefined) {
+	try {
+		const result = await chatStore.clearMemory(olderThanHours);
+		toast.showMessage({
+			title: i18n.baseText('settings.chatHub.memoryUsage.cleared', {
+				interpolate: { count: String(result.deletedEntries) },
+			}),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.chatHub.memoryUsage.clearError'));
+	}
+}
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.chatHub'));
 	if (!settingsStore.isChatFeatureEnabled) {
@@ -113,6 +127,8 @@ onMounted(async () => {
 			:usage="chatStore.memoryUsage"
 			:max-size-bytes="chatMemoryMaxSize"
 			:loading="chatStore.memoryUsageLoading"
+			:disabled="disabled"
+			@clear="onClearMemory"
 		/>
 		<div :class="$style.container">
 			<ChatProvidersTable

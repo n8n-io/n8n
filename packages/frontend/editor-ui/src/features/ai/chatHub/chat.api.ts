@@ -22,6 +22,7 @@ import type {
 	ChatHubUpdateToolRequest,
 	ChatHubToolDto,
 	ChatMemorySizeResult,
+	ChatMemoryClearResult,
 } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 
@@ -323,5 +324,17 @@ export const deleteToolApi = async (context: IRestApiContext, toolId: string): P
 export const fetchChatMemoryUsageApi = async (
 	context: IRestApiContext,
 ): Promise<ChatMemorySizeResult> => {
-	return await makeRestApiRequest<ChatMemorySizeResult>(context, 'GET', '/chat/memory-usage');
+	return await makeRestApiRequest<ChatMemorySizeResult>(context, 'GET', '/chat/memory/storage');
+};
+
+export const clearChatMemoryApi = async (
+	context: IRestApiContext,
+	olderThanHours?: number,
+): Promise<ChatMemoryClearResult> => {
+	const params = olderThanHours !== undefined ? `?olderThanHours=${olderThanHours}` : '';
+	return await makeRestApiRequest<ChatMemoryClearResult>(
+		context,
+		'DELETE',
+		`/chat/memory${params}`,
+	);
 };

@@ -1,16 +1,35 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nHeading, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nHeading,
+	N8nIcon,
+	N8nIconButton,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import type { ChatMemorySizeResult } from '@n8n/api-types';
+import type { BaseTextKey } from '@n8n/i18n';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM } from '@/app/constants';
+
+type ClearAction = 'all' | '1' | '24' | '168' | '720' | '2160';
 
 const props = defineProps<{
 	usage: ChatMemorySizeResult | null;
 	maxSizeBytes: number;
 	loading: boolean;
+	disabled: boolean;
+}>();
+
+const emit = defineEmits<{
+	clear: [olderThanHours: number | undefined];
 }>();
 
 const i18n = useI18n();
+const message = useMessage();
 
 const usedMB = computed(() => Math.round((props.usage?.totalBytes ?? 0) / (1024 * 1024)));
 const maxMB = computed(() => Math.round(props.maxSizeBytes / (1024 * 1024)));
@@ -30,6 +49,55 @@ const barColorVar = computed(() => {
 			return 'var(--color--success)';
 	}
 });
+
+const clearActionLabels: Record<Exclude<ClearAction, 'all'>, BaseTextKey> = {
+	'1': 'settings.chatHub.memoryUsage.olderThan.1h',
+	'24': 'settings.chatHub.memoryUsage.olderThan.1d',
+	'168': 'settings.chatHub.memoryUsage.olderThan.7d',
+	'720': 'settings.chatHub.memoryUsage.olderThan.30d',
+	'2160': 'settings.chatHub.memoryUsage.olderThan.90d',
+};
+
+const dropdownItems = computed<Array<ActionDropdownItem<ClearAction>>>(() => [
+	{ id: 'all', label: i18n.baseText('settings.chatHub.memoryUsage.clearAll') },
+	{ id: '1', label: i18n.baseText('settings.chatHub.memoryUsage.olderThan.1h'), divided: true },
+	{ id: '24', label: i18n.baseText('settings.chatHub.memoryUsage.olderThan.1d') },
+	{ id: '168', label: i18n.baseText('settings.chatHub.memoryUsage.olderThan.7d') },
+	{ id: '720', label: i18n.baseText('settings.chatHub.memoryUsage.olderThan.30d') },
+	{ id: '2160', label: i18n.baseText('settings.chatHub.memoryUsage.olderThan.90d') },
+]);
+
+async function handleClearAction(action: ClearAction) {
+	let confirmed: string;
+
+	if (action === 'all') {
+		confirmed = await message.confirm(
+			i18n.baseText('settings.chatHub.memoryUsage.confirmClearAll.message'),
+			i18n.baseText('settings.chatHub.memoryUsage.confirmClearAll.title'),
+			{
+				confirmButtonText: i18n.baseText('settings.chatHub.memoryUsage.confirmClearAll.confirm'),
+				cancelButtonText: i18n.baseText('generic.cancel'),
+			},
+		);
+	} else {
+		const label = i18n.baseText(clearActionLabels[action]).toLowerCase();
+		confirmed = await message.confirm(
+			i18n.baseText('settings.chatHub.memoryUsage.confirmOlderThan.message', {
+				interpolate: { label },
+			}),
+			i18n.baseText('settings.chatHub.memoryUsage.confirmOlderThan.title'),
+			{
+				confirmButtonText: i18n.baseText('settings.chatHub.memoryUsage.confirmOlderThan.confirm'),
+				cancelButtonText: i18n.baseText('generic.cancel'),
+			},
+		);
+	}
+
+	if (confirmed !== MODAL_CONFIRM) return;
+
+	const olderThanHours = action === 'all' ? undefined : Number(action);
+	emit('clear', olderThanHours);
+}
 </script>
 
 <template>
@@ -44,6 +112,23 @@ const barColorVar = computed(() => {
 				</template>
 				<N8nIcon icon="info-circle" :class="$style.infoIcon" size="small" />
 			</N8nTooltip>
+			<div :class="$style.spacer" />
+			<N8nActionDropdown
+				v-if="!disabled && usage"
+				:items="dropdownItems"
+				placement="bottom-end"
+				data-testid="chat-memory-clear-dropdown"
+				@select="handleClearAction"
+			>
+				<template #activator>
+					<N8nIconButton
+						variant="ghost"
+						icon="ellipsis-vertical"
+						size="small"
+						:title="i18n.baseText('settings.chatHub.memoryUsage.clearAll')"
+					/>
+				</template>
+			</N8nActionDropdown>
 		</div>
 		<div v-if="!loading && usage" :class="$style.barContainer">
 			<div :class="$style.barTrack">
@@ -78,6 +163,10 @@ const barColorVar = computed(() => {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	margin-bottom: var(--spacing--4xs);
+}
+
+.spacer {
+	flex: 1;
 }
 
 .infoIcon {

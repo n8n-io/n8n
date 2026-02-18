@@ -100,6 +100,26 @@ export class ChatMemoryRepository extends Repository<ChatMemory> {
 	}
 
 	/**
+	 * Delete all memory entries.
+	 * @returns The number of deleted entries
+	 */
+	async deleteAll(trx?: EntityManager): Promise<number> {
+		const em = trx ?? this.manager;
+		const result = await em.delete(ChatMemory, {});
+		return result.affected ?? 0;
+	}
+
+	/**
+	 * Delete all memory entries older than the given cutoff date.
+	 * @returns The number of deleted entries
+	 */
+	async deleteOlderThan(cutoffDate: Date, trx?: EntityManager): Promise<number> {
+		const em = trx ?? this.manager;
+		const result = await em.delete(ChatMemory, { createdAt: LessThan(cutoffDate) });
+		return result.affected ?? 0;
+	}
+
+	/**
 	 * Get the total size in bytes of the chat_memory table.
 	 */
 	async findChatMemorySize(): Promise<{ totalBytes: number }> {
