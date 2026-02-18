@@ -22,6 +22,25 @@ pnpm test
 pnpm dev
 ```
 
+
+## Running Examples
+
+The package includes example nodes demonstrating both simple and advanced patterns:
+
+```bash
+# Build examples
+pnpm build:examples
+
+# Add to your .env file
+N8N_CUSTOM_EXTENSIONS="<PATH_TO_N8N>/packages/@n8n/ai-utilities/dist_examples/examples/nodes"
+
+# Start n8n
+pnpm start
+```
+
+You can then add "OpenAI Simple" or "OpenAI Custom" nodes to your workflows.
+
+
 ## Usage
 
-For public SDK documentation and examples on building AI nodes, see `@n8n/ai-node-sdk`.
+For public SDK documentation see `@n8n/ai-node-sdk`.

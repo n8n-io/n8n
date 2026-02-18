@@ -28,23 +28,6 @@ pnpm test
 pnpm dev
 ```
 
-## Running Examples
-
-The package includes example nodes demonstrating both simple and advanced patterns:
-
-```bash
-# Build examples
-pnpm build:examples
-
-# Add to your .env file
-N8N_CUSTOM_EXTENSIONS="<PATH_TO_N8N>/packages/@n8n/ai-node-sdk/dist_examples/examples/nodes"
-
-# Start n8n
-pnpm start
-```
-
-You can then add "OpenAI Simple" or "OpenAI Custom" nodes to your workflows.
-
 ## Chat Model Nodes
 
 Chat model nodes implement the `INodeType` interface and use `supplyModel` to provide model instances.
@@ -97,7 +80,7 @@ export class LmChatMyProvider implements INodeType {
     const credentials = await this.getCredentials('myProviderApi');
     const model = this.getNodeParameter('model', itemIndex) as string;
     const temperature = this.getNodeParameter('temperature', itemIndex) as number;
-    
+
     // Return config for OpenAI-compatible providers
     return supplyModel(this, {
       type: 'openai',
@@ -115,7 +98,7 @@ export class LmChatMyProvider implements INodeType {
 For providers with custom APIs, extend `BaseChatModel` and pass an instance to `supplyModel`:
 
 ```typescript
-import { 
+import {
   BaseChatModel,
   supplyModel,
   type Message,
@@ -219,7 +202,7 @@ export class LmChatMyProvider implements INodeType {
   async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
     const model = this.getNodeParameter('model', itemIndex) as string;
     const temperature = this.getNodeParameter('temperature', itemIndex) as number;
-    
+
     const chatModel = new MyProviderChatModel(
       model,
       {
@@ -357,9 +340,9 @@ export class MemoryMyDb implements INodeType {
       credentials.apiKey as string,
       this.helpers.httpRequest,
     );
-    
+
     const memory = new WindowedChatMemory(history, { windowSize });
-    
+
     return supplyMemory(this, memory);
   }
 }
