@@ -69,7 +69,7 @@ describe('AgentTool V3 Integration', () => {
 		additionalPackagePaths: [path.dirname(require.resolve('n8n-nodes-base'))],
 	});
 
-	describe('Phase 15: Agent as Tool', () => {
+	describe('Agent as Tool', () => {
 		const testData: WorkflowTestData = {
 			description: 'should execute sub-agent tool and return parent final answer',
 			input: {

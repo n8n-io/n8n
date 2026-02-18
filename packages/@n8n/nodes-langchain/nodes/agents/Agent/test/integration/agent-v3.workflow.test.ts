@@ -69,7 +69,7 @@ describe('Agent V3 Integration', () => {
 		additionalPackagePaths: [path.dirname(require.resolve('n8n-nodes-base'))],
 	});
 
-	describe('Phase 1: Basic Completion', () => {
+	describe('Basic Completion', () => {
 		const testData: WorkflowTestData = {
 			description: 'should return basic completion from Agent V3',
 			input: {
@@ -104,7 +104,7 @@ describe('Agent V3 Integration', () => {
 		testHarness.setupTest(testData, { credentials });
 	});
 
-	describe('Phase 2: Tool Calling Flow', () => {
+	describe('Tool Calling Flow', () => {
 		const testData: WorkflowTestData = {
 			description: 'should execute tool call and return final answer',
 			input: {
@@ -151,7 +151,7 @@ describe('Agent V3 Integration', () => {
 		testHarness.setupTest(testData, { credentials });
 	});
 
-	describe('Phase 4: Custom System Message', () => {
+	describe('Custom System Message', () => {
 		const testData: WorkflowTestData = {
 			description: 'should pass system message to model',
 			input: {
@@ -186,7 +186,7 @@ describe('Agent V3 Integration', () => {
 		testHarness.setupTest(testData, { credentials });
 	});
 
-	describe('Phase 5: Auto Prompt Type', () => {
+	describe('Auto Prompt Type', () => {
 		const testData: WorkflowTestData = {
 			description: 'should read prompt from chatInput field when promptType is auto',
 			input: {
@@ -225,7 +225,7 @@ describe('Agent V3 Integration', () => {
 		testHarness.setupTest(testData, { credentials });
 	});
 
-	describe('Phase 6: Fallback Model', () => {
+	describe('Fallback Model', () => {
 		const testData: WorkflowTestData = {
 			description: 'should use fallback model when primary fails',
 			input: {
@@ -272,7 +272,7 @@ describe('Agent V3 Integration', () => {
 		testHarness.setupTest(testData, { credentials });
 	});
 
-	describe('Phase 7: Output Parser', () => {
+	describe('Output Parser', () => {
 		const testData: WorkflowTestData = {
 			description: 'should parse structured output via format_final_json_response tool',
 			input: {
@@ -321,7 +321,7 @@ describe('Agent V3 Integration', () => {
 		testHarness.setupTest(testData, { credentials });
 	});
 
-	describe('Phase 9: Intermediate Steps', () => {
+	describe('Intermediate Steps', () => {
 		const testData: WorkflowTestData = {
 			description: 'should include intermediate steps when returnIntermediateSteps is enabled',
 			input: {
@@ -377,7 +377,7 @@ describe('Agent V3 Integration', () => {
 		testHarness.setupTest(testData, { credentials });
 	});
 
-	describe('Phase 10: Continue-on-Fail', () => {
+	describe('Continue-on-Fail', () => {
 		const testData: WorkflowTestData = {
 			description: 'should return error in output when continueOnFail is enabled',
 			input: {
@@ -418,7 +418,7 @@ describe('Agent V3 Integration', () => {
 		testHarness.setupTest(testData, { credentials });
 	});
 
-	describe('Phase 13: Memory Integration', () => {
+	describe('Memory Integration', () => {
 		const testData: WorkflowTestData = {
 			description: 'should complete successfully with buffer window memory connected',
 			input: {
@@ -453,7 +453,7 @@ describe('Agent V3 Integration', () => {
 		testHarness.setupTest(testData, { credentials });
 	});
 
-	describe('Phase 14: Binary Image Passthrough', () => {
+	describe('Binary Image Passthrough', () => {
 		const testData: WorkflowTestData = {
 			description: 'should complete successfully with binary image data in input',
 			input: {
