@@ -90,16 +90,14 @@ export class WorkflowExpression {
 			return typeof value === 'object';
 		};
 
-		// Early return for simple non-expression values (performance optimization + timezone correctness)
-		if (!isComplexParameter(parameterValue) && !isExpression(parameterValue)) {
-			return parameterValue;
-		}
-
-		// Handle arrays - recursively resolve each element
-		if (Array.isArray(parameterValue)) {
-			return parameterValue.map((item) =>
-				this.getParameterValue(
-					item as NodeParameterValueType,
+		// Helper function which resolves a parameter value depending on if it is simply or not
+		const resolveParameterValue = (
+			value: NodeParameterValueType,
+			siblingParameters: INodeParameters,
+		) => {
+			if (isComplexParameter(value)) {
+				return this.getParameterValue(
+					value,
 					runExecutionData,
 					runIndex,
 					itemIndex,
@@ -111,8 +109,52 @@ export class WorkflowExpression {
 					returnObjectAsString,
 					selfData,
 					contextNodeName,
-				),
-			) as NodeParameterValue[] | INodeParameters[];
+				);
+			}
+
+			return this.resolveSimpleParameterValue(
+				value as NodeParameterValue,
+				siblingParameters,
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				activeNodeName,
+				connectionInputData,
+				mode,
+				additionalKeys,
+				executeData,
+				returnObjectAsString,
+				selfData,
+				contextNodeName,
+			);
+		};
+
+		// Early return for simple non-expression values (performance optimization + timezone correctness)
+		if (!isComplexParameter(parameterValue)) {
+			return this.resolveSimpleParameterValue(
+				parameterValue as NodeParameterValue,
+				{},
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				activeNodeName,
+				connectionInputData,
+				mode,
+				additionalKeys,
+				executeData,
+				returnObjectAsString,
+				selfData,
+				contextNodeName,
+			);
+		}
+
+		// Handle arrays - recursively resolve each element
+		if (Array.isArray(parameterValue)) {
+			// Data is an array
+			const returnData = parameterValue.map((item) =>
+				resolveParameterValue(item as NodeParameterValueType, {}),
+			);
+			return returnData as NodeParameterValue[] | INodeParameters[];
 		}
 
 		// Handle null/undefined
@@ -120,78 +162,25 @@ export class WorkflowExpression {
 			return parameterValue;
 		}
 
-		// Handle non-array objects - recursively resolve each property
-		if (typeof parameterValue === 'object') {
-			const returnData: INodeParameters = {};
-			for (const [key, value] of Object.entries(parameterValue)) {
-				const typedValue = value as NodeParameterValueType;
-				if (typeof typedValue === 'object') {
-					// Complex value - recurse without siblings
-					returnData[key] = this.getParameterValue(
-						typedValue,
-						runExecutionData,
-						runIndex,
-						itemIndex,
-						activeNodeName,
-						connectionInputData,
-						mode,
-						additionalKeys,
-						executeData,
-						returnObjectAsString,
-						selfData,
-						contextNodeName,
-					);
-				} else {
-					// Simple value - pass parent object as siblingParameters so
-					// $parameter["&sibling"] expressions can resolve correctly
-					returnData[key] = this.resolveSimpleParameterValue(
-						typedValue as NodeParameterValue,
-						parameterValue as INodeParameters,
-						runExecutionData,
-						runIndex,
-						itemIndex,
-						activeNodeName,
-						connectionInputData,
-						mode,
-						additionalKeys,
-						executeData,
-						returnObjectAsString,
-						selfData,
-						contextNodeName,
-					);
-				}
-			}
-
-			if (returnObjectAsString && typeof returnData === 'object') {
-				return this.expression.convertObjectValueToString(returnData);
-			}
-
-			return returnData;
+		if (typeof parameterValue !== 'object') {
+			return {};
 		}
 
-		// Simple expression value - create WorkflowDataProxy and delegate to Expression
-		const dataProxy = new WorkflowDataProxy(
-			this.workflow,
-			runExecutionData,
-			runIndex,
-			itemIndex,
-			activeNodeName,
-			connectionInputData,
-			{},
-			mode,
-			additionalKeys,
-			executeData,
-			-1,
-			selfData,
-			contextNodeName,
-		);
-		const data = dataProxy.getDataProxy();
+		// Data is an object
+		const returnData: INodeParameters = {};
 
-		return this.expression.resolveSimpleParameterValue(
-			parameterValue as NodeParameterValue,
-			data,
-			returnObjectAsString,
-		);
+		for (const [key, value] of Object.entries(parameterValue)) {
+			returnData[key] = resolveParameterValue(
+				value as NodeParameterValueType,
+				parameterValue as INodeParameters,
+			);
+		}
+
+		if (returnObjectAsString && typeof returnData === 'object') {
+			return this.convertObjectValueToString(returnData);
+		}
+
+		return returnData;
 	}
 
 	/**
