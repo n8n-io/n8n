@@ -135,8 +135,27 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ github.token }}
           prompt: ${{ env.CLAUDE_PROMPT }}
+          settings: |
+            {
+              "permissions": {
+                "allow": [
+                  "Bash",
+                  "Read",
+                  "Write",
+                  "Edit",
+                  "Glob",
+                  "Grep",
+                  "WebFetch",
+                  "WebSearch",
+                  "TodoWrite",
+                  "mcp__linear__*",
+                  "mcp__notion__*",
+                  "mcp__playwright__*"
+                ]
+              }
+            }
           claude_args: |
-            --mcp-config /tmp/mcp-config.json --allowedTools Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,TodoWrite,mcp__linear__*,mcp__notion__*,mcp__playwright__*
+            --mcp-config /tmp/mcp-config.json
 
       - name: Extract PR title
         run: |
