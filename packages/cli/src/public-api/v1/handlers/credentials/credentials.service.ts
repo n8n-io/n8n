@@ -206,6 +206,7 @@ export async function updateCredential(
 				projectOwningCredential.project.id,
 				updateData.data,
 				Container.get(SecretsProviderAccessCheckService),
+				'update',
 			);
 		}
 

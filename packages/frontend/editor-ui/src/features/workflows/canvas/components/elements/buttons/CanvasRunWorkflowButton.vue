@@ -174,6 +174,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 .chevron {
 	width: 40px;
+	height: var(--spacing--2xl);
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
 }

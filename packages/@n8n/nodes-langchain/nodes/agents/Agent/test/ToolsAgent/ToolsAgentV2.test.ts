@@ -523,23 +523,40 @@ describe('toolsAgentExecute', () => {
 				return defaultValue;
 			});
 
+			// Simulate an AIMessage class instance (has toJSON and direct properties)
+			const fakeAIMessage = {
+				content: 'I need to call a tool',
+				tool_calls: [
+					{
+						id: 'call_123',
+						name: 'TestTool',
+						args: { input: 'test data' },
+						type: 'function',
+					},
+				],
+				additional_kwargs: {},
+				response_metadata: {},
+				id: 'msg_abc',
+				toJSON() {
+					return {
+						lc: 1,
+						type: 'constructor',
+						id: ['langchain_core', 'messages', 'AIMessage'],
+						kwargs: {
+							content: this.content,
+							tool_calls: this.tool_calls,
+						},
+					};
+				},
+			};
+
 			// Mock async generator for streamEvents with tool calls
 			const mockStreamEvents = async function* () {
-				// LLM response with tool call
+				// LLM response with tool call (using the fake AIMessage instance)
 				yield {
 					event: 'on_chat_model_end',
 					data: {
-						output: {
-							content: 'I need to call a tool',
-							tool_calls: [
-								{
-									id: 'call_123',
-									name: 'TestTool',
-									args: { input: 'test data' },
-									type: 'function',
-								},
-							],
-						},
+						output: fakeAIMessage,
 					},
 				};
 				// Tool execution result
@@ -584,6 +601,12 @@ describe('toolsAgentExecute', () => {
 			expect(step.action.type).toBe('function');
 			expect(step.action.messageLog).toBeDefined();
 			expect(step.observation).toBe('Tool execution result');
+
+			const messageLogEntry = step.action.messageLog[0];
+			expect(messageLogEntry.content).toBe('I need to call a tool');
+			expect(messageLogEntry.tool_calls).toEqual([
+				{ id: 'call_123', name: 'TestTool', args: { input: 'test data' }, type: 'function' },
+			]);
 		});
 
 		it('should use regular execution on version 2.2 when enableStreaming is false', async () => {

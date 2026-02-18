@@ -162,6 +162,7 @@ describe('Secret Providers Project API', () => {
 				expect(globalConnection1).toMatchObject({
 					name: 'global-connection1',
 					type: 'dummy',
+					state: 'initializing',
 					projects: [],
 				});
 			});
@@ -214,6 +215,7 @@ describe('Secret Providers Project API', () => {
 					expect(connection1).toMatchObject({
 						name: 'connection1',
 						type: 'dummy',
+						state: 'initializing',
 						projects: [{ id: teamProject1.id, name: teamProject1.name }],
 					});
 				});
@@ -299,7 +301,7 @@ describe('Secret Providers Project API', () => {
 			const response = await ownerAgent
 				.post(`/secret-providers/projects/${teamProject1.id}/connections`)
 				.send({
-					providerKey: 'new-conn',
+					providerKey: 'newConn',
 					type: 'awsSecretsManager',
 					projectIds: [],
 					settings: { region: 'us-east-1', accessKeyId: 'test-key' },
@@ -307,13 +309,14 @@ describe('Secret Providers Project API', () => {
 				.expect(200);
 
 			expect(response.body.data).toMatchObject({
-				name: 'new-conn',
+				name: 'newConn',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				projects: [{ id: teamProject1.id, name: teamProject1.name }],
 			});
 
 			// Verify it exists in the DB
-			const found = await connectionRepository.findOneBy({ providerKey: 'new-conn' });
+			const found = await connectionRepository.findOneBy({ providerKey: 'newConn' });
 			expect(found).not.toBeNull();
 
 			// Verify project access was created
@@ -325,12 +328,12 @@ describe('Secret Providers Project API', () => {
 		});
 
 		test('should return 400 when connection with same providerKey already exists', async () => {
-			await createProviderConnection('existing-conn', [teamProject1.id]);
+			await createProviderConnection('existingConn', [teamProject1.id]);
 
 			await ownerAgent
 				.post(`/secret-providers/projects/${teamProject1.id}/connections`)
 				.send({
-					providerKey: 'existing-conn',
+					providerKey: 'existingConn',
 					type: 'awsSecretsManager',
 					projectIds: [],
 					settings: { region: 'us-east-1', accessKeyId: 'test-key' },
@@ -342,7 +345,7 @@ describe('Secret Providers Project API', () => {
 			await ownerAgent
 				.post(`/secret-providers/projects/${teamProject1.id}/connections`)
 				.send({
-					providerKey: 'proj1-only',
+					providerKey: 'proj1Only',
 					type: 'awsSecretsManager',
 					projectIds: [],
 					settings: { region: 'us-east-1', accessKeyId: 'test-key' },
@@ -355,7 +358,7 @@ describe('Secret Providers Project API', () => {
 				.expect(200);
 
 			const names = response.body.data.map((c: { name: string }) => c.name);
-			expect(names).not.toContain('proj1-only');
+			expect(names).not.toContain('proj1Only');
 		});
 
 		describe('authorization', () => {
@@ -369,7 +372,7 @@ describe('Secret Providers Project API', () => {
 					const response = await agents[role]
 						.post(`/secret-providers/projects/${teamProject1.id}/connections`)
 						.send({
-							providerKey: `create-auth-${role}`,
+							providerKey: `createAuth${role.charAt(0).toUpperCase() + role.slice(1)}`,
 							type: 'awsSecretsManager',
 							projectIds: [],
 							settings: { region: 'us-east-1', accessKeyId: 'test-key' },
@@ -405,6 +408,7 @@ describe('Secret Providers Project API', () => {
 
 			expect(response.body.data).toMatchObject({
 				name: 'my-conn',
+				state: 'initializing',
 				projects: [{ id: teamProject1.id }],
 			});
 		});
@@ -563,14 +567,14 @@ describe('Secret Providers Project API', () => {
 		});
 
 		test('should return 404 for a connection belonging to another project', async () => {
-			await createProviderConnection('other-del', [teamProject2.id]);
+			await createProviderConnection('otherDel', [teamProject2.id]);
 
 			await ownerAgent
-				.delete(`/secret-providers/projects/${teamProject1.id}/connections/other-del`)
+				.delete(`/secret-providers/projects/${teamProject1.id}/connections/otherDel`)
 				.expect(404);
 
 			// Verify the connection was NOT deleted
-			const found = await connectionRepository.findOneBy({ providerKey: 'other-del' });
+			const found = await connectionRepository.findOneBy({ providerKey: 'otherDel' });
 			expect(found).not.toBeNull();
 		});
 
