@@ -36,6 +36,7 @@ import {
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+	SECURITY_KEYS_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -127,6 +128,7 @@ import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
 import CredentialResolverEditModal from '@/app/components/CredentialResolverEditModal.vue';
+import SecurityKeysModal from '@/features/core/auth/components/SecurityKeysModal.vue';
 </script>
 
 <template>
@@ -477,6 +479,10 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			<template #default="{ modalName, data }">
 				<CredentialResolverEditModal :modal-name="modalName" :data="data" />
 			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="SECURITY_KEYS_MODAL_KEY">
+			<SecurityKeysModal />
 		</ModalRoot>
 
 		<!-- Dynamic modals from modules -->

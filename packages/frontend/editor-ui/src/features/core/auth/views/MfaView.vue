@@ -11,6 +11,7 @@ import { onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { toRefs } from '@vueuse/core';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
 import { N8nButton, N8nCard, N8nFormInputs, N8nHeading, N8nText } from '@n8n/design-system';
 // ---------------------------------------------------------------------------
@@ -19,6 +20,7 @@ import { N8nButton, N8nCard, N8nFormInputs, N8nHeading, N8nText } from '@n8n/des
 
 const props = defineProps<{
 	reportError: boolean;
+	email: string;
 }>();
 
 // #endregion
@@ -52,6 +54,7 @@ const emit = defineEmits<{
 	onFormChanged: [formField: string];
 	onBackClick: [formField: string];
 	submit: [{ mfaCode: string; mfaRecoveryCode: string }];
+	webauthnSubmit: [webauthnResponse: unknown];
 }>();
 
 // #endregion
@@ -176,6 +179,21 @@ const onSaveClick = () => {
 	formBus.value.emit('submit');
 };
 
+const webauthnLoading = ref(false);
+
+const onWebAuthnClick = async () => {
+	webauthnLoading.value = true;
+	try {
+		const usersStore = useUsersStore();
+		const response = await usersStore.verifyWebAuthnAuthentication(props.email);
+		emit('webauthnSubmit', response);
+	} catch {
+		formError.value = i18.baseText('mfa.webauthn.error');
+	} finally {
+		webauthnLoading.value = false;
+	}
+};
+
 // #endregion
 
 const {
@@ -260,6 +278,18 @@ onMounted(() => {
 					@click="onBackClick"
 				/>
 			</div>
+			<div v-if="!showRecoveryCodeForm" :class="$style.webauthnSection">
+				<N8nButton
+					:label="i18.baseText('mfa.useSecurityKey')"
+					variant="outline"
+					size="large"
+					:loading="webauthnLoading"
+					icon="key-round"
+					data-test-id="mfa-webauthn-button"
+					:class="$style.webauthnButton"
+					@click="onWebAuthnClick"
+				/>
+			</div>
 		</N8nCard>
 	</div>
 </template>
@@ -299,5 +329,16 @@ body {
 
 .infoBox {
 	padding-top: var(--spacing--4xs);
+}
+
+.webauthnSection {
+	margin-top: var(--spacing--sm);
+	text-align: center;
+	border-top: var(--border-width) var(--border-style) var(--color--foreground--tint-2);
+	padding-top: var(--spacing--sm);
+}
+
+.webauthnButton {
+	width: 100%;
 }
 </style>

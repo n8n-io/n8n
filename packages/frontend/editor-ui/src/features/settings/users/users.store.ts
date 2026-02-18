@@ -26,6 +26,7 @@ import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import * as mfaApi from '@n8n/rest-api-client/api/mfa';
+import * as webauthnApi from '@n8n/rest-api-client/api/webauthn';
 import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
 import * as invitationsApi from './invitation.api';
 import { computed, ref } from 'vue';
@@ -412,6 +413,45 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		settingsStore.isMFAEnforced = enforce;
 	};
 
+	// WebAuthn / Security Keys
+
+	const registerWebAuthnCredential = async (label: string) => {
+		const { startRegistration } = await import('@simplewebauthn/browser');
+		const options = await webauthnApi.getRegistrationOptions(rootStore.restApiContext);
+		const attestationResponse = await startRegistration({
+			optionsJSON: options as Parameters<typeof startRegistration>[0]['optionsJSON'],
+		});
+		const result = await webauthnApi.verifyRegistration(rootStore.restApiContext, {
+			label,
+			response: attestationResponse,
+		});
+		if (currentUser.value) {
+			currentUser.value.mfaEnabled = true;
+		}
+		return result;
+	};
+
+	const fetchWebAuthnCredentials = async () => {
+		return await webauthnApi.getCredentials(rootStore.restApiContext);
+	};
+
+	const deleteWebAuthnCredential = async (id: string) => {
+		await webauthnApi.deleteCredential(rootStore.restApiContext, id);
+	};
+
+	const updateWebAuthnCredentialLabel = async (id: string, label: string) => {
+		await webauthnApi.updateCredential(rootStore.restApiContext, id, { label });
+	};
+
+	const verifyWebAuthnAuthentication = async (email: string) => {
+		const { startAuthentication } = await import('@simplewebauthn/browser');
+		const options = await webauthnApi.getAuthenticationOptions(rootStore.restApiContext, email);
+		const assertionResponse = await startAuthentication({
+			optionsJSON: options as Parameters<typeof startAuthentication>[0]['optionsJSON'],
+		});
+		return assertionResponse;
+	};
+
 	const sendConfirmationEmail = async () => {
 		await cloudApi.sendConfirmationEmail(rootStore.restApiContext);
 	};
@@ -499,6 +539,11 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		disableMfa,
 		updateEnforceMfa,
 		canEnableMFA,
+		registerWebAuthnCredential,
+		fetchWebAuthnCredentials,
+		deleteWebAuthnCredential,
+		updateWebAuthnCredentialLabel,
+		verifyWebAuthnAuthentication,
 		sendConfirmationEmail,
 		updateGlobalRole,
 		setEasyAIWorkflowOnboardingDone,

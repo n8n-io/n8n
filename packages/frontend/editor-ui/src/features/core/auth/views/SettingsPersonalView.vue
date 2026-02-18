@@ -12,6 +12,7 @@ import {
 	MFA_DOCS_URL,
 	MFA_SETUP_MODAL_KEY,
 	PROMPT_MFA_CODE_MODAL_KEY,
+	SECURITY_KEYS_MODAL_KEY,
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -25,8 +26,10 @@ import { useSSOStore } from '@/features/settings/sso/sso.store';
 import type { ConfirmPasswordModalEvents } from '../auth.eventBus';
 import { confirmPasswordEventBus } from '../auth.eventBus';
 
+import type { WebAuthnCredentialResponse } from '@n8n/api-types';
 import {
 	N8nAvatar,
+	N8nBadge,
 	N8nButton,
 	N8nFormInputs,
 	N8nHeading,
@@ -114,6 +117,9 @@ const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
 });
 
+const webauthnCredentials = ref<WebAuthnCredentialResponse[]>([]);
+const webauthnCredentialCount = computed(() => webauthnCredentials.value.length);
+
 const hasAnyPersonalisationChanges = computed((): boolean => {
 	return currentSelectedTheme.value !== uiStore.theme;
 });
@@ -153,8 +159,15 @@ const roles = computed<Record<Role, RoleContent>>(() => ({
 
 const currentUserRole = computed<RoleContent>(() => roles.value[usersStore.globalRoleName]);
 
-onMounted(() => {
+onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
+	if (isMfaFeatureEnabled.value) {
+		try {
+			webauthnCredentials.value = await usersStore.fetchWebAuthnCredentials();
+		} catch {
+			// Silently ignore if endpoint not available
+		}
+	}
 	formInputs.value = [
 		{
 			name: 'firstName',
@@ -328,6 +341,10 @@ async function disableMfa(payload: MfaModalEvents['closed']) {
 	}
 }
 
+function openSecurityKeysModal() {
+	uiStore.openModal(SECURITY_KEYS_MODAL_KEY);
+}
+
 async function onMfaDisableClick() {
 	uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
 
@@ -409,22 +426,60 @@ onBeforeUnmount(() => {
 					:content="i18n.baseText('settings.personal.mfa.enforced')"
 				/>
 
-				<N8nButton
-					variant="subtle"
-					v-if="mfaDisabled"
-					:class="$style.button"
-					:label="i18n.baseText('settings.personal.mfa.button.enabled')"
-					data-test-id="enable-mfa-button"
-					@click="onMfaEnableClick"
-				/>
-				<N8nButton
-					variant="subtle"
-					v-else
-					:class="$style.disableMfaButton"
-					:label="i18n.baseText('settings.personal.mfa.button.disabled')"
-					data-test-id="disable-mfa-button"
-					@click="onMfaDisableClick"
-				/>
+				<div :class="$style.mfaCards">
+					<div :class="$style.mfaCard" data-test-id="mfa-totp-card">
+						<div :class="$style.mfaCardHeader">
+							<N8nText :bold="true">{{
+								i18n.baseText('settings.personal.mfa.totp.title')
+							}}</N8nText>
+							<N8nBadge v-if="!mfaDisabled">{{
+								i18n.baseText('settings.personal.mfa.status.enabled')
+							}}</N8nBadge>
+						</div>
+						<N8nText size="small" color="text-light">{{
+							i18n.baseText('settings.personal.mfa.totp.description')
+						}}</N8nText>
+						<div :class="$style.mfaCardActions">
+							<N8nButton
+								v-if="mfaDisabled"
+								variant="subtle"
+								size="small"
+								:label="i18n.baseText('settings.personal.mfa.button.enabled')"
+								data-test-id="enable-mfa-button"
+								@click="onMfaEnableClick"
+							/>
+							<N8nButton
+								v-else
+								variant="subtle"
+								size="small"
+								:class="$style.disableMfaButton"
+								:label="i18n.baseText('settings.personal.mfa.button.disabled')"
+								data-test-id="disable-mfa-button"
+								@click="onMfaDisableClick"
+							/>
+						</div>
+					</div>
+					<div :class="$style.mfaCard" data-test-id="mfa-webauthn-card">
+						<div :class="$style.mfaCardHeader">
+							<N8nText :bold="true">{{
+								i18n.baseText('settings.personal.securityKeys.title')
+							}}</N8nText>
+							<N8nBadge v-if="webauthnCredentialCount > 0">{{ webauthnCredentialCount }}</N8nBadge>
+						</div>
+						<N8nText size="small" color="text-light">{{
+							i18n.baseText('settings.personal.securityKeys.description')
+						}}</N8nText>
+						<div :class="$style.mfaCardActions">
+							<N8nButton
+								variant="subtle"
+								size="small"
+								:label="i18n.baseText('settings.personal.securityKeys.button.manage')"
+								data-test-id="manage-security-keys-button"
+								@click="openSecurityKeysModal"
+							/>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 		<div>
@@ -529,5 +584,31 @@ onBeforeUnmount(() => {
 
 .themeSelect {
 	max-width: 50%;
+}
+
+.mfaCards {
+	display: flex;
+	gap: var(--spacing--sm);
+	margin-top: var(--spacing--xs);
+}
+
+.mfaCard {
+	flex: 1;
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--sm);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.mfaCardHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.mfaCardActions {
+	margin-top: var(--spacing--4xs);
 }
 </style>

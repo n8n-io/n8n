@@ -9,6 +9,7 @@ import type { CacheService } from '@/services/cache/cache.service';
 import { MFA_ENFORCE_SETTING } from '../constants';
 import { MFA_CACHE_KEY, MfaService } from '../mfa.service';
 import type { TOTPService } from '../totp.service';
+import type { WebAuthnService } from '../webauthn.service';
 
 describe('MfaService', () => {
 	let mfaService: MfaService;
@@ -35,6 +36,7 @@ describe('MfaService', () => {
 			mockCacheService,
 			mockLicense,
 			mockTotpService,
+			mock<WebAuthnService>(),
 			mockCipher,
 			mockLogger(),
 		);

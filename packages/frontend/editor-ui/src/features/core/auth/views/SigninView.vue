@@ -95,6 +95,14 @@ const onMFASubmitted = async (form: MfaCodeOrMfaRecoveryCode) => {
 	});
 };
 
+const onWebAuthnSubmitted = async (webauthnResponse: unknown) => {
+	await login({
+		emailOrLdapLoginId: emailOrLdapLoginId.value,
+		password: password.value,
+		webauthnResponse,
+	});
+};
+
 const onEmailPasswordSubmitted = async (form: EmailOrLdapLoginIdAndPassword) => {
 	await login(form);
 };
@@ -132,6 +140,7 @@ const login = async (form: LoginRequestDto) => {
 			password: form.password,
 			mfaCode: form.mfaCode,
 			mfaRecoveryCode: form.mfaRecoveryCode,
+			webauthnResponse: form.webauthnResponse,
 		});
 		loading.value = false;
 		await settingsStore.getSettings();
@@ -211,7 +220,9 @@ const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
 		<MfaView
 			v-if="showMfaView"
 			:report-error="reportError"
+			:email="emailOrLdapLoginId"
 			@submit="onMFASubmitted"
+			@webauthn-submit="onWebAuthnSubmitted"
 			@on-back-click="onBackClick"
 			@on-form-changed="onFormChanged"
 		/>

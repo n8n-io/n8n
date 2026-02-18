@@ -69,7 +69,7 @@ export class AuthController {
 		res: Response,
 		@Body payload: LoginRequestDto,
 	): Promise<PublicUser | undefined> {
-		const { emailOrLdapLoginId, password, mfaCode, mfaRecoveryCode } = payload;
+		const { emailOrLdapLoginId, password, mfaCode, mfaRecoveryCode, webauthnResponse } = payload;
 
 		const currentAuthenticationMethod = getCurrentAuthenticationMethod();
 		this.validateEmailFormat(currentAuthenticationMethod, emailOrLdapLoginId);
@@ -90,7 +90,7 @@ export class AuthController {
 			preliminaryUser,
 		);
 
-		await this.validateMfa(user, mfaCode, mfaRecoveryCode);
+		await this.validateMfa(user, mfaCode, mfaRecoveryCode, webauthnResponse);
 
 		this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
 
@@ -160,13 +160,20 @@ export class AuthController {
 		user: User,
 		mfaCode: string | undefined,
 		mfaRecoveryCode: string | undefined,
+		webauthnResponse?: unknown,
 	): Promise<void> {
 		if (!user.mfaEnabled) {
 			return;
 		}
 
-		if (!mfaCode && !mfaRecoveryCode) {
+		if (!mfaCode && !mfaRecoveryCode && !webauthnResponse) {
 			throw new AuthError('MFA Error', 998);
+		}
+
+		if (webauthnResponse) {
+			const valid = await this.mfaService.validateWebAuthn(user.id, webauthnResponse);
+			if (valid) return;
+			throw new AuthError('Invalid security key response');
 		}
 
 		const isMfaCodeOrMfaRecoveryCodeValid = await this.mfaService.validateMfa(

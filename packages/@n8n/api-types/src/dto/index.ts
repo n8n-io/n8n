@@ -155,3 +155,5 @@ export { TestSecretsProviderConnectionDto } from './secrets-provider/test-secret
 export { UpdateSecretsProviderConnectionDto } from './secrets-provider/update-secrets-provider-connection.dto';
 
 export { CreateQuickConnectCredentialDto } from './quick-connect/create-quick-connect-credential.dto';
+
+export type { WebAuthnCredentialResponse } from './webauthn/index';

@@ -9,6 +9,7 @@ import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mf
 
 import { MFA_ENFORCE_SETTING } from './constants';
 import { TOTPService } from './totp.service';
+import { WebAuthnService } from './webauthn.service';
 import { CacheService } from '@/services/cache/cache.service';
 
 export const MFA_CACHE_KEY = 'mfa:enforce';
@@ -20,6 +21,7 @@ export class MfaService {
 		private cacheService: CacheService,
 		private license: LicenseState,
 		public totp: TOTPService,
+		public webauthn: WebAuthnService,
 		private cipher: Cipher,
 		private logger: Logger,
 	) {}
@@ -160,5 +162,10 @@ export class MfaService {
 			mfaSecret: null,
 			mfaRecoveryCodes: [],
 		});
+		await this.webauthn.deleteAllUserCredentials(userId);
+	}
+
+	async validateWebAuthn(userId: string, response: unknown): Promise<boolean> {
+		return await this.webauthn.verifyAuthenticationResponse(userId, response);
 	}
 }
