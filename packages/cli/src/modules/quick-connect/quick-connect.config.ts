@@ -7,7 +7,7 @@ const baseQuickConnectSchema = z.object({
 	text: z.string(),
 	quickConnectType: z.string(),
 	consentText: z.string().optional(),
-	backendFlowConfig: z.never(),
+	backendFlowConfig: z.never().optional(),
 });
 
 const firecrawlQuickConnectSchema = baseQuickConnectSchema.extend({
@@ -20,10 +20,7 @@ const firecrawlQuickConnectSchema = baseQuickConnectSchema.extend({
 
 export type FirecrawlQuickConnect = z.infer<typeof firecrawlQuickConnectSchema>;
 
-const quickConnectOptionSchema = z.discriminatedUnion('quickConnectType', [
-	firecrawlQuickConnectSchema,
-	baseQuickConnectSchema,
-]);
+const quickConnectOptionSchema = z.union([firecrawlQuickConnectSchema, baseQuickConnectSchema]);
 
 export type QuickConnectOption = z.infer<typeof quickConnectOptionSchema>;
 

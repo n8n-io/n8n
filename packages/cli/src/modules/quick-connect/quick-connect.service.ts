@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { Constructable, Container, Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 
 import { IQuickConnectHandler } from './handlers/handler.interface';
 import { QuickConnectConfig } from './quick-connect.config';
@@ -8,7 +8,9 @@ import { QuickConnectError } from './quick-connect.errors';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-const backendFlowTypes = ['firecrawl'];
+const backendHandlers = {
+	firecrawl: async () => (await import('./handlers/firecrawl.handler')).FirecrawlHandler,
+};
 
 @Service()
 export class QuickConnectService {
@@ -45,11 +47,10 @@ export class QuickConnectService {
 	async registerHandlers() {
 		for (const option of this.quickConnectConfig.options) {
 			const { quickConnectType } = option;
-			if (backendFlowTypes.includes(quickConnectType) && !this.handlers.has(quickConnectType)) {
-				const Handler = (await import(
-					`./handlers/${quickConnectType}.handler`
-				)) as Constructable<IQuickConnectHandler>;
-				const handler: IQuickConnectHandler = Container.get(Handler);
+			if (quickConnectType in backendHandlers) {
+				const Handler = await backendHandlers[quickConnectType as keyof typeof backendHandlers]();
+				const handler = Container.get(Handler);
+				// @ts-expect-error the configuration option type is not reduced to specific subtype
 				handler.setConfig(option);
 				this.handlers.set(quickConnectType, handler);
 			}
