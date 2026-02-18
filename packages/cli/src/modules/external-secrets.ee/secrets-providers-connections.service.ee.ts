@@ -203,12 +203,16 @@ export class SecretsProvidersConnectionsService {
 		connection: SecretsProviderConnection,
 	): SecretsProvidersResponses.ConnectionListItem {
 		const secretNames = this.externalSecretsManager.getSecretNames(connection.providerKey);
+		const connectionInstance = this.externalSecretsManager.getProvider(connection.providerKey);
 
 		return {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
 			secretsCount: secretNames.length,
+			// Provider may not be registered yet in multi-main setups.
+			// When that's the case the default state is 'initializing'.
+			state: connectionInstance?.state ?? 'initializing',
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
 				name: access.project.name,
@@ -220,15 +224,19 @@ export class SecretsProvidersConnectionsService {
 
 	toPublicConnection(connection: SecretsProviderConnection): SecretsProvidersResponses.Connection {
 		const decryptedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
-		const { provider } = this.externalSecretsManager.getProviderWithSettings(connection.type);
-		const redactedSettings = this.redactionService.redact(decryptedSettings, provider.properties);
+		const properties = this.externalSecretsManager.getProviderProperties(connection.type);
+		const redactedSettings = this.redactionService.redact(decryptedSettings, properties);
 		const secretNames = this.externalSecretsManager.getSecretNames(connection.providerKey);
+		const connectionInstance = this.externalSecretsManager.getProvider(connection.providerKey);
 
 		return {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
 			secretsCount: secretNames.length,
+			// Provider may not be registered yet in multi-main setups.
+			// When that's the case the default state is 'initializing'.
+			state: connectionInstance?.state ?? 'initializing',
 			secrets: secretNames.map((name) => ({ name })),
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,

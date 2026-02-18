@@ -1598,6 +1598,7 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: '', // Empty default means no valid default
+					displayOptions: {},
 				},
 			] as any);
 
@@ -1740,6 +1741,7 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: null,
+					displayOptions: {},
 				},
 			]);
 
@@ -1895,6 +1897,7 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: '',
+					displayOptions: {},
 				},
 				{
 					displayName: 'Domain',
@@ -1902,6 +1905,7 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: '',
+					displayOptions: {},
 				},
 			]);
 
@@ -1921,6 +1925,7 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: 'https://api.example.com',
+					displayOptions: {},
 				},
 			]);
 
@@ -1964,6 +1969,7 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: undefined,
+					displayOptions: {},
 				},
 			]);
 
@@ -1982,6 +1988,7 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: '',
+					displayOptions: {},
 				},
 			]);
 
@@ -2001,11 +2008,98 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: '',
+					displayOptions: {},
 				},
 			]);
 
 			const data = { apiKey: '' };
 
+			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).toThrow(
+				'The field "apiKey" is mandatory for credentials of type "apiCredential"',
+			);
+		});
+
+		it('should skip validation when required field has displayOptions undefined', () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					required: true,
+					default: undefined,
+					displayOptions: undefined,
+				},
+			]);
+
+			const data = {}; // apiKey is missing
+
+			// Should not throw because displayOptions is undefined, so validation is skipped
+			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).not.toThrow();
+		});
+
+		it('should skip validation when required field is hidden by displayOptions', () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					required: true,
+					default: undefined,
+					displayOptions: {
+						show: {
+							authType: ['oauth2'],
+						},
+					},
+				},
+			]);
+
+			const data = { authType: 'apiKey' }; // apiKey is missing and field is hidden
+
+			// Should not throw because displayParameter will return false (field is hidden)
+			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).not.toThrow();
+		});
+
+		it('should validate when required field is shown by displayOptions', () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					required: true,
+					default: undefined,
+					displayOptions: {
+						show: {
+							authType: ['oauth2'],
+						},
+					},
+				},
+			]);
+
+			const data = { authType: 'oauth2' }; // Field is shown but apiKey is missing
+
+			// Should throw because field is shown but value is missing
+			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).toThrow(
+				'The field "apiKey" is mandatory for credentials of type "apiCredential"',
+			);
+		});
+
+		it('should validate when displayOptions is explicitly null (edge case)', () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					required: true,
+					default: undefined,
+					// @ts-expect-error - Testing edge case where displayOptions is explicitly null
+					displayOptions: null,
+				},
+			]);
+
+			const data = {}; // apiKey is missing
+
+			// null !== undefined, so the check passes and displayParameter is called
+			// displayParameter treats null as falsy and returns true, so validation proceeds
 			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).toThrow(
 				'The field "apiKey" is mandatory for credentials of type "apiCredential"',
 			);

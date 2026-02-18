@@ -165,6 +165,9 @@ catalogs:
     simple-git:
       specifier: 3.28.0
       version: 3.28.0
+    stream-json:
+      specifier: 1.9.1
+      version: 1.9.1
     ts-morph:
       specifier: ^27.0.2
       version: 27.0.2
@@ -676,6 +679,9 @@ importers:
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
+      flatted:
+        specifier: 'catalog:'
+        version: 3.2.7
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -685,6 +691,9 @@ importers:
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
+      stream-json:
+        specifier: 'catalog:'
+        version: 1.9.1
       winston:
         specifier: 3.14.2
         version: 3.14.2
@@ -695,6 +704,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@types/stream-json':
+        specifier: 1.7.8
+        version: 1.7.8
       '@types/yargs-parser':
         specifier: 21.0.0
         version: 21.0.0
@@ -749,7 +761,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 1.13.5
-        version: 1.13.5
+        version: 1.13.5(debug@4.4.3)
       dotenv:
         specifier: 17.2.3
         version: 17.2.3
@@ -784,7 +796,7 @@ importers:
     dependencies:
       axios:
         specifier: 1.13.5
-        version: 1.13.5
+        version: 1.13.5(debug@4.4.3)
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -1648,7 +1660,7 @@ importers:
         version: link:../eslint-plugin-community-nodes
       axios:
         specifier: 1.13.5
-        version: 1.13.5
+        version: 1.13.5(debug@4.4.3)
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)
@@ -1852,6 +1864,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 1.26.0
         version: 1.26.0(zod@3.25.67)
+      '@n8n/ai-utilities':
+        specifier: workspace:*
+        version: link:../@n8n/ai-utilities
       '@n8n/ai-workflow-builder':
         specifier: workspace:*
         version: link:../@n8n/ai-workflow-builder.ee
@@ -1926,7 +1941,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.13.5
-        version: 1.13.5
+        version: 1.13.5(debug@4.4.3)
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
@@ -2284,7 +2299,7 @@ importers:
         version: 10.36.0
       axios:
         specifier: 1.13.5
-        version: 1.13.5
+        version: 1.13.5(debug@4.4.3)
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -2757,7 +2772,7 @@ importers:
         version: link:../../../@n8n/utils
       axios:
         specifier: 1.13.5
-        version: 1.13.5
+        version: 1.13.5(debug@4.4.3)
       flatted:
         specifier: 'catalog:'
         version: 3.2.7
@@ -3072,7 +3087,7 @@ importers:
         version: 1.1.4
       axios:
         specifier: 1.13.5
-        version: 1.13.5
+        version: 1.13.5(debug@4.4.3)
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -3755,6 +3770,9 @@ importers:
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../janitor
+      '@n8n/workflow-sdk':
+        specifier: workspace:*
+        version: link:../../@n8n/workflow-sdk
       '@playwright/cli':
         specifier: catalog:e2e
         version: 0.1.0
@@ -9344,6 +9362,12 @@ packages:
 
   '@types/stack-utils@2.0.3':
     resolution: {integrity: sha512-9aEbYZ3TbYMznPdcdr3SmIrLXwC/AKZXQeCf9Pgao5CKb8CyHuEX5jzWPTkvregvhRJHcpRO6BFoGW9ycaOkYw==}
+
+  '@types/stream-chain@2.1.0':
+    resolution: {integrity: sha512-guDyAl6s/CAzXUOWpGK2bHvdiopLIwpGu8v10+lb9hnQOyo4oj/ZUQFOvqFjKGsE3wJP1fpIesCcMvbXuWsqOg==}
+
+  '@types/stream-json@1.7.8':
+    resolution: {integrity: sha512-MU1OB1eFLcYWd1LjwKXrxdoPtXSRzRmAnnxs4Js/ayB5O/NvHraWwuOaqMWIebpYwM6khFlsJOHEhI9xK/ab4Q==}
 
   '@types/stylis@4.2.0':
     resolution: {integrity: sha512-n4sx2bqL0mW1tvDf/loQ+aMX7GQD3lc3fkCMC55VFNDu/vBOabO+LTIeXKM14xK0ppk5TUGcWRjiSpIlUpghKw==}
@@ -17369,6 +17393,9 @@ packages:
   stream-browserify@3.0.0:
     resolution: {integrity: sha512-H73RAHsVBapbim0tU2JwwOiXUj+fikfiaoYAKHF3VJfA0pe2BCzkhAHBlLG6REzE+2WNZcxOXjK7lkso+9euLA==}
 
+  stream-chain@2.2.5:
+    resolution: {integrity: sha512-1TJmBx6aSWqZ4tx7aTpBDXK0/e2hhcNSTV8+CbFJtDjbb+I1mZ8lHit0Grw9GRT+6JbIrrDd8esncgBi8aBXGA==}
+
   stream-combiner@0.0.4:
     resolution: {integrity: sha512-rT00SPnTVyRsaSz5zgSPma/aHSOic5U1prhYdRy5HS2kTZviFpmDgzilbtsJsxiroqACmayynDN/9VzIbX5DOw==}
 
@@ -17377,6 +17404,9 @@ packages:
 
   stream-http@3.2.0:
     resolution: {integrity: sha512-Oq1bLqisTyK3TSCXpPbT4sdeYNdmyZJv1LxpEm2vu1ZhK89kSE5YXwZc3cWk0MagGaKriBh9mCFbVGtO+vY29A==}
+
+  stream-json@1.9.1:
+    resolution: {integrity: sha512-uWkjJ+2Nt/LO9Z/JyKZbMusL8Dkh97uUBTv3AJQ74y07lVahLY4eEFsPsE97pxYBwr8nnjMAIch5eqI0gPShyw==}
 
   stream-shift@1.0.3:
     resolution: {integrity: sha512-76ORR0DO1o1hlKwTbi/DM3EXWGf3ZJYO8cXX5RJwnul2DEg2oyoZyjLNoQM8WsvZiFKCRfC1O0J7iCvie3RZmQ==}
@@ -23662,7 +23692,7 @@ snapshots:
       '@azure/core-auth': 1.10.1
       '@azure/msal-node': 3.8.4
       '@microsoft/agents-activity': 1.1.0-alpha.85
-      axios: 1.13.5
+      axios: 1.13.5(debug@4.4.3)
       jsonwebtoken: 9.0.3
       jwks-rsa: 3.2.2
       object-path: 0.11.8
@@ -25008,7 +25038,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@3.0.0':
     dependencies:
-      axios: 1.13.5
+      axios: 1.13.5(debug@4.4.3)
       axios-retry: 4.5.0(axios@1.13.5)
       component-type: 2.0.0
       join-component: 1.1.0
@@ -26858,6 +26888,15 @@ snapshots:
 
   '@types/stack-utils@2.0.3': {}
 
+  '@types/stream-chain@2.1.0':
+    dependencies:
+      '@types/node': 20.19.21
+
+  '@types/stream-json@1.7.8':
+    dependencies:
+      '@types/node': 20.19.21
+      '@types/stream-chain': 2.1.0
+
   '@types/stylis@4.2.0': {}
 
   '@types/superagent@8.1.9':
@@ -28092,20 +28131,12 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.13.5):
     dependencies:
-      axios: 1.13.5
+      axios: 1.13.5(debug@4.4.3)
       is-retry-allowed: 2.2.0
-
-  axios@1.13.5:
-    dependencies:
-      follow-redirects: 1.15.11(debug@4.4.1)
-      form-data: 4.0.4
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
 
   axios@1.13.5(debug@4.4.3):
     dependencies:
-      follow-redirects: 1.15.11(debug@4.4.3)
+      follow-redirects: 1.15.11(debug@4.4.1)
       form-data: 4.0.4
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -30890,10 +30921,6 @@ snapshots:
     optionalDependencies:
       debug: 4.4.1(supports-color@8.1.1)
 
-  follow-redirects@1.15.11(debug@4.4.3):
-    optionalDependencies:
-      debug: 4.4.3(supports-color@8.1.1)
-
   for-each@0.3.5:
     dependencies:
       is-callable: 1.2.7
@@ -31607,7 +31634,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.13.5)
+      retry-axios: 2.6.0(axios@1.13.5(debug@4.4.3))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -31692,7 +31719,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.13.5
+      axios: 1.13.5(debug@4.4.3)
       dotenv: 16.6.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -35393,7 +35420,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.13.5
+      axios: 1.13.5(debug@4.4.3)
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -36090,9 +36117,9 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.13.5):
+  retry-axios@2.6.0(axios@1.13.5(debug@4.4.3)):
     dependencies:
-      axios: 1.13.5
+      axios: 1.13.5(debug@4.4.3)
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -36708,7 +36735,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.13.5
+      axios: 1.13.5(debug@4.4.3)
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2
@@ -36974,6 +37001,8 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.0
 
+  stream-chain@2.2.5: {}
+
   stream-combiner@0.0.4:
     dependencies:
       duplexer: 0.1.2
@@ -36988,6 +37017,10 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.0
       xtend: 4.0.2
+
+  stream-json@1.9.1:
+    dependencies:
+      stream-chain: 2.2.5
 
   stream-shift@1.0.3: {}
 
