@@ -79,7 +79,7 @@ export class OnfleetTrigger implements INodeType {
 				if (webhookUrl.includes('//localhost')) {
 					throw new NodeOperationError(
 						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+						'The Webhook can not work on "localhost". Please set up n8n on a custom domain or use a tunneling service.',
 					);
 				}
 				// Webhook name according to the field
