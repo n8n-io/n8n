@@ -120,20 +120,42 @@ export class WorkflowExpression {
 		if (typeof parameterValue === 'object') {
 			const returnData: INodeParameters = {};
 			for (const [key, value] of Object.entries(parameterValue)) {
-				returnData[key] = this.getParameterValue(
-					value as NodeParameterValueType,
-					runExecutionData,
-					runIndex,
-					itemIndex,
-					activeNodeName,
-					connectionInputData,
-					mode,
-					additionalKeys,
-					executeData,
-					returnObjectAsString,
-					selfData,
-					contextNodeName,
-				);
+				const typedValue = value as NodeParameterValueType;
+				if (typeof typedValue === 'object') {
+					// Complex value - recurse without siblings
+					returnData[key] = this.getParameterValue(
+						typedValue,
+						runExecutionData,
+						runIndex,
+						itemIndex,
+						activeNodeName,
+						connectionInputData,
+						mode,
+						additionalKeys,
+						executeData,
+						returnObjectAsString,
+						selfData,
+						contextNodeName,
+					);
+				} else {
+					// Simple value - pass parent object as siblingParameters so
+					// $parameter["&sibling"] expressions can resolve correctly
+					returnData[key] = this.resolveSimpleParameterValue(
+						typedValue as NodeParameterValue,
+						parameterValue as INodeParameters,
+						runExecutionData,
+						runIndex,
+						itemIndex,
+						activeNodeName,
+						connectionInputData,
+						mode,
+						additionalKeys,
+						executeData,
+						returnObjectAsString,
+						selfData,
+						contextNodeName,
+					);
+				}
 			}
 
 			if (returnObjectAsString && typeof returnData === 'object') {
@@ -143,7 +165,7 @@ export class WorkflowExpression {
 			return returnData;
 		}
 
-		// For expressions and complex values, create WorkflowDataProxy
+		// Simple expression value - create WorkflowDataProxy and delegate to Expression
 		const dataProxy = new WorkflowDataProxy(
 			this.workflow,
 			runExecutionData,
@@ -161,7 +183,6 @@ export class WorkflowExpression {
 		);
 		const data = dataProxy.getDataProxy();
 
-		// Simple expression value - delegate to Expression
 		return this.expression.resolveSimpleParameterValue(
 			parameterValue as NodeParameterValue,
 			data,

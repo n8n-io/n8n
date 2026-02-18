@@ -1,3 +1,4 @@
+import * as Helpers from './helpers';
 import { Workflow } from '../src/workflow';
 import { WorkflowExpression } from '../src/workflow-expression';
 
@@ -16,6 +17,42 @@ describe('WorkflowExpression', () => {
 			const workflowExpression = new WorkflowExpression(workflow);
 
 			expect(workflowExpression).toBeInstanceOf(WorkflowExpression);
+		});
+	});
+
+	describe('getParameterValue()', () => {
+		const nodeTypes = Helpers.NodeTypes();
+		const workflow = new Workflow({
+			id: '1',
+			nodes: [
+				{
+					name: 'node',
+					typeVersion: 1,
+					type: 'test.set',
+					id: 'uuid-1234',
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			active: false,
+			nodeTypes,
+		});
+		const expression = workflow.expression;
+
+		const evaluate = (value: unknown) =>
+			expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', {});
+
+		it('should resolve $parameter["&key"] sibling reference within an object', () => {
+			// n8n uses the `&`-prefixed syntax internally (e.g. in node parameter definitions)
+			// to reference sibling fields: `={{ $parameter["&key"].split("|")[1] }}`
+			// getParameterValue must pass the parent object as siblingParameters so these resolve.
+			const result = evaluate({
+				key: 'title|display',
+				type: '={{$parameter["&key"].split("|")[1]}}',
+			});
+
+			expect(result).toEqual({ key: 'title|display', type: 'display' });
 		});
 	});
 });
