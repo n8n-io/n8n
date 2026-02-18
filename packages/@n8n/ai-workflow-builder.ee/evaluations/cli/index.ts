@@ -55,6 +55,7 @@ import {
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
+	createExecutionEvaluator,
 	type RunConfig,
 	type TestCase,
 	type Evaluator,
@@ -64,7 +65,13 @@ import {
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
 import { createIntrospectionAnalysisLifecycle } from '../lifecycles/introspection-analysis';
 import { AGENT_TYPES, EVAL_TYPES, EVAL_USERS } from '../support/constants';
-import { setupTestEnvironment, createAgent, type ResolvedStageLLMs } from '../support/environment';
+import {
+	setupTestEnvironment,
+	createAgent,
+	resolveNodesBasePath,
+	type ResolvedStageLLMs,
+} from '../support/environment';
+import { generateEvalPinData } from '../support/pin-data-generator';
 
 /**
  * Type guard for workflow update chunks from streaming output.
@@ -388,6 +395,9 @@ export async function runV2Evaluation(): Promise<void> {
 		numJudges: args.numJudges,
 	});
 
+	// Execution evaluator runs for all suites — validates workflows execute with pin data
+	evaluators.push(createExecutionEvaluator());
+
 	const llmCallLimiter = pLimit(args.concurrency);
 
 	// Merge console lifecycle with optional introspection analysis lifecycle
@@ -401,6 +411,15 @@ export async function runV2Evaluation(): Promise<void> {
 				})
 			: undefined,
 	);
+	// Create pin data generator for mocking service node outputs in evaluations
+	const nodesBasePath = resolveNodesBasePath();
+	const pinDataGenerator = async (workflow: SimpleWorkflow) =>
+		await generateEvalPinData(workflow, {
+			llm: env.llms.judge,
+			nodeTypes: env.parsedNodeTypes,
+			nodesBasePath,
+			logger,
+		});
 
 	const baseConfig = {
 		generateWorkflow,
@@ -413,6 +432,7 @@ export async function runV2Evaluation(): Promise<void> {
 		timeoutMs: args.timeoutMs,
 		context: { llmCallLimiter },
 		passThreshold: args.suite === 'introspection' ? 0 : undefined,
+		pinDataGenerator,
 	};
 
 	const config: RunConfig =
