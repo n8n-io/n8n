@@ -14,12 +14,14 @@ import type { ExternalSecretsManager } from '@/modules/external-secrets.ee/exter
 import type { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 import { SecretsProvidersConnectionsService } from '@/modules/external-secrets.ee/secrets-providers-connections.service.ee';
 import type { SecretsProvider } from '@/modules/external-secrets.ee/types';
+import { ExternalSecretsProviderRegistry } from '../provider-registry.service';
 
 describe('SecretsProvidersConnectionsService', () => {
 	const mockRepository = mock<SecretsProviderConnectionRepository>();
 	const mockProjectAccessRepository = mock<ProjectSecretsProviderAccessRepository>();
 	const mockExternalSecretsManager = mock<ExternalSecretsManager>();
 	const mockRedactionService = mock<RedactionService>();
+	const mockProviderRegistryService = mock<ExternalSecretsProviderRegistry>();
 	const mockEventService = mock<EventService>();
 	const mockCipher = {
 		encrypt: jest.fn((data: IDataObject) => JSON.stringify(data)),
@@ -30,6 +32,7 @@ describe('SecretsProvidersConnectionsService', () => {
 		mockLogger(),
 		mockRepository,
 		mockProjectAccessRepository,
+		mockProviderRegistryService,
 		mockCipher as any,
 		mockExternalSecretsManager,
 		mockRedactionService,
