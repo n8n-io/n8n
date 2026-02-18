@@ -1,6 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
-import TriggerExecuteButton from './TriggerExecuteButton.vue';
+import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
 
 const renderComponent = createComponentRenderer(TriggerExecuteButton);
 

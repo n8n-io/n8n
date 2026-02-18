@@ -4,13 +4,13 @@ import { useI18n } from '@n8n/i18n';
 import { N8nCallout, N8nIcon, N8nTooltip } from '@n8n/design-system';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import TriggerExecuteButton from '../TriggerExecuteButton.vue';
+import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 
-import type { TriggerSetupState } from '../../setupPanel.types';
-import SetupCard from './SetupCard.vue';
+import type { TriggerSetupState } from '@/features/setupPanel/setupPanel.types';
+import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
 
 const props = defineProps<{
 	state: TriggerSetupState;

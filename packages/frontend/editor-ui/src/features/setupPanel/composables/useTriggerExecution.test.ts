@@ -6,7 +6,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INodeUi } from '@/Interface';
 
-import { useTriggerExecution } from './useTriggerExecution';
+import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 
 const mockExecutionState = vi.hoisted(() => ({
 	isExecuting: false,

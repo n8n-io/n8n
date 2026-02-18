@@ -2,7 +2,10 @@ import type { INodeUi } from '@/Interface';
 import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeTypeDisplayableCredentials } from '@/app/utils/nodes/nodeTransforms';
 
-import type { CredentialTypeSetupState, TriggerSetupState } from './setupPanel.types';
+import type {
+	CredentialTypeSetupState,
+	TriggerSetupState,
+} from '@/features/setupPanel/setupPanel.types';
 
 /**
  * Collects all credential types that a node requires from three sources:

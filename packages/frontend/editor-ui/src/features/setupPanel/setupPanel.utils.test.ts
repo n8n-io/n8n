@@ -6,8 +6,8 @@ import {
 	groupCredentialsByType,
 	isCredentialCardComplete,
 	buildTriggerSetupState,
-} from './setupPanel.utils';
-import type { CredentialTypeSetupState } from './setupPanel.types';
+} from '@/features/setupPanel/setupPanel.utils';
+import type { CredentialTypeSetupState } from '@/features/setupPanel/setupPanel.types';
 
 const mockGetNodeTypeDisplayableCredentials = vi.fn().mockReturnValue([]);
 

@@ -3,12 +3,12 @@ import { createTestNode } from '@/__tests__/mocks';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { ref, computed } from 'vue';
-import SetupPanelCards from './SetupPanelCards.vue';
+import SetupPanelCards from '@/features/setupPanel/components/SetupPanelCards.vue';
 import type {
 	SetupCardItem,
 	TriggerSetupState,
 	CredentialTypeSetupState,
-} from '../setupPanel.types';
+} from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi } from '@/Interface';
 
 const mockSetCredential = vi.fn();

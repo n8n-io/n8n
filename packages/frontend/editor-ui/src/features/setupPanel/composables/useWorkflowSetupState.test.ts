@@ -9,7 +9,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INodeUi } from '@/Interface';
 
-import { useWorkflowSetupState } from './useWorkflowSetupState';
+import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 
 let mockOnCredentialDeleted: ((credentialId: string) => void) | undefined;
 

@@ -2,7 +2,7 @@ import { computed, watch, type Ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import type { SetupCardItem } from '../setupPanel.types';
+import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -18,7 +18,7 @@ import {
 	groupCredentialsByType,
 	isCredentialCardComplete,
 	buildTriggerSetupState,
-} from '../setupPanel.utils';
+} from '@/features/setupPanel/setupPanel.utils';
 
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
 

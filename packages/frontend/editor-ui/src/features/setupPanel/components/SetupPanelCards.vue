@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { watch } from 'vue';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
-import TriggerSetupCard from './cards/TriggerSetupCard.vue';
-import CredentialTypeSetupCard from './cards/CredentialTypeSetupCard.vue';
+import TriggerSetupCard from '@/features/setupPanel/components/cards/TriggerSetupCard.vue';
+import CredentialTypeSetupCard from '@/features/setupPanel/components/cards/CredentialTypeSetupCard.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import type { SetupCardItem } from '../setupPanel.types';
+import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
