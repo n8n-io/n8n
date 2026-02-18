@@ -165,7 +165,11 @@ export const useReadyToRunStore = defineStore(STORES.READY_TO_RUN, () => {
 		readOnlyEnv: boolean,
 	) => {
 		return (
-			userCanClaimOpenAiCredits.value && !readOnlyEnv && canCreate && hasWorkflows && isNewUser.value
+			userCanClaimOpenAiCredits.value &&
+			!readOnlyEnv &&
+			canCreate &&
+			hasWorkflows &&
+			isNewUser.value
 		);
 	};
 
