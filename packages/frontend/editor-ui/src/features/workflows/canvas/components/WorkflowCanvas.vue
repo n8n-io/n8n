@@ -108,28 +108,8 @@ defineExpose({
 				screenY + screenHeight <= canvasHeight;
 
 			if (!isFullyVisible) {
-				// Calculate viewport bounds in canvas coordinates
-				const viewportRect = {
-					x: -vp.x / vp.zoom,
-					y: -vp.y / vp.zoom,
-					width: canvasWidth / vp.zoom,
-					height: canvasHeight / vp.zoom,
-				};
-
-				// Combine current viewport with nodes rect
-				const minX = Math.min(viewportRect.x, nodesRect.x);
-				const minY = Math.min(viewportRect.y, nodesRect.y);
-				const maxX = Math.max(viewportRect.x + viewportRect.width, nodesRect.x + nodesRect.width);
-				const maxY = Math.max(viewportRect.y + viewportRect.height, nodesRect.y + nodesRect.height);
-
-				const combinedRect = {
-					x: minX,
-					y: minY,
-					width: maxX - minX,
-					height: maxY - minY,
-				};
-
-				void fitBounds(combinedRect, { padding: 0.15, duration: 100 });
+				// Fit viewport to show only the newly added nodes
+				void fitBounds(nodesRect, { padding: 0.15, duration: 100 });
 			}
 
 			props.eventBus.emit('nodes:select', { ids });
