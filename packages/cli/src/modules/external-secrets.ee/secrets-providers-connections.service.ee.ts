@@ -15,8 +15,8 @@ import {
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
-
 import { jsonParse } from 'n8n-workflow';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -24,6 +24,7 @@ import type { ProjectSummary } from '@/events/maps/relay.event-map';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 import { SecretsProvidersResponses } from '@/modules/external-secrets.ee/secrets-providers.responses.ee';
+
 import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 
 @Service()
