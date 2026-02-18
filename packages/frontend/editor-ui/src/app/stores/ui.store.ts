@@ -162,7 +162,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 				WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
-				SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
