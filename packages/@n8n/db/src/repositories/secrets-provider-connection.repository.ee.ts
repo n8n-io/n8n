@@ -33,8 +33,10 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 	 */
 	async findGlobalConnections({
 		types,
-	}: { types?: SecretsProviderConnection['type'][] } = {}): Promise<SecretsProviderConnection[]> {
-		const connectionQuery = await this.createQueryBuilder('connection')
+	}: { types?: Array<SecretsProviderConnection['type']> } = {}): Promise<
+		SecretsProviderConnection[]
+	> {
+		const connectionQuery = this.createQueryBuilder('connection')
 			.leftJoin('connection.projectAccess', 'access')
 			.where('access.secretsProviderConnectionId IS NULL');
 
@@ -58,9 +60,9 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 	 */
 	async findByProjectId(
 		projectId: string,
-		{ types }: { types?: SecretsProviderConnection['type'][] } = {},
+		{ types }: { types?: Array<SecretsProviderConnection['type']> } = {},
 	): Promise<SecretsProviderConnection[]> {
-		const connectionQuery = await this.createQueryBuilder('connection')
+		const connectionQuery = this.createQueryBuilder('connection')
 			.innerJoinAndSelect('connection.projectAccess', 'projectAccess')
 			.leftJoinAndSelect('projectAccess.project', 'project')
 			.where('projectAccess.projectId = :projectId', { projectId });

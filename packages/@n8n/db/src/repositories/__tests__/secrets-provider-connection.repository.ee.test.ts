@@ -1,10 +1,10 @@
 import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
+import random from 'lodash/random';
 
 import { SecretsProviderConnection } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { SecretsProviderConnectionRepository } from '../secrets-provider-connection.repository.ee';
-import { mock } from 'jest-mock-extended';
-import { random } from 'lodash';
 
 describe('SecretsProviderConnectionRepository', () => {
 	const entityManager = mockEntityManager(SecretsProviderConnection);
