@@ -1,4 +1,5 @@
 import type {
+	ReloadSecretProviderConnectionResponse,
 	SecretProviderConnection,
 	SecretProviderTypeResponse,
 	TestSecretProviderConnectionResponse,
@@ -64,6 +65,17 @@ export const testSecretProviderConnection = async (
 		context,
 		'POST',
 		`/secret-providers/connections/${providerKey}/test`,
+	);
+};
+
+export const reloadSecretProviderConnection = async (
+	context: IRestApiContext,
+	providerKey: string,
+): Promise<ReloadSecretProviderConnectionResponse> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/secret-providers/connections/${providerKey}/reload`,
 	);
 };
 
