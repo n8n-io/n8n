@@ -83,7 +83,8 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "sqlite3"
+      "sqlite3",
+      "isolated-vm"
     ],
     "overrides": {
       "@isaacs/brace-expansion": "5.0.1",

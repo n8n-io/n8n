@@ -21,15 +21,8 @@
 		"security"
 	],
 	"license": "SEE LICENSE IN LICENSE.md",
-	"peerDependencies": {
-		"isolated-vm": "^5.0.1"
-	},
-	"peerDependenciesMeta": {
-		"isolated-vm": {
-			"optional": true
-		}
-	},
 	"dependencies": {
+		"isolated-vm": "^6.0.2",
 		"lodash": "^4.17.21",
 		"luxon": "^3.4.4"
 	},
