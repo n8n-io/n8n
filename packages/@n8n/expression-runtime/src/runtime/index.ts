@@ -15,6 +15,9 @@ declare global {
 		// Proxy creator function
 		var createDeepLazyProxy: (basePath?: string[]) => any;
 
+		// Reset function (Step 3)
+		var resetDataProxies: () => void;
+
 		// Safe wrappers
 		var SafeObject: typeof Object;
 		var SafeError: typeof Error;
@@ -298,5 +301,121 @@ globalThis.createDeepLazyProxy = createDeepLazyProxy;
 // ============================================================================
 
 // Initialize empty __data object
-// This will be populated by the reset function (Step 3)
+// This will be populated by the reset function below
 globalThis.__data = {};
+
+// ============================================================================
+// Reset Function for Data Proxies
+// ============================================================================
+
+/**
+ * Reset workflow data proxies before each evaluation.
+ *
+ * This function is called from the bridge before executing each expression
+ * to clear proxy caches and initialize fresh workflow data references.
+ *
+ * Pattern:
+ * 1. Create lazy proxies for complex properties ($json, $binary, etc.)
+ * 2. Fetch primitives directly ($runIndex, $itemIndex)
+ * 3. Create function wrappers for callable properties ($items, etc.)
+ * 4. Expose all properties to globalThis for expression access
+ *
+ * Called from bridge: context.evalSync('resetDataProxies()')
+ */
+function resetDataProxies(): void {
+	// Clear existing __data object
+	globalThis.__data = {};
+
+	// Verify callbacks are available
+	if (typeof globalThis.__getValueAtPath !== 'function') {
+		throw new Error('__getValueAtPath callback not registered');
+	}
+
+	// -------------------------------------------------------------------------
+	// Create lazy proxies for complex workflow properties
+	// -------------------------------------------------------------------------
+
+	globalThis.__data.$json = createDeepLazyProxy(['$json']);
+	globalThis.__data.$binary = createDeepLazyProxy(['$binary']);
+	globalThis.__data.$input = createDeepLazyProxy(['$input']);
+	globalThis.__data.$node = createDeepLazyProxy(['$node']);
+	globalThis.__data.$parameter = createDeepLazyProxy(['$parameter']);
+	globalThis.__data.$workflow = createDeepLazyProxy(['$workflow']);
+	globalThis.__data.$prevNode = createDeepLazyProxy(['$prevNode']);
+
+	// -------------------------------------------------------------------------
+	// Fetch primitives directly (no lazy loading needed for simple values)
+	// -------------------------------------------------------------------------
+
+	try {
+		globalThis.__data.$runIndex = globalThis.__getValueAtPath.applySync(null, [['$runIndex']], {
+			arguments: { copy: true },
+			result: { copy: true },
+		});
+	} catch (error) {
+		// Property doesn't exist - set to undefined
+		globalThis.__data.$runIndex = undefined;
+	}
+
+	try {
+		globalThis.__data.$itemIndex = globalThis.__getValueAtPath.applySync(null, [['$itemIndex']], {
+			arguments: { copy: true },
+			result: { copy: true },
+		});
+	} catch (error) {
+		// Property doesn't exist - set to undefined
+		globalThis.__data.$itemIndex = undefined;
+	}
+
+	// -------------------------------------------------------------------------
+	// Expose workflow data to globalThis for expression access
+	// -------------------------------------------------------------------------
+
+	(globalThis as any).$json = globalThis.__data.$json;
+	(globalThis as any).$binary = globalThis.__data.$binary;
+	(globalThis as any).$input = globalThis.__data.$input;
+	(globalThis as any).$node = globalThis.__data.$node;
+	(globalThis as any).$parameter = globalThis.__data.$parameter;
+	(globalThis as any).$workflow = globalThis.__data.$workflow;
+	(globalThis as any).$prevNode = globalThis.__data.$prevNode;
+	(globalThis as any).$runIndex = globalThis.__data.$runIndex;
+	(globalThis as any).$itemIndex = globalThis.__data.$itemIndex;
+
+	// -------------------------------------------------------------------------
+	// Handle function properties (check if value is function metadata)
+	// -------------------------------------------------------------------------
+
+	// Check if $items exists and is a function
+	if (typeof globalThis.__callFunctionAtPath === 'function') {
+		try {
+			const itemsValue = globalThis.__getValueAtPath.applySync(null, [['$items']], {
+				arguments: { copy: true },
+				result: { copy: true },
+			});
+
+			// If it's function metadata, create wrapper
+			if (itemsValue && typeof itemsValue === 'object' && itemsValue.__isFunction) {
+				(globalThis as any).$items = function (...args: any[]) {
+					return globalThis.__callFunctionAtPath.applySync(null, [['$items'], ...args], {
+						arguments: { copy: true },
+						result: { copy: true },
+					});
+				};
+				globalThis.__data.$items = (globalThis as any).$items;
+			} else {
+				// Not a function - set to undefined or the value itself
+				(globalThis as any).$items = itemsValue;
+				globalThis.__data.$items = itemsValue;
+			}
+		} catch (error) {
+			// Property doesn't exist
+			(globalThis as any).$items = undefined;
+			globalThis.__data.$items = undefined;
+		}
+	}
+
+	// TODO: Add other function properties as needed ($item, $vars, etc.)
+}
+
+// Expose resetDataProxies globally so bridge can call it
+globalThis.resetDataProxies = resetDataProxies;

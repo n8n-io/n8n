@@ -154,12 +154,14 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			const hasData = await this.context.eval('typeof __data !== "undefined"');
 			const hasSafeObject = await this.context.eval('typeof SafeObject !== "undefined"');
 			const hasSafeError = await this.context.eval('typeof SafeError !== "undefined"');
+			const hasResetFunction = await this.context.eval('typeof resetDataProxies !== "undefined"');
 
-			if (!hasProxyCreator || !hasData || !hasSafeObject || !hasSafeError) {
+			if (!hasProxyCreator || !hasData || !hasSafeObject || !hasSafeError || !hasResetFunction) {
 				throw new Error(
 					`Proxy system verification failed: ` +
 						`createDeepLazyProxy=${hasProxyCreator}, __data=${hasData}, ` +
-						`SafeObject=${hasSafeObject}, SafeError=${hasSafeError}`,
+						`SafeObject=${hasSafeObject}, SafeError=${hasSafeError}, ` +
+						`resetDataProxies=${hasResetFunction}`,
 				);
 			}
 
@@ -169,6 +171,39 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			throw new Error(`Failed to verify proxy system: ${errorMessage}`);
+		}
+	}
+
+	/**
+	 * Reset data proxies in the isolate context.
+	 *
+	 * This method should be called before each execute() to:
+	 * 1. Clear proxy caches from previous evaluations
+	 * 2. Initialize fresh workflow data references
+	 * 3. Expose workflow properties to globalThis
+	 *
+	 * The reset function runs in the isolate and calls back to the host
+	 * via ivm.Reference callbacks to fetch workflow data.
+	 *
+	 * @private
+	 * @throws {Error} If context not initialized or reset fails
+	 */
+	private resetDataProxies(): void {
+		if (!this.context) {
+			throw new Error('Context not initialized');
+		}
+
+		try {
+			// Call the resetDataProxies function in the isolate
+			// This function is loaded as part of the runtime bundle
+			this.context.evalSync('resetDataProxies()');
+
+			if (this.config.debug) {
+				console.log('[IsolatedVmBridge] Data proxies reset successfully');
+			}
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			throw new Error(`Failed to reset data proxies: ${errorMessage}`);
 		}
 	}
 
