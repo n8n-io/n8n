@@ -339,6 +339,10 @@ const handleClick = (event: MouseEvent) => {
 	&.iconOnly {
 		width: var(--button--height);
 		padding: 0;
+
+		> * {
+			width: var(--button--height);
+		}
 	}
 }
 
