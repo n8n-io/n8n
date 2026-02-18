@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 // We have to use raw query migration instead of schemaBuilder helpers,
 // because the typeorm schema builder implements addColumns by a table recreate for sqlite
 // which causes weird issues with the migration
-export class AddScalingFieldsToTestRun1770000000000 implements ReversibleMigration {
+export class AddScalingFieldsToTestRun1771417407753 implements ReversibleMigration {
 	async up({ escape, runQuery }: MigrationContext) {
 		const tableName = escape.tableName('test_run');
 		const runningInstanceIdColumnName = escape.columnName('runningInstanceId');
