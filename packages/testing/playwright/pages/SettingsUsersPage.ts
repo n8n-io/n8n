@@ -25,11 +25,6 @@ export class SettingsUsersPage extends BasePage {
 		await searchInput.fill(email);
 	}
 
-	async clickTransferUser(email: string) {
-		await this.openActions(email);
-		await this.page.getByTestId('action-transfer').click();
-	}
-
 	async transferData(emailOrName: string) {
 		await this.page
 			.getByRole('radio', {

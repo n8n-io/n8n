@@ -32,6 +32,7 @@ test-results.json
 packages/testing/playwright/playwright-report
 packages/testing/playwright/test-results
 packages/testing/playwright/.playwright-browsers
+packages/testing/playwright/.playwright-cli
 test-results/
 compiled_app_output
 trivy_report*

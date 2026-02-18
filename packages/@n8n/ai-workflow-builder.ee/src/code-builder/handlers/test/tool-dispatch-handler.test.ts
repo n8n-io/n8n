@@ -51,6 +51,17 @@ describe('ToolDispatchHandler', () => {
 		});
 	}
 
+	/** Helper: drain an async generator and return its final return value. */
+	async function drainGenerator(
+		gen: AsyncGenerator<StreamOutput, ToolDispatchResult, unknown>,
+	): Promise<ToolDispatchResult> {
+		let result = await gen.next();
+		while (!result.done) {
+			result = await gen.next();
+		}
+		return result.value;
+	}
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
@@ -262,19 +273,6 @@ describe('ToolDispatchHandler', () => {
 	});
 
 	describe('hasUnvalidatedEdits tracking', () => {
-		/**
-		 * Helper: drain an async generator and return its final return value.
-		 */
-		async function drainGenerator(
-			gen: AsyncGenerator<StreamOutput, ToolDispatchResult, unknown>,
-		): Promise<ToolDispatchResult> {
-			let result = await gen.next();
-			while (!result.done) {
-				result = await gen.next();
-			}
-			return result.value;
-		}
-
 		/** Create a mock TextEditorToolHandler whose execute() yields nothing and returns empty */
 		function createMockTextEditorToolHandler(): TextEditorToolHandler {
 			return {
@@ -552,16 +550,6 @@ describe('ToolDispatchHandler', () => {
 	});
 
 	describe('batch_str_replace', () => {
-		async function drainGenerator(
-			gen: AsyncGenerator<StreamOutput, ToolDispatchResult, unknown>,
-		): Promise<ToolDispatchResult> {
-			let result = await gen.next();
-			while (!result.done) {
-				result = await gen.next();
-			}
-			return result.value;
-		}
-
 		async function collectChunks(
 			gen: AsyncGenerator<StreamOutput, ToolDispatchResult, unknown>,
 		): Promise<{ chunks: StreamOutput[]; result: ToolDispatchResult }> {
