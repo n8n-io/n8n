@@ -83,7 +83,6 @@ const createCredentialCard = (
 			}) as INodeUi,
 		],
 		isComplete: false,
-		isGenericAuth: false,
 		...overrides,
 	},
 });

@@ -42,7 +42,6 @@ export function getNodeCredentialTypes(
 export function groupCredentialsByType(
 	nodesWithCredentials: Array<{ node: INodeUi; credentialTypes: string[] }>,
 	getCredentialDisplayName: (type: string) => string,
-	isGenericAuthType: (type: string) => boolean,
 ): CredentialTypeSetupState[] {
 	const map = new Map<string, CredentialTypeSetupState>();
 
@@ -84,7 +83,6 @@ export function groupCredentialsByType(
 					issues: issueMessages,
 					nodes: [node],
 					isComplete: false,
-					isGenericAuth: isGenericAuthType(credType),
 				});
 			}
 		}

@@ -82,7 +82,6 @@ const createState = (
 		}) as INodeUi,
 	],
 	isComplete: false,
-	isGenericAuth: false,
 	...overrides,
 });
 

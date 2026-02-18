@@ -9,8 +9,6 @@ export interface CredentialTypeSetupState {
 	/** All nodes that require this credential type */
 	nodes: INodeUi[];
 	isComplete: boolean;
-	/** Whether this is a generic auth type (e.g. Basic Auth, OAuth2) vs a service-specific one */
-	isGenericAuth: boolean;
 }
 
 /** Trigger card — shows only the test button (no credential picker) */

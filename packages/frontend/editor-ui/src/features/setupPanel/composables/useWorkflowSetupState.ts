@@ -42,11 +42,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		return credentialTypeInfo?.displayName ?? credentialType;
 	};
 
-	const isGenericAuthType = (credentialType: string): boolean => {
-		const credentialTypeInfo = credentialsStore.getCredentialTypeByName(credentialType);
-		return credentialTypeInfo?.genericAuth === true;
-	};
-
 	const isTriggerNode = (node: INodeUi): boolean => {
 		return nodeTypesStore.isTriggerNode(node.type);
 	};
@@ -108,7 +103,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				credentialTypes,
 			})),
 			getCredentialDisplayName,
-			isGenericAuthType,
 		);
 		// Only the workflow's first trigger (leftmost) can be executed from setup cards.
 		// It gets an embedded execute button and affects card completion.

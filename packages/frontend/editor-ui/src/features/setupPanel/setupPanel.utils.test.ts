@@ -100,7 +100,6 @@ describe('setupPanel.utils', () => {
 
 	describe('groupCredentialsByType', () => {
 		const displayNameLookup = (type: string) => `Display: ${type}`;
-		const isGenericAuthLookup = (_type: string) => false;
 
 		it('should group multiple nodes sharing the same credential type', () => {
 			const nodeA = createNode({
@@ -118,7 +117,6 @@ describe('setupPanel.utils', () => {
 					{ node: nodeB, credentialTypes: ['slackApi'] },
 				],
 				displayNameLookup,
-				isGenericAuthLookup,
 			);
 
 			expect(result).toHaveLength(1);
@@ -140,7 +138,6 @@ describe('setupPanel.utils', () => {
 					{ node: nodeB, credentialTypes: ['slackApi'] },
 				],
 				displayNameLookup,
-				isGenericAuthLookup,
 			);
 
 			expect(result[0].selectedCredentialId).toBe('cred-2');
@@ -162,7 +159,6 @@ describe('setupPanel.utils', () => {
 					{ node: nodeB, credentialTypes: ['slackApi'] },
 				],
 				displayNameLookup,
-				isGenericAuthLookup,
 			);
 
 			expect(result[0].issues).toEqual(['Token expired', 'Rate limited']);
@@ -176,7 +172,6 @@ describe('setupPanel.utils', () => {
 			const result = groupCredentialsByType(
 				nodes.map((node) => ({ node, credentialTypes: ['api'] })),
 				displayNameLookup,
-				isGenericAuthLookup,
 			);
 
 			expect(result[0].nodes.map((n) => n.name)).toEqual(['A', 'B', 'C']);
@@ -191,7 +186,6 @@ describe('setupPanel.utils', () => {
 			const result = groupCredentialsByType(
 				[{ node, credentialTypes: ['slackApi'] }],
 				displayNameLookup,
-				isGenericAuthLookup,
 			);
 
 			expect(result[0].isComplete).toBe(true);
@@ -203,7 +197,6 @@ describe('setupPanel.utils', () => {
 			const result = groupCredentialsByType(
 				[{ node, credentialTypes: ['slackApi'] }],
 				displayNameLookup,
-				isGenericAuthLookup,
 			);
 
 			expect(result[0].isComplete).toBe(false);
@@ -219,14 +212,13 @@ describe('setupPanel.utils', () => {
 			const result = groupCredentialsByType(
 				[{ node, credentialTypes: ['slackApi'] }],
 				displayNameLookup,
-				isGenericAuthLookup,
 			);
 
 			expect(result[0].isComplete).toBe(false);
 		});
 
 		it('should return empty array for empty input', () => {
-			const result = groupCredentialsByType([], displayNameLookup, isGenericAuthLookup);
+			const result = groupCredentialsByType([], displayNameLookup);
 
 			expect(result).toEqual([]);
 		});
@@ -243,7 +235,6 @@ describe('setupPanel.utils', () => {
 			const result = groupCredentialsByType(
 				[{ node, credentialTypes: ['slackApi', 'githubApi'] }],
 				displayNameLookup,
-				isGenericAuthLookup,
 			);
 
 			expect(result).toHaveLength(2);
@@ -259,7 +250,6 @@ describe('setupPanel.utils', () => {
 			const result = groupCredentialsByType(
 				[{ node, credentialTypes: ['slackApi'] }],
 				displayNameLookup,
-				isGenericAuthLookup,
 			);
 
 			expect(result[0].nodes).toHaveLength(1);
@@ -283,7 +273,6 @@ describe('setupPanel.utils', () => {
 					{ node: triggerNode, credentialTypes: ['slackApi'] },
 				],
 				displayNameLookup,
-				isGenericAuthLookup,
 			);
 
 			expect(result).toHaveLength(1);
@@ -303,7 +292,6 @@ describe('setupPanel.utils', () => {
 				issues: [],
 				nodes: [slackNode],
 				isComplete: false,
-				isGenericAuth: false,
 			};
 
 			expect(isCredentialCardComplete(state, () => false, isTrigger)).toBe(true);
@@ -318,7 +306,6 @@ describe('setupPanel.utils', () => {
 				issues: [],
 				nodes: [slackNode],
 				isComplete: false,
-				isGenericAuth: false,
 			};
 
 			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(false);
@@ -333,7 +320,6 @@ describe('setupPanel.utils', () => {
 				issues: ['Token expired'],
 				nodes: [slackNode],
 				isComplete: false,
-				isGenericAuth: false,
 			};
 
 			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(false);
@@ -348,7 +334,6 @@ describe('setupPanel.utils', () => {
 				issues: [],
 				nodes: [triggerNode],
 				isComplete: false,
-				isGenericAuth: false,
 			};
 
 			expect(isCredentialCardComplete(state, () => false, isTrigger)).toBe(false);
@@ -363,7 +348,6 @@ describe('setupPanel.utils', () => {
 				issues: [],
 				nodes: [triggerNode],
 				isComplete: false,
-				isGenericAuth: false,
 			};
 
 			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(true);
@@ -378,7 +362,6 @@ describe('setupPanel.utils', () => {
 				issues: [],
 				nodes: [trigger],
 				isComplete: false,
-				isGenericAuth: false,
 			};
 
 			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(true);
@@ -393,7 +376,6 @@ describe('setupPanel.utils', () => {
 				issues: [],
 				nodes: [slackNode],
 				isComplete: false,
-				isGenericAuth: false,
 			};
 
 			expect(
@@ -415,7 +397,6 @@ describe('setupPanel.utils', () => {
 				issues: [],
 				nodes: [slackNode],
 				isComplete: false,
-				isGenericAuth: false,
 			};
 
 			expect(
@@ -437,7 +418,6 @@ describe('setupPanel.utils', () => {
 				issues: [],
 				nodes: [slackNode],
 				isComplete: false,
-				isGenericAuth: false,
 			};
 
 			expect(isCredentialCardComplete(state, () => false, isTrigger)).toBe(true);
@@ -472,7 +452,6 @@ describe('setupPanel.utils', () => {
 					issues: [],
 					nodes: [node],
 					isComplete: true,
-					isGenericAuth: false,
 				},
 			];
 
@@ -491,7 +470,6 @@ describe('setupPanel.utils', () => {
 					issues: [],
 					nodes: [node],
 					isComplete: false,
-					isGenericAuth: false,
 				},
 			];
 
@@ -510,7 +488,6 @@ describe('setupPanel.utils', () => {
 					issues: [],
 					nodes: [node],
 					isComplete: true,
-					isGenericAuth: false,
 				},
 				{
 					credentialType: 'githubApi',
@@ -519,7 +496,6 @@ describe('setupPanel.utils', () => {
 					issues: [],
 					nodes: [node],
 					isComplete: true,
-					isGenericAuth: false,
 				},
 			];
 

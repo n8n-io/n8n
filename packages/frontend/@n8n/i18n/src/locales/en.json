@@ -4353,8 +4353,6 @@
 	"setupPanel.tabs.focus": "Focus",
 	"setupPanel.test.intro": "Setup panel lives here",
 	"setupPanel.test.description": "Here you can configure everything needed to run the current workflow",
-	"setupPanel.cardTitle.service": "Connect to {serviceName}",
-	"setupPanel.cardTitle.generic": "Set up {credentialName}",
 	"setupPanel.credentialLabel": "Credential",
 	"setupPanel.usedInNodes": "Used in {count} nodes",
 	"setupPanel.everythingConfigured.message": "Your workflow is ready to be executed",
