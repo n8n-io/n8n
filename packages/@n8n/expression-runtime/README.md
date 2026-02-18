@@ -4,32 +4,38 @@ Secure, isolated expression evaluation runtime for n8n workflows.
 
 ## Status
 
-⚠️ **This package is under active development.**
+✅ **Phase 1.1 Complete: IsolatedVmBridge Implementation**
 
 Currently implemented:
 - ✅ TypeScript interfaces and architecture design
 - ✅ Core architecture documentation
+- ✅ IsolatedVmBridge with isolated-vm (secure V8 isolate)
+- ✅ Deep lazy proxy system for workflow data
+- ✅ Security wrappers (SafeObject, SafeError)
+- ✅ Integration tests and production-ready
 
 Coming soon:
-- 🚧 Runtime implementation (Phase 1.1)
-- 🚧 IsolatedVmBridge (Phase 1.1)
 - 🚧 Web Worker support (Phase 2+)
+- 🚧 Performance optimizations (Phase 3)
 
 ## Overview
 
-This package provides a robust, environment-agnostic runtime for evaluating expressions in isolated contexts. It supports multiple execution environments:
+This package provides a secure runtime for evaluating expressions in isolated contexts.
 
+Currently supports:
 - **Node.js Backend**: Uses `isolated-vm` for V8 isolate-based isolation with lazy data loading
-- **Browser Frontend**: Uses Web Workers for browser-based isolation (Phase 2, no lazy loading initially)
-- **Task Runners**: Uses IPC for separate process isolation
+
+Future support (Phase 2+):
+- **Browser Frontend**: Will use Web Workers for browser-based isolation
+- **Task Runners**: Will use IPC for separate process isolation
 
 ## Features
 
-- 🔒 **Secure**: Expressions run in isolated contexts with memory limits and timeouts
-- 🚀 **Performant**: Lazy data loading and code caching minimize overhead
-- 📊 **Observable**: Built-in metrics, traces, and logs
-- 🌐 **Universal**: Works in Node.js, browsers, and separate processes
-- 🧪 **Testable**: Fast testing with NodeVmBridge (no native dependencies)
+- 🔒 **Secure**: Expressions run in isolated V8 contexts with memory limits (128MB) and timeouts (5s)
+- 🚀 **Performant**: Lazy data loading via proxies and script compilation caching
+- 📊 **Observable**: Built-in metrics, traces, and logs support
+- 🌐 **Universal**: Works in Node.js backend (browsers and task runners in Phase 2+)
+- 🧪 **Tested**: Comprehensive integration tests with IsolatedVmBridge
 
 ## Architecture
 
@@ -68,11 +74,11 @@ const evaluator = new ExpressionEvaluator({
 // Initialize
 await evaluator.initialize();
 
-// Evaluate expression
-const result = await evaluator.evaluate(
-  '{{ $json.user.email }}',
+// Evaluate expression (synchronous)
+const result = evaluator.evaluate(
+  '$json.user.email',
   {
-    json: {
+    $json: {
       user: { email: 'test@example.com' }
     }
   }
@@ -84,7 +90,7 @@ console.log(result); // "test@example.com"
 await evaluator.dispose();
 ```
 
-### With Observability
+### With Observability (Not Yet Implemented)
 
 ```typescript
 import { OpenTelemetryProvider } from '@n8n/expression-runtime/observability';
@@ -99,7 +105,9 @@ const evaluator = new ExpressionEvaluator({
 });
 ```
 
-### With Tournament (Security)
+**Note**: Observability providers are not yet implemented. The `ObservabilityProvider` interface exists but no implementations are available yet.
+
+### With Tournament (Not Yet Implemented)
 
 ```typescript
 import { Tournament } from '@n8n/tournament';
@@ -112,6 +120,8 @@ const evaluator = new ExpressionEvaluator({
 });
 ```
 
+**Note**: Tournament integration is not yet implemented. This will be added in future phases for AST transformation and security validation.
+
 ## API
 
 ### ExpressionEvaluator
@@ -122,7 +132,7 @@ Main class for expression evaluation.
 class ExpressionEvaluator {
   constructor(config: EvaluatorConfig);
   initialize(): Promise<void>;
-  evaluate(expression: string, data: WorkflowData, options?: EvaluateOptions): Promise<unknown>;
+  evaluate(expression: string, data: WorkflowData, options?: EvaluateOptions): unknown;
   dispose(): Promise<void>;
   isDisposed(): boolean;
 }
@@ -135,8 +145,8 @@ Abstract interface for bridge implementations.
 ```typescript
 interface RuntimeBridge {
   initialize(): Promise<void>;
-  execute(code: string, dataId: string): Promise<unknown>;
-  getData(dataId: string, path: string): Promise<unknown>;
+  execute(code: string, data: Record<string, unknown>): unknown;
+  getDataSync(path: string): unknown;
   dispose(): Promise<void>;
   isDisposed(): boolean;
 }
@@ -144,47 +154,53 @@ interface RuntimeBridge {
 
 ### Bridge Implementations
 
-- **IsolatedVmBridge**: For Node.js backend (isolated-vm) - Phase 1.1
-- **WebWorkerBridge**: For browser frontend (Web Workers) - Phase 2+
-- **Task Runner Integration**: TBD - May use IsolatedVmBridge locally or direct evaluation - Phase 2+
-- **NodeVmBridge**: For testing (Node.js vm module) - Phase 1.1
+- **IsolatedVmBridge**: ✅ For Node.js backend (isolated-vm with V8 isolates) - Implemented
+  - Memory isolation with hard 128MB limit
+  - Timeout enforcement (5s default)
+  - Deep lazy proxy system for workflow data
+  - Synchronous callbacks via ivm.Reference
+  - Security wrappers (SafeObject, SafeError)
+- **WebWorkerBridge**: 🚧 For browser frontend (Web Workers) - Phase 2+
+- **Task Runner Integration**: 🚧 TBD - May use IsolatedVmBridge locally or direct evaluation - Phase 2+
 
 ## Configuration
 
 ```typescript
 interface EvaluatorConfig {
-  bridge: RuntimeBridge;
-  observability?: ObservabilityProvider;
-  tournament?: TournamentInstance;
-  enableCodeCache?: boolean;   // Default: true (caches transformed code)
-  maxCodeCacheSize?: number;   // Default: 1000
+  bridge: RuntimeBridge;                   // ✅ Implemented
+  observability?: ObservabilityProvider;   // 🚧 Not yet implemented
+  tournament?: TournamentInstance;         // 🚧 Not yet implemented
+  enableCodeCache?: boolean;               // 🚧 Not yet implemented (default: true, caches transformed code)
+  maxCodeCacheSize?: number;               // 🚧 Not yet implemented (default: 1000)
 }
 
 interface BridgeConfig {
-  memoryLimit?: number;        // Default: 128 MB
-  timeout?: number;            // Default: 5000 ms
-  debug?: boolean;             // Default: false
+  memoryLimit?: number;        // ✅ Implemented - Default: 128 MB
+  timeout?: number;            // ✅ Implemented - Default: 5000 ms
+  debug?: boolean;             // ✅ Implemented - Default: false
 }
 ```
 
-## Environment Variables
+## Environment Variables (Not Yet Implemented)
 
 ```bash
-# Bridge configuration
+# Bridge configuration (not yet implemented)
 N8N_EXPRESSION_MEMORY_LIMIT_MB=128
 N8N_EXPRESSION_TIMEOUT_MS=5000
 N8N_EXPRESSION_DEBUG=false
 
-# Code cache (caches transformed code, not results)
+# Code cache (not yet implemented - caches transformed code, not results)
 N8N_EXPRESSION_CODE_CACHE_ENABLED=true
 N8N_EXPRESSION_CODE_CACHE_MAX_SIZE=1000
 
-# Observability
+# Observability (not yet implemented)
 N8N_EXPRESSION_OBSERVABILITY_ENABLED=true
 N8N_EXPRESSION_METRICS_ENABLED=true
 N8N_EXPRESSION_TRACES_ENABLED=true
 N8N_EXPRESSION_TRACE_SAMPLE_RATE=0.01
 ```
+
+**Note**: Currently, configuration is passed via constructor options. Environment variable support will be added in future phases.
 
 ## Development
 
@@ -213,16 +229,16 @@ pnpm lint
 The package uses vitest for fast, isolated testing:
 
 ```typescript
-import { ExpressionEvaluator, NodeVmBridge } from '@n8n/expression-runtime';
+import { ExpressionEvaluator, IsolatedVmBridge } from '@n8n/expression-runtime';
 
 describe('ExpressionEvaluator', () => {
   it('evaluates simple expression', async () => {
-    const bridge = new NodeVmBridge();
+    const bridge = new IsolatedVmBridge({ timeout: 5000 });
     const evaluator = new ExpressionEvaluator({ bridge });
 
     await evaluator.initialize();
 
-    const result = await evaluator.evaluate('{{ 1 + 1 }}', {});
+    const result = evaluator.evaluate('1 + 1', {});
     expect(result).toBe(2);
 
     await evaluator.dispose();
@@ -230,25 +246,39 @@ describe('ExpressionEvaluator', () => {
 });
 ```
 
+Run tests:
+```bash
+pnpm test                # Run all tests
+pnpm test integration    # Run integration tests only
+```
+
 ## Performance
 
 The runtime uses several optimizations:
 
-- **Lazy Loading**: Only fetch data fields that expressions actually access
-- **Code Caching**: Cache transformed expressions to avoid re-transformation
-- **Efficient Serialization**: Minimize data transfer between host and isolation
+- **Lazy Loading**: ✅ Only fetch data fields that expressions actually access via proxy traps
+- **Script Compilation Caching**: ✅ Compiled scripts are cached to avoid recompilation
+- **Metadata-Driven**: ✅ Only structure (keys, lengths) transferred across isolate boundary, not full data
+- **Code Transformation Caching**: 🚧 Not yet implemented - will cache transformed expressions in future phases
 
-Typical overhead: 24-46% compared to unsafe eval (measured with 99.6% compatibility).
+Performance characteristics:
+- Small arrays (≤100 items): Transferred entirely for optimal performance
+- Large arrays (>100 items): Lazy element loading on demand
+- Objects: Always lazy-loaded via deep proxy system
 
 ## Security
 
 The runtime enforces strict security:
 
-- ✅ Memory limits (default: 128MB)
-- ✅ Execution timeouts (default: 5s)
-- ✅ No access to Node.js APIs in isolation
-- ✅ AST transformation via Tournament
-- ✅ Security validation before execution
+- ✅ **Memory limits**: Hard 128MB limit via isolated-vm (configurable)
+- ✅ **Execution timeouts**: 5s default timeout (configurable)
+- ✅ **Complete isolation**: No access to Node.js APIs (require, fs, process, etc.)
+- ✅ **Security wrappers**: SafeObject and SafeError prevent dangerous method access
+- ✅ **Native function blocking**: Prevents access to native code
+
+Future security features (Phase 2+):
+- 🚧 AST transformation via Tournament
+- 🚧 Security validation before execution
 
 ## Contributing
 
@@ -261,5 +291,4 @@ See [LICENSE.md](../../LICENSE.md) in the n8n repository root.
 ## Related
 
 - [n8n workflow package](../workflow/)
-- [Tournament](../../packages/@n8n/tournament/)
 - [isolated-vm](https://github.com/laverdet/isolated-vm)
