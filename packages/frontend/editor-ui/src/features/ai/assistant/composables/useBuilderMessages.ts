@@ -8,6 +8,7 @@ import {
 	isQuestionsMessage,
 	isPlanMessage,
 	isUserAnswersMessage,
+	isCodeDiffMessage,
 } from '../assistant.types';
 import { generateShortId } from '../builder.utils';
 
@@ -194,7 +195,19 @@ export function useBuilderMessages() {
 	): boolean {
 		let shouldClearThinking = false;
 
-		if (isTextMessage(msg)) {
+		if (isCodeDiffMessage(msg)) {
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'code-diff',
+				description: msg.description,
+				codeDiff: msg.codeDiff,
+				suggestionId: msg.suggestionId,
+				sdkSessionId: msg.sdkSessionId,
+				read: false,
+			} satisfies ChatUI.AssistantMessage);
+			shouldClearThinking = true;
+		} else if (isTextMessage(msg)) {
 			messages.push({
 				id: messageId,
 				role: 'assistant',
@@ -491,6 +504,19 @@ export function useBuilderMessages() {
 		id: string,
 	): ChatUI.AssistantMessage {
 		// Handle specific message types using type guards
+		if (isCodeDiffMessage(message)) {
+			return {
+				id,
+				role: 'assistant',
+				type: 'code-diff',
+				description: message.description,
+				codeDiff: message.codeDiff,
+				suggestionId: message.suggestionId,
+				sdkSessionId: message.sdkSessionId,
+				read: false,
+			} satisfies ChatUI.AssistantMessage;
+		}
+
 		if (isTextMessage(message)) {
 			return {
 				id,

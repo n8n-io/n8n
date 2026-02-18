@@ -13,6 +13,7 @@ import type {
 } from '../types/planning';
 import type {
 	AgentMessageChunk,
+	CodeDiffChunk,
 	PlanChunk,
 	QuestionsChunk,
 	ToolProgressChunk,
@@ -285,7 +286,7 @@ function processAgentNodeUpdate(nodeName: string, update: unknown): StreamOutput
 	return { messages: [messageChunk] };
 }
 
-/** Handle custom event chunks (tool progress + assistant messages) */
+/** Handle custom event chunks (tool progress + assistant messages + code diffs) */
 function processCustomChunk(chunk: unknown): StreamOutput | null {
 	if (!chunk || typeof chunk !== 'object') return null;
 	const typed = chunk as { type?: string };
@@ -296,6 +297,10 @@ function processCustomChunk(chunk: unknown): StreamOutput | null {
 
 	if (typed.type === 'message' && 'role' in typed && 'text' in typed) {
 		return { messages: [typed as AgentMessageChunk] };
+	}
+
+	if (typed.type === 'code-diff') {
+		return { messages: [typed as CodeDiffChunk] };
 	}
 
 	return null;

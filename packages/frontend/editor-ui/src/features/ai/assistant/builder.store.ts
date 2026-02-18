@@ -48,6 +48,7 @@ import {
 	isPlanModeQuestionsMessage,
 } from '@/features/ai/assistant/assistant.types';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
+import { useCodeDiff } from '@/features/ai/assistant/composables/useCodeDiff';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -179,6 +180,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	} = useBuilderMessages();
 
 	const { workflowTodos, getTodosToTrack, hasTodosHiddenByPinnedData } = useBuilderTodos();
+
+	const builderCodeDiff = useCodeDiff({
+		getSessionId: (msg: ChatUI.CodeDiffMessage) => msg.sdkSessionId,
+		getNodeName: () => workflowsStore.workflowExecutionData?.data?.resultData?.lastNodeExecuted,
+	});
 
 	const trackingSessionId = computed(() => rootStore.pushRef);
 
@@ -952,6 +958,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 	}
 
+	async function applyCodeDiff(index: number) {
+		await builderCodeDiff.applyCodeDiff(workflowState, chatMessages.value, index);
+	}
+
+	async function undoCodeDiff(index: number) {
+		await builderCodeDiff.undoCodeDiff(workflowState, chatMessages.value, index);
+	}
+
 	function clearExistingWorkflow() {
 		workflowState.removeAllConnections({ setStateDirty: false });
 		workflowState.removeAllNodes({ setStateDirty: false, removePinData: true });
@@ -1197,6 +1211,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		setBuilderMadeEdits,
 		incrementManualExecutionStats,
 		resetManualExecutionStats,
+		// Code diff
+		applyCodeDiff,
+		undoCodeDiff,
 		// Version management
 		restoreToVersion,
 		clearExistingWorkflow,

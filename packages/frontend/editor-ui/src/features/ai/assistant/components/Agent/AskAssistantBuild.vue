@@ -421,6 +421,14 @@ watch(
 	},
 );
 
+async function onCodeReplace(index: number) {
+	await builderStore.applyCodeDiff(index);
+}
+
+async function onCodeUndo(index: number) {
+	await builderStore.undoCodeDiff(index);
+}
+
 /**
  * Handle restore confirmation
  */
@@ -525,6 +533,8 @@ defineExpose({
 			@stop="builderStore.abortStreaming"
 			@restore-confirm="onRestoreConfirm"
 			@show-version="onShowVersion"
+			@code-replace="onCodeReplace"
+			@code-undo="onCodeUndo"
 		>
 			<template #focused-nodes-chips="{ message }">
 				<MessageFocusedNodesChips :focused-node-names="message.focusedNodeNames" />

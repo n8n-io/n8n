@@ -1,5 +1,10 @@
 import { STREAM_SEPARATOR } from '../../constants';
-import type { AgentMessageChunk, StreamChunk, ToolProgressChunk } from '../../types/streaming';
+import type {
+	AgentMessageChunk,
+	CodeDiffChunk,
+	StreamChunk,
+	ToolProgressChunk,
+} from '../../types/streaming';
 import { AssistantHandler } from '../assistant-handler';
 import type { AssistantContext, AssistantSdkClient, SdkStreamChunk, StreamWriter } from '../types';
 
@@ -139,7 +144,7 @@ describe('AssistantHandler', () => {
 		expect((writtenChunks[2] as AgentMessageChunk).text).toBe('Second');
 	});
 
-	it('should degrade code-diff to AgentMessageChunk with fenced code block', async () => {
+	it('should emit code-diff as a proper CodeDiffChunk', async () => {
 		const response = createMockSdkResponse([
 			{
 				sessionId: 'sess-1',
@@ -159,13 +164,15 @@ describe('AssistantHandler', () => {
 
 		const result = await handler.execute({ query: 'fix it' }, 'user-1', writer);
 
-		// Chunks: connecting, code-diff message, done
+		// Chunks: connecting, code-diff chunk, done
 		expect(writtenChunks).toHaveLength(3);
-		const chunk = writtenChunks[1] as AgentMessageChunk;
-		expect(chunk.type).toBe('message');
-		expect(chunk.text).toContain('Here is the fix');
-		expect(chunk.text).toContain('```diff');
-		expect(chunk.text).toContain('- old\n+ new');
+		const chunk = writtenChunks[1] as CodeDiffChunk;
+		expect(chunk.type).toBe('code-diff');
+		expect(chunk.role).toBe('assistant');
+		expect(chunk.description).toBe('Here is the fix');
+		expect(chunk.codeDiff).toBe('- old\n+ new');
+		expect(chunk.suggestionId).toBe('sug-1');
+		expect(chunk.sdkSessionId).toBe('sess-1');
 		expect(result.hasCodeDiff).toBe(true);
 		expect(result.suggestionIds).toContain('sug-1');
 	});

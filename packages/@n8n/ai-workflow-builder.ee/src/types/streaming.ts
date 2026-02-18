@@ -56,6 +56,19 @@ export interface PlanChunk {
 }
 
 /**
+ * Code diff chunk from the AI Assistant SDK
+ */
+export interface CodeDiffChunk {
+	role: 'assistant';
+	type: 'code-diff';
+	suggestionId: string;
+	sdkSessionId: string;
+	codeDiff?: string;
+	description?: string;
+	quickReplies?: unknown[];
+}
+
+/**
  * Session messages chunk for persistence
  * Contains the full message history for saving to session storage
  */
@@ -75,7 +88,8 @@ export type StreamChunk =
 	| ExecutionRequestChunk
 	| SessionMessagesChunk
 	| QuestionsChunk
-	| PlanChunk;
+	| PlanChunk
+	| CodeDiffChunk;
 
 /**
  * Stream output containing messages

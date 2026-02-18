@@ -16,7 +16,12 @@ import type {
 	StreamWriter,
 } from './types';
 import { STREAM_SEPARATOR } from '../constants';
-import type { AgentMessageChunk, StreamChunk, ToolProgressChunk } from '../types/streaming';
+import type {
+	AgentMessageChunk,
+	CodeDiffChunk,
+	StreamChunk,
+	ToolProgressChunk,
+} from '../types/streaming';
 
 const SUMMARY_MAX_LENGTH = 200;
 
@@ -255,7 +260,7 @@ export class AssistantHandler {
 		}
 
 		for (const msg of chunk.messages) {
-			const mapped = this.mapSdkMessage(msg, toolCallId);
+			const mapped = this.mapSdkMessage(msg, state.sdkSessionId, toolCallId);
 			if (!mapped) continue;
 
 			if (mapped.type === 'message' && 'text' in mapped && mapped.text) {
@@ -279,9 +284,12 @@ export class AssistantHandler {
 
 	/**
 	 * Map an SDK message to a builder StreamChunk type.
-	 * Phase 0 graceful degradation: only emits types the builder frontend already renders.
 	 */
-	private mapSdkMessage(msg: SdkMessageResponse, toolCallId?: string): StreamChunk | null {
+	private mapSdkMessage(
+		msg: SdkMessageResponse,
+		sdkSessionId?: string,
+		toolCallId?: string,
+	): StreamChunk | null {
 		if (this.isSdkText(msg)) {
 			if (!msg.text) return null;
 			return {
@@ -292,12 +300,14 @@ export class AssistantHandler {
 		}
 
 		if (this.isSdkCodeDiff(msg)) {
-			const text = `${msg.description}\n\n\`\`\`diff\n${msg.codeDiff}\n\`\`\``;
 			return {
 				role: 'assistant',
-				type: 'message',
-				text,
-			} satisfies AgentMessageChunk;
+				type: 'code-diff',
+				suggestionId: msg.suggestionId ?? '',
+				sdkSessionId: sdkSessionId ?? '',
+				codeDiff: msg.codeDiff,
+				description: msg.description,
+			} satisfies CodeDiffChunk;
 		}
 
 		if (this.isSdkSummary(msg)) {
