@@ -248,10 +248,10 @@ describe('useSecretsProvidersList', () => {
 				useSecretsProvidersList();
 
 			await fetchActiveConnections();
-			expect(activeProviders.value).toHaveLength(2);
+			const providersBefore = activeProviders.value.map((p) => ({ ...p }));
 
 			await fetchConnection('unknown-provider');
-			expect(activeProviders.value).toHaveLength(2);
+			expect(activeProviders.value).toEqual(providersBefore);
 		});
 	});
 
