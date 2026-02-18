@@ -182,7 +182,7 @@ function onAddToAi() {
 			<N8nTooltip v-if="isAddToAiVisible" placement="top" :content="i18n.baseText('node.addToAi')">
 				<N8nIconButton
 					data-test-id="add-to-ai-button"
-					type="tertiary"
+					variant="ghost"
 					size="small"
 					text
 					icon="sparkles"

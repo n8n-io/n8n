@@ -51,7 +51,7 @@ export class WorkflowBuilderService {
 		// Register a post-processor to update node types when they change.
 		// This ensures newly installed/updated/uninstalled community packages are recognized
 		// while preserving existing sessions.
-		this.loadNodesAndCredentials.addPostProcessor(async () => this.refreshNodeTypes());
+		this.loadNodesAndCredentials.addPostProcessor(async () => await this.refreshNodeTypes());
 	}
 
 	/**
@@ -59,9 +59,9 @@ export class WorkflowBuilderService {
 	 * Called automatically when postProcessLoaders() runs (e.g., after community package changes).
 	 * This preserves existing sessions while making new node types available.
 	 */
-	refreshNodeTypes() {
+	async refreshNodeTypes() {
 		if (this.service) {
-			const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
+			const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 			this.service.updateNodeTypes(nodeTypeDescriptions);
 		}
 	}
@@ -144,8 +144,7 @@ export class WorkflowBuilderService {
 		};
 
 		await this.loadNodesAndCredentials.postProcessLoaders();
-		const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
-		this.loadNodesAndCredentials.releaseTypes();
+		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 
 		this.service = new AiWorkflowBuilderService(
 			nodeTypeDescriptions,
