@@ -78,7 +78,10 @@ const SettingsSourceControl = async () =>
 const SettingsExternalSecrets = async () => {
 	const { check } = useEnvFeatureFlag();
 
-	if (check.value('EXTERNAL_SECRETS_FOR_PROJECTS')) {
+	if (
+		check.value('EXTERNAL_SECRETS_FOR_PROJECTS') ||
+		check.value('EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS')
+	) {
 		return await import(
 			'@/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.ee.vue'
 		);

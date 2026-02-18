@@ -170,7 +170,7 @@ export class TaskBrokerServer {
 			send(async (req) => await this.authController.createGrantToken(req)),
 		);
 
-		const healthPath = `/${this.globalConfig.endpoints.health}`;
+		const healthPath = this.globalConfig.endpoints.health;
 		this.app.get(healthPath, (_, res) => {
 			res.send({ status: 'ok' });
 		});

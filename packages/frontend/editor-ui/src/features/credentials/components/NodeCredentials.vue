@@ -202,7 +202,12 @@ watch(
 			allOptions[0],
 		);
 
-		onCredentialSelected(mostRecentCredential.type, mostRecentCredential.id);
+		onCredentialSelected(
+			mostRecentCredential.type,
+			mostRecentCredential.id,
+			false, // showAuthOptions
+			false, // isUserAction
+		);
 	},
 	{ immediate: true },
 );
@@ -355,6 +360,7 @@ function onCredentialSelected(
 	credentialType: string,
 	credentialId: string | null | undefined,
 	showAuthOptions = false,
+	isUserAction = true,
 ) {
 	if (!credentialId) {
 		createNewCredential(credentialType, false, showAuthOptions);
@@ -404,21 +410,24 @@ function onCredentialSelected(
 	}
 
 	// Auto-assign credential to other matching nodes
-	const updatedNodesCount = workflowsStore.assignCredentialToMatchingNodes({
-		credentials: newSelectedCredentials,
-		type: selectedCredentialsType,
-		currentNodeName: props.node.name,
-	});
-
-	if (updatedNodesCount > 0) {
-		nodeHelpers.updateNodesCredentialsIssues();
-		toast.showMessage({
-			title: i18n.baseText('nodeCredentials.showMessage.title'),
-			message: i18n.baseText('nodeCredentials.autoAssigned.message', {
-				interpolate: { count: String(updatedNodesCount) },
-			}),
-			type: 'success',
+	// Skip auto-assign for automatic/system actions (e.g., auto-selecting on mount)
+	if (isUserAction) {
+		const updatedNodesCount = workflowsStore.assignCredentialToMatchingNodes({
+			credentials: newSelectedCredentials,
+			type: selectedCredentialsType,
+			currentNodeName: props.node.name,
 		});
+
+		if (updatedNodesCount > 0) {
+			nodeHelpers.updateNodesCredentialsIssues();
+			toast.showMessage({
+				title: i18n.baseText('nodeCredentials.showMessage.title'),
+				message: i18n.baseText('nodeCredentials.autoAssigned.message', {
+					interpolate: { count: String(updatedNodesCount) },
+				}),
+				type: 'success',
+			});
+		}
 	}
 
 	// If credential is selected from mixed credential dropdown, update node's auth filed based on selected credential

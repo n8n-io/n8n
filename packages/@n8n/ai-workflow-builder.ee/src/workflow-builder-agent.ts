@@ -10,6 +10,7 @@ import type { SelectedNodeContext } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
 	ApplicationError,
+	OperationalError,
 	type INodeTypeDescription,
 	type IRunExecutionData,
 	type ITelemetryTrackProperties,
@@ -20,13 +21,23 @@ import {
 import { MAX_AI_BUILDER_PROMPT_LENGTH, MAX_MULTI_AGENT_STREAM_ITERATIONS } from '@/constants';
 
 import { parsePlanDecision } from './agents/planner.agent';
+import type { AssistantHandler } from './assistant';
 import { CodeWorkflowBuilder } from './code-builder';
+import { TriageAgent } from './code-builder/triage.agent';
+import type { TriageAgentOutcome } from './code-builder/triage.agent';
+import {
+	type CodeBuilderSession,
+	loadCodeBuilderSession,
+	saveCodeBuilderSession,
+	generateCodeBuilderThreadId,
+} from './code-builder/utils/code-builder-session';
 import { ValidationError } from './errors';
 import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs';
 import { SessionManagerService } from './session-manager.service';
 import type { ResourceLocatorCallback } from './types/callbacks';
 import type { HITLInterruptValue, PlanOutput } from './types/planning';
 import type { SimpleWorkflow } from './types/workflow';
+import { sanitizeLlmErrorMessage } from './utils/error-sanitizer';
 import { createStreamProcessor, type StreamEvent } from './utils/stream-processor';
 import type { WorkflowState } from './workflow-state';
 
@@ -83,6 +94,8 @@ export interface WorkflowBuilderAgentConfig {
 	resourceLocatorCallback?: ResourceLocatorCallback;
 	/** Callback for emitting telemetry events */
 	onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
+	/** Assistant handler for routing help/debug queries via the SDK (code builder only) */
+	assistantHandler?: AssistantHandler;
 }
 
 export interface ExpressionValue {
@@ -100,6 +113,8 @@ export interface BuilderFeatureFlags {
 	planMode?: boolean;
 	/** Enable introspection tool for diagnostic data collection. Disabled by default. */
 	enableIntrospection?: boolean;
+	/** Enable merged ask/build experience with assistant subgraph (default: false). */
+	mergeAskBuild?: boolean;
 }
 
 export interface ChatPayload {
@@ -146,6 +161,7 @@ export class WorkflowBuilderAgent {
 	private nodeDefinitionDirs?: string[];
 	private resourceLocatorCallback?: ResourceLocatorCallback;
 	private onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
+	private assistantHandler?: AssistantHandler;
 	/** Feature flags stored from the first chat call to ensure consistency across a session */
 	private sessionFeatureFlags?: BuilderFeatureFlags;
 
@@ -161,6 +177,7 @@ export class WorkflowBuilderAgent {
 		this.nodeDefinitionDirs = config.nodeDefinitionDirs;
 		this.resourceLocatorCallback = config.resourceLocatorCallback;
 		this.onTelemetryEvent = config.onTelemetryEvent;
+		this.assistantHandler = config.assistantHandler;
 	}
 
 	/**
@@ -177,6 +194,7 @@ export class WorkflowBuilderAgent {
 			featureFlags,
 			onGenerationSuccess: this.onGenerationSuccess,
 			resourceLocatorCallback: this.resourceLocatorCallback,
+			assistantHandler: this.assistantHandler,
 		});
 	}
 
@@ -248,9 +266,14 @@ export class WorkflowBuilderAgent {
 				return;
 			}
 
-			// Normal code builder flow (no plan mode)
-			this.logger?.debug('Routing to CodeWorkflowBuilder', { userId });
-			yield* this.runCodeWorkflowBuilder(payload, userId, abortSignal);
+			const isMergeAskBuildEnabled = process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD === 'true';
+			if (isMergeAskBuildEnabled && this.assistantHandler) {
+				this.logger?.debug('Routing through triage agent', { userId });
+				yield* this.runTriageAgent(payload, userId, abortSignal);
+			} else {
+				this.logger?.debug('Routing to code workflow builder', { userId });
+				yield* this.runCodeWorkflowBuilder(payload, userId, abortSignal);
+			}
 			return;
 		}
 
@@ -282,6 +305,103 @@ export class WorkflowBuilderAgent {
 		});
 
 		yield* codeWorkflowBuilder.chat(payload, userId ?? 'unknown', abortSignal);
+	}
+
+	private async *runTriageAgent(
+		payload: ChatPayload,
+		userId: string | undefined,
+		abortSignal: AbortSignal | undefined,
+	) {
+		const workflowId = payload.workflowContext?.currentWorkflow?.id;
+		const resolvedUserId = userId ?? 'unknown';
+		let session: CodeBuilderSession | undefined;
+		let threadId: string | undefined;
+
+		if (workflowId) {
+			threadId = generateCodeBuilderThreadId(workflowId, resolvedUserId);
+			session = await loadCodeBuilderSession(this.checkpointer, threadId);
+		}
+
+		const triageAgent = new TriageAgent({
+			llm: this.stageLLMs.builder,
+			assistantHandler: this.assistantHandler!,
+			buildWorkflow: (p, u, s) => this.runCodeWorkflowBuilder(p, u, s),
+			logger: this.logger,
+		});
+
+		// Only reuse the SDK session if the most recent interaction was an
+		// assistant exchange. If build requests or plans happened in between,
+		// the SDK's internal conversation context is stale and would confuse
+		// the assistant.
+		const lastEntry = session?.conversationEntries?.at(-1);
+		const sdkSessionId =
+			lastEntry?.type === 'assistant-exchange' ? session?.sdkSessionId : undefined;
+
+		const gen = triageAgent.run({
+			payload,
+			userId: resolvedUserId,
+			abortSignal,
+			sdkSessionId,
+			conversationHistory: session?.conversationEntries,
+		});
+
+		const { outcome, collectedText } = yield* this.drainTriageGenerator(gen);
+
+		if (session && threadId) {
+			await this.saveTriageOutcome(session, threadId, payload.message, outcome, collectedText);
+		}
+	}
+
+	/**
+	 * Drain the triage generator, yielding each chunk and collecting text along the way.
+	 */
+	private async *drainTriageGenerator(gen: ReturnType<TriageAgent['run']>) {
+		const collectedText: string[] = [];
+		let iterResult = await gen.next();
+		while (!iterResult.done) {
+			yield iterResult.value;
+			for (const msg of iterResult.value.messages ?? []) {
+				if (msg.type === 'message' && 'text' in msg) {
+					collectedText.push(msg.text);
+				}
+			}
+			iterResult = await gen.next();
+		}
+		return { outcome: iterResult.value, collectedText };
+	}
+
+	/**
+	 * Persist triage outcome to the code builder session.
+	 */
+	private async saveTriageOutcome(
+		session: CodeBuilderSession,
+		threadId: string,
+		userMessage: string,
+		outcome: TriageAgentOutcome,
+		collectedText: string[],
+	) {
+		if (outcome.assistantSummary) {
+			session.conversationEntries.push({
+				type: 'assistant-exchange',
+				userQuery: userMessage,
+				assistantSummary: outcome.assistantSummary,
+			});
+			session.sdkSessionId = outcome.sdkSessionId;
+		}
+		if (outcome.buildExecuted) {
+			if (outcome.assistantSummary) {
+				await saveCodeBuilderSession(this.checkpointer, threadId, session);
+			}
+			return;
+		}
+		if (!outcome.assistantSummary) {
+			session.conversationEntries.push({
+				type: 'plan',
+				userQuery: userMessage,
+				plan: collectedText.join('\n'),
+			});
+		}
+		await saveCodeBuilderSession(this.checkpointer, threadId, session);
 	}
 
 	private async *runMultiAgentSystem(
@@ -337,6 +457,7 @@ export class WorkflowBuilderAgent {
 		const threadConfig: RunnableConfig = {
 			configurable: {
 				thread_id: threadId,
+				userId,
 			},
 		};
 
@@ -423,6 +544,12 @@ export class WorkflowBuilderAgent {
 			throw new ValidationError(invalidRequestErrorMessage);
 		}
 
+		if (this.isLlmQuotaOrRateLimitError(error)) {
+			throw new OperationalError(sanitizeLlmErrorMessage(error), {
+				cause: error instanceof Error ? error : undefined,
+			});
+		}
+
 		throw error;
 	}
 
@@ -503,6 +630,15 @@ export class WorkflowBuilderAgent {
 			'status' in error &&
 			error.status === 401
 		);
+	}
+
+	/**
+	 * Checks if the error is a 429 rate-limit / quota-exceeded error from the LLM provider.
+	 * These are transient provider-side issues that users cannot act on, so we wrap them
+	 * in OperationalError (level: warning) to prevent them from reaching Sentry.
+	 */
+	private isLlmQuotaOrRateLimitError(error: unknown): boolean {
+		return !!error && typeof error === 'object' && 'status' in error && error.status === 429;
 	}
 
 	private getInvalidRequestError(error: unknown): string | undefined {

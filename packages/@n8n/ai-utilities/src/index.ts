@@ -1,3 +1,6 @@
+// AI Node SDK version
+export { AI_NODE_SDK_VERSION } from './ai-node-sdk-version';
+
 // Log wrapper and related utilities
 export { logWrapper } from './utils/log-wrapper';
 export { logAiEvent } from './utils/log-ai-event';
@@ -55,7 +58,6 @@ export { LangchainAdapter } from './adapters/langchain-chat-model';
 export { BaseChatModel } from './chat-model/base';
 
 export { getParametersJsonSchema } from './converters/tool';
-export { supplyModel } from './suppliers/supplyModel';
 
 // Memory types
 export type { ChatHistory, ChatMemory } from './types/memory';
@@ -67,5 +69,6 @@ export { BaseChatMemory } from './memory/base-chat-memory';
 // Memory implementations
 export { WindowedChatMemory, type WindowedChatMemoryConfig } from './memory/windowed-chat-memory';
 
-// Memory supplier
+// Suppliers
 export { supplyMemory, type SupplyMemoryOptions } from './suppliers/supplyMemory';
+export { supplyModel, type SupplyModelOptions } from './suppliers/supplyModel';

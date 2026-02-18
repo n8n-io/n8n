@@ -66,13 +66,25 @@ export class DataTableService {
 	async shutdown() {}
 
 	async createDataTable(projectId: string, dto: CreateDataTableDto) {
+		if (dto.fileId && dto.columns.length === 0) {
+			throw new DataTableValidationError(
+				'At least one column must be included when importing from CSV',
+			);
+		}
+
 		await this.validateUniqueName(dto.name, projectId);
 
 		const result = await this.dataTableRepository.createDataTable(projectId, dto.name, dto.columns);
 
 		if (dto.fileId) {
 			try {
-				await this.importDataFromFile(projectId, result.id, dto.fileId, dto.hasHeaders ?? true);
+				await this.importDataFromFile(
+					projectId,
+					result.id,
+					dto.fileId,
+					dto.hasHeaders ?? true,
+					dto.columns,
+				);
 				await this.fileCleanupService.deleteFile(dto.fileId);
 			} catch (error) {
 				await this.deleteDataTable(result.id, projectId);
@@ -90,18 +102,35 @@ export class DataTableService {
 		dataTableId: string,
 		fileId: string,
 		hasHeaders: boolean,
+		dtoColumns?: CreateDataTableDto['columns'],
 	) {
 		try {
 			const tableColumns = await this.getColumns(dataTableId, projectId);
 
-			const csvMetadata = await this.csvParserService.parseFile(fileId, hasHeaders);
-
+			// Build mapping from CSV column name → table column name.
+			// When dtoColumns carry csvColumnName (i.e. a column was renamed or some
+			// columns were discarded), use that for a name-based mapping. Otherwise
+			// fall back to the legacy index-based mapping.
 			const columnMapping = new Map<string, string>();
-			csvMetadata.columns.forEach((csvColumn, index) => {
-				if (tableColumns[index]) {
-					columnMapping.set(csvColumn.name, tableColumns[index].name);
+
+			const hasCsvColumnNames = dtoColumns?.some((c) => c.csvColumnName);
+			if (hasCsvColumnNames && dtoColumns) {
+				for (const dtoCol of dtoColumns) {
+					if (dtoCol.csvColumnName) {
+						const tableCol = tableColumns.find((tc) => tc.name === dtoCol.name);
+						if (tableCol) {
+							columnMapping.set(dtoCol.csvColumnName, tableCol.name);
+						}
+					}
 				}
-			});
+			} else {
+				const csvMetadata = await this.csvParserService.parseFile(fileId, hasHeaders);
+				csvMetadata.columns.forEach((csvColumn, index) => {
+					if (tableColumns[index]) {
+						columnMapping.set(csvColumn.name, tableColumns[index].name);
+					}
+				});
+			}
 
 			const csvRows = await this.csvParserService.parseFileData(fileId, hasHeaders);
 
@@ -719,6 +748,7 @@ export class DataTableService {
 	async generateDataTableCsv(
 		dataTableId: string,
 		projectId: string,
+		includeSystemColumns = true,
 	): Promise<{ csvContent: string; dataTableName: string }> {
 		const dataTable = await this.validateDataTableExists(dataTableId, projectId);
 
@@ -732,7 +762,7 @@ export class DataTableService {
 			columns,
 		);
 
-		const csvContent = this.buildCsvContent(rows, columns);
+		const csvContent = this.buildCsvContent(rows, columns, includeSystemColumns);
 
 		return {
 			csvContent,
@@ -740,26 +770,36 @@ export class DataTableService {
 		};
 	}
 
-	private buildCsvContent(rows: DataTableRowReturn[], columns: DataTableColumn[]): string {
+	private buildCsvContent(
+		rows: DataTableRowReturn[],
+		columns: DataTableColumn[],
+		includeSystemColumns = true,
+	): string {
 		const sortedColumns = [...columns].sort((a, b) => a.index - b.index);
 
 		const userHeaders = sortedColumns.map((col) => col.name);
-		const headers = ['id', ...userHeaders, 'createdAt', 'updatedAt'];
+		const headers = includeSystemColumns
+			? ['id', ...userHeaders, 'createdAt', 'updatedAt']
+			: userHeaders;
 
 		const csvRows: string[] = [headers.map((h) => this.escapeCsvValue(h)).join(',')];
 
 		for (const row of rows) {
 			const values: string[] = [];
 
-			values.push(this.escapeCsvValue(row.id));
+			if (includeSystemColumns) {
+				values.push(this.escapeCsvValue(row.id));
+			}
 
 			for (const column of sortedColumns) {
 				const value = row[column.name];
 				values.push(this.escapeCsvValue(this.formatValueForCsv(value, column.type)));
 			}
 
-			values.push(this.escapeCsvValue(this.formatDateForCsv(row.createdAt)));
-			values.push(this.escapeCsvValue(this.formatDateForCsv(row.updatedAt)));
+			if (includeSystemColumns) {
+				values.push(this.escapeCsvValue(this.formatDateForCsv(row.createdAt)));
+				values.push(this.escapeCsvValue(this.formatDateForCsv(row.updatedAt)));
+			}
 
 			csvRows.push(values.join(','));
 		}
