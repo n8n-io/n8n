@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 
 import { FirecrawlQuickConnect } from '../quick-connect.config';
 import { IQuickConnectHandler } from './handler.interface';
+import axios from 'axios';
 
 const FIRECRAWL_API_BASE_URL = 'https://api.firecrawl.dev';
 
@@ -20,18 +21,19 @@ export class FirecrawlHandler implements IQuickConnectHandler {
 
 	async getApiKey({ email }: User) {
 		const secret = this.config.backendFlowConfig.secret;
-		const response = await fetch(`${FIRECRAWL_API_BASE_URL}/admin/integration/create-user`, {
-			method: 'POST',
-			headers: {
-				authorization: `Bearer ${secret}`,
-				contentType: 'application/json',
+		const response = await axios.post<FirecrawlCreateUserResponse>(
+			`${FIRECRAWL_API_BASE_URL}/admin/integration/create-user`,
+			{ email },
+			{
+				headers: {
+					authorization: `Bearer ${secret}`,
+					contentType: 'application/json',
+				},
 			},
-			body: JSON.stringify({ email }),
-		});
-		const json = (await response.json()) as FirecrawlCreateUserResponse;
+		);
 
 		return {
-			apiKey: json.apiKey,
+			apiKey: response.data.apiKey,
 		};
 	}
 }
