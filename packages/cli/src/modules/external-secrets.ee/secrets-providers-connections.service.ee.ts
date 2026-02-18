@@ -24,6 +24,7 @@ import type { ProjectSummary } from '@/events/maps/relay.event-map';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 import { SecretsProvidersResponses } from '@/modules/external-secrets.ee/secrets-providers.responses.ee';
+import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 
 @Service()
 export class SecretsProvidersConnectionsService {
@@ -31,6 +32,7 @@ export class SecretsProvidersConnectionsService {
 		private readonly logger: Logger,
 		private readonly repository: SecretsProviderConnectionRepository,
 		private readonly projectAccessRepository: ProjectSecretsProviderAccessRepository,
+		private readonly providerRegistry: ExternalSecretsProviderRegistry,
 		private readonly cipher: Cipher,
 		private readonly externalSecretsManager: ExternalSecretsManager,
 		private readonly redactionService: RedactionService,
@@ -179,11 +181,21 @@ export class SecretsProvidersConnectionsService {
 	}
 
 	async getGlobalCompletions(): Promise<SecretsProviderConnection[]> {
-		return await this.repository.findGlobalConnections();
+		const connectedProviders = this.providerRegistry.getConnected();
+		const connectedProviderNames = connectedProviders.map((provider) => provider.name);
+		const connections = await this.repository.findGlobalConnections({
+			types: connectedProviderNames,
+		});
+		return connections;
 	}
 
 	async getProjectCompletions(projectId: string): Promise<SecretsProviderConnection[]> {
-		return await this.repository.findByProjectId(projectId);
+		const connectedProviders = this.providerRegistry.getConnected();
+		const connectedProviderNames = connectedProviders.map((provider) => provider.name);
+		const connections = await this.repository.findByProjectId(projectId, {
+			types: connectedProviderNames,
+		});
+		return connections;
 	}
 
 	async listConnectionsForProject(projectId: string): Promise<SecretsProviderConnection[]> {

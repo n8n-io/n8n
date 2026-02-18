@@ -25,21 +25,51 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 	}
 
 	/**
-	 * Find all global connections (connections with no project access entries)
+	 * Retrieves global connections, i.e., connections that are not assigned to any project.
+	 * A global connection has no associated entries in its projectAccess relation.
+	 *
+	 * @param typeFilter - (Optional) Limits results to connections of the specified provider type.
+	 * @returns Promise resolving to all matching SecretsProviderConnection entities.
 	 */
-	async findGlobalConnections(): Promise<SecretsProviderConnection[]> {
-		return await this.createQueryBuilder('connection')
+	async findGlobalConnections({
+		types,
+	}: { types?: SecretsProviderConnection['type'][] } = {}): Promise<SecretsProviderConnection[]> {
+		const connectionQuery = await this.createQueryBuilder('connection')
 			.leftJoin('connection.projectAccess', 'access')
-			.where('access.secretsProviderConnectionId IS NULL')
-			.getMany();
+			.where('access.secretsProviderConnectionId IS NULL');
+
+		if (types && types.length > 0) {
+			connectionQuery.andWhere('connection.type IN (:...types)', { types });
+		}
+
+		return await connectionQuery.getMany();
 	}
 
-	async findByProjectId(projectId: string): Promise<SecretsProviderConnection[]> {
-		return await this.createQueryBuilder('connection')
+	/**
+	 * Finds all secrets provider connections assigned to a given project.
+	 * Optionally filters connections by provider type.
+	 *
+	 * This returns only those connections explicitly linked to the project,
+	 * not global connections (i.e., those without any project restriction).
+	 *
+	 * @param projectId - The ID of the project to filter on.
+	 * @param type - (Optional) The provider type to filter connections by.
+	 * @returns Promise resolving to all matching SecretsProviderConnection entities.
+	 */
+	async findByProjectId(
+		projectId: string,
+		{ types }: { types?: SecretsProviderConnection['type'][] } = {},
+	): Promise<SecretsProviderConnection[]> {
+		const connectionQuery = await this.createQueryBuilder('connection')
 			.innerJoinAndSelect('connection.projectAccess', 'projectAccess')
 			.leftJoinAndSelect('projectAccess.project', 'project')
-			.where('projectAccess.projectId = :projectId', { projectId })
-			.getMany();
+			.where('projectAccess.projectId = :projectId', { projectId });
+
+		if (types && types.length > 0) {
+			connectionQuery.andWhere('connection.type IN (:...types)', { types });
+		}
+
+		return await connectionQuery.getMany();
 	}
 
 	/**
