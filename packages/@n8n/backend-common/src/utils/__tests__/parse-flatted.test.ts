@@ -6,7 +6,7 @@ import { parseFlatted, SIZE_THRESHOLD } from '../parse-flatted';
 jest.mock('../flatted-async');
 
 describe('parseFlatted', () => {
-	const parseFlatteAsyncMock = jest.mocked(flattedAsync.parseFlatteAsync);
+	const parseFlattedAsyncMock = jest.mocked(flattedAsync.parseFlattedAsync);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -19,7 +19,7 @@ describe('parseFlatted', () => {
 		const result = await parseFlatted(flattedString);
 
 		expect(result).toEqual(original);
-		expect(parseFlatteAsyncMock).not.toHaveBeenCalled();
+		expect(parseFlattedAsyncMock).not.toHaveBeenCalled();
 	});
 
 	it('should use sync flatted.parse for data below the threshold', async () => {
@@ -29,16 +29,16 @@ describe('parseFlatted', () => {
 
 		await parseFlatted(padding);
 
-		expect(parseFlatteAsyncMock).not.toHaveBeenCalled();
+		expect(parseFlattedAsyncMock).not.toHaveBeenCalled();
 	});
 
-	it('should use parseFlatteAsync for data at or above the threshold', async () => {
+	it('should use parseFlattedAsync for data at or above the threshold', async () => {
 		const aboveThreshold = '[' + '"x"'.repeat(SIZE_THRESHOLD) + ']';
-		parseFlatteAsyncMock.mockResolvedValue({ parsed: true });
+		parseFlattedAsyncMock.mockResolvedValue({ parsed: true });
 
 		const result = await parseFlatted(aboveThreshold);
 
-		expect(parseFlatteAsyncMock).toHaveBeenCalledWith(aboveThreshold);
+		expect(parseFlattedAsyncMock).toHaveBeenCalledWith(aboveThreshold);
 		expect(result).toEqual({ parsed: true });
 	});
 });

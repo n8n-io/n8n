@@ -1,12 +1,12 @@
 import { parse, stringify } from 'flatted';
 
-import { parseFlatteAsync } from '../flatted-async';
+import { parseFlattedAsync } from '../flatted-async';
 
-describe('parseFlatteAsync', () => {
+describe('parseFlattedAsync', () => {
 	it('should parse simple objects', async () => {
 		const original = { name: 'test', count: 42, active: true };
 		const flattedString = stringify(original);
-		const result = await parseFlatteAsync(flattedString);
+		const result = await parseFlattedAsync(flattedString);
 		expect(result).toEqual(original);
 	});
 
@@ -16,7 +16,7 @@ describe('parseFlatteAsync', () => {
 			node2: { data: ['a', 'b'], meta: { type: 'action' } },
 		};
 		const flattedString = stringify(original);
-		const result = await parseFlatteAsync(flattedString);
+		const result = await parseFlattedAsync(flattedString);
 		expect(result).toEqual(original);
 	});
 
@@ -25,7 +25,7 @@ describe('parseFlatteAsync', () => {
 		original.self = original;
 
 		const flattedString = stringify(original);
-		const result = await parseFlatteAsync(flattedString);
+		const result = await parseFlattedAsync(flattedString);
 
 		expect((result as Record<string, unknown>).name).toBe('root');
 		expect((result as Record<string, unknown>).self).toBe(result);
@@ -36,7 +36,7 @@ describe('parseFlatteAsync', () => {
 		arr.push(arr);
 
 		const flattedString = stringify(arr);
-		const result = await parseFlatteAsync(flattedString);
+		const result = await parseFlattedAsync(flattedString);
 
 		expect(Array.isArray(result)).toBe(true);
 		const resultArr = result as unknown[];
@@ -47,15 +47,15 @@ describe('parseFlatteAsync', () => {
 	});
 
 	it('should handle null and primitive values', async () => {
-		expect(await parseFlatteAsync(stringify(null))).toBeNull();
-		expect(await parseFlatteAsync(stringify(42))).toBe(42);
-		expect(await parseFlatteAsync(stringify('hello'))).toBe('hello');
-		expect(await parseFlatteAsync(stringify(true))).toBe(true);
+		expect(await parseFlattedAsync(stringify(null))).toBeNull();
+		expect(await parseFlattedAsync(stringify(42))).toBe(42);
+		expect(await parseFlattedAsync(stringify('hello'))).toBe('hello');
+		expect(await parseFlattedAsync(stringify(true))).toBe(true);
 	});
 
 	it('should handle empty objects and arrays', async () => {
-		expect(await parseFlatteAsync(stringify({}))).toEqual({});
-		expect(await parseFlatteAsync(stringify([]))).toEqual([]);
+		expect(await parseFlattedAsync(stringify({}))).toEqual({});
+		expect(await parseFlattedAsync(stringify([]))).toEqual([]);
 	});
 
 	it('should produce the same result as flatted.parse for complex data', async () => {
@@ -89,7 +89,7 @@ describe('parseFlatteAsync', () => {
 
 		const flattedString = stringify(original);
 		const syncResult = parse(flattedString);
-		const asyncResult = await parseFlatteAsync(flattedString);
+		const asyncResult = await parseFlattedAsync(flattedString);
 
 		expect(asyncResult).toEqual(syncResult);
 	});
@@ -99,7 +99,7 @@ describe('parseFlatteAsync', () => {
 		const original = { a: shared, b: shared };
 
 		const flattedString = stringify(original);
-		const result = (await parseFlatteAsync(flattedString)) as Record<string, unknown>;
+		const result = (await parseFlattedAsync(flattedString)) as Record<string, unknown>;
 
 		expect(result.a).toEqual(shared);
 		expect(result.b).toEqual(shared);
@@ -119,7 +119,7 @@ describe('parseFlatteAsync', () => {
 		expect(flattedString.length).toBeGreaterThan(5 * 1024 * 1024);
 
 		const syncResult = parse(flattedString);
-		const asyncResult = await parseFlatteAsync(flattedString);
+		const asyncResult = await parseFlattedAsync(flattedString);
 
 		expect(asyncResult).toEqual(syncResult);
 	});

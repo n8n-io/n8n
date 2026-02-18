@@ -1,31 +1,9 @@
 /**
  * Async flatted JSON parsing using stream-json.
  *
- * For large execution data, synchronous flatted.parse() blocks the event loop
- * (e.g. 600ms for 18MB, 2.8s for 75MB). This module provides an async
- * alternative that streams the JSON in 64KB chunks, yielding to the event loop
- * between chunks via setImmediate.
- *
- * ## Benchmark results (real n8n execution data, Apple M3 Pro)
- *
- * **Slowdown:** 1.3–1.5x slower than sync flatted.parse().
- *   - 18 MB execution: ~880ms vs ~585ms sync
- *   - 75 MB execution: ~3.7s vs ~2.8s sync
- *
- * **Event loop lag:** p95 stays at ~3ms even on 75MB payloads.
- *   - Sync flatted blocks the loop for the entire parse (p95 = 2.8s at 75MB).
- *   - Loop max of ~500ms at 75MB comes from the sync revive() step (flatted
- *     reference resolution), which is the next bottleneck to address.
- *
- * **Heap:** 29–36% less peak heap usage than sync flatted.
- *   - 18 MB execution: 95 MB vs 148 MB (36% less)
- *   - 75 MB execution: 422 MB vs 596 MB (29% less)
- *   - Incremental parsing avoids holding the raw JSON string and the full
- *     parsed intermediate array simultaneously.
- *
- * **GC:** More frequent but cheaper collections.
- *   - 75 MB execution: 370ms total GC vs 520ms sync (29% less), despite
- *     440 vs 98 GC events — smaller working set means cheaper collections.
+ * For large execution data, synchronous flatted.parse() blocks the event loop.
+ * This module provides an async alternative that streams the JSON in 64KB
+ * chunks, yielding to the event loop between chunks via setImmediate.
  */
 import { ensureError } from 'n8n-workflow';
 import { Readable } from 'stream';
@@ -36,7 +14,7 @@ import Asm from 'stream-json/Assembler';
 // responsiveness vs scheduling overhead (p95 lag ~4 ms at 50 MB payload).
 const CHUNK_SIZE = 64 * 1024;
 
-// --- Flatted reference resolution (extracted from flatted@3.2.7) ---
+//#region Flatted reference resolution (extracted from flatted@3.2.7)
 
 const Primitive = String;
 const primitive = 'string';
@@ -96,6 +74,8 @@ function resolveFlatted(rawArray: unknown[]): unknown {
 	return $.call({ '': tmp }, '', tmp);
 }
 
+//#endregion Flatted reference resolution
+
 /**
  * Recursively convert every string value into a String object wrapper.
  * This replicates what JSON.parse(text, Primitives) does so that flatted
@@ -137,7 +117,7 @@ function prepareFlatted(rawParsed: unknown[]): unknown[] {
  * Streams the string in 64KB chunks, yielding to the event loop between chunks
  * via setImmediate, then resolves flatted references synchronously.
  */
-export async function parseFlatteAsync(flattedString: string): Promise<unknown> {
+export async function parseFlattedAsync(flattedString: string): Promise<unknown> {
 	return await new Promise((resolve, reject) => {
 		let offset = 0;
 		const readable = new Readable({

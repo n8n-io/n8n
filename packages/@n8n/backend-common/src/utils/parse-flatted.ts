@@ -1,6 +1,6 @@
 import { parse } from 'flatted';
 
-import { parseFlatteAsync } from './flatted-async';
+import { parseFlattedAsync } from './flatted-async';
 
 // 1 MB — below this, sync parse is fast enough
 export const SIZE_THRESHOLD = 1 * 1024 * 1024;
@@ -16,5 +16,5 @@ export async function parseFlatted(data: string): Promise<unknown> {
 	if (data.length < SIZE_THRESHOLD) {
 		return parse(data);
 	}
-	return await parseFlatteAsync(data);
+	return await parseFlattedAsync(data);
 }
