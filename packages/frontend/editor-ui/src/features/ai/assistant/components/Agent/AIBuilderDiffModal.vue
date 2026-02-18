@@ -36,7 +36,6 @@ function handleBeforeClose() {
 }
 
 function closeModal() {
-	handleBeforeClose();
 	uiStore.closeModal(AI_BUILDER_DIFF_MODAL_KEY);
 }
 </script>
