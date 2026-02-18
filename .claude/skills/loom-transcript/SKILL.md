@@ -2,46 +2,85 @@
 name: loom-transcript
 description: Fetch and display the full transcript from a Loom video URL. Use when the user wants to get or read a Loom transcript.
 argument-hint: [loom-url]
-compatibility:
-	requires:
-		- plugin: playwright
-			description: Official Playwright plugin — provides browser automation tools for navigating Loom and extracting transcript content
 ---
 
 # Loom Transcript Fetcher
 
-Fetch the transcript from a Loom video using Playwright browser automation.
-
-## Prerequisites
-
-**Required:**
-- **Playwright plugin** (`plugin_playwright`): This skill relies entirely on browser automation to load the Loom page and extract transcript content. Without it, the skill cannot function. The plugin must be installed from the official Claude Code plugin repository. If unavailable, stop and tell the user to install it via `/install-plugin playwright` or the equivalent command.
+Fetch the transcript from a Loom video using Loom's GraphQL API.
 
 ## Instructions
 
 Given the Loom URL: $ARGUMENTS
 
-1. First, load the Playwright tools using ToolSearch with query "+playwright navigate"
+### 1. Extract the Video ID
 
-2. Navigate to the Loom URL using `mcp__plugin_playwright_playwright__browser_navigate`
+Parse the Loom URL to extract the 32-character hex video ID. Supported URL formats:
+- `https://www.loom.com/share/<video-id>`
+- `https://www.loom.com/embed/<video-id>`
+- `https://www.loom.com/share/<video-id>?sid=<session-id>`
 
-3. Wait for the page to load, then look for a "Transcript" tab in the page snapshot
+The video ID is the 32-character hex string after `/share/` or `/embed/`.
 
-4. Click on the Transcript tab using `mcp__plugin_playwright_playwright__browser_click` with the appropriate ref
+### 2. Fetch Video Metadata
 
-5. After clicking, the transcript content will appear in the page snapshot. Extract all transcript segments which include:
-	- Timestamp (e.g., "0:00", "0:14", etc.)
-	- Transcript text for that segment
+Use the `WebFetch` tool to POST to `https://www.loom.com/graphql` to get the video title and details.
 
-6. Format and present the full transcript to the user with:
-	- Video title (from page title)
-	- Duration (if visible)
-	- Full transcript organized by timestamp
+Use this curl command via Bash:
 
-## Example Output Format
+```bash
+curl -s 'https://www.loom.com/graphql' \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -H 'x-loom-request-source: loom_web_45a5bd4' \
+  -H 'apollographql-client-name: web' \
+  -H 'apollographql-client-version: 45a5bd4' \
+  -d '{
+    "operationName": "GetVideoSSR",
+    "variables": {"id": "<VIDEO_ID>", "password": null},
+    "query": "query GetVideoSSR($id: ID!, $password: String) { getVideo(id: $id, password: $password) { ... on RegularUserVideo { id name description createdAt owner { display_name } } } }"
+  }'
+```
 
-**Video:** [Title]
-**Duration:** [Duration]
+### 3. Fetch the Transcript URLs
+
+Use curl via Bash to call the GraphQL API:
+
+```bash
+curl -s 'https://www.loom.com/graphql' \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -H 'x-loom-request-source: loom_web_45a5bd4' \
+  -H 'apollographql-client-name: web' \
+  -H 'apollographql-client-version: 45a5bd4' \
+  -d '{
+    "operationName": "FetchVideoTranscript",
+    "variables": {"videoId": "<VIDEO_ID>", "password": null},
+    "query": "query FetchVideoTranscript($videoId: ID!, $password: String) { fetchVideoTranscript(videoId: $videoId, password: $password) { ... on VideoTranscriptDetails { id video_id source_url captions_source_url } ... on GenericError { message } } }"
+  }'
+```
+
+Replace `<VIDEO_ID>` with the actual video ID extracted in step 1.
+
+The response contains:
+- `source_url` — JSON transcript URL
+- `captions_source_url` — VTT (WebVTT) captions URL
+
+### 4. Download and Parse the Transcript
+
+Fetch **both** URLs returned from step 3 (if available):
+
+1. **VTT captions** (`captions_source_url`): Download with `curl -sL "<url>"`. This is a WebVTT file with timestamps and text.
+2. **JSON transcript** (`source_url`): Download with `curl -sL "<url>"`. This is a JSON file with transcript segments.
+
+Prefer the VTT captions as the primary source since they include proper timestamps. Fall back to the JSON transcript if VTT is unavailable.
+
+### 5. Present the Transcript
+
+Format and present the full transcript to the user:
+
+**Video:** [Title from metadata]
+**Author:** [Owner name]
+**Date:** [Created date]
 
 ---
 
@@ -53,8 +92,14 @@ Given the Loom URL: $ARGUMENTS
 
 ---
 
+## Error Handling
+
+- If the GraphQL response contains a `GenericError`, report the error message to the user.
+- If both `source_url` and `captions_source_url` are null/missing, tell the user that no transcript is available for this video.
+- If the video URL is invalid or the ID cannot be extracted, ask the user for a valid Loom URL.
+
 ## Notes
 
-- If the Transcript tab is not immediately visible, the page may still be loading. Wait and retry.
-- Some Loom videos may not have transcripts available.
-- The transcript is auto-generated and may contain minor errors.
+- No authentication or cookies are required — Loom's transcript API is publicly accessible.
+- Only English transcripts are available through this API.
+- Transcripts are auto-generated and may contain minor errors.

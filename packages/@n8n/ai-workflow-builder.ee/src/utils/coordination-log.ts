@@ -12,11 +12,12 @@ import type {
 	SubgraphPhase,
 	DiscoveryMetadata,
 	BuilderMetadata,
+	AssistantMetadata,
 	StateManagementMetadata,
 	ResponderMetadata,
 } from '../types/coordination';
 
-export type RoutingDecision = 'discovery' | 'builder' | 'responder';
+export type RoutingDecision = 'discovery' | 'builder' | 'assistant' | 'responder';
 
 /**
  * Get the last completed phase from the coordination log
@@ -71,12 +72,22 @@ export function getPhaseMetadata(
 ): BuilderMetadata | null;
 export function getPhaseMetadata(
 	log: CoordinationLogEntry[],
+	phase: 'assistant',
+): AssistantMetadata | null;
+export function getPhaseMetadata(
+	log: CoordinationLogEntry[],
 	phase: 'state_management',
 ): StateManagementMetadata | null;
 export function getPhaseMetadata(
 	log: CoordinationLogEntry[],
 	phase: SubgraphPhase,
-): DiscoveryMetadata | BuilderMetadata | StateManagementMetadata | ResponderMetadata | null {
+):
+	| DiscoveryMetadata
+	| BuilderMetadata
+	| AssistantMetadata
+	| StateManagementMetadata
+	| ResponderMetadata
+	| null {
 	const entry = getPhaseEntry(log, phase);
 	if (!entry) return null;
 
@@ -84,6 +95,14 @@ export function getPhaseMetadata(
 	if (entry.metadata.phase === 'error') return null;
 
 	return entry.metadata;
+}
+
+/**
+ * Check if the coordination log contains a completed builder phase.
+ * Used to gate credit consumption — only builder phases consume credits.
+ */
+export function hasBuilderPhaseInLog(log: CoordinationLogEntry[]): boolean {
+	return log.some((entry) => entry.phase === 'builder' && entry.status === 'completed');
 }
 
 /**
@@ -155,6 +174,10 @@ export function getNextPhaseFromLog(log: CoordinationLogEntry[]): RoutingDecisio
 
 	// After builder → responder (terminal)
 	if (lastPhase === 'builder') {
+		return 'responder';
+	}
+
+	if (lastPhase === 'assistant') {
 		return 'responder';
 	}
 

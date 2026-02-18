@@ -441,7 +441,8 @@ const showPersonalizedTemplates = computed(
 );
 
 const shouldUseSimplifiedLayout = computed(() => {
-	return !loading.value && readyToRunStore.getSimplifiedLayoutVisibility(route);
+	const simplifiedLayoutVisible = readyToRunStore.getSimplifiedLayoutVisibility(route);
+	return !loading.value && simplifiedLayoutVisible;
 });
 
 const hasActiveCallouts = computed(() => {
