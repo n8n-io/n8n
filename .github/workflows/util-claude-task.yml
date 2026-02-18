@@ -7,10 +7,6 @@ on:
         description: 'Task description - what should Claude do?'
         required: true
         type: string
-      user_token:
-        description: 'Your GitHub PAT (required for PR authorship - you cannot approve PRs you author)'
-        required: true
-        type: string
       resumeUrl:
         description: 'Optional callback URL to call with the result when the workflow completes'
         required: false
@@ -44,7 +40,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          token: ${{ inputs.user_token }}
           ref: ${{ inputs.ref }}
           fetch-depth: 1
 
