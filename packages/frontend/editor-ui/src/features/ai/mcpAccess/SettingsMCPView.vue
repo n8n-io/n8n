@@ -25,6 +25,8 @@ import {
 	N8nLink,
 	N8nInputLabel,
 	N8nInput,
+	N8nNotice,
+	N8nCallout,
 } from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
@@ -71,11 +73,19 @@ const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
 const redirectUrisInput = ref('');
 const redirectUrisError = ref('');
 const redirectUrisLoading = ref(false);
+const redirectUriWarningDismissed = ref(false);
 
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
 
 const canToggleMCP = computed(() => isOwner.value || isAdmin.value);
+
+const showRedirectUriWarning = computed(
+	() =>
+		mcpStore.mcpAccessEnabled &&
+		mcpStore.allowedRedirectUris.length === 0 &&
+		!redirectUriWarningDismissed.value,
+);
 
 const showConnectWorkflowsButton = computed(() => {
 	return selectedTab.value === 'workflows' && availableWorkflows.value.length > 0;
@@ -301,7 +311,7 @@ onMounted(async () => {
 	if (!mcpStore.mcpAccessEnabled) {
 		return;
 	}
-	await fetchAvailableWorkflows();
+	await Promise.all([fetchAvailableWorkflows(), loadRedirectUris()]);
 });
 </script>
 <template>
@@ -323,6 +333,23 @@ onMounted(async () => {
 						{{ i18n.baseText('generic.learnMore') }}
 					</N8nLink>
 				</div>
+				<N8nCallout
+					v-if="showRedirectUriWarning"
+					theme="warning"
+					class="mt-xs"
+					data-test-id="mcp-redirect-uri-warning"
+				>
+					{{ i18n.baseText('settings.mcp.allowedRedirectUris.warning') }}
+					<template #trailingContent>
+						<N8nButton
+							icon="x"
+							variant="ghost"
+							size="small"
+							iconOnly
+							@click="redirectUriWarningDismissed = true"
+						/>
+					</template>
+				</N8nCallout>
 			</div>
 			<MCpHeaderActions
 				:access-enabled="mcpStore.mcpAccessEnabled"
@@ -389,11 +416,10 @@ onMounted(async () => {
 					:class="$style['oauth-settings-content']"
 					data-test-id="mcp-oauth-settings-tab"
 				>
-					<div :class="$style['settings-description']">
-						<N8nText color="text-light" size="small">
-							{{ i18n.baseText('settings.mcp.allowedRedirectUris.description') }}
-						</N8nText>
-					</div>
+					<N8nNotice
+						theme="info"
+						:content="i18n.baseText('settings.mcp.allowedRedirectUris.description')"
+					/>
 					<N8nInputLabel :label="i18n.baseText('settings.mcp.allowedRedirectUris.label')">
 						<N8nInput
 							v-model="redirectUrisInput"
@@ -461,14 +487,6 @@ onMounted(async () => {
 .oauth-settings-content {
 	padding: var(--spacing--lg);
 	max-width: 800px;
-}
-
-.settings-description {
-	margin-bottom: var(--spacing--lg);
-	padding: var(--spacing--sm);
-	background-color: var(--color--background--light-2);
-	border-radius: var(--radius);
-	border-left: calc(var(--border-width) * 3) solid var(--color--primary);
 }
 
 .error-message {

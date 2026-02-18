@@ -2642,6 +2642,7 @@
 	"settings.mcp.allowedRedirectUris.validation.invalidUrl": "Invalid URL: {url}",
 	"settings.mcp.allowedRedirectUris.validation.invalidProtocol": "Invalid protocol for URL: {url}. Only http and https are allowed.",
 	"settings.mcp.allowedRedirectUris.validation.httpsRequired": "HTTPS required in production: {url}",
+	"settings.mcp.allowedRedirectUris.warning": "Configure a redirect URL allowlist to control which applications can complete the OAuth consent flow. Without one, a malicious application could register an OAuth client with an attacker-controlled redirect URL and use it to obtain access tokens for your n8n instance.",
 	"settings.chatHub": "Chat",
 	"settings.chatHub.providers.fetching.error": "Error fetching chat provider settings",
 	"settings.chatHub.providers.updated.success": "Chat provider settings updated",
