@@ -119,7 +119,7 @@ export default class New extends Command {
 			user: tryReadGitUser(),
 			packageManager: {
 				name: packageManager,
-				installCommand: (packageManager as string) === 'npm' ? 'ci' : 'install',
+				installCommand: packageManager === 'npm' ? 'ci' : 'install',
 			},
 		};
 		const copyingSpinner = spinner();
