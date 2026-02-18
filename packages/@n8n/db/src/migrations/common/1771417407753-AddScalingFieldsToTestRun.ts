@@ -13,7 +13,7 @@ export class AddScalingFieldsToTestRun1771417407753 implements ReversibleMigrati
 			`ALTER TABLE ${tableName} ADD COLUMN ${runningInstanceIdColumnName} VARCHAR(255);`,
 		);
 		await runQuery(
-			`ALTER TABLE ${tableName} ADD COLUMN ${cancelRequestedColumnName} BOOLEAN DEFAULT FALSE;`,
+			`ALTER TABLE ${tableName} ADD COLUMN ${cancelRequestedColumnName} BOOLEAN NOT NULL DEFAULT FALSE;`,
 		);
 	}
 
