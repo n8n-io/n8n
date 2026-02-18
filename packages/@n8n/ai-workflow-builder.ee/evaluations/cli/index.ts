@@ -218,6 +218,8 @@ async function handleSubgraphMode(
 	const evaluators: Array<Evaluator<EvaluationContext>> = [];
 	if (subgraph === 'responder') {
 		evaluators.push(createResponderEvaluator(env.llms.judge, { numJudges: args.numJudges }));
+	} else {
+		logger.warn(`Subgraph evaluation not supported for ${subgraph}`);
 	}
 
 	let summary: Awaited<ReturnType<typeof runSubgraphEvaluation>>;
