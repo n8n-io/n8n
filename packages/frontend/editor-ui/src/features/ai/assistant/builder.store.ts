@@ -1127,6 +1127,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			chatMessages.value = chatMessages.value.slice(0, msgIndex);
 		}
 
+		builderMode.value = 'build';
+
 		// 4. Track telemetry event for version restore
 		trackWorkflowBuilderJourney('revert_version_from_builder', {
 			revert_user_message_id: messageId,
