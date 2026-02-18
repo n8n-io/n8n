@@ -1,6 +1,14 @@
 import { describe, it, expect } from 'vitest';
 
-import { isValidHexColor, adjustColorLightness } from './colorUtils';
+import {
+	isValidHexColor,
+	adjustColorLightness,
+	hexToHsl,
+	hslToHex,
+	getRelativeLuminance,
+	getContrastTextColor,
+	normalizeCustomColorForTheme,
+} from './colorUtils';
 
 describe('colorUtils.isValidHexColor', () => {
 	it.each([
@@ -121,5 +129,183 @@ describe('colorUtils.adjustColorLightness', () => {
 			expect(adjustColorLightness('#ff5733', 0)).toBe('#FF5733');
 			expect(adjustColorLightness('#AbCdEf', 10)).toMatch(/^#[0-9A-F]{6}$/);
 		});
+	});
+});
+
+describe('colorUtils.hexToHsl', () => {
+	it('converts pure red', () => {
+		expect(hexToHsl('#FF0000')).toEqual({ h: 0, s: 100, l: 50 });
+	});
+
+	it('converts pure green', () => {
+		expect(hexToHsl('#00FF00')).toEqual({ h: 120, s: 100, l: 50 });
+	});
+
+	it('converts pure blue', () => {
+		expect(hexToHsl('#0000FF')).toEqual({ h: 240, s: 100, l: 50 });
+	});
+
+	it('converts white', () => {
+		expect(hexToHsl('#FFFFFF')).toEqual({ h: 0, s: 0, l: 100 });
+	});
+
+	it('converts black', () => {
+		expect(hexToHsl('#000000')).toEqual({ h: 0, s: 0, l: 0 });
+	});
+
+	it('converts mid-gray', () => {
+		expect(hexToHsl('#808080')).toEqual({ h: 0, s: 0, l: 50 });
+	});
+
+	it('converts a typical color', () => {
+		// #FF5733 → approx h:11, s:100, l:60
+		const result = hexToHsl('#FF5733');
+		expect(result.h).toBeGreaterThanOrEqual(10);
+		expect(result.h).toBeLessThanOrEqual(12);
+		expect(result.s).toBe(100);
+		expect(result.l).toBe(60);
+	});
+});
+
+describe('colorUtils.hslToHex', () => {
+	it('converts pure red', () => {
+		expect(hslToHex(0, 100, 50)).toBe('#FF0000');
+	});
+
+	it('converts pure green', () => {
+		expect(hslToHex(120, 100, 50)).toBe('#00FF00');
+	});
+
+	it('converts pure blue', () => {
+		expect(hslToHex(240, 100, 50)).toBe('#0000FF');
+	});
+
+	it('converts white', () => {
+		expect(hslToHex(0, 0, 100)).toBe('#FFFFFF');
+	});
+
+	it('converts black', () => {
+		expect(hslToHex(0, 0, 0)).toBe('#000000');
+	});
+
+	it('roundtrips through hexToHsl for primary colors', () => {
+		const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFFFF', '#000000'];
+		for (const color of colors) {
+			const { h, s, l } = hexToHsl(color);
+			expect(hslToHex(h, s, l)).toBe(color);
+		}
+	});
+
+	it('preserves hue and saturation through roundtrip', () => {
+		const original = '#3366CC';
+		const { h, s } = hexToHsl(original);
+		// Set a different lightness and convert back
+		const result = hslToHex(h, s, 90);
+		const resultHsl = hexToHsl(result);
+		// Allow ±1 rounding tolerance from integer HSL conversion
+		expect(Math.abs(resultHsl.h - h)).toBeLessThanOrEqual(1);
+		expect(resultHsl.s).toBeCloseTo(s, -1);
+		expect(resultHsl.l).toBe(90);
+	});
+});
+
+describe('colorUtils.getRelativeLuminance', () => {
+	it('returns 1 for white', () => {
+		expect(getRelativeLuminance('#FFFFFF')).toBeCloseTo(1, 2);
+	});
+
+	it('returns 0 for black', () => {
+		expect(getRelativeLuminance('#000000')).toBeCloseTo(0, 2);
+	});
+
+	it('returns ~0.2126 for pure red', () => {
+		expect(getRelativeLuminance('#FF0000')).toBeCloseTo(0.2126, 3);
+	});
+
+	it('returns ~0.7152 for pure green', () => {
+		expect(getRelativeLuminance('#00FF00')).toBeCloseTo(0.7152, 3);
+	});
+
+	it('returns ~0.0722 for pure blue', () => {
+		expect(getRelativeLuminance('#0000FF')).toBeCloseTo(0.0722, 3);
+	});
+});
+
+describe('colorUtils.getContrastTextColor', () => {
+	it('returns dark text for white background', () => {
+		expect(getContrastTextColor('#FFFFFF')).toBe('#2B2B2B');
+	});
+
+	it('returns light text for black background', () => {
+		expect(getContrastTextColor('#000000')).toBe('#F5F5F5');
+	});
+
+	it('returns dark text for light yellow background', () => {
+		expect(getContrastTextColor('#FFFFCC')).toBe('#2B2B2B');
+	});
+
+	it('returns light text for dark blue background', () => {
+		expect(getContrastTextColor('#000066')).toBe('#F5F5F5');
+	});
+});
+
+describe('colorUtils.normalizeCustomColorForTheme', () => {
+	it('normalizes a red hex for light mode', () => {
+		const result = normalizeCustomColorForTheme('#FF0000', false);
+		const bgHsl = hexToHsl(result.background);
+		expect(bgHsl.l).toBe(90);
+		expect(bgHsl.h).toBe(0); // red hue preserved
+		expect(result.text).toBe('#2B2B2B'); // light bg → dark text
+	});
+
+	it('normalizes a red hex for dark mode', () => {
+		const result = normalizeCustomColorForTheme('#FF0000', true);
+		const bgHsl = hexToHsl(result.background);
+		expect(bgHsl.l).toBe(15);
+		expect(bgHsl.h).toBe(0);
+		expect(result.text).toBe('#F5F5F5'); // dark bg → light text
+	});
+
+	it('normalizes a blue hex for light mode', () => {
+		const result = normalizeCustomColorForTheme('#3366CC', false);
+		const bgHsl = hexToHsl(result.background);
+		const borderHsl = hexToHsl(result.border);
+		expect(bgHsl.l).toBe(90);
+		expect(borderHsl.l).toBe(75);
+	});
+
+	it('normalizes a blue hex for dark mode', () => {
+		const result = normalizeCustomColorForTheme('#3366CC', true);
+		const bgHsl = hexToHsl(result.background);
+		const borderHsl = hexToHsl(result.border);
+		expect(bgHsl.l).toBe(15);
+		expect(borderHsl.l).toBe(25);
+	});
+
+	it('preserves hue and saturation from input', () => {
+		const input = '#FF5733';
+		const inputHsl = hexToHsl(input);
+		const lightResult = normalizeCustomColorForTheme(input, false);
+		const darkResult = normalizeCustomColorForTheme(input, true);
+
+		// Hue should match in both modes
+		expect(hexToHsl(lightResult.background).h).toBe(inputHsl.h);
+		expect(hexToHsl(darkResult.background).h).toBe(inputHsl.h);
+	});
+
+	it('produces different backgrounds for light vs dark mode', () => {
+		const result = {
+			light: normalizeCustomColorForTheme('#3366CC', false),
+			dark: normalizeCustomColorForTheme('#3366CC', true),
+		};
+		expect(result.light.background).not.toBe(result.dark.background);
+		expect(result.light.border).not.toBe(result.dark.border);
+	});
+
+	it('returns valid hex colors', () => {
+		const result = normalizeCustomColorForTheme('#ABCDEF', false);
+		expect(result.background).toMatch(/^#[0-9A-F]{6}$/);
+		expect(result.border).toMatch(/^#[0-9A-F]{6}$/);
+		expect(result.text).toMatch(/^#[0-9A-F]{6}$/);
 	});
 });

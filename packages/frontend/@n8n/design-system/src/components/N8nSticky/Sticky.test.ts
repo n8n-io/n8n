@@ -35,18 +35,20 @@ describe('N8nSticky', () => {
 				});
 
 				const stickyElement = wrapper.container.querySelector('.n8n-sticky') as HTMLElement;
-				expect(stickyElement?.style.getPropertyValue('--sticky--color--background')).toBe('');
+				expect(
+					stickyElement?.style.getPropertyValue('--sticky--color--background--custom-light'),
+				).toBe('');
 				expect(stickyElement?.style.getPropertyValue('--sticky--border-color--custom-light')).toBe(
 					'',
 				);
-				expect(stickyElement?.style.getPropertyValue('--sticky--border-color--custom-dark')).toBe(
+				expect(stickyElement?.style.getPropertyValue('--sticky--color--text--custom-light')).toBe(
 					'',
 				);
 			});
 		});
 
 		describe('with custom hex colors (strings)', () => {
-			it('applies inline CSS variables for valid hex color', () => {
+			it('applies theme-aware inline CSS variables for valid hex color', () => {
 				const hexColor = '#FF5733';
 				const wrapper = render(N8nSticky, {
 					props: {
@@ -56,13 +58,24 @@ describe('N8nSticky', () => {
 				});
 
 				const stickyElement = wrapper.container.querySelector('.n8n-sticky') as HTMLElement;
-				expect(stickyElement?.style.getPropertyValue('--sticky--color--background')).toBe(hexColor);
-				// Check that theme-aware border colors are set (not exact hex)
+				// All 6 theme-aware variables should be set
+				expect(
+					stickyElement?.style.getPropertyValue('--sticky--color--background--custom-light'),
+				).toBeTruthy();
+				expect(
+					stickyElement?.style.getPropertyValue('--sticky--color--background--custom-dark'),
+				).toBeTruthy();
 				expect(
 					stickyElement?.style.getPropertyValue('--sticky--border-color--custom-light'),
 				).toBeTruthy();
 				expect(
 					stickyElement?.style.getPropertyValue('--sticky--border-color--custom-dark'),
+				).toBeTruthy();
+				expect(
+					stickyElement?.style.getPropertyValue('--sticky--color--text--custom-light'),
+				).toBeTruthy();
+				expect(
+					stickyElement?.style.getPropertyValue('--sticky--color--text--custom-dark'),
 				).toBeTruthy();
 			});
 
@@ -89,16 +102,18 @@ describe('N8nSticky', () => {
 				});
 
 				const stickyElement = wrapper.container.querySelector('.n8n-sticky') as HTMLElement;
-				expect(stickyElement?.style.getPropertyValue('--sticky--color--background')).toBe('');
+				expect(
+					stickyElement?.style.getPropertyValue('--sticky--color--background--custom-light'),
+				).toBe('');
 				expect(stickyElement?.style.getPropertyValue('--sticky--border-color--custom-light')).toBe(
 					'',
 				);
-				expect(stickyElement?.style.getPropertyValue('--sticky--border-color--custom-dark')).toBe(
+				expect(stickyElement?.style.getPropertyValue('--sticky--color--text--custom-light')).toBe(
 					'',
 				);
 			});
 
-			it('applies correct inline styles for multiple valid hex colors', () => {
+			it('applies normalized colors for multiple valid hex colors', () => {
 				const testColors = ['#000000', '#FFFFFF', '#123ABC'];
 
 				testColors.forEach((hexColor) => {
@@ -110,9 +125,13 @@ describe('N8nSticky', () => {
 					});
 
 					const stickyElement = wrapper.container.querySelector('.n8n-sticky') as HTMLElement;
-					expect(stickyElement?.style.getPropertyValue('--sticky--color--background')).toBe(
-						hexColor,
-					);
+					// Normalized backgrounds should be set (not the raw hex)
+					expect(
+						stickyElement?.style.getPropertyValue('--sticky--color--background--custom-light'),
+					).toMatch(/^#[0-9A-Fa-f]{6}$/);
+					expect(
+						stickyElement?.style.getPropertyValue('--sticky--color--background--custom-dark'),
+					).toMatch(/^#[0-9A-Fa-f]{6}$/);
 				});
 			});
 		});

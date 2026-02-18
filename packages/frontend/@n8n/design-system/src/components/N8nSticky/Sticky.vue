@@ -4,7 +4,7 @@ import { computed, ref, watch } from 'vue';
 import { defaultStickyProps } from './constants';
 import type { StickyProps } from './types';
 import { useI18n } from '../../composables/useI18n';
-import { isValidHexColor, adjustColorLightness } from '../../utils/colorUtils';
+import { isValidHexColor, normalizeCustomColorForTheme } from '../../utils/colorUtils';
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
 import N8nText from '../N8nText';
@@ -43,15 +43,16 @@ const getCustomColorStyles = (hexColor: string) => {
 		return {};
 	}
 
-	// Create lighter border for dark mode (80% lighter)
-	const lighterBorder = adjustColorLightness(hexColor, 80);
-	// Create darker border for light mode (20% darker)
-	const darkerBorder = adjustColorLightness(hexColor, -20);
+	const light = normalizeCustomColorForTheme(hexColor, false);
+	const dark = normalizeCustomColorForTheme(hexColor, true);
 
 	return {
-		'--sticky--color--background': hexColor,
-		'--sticky--border-color--custom-light': darkerBorder,
-		'--sticky--border-color--custom-dark': lighterBorder,
+		'--sticky--color--background--custom-light': light.background,
+		'--sticky--border-color--custom-light': light.border,
+		'--sticky--color--text--custom-light': light.text,
+		'--sticky--color--background--custom-dark': dark.background,
+		'--sticky--border-color--custom-dark': dark.border,
+		'--sticky--color--text--custom-dark': dark.text,
 	};
 };
 
@@ -158,21 +159,27 @@ const onInputScroll = (event: WheelEvent) => {
 	border: 1px solid var(--sticky--border-color);
 }
 
-// Custom color borders - only apply to custom colors
+// Custom colors - theme-aware normalization
 .customColor {
-	// Default to darker border (for light mode)
+	--sticky--color--background: var(--sticky--color--background--custom-light);
 	--sticky--border-color: var(--sticky--border-color--custom-light);
+	--sticky--color--text: var(--sticky--color--text--custom-light);
+	--color--text--shade-1: var(--sticky--color--text--custom-light);
 }
 
-// Dark mode: use lighter borders for custom colors
 :global(body[data-theme='dark']) .customColor {
+	--sticky--color--background: var(--sticky--color--background--custom-dark);
 	--sticky--border-color: var(--sticky--border-color--custom-dark);
+	--sticky--color--text: var(--sticky--color--text--custom-dark);
+	--color--text--shade-1: var(--sticky--color--text--custom-dark);
 }
 
-// System dark mode (when theme is 'system')
 @media (prefers-color-scheme: dark) {
 	:global(body:not([data-theme='light'])) .customColor {
+		--sticky--color--background: var(--sticky--color--background--custom-dark);
 		--sticky--border-color: var(--sticky--border-color--custom-dark);
+		--sticky--color--text: var(--sticky--color--text--custom-dark);
+		--color--text--shade-1: var(--sticky--color--text--custom-dark);
 	}
 }
 
