@@ -176,6 +176,28 @@ describe('Expression', () => {
 			expect(testFn).not.toHaveBeenCalled();
 		});
 
+		it('should include runIndex and itemIndex in error when .constructor is used', () => {
+			let thrownError: ExpressionError | undefined;
+			try {
+				expression.getParameterValue(
+					'={{ {}.constructor() }}',
+					null,
+					2,
+					3,
+					'node',
+					[],
+					'manual',
+					{},
+				);
+			} catch (e) {
+				thrownError = e as ExpressionError;
+			}
+
+			expect(thrownError).toBeInstanceOf(ExpressionError);
+			expect(thrownError?.context.runIndex).toBe(2);
+			expect(thrownError?.context.itemIndex).toBe(3);
+		});
+
 		describe('SafeObject security wrapper', () => {
 			it('should block Object.defineProperty', () => {
 				expect(evaluate('={{Object.defineProperty}}')).toBeUndefined();

@@ -400,6 +400,8 @@ export class Expression {
 		if (parameterValue.match(constructorValidation)) {
 			throw new ExpressionError('Expression contains invalid constructor function call', {
 				causeDetailed: 'Constructor override attempt is not allowed due to security concerns',
+				runIndex: data.$thisRunIndex,
+				itemIndex: data.$thisItemIndex,
 			});
 		}
 
