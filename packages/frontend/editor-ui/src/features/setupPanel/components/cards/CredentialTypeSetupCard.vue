@@ -87,7 +87,9 @@ const onExecuteClick = async () => {
 };
 
 const onCardMouseEnter = () => {
-	setupPanelStore.setHighlightedNodes([firstNode.value.id]);
+	if (firstNode.value) {
+		setupPanelStore.setHighlightedNodes([firstNode.value.id]);
+	}
 };
 
 const onCardMouseLeave = () => {
@@ -100,7 +102,9 @@ const onSharedNodesHintEnter = () => {
 };
 
 const onSharedNodesHintLeave = () => {
-	setupPanelStore.setHighlightedNodes([firstNode.value.id]);
+	if (firstNode.value) {
+		setupPanelStore.setHighlightedNodes([firstNode.value.id]);
+	}
 };
 
 onBeforeUnmount(() => {
