@@ -138,7 +138,7 @@ jobs:
           # docker-build: build app + docker image locally
           # docker-pull: no build needed, image is pre-built
           # local: build app for local server
-          build-command: ${{ inputs.test-mode == 'docker-build' && 'pnpm build:docker' || (inputs.test-mode == 'local' && 'pnpm build' || '') }}
+          build-command: ${{ inputs.test-mode == 'docker-build' && 'pnpm build:docker' || 'pnpm build' }}
           enable-docker-cache: ${{ inputs.test-mode == 'docker-build' }}
         env:
           INCLUDE_TEST_CONTROLLER: ${{ inputs.test-mode == 'docker-build' && 'true' || '' }}

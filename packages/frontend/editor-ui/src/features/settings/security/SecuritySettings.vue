@@ -355,6 +355,7 @@ const sharingCountText = computed(() => {
 			:description="
 				i18n.baseText('settings.security.personalSpace.sharing.confirmMessage.disable.message')
 			"
+			size="medium"
 			@action="confirmDisableSharing"
 			@cancel="showSharingDialog = false"
 			@update:open="showSharingDialog = $event"

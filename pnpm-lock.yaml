@@ -749,7 +749,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 1.13.5
-        version: 1.13.5
+        version: 1.13.5(debug@4.4.3)
       dotenv:
         specifier: 17.2.3
         version: 17.2.3
@@ -784,7 +784,7 @@ importers:
     dependencies:
       axios:
         specifier: 1.13.5
-        version: 1.13.5
+        version: 1.13.5(debug@4.4.3)
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -1648,7 +1648,7 @@ importers:
         version: link:../eslint-plugin-community-nodes
       axios:
         specifier: 1.13.5
-        version: 1.13.5
+        version: 1.13.5(debug@4.4.3)
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)
@@ -1926,7 +1926,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.13.5
-        version: 1.13.5
+        version: 1.13.5(debug@4.4.3)
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
@@ -2284,7 +2284,7 @@ importers:
         version: 10.36.0
       axios:
         specifier: 1.13.5
-        version: 1.13.5
+        version: 1.13.5(debug@4.4.3)
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -2757,7 +2757,7 @@ importers:
         version: link:../../../@n8n/utils
       axios:
         specifier: 1.13.5
-        version: 1.13.5
+        version: 1.13.5(debug@4.4.3)
       flatted:
         specifier: 'catalog:'
         version: 3.2.7
@@ -3072,7 +3072,7 @@ importers:
         version: 1.1.4
       axios:
         specifier: 1.13.5
-        version: 1.13.5
+        version: 1.13.5(debug@4.4.3)
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -3755,6 +3755,9 @@ importers:
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../janitor
+      '@n8n/workflow-sdk':
+        specifier: workspace:*
+        version: link:../../@n8n/workflow-sdk
       '@playwright/cli':
         specifier: catalog:e2e
         version: 0.1.0
@@ -23662,7 +23665,7 @@ snapshots:
       '@azure/core-auth': 1.10.1
       '@azure/msal-node': 3.8.4
       '@microsoft/agents-activity': 1.1.0-alpha.85
-      axios: 1.13.5
+      axios: 1.13.5(debug@4.4.3)
       jsonwebtoken: 9.0.3
       jwks-rsa: 3.2.2
       object-path: 0.11.8
@@ -25008,7 +25011,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@3.0.0':
     dependencies:
-      axios: 1.13.5
+      axios: 1.13.5(debug@4.4.3)
       axios-retry: 4.5.0(axios@1.13.5)
       component-type: 2.0.0
       join-component: 1.1.0
@@ -28092,20 +28095,12 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.13.5):
     dependencies:
-      axios: 1.13.5
+      axios: 1.13.5(debug@4.4.3)
       is-retry-allowed: 2.2.0
-
-  axios@1.13.5:
-    dependencies:
-      follow-redirects: 1.15.11(debug@4.4.1)
-      form-data: 4.0.4
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
 
   axios@1.13.5(debug@4.4.3):
     dependencies:
-      follow-redirects: 1.15.11(debug@4.4.3)
+      follow-redirects: 1.15.11(debug@4.4.1)
       form-data: 4.0.4
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -30890,10 +30885,6 @@ snapshots:
     optionalDependencies:
       debug: 4.4.1(supports-color@8.1.1)
 
-  follow-redirects@1.15.11(debug@4.4.3):
-    optionalDependencies:
-      debug: 4.4.3(supports-color@8.1.1)
-
   for-each@0.3.5:
     dependencies:
       is-callable: 1.2.7
@@ -31607,7 +31598,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.13.5)
+      retry-axios: 2.6.0(axios@1.13.5(debug@4.4.3))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -31692,7 +31683,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.13.5
+      axios: 1.13.5(debug@4.4.3)
       dotenv: 16.6.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -35393,7 +35384,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.13.5
+      axios: 1.13.5(debug@4.4.3)
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -36090,9 +36081,9 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.13.5):
+  retry-axios@2.6.0(axios@1.13.5(debug@4.4.3)):
     dependencies:
-      axios: 1.13.5
+      axios: 1.13.5(debug@4.4.3)
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -36708,7 +36699,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.13.5
+      axios: 1.13.5(debug@4.4.3)
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2
