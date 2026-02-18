@@ -12,6 +12,7 @@ import type {
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { getAdditionalOptions } from '../gemini-common/additional-options';
+import { wrapGeminiBindTools } from '../gemini-common/normalizeGeminiToolSchema';
 import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
 
 function errorDescriptionMapper(error: NodeError) {
@@ -146,18 +147,20 @@ export class LmChatGoogleGemini implements INodeType {
 			null,
 		) as SafetySetting[];
 
-		const model = new ChatGoogleGenerativeAI({
-			apiKey: credentials.apiKey as string,
-			baseUrl: credentials.host as string,
-			model: modelName,
-			topK: options.topK,
-			topP: options.topP,
-			temperature: options.temperature,
-			maxOutputTokens: options.maxOutputTokens,
-			safetySettings,
-			callbacks: [new N8nLlmTracing(this, { errorDescriptionMapper })],
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
-		});
+		const model = wrapGeminiBindTools(
+			new ChatGoogleGenerativeAI({
+				apiKey: credentials.apiKey as string,
+				baseUrl: credentials.host as string,
+				model: modelName,
+				topK: options.topK,
+				topP: options.topP,
+				temperature: options.temperature,
+				maxOutputTokens: options.maxOutputTokens,
+				safetySettings,
+				callbacks: [new N8nLlmTracing(this, { errorDescriptionMapper })],
+				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+			}),
+		);
 
 		return {
 			response: model,

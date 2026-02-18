@@ -18,6 +18,7 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeErrorFromStatus } from './error-handling';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
+import { wrapGeminiBindTools } from '../gemini-common/normalizeGeminiToolSchema';
 import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
 
 export class LmChatGoogleVertex implements INodeType {
@@ -201,7 +202,7 @@ export class LmChatGoogleVertex implements INodeType {
 				modelConfig.thinkingBudget = options.thinkingBudget;
 			}
 
-			const model = new ChatVertexAI(modelConfig);
+			const model = wrapGeminiBindTools(new ChatVertexAI(modelConfig));
 
 			return {
 				response: model,
