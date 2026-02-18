@@ -129,6 +129,17 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		disposeCurrentWorkflowDocumentStore();
 
+		// Load credentials and credential types for template import
+		try {
+			await Promise.all([loadCredentials(), credentialsStore.fetchCredentialTypes(true)]);
+		} catch (error) {
+			toast.showError(
+				error,
+				i18n.baseText('nodeView.showError.mounted1.title'),
+				i18n.baseText('nodeView.showError.mounted1.message') + ':',
+			);
+		}
+
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
 
 		if (loadWorkflowFromJSON) {
