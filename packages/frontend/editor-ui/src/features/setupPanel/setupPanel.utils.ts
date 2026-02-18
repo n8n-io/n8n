@@ -2,11 +2,7 @@ import type { INodeUi } from '@/Interface';
 import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeTypeDisplayableCredentials } from '@/app/utils/nodes/nodeTransforms';
 
-import type {
-	CredentialTypeSetupState,
-	NodeCredentialRequirement,
-	TriggerSetupState,
-} from './setupPanel.types';
+import type { CredentialTypeSetupState, TriggerSetupState } from './setupPanel.types';
 
 /**
  * Collects all credential types that a node requires from three sources:
@@ -37,48 +33,6 @@ export function getNodeCredentialTypes(
 	}
 
 	return Array.from(credentialTypes);
-}
-
-/**
- * Builds a single credential requirement entry for a node + credential type pair.
- */
-export function buildCredentialRequirement(
-	node: INodeUi,
-	credentialType: string,
-	getCredentialDisplayName: (type: string) => string,
-	credentialTypeToNodeNames: Map<string, string[]>,
-): NodeCredentialRequirement {
-	const credValue = node.credentials?.[credentialType];
-	const selectedCredentialId =
-		typeof credValue === 'string' ? undefined : (credValue?.id ?? undefined);
-
-	const credentialIssues = node.issues?.credentials ?? {};
-	const issues = credentialIssues[credentialType];
-	const issueMessages = [issues ?? []].flat();
-
-	return {
-		credentialType,
-		credentialDisplayName: getCredentialDisplayName(credentialType),
-		selectedCredentialId,
-		issues: issueMessages,
-		nodesWithSameCredential: credentialTypeToNodeNames.get(credentialType) ?? [],
-	};
-}
-
-/**
- * Checks whether all credential requirements for a node are satisfied
- * (each has a selected credential with no issues and has been tested OK).
- */
-export function isNodeSetupComplete(
-	requirements: NodeCredentialRequirement[],
-	isCredentialTestedOk?: (credentialId: string) => boolean,
-): boolean {
-	return requirements.every(
-		(req) =>
-			req.selectedCredentialId &&
-			req.issues.length === 0 &&
-			(isCredentialTestedOk?.(req.selectedCredentialId) ?? true),
-	);
 }
 
 /**
