@@ -1,10 +1,14 @@
-import { computed, type Ref } from 'vue';
+import { computed, watch, type Ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { SetupCardItem } from '../setupPanel.types';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import {
+	useCredentialsStore,
+	listenForCredentialChanges,
+} from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
@@ -124,6 +128,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 					{ ...state, nodes: nodesForCompletion },
 					hasTriggerExecutedSuccessfully,
 					isTriggerNodeType,
+					credentialsStore.isCredentialTestedOk,
 				),
 			};
 		});
@@ -192,6 +197,92 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	});
 
 	/**
+	 * Tests a saved credential in the background.
+	 * Fetches the credential's redacted data first so the backend can unredact and test.
+	 * Skips if the credential is already tested OK or has a test in flight.
+	 * The result is tracked automatically in the credentials store as a side effect of testCredential.
+	 */
+	async function testCredentialInBackground(
+		credentialId: string,
+		credentialName: string,
+		credentialType: string,
+	) {
+		if (
+			credentialsStore.isCredentialTestedOk(credentialId) ||
+			credentialsStore.isCredentialTestPending(credentialId)
+		) {
+			return;
+		}
+
+		try {
+			const credentialResponse = await credentialsStore.getCredentialData({ id: credentialId });
+			if (!credentialResponse?.data || typeof credentialResponse.data === 'string') {
+				return;
+			}
+
+			// Re-check after the async fetch — another caller (e.g. CredentialEdit) may have
+			// started or completed a test while we were fetching credential data.
+			if (
+				credentialsStore.isCredentialTestedOk(credentialId) ||
+				credentialsStore.isCredentialTestPending(credentialId)
+			) {
+				return;
+			}
+
+			const { ownedBy, sharedWithProjects, oauthTokenData, ...data } = credentialResponse.data;
+
+			// OAuth credentials can't be tested via the API — the presence of token data
+			// means the OAuth flow completed successfully, which is the equivalent of a passing test.
+			if (oauthTokenData) {
+				credentialsStore.credentialTestResults.set(credentialId, 'success');
+				return;
+			}
+
+			await credentialsStore.testCredential({
+				id: credentialId,
+				name: credentialName,
+				type: credentialType,
+				data: data as ICredentialDataDecryptedObject,
+			});
+		} catch {
+			// Test failure is tracked in the store as a side effect
+		}
+	}
+
+	/**
+	 * Auto-test all pre-existing selected credentials on initial load.
+	 * Runs once when nodes become available so checkmarks reflect actual validity.
+	 * Deduplicates by credential ID so shared credentials are only tested once.
+	 */
+	let initialTestDone = false;
+	watch(
+		nodesRequiringSetup,
+		(entries) => {
+			if (initialTestDone || entries.length === 0) return;
+			initialTestDone = true;
+
+			const credentialsToTest = new Map<string, { name: string; type: string }>();
+			for (const { node, credentialTypes } of entries) {
+				for (const credType of credentialTypes) {
+					const credValue = node.credentials?.[credType];
+					const selectedId = typeof credValue === 'string' ? undefined : credValue?.id;
+					if (!selectedId || credentialsToTest.has(selectedId)) continue;
+
+					const cred = credentialsStore.getCredentialById(selectedId);
+					if (!cred) continue;
+
+					credentialsToTest.set(selectedId, { name: cred.name, type: credType });
+				}
+			}
+
+			for (const [id, { name, type }] of credentialsToTest) {
+				void testCredentialInBackground(id, name, type);
+			}
+		},
+		{ immediate: true },
+	);
+
+	/**
 	 * Sets a credential for all nodes that need the given credential type.
 	 */
 	const setCredential = (credentialType: string, credentialId: string): void => {
@@ -202,6 +293,8 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		if (!credState) return;
 
 		const credentialDetails = { id: credentialId, name: credential.name };
+
+		void testCredentialInBackground(credentialId, credential.name, credentialType);
 
 		for (const stateNode of credState.nodes) {
 			const node = workflowsStore.getNodeByName(stateNode.name);
@@ -245,6 +338,25 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 		nodeHelpers.updateNodesCredentialsIssues();
 	};
+
+	/**
+	 * When a credential is deleted, unset it from ALL nodes that reference it.
+	 * This is the symmetric counterpart to setCredential's auto-assignment.
+	 */
+	listenForCredentialChanges({
+		store: credentialsStore,
+		onCredentialDeleted: (deletedCredentialId) => {
+			for (const { node, credentialTypes } of nodesRequiringSetup.value) {
+				for (const credType of credentialTypes) {
+					const credValue = node.credentials?.[credType];
+					const selectedId = typeof credValue === 'string' ? undefined : credValue?.id;
+					if (selectedId === deletedCredentialId) {
+						unsetCredential(credType);
+					}
+				}
+			}
+		},
+	});
 
 	return {
 		setupCards,

@@ -231,6 +231,50 @@ describe('setupPanel.utils', () => {
 			expect(isNodeSetupComplete([])).toBe(true);
 		});
 
+		it('should return false when credential test has not passed', () => {
+			const requirements: NodeCredentialRequirement[] = [
+				{
+					credentialType: 'testApi',
+					credentialDisplayName: 'Test',
+					selectedCredentialId: 'cred-1',
+					issues: [],
+					nodesWithSameCredential: [],
+				},
+			];
+			const isTestedOk = () => false;
+
+			expect(isNodeSetupComplete(requirements, isTestedOk)).toBe(false);
+		});
+
+		it('should return true when isCredentialTestedOk returns true', () => {
+			const requirements: NodeCredentialRequirement[] = [
+				{
+					credentialType: 'testApi',
+					credentialDisplayName: 'Test',
+					selectedCredentialId: 'cred-1',
+					issues: [],
+					nodesWithSameCredential: [],
+				},
+			];
+			const isTestedOk = () => true;
+
+			expect(isNodeSetupComplete(requirements, isTestedOk)).toBe(true);
+		});
+
+		it('should be backward-compatible when isCredentialTestedOk is not provided', () => {
+			const requirements: NodeCredentialRequirement[] = [
+				{
+					credentialType: 'testApi',
+					credentialDisplayName: 'Test',
+					selectedCredentialId: 'cred-1',
+					issues: [],
+					nodesWithSameCredential: [],
+				},
+			];
+
+			expect(isNodeSetupComplete(requirements)).toBe(true);
+		});
+
 		it('should return false if any one of multiple requirements is incomplete', () => {
 			const requirements: NodeCredentialRequirement[] = [
 				{
@@ -537,6 +581,51 @@ describe('setupPanel.utils', () => {
 			};
 
 			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(true);
+		});
+
+		it('should return false when credential test has not passed', () => {
+			const slackNode = createNode({ name: 'SlackNode', type: 'n8n-nodes-base.slack' });
+			const state: CredentialTypeSetupState = {
+				credentialType: 'slackApi',
+				credentialDisplayName: 'Slack',
+				selectedCredentialId: 'cred-1',
+				issues: [],
+				nodes: [slackNode],
+				isComplete: false,
+				isGenericAuth: false,
+			};
+
+			expect(isCredentialCardComplete(state, () => false, isTrigger, () => false)).toBe(false);
+		});
+
+		it('should return true when credential test has passed', () => {
+			const slackNode = createNode({ name: 'SlackNode', type: 'n8n-nodes-base.slack' });
+			const state: CredentialTypeSetupState = {
+				credentialType: 'slackApi',
+				credentialDisplayName: 'Slack',
+				selectedCredentialId: 'cred-1',
+				issues: [],
+				nodes: [slackNode],
+				isComplete: false,
+				isGenericAuth: false,
+			};
+
+			expect(isCredentialCardComplete(state, () => false, isTrigger, () => true)).toBe(true);
+		});
+
+		it('should be backward-compatible when isCredentialTestedOk is not provided', () => {
+			const slackNode = createNode({ name: 'SlackNode', type: 'n8n-nodes-base.slack' });
+			const state: CredentialTypeSetupState = {
+				credentialType: 'slackApi',
+				credentialDisplayName: 'Slack',
+				selectedCredentialId: 'cred-1',
+				issues: [],
+				nodes: [slackNode],
+				isComplete: false,
+				isGenericAuth: false,
+			};
+
+			expect(isCredentialCardComplete(state, () => false, isTrigger)).toBe(true);
 		});
 	});
 

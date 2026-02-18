@@ -44,15 +44,28 @@ export class AssistantHandler {
 	): Promise<AssistantResult> {
 		const payload = this.buildSdkPayload(context);
 
-		writer({
+		const toolCallId = `assistant-${crypto.randomUUID()}`;
+
+		await writer({
 			type: 'tool',
 			toolName: 'assistant',
+			toolCallId,
 			customDisplayTitle: 'Connecting to assistant...',
 			status: 'running',
 		});
 
-		const response = await this.callSdk(payload, userId);
-		return await this.consumeSdkStream(response, writer, abortSignal);
+		try {
+			const response = await this.callSdk(payload, userId);
+			return await this.consumeSdkStream(response, writer, abortSignal, toolCallId);
+		} finally {
+			await writer({
+				type: 'tool',
+				toolName: 'assistant',
+				toolCallId,
+				customDisplayTitle: 'Done',
+				status: 'completed',
+			});
+		}
 	}
 
 	/**
@@ -142,6 +155,7 @@ export class AssistantHandler {
 		response: Response,
 		writer: StreamWriter,
 		signal?: AbortSignal,
+		toolCallId?: string,
 	): Promise<AssistantResult> {
 		const body = response.body;
 		if (!body) {
@@ -188,7 +202,7 @@ export class AssistantHandler {
 						continue;
 					}
 
-					this.processChunkMessages(chunk, state, writer);
+					await this.processChunkMessages(chunk, state, writer, toolCallId);
 				}
 			}
 		} finally {
@@ -199,7 +213,7 @@ export class AssistantHandler {
 		if (remaining) {
 			try {
 				const chunk = JSON.parse(remaining) as SdkStreamChunk;
-				this.processChunkMessages(chunk, state, writer);
+				await this.processChunkMessages(chunk, state, writer, toolCallId);
 			} catch {
 				// If the remaining buffer is not JSON, it's likely a plain-text error from the SDK.
 				// Throw so callers can handle it as a proper error instead of an empty response.
@@ -225,7 +239,7 @@ export class AssistantHandler {
 	/**
 	 * Process all messages in a single SDK stream chunk, updating state and writing mapped chunks.
 	 */
-	private processChunkMessages(
+	private async processChunkMessages(
 		chunk: SdkStreamChunk,
 		state: {
 			sdkSessionId: string | undefined;
@@ -234,13 +248,14 @@ export class AssistantHandler {
 			suggestionIds: string[];
 		},
 		writer: StreamWriter,
-	): void {
+		toolCallId?: string,
+	): Promise<void> {
 		if (chunk.sessionId && !state.sdkSessionId) {
 			state.sdkSessionId = chunk.sessionId;
 		}
 
 		for (const msg of chunk.messages) {
-			const mapped = this.mapSdkMessage(msg);
+			const mapped = this.mapSdkMessage(msg, toolCallId);
 			if (!mapped) continue;
 
 			if (mapped.type === 'message' && 'text' in mapped && mapped.text) {
@@ -258,7 +273,7 @@ export class AssistantHandler {
 				state.suggestionIds.push(msg.suggestionId);
 			}
 
-			writer(mapped);
+			await writer(mapped);
 		}
 	}
 
@@ -266,7 +281,7 @@ export class AssistantHandler {
 	 * Map an SDK message to a builder StreamChunk type.
 	 * Phase 0 graceful degradation: only emits types the builder frontend already renders.
 	 */
-	private mapSdkMessage(msg: SdkMessageResponse): StreamChunk | null {
+	private mapSdkMessage(msg: SdkMessageResponse, toolCallId?: string): StreamChunk | null {
 		if (this.isSdkText(msg)) {
 			if (!msg.text) return null;
 			return {
@@ -305,13 +320,13 @@ export class AssistantHandler {
 			return {
 				type: 'tool',
 				toolName: 'assistant',
+				toolCallId,
 				customDisplayTitle: msg.text,
 				status: 'running',
 			} satisfies ToolProgressChunk;
 		}
 
 		if (this.isSdkEvent(msg)) {
-			// Silently consumed — end-session, session-timeout
 			return null;
 		}
 

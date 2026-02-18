@@ -13,7 +13,7 @@ import type { ExternalSecretsProviderRegistry } from '../provider-registry.servi
 import type { ExternalSecretsRetryManager } from '../retry-manager.service';
 import type { ExternalSecretsSecretsCache } from '../secrets-cache.service';
 import type { ExternalSecretsSettingsStore } from '../settings-store.service';
-import type { ExternalSecretsSettings } from '../types';
+import type { ExternalSecretsSettings, SecretsProvider } from '../types';
 
 describe('ExternalSecretsManager', () => {
 	jest.useFakeTimers();
@@ -191,6 +191,32 @@ describe('ExternalSecretsManager', () => {
 
 			expect(result).toBe(dummyProvider);
 			expect(mockProviderRegistry.get).toHaveBeenCalledWith('dummy');
+		});
+	});
+
+	describe('getProviderProperties', () => {
+		it('should return property schema for the given provider type', () => {
+			const getProviderSpy = jest.spyOn(mockProvidersFactory, 'getProvider');
+
+			const result = manager.getProviderProperties('dummy');
+
+			expect(Array.isArray(result)).toBe(true);
+			expect(result).toHaveLength(3);
+			expect(result.map((p) => p.name)).toEqual(['username', 'other', 'password']);
+			expect(getProviderSpy).toHaveBeenCalledWith('dummy');
+			getProviderSpy.mockRestore();
+		});
+
+		it('should throw if provider type does not exist', () => {
+			const getProviderSpy = jest
+				.spyOn(mockProvidersFactory, 'getProvider')
+				.mockReturnValue(undefined as unknown as { new (): SecretsProvider });
+
+			expect(() => manager.getProviderProperties('nonexistentType')).toThrowError(
+				'Provider type "nonexistentType" not found',
+			);
+
+			getProviderSpy.mockRestore();
 		});
 	});
 

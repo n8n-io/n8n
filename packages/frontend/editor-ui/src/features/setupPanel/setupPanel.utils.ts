@@ -67,10 +67,18 @@ export function buildCredentialRequirement(
 
 /**
  * Checks whether all credential requirements for a node are satisfied
- * (each has a selected credential with no issues).
+ * (each has a selected credential with no issues and has been tested OK).
  */
-export function isNodeSetupComplete(requirements: NodeCredentialRequirement[]): boolean {
-	return requirements.every((req) => req.selectedCredentialId && req.issues.length === 0);
+export function isNodeSetupComplete(
+	requirements: NodeCredentialRequirement[],
+	isCredentialTestedOk?: (credentialId: string) => boolean,
+): boolean {
+	return requirements.every(
+		(req) =>
+			req.selectedCredentialId &&
+			req.issues.length === 0 &&
+			(isCredentialTestedOk?.(req.selectedCredentialId) ?? true),
+	);
 }
 
 /**
@@ -138,14 +146,25 @@ export function groupCredentialsByType(
 /**
  * Checks whether a credential card is fully complete.
  * For cards with embedded triggers, complete = credential set + no issues + all triggers executed.
+ * When isCredentialTestedOk is provided, also checks that the credential has passed testing.
  */
 export function isCredentialCardComplete(
 	credState: CredentialTypeSetupState,
 	hasTriggerExecuted: (nodeName: string) => boolean,
 	isTriggerNode: (nodeType: string) => boolean,
+	isCredentialTestedOk?: (credentialId: string) => boolean,
 ): boolean {
 	const credentialComplete = !!credState.selectedCredentialId && credState.issues.length === 0;
 	if (!credentialComplete) return false;
+
+	if (
+		isCredentialTestedOk &&
+		credState.selectedCredentialId &&
+		!isCredentialTestedOk(credState.selectedCredentialId)
+	) {
+		return false;
+	}
+
 	const triggerNodes = credState.nodes.filter((node) => isTriggerNode(node.type));
 	return triggerNodes.every((node) => hasTriggerExecuted(node.name));
 }
