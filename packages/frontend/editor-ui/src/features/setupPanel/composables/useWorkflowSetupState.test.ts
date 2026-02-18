@@ -67,6 +67,9 @@ describe('useWorkflowSetupState', () => {
 
 		credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue(undefined);
 		credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
+		credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(true);
+		credentialsStore.isCredentialTestPending = vi.fn().mockReturnValue(false);
+		credentialsStore.getCredentialData = vi.fn().mockResolvedValue(undefined);
 		nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);
 		workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
