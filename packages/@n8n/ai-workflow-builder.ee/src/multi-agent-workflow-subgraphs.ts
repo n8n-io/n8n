@@ -316,7 +316,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				// (streamed to the frontend via custom events). If the SDK returned
 				// empty text, fall through to the normal responder so it can generate
 				// a meaningful reply instead of silently emitting nothing.
-				if (assistantEntry?.output && !hasBuilderPhaseInLog(state.coordinationLog)) {
+				if (assistantEntry?.output) {
 					logger?.debug('[responder] Forwarding assistant response (no credits consumed)', {
 						outputLength: assistantEntry.output.length,
 						outputPreview: assistantEntry.output.substring(0, 100),
