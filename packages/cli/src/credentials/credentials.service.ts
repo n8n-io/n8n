@@ -949,7 +949,16 @@ export class CredentialsService {
 		// check mandatory fields are present
 		const credentialProperties = this.credentialsHelper.getCredentialsProperties(type);
 		for (const property of credentialProperties) {
-			if (property.required && displayParameter(data, property, null, null)) {
+			/*
+			 * displayOpyions is possibly undefined, which causes displayParameter to default `true`, which is expected behavior for UI
+			 * however, missing `displayOptions` should not default to true for validation purposes as credentials can be overridden
+			 * without displayOptions being explicitly set on every credential definition
+			 */
+			if (
+				property.required &&
+				property.displayOptions !== undefined &&
+				displayParameter(data, property, null, null)
+			) {
 				// Check if value is present in data, if not, check if default value exists
 				const value = data[property.name];
 				const hasDefault =
