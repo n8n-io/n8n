@@ -193,7 +193,7 @@ function pullWorkfolder() {
 
 	button {
 		font-size: var(--font-size--2xs);
-		border-radius: var(--radius--3xs);
+		border-radius: 0;
 	}
 
 	&.collapsed {
