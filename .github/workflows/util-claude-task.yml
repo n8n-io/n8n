@@ -148,6 +148,8 @@ jobs:
                   "WebFetch",
                   "WebSearch",
                   "TodoWrite",
+                  "Skill",
+                  "Task",
                   "mcp__linear__*",
                   "mcp__notion__*",
                   "mcp__playwright__*"
