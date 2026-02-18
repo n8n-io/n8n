@@ -102,7 +102,7 @@ export class WorkerServer {
 		const { health, overwrites, metrics } = this.endpointsConfig;
 
 		if (health) {
-			const healthPath = `/${this.globalConfig.endpoints.health}`;
+			const healthPath = this.globalConfig.endpoints.health;
 			const readinessPath = `${healthPath}/readiness`;
 
 			this.app.get(healthPath, async (_, res) => {

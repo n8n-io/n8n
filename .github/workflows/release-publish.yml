@@ -116,49 +116,9 @@ jobs:
         with:
           commit: ${{github.event.pull_request.base.ref}}
           tag: 'n8n@${{ needs.publish-to-npm.outputs.release }}'
-          prerelease: true
+          prerelease: ${{ startsWith(needs.publish-to-npm.outputs.release, '2.') }}
           makeLatest: false
           body: ${{github.event.pull_request.body}}
-
-  create-sentry-release:
-    name: Create a Sentry Release
-    needs: [publish-to-npm, publish-to-docker-hub]
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
-    timeout-minutes: 5
-    env:
-      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
-
-      - name: Restore Turbo Cache
-        uses: ./.github/actions/setup-nodejs
-
-      - name: Create a backend release
-        uses: getsentry/action-release@dab6548b3c03c4717878099e43782cf5be654289 # v3.5.0
-        continue-on-error: true
-        with:
-          projects: ${{ secrets.SENTRY_BACKEND_PROJECT }}
-          release: n8n@${{ needs.publish-to-npm.outputs.release }}
-          environment: production
-          sourcemaps: packages/cli/dist packages/core/dist packages/nodes-base/dist packages/@n8n/n8n-nodes-langchain/dist
-          inject: false
-          strip_common_prefix: true
-
-      - name: Create a task runner release
-        uses: getsentry/action-release@dab6548b3c03c4717878099e43782cf5be654289 # v3.5.0
-        continue-on-error: true
-        with:
-          projects: ${{ secrets.SENTRY_TASK_RUNNER_PROJECT }}
-          release: n8n@${{ needs.publish-to-npm.outputs.release }}
-          environment: production
-          sourcemaps: packages/core/dist packages/workflow/dist/esm packages/@n8n/task-runner/dist
-          inject: false
-          strip_common_prefix: true
 
   generate-and-attach-sbom:
     name: Generate and Attach SBOM to Release

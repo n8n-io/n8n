@@ -172,6 +172,7 @@ onBeforeMount(async () => {
 .filter-button {
 	height: 30px;
 	align-items: center;
+	padding: 0;
 
 	&.no-label {
 		width: 30px;
