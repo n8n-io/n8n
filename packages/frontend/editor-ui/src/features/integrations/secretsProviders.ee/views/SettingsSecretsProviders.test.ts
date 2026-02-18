@@ -281,6 +281,30 @@ describe('SettingsSecretsProviders', () => {
 			expect(mockFetchConnection).toHaveBeenCalledWith('aws-prod');
 		});
 
+		it('should show error toast when reload returns success false', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+			mockIsEnterpriseEnabled.value = true;
+			mockIsLoading.value = false;
+			mockActiveProviders.value = activeProviders;
+
+			vi.mocked(restApiClient.reloadSecretProviderConnection).mockResolvedValue({
+				success: false,
+			});
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			await userEvent.click(getByTestId('action-reload'));
+
+			await vi.waitFor(() => {
+				expect(restApiClient.reloadSecretProviderConnection).toHaveBeenCalledWith(
+					expect.anything(),
+					'aws-prod',
+				);
+			});
+
+			expect(mockFetchConnection).not.toHaveBeenCalled();
+		});
+
 		it('should show error toast when reload fails', async () => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
 			mockIsEnterpriseEnabled.value = true;

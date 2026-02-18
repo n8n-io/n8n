@@ -85,7 +85,11 @@ function handleShare(providerKey: string) {
 
 async function handleReload(providerKey: string) {
 	try {
-		await reloadSecretProviderConnection(rootStore.restApiContext, providerKey);
+		const result = await reloadSecretProviderConnection(rootStore.restApiContext, providerKey);
+		if (!result.success) {
+			toast.showError(new Error('Reload failed'), i18n.baseText('error'));
+			return;
+		}
 		toast.showMessage({
 			title: i18n.baseText('settings.externalSecrets.card.reload.success.title'),
 			message: i18n.baseText('settings.externalSecrets.card.reload.success.description', {
