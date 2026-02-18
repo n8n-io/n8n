@@ -950,7 +950,7 @@ export class CredentialsService {
 		const credentialProperties = this.credentialsHelper.getCredentialsProperties(type);
 		for (const property of credentialProperties) {
 			/*
-			 * displyaOpyions is possibly undefined, which causes displayParameter to default `true`, which is expected behaviur for UI
+			 * displayOpyions is possibly undefined, which causes displayParameter to default `true`, which is expected behavior for UI
 			 * however, missing `displayOptions` should not default to true for validation purposes as credentials can be overridden
 			 * without displayOptions being explicitly set on every credential definition
 			 */
