@@ -14,7 +14,7 @@ const baseQuickConnectOptionSchema = z.object({
 	quickConnectType: z.string(),
 	serviceName: z.string(),
 	consentText: z.string().optional(),
-	config: z.never(),
+	config: z.never().optional(),
 	backendFlowConfig: backendFlowConfigSchema.optional(),
 });
 
