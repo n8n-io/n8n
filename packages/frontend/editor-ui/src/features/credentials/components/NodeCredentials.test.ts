@@ -283,6 +283,27 @@ describe('NodeCredentials', () => {
 			},
 		});
 
+		it('should not call assignCredentialToMatchingNodes on mount when auto-selecting credentials', () => {
+			ndvStore.activeNode = openAiNodeNoCreds;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: {
+					id: 'c8vqdPpPClh4TgIO',
+					name: 'OpenAi account',
+					type: 'openAiApi',
+					isManaged: false,
+					createdAt: '',
+					updatedAt: '',
+				},
+			};
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.allNodes = [openAiNodeNoCreds, openAiNodeNoCreds2];
+
+			renderComponentNoCreds();
+
+			expect(workflowsStore.assignCredentialToMatchingNodes).not.toHaveBeenCalled();
+		});
+
 		it('should call assignCredentialToMatchingNodes after selecting credentials', async () => {
 			ndvStore.activeNode = openAiNodeNoCreds;
 			credentialsStore.state.credentials = {
