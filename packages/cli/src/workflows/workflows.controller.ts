@@ -527,7 +527,7 @@ export class WorkflowsController {
 		@Param('workflowId') workflowId: string,
 		@Body body: ArchiveWorkflowDto,
 	) {
-		const clientId = req.headers['push-ref'] as string | undefined;
+		const clientId = req.headers['push-ref'];
 
 		await this.collaborationService.validateWriteLock(req.user.id, clientId, workflowId, 'archive');
 
@@ -560,7 +560,7 @@ export class WorkflowsController {
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 	) {
-		const clientId = req.headers['push-ref'] as string | undefined;
+		const clientId = req.headers['push-ref'];
 
 		await this.collaborationService.validateWriteLock(
 			req.user.id,
@@ -595,7 +595,7 @@ export class WorkflowsController {
 		@Param('workflowId') workflowId: string,
 		@Body body: ActivateWorkflowDto,
 	) {
-		const clientId = req.headers['push-ref'] as string | undefined;
+		const clientId = req.headers['push-ref'];
 
 		await this.collaborationService.validateWriteLock(
 			req.user.id,

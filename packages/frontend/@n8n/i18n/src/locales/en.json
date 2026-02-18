@@ -4677,7 +4677,5 @@
 	"focusedNodes.mentionPlaceholder": "Search nodes...",
 	"focusedNodes.mentionTooltip": "Mention a node",
 	"focusedNodes.allNodes": "All nodes",
-	"focusedNodes.unconfirmedTooltip": "Add as context for the assistant",
-	"collaboration.anotherTabIsEditing": "Another tab is editing this workflow",
-	"collaboration.acquireEditing": "Edit here"
+	"focusedNodes.unconfirmedTooltip": "Add as context for the assistant"
 }

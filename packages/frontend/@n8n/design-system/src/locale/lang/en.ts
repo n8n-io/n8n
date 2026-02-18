@@ -76,6 +76,7 @@ export default {
 	'assistantChat.characterLimit': "You've reached the {limit} character limit",
 	'aiAssistant.builder.canvas.thinking': 'Working...',
 	'aiAssistant.builder.streamAbortedMessage': 'Task aborted',
+	'collaboration.canvas.acquireEditing': 'Edit here',
 	'collaboration.canvas.editing': '{user} is currently editing',
 	'collaboration.canvas.editingAnotherTab': 'Editing in another tab',
 	'inlineAskAssistantButton.asked': 'Asked',

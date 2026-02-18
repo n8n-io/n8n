@@ -2071,12 +2071,9 @@ onBeforeUnmount(() => {
 			<N8nCanvasCollaborationPill
 				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentTabWriter"
 				:class="$style.canvasCenterPill"
-				:first-name="collaborationStore.currentWriter.user.firstName"
 				:is-another-tab="isWriterAnotherTab"
+				:first-name="collaborationStore.currentWriter.user.firstName"
 				:last-name="collaborationStore.currentWriter.user.lastName"
-				:button-text="
-					isWriterAnotherTab ? i18n.baseText('collaboration.acquireEditing') : undefined
-				"
 				@button-click="onAcquireEditingClick"
 			/>
 

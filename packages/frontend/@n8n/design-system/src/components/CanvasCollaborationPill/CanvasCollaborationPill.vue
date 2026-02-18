@@ -14,7 +14,6 @@ const props = defineProps<{
 	firstName: string;
 	lastName?: string;
 	isAnotherTab?: boolean;
-	buttonText?: string;
 }>();
 
 const emit = defineEmits<{
@@ -27,14 +26,10 @@ const userName = computed(() => {
 	return props.lastName ? `${props.firstName} ${props.lastName}` : props.firstName;
 });
 
-const messageKey = computed(() => {
-	return props.isAnotherTab
-		? 'collaboration.canvas.editingAnotherTab'
-		: 'collaboration.canvas.editing';
-});
-
 const message = computed(() => {
-	return props.isAnotherTab ? t(messageKey.value) : t(messageKey.value, { user: userName.value });
+	return props.isAnotherTab
+		? t('collaboration.canvas.editingAnotherTab')
+		: t('collaboration.canvas.editing', { user: userName.value });
 });
 
 const handleButtonClick = () => {
@@ -49,8 +44,8 @@ const handleButtonClick = () => {
 		</template>
 		<span :class="$style.content">
 			{{ message }}
-			<N8nButton v-if="buttonText" variant="subtle" size="xsmall" @click="handleButtonClick">
-				{{ buttonText }}
+			<N8nButton v-if="isAnotherTab" variant="subtle" size="xsmall" @click="handleButtonClick">
+				{{ t('collaboration.canvas.acquireEditing') }}
 			</N8nButton>
 		</span>
 	</N8nCanvasPill>
