@@ -49,7 +49,6 @@ export const numberInputsProperty: INodeProperties = {
 		'The number of data inputs you want to merge. The node waits for all connected inputs to be executed.',
 };
 
-/* istanbul ignore next */
 export function configuredInputs(parameters: INodeParameters): INodeInputConfiguration[] {
 	return Array.from({ length: (parameters.numberInputs as number) || 2 }, (_, i) => ({
 		type: 'ai_languageModel',

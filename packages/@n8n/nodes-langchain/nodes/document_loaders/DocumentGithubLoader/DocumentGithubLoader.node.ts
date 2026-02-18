@@ -13,7 +13,6 @@ import {
 	type INodeInputConfiguration,
 } from 'n8n-workflow';
 
-/* istanbul ignore next */
 function getInputs(parameters: IDataObject) {
 	const inputs: INodeInputConfiguration[] = [];
 
