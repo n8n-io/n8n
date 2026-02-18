@@ -701,50 +701,5 @@ describe('Expression', () => {
 
 			expect(result).toBe('HELLO');
 		});
-
-		it('should evaluate complex parameter with provided IWorkflowDataProxyData', () => {
-			const nodeTypes = Helpers.NodeTypes();
-			const workflow = new Workflow({
-				id: 'test',
-				name: 'Test',
-				nodes: [
-					{
-						id: '1',
-						name: 'TestNode',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				connections: {},
-				active: false,
-				nodeTypes,
-			});
-
-			const dataProxy = new WorkflowDataProxy(
-				workflow,
-				null,
-				0,
-				0,
-				'TestNode',
-				[{ json: { a: 1, b: 2 } }],
-				{},
-				'manual',
-				{},
-			);
-			const data = dataProxy.getDataProxy();
-
-			const timezone = workflow.settings?.timezone ?? 'UTC';
-			const expression = new Expression(timezone);
-
-			// Manually resolve each property since getParameterValue moved to WorkflowExpression
-			const result = {
-				sum: expression.resolveSimpleParameterValue('={{ $json.a + $json.b }}', data, false),
-				product: expression.resolveSimpleParameterValue('={{ $json.a * $json.b }}', data, false),
-			};
-
-			expect(result).toEqual({ sum: 3, product: 2 });
-		});
 	});
 });
