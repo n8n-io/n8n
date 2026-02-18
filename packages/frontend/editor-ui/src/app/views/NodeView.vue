@@ -147,12 +147,7 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { injectStrict } from '@/app/utils/injectStrict';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
-import {
-	N8nCallout,
-	N8nCanvasThinkingPill,
-	N8nCanvasCollaborationPill,
-	N8nButton,
-} from '@n8n/design-system';
+import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 
 defineOptions({
 	name: 'NodeView',
@@ -2073,25 +2068,17 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
-			<div
+			<N8nCanvasCollaborationPill
 				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentTabWriter"
 				:class="$style.canvasCenterPill"
-			>
-				<N8nCanvasCollaborationPill
-					:first-name="collaborationStore.currentWriter.user.firstName"
-					:is-another-tab="isWriterAnotherTab"
-					:last-name="collaborationStore.currentWriter.user.lastName"
-				/>
-
-				<N8nButton
-					v-if="isWriterAnotherTab"
-					size="xsmall"
-					type="secondary"
-					@click="onAcquireEditingClick"
-				>
-					{{ i18n.baseText('collaboration.acquireEditing') }}
-				</N8nButton>
-			</div>
+				:first-name="collaborationStore.currentWriter.user.firstName"
+				:is-another-tab="isWriterAnotherTab"
+				:last-name="collaborationStore.currentWriter.user.lastName"
+				:button-text="
+					isWriterAnotherTab ? i18n.baseText('collaboration.acquireEditing') : undefined
+				"
+				@button-click="onAcquireEditingClick"
+			/>
 
 			<N8nCanvasThinkingPill
 				v-if="builderStore.streaming"
@@ -2194,9 +2181,5 @@ onBeforeUnmount(() => {
 	top: 50%;
 	transform: translate(-50%, -50%);
 	z-index: 10;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: var(--spacing--2xs);
 }
 </style>

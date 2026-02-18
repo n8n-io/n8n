@@ -4679,5 +4679,5 @@
 	"focusedNodes.allNodes": "All nodes",
 	"focusedNodes.unconfirmedTooltip": "Add as context for the assistant",
 	"collaboration.anotherTabIsEditing": "Another tab is editing this workflow",
-	"collaboration.acquireEditing": "Acquire editing"
+	"collaboration.acquireEditing": "Edit here"
 }

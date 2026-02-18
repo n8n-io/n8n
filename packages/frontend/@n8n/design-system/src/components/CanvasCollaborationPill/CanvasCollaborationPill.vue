@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import { useI18n } from '../../composables/useI18n';
 import N8nCanvasPill from '../CanvasPill';
 import N8nAvatar from '../N8nAvatar';
+import N8nButton from '../N8nButton';
 
 defineOptions({
 	name: 'N8nCanvasCollaborationPill',
@@ -13,6 +14,11 @@ const props = defineProps<{
 	firstName: string;
 	lastName?: string;
 	isAnotherTab?: boolean;
+	buttonText?: string;
+}>();
+
+const emit = defineEmits<{
+	buttonClick: [];
 }>();
 
 const { t } = useI18n();
@@ -30,6 +36,10 @@ const messageKey = computed(() => {
 const message = computed(() => {
 	return props.isAnotherTab ? t(messageKey.value) : t(messageKey.value, { user: userName.value });
 });
+
+const handleButtonClick = () => {
+	emit('buttonClick');
+};
 </script>
 
 <template>
@@ -37,6 +47,19 @@ const message = computed(() => {
 		<template #icon>
 			<N8nAvatar v-if="!isAnotherTab" :first-name="firstName" :last-name="lastName" size="small" />
 		</template>
-		{{ message }}
+		<span :class="$style.content">
+			{{ message }}
+			<N8nButton v-if="buttonText" variant="subtle" size="xsmall" @click="handleButtonClick">
+				{{ buttonText }}
+			</N8nButton>
+		</span>
 	</N8nCanvasPill>
 </template>
+
+<style lang="scss" module>
+.content {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+</style>
