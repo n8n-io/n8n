@@ -1,5 +1,4 @@
 export { parseSSEStream } from '@n8n/ai-utilities';
-export type { ChatModel, ChatModelConfig } from '@n8n/ai-utilities';
 export type { GenerateResult, StreamChunk, TokenUsage, FinishReason } from '@n8n/ai-utilities';
 export type { Tool, ToolResult, ToolCall, ProviderTool } from '@n8n/ai-utilities';
 export type {
@@ -15,8 +14,13 @@ export type {
 } from '@n8n/ai-utilities';
 export type { JSONArray, JSONObject, JSONValue } from '@n8n/ai-utilities';
 export type { ServerSentEventMessage } from '@n8n/ai-utilities';
-export { BaseChatModel } from '@n8n/ai-utilities';
 export { getParametersJsonSchema } from '@n8n/ai-utilities';
+
+// Chat model types
+export type { ChatModel, ChatModelConfig } from '@n8n/ai-utilities';
+
+// Chat model base classes
+export { BaseChatModel } from '@n8n/ai-utilities';
 
 // Memory types
 export type { ChatHistory, ChatMemory } from '@n8n/ai-utilities';
