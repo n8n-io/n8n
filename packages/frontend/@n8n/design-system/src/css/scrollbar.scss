@@ -17,6 +17,13 @@
 	@include mixins.e(wrap) {
 		overflow: auto;
 		height: 100%;
+
+		@include mixins.m(hidden-default) {
+			scrollbar-width: none;
+			&::-webkit-scrollbar {
+				display: none;
+			}
+		}
 	}
 
 	@include mixins.e(thumb) {
