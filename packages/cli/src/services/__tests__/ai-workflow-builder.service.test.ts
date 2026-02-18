@@ -846,6 +846,7 @@ describe('WorkflowBuilderService - node type loading', () => {
 			mock(),
 			mock<InstanceSettings>({ instanceId: 'test' }),
 			mock(),
+			mock(),
 		);
 
 		const mockUser = mock<IUser>();
