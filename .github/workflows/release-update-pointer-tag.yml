@@ -15,7 +15,7 @@ on:
         description: 'Release Track'
         required: true
         type: choice
-        options: [stable, beta, legacy]
+        options: [stable, beta, v1]
       version-tag:
         description: 'Version tag (e.g. n8n@2.7.0). Track tag will point to this version tag.'
         required: true

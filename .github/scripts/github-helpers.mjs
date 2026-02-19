@@ -6,7 +6,7 @@ export const RELEASE_TRACKS = /** @type { const } */ ([
 	//
 	'stable',
 	'beta',
-	'legacy',
+	'v1',
 ]);
 
 export const RELEASE_PREFIX = 'n8n@';
@@ -41,7 +41,7 @@ export function ensureReleaseTrack(track) {
 }
 
 /**
- * Resolve a release track tag (stable/beta/legacy) to the corresponding
+ * Resolve a release track tag (stable/beta/etc.) to the corresponding
  * release-candidate/<major>.<minor>.x branch, based on the n8n@<x.y.z> tag
  * pointing at the same commit.
  *

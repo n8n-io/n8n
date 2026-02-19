@@ -12,7 +12,7 @@ const bump = ensureEnvVar('BUMP');
 
 const stable = process.env['STABLE_VERSION'];
 const beta = process.env['BETA_VERSION'];
-const legacy = process.env['LEGACY_VERSION'];
+const v1 = process.env['V1_VERSION'];
 
 let base = null;
 switch (track) {
@@ -22,14 +22,14 @@ switch (track) {
 	case 'beta':
 		base = beta;
 		break;
-	case 'legacy':
-		base = legacy;
+	case 'v1':
+		base = v1;
 		break;
 }
 
 if (!base) {
 	console.error(
-		`Unknown track or missing base version. track=${track} stable=${stable} beta=${beta} legacy=${legacy}`,
+		`Unknown track or missing base version. track=${track} stable=${stable} beta=${beta} v1=${v1}`,
 	);
 	process.exit(1);
 }
