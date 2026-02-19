@@ -1,5 +1,3 @@
-// TODO: This file is duplicated in @n8n/expression-runtime and can be removed once
-// all direct test imports are updated to use that package.
 import { DateTime } from 'luxon';
 import type {
 	DateTimeUnit,
@@ -10,9 +8,9 @@ import type {
 } from 'luxon';
 
 import type { ExtensionMap } from './extensions';
+import { ExpressionExtensionError } from './expression-extension-error';
 import { toDateTime as stringToDateTime } from './string-extensions';
 import { convertToDateTime } from './utils';
-import { ExpressionExtensionError } from '../errors/expression-extension.error';
 
 const durationUnits = [
 	'milliseconds',
@@ -464,7 +462,7 @@ minus.doc = {
 		{
 			name: 'n',
 			description:
-				'The number of units to subtract. Or use a Luxon <a target="_blank" href=”https://moment.github.io/luxon/api-docs/index.html#duration”>Duration</a> object to subtract multiple units at once.',
+				'The number of units to subtract. Or use a Luxon <a target="_blank" href="https://moment.github.io/luxon/api-docs/index.html#duration">Duration</a> object to subtract multiple units at once.',
 			type: 'number | object',
 		},
 		{
@@ -498,7 +496,7 @@ plus.doc = {
 		{
 			name: 'n',
 			description:
-				'The number of units to add. Or use a Luxon <a target="_blank" href=”https://moment.github.io/luxon/api-docs/index.html#duration”>Duration</a> object to add multiple units at once.',
+				'The number of units to add. Or use a Luxon <a target="_blank" href="https://moment.github.io/luxon/api-docs/index.html#duration">Duration</a> object to add multiple units at once.',
 			type: 'number | object',
 		},
 		{

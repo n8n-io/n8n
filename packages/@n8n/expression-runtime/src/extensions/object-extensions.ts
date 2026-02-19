@@ -1,7 +1,5 @@
-// TODO: This file is duplicated in @n8n/expression-runtime and can be removed once
-// all direct test imports are updated to use that package.
 import type { ExtensionMap } from './extensions';
-import { ExpressionExtensionError } from '../errors/expression-extension.error';
+import { ExpressionExtensionError } from './expression-extension-error';
 
 function isEmpty(value: object): boolean {
 	return Object.keys(value).length === 0;

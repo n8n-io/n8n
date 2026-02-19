@@ -1,6 +1,8 @@
 import { DateTime, Duration, Interval } from 'luxon';
 import * as lodash from 'lodash';
 
+import { extend, extendOptional } from '../extensions/extend';
+
 // Augment globalThis with runtime properties
 declare global {
 	namespace globalThis {
@@ -36,6 +38,10 @@ declare global {
 
 // @ts-ignore - _ is assigned to globalThis for expression runtime
 globalThis._ = lodash;
+
+// Expose extend/extendOptional globally so tournament-transformed expressions work
+(globalThis as any).extend = extend;
+(globalThis as any).extendOptional = extendOptional;
 
 // Expose Luxon both as individual globals and as luxon object
 globalThis.DateTime = DateTime;
@@ -492,6 +498,11 @@ function resetDataProxies(): void {
 	(globalThis.__data as any).Duration = globalThis.Duration;
 	(globalThis.__data as any).Interval = globalThis.Interval;
 	(globalThis.__data as any).luxon = (globalThis as any).luxon;
+
+	// Expose extend/extendOptional on __data so tournament's "x in this ? this.x : global.x"
+	// pattern resolves them correctly when the VM checks __data first
+	(globalThis.__data as any).extend = extend;
+	(globalThis.__data as any).extendOptional = extendOptional;
 
 	// TODO: Add other function properties as needed ($item, $vars, etc.)
 }

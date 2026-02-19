@@ -13,6 +13,7 @@ async function build() {
 		sourcemap: true,
 		target: 'es2020',
 		platform: 'neutral', // Works in both Node.js and browser
+		mainFields: ['module', 'main'], // Needed for neutral platform to resolve packages
 		external: [], // Bundle everything (lodash, luxon)
 	};
 

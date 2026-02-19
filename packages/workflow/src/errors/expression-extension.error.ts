@@ -1,3 +1,1 @@
-import { ExpressionError } from './expression.error';
-
-export class ExpressionExtensionError extends ExpressionError {}
+export { ExpressionExtensionError } from '@n8n/expression-runtime';

@@ -1,10 +1,7 @@
-// @vitest-environment jsdom
-// TODO: This file is duplicated in @n8n/expression-runtime and can be removed once
-// all direct test imports are updated to use that package.
 import { DateTime } from 'luxon';
 
 import type { ExtensionMap } from './extensions';
-import { ExpressionExtensionError } from '../errors/expression-extension.error';
+import { ExpressionExtensionError } from './expression-extension-error';
 
 function format(value: number, extraArgs: unknown[]): string {
 	const [locales = 'en-US', config = {}] = extraArgs as [
@@ -136,7 +133,7 @@ isOdd.doc = {
 format.doc = {
 	name: 'format',
 	description:
-		'Returns a formatted string representing the number. Useful for formatting for a specific language or currency. The same as <a target="_blank" href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat/NumberFormat”><code>Intl.NumberFormat()</code></a>.',
+		'Returns a formatted string representing the number. Useful for formatting for a specific language or currency. The same as <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat/NumberFormat"><code>Intl.NumberFormat()</code></a>.',
 	examples: [
 		{ example: "(123456.789).format('de-DE')", evaluated: '123.456,789' },
 		{
@@ -150,7 +147,7 @@ format.doc = {
 			name: 'locale',
 			optional: true,
 			description:
-				'A <a target="_blank" href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl#locales_argument”>locale tag</a> for formatting the number, e.g. <code>fr-FR</code>, <code>en-GB</code>, <code>pr-BR</code>',
+				'A <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl#locales_argument">locale tag</a> for formatting the number, e.g. <code>fr-FR</code>, <code>en-GB</code>, <code>pr-BR</code>',
 			default: '"en-US"',
 			type: 'string',
 		},

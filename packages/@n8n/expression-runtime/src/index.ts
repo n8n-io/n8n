@@ -27,3 +27,7 @@ export {
 	SecurityViolationError,
 	SyntaxError,
 } from './types';
+
+// Extension runtime exports
+export { extend, extendOptional, EXTENSION_OBJECTS } from './extensions/extend';
+export { ExpressionExtensionError } from './extensions/expression-extension-error';

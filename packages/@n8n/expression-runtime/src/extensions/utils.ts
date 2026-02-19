@@ -1,8 +1,6 @@
-// TODO: This file is duplicated in @n8n/expression-runtime and can be removed once
-// all direct test imports are updated to use that package.
 import { DateTime } from 'luxon';
 
-import { ExpressionExtensionError } from '../errors/expression-extension.error';
+import { ExpressionExtensionError } from './expression-extension-error';
 
 // Utility functions and type guards for expression extensions
 

@@ -1,5 +1,3 @@
-// TODO: This file is duplicated in @n8n/expression-runtime and can be removed once
-// all direct test imports are updated to use that package.
 import type { Extension, ExtensionMap } from './extensions';
 
 export function toBoolean(value: boolean) {
