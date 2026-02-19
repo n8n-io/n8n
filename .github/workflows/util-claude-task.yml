@@ -21,6 +21,10 @@ on:
         required: false
         type: string
         default: 'claude-sonnet-4-5-20250929'
+      user_token:
+        description: 'Your GitHub PAT (required for PR authorship - you cannot approve PRs you author)'
+        required: false
+        type: string
       ref:
         description: 'Git ref (branch/tag/SHA) to check out and work on'
         required: false
@@ -174,7 +178,7 @@ jobs:
 
       - name: Push branch and create PR
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ inputs.user_token || github.token }}
           INPUT_TASK: ${{ inputs.task }}
           TRIGGERED_BY: ${{ github.actor }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -184,6 +188,11 @@ jobs:
             git push -u origin "$BRANCH_NAME"
 
             if [ "${{ inputs.createPr }}" = "true" ]; then
+              if [ -z "${{ inputs.user_token }}" ]; then
+                echo "::error::createPr is enabled but user_token was not provided. A personal access token is required to create PRs under your identity."
+                exit 1
+              fi
+
               {
                 echo "## Summary"
                 echo "Automated task completed by Claude."
