@@ -118,6 +118,7 @@ defineExpose({ markInteracted });
 					</div>
 				</div>
 			</Transition>
+			<slot name="webhook-urls" />
 			<slot />
 
 			<footer v-if="showFooter" :class="$style.footer">
