@@ -76,7 +76,7 @@ export function useReviewChanges() {
 	}
 
 	const editedNodesCount = computed(() => {
-		if (!cachedVersionLoaded.value) return 0;
+		if (!cachedVersionLoaded.value || builderStore.streaming) return 0;
 		const normalized = resolveNodeDefaults(cachedVersionNodes.value);
 		const diff = compareWorkflowsNodes(normalized, workflowsStore.workflow.nodes);
 		return [...diff.values()].filter((d) => d.status !== NodeDiffStatus.Eq).length;
