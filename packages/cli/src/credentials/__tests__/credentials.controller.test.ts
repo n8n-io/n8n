@@ -1,21 +1,20 @@
-import type { AuthenticatedRequest, SharedCredentialsRepository, CredentialsEntity } from '@n8n/db';
-import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import type {
+	AuthenticatedRequest,
+	CredentialsEntity,
+	CredentialsRepository,
+	SharedCredentialsRepository,
+} from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { createRawProjectData } from '@/__tests__/project.test-data';
 import type { EventService } from '@/events/event.service';
 
-import { createdCredentialsWithScopes, createNewCredentialsPayload } from './credentials.test-data';
-import { CredentialsController } from '../credentials.controller';
-import type { CredentialsService } from '../credentials.service';
-import type { CredentialsFinderService } from '../credentials-finder.service';
 import type { CredentialRequest } from '@/requests';
-
 import type { CredentialsFinderService } from '../credentials-finder.service';
 import { CredentialsController } from '../credentials.controller';
 import { CredentialsService } from '../credentials.service';
-import * as validation from '../validation';
-import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
+import { createdCredentialsWithScopes, createNewCredentialsPayload } from './credentials.test-data';
 
 describe('CredentialsController', () => {
 	const eventService = mock<EventService>();
