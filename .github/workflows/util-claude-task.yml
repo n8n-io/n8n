@@ -186,16 +186,18 @@ jobs:
 
       - name: Push branch and create PR
         env:
-          GH_TOKEN: ${{ inputs.user_token || github.token }}
           INPUT_TASK: ${{ inputs.task }}
           TRIGGERED_BY: ${{ github.actor }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           if ! git diff --quiet "${{ inputs.ref }}"; then
-            git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+            # Push using github.token (has write access via workflow permissions)
+            git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
             git push -u origin "$BRANCH_NAME"
 
             if [ "${{ inputs.createPr }}" = "true" ]; then
+              # Switch to PAT for PR creation (so PR is authored by the user)
+              export GH_TOKEN="${{ inputs.user_token }}"
               if [ -z "${{ inputs.user_token }}" ]; then
                 echo "::error::createPr is enabled but user_token was not provided. A personal access token is required to create PRs under your identity."
                 exit 1
