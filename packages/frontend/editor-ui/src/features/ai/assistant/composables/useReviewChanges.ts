@@ -38,15 +38,18 @@ export function useReviewChanges() {
 				cachedVersionLoaded.value = false;
 				return;
 			}
+			const versionId = version.id;
 			cachedVersionLoaded.value = false;
 			try {
 				const v = await workflowHistoryStore.getWorkflowVersion(
 					workflowsStore.workflowId,
-					version.id,
+					versionId,
 				);
+				if (builderStore.latestRevertVersion?.id !== versionId) return;
 				cachedVersionNodes.value = v.nodes;
 				cachedVersionConnections.value = v.connections;
 			} catch {
+				if (builderStore.latestRevertVersion?.id !== versionId) return;
 				cachedVersionNodes.value = [];
 				cachedVersionConnections.value = {};
 			}
