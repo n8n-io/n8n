@@ -60,7 +60,6 @@ export class SecretsProvidersConnectionsService {
 		const connection = this.repository.create({
 			...proposedConnection,
 			encryptedSettings,
-			isEnabled: true,
 		});
 
 		const savedConnection = await this.repository.save(connection);

@@ -23,7 +23,6 @@ describe('SecretsProviderConnectionRepository', () => {
 				providerKey: 'myVault',
 				type: 'vault',
 				encryptedSettings: '',
-				isEnabled: false,
 				projectAccess: [],
 				...overrides,
 			});
