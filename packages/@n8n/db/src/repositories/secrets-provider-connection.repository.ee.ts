@@ -28,19 +28,23 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 	 * Retrieves global connections, i.e., connections that are not assigned to any project.
 	 * A global connection has no associated entries in its projectAccess relation.
 	 *
-	 * @param typeFilter - (Optional) Limits results to connections of the specified provider type.
+	 * @param filters - (Optional) Filters to apply to the query.
+	 * @param filters.providerKeys - (Optional) Limits results to connections of the specified provider keys.
 	 * @returns Promise resolving to all matching SecretsProviderConnection entities.
 	 */
-	async findGlobalConnections({
-		providerKeys,
-	}: { providerKeys?: Array<SecretsProviderConnection['providerKey']> } = {}): Promise<
-		SecretsProviderConnection[]
-	> {
+	async findGlobalConnections(
+		filters: { providerKeys?: Array<SecretsProviderConnection['providerKey']> } = {},
+	): Promise<SecretsProviderConnection[]> {
+		const { providerKeys } = filters;
+		if (providerKeys && providerKeys.length === 0) {
+			return [];
+		}
+
 		const connectionQuery = this.createQueryBuilder('connection')
 			.leftJoin('connection.projectAccess', 'access')
 			.where('access.secretsProviderConnectionId IS NULL');
 
-		if (providerKeys && providerKeys.length > 0) {
+		if (providerKeys) {
 			connectionQuery.andWhere('connection.providerKey IN (:...providerKeys)', { providerKeys });
 		}
 
@@ -55,19 +59,25 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 	 * not global connections (i.e., those without any project restriction).
 	 *
 	 * @param projectId - The ID of the project to filter on.
-	 * @param type - (Optional) The provider type to filter connections by.
+	 * @param filters - (Optional) Filters to apply to the query.
+	 * @param filters.providerKeys - (Optional) Limits results to connections of the specified provider keys.
 	 * @returns Promise resolving to all matching SecretsProviderConnection entities.
 	 */
 	async findByProjectId(
 		projectId: string,
-		{ providerKeys }: { providerKeys?: Array<SecretsProviderConnection['providerKey']> } = {},
+		filters: { providerKeys?: Array<SecretsProviderConnection['providerKey']> } = {},
 	): Promise<SecretsProviderConnection[]> {
+		const { providerKeys } = filters;
+		if (providerKeys && providerKeys.length === 0) {
+			return [];
+		}
+
 		const connectionQuery = this.createQueryBuilder('connection')
 			.innerJoinAndSelect('connection.projectAccess', 'projectAccess')
 			.leftJoinAndSelect('projectAccess.project', 'project')
 			.where('projectAccess.projectId = :projectId', { projectId });
 
-		if (providerKeys && providerKeys.length > 0) {
+		if (providerKeys) {
 			connectionQuery.andWhere('connection.providerKey IN (:...providerKeys)', { providerKeys });
 		}
 

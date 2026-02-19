@@ -107,6 +107,20 @@ describe('SecretsProviderConnectionRepository', () => {
 
 			expect(connections).toEqual([]);
 		});
+
+		it('returns empty array when providerKeys filter is an empty array', async () => {
+			await Promise.all([
+				createConnection('globalAws', 'awsSecretsManager'),
+				createConnection('globalVault', 'hashicorpVault'),
+				createConnection('globalGcp', 'gcpSecretsManager'),
+			]);
+
+			const connections = await connectionRepository.findGlobalConnections({
+				providerKeys: [],
+			});
+
+			expect(connections).toEqual([]);
+		});
 	});
 
 	describe('findByProjectId', () => {
@@ -149,6 +163,20 @@ describe('SecretsProviderConnectionRepository', () => {
 			await createConnection('otherProject', 'awsSecretsManager', [project2.id]);
 
 			const connections = await connectionRepository.findByProjectId(project1.id);
+
+			expect(connections).toEqual([]);
+		});
+
+		it('returns empty array when providerKeys filter is an empty array', async () => {
+			await Promise.all([
+				createConnection('projAws', 'awsSecretsManager', [project1.id]),
+				createConnection('projVault', 'hashicorpVault', [project1.id]),
+				createConnection('projGcp', 'gcpSecretsManager', [project1.id]),
+			]);
+
+			const connections = await connectionRepository.findByProjectId(project1.id, {
+				providerKeys: [],
+			});
 
 			expect(connections).toEqual([]);
 		});
