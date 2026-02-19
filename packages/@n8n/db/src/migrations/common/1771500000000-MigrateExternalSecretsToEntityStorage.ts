@@ -70,6 +70,11 @@ export class MigrateExternalSecretsToEntityStorage1771500000000 implements Irrev
 		for (const providerName of providerNames) {
 			const providerData = allSettings[providerName];
 
+			if (!providerData.connected) {
+				logger.info(`[${migrationName}] Provider "${providerName}" is not connected, skipping`);
+				continue;
+			}
+
 			const existing: Array<{ providerKey: string }> = await runQuery(
 				`SELECT ${providerKeyCol} FROM ${connectionTable} WHERE ${providerKeyCol} = :providerKey;`,
 				{ providerKey: providerName },
