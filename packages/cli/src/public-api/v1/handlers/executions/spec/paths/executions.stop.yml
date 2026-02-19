@@ -4,7 +4,7 @@ post:
   tags:
     - Execution
   summary: Stop multiple executions
-  description: Stop multiple running executions from your instance based on filter criteria.
+  description: Stop multiple executions from your instance based on filter criteria.
   requestBody:
     required: true
     content:
