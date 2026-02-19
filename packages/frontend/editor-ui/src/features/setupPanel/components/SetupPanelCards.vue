@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue';
+import { computed, watch } from 'vue';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import TriggerSetupCard from '@/features/setupPanel/components/cards/TriggerSetupCard.vue';
 import CredentialTypeSetupCard from '@/features/setupPanel/components/cards/CredentialTypeSetupCard.vue';
@@ -8,6 +8,15 @@ import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
+
+const props = withDefaults(
+	defineProps<{
+		showCompleted?: boolean;
+	}>(),
+	{
+		showCompleted: true,
+	},
+);
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -31,6 +40,11 @@ const onCredentialSelected = (payload: { credentialType: string; credentialId: s
 const onCredentialDeselected = (credentialType: string) => {
 	unsetCredential(credentialType);
 };
+
+const visibleCards = computed(() => {
+	if (props.showCompleted) return setupCards.value;
+	return setupCards.value.filter((card) => !card.state.isComplete);
+});
 
 const cardKey = (card: SetupCardItem): string => {
 	if (card.type === 'trigger') return `trigger-${card.state.node.id}`;
@@ -61,7 +75,7 @@ const cardKey = (card: SetupCardItem): string => {
 			</div>
 		</div>
 		<div v-else :class="$style['card-list']" data-test-id="setup-cards-list">
-			<template v-for="(card, index) in setupCards" :key="cardKey(card)">
+			<template v-for="(card, index) in visibleCards" :key="cardKey(card)">
 				<TriggerSetupCard
 					v-if="card.type === 'trigger'"
 					:state="card.state"
