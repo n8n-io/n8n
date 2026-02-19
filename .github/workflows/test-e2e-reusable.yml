@@ -80,8 +80,6 @@ on:
 
 env:
   NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
-  # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
-  TESTCONTAINERS_RYUK_DISABLED: true
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
   # Browser cache location - must match install-browsers script
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers

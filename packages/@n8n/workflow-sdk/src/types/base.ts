@@ -259,35 +259,6 @@ export interface OutputSelector<TType extends string, TVersion extends string, T
 // =============================================================================
 
 /**
- * Binary data field properties
- */
-export interface BinaryField {
-	fileName?: string;
-	directory?: string;
-	mimeType?: string;
-	fileExtension?: string;
-	fileSize?: string;
-}
-
-/**
- * Binary data context
- */
-export type BinaryContext = {
-	[fieldName: string]: BinaryField | (() => string[]);
-} & {
-	keys(): string[];
-};
-
-/**
- * Input data context
- */
-export interface InputContext {
-	first(): IDataObject;
-	all(): IDataObject[];
-	item: IDataObject;
-}
-
-/**
  * Execution context
  */
 export interface ExecutionContext {
@@ -304,29 +275,6 @@ export interface WorkflowContext {
 	name?: string;
 	active: boolean;
 }
-
-/**
- * Expression context providing access to n8n runtime data
- */
-export interface ExpressionContext {
-	json: IDataObject;
-	binary: BinaryContext;
-	input: InputContext;
-	env: IDataObject;
-	vars: IDataObject;
-	secrets: IDataObject;
-	now: Date;
-	today: Date;
-	itemIndex: number;
-	runIndex: number;
-	execution: ExecutionContext;
-	workflow: WorkflowContext;
-}
-
-/**
- * Expression function type
- */
-export type Expression<T> = ($: ExpressionContext) => T;
 
 // =============================================================================
 // Node configuration (full version with all options)

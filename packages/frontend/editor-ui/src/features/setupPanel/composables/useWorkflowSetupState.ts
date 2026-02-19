@@ -2,7 +2,7 @@ import { computed, watch, type Ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import type { NodeSetupState } from '../setupPanel.types';
+import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -12,16 +12,20 @@ import {
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import { useToast } from '@/app/composables/useToast';
-import { useI18n } from '@n8n/i18n';
 
-import { getNodeCredentialTypes, buildNodeSetupState } from '../setupPanel.utils';
+import {
+	getNodeCredentialTypes,
+	groupCredentialsByType,
+	isCredentialCardComplete,
+	buildTriggerSetupState,
+} from '@/features/setupPanel/setupPanel.utils';
+
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
- * Derives state from node type definitions and current node credentials,
- * marking nodes as complete/incomplete based on credential selection and issues.
+ * Cards are grouped by credential type (one card per unique credential type)
+ * with trigger nodes getting their own dedicated cards (test button only).
  * @param nodes Optional sub-set of nodes to check (defaults to full workflow)
  */
 export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
@@ -30,8 +34,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
 	const workflowState = injectWorkflowState();
-	const toast = useToast();
-	const i18n = useI18n();
 
 	const sourceNodes = computed(() => nodes?.value ?? workflowsStore.allNodes);
 
@@ -65,59 +67,127 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			}))
 			.filter(({ credentialTypes, isTrigger }) => credentialTypes.length > 0 || isTrigger);
 
-		return sortNodesByExecutionOrder(nodesForSetup, workflowsStore.connectionsBySourceNode);
+		return sortNodesByExecutionOrder(
+			nodesForSetup,
+			workflowsStore.connectionsBySourceNode,
+			workflowsStore.connectionsByDestinationNode,
+		);
 	});
 
 	/**
-	 * Map of credential type -> node names that require it (for shared credential awareness in UI)
+	 * The name of the first (leftmost) trigger in the workflow.
+	 * Only this trigger can be executed from setup cards; others are treated as regular nodes.
 	 */
-	const credentialTypeToNodeNames = computed(() => {
-		const map = new Map<string, string[]>();
-		for (const { node, credentialTypes } of nodesRequiringSetup.value) {
-			for (const credType of credentialTypes) {
-				const existing = map.get(credType) ?? [];
-				existing.push(node.name);
-				map.set(credType, existing);
-			}
-		}
-		return map;
+	const firstTriggerName = computed(() => {
+		const first = nodesRequiringSetup.value.find(({ isTrigger }) => isTrigger);
+		return first?.node.name ?? null;
 	});
 
 	/**
-	 * Node setup states - one entry per node that requires setup.
-	 * This data is used by cards component.
+	 * All nodes that have credential requirements (includes both triggers and regular nodes).
+	 * Sorted by X position.
 	 */
-	const nodeSetupStates = computed<NodeSetupState[]>(() =>
-		nodesRequiringSetup.value.map(({ node, credentialTypes, isTrigger }) =>
-			buildNodeSetupState(
-				node,
-				credentialTypes,
-				getCredentialDisplayName,
-				credentialTypeToNodeNames.value,
-				isTrigger,
-				hasTriggerExecutedSuccessfully(node.name),
-				credentialsStore.isCredentialTestedOk,
-			),
-		),
+	const nodesWithCredentials = computed(() =>
+		nodesRequiringSetup.value.filter(({ credentialTypes }) => credentialTypes.length > 0),
 	);
 
-	const totalCredentialsMissing = computed(() => {
-		return nodeSetupStates.value.reduce((total, state) => {
-			const missing = state.credentialRequirements.filter(
-				(req) => !req.selectedCredentialId || req.issues.length > 0,
+	/**
+	 * Credential type states — one entry per unique credential type.
+	 * Ordered by leftmost node X position (inherited from nodesWithCredentials iteration order).
+	 * Cards with embedded triggers have isComplete recomputed to include trigger execution.
+	 */
+	const credentialTypeStates = computed(() => {
+		const grouped = groupCredentialsByType(
+			nodesWithCredentials.value.map(({ node, credentialTypes }) => ({
+				node,
+				credentialTypes,
+			})),
+			getCredentialDisplayName,
+		);
+		// Only the workflow's first trigger (leftmost) can be executed from setup cards.
+		// It gets an embedded execute button and affects card completion.
+		// Other triggers are treated as regular nodes (credentials only, no execute).
+		const isTriggerNodeType = (nodeType: string) => nodeTypesStore.isTriggerNode(nodeType);
+		return grouped.map((state) => {
+			const embeddedTrigger = state.nodes.find(
+				(node) => isTriggerNode(node) && node.name === firstTriggerName.value,
 			);
-			return total + missing.length;
-		}, 0);
+			// For completion check, only consider the embedded (first) trigger
+			const nodesForCompletion = embeddedTrigger
+				? state.nodes.filter((node) => !isTriggerNode(node) || node === embeddedTrigger)
+				: state.nodes.filter((node) => !isTriggerNode(node));
+			return {
+				...state,
+				isComplete: isCredentialCardComplete(
+					{ ...state, nodes: nodesForCompletion },
+					hasTriggerExecutedSuccessfully,
+					isTriggerNodeType,
+					credentialsStore.isCredentialTestedOk,
+				),
+			};
+		});
 	});
 
-	const totalNodesRequiringSetup = computed(() => {
-		return nodeSetupStates.value.length;
+	/**
+	 * Trigger states — one entry per trigger node that is NOT covered by a credential card.
+	 * Triggers with credentials are embedded into the credential card instead.
+	 */
+	const triggerStates = computed(() => {
+		// Only the first trigger can get a standalone trigger card.
+		// Check if it's already embedded in a credential card.
+		if (!firstTriggerName.value) return [];
+
+		const isFirstTriggerEmbedded = credentialTypeStates.value.some((credState) =>
+			credState.nodes.some((node) => isTriggerNode(node) && node.name === firstTriggerName.value),
+		);
+		if (isFirstTriggerEmbedded) return [];
+
+		return nodesRequiringSetup.value
+			.filter(({ isTrigger, node }) => isTrigger && node.name === firstTriggerName.value)
+			.map(({ node, credentialTypes }) =>
+				buildTriggerSetupState(
+					node,
+					credentialTypes,
+					credentialTypeStates.value,
+					hasTriggerExecutedSuccessfully(node.name),
+				),
+			);
+	});
+
+	/**
+	 * Ordered list of all setup cards, sorted by the position of each card's
+	 * primary node (first node / trigger node) in the execution order.
+	 */
+	const setupCards = computed<SetupCardItem[]>(() => {
+		const credentials: SetupCardItem[] = credentialTypeStates.value.map((state) => ({
+			type: 'credential' as const,
+			state,
+		}));
+		const triggers: SetupCardItem[] = triggerStates.value.map((state) => ({
+			type: 'trigger' as const,
+			state,
+		}));
+
+		const executionOrder = nodesRequiringSetup.value.map(({ node }) => node.name);
+		const primaryNodeName = (card: SetupCardItem): string =>
+			card.type === 'trigger' ? card.state.node.name : (card.state.nodes[0]?.name ?? '');
+
+		return [...credentials, ...triggers].sort(
+			(a, b) =>
+				executionOrder.indexOf(primaryNodeName(a)) - executionOrder.indexOf(primaryNodeName(b)),
+		);
+	});
+
+	const totalCredentialsMissing = computed(() => {
+		return credentialTypeStates.value.filter((s) => !s.isComplete).length;
+	});
+
+	const totalCardsRequiringSetup = computed(() => {
+		return setupCards.value.length;
 	});
 
 	const isAllComplete = computed(() => {
-		return (
-			nodeSetupStates.value.length > 0 && nodeSetupStates.value.every((state) => state.isComplete)
-		);
+		return setupCards.value.length > 0 && setupCards.value.every((card) => card.state.isComplete);
 	});
 
 	/**
@@ -207,86 +277,60 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	);
 
 	/**
-	 * Sets a credential for a node and auto-assigns it to other nodes in setup panel that need it.
-	 * @param nodeName
-	 * @param credentialType
-	 * @param credentialId
-	 * @returns
+	 * Sets a credential for all nodes that need the given credential type.
 	 */
-	const setCredential = (nodeName: string, credentialType: string, credentialId: string): void => {
+	const setCredential = (credentialType: string, credentialId: string): void => {
 		const credential = credentialsStore.getCredentialById(credentialId);
 		if (!credential) return;
 
-		const node = workflowsStore.getNodeByName(nodeName);
-		if (!node) return;
+		const credState = credentialTypeStates.value.find((s) => s.credentialType === credentialType);
+		if (!credState) return;
 
 		const credentialDetails = { id: credentialId, name: credential.name };
 
 		void testCredentialInBackground(credentialId, credential.name, credentialType);
 
-		workflowState.updateNodeProperties({
-			name: nodeName,
-			properties: {
-				credentials: {
-					...node.credentials,
-					[credentialType]: credentialDetails,
+		for (const stateNode of credState.nodes) {
+			const node = workflowsStore.getNodeByName(stateNode.name);
+			if (!node) continue;
+
+			workflowState.updateNodeProperties({
+				name: stateNode.name,
+				properties: {
+					credentials: {
+						...node.credentials,
+						[credentialType]: credentialDetails,
+					},
 				},
-			},
-		});
-		nodeHelpers.updateNodeCredentialIssuesByName(nodeName);
-
-		const otherNodesUpdated: string[] = [];
-
-		for (const state of nodeSetupStates.value) {
-			if (state.node.name === nodeName) continue;
-
-			const needsThisCredential = state.credentialRequirements.some(
-				(req) => req.credentialType === credentialType && !req.selectedCredentialId,
-			);
-
-			if (needsThisCredential) {
-				const targetNode = workflowsStore.getNodeByName(state.node.name);
-				if (targetNode) {
-					workflowState.updateNodeProperties({
-						name: state.node.name,
-						properties: {
-							credentials: {
-								...targetNode.credentials,
-								[credentialType]: credentialDetails,
-							},
-						},
-					});
-					otherNodesUpdated.push(state.node.name);
-				}
-			}
-		}
-
-		if (otherNodesUpdated.length > 0) {
-			nodeHelpers.updateNodesCredentialsIssues();
-			toast.showMessage({
-				title: i18n.baseText('nodeCredentials.showMessage.title'),
-				message: i18n.baseText('nodeCredentials.autoAssigned.message', {
-					interpolate: { count: String(otherNodesUpdated.length) },
-				}),
-				type: 'success',
 			});
 		}
+
+		nodeHelpers.updateNodesCredentialsIssues();
 	};
 
-	const unsetCredential = (nodeName: string, credentialType: string): void => {
-		const node = workflowsStore.getNodeByName(nodeName);
-		if (!node) return;
+	/**
+	 * Unsets a credential from all nodes that need the given credential type.
+	 */
+	const unsetCredential = (credentialType: string): void => {
+		const credState = credentialTypeStates.value.find((s) => s.credentialType === credentialType);
+		if (!credState) return;
 
-		const updatedCredentials = { ...node.credentials };
-		delete updatedCredentials[credentialType];
+		for (const stateNode of credState.nodes) {
+			const node = workflowsStore.getNodeByName(stateNode.name);
+			if (!node) continue;
 
-		workflowState.updateNodeProperties({
-			name: nodeName,
-			properties: {
-				credentials: updatedCredentials,
-			},
-		});
-		nodeHelpers.updateNodeCredentialIssuesByName(nodeName);
+			const updatedCredentials = { ...node.credentials };
+			delete updatedCredentials[credentialType];
+
+			workflowState.updateNodeProperties({
+				name: stateNode.name,
+				properties: {
+					credentials: updatedCredentials,
+				},
+			});
+		}
+
+		nodeHelpers.updateNodesCredentialsIssues();
 	};
 
 	/**
@@ -301,7 +345,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 					const credValue = node.credentials?.[credType];
 					const selectedId = typeof credValue === 'string' ? undefined : credValue?.id;
 					if (selectedId === deletedCredentialId) {
-						unsetCredential(node.name, credType);
+						unsetCredential(credType);
 					}
 				}
 			}
@@ -309,9 +353,12 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	});
 
 	return {
-		nodeSetupStates,
+		setupCards,
+		credentialTypeStates,
+		triggerStates,
+		firstTriggerName,
 		totalCredentialsMissing,
-		totalNodesRequiringSetup,
+		totalCardsRequiringSetup,
 		isAllComplete,
 		setCredential,
 		unsetCredential,
