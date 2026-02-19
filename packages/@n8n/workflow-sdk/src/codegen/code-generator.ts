@@ -146,6 +146,9 @@ function generateSubnodesConfigForNode(node: SemanticNode, ctx: GenerationContex
 	const grouped = new Map<AiConnectionType, SemanticNode[]>();
 
 	for (const sub of node.subnodes) {
+		// Skip self-referencing subnodes (circular reference in source data)
+		if (sub.subnodeName === node.name) continue;
+
 		const subnodeNode = ctx.graph.nodes.get(sub.subnodeName);
 		if (!subnodeNode) continue;
 
@@ -201,15 +204,23 @@ function generateSubnodesConfig(node: SemanticNode, ctx: GenerationContext): str
  * Skips nodes that also participate in the main workflow flow (in variableNodes),
  * since those must be declared as node() calls rather than subnode builder calls.
  */
-function collectSubnodesAsVariables(node: SemanticNode, ctx: GenerationContext): void {
+function collectSubnodesAsVariables(
+	node: SemanticNode,
+	ctx: GenerationContext,
+	visited = new Set<string>(),
+): void {
 	if (node.subnodes.length === 0) return;
 
 	for (const sub of node.subnodes) {
+		// Skip circular subnode references
+		if (visited.has(sub.subnodeName)) continue;
+		visited.add(sub.subnodeName);
+
 		const subnodeNode = ctx.graph.nodes.get(sub.subnodeName);
 		if (!subnodeNode) continue;
 
 		// First, recursively collect nested subnodes (they must be declared first)
-		collectSubnodesAsVariables(subnodeNode, ctx);
+		collectSubnodesAsVariables(subnodeNode, ctx, visited);
 
 		// Skip nodes that are also in the main flow (they'll be declared as node() calls)
 		// These nodes have main connections and need to participate in the flow chain
@@ -284,6 +295,9 @@ function generateSubnodesConfigWithVarRefs(
 	const grouped = new Map<AiConnectionType, string[]>();
 
 	for (const sub of node.subnodes) {
+		// Skip self-referencing subnodes (circular reference in source data)
+		if (sub.subnodeName === node.name) continue;
+
 		const varName = getVarName(sub.subnodeName, ctx);
 		const existing = grouped.get(sub.connectionType) ?? [];
 		existing.push(varName);

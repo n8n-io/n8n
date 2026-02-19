@@ -10,34 +10,26 @@ import {
 	COMMITTED_FIXTURES_DIR,
 } from '../__tests__/fixtures-download';
 import type { WorkflowJSON } from '../types/base';
-import { escapeNewlinesInExpressionStrings } from '../workflow-builder/string-utils';
+import {
+	escapeNewlinesInExpressionStrings,
+	isPlaceholderValue,
+} from '../workflow-builder/string-utils';
 
 // Workflows with known issues that need to be skipped entirely
-// 5979: Code generator creates duplicate inline nodes, causing duplicate detection to rename them
-// 5370: Error output connections lost during codegen roundtrip (error handler not connected)
-// 5774, 5042, 5929, 4889, 5900, 8044, 3820, 9473, 2978, 4468, 10143: Node count mismatch (composite builder)
+// 5774, 8044, 4468, 10143, 4889, 2978: Node count mismatch (composite builder visited-set issue)
+// 5042, 2986, 9881: Connection source keys lost (fan-in / multiple sources to same target)
 // 13291: Duplicate node names in source JSON lose connections (irrecoverable format limitation)
-// 2986: Node loss (Edit Fields nodes dropped during codegen roundtrip)
-// 11027: Parameter mismatch (placeholder values, sticky note properties)
-// 9881: Connection keys mismatch after roundtrip
 const SKIP_WORKFLOWS = new Set<string>([
-	'5979',
-	'5370',
 	'5774',
 	'5042',
-	'5929',
 	'4889',
-	'5900',
 	'8044',
-	'3820',
-	'9473',
 	'2978',
 	'4468',
 	'13291',
 	'10143',
 	'2986',
 	'9881',
-	'11027',
 ]);
 
 // Workflows to skip validation due to known codegen bugs (invalid warnings)
@@ -2355,6 +2347,7 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 			};
 
 			// Helper to recursively add __rl: true to resource locator values
+			// and clear placeholder values in list mode (matches builder normalization)
 			const normalizeResourceLocators = (params: unknown): unknown => {
 				if (typeof params !== 'object' || params === null) return params;
 				if (Array.isArray(params)) return params.map(normalizeResourceLocators);
@@ -2362,10 +2355,14 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				const result: Record<string, unknown> = {};
 				for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
 					if (isResourceLocatorLike(value)) {
-						result[key] = {
-							__rl: true,
-							...(normalizeResourceLocators(value) as Record<string, unknown>),
-						};
+						const rlValue = value as Record<string, unknown>;
+						const normalized = normalizeResourceLocators(value) as Record<string, unknown>;
+						// Clear placeholder values in list mode (matches builder behavior)
+						if (rlValue.mode === 'list' && isPlaceholderValue(rlValue.value)) {
+							result[key] = { __rl: true, ...normalized, value: '' };
+						} else {
+							result[key] = { __rl: true, ...normalized };
+						}
 					} else if (typeof value === 'object' && value !== null) {
 						result[key] = normalizeResourceLocators(value);
 					} else {

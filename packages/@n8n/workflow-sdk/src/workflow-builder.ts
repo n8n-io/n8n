@@ -48,6 +48,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private _registry?: PluginRegistry;
 	private _staleIdToKeyMap?: Map<string, string>;
 	private _branchDepth = 0;
+	private _dispatchedComposites = new WeakSet<object>();
 	private static readonly MAX_BRANCH_DEPTH = 200;
 
 	constructor(
@@ -439,6 +440,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	toJSON(): WorkflowJSON {
+		// Ensure composite targets from .onError() connections are added to the graph.
+		// This handles cases where a chain node has .onError(ifElseBuilder) — the composite
+		// isn't in the chain's allNodes, so it wasn't dispatched during chain processing.
+		this.addMissingCompositeTargets();
+
 		// Merge connections declared on node instances via .to() into the graph
 		this.mergeInstanceConnections();
 
@@ -454,6 +460,35 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		};
 
 		return jsonSerializer.serialize(ctx);
+	}
+
+	/**
+	 * Scan all nodes in the graph for connection targets that are composite types
+	 * (e.g., IfElseBuilder from .onError()) and dispatch them to add their nodes.
+	 * This runs once before serialization to catch composites missed during chain processing.
+	 */
+	private addMissingCompositeTargets(): void {
+		const registry = this._registry ?? pluginRegistry;
+		// Iterate over a snapshot of current nodes to avoid issues with map mutation during iteration
+		const currentNodes = [...this._nodes.values()];
+		for (const graphNode of currentNodes) {
+			if (typeof graphNode.instance.getConnections !== 'function') continue;
+			const connections = graphNode.instance.getConnections();
+			for (const { target } of connections) {
+				if (registry.isCompositeType(target)) {
+					// Skip composites already dispatched during parsing (.add(), .to(), chain processing).
+					// Only dispatch composites that were missed (e.g., .onError() on chain nodes).
+					if (
+						typeof target === 'object' &&
+						target !== null &&
+						this._dispatchedComposites.has(target)
+					) {
+						continue;
+					}
+					this.tryPluginDispatch(this._nodes, target);
+				}
+			}
+		}
 	}
 
 	/**
@@ -702,7 +737,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const registry = this._registry ?? pluginRegistry;
 		const connections = chain.getConnections();
 		for (const { target } of connections) {
-			// Skip if target is a composite type (already handled by plugin dispatch elsewhere)
+			// Skip composite types — they are handled either:
+			// - In the caller's allNodes iteration (for chain members)
+			// - Via addSingleNodeConnectionTargets (for .onError() targets)
 			if (registry.isCompositeType(target)) continue;
 
 			// Handle NodeChains - use addBranchToGraph to add all nodes with their connections
@@ -748,8 +785,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const registry = this._registry ?? pluginRegistry;
 		const connections = nodeInstance.getConnections();
 		for (const { target } of connections) {
-			// Skip if target is a composite type (already handled by plugin dispatch elsewhere)
-			if (registry.isCompositeType(target)) continue;
+			// Dispatch composite types (e.g., IfElseBuilder from .onError()) to plugin handlers
+			if (registry.isCompositeType(target)) {
+				this.tryPluginDispatch(nodes, target);
+				continue;
+			}
 
 			// Handle NodeChains - use addBranchToGraph to add all nodes with their connections
 			if (isNodeChain(target)) {
@@ -802,6 +842,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const registry = this._registry ?? pluginRegistry;
 		const handler = registry.findCompositeHandler(target);
 		if (handler) {
+			// Track dispatched composites so addMissingCompositeTargets can skip them
+			if (typeof target === 'object' && target !== null) {
+				this._dispatchedComposites.add(target);
+			}
 			const ctx = this.createMutablePluginContext(nodes, nameMapping);
 			return handler.addNodes(target, ctx);
 		}

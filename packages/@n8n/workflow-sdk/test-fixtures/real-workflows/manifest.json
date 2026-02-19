@@ -9205,8 +9205,7 @@
 			"expectedWarnings": [
 				{ "code": "MISSING_EXPRESSION_PREFIX", "nodeName": "Simple Vector Store" },
 				{ "code": "MISSING_EXPRESSION_PREFIX", "nodeName": "Vector Store Retriever" },
-				{ "code": "DISCONNECTED_NODE", "nodeName": "Simple Vector Store" },
-				{ "code": "DISCONNECTED_NODE", "nodeName": "Error Handler" }
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Simple Vector Store" }
 			]
 		},
 		{

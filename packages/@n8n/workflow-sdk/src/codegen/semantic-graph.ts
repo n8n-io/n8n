@@ -90,6 +90,45 @@ function parseMainConnections(
 }
 
 /**
+ * Parse error type connections from the workflow JSON.
+ * Stores them under the "error" output name on the source node.
+ */
+function parseErrorConnections(
+	sourceName: string,
+	outputs: Array<Array<{ node: string; type: string; index: number }> | null>,
+	graph: SemanticGraph,
+): void {
+	const sourceNode = graph.nodes.get(sourceName);
+	if (!sourceNode) return;
+
+	const connections: SemanticConnection[] = [];
+
+	for (const targets of outputs) {
+		if (!targets) continue;
+
+		for (const target of targets) {
+			const targetNode = graph.nodes.get(target.node);
+			if (!targetNode) continue;
+
+			const inputSlot = getInputName(targetNode.type, target.index, targetNode.json);
+
+			const sources = targetNode.inputSources.get(inputSlot) ?? [];
+			sources.push({ from: sourceName, outputSlot: 'error' });
+			targetNode.inputSources.set(inputSlot, sources);
+
+			connections.push({
+				target: target.node,
+				targetInputSlot: inputSlot,
+			});
+		}
+	}
+
+	if (connections.length > 0) {
+		sourceNode.outputs.set('error', connections);
+	}
+}
+
+/**
  * Check if a node type is a subnode type (language model, memory, output parser, etc.)
  * as opposed to an agent/chain type that accepts subnodes.
  */
@@ -484,6 +523,8 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 
 			if (connType === 'main') {
 				parseMainConnections(sourceName, typedOutputs, graph);
+			} else if (connType === 'error') {
+				parseErrorConnections(sourceName, typedOutputs, graph);
 			} else if (isAiConnectionType(connType)) {
 				parseAiConnections(sourceName, connType, typedOutputs, graph);
 			}

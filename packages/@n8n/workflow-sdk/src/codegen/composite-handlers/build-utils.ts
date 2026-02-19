@@ -125,10 +125,14 @@ export function getAllFirstOutputTargets(node: SemanticNode): string[] {
 }
 
 /**
- * Check if a node has error output (onError: 'continueErrorOutput')
+ * Check if a node has error output connections.
+ * Either via explicit onError: 'continueErrorOutput' setting,
+ * or via error type connections in the workflow JSON.
  */
 export function hasErrorOutput(node: SemanticNode): boolean {
-	return node.json.onError === 'continueErrorOutput';
+	if (node.json.onError === 'continueErrorOutput') return true;
+	const errorConnections = node.outputs.get('error');
+	return !!errorConnections && errorConnections.length > 0;
 }
 
 /**
