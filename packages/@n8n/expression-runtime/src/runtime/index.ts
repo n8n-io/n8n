@@ -406,6 +406,8 @@ function resetDataProxies(): void {
 	globalThis.__data.$parameter = createDeepLazyProxy(['$parameter']);
 	globalThis.__data.$workflow = createDeepLazyProxy(['$workflow']);
 	globalThis.__data.$prevNode = createDeepLazyProxy(['$prevNode']);
+	globalThis.__data.$data = createDeepLazyProxy(['$data']);
+	globalThis.__data.$env = createDeepLazyProxy(['$env']);
 
 	// -------------------------------------------------------------------------
 	// Fetch primitives directly (no lazy loading needed for simple values)
@@ -444,6 +446,8 @@ function resetDataProxies(): void {
 	(globalThis as any).$prevNode = globalThis.__data.$prevNode;
 	(globalThis as any).$runIndex = globalThis.__data.$runIndex;
 	(globalThis as any).$itemIndex = globalThis.__data.$itemIndex;
+	(globalThis as any).$data = globalThis.__data.$data;
+	(globalThis as any).$env = globalThis.__data.$env;
 
 	// -------------------------------------------------------------------------
 	// Handle function properties (check if value is function metadata)
