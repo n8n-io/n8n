@@ -1,10 +1,4 @@
-import type {
-	Expression,
-	WorkflowSettings,
-	CredentialReference,
-	NodeConfig,
-	StickyNoteConfig,
-} from './base';
+import type { WorkflowSettings, CredentialReference, NodeConfig, StickyNoteConfig } from './base';
 import { isNodeChain, isNodeInstance } from './base';
 
 describe('Base Types', () => {
@@ -69,14 +63,6 @@ describe('Base Types', () => {
 			};
 			expect(config.color).toBe(4);
 			expect(config.position).toEqual([80, -176]);
-		});
-	});
-
-	describe('Expression', () => {
-		it('should be a function that takes ExpressionContext and returns typed value', () => {
-			const expr: Expression<string> = ($) => $.json.name as string;
-			// Type checking: expression is callable with ExpressionContext
-			expect(typeof expr).toBe('function');
 		});
 	});
 

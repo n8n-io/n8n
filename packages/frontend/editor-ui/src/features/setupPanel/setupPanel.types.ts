@@ -1,19 +1,27 @@
 import type { INodeUi } from '@/Interface';
 import type { IPinData } from 'n8n-workflow';
 
-export interface NodeCredentialRequirement {
+export interface CommonSetupState {
+	isComplete: boolean;
+	demoData?: IPinData[string];
+}
+
+/** One card per unique credential type — groups all nodes that need it */
+export interface CredentialTypeSetupState extends CommonSetupState {
 	credentialType: string;
 	credentialDisplayName: string;
 	selectedCredentialId?: string;
 	issues: string[];
-	/** Names of all nodes in the setup panel that require this credential type */
-	nodesWithSameCredential: string[];
+	/** All nodes that require this credential type */
+	nodes: INodeUi[];
 }
 
-export interface NodeSetupState {
+/** Trigger card — shows only the test button (no credential picker) */
+export interface TriggerSetupState extends CommonSetupState {
 	node: INodeUi;
-	credentialRequirements: NodeCredentialRequirement[];
-	isComplete: boolean;
-	isTrigger: boolean;
-	demoData?: IPinData[string];
 }
+
+/** Discriminated union for the setup card list */
+export type SetupCardItem =
+	| { type: 'trigger'; state: TriggerSetupState }
+	| { type: 'credential'; state: CredentialTypeSetupState };
