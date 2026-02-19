@@ -9,6 +9,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 const props = withDefaults(
 	defineProps<{
 		isComplete: boolean;
+		loading?: boolean;
 		cardTestId: string;
 		title: string;
 		showFooter?: boolean;
@@ -16,6 +17,7 @@ const props = withDefaults(
 		telemetryPayload?: Record<string, unknown>;
 	}>(),
 	{
+		loading: false,
 		showFooter: true,
 		showCallout: false,
 		telemetryPayload: () => ({}),
@@ -79,7 +81,14 @@ defineExpose({ markInteracted });
 	>
 		<header :data-test-id="`${cardTestId}-header`" :class="$style.header" @click="onHeaderClick">
 			<N8nIcon
-				v-if="!expanded && isComplete"
+				v-if="!expanded && loading && !isComplete"
+				:data-test-id="`${cardTestId}-loading-icon`"
+				icon="spinner"
+				:class="$style['loading-icon']"
+				size="medium"
+			/>
+			<N8nIcon
+				v-else-if="!expanded && isComplete"
 				:data-test-id="`${cardTestId}-complete-icon`"
 				icon="check"
 				:class="$style['complete-icon']"
@@ -177,6 +186,21 @@ defineExpose({ markInteracted });
 
 .complete-icon {
 	color: var(--color--success);
+}
+
+.loading-icon {
+	color: var(--color--text--tint-1);
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .footer {

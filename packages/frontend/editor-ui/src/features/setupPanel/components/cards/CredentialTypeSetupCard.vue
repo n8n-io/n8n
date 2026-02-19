@@ -9,6 +9,7 @@ import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecut
 
 import type { CredentialTypeSetupState } from '@/features/setupPanel/setupPanel.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
@@ -27,6 +28,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const credentialsStore = useCredentialsStore();
 const setupPanelStore = useSetupPanelStore();
 
 const setupCard = ref<InstanceType<typeof SetupCard> | null>(null);
@@ -59,6 +61,11 @@ const {
 const cardTitle = computed(() => nodeNames.value[0] ?? '');
 
 const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
+
+const isTestingCredential = computed(() => {
+	const id = props.state.selectedCredentialId;
+	return !!id && credentialsStore.isCredentialTestPending(id);
+});
 
 const showFooter = computed(() => triggerNode.value !== null || props.state.isComplete);
 
@@ -117,6 +124,7 @@ onBeforeUnmount(() => {
 		ref="setupCard"
 		v-model:expanded="expanded"
 		:is-complete="state.isComplete"
+		:loading="isTestingCredential"
 		:title="cardTitle"
 		:show-footer="showFooter"
 		:show-callout="!!triggerNode && isInListeningState"
@@ -189,7 +197,7 @@ onBeforeUnmount(() => {
 				v-if="triggerNode"
 				:label="label"
 				:icon="buttonIcon"
-				:disabled="isButtonDisabled"
+				:disabled="isButtonDisabled || isTestingCredential"
 				:loading="isExecuting"
 				:tooltip-text="tooltipText"
 				@click="onExecuteClick"
