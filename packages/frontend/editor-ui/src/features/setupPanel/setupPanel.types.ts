@@ -17,7 +17,18 @@ export interface TriggerSetupState {
 	isComplete: boolean;
 }
 
+/** Node parameter card — shows required parameters that need to be filled */
+export interface NodeParameterSetupState {
+	node: INodeUi;
+	parameterIssues: Record<string, string[]>;
+	credentialTypes: string[];
+	isTrigger: boolean;
+	isFirstOfType: boolean;
+	isComplete: boolean;
+}
+
 /** Discriminated union for the setup card list */
 export type SetupCardItem =
 	| { type: 'trigger'; state: TriggerSetupState }
-	| { type: 'credential'; state: CredentialTypeSetupState };
+	| { type: 'credential'; state: CredentialTypeSetupState }
+	| { type: 'parameter'; state: NodeParameterSetupState };

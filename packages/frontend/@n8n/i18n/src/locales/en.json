@@ -4371,6 +4371,8 @@
 	"setupPanel.everythingConfigured.message": "Your workflow is ready to be executed",
 	"setupPanel.trigger.credential.note": "Add a credential to listen for events.",
 	"setupPanel.trigger.listeningHint": "Go to {service} and create an event",
+	"setupPanel.parameter.description": "This node has required parameters that need to be configured.",
+	"setupPanel.parameter.configureButton": "Configure node",
 	"becomeCreator.text": "Share your workflows with other users, unlock perks, and become a featured template creator!",
 	"becomeCreator.buttonText": "Become a creator",
 	"becomeCreator.closeButtonTitle": "Close",

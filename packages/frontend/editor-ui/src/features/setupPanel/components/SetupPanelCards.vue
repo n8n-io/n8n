@@ -3,6 +3,7 @@ import { watch } from 'vue';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import TriggerSetupCard from '@/features/setupPanel/components/cards/TriggerSetupCard.vue';
 import CredentialTypeSetupCard from '@/features/setupPanel/components/cards/CredentialTypeSetupCard.vue';
+import NodeParameterSetupCard from '@/features/setupPanel/components/cards/NodeParameterSetupCard.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -34,6 +35,7 @@ const onCredentialDeselected = (credentialType: string) => {
 
 const cardKey = (card: SetupCardItem): string => {
 	if (card.type === 'trigger') return `trigger-${card.state.node.id}`;
+	if (card.type === 'parameter') return `parameter-${card.state.node.id}`;
 	return `credential-${card.state.credentialType}`;
 };
 </script>
@@ -64,6 +66,11 @@ const cardKey = (card: SetupCardItem): string => {
 			<template v-for="(card, index) in setupCards" :key="cardKey(card)">
 				<TriggerSetupCard
 					v-if="card.type === 'trigger'"
+					:state="card.state"
+					:expanded="index === 0"
+				/>
+				<NodeParameterSetupCard
+					v-else-if="card.type === 'parameter'"
 					:state="card.state"
 					:expanded="index === 0"
 				/>

@@ -6,6 +6,7 @@ import type {
 	CredentialTypeSetupState,
 	TriggerSetupState,
 } from '@/features/setupPanel/setupPanel.types';
+import { INode, NodeHelpers } from 'n8n-workflow';
 
 /**
  * Collects all credential types that a node requires from three sources:
@@ -36,6 +37,14 @@ export function getNodeCredentialTypes(
 	}
 
 	return Array.from(credentialTypes);
+}
+
+export function getNodeParametersIssues(nodeTypesStore: NodeTypeProvider, node: INode) {
+	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	if (!nodeType) return {};
+
+	const issues = NodeHelpers.getNodeParametersIssues(nodeType.properties, node, nodeType);
+	return issues?.parameters ?? {};
 }
 
 /**

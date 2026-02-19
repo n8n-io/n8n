@@ -1,7 +1,7 @@
 import { computed, watch, type Ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -18,6 +18,7 @@ import {
 	groupCredentialsByType,
 	isCredentialCardComplete,
 	buildTriggerSetupState,
+	getNodeParametersIssues,
 } from '@/features/setupPanel/setupPanel.utils';
 
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
@@ -63,9 +64,13 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			.map((node) => ({
 				node,
 				credentialTypes: getNodeCredentialTypes(nodeTypesStore, node),
+				parameterIssues: getNodeParametersIssues(nodeTypesStore, node),
 				isTrigger: isTriggerNode(node),
 			}))
-			.filter(({ credentialTypes, isTrigger }) => credentialTypes.length > 0 || isTrigger);
+			.filter(
+				({ credentialTypes, isTrigger, parameterIssues }) =>
+					0 < credentialTypes.length + +isTrigger + Object.keys(parameterIssues).length,
+			);
 
 		return sortNodesByExecutionOrder(
 			nodesForSetup,
@@ -89,6 +94,12 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 */
 	const nodesWithCredentials = computed(() =>
 		nodesRequiringSetup.value.filter(({ credentialTypes }) => credentialTypes.length > 0),
+	);
+
+	const nodesWithMissingParameters = computed(() =>
+		nodesRequiringSetup.value.filter(
+			({ parameterIssues }) => Object.keys(parameterIssues).length > 0,
+		),
 	);
 
 	/**
@@ -155,6 +166,35 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	});
 
 	/**
+	 * Parameter states for nodes with missing required parameters.
+	 * Each state indicates:
+	 * - Whether this is the first node of the given type in the workflow
+	 * - Whether the node requires credentials
+	 * Ordered by execution order (inherited from nodesWithMissingParameters).
+	 */
+	const parameterStates = computed(() => {
+		const seenNodeTypes = new Set<string>();
+
+		return nodesWithMissingParameters.value.map((state) => {
+			const { node, parameterIssues, credentialTypes, isTrigger } = state;
+			const isFirstOfType = !seenNodeTypes.has(node.type);
+			seenNodeTypes.add(node.type);
+
+			// A parameter card is complete when there are no parameter issues
+			const isComplete = Object.keys(parameterIssues).length === 0;
+
+			return {
+				node,
+				parameterIssues,
+				credentialTypes,
+				isTrigger,
+				isFirstOfType,
+				isComplete,
+			};
+		});
+	});
+
+	/**
 	 * Ordered list of all setup cards, sorted by the position of each card's
 	 * primary node (first node / trigger node) in the execution order.
 	 */
@@ -167,12 +207,20 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			type: 'trigger' as const,
 			state,
 		}));
+		const parameters: SetupCardItem[] = parameterStates.value.map((state) => ({
+			type: 'parameter' as const,
+			state,
+		}));
 
 		const executionOrder = nodesRequiringSetup.value.map(({ node }) => node.name);
-		const primaryNodeName = (card: SetupCardItem): string =>
-			card.type === 'trigger' ? card.state.node.name : (card.state.nodes[0]?.name ?? '');
+		const primaryNodeName = (card: SetupCardItem): string => {
+			if (card.type === 'trigger' || card.type === 'parameter') {
+				return card.state.node.name;
+			}
+			return card.state.nodes[0]?.name ?? '';
+		};
 
-		return [...credentials, ...triggers].sort(
+		return [...credentials, ...triggers, ...parameters].sort(
 			(a, b) =>
 				executionOrder.indexOf(primaryNodeName(a)) - executionOrder.indexOf(primaryNodeName(b)),
 		);
@@ -356,10 +404,12 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		setupCards,
 		credentialTypeStates,
 		triggerStates,
+		parameterStates,
 		firstTriggerName,
 		totalCredentialsMissing,
 		totalCardsRequiringSetup,
 		isAllComplete,
+		nodesWithMissingParameters,
 		setCredential,
 		unsetCredential,
 	};
