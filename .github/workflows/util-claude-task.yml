@@ -62,11 +62,24 @@ jobs:
           git checkout -b "$BRANCH_NAME"
 
       - name: Configure git author
+        env:
+          GH_TOKEN: ${{ inputs.user_token || github.token }}
         run: |
-          # Set git author from the user who triggered the workflow
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-          echo "Git author configured as: ${{ github.actor }}"
+          if [ -n "${{ inputs.user_token }}" ]; then
+            # Resolve identity from the PAT owner
+            USER_DATA=$(gh api user)
+            USER_NAME=$(echo "$USER_DATA" | jq -r '.name // .login')
+            USER_LOGIN=$(echo "$USER_DATA" | jq -r '.login')
+            USER_ID=$(echo "$USER_DATA" | jq -r '.id')
+            git config user.name "$USER_NAME"
+            git config user.email "${USER_ID}+${USER_LOGIN}@users.noreply.github.com"
+            echo "Git author configured as: $USER_NAME <${USER_ID}+${USER_LOGIN}@users.noreply.github.com>"
+          else
+            # Fall back to the user who triggered the workflow
+            git config user.name "${{ github.actor }}"
+            git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+            echo "Git author configured as: ${{ github.actor }}"
+          fi
 
       - name: Prepare Claude prompt
         env:
@@ -202,7 +215,13 @@ jobs:
                 echo "*Triggered by @$TRIGGERED_BY via the Claude Task Runner workflow.*"
               } > /tmp/pr-body.md
 
-              gh pr create --title "$PR_TITLE" --body-file /tmp/pr-body.md --base "${{ inputs.ref }}"
+              EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --base "${{ inputs.ref }}" --json number --jq '.[0].number')
+              if [ -n "$EXISTING_PR" ]; then
+                gh pr edit "$EXISTING_PR" --title "$PR_TITLE" --body-file /tmp/pr-body.md
+                echo "::notice::Updated existing PR #$EXISTING_PR"
+              else
+                gh pr create --title "$PR_TITLE" --body-file /tmp/pr-body.md --base "${{ inputs.ref }}"
+              fi
             else
               echo "::notice::PR creation is disabled. Changes pushed to branch but no PR created."
             fi
