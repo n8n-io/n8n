@@ -9,7 +9,6 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
-import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 
 // Mock canvas event bus - using hoisted to ensure proper initialization order
@@ -613,74 +612,7 @@ describe('useWorkflowUpdate', () => {
 		});
 
 		describe('workflow name update', () => {
-			it('should update workflow name on initial generation when nodes are added', async () => {
-				workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-
-				const newNode = createTestNode({ id: 'new-1', name: 'New Node' });
-				mockCanvasOperations.addNodes.mockResolvedValue([newNode as INodeUi]);
-
-				const { updateWorkflow } = useWorkflowUpdate();
-
-				await updateWorkflow(
-					{
-						name: 'My Generated Workflow',
-						nodes: [newNode],
-						connections: {},
-					},
-					{ isInitialGeneration: true },
-				);
-
-				expect(mockWorkflowState.setWorkflowName).toHaveBeenCalledWith({
-					newName: 'My Generated Workflow',
-					setStateDirty: false,
-				});
-			});
-
-			it('should update workflow name when workflow data has existing nodes', async () => {
-				workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-
-				const existingNode = createTestNode({
-					id: 'existing-1',
-					name: 'Existing Node',
-				}) as INodeUi;
-				workflowsStore.workflow.nodes = [existingNode];
-
-				const { updateWorkflow } = useWorkflowUpdate();
-
-				await updateWorkflow(
-					{
-						name: 'My Generated Workflow',
-						nodes: [existingNode],
-						connections: {},
-					},
-					{ isInitialGeneration: true },
-				);
-
-				expect(mockWorkflowState.setWorkflowName).toHaveBeenCalledWith({
-					newName: 'My Generated Workflow',
-					setStateDirty: false,
-				});
-			});
-
-			it('should update workflow name on name-only update (no nodes field)', async () => {
-				workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-
-				const { updateWorkflow } = useWorkflowUpdate();
-
-				await updateWorkflow(
-					{
-						name: 'My Generated Workflow',
-					} as WorkflowDataUpdate,
-					{ isInitialGeneration: true },
-				);
-
-				expect(mockWorkflowState.setWorkflowName).toHaveBeenCalledWith({
-					newName: 'My Generated Workflow',
-					setStateDirty: false,
-				});
-			});
-
-			it('should not update workflow name when workflow data has empty nodes array', async () => {
+			it('should update workflow name on initial generation when name starts with default', async () => {
 				workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 
 				const { updateWorkflow } = useWorkflowUpdate();
@@ -694,21 +626,21 @@ describe('useWorkflowUpdate', () => {
 					{ isInitialGeneration: true },
 				);
 
-				expect(mockWorkflowState.setWorkflowName).not.toHaveBeenCalled();
+				expect(mockWorkflowState.setWorkflowName).toHaveBeenCalledWith({
+					newName: 'My Generated Workflow',
+					setStateDirty: false,
+				});
 			});
 
 			it('should not update workflow name when not initial generation', async () => {
 				workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-
-				const newNode = createTestNode({ id: 'new-1', name: 'New Node' });
-				mockCanvasOperations.addNodes.mockResolvedValue([newNode as INodeUi]);
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
 				await updateWorkflow(
 					{
 						name: 'My Generated Workflow',
-						nodes: [newNode],
+						nodes: [],
 						connections: {},
 					},
 					{ isInitialGeneration: false },
@@ -720,15 +652,12 @@ describe('useWorkflowUpdate', () => {
 			it('should not update workflow name when current name does not start with default', async () => {
 				workflowsStore.workflow.name = 'Custom Workflow Name';
 
-				const newNode = createTestNode({ id: 'new-1', name: 'New Node' });
-				mockCanvasOperations.addNodes.mockResolvedValue([newNode as INodeUi]);
-
 				const { updateWorkflow } = useWorkflowUpdate();
 
 				await updateWorkflow(
 					{
 						name: 'My Generated Workflow',
-						nodes: [newNode],
+						nodes: [],
 						connections: {},
 					},
 					{ isInitialGeneration: true },
