@@ -130,8 +130,8 @@ catalogs:
       specifier: ^3.1.0
       version: 3.1.0
     vm2:
-      specifier: ^3.10.2
-      version: 3.10.2
+      specifier: ^3.10.5
+      version: 3.10.5
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
@@ -1285,7 +1285,7 @@ importers:
         version: 6.23.0
       vm2:
         specifier: 'catalog:'
-        version: 3.10.2
+        version: 3.10.5
       weaviate-client:
         specifier: 3.6.2
         version: 3.6.2(encoding@0.1.13)
@@ -1529,9 +1529,6 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../@n8n/errors
-      '@n8n/localtunnel':
-        specifier: 3.0.0
-        version: 3.0.0
       '@n8n/n8n-nodes-langchain':
         specifier: workspace:*
         version: link:../@n8n/nodes-langchain
@@ -3131,7 +3128,7 @@ importers:
         version: 10.0.0
       vm2:
         specifier: 'catalog:'
-        version: 3.10.2
+        version: 3.10.5
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
@@ -6351,10 +6348,6 @@ packages:
   '@mswjs/interceptors@0.37.5':
     resolution: {integrity: sha512-AAwRb5vXFcY4L+FvZ7LZusDuZ0vEe0Zm8ohn1FM6/X7A3bj4mqmkAcGRWuvC2JwSygNwHAAmMnAI73vPHeqsHA==}
     engines: {node: '>=18'}
-
-  '@n8n/localtunnel@3.0.0':
-    resolution: {integrity: sha512-0t/AUiZ8Oqo7AqYp2q2qmEC2p2lPP4CEdrGRB0J6nSC7ivOtr0p46Pw739UvUfJMU1bIKvzHIc5M9wCjH5Byjg==}
-    engines: {node: '>=18.0.0'}
 
   '@n8n/tournament@1.0.6':
     resolution: {integrity: sha512-UGSxYXXVuOX0yL6HTLBStKYwLIa0+JmRKiSZSCMcM2s2Wax984KWT6XIA1TR/27i7yYpDk1MY14KsTPnuEp27A==}
@@ -10864,15 +10857,6 @@ packages:
 
   debug@4.3.5:
     resolution: {integrity: sha512-pt0bNEmneDIvdL1Xsd9oDQ/wrQRkXDT4AUWlNZNPKvW5x/jyO9VFXkJUP07vQ2upmw5PlaITaPKc31jK13V+jg==}
-    engines: {node: '>=6.0'}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
-
-  debug@4.3.6:
-    resolution: {integrity: sha512-O/09Bd4Z1fBrU4VzkhFqVgpPzaGbw6Sm9FEkBT1A/YBXQFGuuSxa1dN2nxgxS34JmKXqYx8CZAwEVoJFImUXIg==}
     engines: {node: '>=6.0'}
     peerDependencies:
       supports-color: '*'
@@ -17967,8 +17951,8 @@ packages:
   vm-browserify@1.1.2:
     resolution: {integrity: sha512-2ham8XPWTONajOR0ohOKOHXkm3+gaBmGut3SRuu75xLd/RRaY6vqgh8NBYYk7+RW3u5AtzPQZG8F10LHkl0lAQ==}
 
-  vm2@3.10.2:
-    resolution: {integrity: sha512-qTnbvpada8qlEEyIPFwhTcF5Ns+k83fVlOSE8XvAtHkhcQ+okMnbvryVQBfP/ExRT1CRsQpYusdATR+FBJfrnQ==}
+  vm2@3.10.5:
+    resolution: {integrity: sha512-3P/2QDccVFBcujfCOeP8vVNuGfuBJHEuvGR8eMmI10p/iwLL2UwF5PDaNaoOS2pRGQEDmJRyeEcc8kmm2Z59RA==}
     engines: {node: '>=6.0'}
     hasBin: true
 
@@ -22867,13 +22851,6 @@ snapshots:
       outvariant: 1.4.3
       strict-event-emitter: 0.5.1
 
-  '@n8n/localtunnel@3.0.0':
-    dependencies:
-      axios: 1.13.5(debug@4.3.6)
-      debug: 4.3.6
-    transitivePeerDependencies:
-      - supports-color
-
   '@n8n/tournament@1.0.6':
     dependencies:
       '@n8n_io/riot-tmpl': 4.0.1
@@ -26854,14 +26831,6 @@ snapshots:
       axios: 1.13.5(debug@4.4.1)
       is-retry-allowed: 2.2.0
 
-  axios@1.13.5(debug@4.3.6):
-    dependencies:
-      follow-redirects: 1.15.11(debug@4.3.6)
-      form-data: 4.0.4
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
-
   axios@1.13.5(debug@4.4.1):
     dependencies:
       follow-redirects: 1.15.11(debug@4.4.1)
@@ -28223,10 +28192,6 @@ snapshots:
       ms: 2.1.2
 
   debug@4.3.5:
-    dependencies:
-      ms: 2.1.2
-
-  debug@4.3.6:
     dependencies:
       ms: 2.1.2
 
@@ -29700,10 +29665,6 @@ snapshots:
   flatted@3.3.3: {}
 
   fn.name@1.1.0: {}
-
-  follow-redirects@1.15.11(debug@4.3.6):
-    optionalDependencies:
-      debug: 4.3.6
 
   follow-redirects@1.15.11(debug@4.4.1):
     optionalDependencies:
@@ -37126,7 +37087,7 @@ snapshots:
 
   vm-browserify@1.1.2: {}
 
-  vm2@3.10.2:
+  vm2@3.10.5:
     dependencies:
       acorn: 8.15.0
       acorn-walk: 8.3.4
