@@ -27,7 +27,7 @@ permissions:
 jobs:
   update-pointer-tags:
     name: Update pointer tags
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
 
     steps:
       - name: Checkout
