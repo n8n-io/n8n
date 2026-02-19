@@ -810,7 +810,10 @@ describe('CommunityPackagesService', () => {
 					filters: { packageName: { $in: ['package-1'] } },
 					fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 				},
-				config.aiNodeSdkVersion,
+				{
+					minAiNodeSdkVersion: config.minAiNodeSdkVersion,
+					maxAiNodeSdkVersion: config.maxAiNodeSdkVersion,
+				},
 			);
 		});
 
@@ -835,7 +838,10 @@ describe('CommunityPackagesService', () => {
 						filters: { packageName: { $in: ['package-1'] } },
 						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 					},
-					config.aiNodeSdkVersion,
+					{
+						minAiNodeSdkVersion: config.minAiNodeSdkVersion,
+						maxAiNodeSdkVersion: config.maxAiNodeSdkVersion,
+					},
 				);
 			} finally {
 				// Restore original environment

@@ -34,10 +34,10 @@ export class CommunityNodeTypesService {
 	): Promise<{ typesToUpdate?: number[]; scheduleRetry?: boolean }> {
 		let communityNodesMetadata: CommunityNodesMetadata[] = [];
 		try {
-			communityNodesMetadata = await getCommunityNodesMetadata(
-				environment,
-				this.config.aiNodeSdkVersion,
-			);
+			communityNodesMetadata = await getCommunityNodesMetadata(environment, {
+				minAiNodeSdkVersion: this.config.minAiNodeSdkVersion,
+				maxAiNodeSdkVersion: this.config.maxAiNodeSdkVersion,
+			});
 		} catch (error) {
 			this.logger.error('Failed to fetch community nodes metadata', {
 				error: ensureError(error),
@@ -85,7 +85,14 @@ export class CommunityNodeTypesService {
 			let data: StrapiCommunityNodeType[] = [];
 			if (this.config.enabled && this.config.verifiedEnabled) {
 				if (this.communityNodeTypes.size === 0) {
-					data = await getCommunityNodeTypes(environment, {}, this.config.aiNodeSdkVersion);
+					data = await getCommunityNodeTypes(
+						environment,
+						{},
+						{
+							minAiNodeSdkVersion: this.config.minAiNodeSdkVersion,
+							maxAiNodeSdkVersion: this.config.maxAiNodeSdkVersion,
+						},
+					);
 					this.updateCommunityNodeTypes(data);
 					return;
 				}
@@ -102,7 +109,10 @@ export class CommunityNodeTypesService {
 				}
 
 				const qs = buildStrapiUpdateQuery(typesToUpdate);
-				data = await getCommunityNodeTypes(environment, qs, this.config.aiNodeSdkVersion);
+				data = await getCommunityNodeTypes(environment, qs, {
+					minAiNodeSdkVersion: this.config.minAiNodeSdkVersion,
+					maxAiNodeSdkVersion: this.config.maxAiNodeSdkVersion,
+				});
 			}
 
 			this.updateCommunityNodeTypes(data);

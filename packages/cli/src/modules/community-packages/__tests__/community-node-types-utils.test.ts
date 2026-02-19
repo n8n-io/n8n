@@ -7,7 +7,10 @@ jest.mock('../strapi-utils', () => ({
 
 const mockPaginatedRequest = paginatedRequest as jest.MockedFunction<typeof paginatedRequest>;
 
-const AI_SDK_VERSION = 1;
+const AI_SDK_VERSION_RANGE = {
+	minAiNodeSdkVersion: 1,
+	maxAiNodeSdkVersion: 1,
+};
 
 describe('community-node-types-utils', () => {
 	beforeEach(() => {
@@ -18,10 +21,11 @@ describe('community-node-types-utils', () => {
 		it('should call paginatedRequest with correct URL for production', async () => {
 			mockPaginatedRequest.mockResolvedValue([]);
 
-			await getCommunityNodeTypes('production', {}, AI_SDK_VERSION);
+			await getCommunityNodeTypes('production', {}, AI_SDK_VERSION_RANGE);
 
 			expect(mockPaginatedRequest).toHaveBeenCalledWith('https://api.n8n.io/api/community-nodes', {
-				includeAiNodesSdkVersion: AI_SDK_VERSION,
+				minAiNodeSdkVersion: 1,
+				maxAiNodeSdkVersion: 1,
 				pagination: {
 					page: 1,
 					pageSize: 25,
@@ -32,12 +36,13 @@ describe('community-node-types-utils', () => {
 		it('should call paginatedRequest with correct URL for staging', async () => {
 			mockPaginatedRequest.mockResolvedValue([]);
 
-			await getCommunityNodeTypes('staging', {}, AI_SDK_VERSION);
+			await getCommunityNodeTypes('staging', {}, AI_SDK_VERSION_RANGE);
 
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				'https://api-staging.n8n.io/api/community-nodes',
 				{
-					includeAiNodesSdkVersion: AI_SDK_VERSION,
+					minAiNodeSdkVersion: 1,
+					maxAiNodeSdkVersion: 1,
 					pagination: {
 						page: 1,
 						pageSize: 25,
@@ -54,12 +59,13 @@ describe('community-node-types-utils', () => {
 				fields: ['name', 'version'],
 			};
 
-			await getCommunityNodeTypes('production', qs, AI_SDK_VERSION);
+			await getCommunityNodeTypes('production', qs, AI_SDK_VERSION_RANGE);
 
 			expect(mockPaginatedRequest).toHaveBeenCalledWith('https://api.n8n.io/api/community-nodes', {
 				filters: { packageName: { $eq: 'test-package' } },
 				fields: ['name', 'version'],
-				includeAiNodesSdkVersion: AI_SDK_VERSION,
+				minAiNodeSdkVersion: 1,
+				maxAiNodeSdkVersion: 1,
 				pagination: {
 					page: 1,
 					pageSize: 25,
@@ -74,7 +80,7 @@ describe('community-node-types-utils', () => {
 			];
 			mockPaginatedRequest.mockResolvedValue(mockData as any);
 
-			const result = await getCommunityNodeTypes('production', {}, AI_SDK_VERSION);
+			const result = await getCommunityNodeTypes('production', {}, AI_SDK_VERSION_RANGE);
 
 			expect(result).toEqual(mockData);
 		});
@@ -84,13 +90,14 @@ describe('community-node-types-utils', () => {
 		it('should call paginatedRequest with correct URL for production', async () => {
 			mockPaginatedRequest.mockResolvedValue([]);
 
-			await getCommunityNodesMetadata('production', AI_SDK_VERSION);
+			await getCommunityNodesMetadata('production', AI_SDK_VERSION_RANGE);
 
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				'https://api.n8n.io/api/community-nodes',
 				{
 					fields: ['npmVersion', 'name', 'updatedAt'],
-					includeAiNodesSdkVersion: AI_SDK_VERSION,
+					minAiNodeSdkVersion: 1,
+					maxAiNodeSdkVersion: 1,
 					pagination: {
 						page: 1,
 						pageSize: 500,
@@ -103,13 +110,14 @@ describe('community-node-types-utils', () => {
 		it('should call paginatedRequest with correct URL for staging', async () => {
 			mockPaginatedRequest.mockResolvedValue([]);
 
-			await getCommunityNodesMetadata('staging', AI_SDK_VERSION);
+			await getCommunityNodesMetadata('staging', AI_SDK_VERSION_RANGE);
 
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				'https://api-staging.n8n.io/api/community-nodes',
 				{
 					fields: ['npmVersion', 'name', 'updatedAt'],
-					includeAiNodesSdkVersion: AI_SDK_VERSION,
+					minAiNodeSdkVersion: 1,
+					maxAiNodeSdkVersion: 1,
 					pagination: {
 						page: 1,
 						pageSize: 500,
@@ -122,14 +130,14 @@ describe('community-node-types-utils', () => {
 		it('should use larger pageSize than getCommunityNodeTypes', async () => {
 			mockPaginatedRequest.mockResolvedValue([]);
 
-			await getCommunityNodesMetadata('production', AI_SDK_VERSION);
+			await getCommunityNodesMetadata('production', AI_SDK_VERSION_RANGE);
 
 			const metadataCall = mockPaginatedRequest.mock.calls[0];
 			expect(metadataCall[1].pagination.pageSize).toBe(500);
 
 			mockPaginatedRequest.mockClear();
 
-			await getCommunityNodeTypes('production', {}, AI_SDK_VERSION);
+			await getCommunityNodeTypes('production', {}, AI_SDK_VERSION_RANGE);
 
 			const nodeTypesCall = mockPaginatedRequest.mock.calls[0];
 			expect(nodeTypesCall[1].pagination.pageSize).toBe(25);
@@ -138,7 +146,7 @@ describe('community-node-types-utils', () => {
 		it('should request only specific fields', async () => {
 			mockPaginatedRequest.mockResolvedValue([]);
 
-			await getCommunityNodesMetadata('production', AI_SDK_VERSION);
+			await getCommunityNodesMetadata('production', AI_SDK_VERSION_RANGE);
 
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				expect.any(String),
@@ -156,7 +164,7 @@ describe('community-node-types-utils', () => {
 			];
 			mockPaginatedRequest.mockResolvedValue(mockMetadata as any);
 
-			const result = await getCommunityNodesMetadata('production', AI_SDK_VERSION);
+			const result = await getCommunityNodesMetadata('production', AI_SDK_VERSION_RANGE);
 
 			expect(result).toEqual(mockMetadata);
 		});
