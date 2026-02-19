@@ -22,6 +22,7 @@
 	],
 	"license": "SEE LICENSE IN LICENSE.md",
 	"dependencies": {
+		"@n8n/tournament": "1.0.6",
 		"isolated-vm": "^6.0.2",
 		"lodash": "^4.17.21",
 		"luxon": "^3.4.4"

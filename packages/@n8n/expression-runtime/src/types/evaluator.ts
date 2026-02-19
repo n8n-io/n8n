@@ -1,3 +1,5 @@
+import type { TournamentHooks } from '@n8n/tournament';
+
 import type { RuntimeBridge } from './bridge';
 
 // ============================================================================
@@ -21,6 +23,13 @@ export interface EvaluatorConfig {
 	 * Observability provider for metrics, traces, and logs.
 	 */
 	observability?: ObservabilityProvider;
+
+	/**
+	 * AST security hooks for tournament expression transformation.
+	 * Provided by the caller (e.g., workflow package's expression-sandboxing.ts).
+	 * If omitted, expressions are transformed with no security hooks (dev/testing use).
+	 */
+	hooks?: TournamentHooks;
 }
 
 /**
