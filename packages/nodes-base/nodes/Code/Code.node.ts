@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
 import { NodesConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import {
