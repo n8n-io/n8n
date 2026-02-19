@@ -225,7 +225,7 @@ jobs:
           # Extract only the result message (last element) from Claude's output
           if [ -f "$EXECUTION_FILE" ]; then
             jq --arg branch "$BRANCH_NAME" \
-              '{success: true, branch: $branch, result: .[-1]}' "$EXECUTION_FILE" \
+              '{success: true, branch: $branch, result: .}' "$EXECUTION_FILE" \
             | curl -X POST "${{ inputs.resumeUrl }}" \
               -H "Content-Type: application/json" \
               --data-binary @-
