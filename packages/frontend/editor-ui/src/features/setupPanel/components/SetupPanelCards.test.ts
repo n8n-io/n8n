@@ -3,76 +3,101 @@ import { createTestNode } from '@/__tests__/mocks';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { ref, computed } from 'vue';
-import SetupPanelCards from './SetupPanelCards.vue';
-import type { NodeSetupState } from '../setupPanel.types';
+import SetupPanelCards from '@/features/setupPanel/components/SetupPanelCards.vue';
+import type {
+	SetupCardItem,
+	TriggerSetupState,
+	CredentialTypeSetupState,
+} from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi } from '@/Interface';
 
 const mockSetCredential = vi.fn();
 const mockUnsetCredential = vi.fn();
-const mockNodeSetupStates = ref<NodeSetupState[]>([]);
+const mockSetupCards = ref<SetupCardItem[]>([]);
 const mockIsAllComplete = computed(
-	() =>
-		mockNodeSetupStates.value.length > 0 && mockNodeSetupStates.value.every((s) => s.isComplete),
+	() => mockSetupCards.value.length > 0 && mockSetupCards.value.every((c) => c.state.isComplete),
 );
+
+const mockFirstTriggerName = ref<string | null>(null);
 
 vi.mock('../composables/useWorkflowSetupState', () => ({
 	useWorkflowSetupState: () => ({
-		nodeSetupStates: mockNodeSetupStates,
+		setupCards: mockSetupCards,
 		isAllComplete: mockIsAllComplete,
 		setCredential: mockSetCredential,
 		unsetCredential: mockUnsetCredential,
+		firstTriggerName: mockFirstTriggerName,
 	}),
 }));
 
-vi.mock('./NodeSetupCard.vue', () => ({
+vi.mock('./cards/TriggerSetupCard.vue', () => ({
 	default: {
 		template:
-			'<div data-test-id="node-setup-card">' +
-			'<span data-test-id="node-name">{{ state.node.name }}</span>' +
-			"<button data-test-id=\"select-credential-btn\" @click=\"$emit('credentialSelected', { credentialType: 'openAiApi', credentialId: 'cred-123' })\">Select</button>" +
-			'<button data-test-id="deselect-credential-btn" @click="$emit(\'credentialDeselected\', \'openAiApi\')">Deselect</button>' +
+			'<div data-test-id="trigger-setup-card">' +
+			'<span data-test-id="trigger-node-name">{{ state.node.name }}</span>' +
 			'</div>',
 		props: ['state'],
+	},
+}));
+
+vi.mock('./cards/CredentialTypeSetupCard.vue', () => ({
+	default: {
+		template:
+			'<div data-test-id="credential-type-setup-card">' +
+			'<span data-test-id="credential-type-name">{{ state.credentialDisplayName }}</span>' +
+			'<button data-test-id="select-credential-btn" @click="$emit(\'credentialSelected\', { credentialType: state.credentialType, credentialId: \'cred-123\' })">Select</button>' +
+			'<button data-test-id="deselect-credential-btn" @click="$emit(\'credentialDeselected\', state.credentialType)">Deselect</button>' +
+			'</div>',
+		props: ['state', 'firstTriggerName'],
 		emits: ['credentialSelected', 'credentialDeselected'],
 	},
 }));
 
 const renderComponent = createComponentRenderer(SetupPanelCards);
 
-const createState = (overrides: Partial<NodeSetupState> = {}): NodeSetupState => {
-	const node = createTestNode({
-		name: overrides.node?.name ?? 'OpenAI',
-		type: 'n8n-nodes-base.openAi',
-		typeVersion: 1,
-	}) as INodeUi;
+const createTriggerCard = (overrides: Partial<TriggerSetupState> = {}): SetupCardItem => ({
+	type: 'trigger',
+	state: {
+		node: createTestNode({
+			name: overrides.node?.name ?? 'Webhook Trigger',
+			type: 'n8n-nodes-base.webhook',
+		}) as INodeUi,
+		isComplete: false,
+		...overrides,
+	},
+});
 
-	return {
-		node,
-		credentialRequirements: [
-			{
-				credentialType: 'openAiApi',
-				credentialDisplayName: 'OpenAI',
-				selectedCredentialId: undefined,
-				issues: [],
-				nodesWithSameCredential: ['OpenAI'],
-			},
+const createCredentialCard = (
+	overrides: Partial<CredentialTypeSetupState> = {},
+): SetupCardItem => ({
+	type: 'credential',
+	state: {
+		credentialType: 'openAiApi',
+		credentialDisplayName: 'OpenAI',
+		selectedCredentialId: undefined,
+		issues: [],
+		nodes: [
+			createTestNode({
+				name: 'OpenAI',
+				type: 'n8n-nodes-base.openAi',
+			}) as INodeUi,
 		],
 		isComplete: false,
-		isTrigger: true,
 		...overrides,
-	};
-};
+	},
+});
 
 describe('SetupPanelCards', () => {
 	beforeEach(() => {
 		createTestingPinia();
-		mockNodeSetupStates.value = [];
+		mockSetupCards.value = [];
+		mockFirstTriggerName.value = null;
 		mockSetCredential.mockReset();
 		mockUnsetCredential.mockReset();
 	});
 
 	describe('empty state', () => {
-		it('should render empty state when there are no node setup states', () => {
+		it('should render empty state when there are no setup cards', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('setup-cards-empty')).toBeInTheDocument();
@@ -93,8 +118,8 @@ describe('SetupPanelCards', () => {
 	});
 
 	describe('card list rendering', () => {
-		it('should render card list when there are node setup states', () => {
-			mockNodeSetupStates.value = [createState()];
+		it('should render card list when there are setup cards', () => {
+			mockSetupCards.value = [createCredentialCard()];
 
 			const { getByTestId, queryByTestId } = renderComponent();
 
@@ -102,49 +127,74 @@ describe('SetupPanelCards', () => {
 			expect(queryByTestId('setup-cards-empty')).not.toBeInTheDocument();
 		});
 
-		it('should render a NodeSetupCard for each node setup state', () => {
-			mockNodeSetupStates.value = [
-				createState({ node: createTestNode({ name: 'OpenAI' }) as INodeUi }),
-				createState({ node: createTestNode({ name: 'Slack' }) as INodeUi }),
-				createState({ node: createTestNode({ name: 'Gmail' }) as INodeUi }),
+		it('should render TriggerSetupCard for trigger cards', () => {
+			mockSetupCards.value = [
+				createTriggerCard({ node: createTestNode({ name: 'Webhook Trigger' }) as INodeUi }),
+				createTriggerCard({ node: createTestNode({ name: 'Chat Trigger' }) as INodeUi }),
 			];
 
 			const { getAllByTestId } = renderComponent();
 
-			const cards = getAllByTestId('node-setup-card');
-			expect(cards).toHaveLength(3);
+			const triggerCards = getAllByTestId('trigger-setup-card');
+			expect(triggerCards).toHaveLength(2);
+
+			const triggerNames = getAllByTestId('trigger-node-name');
+			expect(triggerNames[0]).toHaveTextContent('Webhook Trigger');
+			expect(triggerNames[1]).toHaveTextContent('Chat Trigger');
 		});
 
-		it('should pass correct state to each card', () => {
-			mockNodeSetupStates.value = [
-				createState({ node: createTestNode({ name: 'OpenAI' }) as INodeUi }),
-				createState({ node: createTestNode({ name: 'Slack' }) as INodeUi }),
+		it('should render CredentialTypeSetupCard for credential cards', () => {
+			mockSetupCards.value = [
+				createCredentialCard({ credentialDisplayName: 'OpenAI' }),
+				createCredentialCard({
+					credentialType: 'slackApi',
+					credentialDisplayName: 'Slack',
+				}),
 			];
 
 			const { getAllByTestId } = renderComponent();
 
-			const nodeNames = getAllByTestId('node-name');
-			expect(nodeNames[0]).toHaveTextContent('OpenAI');
-			expect(nodeNames[1]).toHaveTextContent('Slack');
+			const credentialCards = getAllByTestId('credential-type-setup-card');
+			expect(credentialCards).toHaveLength(2);
+
+			const credentialNames = getAllByTestId('credential-type-name');
+			expect(credentialNames[0]).toHaveTextContent('OpenAI');
+			expect(credentialNames[1]).toHaveTextContent('Slack');
+		});
+
+		it('should render both trigger and credential cards', () => {
+			mockSetupCards.value = [
+				createTriggerCard(),
+				createCredentialCard({ credentialDisplayName: 'OpenAI' }),
+				createCredentialCard({
+					credentialType: 'slackApi',
+					credentialDisplayName: 'Slack',
+				}),
+			];
+
+			const { getAllByTestId } = renderComponent();
+
+			expect(getAllByTestId('trigger-setup-card')).toHaveLength(1);
+			expect(getAllByTestId('credential-type-setup-card')).toHaveLength(2);
 		});
 	});
 
 	describe('completion message', () => {
-		it('should show completion message when all nodes are complete', () => {
-			mockNodeSetupStates.value = [createState({ isComplete: true })];
+		it('should show completion message when all cards are complete', () => {
+			mockSetupCards.value = [
+				createTriggerCard({ isComplete: true }),
+				createCredentialCard({ isComplete: true }),
+			];
 
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('setup-cards-complete-message')).toBeInTheDocument();
 		});
 
-		it('should not show completion message when some nodes are incomplete', () => {
-			mockNodeSetupStates.value = [
-				createState({ isComplete: true }),
-				createState({
-					node: createTestNode({ name: 'Slack' }) as INodeUi,
-					isComplete: false,
-				}),
+		it('should not show completion message when some cards are incomplete', () => {
+			mockSetupCards.value = [
+				createTriggerCard({ isComplete: true }),
+				createCredentialCard({ isComplete: false }),
 			];
 
 			const { queryByTestId } = renderComponent();
@@ -160,38 +210,24 @@ describe('SetupPanelCards', () => {
 	});
 
 	describe('credential events', () => {
-		it('should call setCredential when credential is selected on a card', async () => {
-			mockNodeSetupStates.value = [createState()];
+		it('should call setCredential with credentialType and credentialId when credential is selected', async () => {
+			mockSetupCards.value = [createCredentialCard()];
 
 			const { getByTestId } = renderComponent();
 
 			await userEvent.click(getByTestId('select-credential-btn'));
 
-			expect(mockSetCredential).toHaveBeenCalledWith('OpenAI', 'openAiApi', 'cred-123');
+			expect(mockSetCredential).toHaveBeenCalledWith('openAiApi', 'cred-123');
 		});
 
-		it('should call unsetCredential when credential is deselected on a card', async () => {
-			mockNodeSetupStates.value = [createState()];
+		it('should call unsetCredential with credentialType when credential is deselected', async () => {
+			mockSetupCards.value = [createCredentialCard()];
 
 			const { getByTestId } = renderComponent();
 
 			await userEvent.click(getByTestId('deselect-credential-btn'));
 
-			expect(mockUnsetCredential).toHaveBeenCalledWith('OpenAI', 'openAiApi');
-		});
-
-		it('should call setCredential with correct node name for each card', async () => {
-			mockNodeSetupStates.value = [
-				createState({ node: createTestNode({ name: 'OpenAI' }) as INodeUi }),
-				createState({ node: createTestNode({ name: 'Slack' }) as INodeUi }),
-			];
-
-			const { getAllByTestId } = renderComponent();
-
-			const selectButtons = getAllByTestId('select-credential-btn');
-			await userEvent.click(selectButtons[1]);
-
-			expect(mockSetCredential).toHaveBeenCalledWith('Slack', 'openAiApi', 'cred-123');
+			expect(mockUnsetCredential).toHaveBeenCalledWith('openAiApi');
 		});
 	});
 });
