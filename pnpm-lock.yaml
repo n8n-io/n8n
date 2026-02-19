@@ -190,8 +190,8 @@ catalogs:
       specifier: ^3.1.0
       version: 3.1.0
     vm2:
-      specifier: ^3.10.2
-      version: 3.10.2
+      specifier: ^3.10.5
+      version: 3.10.5
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
@@ -761,7 +761,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 1.13.5
-        version: 1.13.5(debug@4.4.3)
+        version: 1.13.5
       dotenv:
         specifier: 17.2.3
         version: 17.2.3
@@ -796,7 +796,7 @@ importers:
     dependencies:
       axios:
         specifier: 1.13.5
-        version: 1.13.5(debug@4.4.3)
+        version: 1.13.5
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -1595,7 +1595,7 @@ importers:
         version: 3.0.3
       vm2:
         specifier: 'catalog:'
-        version: 3.10.2
+        version: 3.10.5
       weaviate-client:
         specifier: 3.9.0
         version: 3.9.0(encoding@0.1.13)
@@ -1660,7 +1660,7 @@ importers:
         version: link:../eslint-plugin-community-nodes
       axios:
         specifier: 1.13.5
-        version: 1.13.5(debug@4.4.3)
+        version: 1.13.5
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)
@@ -1941,7 +1941,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.13.5
-        version: 1.13.5(debug@4.4.3)
+        version: 1.13.5
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
@@ -2299,7 +2299,7 @@ importers:
         version: 10.36.0
       axios:
         specifier: 1.13.5
-        version: 1.13.5(debug@4.4.3)
+        version: 1.13.5
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -2772,7 +2772,7 @@ importers:
         version: link:../../../@n8n/utils
       axios:
         specifier: 1.13.5
-        version: 1.13.5(debug@4.4.3)
+        version: 1.13.5
       flatted:
         specifier: 'catalog:'
         version: 3.2.7
@@ -3043,6 +3043,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../@n8n/utils
+      '@pinecone-database/connect':
+        specifier: 0.0.4
+        version: 0.0.4
       '@replit/codemirror-indentation-markers':
         specifier: ^6.5.3
         version: 6.5.3(@codemirror/language@6.12.1)(@codemirror/state@6.5.3)(@codemirror/view@6.39.8)
@@ -3087,7 +3090,7 @@ importers:
         version: 1.1.4
       axios:
         specifier: 1.13.5
-        version: 1.13.5(debug@4.4.3)
+        version: 1.13.5
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -3578,7 +3581,7 @@ importers:
         version: 10.0.0
       vm2:
         specifier: 'catalog:'
-        version: 3.10.2
+        version: 3.10.5
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
@@ -7509,6 +7512,9 @@ packages:
 
   '@petamoriken/float16@3.9.2':
     resolution: {integrity: sha512-VgffxawQde93xKxT3qap3OH+meZf7VaSB5Sqd4Rqc+FP5alWbpOyan/7tRbOAvynjpG3GpdtAuGU/NdhQpmrog==}
+
+  '@pinecone-database/connect@0.0.4':
+    resolution: {integrity: sha512-3qGeN8atUqLtEiYSH8KGfAE85HtziGEER1GPRKnubel/RGH+pp5OS0CgWysridGuMNcUk4kjSIL/8B10XwumSQ==}
 
   '@pinecone-database/pinecone@5.1.2':
     resolution: {integrity: sha512-z7737KUA1hXwd508q1+o4bnRxj0NpMmzA2beyaFm7Y+EC2TYLT5ABuYsn/qhiwiEsYp8v1qS596eBhhvgNagig==}
@@ -12872,7 +12878,7 @@ packages:
   glob@8.1.0:
     resolution: {integrity: sha512-r8hpEjiQEYlF2QU0df3dS+nxxSIreXQS1qRhMJM0Q5NDdR386C7jb7Hwwod8Fgiuex+k0GFjgft18yvxm5XoCQ==}
     engines: {node: '>=12'}
-    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@9.3.5:
     resolution: {integrity: sha512-e1LleDykUz2Iu+MTYdkSsuWX8lvAjAcs0Xef0lNIu0S2wOAzuTxCJtcd9S3cijlwYF18EsU3rzb8jPVobxDh9Q==}
@@ -16427,6 +16433,7 @@ packages:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
     deprecated: |-
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
+
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qrcode.vue@3.3.4:
@@ -18658,8 +18665,8 @@ packages:
   vm-browserify@1.1.2:
     resolution: {integrity: sha512-2ham8XPWTONajOR0ohOKOHXkm3+gaBmGut3SRuu75xLd/RRaY6vqgh8NBYYk7+RW3u5AtzPQZG8F10LHkl0lAQ==}
 
-  vm2@3.10.2:
-    resolution: {integrity: sha512-qTnbvpada8qlEEyIPFwhTcF5Ns+k83fVlOSE8XvAtHkhcQ+okMnbvryVQBfP/ExRT1CRsQpYusdATR+FBJfrnQ==}
+  vm2@3.10.5:
+    resolution: {integrity: sha512-3P/2QDccVFBcujfCOeP8vVNuGfuBJHEuvGR8eMmI10p/iwLL2UwF5PDaNaoOS2pRGQEDmJRyeEcc8kmm2Z59RA==}
     engines: {node: '>=6.0'}
     hasBin: true
 
@@ -23692,7 +23699,7 @@ snapshots:
       '@azure/core-auth': 1.10.1
       '@azure/msal-node': 3.8.4
       '@microsoft/agents-activity': 1.1.0-alpha.85
-      axios: 1.13.5(debug@4.4.3)
+      axios: 1.13.5
       jsonwebtoken: 9.0.3
       jwks-rsa: 3.2.2
       object-path: 0.11.8
@@ -24690,6 +24697,8 @@ snapshots:
 
   '@petamoriken/float16@3.9.2': {}
 
+  '@pinecone-database/connect@0.0.4': {}
+
   '@pinecone-database/pinecone@5.1.2': {}
 
   '@pinia/testing@0.1.6(pinia@2.2.4(typescript@5.9.2)(vue@3.5.26(typescript@5.9.2)))(vue@3.5.26(typescript@5.9.2))':
@@ -25038,7 +25047,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@3.0.0':
     dependencies:
-      axios: 1.13.5(debug@4.4.3)
+      axios: 1.13.5
       axios-retry: 4.5.0(axios@1.13.5)
       component-type: 2.0.0
       join-component: 1.1.0
@@ -28131,12 +28140,20 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.13.5):
     dependencies:
-      axios: 1.13.5(debug@4.4.3)
+      axios: 1.13.5
       is-retry-allowed: 2.2.0
+
+  axios@1.13.5:
+    dependencies:
+      follow-redirects: 1.15.11(debug@4.4.1)
+      form-data: 4.0.4
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
 
   axios@1.13.5(debug@4.4.3):
     dependencies:
-      follow-redirects: 1.15.11(debug@4.4.1)
+      follow-redirects: 1.15.11(debug@4.4.3)
       form-data: 4.0.4
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -30921,6 +30938,10 @@ snapshots:
     optionalDependencies:
       debug: 4.4.1(supports-color@8.1.1)
 
+  follow-redirects@1.15.11(debug@4.4.3):
+    optionalDependencies:
+      debug: 4.4.3(supports-color@8.1.1)
+
   for-each@0.3.5:
     dependencies:
       is-callable: 1.2.7
@@ -31634,7 +31655,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.13.5(debug@4.4.3))
+      retry-axios: 2.6.0(axios@1.13.5)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -31719,7 +31740,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.13.5(debug@4.4.3)
+      axios: 1.13.5
       dotenv: 16.6.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -35420,7 +35441,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.13.5(debug@4.4.3)
+      axios: 1.13.5
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -36117,9 +36138,9 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.13.5(debug@4.4.3)):
+  retry-axios@2.6.0(axios@1.13.5):
     dependencies:
-      axios: 1.13.5(debug@4.4.3)
+      axios: 1.13.5
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -36735,7 +36756,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.13.5(debug@4.4.3)
+      axios: 1.13.5
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2
@@ -38456,7 +38477,7 @@ snapshots:
 
   vm-browserify@1.1.2: {}
 
-  vm2@3.10.2:
+  vm2@3.10.5:
     dependencies:
       acorn: 8.15.0
       acorn-walk: 8.3.4
