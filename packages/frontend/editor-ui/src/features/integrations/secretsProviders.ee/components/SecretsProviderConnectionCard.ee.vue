@@ -156,9 +156,7 @@ function onAction(action: string) {
 				<span data-test-id="secrets-provider-secrets-count">
 					{{
 						i18n.baseText('settings.externalSecrets.card.secretsCount', {
-							interpolate: {
-								count: `${provider.secretsCount}`,
-							},
+							interpolate: { count: provider.secretsCount },
 						})
 					}}
 				</span>
