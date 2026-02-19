@@ -1,6 +1,6 @@
 import type { ServerTool } from '@langchain/core/tools';
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
-import type { ISupplyDataFunctions } from 'n8n-workflow';
+import type { ISupplyDataFunctions, SupplyData } from 'n8n-workflow';
 
 import { LangchainChatModelAdapter } from '../adapters/langchain-chat-model';
 import { BaseChatModel } from '../chat-model/base';
@@ -82,7 +82,7 @@ function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 	return openAiModel;
 }
 
-export function supplyModel(ctx: ISupplyDataFunctions, model: SupplyModelOptions) {
+export function supplyModel(ctx: ISupplyDataFunctions, model: SupplyModelOptions): SupplyData {
 	if (isOpenAiModel(model)) {
 		const openAiModel = getOpenAiModel(ctx, model);
 		return {
