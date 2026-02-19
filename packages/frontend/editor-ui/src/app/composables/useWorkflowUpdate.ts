@@ -351,7 +351,13 @@ export function useWorkflowUpdate() {
 			const addedNodes = await addNewNodes(nodesToAdd);
 			const newNodeIds = addedNodes.map((n) => n.id);
 			await updateConnections(workflowData.connections ?? {});
-			updateWorkflowNameIfNeeded(workflowData.name, options?.isInitialGeneration);
+			// Update name when nodes were provided (full workflow update) or when
+			// only a name was sent (name-only update from non-code-builder).
+			// Skip only when nodes is explicitly an empty array (no workflow generated).
+			const hasWorkflowContent = workflowData.nodes === undefined || workflowData.nodes.length > 0;
+			if (hasWorkflowContent) {
+				updateWorkflowNameIfNeeded(workflowData.name, options?.isInitialGeneration);
+			}
 
 			// Merge pin data from workflow data with existing pin data
 			if (workflowData.pinData) {
