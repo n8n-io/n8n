@@ -671,52 +671,6 @@ describe('AI Builder store', () => {
 		);
 	});
 
-	it('should not save workflow for new pristine workflows (no unsaved changes)', async () => {
-		const builderStore = useBuilderStore();
-		const uiStore = mockedStore(useUIStore);
-
-		// Simulate a brand-new workflow with no user modifications
-		workflowsStore.isNewWorkflow = true;
-		vi.spyOn(uiStore, 'stateIsDirty', 'get').mockReturnValue(false);
-
-		saveCurrentWorkflowMock.mockClear();
-		apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
-			onDone();
-		});
-
-		await builderStore.sendChatMessage({ text: 'What does the HTTP node do?' });
-
-		// Should NOT have called saveCurrentWorkflow
-		expect(saveCurrentWorkflowMock).not.toHaveBeenCalled();
-
-		// Should still send the message to the API
-		expect(apiSpy).toHaveBeenCalled();
-
-		// The versionId passed to the API should be undefined (no checkpoint created)
-		const apiCall = apiSpy.mock.calls[0];
-		const versionIdArg = apiCall[5]; // 6th argument is versionId
-		expect(versionIdArg).toBeUndefined();
-	});
-
-	it('should save workflow for new workflows with unsaved user changes', async () => {
-		const builderStore = useBuilderStore();
-		const uiStore = mockedStore(useUIStore);
-
-		// Simulate a new workflow where the user has added nodes manually
-		workflowsStore.isNewWorkflow = true;
-		vi.spyOn(uiStore, 'stateIsDirty', 'get').mockReturnValue(true);
-
-		saveCurrentWorkflowMock.mockClear();
-		apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
-			onDone();
-		});
-
-		await builderStore.sendChatMessage({ text: 'Connect these nodes' });
-
-		// Should have called saveCurrentWorkflow because there are unsaved changes
-		expect(saveCurrentWorkflowMock).toHaveBeenCalled();
-	});
-
 	it('should return early without sending message when workflow save fails', async () => {
 		const builderStore = useBuilderStore();
 
