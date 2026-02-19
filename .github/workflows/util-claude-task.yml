@@ -41,6 +41,9 @@ jobs:
       issues: write
 
     steps:
+      - name: Mask user token
+        run: echo "::add-mask::${{ inputs.user_token }}"
+
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
