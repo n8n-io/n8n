@@ -23,7 +23,6 @@ describe('QuickConnectModule', () => {
 					credentialType: 'testApi',
 					text: 'Test Service Integration',
 					quickConnectType: 'backend',
-					serviceName: 'Test Service',
 					consentText: 'Allow access to your account?',
 					backendFlowConfig: {
 						secret: 'super-secret-key-that-should-never-be-exposed',
@@ -51,7 +50,6 @@ describe('QuickConnectModule', () => {
 					credentialType: 'oauthApi',
 					text: 'OAuth Service Integration',
 					quickConnectType: 'oauth',
-					serviceName: 'OAuth Service',
 				},
 			];
 			process.env.N8N_QUICK_CONNECT_OPTIONS = JSON.stringify(testConfig);
@@ -70,7 +68,6 @@ describe('QuickConnectModule', () => {
 					credentialType: 'backendApi',
 					text: 'Backend Service Integration',
 					quickConnectType: 'backend',
-					serviceName: 'Backend Service',
 					consentText: 'Grant access?',
 					backendFlowConfig: {
 						secret: 'secret-that-must-be-hidden',
@@ -81,7 +78,6 @@ describe('QuickConnectModule', () => {
 					credentialType: 'frontendApi',
 					text: 'Frontend Service Integration',
 					quickConnectType: 'oauth',
-					serviceName: 'Frontend Service',
 				},
 			];
 			process.env.N8N_QUICK_CONNECT_OPTIONS = JSON.stringify(testConfig);
@@ -100,7 +96,6 @@ describe('QuickConnectModule', () => {
 					credentialType: 'testApi',
 					text: 'Test Service Integration',
 					quickConnectType: 'backend',
-					serviceName: 'Test Service',
 					consentText: 'Grant access?',
 					backendFlowConfig: {
 						secret: 'secret-key',
@@ -116,7 +111,6 @@ describe('QuickConnectModule', () => {
 			expect(option.credentialType).toBe('testApi');
 			expect(option.text).toBe('Test Service Integration');
 			expect(option.quickConnectType).toBe('backend');
-			expect(option.serviceName).toBe('Test Service');
 			expect(option.consentText).toBe('Grant access?');
 		});
 
@@ -127,7 +121,6 @@ describe('QuickConnectModule', () => {
 					credentialType: 'api1',
 					text: 'Service 1',
 					quickConnectType: 'backend',
-					serviceName: 'Service One',
 					consentText: 'Consent 1',
 					backendFlowConfig: {
 						secret: 'secret-1',
@@ -138,7 +131,6 @@ describe('QuickConnectModule', () => {
 					credentialType: 'api2',
 					text: 'Service 2',
 					quickConnectType: 'backend',
-					serviceName: 'Service Two',
 					consentText: 'Consent 2',
 					backendFlowConfig: {
 						secret: 'secret-2',
