@@ -24,16 +24,14 @@
 	"dependencies": {
 		"@n8n/tournament": "1.0.6",
 		"isolated-vm": "^6.0.2",
-		"lodash": "^4.17.21",
-		"luxon": "^3.4.4"
+    "lodash": "catalog:",
+    "luxon": "catalog:"
 	},
 	"devDependencies": {
-		"@types/lodash": "^4.14.202",
-		"@types/luxon": "^3.4.0",
-		"@types/node": "^20.10.0",
-		"esbuild": "^0.19.0",
-		"typescript": "^5.3.0",
-		"vitest": "^1.0.0"
+    "@types/lodash": "catalog:",
+    "@types/luxon": "3.2.0",
+        "typescript": "catalog:",
+    "vitest": "catalog:"
 	},
 	"files": [
 		"dist",
