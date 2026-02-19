@@ -66,6 +66,14 @@ export interface SessionMessagesChunk {
 }
 
 /**
+ * Signals that message history was compacted (e.g. via /compact).
+ * Frontend should clear old messages when this is received.
+ */
+export interface MessagesCompactedChunk {
+	type: 'messages-compacted';
+}
+
+/**
  * Union type for all stream chunks
  */
 export type StreamChunk =
@@ -75,7 +83,8 @@ export type StreamChunk =
 	| ExecutionRequestChunk
 	| SessionMessagesChunk
 	| QuestionsChunk
-	| PlanChunk;
+	| PlanChunk
+	| MessagesCompactedChunk;
 
 /**
  * Stream output containing messages
