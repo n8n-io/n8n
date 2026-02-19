@@ -295,8 +295,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	async function initCredHelp(credType: ICredentialType) {
 		const hasExistingSession = !!currentSessionId.value;
-		const credentialName = credType.displayName;
-		const question = `How do I set up the credentials for ${credentialName}?`;
+		const question = locale.baseText('aiAssistant.builder.credentialHelpMessage', {
+			interpolate: { credentialName: credType.displayName },
+		});
 
 		await initSupportChat(question, credType);
 
