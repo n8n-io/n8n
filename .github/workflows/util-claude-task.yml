@@ -94,9 +94,6 @@ jobs:
             echo 'EOF'
           } >> "$GITHUB_ENV"
 
-      - name: Install Playwright browser
-        run: npx playwright install chromium
-
       - name: Create MCP config
         run: |
           cat > /tmp/mcp-config.json << 'MCPEOF'
@@ -121,10 +118,6 @@ jobs:
                 "env": {
                   "OPENAPI_MCP_HEADERS": "{\"Authorization\":\"Bearer MCP_NOTION_TOKEN_PLACEHOLDER\",\"Notion-Version\":\"2025-02-19\"}"
                 }
-              },
-              "playwright": {
-                "command": "npx",
-                "args": ["@playwright/mcp@latest", "--headless"]
               }
             }
           }
@@ -155,8 +148,7 @@ jobs:
                   "Skill",
                   "Task",
                   "mcp__linear__*",
-                  "mcp__notion__*",
-                  "mcp__playwright__*"
+                  "mcp__notion__*"
                 ]
               }
             }
