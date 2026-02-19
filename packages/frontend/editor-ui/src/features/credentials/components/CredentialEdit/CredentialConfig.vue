@@ -283,11 +283,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			<FreeAiCreditsCallout :credential-type-name="credentialType?.name" />
 
 			<CredentialModeSelector
-				v-if="canCreate || (canEdit && isOAuthType)"
+				v-if="canWrite"
 				:credential-type="credentialType"
 				:use-custom-oauth="useCustomOauth"
 				:show-managed-oauth-options="managedOauthAvailable"
-				:is-new-credential="isNewCredential"
 				@update:auth-type="onAuthTypeChange"
 				@update:use-custom-oauth="emit('update:useCustomOauth', $event)"
 			/>
@@ -464,11 +463,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:service-name="serviceName"
 					:credential-type-name="credentialType.name"
 					:disabled="!requiredPropertiesFilled"
-					:disabled-tooltip="
-						i18n.baseText('credentialEdit.credentialConfig.oauthDisabledTooltip', {
-							interpolate: { service: serviceName },
-						})
-					"
+					:disabled-tooltip="i18n.baseText('credentialEdit.credentialConfig.oauthDisabledTooltip')"
 					data-test-id="quick-connect-button"
 					@click="$emit('oauth')"
 				/>

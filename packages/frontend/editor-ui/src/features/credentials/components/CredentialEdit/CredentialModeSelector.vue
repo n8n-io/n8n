@@ -21,7 +21,6 @@ const props = defineProps<{
 	credentialType: ICredentialType;
 	useCustomOauth?: boolean;
 	showManagedOauthOptions?: boolean;
-	isNewCredential?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -63,10 +62,6 @@ const managedOAuthOptions = computed<Option[]>(() => [
 ]);
 
 const options = computed<Option[]>(() => {
-	if (!props.isNewCredential && hasManagedOAuth.value) {
-		return managedOAuthOptions.value;
-	}
-
 	// If this credential type is not linked to any auth option of the node, don't show the selector
 	if (activeNodeType.value && !selectedAuthType.value && !hasManagedOAuth.value) {
 		return [];

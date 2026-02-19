@@ -50,7 +50,7 @@ import {
 } from '@/app/utils/nodeTypesUtils';
 import { isCredentialModalState, isValidCredentialResponse } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
-import { useElementSize } from '@vueuse/core';
+import { useElementSize, useSessionStorage } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 
 import {
@@ -119,7 +119,11 @@ const isSharedGlobally = ref(false);
 const isResolvable = ref(false);
 const useCustomOAuth = ref(false);
 const pendingAuthType = ref<string | null>(null);
-const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
+const credentialDataCacheKey = `credential_data_cache_${props.mode === 'new' ? 'new' : props.activeId}`;
+const credentialDataCache = useSessionStorage<Record<string, ICredentialDataDecryptedObject>>(
+	credentialDataCacheKey,
+	{},
+);
 
 const activeNodeType = computed(() => {
 	const activeNode = ndvStore.activeNode;
@@ -339,16 +343,11 @@ const defaultCredentialTypeName = computed(() => {
 	return defaultName ?? '';
 });
 
-const isManagedOAuth = computed(
-	() => isOAuthType.value && managedOAuthAvailable.value && !useCustomOAuth.value,
-);
-
 const showSaveButton = computed(() => {
-	return (
-		(props.mode === 'new' || hasUnsavedChanges.value || isSaved.value) &&
-		(credentialPermissions.value.create ?? credentialPermissions.value.update) &&
-		!(isManagedOAuth.value && !isOAuthConnected.value)
-	);
+	const hasPermission = credentialPermissions.value.create ?? credentialPermissions.value.update;
+	if (!hasPermission) return false;
+	if (isOAuthType.value && !isOAuthConnected.value) return false;
+	return true;
 });
 
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
@@ -390,6 +389,13 @@ onMounted(async () => {
 				};
 			}
 		}
+	}
+
+	// Restore cached user changes on reopen (e.g. modal was closed without saving)
+	const cachedKey = getCurrentModeKey();
+	const cachedData = credentialDataCache.value[cachedKey];
+	if (cachedData && props.mode === 'new') {
+		credentialData.value = { ...credentialData.value, ...cachedData };
 	}
 
 	// Detect if existing credential uses custom OAuth (user-provided clientId/clientSecret)
@@ -619,9 +625,8 @@ function getCurrentModeKey(): string {
 
 function cacheCurrentData(): void {
 	const key = getCurrentModeKey();
-	if (key) {
-		credentialDataCache.value[key] = { ...credentialData.value };
-	}
+	if (!key) return;
+	credentialDataCache.value[key] = { ...credentialData.value };
 }
 
 function restoreOrReset(newKey: string): void {
@@ -640,6 +645,7 @@ function onResolvableChange(value: boolean) {
 
 function onManagedOAuthModeChange(isCustom: boolean): void {
 	cacheCurrentData();
+	authError.value = '';
 	useCustomOAuth.value = isCustom;
 	hasUnsavedChanges.value = true;
 
@@ -661,13 +667,16 @@ function onDataChange({ name, value }: IUpdateInformation) {
 
 	hasUnsavedChanges.value = true;
 
-	const { oauthTokenData, ...credData } = credentialData.value;
-	credentialData.value = deepCopy(credData);
+	if (isOAuthType.value && (name === 'clientId' || name === 'clientSecret')) {
+		const { oauthTokenData, ...credData } = credentialData.value;
+		credentialData.value = deepCopy(credData);
+	}
 
 	setParameterValue(credentialData.value, name, value);
 }
 
 function closeDialog() {
+	cacheCurrentData();
 	modalBus.value.emit('close');
 }
 
@@ -1205,6 +1214,7 @@ async function onAuthTypeChanged(type: string): Promise<void> {
 	const credentialsForType = getNodeCredentialForSelectedAuthType(activeNodeType.value, type);
 	if (credentialsForType) {
 		cacheCurrentData();
+		authError.value = '';
 
 		selectedCredential.value = credentialsForType.name;
 		uiStore.activeCredentialType = credentialsForType.name;

@@ -627,8 +627,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					/>
 					<N8nButton
 						v-if="canCreateCredentials"
-						type="highlightFill"
-						size="medium"
+						variant="subtle"
+						size="small"
 						data-test-id="setup-credential-button"
 						@click="createNewCredential(type.name, true, showMixedCredentials(type))"
 					>

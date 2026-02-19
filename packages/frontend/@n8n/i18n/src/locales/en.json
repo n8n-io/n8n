@@ -923,7 +923,7 @@
 	"credentialEdit.credentialConfig.externalSecrets.moreInfo": "More info",
 	"credentialEdit.credentialConfig.dynamicCredentials.title": "Set up for dynamic credentials",
 	"credentialEdit.credentialConfig.dynamicCredentials.infoTip": "When enabled, each execution uses the triggering user's credentials instead of a single fixed credential. Requires a webhook trigger with user identity extraction enabled. The credentials you connect are only used for manual testing or when the workflow uses a non-webhook trigger.",
-	"credentialEdit.credentialConfig.oauthDisabledTooltip": "Fill in the required fields above to connect to {service}",
+	"credentialEdit.credentialConfig.oauthDisabledTooltip": "Complete all fields to connect",
 	"credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText": "Close",
 	"credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText": "Keep Editing",
 	"credentialEdit.credentialEdit.confirmMessage.beforeClose1.headline": "Close without saving?",
