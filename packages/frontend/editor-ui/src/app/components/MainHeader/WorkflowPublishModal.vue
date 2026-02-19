@@ -27,8 +27,8 @@ const modalBus = createEventBus();
 const i18n = useI18n();
 
 const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = useWorkflowDocumentStore(
-	createWorkflowDocumentId(workflowsStore.workflow.id),
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id)),
 );
 const credentialsStore = useCredentialsStore();
 const { showMessage } = useToast();
@@ -49,7 +49,9 @@ const containsTrigger = computed((): boolean => {
 });
 
 const wfHasAnyChanges = computed(() => {
-	return workflowsStore.workflow.versionId !== workflowDocumentStore.activeVersion?.versionId;
+	return (
+		workflowsStore.workflow.versionId !== workflowDocumentStore.value?.activeVersion?.versionId
+	);
 });
 
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);

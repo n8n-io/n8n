@@ -63,7 +63,9 @@ const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>(
 
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(props.id));
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(props.id)),
+);
 const collaborationStore = useCollaborationStore();
 const projectStore = useProjectsStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
@@ -301,7 +303,7 @@ const shouldDisablePublishButton = computed(() => {
 	);
 });
 
-const activeVersion = computed(() => workflowDocumentStore?.activeVersion ?? null);
+const activeVersion = computed(() => workflowDocumentStore.value?.activeVersion ?? null);
 
 const activeVersionName = computed(() => {
 	if (!activeVersion.value) {

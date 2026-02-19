@@ -19,8 +19,6 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { shallowRef } from 'vue';
-import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -87,17 +85,10 @@ const defaultWorkflowProps = {
 	},
 };
 
-const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
-	null,
-);
-
 const renderComponent = createComponentRenderer(WorkflowHeaderDraftPublishActions, {
 	props: defaultWorkflowProps,
 	pinia: createTestingPinia({ initialState, stubActions: false }),
 	global: {
-		provide: {
-			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
-		},
 		stubs: {
 			ActionsMenu: {
 				template: '<div data-test-id="actions-menu-stub"></div>',
@@ -166,7 +157,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		};
 		documentStore = useWorkflowDocumentStore(createWorkflowDocumentId('1'));
 		documentStore.setActiveState({ activeVersionId: null, activeVersion: null });
-		workflowDocumentStoreRef.value = documentStore;
 		workflowsStore.workflowTriggerNodes = [];
 		uiStore.markStateClean();
 		uiStore.isActionActive = { workflowSaving: false };
