@@ -5,7 +5,13 @@ import type { IExpressionEvaluator } from '@n8n/expression-runtime';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
-import { sanitizer, sanitizerName } from './expression-sandboxing';
+import {
+	DollarSignValidator,
+	PrototypeSanitizer,
+	ThisSanitizer,
+	sanitizer,
+	sanitizerName,
+} from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
@@ -213,7 +219,13 @@ export class Expression {
 			// Dynamic import to avoid loading expression-runtime in browser environments
 			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
 			const bridge = new IsolatedVmBridge({ timeout: 5000 });
-			this.vmEvaluator = new ExpressionEvaluator({ bridge });
+			this.vmEvaluator = new ExpressionEvaluator({
+				bridge,
+				hooks: {
+					before: [ThisSanitizer],
+					after: [PrototypeSanitizer, DollarSignValidator],
+				},
+			});
 			await this.vmEvaluator.initialize();
 		}
 	}
