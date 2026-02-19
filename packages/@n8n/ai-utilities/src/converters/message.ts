@@ -20,6 +20,11 @@ function isN8nToolCallBlock(
 ): block is N8nMessages.ContentToolCall {
 	return block.type === 'tool-call';
 }
+function isN8nInvalidToolCallBlock(
+	block: N8nMessages.MessageContent,
+): block is N8nMessages.ContentInvalidToolCall {
+	return block.type === 'invalid-tool-call';
+}
 function isN8nToolResultBlock(
 	block: N8nMessages.MessageContent,
 ): block is N8nMessages.ContentToolResult {
@@ -84,7 +89,7 @@ function isInvalidToolCallBlock(
 function isToolResultBlock(
 	block: LangchainMessages.ContentBlock,
 ): block is LangchainMessages.ContentBlock.Tools.ServerToolCallResult {
-	return block.type === 'tool-result';
+	return block.type === 'server_tool_call_result';
 }
 function isCitationBlock(block: unknown): block is LangchainMessages.ContentBlock.Citation {
 	return (
@@ -118,14 +123,12 @@ function fromLcContent(
 					type: 'text',
 					text: block.text,
 				};
-			}
-			if (isReasoningBlock(block)) {
+			} else if (isReasoningBlock(block)) {
 				content = {
 					type: 'reasoning',
 					text: block.reasoning,
 				};
-			}
-			if (isFileBlock(block)) {
+			} else if (isFileBlock(block)) {
 				let metadata: Record<string, unknown> = {};
 				if (block.metadata) {
 					metadata = block.metadata;
@@ -142,32 +145,29 @@ function fromLcContent(
 					data: block.data!,
 					providerMetadata: Object.keys(metadata).length > 0 ? metadata : undefined,
 				};
-			}
-			if (isToolCallBlock(block)) {
+			} else if (isToolCallBlock(block)) {
 				content = {
 					type: 'tool-call',
-					toolCallId: block.id!,
+					toolCallId: block.id,
 					toolName: block.name,
 					input: JSON.stringify(block.args),
 				};
-			}
-			if (isInvalidToolCallBlock(block)) {
+			} else if (isInvalidToolCallBlock(block)) {
 				content = {
-					type: 'tool-result',
-					toolCallId: block.id!,
-					result: block.error,
-					isError: true,
+					type: 'invalid-tool-call',
+					toolCallId: block.id,
+					error: block.error,
+					args: block.args,
+					name: block.name,
 				};
-			}
-			if (isToolResultBlock(block)) {
+			} else if (isToolResultBlock(block)) {
 				content = {
 					type: 'tool-result',
 					toolCallId: block.toolCallId,
 					result: block.output,
 					isError: block.status === 'error',
 				};
-			}
-			if (isCitationBlock(block)) {
+			} else if (isCitationBlock(block)) {
 				content = {
 					type: 'citation',
 					source: block.source,
@@ -177,15 +177,11 @@ function fromLcContent(
 					endIndex: block.endIndex,
 					text: block.citedText,
 				};
-			}
-			if (isNonStandardBlock(block)) {
+			} else if (isNonStandardBlock(block)) {
 				content = {
 					type: 'provider',
 					value: block.value,
 				};
-			}
-			if (!content) {
-				return null;
 			}
 			return content;
 		})
@@ -283,6 +279,15 @@ export function toLcContent(block: N8nMessages.MessageContent): LangchainMessage
 			args: jsonParse<Record<string, unknown>>(block.input, { fallbackValue: {} }),
 		} as LangchainMessages.ContentBlock.Tools.ToolCall;
 	}
+	if (isN8nInvalidToolCallBlock(block)) {
+		return {
+			type: 'invalid_tool_call',
+			id: block.toolCallId,
+			error: block.error,
+			args: block.args,
+			name: block.name,
+		} as LangchainMessages.ContentBlock.Tools.InvalidToolCall;
+	}
 	if (isN8nToolResultBlock(block)) {
 		return {
 			type: 'server_tool_call_result',
@@ -329,11 +334,14 @@ export function toLcMessage(message: Message): LangchainMessages.BaseMessage {
 				name: message.name,
 			});
 		case 'assistant': {
-			const toolCalls = message.content.filter(isN8nToolCallBlock).map((c) => ({
-				id: c.toolCallId,
-				name: c.toolName,
-				args: jsonParse<Record<string, unknown>>(c.input, { fallbackValue: {} }),
-			}));
+			const toolCalls: LangchainMessages.ToolCall[] = message.content
+				.filter(isN8nToolCallBlock)
+				.map((c) => ({
+					type: 'tool_call',
+					id: c.toolCallId,
+					name: c.toolName,
+					args: jsonParse<Record<string, unknown>>(c.input, { fallbackValue: {} }),
+				}));
 			const nonToolContent = lcContent.filter((c) => c.type !== 'tool_call');
 			return new LangchainMessages.AIMessage({
 				content: nonToolContent,

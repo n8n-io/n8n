@@ -103,6 +103,7 @@ export abstract class BaseCommand<F = never> {
 			eventLoopBlockThreshold,
 			tracesSampleRate,
 			profilesSampleRate,
+			healthEndpoint: this.globalConfig.endpoints.health,
 			eligibleIntegrations: {
 				Express: true,
 				Http: true,

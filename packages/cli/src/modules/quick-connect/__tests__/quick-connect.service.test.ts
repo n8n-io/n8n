@@ -32,18 +32,29 @@ describe('QuickConnectService', () => {
 
 	const mockUser = mock<User>({ id: 'user-123' });
 
-	const createMockOption = (overrides: Partial<QuickConnectOption> = {}): QuickConnectOption => ({
-		packageName: '@n8n/test-package',
-		credentialType: 'testCredentialType',
-		text: 'Test Quick connect',
-		quickConnectType: 'backend',
-		serviceName: 'Test Service',
-		consentText: 'Allow access?',
-		backendFlowConfig: {
-			secret: 'test-secret',
+	const mockDecryptedCredential = {
+		data: {
+			apiKey: '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6',
 		},
-		...overrides,
-	});
+		id: 'cred-123',
+		name: 'Test Service (Quick connect)',
+		type: 'testCredentialType',
+	};
+
+	const createMockOption = (overrides: Partial<QuickConnectOption> = {}): QuickConnectOption =>
+		// @ts-expect-error default values overrides for test scenario produce TS error
+		({
+			packageName: '@n8n/test-package',
+			credentialType: 'testCredentialType',
+			text: 'Test Quick connect',
+			quickConnectType: 'backend',
+			serviceName: 'Test Service',
+			consentText: 'Allow access?',
+			backendFlowConfig: {
+				secret: 'test-secret',
+			},
+			...overrides,
+		});
 
 	const createMockHandler = (
 		credentialType: string,
@@ -73,12 +84,20 @@ describe('QuickConnectService', () => {
 			handlerRegistry.register(handler);
 			credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
 			credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'cred-123' } as never);
+			credentialsService.getOne.mockResolvedValue(mockDecryptedCredential as never);
 
 			const result = await service.createCredential('testCredentialType', mockUser);
 
-			expect(result).toEqual({ id: 'cred-123' });
+			expect(result).toEqual({
+				data: {
+					apiKey: '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6',
+				},
+				id: 'cred-123',
+				name: 'Test Service (Quick connect)',
+				type: 'testCredentialType',
+			});
 			// eslint-disable-next-line @typescript-eslint/unbound-method
-			expect(handler.getCredentialData).toHaveBeenCalledWith(option);
+			expect(handler.getCredentialData).toHaveBeenCalledWith(option, mockUser);
 			// eslint-disable-next-line @typescript-eslint/unbound-method
 			expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(
 				{
@@ -89,6 +108,12 @@ describe('QuickConnectService', () => {
 				},
 				mockUser,
 			);
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(credentialsService.getOne).toHaveBeenCalledWith(
+				mockUser,
+				mockDecryptedCredential.id,
+				true,
+			);
 		});
 
 		it('should pass projectId to credential service when provided', async () => {
@@ -98,6 +123,7 @@ describe('QuickConnectService', () => {
 			handlerRegistry.register(handler);
 			credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
 			credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'cred-123' } as never);
+			credentialsService.getOne.mockResolvedValue(mockDecryptedCredential as never);
 
 			await service.createCredential('testCredentialType', mockUser, 'project-456');
 
@@ -203,10 +229,18 @@ describe('QuickConnectService', () => {
 				{ type: 'differentCredentialType' } as never,
 			]);
 			credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'cred-123' } as never);
+			credentialsService.getOne.mockResolvedValue(mockDecryptedCredential as never);
 
 			const result = await service.createCredential('testCredentialType', mockUser);
 
-			expect(result).toEqual({ id: 'cred-123' });
+			expect(result).toEqual({
+				data: {
+					apiKey: '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6',
+				},
+				id: 'cred-123',
+				name: 'Test Service (Quick connect)',
+				type: 'testCredentialType',
+			});
 		});
 	});
 });

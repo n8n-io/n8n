@@ -41,6 +41,17 @@ export type CredentialsStore = ReturnType<typeof useCredentialsStore>;
 export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const state = ref<ICredentialsState>({ credentialTypes: {}, credentials: {} });
 
+	type CredentialTestStatus = 'pending' | 'success' | 'error';
+	const credentialTestResults = ref(new Map<string, CredentialTestStatus>());
+
+	const isCredentialTestedOk = (id: string): boolean => {
+		return credentialTestResults.value.get(id) === 'success';
+	};
+
+	const isCredentialTestPending = (id: string): boolean => {
+		return credentialTestResults.value.get(id) === 'pending';
+	};
+
 	const rootStore = useRootStore();
 
 	// ---------------------------------------------------------------------------
@@ -331,6 +342,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		data: ICredentialsDecrypted,
 		projectId?: string,
 		uiContext?: string,
+		options?: { skipStoreUpdate?: boolean },
 	): Promise<ICredentialsResponse> => {
 		const settingsStore = useSettingsStore();
 		const credential = await credentialsApi.createNewCredential(rootStore.restApiContext, {
@@ -347,16 +359,18 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			credential.homeProject = data.homeProject as ProjectSharingData;
 		}
 
-		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
-			upsertCredential(credential);
-			if (data.sharedWithProjects) {
-				await setCredentialSharedWith({
-					credentialId: credential.id,
-					sharedWithProjects: data.sharedWithProjects,
-				});
+		if (!options?.skipStoreUpdate) {
+			if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
+				upsertCredential(credential);
+				if (data.sharedWithProjects) {
+					await setCredentialSharedWith({
+						credentialId: credential.id,
+						sharedWithProjects: data.sharedWithProjects,
+					});
+				}
+			} else {
+				upsertCredential(credential);
 			}
-		} else {
-			upsertCredential(credential);
 		}
 		return credential;
 	};
@@ -366,6 +380,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		id: string;
 	}): Promise<ICredentialsResponse> => {
 		const { id, data } = params;
+		credentialTestResults.value.delete(id);
 		const credential = await credentialsApi.updateCredential(rootStore.restApiContext, id, data);
 
 		upsertCredential(credential);
@@ -378,6 +393,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		if (deleted) {
 			const { [id]: deletedCredential, ...rest } = state.value.credentials;
 			state.value.credentials = rest;
+			credentialTestResults.value.delete(id);
 		}
 	};
 
@@ -392,7 +408,16 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const testCredential = async (
 		data: ICredentialsDecrypted,
 	): Promise<INodeCredentialTestResult> => {
-		return await credentialsApi.testCredential(rootStore.restApiContext, { credentials: data });
+		if (data.id) {
+			credentialTestResults.value.set(data.id, 'pending');
+		}
+		const result = await credentialsApi.testCredential(rootStore.restApiContext, {
+			credentials: data,
+		});
+		if (data.id) {
+			credentialTestResults.value.set(data.id, result.status === 'OK' ? 'success' : 'error');
+		}
+		return result;
 	};
 
 	const getNewCredentialName = async (params: { credentialTypeName: string }): Promise<string> => {
@@ -452,6 +477,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	return {
 		state,
+		credentialTestResults,
+		isCredentialTestedOk,
+		isCredentialTestPending,
 		getCredentialOwnerName,
 		getCredentialsByType,
 		getCredentialById,

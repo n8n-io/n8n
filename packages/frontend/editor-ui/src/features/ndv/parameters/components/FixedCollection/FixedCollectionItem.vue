@@ -137,7 +137,12 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 		>
 			<N8nActionDropdown :items="pickerDropdownItems" @select="emit('toggleOptionalValue', $event)">
 				<template #activator>
-					<N8nButton type="highlightFill" icon="plus" :label="addOptionalFieldButtonText" />
+					<N8nButton
+						class="n8n-button--highlightFill"
+						variant="subtle"
+						icon="plus"
+						:label="addOptionalFieldButtonText"
+					/>
 				</template>
 			</N8nActionDropdown>
 		</div>

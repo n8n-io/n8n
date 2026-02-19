@@ -145,9 +145,8 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			>
 				<header v-if="isClipboardSupported">
 					<N8nButton
-						type="tertiary"
-						:text="true"
-						size="mini"
+						variant="ghost"
+						size="xsmall"
 						data-test-id="assistant-copy-snippet-button"
 						@click="onCopyButtonClick(message.codeSnippet, $event)"
 					>
@@ -262,6 +261,11 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 .renderedContent {
 	p {
 		margin: 0;
+	}
+
+	// Hide horizontal rules - they don't look good in chat messages
+	hr {
+		display: none;
 	}
 
 	// Add top padding to strong elements only when there's content before them
