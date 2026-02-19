@@ -9,8 +9,8 @@ import {
 } from 'n8n-workflow';
 
 import type { N8nJsonLoader } from '@n8n/ai-utilities';
+import { MemoryVectorStoreManager } from '@n8n/ai-utilities';
 
-import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
 import { processDocuments } from '../shared/processDocuments';
 
 // This node is deprecated. Use VectorStoreInMemory instead.

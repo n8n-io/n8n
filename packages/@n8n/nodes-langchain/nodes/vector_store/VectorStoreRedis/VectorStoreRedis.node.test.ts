@@ -20,9 +20,6 @@ jest.mock('@n8n/ai-utilities', () => ({
 	N8nBinaryLoader: class {},
 	N8nJsonLoader: class {},
 	logWrapper: (fn: any) => fn,
-}));
-// Mock the vector store node factory to avoid deep imports but preserve passed methods
-jest.mock('../shared/createVectorStoreNode/createVectorStoreNode', () => ({
 	createVectorStoreNode: (config: any) =>
 		class BaseNode {
 			async getVectorStoreClient(...args: any[]) {
@@ -33,6 +30,7 @@ jest.mock('../shared/createVectorStoreNode/createVectorStoreNode', () => ({
 			}
 		},
 }));
+
 jest.mock('redis', () => ({ createClient: jest.fn() }));
 
 import { createClient } from 'redis';

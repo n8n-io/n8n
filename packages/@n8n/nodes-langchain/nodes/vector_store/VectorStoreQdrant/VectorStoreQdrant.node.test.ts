@@ -22,10 +22,6 @@ jest.mock('@n8n/ai-utilities', () => ({
 	N8nBinaryLoader: class {},
 	N8nJsonLoader: class {},
 	logWrapper: (fn: unknown) => fn,
-}));
-
-// Mock the vector store node factory
-jest.mock('../shared/createVectorStoreNode/createVectorStoreNode', () => ({
 	createVectorStoreNode: (config: {
 		getVectorStoreClient: (...args: unknown[]) => unknown;
 		populateVectorStore: (...args: unknown[]) => unknown;
@@ -44,7 +40,7 @@ jest.mock('./Qdrant.utils', () => ({
 	createQdrantClient: jest.fn(),
 }));
 
-jest.mock('../shared/createVectorStoreNode/methods/listSearch', () => ({
+jest.mock('../shared/methods/listSearch', () => ({
 	qdrantCollectionsSearch: jest.fn(),
 }));
 
@@ -56,7 +52,6 @@ import { QdrantVectorStore } from '@langchain/qdrant';
 
 import * as QdrantNode from './VectorStoreQdrant.node';
 import { createQdrantClient } from './Qdrant.utils';
-import { metadataFilterField } from '@n8n/ai-utilities';
 
 const MockCreateQdrantClient = createQdrantClient as jest.MockedFunction<typeof createQdrantClient>;
 const MockQdrantVectorStore = QdrantVectorStore as jest.MockedClass<typeof QdrantVectorStore>;

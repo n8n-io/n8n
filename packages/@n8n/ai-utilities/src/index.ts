@@ -34,6 +34,8 @@ export {
 	createZodSchemaFromArgs,
 	extractFromAIParameters,
 } from './utils/fromai-tool-factory';
+export { createVectorStoreNode } from './utils/vector-store/createVectorStoreNode/createVectorStoreNode';
+export { MemoryVectorStoreManager } from './utils/vector-store/MemoryManager/MemoryVectorStoreManager';
 
 // Type guards
 export {
