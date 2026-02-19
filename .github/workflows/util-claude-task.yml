@@ -7,6 +7,10 @@ on:
         description: 'Task description - what should Claude do?'
         required: true
         type: string
+      user_token:
+        description: 'Your GitHub PAT (required for PR authorship - you cannot approve PRs you author)'
+        required: false
+        type: string
       resumeUrl:
         description: 'Optional callback URL to call with the result when the workflow completes'
         required: false
@@ -21,10 +25,6 @@ on:
         required: false
         type: string
         default: 'claude-sonnet-4-5-20250929'
-      user_token:
-        description: 'Your GitHub PAT (required for PR authorship - you cannot approve PRs you author)'
-        required: false
-        type: string
       ref:
         description: 'Git ref (branch/tag/SHA) to check out and work on'
         required: false
