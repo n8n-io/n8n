@@ -24,6 +24,8 @@ import dateformat from 'dateformat';
 import { onMounted, ref, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
 
+import RoleAssigneesPopover from './RoleAssigneesPopover.vue';
+
 const { showError, showMessage } = useToast();
 
 const rolesStore = useRolesStore();
@@ -58,7 +60,6 @@ const headers = ref<Array<TableHeader<Role>>>([
 		key: 'usedByUsers',
 		disableSort: true,
 		align: 'end',
-		value: (item: Role) => item.usedByUsers ?? 0,
 		width: 75,
 		resize: false,
 	},
@@ -261,6 +262,9 @@ function addRole() {
 					<template v-else>
 						<N8nIcon icon="user-pen" /> {{ i18n.baseText('projectRoles.literal.custom') }}</template
 					>
+				</template>
+				<template #[`item.usedByUsers`]="{ item }">
+					<RoleAssigneesPopover :role-slug="item.slug" :count="item.usedByUsers ?? 0" />
 				</template>
 				<template #[`item.actions`]="{ item }">
 					<N8nActionToggle

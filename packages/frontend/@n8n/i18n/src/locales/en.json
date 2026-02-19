@@ -2363,6 +2363,8 @@
 	"projectRoles.sourceControl.table.type": "Type",
 	"projectRoles.sourceControl.table.assignedTo": "Assigned to",
 	"projectRoles.sourceControl.table.lastEdited": "Last edited",
+	"projectRoles.assignees.title": "Assigned users",
+	"projectRoles.assignees.noAssignees": "No users assigned to this role",
 	"projectRoles.backToRoleList": "Back to role list",
 	"projectRoles.newRole": "New Role",
 	"projectRoles.addRole": "Add role",

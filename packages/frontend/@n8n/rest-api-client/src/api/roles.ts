@@ -1,4 +1,4 @@
-import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
+import type { CreateRoleDto, RoleAssigneeDto, UpdateRoleDto } from '@n8n/api-types';
 import type { AllRolesMap, Role } from '@n8n/permissions';
 
 import type { IRestApiContext } from '../types';
@@ -32,4 +32,11 @@ export const updateProjectRole = async (
 
 export const deleteProjectRole = async (context: IRestApiContext, slug: string): Promise<Role> => {
 	return await makeRestApiRequest(context, 'DELETE', `/roles/${slug}`);
+};
+
+export const getRoleAssignees = async (
+	context: IRestApiContext,
+	slug: string,
+): Promise<RoleAssigneeDto[]> => {
+	return await makeRestApiRequest(context, 'GET', `/roles/${encodeURIComponent(slug)}/users`);
 };

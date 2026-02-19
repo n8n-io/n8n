@@ -1,6 +1,6 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { RoleRepository, ScopeRepository } from '@n8n/db';
+import { ProjectRelationRepository, RoleRepository, ScopeRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { RoleCacheService } from '@/services/role-cache.service';
@@ -14,10 +14,12 @@ describe('RoleService.rolesWithScope', () => {
 	const roleCacheService = mockInstance(RoleCacheService);
 	const logger = mockInstance(Logger);
 
+	const projectRelationRepository = mockInstance(ProjectRelationRepository);
 	const roleService = new RoleService(
 		licenseState,
 		roleRepository,
 		scopeRepository,
+		projectRelationRepository,
 		roleCacheService,
 		logger,
 	);

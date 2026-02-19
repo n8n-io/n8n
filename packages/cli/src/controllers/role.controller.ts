@@ -1,4 +1,10 @@
-import { CreateRoleDto, RoleGetQueryDto, RoleListQueryDto, UpdateRoleDto } from '@n8n/api-types';
+import {
+	CreateRoleDto,
+	RoleGetQueryDto,
+	RoleListQueryDto,
+	UpdateRoleDto,
+	type RoleAssigneeDto,
+} from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -34,6 +40,16 @@ export class RoleController {
 			credential: allRoles.filter((r) => r.roleType === 'credential'),
 			workflow: allRoles.filter((r) => r.roleType === 'workflow'),
 		};
+	}
+
+	@Get('/:slug/users')
+	@GlobalScope('role:manage')
+	async getRoleAssignees(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('slug') slug: string,
+	): Promise<RoleAssigneeDto[]> {
+		return await this.roleService.getUsersForRole(slug);
 	}
 
 	@Get('/:slug')

@@ -76,6 +76,30 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 		return [...new Set(rows.map((r) => r.userId))];
 	}
 
+	/** Returns users assigned to a specific role, along with which project they're in */
+	async findUsersByRoleSlug(roleSlug: string) {
+		return await this.createQueryBuilder('pr')
+			.innerJoin('pr.user', 'user')
+			.innerJoin('pr.project', 'project')
+			.select([
+				'user.id AS "userId"',
+				'user.email AS "email"',
+				'user.firstName AS "firstName"',
+				'user.lastName AS "lastName"',
+				'project.id AS "projectId"',
+				'project.name AS "projectName"',
+			])
+			.where('pr.role = :roleSlug', { roleSlug })
+			.getRawMany<{
+				userId: string;
+				email: string;
+				firstName: string;
+				lastName: string;
+				projectId: string;
+				projectName: string;
+			}>();
+	}
+
 	async findAllByUser(userId: string) {
 		return await this.find({
 			where: {

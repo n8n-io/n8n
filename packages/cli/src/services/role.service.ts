@@ -8,6 +8,7 @@ import {
 	ListQueryDb,
 	ScopesField,
 	ProjectRelation,
+	ProjectRelationRepository,
 	RoleRepository,
 	Role,
 	Scope as DBScope,
@@ -45,6 +46,7 @@ export class RoleService {
 		private readonly license: LicenseState,
 		private readonly roleRepository: RoleRepository,
 		private readonly scopeRepository: ScopeRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleCacheService: RoleCacheService,
 		private readonly logger: Logger,
 	) {}
@@ -82,6 +84,17 @@ export class RoleService {
 			return this.dbRoleToRoleDTO(role, usedByUsers);
 		}
 		throw new NotFoundError('Role not found');
+	}
+
+	async getUsersForRole(slug: string) {
+		const role = await this.roleRepository.findBySlug(slug);
+		if (!role) {
+			throw new NotFoundError('Role not found');
+		}
+		if (role.roleType !== 'project') {
+			return [];
+		}
+		return await this.projectRelationRepository.findUsersByRoleSlug(slug);
 	}
 
 	async removeCustomRole(slug: string) {

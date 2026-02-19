@@ -93,6 +93,7 @@ export { createHeartbeatMessage, heartbeatMessageSchema } from './push/heartbeat
 export type { SendWorkerStatusMessage } from './push/worker';
 
 export type { BannerName } from './schemas/banner-name.schema';
+export type { RoleAssigneeDto } from './schemas/role-assignee.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema } from './schemas/password.schema';
 export {
