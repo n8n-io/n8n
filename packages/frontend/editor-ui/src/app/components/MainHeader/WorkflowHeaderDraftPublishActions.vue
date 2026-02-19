@@ -155,16 +155,7 @@ const saveBeforePublish = async () => {
 	return saved;
 };
 
-const onPublishButtonClick = async () => {
-	// If there are unsaved changes, save the workflow first
-	if (uiStore.stateIsDirty || props.isNewWorkflow) {
-		const saved = await saveBeforePublish();
-		if (!saved) {
-			// If save failed, don't open the modal
-			return;
-		}
-	}
-
+const onPublishButtonClick = () => {
 	uiStore.openModalWithData({
 		name: WORKFLOW_PUBLISH_MODAL_KEY,
 		data: {},
@@ -279,7 +270,17 @@ const publishButtonConfig = computed(() => {
 		},
 	};
 
-	return configs[workflowPublishState.value];
+	const config = configs[workflowPublishState.value];
+
+	// Override tooltip if state is dirty (waiting for autosave)
+	if (uiStore.stateIsDirty && !props.isNewWorkflow) {
+		return {
+			...config,
+			tooltip: i18n.baseText('workflows.publish.waitingForSave'),
+		};
+	}
+
+	return config;
 });
 
 const shouldHidePublishButton = computed(() => {
@@ -292,7 +293,8 @@ const shouldDisablePublishButton = computed(() => {
 		props.isNewWorkflow ||
 		collaborationReadOnly.value ||
 		!publishButtonConfig.value.enabled ||
-		!hasPublishPermission.value
+		!hasPublishPermission.value ||
+		uiStore.stateIsDirty // Disable publish until all changes are saved
 	);
 });
 
@@ -439,7 +441,7 @@ const onUnpublish = () => {
 const onDropdownMenuSelect = async (action: VERSION_ACTIONS) => {
 	switch (action) {
 		case VERSION_ACTIONS.PUBLISH:
-			await onPublishButtonClick();
+			onPublishButtonClick();
 			break;
 		case VERSION_ACTIONS.NAME_VERSION:
 			await onNameVersion();
@@ -455,9 +457,7 @@ const onDropdownMenuSelect = async (action: VERSION_ACTIONS) => {
 useKeybindings({
 	shift_p: {
 		disabled: () => shouldDisablePublishButton.value,
-		run: async () => {
-			await onPublishButtonClick();
-		},
+		run: () => onPublishButtonClick(),
 	},
 	'ctrl+s': {
 		disabled: () =>

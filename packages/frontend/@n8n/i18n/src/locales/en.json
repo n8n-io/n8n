@@ -3600,6 +3600,7 @@
 	"workflows.published": "Published",
 	"workflows.publish.permissionDenied": "You don't have permission to publish this workflow",
 	"workflows.publish.personalSpaceRestricted": "Workflow publishing is disabled in personal spaces. Move the workflow to a team space to activate",
+	"workflows.publish.waitingForSave": "Waiting for changes to save...",
 	"workflows.unpublish": "Unpublish",
 	"workflows.project.add": "Add workflow to project",
 	"workflows.item.open": "Open",
