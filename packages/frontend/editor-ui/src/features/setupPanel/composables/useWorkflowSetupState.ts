@@ -292,12 +292,17 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		const credential = credentialsStore.getCredentialById(credentialId);
 		if (!credential) return;
 
+		// Capture the computed snapshot once before any mutations.
+		// assignCredentialToNode modifies the store, which recomputes credentialTypeStates.value
+		// with new object references — breaking the === identity check in the auto-assign loop.
+		const allCredStates = credentialTypeStates.value;
+
 		const credState = sourceNodeName
-			? credentialTypeStates.value.find(
+			? allCredStates.find(
 					(s) =>
 						s.credentialType === credentialType && s.nodes.some((n) => n.name === sourceNodeName),
 				)
-			: credentialTypeStates.value.find((s) => s.credentialType === credentialType);
+			: allCredStates.find((s) => s.credentialType === credentialType);
 		if (!credState) return;
 
 		const credentialDetails = { id: credentialId, name: credential.name };
@@ -329,7 +334,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			.filter(Boolean);
 
 		if (sourceUrls.length > 0) {
-			for (const otherCredState of credentialTypeStates.value) {
+			for (const otherCredState of allCredStates) {
 				if (otherCredState === credState || otherCredState.credentialType !== credentialType) {
 					continue;
 				}
