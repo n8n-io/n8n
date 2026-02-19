@@ -311,7 +311,7 @@ function handleSettingsChangeName(name: string) {
 			</N8nInput>
 
 			<!-- List view: scrolls itself, scrollbar in padding gutter -->
-			<div v-show="currentView === 'list'" :class="$style.listWrapper">
+			<div v-show="currentView === 'list'" data-tools-manager-modal :class="$style.listWrapper">
 				<div v-if="filteredConfiguredTools.length > 0" :class="$style.section">
 					<N8nHeading size="small" color="text-light" tag="h3">
 						{{
