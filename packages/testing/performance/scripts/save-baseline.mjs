@@ -38,6 +38,23 @@ if (!existsSync(resultsPath)) {
 // Load and sanitize paths
 const results = JSON.parse(readFileSync(resultsPath, 'utf-8'));
 
+// Check for failed benchmarks before saving as baseline
+let hasFailed = false;
+for (const file of results.files) {
+	for (const group of file.groups) {
+		for (const bench of group.benchmarks) {
+			if (bench.hz === undefined || !isFinite(bench.hz)) {
+				console.error(`❌ Benchmark failed (no valid measurements): ${group.fullName} > ${bench.name}`);
+				hasFailed = true;
+			}
+		}
+	}
+}
+if (hasFailed) {
+	console.error('\n❌ Refusing to save baseline: one or more benchmarks did not produce valid results\n');
+	process.exit(1);
+}
+
 for (const file of results.files) {
 	// Convert absolute path to relative
 	if (file.filepath) {

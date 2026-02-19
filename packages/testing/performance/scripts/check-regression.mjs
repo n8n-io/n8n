@@ -44,6 +44,23 @@ for (const file of baseline.files) {
 	}
 }
 
+// Check for failed benchmarks (no valid measurements)
+let hasFailed = false;
+for (const file of current.files) {
+	for (const group of file.groups) {
+		for (const bench of group.benchmarks) {
+			if (bench.hz === undefined || !isFinite(bench.hz)) {
+				console.error(`❌ Benchmark failed (no valid measurements): ${group.fullName} > ${bench.name}`);
+				hasFailed = true;
+			}
+		}
+	}
+}
+if (hasFailed) {
+	console.error('\n❌ FAILED: One or more benchmarks did not produce valid results\n');
+	process.exit(1);
+}
+
 // Compare results
 const results = [];
 let hasRegression = false;
