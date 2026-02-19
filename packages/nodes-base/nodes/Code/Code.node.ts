@@ -1,14 +1,12 @@
-/* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
 import { NodesConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import set from 'lodash/set';
 import {
 	NodeConnectionTypes,
+	UnexpectedError,
 	UserError,
 	type CodeExecutionMode,
 	type CodeNodeEditorLanguage,
 	type IExecuteFunctions,
-	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
@@ -17,14 +15,9 @@ type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';
 
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
-import { JavaScriptSandbox } from './JavaScriptSandbox';
 import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
 import { PythonRunnerUnavailableError } from './python-runner-unavailable.error';
 import { PythonTaskRunnerSandbox } from './PythonTaskRunnerSandbox';
-import { getSandboxContext } from './Sandbox';
-import { addPostExecutionWarning, standardizeOutput } from './utils';
-
-const { CODE_ENABLE_STDOUT } = process.env;
 
 class PythonDisabledError extends UserError {
 	constructor() {
@@ -206,90 +199,6 @@ export class Code implements INodeType {
 			return [await sandbox.runUsingIncomingItems()];
 		}
 
-		const getSandbox = (index = 0) => {
-			const code = this.getNodeParameter(codeParameterName, index) as string;
-
-			const context = getSandboxContext.call(this, index);
-			if (nodeMode === 'runOnceForAllItems') {
-				context.items = context.$input.all();
-			} else {
-				context.item = context.$input.item;
-			}
-
-			const sandbox = new JavaScriptSandbox(context, code, this.helpers);
-			sandbox.on(
-				'output',
-				workflowMode === 'manual'
-					? this.sendMessageToUI.bind(this)
-					: CODE_ENABLE_STDOUT === 'true'
-						? (...args) =>
-								console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args)
-						: () => {},
-			);
-			return sandbox;
-		};
-
-		const inputDataItems = this.getInputData();
-
-		// ----------------------------------
-		//        runOnceForAllItems
-		// ----------------------------------
-
-		if (nodeMode === 'runOnceForAllItems') {
-			const sandbox = getSandbox();
-			let items: INodeExecutionData[];
-			try {
-				items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
-			} catch (error) {
-				if (!this.continueOnFail()) {
-					set(error, 'node', node);
-					throw error;
-				}
-				items = [{ json: { error: error.message } }];
-			}
-
-			for (const item of items) {
-				standardizeOutput(item.json);
-			}
-
-			addPostExecutionWarning(this, items, inputDataItems?.length);
-			return [items];
-		}
-
-		// ----------------------------------
-		//        runOnceForEachItem
-		// ----------------------------------
-
-		const returnData: INodeExecutionData[] = [];
-
-		for (let index = 0; index < inputDataItems.length; index++) {
-			const sandbox = getSandbox(index);
-			let result: INodeExecutionData | undefined;
-			try {
-				result = await sandbox.runCodeEachItem(index);
-			} catch (error) {
-				if (!this.continueOnFail()) {
-					set(error, 'node', node);
-					throw error;
-				}
-				returnData.push({
-					json: { error: error.message },
-					pairedItem: {
-						item: index,
-					},
-				});
-			}
-
-			if (result) {
-				returnData.push({
-					json: standardizeOutput(result.json),
-					pairedItem: { item: index },
-					...(result.binary && { binary: result.binary }),
-				});
-			}
-		}
-
-		addPostExecutionWarning(this, returnData, inputDataItems?.length);
-		return [returnData];
+		throw new UnexpectedError(`Unsupported language: ${language as string}`);
 	}
 }
