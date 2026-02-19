@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { IExecutionDb } from '@n8n/db';
-import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
+import type { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
 import {
 	ExecutionRedactionService,
