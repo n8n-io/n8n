@@ -23,12 +23,14 @@ const onViewPlans = async () => {
 	>
 		<div :class="$style.content">
 			<N8nText tag="p" size="medium">
-				{{
-					i18n.baseText('projects.settings.role.upgrade.custom.body').replace('{documentation}', '')
+				{{ i18n.baseText('projects.settings.role.upgrade.custom.body').split('{documentation}')[0]
+				}}<N8nLink :href="CUSTOM_ROLES_DOCS_URL" :new-window="true">{{
+					i18n.baseText('generic.documentation')
+				}}</N8nLink
+				>{{
+					i18n.baseText('projects.settings.role.upgrade.custom.body').split('{documentation}')[1] ||
+					''
 				}}
-				<N8nLink :href="CUSTOM_ROLES_DOCS_URL" :new-window="true">
-					{{ i18n.baseText('generic.documentation') }}
-				</N8nLink>
 			</N8nText>
 		</div>
 		<template #footer>
