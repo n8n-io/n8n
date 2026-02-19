@@ -77,8 +77,9 @@ export async function terminate() {
 				const bootstrap = await new Connection(getBootstrapDBOptions()).initialize();
 				await bootstrap.query(`DROP DATABASE IF EXISTS "${testDbName}"`);
 				await bootstrap.destroy();
-			} catch {
+			} catch (error) {
 				// Best effort - don't fail tests over cleanup
+				console.warn(`Failed to drop test database "${testDbName}":`, error);
 			}
 		}
 		testDbName = undefined;
