@@ -14,8 +14,8 @@ const showCompleted = ref(true);
 			<SetupPanelCards :show-completed="showCompleted" />
 		</div>
 		<footer :class="$style.footer" data-test-id="setup-panel-footer">
-			<N8nSwitch2 v-model="showCompleted" size="small" />
 			<N8nText :class="$style['toggle-label']" tag="label" size="small">
+				<N8nSwitch2 v-model="showCompleted" size="small" />
 				{{ i18n.baseText('setupPanel.showCompleted') }}
 			</N8nText>
 		</footer>
@@ -59,5 +59,6 @@ const showCompleted = ref(true);
 	align-items: center;
 	gap: var(--spacing--2xs);
 	cursor: pointer;
+	user-select: none;
 }
 </style>
