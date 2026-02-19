@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onBeforeUnmount } from 'vue';
+import { computed, ref, onBeforeUnmount, onMounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nCallout, N8nText, N8nTooltip } from '@n8n/design-system';
 
@@ -113,6 +113,23 @@ const onSharedNodesHintLeave = () => {
 		setupPanelStore.setHighlightedNodes([firstNode.value.id]);
 	}
 };
+
+onMounted(() => {
+	if (props.state.selectedCredentialId) return;
+
+	const available = credentialsStore.getCredentialsByType(props.state.credentialType);
+	if (available.length === 0) return;
+
+	const mostRecent = available.reduce(
+		(best, current) => (best.updatedAt > current.updatedAt ? best : current),
+		available[0],
+	);
+
+	emit('credentialSelected', {
+		credentialType: props.state.credentialType,
+		credentialId: mostRecent.id,
+	});
+});
 
 onBeforeUnmount(() => {
 	setupPanelStore.clearHighlightedNodes();
