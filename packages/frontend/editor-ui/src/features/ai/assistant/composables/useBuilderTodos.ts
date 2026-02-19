@@ -1,6 +1,10 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { WorkflowValidationIssue } from '@/Interface';
 
 const PLACEHOLDER_PREFIX = '<__PLACEHOLDER';
@@ -125,6 +129,12 @@ export function useBuilderTodos() {
 	const workflowsStore = useWorkflowsStore();
 	const locale = useI18n();
 
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
+
 	/**
 	 * Checks if a node is disabled, either directly or through any ancestor node.
 	 * Sub-nodes (like AI models) won't execute if their parent node is disabled.
@@ -179,7 +189,7 @@ export function useBuilderTodos() {
 		}
 		visited.add(nodeName);
 
-		const pinData = workflowsStore.workflow.pinData;
+		const pinData = workflowDocumentStore.value?.pinData;
 
 		// Check if node has direct pinned data
 		if (pinData?.[nodeName]?.length) {
@@ -216,7 +226,7 @@ export function useBuilderTodos() {
 		// Explicit dependencies to ensure reactivity when parent node state changes.
 		// Vue's computed may not track dependencies accessed in recursive helper functions,
 		// so we access pinData and nodes here to register them as dependencies.
-		const _pinData = workflowsStore.workflow.pinData;
+		const _pinData = workflowDocumentStore.value?.pinData;
 		const _nodes = workflowsStore.workflow.nodes;
 		void _pinData;
 		void _nodes;
@@ -237,7 +247,7 @@ export function useBuilderTodos() {
 	const placeholderIssues = computed(() => {
 		// Explicit dependency to ensure reactivity when parent node state changes.
 		// Vue's computed may not track pinData accessed in recursive helper functions.
-		const _pinData = workflowsStore.workflow.pinData;
+		const _pinData = workflowDocumentStore.value?.pinData;
 		void _pinData;
 
 		const issues: WorkflowValidationIssue[] = [];
@@ -300,7 +310,7 @@ export function useBuilderTodos() {
 		if (workflowTodos.value.length > 0) return false;
 
 		// Check if any pinned data exists
-		const pinData = workflowsStore.workflow.pinData;
+		const pinData = workflowDocumentStore.value?.pinData;
 		if (!pinData || Object.keys(pinData).length === 0) return false;
 
 		// Check base workflow issues that would show if not for pinned data

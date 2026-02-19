@@ -26,6 +26,11 @@ export {
 	proxyFetch,
 	type AgentTimeoutOptions,
 } from './utils/http-proxy-agent';
+export type { ServerSentEventMessage } from './utils/sse';
+
+// Converters
+export { getParametersJsonSchema } from './converters/tool';
+export { fromLcMessage, toLcMessage, toLcContent, fromLcContent } from './converters/message';
 
 // Type guards
 export {
@@ -37,6 +42,7 @@ export {
 
 // Types
 export type { ChatModel, ChatModelConfig } from './types/chat-model';
+export type { ChatHistory, ChatMemory } from './types/memory';
 export type { GenerateResult, StreamChunk, TokenUsage, FinishReason } from './types/output';
 export type { Tool, ToolResult, ToolCall, ProviderTool } from './types/tool';
 export type {
@@ -51,16 +57,10 @@ export type {
 	MessageRole,
 } from './types/message';
 export type { JSONArray, JSONObject, JSONValue } from './types/json';
-export type { ServerSentEventMessage } from './utils/sse';
 
-export { LangchainAdapter } from './adapters/langchain-chat-model';
-
+// Chat model classes
+export { LangchainChatModelAdapter } from './adapters/langchain-chat-model';
 export { BaseChatModel } from './chat-model/base';
-
-export { getParametersJsonSchema } from './converters/tool';
-
-// Memory types
-export type { ChatHistory, ChatMemory } from './types/memory';
 
 // Memory base classes
 export { BaseChatHistory } from './memory/base-chat-history';
@@ -71,4 +71,4 @@ export { WindowedChatMemory, type WindowedChatMemoryConfig } from './memory/wind
 
 // Suppliers
 export { supplyMemory, type SupplyMemoryOptions } from './suppliers/supplyMemory';
-export { supplyModel, type SupplyModelOptions } from './suppliers/supplyModel';
+export { supplyModel, type SupplyModelOptions, type OpenAiModel } from './suppliers/supplyModel';
