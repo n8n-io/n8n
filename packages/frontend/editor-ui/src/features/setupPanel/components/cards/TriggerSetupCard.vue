@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onBeforeUnmount } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nCallout, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nCallout, N8nIcon, N8nTooltip, N8nButton } from '@n8n/design-system';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
@@ -62,6 +62,26 @@ const onCardMouseLeave = () => {
 onBeforeUnmount(() => {
 	setupPanelStore.clearHighlightedNodes();
 });
+
+const didSkip = ref(false);
+const skipButtonLabel = computed(() =>
+	didSkip.value
+		? i18n.baseText('setupPanel.demoData.skip')
+		: i18n.baseText('setupPanel.demoData.clear'),
+);
+const skipButtonTooltip = computed(() =>
+	didSkip.value
+		? i18n.baseText('setupPanel.demoData.skipTooltip')
+		: i18n.baseText('setupPanel.demoData.clearTooltip'),
+);
+
+function onSkipClick() {
+	if (didSkip.value) {
+	} else {
+	}
+
+	didSkip.value = !didSkip.value;
+}
 </script>
 
 <template>
@@ -97,6 +117,17 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 		</template>
 		<template #footer-actions>
+			<N8nTooltip v-if="state.demoData" placement="top">
+				<template #content>{{ skipButtonTooltip }}</template>
+				<N8nButton
+					data-test-id="node-setup-card-skip-button"
+					type="secondary"
+					:label="skipButtonLabel"
+					:icon="buttonIcon"
+					size="small"
+					@click="onSkipClick"
+				/>
+			</N8nTooltip>
 			<TriggerExecuteButton
 				:label="label"
 				:icon="buttonIcon"

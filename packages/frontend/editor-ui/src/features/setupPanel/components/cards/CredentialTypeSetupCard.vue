@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onBeforeUnmount } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nCallout, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nCallout, N8nText, N8nTooltip, N8nButton } from '@n8n/design-system';
 
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';

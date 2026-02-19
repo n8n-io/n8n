@@ -54,8 +54,8 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>, demoDataOverride?:
 			workflowsStore.workflow.meta?.templateId,
 		);
 
-		return template?.demoData || {};
-	});
+		return template?.demoData ?? {};
+	}, {});
 
 	const sourceNodes = computed(() => nodes?.value ?? workflowsStore.allNodes);
 
