@@ -278,6 +278,66 @@ describe('setupPanel.utils', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].nodes.map((n) => n.name)).toEqual(['SlackNode', 'SlackTrigger']);
 		});
+
+		it('should create separate cards for HTTP Request nodes with the same credential type', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				credentials: { httpHeaderAuth: { id: 'cred-2', name: 'Auth 2' } },
+			});
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+			);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].credentialType).toBe('httpHeaderAuth');
+			expect(result[0].nodes).toHaveLength(1);
+			expect(result[0].nodes[0].name).toBe('HTTP Request');
+			expect(result[1].credentialType).toBe('httpHeaderAuth');
+			expect(result[1].nodes).toHaveLength(1);
+			expect(result[1].nodes[0].name).toBe('HTTP Request1');
+		});
+
+		it('should still group non-HTTP-Request nodes normally alongside separate HTTP Request cards', () => {
+			const slackNode1 = createNode({
+				name: 'Slack1',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const slackNode2 = createNode({
+				name: 'Slack2',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				credentials: { httpHeaderAuth: { id: 'cred-2', name: 'Auth 2' } },
+			});
+
+			const result = groupCredentialsByType(
+				[
+					{ node: slackNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: slackNode2, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+			);
+
+			expect(result).toHaveLength(2);
+			// First entry: grouped non-HTTP nodes
+			expect(result[0].nodes.map((n) => n.name)).toEqual(['Slack1', 'Slack2']);
+			// Second entry: separate HTTP Request card
+			expect(result[1].nodes.map((n) => n.name)).toEqual(['HTTP Request']);
+		});
 	});
 
 	describe('isCredentialCardComplete', () => {
