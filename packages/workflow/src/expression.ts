@@ -231,6 +231,17 @@ export class Expression {
 	}
 
 	/**
+	 * Dispose the VM evaluator and release resources.
+	 * Should be called during application shutdown or test teardown.
+	 */
+	static async disposeVmEvaluator(): Promise<void> {
+		if (this.vmEvaluator) {
+			await this.vmEvaluator.dispose();
+			this.vmEvaluator = undefined;
+		}
+	}
+
+	/**
 	 * Get the active expression evaluation implementation.
 	 * Used for testing and verification.
 	 */
