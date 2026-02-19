@@ -3,7 +3,6 @@ import { watch } from 'vue';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import NodeSetupCard from './NodeSetupCard.vue';
-import DemoWorkflowCard from './DemoWorkflowCard.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -13,13 +12,9 @@ import type { NodeSetupState } from '../setupPanel.types';
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
-import { useSetupPanelStore } from '../setupPanel.store';
 
-const setupPanelStore = useSetupPanelStore();
-const { nodeSetupStates, isAllComplete, setCredential, unsetCredential, isReadyToDemo } =
-	useWorkflowSetupState();
+const { nodeSetupStates, isAllComplete, setCredential, unsetCredential } = useWorkflowSetupState();
 
-const wasReadyToDemo = isReadyToDemo.value;
 const credentialsStore = useCredentialsStore();
 
 const isCardLoading = (state: NodeSetupState): boolean => {
@@ -74,7 +69,6 @@ const onCredentialDeselected = (nodeName: string, credentialType: string) => {
 			</div>
 		</div>
 		<div v-else :class="$style['card-list']" data-test-id="setup-cards-list">
-			<DemoWorkflowCard v-if="wasReadyToDemo && setupPanelStore.isFeatureEnabled" />
 			<NodeSetupCard
 				v-for="(state, index) in nodeSetupStates"
 				:key="state.node.id"

@@ -1,7 +1,7 @@
 import { computed, watch, type Ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IPinData } from 'n8n-workflow';
 import type { NodeSetupState } from '../setupPanel.types';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -17,6 +17,9 @@ import { useI18n } from '@n8n/i18n';
 
 import { getNodeCredentialTypes, buildNodeSetupState } from '../setupPanel.utils';
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
+import { useSetupPanelStore } from '../setupPanel.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { computedAsync } from '@vueuse/core';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -24,10 +27,7 @@ import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
  * marking nodes as complete/incomplete based on credential selection and issues.
  * @param nodes Optional sub-set of nodes to check (defaults to full workflow)
  */
-export const useWorkflowSetupState = (
-	nodes?: Ref<INodeUi[]>,
-	pinnedData?: Ref<Record<string, unknown>>,
-) => {
+export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>, demoDataOverride?: Ref<IPinData>) => {
 	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -35,9 +35,27 @@ export const useWorkflowSetupState = (
 	const workflowState = injectWorkflowState();
 	const toast = useToast();
 	const i18n = useI18n();
+	const setupPanelStore = useSetupPanelStore();
+	const templatesStore = useTemplatesStore();
+
+	const demoData = computedAsync<IPinData>(async () => {
+		if (demoDataOverride?.value) return demoDataOverride.value;
+
+		if (
+			!setupPanelStore.isDemoDataEnabled ||
+			!workflowsStore.workflow.meta?.templateId ||
+			workflowsStore.workflow.meta?.templateCredsSetupCompleted === true
+		)
+			return {};
+
+		const template = await templatesStore.retrieveFullTemplateById(
+			workflowsStore.workflow.meta?.templateId,
+		);
+
+		return template?.demoData || {};
+	});
 
 	const sourceNodes = computed(() => nodes?.value ?? workflowsStore.allNodes);
-	const sourcePinnedData = computed(() => pinnedData?.value ?? workflowsStore.workflow.pinData);
 
 	const getCredentialDisplayName = (credentialType: string): string => {
 		const credentialTypeInfo = credentialsStore.getCredentialTypeByName(credentialType);
@@ -101,6 +119,7 @@ export const useWorkflowSetupState = (
 				isTrigger,
 				hasTriggerExecutedSuccessfully(node.name),
 				credentialsStore.isCredentialTestedOk,
+				demoData.value[node.name],
 			),
 		),
 	);
@@ -119,7 +138,7 @@ export const useWorkflowSetupState = (
 	});
 
 	const isReadyToDemo = computed(() =>
-		nodeSetupStates.value.every((x) => x.node.name in (sourcePinnedData.value ?? {})),
+		nodeSetupStates.value.every((x) => x.node.name in demoData.value),
 	);
 
 	const isAllComplete = computed(() => {

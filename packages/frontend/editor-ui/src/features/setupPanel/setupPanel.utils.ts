@@ -3,6 +3,7 @@ import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms'
 import { getNodeTypeDisplayableCredentials } from '@/app/utils/nodes/nodeTransforms';
 
 import type { NodeCredentialRequirement, NodeSetupState } from './setupPanel.types';
+import type { IPinData } from 'n8n-workflow';
 
 /**
  * Collects all credential types that a node requires from three sources:
@@ -89,6 +90,7 @@ export function buildNodeSetupState(
 	isTrigger = false,
 	hasTriggerExecuted = false,
 	isCredentialTestedOk?: (credentialId: string) => boolean,
+	demoData?: IPinData[string],
 ): NodeSetupState {
 	const credentialRequirements = credentialTypes.map((credType) =>
 		buildCredentialRequirement(node, credType, getCredentialDisplayName, credentialTypeToNodeNames),
@@ -107,5 +109,6 @@ export function buildNodeSetupState(
 		credentialRequirements,
 		isComplete,
 		isTrigger,
+		demoData,
 	};
 }

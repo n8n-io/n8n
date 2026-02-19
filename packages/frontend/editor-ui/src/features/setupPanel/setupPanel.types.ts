@@ -1,4 +1,5 @@
 import type { INodeUi } from '@/Interface';
+import type { IPinData } from 'n8n-workflow';
 
 export interface NodeCredentialRequirement {
 	credentialType: string;
@@ -14,4 +15,5 @@ export interface NodeSetupState {
 	credentialRequirements: NodeCredentialRequirement[];
 	isComplete: boolean;
 	isTrigger: boolean;
+	demoData?: IPinData[string];
 }
