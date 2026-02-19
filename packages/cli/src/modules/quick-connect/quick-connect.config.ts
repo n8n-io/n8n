@@ -1,7 +1,7 @@
 import { Config, Env } from '@n8n/config';
 import { z } from 'zod';
 
-const baseQuickConnectSchema = z.object({
+const baseQuickConnectOptionSchema = z.object({
 	packageName: z.string(),
 	credentialType: z.string(),
 	text: z.string(),
@@ -18,7 +18,7 @@ const pineconeQuickConnectOptionSchema = baseQuickConnectOptionSchema.extend({
 	}),
 });
 
-const firecrawlQuickConnectSchema = baseQuickConnectSchema.extend({
+const firecrawlQuickConnectSchema = baseQuickConnectOptionSchema.extend({
 	quickConnectType: z.literal('firecrawl'),
 	consentText: z.string(),
 	backendFlowConfig: z.object({
@@ -30,8 +30,8 @@ export type FirecrawlQuickConnect = z.infer<typeof firecrawlQuickConnectSchema>;
 
 const quickConnectOptionSchema = z.union([
 	firecrawlQuickConnectSchema,
-	pineconeQuickConnectOptionSchema
-	baseQuickConnectSchema,
+	pineconeQuickConnectOptionSchema,
+	baseQuickConnectOptionSchema,
 ]);
 
 export type QuickConnectOption = z.infer<typeof quickConnectOptionSchema>;

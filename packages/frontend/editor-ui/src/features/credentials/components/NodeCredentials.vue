@@ -22,7 +22,6 @@ import { useCredentialsStore } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
 import QuickConnectButton from '../quickConnect/components/QuickConnectButton.vue';
-import QuickConnectConsentDialog from '../quickConnect/components/QuickConnectConsentDialog.vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -89,14 +88,11 @@ const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 // Quick connect
 const {
+	loading: quickConnectLoading,
 	isQuickConnectEnabled,
 	getQuickConnectOption,
 	connect,
 	cancelConnect,
-	showConsentDialog,
-	consentDialogOption,
-	onConsentConfirm,
-	onConsentCancel,
 } = useQuickConnect();
 const { isGoogleOAuthType, hasManagedOAuthCredentials } = useCredentialOAuth();
 
@@ -540,7 +536,10 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 
 function getServiceName(credentialTypeName: string): string {
 	const displayName = credentialTypeNames.value[credentialTypeName] ?? credentialTypeName;
-	return displayName.replace(/\s+OAuth2?\s+API$/i, '').replace(/\s+API$/i, '');
+	return displayName
+		.replace(/\s+OAuth2?\s+API$/i, '')
+		.replace(/\s+API$/i, '')
+		.replace(/API$/i, '');
 }
 
 const quickConnectCredentialType = computed(() => {
@@ -560,23 +559,25 @@ function showStandardEmptyState(type: INodeCredentialDescription): boolean {
 
 async function onQuickConnectSignIn(credentialTypeName: string) {
 	subscribedToCredentialType.value = credentialTypeName;
+	const serviceName = getServiceName(credentialTypeName);
 
 	try {
 		const credential = await connect({
 			credentialTypeName,
 			nodeType: props.node.type,
 			source: 'node',
+			serviceName,
 		});
 
 		if (credential) {
 			onCredentialSelected(credentialTypeName, credential.id);
 			toast.showMessage({
-				title: i18n.baseText('quickConnect.credential.created.success'),
+				title: i18n.baseText('nodeCredentials.quickConnect.credential.created.success'),
 				type: 'success',
 			});
 		}
 	} catch (error) {
-		toast.showError(error, i18n.baseText('quickConnect.credential.created.error'));
+		toast.showError(error, i18n.baseText('nodeCredentials.quickConnect.credential.created.error'));
 	}
 }
 </script>
@@ -611,11 +612,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					data-test-id="quick-connect-empty-state"
 				>
 					<QuickConnectButton
+						:disabled="quickConnectLoading"
 						:credential-type-name="quickConnectCredentialType"
-						:service-name="
-							getQuickConnectOption(quickConnectCredentialType, props.node.type)?.serviceName ??
-							getServiceName(quickConnectCredentialType)
-						"
+						:service-name="getServiceName(quickConnectCredentialType)"
 						@click="onQuickConnectSignIn(quickConnectCredentialType)"
 					/>
 					<span :class="$style.setupManuallyContainer">
@@ -782,14 +781,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				</N8nNotice>
 			</N8nInputLabel>
 		</div>
-		<QuickConnectConsentDialog
-			v-if="consentDialogOption"
-			v-model:open="showConsentDialog"
-			:service-name="consentDialogOption.serviceName"
-			:consent-text="consentDialogOption.consentText ?? ''"
-			@confirm="onConsentConfirm"
-			@cancel="onConsentCancel"
-		/>
 	</div>
 </template>
 

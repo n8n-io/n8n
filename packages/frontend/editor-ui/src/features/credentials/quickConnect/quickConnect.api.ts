@@ -1,11 +1,14 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
+import type { QuickConnectOption } from '@n8n/api-types';
 
-import type { ICredentialsResponse } from '../credentials.types';
+type GetQuickConnectApiKeyResponse = {
+	apiKey: string;
+};
 
-export async function createQuickConnectCredential(
+export async function getQuickConnectApiKey(
 	context: IRestApiContext,
-	payload: { credentialType: string; projectId?: string },
-): Promise<ICredentialsResponse> {
-	return await makeRestApiRequest(context, 'POST', '/quick-connect/create', payload);
+	{ quickConnectType }: { quickConnectType: QuickConnectOption['quickConnectType'] },
+): Promise<GetQuickConnectApiKeyResponse> {
+	return await makeRestApiRequest(context, 'POST', '/quick-connect/api-key', { quickConnectType });
 }

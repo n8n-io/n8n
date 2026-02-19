@@ -1,4 +1,4 @@
-import type { CreateQuickConnectCredentialDto } from '@n8n/api-types';
+import type { GetQuickConnectApiKeyDto } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
@@ -21,7 +21,7 @@ describe('QuickConnectController', () => {
 				email: 'test@example.com',
 			});
 			const req = mock<AuthenticatedRequest>({ user });
-			const body: CreateQuickConnectCredentialDto = {
+			const body: GetQuickConnectApiKeyDto = {
 				quickConnectType: 'firecrawl',
 			};
 			const expectedResult = { apiKey: 'test-api-key' };
@@ -40,7 +40,7 @@ describe('QuickConnectController', () => {
 				email: 'test@example.com',
 			});
 			const req = mock<AuthenticatedRequest>({ user });
-			const body: CreateQuickConnectCredentialDto = {
+			const body: GetQuickConnectApiKeyDto = {
 				quickConnectType: 'invalid',
 			};
 			const error = new Error('Handler not configured');
@@ -57,7 +57,7 @@ describe('QuickConnectController', () => {
 				email: 'another@example.com',
 			});
 			const req = mock<AuthenticatedRequest>({ user });
-			const body: CreateQuickConnectCredentialDto = {
+			const body: GetQuickConnectApiKeyDto = {
 				quickConnectType: 'custom-provider',
 			};
 			const expectedResult = { apiKey: 'custom-api-key-xyz' };
