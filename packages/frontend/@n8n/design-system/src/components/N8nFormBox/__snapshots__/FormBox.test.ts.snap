@@ -92,6 +92,7 @@ exports[`FormBox > should render the component 1`] = `
                     <input
                       autocomplete="email"
                       class="input"
+                      id="name"
                       name="name"
                       placeholder=""
                       type="text"
@@ -177,6 +178,7 @@ exports[`FormBox > should render the component 1`] = `
                     <input
                       autocomplete="email"
                       class="input"
+                      id="email"
                       name="email"
                       placeholder=""
                       type="email"
@@ -262,6 +264,7 @@ exports[`FormBox > should render the component 1`] = `
                     <input
                       autocomplete="current-password"
                       class="input"
+                      id="password"
                       name="password"
                       placeholder=""
                       type="password"

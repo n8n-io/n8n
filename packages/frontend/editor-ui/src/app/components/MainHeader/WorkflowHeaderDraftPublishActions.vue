@@ -99,7 +99,7 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 	const hasBeenPublished = !!workflowsStore.workflow.activeVersion;
 	const hasChanges =
 		workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId ||
-		uiStore.stateIsDirty;
+		uiStore.hasUnsavedWorkflowChanges;
 
 	// Not published states
 	if (!hasBeenPublished) {
@@ -518,7 +518,7 @@ defineExpose({
 						:class="$style.groupButtonLeft"
 						:loading="autoSaveForPublish"
 						:disabled="!publishButtonConfig.enabled || shouldDisablePublishButton"
-						type="secondary"
+						variant="subtle"
 						data-test-id="workflow-open-publish-modal-button"
 						@click="onPublishButtonClick"
 					>
@@ -552,7 +552,7 @@ defineExpose({
 					<template #activator>
 						<N8nIconButton
 							:class="$style.groupButtonRight"
-							type="secondary"
+							variant="subtle"
 							icon="chevron-down"
 							data-test-id="version-menu-button"
 						/>

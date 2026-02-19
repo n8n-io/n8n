@@ -1,6 +1,6 @@
 {
   "name": "@n8n/node-cli",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "description": "Official CLI for developing community nodes for n8n",
   "bin": {
     "n8n-node": "bin/n8n-node.mjs"
@@ -58,7 +58,7 @@
     "prettier": "3.6.2",
     "prompts": "^2.4.2",
     "rimraf": "catalog:",
-    "ts-morph": "^26.0.0",
+    "ts-morph": "catalog:",
     "typescript-eslint": "^8.35.0"
   },
   "devDependencies": {

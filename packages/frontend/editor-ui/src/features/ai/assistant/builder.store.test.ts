@@ -2246,6 +2246,36 @@ describe('AI Builder store', () => {
 
 				expect(builderStore.builderMode).toBe('plan');
 			});
+
+			it('should not switch to plan mode after restoreToVersion truncates messages', async () => {
+				enablePlanModeExperiment();
+				const builderStore = useBuilderStore();
+
+				// Simulate a conversation with nodes on canvas (active build session)
+				builderStore.chatMessages = [
+					{ role: 'user', type: 'text', text: 'Build me something' } as never,
+					{ role: 'assistant', type: 'text', text: 'Done' } as never,
+				];
+				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				await nextTick();
+				expect(builderStore.builderMode).toBe('build');
+
+				// Simulate what happens during restore: chat messages are truncated to []
+				// and nodes are cleared. The watcher would normally switch to plan mode.
+				builderStore.chatMessages = [];
+				workflowsStore.workflow.nodes = [];
+				await nextTick();
+
+				// The watcher fires and sets plan mode
+				expect(builderStore.builderMode).toBe('plan');
+
+				// Simulate the nextTick override that onRestoreConfirm performs
+				builderStore.builderMode = 'build';
+				await nextTick();
+
+				// Should stay in build mode — the override sticks
+				expect(builderStore.builderMode).toBe('build');
+			});
 		});
 
 		describe('fetchExistingVersionIds and message enrichment', () => {

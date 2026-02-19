@@ -517,7 +517,9 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			});
 
 			expect(
-				getByText("You don't have permission to publish personal workflows"),
+				getByText(
+					'Workflow publishing is disabled in personal spaces. Move the workflow to a team space to activate',
+				),
 			).toBeInTheDocument();
 		});
 

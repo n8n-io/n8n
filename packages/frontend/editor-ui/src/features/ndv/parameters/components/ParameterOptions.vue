@@ -6,7 +6,8 @@ import {
 	type NodeParameterValueType,
 } from 'n8n-workflow';
 import { isValueExpression } from '@/app/utils/nodeTypesUtils';
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
+import { ChatHubToolContextKey } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { AI_TRANSFORM_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
@@ -59,13 +60,20 @@ const activeNode = computed(() => ndvStore.activeNode);
 const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
 const editor = computed(() => getParameterTypeOption(props.parameter, 'editor'));
+const isChatHubToolContext = inject(ChatHubToolContextKey, false);
+
 const shouldShowExpressionSelector = computed(
-	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
+	() =>
+		!isChatHubToolContext &&
+		!props.parameter.noDataExpression &&
+		props.showExpressionSelector &&
+		!props.isReadOnly,
 );
 const isInEmbeddedNdv = useIsInExperimentalNdv();
 const experimentalNdvStore = useExperimentalNdvStore();
 
 const canBeOpenedInFocusPanel = computed(() => {
+	if (isChatHubToolContext) return false;
 	if (props.parameter.isNodeSetting || props.isReadOnly || props.isContentOverridden) {
 		return false;
 	}
@@ -181,9 +189,8 @@ const onViewSelected = (selected: string) => {
 		</div>
 		<div v-else :class="$style.controlsContainer">
 			<N8nIconButton
+				variant="ghost"
 				v-if="canBeOpenedInFocusPanel"
-				type="tertiary"
-				text
 				size="small"
 				icon-size="large"
 				icon="panel-right"
@@ -221,9 +228,8 @@ const onViewSelected = (selected: string) => {
 			/>
 
 			<N8nIconButton
+				variant="ghost"
 				v-if="showDelete && onDelete"
-				type="tertiary"
-				text
 				size="small"
 				icon-size="large"
 				icon="trash-2"

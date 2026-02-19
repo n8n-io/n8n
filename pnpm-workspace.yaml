@@ -26,10 +26,10 @@ catalog:
   '@lezer/lr': 1.4.5
   '@azure/identity': 4.13.0
   '@langchain/anthropic': 1.1.3
-  '@langchain/community': 1.0.5
+  '@langchain/community': 1.1.14
   '@langchain/core': 1.1.8
   '@langchain/openai': 1.1.3
-  '@n8n/typeorm': 0.3.20-15
+  '@n8n/typeorm': 0.3.20-16
   '@n8n_io/ai-assistant-sdk': 1.20.0
   '@sentry/node': ^10.36.0
   '@types/basic-auth': ^1.1.3
@@ -40,7 +40,7 @@ catalog:
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
   '@vitest/coverage-v8': 3.2.4
-  axios: 1.12.0
+  axios: 1.13.5
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.3
@@ -68,12 +68,14 @@ catalog:
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
   simple-git: 3.28.0
+  stream-json: 1.9.1
   tsdown: ^0.16.5
+  ts-morph: ^27.0.2
   tsx: ^4.19.3
   typescript: 5.9.2
   uuid: 10.0.0
   vite: npm:rolldown-vite@latest
-  vm2: ^3.10.2
+  vm2: ^3.10.5
   vite-plugin-dts: ^4.5.4
   vitest: ^3.1.3
   vitest-mock-extended: ^3.1.0
@@ -113,11 +115,12 @@ catalogs:
     eslint-plugin-storybook: ^10.1.11
     storybook: ^10.1.11
   e2e:
-    '@playwright/test': 1.57.0
+    '@playwright/cli': 0.1.0
+    '@playwright/test': 1.58.0
     '@currents/playwright': ^1.15.3
     eslint-plugin-playwright: 2.2.2
-    playwright: 1.57.0
-    playwright-core: 1.57.0
+    playwright: 1.58.0
+    playwright-core: 1.58.0
   sentry:
     '@sentry/node': '^10.36.0'
     '@sentry/node-native': '^10.36.0'
@@ -141,3 +144,4 @@ minimumReleaseAgeExclude:
   - node-forge
   - vm2
   - tar
+  - qs

@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { watch } from 'vue';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import NodeSetupCard from './NodeSetupCard.vue';
 import DemoWorkflowCard from './DemoWorkflowCard.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import type { NodeSetupState } from '../setupPanel.types';
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -18,6 +20,15 @@ const { nodeSetupStates, isAllComplete, setCredential, unsetCredential, isReadyT
 	useWorkflowSetupState();
 
 const wasReadyToDemo = isReadyToDemo.value;
+const credentialsStore = useCredentialsStore();
+
+const isCardLoading = (state: NodeSetupState): boolean => {
+	return state.credentialRequirements.some(
+		(req) =>
+			req.selectedCredentialId &&
+			credentialsStore.isCredentialTestPending(req.selectedCredentialId),
+	);
+};
 
 watch(isAllComplete, (allComplete) => {
 	if (allComplete) {
@@ -68,6 +79,7 @@ const onCredentialDeselected = (nodeName: string, credentialType: string) => {
 				v-for="(state, index) in nodeSetupStates"
 				:key="state.node.id"
 				:state="state"
+				:loading="isCardLoading(state)"
 				:expanded="index === 0"
 				@credential-selected="onCredentialSelected(state.node.name, $event)"
 				@credential-deselected="onCredentialDeselected(state.node.name, $event)"

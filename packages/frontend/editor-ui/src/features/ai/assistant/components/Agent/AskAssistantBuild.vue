@@ -25,6 +25,7 @@ import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { VIEWS } from '@/app/constants';
 import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useErrorHandler } from '@/app/composables/useErrorHandler';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { jsonParse } from 'n8n-workflow';
@@ -398,11 +399,11 @@ watch(
 	},
 );
 
-// Reset initial generation flag when streaming ends
+// Reset initial generation flag and fit canvas when streaming ends
 // Note: Saving is handled by auto-save in NodeView.vue
 watch(
 	() => builderStore.streaming,
-	(isStreaming, wasStreaming) => {
+	async (isStreaming, wasStreaming) => {
 		// Only process when streaming just ended (was streaming, now not)
 		if (!wasStreaming || isStreaming) {
 			return;
@@ -410,6 +411,12 @@ watch(
 
 		if (builderStore.initialGeneration && workflowsStore.workflow.nodes.length > 0) {
 			builderStore.initialGeneration = false;
+		}
+
+		// Zoom to fit all nodes after generation completes
+		if (accumulatedNodeIdsToTidyUp.value.length > 0) {
+			await nextTick();
+			canvasEventBus.emit('fitView');
 		}
 	},
 );
@@ -423,6 +430,10 @@ async function onRestoreConfirm(versionId: string, messageId: string) {
 		if (!updatedWorkflow) {
 			return;
 		}
+
+		processedWorkflowUpdates.value.clear();
+		accumulatedNodeIdsToTidyUp.value = [];
+
 		builderStore.clearExistingWorkflow();
 		// Reload the workflow to reflect the restored state
 		nodeViewEventBus.emit('importWorkflowData', {
@@ -432,6 +443,9 @@ async function onRestoreConfirm(versionId: string, messageId: string) {
 			trackEvents: false,
 			setStateDirty: false,
 		});
+
+		await nextTick();
+		builderStore.builderMode = 'build';
 	} catch (e: unknown) {
 		toast.showMessage({
 			type: 'error',
