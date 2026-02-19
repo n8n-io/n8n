@@ -1,6 +1,7 @@
 import type { INodeUi } from '@/Interface';
 import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeTypeDisplayableCredentials } from '@/app/utils/nodes/nodeTransforms';
+import { HTTP_REQUEST_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 import type {
 	CredentialTypeSetupState,
@@ -50,8 +51,13 @@ export function groupCredentialsByType(
 
 	for (const { node, credentialTypes } of nodesWithCredentials) {
 		for (const credType of credentialTypes) {
-			const existing = map.get(credType);
-			if (existing) {
+			// HTTP Request nodes always get their own card (never grouped) because
+			// they can target completely different APIs while sharing a credential type.
+			const isHttpRequest = node.type === HTTP_REQUEST_NODE_TYPE;
+			const mapKey = isHttpRequest ? `${credType}:${node.name}` : credType;
+
+			const existing = map.get(mapKey);
+			if (existing && !isHttpRequest) {
 				existing.nodes.push(node);
 
 				const nodeIssues = node.issues?.credentials?.[credType];
@@ -79,7 +85,7 @@ export function groupCredentialsByType(
 				const issues = credentialIssues[credType];
 				const issueMessages = [issues ?? []].flat();
 
-				map.set(credType, {
+				map.set(mapKey, {
 					credentialType: credType,
 					credentialDisplayName: getCredentialDisplayName(credType),
 					selectedCredentialId,
