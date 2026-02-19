@@ -70,6 +70,8 @@ const TemplatesSearchView = async () =>
 	await import('@/features/workflows/templates/views/TemplatesSearchView.vue');
 const SettingsUsageAndPlan = async () =>
 	await import('@/features/settings/usage/views/SettingsUsageAndPlan.vue');
+const SettingsExecutionQuotas = async () =>
+	await import('@/features/settings/executionQuotas/views/SettingsExecutionQuotas.vue');
 const SettingsSso = async () => await import('@/features/settings/sso/views/SettingsSso.vue');
 const SignoutView = async () => await import('@/features/core/auth/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/features/settings/sso/views/SamlOnboarding.vue');
@@ -583,6 +585,28 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'migration-report',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'execution-quotas',
+				name: VIEWS.EXECUTION_QUOTAS,
+				component: SettingsExecutionQuotas,
+				meta: {
+					layout: 'settings',
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['project:update'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'execution-quotas',
 							};
 						},
 					},
