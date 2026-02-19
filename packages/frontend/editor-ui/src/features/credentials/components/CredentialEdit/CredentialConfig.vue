@@ -45,6 +45,8 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
+import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
+import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 
 type Props = {
 	mode: string;
@@ -58,17 +60,15 @@ type Props = {
 	authError?: string;
 	testedSuccessfully?: boolean;
 	isOAuthType?: boolean;
-	allOAuth2BasePropertiesOverridden?: boolean;
 	isOAuthConnected?: boolean;
 	isRetesting?: boolean;
 	requiredPropertiesFilled?: boolean;
-	showAuthTypeSelector?: boolean;
 	isManaged?: boolean;
 	isDynamicCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
 	isNewCredential?: boolean;
-	showManagedOAuthSelector?: boolean;
-	useCustomOAuth?: boolean;
+	managedOauthAvailable?: boolean;
+	useCustomOauth?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -85,7 +85,7 @@ const emit = defineEmits<{
 	retest: [];
 	oauth: [];
 	'update:isResolvable': [value: boolean];
-	managedOauthModeChange: [value: boolean];
+	'update:useCustomOauth': [value: boolean];
 }>();
 
 const credentialsStore = useCredentialsStore();
@@ -98,6 +98,7 @@ const chatPanelStore = useChatPanelStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const { isQuickConnectEnabled, getQuickConnectOption } = useQuickConnect();
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -204,6 +205,33 @@ const assistantAlreadyAsked = computed<boolean>(() => {
 	return assistantStore.isCredTypeActive(props.credentialType);
 });
 
+const canCreate = computed(() => isNewCredential.value && !!props.credentialPermissions.create);
+
+const canEdit = computed(() => {
+	return !isNewCredential.value && !!props.credentialPermissions.update;
+});
+
+const canWrite = computed(() => {
+	return canCreate.value || canEdit.value;
+});
+
+const serviceName = computed(() => {
+	const nodeType = ndvStore.activeNode?.type;
+
+	if (!nodeType) return appName.value;
+
+	const quickConnectOption = getQuickConnectOption(
+		credentialTypeName.value,
+		ndvStore.activeNode?.type,
+	);
+
+	if (quickConnectOption?.serviceName) {
+		return quickConnectOption.serviceName;
+	}
+
+	return appName.value;
+});
+
 function onDataChange(event: IUpdateInformation): void {
 	emit('update', event);
 }
@@ -255,15 +283,13 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			<FreeAiCreditsCallout :credential-type-name="credentialType?.name" />
 
 			<CredentialModeSelector
-				v-if="
-					((credentialPermissions.create && isNewCredential) || credentialPermissions.update) &&
-					((showAuthTypeSelector && isNewCredential) || (showManagedOAuthSelector && isOAuthType))
-				"
+				v-if="canCreate || (canEdit && isOAuthType)"
 				:credential-type="credentialType"
-				:use-custom-oauth="useCustomOAuth"
-				:show-managed-oauth-options="showManagedOAuthSelector && isOAuthType"
-				@auth-type-changed="onAuthTypeChange"
-				@update:use-custom-oauth="(val: boolean) => $emit('managedOauthModeChange', val)"
+				:use-custom-oauth="useCustomOauth"
+				:show-managed-oauth-options="managedOauthAvailable"
+				:is-new-credential="isNewCredential"
+				@update:auth-type="onAuthTypeChange"
+				@update:use-custom-oauth="emit('update:useCustomOauth', $event)"
 			/>
 
 			<N8nCallout
@@ -328,6 +354,16 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					/>
 					<GoogleAuthButton @click="$emit('oauth')" />
 				</template>
+				<template v-else-if="isQuickConnectEnabled" #button>
+					<QuickConnectButton
+						size="small"
+						:service-name="serviceName"
+						:credential-type-name="credentialType.name"
+						:label="i18n.baseText('credentialEdit.credentialConfig.reconnect')"
+						data-test-id="quick-connect-reconnect-button"
+						@click="$emit('oauth')"
+					/>
+				</template>
 			</Banner>
 
 			<Banner
@@ -347,7 +383,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					isDynamicCredentialsEnabled &&
 					// Only OAuth credentials can be dynamic for now, as they are the only ones with the managed authorize endpoint
 					isOAuthType &&
-					((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
+					canWrite
 				"
 				:class="$style.dynamicCredentials"
 				data-test-id="dynamic-credentials-section"
@@ -372,9 +408,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				</div>
 			</div>
 
-			<template
-				v-if="(credentialPermissions.create && isNewCredential) || credentialPermissions.update"
-			>
+			<template v-if="canWrite">
 				<div
 					v-if="isAskAssistantAvailable"
 					:class="$style.askAssistantButton"
@@ -388,7 +422,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				</div>
 
 				<CopyInput
-					v-if="isOAuthType && !allOAuth2BasePropertiesOverridden"
+					v-if="isOAuthType && useCustomOauth"
 					:label="i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 					:value="oAuthCallbackUrl"
 					:copy-button-text="i18n.baseText('credentialEdit.credentialConfig.clickToCopy')"
@@ -416,10 +450,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			</EnterpriseEdition>
 
 			<CredentialInputs
-				v-if="
-					credentialType &&
-					((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
-				"
+				v-if="credentialType && canWrite"
 				:credential-data="credentialData"
 				:credential-properties="credentialProperties"
 				:documentation-url="documentationUrl"
@@ -427,17 +458,27 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				@update="onDataChange"
 			/>
 
-			<OauthButton
-				v-if="
-					isOAuthType &&
-					requiredPropertiesFilled &&
-					!isOAuthConnected &&
-					((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
-				"
-				:is-google-o-auth-type="isGoogleOAuthType"
-				data-test-id="oauth-connect-button"
-				@click="$emit('oauth')"
-			/>
+			<template v-if="isOAuthType && !isOAuthConnected && canWrite">
+				<QuickConnectButton
+					v-if="isQuickConnectEnabled"
+					:service-name="serviceName"
+					:credential-type-name="credentialType.name"
+					:disabled="!requiredPropertiesFilled"
+					:disabled-tooltip="
+						i18n.baseText('credentialEdit.credentialConfig.oauthDisabledTooltip', {
+							interpolate: { service: serviceName },
+						})
+					"
+					data-test-id="quick-connect-button"
+					@click="$emit('oauth')"
+				/>
+				<OauthButton
+					v-else-if="requiredPropertiesFilled"
+					:is-google-o-auth-type="isGoogleOAuthType"
+					data-test-id="oauth-connect-button"
+					@click="$emit('oauth')"
+				/>
+			</template>
 
 			<N8nText v-if="isMissingCredentials" color="text-base" size="medium">
 				{{ i18n.baseText('credentialEdit.credentialConfig.missingCredentialType') }}

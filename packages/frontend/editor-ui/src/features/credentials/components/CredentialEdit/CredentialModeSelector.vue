@@ -1,202 +1,138 @@
 <script setup lang="ts">
-import ParameterInputFull from '@/features/ndv/parameters/components/ParameterInputFull.vue';
 import { useI18n } from '@n8n/i18n';
-import type { IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import {
-	getAuthTypeForNodeCredential,
-	getNodeAuthFields,
-	getNodeAuthOptions,
-	isAuthRelatedParameter,
-} from '@/app/utils/nodeTypesUtils';
-import type {
-	ICredentialType,
-	INodeProperties,
-	INodeTypeDescription,
-	NodeParameterValue,
-} from 'n8n-workflow';
-import { computed, onMounted, ref } from 'vue';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { computed } from 'vue';
 import { N8nButton, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import {
 	N8nDropdownMenu,
 	type DropdownMenuItemProps,
 } from '@n8n/design-system/v2/components/DropdownMenu';
+import { getNodeAuthOptions, getAuthTypeForNodeCredential } from '@/app/utils/nodeTypesUtils';
+import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 
-interface ModeOption {
+interface Option {
 	name: string;
-	value: string;
-	authValue: string;
-	isManaged?: boolean;
+	value: { oauthMode: 'managed' | 'custom' } | { type: string };
 }
 
 const props = defineProps<{
 	credentialType: ICredentialType;
 	useCustomOauth?: boolean;
 	showManagedOauthOptions?: boolean;
+	isNewCredential?: boolean;
 }>();
 
 const emit = defineEmits<{
-	authTypeChanged: [value: string];
+	'update:authType': [value: string];
 	'update:useCustomOauth': [value: boolean];
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const i18n = useI18n();
+const { isOAuthCredentialType } = useCredentialOAuth();
 
-const selectedAuthType = ref('');
-const authRelatedFieldsValues = ref<Record<string, NodeParameterValue>>({});
+const activeNode = computed(() => ndvStore.activeNode);
+const activeNodeType = computed<INodeTypeDescription | null>(() => {
+	if (!activeNode.value) return null;
+	return nodeTypesStore.getNodeType(activeNode.value.type, activeNode.value.typeVersion);
+});
 
-onMounted(() => {
-	if (activeNodeType.value?.credentials) {
-		const credentialsForType =
-			activeNodeType.value.credentials.find((cred) => cred.name === props.credentialType.name) ||
-			null;
-		const authOptionForCred = getAuthTypeForNodeCredential(
-			activeNodeType.value,
-			credentialsForType,
-		);
-		selectedAuthType.value = authOptionForCred?.value || '';
+const selectedAuthType = computed(() => {
+	const selectedCredentialDescription = activeNodeType.value?.credentials?.find(
+		(cred) => cred.name === props.credentialType.name,
+	);
+
+	return getAuthTypeForNodeCredential(activeNodeType.value, selectedCredentialDescription);
+});
+
+const isOAuthCredential = computed(() => isOAuthCredentialType(props.credentialType.name));
+const hasManagedOAuth = computed(() => isOAuthCredential.value && props.showManagedOauthOptions);
+
+const managedOAuthOptions = computed<Option[]>(() => [
+	{
+		name: i18n.baseText('credentialEdit.credentialConfig.oauthModeManaged'),
+		value: { oauthMode: 'managed' },
+	},
+	{
+		name: i18n.baseText('credentialEdit.credentialConfig.oauthModeCustom'),
+		value: { oauthMode: 'custom' },
+	},
+]);
+
+const options = computed<Option[]>(() => {
+	if (!props.isNewCredential && hasManagedOAuth.value) {
+		return managedOAuthOptions.value;
 	}
 
-	authRelatedFields.value.forEach((field) => {
-		authRelatedFieldsValues.value = {
-			...authRelatedFieldsValues.value,
-			[field.name]: field.default as NodeParameterValue,
+	const authOptions = getNodeAuthOptions(activeNodeType.value, activeNode.value?.typeVersion);
+
+	if (authOptions.length === 0 && hasManagedOAuth.value) {
+		return managedOAuthOptions.value;
+	}
+
+	return authOptions.flatMap<Option>((option) => {
+		if (props.showManagedOauthOptions && option.value === 'oAuth2') {
+			return managedOAuthOptions.value;
+		}
+
+		return {
+			name: option.name,
+			value: { type: option.value },
 		};
 	});
 });
 
-const activeNodeType = computed<INodeTypeDescription | null>(() => {
-	const activeNode = ndvStore.activeNode;
-	if (activeNode) {
-		return nodeTypesStore.getNodeType(activeNode.type, activeNode.typeVersion);
-	}
-	return null;
-});
-
-const authOptions = computed<NodeAuthenticationOption[]>(() => {
-	return getNodeAuthOptions(activeNodeType.value, ndvStore.activeNode?.typeVersion);
-});
-
-const filteredAuthOptions = computed<NodeAuthenticationOption[]>(() => {
-	return authOptions.value.filter((option) => shouldShowAuthOption(option));
-});
-
-const authRelatedFields = computed<INodeProperties[]>(() => {
-	const nodeAuthFields = getNodeAuthFields(activeNodeType.value);
-	return (
-		activeNodeType.value?.properties.filter((prop) =>
-			isAuthRelatedParameter(nodeAuthFields, prop),
-		) || []
-	);
-});
-
-const oauthAuthValue = computed(() => {
-	if (!props.showManagedOauthOptions) return null;
-	const oauthOption = filteredAuthOptions.value.find((opt) => opt.value === selectedAuthType.value);
-	if (!oauthOption) return filteredAuthOptions.value[0]?.value ?? null;
-	return oauthOption.value;
-});
-
-const combinedOptions = computed<ModeOption[]>(() => {
-	const result: ModeOption[] = [];
-
-	for (const opt of filteredAuthOptions.value) {
-		if (props.showManagedOauthOptions && oauthAuthValue.value === opt.value) {
-			result.push({
-				name: i18n.baseText('credentialEdit.credentialConfig.oauthModeManaged'),
-				value: `${opt.value}:managed`,
-				authValue: opt.value,
-				isManaged: true,
-			});
-			result.push({
-				name: i18n.baseText('credentialEdit.credentialConfig.oauthModeCustom'),
-				value: `${opt.value}:custom`,
-				authValue: opt.value,
-				isManaged: false,
-			});
-		} else {
-			result.push({
-				name: opt.name,
-				value: opt.value,
-				authValue: opt.value,
-			});
-		}
-	}
-
-	return result;
-});
-
-const selectedValue = computed(() => {
-	if (props.showManagedOauthOptions && oauthAuthValue.value === selectedAuthType.value) {
-		const suffix = props.useCustomOauth ? 'custom' : 'managed';
-		return `${selectedAuthType.value}:${suffix}`;
-	}
-	return selectedAuthType.value;
-});
-
-const currentOption = computed(() => {
-	return combinedOptions.value.find((opt) => opt.value === selectedValue.value);
+const showSelector = computed(() => options.value.length >= 2);
+const showDropdown = computed(() => options.value.length > 2);
+const selectedOption = computed(() => {
+	const selected = options.value.find((option) => isSelected(option.value)) ?? null;
+	return selected;
 });
 
 const otherOption = computed(() => {
-	if (combinedOptions.value.length !== 2) return null;
-	return combinedOptions.value.find((opt) => opt.value !== selectedValue.value) ?? null;
+	if (showDropdown.value) return null;
+	return options.value.find((option) => !isSelected(option.value)) ?? null;
 });
-
-const showSelector = computed(() => combinedOptions.value.length >= 2);
 
 const headingText = computed(() => {
-	if (currentOption.value?.isManaged === true) {
+	if (options.value.length > 2) {
+		return i18n.baseText('credentialEdit.credentialConfig.setupCredential');
+	}
+
+	if (props.showManagedOauthOptions) {
+		if (props.useCustomOauth) {
+			return i18n.baseText('credentialEdit.credentialConfig.oauthModeCustomTitle');
+		}
 		return i18n.baseText('credentialEdit.credentialConfig.oauthModeManagedTitle');
 	}
-	if (currentOption.value?.isManaged === false) {
-		return i18n.baseText('credentialEdit.credentialConfig.oauthModeCustomTitle');
-	}
-	return currentOption.value?.name ?? '';
+
+	return i18n.baseText('credentialEdit.credentialConfig.genericTitle', {
+		interpolate: { credential: selectedAuthType.value?.name ?? '' },
+	});
 });
 
-const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
-	return combinedOptions.value.map((opt) => ({
+const menuItems = computed<Array<DropdownMenuItemProps<Option['value']>>>(() => {
+	return options.value.map((opt) => ({
 		id: opt.value,
 		label: opt.name,
-		checked: opt.value === selectedValue.value,
+		checked: isSelected(opt.value),
 	}));
 });
 
-function shouldShowAuthOption(option: NodeAuthenticationOption): boolean {
-	if (authRelatedFields.value.length === 0) {
-		return true;
+function onOptionChange(value: Option['value']): void {
+	if (isSelected(value)) return;
+
+	if ('oauthMode' in value) {
+		const useCustomOauth = value.oauthMode === 'custom';
+		emit('update:useCustomOauth', useCustomOauth);
+		emit('update:authType', 'oAuth2');
+		return;
 	}
 
-	let shouldDisplay = false;
-	Object.keys(authRelatedFieldsValues.value).forEach((fieldName) => {
-		if (option.displayOptions?.show) {
-			if (
-				option.displayOptions.show[fieldName]?.includes(authRelatedFieldsValues.value[fieldName])
-			) {
-				shouldDisplay = true;
-				return;
-			}
-		}
-	});
-	return shouldDisplay;
-}
-
-function onOptionChange(value: string): void {
-	const option = combinedOptions.value.find((opt) => opt.value === value);
-	if (!option) return;
-
-	if (option.authValue !== selectedAuthType.value) {
-		selectedAuthType.value = option.authValue;
-		emit('authTypeChanged', option.authValue);
-	}
-
-	if (option.isManaged !== undefined) {
-		emit('update:useCustomOauth', !option.isManaged);
-	}
+	emit('update:authType', value.type);
 }
 
 function switchToOther(): void {
@@ -205,33 +141,32 @@ function switchToOther(): void {
 	}
 }
 
-function onAuthRelatedFieldChange(data: IUpdateInformation): void {
-	authRelatedFieldsValues.value = {
-		...authRelatedFieldsValues.value,
-		[data.name]: data.value as NodeParameterValue,
-	};
+function isSelected(option: Option['value']): boolean {
+	if ('oauthMode' in option) {
+		const selectedOAuthMode = props.useCustomOauth ? 'custom' : 'managed';
+		return isOAuthCredential.value && selectedOAuthMode === option.oauthMode;
+	}
+
+	if ('type' in option) {
+		return option.type === selectedAuthType.value?.value;
+	}
+
+	return false;
 }
 </script>
 
 <template>
 	<div v-if="showSelector" data-test-id="credential-mode-selector">
-		<div v-for="parameter in authRelatedFields" :key="parameter.name" class="mb-l">
-			<ParameterInputFull
-				:parameter="parameter"
-				:value="authRelatedFieldsValues[parameter.name] || parameter.default"
-				:path="parameter.name"
-				:display-options="false"
-				@update="onAuthRelatedFieldChange"
-			/>
-		</div>
-
 		<div :class="$style.headerRow">
 			<N8nText tag="span" :bold="true" size="large">
 				{{ headingText }}
 			</N8nText>
 
 			<N8nLink
-				v-if="combinedOptions.length === 2"
+				v-if="otherOption"
+				theme="secondary"
+				underline
+				size="small"
 				:class="$style.switchLink"
 				data-test-id="credential-mode-switch-link"
 				@click="switchToOther"
@@ -252,8 +187,8 @@ function onAuthRelatedFieldChange(data: IUpdateInformation): void {
 				@select="onOptionChange"
 			>
 				<template #trigger>
-					<N8nButton type="secondary" text data-test-id="credential-mode-dropdown-trigger">
-						{{ currentOption?.name }}
+					<N8nButton variant="subtle" text data-test-id="credential-mode-dropdown-trigger">
+						{{ selectedOption?.name }}
 						<N8nIcon icon="chevron-down" size="small" />
 					</N8nButton>
 				</template>
@@ -270,7 +205,15 @@ function onAuthRelatedFieldChange(data: IUpdateInformation): void {
 }
 
 .switchLink {
-	font-size: var(--font-size--sm);
+	--link--color--secondary: var(--color--text);
+
+	&:hover,
+	&:focus,
+	&:active {
+		:global(span) {
+			color: var(--color--text--shade-1);
+		}
+	}
 }
 
 .dropdownContent {

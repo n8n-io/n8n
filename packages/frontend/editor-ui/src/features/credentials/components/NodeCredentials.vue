@@ -29,6 +29,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { assert } from '@n8n/utils/assert';
 import {
+	getAppNameFromCredType,
 	getAuthTypeForNodeCredential,
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
@@ -121,6 +122,7 @@ const {
 	node,
 	nodeType,
 	computed(() => props.overrideCredType),
+	() => props.showAll,
 );
 
 const credentialTypeNames = computed(() => {
@@ -171,7 +173,6 @@ watch(
 		if (isActive && nodeType.value && listeningForAuthChange.value) {
 			if (mainNodeAuthField.value && oldValue && newValue) {
 				const newAuth = newValue[mainNodeAuthField.value.name];
-
 				if (newAuth) {
 					const authType =
 						typeof newAuth === 'object' ? JSON.stringify(newAuth) : newAuth.toString();
@@ -520,8 +521,13 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 }
 
 function getServiceName(credentialTypeName: string): string {
+	const quickConnectOption = getQuickConnectOption(credentialTypeName, props.node.type);
+	if (quickConnectOption?.serviceName) {
+		return quickConnectOption.serviceName;
+	}
+
 	const displayName = credentialTypeNames.value[credentialTypeName] ?? credentialTypeName;
-	return displayName.replace(/\s+OAuth2?\s+API$/i, '').replace(/\s+API$/i, '');
+	return getAppNameFromCredType(displayName);
 }
 
 const quickConnectCredentialType = computed(() => {
@@ -576,7 +582,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					/>
 				</div>
 				<div
-					v-else-if="showQuickConnectEmptyState(type) && quickConnectCredentialType"
+					v-else-if="
+						options.length === 0 && showQuickConnectEmptyState(type) && quickConnectCredentialType
+					"
 					:class="[
 						$style.quickConnectContainer,
 						{ [$style.noMarginTop]: isGoogleOAuthType(quickConnectCredentialType) },
@@ -584,11 +592,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					data-test-id="quick-connect-empty-state"
 				>
 					<QuickConnectButton
+						size="small"
 						:credential-type-name="quickConnectCredentialType"
-						:service-name="
-							getQuickConnectOption(quickConnectCredentialType, props.node.type)?.serviceName ??
-							getServiceName(quickConnectCredentialType)
-						"
+						:service-name="getServiceName(quickConnectCredentialType)"
 						@click="onQuickConnectSignIn(quickConnectCredentialType)"
 					/>
 					<span :class="$style.setupManuallyContainer">
