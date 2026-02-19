@@ -6103,7 +6103,9 @@
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Update Last Check-In Date"
 				}
-			]
+			],
+			"skip": true,
+			"skipReason": "Non-standard flat array connection format ([\"nodeName\", \"main\", 0] instead of {node, type, index}); only workflow using this format"
 		},
 		{
 			"id": 5840,

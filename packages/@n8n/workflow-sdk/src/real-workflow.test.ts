@@ -27,9 +27,7 @@ function writeGeneratedTsFile(id: string, json: WorkflowJSON): void {
 }
 
 // Workflows with known SDK round-trip issues (node loss, connection format bugs)
-const SKIP_WORKFLOWS = new Set<string>([
-	'8055', // Connection format issue in round-trip
-]);
+const SKIP_WORKFLOWS = new Set<string>([]);
 
 interface TestWorkflow {
 	id: string;
