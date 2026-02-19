@@ -494,7 +494,7 @@ defineExpose({
 								<ThinkingMessage
 									v-if="isThinkingGroupMessage(message)"
 									:items="message.items"
-									:default-expanded="true"
+									:default-expanded="streaming"
 									:latest-status-text="message.latestStatusText"
 									:is-streaming="streaming"
 									:class="getMessageStyles(message, i)"
