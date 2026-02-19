@@ -642,11 +642,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const isNewWorkflow = workflowsStore.isNewWorkflow;
 		const hasUnsavedChanges = uiStore.stateIsDirty;
 
-		if (isNewWorkflow && !hasUnsavedChanges) {
-			return undefined;
-		}
-
-		// Save if it's a new workflow with user changes or an existing workflow with unsaved changes
+		// Save if it's a new workflow or has unsaved changes
 		if (isNewWorkflow || hasUnsavedChanges) {
 			const saved = await workflowSaver.saveCurrentWorkflow();
 			if (!saved) {
