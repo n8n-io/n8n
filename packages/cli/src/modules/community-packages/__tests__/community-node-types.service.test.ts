@@ -31,6 +31,7 @@ describe('CommunityNodeTypesService', () => {
 		configMock = {
 			enabled: true,
 			verifiedEnabled: true,
+			aiNodeSdkVersion: 1,
 		};
 		communityPackagesServiceMock = {};
 
@@ -51,26 +52,26 @@ describe('CommunityNodeTypesService', () => {
 		it('should use staging environment when ENVIRONMENT=staging', async () => {
 			process.env.ENVIRONMENT = 'staging';
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging');
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {}, 1);
 		});
 
 		it('should use production environment when inProduction=true', async () => {
 			(inProduction as unknown as jest.Mock).mockReturnValue(true);
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production');
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production', {}, 1);
 		});
 
 		it('should use production environment when ENVIRONMENT=production', async () => {
 			process.env.ENVIRONMENT = 'production';
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production');
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production', {}, 1);
 		});
 
 		it('should prioritize ENVIRONMENT=staging over inProduction=true', async () => {
 			process.env.ENVIRONMENT = 'staging';
 			(inProduction as unknown as jest.Mock).mockReturnValue(true);
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging');
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {}, 1);
 		});
 
 		it('should call setTimestampForRetry when detectUpdates returns scheduleRetry', async () => {
