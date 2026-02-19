@@ -1,5 +1,6 @@
 import type {
 	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
@@ -10,6 +11,8 @@ export class ExampleApi implements ICredentialType {
 	name = 'exampleApi';
 
 	displayName = 'Example API';
+
+	documentationUrl = 'https://github.com/org/repo?tab=readme-ov-file#credentials';
 
 	icon: Icon = { light: 'file:../icons/example.svg', dark: 'file:../icons/example.dark.svg' };
 
@@ -30,6 +33,13 @@ export class ExampleApi implements ICredentialType {
 			description: 'Override the default base URL for the API',
 		},
 	];
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials?.url}}',
+			url: '/',
+		},
+	};
 
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,

@@ -40,9 +40,7 @@ export async function* parseSSEStream(
 	let dataLines: string[] = [];
 
 	for await (const chunk of body) {
-		// Convert Buffer or Uint8Array to string
-		const chunkBuffer = chunk instanceof Buffer ? chunk : Buffer.from(chunk);
-		buffer += decoder.decode(chunkBuffer, { stream: true });
+		buffer += decoder.decode(chunk, { stream: true });
 
 		// Process complete lines
 		// SSE spec supports CR, LF, and CRLF as line terminators

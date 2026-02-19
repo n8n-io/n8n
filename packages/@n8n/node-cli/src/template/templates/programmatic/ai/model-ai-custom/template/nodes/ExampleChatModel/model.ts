@@ -1,10 +1,10 @@
 import type { IHttpRequestMethods } from 'n8n-workflow';
 import {
 	BaseChatModel,
-	ChatModelConfig,
-	GenerateResult,
-	Message,
-	StreamChunk,
+	type ChatModelConfig,
+	type GenerateResult,
+	type Message,
+	type StreamChunk,
 } from '@n8n/ai-node-sdk';
 
 interface ModelConfig extends ChatModelConfig {
@@ -40,11 +40,11 @@ export class CustomChatModel extends BaseChatModel<ModelConfig> {
 	private baseURL: string;
 
 	constructor(
-		modelId: string = 'gpt-4o',
+		modelId: string = 'my-model',
 		private requests: RequestConfig,
 		config: ModelConfig,
 	) {
-		super('openai', modelId, config);
+		super('custom-provider', modelId, config);
 		this.baseURL = config.url;
 	}
 
