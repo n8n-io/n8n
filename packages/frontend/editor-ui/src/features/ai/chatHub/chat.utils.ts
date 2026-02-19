@@ -442,11 +442,11 @@ export function createFakeAgent(
 		icon: fallback?.icon ?? null,
 		createdAt: null,
 		updatedAt: null,
-		// Assume file attachment and tools are supported
+		// Assume file attachment and tools are supported (except n8n provider which never supports function calling)
 		metadata: {
 			inputModalities: ['text', 'file'],
 			capabilities: {
-				functionCalling: true,
+				functionCalling: model.provider !== 'n8n',
 			},
 			available: true,
 		},
