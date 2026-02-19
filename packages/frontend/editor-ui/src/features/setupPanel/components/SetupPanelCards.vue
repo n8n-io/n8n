@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import TriggerSetupCard from '@/features/setupPanel/components/cards/TriggerSetupCard.vue';
 import CredentialTypeSetupCard from '@/features/setupPanel/components/cards/CredentialTypeSetupCard.vue';
@@ -50,6 +50,52 @@ const cardKey = (card: SetupCardItem): string => {
 	if (card.type === 'trigger') return `trigger-${card.state.node.id}`;
 	return `credential-${card.state.credentialType}`;
 };
+
+// --- Expanded state management ---
+const expandedStates = reactive<Record<string, boolean>>({});
+const prevCompleteStates = new Map<string, boolean>();
+let initialized = false;
+
+const isCardExpanded = (key: string): boolean => expandedStates[key] ?? false;
+
+const setCardExpanded = (key: string, value: boolean) => {
+	expandedStates[key] = value;
+};
+
+watch(
+	setupCards,
+	(cards) => {
+		if (!initialized) {
+			// On first load, expand the first uncompleted card
+			const firstUncompleted = cards.find((c) => !c.state.isComplete);
+			if (firstUncompleted) {
+				expandedStates[cardKey(firstUncompleted)] = true;
+			}
+			initialized = true;
+		} else {
+			// When a card completes, auto-expand the next uncompleted card
+			for (let i = 0; i < cards.length; i++) {
+				const card = cards[i];
+				const key = cardKey(card);
+				const wasComplete = prevCompleteStates.get(key) ?? false;
+
+				if (card.state.isComplete && !wasComplete) {
+					const nextUncompleted = cards.find((c, j) => j > i && !c.state.isComplete);
+					if (nextUncompleted) {
+						expandedStates[cardKey(nextUncompleted)] = true;
+					}
+					break;
+				}
+			}
+		}
+
+		prevCompleteStates.clear();
+		for (const card of cards) {
+			prevCompleteStates.set(cardKey(card), card.state.isComplete);
+		}
+	},
+	{ deep: true, immediate: true },
+);
 </script>
 
 <template>
@@ -75,17 +121,19 @@ const cardKey = (card: SetupCardItem): string => {
 			</div>
 		</div>
 		<div v-else :class="$style['card-list']" data-test-id="setup-cards-list">
-			<template v-for="(card, index) in visibleCards" :key="cardKey(card)">
+			<template v-for="card in visibleCards" :key="cardKey(card)">
 				<TriggerSetupCard
 					v-if="card.type === 'trigger'"
 					:state="card.state"
-					:expanded="index === 0"
+					:expanded="isCardExpanded(cardKey(card))"
+					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
 				/>
 				<CredentialTypeSetupCard
 					v-else
 					:state="card.state"
 					:first-trigger-name="firstTriggerName"
-					:expanded="index === 0"
+					:expanded="isCardExpanded(cardKey(card))"
+					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
 					@credential-selected="onCredentialSelected"
 					@credential-deselected="onCredentialDeselected"
 				/>
