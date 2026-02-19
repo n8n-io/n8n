@@ -705,9 +705,11 @@ export class WorkflowService {
 		}
 
 		// Fetch workflow again with workflowPublishHistory after activation to include the new entry
+		const tagsDisabled = this.globalConfig.tags.disabled;
 		const updatedWorkflow = await this.workflowRepository.findOne({
 			where: { id: workflowId },
 			relations: {
+				tags: !tagsDisabled,
 				activeVersion: {
 					workflowPublishHistory: true,
 				},
