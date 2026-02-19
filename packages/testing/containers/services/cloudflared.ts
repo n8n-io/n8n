@@ -74,9 +74,7 @@ export const cloudflared: Service<CloudflaredResult> = {
 
 			// On Linux, host.docker.internal is not available without explicit mapping
 			if (ctx?.external) {
-				builder = builder.withExtraHosts([
-					{ host: 'host.docker.internal', ipAddress: 'host-gateway' },
-				]);
+				builder = builder.withExtraHosts([{ host: EXTERNAL_HOST, ipAddress: 'host-gateway' }]);
 			}
 
 			const container = await builder.start();
