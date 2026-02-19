@@ -10,18 +10,18 @@ import {
 	COMMITTED_FIXTURES_DIR,
 } from '../__tests__/fixtures-download';
 import type { WorkflowJSON } from '../types/base';
+import { escapeNewlinesInExpressionStrings } from '../workflow-builder/string-utils';
 
 // Workflows with known issues that need to be skipped entirely
 // 5979: Code generator creates duplicate inline nodes, causing duplicate detection to rename them
-// 7643, 11128, 5370: Subnode variable name collision (generates duplicate JS identifiers)
+// 7643, 5370: Reversed AI connections / subnode variable collision
 // 5774, 5042, 5929, 4889, 5900, 8044, 3820, 9473, 2978, 4468, 13291, 10143: Node count mismatch
 // 2986: Node loss (Edit Fields nodes dropped during codegen roundtrip)
-// 4910, 10440, 11027, 11807: Parameter formatting mismatch (newline escaping in expressions)
+// 11027: Parameter mismatch (placeholder values, sticky note properties)
 // 9881: Connection keys mismatch after roundtrip
 const SKIP_WORKFLOWS = new Set<string>([
 	'5979',
 	'7643',
-	'11128',
 	'5370',
 	'5774',
 	'5042',
@@ -35,12 +35,9 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'4468',
 	'13291',
 	'10143',
-	'4910',
 	'2986',
 	'9881',
-	'10440',
 	'11027',
-	'11807',
 ]);
 
 // Workflows to skip validation due to known codegen bugs (invalid warnings)
@@ -2409,7 +2406,11 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				// Normalize resource locators (add __rl: true) for fair comparison
 				// since SDK-generated code adds __rl: true to all resource locators
 				// Also normalize expressions (strip leading = from double-equals)
-				return normalizeExpressions(normalizeResourceLocators(p));
+				// Also normalize newlines in expression strings (raw \n → \\n inside quotes)
+				// since the serializer legitimately escapes raw newlines in JS string literals
+				return escapeNewlinesInExpressionStrings(
+					normalizeExpressions(normalizeResourceLocators(p)),
+				);
 			};
 
 			// Helper function for filtering empty connections, orphaned connections (from non-existent nodes),

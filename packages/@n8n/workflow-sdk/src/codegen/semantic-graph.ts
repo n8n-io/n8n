@@ -9,12 +9,18 @@ import { getOutputName, getInputName } from './semantic-registry';
 import type { SemanticGraph, SemanticNode, SemanticConnection, AiConnectionType } from './types';
 import { AI_CONNECTION_TYPES } from './types';
 import type { WorkflowJSON, NodeJSON } from '../types/base';
+import { normalizeConnections } from '../types/base';
 import { isTriggerNodeType } from '../utils/trigger-detection';
 
 /**
  * Create a SemanticNode from a NodeJSON
  */
 function createSemanticNode(nodeJson: NodeJSON): SemanticNode {
+	// Normalize typeVersion to number (some workflows store it as a string)
+	if (typeof nodeJson.typeVersion === 'string') {
+		nodeJson.typeVersion = Number(nodeJson.typeVersion);
+	}
+
 	return {
 		name: nodeJson.name ?? nodeJson.id, // Use id as fallback for nodes without names
 		type: nodeJson.type,
@@ -84,6 +90,26 @@ function parseMainConnections(
 }
 
 /**
+ * Check if a node type is a subnode type (language model, memory, output parser, etc.)
+ * as opposed to an agent/chain type that accepts subnodes.
+ */
+function isSubnodeType(nodeType: string): boolean {
+	return (
+		nodeType.includes('lmChat') ||
+		nodeType.includes('memory') ||
+		nodeType.includes('outputParser') ||
+		nodeType.includes('embedding') ||
+		nodeType.includes('vectorStore') ||
+		nodeType.includes('retriever') ||
+		nodeType.includes('textSplitter') ||
+		nodeType.includes('reranker') ||
+		nodeType.includes('lmCohere') ||
+		nodeType.includes('lmOllama') ||
+		nodeType.includes('lmAnthropic')
+	);
+}
+
+/**
  * Find the nearest parent node that accepts an AI connection type.
  * Used when a subnode references a non-existent parent (e.g., renamed node with stale connections).
  * Matches by: accepts the AI connection type, doesn't already have a subnode of that type,
@@ -107,17 +133,7 @@ function findNearestParent(
 		// Only consider agent-like nodes (langchain nodes that accept AI inputs)
 		if (!candidate.type.includes('langchain')) continue;
 		// Don't match other subnodes
-		if (
-			candidate.type.includes('lmChat') ||
-			candidate.type.includes('memory') ||
-			candidate.type.includes('outputParser') ||
-			candidate.type.includes('embedding') ||
-			candidate.type.includes('vectorStore') ||
-			candidate.type.includes('retriever') ||
-			candidate.type.includes('textSplitter') ||
-			candidate.type.includes('reranker')
-		)
-			continue;
+		if (isSubnodeType(candidate.type)) continue;
 
 		// Skip if this candidate already has a subnode of this connection type (unless it's a multi type)
 		if (!multiSubnodeTypes.has(connectionType)) {
@@ -380,7 +396,9 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 		graph.nodes.set(nodeName, semanticNode);
 	}
 
-	// Phase 2: Parse connections
+	// Phase 2: Normalize and parse connections
+	normalizeConnections(json.connections);
+
 	for (const [sourceName, connectionTypes] of Object.entries(json.connections)) {
 		for (const [connType, outputs] of Object.entries(connectionTypes)) {
 			const typedOutputs = outputs as Array<Array<{

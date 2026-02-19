@@ -6,14 +6,15 @@
 
 import { deepCopy } from 'n8n-workflow';
 
-import type {
-	WorkflowJSON,
-	NodeInstance,
-	GraphNode,
-	ConnectionTarget,
-	IDataObject,
-	CredentialReference,
-	NewCredentialValue,
+import {
+	normalizeConnections,
+	type WorkflowJSON,
+	type NodeInstance,
+	type GraphNode,
+	type ConnectionTarget,
+	type IDataObject,
+	type CredentialReference,
+	type NewCredentialValue,
 } from '../types/base';
 
 /**
@@ -41,6 +42,10 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 	// Create node instances from JSON
 	let unnamedCounter = 0;
 	for (const n8nNode of json.nodes) {
+		// Normalize typeVersion to number (some workflows store it as a string)
+		if (typeof n8nNode.typeVersion === 'string') {
+			n8nNode.typeVersion = Number(n8nNode.typeVersion);
+		}
 		const version = `v${n8nNode.typeVersion}`;
 
 		// Preserve original credentials exactly - don't transform
@@ -112,6 +117,8 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 
 	// Rebuild connections
 	if (json.connections) {
+		normalizeConnections(json.connections);
+
 		for (const [sourceName, nodeConns] of Object.entries(json.connections)) {
 			const mapKey = nameToKey.get(sourceName);
 			const graphNode = mapKey ? nodes.get(mapKey) : undefined;

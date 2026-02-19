@@ -155,6 +155,35 @@ export interface IConnections {
 	[key: string]: INodeConnections;
 }
 
+/**
+ * Normalize workflow connections in-place.
+ * Some workflows store connections as flat tuples [nodeName, type, index]
+ * instead of the standard {node, type, index} objects. This converts them
+ * to canonical object format so all downstream code sees a consistent shape.
+ */
+export function normalizeConnections(connections: IConnections): void {
+	for (const nodeConns of Object.values(connections)) {
+		for (const [connType, outputs] of Object.entries(nodeConns)) {
+			if (!Array.isArray(outputs)) continue;
+			for (let i = 0; i < outputs.length; i++) {
+				const slot = outputs[i] as unknown;
+				if (!Array.isArray(slot)) continue;
+				// Flat tuple: [string, string, number] instead of [{node, type, index}]
+				if (slot.length > 0 && typeof slot[0] === 'string') {
+					outputs[i] = [
+						{
+							node: slot[0] as string,
+							type: (slot[1] as string) ?? 'main',
+							index: (slot[2] as number) ?? 0,
+						},
+					];
+				}
+			}
+			nodeConns[connType] = outputs;
+		}
+	}
+}
+
 // =============================================================================
 // Internal: Serialization types
 // =============================================================================

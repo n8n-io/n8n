@@ -37,6 +37,7 @@
     "generate-types": "npx tsx src/generate-types/generate-types.ts",
     "fetch-workflows": "npx tsx scripts/fetch-test-workflows.ts",
     "create-workflows-zip": "npx tsx scripts/create-workflows-zip.ts",
+    "validate-warnings": "npx tsx scripts/validate-expected-warnings.ts",
     "json-to-code": "npx tsx src/cli/index.ts json-to-code",
     "code-to-json": "npx tsx src/cli/index.ts code-to-json"
   },
