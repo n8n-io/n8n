@@ -67,4 +67,4 @@ Field rules:
 }
 ```
 
-No additional fields needed.
+No additional fields needed. **Always output valid JSON and nothing else.** No commentary, no markdown, no explanation — just the JSON object.
