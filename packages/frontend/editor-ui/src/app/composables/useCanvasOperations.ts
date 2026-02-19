@@ -138,6 +138,7 @@ import { useClipboard } from '@vueuse/core';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	pinDataToExecutionData,
 } from '@/app/stores/workflowDocument.store';
 
 type AddNodeData = Partial<INodeUi> & {
@@ -2764,10 +2765,12 @@ export function useCanvasOperations() {
 			const workflowDocumentStore = workflowsStore.workflowId
 				? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
 				: null;
-			const pinDataForNode = workflowDocumentStore?.pinDataByNodeName(node.name);
+			const pinDataForNode = workflowDocumentStore
+				? pinDataToExecutionData(workflowDocumentStore.pinData)[node.name]
+				: undefined;
 
 			if (pinDataForNode) {
-				data.pinData[node.name] = pinDataForNode;
+				data.pinData[node.name] = pinDataForNode as IPinData[string];
 			}
 
 			if (

@@ -1,5 +1,5 @@
 import { ref, readonly } from 'vue';
-import type { INodeExecutionData, IPinData } from 'n8n-workflow';
+import type { INodeExecutionData, IDataObject, IPinData } from 'n8n-workflow';
 import { isJsonKeyObject, stringSizeInBytes } from '@/app/utils/typesUtils';
 import { dataPinningEventBus } from '@/app/event-bus';
 
@@ -65,6 +65,17 @@ function normalizePinData(data: IPinData): IPinData {
 }
 
 /**
+ * Extract the json values from pin data, producing a map of node names to plain data objects.
+ */
+export function pinDataToExecutionData(
+	pinData: Readonly<Record<string, ReadonlyArray<{ readonly json: IDataObject }>>>,
+): Record<string, IDataObject[]> {
+	return Object.fromEntries(
+		Object.entries(pinData).map(([nodeName, items]) => [nodeName, items.map((item) => item.json)]),
+	);
+}
+
+/**
  * Calculate the byte size of pin data.
  */
 export function getPinDataSize(
@@ -99,12 +110,6 @@ export function useWorkflowDocumentPinData(onChange: (action: PinDataAction) => 
 
 	function renamePinDataNode(oldName: string, newName: string) {
 		onChange({ name: 'renamePinDataNode', payload: { oldName, newName } });
-	}
-
-	function pinDataByNodeName(nodeName: string): INodeExecutionData[] | undefined {
-		if (!pinData.value[nodeName]) return undefined;
-
-		return pinData.value[nodeName].map((item) => item.json) as INodeExecutionData[];
 	}
 
 	/** Returns a mutable shallow copy of all pin data, bypassing the readonly wrapper. */
@@ -170,7 +175,6 @@ export function useWorkflowDocumentPinData(onChange: (action: PinDataAction) => 
 		pinNodeData,
 		unpinNodeData,
 		renamePinDataNode,
-		pinDataByNodeName,
 		getPinDataSnapshot,
 		getNodePinData,
 		handleAction,

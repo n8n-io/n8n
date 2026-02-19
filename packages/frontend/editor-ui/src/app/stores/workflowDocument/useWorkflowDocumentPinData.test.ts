@@ -3,6 +3,7 @@ import type { INodeExecutionData, IPinData } from 'n8n-workflow';
 import {
 	useWorkflowDocumentPinData,
 	getPinDataSize,
+	pinDataToExecutionData,
 	type PinDataAction,
 } from './useWorkflowDocumentPinData';
 import { dataPinningEventBus } from '@/app/event-bus';
@@ -335,20 +336,28 @@ describe('useWorkflowDocumentPinData', () => {
 		});
 	});
 
-	describe('pinDataByNodeName', () => {
-		it('should return undefined for non-existent node', () => {
-			const { pinDataByNodeName } = createPinData();
-
-			expect(pinDataByNodeName('NonExistent')).toBeUndefined();
+	describe('pinDataToExecutionData', () => {
+		it('should return empty object for empty pin data', () => {
+			expect(pinDataToExecutionData({})).toEqual({});
 		});
 
-		it('should return unwrapped json values', () => {
-			const { pinNodeData, pinDataByNodeName } = createPinData();
+		it('should return undefined when indexing a non-existent node', () => {
+			const { pinData } = createPinData();
+
+			expect(pinDataToExecutionData(pinData.value).NonExistent).toBeUndefined();
+		});
+
+		it('should return unwrapped json values for all nodes', () => {
+			const { pinData, pinNodeData } = createPinData();
 			pinNodeData('Node1', [{ json: { key: 'value1' } }, { json: { key: 'value2' } }]);
+			pinNodeData('Node2', [{ json: { key: 'value3' } }]);
 
-			const result = pinDataByNodeName('Node1');
+			const result = pinDataToExecutionData(pinData.value);
 
-			expect(result).toEqual([{ key: 'value1' }, { key: 'value2' }]);
+			expect(result).toEqual({
+				Node1: [{ key: 'value1' }, { key: 'value2' }],
+				Node2: [{ key: 'value3' }],
+			});
 		});
 	});
 

@@ -1,6 +1,6 @@
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import type { INodeExecutionData, IPinData, Workflow } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, IPinData, Workflow } from 'n8n-workflow';
 import { jsonParse, jsonStringify, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import {
 	MAX_EXPECTED_REQUEST_SIZE,
@@ -16,6 +16,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	getPinDataSize,
+	pinDataToExecutionData,
 } from '@/app/stores/workflowDocument.store';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -70,9 +71,10 @@ export function usePinnedData(
 		node,
 	});
 
-	const data = computed<IPinData[string] | undefined>(() => {
+	const data = computed<IDataObject[] | undefined>(() => {
 		const targetNode = unref(node);
-		return targetNode ? workflowDocumentStore?.pinDataByNodeName(targetNode.name) : undefined;
+		if (!targetNode || !workflowDocumentStore) return undefined;
+		return pinDataToExecutionData(workflowDocumentStore.pinData)[targetNode.name];
 	});
 
 	const hasData = computed<boolean>(() => {

@@ -13,7 +13,10 @@ import {
 	type TagAction,
 } from './workflowDocument/useWorkflowDocumentTags';
 
-export { getPinDataSize } from './workflowDocument/useWorkflowDocumentPinData';
+export {
+	getPinDataSize,
+	pinDataToExecutionData,
+} from './workflowDocument/useWorkflowDocumentPinData';
 
 // Pinia internal type - _s is the store registry Map
 type PiniaInternal = ReturnType<typeof getActivePinia> & {
@@ -78,7 +81,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			pinNodeData,
 			unpinNodeData,
 			renamePinDataNode,
-			pinDataByNodeName,
 			getPinDataSnapshot,
 			getNodePinData,
 			handleAction: handlePinDataAction,
@@ -96,7 +98,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			pinNodeData,
 			unpinNodeData,
 			renamePinDataNode,
-			pinDataByNodeName,
 			getPinDataSnapshot,
 			getNodePinData,
 		};
