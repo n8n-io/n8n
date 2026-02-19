@@ -29,12 +29,17 @@ const ROUTING_DECISION_TREE_WITH_ASSISTANT = `1. Is user asking a conversational
    Examples: "why is this node failing?", "how do I set up Gmail credentials?", "what does this error mean?", "how does the HTTP Request node work?", "help me debug this"
    Examples with selected nodes: "why is this failing?", "help me fix this error"
 
-3. Is the user asking you to DO something to the workflow (create, modify, configure, set up nodes)? → discovery or builder
+3. Does the message contain BOTH a knowledge question AND an action request? → discovery or builder
+   When the user asks a question AND requests an action in the same message, always prefer the action path.
+   The responder will address the knowledge question when summarizing the build result.
+   Examples: "what are Slack credentials? set them up", "how does OAuth work? add it to this node", "explain webhooks and add one to my workflow"
+
+4. Is the user asking you to DO something to the workflow (create, modify, configure, set up nodes)? → discovery or builder
    IMPORTANT: If the message is an action request (imperative/instructional tone), it goes to discovery or builder, NOT assistant.
    Examples: "set them up", "configure the node", "now add a Slack node", "connect these", "do it"
-   Continue to steps 4-6 to choose between discovery and builder.
+   Continue to steps 5-7 to choose between discovery and builder.
 
-4. Does the request involve NEW or DIFFERENT node types? → discovery
+5. Does the request involve NEW or DIFFERENT node types? → discovery
    Examples:
    - "Build a workflow that..." (new workflow)
    - "Use [ServiceB] instead of [ServiceA]" (replacing node type)
@@ -42,11 +47,11 @@ const ROUTING_DECISION_TREE_WITH_ASSISTANT = `1. Is user asking a conversational
    - "Switch from [ServiceA] to [ServiceB]" (swapping services)
    - "Add something before/after this" (needs discovery to find what to add)
 
-5. Is the request about connecting/disconnecting existing nodes? → builder
+6. Is the request about connecting/disconnecting existing nodes? → builder
    Examples: "Connect node A to node B", "Remove the connection to X"
    Examples with selected nodes: "connect this to X", "disconnect this", "add X before/after this" (after discovery)
 
-6. Is the request about changing VALUES in existing nodes? → builder
+7. Is the request about changing VALUES in existing nodes? → builder
    Examples:
    - "Change the URL to https://..."
    - "Set the timeout to 30 seconds"
@@ -91,6 +96,12 @@ ACTION vs KNOWLEDGE:
 - "Now set them up for this workflow" = ACTION REQUEST = builder (imperative tone = action, not question)
 - "Use [ServiceB] instead of [ServiceA]" = REPLACEMENT = discovery (new node type needed)
 - "Change the [ServiceA] API key" = CONFIGURATION = builder (same node, different value)
+
+MIXED INTENT (question + action in same message):
+- "What are Slack credentials? Set them up" = ACTION (builder) — responder will explain credentials in summary
+- "How does OAuth work? Add it to this node" = ACTION (discovery/builder) — responder covers the explanation
+- "Explain webhooks and add one" = ACTION (discovery) — responder addresses the explanation part
+- When in doubt between assistant and action, prefer action — the responder can always explain
 
 COMMON PATTERNS:
 - Polite wrappers: "Help me set up X" / "Can you configure this?" / "Could you add a node?" = ACTION = discovery or builder (not assistant)
