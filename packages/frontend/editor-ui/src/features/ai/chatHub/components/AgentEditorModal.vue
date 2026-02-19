@@ -359,7 +359,9 @@ async function onDelete() {
 								:disabled-tooltip="
 									canSelectTools
 										? undefined
-										: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+										: selectedModel
+											? i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+											: i18n.baseText('chatHub.tools.selector.disabled.noModel.tooltip')
 								"
 								:checked-tool-ids="toolIds"
 								@toggle="handleToggleAgentTool"
