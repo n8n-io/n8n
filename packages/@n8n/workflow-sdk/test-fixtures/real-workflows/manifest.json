@@ -5519,7 +5519,8 @@
 		{
 			"id": 7643,
 			"name": "Auto-categorize Gmail emails with AI and send prioritized Slack alerts",
-			"success": true
+			"success": true,
+			"expectedWarnings": [{ "code": "AGENT_NO_SYSTEM_MESSAGE", "nodeName": "AI Agent" }]
 		},
 		{
 			"id": 7470,
@@ -9200,7 +9201,13 @@
 		{
 			"id": 5370,
 			"name": "Gmail smart auto-responder with GPT-4o and Google Drive context memory",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{ "code": "MISSING_EXPRESSION_PREFIX", "nodeName": "Simple Vector Store" },
+				{ "code": "MISSING_EXPRESSION_PREFIX", "nodeName": "Vector Store Retriever" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Simple Vector Store" },
+				{ "code": "DISCONNECTED_NODE", "nodeName": "Error Handler" }
+			]
 		},
 		{
 			"id": 5225,
@@ -17783,8 +17790,12 @@
 			"id": 4012,
 			"name": "Generate knowledge base articles with GPT & Perplexity AI for Contentful CMS",
 			"success": true,
-			"skip": true,
-			"skipReason": "Stack overflow — infinite recursion in if-else handler during roundtrip parse"
+			"expectedWarnings": [
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Accept and Publish"
+				}
+			]
 		},
 		{
 			"id": 4003,

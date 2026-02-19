@@ -110,6 +110,52 @@ function isSubnodeType(nodeType: string): boolean {
 }
 
 /**
+ * Patterns matching expected subnode types for each AI connection type.
+ * Used to detect reversed AI connections where the parent is listed as the source.
+ */
+const AI_CONNECTION_SUBNODE_PATTERNS: Record<string, string[]> = {
+	ai_languageModel: ['lmChat', 'lmCohere', 'lmOllama', 'lmAnthropic', 'lmGoogleVertex'],
+	ai_outputParser: ['outputParser'],
+	ai_memory: ['memory'],
+	ai_embedding: ['embedding'],
+	ai_vectorStore: ['vectorStore'],
+	ai_retriever: ['retriever'],
+	ai_document: ['document'],
+	ai_textSplitter: ['textSplitter'],
+	ai_reranker: ['reranker'],
+	ai_tool: ['tool'],
+};
+
+/**
+ * Check if a node type matches the expected subnode type for a given AI connection.
+ * For example, ai_languageModel connections expect lmChat/lmCohere/etc. subnodes.
+ */
+function matchesSubnodePatternForConnection(
+	nodeType: string,
+	connectionType: AiConnectionType,
+): boolean {
+	const patterns = AI_CONNECTION_SUBNODE_PATTERNS[connectionType];
+	if (!patterns) return false;
+	return patterns.some((p) => nodeType.includes(p));
+}
+
+/**
+ * Detect if an AI connection is reversed (parent → subnode instead of subnode → parent).
+ * Some workflow JSON stores AI connections in the wrong direction.
+ * Returns true if the source is NOT the expected subnode type but the target IS.
+ */
+function isReversedAiConnection(
+	sourceType: string,
+	targetType: string,
+	connectionType: AiConnectionType,
+): boolean {
+	const sourceMatchesSubnode = matchesSubnodePatternForConnection(sourceType, connectionType);
+	const targetMatchesSubnode = matchesSubnodePatternForConnection(targetType, connectionType);
+	// Reversed when target is the subnode but source is not
+	return !sourceMatchesSubnode && targetMatchesSubnode;
+}
+
+/**
  * Find the nearest parent node that accepts an AI connection type.
  * Used when a subnode references a non-existent parent (e.g., renamed node with stale connections).
  * Matches by: accepts the AI connection type, doesn't already have a subnode of that type,
@@ -161,6 +207,7 @@ function findNearestParent(
  * Parse AI subnode connections and add to graph
  * Skips connections from non-existent source nodes (dangling connections from malformed workflow data)
  * When target parent doesn't exist (stale references), tries to find the nearest matching parent
+ * Detects and corrects reversed AI connections (parent → subnode instead of subnode → parent)
  */
 function parseAiConnections(
 	sourceName: string,
@@ -172,17 +219,45 @@ function parseAiConnections(
 	const sourceNode = graph.nodes.get(sourceName);
 	if (!sourceNode) return;
 
-	// AI connections go from subnode → parent node
+	// AI connections normally go from subnode → parent node
 	outputs.forEach((targets) => {
 		if (!targets) return;
 
 		targets.forEach((target) => {
-			let parentNode = graph.nodes.get(target.node);
+			const targetNode = graph.nodes.get(target.node);
+
+			// Check if the connection direction is reversed
+			// (parent listed as source instead of subnode)
+			if (targetNode && isReversedAiConnection(sourceNode.type, targetNode.type, connectionType)) {
+				// Reversed: source is the parent, target is the subnode
+				sourceNode.subnodes.push({
+					connectionType,
+					subnodeName: target.node,
+				});
+				return;
+			}
+
+			// Normal direction: source is the subnode, target is the parent
+			let parentNode = targetNode;
 
 			// If parent doesn't exist (stale reference from renamed node),
 			// try to find the nearest matching parent by position and type
 			if (!parentNode) {
 				parentNode = findNearestParent(sourceNode, connectionType, graph);
+			} else {
+				// Parent exists but may already have this connection type filled
+				// (e.g., duplicate node names where multiple instances share the same name).
+				// In that case, use position proximity to find the correct parent.
+				const multiSubnodeTypes = new Set(['ai_tool']);
+				if (!multiSubnodeTypes.has(connectionType)) {
+					const alreadyHasType = parentNode.subnodes.some(
+						(s) => s.connectionType === connectionType,
+					);
+					if (alreadyHasType) {
+						const nearest = findNearestParent(sourceNode, connectionType, graph);
+						if (nearest) parentNode = nearest;
+					}
+				}
 			}
 
 			if (parentNode) {

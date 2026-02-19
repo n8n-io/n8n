@@ -47,6 +47,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private _meta?: { templateId?: string; instanceId?: string; [key: string]: unknown };
 	private _registry?: PluginRegistry;
 	private _staleIdToKeyMap?: Map<string, string>;
+	private _branchDepth = 0;
+	private static readonly MAX_BRANCH_DEPTH = 200;
 
 	constructor(
 		id: string,
@@ -914,6 +916,27 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 * @param nameMapping - Optional map from node ID to actual map key (used when nodes are renamed)
 	 */
 	private addBranchToGraph(
+		nodes: Map<string, GraphNode>,
+		branch: NodeInstance<string, string, unknown>,
+		nameMapping?: Map<string, string>,
+	): string {
+		// Guard against infinite recursion from cycles in branch chains
+		if (this._branchDepth >= WorkflowBuilderImpl.MAX_BRANCH_DEPTH) {
+			// Return the branch name without further processing to break the cycle
+			if ('name' in branch && typeof branch.name === 'string') {
+				return branch.name;
+			}
+			return '';
+		}
+		this._branchDepth++;
+		try {
+			return this._addBranchToGraphInner(nodes, branch, nameMapping);
+		} finally {
+			this._branchDepth--;
+		}
+	}
+
+	private _addBranchToGraphInner(
 		nodes: Map<string, GraphNode>,
 		branch: NodeInstance<string, string, unknown>,
 		nameMapping?: Map<string, string>,

@@ -14,14 +14,14 @@ import { escapeNewlinesInExpressionStrings } from '../workflow-builder/string-ut
 
 // Workflows with known issues that need to be skipped entirely
 // 5979: Code generator creates duplicate inline nodes, causing duplicate detection to rename them
-// 7643, 5370: Reversed AI connections / subnode variable collision
-// 5774, 5042, 5929, 4889, 5900, 8044, 3820, 9473, 2978, 4468, 13291, 10143: Node count mismatch
+// 5370: Error output connections lost during codegen roundtrip (error handler not connected)
+// 5774, 5042, 5929, 4889, 5900, 8044, 3820, 9473, 2978, 4468, 10143: Node count mismatch (composite builder)
+// 13291: Duplicate node names in source JSON lose connections (irrecoverable format limitation)
 // 2986: Node loss (Edit Fields nodes dropped during codegen roundtrip)
 // 11027: Parameter mismatch (placeholder values, sticky note properties)
 // 9881: Connection keys mismatch after roundtrip
 const SKIP_WORKFLOWS = new Set<string>([
 	'5979',
-	'7643',
 	'5370',
 	'5774',
 	'5042',
@@ -2530,7 +2530,19 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					);
 					const filteredOriginal = filterEmptyConnections(json.connections, validNodeNames);
 					const filteredParsed = filterEmptyConnections(parsedJson.connections);
-					expect(Object.keys(filteredParsed).sort()).toEqual(Object.keys(filteredOriginal).sort());
+
+					// Filter to only main connections for source key comparison
+					// AI connections (ai_languageModel, ai_tool, etc.) may change direction
+					// during roundtrip since reversed AI connections get normalized
+					const mainConnectionKeys = (conns: Record<string, unknown>) =>
+						Object.keys(conns)
+							.filter((key) => {
+								const nodeConns = conns[key] as Record<string, unknown>;
+								// Keep node if it has any non-AI connection type
+								return Object.keys(nodeConns).some((ct) => !ct.startsWith('ai_'));
+							})
+							.sort();
+					expect(mainConnectionKeys(filteredParsed)).toEqual(mainConnectionKeys(filteredOriginal));
 				});
 			});
 		});

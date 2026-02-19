@@ -198,6 +198,8 @@ function generateSubnodesConfig(node: SemanticNode, ctx: GenerationContext): str
 /**
  * Recursively collect all subnodes from a node and add them to the context's subnodeVariables.
  * Processes nested subnodes first so they're declared before their parents.
+ * Skips nodes that also participate in the main workflow flow (in variableNodes),
+ * since those must be declared as node() calls rather than subnode builder calls.
  */
 function collectSubnodesAsVariables(node: SemanticNode, ctx: GenerationContext): void {
 	if (node.subnodes.length === 0) return;
@@ -208,6 +210,10 @@ function collectSubnodesAsVariables(node: SemanticNode, ctx: GenerationContext):
 
 		// First, recursively collect nested subnodes (they must be declared first)
 		collectSubnodesAsVariables(subnodeNode, ctx);
+
+		// Skip nodes that are also in the main flow (they'll be declared as node() calls)
+		// These nodes have main connections and need to participate in the flow chain
+		if (ctx.variableNodes.has(sub.subnodeName)) continue;
 
 		// Then add this subnode
 		const builderName = AI_CONNECTION_TO_BUILDER[sub.connectionType];
