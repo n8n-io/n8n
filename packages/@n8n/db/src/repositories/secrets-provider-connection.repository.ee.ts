@@ -53,7 +53,7 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 
 	/**
 	 * Finds all secrets provider connections assigned to a given project.
-	 * Optionally filters connections by provider type.
+	 * Optionally filters connections by provider keys.
 	 *
 	 * This returns only those connections explicitly linked to the project,
 	 * not global connections (i.e., those without any project restriction).
