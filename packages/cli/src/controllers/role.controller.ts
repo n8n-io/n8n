@@ -1,3 +1,4 @@
+import type { RoleAssignmentsResponse, RoleProjectMembersResponse } from '@n8n/api-types';
 import { CreateRoleDto, RoleGetQueryDto, RoleListQueryDto, UpdateRoleDto } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -34,6 +35,27 @@ export class RoleController {
 			credential: allRoles.filter((r) => r.roleType === 'credential'),
 			workflow: allRoles.filter((r) => r.roleType === 'workflow'),
 		};
+	}
+
+	@Get('/:slug/assignments/:projectId/members')
+	@GlobalScope('role:manage')
+	async getRoleProjectMembers(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('slug') slug: string,
+		@Param('projectId') projectId: string,
+	): Promise<RoleProjectMembersResponse> {
+		return await this.roleService.getRoleProjectMembers(slug, projectId);
+	}
+
+	@Get('/:slug/assignments')
+	@GlobalScope('role:manage')
+	async getRoleAssignments(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('slug') slug: string,
+	): Promise<RoleAssignmentsResponse> {
+		return await this.roleService.getRoleAssignments(slug);
 	}
 
 	@Get('/:slug')

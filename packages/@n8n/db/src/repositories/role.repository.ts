@@ -1,8 +1,8 @@
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In, Repository } from '@n8n/typeorm';
-import { UserError } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 
-import { ProjectRelation, Role, User } from '../entities';
+import { Project, ProjectRelation, Role, User } from '../entities';
 
 @Service()
 export class RoleRepository extends Repository<Role> {
@@ -58,6 +58,87 @@ export class RoleRepository extends Repository<Role> {
 			},
 			{} as Record<string, number>,
 		);
+	}
+
+	async findAllProjectCounts(): Promise<Record<string, number>> {
+		const results = await this.manager
+			.createQueryBuilder(ProjectRelation, 'pr')
+			.select('pr.role', 'roleSlug')
+			.addSelect('COUNT(DISTINCT pr.projectId)', 'count')
+			.groupBy('pr.role')
+			.getRawMany<{ roleSlug: string; count: string }>();
+
+		return results.reduce(
+			(acc, { roleSlug, count }) => {
+				acc[roleSlug] = parseInt(count, 10);
+				return acc;
+			},
+			{} as Record<string, number>,
+		);
+	}
+
+	async findProjectAssignments(roleSlug: string): Promise<
+		Array<{
+			projectId: string;
+			projectName: string;
+			projectIcon: { type: string; value: string } | null;
+			memberCount: number;
+			lastAssigned: string | null;
+		}>
+	> {
+		const results = await this.manager
+			.createQueryBuilder(ProjectRelation, 'pr')
+			.innerJoin(Project, 'project', 'project.id = pr.projectId')
+			.select('project.id', 'projectId')
+			.addSelect('project.name', 'projectName')
+			.addSelect('project.icon', 'projectIcon')
+			.addSelect('COUNT(pr.userId)', 'memberCount')
+			.addSelect('MAX(pr.createdAt)', 'lastAssigned')
+			.where('pr.role = :roleSlug', { roleSlug })
+			.groupBy('project.id')
+			.addGroupBy('project.name')
+			.addGroupBy('project.icon')
+			.getRawMany<{
+				projectId: string;
+				projectName: string;
+				projectIcon: string | { type: string; value: string } | null;
+				memberCount: string;
+				lastAssigned: string | null;
+			}>();
+
+		return results.map((r) => ({
+			projectId: r.projectId,
+			projectName: r.projectName,
+			projectIcon:
+				typeof r.projectIcon === 'string'
+					? jsonParse<{ type: string; value: string } | null>(r.projectIcon, {
+							fallbackValue: null,
+						})
+					: r.projectIcon,
+			memberCount: parseInt(r.memberCount, 10),
+			lastAssigned: r.lastAssigned ?? null,
+		}));
+	}
+
+	async findAllProjectMembers(projectId: string): Promise<
+		Array<{
+			userId: string;
+			firstName: string | null;
+			lastName: string | null;
+			email: string;
+			role: string;
+		}>
+	> {
+		return await this.manager
+			.createQueryBuilder(ProjectRelation, 'pr')
+			.innerJoin(User, 'user', 'user.id = pr.userId')
+			.select('user.id', 'userId')
+			.addSelect('user.firstName', 'firstName')
+			.addSelect('user.lastName', 'lastName')
+			.addSelect('user.email', 'email')
+			.addSelect('pr.role', 'role')
+			.where('pr.projectId = :projectId', { projectId })
+			.getRawMany();
 	}
 
 	async findBySlug(slug: string) {

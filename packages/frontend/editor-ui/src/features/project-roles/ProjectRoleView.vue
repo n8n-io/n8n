@@ -9,9 +9,11 @@ import {
 	N8nFormInput,
 	N8nHeading,
 	N8nLoading,
+	N8nTabs,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import type { TabOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import { useAsyncState } from '@vueuse/core';
@@ -19,6 +21,8 @@ import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
 import { computed, ref, toRaw } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+
+import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
 
 const rolesStore = useRolesStore();
 const route = useRoute();
@@ -29,6 +33,13 @@ const message = useMessage();
 const telemetry = useTelemetry();
 
 const props = defineProps<{ roleSlug?: string }>();
+
+const activeTab = ref<string>((route.query?.tab as string) ?? 'permissions');
+
+const tabOptions = computed<Array<TabOptions<string>>>(() => [
+	{ label: i18n.baseText('projectRoles.tab.permissions'), value: 'permissions' },
+	{ label: i18n.baseText('projectRoles.tab.assignments'), value: 'assignments' },
+]);
 
 const defaultForm = () => ({
 	displayName: '',
@@ -374,83 +385,97 @@ const displayNameValidationRules = [
 			></N8nFormInput>
 		</div>
 
-		<N8nHeading tag="h2" size="xlarge" class="mb-s">
-			{{ i18n.baseText('projectRoles.permissions') }}
-		</N8nHeading>
-		<template v-if="!isReadOnly">
-			<N8nText color="text-light" class="mb-2xs" tag="p">
-				{{ i18n.baseText('projectRoles.preset') }}
-			</N8nText>
-
-			<div class="mb-s" :class="$style.presetsContainer">
-				<N8nButton variant="subtle" @click="setPreset('project:admin')">
-					{{ i18n.baseText('projectRoles.admin') }}
-				</N8nButton>
-				<N8nButton variant="subtle" @click="setPreset('project:editor')">
-					{{ i18n.baseText('projectRoles.editor') }}
-				</N8nButton>
-				<N8nButton variant="subtle" @click="setPreset('project:viewer')">
-					{{ i18n.baseText('projectRoles.viewer') }}
-				</N8nButton>
-			</div>
-		</template>
-
-		<div :class="$style.cardContainer">
-			<div v-for="type in scopeTypes" :key="type" class="mb-s mt-s" :class="$style.card">
-				<div :class="$style.cardTitle">
-					{{ i18n.baseText(`projectRoles.type.${type}`) }}
-				</div>
-				<div style="flex: 1">
-					<N8nLoading v-if="isLoading" :rows="scopes[type].length" :shrink-last="false" />
-					<template v-else>
-						<div v-for="scope in scopes[type]" :key="scope" class="mb-2xs">
-							<N8nTooltip
-								:content="i18n.baseText(`projectRoles.${scope}.tooltip`)"
-								placement="right"
-								:enterable="false"
-								:show-after="250"
-							>
-								<N8nFormInput
-									:data-test-id="`scope-checkbox-${scope}`"
-									:model-value="form.scopes.includes(scope)"
-									:label="i18n.baseText(`projectRoles.${scope}`)"
-									validate-on-blur
-									type="checkbox"
-									:class="$style.checkbox"
-									:disabled="isReadOnly"
-									@update:model-value="() => toggleScope(scope)"
-								/>
-							</N8nTooltip>
-						</div>
-					</template>
-				</div>
-			</div>
+		<div v-if="roleSlug" class="mb-l">
+			<N8nTabs v-model="activeTab" :options="tabOptions" />
 		</div>
 
-		<div v-if="roleSlug && !isReadOnly" class="mt-xl">
-			<N8nHeading tag="h2" class="mb-2xs" size="large">
-				{{ i18n.baseText('projectRoles.dangerZone') }}
+		<div v-show="!roleSlug || activeTab === 'permissions'">
+			<N8nHeading tag="h2" size="xlarge" class="mb-s">
+				{{ i18n.baseText('projectRoles.permissions') }}
 			</N8nHeading>
-			<N8nText tag="p" class="mb-s">
-				<template v-if="initialState?.usedByUsers">
-					{{
-						i18n.baseText('projectRoles.action.delete.useWarning', {
-							interpolate: {
-								count: initialState.usedByUsers,
-							},
-						})
-					}}
-				</template>
-				<template v-else> {{ i18n.baseText('projectRoles.action.delete.warning') }}</template>
-			</N8nText>
-			<N8nButton
-				variant="destructive"
-				:disabled="Boolean(initialState?.usedByUsers)"
-				@click="deleteRole"
-			>
-				{{ i18n.baseText('projectRoles.action.delete.button') }}
-			</N8nButton>
+			<template v-if="!isReadOnly">
+				<N8nText color="text-light" class="mb-2xs" tag="p">
+					{{ i18n.baseText('projectRoles.preset') }}
+				</N8nText>
+
+				<div class="mb-s" :class="$style.presetsContainer">
+					<N8nButton variant="subtle" @click="setPreset('project:admin')">
+						{{ i18n.baseText('projectRoles.admin') }}
+					</N8nButton>
+					<N8nButton variant="subtle" @click="setPreset('project:editor')">
+						{{ i18n.baseText('projectRoles.editor') }}
+					</N8nButton>
+					<N8nButton variant="subtle" @click="setPreset('project:viewer')">
+						{{ i18n.baseText('projectRoles.viewer') }}
+					</N8nButton>
+				</div>
+			</template>
+
+			<div :class="$style.cardContainer">
+				<div v-for="type in scopeTypes" :key="type" class="mb-s mt-s" :class="$style.card">
+					<div :class="$style.cardTitle">
+						{{ i18n.baseText(`projectRoles.type.${type}`) }}
+					</div>
+					<div style="flex: 1">
+						<N8nLoading v-if="isLoading" :rows="scopes[type].length" :shrink-last="false" />
+						<template v-else>
+							<div v-for="scope in scopes[type]" :key="scope" class="mb-2xs">
+								<N8nTooltip
+									:content="i18n.baseText(`projectRoles.${scope}.tooltip`)"
+									placement="right"
+									:enterable="false"
+									:show-after="250"
+								>
+									<N8nFormInput
+										:data-test-id="`scope-checkbox-${scope}`"
+										:model-value="form.scopes.includes(scope)"
+										:label="i18n.baseText(`projectRoles.${scope}`)"
+										validate-on-blur
+										type="checkbox"
+										:class="$style.checkbox"
+										:disabled="isReadOnly"
+										@update:model-value="() => toggleScope(scope)"
+									/>
+								</N8nTooltip>
+							</div>
+						</template>
+					</div>
+				</div>
+			</div>
+
+			<div v-if="roleSlug && !isReadOnly" class="mt-xl">
+				<N8nHeading tag="h2" class="mb-2xs" size="large">
+					{{ i18n.baseText('projectRoles.dangerZone') }}
+				</N8nHeading>
+				<N8nText tag="p" class="mb-s">
+					<template v-if="initialState?.usedByProjects">
+						{{
+							i18n.baseText('projectRoles.action.delete.useWarning', {
+								interpolate: {
+									count: initialState.usedByProjects,
+								},
+							})
+						}}
+						{{ ' ' }}
+						<a :class="$style.assignmentsLink" @click="activeTab = 'assignments'">
+							{{ i18n.baseText('projectRoles.action.delete.inUse.goToAssignments') }}
+						</a>
+					</template>
+					<template v-else>
+						{{ i18n.baseText('projectRoles.action.delete.warning') }}
+					</template>
+				</N8nText>
+				<N8nButton
+					variant="destructive"
+					:disabled="Boolean(initialState?.usedByProjects)"
+					@click="deleteRole"
+				>
+					{{ i18n.baseText('projectRoles.action.delete.button') }}
+				</N8nButton>
+			</div>
 		</div>
+
+		<RoleAssignmentsTab v-if="roleSlug && activeTab === 'assignments'" :role-slug="roleSlug" />
 	</div>
 </template>
 
@@ -512,5 +537,11 @@ const displayNameValidationRules = [
 	:global(label) {
 		padding-bottom: 0 !important;
 	}
+}
+
+.assignmentsLink {
+	color: var(--color--primary);
+	cursor: pointer;
+	text-decoration: underline;
 }
 </style>
