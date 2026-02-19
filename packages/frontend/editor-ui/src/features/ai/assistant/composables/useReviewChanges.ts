@@ -1,14 +1,19 @@
 import { computed, ref, watch } from 'vue';
-import { compareWorkflowsNodes, NodeDiffStatus, NodeHelpers, type INode } from 'n8n-workflow';
+import {
+	compareWorkflowsNodes,
+	NodeDiffStatus,
+	NodeHelpers,
+	type IConnections,
+	type INode,
+} from 'n8n-workflow';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useToast } from '@/app/composables/useToast';
 import { AI_BUILDER_DIFF_MODAL_KEY, AI_BUILDER_REVIEW_CHANGES_EXPERIMENT } from '@/app/constants';
 
 export function useReviewChanges() {
@@ -19,10 +24,9 @@ export function useReviewChanges() {
 	const uiStore = useUIStore();
 	const posthogStore = usePostHog();
 	const i18n = useI18n();
-	const toast = useToast();
-
 	const isLoadingDiff = ref(false);
 	const cachedVersionNodes = ref<INode[]>([]);
+	const cachedVersionConnections = ref<IConnections>({});
 	const cachedVersionLoaded = ref(false);
 
 	watch(
@@ -30,6 +34,7 @@ export function useReviewChanges() {
 		async (version) => {
 			if (!version) {
 				cachedVersionNodes.value = [];
+				cachedVersionConnections.value = {};
 				cachedVersionLoaded.value = false;
 				return;
 			}
@@ -40,8 +45,10 @@ export function useReviewChanges() {
 					version.id,
 				);
 				cachedVersionNodes.value = v.nodes;
+				cachedVersionConnections.value = v.connections;
 			} catch {
 				cachedVersionNodes.value = [];
+				cachedVersionConnections.value = {};
 			}
 			cachedVersionLoaded.value = true;
 		},
@@ -84,42 +91,26 @@ export function useReviewChanges() {
 		);
 	});
 
-	async function openDiffView() {
-		const revertVersion = builderStore.latestRevertVersion;
-		if (!revertVersion) return;
+	function openDiffView() {
+		if (!builderStore.latestRevertVersion || !cachedVersionLoaded.value) return;
 
-		isLoadingDiff.value = true;
-		try {
-			const version = await workflowHistoryStore.getWorkflowVersion(
-				workflowsStore.workflowId,
-				revertVersion.id,
-			);
-			const sourceWorkflow = {
-				...workflowsStore.workflow,
-				nodes: version.nodes,
-				connections: version.connections,
-			};
-			const targetWorkflow = workflowsStore.workflow;
+		const sourceWorkflow = {
+			...workflowsStore.workflow,
+			nodes: cachedVersionNodes.value,
+			connections: cachedVersionConnections.value,
+		};
+		const targetWorkflow = workflowsStore.workflow;
 
-			uiStore.openModalWithData({
-				name: AI_BUILDER_DIFF_MODAL_KEY,
-				data: {
-					eventBus: createEventBus(),
-					sourceWorkflow,
-					targetWorkflow,
-					sourceLabel: i18n.baseText('aiAssistant.builder.reviewChanges.previousVersion'),
-					targetLabel: i18n.baseText('aiAssistant.builder.reviewChanges.currentVersion'),
-				},
-			});
-		} catch {
-			toast.showMessage({
-				title: i18n.baseText('aiAssistant.builder.error.title'),
-				message: i18n.baseText('aiAssistant.builder.reviewChanges.error' as BaseTextKey),
-				type: 'error',
-			});
-		} finally {
-			isLoadingDiff.value = false;
-		}
+		uiStore.openModalWithData({
+			name: AI_BUILDER_DIFF_MODAL_KEY,
+			data: {
+				eventBus: createEventBus(),
+				sourceWorkflow,
+				targetWorkflow,
+				sourceLabel: i18n.baseText('aiAssistant.builder.reviewChanges.previousVersion'),
+				targetLabel: i18n.baseText('aiAssistant.builder.reviewChanges.currentVersion'),
+			},
+		});
 	}
 
 	return {
