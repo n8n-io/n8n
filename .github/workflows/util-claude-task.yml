@@ -158,6 +158,7 @@ jobs:
             }
           claude_args: |
             --model ${{ inputs.model }} --mcp-config /tmp/mcp-config.json
+            --max-turns 50
 
       - name: Extract PR title
         run: |
