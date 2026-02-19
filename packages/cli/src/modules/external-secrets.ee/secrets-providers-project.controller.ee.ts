@@ -123,16 +123,13 @@ export class SecretProvidersProjectController {
 	@ProjectScope('externalSecretsProvider:delete')
 	async deleteConnection(
 		_req: AuthenticatedRequest,
-		_res: Response,
+		res: Response,
 		@Param('projectId') projectId: string,
 		@Param('providerKey') providerKey: string,
-	): Promise<SecretsProvidersResponses.PublicConnection> {
+	) {
 		this.logger.debug('Deleting connection for project', { projectId, providerKey });
-		const connection = await this.connectionsService.deleteConnectionForProject(
-			providerKey,
-			projectId,
-		);
-		return this.connectionsService.toPublicConnection(connection);
+		await this.connectionsService.deleteConnectionForProject(providerKey, projectId);
+		res.status(204).send();
 	}
 
 	@Post('/:projectId/connections/:providerKey/test')
