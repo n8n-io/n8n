@@ -760,6 +760,8 @@ export class ActiveWorkflowManager {
 			const error = ensureError(e);
 			const { message } = error;
 
+			this.logger.warn(`Failed to activate workflow`, { workflowId, error });
+
 			await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
 
 			this.push.broadcast({
