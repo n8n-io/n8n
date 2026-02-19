@@ -355,12 +355,7 @@ describe('Secret Providers Connections API', () => {
 			).findOneByOrFail({ providerKey: 'deleteTest' });
 			const connectionId = savedConnection.id;
 
-			const response = await ownerAgent
-				.delete('/secret-providers/connections/deleteTest')
-				.expect(200);
-
-			expect(response.body.data.name).toBe('deleteTest');
-			expect(response.body.data.projects).toHaveLength(2);
+			await ownerAgent.delete('/secret-providers/connections/deleteTest').expect(204);
 
 			// Verify deletion via GET
 			await ownerAgent.get('/secret-providers/connections/deleteTest').expect(404);
