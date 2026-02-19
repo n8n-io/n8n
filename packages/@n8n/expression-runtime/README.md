@@ -4,7 +4,7 @@ Secure, isolated expression evaluation runtime for n8n workflows.
 
 ## Status
 
-✅ **Phase 1.1 Complete: IsolatedVmBridge Implementation**
+✅ **Phase 1.1 Complete: IsolatedVmBridge + Tournament Integration**
 
 Currently implemented:
 - ✅ TypeScript interfaces and architecture design
@@ -12,6 +12,8 @@ Currently implemented:
 - ✅ IsolatedVmBridge with isolated-vm (secure V8 isolate)
 - ✅ Deep lazy proxy system for workflow data
 - ✅ Security wrappers (SafeObject, SafeError)
+- ✅ Tournament integration: `{{ expr }}` template parsing + AST security transforms
+- ✅ Expression code caching (per-evaluator)
 - ✅ Integration tests and production-ready
 
 Coming soon:
@@ -32,10 +34,11 @@ Future support (Phase 2+):
 ## Features
 
 - 🔒 **Secure**: Expressions run in isolated V8 contexts with memory limits (128MB) and timeouts (5s)
-- 🚀 **Performant**: Lazy data loading via proxies and script compilation caching
+- 🚀 **Performant**: Lazy data loading via proxies, script compilation caching, and expression code caching
 - 📊 **Observable**: Built-in metrics, traces, and logs support
 - 🌐 **Universal**: Works in Node.js backend (browsers and task runners in Phase 2+)
 - 🧪 **Tested**: Comprehensive integration tests with IsolatedVmBridge
+- 🛡️ **AST Security**: Tournament AST hooks (`ThisSanitizer`, `PrototypeSanitizer`, `DollarSignValidator`) validate expressions before execution
 
 ## Architecture
 
@@ -74,9 +77,9 @@ const evaluator = new ExpressionEvaluator({
 // Initialize
 await evaluator.initialize();
 
-// Evaluate expression (synchronous)
+// Evaluate expression using {{ }} template syntax
 const result = evaluator.evaluate(
-  '$json.user.email',
+  '{{ $json.user.email }}',
   {
     $json: {
       user: { email: 'test@example.com' }
@@ -89,6 +92,32 @@ console.log(result); // "test@example.com"
 // Clean up
 await evaluator.dispose();
 ```
+
+### With Security Hooks (Production)
+
+Pass AST security hooks from `expression-sandboxing.ts` to enable full security validation. This is the pattern used by the workflow package:
+
+```typescript
+import { ExpressionEvaluator, IsolatedVmBridge } from '@n8n/expression-runtime';
+import {
+  ThisSanitizer,
+  PrototypeSanitizer,
+  DollarSignValidator,
+} from 'n8n-workflow/expression-sandboxing';
+
+const bridge = new IsolatedVmBridge({ timeout: 5000 });
+const evaluator = new ExpressionEvaluator({
+  bridge,
+  hooks: {
+    before: [ThisSanitizer],
+    after: [PrototypeSanitizer, DollarSignValidator],
+  },
+});
+
+await evaluator.initialize();
+```
+
+When `hooks` is omitted the evaluator still runs tournament transformation (template parsing, `this` binding) but without AST security validation — suitable for development and testing.
 
 ### With Observability (Not Yet Implemented)
 
@@ -106,21 +135,6 @@ const evaluator = new ExpressionEvaluator({
 ```
 
 **Note**: Observability providers are not yet implemented. The `ObservabilityProvider` interface exists but no implementations are available yet.
-
-### With Tournament (Not Yet Implemented)
-
-```typescript
-import { Tournament } from '@n8n/tournament';
-
-const tournament = new Tournament();
-
-const evaluator = new ExpressionEvaluator({
-  bridge,
-  tournament,
-});
-```
-
-**Note**: Tournament integration is not yet implemented. This will be added in future phases for AST transformation and security validation.
 
 ## API
 
@@ -160,6 +174,7 @@ interface RuntimeBridge {
   - Deep lazy proxy system for workflow data
   - Synchronous callbacks via ivm.Reference
   - Security wrappers (SafeObject, SafeError)
+  - `E()` error handler for tournament-generated try-catch code
 - **WebWorkerBridge**: 🚧 For browser frontend (Web Workers) - Phase 2+
 - **Task Runner Integration**: 🚧 TBD - May use IsolatedVmBridge locally or direct evaluation - Phase 2+
 
@@ -169,9 +184,9 @@ interface RuntimeBridge {
 interface EvaluatorConfig {
   bridge: RuntimeBridge;                   // ✅ Implemented
   observability?: ObservabilityProvider;   // 🚧 Not yet implemented
-  tournament?: TournamentInstance;         // 🚧 Not yet implemented
   enableCodeCache?: boolean;               // 🚧 Not yet implemented (default: true, caches transformed code)
   maxCodeCacheSize?: number;               // 🚧 Not yet implemented (default: 1000)
+  hooks?: TournamentHooks;                 // ✅ Implemented - AST security hooks for tournament
 }
 
 interface BridgeConfig {
@@ -238,8 +253,8 @@ describe('ExpressionEvaluator', () => {
 
     await evaluator.initialize();
 
-    const result = evaluator.evaluate('1 + 1', {});
-    expect(result).toBe(2);
+    const result = evaluator.evaluate('{{ $json.value }}', { $json: { value: 42 } });
+    expect(result).toBe(42);
 
     await evaluator.dispose();
   });
@@ -259,7 +274,7 @@ The runtime uses several optimizations:
 - **Lazy Loading**: ✅ Only fetch data fields that expressions actually access via proxy traps
 - **Script Compilation Caching**: ✅ Compiled scripts are cached to avoid recompilation
 - **Metadata-Driven**: ✅ Only structure (keys, lengths) transferred across isolate boundary, not full data
-- **Code Transformation Caching**: 🚧 Not yet implemented - will cache transformed expressions in future phases
+- **Expression Code Caching**: ✅ Tournament-transformed code is cached per evaluator instance (same expressions repeat within a workflow, so cache hit rate is high in practice)
 
 Performance characteristics:
 - Small arrays (≤100 items): Transferred entirely for optimal performance
@@ -268,17 +283,18 @@ Performance characteristics:
 
 ## Security
 
-The runtime enforces strict security:
+The runtime enforces strict security at multiple layers:
 
 - ✅ **Memory limits**: Hard 128MB limit via isolated-vm (configurable)
 - ✅ **Execution timeouts**: 5s default timeout (configurable)
 - ✅ **Complete isolation**: No access to Node.js APIs (require, fs, process, etc.)
 - ✅ **Security wrappers**: SafeObject and SafeError prevent dangerous method access
 - ✅ **Native function blocking**: Prevents access to native code
+- ✅ **AST transforms**: `ThisSanitizer` rewrites `$json` → `this.$json`; `PrototypeSanitizer` wraps computed property access in `this.__sanitize(key)` to block prototype chain attacks; `DollarSignValidator` enforces correct `$`-variable usage
+- ✅ **Runtime sanitizer**: `__sanitize()` inside the isolate blocks access to `__proto__`, `constructor`, `prototype`, and other dangerous properties at runtime
 
 Future security features (Phase 2+):
-- 🚧 AST transformation via Tournament
-- 🚧 Security validation before execution
+- 🚧 Additional sandboxing for browser environments
 
 ## Contributing
 
@@ -292,3 +308,4 @@ See [LICENSE.md](../../LICENSE.md) in the n8n repository root.
 
 - [n8n workflow package](../workflow/)
 - [isolated-vm](https://github.com/laverdet/isolated-vm)
+- [@n8n/tournament](https://github.com/n8n-io/tournament)
