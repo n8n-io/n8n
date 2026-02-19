@@ -1,7 +1,7 @@
 import type { IConnections, INodeParameters, Logger } from 'n8n-workflow';
 import { isExpression } from 'n8n-workflow';
 
-import { MAX_NODE_EXAMPLE_CHARS } from '@/constants';
+import { MAX_NODE_EXAMPLE_CHARS, MIN_EXPRESSION_TEMPLATES } from '@/constants';
 import type { WorkflowMetadata } from '@/types';
 import type { SimpleWorkflow } from '@/types/workflow';
 
@@ -201,12 +201,11 @@ export function extractExpressionExamplesForNode(
 		}
 	}
 
-	// Deduplicate by fieldPath + referenceType (keep first occurrence)
+	// Deduplicate by fieldPath (keep first occurrence regardless of reference type)
 	const seen = new Set<string>();
 	return examples.filter((ex) => {
-		const key = `${ex.fieldPath}:${ex.referenceType}`;
-		if (seen.has(key)) return false;
-		seen.add(key);
+		if (seen.has(ex.fieldPath)) return false;
+		seen.add(ex.fieldPath);
 		return true;
 	});
 }
@@ -233,40 +232,28 @@ export function collectExpressionExamplesFromTemplates(
 	// Deduplicate by fieldPath (same field from different templates = one example)
 	const seen = new Set<string>();
 	return allExamples.filter((ex) => {
-		const key = `${ex.fieldPath}:${ex.referenceType}`;
-		if (seen.has(key)) return false;
-		seen.add(key);
+		if (seen.has(ex.fieldPath)) return false;
+		seen.add(ex.fieldPath);
 		return true;
 	});
 }
 
 /**
- * Build a clean expression pattern from an ExpressionExample.
- * Direct refs become `$json.fieldPath`, named refs become
- * `$('NodeName').item.json.fieldPath`, binary refs become `$binary.fieldPath`.
+ * Build a clean field path string from an ExpressionExample.
+ * Binary paths are prefixed with "binary:" internally; display as "$binary.name".
+ * All other paths are shown as plain field paths (e.g. "data.id", "issue.key").
  */
-function buildExpressionPattern(ex: ExpressionExample): string {
-	// Binary paths are stored as "binary:propertyName"
+function buildFieldPathLine(ex: ExpressionExample): string {
 	if (ex.fieldPath.startsWith('binary:')) {
 		return `$binary.${ex.fieldPath.slice(7)}`;
 	}
-
-	if (ex.referenceType === 'named') {
-		// Extract the referenced node name from the raw expression
-		NAMED_REF_PATTERN.lastIndex = 0;
-		const match = NAMED_REF_PATTERN.exec(ex.expression);
-		if (match?.[1]) {
-			return `$('${match[1]}').item.json.${ex.fieldPath}`;
-		}
-	}
-
-	return `$json.${ex.fieldPath}`;
+	return ex.fieldPath;
 }
 
 /**
  * Format expression examples as a structured block for the builder LLM.
- * Emphasizes that these are ACTUAL n8n output fields from real workflows,
- * not raw API field paths (which may differ).
+ * Lists only the field paths (not full expression syntax) since the builder
+ * prompt instructs to always use $('NodeName').item.json.fieldPath syntax.
  */
 export function formatExpressionExamples(
 	nodeType: string,
@@ -277,25 +264,26 @@ export function formatExpressionExamples(
 		return '';
 	}
 
+	// Sort by field path length (shortest first) for readability
+	const sorted = [...examples].sort((a, b) => a.fieldPath.length - b.fieldPath.length);
+
 	const header = `## ${nodeType} — verified output fields from real n8n workflows:`;
 	const lines: string[] = [header];
 	let currentChars = header.length + 1;
 
-	for (const ex of examples) {
-		const pattern = `- ${buildExpressionPattern(ex)}`;
+	for (const ex of sorted) {
+		const pattern = `- ${buildFieldPathLine(ex)}`;
 		if (currentChars + pattern.length + 1 > maxChars) break;
 		lines.push(pattern);
 		currentChars += pattern.length + 1;
 	}
 
 	lines.push(
-		'Use ONLY these field paths for this node type. They reflect the actual n8n output structure.',
+		`Access these fields via $('NodeName').item.json.fieldPath when referencing ${nodeType} outputs.`,
 	);
 
 	return lines.join('\n');
 }
-
-const MIN_CACHED_TEMPLATES = 20;
 
 /**
  * Fetch templates for each node type, extract expression examples, and format.
@@ -324,8 +312,8 @@ export async function fetchAndFormatExpressionExamples(
 
 		// Supplement from API when cache has fewer than the minimum
 		let freshFromApi: WorkflowMetadata[] = [];
-		if (relevantFromCache.length < MIN_CACHED_TEMPLATES) {
-			const needed = MIN_CACHED_TEMPLATES - relevantFromCache.length;
+		if (relevantFromCache.length < MIN_EXPRESSION_TEMPLATES) {
+			const needed = MIN_EXPRESSION_TEMPLATES - relevantFromCache.length;
 			try {
 				const result = await fetchWorkflowsFromTemplates(
 					{ nodes: nodeType, rows: needed },

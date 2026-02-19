@@ -1,6 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
-import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable } from '@langchain/core/runnables';
 import type { StructuredTool } from '@langchain/core/tools';
@@ -134,17 +133,6 @@ export const BuilderSubgraphState = Annotation.Root({
 	prefetchedRLCOptions: Annotation<RLCPrefetchResult[]>({
 		reducer: (x, y) => y ?? x,
 		default: () => [],
-	}),
-
-	// Expression examples from community templates, keyed by node type.
-	// Populated by get_expression_examples tool, consumed by update_node_parameters.
-	expressionExamples: Annotation<Record<string, string>>({
-		reducer: (x, y) => {
-			if (!y || Object.keys(y).length === 0) return x;
-			if (!x || Object.keys(x).length === 0) return y;
-			return { ...x, ...y };
-		},
-		default: () => ({}),
 	}),
 });
 
@@ -329,27 +317,11 @@ export class BuilderSubgraph extends BaseSubgraph<
 			// Apply cache markers to accumulated messages (for tool loop iterations)
 			applySubgraphCacheMarkers(state.messages);
 
-			// Inject expression examples into the context so the builder
-			// uses verified field paths when generating update_node_parameters changes.
-			const messages = [...state.messages];
-			if (state.expressionExamples && Object.keys(state.expressionExamples).length > 0) {
-				const exampleBlocks = Object.values(state.expressionExamples).join('\n\n');
-				messages.push(
-					new HumanMessage(
-						'=== VERIFIED EXPRESSION FIELD PATHS FROM REAL n8n WORKFLOWS ===\n\n' +
-							'IMPORTANT: n8n nodes restructure API responses. The field paths below are extracted from ' +
-							'real community workflows and show the ACTUAL output structure of each node type in n8n. ' +
-							'These paths often differ from the raw service API because n8n wraps data in additional objects.\n\n' +
-							'When writing expressions in update_node_parameters changes, you MUST use ONLY the field ' +
-							'paths listed below. Do NOT substitute your own knowledge of the service API.\n\n' +
-							exampleBlocks,
-					),
-				);
-			}
-
 			// Messages already contain context from transformInput
+			// Expression examples are returned directly in the get_expression_examples
+			// tool response, so the agent sees them naturally in the conversation.
 			const response: unknown = await this.agent.invoke({
-				messages,
+				messages: state.messages,
 				instanceUrl: state.instanceUrl ?? '',
 			});
 

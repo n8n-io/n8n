@@ -78,3 +78,5 @@ export const STREAM_SEPARATOR = '⧉⇋⇋➽⌑⧉§§\n';
  * gets stuck sending intermediate-step messages without a final response.
  */
 export const ASSISTANT_SDK_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+
+export const MIN_EXPRESSION_TEMPLATES = 20;

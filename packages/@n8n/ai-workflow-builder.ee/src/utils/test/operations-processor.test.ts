@@ -1070,7 +1070,6 @@ describe('operations-processor', () => {
 			previousSummary: 'EMPTY',
 			templateIds: [],
 			cachedTemplates: [],
-			expressionExamples: {},
 		});
 
 		it('should process operations and clear them', () => {

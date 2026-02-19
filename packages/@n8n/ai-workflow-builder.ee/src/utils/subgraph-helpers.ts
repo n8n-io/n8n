@@ -13,18 +13,16 @@ interface CommandUpdate {
 	templateIds?: number[];
 	cachedTemplates?: WorkflowMetadata[];
 	bestPractices?: string;
-	expressionExamples?: Record<string, string>;
 }
 
 /** Check that an optional field, if present, has the expected type */
 function hasValidOptionalField(
 	obj: Record<string, unknown>,
 	key: string,
-	type: 'array' | 'string' | 'object',
+	type: 'array' | 'string',
 ): boolean {
 	if (!(key in obj) || obj[key] === undefined) return true;
 	if (type === 'array') return Array.isArray(obj[key]);
-	if (type === 'object') return typeof obj[key] === 'object' && !Array.isArray(obj[key]);
 	return typeof obj[key] === type;
 }
 
@@ -41,8 +39,7 @@ function isCommandUpdate(value: unknown): value is CommandUpdate {
 		hasValidOptionalField(obj, 'workflowOperations', 'array') &&
 		hasValidOptionalField(obj, 'templateIds', 'array') &&
 		hasValidOptionalField(obj, 'cachedTemplates', 'array') &&
-		hasValidOptionalField(obj, 'bestPractices', 'string') &&
-		hasValidOptionalField(obj, 'expressionExamples', 'object')
+		hasValidOptionalField(obj, 'bestPractices', 'string')
 	);
 }
 
@@ -55,14 +52,12 @@ function collectToolResults(toolResults: unknown[]): {
 	templateIds?: number[];
 	cachedTemplates?: WorkflowMetadata[];
 	bestPractices?: string;
-	expressionExamples?: Record<string, string>;
 } {
 	const messages: BaseMessage[] = [];
 	const operations: WorkflowOperation[] = [];
 	const templateIds: number[] = [];
 	const cachedTemplates: WorkflowMetadata[] = [];
 	let bestPractices: string | undefined;
-	let expressionExamples: Record<string, string> | undefined;
 
 	for (const result of toolResults) {
 		if (isCommand(result)) {
@@ -82,11 +77,6 @@ function collectToolResults(toolResults: unknown[]): {
 				if (result.update.bestPractices) {
 					bestPractices = result.update.bestPractices;
 				}
-				if (result.update.expressionExamples) {
-					expressionExamples = expressionExamples
-						? { ...expressionExamples, ...result.update.expressionExamples }
-						: result.update.expressionExamples;
-				}
 			}
 		} else if (isBaseMessage(result)) {
 			messages.push(result);
@@ -99,7 +89,6 @@ function collectToolResults(toolResults: unknown[]): {
 		templateIds?: number[];
 		cachedTemplates?: WorkflowMetadata[];
 		bestPractices?: string;
-		expressionExamples?: Record<string, string>;
 	} = {};
 
 	if (messages.length > 0) stateUpdate.messages = messages;
@@ -107,7 +96,6 @@ function collectToolResults(toolResults: unknown[]): {
 	if (templateIds.length > 0) stateUpdate.templateIds = templateIds;
 	if (cachedTemplates.length > 0) stateUpdate.cachedTemplates = cachedTemplates;
 	if (bestPractices) stateUpdate.bestPractices = bestPractices;
-	if (expressionExamples) stateUpdate.expressionExamples = expressionExamples;
 
 	return stateUpdate;
 }
@@ -135,7 +123,6 @@ export async function executeSubgraphTools(
 	templateIds?: number[];
 	cachedTemplates?: WorkflowMetadata[];
 	bestPractices?: string;
-	expressionExamples?: Record<string, string>;
 }> {
 	const lastMessage = state.messages[state.messages.length - 1];
 

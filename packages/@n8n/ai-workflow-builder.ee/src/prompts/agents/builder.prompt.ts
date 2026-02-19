@@ -413,9 +413,10 @@ WEBHOOK RESPONSES: When using Webhook trigger with responseMode='responseNode', 
 
 // === CONFIGURATION SECTIONS ===
 
-const DATA_REFERENCING = `Reference data from previous nodes:
-- $json.fieldName - Current node's input
-- $('NodeName').item.json.fieldName - Specific node's output
+const DATA_REFERENCING = `Reference data from previous nodes using the named node syntax:
+- $('NodeName').item.json.fieldName - ALWAYS use this format
+
+ALWAYS use $('NodeName').item.json.fieldPath to reference data from other nodes. Never use $json.fieldPath — it is ambiguous, depends on node ordering, and breaks when nodes are reordered. The named syntax is explicit and resilient to workflow changes.
 
 Use .item rather than .first() or .last() because .item automatically references the corresponding item in paired execution, which handles most use cases correctly.
 

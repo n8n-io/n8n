@@ -48,20 +48,22 @@ export function createGetExpressionExamplesTool(logger?: Logger): BuilderTool {
 				const result = await fetchAndFormatExpressionExamples(nodeTypes, cachedTemplates, logger);
 
 				const stateUpdates: Record<string, unknown> = {};
-				if (Object.keys(result.formatted).length > 0) {
-					stateUpdates.expressionExamples = result.formatted;
-				}
 				if (result.newTemplates.length > 0) {
 					stateUpdates.cachedTemplates = result.newTemplates;
 				}
 
+				const formattedValues = Object.values(result.formatted);
 				const summary =
-					Object.keys(result.formatted).length > 0
-						? `Found expression examples for: ${nodeTypes.join(', ')}`
+					formattedValues.length > 0
+						? formattedValues.join('\n\n')
 						: `No expression examples found for: ${nodeTypes.join(', ')}`;
 
 				reporter.complete({ summary });
-				return createSuccessResponse(config, summary, stateUpdates);
+				return createSuccessResponse(
+					config,
+					summary,
+					Object.keys(stateUpdates).length > 0 ? stateUpdates : undefined,
+				);
 			} catch (error) {
 				const message =
 					error instanceof Error ? error.message : 'Failed to fetch expression examples';

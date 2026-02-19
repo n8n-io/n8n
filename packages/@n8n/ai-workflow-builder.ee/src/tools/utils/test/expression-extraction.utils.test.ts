@@ -250,7 +250,7 @@ describe('expression-extraction.utils', () => {
 			expect(examples).toHaveLength(0);
 		});
 
-		it('should deduplicate by fieldPath and referenceType', () => {
+		it('should deduplicate by fieldPath', () => {
 			const workflow: SimpleWorkflow = {
 				name: 'Test',
 				nodes: [
@@ -280,7 +280,7 @@ describe('expression-extraction.utils', () => {
 
 			const examples = extractExpressionExamplesForNode(workflow, 'HTTP Request');
 
-			// Should be deduplicated to just one entry for data:direct
+			// Should be deduplicated to just one entry for fieldPath 'data'
 			expect(examples).toHaveLength(1);
 		});
 	});
@@ -382,7 +382,7 @@ describe('expression-extraction.utils', () => {
 				'n8n-nodes-base.httpRequest',
 			);
 
-			// Should be deduplicated: same fieldPath "data" with referenceType "direct"
+			// Should be deduplicated: same fieldPath "data"
 			const dataExamples = examples.filter((e) => e.fieldPath === 'data');
 			expect(dataExamples).toHaveLength(1);
 		});
@@ -410,7 +410,7 @@ describe('expression-extraction.utils', () => {
 	});
 
 	describe('formatExpressionExamples', () => {
-		it('should format direct references as $json patterns', () => {
+		it('should format examples as plain field paths', () => {
 			const result = formatExpressionExamples('n8n-nodes-base.httpRequest', [
 				{
 					expression: '={{ $json.data }}',
@@ -422,10 +422,11 @@ describe('expression-extraction.utils', () => {
 			]);
 
 			expect(result).toContain('n8n-nodes-base.httpRequest');
-			expect(result).toContain('$json.data');
+			expect(result).toContain('- data');
+			expect(result).not.toContain('$json');
 		});
 
-		it('should format named references with node name', () => {
+		it('should format named references as plain field paths', () => {
 			const result = formatExpressionExamples('n8n-nodes-base.httpRequest', [
 				{
 					expression: "={{ $('HTTP Request').first().json.body }}",
@@ -436,7 +437,8 @@ describe('expression-extraction.utils', () => {
 				},
 			]);
 
-			expect(result).toContain("$('HTTP Request').item.json.body");
+			expect(result).toContain('- body');
+			expect(result).not.toContain("$('HTTP Request')");
 		});
 
 		it('should return empty string when examples array is empty', () => {
@@ -456,7 +458,7 @@ describe('expression-extraction.utils', () => {
 			const result = formatExpressionExamples('n8n-nodes-base.httpRequest', manyExamples, 500);
 
 			// Should be truncated due to small maxChars
-			expect(result.length).toBeLessThan(600);
+			expect(result.length).toBeLessThan(700);
 		});
 	});
 
@@ -830,7 +832,7 @@ describe('expression-extraction.utils', () => {
 			expect(fieldPaths).not.toContain('issue.fields.labels.concat');
 		});
 
-		it('should produce a concise formatted output', () => {
+		it('should produce a concise formatted output with plain field paths', () => {
 			const examples = collectExpressionExamplesFromTemplates(
 				[template11728],
 				'n8n-nodes-base.jiraTrigger',
@@ -840,14 +842,16 @@ describe('expression-extraction.utils', () => {
 			// Header
 			expect(formatted).toContain('n8n-nodes-base.jiraTrigger');
 
-			// Clean direct patterns
-			expect(formatted).toContain('$json.webhookEvent');
-			expect(formatted).toContain('$json.issue.fields.status.name');
-			expect(formatted).toContain('$json.issue.fields.labels');
+			// Field paths listed without $json or $('Name') prefix
+			expect(formatted).toContain('- webhookEvent');
+			expect(formatted).toContain('- issue.fields.status.name');
+			expect(formatted).toContain('- issue.fields.labels');
+			expect(formatted).toContain('- issue.key');
+			expect(formatted).toContain('- issue.fields.summary');
 
-			// Clean named patterns with node name
-			expect(formatted).toContain("$('On Jira ticket updated').item.json.issue.key");
-			expect(formatted).toContain("$('On Jira ticket updated').item.json.issue.fields.summary");
+			// Should NOT contain expression syntax
+			expect(formatted).not.toContain('$json');
+			expect(formatted).not.toContain("$('On Jira ticket updated')");
 
 			// Should NOT contain the raw long expression text
 			expect(formatted).not.toContain('A Jira issue has moved');

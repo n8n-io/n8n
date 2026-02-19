@@ -89,15 +89,4 @@ export const WorkflowState = Annotation.Root({
 		reducer: cachedTemplatesReducer,
 		default: () => [],
 	}),
-
-	// Expression examples from community templates, keyed by node type.
-	// Populated by get_expression_examples tool, consumed by update_node_parameters.
-	expressionExamples: Annotation<Record<string, string>>({
-		reducer: (x, y) => {
-			if (!y || Object.keys(y).length === 0) return x;
-			if (!x || Object.keys(x).length === 0) return y;
-			return { ...x, ...y };
-		},
-		default: () => ({}),
-	}),
 });
