@@ -1,4 +1,5 @@
 name: 'Release: Update pointer tag'
+run-name: 'Update pointer tag: ${{ inputs.track }} -> ${{ inputs.version-tag }}'
 
 on:
   workflow_call:
