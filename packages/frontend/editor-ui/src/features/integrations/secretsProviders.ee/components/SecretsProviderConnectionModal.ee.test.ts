@@ -32,6 +32,7 @@ const createMockConnectionData = (overrides: Partial<SecretProviderConnection> =
 // Create the mock object that will be returned
 const mockConnection = {
 	connectionState: { value: 'initializing' },
+	connectionError: { value: undefined },
 	isLoading: { value: false },
 	isTesting: { value: false },
 	getConnection: vi.fn(),
@@ -55,6 +56,7 @@ const mockConnectionModal = {
 	connection: {
 		isLoading: { value: false },
 		connectionState: { value: 'initializing' },
+		connectionError: { value: undefined },
 	},
 	providerTypeOptions: { value: [] },
 	connectionSettings: { value: {} },
@@ -67,7 +69,6 @@ const mockConnectionModal = {
 	canShareGlobally: { value: true },
 	projectIds: { value: [] as string[] },
 	sharedWithProjects: { value: [] as ProjectSharingData[] },
-	hyphenateConnectionName: vi.fn((name) => name),
 	selectProviderType: vi.fn(),
 	updateSettings: vi.fn(),
 	loadConnection: vi.fn(),
@@ -122,6 +123,14 @@ const mockProjectsStore = {
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: vi.fn(() => mockProjectsStore),
+}));
+
+vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
+	useEnvFeatureFlag: vi.fn(() => ({
+		check: {
+			value: vi.fn((flag: string) => flag === 'EXTERNAL_SECRETS_FOR_PROJECTS'),
+		},
+	})),
 }));
 
 const initialState = {
@@ -338,8 +347,8 @@ describe('SecretsProviderConnectionModal', () => {
 
 			await nextTick();
 
-			const errorCallout = container.querySelector('[data-test-id="connection-error-callout"]');
-			expect(errorCallout).toBeInTheDocument();
+			const errorBanner = container.querySelector('[data-test-id="connection-error-banner"]');
+			expect(errorBanner).toBeInTheDocument();
 		});
 	});
 

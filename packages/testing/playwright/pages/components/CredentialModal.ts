@@ -103,10 +103,6 @@ export class CredentialModal extends BaseModal {
 		return this.root.getByTestId('oauth-connect-success-banner');
 	}
 
-	getTestSuccessTag(): Locator {
-		return this.root.getByTestId('credentials-config-container-test-success');
-	}
-
 	async editCredential(): Promise<void> {
 		await this.root.page().getByTestId('credential-edit-button').click();
 	}

@@ -2,7 +2,11 @@ import { expect, test } from '../../../fixtures/base';
 
 test.use({ capability: 'proxy' });
 
-test.describe('Evaluations @capability:proxy', () => {
+test.describe('Evaluations @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n, services }) => {
 		await services.proxy.clearAllExpectations();
 

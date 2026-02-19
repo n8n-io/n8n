@@ -5,7 +5,11 @@ import { ChatHubSettingsPage } from '../../../pages/ChatHubSettingsPage';
 
 test.use(chatHubTestConfig);
 
-test.describe('Settings @capability:proxy', () => {
+test.describe('Settings @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'Chat' },
+	],
+}, () => {
 	test('set global credentials for a provider', async ({ n8n, anthropicCredential }) => {
 		const page = new ChatHubSettingsPage(n8n.page);
 

@@ -4,7 +4,11 @@ import { test, expect } from '../../../fixtures/base';
 
 test.use({ capability: 'proxy' });
 // @capability:proxy tag ensures that test suite is only run when proxy is available
-test.describe('Proxy server @capability:proxy', () => {
+test.describe('Proxy server @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test.beforeEach(async ({ services }) => {
 		await services.proxy.clearAllExpectations();
 	});

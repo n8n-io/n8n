@@ -494,7 +494,7 @@ defineExpose({
 								<ThinkingMessage
 									v-if="isThinkingGroupMessage(message)"
 									:items="message.items"
-									:default-expanded="true"
+									:default-expanded="streaming"
 									:latest-status-text="message.latestStatusText"
 									:is-streaming="streaming"
 									:class="getMessageStyles(message, i)"
@@ -545,8 +545,8 @@ defineExpose({
 									>
 										<N8nButton
 											v-if="opt.text"
-											type="secondary"
-											size="mini"
+											variant="subtle"
+											size="xsmall"
 											@click="() => onQuickReply(opt)"
 										>
 											{{ opt.text }}

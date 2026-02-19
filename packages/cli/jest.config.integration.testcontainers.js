@@ -4,10 +4,9 @@
  *
  * Usage: pnpm test:postgres:tc
  *
- * Note: TESTCONTAINERS_RYUK_DISABLED=true is set in the npm script because:
- * 1. Ryuk requires privileged Docker access not available in all CI environments
- * 2. Containers use withReuse() and are cleaned up in globalTeardown
- * 3. If tests crash, containers may linger - run `docker ps` to check
+ * Note: Ryuk is enabled by default and handles container cleanup on process exit,
+ * including crashes and timeouts. Containers also use withReuse() and are
+ * cleaned up in globalTeardown as a secondary cleanup mechanism.
  */
 
 /** @type {import('jest').Config} */

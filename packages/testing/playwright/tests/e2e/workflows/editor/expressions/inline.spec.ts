@@ -10,7 +10,11 @@ const SCHEDULE_PARAMETER_NAME = 'daysInterval';
 const HACKER_NEWS_ACTION = 'Get many items';
 const HACKER_NEWS_PARAMETER_NAME = 'limit';
 
-test.describe('Inline expression editor', () => {
+test.describe('Inline expression editor', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});

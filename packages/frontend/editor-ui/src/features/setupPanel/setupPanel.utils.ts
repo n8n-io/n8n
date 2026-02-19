@@ -2,7 +2,10 @@ import type { INodeUi } from '@/Interface';
 import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeTypeDisplayableCredentials } from '@/app/utils/nodes/nodeTransforms';
 
-import type { NodeCredentialRequirement, NodeSetupState } from './setupPanel.types';
+import type {
+	CredentialTypeSetupState,
+	TriggerSetupState,
+} from '@/features/setupPanel/setupPanel.types';
 
 /**
  * Collects all credential types that a node requires from three sources:
@@ -36,67 +39,108 @@ export function getNodeCredentialTypes(
 }
 
 /**
- * Builds a single credential requirement entry for a node + credential type pair.
+ * Groups credential requirements across all nodes by credential type.
+ * Returns one CredentialTypeSetupState per unique credential type.
  */
-export function buildCredentialRequirement(
-	node: INodeUi,
-	credentialType: string,
+export function groupCredentialsByType(
+	nodesWithCredentials: Array<{ node: INodeUi; credentialTypes: string[] }>,
 	getCredentialDisplayName: (type: string) => string,
-	credentialTypeToNodeNames: Map<string, string[]>,
-): NodeCredentialRequirement {
-	const credValue = node.credentials?.[credentialType];
-	const selectedCredentialId =
-		typeof credValue === 'string' ? undefined : (credValue?.id ?? undefined);
+): CredentialTypeSetupState[] {
+	const map = new Map<string, CredentialTypeSetupState>();
 
-	const credentialIssues = node.issues?.credentials ?? {};
-	const issues = credentialIssues[credentialType];
-	const issueMessages = [issues ?? []].flat();
+	for (const { node, credentialTypes } of nodesWithCredentials) {
+		for (const credType of credentialTypes) {
+			const existing = map.get(credType);
+			if (existing) {
+				existing.nodes.push(node);
 
-	return {
-		credentialType,
-		credentialDisplayName: getCredentialDisplayName(credentialType),
-		selectedCredentialId,
-		issues: issueMessages,
-		nodesWithSameCredential: credentialTypeToNodeNames.get(credentialType) ?? [],
-	};
+				const nodeIssues = node.issues?.credentials?.[credType];
+				if (nodeIssues) {
+					const issueMessages = [nodeIssues].flat();
+					for (const msg of issueMessages) {
+						if (!existing.issues.includes(msg)) {
+							existing.issues.push(msg);
+						}
+					}
+				}
+
+				if (!existing.selectedCredentialId) {
+					const credValue = node.credentials?.[credType];
+					if (typeof credValue !== 'string' && credValue?.id) {
+						existing.selectedCredentialId = credValue.id;
+					}
+				}
+			} else {
+				const credValue = node.credentials?.[credType];
+				const selectedCredentialId =
+					typeof credValue === 'string' ? undefined : (credValue?.id ?? undefined);
+
+				const credentialIssues = node.issues?.credentials ?? {};
+				const issues = credentialIssues[credType];
+				const issueMessages = [issues ?? []].flat();
+
+				map.set(credType, {
+					credentialType: credType,
+					credentialDisplayName: getCredentialDisplayName(credType),
+					selectedCredentialId,
+					issues: issueMessages,
+					nodes: [node],
+					isComplete: false,
+				});
+			}
+		}
+	}
+
+	for (const state of map.values()) {
+		state.isComplete = !!state.selectedCredentialId && state.issues.length === 0;
+	}
+
+	return Array.from(map.values());
 }
 
 /**
- * Checks whether all credential requirements for a node are satisfied
- * (each has a selected credential with no issues).
+ * Checks whether a credential card is fully complete.
+ * For cards with embedded triggers, complete = credential set + no issues + all triggers executed.
+ * When isCredentialTestedOk is provided, also checks that the credential has passed testing.
  */
-export function isNodeSetupComplete(requirements: NodeCredentialRequirement[]): boolean {
-	return requirements.every((req) => req.selectedCredentialId && req.issues.length === 0);
+export function isCredentialCardComplete(
+	credState: CredentialTypeSetupState,
+	hasTriggerExecuted: (nodeName: string) => boolean,
+	isTriggerNode: (nodeType: string) => boolean,
+	isCredentialTestedOk?: (credentialId: string) => boolean,
+): boolean {
+	const credentialComplete = !!credState.selectedCredentialId && credState.issues.length === 0;
+	if (!credentialComplete) return false;
+
+	if (
+		isCredentialTestedOk &&
+		credState.selectedCredentialId &&
+		!isCredentialTestedOk(credState.selectedCredentialId)
+	) {
+		return false;
+	}
+
+	const triggerNodes = credState.nodes.filter((node) => isTriggerNode(node.type));
+	return triggerNodes.every((node) => hasTriggerExecuted(node.name));
 }
 
 /**
- * Builds the full setup state for a single node: its credential requirements
- * and whether the node is fully configured.
+ * Builds the setup state for a trigger card.
+ * Complete when: trigger has been executed AND all its credential types are satisfied.
  */
-export function buildNodeSetupState(
+export function buildTriggerSetupState(
 	node: INodeUi,
-	credentialTypes: string[],
-	getCredentialDisplayName: (type: string) => string,
-	credentialTypeToNodeNames: Map<string, string[]>,
-	isTrigger = false,
-	hasTriggerExecuted = false,
-): NodeSetupState {
-	const credentialRequirements = credentialTypes.map((credType) =>
-		buildCredentialRequirement(node, credType, getCredentialDisplayName, credentialTypeToNodeNames),
-	);
-
-	const credentialsConfigured = isNodeSetupComplete(credentialRequirements);
-
-	// For triggers: complete only after successful execution
-	// For regular nodes: complete when credentials are configured
-	const isComplete = isTrigger
-		? credentialsConfigured && hasTriggerExecuted
-		: credentialsConfigured;
+	triggerCredentialTypes: string[],
+	credentialTypeStates: CredentialTypeSetupState[],
+	hasTriggerExecuted: boolean,
+): TriggerSetupState {
+	const allCredentialsComplete = triggerCredentialTypes.every((credType) => {
+		const credState = credentialTypeStates.find((s) => s.credentialType === credType);
+		return credState ? !!credState.selectedCredentialId && credState.issues.length === 0 : true;
+	});
 
 	return {
 		node,
-		credentialRequirements,
-		isComplete,
-		isTrigger,
+		isComplete: allCredentialsComplete && hasTriggerExecuted,
 	};
 }

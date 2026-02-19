@@ -11,7 +11,11 @@ import { test, expect } from '../../../../fixtures/base';
 
 test.use({ capability: 'observability' });
 
-test.describe('Log Streaming UI E2E @capability:observability', () => {
+test.describe('Log Streaming UI E2E @capability:observability', {
+	annotation: [
+		{ type: 'owner', description: 'Lifecycle & Governance' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.api.enableFeature('logStreaming');
 	});

@@ -83,6 +83,7 @@ import type {
 	NodeConnectionType,
 	IDataObject,
 	ExecutionSummary,
+	ExecutionStatus,
 	IConnection,
 	INodeParameters,
 } from 'n8n-workflow';
@@ -100,6 +101,8 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { buildExecutionResponseFromSchema } from '@/features/execution/executions/executions.utils';
+import type { ExecutionPreviewNodeSchema } from '@/features/execution/executions/executions.types';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
@@ -1151,6 +1154,45 @@ async function onOpenExecution(executionId: string, nodeId?: string) {
 	});
 }
 
+async function onOpenExecutionPreview(json: {
+	workflow: IWorkflowDb;
+	nodeExecutionSchema: Record<string, ExecutionPreviewNodeSchema>;
+	executionStatus: ExecutionStatus;
+	executionError?: { message: string; description?: string; name?: string; stack?: string };
+	lastNodeExecuted?: string;
+	projectId?: string;
+}) {
+	canvasStore.startLoading();
+
+	const workflow = json.workflow;
+	if (!workflow?.nodes || !workflow?.connections) {
+		canvasStore.stopLoading();
+		throw new Error('Invalid workflow object');
+	}
+
+	if (json.projectId) {
+		await projectsStore.fetchAndSetProject(json.projectId);
+	}
+
+	const data = buildExecutionResponseFromSchema({
+		workflow,
+		nodeExecutionSchema: json.nodeExecutionSchema,
+		executionStatus: json.executionStatus,
+		executionError: json.executionError,
+		lastNodeExecuted: json.lastNodeExecuted,
+	});
+
+	// importWorkflowExact handles resetWorkspace, initializeData, and fitView
+	await importWorkflowExact(json);
+
+	workflowState.setWorkflowExecutionData(data);
+	workflowState.setWorkflowPinData({});
+
+	canvasStore.stopLoading();
+
+	canvasEventBus.emit('open:execution', data);
+}
+
 function onExecutionOpenedWithError(data: IExecutionResponse) {
 	if (!data.finished && data.data?.resultData?.error) {
 		// Check if any node contains an error
@@ -1403,6 +1445,28 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 
 				await onOpenExecution(json.executionId, json.nodeId);
 				canOpenNDV.value = json.canOpenNDV ?? true;
+				hideNodeIssues.value = json.hideNodeIssues ?? false;
+				isExecutionPreview.value = true;
+			} catch (e) {
+				if (window.top) {
+					window.top.postMessage(
+						JSON.stringify({
+							command: 'error',
+							message: i18n.baseText('nodeView.showError.openExecution.title'),
+						}),
+						'*',
+					);
+				}
+				toast.showMessage({
+					title: i18n.baseText('nodeView.showError.openExecution.title'),
+					message: (e as Error).message,
+					type: 'error',
+				});
+			}
+		} else if (json && json.command === 'openExecutionPreview') {
+			try {
+				await onOpenExecutionPreview(json);
+				canOpenNDV.value = json.canOpenNDV ?? false;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
 				isExecutionPreview.value = true;
 			} catch (e) {
@@ -1958,7 +2022,7 @@ onBeforeUnmount(() => {
 				<template v-if="containsChatTriggerNodes">
 					<CanvasChatButton
 						v-if="isLogsPanelOpen"
-						type="tertiary"
+						variant="subtle"
 						:label="i18n.baseText('chat.hide')"
 						:class="$style.chatButton"
 						@click="logsStore.toggleOpen(false)"
@@ -1969,7 +2033,7 @@ onBeforeUnmount(() => {
 						:shortcut="{ keys: ['c'] }"
 					>
 						<CanvasChatButton
-							:type="isRunWorkflowButtonVisible ? 'secondary' : 'primary'"
+							:variant="isRunWorkflowButtonVisible ? 'subtle' : 'solid'"
 							:label="i18n.baseText('chat.open')"
 							:class="$style.chatButton"
 							@click="onOpenChat"
@@ -2078,27 +2142,6 @@ onBeforeUnmount(() => {
 		left: auto;
 		right: var(--spacing--sm);
 		transform: none;
-	}
-
-	button {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-
-		&:first-child {
-			margin: 0;
-		}
-
-		@include mixins.breakpoint('xs-only') {
-			text-indent: -10000px;
-			width: 42px;
-			height: 42px;
-			padding: 0;
-
-			span {
-				margin: 0;
-			}
-		}
 	}
 
 	.chatButton {
