@@ -41,6 +41,7 @@ const showCompleted = ref(true);
 	gap: var(--spacing--sm);
 	overflow-y: auto;
 	overflow-x: hidden;
+	flex: 1;
 }
 
 .footer {
