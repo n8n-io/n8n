@@ -1861,9 +1861,6 @@ describe('useCanvasOperations', () => {
 			const nodes = [pinnableNode1, nonPinnableNode, pinnableNode2];
 			workflowsStore.getNodesByIds.mockReturnValue(nodes);
 
-			// Initially, none have pinned data
-			workflowsStore.workflow.pinData = {};
-
 			let checkIndex = 0;
 			const nodeOrder: string[] = [];
 
@@ -1932,7 +1929,6 @@ describe('useCanvasOperations', () => {
 			const nodes = [nonPinnableNode1, nonPinnableNode2];
 			workflowsStore.getNodesByIds.mockReturnValue(nodes);
 
-			workflowsStore.workflow.pinData = {};
 			canPinNodeMock.mockReturnValue(false);
 
 			const { toggleNodesPinned } = useCanvasOperations();

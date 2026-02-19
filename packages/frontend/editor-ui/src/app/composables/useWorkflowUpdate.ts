@@ -20,7 +20,7 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { mapLegacyConnectionsToCanvasConnections } from '@/features/workflows/canvas/canvas.utils';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import { NodeHelpers, type IConnections, type INode, type IPinData } from 'n8n-workflow';
+import { NodeHelpers, type IConnections, type INode } from 'n8n-workflow';
 import isEqual from 'lodash/isEqual';
 
 export interface UpdateWorkflowOptions {
@@ -363,7 +363,7 @@ export function useWorkflowUpdate() {
 					createWorkflowDocumentId(workflowsStore.workflowId),
 				);
 				workflowDocumentStore.setPinData({
-					...(workflowDocumentStore.pinData as IPinData),
+					...workflowDocumentStore.getPinDataSnapshot(),
 					...workflowData.pinData,
 				});
 			}

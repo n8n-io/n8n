@@ -1220,7 +1220,6 @@ describe('RunData', () => {
 		if (pinnedData) {
 			const testWorkflowId = workflowId ?? 'test-workflow';
 			workflowsStore.workflow.id = testWorkflowId;
-			workflowsStore.workflow.pinData = { 'Test Node': pinnedData };
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(testWorkflowId),
 			);

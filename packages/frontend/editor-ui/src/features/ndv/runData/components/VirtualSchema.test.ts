@@ -215,10 +215,6 @@ function pinData(node: { name: string }, data: INodeExecutionData[]) {
 		createWorkflowDocumentId(workflowsStore.workflow.id),
 	);
 	workflowDocumentStore.pinNodeData(node.name, data);
-	workflowsStore.workflow.pinData = {
-		...workflowsStore.workflow.pinData,
-		[node.name]: data,
-	};
 }
 
 function mockNodeOutputData(nodeName: string, data: INodeExecutionData[], outputIndex = 0) {

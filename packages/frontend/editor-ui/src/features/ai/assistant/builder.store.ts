@@ -970,7 +970,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		if (!pinData) return;
 		for (const nodeName of Object.keys(pinData)) {
 			workflowDocumentStore?.unpinNodeData(nodeName);
+			if (workflowsStore.nodeMetadata[nodeName]) {
+				workflowsStore.nodeMetadata[nodeName].pinnedDataLastRemovedAt = Date.now();
+			}
 		}
+		uiStore.markStateDirty();
 	}
 
 	function clearExistingWorkflow() {
