@@ -32,6 +32,8 @@ Use the Linear MCP tools to fetch the issue and its comments together in one ste
 - `mcp__linear__get_issue` with the issue ID to get full details
 - `mcp__linear__list_comments` with the issue ID to get all comments
 
+Note: Linear issues can be moved between teams and correspondingly change their issue keys (e.g. from `ENG-123` to `SUPPORT-456`).
+
 ### 2. Fetch Embedded Media
 
 Scan the issue description AND all comments for visual content. This step is mandatory — images and videos often contain critical information like error messages, reproduction steps, and UI state.
