@@ -1,0 +1,39 @@
+{
+	"name": "@n8n/ai-node-sdk",
+	"version": "0.1.0",
+	"description": "SDK for building AI nodes in n8n",
+	"types": "dist/esm/index.d.ts",
+	"module": "dist/esm/index.js",
+	"main": "dist/cjs/index.js",
+	"exports": {
+		".": {
+			"types": "./dist/esm/index.d.ts",
+			"import": "./dist/esm/index.js",
+			"require": "./dist/cjs/index.js"
+		},
+		"./*": "./*"
+	},
+	"scripts": {
+		"clean": "rimraf dist .turbo",
+		"dev": "pnpm watch",
+		"typecheck": "tsc --noEmit",
+		"build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json",
+		"format": "biome format --write .",
+		"format:check": "biome ci .",
+		"lint": "eslint . --quiet",
+		"lint:fix": "eslint . --fix",
+		"watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
+		"test": "jest --passWithNoTests",
+		"test:unit": "jest --passWithNoTests",
+		"test:dev": "jest --watch"
+	},
+	"files": [
+		"dist"
+	],
+	"dependencies": {
+		"@n8n/ai-utilities": "workspace:*"
+	},
+	"devDependencies": {
+		"@n8n/typescript-config": "workspace:*"
+	}
+}
