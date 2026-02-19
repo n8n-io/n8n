@@ -51,13 +51,16 @@ export function groupCredentialsByType(
 
 	for (const { node, credentialTypes } of nodesWithCredentials) {
 		for (const credType of credentialTypes) {
-			// HTTP Request nodes always get their own card (never grouped) because
-			// they can target completely different APIs while sharing a credential type.
+			// HTTP Request nodes are grouped by matching URL (same credential type + same URL
+			// share a card). Nodes with different URLs get separate cards because they likely
+			// target different APIs even when using the same credential type.
 			const isHttpRequest = node.type === HTTP_REQUEST_NODE_TYPE;
-			const mapKey = isHttpRequest ? `${credType}:${node.name}` : credType;
+			const mapKey = isHttpRequest
+				? `${credType}:http:${String(node.parameters.url ?? '')}`
+				: credType;
 
 			const existing = map.get(mapKey);
-			if (existing && !isHttpRequest) {
+			if (existing) {
 				existing.nodes.push(node);
 
 				const nodeIssues = node.issues?.credentials?.[credType];

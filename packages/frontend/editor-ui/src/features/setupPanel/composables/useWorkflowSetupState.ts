@@ -327,27 +327,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			assignCredentialToNode(stateNode.name);
 		}
 
-		// Auto-assign to other HTTP Request cards with the same credential type and matching URL
-		const sourceUrls = credState.nodes
-			.filter((n) => n.type === HTTP_REQUEST_NODE_TYPE)
-			.map((n) => String(n.parameters.url ?? ''))
-			.filter(Boolean);
-
-		if (sourceUrls.length > 0) {
-			for (const otherCredState of allCredStates) {
-				if (otherCredState === credState || otherCredState.credentialType !== credentialType) {
-					continue;
-				}
-				for (const stateNode of otherCredState.nodes) {
-					if (stateNode.type !== HTTP_REQUEST_NODE_TYPE) continue;
-					const nodeUrl = String(stateNode.parameters.url ?? '');
-					if (nodeUrl && sourceUrls.includes(nodeUrl)) {
-						assignCredentialToNode(stateNode.name);
-					}
-				}
-			}
-		}
-
 		nodeHelpers.updateNodesCredentialsIssues();
 	};
 
