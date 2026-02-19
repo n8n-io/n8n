@@ -6,6 +6,7 @@ import { Command, END, GraphInterrupt } from '@langchain/langgraph';
 import {
 	extractUserRequest,
 	createStandardShouldContinue,
+	extractToolMessagesForPersistence,
 	executeSubgraphTools,
 } from '../subgraph-helpers';
 
@@ -116,6 +117,196 @@ describe('subgraph-helpers', () => {
 				],
 			};
 			expect(shouldContinue(state)).toBe(END);
+		});
+	});
+
+	describe('extractToolMessagesForPersistence', () => {
+		it('should return empty array for empty messages', () => {
+			const result = extractToolMessagesForPersistence([]);
+			expect(result).toEqual([]);
+		});
+
+		it('should include complete tool call/result pairs', () => {
+			const messages: BaseMessage[] = [
+				new HumanMessage('Context message'),
+				new AIMessage({
+					content: 'Response',
+					tool_calls: [{ name: 'test_tool', args: {}, id: 'call-1' }],
+				}),
+				new ToolMessage({ content: 'Result', tool_call_id: 'call-1' }),
+			];
+
+			const result = extractToolMessagesForPersistence(messages);
+
+			// HumanMessage is filtered out, only AIMessage with tool_calls and ToolMessage are included
+			expect(result).toHaveLength(2);
+			expect(result[0]).toBeInstanceOf(AIMessage);
+			expect(result[1]).toBeInstanceOf(ToolMessage);
+		});
+
+		it('should include ToolMessage even without corresponding AIMessage', () => {
+			const toolMessage = new ToolMessage({ content: 'Tool result', tool_call_id: 'call-1' });
+			const messages: BaseMessage[] = [toolMessage];
+
+			const result = extractToolMessagesForPersistence(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toBe(toolMessage);
+		});
+
+		it('should filter out AIMessages without tool_calls', () => {
+			const messages: BaseMessage[] = [
+				new HumanMessage('Context'),
+				new AIMessage('Just a text response'), // No tool_calls
+				new AIMessage({
+					content: '',
+					tool_calls: [{ name: 'tool', args: {}, id: 'call-1' }],
+				}),
+				new ToolMessage({ content: 'Result', tool_call_id: 'call-1' }),
+			];
+
+			const result = extractToolMessagesForPersistence(messages);
+
+			expect(result).toHaveLength(2);
+			// Should not include the AIMessage without tool_calls
+			expect(result.find((m) => m.content === 'Just a text response')).toBeUndefined();
+		});
+
+		it('should include ToolMessages', () => {
+			const toolMessage1 = new ToolMessage({ content: 'Result 1', tool_call_id: 'call-1' });
+			const toolMessage2 = new ToolMessage({ content: 'Result 2', tool_call_id: 'call-2' });
+			const messages: BaseMessage[] = [new HumanMessage('Context'), toolMessage1, toolMessage2];
+
+			const result = extractToolMessagesForPersistence(messages);
+
+			expect(result).toHaveLength(2);
+			expect(result).toContain(toolMessage1);
+			expect(result).toContain(toolMessage2);
+		});
+
+		it('should NOT include AIMessage with tool_calls if ANY tool_call lacks a corresponding ToolMessage', () => {
+			const aiMessage = new AIMessage({
+				content: '',
+				tool_calls: [
+					{ name: 'tool1', args: {}, id: 'call-1' },
+					{ name: 'tool2', args: {}, id: 'call-2' }, // No corresponding ToolMessage
+				],
+			});
+			const messages: BaseMessage[] = [
+				new HumanMessage('Context'),
+				aiMessage,
+				new ToolMessage({ content: 'Result 1', tool_call_id: 'call-1' }), // Only one ToolMessage
+			];
+
+			const result = extractToolMessagesForPersistence(messages);
+
+			// AIMessage should NOT be included because call-2 has no ToolMessage
+			expect(result).toHaveLength(1);
+			expect(result[0]).toBeInstanceOf(ToolMessage);
+		});
+
+		it('should include AIMessage with tool_calls only when ALL tool_calls have ToolMessages', () => {
+			const aiMessage = new AIMessage({
+				content: '',
+				tool_calls: [
+					{ name: 'tool1', args: {}, id: 'call-1' },
+					{ name: 'tool2', args: {}, id: 'call-2' },
+				],
+			});
+			const messages: BaseMessage[] = [
+				new HumanMessage('Context'),
+				aiMessage,
+				new ToolMessage({ content: 'Result 1', tool_call_id: 'call-1' }),
+				new ToolMessage({ content: 'Result 2', tool_call_id: 'call-2' }),
+			];
+
+			const result = extractToolMessagesForPersistence(messages);
+
+			// AIMessage should be included because both tool_calls have ToolMessages
+			expect(result).toHaveLength(3);
+			expect(result[0]).toBe(aiMessage);
+		});
+
+		it('should handle multiple complete tool call/result pairs', () => {
+			const aiMessage1 = new AIMessage({
+				content: '',
+				tool_calls: [{ name: 'tool1', args: {}, id: 'call-1' }],
+			});
+			const aiMessage2 = new AIMessage({
+				content: '',
+				tool_calls: [{ name: 'tool2', args: {}, id: 'call-2' }],
+			});
+			const messages: BaseMessage[] = [
+				new HumanMessage('Context'),
+				aiMessage1,
+				new ToolMessage({ content: 'Result 1', tool_call_id: 'call-1' }),
+				aiMessage2,
+				new ToolMessage({ content: 'Result 2', tool_call_id: 'call-2' }),
+			];
+
+			const result = extractToolMessagesForPersistence(messages);
+
+			expect(result).toHaveLength(4);
+			expect(result[0]).toBe(aiMessage1);
+			expect(result[1]).toBeInstanceOf(ToolMessage);
+			expect(result[2]).toBe(aiMessage2);
+			expect(result[3]).toBeInstanceOf(ToolMessage);
+		});
+
+		it('should exclude orphaned AIMessage at end of conversation (no ToolMessage response yet)', () => {
+			const completedAI = new AIMessage({
+				content: '',
+				tool_calls: [{ name: 'tool1', args: {}, id: 'call-1' }],
+			});
+			const orphanedAI = new AIMessage({
+				content: '',
+				tool_calls: [{ name: 'tool2', args: {}, id: 'call-2' }], // No ToolMessage for this
+			});
+			const messages: BaseMessage[] = [
+				new HumanMessage('Context'),
+				completedAI,
+				new ToolMessage({ content: 'Result 1', tool_call_id: 'call-1' }),
+				orphanedAI, // This is orphaned - no ToolMessage follows
+			];
+
+			const result = extractToolMessagesForPersistence(messages);
+
+			// Should include completed pair but exclude orphaned AIMessage
+			expect(result).toHaveLength(2);
+			expect(result[0]).toBe(completedAI);
+			expect(result[1]).toBeInstanceOf(ToolMessage);
+			expect(result).not.toContain(orphanedAI);
+		});
+
+		it('should handle AIMessage with empty tool_calls array', () => {
+			const aiMessage = new AIMessage({
+				content: 'Response',
+				tool_calls: [], // Empty array
+			});
+			const messages: BaseMessage[] = [new HumanMessage('Context'), aiMessage];
+
+			const result = extractToolMessagesForPersistence(messages);
+
+			// AIMessage with empty tool_calls should NOT be included
+			expect(result).toHaveLength(0);
+		});
+
+		it('should handle tool_call with undefined id gracefully', () => {
+			const aiMessage = new AIMessage({
+				content: '',
+				tool_calls: [{ name: 'tool', args: {}, id: undefined }],
+			});
+			const messages: BaseMessage[] = [
+				new HumanMessage('Context'),
+				aiMessage,
+				new ToolMessage({ content: 'Result', tool_call_id: 'some-id' }),
+			];
+
+			const result = extractToolMessagesForPersistence(messages);
+
+			// AIMessage should NOT be included because tool_call.id is undefined
+			expect(result).toHaveLength(1);
+			expect(result[0]).toBeInstanceOf(ToolMessage);
 		});
 	});
 
