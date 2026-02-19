@@ -141,6 +141,119 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate(`={{ "${getLocalISOString(date)}".toDate() }}`)).toEqual(date);
 		});
 
+		describe('DateTime.fromISO with Date objects (bug fix for #25267)', () => {
+			test('should work with ISO string', () => {
+				expect(evaluate('={{ DateTime.fromISO("2024-03-30T18:49:00.000Z").extract("day") }}')).toEqual(30);
+			});
+
+			test('should work with Date object', () => {
+				// This test verifies that DateTime.fromISO can handle Date objects
+				// by converting them to ISO strings internally
+				const result = evaluate(
+					`={{ DateTime.fromISO(new Date("2024-03-30T18:49:00.000Z")).extract("day") }}`,
+				);
+				expect(result).toEqual(30);
+			});
+
+			test('should work with Date object and format correctly', () => {
+				const result = evaluate(
+					`={{ DateTime.fromISO(new Date("2024-03-30T18:49:00.000Z")).toFormat("dd/MM/yyyy HH:mm:ss") }}`,
+				);
+				expect(result).toBeTruthy();
+				expect(typeof result).toBe('string');
+				// Verify it's a valid date format (should contain slashes and colons)
+				expect(result).toMatch(/\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}/);
+			});
+
+			test('should work with Date object from variable (simulating DataTable scenario)', () => {
+				// Simulate the scenario from the bug report where $json.updatedAt is a Date object
+				const testDate = new Date('2024-03-30T18:49:00.000Z');
+				const result = evaluate(
+					'={{ DateTime.fromISO($json.updatedAt).toFormat("dd/MM/yyyy HH:mm:ss") }}',
+					[{ updatedAt: testDate }],
+				);
+				expect(result).toBeTruthy();
+				expect(typeof result).toBe('string');
+				expect(result).toMatch(/\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}/);
+			});
+
+			test('should produce identical results for string and Date object inputs (editor/workflow parity)', () => {
+				// This test proves that the same expression yields the same result
+				// whether the input is a string (editor execution) or Date object (full workflow execution)
+				const isoString = '2024-03-30T18:49:00.000Z';
+				const dateObject = new Date(isoString);
+
+				// Simulate editor execution: data comes as ISO string (serialized)
+				const editorResult = evaluate(
+					'={{ DateTime.fromISO($json.updatedAt).toFormat("dd/MM/yyyy HH:mm:ss") }}',
+					[{ updatedAt: isoString }],
+				);
+
+				// Simulate full workflow execution: data comes as Date object (preserved)
+				const workflowResult = evaluate(
+					'={{ DateTime.fromISO($json.updatedAt).toFormat("dd/MM/yyyy HH:mm:ss") }}',
+					[{ updatedAt: dateObject }],
+				);
+
+				// Both execution paths should produce identical results
+				expect(editorResult).toBe(workflowResult);
+				expect(editorResult).toBeTruthy();
+				expect(typeof editorResult).toBe('string');
+				expect(editorResult).toMatch(/\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}/);
+			});
+
+			test('should handle Date object with options parameter', () => {
+				// Verify that options are passed through correctly when Date object is converted
+				const testDate = new Date('2024-03-30T18:49:00.000Z');
+				const result = evaluate(
+					'={{ DateTime.fromISO($json.updatedAt, { zone: "UTC" }).toFormat("dd/MM/yyyy HH:mm:ss") }}',
+					[{ updatedAt: testDate }],
+				);
+				expect(result).toBeTruthy();
+				expect(typeof result).toBe('string');
+			});
+
+			test('should normalize Date objects to ISO strings before expression evaluation', () => {
+				// This test verifies that Date objects are normalized to ISO strings
+				// before they reach expressions, ensuring consistent behavior
+				const testDate = new Date('2024-03-30T18:49:00.000Z');
+				const isoString = testDate.toISOString();
+
+				// Even though we pass a Date object, it should be normalized to ISO string
+				// before the expression sees it, so DateTime.fromISO receives a string
+				const result = evaluate('={{ typeof $json.updatedAt }}', [{ updatedAt: testDate }]);
+				expect(result).toBe('string');
+				expect(evaluate('={{ $json.updatedAt }}', [{ updatedAt: testDate }])).toBe(isoString);
+			});
+
+			test('should normalize nested Date objects in objects and arrays', () => {
+				// Verify normalization works recursively for nested structures
+				const testDate1 = new Date('2024-03-30T18:49:00.000Z');
+				const testDate2 = new Date('2024-04-01T12:00:00.000Z');
+				const input = {
+					metadata: {
+						createdAt: testDate1,
+						nested: {
+							updatedAt: testDate2,
+						},
+					},
+					dates: [testDate1, testDate2],
+				};
+
+				const result = evaluate('={{ $json }}', [input]) as IDataObject;
+				expect(result).toBeDefined();
+				expect(typeof (result.metadata as IDataObject).createdAt).toBe('string');
+				expect(typeof ((result.metadata as IDataObject).nested as IDataObject).updatedAt).toBe('string');
+				expect(Array.isArray(result.dates)).toBe(true);
+				expect(typeof (result.dates as string[])[0]).toBe('string');
+				expect(typeof (result.dates as string[])[1]).toBe('string');
+				expect((result.metadata as IDataObject).createdAt).toBe(testDate1.toISOString());
+				expect(((result.metadata as IDataObject).nested as IDataObject).updatedAt).toBe(
+					testDate2.toISOString(),
+				);
+			});
+		});
+
 		describe('.inBetween', () => {
 			test('should work on string and Date', () => {
 				expect(

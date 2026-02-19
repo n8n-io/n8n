@@ -9,6 +9,7 @@ import { isExpression } from './expressions/expression-helpers';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
 import { extendedFunctions } from './extensions/extended-functions';
+import { normalizeExpressionValue } from './expression-value-normalizer';
 import { getGlobalState } from './global-state';
 import { createEmptyRunExecutionData } from './run-execution-data-factory';
 import type {
@@ -177,6 +178,51 @@ const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T =
 	});
 };
 
+/**
+ * Enhanced fromISO that handles both string and Date object inputs.
+ *
+ * This fixes the inconsistency where DateTime.fromISO() works in editor execution
+ * (where data is often serialized as strings) but fails in full workflow execution
+ * (where Date objects from nodes like DataTable are preserved).
+ *
+ * Policy decision: We extend Luxon's fromISO semantics to accept Date objects
+ * to ensure consistent behavior across different execution paths. This treats
+ * the symptom at the expression evaluation boundary rather than normalizing
+ * types earlier in the pipeline, which is acceptable for backward compatibility.
+ *
+ * @param value - ISO string or Date object to parse
+ * @param options - Optional Luxon DateTime.fromISO options
+ * @returns DateTime instance parsed from the input
+ */
+const safeFromISO = (
+	value: unknown,
+	options?: Parameters<typeof DateTime.fromISO>[1],
+): DateTime => {
+	if (value instanceof Date) {
+		return DateTime.fromISO(value.toISOString(), options);
+	}
+	return DateTime.fromISO(value as string, options);
+};
+
+/**
+ * Creates a safe wrapper for DateTime that enhances fromISO to handle Date objects.
+ * Only fromISO is wrapped explicitly; all other DateTime methods remain unchanged.
+ */
+const createSafeDateTime = (): typeof DateTime => {
+	return new Proxy(DateTime, {
+		get(target, prop, receiver) {
+			// Explicitly wrap only fromISO to handle Date objects
+			if (prop === 'fromISO') {
+				return safeFromISO;
+			}
+
+			// For all other properties, return the original
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return Reflect.get(target, prop, receiver);
+		},
+	}) as typeof DateTime;
+};
+
 export class Expression {
 	constructor(private readonly workflow: Workflow) {}
 
@@ -239,7 +285,8 @@ export class Expression {
 
 		// Dates
 		data.Date = Date;
-		data.DateTime = DateTime;
+		// Wrap DateTime to make fromISO handle Date objects
+		data.DateTime = createSafeDateTime();
 		data.Interval = Interval;
 		data.Duration = Duration;
 
@@ -315,7 +362,9 @@ export class Expression {
 	}
 
 	static resolveWithoutWorkflow(expression: string, data: IDataObject = {}) {
-		return evaluateExpression(expression, data);
+		// Normalize Date objects to ISO strings for consistent behavior with workflow execution
+		const normalizedData = normalizeExpressionValue(data) as IDataObject;
+		return evaluateExpression(expression, normalizedData);
 	}
 
 	/**
