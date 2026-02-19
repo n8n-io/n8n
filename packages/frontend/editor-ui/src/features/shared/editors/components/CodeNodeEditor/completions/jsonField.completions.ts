@@ -4,7 +4,11 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { isAllowedInDotNotation } from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import { useI18n } from '@n8n/i18n';
-import type { IPinData, IRunData, IDataObject } from 'n8n-workflow';
+import type { IRunData, IDataObject } from 'n8n-workflow';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 function useJsonFieldCompletions() {
 	const i18n = useI18n();
@@ -252,7 +256,11 @@ function useJsonFieldCompletions() {
 			nodeName = quotedNodeName.replace(/^"/, '').replace(/"$/, '');
 		}
 
-		const pinData: IPinData | undefined = useWorkflowsStore().pinnedWorkflowData;
+		const wfStore = useWorkflowsStore();
+		const workflowDocumentStore = wfStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(wfStore.workflowId))
+			: undefined;
+		const pinData = workflowDocumentStore?.getPinDataSnapshot();
 
 		const nodePinData = pinData?.[nodeName];
 

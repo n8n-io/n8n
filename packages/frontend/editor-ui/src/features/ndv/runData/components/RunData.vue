@@ -94,6 +94,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const LazyRunDataTable = defineAsyncComponent(async () => await import('./RunDataTable.vue'));
 const LazyRunDataJson = defineAsyncComponent(async () => await import('./RunDataJson.vue'));
@@ -226,6 +227,7 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const rootStore = useRootStore();
@@ -588,7 +590,7 @@ const parentNodeOutputData = computed(() => {
 
 const parentNodePinnedData = computed(() => {
 	const parentNode = props.workflowObject.getParentNodesByDepth(node.value?.name ?? '')[0];
-	return props.workflowObject.pinData?.[parentNode?.name || ''] ?? [];
+	return workflowDocumentStore?.pinData?.[parentNode?.name || ''] ?? [];
 });
 
 const showPinButton = computed(
