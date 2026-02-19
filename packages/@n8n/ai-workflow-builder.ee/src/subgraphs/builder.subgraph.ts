@@ -72,6 +72,7 @@ import {
 	executeSubgraphTools,
 	extractUserRequest,
 	createStandardShouldContinue,
+	extractToolMessagesForPersistence,
 } from '../utils/subgraph-helpers';
 
 /**
@@ -522,6 +523,11 @@ export class BuilderSubgraph extends BaseSubgraph<
 			}),
 		};
 
+		// Extract tool-related messages for persistence (skip the first context message).
+		// This allows the frontend to restore UI state (execute button, tool history)
+		// after page refresh.
+		const toolMessages = extractToolMessagesForPersistence(subgraphOutput.messages);
+
 		// Extract introspection events from subgraph messages
 		const introspectionEvents = extractIntrospectionEventsFromMessages(subgraphOutput.messages);
 
@@ -535,7 +541,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 			planDecision: null,
 			planFeedback: null,
 			planPrevious: null,
-			// NO messages - clean separation from user-facing conversation
+			messages: toolMessages,
 		};
 	}
 }

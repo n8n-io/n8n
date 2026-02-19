@@ -13,9 +13,9 @@ import { N8nLlmTracing } from '../utils/n8n-llm-tracing';
 type OpenAiModel = OpenAIModelOptions & {
 	type: 'openai';
 };
-type ModelOptions = ChatModel | OpenAiModel;
+export type SupplyModelOptions = ChatModel | OpenAiModel;
 
-function isOpenAiModel(model: ModelOptions): model is OpenAiModel {
+function isOpenAiModel(model: SupplyModelOptions): model is OpenAiModel {
 	return 'type' in model && model.type === 'openai' && !(model instanceof BaseChatModel);
 }
 
@@ -82,7 +82,7 @@ function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 	return openAiModel;
 }
 
-export function supplyModel(ctx: ISupplyDataFunctions, model: ModelOptions) {
+export function supplyModel(ctx: ISupplyDataFunctions, model: SupplyModelOptions) {
 	if (isOpenAiModel(model)) {
 		const openAiModel = getOpenAiModel(ctx, model);
 		return {

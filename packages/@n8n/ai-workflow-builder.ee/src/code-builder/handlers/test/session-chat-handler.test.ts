@@ -9,7 +9,7 @@ import { SessionChatHandler } from '../session-chat-handler';
 // Mock the session utilities
 jest.mock('../../utils/code-builder-session', () => ({
 	loadCodeBuilderSession: jest.fn().mockResolvedValue({
-		userMessages: [],
+		conversationEntries: [],
 		previousSummary: undefined,
 	}),
 	saveCodeBuilderSession: jest.fn().mockResolvedValue(undefined),

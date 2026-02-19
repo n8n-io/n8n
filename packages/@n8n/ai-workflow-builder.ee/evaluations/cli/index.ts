@@ -30,6 +30,7 @@ import {
 	getDefaultDatasetName,
 	getDefaultExperimentName,
 	parseEvaluationArgs,
+	type EvaluationArgs,
 } from './argument-parser';
 import { buildCIMetadata } from './ci-metadata';
 import {
@@ -37,6 +38,7 @@ import {
 	loadDefaultTestCases,
 	getDefaultTestCaseIds,
 } from './csv-prompt-loader';
+import { loadSubgraphDatasetFile } from './dataset-file-loader';
 import { sendWebhookNotification } from './webhook';
 import { WorkflowGenerationError } from '../errors';
 import {
@@ -55,16 +57,29 @@ import {
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
+	createExecutionEvaluator,
 	type RunConfig,
 	type TestCase,
 	type Evaluator,
 	type EvaluationContext,
 	type GenerationResult,
+	createSubgraphRunner,
+	createResponderEvaluator,
+	type EvaluationLifecycle,
+	runLocalSubgraphEvaluation,
+	runSubgraphEvaluation,
 } from '../index';
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
 import { createIntrospectionAnalysisLifecycle } from '../lifecycles/introspection-analysis';
 import { AGENT_TYPES, EVAL_TYPES, EVAL_USERS } from '../support/constants';
-import { setupTestEnvironment, createAgent, type ResolvedStageLLMs } from '../support/environment';
+import {
+	setupTestEnvironment,
+	createAgent,
+	resolveNodesBasePath,
+	type ResolvedStageLLMs,
+	type TestEnvironment,
+} from '../support/environment';
+import { generateEvalPinData } from '../support/pin-data-generator';
 
 /**
  * Type guard for workflow update chunks from streaming output.
@@ -117,7 +132,6 @@ function createWorkflowGenerator(
 	llms: ResolvedStageLLMs,
 	featureFlags?: BuilderFeatureFlags,
 ): (prompt: string, collectors?: GenerationCollectors) => Promise<SimpleWorkflow> {
-
 	return async (prompt: string, collectors?: GenerationCollectors): Promise<SimpleWorkflow> => {
 		const runId = generateRunId();
 
@@ -348,6 +362,102 @@ function loadTestCases(args: ReturnType<typeof parseEvaluationArgs>): TestCase[]
 }
 
 /**
+ * Handle subgraph evaluation mode (--subgraph flag).
+ * Supports both local dataset files and LangSmith datasets.
+ */
+async function handleSubgraphMode(
+	args: EvaluationArgs,
+	env: TestEnvironment,
+	lifecycle: EvaluationLifecycle,
+	logger: ReturnType<typeof createLogger>,
+): Promise<void> {
+	const { subgraph } = args;
+	if (!subgraph) throw new Error('subgraph is required');
+
+	const subgraphRunner = createSubgraphRunner({
+		subgraph,
+		llms: env.llms,
+	});
+
+	const evaluators: Array<Evaluator<EvaluationContext>> = [];
+	if (subgraph === 'responder') {
+		evaluators.push(createResponderEvaluator(env.llms.judge, { numJudges: args.numJudges }));
+	} else {
+		logger.warn(`Subgraph evaluation not supported for ${subgraph}`);
+	}
+
+	let summary: Awaited<ReturnType<typeof runSubgraphEvaluation>>;
+
+	if (args.datasetFile) {
+		const examples = loadSubgraphDatasetFile(args.datasetFile);
+		const slicedExamples = args.maxExamples ? examples.slice(0, args.maxExamples) : examples;
+
+		summary = await runLocalSubgraphEvaluation({
+			subgraph,
+			subgraphRunner,
+			evaluators,
+			examples: slicedExamples,
+			concurrency: args.concurrency,
+			lifecycle,
+			logger,
+			outputDir: args.outputDir,
+			timeoutMs: args.timeoutMs,
+			regenerate: args.regenerate,
+			writeBack: args.writeBack,
+			datasetFilePath: args.datasetFile,
+			llms: args.regenerate ? env.llms : undefined,
+			parsedNodeTypes: args.regenerate ? env.parsedNodeTypes : undefined,
+		});
+	} else {
+		if (!args.datasetName) {
+			throw new Error('`--subgraph` requires `--dataset` or `--dataset-file`');
+		}
+		if (!env.lsClient) {
+			throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
+		}
+
+		summary = await runSubgraphEvaluation({
+			subgraph,
+			subgraphRunner,
+			evaluators,
+			datasetName: args.datasetName,
+			langsmithClient: env.lsClient,
+			langsmithOptions: {
+				experimentName: args.experimentName ?? `${subgraph}-eval`,
+				repetitions: args.repetitions,
+				concurrency: args.concurrency,
+				maxExamples: args.maxExamples,
+				filters: args.filters,
+				experimentMetadata: {
+					...buildCIMetadata(),
+					subgraph,
+				},
+			},
+			lifecycle,
+			logger,
+			outputDir: args.outputDir,
+			timeoutMs: args.timeoutMs,
+			regenerate: args.regenerate,
+			writeBack: args.writeBack,
+			llms: args.regenerate ? env.llms : undefined,
+			parsedNodeTypes: args.regenerate ? env.parsedNodeTypes : undefined,
+		});
+	}
+
+	if (args.webhookUrl) {
+		await sendWebhookNotification({
+			webhookUrl: args.webhookUrl,
+			webhookSecret: args.webhookSecret,
+			summary,
+			dataset: args.datasetFile ?? args.datasetName ?? 'local-dataset',
+			suite: args.suite,
+			metadata: { ...buildCIMetadata(), subgraph },
+			logger,
+		});
+	}
+}
+
+/**
  * Main entry point for v2 evaluation CLI.
  */
 export async function runV2Evaluation(): Promise<void> {
@@ -361,12 +471,19 @@ export async function runV2Evaluation(): Promise<void> {
 
 	// Setup environment with per-stage model configuration
 	const logger = createLogger(args.verbose);
+	const lifecycle = createConsoleLifecycle({ verbose: args.verbose, logger });
 	const stageModels = argsToStageModels(args);
 	const env = await setupTestEnvironment(stageModels, logger);
 
 	// Validate LangSmith client early if langsmith backend is requested
 	if (args.backend === 'langsmith' && !env.lsClient) {
 		throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
+	}
+
+	// Subgraph evaluation mode
+	if (args.subgraph) {
+		await handleSubgraphMode(args, env, lifecycle, logger);
+		process.exit(0);
 	}
 
 	// Create workflow generator based on agent type
@@ -388,6 +505,9 @@ export async function runV2Evaluation(): Promise<void> {
 		numJudges: args.numJudges,
 	});
 
+	// Execution evaluator runs for all suites — validates workflows execute with pin data
+	evaluators.push(createExecutionEvaluator());
+
 	const llmCallLimiter = pLimit(args.concurrency);
 
 	// Merge console lifecycle with optional introspection analysis lifecycle
@@ -401,6 +521,15 @@ export async function runV2Evaluation(): Promise<void> {
 				})
 			: undefined,
 	);
+	// Create pin data generator for mocking service node outputs in evaluations
+	const nodesBasePath = resolveNodesBasePath();
+	const pinDataGenerator = async (workflow: SimpleWorkflow) =>
+		await generateEvalPinData(workflow, {
+			llm: env.llms.judge,
+			nodeTypes: env.parsedNodeTypes,
+			nodesBasePath,
+			logger,
+		});
 
 	const baseConfig = {
 		generateWorkflow,
@@ -413,6 +542,7 @@ export async function runV2Evaluation(): Promise<void> {
 		timeoutMs: args.timeoutMs,
 		context: { llmCallLimiter },
 		passThreshold: args.suite === 'introspection' ? 0 : undefined,
+		pinDataGenerator,
 	};
 
 	const config: RunConfig =

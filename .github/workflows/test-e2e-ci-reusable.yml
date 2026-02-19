@@ -101,12 +101,12 @@ jobs:
       workers: '1'
       upload-failure-artifacts: true
 
-  # Cleanup ephemeral Docker image from GHCR after tests complete
+  # Cleanup ephemeral Docker image from GHCR and local cache after tests complete
   cleanup-docker:
     name: 'Cleanup Docker Image'
     needs: [prepare, multi-main-e2e, sqlite-sanity]
     if: ${{ !failure() && !cancelled() && !github.event.pull_request.head.repo.fork }}
-    runs-on: ubuntu-slim
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     permissions:
       packages: write
       contents: read
@@ -116,6 +116,13 @@ jobs:
         with:
           sparse-checkout: .github/scripts
           sparse-checkout-cone-mode: false
+
+      - name: Cleanup local Docker cache
+        run: |
+          echo "Removing PR images from local cache..."
+          docker rmi ghcr.io/n8n-io/n8n:pr-${{ github.event.pull_request.number }}-${{ github.run_id }} || true
+          docker rmi ghcr.io/n8n-io/runners:pr-${{ github.event.pull_request.number }}-${{ github.run_id }} || true
+          docker system prune -f || true
 
       - name: Delete images from GHCR
         continue-on-error: true

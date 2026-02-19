@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 
@@ -8,14 +8,19 @@ import CredentialPicker from '@/features/credentials/components/CredentialPicker
 import SetupCredentialLabel from './SetupCredentialLabel.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useSetupPanelStore } from '../setupPanel.store';
 
-import type { NodeSetupState } from '../setupPanel.types';
+import type { NodeCredentialRequirement, NodeSetupState } from '../setupPanel.types';
 import { useNodeExecution } from '@/app/composables/useNodeExecution';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
-const props = defineProps<{
-	state: NodeSetupState;
-}>();
+const props = withDefaults(
+	defineProps<{
+		state: NodeSetupState;
+		loading?: boolean;
+	}>(),
+	{ loading: false },
+);
 
 const expanded = defineModel<boolean>('expanded', { default: false });
 
@@ -28,6 +33,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const setupPanelStore = useSetupPanelStore();
 
 const nodeRef = computed(() => props.state.node);
 const { isExecuting, buttonLabel, buttonIcon, disabledReason, hasIssues, execute } =
@@ -50,6 +56,27 @@ const tooltipText = computed(() => {
 	}
 	return disabledReason.value;
 });
+
+const onCardMouseEnter = () => {
+	setupPanelStore.setHighlightedNodes([props.state.node.id]);
+};
+
+const onSharedNodesHintEnter = (requirement: NodeCredentialRequirement) => {
+	const ids: string[] = [props.state.node.id];
+	for (const name of requirement.nodesWithSameCredential) {
+		const node = workflowsStore.getNodeByName(name);
+		if (node) ids.push(node.id);
+	}
+	setupPanelStore.setHighlightedNodes(ids);
+};
+
+const onSharedNodesHintLeave = () => {
+	setupPanelStore.setHighlightedNodes([props.state.node.id]);
+};
+
+const onCardMouseLeave = () => {
+	setupPanelStore.clearHighlightedNodes();
+};
 
 const onHeaderClick = () => {
 	expanded.value = !expanded.value;
@@ -120,6 +147,10 @@ onMounted(() => {
 		expanded.value = false;
 	}
 });
+
+onBeforeUnmount(() => {
+	setupPanelStore.clearHighlightedNodes();
+});
 </script>
 
 <template>
@@ -129,14 +160,23 @@ onMounted(() => {
 			$style.card,
 			{
 				[$style.collapsed]: !expanded,
-				[$style.completed]: state.isComplete,
+				[$style.completed]: state.isComplete && !loading,
 				[$style['no-content']]: !state.credentialRequirements.length,
 			},
 		]"
+		@mouseenter="onCardMouseEnter"
+		@mouseleave="onCardMouseLeave"
 	>
 		<header data-test-id="node-setup-card-header" :class="$style.header" @click="onHeaderClick">
 			<N8nIcon
-				v-if="!expanded && state.isComplete"
+				v-if="!expanded && loading"
+				icon="spinner"
+				:class="$style['loading-icon']"
+				size="medium"
+				spin
+			/>
+			<N8nIcon
+				v-else-if="!expanded && state.isComplete"
 				data-test-id="node-setup-card-complete-icon"
 				icon="check"
 				:class="$style['complete-icon']"
@@ -182,6 +222,8 @@ onMounted(() => {
 						:node-name="state.node.name"
 						:credential-type="requirement.credentialType"
 						:nodes-with-same-credential="requirement.nodesWithSameCredential"
+						@hint-mouse-enter="onSharedNodesHintEnter(requirement)"
+						@hint-mouse-leave="onSharedNodesHintLeave"
 					/>
 					<CredentialPicker
 						create-button-type="secondary"
@@ -270,6 +312,10 @@ onMounted(() => {
 
 .complete-icon {
 	color: var(--color--success);
+}
+
+.loading-icon {
+	color: var(--color--text--tint-2);
 }
 
 .content {
