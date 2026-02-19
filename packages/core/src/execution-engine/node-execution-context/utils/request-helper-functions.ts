@@ -1024,9 +1024,13 @@ export async function requestOAuth2(
 	}
 	if (isN8nRequest) {
 		return await this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
-			if (error.response?.status === 401) {
+			const tokenExpiredStatus = oAuth2Options?.tokenExpiredStatusCode ?? 401;
+			if (
+				error.response?.status === tokenExpiredStatus ||
+				(tokenExpiredStatus !== 401 && error.response?.status === 401)
+			) {
 				this.logger.debug(
-					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
+					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired (status: ${error.response?.status}). Should revalidate.`,
 				);
 				const tokenRefreshOptions: IDataObject = {};
 				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
