@@ -8,6 +8,7 @@ import {
 	isQuestionsMessage,
 	isPlanMessage,
 	isUserAnswersMessage,
+	isMessagesCompactedEvent,
 } from '../assistant.types';
 import { generateShortId } from '../builder.utils';
 
@@ -155,12 +156,13 @@ export function useBuilderMessages() {
 			: -1;
 
 		if (existingIndex !== -1) {
-			// Update existing tool message - merge updates array
+			// Update existing tool message - merge updates array and update display title
 			const existing = messages[existingIndex] as ChatUI.ToolMessage;
 			const toolMessage: ChatUI.ToolMessage = {
 				...existing,
 				id: `${messageId}-${msg.toolCallId}`,
 				status: msg.status,
+				customDisplayTitle: msg.customDisplayTitle ?? existing.customDisplayTitle,
 				updates: [...(existing.updates || []), ...(msg.updates || [])],
 			};
 			messages[existingIndex] = toolMessage as ChatUI.AssistantMessage;
@@ -355,6 +357,12 @@ export function useBuilderMessages() {
 		const mutableMessages = [...currentMessages];
 		let shouldClearThinking = false;
 
+		// If this batch contains a compaction event, clear all existing messages first
+		const hasCompaction = newMessages.some(isMessagesCompactedEvent);
+		if (hasCompaction) {
+			mutableMessages.length = 0;
+		}
+
 		const messageGroupId = generateShortId();
 
 		newMessages.forEach((msg, index) => {
@@ -365,7 +373,10 @@ export function useBuilderMessages() {
 			shouldClearThinking = shouldClearThinking || clearThinking;
 		});
 
-		const thinkingMessage = determineThinkingMessage(mutableMessages);
+		// Show "Compacting" while waiting for the responder acknowledgment
+		const thinkingMessage = hasCompaction
+			? locale.baseText('aiAssistant.thinkingSteps.compacting')
+			: determineThinkingMessage(mutableMessages);
 
 		// Rating is now handled in the footer of AskAssistantChat, not per-message
 		// Remove retry from all error messages except the last one
