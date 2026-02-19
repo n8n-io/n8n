@@ -1,0 +1,14 @@
+{
+	"node": "n8n-nodes-base.retellAi",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Communication", "AI"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.retellai.com/"
+			}
+		]
+	},
+	"alias": ["Voice", "AI Call", "Phone", "Retell", "Sara"]
+}
