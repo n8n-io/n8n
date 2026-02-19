@@ -143,6 +143,8 @@ import { ExpandSubjectIDColumnLength1769784356000 } from '../common/176978435600
 import { AddWorkflowUnpublishScopeToCustomRoles1769900001000 } from '../common/1769900001000-AddWorkflowUnpublishScopeToCustomRoles';
 import { CreateChatHubToolsTable1770000000000 } from '../common/1770000000000-CreateChatHubToolsTable';
 import { ExpandProviderIdColumnLength1770000000000 } from '../common/1770000000000-ExpandProviderIdColumnLength';
+import { CreateWorkflowBuilderSessionTable1770220686000 } from '../common/1770220686000-CreateWorkflowBuilderSessionTable';
+import { AddScalingFieldsToTestRun1771417407753 } from '../common/1771417407753-AddScalingFieldsToTestRun';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -291,4 +293,6 @@ export const postgresMigrations: Migration[] = [
 	AddWorkflowUnpublishScopeToCustomRoles1769900001000,
 	CreateChatHubToolsTable1770000000000,
 	ExpandProviderIdColumnLength1770000000000,
+	CreateWorkflowBuilderSessionTable1770220686000,
+	AddScalingFieldsToTestRun1771417407753,
 ];
