@@ -16,7 +16,7 @@ const { mockExecute, mockComposableState } = vi.hoisted(() => ({
 		isButtonDisabled: false,
 		label: 'Test node',
 		buttonIcon: 'flask-conical' as const,
-		tooltipText: '',
+		tooltipItems: [] as string[],
 		isInListeningState: false,
 		listeningHint: '',
 	},
@@ -30,7 +30,7 @@ vi.mock('@/features/setupPanel/composables/useTriggerExecution', async () => {
 			isButtonDisabled: computed(() => mockComposableState.isButtonDisabled),
 			label: computed(() => mockComposableState.label),
 			buttonIcon: computed(() => mockComposableState.buttonIcon),
-			tooltipText: computed(() => mockComposableState.tooltipText),
+			tooltipItems: computed(() => mockComposableState.tooltipItems),
 			execute: mockExecute,
 			isInListeningState: computed(() => mockComposableState.isInListeningState),
 			listeningHint: computed(() => mockComposableState.listeningHint),
@@ -63,7 +63,7 @@ describe('TriggerSetupCard', () => {
 		mockComposableState.isButtonDisabled = false;
 		mockComposableState.label = 'Test node';
 		mockComposableState.buttonIcon = 'flask-conical';
-		mockComposableState.tooltipText = '';
+		mockComposableState.tooltipItems = [];
 		mockComposableState.isInListeningState = false;
 		mockComposableState.listeningHint = '';
 		createTestingPinia();

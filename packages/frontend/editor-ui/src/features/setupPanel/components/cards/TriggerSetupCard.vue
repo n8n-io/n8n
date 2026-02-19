@@ -31,7 +31,7 @@ const {
 	isButtonDisabled,
 	label,
 	buttonIcon,
-	tooltipText,
+	tooltipItems,
 	execute,
 	isInListeningState,
 	listeningHint,
@@ -102,7 +102,7 @@ onBeforeUnmount(() => {
 				:icon="buttonIcon"
 				:disabled="isButtonDisabled"
 				:loading="isExecuting"
-				:tooltip-text="tooltipText"
+				:tooltip-items="tooltipItems"
 				@click="onExecuteClick"
 			/>
 		</template>

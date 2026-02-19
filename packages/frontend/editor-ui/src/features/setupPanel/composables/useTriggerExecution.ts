@@ -62,11 +62,33 @@ export function useTriggerExecution(node: MaybeRef<INodeUi | null>) {
 		() => isExecuting.value || hasIssues.value || !!disabledReason.value,
 	);
 
-	const tooltipText = computed(() => {
+	const tooltipItems = computed<string[]>(() => {
 		if (hasIssues.value) {
-			return i18n.baseText('ndv.execute.requiredFieldsMissing');
+			const n = nodeValue.value;
+			if (n?.issues) {
+				const messages: string[] = [];
+
+				if (n.issues.credentials) {
+					for (const errors of Object.values(n.issues.credentials)) {
+						messages.push(...errors);
+					}
+				}
+
+				if (n.issues.parameters) {
+					for (const errors of Object.values(n.issues.parameters)) {
+						messages.push(...errors);
+					}
+				}
+
+				if (messages.length > 0) {
+					return messages;
+				}
+			}
+
+			return [i18n.baseText('ndv.execute.requiredFieldsMissing')];
 		}
-		return disabledReason.value;
+
+		return disabledReason.value ? [disabledReason.value] : [];
 	});
 
 	return {
@@ -75,7 +97,7 @@ export function useTriggerExecution(node: MaybeRef<INodeUi | null>) {
 		isButtonDisabled,
 		label,
 		buttonIcon,
-		tooltipText,
+		tooltipItems,
 		execute,
 
 		// Callout state
