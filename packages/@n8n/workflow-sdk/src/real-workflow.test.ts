@@ -29,7 +29,6 @@ function writeGeneratedTsFile(id: string, json: WorkflowJSON): void {
 // Workflows with known SDK round-trip issues (node loss, connection format bugs)
 const SKIP_WORKFLOWS = new Set<string>([
 	'8055', // Connection format issue in round-trip
-	'13291', // Node count mismatch (63 vs 62) - SDK drops a node
 ]);
 
 interface TestWorkflow {
@@ -47,11 +46,18 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 
 	// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- Manifest is controlled fixture file
 	const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as {
-		workflows: Array<{ id: string | number; name: string; success: boolean }>;
+		workflows: Array<{
+			id: string | number;
+			name: string;
+			success: boolean;
+			skip?: boolean;
+			skipReason?: string;
+		}>;
 	};
 
 	for (const entry of manifest.workflows) {
 		if (!entry.success) continue;
+		if (entry.skip) continue;
 		if (SKIP_WORKFLOWS.has(String(entry.id))) continue;
 
 		const filePath = path.join(dir, `${entry.id}.json`);

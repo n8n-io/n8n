@@ -97,7 +97,7 @@ function generateSubnodeCall(
 	const parts: string[] = [];
 
 	parts.push(`type: '${subnodeNode.type}'`);
-	parts.push(`version: ${subnodeNode.json.typeVersion}`);
+	parts.push(`version: ${subnodeNode.json.typeVersion ?? 1}`);
 
 	const configParts: string[] = [];
 
@@ -226,7 +226,7 @@ function generateSubnodeCallWithVarRefs(
 	const parts: string[] = [];
 
 	parts.push(`type: '${subnodeNode.type}'`);
-	parts.push(`version: ${subnodeNode.json.typeVersion}`);
+	parts.push(`version: ${subnodeNode.json.typeVersion ?? 1}`);
 
 	const configParts: string[] = [];
 
@@ -340,7 +340,7 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 	const parts: string[] = [];
 
 	parts.push(`${innerIndent}type: '${node.type}'`);
-	parts.push(`${innerIndent}version: ${node.json.typeVersion}`);
+	parts.push(`${innerIndent}version: ${node.json.typeVersion ?? 1}`);
 
 	const configParts: string[] = [];
 
@@ -504,8 +504,11 @@ function generateStickyCall(node: SemanticNode, ctx: GenerationContext): string 
 
 	const params = node.json.parameters;
 	if (params?.color !== undefined) {
-		// eslint-disable-next-line @typescript-eslint/no-base-to-string -- color is a string/number primitive
-		options.push(`color: ${String(params.color)}`);
+		if (typeof params.color === 'string') {
+			options.push(`color: '${escapeString(String(params.color))}'`);
+		} else {
+			options.push(`color: ${String(params.color)}`);
+		}
 	}
 	if (params?.width !== undefined) {
 		options.push(`width: ${Number(params.width)}`);
@@ -533,7 +536,7 @@ function generateMergeCall(node: SemanticNode, ctx: GenerationContext): string {
 
 	const parts: string[] = [];
 
-	parts.push(`${innerIndent}version: ${node.json.typeVersion}`);
+	parts.push(`${innerIndent}version: ${node.json.typeVersion ?? 1}`);
 
 	const configParts: string[] = [];
 

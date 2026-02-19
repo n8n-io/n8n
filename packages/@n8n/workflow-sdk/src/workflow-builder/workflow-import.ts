@@ -90,8 +90,19 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 		};
 
 		const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
-		const mapKey = nodeName || `__unnamed_${unnamedCounter++}`;
-		nameToKey.set(nodeName, mapKey);
+		let mapKey = nodeName || `__unnamed_${unnamedCounter++}`;
+
+		// Handle duplicate node names: generate unique key for duplicates
+		// The first instance keeps the original name (connections reference it)
+		if (nodes.has(mapKey)) {
+			let counter = 2;
+			while (nodes.has(`${nodeName} ${counter}`)) {
+				counter++;
+			}
+			mapKey = `${nodeName} ${counter}`;
+		} else {
+			nameToKey.set(nodeName, mapKey);
+		}
 
 		nodes.set(mapKey, {
 			instance,

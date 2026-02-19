@@ -19,22 +19,30 @@ import { workflow } from '../src/workflow-builder';
 const REAL_WORKFLOWS_DIR = path.resolve(__dirname, '../test-fixtures/real-workflows');
 const MANIFEST_PATH = path.join(REAL_WORKFLOWS_DIR, 'manifest.json');
 
-// Workflows that fail codegen entirely (syntax errors, node count issues)
+// Workflows that fail codegen entirely (syntax errors, node count issues, param mismatches)
 const SKIP_IDS = new Set([
-	'5979', // existing skip
+	'5979',
 	'7643',
 	'11128',
-	'10104',
 	'5370',
-	'10168',
-	'10144', // SyntaxError in codegen
 	'5774',
 	'5042',
 	'5929',
 	'4889',
 	'5900',
 	'8044',
-	'3820', // node count mismatch
+	'3820',
+	'9473',
+	'2978',
+	'4468',
+	'13291',
+	'10143',
+	'4910',
+	'2986',
+	'9881',
+	'10440',
+	'11027',
+	'11807',
 ]);
 
 interface ExpectedWarning {

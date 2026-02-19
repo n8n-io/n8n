@@ -84,8 +84,67 @@ function parseMainConnections(
 }
 
 /**
+ * Find the nearest parent node that accepts an AI connection type.
+ * Used when a subnode references a non-existent parent (e.g., renamed node with stale connections).
+ * Matches by: accepts the AI connection type, doesn't already have a subnode of that type,
+ * and is closest by canvas position.
+ */
+function findNearestParent(
+	sourceNode: SemanticNode,
+	connectionType: AiConnectionType,
+	graph: SemanticGraph,
+): SemanticNode | undefined {
+	const sourcePos = sourceNode.json.position;
+	if (!sourcePos) return undefined;
+
+	// AI connection types that allow multiple subnodes (array types)
+	const multiSubnodeTypes = new Set(['ai_tool']);
+
+	let bestMatch: SemanticNode | undefined;
+	let bestDistance = Infinity;
+
+	for (const [, candidate] of graph.nodes) {
+		// Only consider agent-like nodes (langchain nodes that accept AI inputs)
+		if (!candidate.type.includes('langchain')) continue;
+		// Don't match other subnodes
+		if (
+			candidate.type.includes('lmChat') ||
+			candidate.type.includes('memory') ||
+			candidate.type.includes('outputParser') ||
+			candidate.type.includes('embedding') ||
+			candidate.type.includes('vectorStore') ||
+			candidate.type.includes('retriever') ||
+			candidate.type.includes('textSplitter') ||
+			candidate.type.includes('reranker')
+		)
+			continue;
+
+		// Skip if this candidate already has a subnode of this connection type (unless it's a multi type)
+		if (!multiSubnodeTypes.has(connectionType)) {
+			const alreadyHasType = candidate.subnodes.some((s) => s.connectionType === connectionType);
+			if (alreadyHasType) continue;
+		}
+
+		const candidatePos = candidate.json.position;
+		if (!candidatePos) continue;
+
+		const dx = sourcePos[0] - candidatePos[0];
+		const dy = sourcePos[1] - candidatePos[1];
+		const distance = dx * dx + dy * dy;
+
+		if (distance < bestDistance) {
+			bestDistance = distance;
+			bestMatch = candidate;
+		}
+	}
+
+	return bestMatch;
+}
+
+/**
  * Parse AI subnode connections and add to graph
  * Skips connections from non-existent source nodes (dangling connections from malformed workflow data)
+ * When target parent doesn't exist (stale references), tries to find the nearest matching parent
  */
 function parseAiConnections(
 	sourceName: string,
@@ -102,7 +161,14 @@ function parseAiConnections(
 		if (!targets) return;
 
 		targets.forEach((target) => {
-			const parentNode = graph.nodes.get(target.node);
+			let parentNode = graph.nodes.get(target.node);
+
+			// If parent doesn't exist (stale reference from renamed node),
+			// try to find the nearest matching parent by position and type
+			if (!parentNode) {
+				parentNode = findNearestParent(sourceNode, connectionType, graph);
+			}
+
 			if (parentNode) {
 				parentNode.subnodes.push({
 					connectionType,
@@ -286,7 +352,8 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 	};
 
 	// Phase 1: Create nodes
-	// Generate unique names for nodes with undefined names to prevent Map key collisions
+	// Generate unique names for nodes with undefined/empty names or duplicate names
+	// to prevent Map key collisions
 	const unnamedCounters = new Map<string, number>();
 	for (const nodeJson of json.nodes) {
 		let nodeName = nodeJson.name;
@@ -296,8 +363,21 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 			const counter = (unnamedCounters.get(typeSuffix) ?? 0) + 1;
 			unnamedCounters.set(typeSuffix, counter);
 			nodeName = `__unnamed_${typeSuffix}_${counter}__`;
+		} else if (graph.nodes.has(nodeName)) {
+			// Duplicate node name — generate a unique key to avoid Map collision.
+			// The first instance keeps the original name (connections reference it).
+			let uniqueName = nodeName;
+			let counter = 2;
+			while (graph.nodes.has(uniqueName)) {
+				uniqueName = `${nodeName} ${counter}`;
+				counter++;
+			}
+			nodeName = uniqueName;
 		}
-		graph.nodes.set(nodeName, createSemanticNode(nodeJson));
+		const semanticNode = createSemanticNode(nodeJson);
+		// Ensure SemanticNode.name matches the unique graph key for variable name generation
+		semanticNode.name = nodeName;
+		graph.nodes.set(nodeName, semanticNode);
 	}
 
 	// Phase 2: Parse connections
