@@ -424,9 +424,24 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				return { nextPhase: next, planDecision: null };
 			})
 			// State modification nodes (preprocessing)
-			.addNode('check_state', (state) => ({
-				nextPhase: determineStateAction(state, autoCompactThresholdTokens),
-			}))
+			.addNode('check_state', (state) => {
+				const action = determineStateAction(state, autoCompactThresholdTokens);
+
+				// In plan mode (without mergeAskBuild), skip the supervisor and
+				// route directly to discovery (which contains the planner).
+				// Set nextPhase to 'discovery' so create_workflow_name can route correctly.
+				if (
+					action === 'continue' &&
+					featureFlags?.planMode === true &&
+					state.mode === 'plan' &&
+					!state.planOutput &&
+					!mergeAskBuild
+				) {
+					return { nextPhase: 'discovery' };
+				}
+
+				return { nextPhase: action };
+			})
 			.addNode('cleanup_dangling', (state) => handleCleanupDangling(state.messages, logger))
 			.addNode('compact_messages', async (state, config) => {
 				const isAutoCompact = state.messages[state.messages.length - 1]?.content !== '/compact';
@@ -558,23 +573,12 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					cleanup_dangling: 'cleanup_dangling',
 					compact_messages: 'compact_messages',
 					delete_messages: 'delete_messages',
-					create_workflow_name: 'create_workflow_name',
 					auto_compact_messages: 'compact_messages', // Reuse same node
 					clear_error_state: 'clear_error_state',
 					continue: 'supervisor',
+					// Plan mode: route through create_workflow_name → discovery
+					discovery: 'create_workflow_name',
 				};
-
-				// In plan mode, skip the supervisor and go directly to discovery
-				// (which contains the planner) when no plan has been generated yet
-				if (
-					state.nextPhase === 'continue' &&
-					featureFlags?.planMode === true &&
-					state.mode === 'plan' &&
-					!state.planOutput &&
-					!mergeAskBuild
-				) {
-					return 'discovery_subgraph';
-				}
 
 				return routes[state.nextPhase] ?? 'supervisor';
 			})
@@ -582,7 +586,8 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			.addEdge('cleanup_dangling', 'check_state') // Re-check after cleanup
 			.addEdge('delete_messages', 'responder') // Clear → responder for acknowledgment
 			.addEdge('clear_error_state', 'check_state') // Re-check after clearing errors (AI-1812)
-			.addEdge('create_workflow_name', 'supervisor') // Continue after naming
+			// create_workflow_name routes to the subgraph determined by nextPhase
+			.addConditionalEdges('create_workflow_name', (state) => routeToNode(state.nextPhase))
 			// Compact has conditional routing: auto → continue, manual → responder
 			.addConditionalEdges('compact_messages', (state) => {
 				// Auto-compact preserves the last user message, manual /compact clears all
@@ -591,7 +596,15 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				return hasMessages ? 'check_state' : 'responder';
 			})
 			// Conditional Edge for Supervisor (initial routing via LLM)
-			.addConditionalEdges('supervisor', (state) => routeToNode(state.nextPhase))
+			// Builder/discovery routes go through create_workflow_name first (for name generation)
+			// Assistant/responder routes go directly (no workflow modification)
+			.addConditionalEdges('supervisor', (state) => {
+				const next = state.nextPhase;
+				if (next === 'builder' || next === 'discovery') {
+					return 'create_workflow_name';
+				}
+				return routeToNode(next);
+			})
 			// Deterministic routing after subgraphs complete (based on coordination log)
 			.addConditionalEdges('route_next_phase', (state) => routeToNode(state.nextPhase))
 			// Responder ends the workflow
