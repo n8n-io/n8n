@@ -22,7 +22,7 @@ describe('QuickConnectModule', () => {
 					packageName: '@n8n/test-service',
 					credentialType: 'testApi',
 					text: 'Test Service Integration',
-					quickConnectType: 'backend',
+					quickConnectType: 'firecrawl',
 					consentText: 'Allow access to your account?',
 					backendFlowConfig: {
 						secret: 'super-secret-key-that-should-never-be-exposed',
@@ -67,7 +67,7 @@ describe('QuickConnectModule', () => {
 					packageName: '@n8n/backend-service',
 					credentialType: 'backendApi',
 					text: 'Backend Service Integration',
-					quickConnectType: 'backend',
+					quickConnectType: 'firecrawl',
 					consentText: 'Grant access?',
 					backendFlowConfig: {
 						secret: 'secret-that-must-be-hidden',
@@ -95,7 +95,7 @@ describe('QuickConnectModule', () => {
 					packageName: '@n8n/test-service',
 					credentialType: 'testApi',
 					text: 'Test Service Integration',
-					quickConnectType: 'backend',
+					quickConnectType: 'firecrawl',
 					consentText: 'Grant access?',
 					backendFlowConfig: {
 						secret: 'secret-key',
@@ -110,7 +110,7 @@ describe('QuickConnectModule', () => {
 			expect(option.packageName).toBe('@n8n/test-service');
 			expect(option.credentialType).toBe('testApi');
 			expect(option.text).toBe('Test Service Integration');
-			expect(option.quickConnectType).toBe('backend');
+			expect(option.quickConnectType).toBe('firecrawl');
 			expect(option.consentText).toBe('Grant access?');
 		});
 
@@ -120,7 +120,7 @@ describe('QuickConnectModule', () => {
 					packageName: '@n8n/service-1',
 					credentialType: 'api1',
 					text: 'Service 1',
-					quickConnectType: 'backend',
+					quickConnectType: 'firecrawl',
 					consentText: 'Consent 1',
 					backendFlowConfig: {
 						secret: 'secret-1',
@@ -130,7 +130,7 @@ describe('QuickConnectModule', () => {
 					packageName: '@n8n/service-2',
 					credentialType: 'api2',
 					text: 'Service 2',
-					quickConnectType: 'backend',
+					quickConnectType: 'firecrawl',
 					consentText: 'Consent 2',
 					backendFlowConfig: {
 						secret: 'secret-2',
