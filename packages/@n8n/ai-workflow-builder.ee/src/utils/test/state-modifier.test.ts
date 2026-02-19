@@ -30,20 +30,6 @@ describe('state-modifier', () => {
 		const defaultNameWorkflow = { nodes: [], connections: {}, name: 'My workflow' };
 		const defaultNameNumberedWorkflow = { nodes: [], connections: {}, name: 'My workflow 5' };
 		const customNameWorkflow = { nodes: [], connections: {}, name: 'Email automation' };
-		const workflowWithNodes = {
-			nodes: [
-				{
-					id: '1',
-					name: 'Start',
-					type: 'n8n-nodes-base.manualTrigger',
-					position: [0, 0] as [number, number],
-					typeVersion: 1,
-					parameters: {},
-				},
-			],
-			connections: {},
-			name: 'My workflow',
-		};
 
 		it('should return cleanup_dangling when dangling tool calls exist', () => {
 			mockCleanupDanglingToolCallMessages.mockReturnValue([
@@ -85,7 +71,7 @@ describe('state-modifier', () => {
 			expect(result).toBe('delete_messages');
 		});
 
-		it('should return create_workflow_name for first message with default workflow name', () => {
+		it('should return continue for first message with default workflow name (name generation moved to after routing)', () => {
 			const result = determineStateAction(
 				{
 					messages: [new HumanMessage({ id: 'h1', content: 'Create an email workflow' })],
@@ -94,10 +80,10 @@ describe('state-modifier', () => {
 				40000,
 			);
 
-			expect(result).toBe('create_workflow_name');
+			expect(result).toBe('continue');
 		});
 
-		it('should return create_workflow_name for first message with numbered default name', () => {
+		it('should return continue for first message with numbered default name', () => {
 			const result = determineStateAction(
 				{
 					messages: [new HumanMessage({ id: 'h1', content: 'Create an email workflow' })],
@@ -106,54 +92,14 @@ describe('state-modifier', () => {
 				40000,
 			);
 
-			expect(result).toBe('create_workflow_name');
+			expect(result).toBe('continue');
 		});
 
-		it('should return create_workflow_name for first message with empty workflow name', () => {
+		it('should return continue for first message with empty workflow name', () => {
 			const result = determineStateAction(
 				{
 					messages: [new HumanMessage({ id: 'h1', content: 'Create an email workflow' })],
 					workflowJSON: emptyWorkflow,
-				},
-				40000,
-			);
-
-			expect(result).toBe('create_workflow_name');
-		});
-
-		it('should NOT return create_workflow_name for custom workflow name', () => {
-			const result = determineStateAction(
-				{
-					messages: [new HumanMessage({ id: 'h1', content: 'Create an email workflow' })],
-					workflowJSON: customNameWorkflow,
-				},
-				40000,
-			);
-
-			expect(result).toBe('continue');
-		});
-
-		it('should NOT return create_workflow_name when workflow has nodes', () => {
-			const result = determineStateAction(
-				{
-					messages: [new HumanMessage({ id: 'h1', content: 'Add another node' })],
-					workflowJSON: workflowWithNodes,
-				},
-				40000,
-			);
-
-			expect(result).toBe('continue');
-		});
-
-		it('should NOT return create_workflow_name when there are multiple messages', () => {
-			const result = determineStateAction(
-				{
-					messages: [
-						new HumanMessage({ id: 'h1', content: 'First message' }),
-						new AIMessage({ id: 'a1', content: 'Response' }),
-						new HumanMessage({ id: 'h2', content: 'Second message' }),
-					],
-					workflowJSON: defaultNameWorkflow,
 				},
 				40000,
 			);
