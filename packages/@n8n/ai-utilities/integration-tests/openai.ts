@@ -4,19 +4,20 @@ import type { IHttpRequestMethods } from 'n8n-workflow';
 import {
 	BaseChatModel,
 	getParametersJsonSchema,
+	parseSSEStream,
+	type TokenUsage,
+	type Tool,
+	type ToolCall,
 	type ChatModelConfig,
 	type GenerateResult,
 	type Message,
-	type StreamChunk,
-	type Tool,
-	type ToolCall,
-	type TokenUsage,
-	type ProviderTool,
 	type MessageContent,
+	type ProviderTool,
+	type StreamChunk,
 } from 'src';
-import { parseSSEStream } from 'src';
 
-export type OpenAITool =
+// Types
+type OpenAITool =
 	| {
 			type: 'function';
 			name: string;
@@ -28,9 +29,25 @@ export type OpenAITool =
 			type: 'web_search';
 	  };
 
-export type OpenAIToolChoice = 'auto' | 'required' | 'none' | { type: 'function'; name: string };
+type OpenAIToolChoice = 'auto' | 'required' | 'none' | { type: 'function'; name: string };
 
-export interface OpenAIResponsesRequest {
+type ResponsesInputItem =
+	| { role: 'user'; content: string }
+	| { role: 'user'; content: Array<{ type: 'input_text'; text: string }> }
+	| {
+			type: 'message';
+			role: 'assistant';
+			content: Array<{ type: 'output_text'; text: string }>;
+	  }
+	| {
+			type: 'function_call';
+			call_id: string;
+			name: string;
+			arguments: string;
+	  }
+	| { type: 'function_call_output'; call_id: string; output: string };
+
+interface OpenAIResponsesRequest {
 	model: string;
 	input: string | ResponsesInputItem[];
 	instructions?: string;
@@ -45,7 +62,7 @@ export interface OpenAIResponsesRequest {
 	metadata?: Record<string, unknown>;
 }
 
-export interface OpenAIResponsesResponse {
+interface OpenAIResponsesResponse {
 	id: string;
 	object: string;
 	created_at: string;
@@ -69,7 +86,7 @@ export interface OpenAIResponsesResponse {
 	service_tier?: string;
 }
 
-export type ResponsesOutputItem =
+type ResponsesOutputItem =
 	| {
 			type: 'message';
 			role: 'assistant';
@@ -95,7 +112,7 @@ export type ResponsesOutputItem =
 			}>;
 	  };
 
-export interface OpenAIStreamEvent {
+interface OpenAIStreamEvent {
 	type: string;
 	delta?: string;
 	output_index?: number;
@@ -103,42 +120,7 @@ export interface OpenAIStreamEvent {
 	response?: Record<string, unknown>;
 }
 
-export interface OpenAIErrorResponse {
-	error: {
-		message: string;
-		type: string;
-		code?: string;
-		param?: string;
-	};
-}
-
-async function openAIFetch(
-	fn: RequestConfig['httpRequest'],
-	url: string,
-	body: OpenAIResponsesRequest,
-): Promise<OpenAIResponsesResponse> {
-	const cleanedBody = Object.fromEntries(
-		Object.entries(body).filter(([_, value]) => value !== undefined),
-	);
-	const response = await fn('POST', url, cleanedBody, {
-		'Content-Type': 'application/json',
-	});
-	return response.body as OpenAIResponsesResponse;
-}
-
-async function openAIFetchStream(
-	fn: RequestConfig['openStream'],
-	url: string,
-	body: OpenAIResponsesRequest,
-): Promise<ReadableStream<Uint8Array>> {
-	const cleanedBody = Object.fromEntries(
-		Object.entries(body).filter(([_, value]) => value !== undefined),
-	);
-	const response = await fn('POST', url, cleanedBody, {
-		'Content-Type': 'application/json',
-	});
-	return response.body;
-}
+// Helpers
 
 async function* parseOpenAIStreamEvents(
 	body: ReadableStream<Uint8Array>,
@@ -157,22 +139,6 @@ async function* parseOpenAIStreamEvents(
 		}
 	}
 }
-
-type ResponsesInputItem =
-	| { role: 'user'; content: string }
-	| { role: 'user'; content: Array<{ type: 'input_text'; text: string }> }
-	| {
-			type: 'message';
-			role: 'assistant';
-			content: Array<{ type: 'output_text'; text: string }>;
-	  }
-	| {
-			type: 'function_call';
-			call_id: string;
-			name: string;
-			arguments: string;
-	  }
-	| { type: 'function_call_output'; call_id: string; output: string };
 
 function genericMessagesToResponsesInput(messages: Message[]): {
 	instructions?: string;
@@ -292,7 +258,7 @@ function genericToolToResponsesTool(tool: Tool): OpenAITool {
 	};
 }
 
-function parseResponsesOutput(output: unknown[]): {
+function parseResponsesOutput(output: ResponsesOutputItem[]): {
 	text: string;
 	toolCalls: ToolCall[];
 } {
@@ -300,26 +266,23 @@ function parseResponsesOutput(output: unknown[]): {
 	const toolCalls: ToolCall[] = [];
 
 	for (const item of output) {
-		const o = item as Record<string, unknown>;
-		if (o.type === 'message' && o.role === 'assistant') {
-			const content = (o.content as Array<Record<string, unknown>>) ?? [];
-			for (const block of content) {
-				if (block.type === 'output_text' && typeof block.text === 'string') {
+		if (item.type === 'message' && item.role === 'assistant') {
+			for (const block of item.content) {
+				if (block.type === 'output_text') {
 					text += block.text;
 				}
 			}
 		}
-		if (o.type === 'function_call') {
+		if (item.type === 'function_call') {
 			try {
 				toolCalls.push({
-					id: (o.call_id as string) ?? (o.id as string),
-					name: (o.name as string) ?? '',
-					arguments: JSON.parse((o.arguments as string) ?? '{}') as Record<string, unknown>,
-					argumentsRaw: (o.arguments as string) ?? undefined,
+					id: item.call_id,
+					name: item.name,
+					arguments: JSON.parse(item.arguments) as Record<string, unknown>,
+					argumentsRaw: item.arguments,
 				});
 			} catch (e) {
-				const argumentsMsg = typeof o.arguments === 'string' ? o.arguments : typeof o.arguments;
-				throw new Error(`Failed to parse function call arguments: ${argumentsMsg}`);
+				throw new Error(`Failed to parse function call arguments: ${item.arguments}`);
 			}
 		}
 	}
@@ -349,14 +312,14 @@ function parseTokenUsage(
 		: undefined;
 }
 
-export interface OpenAIChatModelConfig extends ChatModelConfig {
+interface OpenAIChatModelConfig extends ChatModelConfig {
 	apiKey?: string;
 	baseURL?: string;
 
 	providerTools?: ProviderTool[];
 }
 
-export interface RequestConfig {
+interface RequestConfig {
 	httpRequest: (
 		method: IHttpRequestMethods,
 		url: string,
@@ -406,32 +369,33 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 			stream: false,
 		};
 
-		const response = await openAIFetch(
-			this.requests.httpRequest,
+		const response = await this.requests.httpRequest(
+			'POST',
 			`${this.baseURL}/responses`,
 			requestBody,
 		);
+		const body = response.body as OpenAIResponsesResponse;
 
-		const { text, toolCalls } = parseResponsesOutput(response.output as unknown[]);
+		const { text, toolCalls } = parseResponsesOutput(body.output);
 
-		const usage = parseTokenUsage(response.usage);
+		const usage = parseTokenUsage(body.usage);
 
 		const responseMetadata: Record<string, unknown> = {
 			model_provider: 'openai',
-			model: response.model,
-			created_at: response.created_at,
-			id: response.id,
-			incomplete_details: response.incomplete_details,
-			metadata: response.metadata,
-			object: response.object,
-			status: response.status,
-			user: response.user,
-			service_tier: response.service_tier,
-			model_name: response.model,
-			output: response.output,
+			model: body.model,
+			created_at: body.created_at,
+			id: body.id,
+			incomplete_details: body.incomplete_details,
+			metadata: body.metadata,
+			object: body.object,
+			status: body.status,
+			user: body.user,
+			service_tier: body.service_tier,
+			model_name: body.model,
+			output: body.output,
 		};
 
-		for (const item of response.output as unknown[]) {
+		for (const item of body.output as unknown[]) {
 			const o = item as Record<string, unknown>;
 			if (o.type === 'reasoning') {
 				responseMetadata.reasoning = o;
@@ -454,15 +418,15 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 		const message: Message = {
 			role: 'assistant',
 			content,
-			id: response.id,
+			id: body.id,
 		};
 
 		return {
-			id: response.id,
-			finishReason: response.status === 'completed' ? 'stop' : 'other',
+			id: body.id,
+			finishReason: body.status === 'completed' ? 'stop' : 'other',
 			usage,
 			message,
-			rawResponse: response,
+			rawResponse: body,
 			providerMetadata: responseMetadata,
 		};
 	}
@@ -486,11 +450,12 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 			stream: true,
 		};
 
-		const streamBody = await openAIFetchStream(
-			this.requests.openStream,
+		const streamResponse = await this.requests.openStream(
+			'POST',
 			`${this.baseURL}/responses`,
 			requestBody,
 		);
+		const streamBody = streamResponse.body;
 
 		const toolCallBuffers: Record<number, { name: string; arguments: string }> = {};
 
