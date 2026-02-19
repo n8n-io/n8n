@@ -46,9 +46,6 @@ export const createdCredentialsWithScopes = (
 		updatedAt: payload?.updatedAt ?? date(),
 		isManaged: payload?.isManaged ?? false,
 		isGlobal: payload?.isGlobal ?? false,
-		isResolvable: payload?.isResolvable ?? false,
-		resolvableAllowFallback: payload?.resolvableAllowFallback ?? false,
-		resolverId: payload?.resolverId ?? null,
 		scopes: payload?.scopes ?? credentialScopes,
 	} as NewCredentialWithScopes;
 };
