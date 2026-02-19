@@ -527,7 +527,13 @@ export class JobProcessor {
 
 				const result = await nodeType.execute.call(context as unknown as IExecuteFunctions);
 
-				return result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
+				const response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
+
+				context.addOutputData(NodeConnectionTypes.AiTool, 0, [
+					[{ json: { response } as INodeExecutionData['json'] }],
+				]);
+
+				return response;
 			}
 
 			throw new UnexpectedError(
