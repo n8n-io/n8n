@@ -397,7 +397,7 @@
 
 	// Focus
 	--focus--border-width: 1px;
-	--focus--border-color: light-dark(var(--color--secondary), var(--color--secondary--tint-1));
+	--focus--border-color: var(--color--secondary);
 
 	// Button success, warning, danger
 	--button--color--text--success: var(--color--neutral-white);
