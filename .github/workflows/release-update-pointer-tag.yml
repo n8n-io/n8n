@@ -29,6 +29,7 @@ jobs:
   update-pointer-tags:
     name: Update pointer tags
     runs-on: ubuntu-slim
+    environment: minor-release-tag-merge
 
     steps:
       - name: Generate GitHub App Token
