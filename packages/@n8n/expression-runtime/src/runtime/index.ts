@@ -478,6 +478,17 @@ function resetDataProxies(): void {
 		}
 	}
 
+	// -------------------------------------------------------------------------
+	// Expose library globals on __data so tournament's "x in this ? this : global"
+	// pattern resolves them correctly (tournament checks __data before global)
+	// -------------------------------------------------------------------------
+
+	(globalThis.__data as any)._ = (globalThis as any)._;
+	(globalThis.__data as any).DateTime = globalThis.DateTime;
+	(globalThis.__data as any).Duration = globalThis.Duration;
+	(globalThis.__data as any).Interval = globalThis.Interval;
+	(globalThis.__data as any).luxon = (globalThis as any).luxon;
+
 	// TODO: Add other function properties as needed ($item, $vars, etc.)
 }
 

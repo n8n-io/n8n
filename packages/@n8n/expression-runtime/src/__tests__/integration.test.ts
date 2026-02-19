@@ -20,7 +20,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			$json: { email: 'test@example.com' },
 		};
 
-		const result = evaluator.evaluate('$json.email', data);
+		const result = evaluator.evaluate('{{ $json.email }}', data);
 
 		expect(result).toBe('test@example.com');
 	});
@@ -36,7 +36,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		const result = evaluator.evaluate('$json.user.profile.name', data);
+		const result = evaluator.evaluate('{{ $json.user.profile.name }}', data);
 
 		expect(result).toBe('John Doe');
 	});
@@ -48,7 +48,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		const result = evaluator.evaluate('$json.items[1].id', data);
+		const result = evaluator.evaluate('{{ $json.items[1].id }}', data);
 
 		expect(result).toBe(2);
 	});
@@ -61,7 +61,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		const result = evaluator.evaluate('$json.price * $json.quantity', data);
+		const result = evaluator.evaluate('{{ $json.price * $json.quantity }}', data);
 
 		expect(result).toBe(300);
 	});
@@ -73,7 +73,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		const result = evaluator.evaluate('_.sum($json.items)', data);
+		const result = evaluator.evaluate('{{ _.sum($json.items) }}', data);
 
 		expect(result).toBe(15);
 	});
@@ -86,7 +86,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		};
 
 		const result = evaluator.evaluate(
-			'DateTime.fromISO($json.date).toFormat("MMMM dd, yyyy")',
+			'{{ DateTime.fromISO($json.date).toFormat("MMMM dd, yyyy") }}',
 			data,
 			{},
 		);
@@ -101,7 +101,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		const result = evaluator.evaluate('$items()', data);
+		const result = evaluator.evaluate('{{ $items() }}', data);
 
 		expect(result).toBe('items-result');
 	});
@@ -115,7 +115,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		};
 
 		// Access element beyond small array threshold
-		const result = evaluator.evaluate('$json.items[150].id', data);
+		const result = evaluator.evaluate('{{ $json.items[150].id }}', data);
 
 		expect(result).toBe(150);
 	});

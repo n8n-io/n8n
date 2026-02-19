@@ -79,6 +79,24 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// Define proxy system in isolate (Step 2 - stub for now)
 		await this.defineProxySystem();
 
+		// Inject E() error handler needed by tournament-generated try-catch code.
+		// Tournament wraps expressions with try-catch that calls E(error, this).
+		await this.context.eval(`
+			if (typeof E === 'undefined') {
+				globalThis.E = function(error, _context) {
+					// Re-throw security violations from __sanitize
+					if (error && error.message && error.message.includes('due to security concerns')) {
+						throw error;
+					}
+					// Swallow TypeErrors (failed attack attempts return undefined)
+					if (error instanceof TypeError) {
+						return undefined;
+					}
+					throw error;
+				};
+			}
+		`);
+
 		this.initialized = true;
 
 		if (this.config.debug) {
@@ -371,10 +389,14 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			// This initializes $json, $binary, etc. as lazy proxies
 			this.resetDataProxies();
 
-			// Step 3: Compile and execute script
+			// Step 3: Wrap transformed code so 'this' === __data in the isolate.
+			// Tournament generates: this.$json.email, this.$items(), etc.
+			// __data has $json, $items, etc. as lazy proxies (set in resetDataProxies).
+			const wrappedCode = `(function() {\n${code}\n}).call(__data)`;
+
 			let script = this.scriptCache.get(code);
 			if (!script) {
-				script = this.isolate.compileScriptSync(code);
+				script = this.isolate.compileScriptSync(wrappedCode);
 				this.scriptCache.set(code, script);
 
 				if (this.config.debug) {
