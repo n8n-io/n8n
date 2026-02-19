@@ -133,8 +133,8 @@ type HooksSetupParameters = {
 function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: string) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('workflowExecuteBefore', function () {
-		const { executionId, workflowData } = this;
-		eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
+		const { executionId, workflowData, mode } = this;
+		eventService.emit('workflow-pre-execute', { executionId, data: workflowData, mode });
 	});
 	hooks.addHandler('workflowExecuteAfter', function (runData) {
 		if (runData.status === 'waiting') return;
