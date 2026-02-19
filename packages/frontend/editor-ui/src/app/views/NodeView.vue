@@ -1842,7 +1842,7 @@ onBeforeUnmount(() => {
 			/>
 
 			<N8nCanvasThinkingPill
-				v-if="builderStore.streaming"
+				v-if="builderStore.streaming && !builderStore.isHelpStreaming"
 				:class="$style.canvasCenterPill"
 				show-stop
 				@stop="builderStore.abortStreaming"
