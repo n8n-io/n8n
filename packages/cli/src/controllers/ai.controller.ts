@@ -9,6 +9,7 @@ import {
 	AiSessionRetrievalRequestDto,
 	AiUsageSettingsRequestDto,
 	AiTruncateMessagesRequestDto,
+	AiClearSessionRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Post, RestController, GlobalScope } from '@n8n/decorators';
@@ -270,6 +271,22 @@ export class AiController {
 				payload.codeBuilder,
 			);
 			return { success };
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Licensed('feat:aiBuilder')
+	@Post('/build/clear-session', { ipRateLimit: { limit: 100 } })
+	async clearSession(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: AiClearSessionRequestDto,
+	): Promise<{ success: boolean }> {
+		try {
+			await this.workflowBuilderService.clearSession(payload.workflowId, req.user);
+			return { success: true };
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
