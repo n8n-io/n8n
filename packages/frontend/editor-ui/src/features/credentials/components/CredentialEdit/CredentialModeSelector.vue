@@ -67,6 +67,11 @@ const options = computed<Option[]>(() => {
 		return managedOAuthOptions.value;
 	}
 
+	// If this credential type is not linked to any auth option of the node, don't show the selector
+	if (activeNodeType.value && !selectedAuthType.value && !hasManagedOAuth.value) {
+		return [];
+	}
+
 	const authOptions = getNodeAuthOptions(activeNodeType.value, activeNode.value?.typeVersion);
 
 	if (authOptions.length === 0 && hasManagedOAuth.value) {

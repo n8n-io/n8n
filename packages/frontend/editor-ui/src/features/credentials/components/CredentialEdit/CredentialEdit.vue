@@ -342,7 +342,8 @@ const defaultCredentialTypeName = computed(() => {
 const showSaveButton = computed(() => {
 	return (
 		(props.mode === 'new' || hasUnsavedChanges.value || isSaved.value) &&
-		(credentialPermissions.value.create ?? credentialPermissions.value.update)
+		(credentialPermissions.value.create ?? credentialPermissions.value.update) &&
+		!(isOAuthType.value && !isOAuthConnected.value)
 	);
 });
 
@@ -1382,6 +1383,19 @@ const { width } = useElementSize(credNameRef);
 						:modal-bus="modalBus"
 						@update:model-value="onChangeSharedWith"
 						@update:share-with-all-users="onShareWithAllUsersUpdate"
+					/>
+					<SaveButton
+						v-if="showSaveButton"
+						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
+						:is-saving="isSaving || isTesting"
+						:saved="false"
+						:saving-label="
+							isTesting
+								? i18n.baseText('credentialEdit.credentialEdit.testing')
+								: i18n.baseText('credentialEdit.credentialEdit.saving')
+						"
+						data-test-id="credential-save-button"
+						@click="saveCredential"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">

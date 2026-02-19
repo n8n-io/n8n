@@ -197,14 +197,14 @@ describe('CredentialModeSelector', () => {
 
 			await userEvent.click(screen.getByTestId('credential-mode-switch-link'));
 
-			expect(emitted('authTypeChanged')).toHaveLength(1);
-			expect(emitted('authTypeChanged')[0]).toEqual(['oAuth2']);
+			expect(emitted('update:authType')).toHaveLength(1);
+			expect(emitted('update:authType')[0]).toEqual(['oAuth2']);
 		});
 
-		it('should switch back to original type when clicking switch link twice', async () => {
+		it('should emit the other auth type when switch link is clicked from OAuth2', async () => {
 			const pinia = setupStores({
 				nodeType: twoAuthNodeType,
-				node: makeNode('n8n-nodes-base.dropbox', 'accessToken'),
+				node: makeNode('n8n-nodes-base.dropbox', 'oAuth2'),
 				credentialTypes: {
 					dropboxApi: dropboxApiType,
 					dropboxOAuth2Api: dropboxOAuth2ApiType,
@@ -214,17 +214,13 @@ describe('CredentialModeSelector', () => {
 			const { emitted } = renderComponent({
 				pinia,
 				props: {
-					credentialType: dropboxApiType,
+					credentialType: dropboxOAuth2ApiType,
 				},
 			});
 
-			// Switch to OAuth2
+			// From OAuth2, switch to Access Token
 			await userEvent.click(screen.getByTestId('credential-mode-switch-link'));
-			expect(emitted('authTypeChanged')[0]).toEqual(['oAuth2']);
-
-			// Switch back to Access Token
-			await userEvent.click(screen.getByTestId('credential-mode-switch-link'));
-			expect(emitted('authTypeChanged')[1]).toEqual(['accessToken']);
+			expect(emitted('update:authType')[0]).toEqual(['accessToken']);
 		});
 	});
 
@@ -305,8 +301,8 @@ describe('CredentialModeSelector', () => {
 			await userEvent.click(screen.getByRole('menuitem', { name: /API Key/ }));
 
 			await waitFor(() => {
-				expect(emitted('authTypeChanged')).toHaveLength(1);
-				expect(emitted('authTypeChanged')[0]).toEqual(['apiKey']);
+				expect(emitted('update:authType')).toHaveLength(1);
+				expect(emitted('update:authType')[0]).toEqual(['apiKey']);
 			});
 		});
 	});
@@ -328,6 +324,7 @@ describe('CredentialModeSelector', () => {
 					credentialType: dropboxOAuth2ApiType,
 					showManagedOauthOptions: true,
 					useCustomOauth: false,
+					isNewCredential: true,
 				},
 			});
 
@@ -355,6 +352,7 @@ describe('CredentialModeSelector', () => {
 					credentialType: dropboxOAuth2ApiType,
 					showManagedOauthOptions: true,
 					useCustomOauth: false,
+					isNewCredential: true,
 				},
 			});
 
@@ -388,6 +386,7 @@ describe('CredentialModeSelector', () => {
 					credentialType: dropboxOAuth2ApiType,
 					showManagedOauthOptions: true,
 					useCustomOauth: true,
+					isNewCredential: true,
 				},
 			});
 
@@ -405,7 +404,197 @@ describe('CredentialModeSelector', () => {
 			});
 		});
 
-		it('should emit authTypeChanged when switching from OAuth to a different auth type via dropdown', async () => {
+		it('should emit update:authType when switching from OAuth to a different auth type via dropdown', async () => {
+			const pinia = setupStores({
+				nodeType: twoAuthNodeType,
+				node: makeNode('n8n-nodes-base.dropbox', 'oAuth2'),
+				credentialTypes: {
+					dropboxApi: dropboxApiType,
+					dropboxOAuth2Api: dropboxOAuth2ApiType,
+				},
+			});
+
+			const { emitted } = renderComponent({
+				pinia,
+				props: {
+					credentialType: dropboxOAuth2ApiType,
+					showManagedOauthOptions: true,
+					useCustomOauth: false,
+					isNewCredential: true,
+				},
+			});
+
+			await userEvent.click(screen.getByTestId('credential-mode-dropdown-trigger'));
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			await userEvent.click(screen.getByRole('menuitem', { name: /Access Token/ }));
+
+			await waitFor(() => {
+				expect(emitted('update:authType')).toHaveLength(1);
+				expect(emitted('update:authType')[0]).toEqual(['accessToken']);
+			});
+		});
+	});
+
+	describe('credential not linked to main auth field', () => {
+		const httpBasicAuthType: ICredentialType = {
+			name: 'httpBasicAuth',
+			displayName: 'Basic Auth',
+			properties: [
+				{ displayName: 'User', name: 'user', type: 'string', default: '' },
+				{ displayName: 'Password', name: 'password', type: 'string', default: '' },
+			],
+		};
+
+		// Simulates Pipedrive Trigger: main auth field is "authentication",
+		// but httpBasicAuth is gated by a different field "incomingAuthentication"
+		const nodeWithSecondaryCredential = {
+			displayName: 'Pipedrive Trigger',
+			name: 'n8n-nodes-base.pipedriveTrigger',
+			group: ['trigger'],
+			version: 1,
+			description: 'Trigger on Pipedrive events',
+			defaults: { name: 'Pipedrive Trigger' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [
+				{
+					name: 'pipedriveApi',
+					required: true,
+					displayOptions: { show: { authentication: ['apiToken'] } },
+				},
+				{
+					name: 'pipedriveOAuth2Api',
+					required: true,
+					displayOptions: { show: { authentication: ['oAuth2'] } },
+				},
+				{
+					name: 'httpBasicAuth',
+					required: true,
+					displayOptions: { show: { incomingAuthentication: ['basicAuth'] } },
+				},
+			],
+			properties: [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					options: [
+						{ name: 'API Token', value: 'apiToken' },
+						{ name: 'OAuth2', value: 'oAuth2' },
+					],
+					default: 'apiToken',
+				},
+				{
+					displayName: 'Incoming Authentication',
+					name: 'incomingAuthentication',
+					type: 'options',
+					options: [
+						{ name: 'None', value: 'none' },
+						{ name: 'Basic Auth', value: 'basicAuth' },
+					],
+					default: 'none',
+				},
+			],
+		} as unknown as INodeTypeDescription;
+
+		it('should not show selector for credentials controlled by a different auth field', () => {
+			const pinia = setupStores({
+				nodeType: nodeWithSecondaryCredential,
+				node: {
+					parameters: { authentication: 'apiToken', incomingAuthentication: 'basicAuth' },
+					type: 'n8n-nodes-base.pipedriveTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					id: 'test-node-id',
+					name: 'Test Node',
+					credentials: {},
+				},
+				credentialTypes: { httpBasicAuth: httpBasicAuthType },
+			});
+
+			renderComponent({
+				pinia,
+				props: { credentialType: httpBasicAuthType },
+			});
+
+			expect(screen.queryByTestId('credential-mode-selector')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('managed OAuth for existing credentials (switch link)', () => {
+		it('should show switch link between managed and custom when not a new credential', () => {
+			const pinia = setupStores({
+				nodeType: twoAuthNodeType,
+				node: makeNode('n8n-nodes-base.dropbox', 'oAuth2'),
+				credentialTypes: {
+					dropboxApi: dropboxApiType,
+					dropboxOAuth2Api: dropboxOAuth2ApiType,
+				},
+			});
+
+			renderComponent({
+				pinia,
+				props: {
+					credentialType: dropboxOAuth2ApiType,
+					showManagedOauthOptions: true,
+					useCustomOauth: false,
+				},
+			});
+
+			expect(screen.getByTestId('credential-mode-selector')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-mode-switch-link')).toBeInTheDocument();
+			expect(screen.queryByTestId('credential-mode-dropdown-trigger')).not.toBeInTheDocument();
+		});
+
+		it('should show managed OAuth heading when useCustomOauth is false', () => {
+			const pinia = setupStores({
+				nodeType: twoAuthNodeType,
+				node: makeNode('n8n-nodes-base.dropbox', 'oAuth2'),
+				credentialTypes: {
+					dropboxApi: dropboxApiType,
+					dropboxOAuth2Api: dropboxOAuth2ApiType,
+				},
+			});
+
+			renderComponent({
+				pinia,
+				props: {
+					credentialType: dropboxOAuth2ApiType,
+					showManagedOauthOptions: true,
+					useCustomOauth: false,
+				},
+			});
+
+			expect(screen.getByText('Setup managed OAuth')).toBeInTheDocument();
+		});
+
+		it('should show custom OAuth heading when useCustomOauth is true', () => {
+			const pinia = setupStores({
+				nodeType: twoAuthNodeType,
+				node: makeNode('n8n-nodes-base.dropbox', 'oAuth2'),
+				credentialTypes: {
+					dropboxApi: dropboxApiType,
+					dropboxOAuth2Api: dropboxOAuth2ApiType,
+				},
+			});
+
+			renderComponent({
+				pinia,
+				props: {
+					credentialType: dropboxOAuth2ApiType,
+					showManagedOauthOptions: true,
+					useCustomOauth: true,
+				},
+			});
+
+			expect(screen.getByText('Setup custom OAuth')).toBeInTheDocument();
+		});
+
+		it('should emit update:useCustomOauth when clicking switch link to toggle OAuth mode', async () => {
 			const pinia = setupStores({
 				nodeType: twoAuthNodeType,
 				node: makeNode('n8n-nodes-base.dropbox', 'oAuth2'),
@@ -424,18 +613,12 @@ describe('CredentialModeSelector', () => {
 				},
 			});
 
-			await userEvent.click(screen.getByTestId('credential-mode-dropdown-trigger'));
+			await userEvent.click(screen.getByTestId('credential-mode-switch-link'));
 
-			await waitFor(() => {
-				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
-			});
-
-			await userEvent.click(screen.getByRole('menuitem', { name: /Access Token/ }));
-
-			await waitFor(() => {
-				expect(emitted('authTypeChanged')).toHaveLength(1);
-				expect(emitted('authTypeChanged')[0]).toEqual(['accessToken']);
-			});
+			expect(emitted('update:useCustomOauth')).toHaveLength(1);
+			expect(emitted('update:useCustomOauth')[0]).toEqual([true]);
+			expect(emitted('update:authType')).toHaveLength(1);
+			expect(emitted('update:authType')[0]).toEqual(['oAuth2']);
 		});
 	});
 });
