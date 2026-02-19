@@ -4,7 +4,7 @@ import type { ISupplyDataFunctions } from 'n8n-workflow';
 
 import type { GenerateResult, StreamChunk } from 'src/types/output';
 
-import { LangchainAdapter } from '../../adapters/langchain-chat-model';
+import { LangchainChatModelAdapter } from '../../adapters/langchain-chat-model';
 
 jest.mock('src/converters/tool', () => ({
 	fromLcTool: jest.fn().mockImplementation((t: { name?: string }) => ({
@@ -67,7 +67,7 @@ describe('LangchainAdapter', () => {
 			} as unknown as ISupplyDataFunctions;
 			const chatModel = createMockChatModel();
 
-			new LangchainAdapter(chatModel, ctx);
+			new LangchainChatModelAdapter(chatModel, ctx);
 
 			expect(N8nLlmTracing).toHaveBeenCalledWith(ctx, expect.any(Object));
 			expect(makeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(ctx);
@@ -76,7 +76,7 @@ describe('LangchainAdapter', () => {
 		it('does not pass callbacks or onFailedAttempt when ctx is omitted', () => {
 			const chatModel = createMockChatModel();
 
-			new LangchainAdapter(chatModel);
+			new LangchainChatModelAdapter(chatModel);
 
 			expect(N8nLlmTracing).not.toHaveBeenCalled();
 			expect(makeN8nLlmFailedAttemptHandler).not.toHaveBeenCalled();
@@ -85,7 +85,7 @@ describe('LangchainAdapter', () => {
 
 	describe('_llmType', () => {
 		it('returns "n8n-chat-model"', () => {
-			const adapter = new LangchainAdapter(createMockChatModel());
+			const adapter = new LangchainChatModelAdapter(createMockChatModel());
 
 			expect(adapter._llmType()).toBe('n8n-chat-model');
 		});
@@ -101,7 +101,7 @@ describe('LangchainAdapter', () => {
 				},
 			};
 			chatModel.generate.mockResolvedValue(response);
-			const adapter = new LangchainAdapter(chatModel);
+			const adapter = new LangchainChatModelAdapter(chatModel);
 			const messages = [new HumanMessage('hello')];
 			const options = { temperature: 0.5 };
 
@@ -132,7 +132,7 @@ describe('LangchainAdapter', () => {
 				},
 			};
 			chatModel.generate.mockResolvedValue(response);
-			const adapter = new LangchainAdapter(chatModel);
+			const adapter = new LangchainChatModelAdapter(chatModel);
 
 			const result = await adapter._generate([new HumanMessage('x')], {});
 
@@ -166,7 +166,7 @@ describe('LangchainAdapter', () => {
 				providerMetadata: { finish_reason: 'tool_calls' },
 			};
 			chatModel.generate.mockResolvedValue(response);
-			const adapter = new LangchainAdapter(chatModel);
+			const adapter = new LangchainChatModelAdapter(chatModel);
 
 			const result = await adapter._generate([new HumanMessage('hi')], {});
 
@@ -202,7 +202,7 @@ describe('LangchainAdapter', () => {
 			const chatModel = createMockChatModel({
 				stream: jest.fn().mockImplementation(() => stream()),
 			});
-			const adapter = new LangchainAdapter(chatModel);
+			const adapter = new LangchainChatModelAdapter(chatModel);
 			const handleLLMNewToken = jest.fn();
 
 			const chunks: any[] = [];
@@ -246,7 +246,7 @@ describe('LangchainAdapter', () => {
 			const chatModel = createMockChatModel({
 				stream: jest.fn().mockImplementation(() => stream()),
 			});
-			const adapter = new LangchainAdapter(chatModel);
+			const adapter = new LangchainChatModelAdapter(chatModel);
 
 			const chunks: any[] = [];
 			for await (const chunk of adapter._streamResponseChunks([new HumanMessage('hi')], {})) {
@@ -274,7 +274,7 @@ describe('LangchainAdapter', () => {
 			const chatModel = createMockChatModel({
 				stream: jest.fn().mockImplementation(() => stream()),
 			});
-			const adapter = new LangchainAdapter(chatModel);
+			const adapter = new LangchainChatModelAdapter(chatModel);
 
 			const chunks: any[] = [];
 			for await (const chunk of adapter._streamResponseChunks([new HumanMessage('hi')], {})) {
@@ -294,7 +294,7 @@ describe('LangchainAdapter', () => {
 	describe('bindTools', () => {
 		it('converts tools via fromLcTool, calls chatModel.withTools, and returns new LangchainAdapter', () => {
 			const chatModel = createMockChatModel();
-			const adapter = new LangchainAdapter(chatModel, undefined);
+			const adapter = new LangchainChatModelAdapter(chatModel, undefined);
 			const lcTools = [{ name: 'my_tool', schema: {}, invoke: jest.fn() }];
 
 			const bound = adapter.bindTools(lcTools);
@@ -303,7 +303,7 @@ describe('LangchainAdapter', () => {
 			expect(chatModel.withTools).toHaveBeenCalledWith([
 				{ type: 'function', name: 'my_tool', description: '', inputSchema: { type: 'object' } },
 			]);
-			expect(bound).toBeInstanceOf(LangchainAdapter);
+			expect(bound).toBeInstanceOf(LangchainChatModelAdapter);
 			expect(bound).not.toBe(adapter);
 		});
 	});

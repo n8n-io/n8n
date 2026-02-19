@@ -7,7 +7,6 @@ on:
 
 env:
   NODE_OPTIONS: --max-old-space-size=16384
-  TESTCONTAINERS_RYUK_DISABLED: true
   PLAYWRIGHT_WORKERS: 4
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
 
