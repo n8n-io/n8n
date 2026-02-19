@@ -70,7 +70,6 @@ export class MigrateExternalSecretsToEntityStorage1771500000000 implements Irrev
 		for (const providerName of providerNames) {
 			const providerData = allSettings[providerName];
 
-			// Idempotency check: skip if provider already exists
 			const existing: Array<{ providerKey: string }> = await runQuery(
 				`SELECT ${providerKeyCol} FROM ${connectionTable} WHERE ${providerKeyCol} = :providerKey;`,
 				{ providerKey: providerName },
@@ -83,12 +82,8 @@ export class MigrateExternalSecretsToEntityStorage1771500000000 implements Irrev
 				continue;
 			}
 
-			// Re-encrypt just the settings object for the new entity
 			const encryptedSettings = this.cipher.encrypt(providerData.settings ?? {});
 
-			// Insert row: providerKey = type = providerName (per ticket spec)
-			// isEnabled, createdAt, updatedAt have DB defaults and are omitted
-			// No project_secrets_provider_access rows = global provider
 			await runQuery(
 				`INSERT INTO ${connectionTable} (${providerKeyCol}, ${typeCol}, ${encryptedSettingsCol}) VALUES (:providerKey, :type, :encryptedSettings);`,
 				{
