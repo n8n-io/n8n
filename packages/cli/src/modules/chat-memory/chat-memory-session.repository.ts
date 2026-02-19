@@ -70,6 +70,7 @@ export class ChatMemorySessionRepository extends Repository<ChatMemorySession> {
 		const sessionsWithMemory = em
 			.createQueryBuilder()
 			.select('mem.sessionKey')
+			.distinct(true)
 			.from(ChatMemory, 'mem')
 			.getQuery();
 

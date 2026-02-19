@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -7,8 +8,6 @@ import { ensureError } from 'n8n-workflow';
 
 import { ChatMemorySessionRepository } from './chat-memory-session.repository';
 import { ChatMemoryRepository } from './chat-memory.repository';
-
-const CLEANUP_INTERVAL_MS = 15 * Time.minutes.toMilliseconds;
 
 /**
  * Responsible for cleaning up expired chat memory entries and orphaned memory sessions.
@@ -25,6 +24,7 @@ export class ChatMemoryCleanupService {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly memoryRepository: ChatMemoryRepository,
 		private readonly memorySessionRepository: ChatMemorySessionRepository,
@@ -55,12 +55,14 @@ export class ChatMemoryCleanupService {
 	}
 
 	private scheduleCleanup() {
+		const intervalMs = this.globalConfig.chatHub.chatMemoryCleanupIntervalMs;
+
 		this.cleanupInterval = setInterval(async () => {
 			await this.runCleanup();
-		}, CLEANUP_INTERVAL_MS);
+		}, intervalMs);
 
 		this.logger.debug(
-			`Chat memory cleanup every ${CLEANUP_INTERVAL_MS * Time.milliseconds.toMinutes} minutes`,
+			`Chat memory cleanup every ${intervalMs * Time.milliseconds.toMinutes} minutes`,
 		);
 	}
 

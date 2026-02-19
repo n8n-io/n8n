@@ -32,4 +32,8 @@ export class ChatHubConfig {
 	/** Cache duration in ms for chat memory size checks. Default: 5s */
 	@Env('N8N_CHAT_MEMORY_SIZE_CHECK_CACHE_DURATION_MS')
 	chatMemorySizeCheckCacheDuration: number = 5 * 1000;
+
+	/** Interval in ms for chat memory cleanup (expired entries + orphaned sessions). Default: 15 min */
+	@Env('N8N_CHAT_MEMORY_CLEANUP_INTERVAL_MS')
+	chatMemoryCleanupIntervalMs: number = 15 * 60 * 1000;
 }

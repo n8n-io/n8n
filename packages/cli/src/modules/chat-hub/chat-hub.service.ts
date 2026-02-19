@@ -321,7 +321,6 @@ export class ChatHubService {
 		await this.messageRepository.manager.transaction(async (trx) => {
 			await this.ensureConversation(userId, sessionId, trx);
 			await this.chatHubAttachmentService.deleteAllBySessionId(sessionId, trx);
-			// Explicitly clean up memory for this session since there's no FK cascade
 			await this.chatMemorySessionRepository.deleteBySessionKey(sessionId, trx);
 			await this.sessionRepository.deleteChatHubSession(sessionId, trx);
 		});

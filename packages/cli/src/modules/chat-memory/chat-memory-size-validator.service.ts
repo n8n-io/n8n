@@ -58,7 +58,7 @@ export class ChatMemorySizeValidator {
 		const size = await this.getCachedSizeData(fetchSizeFn);
 		if (size.totalBytes >= this.globalConfig.chatHub.chatMemoryMaxSize) {
 			throw new ChatMemoryStorageLimitError(
-				`Chat memory size limit exceeded: ${toMb(size.totalBytes)}MB used, limit is ${toMb(this.globalConfig.chatHub.chatMemoryMaxSize)}MB`,
+				`Chat memory storage limit reached: ${toMb(size.totalBytes)}MB used out of ${toMb(this.globalConfig.chatHub.chatMemoryMaxSize)}MB. Admin can free up space in Settings > Chat.`,
 			);
 		}
 	}
