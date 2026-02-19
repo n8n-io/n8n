@@ -230,10 +230,22 @@ export interface ExampleResult {
 	/** Introspection events reported by the agent during workflow generation */
 	introspectionEvents?: IntrospectionEvent[];
 	workflow?: SimpleWorkflow;
+	/** Subgraph output (e.g., responder text). Present in subgraph eval mode. */
+	subgraphOutput?: SubgraphExampleOutput;
 	/** Generated source code (e.g., TypeScript SDK code from coding agent) */
 	generatedCode?: string;
 	error?: string;
 }
+
+/**
+ * Output from a subgraph evaluation example.
+ */
+export interface SubgraphExampleOutput {
+	/** The text response from the subgraph (e.g., responder output) */
+	response?: string;
+	/** The workflow produced by the subgraph (for builder/configurator) */
+	workflow?: SimpleWorkflow;
+};
 
 /**
  * Result from workflow generation that may include source code.
