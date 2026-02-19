@@ -15,8 +15,8 @@ jest.mock('@langchain/qdrant', () => {
 	return { QdrantVectorStore, __state: state };
 });
 
-jest.mock('@utils/sharedFields', () => ({ metadataFilterField: {} }), { virtual: true });
 jest.mock('@n8n/ai-utilities', () => ({
+	metadataFilterField: {},
 	getMetadataFiltersValues: jest.fn(),
 	logAiEvent: jest.fn(),
 	N8nBinaryLoader: class {},
@@ -56,6 +56,7 @@ import { QdrantVectorStore } from '@langchain/qdrant';
 
 import * as QdrantNode from './VectorStoreQdrant.node';
 import { createQdrantClient } from './Qdrant.utils';
+import { metadataFilterField } from '@n8n/ai-utilities';
 
 const MockCreateQdrantClient = createQdrantClient as jest.MockedFunction<typeof createQdrantClient>;
 const MockQdrantVectorStore = QdrantVectorStore as jest.MockedClass<typeof QdrantVectorStore>;

@@ -23,6 +23,17 @@ export {
 	proxyFetch,
 	type AgentTimeoutOptions,
 } from './utils/http-proxy-agent';
+export {
+	getConnectionHintNoticeField,
+	metadataFilterField,
+	getBatchingOptionFields,
+	getTemplateNoticeField,
+} from './utils/shared-fields';
+export {
+	createToolFromNode,
+	createZodSchemaFromArgs,
+	extractFromAIParameters,
+} from './utils/fromai-tool-factory';
 
 // Type guards
 export {

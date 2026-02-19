@@ -9,7 +9,7 @@ import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres
 import type { INodeProperties } from 'n8n-workflow';
 import type pg from 'pg';
 
-import { metadataFilterField } from '@utils/sharedFields';
+import { metadataFilterField } from '@n8n/ai-utilities';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 

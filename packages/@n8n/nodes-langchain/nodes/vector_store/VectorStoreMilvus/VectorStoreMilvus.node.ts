@@ -4,7 +4,7 @@ import { MilvusClient } from '@zilliz/milvus2-sdk-node';
 import type { INodeProperties } from 'n8n-workflow';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
-import { milvusCollectionsSearch } from '../shared/createVectorStoreNode/methods/listSearch';
+import { milvusCollectionsSearch } from '../shared/methods/listSearch';
 import { milvusCollectionRLC } from '../shared/descriptions';
 
 const sharedFields: INodeProperties[] = [milvusCollectionRLC];

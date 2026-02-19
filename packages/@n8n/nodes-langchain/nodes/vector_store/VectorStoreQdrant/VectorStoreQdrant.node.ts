@@ -7,7 +7,7 @@ import { assertParamIsString, type IDataObject, type INodeProperties } from 'n8n
 
 import { createQdrantClient, type QdrantCredential } from './Qdrant.utils';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
-import { qdrantCollectionsSearch } from '../shared/createVectorStoreNode/methods/listSearch';
+import { qdrantCollectionsSearch } from '../shared/methods/listSearch';
 import { qdrantCollectionRLC } from '../shared/descriptions';
 
 class ExtendedQdrantVectorStore extends QdrantVectorStore {

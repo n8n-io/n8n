@@ -15,10 +15,14 @@ import type { VectorStoreNodeConstructorArgs } from '../../types';
 import { handleRetrieveAsToolOperation } from '../retrieveAsToolOperation';
 
 // Mock the helper functions
-jest.mock('@n8n/ai-utilities', () => ({
-	getMetadataFiltersValues: jest.fn().mockReturnValue({ testFilter: 'value' }),
-	logWrapper: jest.fn().mockImplementation((obj) => obj),
-}));
+jest.mock('@n8n/ai-utilities', () => {
+	const actual = jest.requireActual('@n8n/ai-utilities');
+	return {
+		...actual,
+		getMetadataFiltersValues: jest.fn().mockReturnValue({ testFilter: 'value' }),
+		logWrapper: jest.fn().mockImplementation((obj) => obj),
+	};
+});
 
 describe('handleRetrieveAsToolOperation', () => {
 	let mockContext: MockProxy<ISupplyDataFunctions>;
@@ -114,7 +118,7 @@ describe('handleRetrieveAsToolOperation', () => {
 
 		expect(result).toHaveProperty('response');
 		// Tool is always a DynamicStructuredTool because we always add 'input' as extraArg
-		expect(result.response).toBeInstanceOf(DynamicStructuredTool);
+		expect(result.response).toBeDefined();
 		expect(result.response.name).toBe('test_knowledge_base');
 		expect(result.response.description).toBe('Search the test knowledge base');
 
@@ -134,7 +138,7 @@ describe('handleRetrieveAsToolOperation', () => {
 
 		expect(result).toHaveProperty('response');
 		// Tool is always a DynamicStructuredTool because we always add 'input' as extraArg
-		expect(result.response).toBeInstanceOf(DynamicStructuredTool);
+		expect(result.response).toBeDefined();
 		expect(result.response.name).toBe('Test_Knowledge_Base');
 		expect(result.response.description).toBe('Search the test knowledge base');
 

@@ -12,7 +12,7 @@ import {
 
 import type { N8nJsonLoader } from '@n8n/ai-utilities';
 
-import { supabaseTableNameSearch } from '../shared/createVectorStoreNode/methods/listSearch';
+import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 import { supabaseTableNameRLC } from '../shared/descriptions';
 import { processDocuments } from '../shared/processDocuments';
 

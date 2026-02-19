@@ -15,11 +15,15 @@ import type {
 import { createVectorStoreNode } from './createVectorStoreNode';
 import type { VectorStoreNodeConstructorArgs } from './types';
 
-jest.mock('@n8n/ai-utilities', () => ({
-	logWrapper: jest.fn().mockImplementation((val: DynamicTool) => ({ logWrapped: val })),
-	getMetadataFiltersValues: jest.fn().mockReturnValue(undefined),
-	logAiEvent: jest.fn(),
-}));
+jest.mock('@n8n/ai-utilities', () => {
+	const actual = jest.requireActual('@n8n/ai-utilities');
+	return {
+		...actual,
+		logWrapper: jest.fn().mockImplementation((val: DynamicTool) => ({ logWrapped: val })),
+		getMetadataFiltersValues: jest.fn().mockReturnValue(undefined),
+		logAiEvent: jest.fn(),
+	};
+});
 
 const DEFAULT_PARAMETERS = {
 	options: {},

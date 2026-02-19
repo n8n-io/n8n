@@ -25,7 +25,7 @@ jest.mock('@langchain/community/vectorstores/chroma', () => {
 	return { Chroma, __state: state };
 });
 
-jest.mock('@utils/sharedFields', () => ({ metadataFilterField: {} }), { virtual: true });
+jest.mock('@n8n/ai-utilities', () => ({ metadataFilterField: {} }), { virtual: true });
 jest.mock('../shared/descriptions', () => ({ chromaCollectionRLC: {} }), { virtual: true });
 
 // Mock the vector store node factory

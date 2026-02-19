@@ -9,9 +9,7 @@ import {
 	type INodeInputConfiguration,
 } from 'n8n-workflow';
 
-import { logWrapper, N8nBinaryLoader, N8nJsonLoader } from '@n8n/ai-utilities';
-
-import { metadataFilterField } from '@utils/sharedFields';
+import { logWrapper, N8nBinaryLoader, N8nJsonLoader, metadataFilterField } from '@n8n/ai-utilities';
 
 // Dependencies needed underneath the hood for the loaders. We add them
 // here only to track where what dependency is sued

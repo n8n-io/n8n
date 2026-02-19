@@ -12,8 +12,9 @@ jest.mock('@langchain/redis', () => {
 	}
 	return { RedisVectorStore, __state: state };
 });
-jest.mock('@utils/sharedFields', () => ({ metadataFilterField: {} }), { virtual: true });
+
 jest.mock('@n8n/ai-utilities', () => ({
+	metadataFilterField: {},
 	getMetadataFiltersValues: jest.fn(),
 	logAiEvent: jest.fn(),
 	N8nBinaryLoader: class {},

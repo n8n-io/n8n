@@ -11,7 +11,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 // Import custom types
 import {

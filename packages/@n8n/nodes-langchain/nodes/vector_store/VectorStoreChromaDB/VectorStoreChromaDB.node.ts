@@ -12,7 +12,7 @@ import {
 	ApplicationError,
 } from 'n8n-workflow';
 
-import { metadataFilterField } from '@utils/sharedFields';
+import { metadataFilterField } from '@n8n/ai-utilities';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import { chromaCollectionRLC } from '../shared/descriptions';
