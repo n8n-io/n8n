@@ -695,11 +695,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		/** Whether this is a help question (e.g. credential or error help) that should not lock the canvas */
 		helpMessage?: boolean;
 	}) {
+		isHelpStreaming.value = Boolean(options.helpMessage);
 		if (streaming.value) {
 			return;
 		}
-
-		isHelpStreaming.value = options.helpMessage === true;
 
 		const focusedNodeNames = focusedNodesStore.confirmedNodes.map((n) => n.nodeName);
 
@@ -804,6 +803,15 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				rootStore.restApiContext,
 				{ payload },
 				(response) => {
+					if (!isHelpStreaming.value) {
+						const hasAssistantToolCall = response.messages.some(
+							(msg) => 'toolName' in msg && msg.toolName === 'assistant',
+						);
+						if (hasAssistantToolCall) {
+							isHelpStreaming.value = true;
+						}
+					}
+
 					const result = processAssistantMessages(
 						chatMessages.value,
 						response.messages,
