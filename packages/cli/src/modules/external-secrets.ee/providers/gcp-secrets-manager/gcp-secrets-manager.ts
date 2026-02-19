@@ -8,7 +8,7 @@ import type {
 	GcpSecretAccountKey,
 	RawGcpSecretAccountKey,
 } from './types';
-import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../../constants';
+import { DOCS_HELP_NOTICE } from '../../constants';
 import { SecretsProvider } from '../../types';
 
 export class GcpSecretsManager extends SecretsProvider {
@@ -82,7 +82,7 @@ export class GcpSecretsManager extends SecretsProvider {
 		});
 
 		const secretNames = rawSecretNames.reduce<string[]>((acc, cur) => {
-			if (!cur.name || !EXTERNAL_SECRETS_NAME_REGEX.test(cur.name)) return acc;
+			if (!cur.name) return acc;
 
 			const secretName = cur.name.split('/').pop();
 
