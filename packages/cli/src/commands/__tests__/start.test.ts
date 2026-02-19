@@ -39,7 +39,9 @@ describe('Start - AuthRolesService initialization', () => {
 
 	describe('conditional initialization logic', () => {
 		it('should initialize AuthRolesService when instanceType is main and not multi-main', async () => {
+			// @ts-expect-error - Read-only property, but needed for testing
 			instanceSettings.instanceType = 'main';
+			// @ts-expect-error - Read-only property, but needed for testing
 			instanceSettings.isMultiMain = false;
 
 			await simulateStartInitLogic();
@@ -48,8 +50,11 @@ describe('Start - AuthRolesService initialization', () => {
 		});
 
 		it('should initialize AuthRolesService when instanceType is main, multi-main enabled, and is leader', async () => {
+			// @ts-expect-error - Read-only property, but needed for testing
 			instanceSettings.instanceType = 'main';
+			// @ts-expect-error - Read-only property, but needed for testing
 			instanceSettings.isMultiMain = true;
+			// @ts-expect-error - Read-only property, but needed for testing
 			instanceSettings.isLeader = true;
 
 			await simulateStartInitLogic();
@@ -58,7 +63,9 @@ describe('Start - AuthRolesService initialization', () => {
 		});
 
 		it('should NOT initialize AuthRolesService when instanceType is not main', async () => {
+			// @ts-expect-error - Read-only property, but needed for testing
 			instanceSettings.instanceType = 'worker';
+			// @ts-expect-error - Read-only property, but needed for testing
 			instanceSettings.isMultiMain = false;
 
 			await simulateStartInitLogic();
@@ -67,8 +74,11 @@ describe('Start - AuthRolesService initialization', () => {
 		});
 
 		it('should NOT initialize AuthRolesService when instanceType is main, multi-main enabled, but NOT leader', async () => {
+			// @ts-expect-error - Read-only property, but needed for testing
 			instanceSettings.instanceType = 'main';
+			// @ts-expect-error - Read-only property, but needed for testing
 			instanceSettings.isMultiMain = true;
+			// @ts-expect-error - Read-only property, but needed for testing
 			instanceSettings.isLeader = false;
 
 			await simulateStartInitLogic();
@@ -77,8 +87,11 @@ describe('Start - AuthRolesService initialization', () => {
 		});
 
 		it('should initialize AuthRolesService when instanceType is main and isMultiMain is false (even if isLeader is false)', async () => {
+			// @ts-expect-error - Read-only property, but needed for testing
 			instanceSettings.instanceType = 'main';
+			// @ts-expect-error - Read-only property, but needed for testing
 			instanceSettings.isMultiMain = false;
+			// @ts-expect-error - Read-only property, but needed for testing
 			instanceSettings.isLeader = false;
 
 			await simulateStartInitLogic();
