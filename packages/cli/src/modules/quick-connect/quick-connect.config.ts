@@ -7,19 +7,32 @@ const backendFlowConfigSchema = z.object({
 
 export type BackendFlowConfig = z.infer<typeof backendFlowConfigSchema>;
 
-const quickConnectOptionSchema = z.object({
+const baseQuickConnectOptionSchema = z.object({
 	packageName: z.string(),
 	credentialType: z.string(),
 	text: z.string(),
 	quickConnectType: z.string(),
 	serviceName: z.string(),
 	consentText: z.string().optional(),
+	config: z.never().optional(),
 	backendFlowConfig: backendFlowConfigSchema.optional(),
 });
 
+const pineconeQuickConnectOptionSchema = baseQuickConnectOptionSchema.extend({
+	quickConnectType: z.literal('pinecone'),
+	config: z.object({
+		integrationId: z.string(),
+	}),
+});
+
+const quickConnectOptionSchema = z.union([
+	pineconeQuickConnectOptionSchema,
+	baseQuickConnectOptionSchema,
+]);
+
 export type QuickConnectOption = z.infer<typeof quickConnectOptionSchema>;
 
-const quickConnectBackendOptionSchema = quickConnectOptionSchema.required({
+const quickConnectBackendOptionSchema = baseQuickConnectOptionSchema.required({
 	backendFlowConfig: true,
 });
 

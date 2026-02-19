@@ -1,7 +1,7 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import { isAIMessage, ToolMessage, HumanMessage } from '@langchain/core/messages';
+import { HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 import type { StructuredTool } from '@langchain/core/tools';
-import { isCommand, isGraphInterrupt, END } from '@langchain/langgraph';
+import { END, isCommand, isGraphInterrupt } from '@langchain/langgraph';
 
 import { isBaseMessage } from '../types/langchain';
 import type { WorkflowMetadata } from '../types/tools';
@@ -84,7 +84,7 @@ export async function executeSubgraphTools(
 }> {
 	const lastMessage = state.messages[state.messages.length - 1];
 
-	if (!lastMessage || !isAIMessage(lastMessage) || !lastMessage.tool_calls?.length) {
+	if (!lastMessage || !AIMessage.isInstance(lastMessage) || !lastMessage.tool_calls?.length) {
 		return {};
 	}
 
@@ -217,4 +217,41 @@ export function createStandardShouldContinue() {
 
 		return hasToolCalls ? 'tools' : END;
 	};
+}
+
+/**
+ * Extract tool-related messages for persistence in parent state.
+ * Filters messages to only include complete tool call/result pairs:
+ * - AIMessages with tool_calls (to show which tools were called)
+ * - ToolMessages (to show tool results)
+ *
+ * IMPORTANT: Only includes AIMessages with tool_calls if ALL of their
+ * tool_calls have corresponding ToolMessages. This prevents orphaned
+ * tool_use blocks that would cause Anthropic API errors.
+ *
+ * Excludes AIMessages with only text content (internal reasoning/summaries)
+ * as user-facing output is handled by the responder subgraph.
+ *
+ * @param messages - Subgraph messages array
+ * @returns Filtered array of tool-related messages for persistence
+ */
+export function extractToolMessagesForPersistence(messages: BaseMessage[]): BaseMessage[] {
+	// Build a set of all tool_call_ids that have corresponding ToolMessages
+	const completedToolCallIds = new Set<string>();
+	for (const msg of messages) {
+		if (ToolMessage.isInstance(msg) && msg.tool_call_id) {
+			completedToolCallIds.add(msg.tool_call_id);
+		}
+	}
+
+	return messages.filter((msg) => {
+		if (ToolMessage.isInstance(msg)) {
+			return true;
+		}
+		if (AIMessage.isInstance(msg) && msg.tool_calls && msg.tool_calls.length > 0) {
+			// Only include AIMessage if ALL its tool_calls have completed ToolMessages
+			return msg.tool_calls.every((tc) => tc.id && completedToolCallIds.has(tc.id));
+		}
+		return false;
+	});
 }

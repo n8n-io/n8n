@@ -332,12 +332,14 @@ const openCommunityRegisterModal = () => {
 					/>
 				</template>
 				<template #footer>
-					<N8nButton variant="subtle" @click="onActivationCancel">
-						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
-					</N8nButton>
-					<N8nButton :disabled="!activationKey" @click="() => onLicenseActivation()">
-						{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
-					</N8nButton>
+					<div :class="$style.dialogButtonsContainer">
+						<N8nButton variant="subtle" @click="onActivationCancel">
+							{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
+						</N8nButton>
+						<N8nButton :disabled="!activationKey" @click="() => onLicenseActivation()">
+							{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
+						</N8nButton>
+					</div>
 				</template>
 			</ElDialog>
 
@@ -445,6 +447,11 @@ div[class*='info'] > span > span:last-child {
 	display: flex;
 	align-items: center;
 	margin: 0 0 0 var(--spacing--2xs);
+}
+
+.dialogButtonsContainer {
+	display: flex;
+	justify-content: flex-end;
 }
 </style>
 

@@ -2022,7 +2022,7 @@ onBeforeUnmount(() => {
 				<template v-if="containsChatTriggerNodes">
 					<CanvasChatButton
 						v-if="isLogsPanelOpen"
-						variant="ghost"
+						variant="subtle"
 						:label="i18n.baseText('chat.hide')"
 						:class="$style.chatButton"
 						@click="logsStore.toggleOpen(false)"
@@ -2033,7 +2033,7 @@ onBeforeUnmount(() => {
 						:shortcut="{ keys: ['c'] }"
 					>
 						<CanvasChatButton
-							:variant="isRunWorkflowButtonVisible ? 'outline' : 'solid'"
+							:variant="isRunWorkflowButtonVisible ? 'subtle' : 'solid'"
 							:label="i18n.baseText('chat.open')"
 							:class="$style.chatButton"
 							@click="onOpenChat"
@@ -2142,27 +2142,6 @@ onBeforeUnmount(() => {
 		left: auto;
 		right: var(--spacing--sm);
 		transform: none;
-	}
-
-	button {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-
-		&:first-child {
-			margin: 0;
-		}
-
-		@include mixins.breakpoint('xs-only') {
-			text-indent: -10000px;
-			width: 42px;
-			height: 42px;
-			padding: 0;
-
-			span {
-				margin: 0;
-			}
-		}
 	}
 
 	.chatButton {
