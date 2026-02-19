@@ -301,6 +301,10 @@ const isCanvasReadOnly = computed(() => {
 	);
 });
 
+const isWriterAnotherTab = computed(() => {
+	return collaborationStore.isCurrentUserWriter && !collaborationStore.isCurrentTabWriter;
+});
+
 const showFallbackNodes = computed(() => triggerNodes.value.length === 0);
 
 const keyBindingsEnabled = computed(() => {
@@ -1315,6 +1319,10 @@ function checkIfEditingIsAllowed(): boolean {
 	return true;
 }
 
+function onAcquireEditingClick() {
+	collaborationStore.requestWriteAccessForce();
+}
+
 function checkIfRouteIsAllowed() {
 	if (
 		isReadOnlyEnvironment.value &&
@@ -1835,10 +1843,12 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 
 			<N8nCanvasCollaborationPill
-				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentUserWriter"
+				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentTabWriter"
+				:class="$style.canvasCenterPill"
+				:is-another-tab="isWriterAnotherTab"
 				:first-name="collaborationStore.currentWriter.user.firstName"
 				:last-name="collaborationStore.currentWriter.user.lastName"
-				:class="$style.canvasCenterPill"
+				@button-click="onAcquireEditingClick"
 			/>
 
 			<N8nCanvasThinkingPill
