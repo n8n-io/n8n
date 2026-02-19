@@ -1462,11 +1462,11 @@ importers:
         specifier: 0.1.0-preview.64
         version: 0.1.0-preview.64(20a6a3036fb3eae368730af7ed3b8ad2)
       '@microsoft/agents-activity':
-        specifier: 1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: 1.2.3
+        version: 1.2.3
       '@microsoft/agents-hosting':
-        specifier: 1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: 1.2.3
+        version: 1.2.3
       '@modelcontextprotocol/sdk':
         specifier: 1.26.0
         version: 1.26.0(zod@3.25.67)
@@ -6678,12 +6678,12 @@ packages:
     resolution: {integrity: sha512-mn+AjqbZPTk4yrLMv5GZ+tQSZMtxH8fu5fLynKukYNKuxClKmUhLmkQIqS9mKnheZpC52HyveCanDCKQKDLmcw==}
     engines: {node: '>=18.0.0'}
 
-  '@microsoft/agents-activity@1.1.0-alpha.85':
-    resolution: {integrity: sha512-iMzeYFJZPSrXkhHpHesKQ1gjvCm6uyPlH0ojsNf8Z3EODCeiFsxHOahoLyzCuqzcWBYhNCcQ45aarNbeJ84HgA==}
+  '@microsoft/agents-activity@1.2.3':
+    resolution: {integrity: sha512-XRQF+AVn6f9sGDUsfDQFiwLtmqqWNhM9JIwZRzK9XQLPTQmoWwjoWz8KMKc5fuvj5Ybly3974VrqYUbDOeMyTg==}
     engines: {node: '>=20.0.0'}
 
-  '@microsoft/agents-hosting@1.1.0-alpha.85':
-    resolution: {integrity: sha512-1Ii92EJSaQTuqjOBWUqoioClum+6Dh82uBmzoExMi3ZDJ9UTV6Kqg4W1h4PYhUZPmqIP3HLSVNvty84Gx/mqYg==}
+  '@microsoft/agents-hosting@1.2.3':
+    resolution: {integrity: sha512-8paXuxdbRc9X6tccYoR3lk0DSglt1SxpJG+6qDa8TVTuGiTvIuhnN4st9JZhIiazxPiFPTJAkhK5JSsOk+wLVQ==}
     engines: {node: '>=20.0.0'}
 
   '@microsoft/api-extractor-model@7.30.4':
@@ -23622,8 +23622,8 @@ snapshots:
   '@microsoft/agents-a365-notifications@0.1.0-preview.64':
     dependencies:
       '@microsoft/agents-a365-runtime': 0.1.0-preview.64
-      '@microsoft/agents-activity': 1.1.0-alpha.85
-      '@microsoft/agents-hosting': 1.1.0-alpha.85
+      '@microsoft/agents-activity': 1.2.3
+      '@microsoft/agents-hosting': 1.2.3
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -23646,7 +23646,7 @@ snapshots:
   '@microsoft/agents-a365-runtime@0.1.0-preview.64':
     dependencies:
       '@azure/identity': 4.13.0
-      '@microsoft/agents-hosting': 1.1.0-alpha.85
+      '@microsoft/agents-hosting': 1.2.3
       jsonwebtoken: 9.0.3
     transitivePeerDependencies:
       - debug
@@ -23657,7 +23657,7 @@ snapshots:
       '@langchain/mcp-adapters': 1.1.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(@langchain/langgraph@1.0.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod-to-json-schema@3.23.3(zod@3.25.67))(zod@3.25.67))
       '@microsoft/agents-a365-runtime': 0.1.0-preview.64
       '@microsoft/agents-a365-tooling': 0.1.0-preview.64(zod@3.25.67)
-      '@microsoft/agents-hosting': 1.1.0-alpha.85
+      '@microsoft/agents-hosting': 1.2.3
       langchain: 1.2.3(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod-to-json-schema@3.23.3(zod@3.25.67))
     transitivePeerDependencies:
       - '@cfworker/json-schema'
@@ -23677,7 +23677,7 @@ snapshots:
   '@microsoft/agents-a365-tooling@0.1.0-preview.64(zod@3.25.67)':
     dependencies:
       '@microsoft/agents-a365-runtime': 0.1.0-preview.64
-      '@microsoft/agents-hosting': 1.1.0-alpha.85
+      '@microsoft/agents-hosting': 1.2.3
       '@modelcontextprotocol/sdk': 1.26.0(zod@3.25.67)
       express: 5.2.1
     transitivePeerDependencies:
@@ -23686,7 +23686,7 @@ snapshots:
       - supports-color
       - zod
 
-  '@microsoft/agents-activity@1.1.0-alpha.85':
+  '@microsoft/agents-activity@1.2.3':
     dependencies:
       debug: 4.4.3(supports-color@8.1.1)
       uuid: 11.1.0
@@ -23694,15 +23694,16 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@microsoft/agents-hosting@1.1.0-alpha.85':
+  '@microsoft/agents-hosting@1.2.3':
     dependencies:
       '@azure/core-auth': 1.10.1
       '@azure/msal-node': 3.8.4
-      '@microsoft/agents-activity': 1.1.0-alpha.85
+      '@microsoft/agents-activity': 1.2.3
       axios: 1.13.5
       jsonwebtoken: 9.0.3
       jwks-rsa: 3.2.2
       object-path: 0.11.8
+      zod: 3.25.67
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -31645,7 +31646,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.13.5(debug@4.4.3)
+      axios: 1.13.5
       camelcase: 6.3.0
       debug: 4.4.3(supports-color@8.1.1)
       dotenv: 16.6.1
@@ -31655,7 +31656,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.13.5)
+      retry-axios: 2.6.0(axios@1.13.5(debug@4.4.3))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -36138,7 +36139,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.13.5):
+  retry-axios@2.6.0(axios@1.13.5(debug@4.4.3)):
     dependencies:
       axios: 1.13.5
 
