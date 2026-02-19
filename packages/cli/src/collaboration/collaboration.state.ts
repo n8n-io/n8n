@@ -162,7 +162,15 @@ export class CollaborationState {
 			return null;
 		}
 
-		return jsonParse<{ clientId: string; userId: string }>(lockData);
+		const parsed = jsonParse<{ clientId: string; userId: string } | null>(lockData, {
+			fallbackValue: null,
+		});
+
+		if (!parsed?.clientId || !parsed?.userId) {
+			return null;
+		}
+
+		return parsed;
 	}
 
 	async releaseWriteLock(workflowId: Workflow['id']) {
