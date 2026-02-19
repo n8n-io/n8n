@@ -22,6 +22,7 @@ jobs:
       ci: ${{ fromJSON(steps.ci-filter.outputs.results).ci == true }}
       unit: ${{ fromJSON(steps.ci-filter.outputs.results).unit == true }}
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
+      db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -49,6 +50,18 @@ jobs:
               !packages/testing/playwright/**
               !.github/**
             workflows: .github/**
+            db:
+              packages/cli/src/databases/**
+              packages/cli/src/modules/*/database/**
+              packages/cli/src/modules/**/*.entity.ts
+              packages/cli/src/modules/**/*.repository.ts
+              packages/cli/test/integration/**
+              packages/cli/test/migration/**
+              packages/cli/test/shared/db/**
+              packages/@n8n/db/**
+              packages/cli/**/__tests__/**
+              packages/testing/containers/services/postgres.ts
+              .github/workflows/test-db-reusable.yml
 
       - name: Setup and Build
         if: fromJSON(steps.ci-filter.outputs.results).ci
@@ -104,6 +117,14 @@ jobs:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
+  db-tests:
+    name: DB Tests
+    needs: install-and-build
+    if: needs.install-and-build.outputs.db == 'true'
+    uses: ./.github/workflows/test-db-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
   security-checks:
     name: Security Checks
     needs: install-and-build
@@ -117,7 +138,7 @@ jobs:
   # PRs cannot be merged unless this job passes.
   required-checks:
     name: Required Checks
-    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests, security-checks]
+    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests, db-tests, security-checks]
     if: always()
     runs-on: ubuntu-slim
     steps:
