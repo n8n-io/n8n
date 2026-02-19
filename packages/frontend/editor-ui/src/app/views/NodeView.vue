@@ -297,7 +297,7 @@ const isCanvasReadOnly = computed(() => {
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
 		editableWorkflow.value.isArchived ||
-		builderStore.streaming
+		(builderStore.streaming && !builderStore.isHelpStreaming)
 	);
 });
 
