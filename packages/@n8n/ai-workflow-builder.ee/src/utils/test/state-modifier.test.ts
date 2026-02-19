@@ -4,6 +4,7 @@ import { cleanupDanglingToolCallMessages } from '../cleanup-dangling-tool-call-m
 import {
 	determineStateAction,
 	handleCleanupDangling,
+	handleCreateWorkflowName,
 	handleDeleteMessages,
 } from '../state-modifier';
 import { estimateTokenCountFromMessages } from '../token-usage';
@@ -238,6 +239,23 @@ describe('state-modifier', () => {
 			const result = handleDeleteMessages([]);
 
 			expect(result.workflowOperations).toEqual([]);
+		});
+	});
+
+	describe('handleCreateWorkflowName', () => {
+		const mockLlm = {} as Parameters<typeof handleCreateWorkflowName>[2];
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should NOT generate a name for custom workflow name', async () => {
+			const customNameWorkflow = { nodes: [], connections: {}, name: 'Email automation' };
+			const messages = [new HumanMessage({ id: 'h1', content: 'Create an email workflow' })];
+
+			const result = await handleCreateWorkflowName(messages, customNameWorkflow, mockLlm);
+
+			expect(result.workflowJSON).toEqual(customNameWorkflow);
 		});
 	});
 });
