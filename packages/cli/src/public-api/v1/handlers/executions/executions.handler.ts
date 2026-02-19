@@ -3,11 +3,12 @@ import { Container } from '@n8n/di';
 import type express from 'express';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
-import { replaceCircularReferences } from 'n8n-workflow';
+import { type ExecutionStatus, replaceCircularReferences } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
+import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -251,6 +252,74 @@ export = {
 				}
 				throw error;
 			}
+		},
+	],
+	stopExecution: [
+		apiKeyHasScope('execution:stop'),
+		async (req: ExecutionRequest.Stop, res: express.Response): Promise<express.Response> => {
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:execute']);
+
+			// user does not have workflows hence no executions
+			// or the execution they are trying to access belongs to a workflow they do not own
+			if (!sharedWorkflowsIds.length) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			const { id } = req.params;
+
+			try {
+				const stopResult = await Container.get(ExecutionService).stop(id, sharedWorkflowsIds);
+
+				return res.json(replaceCircularReferences(stopResult));
+			} catch (error) {
+				if (error instanceof MissingExecutionStopError) {
+					return res.status(404).json({ message: 'Not Found' });
+				} else if (error instanceof NotFoundError) {
+					return res.status(404).json({ message: error.message });
+				} else {
+					throw error;
+				}
+			}
+		},
+	],
+	stopManyExecutions: [
+		apiKeyHasScope('execution:stop'),
+		async (req: ExecutionRequest.StopMany, res: express.Response): Promise<express.Response> => {
+			const { status: rawStatus, workflowId, startedAfter, startedBefore } = req.body;
+			const status: ExecutionStatus[] = rawStatus.map((x) => (x === 'queued' ? 'new' : x));
+			// Validate that status is provided and not empty
+			if (!status || status.length === 0) {
+				return res.status(400).json({
+					message:
+						'Status filter is required. Please provide at least one status to stop executions.',
+					example: {
+						status: ['running', 'waiting', 'queued'],
+					},
+				});
+			}
+
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:execute']);
+
+			// Return early to avoid expensive db query
+			if (!sharedWorkflowsIds.length) {
+				return res.json({ stopped: 0 });
+			}
+
+			// If workflowId is provided, validate user has access to it
+			if (workflowId && workflowId !== 'all' && !sharedWorkflowsIds.includes(workflowId)) {
+				return res.status(404).json({ message: 'Workflow not found or not accessible' });
+			}
+
+			const filter = {
+				workflowId: workflowId ?? 'all',
+				status,
+				startedAfter,
+				startedBefore,
+			};
+
+			const stopped = await Container.get(ExecutionService).stopMany(filter, sharedWorkflowsIds);
+
+			return res.json({ stopped });
 		},
 	],
 };
