@@ -73,7 +73,6 @@ test.describe(
 			await expect(n8n.canvas.credentialModal.getModeSelector()).toBeVisible();
 			await expect(n8n.canvas.credentialModal.getModeSwitchLink()).toBeVisible();
 
-			// Default is OAuth2 which doesn't have a save button until connected, switch to Service Account
 			await n8n.canvas.credentialModal.getModeSwitchLink().click();
 
 			// Fill in the Service Account fields and save

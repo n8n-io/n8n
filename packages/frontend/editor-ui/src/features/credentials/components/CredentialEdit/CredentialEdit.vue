@@ -339,11 +339,15 @@ const defaultCredentialTypeName = computed(() => {
 	return defaultName ?? '';
 });
 
+const isManagedOAuth = computed(
+	() => isOAuthType.value && managedOAuthAvailable.value && !useCustomOAuth.value,
+);
+
 const showSaveButton = computed(() => {
 	return (
 		(props.mode === 'new' || hasUnsavedChanges.value || isSaved.value) &&
 		(credentialPermissions.value.create ?? credentialPermissions.value.update) &&
-		!(isOAuthType.value && !isOAuthConnected.value)
+		!(isManagedOAuth.value && !isOAuthConnected.value)
 	);
 });
 
