@@ -318,12 +318,12 @@ describe('useQuickConnect()', () => {
 					await connect({
 						credentialTypeName: 'googleSheetsOAuth2Api',
 						nodeType: 'n8n-nodes-base.googleSheets',
-						source: 'node',
+						source: 'node_type',
 						serviceName: 'Google',
 					});
 
 					expect(telemetry.track).toHaveBeenCalledWith('User clicked quick connect button', {
-						source: 'node',
+						source: 'node_type',
 						credential_type: 'googleSheetsOAuth2Api',
 						node_type: 'n8n-nodes-base.googleSheets',
 					});
@@ -337,7 +337,7 @@ describe('useQuickConnect()', () => {
 					await connect({
 						credentialTypeName: 'slackOAuth2Api',
 						nodeType: 'n8n-nodes-base.slack',
-						source: 'node',
+						source: 'node_type',
 						serviceName: 'Slack',
 					});
 
@@ -401,7 +401,7 @@ describe('useQuickConnect()', () => {
 							const result = await connect({
 								credentialTypeName: 'pineconeApi',
 								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
-								source: 'node',
+								source: 'node_type',
 								serviceName: 'Pinecone',
 							});
 
@@ -433,7 +433,7 @@ describe('useQuickConnect()', () => {
 							const result = await connect({
 								credentialTypeName: 'pineconeApi',
 								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
-								source: 'node',
+								source: 'node_type',
 								serviceName: 'Pinecone',
 							});
 
@@ -461,7 +461,7 @@ describe('useQuickConnect()', () => {
 							const result = await connect({
 								credentialTypeName: 'pineconeApi',
 								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
-								source: 'node',
+								source: 'node_type',
 								serviceName: 'Pinecone',
 							});
 
@@ -494,7 +494,7 @@ describe('useQuickConnect()', () => {
 							const result = await connect({
 								credentialTypeName: 'pineconeApi',
 								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
-								source: 'node',
+								source: 'node_type',
 								serviceName: 'Pinecone',
 							});
 
@@ -527,7 +527,7 @@ describe('useQuickConnect()', () => {
 							const result = await connect({
 								credentialTypeName: 'testApi',
 								nodeType: 'test-package.testNode',
-								source: 'node',
+								source: 'node_type',
 								serviceName: 'Pinecone',
 							});
 
