@@ -98,11 +98,13 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 				read: true,
 			}));
 		}
-		// Update UI grid dimensions when opening
-		uiStore.appGridDimensions = {
-			...uiStore.appGridDimensions,
-			width: window.innerWidth - chatPanelStateStore.width,
-		};
+		// Wait for slide animation to finish before updating grid width
+		setTimeout(() => {
+			uiStore.appGridDimensions = {
+				...uiStore.appGridDimensions,
+				width: window.innerWidth - chatPanelStateStore.width,
+			};
+		}, ASK_AI_SLIDE_OUT_DURATION_MS);
 	}
 
 	function close() {
