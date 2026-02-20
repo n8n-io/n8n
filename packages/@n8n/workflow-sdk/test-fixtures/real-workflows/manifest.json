@@ -15591,9 +15591,7 @@
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Parse AI Regex Output"
 				}
-			],
-			"skip": true,
-			"skipReason": "Warning mismatch — roundtrip produces extra warnings not in original"
+			]
 		},
 		{
 			"id": 4608,
@@ -17289,9 +17287,7 @@
 					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "Tavily1"
 				}
-			],
-			"skip": true,
-			"skipReason": "Warning mismatch — roundtrip produces extra warnings not in original"
+			]
 		},
 		{
 			"id": 4915,

@@ -730,6 +730,25 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 						if (branchNode) {
 							ctx.variables.set(branchName, branchNode);
 							builtBranches.push(createVarRef(branchName));
+
+							// If the branch is a merge node, ensure the source node's connection
+							// to it is expressed as a deferred connection. This handles the case
+							// where the source fans out to both a merge node and another target,
+							// and the merge was already visited from a different path.
+							if (isMergeType(branchNode.type)) {
+								const alreadyHasConnection = ctx.deferredConnections.some(
+									(c) => c.sourceNodeName === node.name && c.targetNode.name === branchName,
+								);
+								if (!alreadyHasConnection) {
+									const inputIndex = findMergeInputIndex(branchNode, node.name);
+									ctx.deferredConnections.push({
+										sourceNodeName: node.name,
+										sourceOutputIndex: 0,
+										targetNode: branchNode,
+										targetInputIndex: inputIndex,
+									});
+								}
+							}
 						}
 					}
 				}
