@@ -204,6 +204,8 @@ export async function initializeAuthenticatedFeatures(
 		rolesStore.fetchRoles(),
 	]);
 
+	await projectsStore.refreshCurrentProject();
+
 	// Initialize modules
 	registerModuleResources();
 	registerModuleProjectTabs();

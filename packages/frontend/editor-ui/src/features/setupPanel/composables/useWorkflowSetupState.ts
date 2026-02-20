@@ -52,6 +52,8 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		return runData !== null && runData.length > 0;
 	};
 
+	const seenNodes = new Set<string>();
+
 	/**
 	 * Get nodes that require setup:
 	 * - Nodes with credential requirements
@@ -68,10 +70,15 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				isTrigger: isTriggerNode(node),
 			}))
 			.filter(
-				({ credentialTypes, isTrigger, parameterIssues }) =>
+				({ credentialTypes, isTrigger, parameterIssues, node }) =>
+					seenNodes.has(node.id) ||
 					0 < credentialTypes.length + +isTrigger + Object.keys(parameterIssues).length,
 			);
 
+		// Never remove entries once we show them
+		for (const { node } of nodesForSetup) {
+			seenNodes.add(node.id);
+		}
 		return sortNodesByExecutionOrder(
 			nodesForSetup,
 			workflowsStore.connectionsBySourceNode,
@@ -96,11 +103,20 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		nodesRequiringSetup.value.filter(({ credentialTypes }) => credentialTypes.length > 0),
 	);
 
-	const nodesWithMissingParameters = computed(() =>
-		nodesRequiringSetup.value.filter(
-			({ parameterIssues }) => Object.keys(parameterIssues).length > 0,
-		),
-	);
+	const seenParameterNodes = new Set<string>();
+
+	const nodesWithMissingParameters = computed(() => {
+		const result = nodesRequiringSetup.value.filter(
+			({ parameterIssues, node }) =>
+				seenParameterNodes.has(node.id) || Object.keys(parameterIssues).length > 0,
+		);
+
+		for (const { node } of result) {
+			seenParameterNodes.add(node.id);
+		}
+
+		return result;
+	});
 
 	/**
 	 * Credential type states — one entry per unique credential type.

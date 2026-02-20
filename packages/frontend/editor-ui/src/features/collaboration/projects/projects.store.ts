@@ -58,7 +58,8 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		() =>
 			(route.params?.projectId as string | undefined) ??
 			(route.query?.projectId as string | undefined) ??
-			currentProject.value?.id,
+			currentProject.value?.id ??
+			personalProject.value?.id,
 	);
 	const isProjectHome = computed(() => route.path.includes('home'));
 	const personalProjects = computed(() =>
