@@ -171,7 +171,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			});
 			await open({ mode: 'builder' });
 			const builderStore = useBuilderStore();
-			await builderStore.sendChatMessage({ text: question });
+			await builderStore.sendChatMessage({ text: question, helpMessage: true });
 			return;
 		}
 		const assistantStore = useAssistantStore();
@@ -189,7 +189,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			});
 			await open({ mode: 'builder' });
 			const builderStore = useBuilderStore();
-			await builderStore.sendChatMessage({ text: errorText });
+			await builderStore.sendChatMessage({ text: errorText, helpMessage: true });
 			return;
 		}
 		const assistantStore = useAssistantStore();
