@@ -13,7 +13,8 @@ export type EvaluationSuite =
 	| 'pairwise'
 	| 'programmatic'
 	| 'similarity'
-	| 'introspection';
+	| 'introspection'
+	| 'binary-checks';
 export type EvaluationBackend = 'local' | 'langsmith';
 export type AgentType = 'multi-agent' | 'code-builder';
 
@@ -51,6 +52,9 @@ export interface EvaluationArgs {
 	/** CSV file path for evaluation results */
 	outputCsv?: string;
 
+	/** Comma-separated list of binary check names to run */
+	checks?: string[];
+
 	// Model configuration
 	/** Default model for all stages */
 	model: ModelId;
@@ -85,7 +89,14 @@ const modelIdSchema = z.enum(AVAILABLE_MODELS as [ModelId, ...ModelId[]]);
 const cliSchema = z
 	.object({
 		suite: z
-			.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity', 'introspection'])
+			.enum([
+				'llm-judge',
+				'pairwise',
+				'programmatic',
+				'similarity',
+				'introspection',
+				'binary-checks',
+			])
 			.default('llm-judge'),
 		backend: z.enum(['local', 'langsmith']).default('local'),
 		agent: z.enum(['code-builder', 'multi-agent']).default('code-builder'),
@@ -112,6 +123,7 @@ const cliSchema = z
 
 		numJudges: z.coerce.number().int().positive().default(DEFAULTS.NUM_JUDGES),
 
+		checks: z.string().min(1).optional(),
 		langsmith: z.boolean().optional(),
 		templateExamples: z.boolean().default(false),
 		webhookUrl: z.string().url().optional(),
@@ -159,7 +171,13 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		key: 'suite',
 		kind: 'string',
 		group: 'eval',
-		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity|introspection)',
+		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity|introspection|binary-checks)',
+	},
+	'--checks': {
+		key: 'checks',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Comma-separated binary check names to run (binary-checks suite only)',
 	},
 	'--backend': { key: 'backend', kind: 'string', group: 'eval', desc: 'Backend (local|langsmith)' },
 	'--agent': {
@@ -571,6 +589,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		featureFlags,
 		webhookUrl: parsed.webhookUrl,
 		webhookSecret: parsed.webhookSecret,
+		checks: parsed.checks?.split(',').map((s) => s.trim()),
 		// Model configuration
 		model: parsed.model,
 		judgeModel: parsed.judgeModel,

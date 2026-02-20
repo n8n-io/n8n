@@ -448,6 +448,11 @@ function extractContextFromLangsmithInputs(inputs: unknown): TestCaseContext {
 		context.referenceWorkflows = [record.referenceWorkflow];
 	}
 
+	// Extract annotations for binary-checks evaluator
+	if (record.annotations && typeof record.annotations === 'object') {
+		context.annotations = record.annotations as Record<string, unknown>;
+	}
+
 	return context;
 }
 
@@ -914,8 +919,11 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 	// Write CSV if requested
 	if (outputCsv) {
 		const { writeResultsCsv } = await import('./csv-writer.js');
-		// Map suite to CSV format (only llm-judge and pairwise are supported)
-		const csvSuite = suite === 'llm-judge' || suite === 'pairwise' ? suite : undefined;
+		// Map suite to CSV format
+		const csvSuite =
+			suite === 'llm-judge' || suite === 'pairwise' || suite === 'binary-checks'
+				? suite
+				: undefined;
 		writeResultsCsv(results, outputCsv, { suite: csvSuite });
 		logger.info(`Results written to: ${outputCsv}`);
 	}
@@ -1419,8 +1427,11 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	// Write CSV if requested
 	if (outputCsv) {
 		const { writeResultsCsv } = await import('./csv-writer.js');
-		// Map suite to CSV format (only llm-judge and pairwise are supported)
-		const csvSuite = suite === 'llm-judge' || suite === 'pairwise' ? suite : undefined;
+		// Map suite to CSV format
+		const csvSuite =
+			suite === 'llm-judge' || suite === 'pairwise' || suite === 'binary-checks'
+				? suite
+				: undefined;
 		writeResultsCsv(capturedResults, outputCsv, { suite: csvSuite });
 		logger.info(`Results written to: ${outputCsv}`);
 	}

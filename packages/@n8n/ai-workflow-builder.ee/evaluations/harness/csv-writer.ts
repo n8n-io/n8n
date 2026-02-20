@@ -44,7 +44,32 @@ const PAIRWISE_METRICS = [
 	'pairwise_total_violations',
 ] as const;
 
-type EvaluationSuite = 'llm-judge' | 'pairwise' | 'unknown';
+/**
+ * Binary check names (in order).
+ * Each check gets a single score column (0 or 1).
+ */
+const BINARY_CHECK_NAMES = [
+	'has_nodes',
+	'all_nodes_connected',
+	'no_unreachable_nodes',
+	'has_trigger',
+	'no_empty_set_nodes',
+	'agent_has_dynamic_prompt',
+	'agent_has_language_model',
+	'memory_properly_connected',
+	'vector_store_has_embeddings',
+	'has_start_node',
+	'no_hardcoded_credentials',
+	'no_unnecessary_code_nodes',
+	'fulfills_user_request',
+	'correct_node_operations',
+	'valid_data_flow',
+	'handles_multiple_items',
+	'agent_prompt_mentions_tools',
+	'descriptive_node_names',
+] as const;
+
+type EvaluationSuite = 'llm-judge' | 'pairwise' | 'binary-checks' | 'unknown';
 
 /**
  * Escape a value for CSV output.
@@ -68,6 +93,9 @@ function detectSuite(feedback: Feedback[]): EvaluationSuite {
 	}
 	if (feedback.some((f) => f.evaluator === 'pairwise')) {
 		return 'pairwise';
+	}
+	if (feedback.some((f) => f.evaluator === 'binary-checks')) {
+		return 'binary-checks';
 	}
 	return 'unknown';
 }
@@ -163,6 +191,23 @@ function buildPairwiseRow(result: ExampleResult, judgeCount: number): string[] {
 }
 
 /**
+ * Build CSV row for binary-checks suite.
+ */
+function buildBinaryChecksRow(result: ExampleResult): string[] {
+	const row: string[] = [];
+
+	row.push(escapeCsvValue(result.prompt));
+	row.push(escapeCsvValue(result.status));
+	row.push(escapeCsvValue(result.generationDurationMs));
+
+	for (const checkName of BINARY_CHECK_NAMES) {
+		row.push(escapeCsvValue(extractMetricScore(result.feedback, 'binary-checks', checkName)));
+	}
+
+	return row;
+}
+
+/**
  * Build CSV header for LLM Judge suite.
  */
 function buildLlmJudgeHeader(): string[] {
@@ -196,15 +241,22 @@ function buildPairwiseHeader(judgeCount: number): string[] {
 	return header;
 }
 
+/**
+ * Build CSV header for binary-checks suite.
+ */
+function buildBinaryChecksHeader(): string[] {
+	return ['prompt', 'status', 'gen_latency_ms', ...BINARY_CHECK_NAMES];
+}
+
 export interface WriteResultsCsvOptions {
 	/** Explicitly specify the evaluation suite. If not provided, auto-detects from feedback. */
-	suite?: 'llm-judge' | 'pairwise';
+	suite?: 'llm-judge' | 'pairwise' | 'binary-checks';
 }
 
 /**
  * Write evaluation results to a CSV file.
  * Results are sorted by prompt for consistent ordering across runs.
- * Automatically detects evaluation suite (llm-judge or pairwise) and formats accordingly,
+ * Automatically detects evaluation suite and formats accordingly,
  * unless explicitly specified via options.
  */
 export function writeResultsCsv(
@@ -244,6 +296,14 @@ export function writeResultsCsv(
 		// Data rows
 		for (const result of sorted) {
 			lines.push(buildPairwiseRow(result, judgeCount).join(','));
+		}
+	} else if (suite === 'binary-checks') {
+		// Header
+		lines.push(buildBinaryChecksHeader().join(','));
+
+		// Data rows
+		for (const result of sorted) {
+			lines.push(buildBinaryChecksRow(result).join(','));
 		}
 	} else {
 		// Default to LLM Judge format (also handles unknown)
