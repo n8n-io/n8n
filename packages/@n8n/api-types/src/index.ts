@@ -35,6 +35,7 @@ export {
 	chatAttachmentSchema,
 	type ChatAttachment,
 	ChatHubSendMessageRequest,
+	ChatHubManualSendMessageRequest,
 	ChatHubRegenerateMessageRequest,
 	ChatHubEditMessageRequest,
 	ChatHubUpdateConversationRequest,

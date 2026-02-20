@@ -1215,8 +1215,36 @@ const chatTriggerNodePinnedData = computed(() => {
 	return workflowDocumentStore?.value?.pinData?.[chatTriggerNode.value.name];
 });
 
+const isChatHubAvailable = computed(() => {
+	return chatTriggerNode.value?.parameters?.availableInChat === true;
+});
+
+const isChatHubPanelOpen = computed(
+	() => chatPanelStore.isOpen && chatPanelStore.isChatHubModeActive,
+);
+
 function onOpenChat() {
-	startChat('main');
+	if (isChatHubAvailable.value) {
+		void chatPanelStore.open({ mode: 'chatHub' });
+	} else {
+		startChat('main');
+	}
+}
+
+function onToggleChat() {
+	if (isChatHubAvailable.value) {
+		if (isChatHubPanelOpen.value) {
+			chatPanelStore.close();
+		} else {
+			void chatPanelStore.open({ mode: 'chatHub' });
+		}
+	} else {
+		if (isLogsPanelOpen.value) {
+			logsStore.toggleOpen(false);
+		} else {
+			startChat('main');
+		}
+	}
 }
 
 /**
@@ -1799,7 +1827,7 @@ onBeforeUnmount(() => {
 			@tidy-up="onTidyUp"
 			@toggle:focus-panel="onToggleFocusPanel"
 			@extract-workflow="onExtractWorkflow"
-			@start-chat="startChat()"
+			@start-chat="onToggleChat"
 		>
 			<Suspense v-if="!isCanvasReadOnly">
 				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
@@ -1820,11 +1848,11 @@ onBeforeUnmount(() => {
 				/>
 				<template v-if="containsChatTriggerNodes">
 					<CanvasChatButton
-						v-if="isLogsPanelOpen"
+						v-if="isLogsPanelOpen || isChatHubPanelOpen"
 						variant="subtle"
 						:label="i18n.baseText('chat.hide')"
 						:class="$style.chatButton"
-						@click="logsStore.toggleOpen(false)"
+						@click="onToggleChat"
 					/>
 					<KeyboardShortcutTooltip
 						v-else

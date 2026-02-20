@@ -18,3 +18,8 @@ export const ASSISTANT_ENABLED_VIEWS = [
  * Views where the Builder chat panel can be shown
  */
 export const BUILDER_ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
+
+/**
+ * Views where the Chat Hub side panel can be shown (for testing draft workflows)
+ */
+export const CHAT_HUB_ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS];
