@@ -234,9 +234,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		assistantHandler,
 	} = config;
 
-	const mergeAskBuild =
-		(featureFlags?.mergeAskBuild === true || process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD === 'true') &&
-		!!assistantHandler;
+	const mergeAskBuild = featureFlags?.mergeAskBuild === true && !!assistantHandler;
 	const supervisorAgent = new SupervisorAgent({
 		llm: stageLLMs.supervisor,
 		mergeAskBuild,
