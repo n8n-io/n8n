@@ -1,6 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { paginatedRequest, type AiSdkVersionRange, type StrapiFilters } from './strapi-utils';
+import { paginatedRequest, type StrapiFilters } from './strapi-utils';
 
 export type StrapiCommunityNodeType = {
 	id: number;
@@ -28,8 +28,6 @@ export type CommunityNodesMetadata = Pick<
 	'id' | 'name' | 'npmVersion' | 'updatedAt'
 >;
 
-export type { AiSdkVersionRange } from './strapi-utils';
-
 const N8N_VETTED_NODE_TYPES_STAGING_URL = 'https://api-staging.n8n.io/api/community-nodes';
 const N8N_VETTED_NODE_TYPES_PRODUCTION_URL = 'https://api.n8n.io/api/community-nodes';
 
@@ -42,12 +40,12 @@ function getUrl(environment: 'staging' | 'production'): string {
 export async function getCommunityNodeTypes(
 	environment: 'staging' | 'production',
 	qs: { filters?: StrapiFilters; fields?: string[] } = {},
-	aiSdkVersionRange?: AiSdkVersionRange,
+	maxAiNodeSdkVersion?: number,
 ): Promise<StrapiCommunityNodeType[]> {
 	const url = getUrl(environment);
 	const params = {
 		...qs,
-		...aiSdkVersionRange,
+		maxAiNodeSdkVersion,
 		pagination: {
 			page: 1,
 			pageSize: 25,
@@ -58,12 +56,12 @@ export async function getCommunityNodeTypes(
 
 export async function getCommunityNodesMetadata(
 	environment: 'staging' | 'production',
-	aiSdkVersionRange?: AiSdkVersionRange,
+	maxAiNodeSdkVersion?: number,
 ): Promise<CommunityNodesMetadata[]> {
 	const url = getUrl(environment);
 	const params = {
 		fields: ['npmVersion', 'name', 'updatedAt'],
-		...aiSdkVersionRange,
+		maxAiNodeSdkVersion,
 		pagination: {
 			page: 1,
 			pageSize: 500,

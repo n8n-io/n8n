@@ -1,5 +1,5 @@
 // AI Node SDK version
-export { MIN_AI_NODE_SDK_VERSION, MAX_AI_NODE_SDK_VERSION } from './ai-node-sdk-version';
+export { AI_NODE_SDK_VERSION } from './ai-node-sdk-version';
 
 // Log wrapper and related utilities
 export { logWrapper } from './utils/log-wrapper';

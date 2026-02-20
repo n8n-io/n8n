@@ -31,18 +31,14 @@ export interface PaginationRequestOptions {
 
 export type StrapiFilters = { [key: string]: { ['$eq']?: string; ['$in']?: string[] } };
 
-export interface AiSdkVersionRange {
-	minAiNodeSdkVersion?: number;
-	maxAiNodeSdkVersion?: number;
-}
-
-interface PaginationRequestParams extends AiSdkVersionRange {
+interface PaginationRequestParams {
 	filters?: StrapiFilters;
 	fields?: string[];
 	pagination: {
 		page: number;
 		pageSize: number;
 	};
+	maxAiNodeSdkVersion?: number;
 }
 
 const REQUEST_TIMEOUT_MS = 6000;

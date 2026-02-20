@@ -1,4 +1,4 @@
-import { MIN_AI_NODE_SDK_VERSION, MAX_AI_NODE_SDK_VERSION } from '@n8n/ai-utilities';
+import { AI_NODE_SDK_VERSION } from '@n8n/ai-utilities';
 import { Config, Env } from '@n8n/config';
 
 @Config
@@ -27,9 +27,6 @@ export class CommunityPackagesConfig {
 	@Env('N8N_COMMUNITY_PACKAGES_PREVENT_LOADING')
 	preventLoading: boolean = false;
 
-	/** Min AI Node SDK version from @n8n/ai-utilities, sent to Strapi API */
-	readonly minAiNodeSdkVersion: number = MIN_AI_NODE_SDK_VERSION;
-
-	/** Max AI Node SDK version from @n8n/ai-utilities, sent to Strapi API */
-	readonly maxAiNodeSdkVersion: number = MAX_AI_NODE_SDK_VERSION;
+	/** Current AI Node SDK version from @n8n/ai-utilities, sent to Strapi API */
+	readonly aiNodeSdkVersion: number = AI_NODE_SDK_VERSION;
 }

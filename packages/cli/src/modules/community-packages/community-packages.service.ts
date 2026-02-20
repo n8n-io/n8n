@@ -284,10 +284,7 @@ export class CommunityPackagesService {
 						},
 						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 					},
-					{
-						minAiNodeSdkVersion: this.config.minAiNodeSdkVersion,
-						maxAiNodeSdkVersion: this.config.maxAiNodeSdkVersion,
-					},
+					this.config.aiNodeSdkVersion,
 				);
 			} catch (error) {
 				this.logger.error(
