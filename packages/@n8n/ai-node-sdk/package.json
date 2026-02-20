@@ -23,9 +23,9 @@
 		"lint": "eslint . --quiet",
 		"lint:fix": "eslint . --fix",
 		"watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
-		"test": "jest --passWithNoTests",
-		"test:unit": "jest --passWithNoTests",
-		"test:dev": "jest --watch"
+		"test": "vitest run --passWithNoTests",
+		"test:unit": "vitest run --passWithNoTests",
+		"test:dev": "vitest --watch"
 	},
 	"files": [
 		"dist"
@@ -34,6 +34,7 @@
 		"@n8n/ai-utilities": "workspace:*"
 	},
 	"devDependencies": {
-		"@n8n/typescript-config": "workspace:*"
+		"@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*"
 	}
 }
