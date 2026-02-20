@@ -7,6 +7,7 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	JsonValue,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
@@ -123,6 +124,7 @@ export type RelayEventMap = {
 	'workflow-pre-execute': {
 		executionId: string;
 		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
+		mode: WorkflowExecuteMode;
 	};
 
 	'workflow-post-execute': {
