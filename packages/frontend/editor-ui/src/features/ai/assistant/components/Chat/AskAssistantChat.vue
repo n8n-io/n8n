@@ -95,6 +95,7 @@ defineExpose({
 			:input-placeholder="i18n.baseText('aiAssistant.askMode.inputPlaceholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
+			@stop="assistantStore.abortStreaming"
 			@code-replace="onCodeReplace"
 			@code-undo="undoCodeDiff"
 		>

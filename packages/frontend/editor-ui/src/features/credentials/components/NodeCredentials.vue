@@ -88,7 +88,13 @@ const workflowState = injectWorkflowState();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 // Quick connect
-const { isQuickConnectEnabled, getQuickConnectOption, connect, cancelConnect } = useQuickConnect();
+const {
+	loading: quickConnectLoading,
+	isQuickConnectEnabled,
+	getQuickConnectOption,
+	connect,
+	cancelConnect,
+} = useQuickConnect();
 const { isGoogleOAuthType, hasManagedOAuthCredentials } = useCredentialOAuth();
 
 const canCreateCredentials = computed(
@@ -551,15 +557,25 @@ function showStandardEmptyState(type: INodeCredentialDescription): boolean {
 
 async function onQuickConnectSignIn(credentialTypeName: string) {
 	subscribedToCredentialType.value = credentialTypeName;
+	const serviceName = getServiceName(credentialTypeName);
 
-	const credential = await connect({
-		credentialTypeName,
-		nodeType: props.node.type,
-		source: 'node',
-	});
+	try {
+		const credential = await connect({
+			credentialTypeName,
+			nodeType: props.node.type,
+			source: 'node',
+			serviceName,
+		});
 
-	if (credential) {
-		onCredentialSelected(credentialTypeName, credential.id);
+		if (credential) {
+			onCredentialSelected(credentialTypeName, credential.id);
+			toast.showMessage({
+				title: i18n.baseText('nodeCredentials.quickConnect.credential.created.success'),
+				type: 'success',
+			});
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('nodeCredentials.quickConnect.credential.created.error'));
 	}
 }
 </script>
@@ -597,6 +613,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				>
 					<QuickConnectButton
 						size="small"
+						:disabled="quickConnectLoading"
 						:credential-type-name="quickConnectCredentialType"
 						:service-name="getServiceName(quickConnectCredentialType)"
 						@click="onQuickConnectSignIn(quickConnectCredentialType)"

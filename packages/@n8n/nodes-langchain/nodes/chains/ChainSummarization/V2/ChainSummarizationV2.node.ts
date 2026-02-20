@@ -14,6 +14,7 @@ import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFi
 import { processItem } from './processItem';
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
 
+/* istanbul ignore next */
 function getInputs(parameters: IDataObject) {
 	const chunkingMode = parameters?.chunkingMode;
 	const operationMode = parameters?.operationMode;
