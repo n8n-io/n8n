@@ -8,6 +8,7 @@ import type {
 	DataTableRow,
 } from '@/features/core/dataTable/dataTable.types';
 import type { DataTablesSizeResult } from 'n8n-workflow';
+import type { DataTableListSortBy } from '@n8n/api-types';
 
 export const fetchDataTablesApi = async (
 	context: IRestApiContext,
@@ -21,15 +22,7 @@ export const fetchDataTablesApi = async (
 		name?: string | string[];
 		projectId?: string | string[];
 	},
-	sortBy?:
-		| 'name:asc'
-		| 'name:desc'
-		| 'createdAt:asc'
-		| 'createdAt:desc'
-		| 'updatedAt:asc'
-		| 'updatedAt:desc'
-		| 'size:asc'
-		| 'size:desc',
+	sortBy?: DataTableListSortBy,
 ) => {
 	const apiEndpoint = projectId ? `/projects/${projectId}/data-tables` : '/data-tables-global';
 	return await makeRestApiRequest<{ count: number; data: DataTable[] }>(

@@ -13,6 +13,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { ProjectRelationRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import { DateTime } from 'luxon';
 import type {
 	DataTableColumnJsType,
@@ -709,10 +710,14 @@ export class DataTableService {
 			),
 		);
 
+		const dataTables = hasGlobalScope(user, 'dataTable:listProject')
+			? allSizeData.dataTables
+			: accessibleDataTables;
+
 		return {
 			totalBytes: allSizeData.totalBytes,
 			quotaStatus: this.dataTableSizeValidator.sizeToState(allSizeData.totalBytes),
-			dataTables: allSizeData.dataTables,
+			dataTables,
 		};
 	}
 

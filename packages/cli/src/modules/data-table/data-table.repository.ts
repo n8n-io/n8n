@@ -368,12 +368,13 @@ export class DataTableRepository extends Repository<DataTable> {
 
 	private async getAllDataTablesSizeMap(): Promise<Map<string, number>> {
 		const sql = this.getDataTableSizeQuery();
+		const sizeMap = new Map<string, number>();
+		if (sql === '') return sizeMap;
+
 		const result = (await this.query(sql)) as Array<{
 			table_name: string;
 			table_bytes: number | string | null;
 		}>;
-
-		const sizeMap = new Map<string, number>();
 
 		for (const row of result) {
 			if (row.table_bytes !== null && row.table_name) {

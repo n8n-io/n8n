@@ -135,8 +135,7 @@ const getDataTableSize = computed(() => {
 							:resource-type-label="'Data Table'"
 							:personal-project="projectsStore.personalProject"
 							:show-badge-border="false"
-						>
-						</ProjectCardBadge>
+						/>
 					</div>
 					<div :class="$style['card-actions']" @click.prevent>
 						<DataTableActions

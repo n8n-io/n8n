@@ -138,7 +138,7 @@ const onAddModalClick = () => {
 const onSearchUpdated = async (search: string) => {
 	currentPage.value = 1;
 	filters.value.search = search;
-	// saveFiltersOnQueryString();
+
 	if (search) {
 		await callDebounced(fetchDataTables, { debounceTime: SEARCH_DEBOUNCE_TIME, trailing: true });
 	} else {

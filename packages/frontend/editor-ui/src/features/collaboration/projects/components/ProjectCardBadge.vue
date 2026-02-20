@@ -34,13 +34,10 @@ const props = withDefaults(defineProps<Props>(), {
 	showBadgeBorder: true,
 });
 
-const refinedResource = computed(() => {
+const homeProject = computed(() => {
 	if (props.resource.resourceType === 'dataTable') {
-		return {
-			...props.resource,
-			homeProject: props.resource.project,
-		};
-	} else return props.resource;
+		return props.resource.project;
+	} else return props.resource.homeProject;
 });
 
 const i18n = useI18n();
@@ -51,21 +48,19 @@ const isShared = computed(() => {
 
 const projectState = computed(() => {
 	if (
-		(refinedResource.value.homeProject &&
-			props.personalProject &&
-			refinedResource.value.id === props.personalProject.id) ||
-		!refinedResource.value
+		!homeProject.value ||
+		(props.personalProject && homeProject.value?.id === props.personalProject.id)
 	) {
 		if (isShared.value) {
 			return ProjectState.SharedOwned;
 		}
 		return ProjectState.Owned;
-	} else if (refinedResource.value?.homeProject?.type !== ProjectTypes.Team) {
+	} else if (homeProject.value?.type !== ProjectTypes.Team) {
 		if (isShared.value) {
 			return ProjectState.SharedPersonal;
 		}
 		return ProjectState.Personal;
-	} else if (refinedResource.value?.homeProject?.type === ProjectTypes.Team) {
+	} else if (homeProject.value?.type === ProjectTypes.Team) {
 		if (isShared.value) {
 			return ProjectState.SharedTeam;
 		}
@@ -85,7 +80,7 @@ const badgeText = computed(() => {
 	) {
 		return i18n.baseText('projects.menu.personal');
 	} else {
-		const { name, email } = splitName(refinedResource.value.homeProject?.name ?? '');
+		const { name, email } = splitName(homeProject.value?.name ?? '');
 		return name ?? email ?? '';
 	}
 });
@@ -99,8 +94,8 @@ const badgeIcon = computed<IconOrEmoji>(() => {
 			return { type: 'icon', value: 'user' };
 		case ProjectState.Team:
 		case ProjectState.SharedTeam:
-			return isIconOrEmoji(refinedResource.value.homeProject?.icon)
-				? refinedResource.value.homeProject?.icon
+			return isIconOrEmoji(homeProject.value?.icon)
+				? homeProject.value?.icon
 				: { type: 'icon', value: 'layers' };
 		default:
 			return { type: 'icon', value: 'layers' };
@@ -153,12 +148,12 @@ const projectLocation = computed(() => {
 	if (
 		projectState.value !== ProjectState.Personal &&
 		projectState.value !== ProjectState.SharedPersonal &&
-		refinedResource.value.homeProject?.id &&
+		homeProject.value?.id &&
 		props.resourceType === ResourceType.Workflow
 	) {
 		return {
 			name: VIEWS.PROJECTS_WORKFLOWS,
-			params: { projectId: refinedResource.value.homeProject.id },
+			params: { projectId: homeProject.value?.id },
 		};
 	}
 	return null;

@@ -30,6 +30,7 @@ import { type DataTableSizeStatus } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import type { DataTableListSortBy } from '@n8n/api-types';
 
 export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const rootStore = useRootStore();
@@ -79,15 +80,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 			name?: string | string[];
 			projectId?: string | string[];
 		},
-		sortBy?:
-			| 'name:asc'
-			| 'name:desc'
-			| 'createdAt:asc'
-			| 'createdAt:desc'
-			| 'updatedAt:asc'
-			| 'updatedAt:desc'
-			| 'size:asc'
-			| 'size:desc',
+		sortBy?: DataTableListSortBy,
 	) => {
 		const response = await fetchDataTablesApi(
 			rootStore.restApiContext,
