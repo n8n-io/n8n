@@ -364,6 +364,34 @@ describe('setupPanel.utils', () => {
 			// Second entry: HTTP Request card
 			expect(result[1].nodes.map((n) => n.name)).toEqual(['HTTP Request']);
 		});
+
+		it('should create separate cards for HTTP Request nodes with expression URLs', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ $json.url }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ $json.url }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+			);
+
+			// Same expression but can't be resolved at design time — each gets its own card
+			expect(result).toHaveLength(2);
+			expect(result[0].nodes[0].name).toBe('HTTP Request');
+			expect(result[1].nodes[0].name).toBe('HTTP Request1');
+		});
 	});
 
 	describe('isCredentialCardComplete', () => {
