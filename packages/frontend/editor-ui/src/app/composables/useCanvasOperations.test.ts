@@ -62,6 +62,10 @@ import {
 	useWorkflowState,
 	type WorkflowState,
 } from '@/app/composables/useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 import { useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -146,6 +150,7 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 const canPinNodeMock = vi.fn();
 const setDataMock = vi.fn();
 const unsetDataMock = vi.fn();
+const hasDataRef = { value: false };
 const getInputDataWithPinnedMock = vi.fn();
 
 vi.mock('@/app/composables/usePinnedData', () => {
@@ -154,6 +159,7 @@ vi.mock('@/app/composables/usePinnedData', () => {
 			canPinNode: canPinNodeMock,
 			setData: setDataMock,
 			unsetData: unsetDataMock,
+			hasData: hasDataRef,
 		})),
 	};
 });
@@ -1841,6 +1847,7 @@ describe('useCanvasOperations', () => {
 			setDataMock.mockReset();
 			unsetDataMock.mockReset();
 			getInputDataWithPinnedMock.mockReset();
+			hasDataRef.value = false;
 		});
 
 		it('should only pin pinnable nodes when mix of pinnable and non-pinnable nodes are selected', () => {
@@ -1853,9 +1860,6 @@ describe('useCanvasOperations', () => {
 
 			const nodes = [pinnableNode1, nonPinnableNode, pinnableNode2];
 			workflowsStore.getNodesByIds.mockReturnValue(nodes);
-
-			// Initially, none have pinned data
-			workflowsStore.pinDataByNodeName = vi.fn().mockReturnValue(undefined);
 
 			let checkIndex = 0;
 			const nodeOrder: string[] = [];
@@ -1893,13 +1897,8 @@ describe('useCanvasOperations', () => {
 			const nodes = [pinnableNode1, nonPinnableNode, pinnableNode2];
 			workflowsStore.getNodesByIds.mockReturnValue(nodes);
 
-			// Set some initial pinned data for pinnable nodes
-			workflowsStore.pinDataByNodeName = vi.fn().mockImplementation((nodeName: string) => {
-				if (nodeName === 'PinnableNode1' || nodeName === 'PinnableNode2') {
-					return [{ json: { pinned: 'data' } }];
-				}
-				return undefined;
-			});
+			// Indicate all pinnable nodes have pinned data
+			hasDataRef.value = true;
 
 			let checkIndex = 0;
 
@@ -1930,7 +1929,6 @@ describe('useCanvasOperations', () => {
 			const nodes = [nonPinnableNode1, nonPinnableNode2];
 			workflowsStore.getNodesByIds.mockReturnValue(nodes);
 
-			workflowsStore.pinDataByNodeName = vi.fn().mockReturnValue(undefined);
 			canPinNodeMock.mockReturnValue(false);
 
 			const { toggleNodesPinned } = useCanvasOperations();
@@ -4115,8 +4113,11 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should clear workflow pin data if execution mode is not manual', async () => {
-			const setWorkflowPinDataSpy = vi.spyOn(workflowState, 'setWorkflowPinData');
 			const workflowsStore = mockedStore(useWorkflowsStore);
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			const setPinDataSpy = vi.spyOn(workflowDocumentStore, 'setPinData');
 			const { openExecution } = useCanvasOperations();
 
 			const executionId = '123';
@@ -4134,7 +4135,7 @@ describe('useCanvasOperations', () => {
 
 			await openExecution(executionId);
 
-			expect(setWorkflowPinDataSpy).toHaveBeenCalledWith({});
+			expect(setPinDataSpy).toHaveBeenCalledWith({});
 		});
 		it('should show an error notification for failed executions', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);

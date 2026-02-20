@@ -13,6 +13,10 @@ import { assert } from '@n8n/utils/assert';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useBuilderMessages } from './composables/useBuilderMessages';
 import {
 	chatWithBuilder,
@@ -959,14 +963,18 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function unpinAllNodes() {
-		const pinData = workflowsStore.workflow.pinData;
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+		const pinData = workflowDocumentStore?.pinData;
 		if (!pinData) return;
 		for (const nodeName of Object.keys(pinData)) {
-			const node = workflowsStore.getNodeByName(nodeName);
-			if (node) {
-				workflowsStore.unpinData({ node });
+			workflowDocumentStore?.unpinNodeData(nodeName);
+			if (workflowsStore.nodeMetadata[nodeName]) {
+				workflowsStore.nodeMetadata[nodeName].pinnedDataLastRemovedAt = Date.now();
 			}
 		}
+		uiStore.markStateDirty();
 	}
 
 	function clearExistingWorkflow() {
