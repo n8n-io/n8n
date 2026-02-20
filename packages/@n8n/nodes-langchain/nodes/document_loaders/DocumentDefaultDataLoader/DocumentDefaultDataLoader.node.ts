@@ -20,6 +20,7 @@ import 'mammoth'; // for docx
 import 'epub2'; // for epub
 import 'pdf-parse'; // for pdf
 
+/* istanbul ignore next */
 function getInputs(parameters: IDataObject) {
 	const inputs: INodeInputConfiguration[] = [];
 
