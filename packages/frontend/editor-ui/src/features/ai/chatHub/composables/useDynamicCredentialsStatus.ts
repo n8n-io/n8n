@@ -73,6 +73,15 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 		}
 	}
 
+	async function pollUntilConfigured(credentialId: string, maxAttempts = 10, intervalMs = 1000) {
+		for (let i = 0; i < maxAttempts; i++) {
+			await fetchStatus();
+			const cred = credentials.value.find((c) => c.credentialId === credentialId);
+			if (cred?.credentialStatus === 'configured') return;
+			await new Promise((resolve) => setTimeout(resolve, intervalMs));
+		}
+	}
+
 	async function authorize(credentialId: string) {
 		const cred = credentials.value.find((c) => c.credentialId === credentialId);
 		if (!cred) return;
@@ -116,7 +125,7 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 				settled = true;
 				oauthChannel.close();
 				clearInterval(pollInterval);
-				await fetchStatus();
+				await pollUntilConfigured(credentialId);
 				cred.isConnecting = false;
 			};
 

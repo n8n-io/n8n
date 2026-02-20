@@ -251,6 +251,111 @@ describe('useDynamicCredentialsStatus', () => {
 		});
 	});
 
+	describe('pollUntilConfigured', () => {
+		it('should stop polling once credential becomes configured', async () => {
+			vi.useFakeTimers();
+
+			const workflowId = ref<string | null>('wf-1');
+			const { credentials, authorize } = useDynamicCredentialsStatus(workflowId);
+
+			await vi.waitFor(() => {
+				expect(credentials.value).toHaveLength(2);
+			});
+
+			// Authorize returns a valid URL, popup opens
+			mockAuthorizeDynamicCredential.mockResolvedValue('https://accounts.google.com/oauth');
+			const mockPopup = { closed: false, close: vi.fn() };
+			vi.stubGlobal(
+				'open',
+				vi.fn(() => mockPopup),
+			);
+
+			const authorizePromise = authorize('cred-1');
+
+			// Simulate popup closing
+			mockPopup.closed = true;
+
+			// First poll: still missing
+			mockFetchWorkflowExecutionStatus.mockResolvedValue(createExecutionStatus());
+			await vi.advanceTimersByTimeAsync(500); // popup-closed poll fires
+
+			// Second poll after 1s delay: now configured
+			mockFetchWorkflowExecutionStatus.mockResolvedValue(
+				createExecutionStatus({
+					credentials: [
+						{
+							credentialId: 'cred-1',
+							credentialName: 'Google Sheets',
+							credentialType: 'googleSheetsOAuth2Api',
+							credentialStatus: 'configured',
+							authorizationUrl:
+								'https://n8n.example.com/rest/credentials/cred-1/authorize?resolverId=resolver-1',
+							revokeUrl:
+								'https://n8n.example.com/rest/credentials/cred-1/revoke?resolverId=resolver-1',
+						},
+						{
+							credentialId: 'cred-2',
+							credentialName: 'Gmail',
+							credentialType: 'gmailOAuth2Api',
+							credentialStatus: 'configured',
+							authorizationUrl:
+								'https://n8n.example.com/rest/credentials/cred-2/authorize?resolverId=resolver-2',
+							revokeUrl:
+								'https://n8n.example.com/rest/credentials/cred-2/revoke?resolverId=resolver-2',
+						},
+					],
+					readyToExecute: true,
+				}),
+			);
+			await vi.advanceTimersByTimeAsync(1000); // pollUntilConfigured delay
+
+			await authorizePromise;
+
+			expect(credentials.value[0].credentialStatus).toBe('configured');
+			expect(credentials.value[0].isConnecting).toBe(false);
+
+			vi.useRealTimers();
+			vi.unstubAllGlobals();
+		});
+
+		it('should stop after max attempts even if still missing', async () => {
+			vi.useFakeTimers();
+
+			const workflowId = ref<string | null>('wf-1');
+			const { credentials, authorize } = useDynamicCredentialsStatus(workflowId);
+
+			await vi.waitFor(() => {
+				expect(credentials.value).toHaveLength(2);
+			});
+
+			mockAuthorizeDynamicCredential.mockResolvedValue('https://accounts.google.com/oauth');
+			const mockPopup = { closed: false, close: vi.fn() };
+			vi.stubGlobal(
+				'open',
+				vi.fn(() => mockPopup),
+			);
+
+			const authorizePromise = authorize('cred-1');
+
+			// Popup closes
+			mockPopup.closed = true;
+
+			// All polls return missing — never becomes configured
+			mockFetchWorkflowExecutionStatus.mockResolvedValue(createExecutionStatus());
+
+			// Trigger popup-closed detection + all 10 poll attempts (500ms + 10 * 1000ms)
+			await vi.advanceTimersByTimeAsync(500 + 10 * 1000);
+			await authorizePromise;
+
+			// Should have stopped and set isConnecting to false
+			expect(credentials.value[0].credentialStatus).toBe('missing');
+			expect(credentials.value[0].isConnecting).toBe(false);
+
+			vi.useRealTimers();
+			vi.unstubAllGlobals();
+		});
+	});
+
 	describe('authorize', () => {
 		it('should reject invalid URL protocols', async () => {
 			mockAuthorizeDynamicCredential.mockResolvedValue('javascript:alert(1)');
