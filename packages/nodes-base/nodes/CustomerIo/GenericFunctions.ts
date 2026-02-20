@@ -39,7 +39,13 @@ export async function customerIoApiRequest(
 			options.url = `https://api.customer.io/v1/api${endpoint}`;
 		}
 	} else if (baseApi === 'beta') {
-		options.url = `https://beta-api.customer.io/v1/api${endpoint}`;
+		const region = credentials.region;
+		// Special handling for EU region
+		if (region === 'track-eu.customer.io') {
+			options.url = `https://beta-api-eu.customer.io/v1/api${endpoint}`;
+		} else {
+			options.url = `https://beta-api.customer.io/v1/api${endpoint}`;
+		}
 	}
 
 	return await this.helpers.requestWithAuthentication.call(this, 'customerIoApi', options);
