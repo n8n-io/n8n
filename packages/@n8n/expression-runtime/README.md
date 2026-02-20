@@ -272,9 +272,8 @@ The runtime uses several optimizations (implemented in PRs 2–4):
 - **Expression Code Caching**: Tournament-transformed code is cached per evaluator instance (same expressions repeat within a workflow, so cache hit rate is high in practice)
 
 Performance characteristics:
-- Small arrays (≤100 items): Transferred entirely for optimal performance
-- Large arrays (>100 items): Lazy element loading on demand
-- Objects: Always lazy-loaded via deep proxy system
+- Arrays: Always lazy-loaded — only length transferred, elements fetched on demand
+- Objects: Always lazy-loaded — only keys transferred, values fetched on demand
 
 ## Security
 

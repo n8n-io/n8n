@@ -52,17 +52,18 @@ $json.items[150].id     // triggers getArrayElement(['$json','items'], 150)
 $items()                // triggers callFunctionAtPath(['$items'])
 ```
 
-### Small vs. Large Array Threshold
+### Array metadata
 
-Arrays with ≤ 100 elements are transferred in full (with `__data`); larger arrays
-return metadata only and load elements on demand:
+Arrays are **never transferred in full** — only their length is returned. Elements
+are loaded individually on demand. Length can be determined from the host object
+in O(1), but serialization cost is proportional to the total byte size of all
+elements, which cannot be bounded from length alone.
 
 ```typescript
 // __getValueAtPath returns:
-{ __isArray: true, __length: 5, __data: [1,2,3,4,5] }    // small array
-{ __isArray: true, __length: 1000, __data: null }          // large — lazy
-{ __isObject: true, __keys: ['name','email'] }             // object — lazy
-42                                                          // primitive
+{ __isArray: true, __length: 1000 }            // always metadata only
+{ __isObject: true, __keys: ['name','email'] } // object — lazy
+42                                              // primitive
 ```
 
 ## How It Works
@@ -71,21 +72,11 @@ return metadata only and load elements on demand:
 
 Instead of transferring entire objects/arrays, the proxy uses metadata:
 
-**Small Arrays** (≤ threshold):
+**Arrays** (all sizes):
 ```typescript
 {
   __isArray: true,
-  __length: 5,
-  __data: [1, 2, 3, 4, 5]  // Data included
-}
-```
-
-**Large Arrays** (> threshold):
-```typescript
-{
-  __isArray: true,
-  __length: 1000,
-  __data: null  // No data, load elements on-demand
+  __length: 1000  // Only length; elements loaded on demand via __getArrayElement
 }
 ```
 
@@ -137,28 +128,27 @@ Symbol properties return `undefined` to prevent security issues.
 
 ### Memory Efficiency
 
-- **Small Arrays**: Transferred entirely (faster access, small memory cost)
-- **Large Arrays**: Elements loaded on-demand (slower access, minimal memory)
-- **Objects**: Always lazy-loaded (only keys transferred)
+- **Arrays**: Always lazy-loaded — only length transferred, elements fetched on demand
+- **Objects**: Always lazy-loaded — only keys transferred, values fetched on demand
 
 ### Access Patterns
 
 Best performance when:
 - Accessing few properties from large objects
 - Accessing specific array elements (not iterating entire array)
-- Accessing same properties multiple times (caching)
+- Accessing the same properties multiple times (caching means only the first access pays)
 
 Suboptimal performance when:
-- Iterating entire large arrays (`.map()`, `.filter()`)
+- Iterating entire arrays (`.map()`, `.filter()`) — each element triggers a separate callback
 - Accessing most properties of large objects
 - No property reuse (no benefit from caching)
 
 ## Known Limitations
 
-1. **Array Methods**: Methods like `.map()`, `.filter()` require the full array.
-   For large arrays (> 100 elements), each element triggers a separate
-   `__getArrayElement` callback call, which is slow.
-   - **Workaround**: Increase the small-array threshold, or avoid iterating large arrays in expressions
+1. **Array Methods**: Methods like `.map()`, `.filter()` iterate all elements.
+   Each element triggers a separate `__getArrayElement` callback call, which is slow
+   for large arrays.
+   - **Workaround**: Avoid iterating large arrays in expressions; access specific indices instead
 
 2. **Circular References**: May cause infinite loops in the proxy handler.
    - **Current**: No cycle detection; circular structures should be avoided in expression data
@@ -215,17 +205,17 @@ creates nested proxies for objects or arrays as needed.
 ### Accessing nested data (expression syntax)
 
 ```
-{{ $json.order.customer.name }}    // lazy-loads user.order.customer.name
-{{ $json.order.items[1].product }} // lazy-loads array element
-{{ _.sum($json.items) }}           // small array transferred in full
+{{ $json.order.customer.name }}    // lazy-loads order.customer.name
+{{ $json.order.items[1].product }} // lazy-loads array element at index 1
+{{ $json.items[0] }}               // fetches only the first element
 ```
 
-### Large dataset — only requested element loaded
+### Array iteration is slow for large arrays
 
 ```
-{{ $json.records[5000].id }}
-// $json.records has 10 000 elements → metadata-only transfer
-// __getArrayElement(['$json','records'], 5000) fetches just that element
+{{ _.sum($json.items) }}
+// items has 10 000 elements → length transferred, then 10 000 callback
+// calls to fetch each element. Prefer accessing specific indices.
 ```
 
 ## Contributing
