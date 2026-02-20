@@ -8,12 +8,12 @@ import { QuickConnectService } from './quick-connect.service';
 export class QuickConnectController {
 	constructor(private readonly quickConnectService: QuickConnectService) {}
 
-	@Post('/api-key')
-	async createApiKey(
+	@Post('/')
+	async getCredentialData(
 		req: AuthenticatedRequest,
 		_res: unknown,
 		@Body body: GetQuickConnectApiKeyDto,
 	) {
-		return await this.quickConnectService.getApiKey(body.quickConnectType, req.user);
+		return await this.quickConnectService.getCredentialData(body.quickConnectType, req.user);
 	}
 }

@@ -24,27 +24,27 @@ describe('QuickConnectService', () => {
 		service = new QuickConnectService(logger, config);
 	});
 
-	describe('getApiKey', () => {
+	describe('getCredentialData', () => {
 		it('should return API key when handler is configured', async () => {
 			const user = mock<User>({ email: 'test@example.com' });
 			const mockHandler = mock<IQuickConnectHandler>();
 			const expectedResult = { apiKey: 'test-api-key-123' };
-			mockHandler.getApiKey.mockResolvedValue(expectedResult);
+			mockHandler.getCredentialData.mockResolvedValue(expectedResult);
 
 			// Manually set handler
 			service['handlers'].set('firecrawl', mockHandler);
 
-			const result = await service.getApiKey('firecrawl', user);
+			const result = await service.getCredentialData('firecrawl', user);
 
 			expect(result).toEqual(expectedResult);
-			expect(mockHandler.getApiKey).toHaveBeenCalledWith(user);
+			expect(mockHandler.getCredentialData).toHaveBeenCalledWith(user);
 		});
 
 		it('should throw BadRequestError when handler is not configured', async () => {
 			const user = mock<User>({ email: 'test@example.com' });
 
-			await expect(service.getApiKey('nonexistent', user)).rejects.toThrow(BadRequestError);
-			await expect(service.getApiKey('nonexistent', user)).rejects.toThrow(
+			await expect(service.getCredentialData('nonexistent', user)).rejects.toThrow(BadRequestError);
+			await expect(service.getCredentialData('nonexistent', user)).rejects.toThrow(
 				'Quick connect handler not configured for: nonexistent',
 			);
 		});
@@ -53,12 +53,12 @@ describe('QuickConnectService', () => {
 			const user = mock<User>({ email: 'test@example.com' });
 			const mockHandler = mock<IQuickConnectHandler>();
 			const handlerError = new Error('Network failure');
-			mockHandler.getApiKey.mockRejectedValue(handlerError);
+			mockHandler.getCredentialData.mockRejectedValue(handlerError);
 
 			service['handlers'].set('firecrawl', mockHandler);
 
-			await expect(service.getApiKey('firecrawl', user)).rejects.toThrow(QuickConnectError);
-			await expect(service.getApiKey('firecrawl', user)).rejects.toThrow(
+			await expect(service.getCredentialData('firecrawl', user)).rejects.toThrow(QuickConnectError);
+			await expect(service.getCredentialData('firecrawl', user)).rejects.toThrow(
 				'Failed to connect to external service. Please try again later.',
 			);
 
@@ -74,11 +74,11 @@ describe('QuickConnectService', () => {
 		it('should wrap non-Error objects in QuickConnectError', async () => {
 			const user = mock<User>({ email: 'test@example.com' });
 			const mockHandler = mock<IQuickConnectHandler>();
-			mockHandler.getApiKey.mockRejectedValue('string error');
+			mockHandler.getCredentialData.mockRejectedValue('string error');
 
 			service['handlers'].set('firecrawl', mockHandler);
 
-			await expect(service.getApiKey('firecrawl', user)).rejects.toThrow(QuickConnectError);
+			await expect(service.getCredentialData('firecrawl', user)).rejects.toThrow(QuickConnectError);
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to fetch credential data from third-party',
 				{

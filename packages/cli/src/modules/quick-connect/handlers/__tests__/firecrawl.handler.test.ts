@@ -37,7 +37,7 @@ describe('FirecrawlHandler', () => {
 		});
 	});
 
-	describe('getApiKey', () => {
+	describe('getCredentialData', () => {
 		const mockConfig: FirecrawlQuickConnect = {
 			packageName: '@n8n/firecrawl',
 			credentialType: 'firecrawlApi',
@@ -63,7 +63,7 @@ describe('FirecrawlHandler', () => {
 				.matchHeader('contentType', 'application/json')
 				.reply(200, { apiKey: expectedApiKey });
 
-			const result = await handler.getApiKey(user);
+			const result = await handler.getCredentialData(user);
 
 			expect(result).toEqual({ apiKey: expectedApiKey });
 			expect(scope.isDone()).toBe(true);
@@ -80,7 +80,7 @@ describe('FirecrawlHandler', () => {
 					return [200, { apiKey: 'test-key' }];
 				});
 
-			await handler.getApiKey(user);
+			await handler.getCredentialData(user);
 
 			expect(capturedHeaders.authorization).toBe('Bearer test-secret-key');
 			expect(scope.isDone()).toBe(true);
@@ -93,7 +93,7 @@ describe('FirecrawlHandler', () => {
 				.post('/admin/integration/create-user', { email: 'specific@example.com' })
 				.reply(200, { apiKey: 'test-key' });
 
-			await handler.getApiKey(user);
+			await handler.getCredentialData(user);
 
 			expect(scope.isDone()).toBe(true);
 		});
@@ -105,7 +105,7 @@ describe('FirecrawlHandler', () => {
 				.post('/admin/integration/create-user')
 				.reply(400, { error: 'Bad Request' });
 
-			await expect(handler.getApiKey(user)).rejects.toThrow();
+			await expect(handler.getCredentialData(user)).rejects.toThrow();
 		});
 
 		it('should handle network errors', async () => {
@@ -115,7 +115,7 @@ describe('FirecrawlHandler', () => {
 				.post('/admin/integration/create-user')
 				.replyWithError('Network error');
 
-			await expect(handler.getApiKey(user)).rejects.toThrow();
+			await expect(handler.getCredentialData(user)).rejects.toThrow();
 		});
 
 		it('should return undefined apiKey for invalid JSON response', async () => {
@@ -126,7 +126,7 @@ describe('FirecrawlHandler', () => {
 				// eslint-disable-next-line @typescript-eslint/naming-convention
 				.reply(200, 'invalid json', { 'Content-Type': 'application/json' });
 
-			const result = await handler.getApiKey(user);
+			const result = await handler.getCredentialData(user);
 			expect(result.apiKey).toBeUndefined();
 		});
 
@@ -137,7 +137,7 @@ describe('FirecrawlHandler', () => {
 				.post('/admin/integration/create-user')
 				.reply(200, { data: 'something else' });
 
-			const result = await handler.getApiKey(user);
+			const result = await handler.getCredentialData(user);
 
 			// Should still return the response, apiKey will be undefined
 			expect(result.apiKey).toBeUndefined();
@@ -150,7 +150,20 @@ describe('FirecrawlHandler', () => {
 				.post('/admin/integration/create-user')
 				.reply(500, { error: 'Internal Server Error' });
 
-			await expect(handler.getApiKey(user)).rejects.toThrow();
+			await expect(handler.getCredentialData(user)).rejects.toThrow();
+		});
+	});
+
+	describe('error handling', () => {
+		it('should throw when config is missing', async () => {
+			const user = mock<User>({ email: 'test@example.com' });
+
+			const scope = nock(FIRECRAWL_API_BASE_URL)
+				.post('/admin/integration/create-user', { email: 'specific@example.com' })
+				.reply(200, { apiKey: 'test-key' });
+
+			await expect(handler.getCredentialData(user)).rejects.toThrow();
+			expect(scope.isDone()).toBe(false);
 		});
 	});
 });

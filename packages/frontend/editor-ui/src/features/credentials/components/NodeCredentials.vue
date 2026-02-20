@@ -29,6 +29,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { assert } from '@n8n/utils/assert';
 import {
+	getAppNameFromCredType,
 	getAuthTypeForNodeCredential,
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
@@ -536,10 +537,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 
 function getServiceName(credentialTypeName: string): string {
 	const displayName = credentialTypeNames.value[credentialTypeName] ?? credentialTypeName;
-	return displayName
-		.replace(/\s+OAuth2?\s+API$/i, '')
-		.replace(/\s+API$/i, '')
-		.replace(/API$/i, '');
+	return getAppNameFromCredType(displayName);
 }
 
 const quickConnectCredentialType = computed(() => {

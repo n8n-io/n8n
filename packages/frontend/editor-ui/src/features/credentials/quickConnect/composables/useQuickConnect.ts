@@ -86,9 +86,9 @@ export function useQuickConnect() {
 	async function connectToPinecone(quickConnectOption: QuickConnectPineconeOption) {
 		const { ConnectPopup } = await import('@pinecone-database/connect');
 
-		return await new Promise<string>((resolve, reject) => {
+		return await new Promise<object>((resolve, reject) => {
 			const popup = ConnectPopup({
-				onConnect: ({ key }) => resolve(key),
+				onConnect: ({ key }) => resolve({ apiKey: key }),
 				onCancel: reject,
 				integrationId: String(quickConnectOption.config.integrationId),
 			});
@@ -98,16 +98,15 @@ export function useQuickConnect() {
 	}
 
 	async function connectViaBackendFlow(quickConnectOption: QuickConnectOption) {
-		const { apiKey } = await getQuickConnectApiKey(rootStore.restApiContext, quickConnectOption);
-		return apiKey;
+		loading.value = true;
+		return await getQuickConnectApiKey(rootStore.restApiContext, quickConnectOption);
 	}
 
-	async function getApiKey(quickConnectOption: QuickConnectOption): Promise<string> {
+	async function getCredentialData(quickConnectOption: QuickConnectOption): Promise<object> {
 		switch (quickConnectOption.quickConnectType) {
 			case 'pinecone':
 				return await connectToPinecone(quickConnectOption as QuickConnectPineconeOption);
 			case 'firecrawl':
-				loading.value = true;
 				return await connectViaBackendFlow(quickConnectOption);
 			default:
 				throw new Error(
@@ -159,14 +158,14 @@ export function useQuickConnect() {
 						return null;
 					}
 				}
-				const apiKey = await getApiKey(quickConnectOption);
+				const credentialData = await getCredentialData(quickConnectOption);
 				const credential = await credentialsStore.createNewCredential(
 					{
 						id: '',
 						name: credentialType.displayName,
 						type: credentialTypeName,
 						data: {
-							apiKey,
+							...credentialData,
 							allowedHttpRequestDomains: 'none',
 						},
 					},

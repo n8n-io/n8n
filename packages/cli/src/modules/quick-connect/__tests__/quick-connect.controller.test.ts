@@ -14,7 +14,7 @@ describe('QuickConnectController', () => {
 		controller = new QuickConnectController(service);
 	});
 
-	describe('createApiKey', () => {
+	describe('getCredentialData', () => {
 		it('should call service with correct parameters', async () => {
 			const user = mock<User>({
 				id: 'user-123',
@@ -26,11 +26,11 @@ describe('QuickConnectController', () => {
 			};
 			const expectedResult = { apiKey: 'test-api-key' };
 
-			service.getApiKey = jest.fn().mockResolvedValue(expectedResult);
+			service.getCredentialData = jest.fn().mockResolvedValue(expectedResult);
 
-			const result = await controller.createApiKey(req, {}, body);
+			const result = await controller.getCredentialData(req, {}, body);
 
-			expect(service.getApiKey).toHaveBeenCalledWith('firecrawl', user);
+			expect(service.getCredentialData).toHaveBeenCalledWith('firecrawl', user);
 			expect(result).toEqual(expectedResult);
 		});
 
@@ -45,10 +45,10 @@ describe('QuickConnectController', () => {
 			};
 			const error = new Error('Handler not configured');
 
-			service.getApiKey = jest.fn().mockRejectedValue(error);
+			service.getCredentialData = jest.fn().mockRejectedValue(error);
 
-			await expect(controller.createApiKey(req, {}, body)).rejects.toThrow(error);
-			expect(service.getApiKey).toHaveBeenCalledWith('invalid', user);
+			await expect(controller.getCredentialData(req, {}, body)).rejects.toThrow(error);
+			expect(service.getCredentialData).toHaveBeenCalledWith('invalid', user);
 		});
 
 		it('should handle different quickConnectTypes', async () => {
@@ -62,11 +62,11 @@ describe('QuickConnectController', () => {
 			};
 			const expectedResult = { apiKey: 'custom-api-key-xyz' };
 
-			service.getApiKey = jest.fn().mockResolvedValue(expectedResult);
+			service.getCredentialData = jest.fn().mockResolvedValue(expectedResult);
 
-			const result = await controller.createApiKey(req, {}, body);
+			const result = await controller.getCredentialData(req, {}, body);
 
-			expect(service.getApiKey).toHaveBeenCalledWith('custom-provider', user);
+			expect(service.getCredentialData).toHaveBeenCalledWith('custom-provider', user);
 			expect(result).toEqual(expectedResult);
 		});
 	});

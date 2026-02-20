@@ -16,7 +16,11 @@ export interface IQuickConnectHandler<ConfigOption = QuickConnectOption> {
 	 * Fetches api key from the third-party service.
 	 * Used only for backend-based Quick connect flows.
 	 * @param user - The user requesting the credential
-	 * @returns The result api key
+	 * @returns The credential data
 	 */
-	getApiKey(user: User): Promise<{ apiKey: string }>;
+	getCredentialData(user: User): Promise<{ apiKey: string }>;
 }
+
+export type IQuickConnectHandlerOption<Handler> = Handler extends IQuickConnectHandler<infer Option>
+	? Option
+	: never;

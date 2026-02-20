@@ -10,5 +10,5 @@ export async function getQuickConnectApiKey(
 	context: IRestApiContext,
 	{ quickConnectType }: { quickConnectType: QuickConnectOption['quickConnectType'] },
 ): Promise<GetQuickConnectApiKeyResponse> {
-	return await makeRestApiRequest(context, 'POST', '/quick-connect/api-key', { quickConnectType });
+	return await makeRestApiRequest(context, 'POST', '/quick-connect', { quickConnectType });
 }

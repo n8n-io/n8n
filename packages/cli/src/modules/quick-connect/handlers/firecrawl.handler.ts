@@ -13,21 +13,21 @@ interface FirecrawlCreateUserResponse {
 
 @Service()
 export class FirecrawlHandler implements IQuickConnectHandler {
-	private config: FirecrawlQuickConnect;
+	private config: FirecrawlQuickConnect | undefined;
 
 	setConfig(config: FirecrawlQuickConnect) {
 		this.config = config;
 	}
 
-	async getApiKey({ email }: User) {
-		const secret = this.config.backendFlowConfig.secret;
+	async getCredentialData({ email }: User) {
+		const secret = this.config!.backendFlowConfig.secret;
 		const response = await axios.post<FirecrawlCreateUserResponse>(
 			`${FIRECRAWL_API_BASE_URL}/admin/integration/create-user`,
 			{ email },
 			{
 				headers: {
-					authorization: `Bearer ${secret}`,
-					contentType: 'application/json',
+					Authorization: `Bearer ${secret}`,
+					'Content-Type': 'application/json',
 				},
 			},
 		);
