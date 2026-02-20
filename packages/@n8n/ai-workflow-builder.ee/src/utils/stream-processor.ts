@@ -13,6 +13,7 @@ import type {
 } from '../types/planning';
 import type {
 	AgentMessageChunk,
+	MessagesCompactedChunk,
 	PlanChunk,
 	QuestionsChunk,
 	ToolProgressChunk,
@@ -309,7 +310,12 @@ function processCustomChunk(chunk: unknown): StreamOutput | null {
 function processUpdatesChunk(nodeUpdate: Record<string, unknown>): StreamOutput | null {
 	if (!nodeUpdate || typeof nodeUpdate !== 'object') return null;
 
-	if (nodeUpdate.delete_messages || nodeUpdate.compact_messages) {
+	if (nodeUpdate.compact_messages) {
+		const compactedChunk: MessagesCompactedChunk = { type: 'messages-compacted' };
+		return { messages: [compactedChunk] };
+	}
+
+	if (nodeUpdate.delete_messages) {
 		return null;
 	}
 
@@ -647,18 +653,21 @@ export function formatMessages(
 		if (msg instanceof HumanMessage) {
 			formattedMessages.push(formatHumanMessage(msg));
 		} else if (msg instanceof AIMessage) {
+			// Check for HITL messages (questions/plan) from persistence
 			const hitlMessage = tryFormatHitlMessage(msg);
 			if (hitlMessage) {
 				formattedMessages.push(hitlMessage);
 				continue;
 			}
 
-			// Add AI message content
-			formattedMessages.push(...processAIMessageContent(msg));
-
-			// Add tool calls if present
+			// If the message has tool_calls, only process the tool calls.
+			// The content in tool-calling messages is intermediate LLM "thinking" text
+			// that shouldn't be shown to the user.
 			if (msg.tool_calls?.length) {
 				formattedMessages.push(...processToolCalls(msg.tool_calls, builderTools));
+			} else {
+				// No tool calls - this is a final response, include the content
+				formattedMessages.push(...processAIMessageContent(msg));
 			}
 		} else if (msg instanceof ToolMessage) {
 			processToolMessage(msg, formattedMessages);

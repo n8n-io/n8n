@@ -90,6 +90,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				variant="solid"
 				:class="$style.button"
 				:loading="executing"
+				:iconOnly="executing"
 				:disabled="disabled"
 				:size="size ?? 'large'"
 				icon="flask-conical"

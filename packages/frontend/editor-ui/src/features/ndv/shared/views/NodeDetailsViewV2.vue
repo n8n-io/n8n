@@ -31,6 +31,7 @@ import { useNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
@@ -71,6 +72,7 @@ const pinnedData = usePinnedData(activeNode);
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
@@ -138,7 +140,7 @@ const parentNodes = computed(() => {
 
 const parentNode = computed(() => {
 	for (const parentNodeName of parentNodes.value) {
-		if (workflowsStore?.pinnedWorkflowData?.[parentNodeName]) {
+		if (workflowDocumentStore?.pinData?.[parentNodeName]) {
 			return parentNodeName;
 		}
 

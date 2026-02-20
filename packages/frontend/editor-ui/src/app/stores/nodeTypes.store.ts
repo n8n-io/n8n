@@ -54,7 +54,20 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const communityNodeType = computed(() => {
 		return (nodeTypeName: string) => {
-			return vettedCommunityNodeTypes.value.get(removePreviewToken(nodeTypeName));
+			// First try direct lookup by map key (package name without preview token)
+			const direct = vettedCommunityNodeTypes.value.get(nodeTypeName);
+			if (direct) return direct;
+
+			// Fallback: search by nodeDescription.name (handles preview token mismatch)
+			const cleanedName = removePreviewToken(nodeTypeName);
+			for (const communityNode of vettedCommunityNodeTypes.value.values()) {
+				const descName = communityNode.nodeDescription?.name;
+				if (descName === nodeTypeName || removePreviewToken(descName ?? '') === cleanedName) {
+					return communityNode;
+				}
+			}
+
+			return undefined;
 		};
 	});
 
