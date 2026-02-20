@@ -8,7 +8,6 @@
 		"build": "tsc -p tsconfig.build.json",
 		"test": "vitest run",
 		"test:dev": "vitest --watch --silent false",
-		"lint": "eslint .",
 		"typecheck": "tsc --noEmit"
 	},
 	"keywords": [
