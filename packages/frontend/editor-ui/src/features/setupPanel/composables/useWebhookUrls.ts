@@ -1,5 +1,6 @@
 import { computed, toValue, type MaybeRef } from 'vue';
 import { computedAsync } from '@vueuse/core';
+import type { IWebhookDescription } from 'n8n-workflow';
 
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -33,6 +34,51 @@ export function useWebhookUrls(node: MaybeRef<INodeUi | null>) {
 		return nodeType.value.webhooks.filter((w) => w.restartWebhook !== true);
 	});
 
+	async function resolveHideFlag(
+		webhook: IWebhookDescription,
+		field: 'ndvHideUrl' | 'ndvHideMethod',
+		nodeName: string,
+	): Promise<boolean> {
+		const raw = webhook[field];
+		if (typeof raw === 'string') {
+			try {
+				return !!(await workflowHelpers.getWebhookExpressionValue(webhook, field, true, nodeName));
+			} catch {
+				return false;
+			}
+		}
+		return !!raw;
+	}
+
+	async function resolveHttpMethod(
+		webhook: IWebhookDescription,
+		nodeName: string,
+	): Promise<{ httpMethod: string; isMethodVisible: boolean }> {
+		let isMethodVisible = !webhook.ndvHideMethod;
+		let httpMethod = '';
+
+		try {
+			const method = await workflowHelpers.getWebhookExpressionValue(
+				webhook,
+				'httpMethod',
+				false,
+				nodeName,
+			);
+			if (Array.isArray(method) && method.length !== 1) {
+				isMethodVisible = false;
+			} else {
+				httpMethod = Array.isArray(method) ? method[0] : (method as string);
+				if (typeof webhook.ndvHideMethod === 'string') {
+					isMethodVisible = !(await resolveHideFlag(webhook, 'ndvHideMethod', nodeName));
+				}
+			}
+		} catch {
+			// Keep defaults
+		}
+
+		return { httpMethod, isMethodVisible };
+	}
+
 	const webhookUrls = computedAsync(async () => {
 		const currentNode = nodeValue.value;
 		if (!currentNode || webhooks.value.length === 0) return [];
@@ -42,51 +88,10 @@ export function useWebhookUrls(node: MaybeRef<INodeUi | null>) {
 		for (const webhook of webhooks.value) {
 			const nodeName = currentNode.name;
 
-			// Check ndvHideUrl visibility
-			let isVisible = !webhook.ndvHideUrl;
-			if (typeof webhook.ndvHideUrl === 'string') {
-				try {
-					isVisible = !(await workflowHelpers.getWebhookExpressionValue(
-						webhook,
-						'ndvHideUrl',
-						true,
-						nodeName,
-					));
-				} catch {
-					isVisible = true;
-				}
-			}
-			if (!isVisible) continue;
+			if (await resolveHideFlag(webhook, 'ndvHideUrl', nodeName)) continue;
 
-			// Resolve URL (always test mode)
 			const url = await workflowHelpers.getWebhookUrl(webhook, currentNode, 'test');
-
-			// Resolve HTTP method and visibility
-			let isMethodVisible = !webhook.ndvHideMethod;
-			let httpMethod = '';
-			try {
-				const method = await workflowHelpers.getWebhookExpressionValue(
-					webhook,
-					'httpMethod',
-					false,
-					nodeName,
-				);
-				if (Array.isArray(method) && method.length !== 1) {
-					isMethodVisible = false;
-				} else {
-					httpMethod = Array.isArray(method) ? method[0] : (method as string);
-					if (typeof webhook.ndvHideMethod === 'string') {
-						isMethodVisible = !(await workflowHelpers.getWebhookExpressionValue(
-							webhook,
-							'ndvHideMethod',
-							true,
-							nodeName,
-						));
-					}
-				}
-			} catch {
-				// Keep defaults
-			}
+			const { httpMethod, isMethodVisible } = await resolveHttpMethod(webhook, nodeName);
 
 			result.push({ url, httpMethod, isMethodVisible });
 		}
