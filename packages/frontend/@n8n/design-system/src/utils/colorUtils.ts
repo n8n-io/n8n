@@ -1,4 +1,23 @@
 /**
+ * Contrast text colors for custom sticky backgrounds.
+ * Must stay in sync with the design system primitive tokens:
+ * - DARK_TEXT matches --color--neutral-850 = hsl(0, 0%, 17%) from _primitives.scss
+ * - LIGHT_TEXT matches --color--neutral-125 = hsl(0, 0%, 96%) from _primitives.scss
+ * These are also the values used by --sticky--color--text in _tokens.scss / _tokens.dark.scss.
+ */
+const CONTRAST_TEXT_DARK = '#2B2B2B';
+const CONTRAST_TEXT_LIGHT = '#F5F5F5';
+
+/**
+ * Lightness levels for normalizing custom sticky colors, matching the preset pattern.
+ * Presets use L:87-97% (light) and L:10-21% (dark) — these values sit in the middle of those ranges.
+ */
+const STICKY_LIGHTNESS = {
+	light: { background: 90, border: 75 },
+	dark: { background: 15, border: 25 },
+} as const;
+
+/**
  * Validates if a string is a valid 6-digit hex color code
  * @param color - The color string to validate
  * @returns True if the color is a valid hex color (#RRGGBB format)
@@ -10,16 +29,22 @@ export function isValidHexColor(color: string): boolean {
 	return /^#[0-9A-Fa-f]{6}$/.test(color);
 }
 
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+	const cleanHex = hex.replace('#', '');
+	return {
+		r: parseInt(cleanHex.substring(0, 2), 16) / 255,
+		g: parseInt(cleanHex.substring(2, 4), 16) / 255,
+		b: parseInt(cleanHex.substring(4, 6), 16) / 255,
+	};
+}
+
 /**
  * Converts a hex color to HSL components
  * @param hex - Hex color code (#RRGGBB)
  * @returns Object with h (0-360), s (0-100), l (0-100)
  */
 export function hexToHsl(hex: string): { h: number; s: number; l: number } {
-	const cleanHex = hex.replace('#', '');
-	const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
-	const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
-	const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
+	const { r, g, b } = hexToRgb(hex);
 
 	const max = Math.max(r, g, b);
 	const min = Math.min(r, g, b);
@@ -56,24 +81,25 @@ export function hexToHsl(hex: string): { h: number; s: number; l: number } {
  * @returns Hex color string (#RRGGBB)
  */
 export function hslToHex(h: number, s: number, l: number): string {
+	const hNorm = ((h % 360) + 360) % 360;
 	const sNorm = s / 100;
 	const lNorm = l / 100;
 
 	const c = (1 - Math.abs(2 * lNorm - 1)) * sNorm;
-	const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+	const x = c * (1 - Math.abs(((hNorm / 60) % 2) - 1));
 	const m = lNorm - c / 2;
 
 	let r: number, g: number, b: number;
 
-	if (h < 60) {
+	if (hNorm < 60) {
 		[r, g, b] = [c, x, 0];
-	} else if (h < 120) {
+	} else if (hNorm < 120) {
 		[r, g, b] = [x, c, 0];
-	} else if (h < 180) {
+	} else if (hNorm < 180) {
 		[r, g, b] = [0, c, x];
-	} else if (h < 240) {
+	} else if (hNorm < 240) {
 		[r, g, b] = [0, x, c];
-	} else if (h < 300) {
+	} else if (hNorm < 300) {
 		[r, g, b] = [x, 0, c];
 	} else {
 		[r, g, b] = [c, 0, x];
@@ -93,10 +119,7 @@ export function hslToHex(h: number, s: number, l: number): string {
  * @returns Relative luminance (0-1)
  */
 export function getRelativeLuminance(hex: string): number {
-	const cleanHex = hex.replace('#', '');
-	const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
-	const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
-	const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
+	const { r, g, b } = hexToRgb(hex);
 
 	const linearize = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
 
@@ -107,13 +130,11 @@ export function getRelativeLuminance(hex: string): number {
  * Returns an appropriate text color (dark or light) for a given background color
  * Uses WCAG luminance contrast threshold
  * @param bgHex - Background hex color code (#RRGGBB)
- * @returns Dark text (#2B2B2B) or light text (#F5F5F5)
+ * @returns Dark text or light text hex
  */
 export function getContrastTextColor(bgHex: string): string {
-	const DARK_TEXT = '#2B2B2B'; // ~neutral-850
-	const LIGHT_TEXT = '#F5F5F5'; // ~neutral-125
 	const luminance = getRelativeLuminance(bgHex);
-	return luminance > 0.179 ? DARK_TEXT : LIGHT_TEXT;
+	return luminance > 0.179 ? CONTRAST_TEXT_DARK : CONTRAST_TEXT_LIGHT;
 }
 
 /**
@@ -129,12 +150,10 @@ export function normalizeCustomColorForTheme(
 	isDark: boolean,
 ): { background: string; border: string; text: string } {
 	const { h, s } = hexToHsl(hex);
+	const lightness = isDark ? STICKY_LIGHTNESS.dark : STICKY_LIGHTNESS.light;
 
-	const bgLightness = isDark ? 15 : 90;
-	const borderLightness = isDark ? 25 : 75;
-
-	const background = hslToHex(h, s, bgLightness);
-	const border = hslToHex(h, s, borderLightness);
+	const background = hslToHex(h, s, lightness.background);
+	const border = hslToHex(h, s, lightness.border);
 	const text = getContrastTextColor(background);
 
 	return { background, border, text };

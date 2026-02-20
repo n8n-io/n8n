@@ -188,6 +188,15 @@ describe('colorUtils.hslToHex', () => {
 		expect(hslToHex(0, 0, 0)).toBe('#000000');
 	});
 
+	it('treats h=360 the same as h=0 (red)', () => {
+		expect(hslToHex(360, 100, 50)).toBe('#FF0000');
+	});
+
+	it('handles negative hue values', () => {
+		// -60 degrees = 300 degrees (magenta)
+		expect(hslToHex(-60, 100, 50)).toBe(hslToHex(300, 100, 50));
+	});
+
 	it('roundtrips through hexToHsl for primary colors', () => {
 		const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFFFF', '#000000'];
 		for (const color of colors) {
