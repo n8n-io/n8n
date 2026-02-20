@@ -11,6 +11,7 @@ import {
 } from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 import {
@@ -19,7 +20,7 @@ import {
 	isCredentialCardComplete,
 	buildTriggerSetupState,
 } from '@/features/setupPanel/setupPanel.utils';
-import { HTTP_REQUEST_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
 
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
 
@@ -33,6 +34,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const environmentsStore = useEnvironmentsStore();
 	const nodeHelpers = useNodeHelpers();
 	const workflowState = injectWorkflowState();
 
@@ -50,6 +52,38 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	const hasTriggerExecutedSuccessfully = (nodeName: string): boolean => {
 		const runData = workflowsStore.getWorkflowResultDataByNodeName(nodeName);
 		return runData !== null && runData.length > 0;
+	};
+
+	/**
+	 * Attempts to resolve an expression URL synchronously.
+	 * Succeeds for static expressions (e.g. `={{ "https://example.com" }}`) and
+	 * expressions using only environment variables (e.g. `={{ $vars.BASE_URL + '/api' }}`).
+	 * Returns null when the expression requires run data that isn't available.
+	 */
+	const resolveExpressionUrl = (expressionUrl: string, nodeName: string): string | null => {
+		try {
+			const result = workflowsStore.workflowObject.expression.getParameterValue(
+				expressionUrl,
+				null,
+				0,
+				0,
+				nodeName,
+				[],
+				'manual',
+				{
+					$execution: {
+						id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+						mode: 'test',
+						resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+						resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					},
+					$vars: environmentsStore.variablesAsObject,
+				},
+			);
+			return typeof result === 'string' ? result : null;
+		} catch {
+			return null;
+		}
 	};
 
 	/**
@@ -104,6 +138,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				credentialTypes,
 			})),
 			getCredentialDisplayName,
+			resolveExpressionUrl,
 		);
 		// Only the workflow's first trigger (leftmost) can be executed from setup cards.
 		// It gets an embedded execute button and affects card completion.

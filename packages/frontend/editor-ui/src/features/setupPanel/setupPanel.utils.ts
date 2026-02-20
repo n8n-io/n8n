@@ -1,7 +1,7 @@
 import type { INodeUi } from '@/Interface';
 import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeTypeDisplayableCredentials } from '@/app/utils/nodes/nodeTransforms';
-import { HTTP_REQUEST_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { isExpression } from '@/app/utils/expressions';
 
 import type {
@@ -43,10 +43,16 @@ export function getNodeCredentialTypes(
 /**
  * Groups credential requirements across all nodes by credential type.
  * Returns one CredentialTypeSetupState per unique credential type.
+ *
+ * For HTTP Request nodes, grouping is by credential type + URL. When the URL is an expression,
+ * the optional resolveExpressionUrl callback attempts to resolve it. If resolution succeeds
+ * (e.g. static expressions or those using only environment variables), the resolved value
+ * is used for grouping. Otherwise each node gets its own card.
  */
 export function groupCredentialsByType(
 	nodesWithCredentials: Array<{ node: INodeUi; credentialTypes: string[] }>,
 	getCredentialDisplayName: (type: string) => string,
+	resolveExpressionUrl?: (expressionUrl: string, nodeName: string) => string | null,
 ): CredentialTypeSetupState[] {
 	const map = new Map<string, CredentialTypeSetupState>();
 
@@ -55,15 +61,24 @@ export function groupCredentialsByType(
 			// HTTP Request nodes are grouped by matching URL (same credential type + same URL
 			// share a card). Nodes with different URLs get separate cards because they likely
 			// target different APIs even when using the same credential type.
-			// Expression URLs (starting with '=') can't be resolved at design time,
-			// so each node gets its own card.
-			const isHttpRequest = node.type === HTTP_REQUEST_NODE_TYPE;
+			// Expression URLs are resolved when possible (e.g. static expressions or those
+			// using only environment variables). Unresolvable expressions get their own card.
+			const isHttpRequest =
+				node.type === HTTP_REQUEST_NODE_TYPE || node.type === HTTP_REQUEST_TOOL_NODE_TYPE;
 			const url = node.parameters.url;
-			const mapKey = isHttpRequest
-				? isExpression(url)
-					? `${credType}:http:${node.name}`
-					: `${credType}:http:${String(url ?? '')}`
-				: credType;
+
+			let mapKey: string;
+			if (!isHttpRequest) {
+				mapKey = credType;
+			} else if (isExpression(url)) {
+				const resolvedUrl = resolveExpressionUrl?.(url, node.name) ?? null;
+				mapKey =
+					resolvedUrl !== null
+						? `${credType}:http:${resolvedUrl}`
+						: `${credType}:http:${node.name}`;
+			} else {
+				mapKey = `${credType}:http:${String(url ?? '')}`;
+			}
 
 			const existing = map.get(mapKey);
 			if (existing) {
