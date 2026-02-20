@@ -4588,6 +4588,7 @@
 	"communityNodeInfo.downloads": "{downloads}",
 	"communityNodeInfo.publishedBy": "{publisherName}",
 	"communityNodeInfo.quickConnect": "Quick connect",
+	"communityNodeInfo.quickConnect.tooltip": "This service allows for easy sign in or sign up directly through n8n",
 	"communityNodeInfo.contact.admin": "Please contact an administrator to install this community node:",
 	"credentialsAppSelection.installToConnect": "Install this node to connect",
 	"credentialsAppSelection.askAdminToInstall": "Ask your admin to install this node",
