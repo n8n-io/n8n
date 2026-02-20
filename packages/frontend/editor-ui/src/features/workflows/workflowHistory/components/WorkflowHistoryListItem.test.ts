@@ -57,4 +57,21 @@ describe('WorkflowHistoryListItem', () => {
 		expect(queryByText(/Latest saved/)).not.toBeInTheDocument();
 		expect(emitted().mounted).toEqual([[{ index: 2, isSelected: true, offsetTop: 0 }]]);
 	});
+
+	it('should emit compare event when compare button is clicked', async () => {
+		const item = workflowHistoryDataFactory();
+		const { getByTestId, emitted } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 2,
+				actions,
+				canCompare: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('workflow-history-compare-item-button'));
+
+		expect(emitted().compare).toEqual([[{ id: item.versionId }]]);
+	});
 });

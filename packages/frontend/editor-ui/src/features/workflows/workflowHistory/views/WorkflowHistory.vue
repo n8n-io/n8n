@@ -7,6 +7,7 @@ import {
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
+	WORKFLOW_HISTORY_DIFF_MODAL_KEY,
 	EnterpriseEditionFeature,
 } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
@@ -20,6 +21,8 @@ import type {
 } from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowHistoryList from '../components/WorkflowHistoryList.vue';
 import WorkflowHistoryContent from '../components/WorkflowHistoryContent.vue';
+import WorkflowHistoryDiff from './WorkflowHistoryDiff.vue';
+import Modal from '@/app/components/Modal.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -37,6 +40,7 @@ import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../comp
 import type { WorkflowVersionFormModalEventBusEvents } from '../components/WorkflowVersionFormModal.vue';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { getActiveVersionId } from '../utils';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -91,6 +95,10 @@ const availableActionTypes = computed<WorkflowHistoryActionTypes>(() => {
 
 const workflowId = computed(() => normalizeSingleRouteParam('workflowId'));
 const versionId = computed(() => normalizeSingleRouteParam('versionId'));
+const diffWithVersionId = computed(() => {
+	const value = route.query.diffWith;
+	return typeof value === 'string' ? value : undefined;
+});
 const editorRoute = computed(() => ({
 	name: VIEWS.WORKFLOW,
 	params: {
@@ -103,7 +111,13 @@ const workflowPermissions = computed(
 );
 
 const workflowActiveVersionId = computed(() => {
-	return workflowsListStore.getWorkflowById(workflowId.value)?.activeVersion?.versionId;
+	const activeWorkflowVersionId = getActiveVersionId(activeWorkflow.value);
+	if (activeWorkflowVersionId) {
+		return activeWorkflowVersionId;
+	}
+
+	const workflowFromStore = workflowsListStore.getWorkflowById(workflowId.value);
+	return getActiveVersionId(workflowFromStore);
 });
 
 const actions = computed<Array<UserAction<IUser>>>(() =>
@@ -118,6 +132,19 @@ const actions = computed<Array<UserAction<IUser>>>(() =>
 );
 
 const isFirstItemShown = computed(() => workflowHistory.value[0]?.versionId === versionId.value);
+const createCompareRoute = (compareVersionId: string) => {
+	return {
+		name: VIEWS.WORKFLOW_HISTORY,
+		params: {
+			workflowId: workflowId.value,
+			versionId: versionId.value,
+		},
+		query: {
+			...route.query,
+			diffWith: compareVersionId,
+		},
+	};
+};
 
 const sendTelemetry = (event: string) => {
 	telemetry.track(event, {
@@ -454,6 +481,44 @@ const onUpgrade = () => {
 	void pageRedirectionHelper.goToUpgrade('workflow-history', 'upgrade-workflow-history');
 };
 
+const openCompareView = async (compareVersionId: WorkflowVersionId) => {
+	if (!versionId.value || versionId.value === compareVersionId) {
+		return;
+	}
+
+	await router.push(createCompareRoute(compareVersionId));
+};
+
+const closeCompareView = async () => {
+	if (uiStore.modalsById[WORKFLOW_HISTORY_DIFF_MODAL_KEY]?.open) {
+		uiStore.closeModal(WORKFLOW_HISTORY_DIFF_MODAL_KEY);
+	}
+
+	const query = { ...route.query };
+	delete query.diffWith;
+	await router.replace({
+		name: VIEWS.WORKFLOW_HISTORY,
+		params: {
+			workflowId: workflowId.value,
+			versionId: versionId.value,
+		},
+		query,
+	});
+};
+
+watchEffect(() => {
+	const shouldOpenDiffModal = Boolean(diffWithVersionId.value && versionId.value);
+	const isDiffModalOpen = uiStore.modalsById[WORKFLOW_HISTORY_DIFF_MODAL_KEY]?.open;
+
+	if (shouldOpenDiffModal && !isDiffModalOpen) {
+		uiStore.openModal(WORKFLOW_HISTORY_DIFF_MODAL_KEY);
+	}
+
+	if (!shouldOpenDiffModal && isDiffModalOpen) {
+		uiStore.closeModal(WORKFLOW_HISTORY_DIFF_MODAL_KEY);
+	}
+});
+
 watchEffect(async () => {
 	if (!versionId.value) {
 		return;
@@ -520,6 +585,7 @@ watchEffect(async () => {
 				:active-version-id="workflowActiveVersionId"
 				@action="onAction"
 				@preview="onPreview"
+				@compare="({ id }) => openCompareView(id)"
 				@load-more="loadMore"
 				@upgrade="onUpgrade"
 			/>
@@ -536,6 +602,28 @@ watchEffect(async () => {
 				@action="onAction"
 			/>
 		</div>
+		<Modal
+			v-if="diffWithVersionId && versionId"
+			:name="WORKFLOW_HISTORY_DIFF_MODAL_KEY"
+			:custom-class="$style.workflowHistoryDiffModal"
+			height="100%"
+			width="100%"
+			max-width="100%"
+			max-height="100%"
+			:close-on-press-escape="false"
+			:show-close="false"
+			:before-close="closeCompareView"
+		>
+			<template #content>
+				<WorkflowHistoryDiff
+					:key="`${versionId}:${diffWithVersionId}`"
+					:workflow-id="workflowId"
+					:base-version-id="versionId"
+					:compare-with-version-id="diffWithVersionId"
+					@close="closeCompareView"
+				/>
+			</template>
+		</Modal>
 	</div>
 </template>
 <style module lang="scss">
@@ -577,5 +665,24 @@ watchEffect(async () => {
 	grid-area: list;
 	position: relative;
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.workflowHistoryDiffModal {
+	margin-bottom: 0;
+	border-radius: 0;
+
+	:global(.el-dialog__header) {
+		display: none;
+		padding: 0;
+		margin: 0;
+	}
+
+	:global(.el-dialog__body) {
+		padding: 0;
+	}
+
+	:global(.el-dialog__headerbtn) {
+		display: none;
+	}
 }
 </style>

@@ -20,12 +20,14 @@ import { telemetry } from '@/app/plugins/telemetry';
 
 vi.mock('vue-router', () => {
 	const params = {};
+	const query = {};
 	const push = vi.fn();
 	const replace = vi.fn();
 	const resolve = vi.fn().mockImplementation(() => ({ href: '' }));
 	return {
 		useRoute: () => ({
 			params,
+			query,
 		}),
 		useRouter: () => ({
 			push,
@@ -57,6 +59,7 @@ const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 				},
 				template: `<div>
 						<button data-test-id="stub-preview-button" @click="event => $emit('preview', {id, event})" />
+						<button data-test-id="stub-compare-button" @click="() => $emit('compare', { id })" />
 						<button data-test-id="stub-open-button" @click="() => $emit('action', { action: 'open', id })" />
 						<button data-test-id="stub-clone-button" @click="() => $emit('action', { action: 'clone', id })" />
 						<button data-test-id="stub-download-button" @click="() => $emit('action', { action: 'download', id })" />
@@ -227,6 +230,37 @@ describe('WorkflowHistory', () => {
 				instance_id: '',
 				workflow_id: workflowId,
 			});
+		});
+	});
+
+	it('should open compare view for item and active version', async () => {
+		const activeVersionId = faker.string.nanoid();
+		const selectedVersionId = faker.string.nanoid();
+		const selectedVersion = { ...versionData, versionId: selectedVersionId };
+
+		route.params.workflowId = workflowId;
+		route.params.versionId = selectedVersionId;
+
+		vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockResolvedValue(selectedVersion);
+		vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
+			id: workflowId,
+			activeVersion: { versionId: activeVersionId },
+		} as IWorkflowDb);
+
+		const { getByTestId } = renderComponent({ pinia });
+		await flushPromises();
+
+		await userEvent.click(getByTestId('stub-compare-button'));
+
+		expect(router.push).toHaveBeenCalledWith({
+			name: VIEWS.WORKFLOW_HISTORY,
+			params: {
+				workflowId,
+				versionId: selectedVersionId,
+			},
+			query: {
+				diffWith: versionId,
+			},
 		});
 	});
 

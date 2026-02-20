@@ -1,3 +1,4 @@
+import type { IWorkflowDb } from '@/Interface';
 import type {
 	WorkflowPublishHistory,
 	WorkflowHistory,
@@ -89,4 +90,12 @@ export const computeTimelineEntries = (items: WorkflowHistory[]): TimelineEntry[
 	flushGroup();
 
 	return entries;
+};
+
+export const getActiveVersionId = (workflow: IWorkflowDb | null): string | undefined => {
+	if (!workflow) {
+		return;
+	}
+
+	return workflow.activeVersionId ?? workflow.activeVersion?.versionId ?? undefined;
 };

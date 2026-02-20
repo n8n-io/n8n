@@ -9,7 +9,7 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
-import { N8nActionToggle, N8nTooltip, N8nText } from '@n8n/design-system';
+import { N8nActionToggle, N8nIconButton, N8nTooltip, N8nText } from '@n8n/design-system';
 import {
 	getLastPublishedVersion,
 	formatTimestamp,
@@ -26,17 +26,20 @@ const props = withDefaults(
 		isSelected?: boolean;
 		isVersionActive?: boolean;
 		isGrouped?: boolean;
+		canCompare?: boolean;
 	}>(),
 	{
 		isSelected: false,
 		isVersionActive: false,
 		isGrouped: false,
+		canCompare: false,
 	},
 );
 const emit = defineEmits<{
 	action: [value: WorkflowHistoryAction];
 	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
 	mounted: [value: { index: number; offsetTop: number; isSelected: boolean }];
+	compare: [value: { id: WorkflowVersionId }];
 }>();
 
 const i18n = useI18n();
@@ -183,6 +186,10 @@ const onItemClick = (event: MouseEvent) => {
 	emit('preview', { event, id: props.item.versionId });
 };
 
+const onCompareClick = () => {
+	emit('compare', { id: props.item.versionId });
+};
+
 onMounted(() => {
 	emit('mounted', {
 		index: props.index,
@@ -265,6 +272,19 @@ onMounted(() => {
 						</N8nText>
 					</div>
 				</div>
+				<N8nTooltip
+					v-if="props.canCompare"
+					:content="i18n.baseText('workflowDiff.compare')"
+					placement="top"
+				>
+					<N8nIconButton
+						variant="subtle"
+						icon="file-diff"
+						:class="$style.compareButton"
+						data-test-id="workflow-history-compare-item-button"
+						@click.stop="onCompareClick"
+					/>
+				</N8nTooltip>
 				<N8nActionToggle
 					:class="$style.actions"
 					:actions="props.actions"
@@ -439,6 +459,10 @@ $authorMaxWidth: 130px;
 	padding: var(--spacing--3xs);
 	flex-shrink: 0;
 	align-self: center;
+}
+
+.compareButton {
+	flex-shrink: 0;
 }
 
 .publishedBadge {

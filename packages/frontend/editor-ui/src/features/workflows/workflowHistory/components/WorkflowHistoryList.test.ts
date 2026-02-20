@@ -169,6 +169,29 @@ describe('WorkflowHistoryList', () => {
 		]);
 	});
 
+	it('should delegate compare event from item', async () => {
+		const items = Array.from({ length: 2 }, namedWorkflowHistoryDataFactory);
+		const index = 1;
+		const activeVersionId = items[0].versionId;
+		const { getAllByTestId, emitted } = renderComponent({
+			pinia,
+			props: {
+				items,
+				actions,
+				selectedItem: null,
+				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
+				evaluatedPruneTimeInHours: -1,
+				activeVersionId,
+			},
+		});
+
+		const listItem = getAllByTestId('workflow-history-list-item')[index];
+		await userEvent.click(within(listItem).getByTestId('workflow-history-compare-item-button'));
+
+		expect(emitted().compare).toEqual([[{ id: items[index].versionId }]]);
+	});
+
 	it('should show upgrade message when shouldUpgrade is true', async () => {
 		const items = Array.from({ length: 5 }, namedWorkflowHistoryDataFactory);
 

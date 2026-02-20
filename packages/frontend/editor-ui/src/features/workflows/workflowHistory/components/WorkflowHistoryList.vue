@@ -35,6 +35,7 @@ const emit = defineEmits<{
 	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
 	loadMore: [value: WorkflowHistoryRequestParams];
 	upgrade: [];
+	compare: [value: { id: WorkflowVersionId }];
 }>();
 
 const i18n = useI18n();
@@ -100,6 +101,11 @@ const onAction = ({ action, id, data }: WorkflowHistoryAction) => {
 const onPreview = ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) => {
 	shouldAutoScroll.value = false;
 	emit('preview', { event, id });
+};
+
+const onCompare = ({ id }: { id: WorkflowVersionId }) => {
+	shouldAutoScroll.value = false;
+	emit('compare', { id });
 };
 
 const onItemMounted = ({
@@ -173,8 +179,10 @@ const pruneTimeDisplay = computed(() => {
 					:is-version-active="versionEntry.item.versionId === props.activeVersionId"
 					:actions="getActions(versionEntry.item, versionEntry.originalIndex)"
 					:is-grouped="true"
+					:can-compare="versionEntry.item.versionId !== props.selectedItem?.versionId"
 					@action="onAction"
 					@preview="onPreview"
+					@compare="onCompare"
 					@mounted="onItemMounted"
 				/>
 			</template>
@@ -187,8 +195,10 @@ const pruneTimeDisplay = computed(() => {
 				:is-selected="entry.item.versionId === props.selectedItem?.versionId"
 				:is-version-active="entry.item.versionId === props.activeVersionId"
 				:actions="getActions(entry.item, entry.originalIndex)"
+				:can-compare="entry.item.versionId !== props.selectedItem?.versionId"
 				@action="onAction"
 				@preview="onPreview"
+				@compare="onCompare"
 				@mounted="onItemMounted"
 			/>
 		</template>

@@ -4662,6 +4662,8 @@
 	"workflowDiff.label.after": "After",
 	"workflowDiff.waitingForData": "Waiting for workflow data...",
 	"workflowDiff.error.loadNodeTypes": "Could not load node types",
+	"workflowDiff.compareVersionsLoadError": "Could not load workflow versions for comparison",
+	"workflowDiff.versionMismatchError": "Cannot compare versions from different workflows",
 	"commandBar.placeholder": "Type a command or search...",
 	"commandBar.noResults": "No results found",
 	"commandBar.sections.recent": "Recent",
