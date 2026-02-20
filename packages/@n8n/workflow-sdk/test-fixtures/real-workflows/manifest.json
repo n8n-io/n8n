@@ -15046,9 +15046,7 @@
 		{
 			"id": 7364,
 			"name": "Create a self-hosted blockchain payment processor with x402 and 1Shot API",
-			"success": true,
-			"skip": true,
-			"skipReason": "Node count mismatch (26 vs 23) — duplicate node names cause Map key collision"
+			"success": true
 		},
 		{
 			"id": 7310,
@@ -16706,9 +16704,7 @@
 		{
 			"id": 7751,
 			"name": "Repurpose one idea into a week of social content with Notion and GPT-4o",
-			"success": true,
-			"skip": true,
-			"skipReason": "Node count mismatch (22 vs 17) — severe node loss during codegen"
+			"success": true
 		},
 		{
 			"id": 7569,
@@ -17068,9 +17064,7 @@
 		{
 			"id": 5392,
 			"name": "Extract Clean Web Content with Anti-Bot Fallback for AI Agents & Workflows",
-			"success": true,
-			"skip": true,
-			"skipReason": "Node count mismatch (15 vs 5) — severe node loss during codegen"
+			"success": true
 		},
 		{
 			"id": 5381,
@@ -17843,9 +17837,7 @@
 		{
 			"id": 3762,
 			"name": "Gmail to vector embeddings with PGVector and Ollama",
-			"success": true,
-			"skip": true,
-			"skipReason": "Node count mismatch (20 vs 18) — duplicate node names cause Map key collision"
+			"success": true
 		},
 		{
 			"id": 3761,
@@ -18569,9 +18561,7 @@
 		{
 			"id": 2468,
 			"name": "Automate customer support issue resolution using AI text classifier",
-			"success": true,
-			"skip": true,
-			"skipReason": "Node count mismatch (36 vs 32) — duplicate node names cause Map key collision"
+			"success": true
 		},
 		{
 			"id": 2436,

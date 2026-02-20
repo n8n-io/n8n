@@ -16,21 +16,10 @@ import {
 } from '../workflow-builder/string-utils';
 
 // Workflows with known issues that need to be skipped entirely
-// 5774, 8044, 4468, 10143, 4889, 2978: Node count mismatch (composite builder visited-set issue)
+// 4889, 4468, 10143: Nodes inside .onError()/.onCase() chains not extracted by parser
 // 5042, 2986, 9881: Connection source keys lost (fan-in / multiple sources to same target)
 // 13291: Duplicate node names in source JSON lose connections (irrecoverable format limitation)
-const SKIP_WORKFLOWS = new Set<string>([
-	'5774',
-	'5042',
-	'4889',
-	'8044',
-	'2978',
-	'4468',
-	'13291',
-	'10143',
-	'2986',
-	'9881',
-]);
+const SKIP_WORKFLOWS = new Set<string>(['4889', '4468', '10143', '5042', '13291', '2986', '9881']);
 
 // Workflows to skip validation due to known codegen bugs (invalid warnings)
 // These produce warnings that don't exist in the original workflow (codegen issues to fix)
@@ -2397,12 +2386,13 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				const obj = p as Record<string, unknown>;
 				if (Object.keys(obj).length === 0) return undefined;
 				if (nodeType === 'n8n-nodes-base.stickyNote') {
-					// Strip empty content and empty object color (non-serializable values)
+					// Strip empty content and non-serializable color values (null, empty object)
 					const cleaned = { ...obj };
 					if (cleaned.content === '') delete cleaned.content;
-					if (
+					if (cleaned.color === null || cleaned.color === undefined) {
+						delete cleaned.color;
+					} else if (
 						typeof cleaned.color === 'object' &&
-						cleaned.color !== null &&
 						Object.keys(cleaned.color as Record<string, unknown>).length === 0
 					) {
 						delete cleaned.color;

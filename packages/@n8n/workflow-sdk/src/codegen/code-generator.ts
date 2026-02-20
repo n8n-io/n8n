@@ -1125,9 +1125,16 @@ function flattenToWorkflowCalls(
 		// Sort by output index for consistent ordering
 		const sortedOutputs = [...multiOutput.outputTargets.entries()].sort((a, b) => a[0] - b[0]);
 
+		// Collect nested multiOutput nodes from output targets
+		const nestedMultiOutputs: MultiOutputNode[] = [];
 		for (const [outputIndex, targetComposite] of sortedOutputs) {
 			const targetCode = generateComposite(targetComposite, ctx);
 			calls.push(['add', `${sourceVarName}.output(${outputIndex}).to(${targetCode})`]);
+			collectNestedMultiOutputs(targetComposite, nestedMultiOutputs);
+		}
+		for (const nested of nestedMultiOutputs) {
+			const nestedCalls = generateMultiOutputConnections(nested, ctx);
+			calls.push(...nestedCalls);
 		}
 	} else if (root.kind === 'explicitConnections') {
 		// Explicit connections pattern: generate .add() for each node, then .connect() for each connection
@@ -1173,6 +1180,9 @@ function flattenToWorkflowCalls(
 				for (const [outputIndex, targetComposite] of sortedOutputs) {
 					const targetCode = generateComposite(targetComposite, ctx);
 					calls.push(['add', `${sourceVarName}.output(${outputIndex}).to(${targetCode})`]);
+
+					// Collect nested multiOutput nodes from output targets
+					collectNestedMultiOutputs(targetComposite, nestedMultiOutputsInChain);
 				}
 			} else {
 				const method = i === 0 ? 'add' : 'to';
@@ -1305,6 +1315,16 @@ export function generateCode(
 			const chainCode = generateComposite(downstream.downstreamChain, ctx);
 			workflowCalls.push(`  .add(${mergeVarName})`);
 			workflowCalls.push(`  .to(${chainCode})`);
+
+			// Collect and generate nested multiOutput nodes inside the downstream chain
+			const nestedMultiOutputs: MultiOutputNode[] = [];
+			collectNestedMultiOutputs(downstream.downstreamChain, nestedMultiOutputs);
+			for (const nested of nestedMultiOutputs) {
+				const nestedCalls = generateMultiOutputConnections(nested, ctx);
+				for (const [method, args] of nestedCalls) {
+					workflowCalls.push(`  .${method}(${args})`);
+				}
+			}
 		}
 	}
 

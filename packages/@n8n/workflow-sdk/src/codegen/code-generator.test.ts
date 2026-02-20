@@ -2964,5 +2964,116 @@ describe('code-generator', () => {
 				expect(code).toContain('const merge_node =');
 			});
 		});
+
+		describe('nested multi-output nodes', () => {
+			it('generates .output().to() calls for multiOutput nodes nested inside another multiOutput chain', () => {
+				// Pattern: Trigger → Classifier1 (2 outputs)
+				//   output 0 → NodeA
+				//   output 1 → NodeB → Classifier2 (2 outputs)
+				//     output 0 → NodeC
+				//     output 1 → NodeD
+				// Classifier2 is nested inside Classifier1's output 1 chain.
+				// Both Classifier1 and Classifier2 should get .output(n).to() calls.
+				const json: WorkflowJSON = {
+					id: 'nested-multi-output-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Classifier1',
+							type: '@n8n/n8n-nodes-langchain.textClassifier',
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {
+								inputText: '={{ $json.text }}',
+								categories: {
+									categories: [{ category: 'Cat1' }, { category: 'Cat2' }],
+								},
+							},
+						},
+						{
+							id: '3',
+							name: 'NodeA',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [400, -100],
+						},
+						{
+							id: '4',
+							name: 'NodeB',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [400, 100],
+						},
+						{
+							id: '5',
+							name: 'Classifier2',
+							type: '@n8n/n8n-nodes-langchain.textClassifier',
+							typeVersion: 1,
+							position: [600, 100],
+							parameters: {
+								inputText: '={{ $json.text }}',
+								categories: {
+									categories: [{ category: 'CatA' }, { category: 'CatB' }],
+								},
+							},
+						},
+						{
+							id: '6',
+							name: 'NodeC',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [800, 0],
+						},
+						{
+							id: '7',
+							name: 'NodeD',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [800, 200],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Classifier1', type: 'main', index: 0 }]] },
+						Classifier1: {
+							main: [
+								[{ node: 'NodeA', type: 'main', index: 0 }],
+								[{ node: 'NodeB', type: 'main', index: 0 }],
+							],
+						},
+						NodeB: { main: [[{ node: 'Classifier2', type: 'main', index: 0 }]] },
+						Classifier2: {
+							main: [
+								[{ node: 'NodeC', type: 'main', index: 0 }],
+								[{ node: 'NodeD', type: 'main', index: 0 }],
+							],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Classifier1 should have .output() calls
+				expect(code).toContain('classifier1.output(0)');
+				expect(code).toContain('classifier1.output(1)');
+
+				// Classifier2 should ALSO have .output() calls (nested multi-output)
+				expect(code).toContain('classifier2.output(0)');
+				expect(code).toContain('classifier2.output(1)');
+
+				// All nodes should be parseable
+				const parsed = parseWorkflowCode(code);
+				const nodeNames = parsed.nodes.map((n) => n.name);
+				expect(nodeNames).toContain('NodeC');
+				expect(nodeNames).toContain('NodeD');
+			});
+		});
 	});
 });
