@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { createPinia, setActivePinia } from 'pinia';
 import CanvasNodeStickyColorSelector from './CanvasNodeStickyColorSelector.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
@@ -8,6 +9,10 @@ import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 const renderComponent = createComponentRenderer(CanvasNodeStickyColorSelector);
 
 describe('CanvasNodeStickyColorSelector', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
 	it('should render trigger correctly', () => {
 		const { getByTestId } = renderComponent({
 			global: {
