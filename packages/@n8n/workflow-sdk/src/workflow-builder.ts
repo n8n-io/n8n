@@ -756,6 +756,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					if (actualKey && nameMapping && actualKey !== inputTargetNode.name) {
 						nameMapping.set(inputTargetNode.id, actualKey);
 					}
+					this.addSingleNodeConnectionTargets(nodes, inputTargetNode);
 				}
 				continue;
 			}
@@ -767,6 +768,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				if (actualKey && nameMapping && actualKey !== targetNode.name) {
 					nameMapping.set(targetNode.id, actualKey);
 				}
+				this.addSingleNodeConnectionTargets(nodes, targetNode);
 			}
 		}
 	}
@@ -802,6 +804,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				const inputTargetNode = target.node;
 				if (!nodes.has(inputTargetNode.name)) {
 					this.addNodeWithSubnodes(nodes, inputTargetNode);
+					this.addSingleNodeConnectionTargets(nodes, inputTargetNode);
 				}
 				continue;
 			}
@@ -810,6 +813,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			const targetNode = target;
 			if (!nodes.has(targetNode.name)) {
 				this.addNodeWithSubnodes(nodes, targetNode);
+				this.addSingleNodeConnectionTargets(nodes, targetNode);
 			}
 		}
 	}
@@ -1073,6 +1077,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 									if (targetPluginResult === undefined && !nodes.has(targetChainNode.name)) {
 										// Not a composite and not already present - add as regular node
 										this.addNodeWithSubnodes(nodes, targetChainNode);
+										this.addSingleNodeConnectionTargets(nodes, targetChainNode);
 									}
 								}
 							} else if (
@@ -1080,6 +1085,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 								!nodes.has((target as NodeInstance<string, string, unknown>).name)
 							) {
 								this.addNodeWithSubnodes(nodes, target as NodeInstance<string, string, unknown>);
+								this.addSingleNodeConnectionTargets(
+									nodes,
+									target as NodeInstance<string, string, unknown>,
+								);
 							}
 
 							// Use the effectiveNameMapping to get the actual key if the node was renamed
@@ -1120,7 +1129,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		} else {
 			// Single node - add it and return its name
 			// Note: Composites are handled by tryPluginDispatch at the entry point
+			const alreadyPresent = nodes.has(branch.name);
 			const actualKey = this.addNodeWithSubnodes(nodes, branch);
+			if (!alreadyPresent) {
+				this.addSingleNodeConnectionTargets(nodes, branch);
+			}
 			// If the node was renamed, track it and return the actual key
 			if (actualKey && actualKey !== branch.name) {
 				effectiveNameMapping.set(branch.id, actualKey);

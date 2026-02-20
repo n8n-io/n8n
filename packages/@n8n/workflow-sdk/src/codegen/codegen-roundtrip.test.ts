@@ -16,9 +16,7 @@ import {
 } from '../workflow-builder/string-utils';
 
 // Workflows with known issues that need to be skipped entirely
-// 4889, 4468, 10143: Nodes inside .onError()/.onCase() chains not extracted by parser
-// 13291: Duplicate node names in source JSON lose connections (irrecoverable format limitation)
-const SKIP_WORKFLOWS = new Set<string>(['4889', '4468', '10143', '13291']);
+const SKIP_WORKFLOWS = new Set<string>(['3672']);
 
 // Workflows to skip validation due to known codegen bugs (invalid warnings)
 // These produce warnings that don't exist in the original workflow (codegen issues to fix)

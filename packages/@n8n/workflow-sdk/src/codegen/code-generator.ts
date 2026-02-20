@@ -460,7 +460,9 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
  * Used by ifElse, merge, switchCase (which require pre-declared nodes in named syntax).
  */
 function getVarRefOrInlineNode(node: SemanticNode, ctx: GenerationContext): string {
-	const nodeName = node.json.name;
+	// Use semantic node name (graph key) for variable lookup, not json.name.
+	// For duplicate node names, node.name is the unique graph key.
+	const nodeName = node.name;
 	if (nodeName && ctx.variableNodes.has(nodeName)) {
 		return getVarName(nodeName, ctx);
 	}
@@ -617,7 +619,10 @@ function generateNodeCall(node: SemanticNode, ctx: GenerationContext): string {
  * Generate code for a leaf node, using variable reference if the node is declared as a variable
  */
 function generateLeafCode(leaf: LeafNode, ctx: GenerationContext): string {
-	const nodeName = leaf.node.json.name;
+	// Use semantic node name (graph key) for variable lookup, not json.name.
+	// For duplicate node names, node.name is the unique graph key (e.g., "NodeA 2")
+	// while json.name is the original shared name (e.g., "NodeA").
+	const nodeName = leaf.node.name;
 	if (nodeName && ctx.variableNodes.has(nodeName)) {
 		// Use variable reference for nodes that are declared as variables
 		// (JSDoc is already added in variable declaration)

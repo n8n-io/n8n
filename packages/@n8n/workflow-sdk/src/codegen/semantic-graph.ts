@@ -6,7 +6,13 @@
  */
 
 import { getOutputName, getInputName } from './semantic-registry';
-import type { SemanticGraph, SemanticNode, SemanticConnection, AiConnectionType } from './types';
+import type {
+	SemanticGraph,
+	SemanticNode,
+	SemanticConnection,
+	AiConnectionType,
+	SubnodeConnection,
+} from './types';
 import { AI_CONNECTION_TYPES } from './types';
 import type { WorkflowJSON, NodeJSON } from '../types/base';
 import { normalizeConnections } from '../types/base';
@@ -474,6 +480,131 @@ function findDisconnectedRoots(graph: SemanticGraph): string[] {
  * @param json - The workflow JSON
  * @returns A semantic graph with meaningful connection names
  */
+/**
+ * Redistribute connections for nodes with duplicate names.
+ *
+ * When duplicate node names exist in a workflow JSON, only the first instance
+ * keeps the original name. All connections reference that name, leaving
+ * subsequent instances orphaned. This function:
+ *
+ * 1. Copies outgoing (source) connections from the first instance to duplicates
+ * 2. Redistributes incoming connections: when a source has multiple connections
+ *    to the first instance, excess connections are redirected to duplicate instances
+ * 3. Redistributes AI subnodes using position proximity
+ */
+function redistributeDuplicateConnections(
+	graph: SemanticGraph,
+	duplicateKeys: Map<string, string[]>,
+): void {
+	for (const [, graphKeys] of duplicateKeys) {
+		if (graphKeys.length <= 1) continue;
+
+		const firstKey = graphKeys[0];
+		const firstInstance = graph.nodes.get(firstKey);
+		if (!firstInstance) continue;
+
+		// Step 1: Redistribute incoming main connections across instances
+		for (const [sourceName, sourceNode] of graph.nodes) {
+			if (graphKeys.includes(sourceName)) continue;
+
+			// Collect all connections from this source to the first instance
+			const connectionsToFirst: Array<{ outputName: string; connIdx: number }> = [];
+
+			for (const [outputName, connections] of sourceNode.outputs) {
+				for (let ci = 0; ci < connections.length; ci++) {
+					if (connections[ci].target === firstKey) {
+						connectionsToFirst.push({ outputName, connIdx: ci });
+					}
+				}
+			}
+
+			if (connectionsToFirst.length <= 1) continue;
+
+			// Keep first connection on instance 1, redirect rest to duplicate instances
+			let instanceIdx = 1;
+			for (let i = 1; i < connectionsToFirst.length && instanceIdx < graphKeys.length; i++) {
+				const { outputName, connIdx } = connectionsToFirst[i];
+				const connections = sourceNode.outputs.get(outputName)!;
+				const conn = connections[connIdx];
+				const newTarget = graphKeys[instanceIdx];
+				instanceIdx++;
+
+				// Redirect the connection
+				connections[connIdx] = { ...conn, target: newTarget };
+
+				// Update inputSources on the new target
+				const newTargetNode = graph.nodes.get(newTarget);
+				if (newTargetNode) {
+					const sources = newTargetNode.inputSources.get(conn.targetInputSlot) ?? [];
+					sources.push({ from: sourceName, outputSlot: outputName });
+					newTargetNode.inputSources.set(conn.targetInputSlot, sources);
+				}
+
+				// Remove from first instance's inputSources
+				const firstSources = firstInstance.inputSources.get(conn.targetInputSlot);
+				if (firstSources) {
+					const idx = firstSources.findIndex(
+						(s) => s.from === sourceName && s.outputSlot === outputName,
+					);
+					if (idx >= 0) firstSources.splice(idx, 1);
+				}
+			}
+		}
+
+		// Step 3: Redistribute AI subnodes using position proximity
+		if (firstInstance.subnodes.length <= 1) continue;
+
+		const allInstances = graphKeys
+			.map((k) => graph.nodes.get(k))
+			.filter((n): n is SemanticNode => n !== undefined);
+
+		// For each subnode type that has more entries than expected for one instance,
+		// redistribute based on position proximity to each duplicate instance
+		const multiSubnodeTypes = new Set(['ai_tool']);
+		const subnodesByType = new Map<string, SubnodeConnection[]>();
+		for (const sub of firstInstance.subnodes) {
+			const subs = subnodesByType.get(sub.connectionType) ?? [];
+			subs.push(sub);
+			subnodesByType.set(sub.connectionType, subs);
+		}
+
+		for (const [connType, subs] of subnodesByType) {
+			if (multiSubnodeTypes.has(connType)) continue;
+			if (subs.length <= 1) continue;
+
+			// Redistribute by position proximity
+			for (const sub of subs) {
+				const subnodeNode = graph.nodes.get(sub.subnodeName);
+				if (!subnodeNode) continue;
+
+				const subPos = subnodeNode.json.position;
+				if (!subPos) continue;
+
+				let closestInstance: SemanticNode = firstInstance;
+				let closestDist = Infinity;
+				for (const inst of allInstances) {
+					const instPos = inst.json.position;
+					if (!instPos) continue;
+					const dx = subPos[0] - instPos[0];
+					const dy = subPos[1] - instPos[1];
+					const dist = dx * dx + dy * dy;
+					if (dist < closestDist) {
+						closestDist = dist;
+						closestInstance = inst;
+					}
+				}
+
+				if (closestInstance !== firstInstance) {
+					// Move subnode to the closest instance
+					closestInstance.subnodes.push(sub);
+					const idx = firstInstance.subnodes.indexOf(sub);
+					if (idx >= 0) firstInstance.subnodes.splice(idx, 1);
+				}
+			}
+		}
+	}
+}
+
 export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 	const graph: SemanticGraph = {
 		nodes: new Map(),
@@ -485,6 +616,8 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 	// Generate unique names for nodes with undefined/empty names or duplicate names
 	// to prevent Map key collisions
 	const unnamedCounters = new Map<string, number>();
+	// Track duplicate names: originalName → [graphKey1, graphKey2, ...]
+	const duplicateKeys = new Map<string, string[]>();
 	for (const nodeJson of json.nodes) {
 		let nodeName = nodeJson.name;
 		if (nodeName === undefined || nodeName === '') {
@@ -496,12 +629,16 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 		} else if (graph.nodes.has(nodeName)) {
 			// Duplicate node name — generate a unique key to avoid Map collision.
 			// The first instance keeps the original name (connections reference it).
+			if (!duplicateKeys.has(nodeJson.name!)) {
+				duplicateKeys.set(nodeJson.name!, [nodeJson.name!]);
+			}
 			let uniqueName = nodeName;
 			let counter = 2;
 			while (graph.nodes.has(uniqueName)) {
 				uniqueName = `${nodeName} ${counter}`;
 				counter++;
 			}
+			duplicateKeys.get(nodeJson.name!)!.push(uniqueName);
 			nodeName = uniqueName;
 		}
 		const semanticNode = createSemanticNode(nodeJson);
@@ -529,6 +666,11 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 				parseAiConnections(sourceName, connType, typedOutputs, graph);
 			}
 		}
+	}
+
+	// Phase 2b: Redistribute connections for duplicate node names
+	if (duplicateKeys.size > 0) {
+		redistributeDuplicateConnections(graph, duplicateKeys);
 	}
 
 	// Phase 3: Identify roots (triggers + nodes with no incoming connections)

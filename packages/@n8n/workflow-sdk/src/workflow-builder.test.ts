@@ -414,6 +414,59 @@ describe('Workflow Builder', () => {
 			// Slack's error output (index 1) should connect to Telegram
 			expect(json.connections['Send Slack']?.main[1]?.[0]?.node).toBe('Error Alert');
 		});
+
+		it('should add nodes from nested .onError() chains', () => {
+			// Build: trigger → http1.onError(http2.onError(errorFinal.to(downstream)))
+			// All 5 nodes should appear in toJSON().nodes
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const http1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP 1', onError: 'continueErrorOutput' },
+			});
+			const http2 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP 2', onError: 'continueErrorOutput' },
+			});
+			const errorFinal = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Error Final' },
+			});
+			const downstream = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Downstream' },
+			});
+
+			// Nested .onError chain: http1 errors to http2, http2 errors to errorFinal→downstream
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(http1.onError(http2.onError(errorFinal.to(downstream))));
+
+			const json = wf.toJSON();
+			const nodeNames = json.nodes.map((n) => n.name);
+
+			// All 5 nodes must be present
+			expect(nodeNames).toContain('Start');
+			expect(nodeNames).toContain('HTTP 1');
+			expect(nodeNames).toContain('HTTP 2');
+			expect(nodeNames).toContain('Error Final');
+			expect(nodeNames).toContain('Downstream');
+			expect(json.nodes).toHaveLength(5);
+
+			// http1 error output → http2
+			expect(json.connections['HTTP 1']?.main[1]?.[0]?.node).toBe('HTTP 2');
+			// http2 error output → errorFinal
+			expect(json.connections['HTTP 2']?.main[1]?.[0]?.node).toBe('Error Final');
+			// errorFinal → downstream
+			expect(json.connections['Error Final']?.main[0]?.[0]?.node).toBe('Downstream');
+		});
 	});
 
 	describe('.settings()', () => {
