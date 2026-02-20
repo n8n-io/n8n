@@ -63,32 +63,20 @@ export function useTriggerExecution(node: MaybeRef<INodeUi | null>) {
 	);
 
 	const tooltipItems = computed<string[]>(() => {
-		if (hasIssues.value) {
-			const n = nodeValue.value;
-			if (n?.issues) {
-				const messages: string[] = [];
+		if (!hasIssues.value) {
+			return disabledReason.value ? [disabledReason.value] : [];
+		}
 
-				if (n.issues.credentials) {
-					for (const errors of Object.values(n.issues.credentials)) {
-						messages.push(...errors);
-					}
-				}
-
-				if (n.issues.parameters) {
-					for (const errors of Object.values(n.issues.parameters)) {
-						messages.push(...errors);
-					}
-				}
-
-				if (messages.length > 0) {
-					return messages;
-				}
-			}
-
+		const issues = nodeValue.value?.issues;
+		if (!issues) {
 			return [i18n.baseText('ndv.execute.requiredFieldsMissing')];
 		}
 
-		return disabledReason.value ? [disabledReason.value] : [];
+		const credentialErrors = Object.values(issues.credentials ?? {}).flat();
+		const parameterErrors = Object.values(issues.parameters ?? {}).flat();
+		const messages = [...credentialErrors, ...parameterErrors];
+
+		return messages.length > 0 ? messages : [i18n.baseText('ndv.execute.requiredFieldsMissing')];
 	});
 
 	return {
