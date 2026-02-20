@@ -273,6 +273,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 				>
 					<N8nButton
 						size="medium"
+						variant="subtle"
 						:class="$style.debugLink"
 						:disabled="!workflowPermissions.update"
 					>
