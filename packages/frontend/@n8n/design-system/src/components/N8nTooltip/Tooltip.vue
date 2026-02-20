@@ -84,7 +84,7 @@ const handleOpenChange = (open: boolean) => {
 			:disable-hoverable-content="disableHoverableContent"
 			@update:open="handleOpenChange"
 		>
-			<TooltipTrigger as="span" :class="{ [$style.disabledTrigger]: disabled }">
+			<TooltipTrigger as="span" :class="[$style.trigger, { [$style.disabledTrigger]: disabled }]">
 				<slot />
 			</TooltipTrigger>
 			<TooltipPortal :to="teleported ? appendTo : undefined" :disabled="!teleported">
@@ -128,6 +128,10 @@ const handleOpenChange = (open: boolean) => {
 	align-items: center;
 	margin-top: var(--spacing--sm);
 	gap: var(--spacing--2xs);
+}
+
+.trigger {
+	display: inline-block;
 }
 
 .disabledTrigger {
