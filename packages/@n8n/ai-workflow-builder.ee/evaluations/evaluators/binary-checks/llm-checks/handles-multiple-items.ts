@@ -2,17 +2,25 @@ import { createLlmCheck } from './create-llm-check';
 
 export const handlesMultipleItems = createLlmCheck({
 	name: 'handles_multiple_items',
-	systemPrompt: `You are an evaluator checking whether an n8n workflow properly handles array/multiple-item inputs.
-Check:
-- When a node outputs multiple items, are downstream nodes configured to handle them?
-- Are loops or splitInBatches nodes used where appropriate for batch processing?
-- Are aggregate operations (like summarize or merge) used correctly when combining multiple items?
+	systemPrompt: `You are an evaluator checking whether an n8n workflow handles multiple items correctly.
 
-Note: Most n8n nodes automatically process all items, so this check mainly looks for cases where
-special handling is needed but missing (e.g., HTTP Request nodes that should iterate over items).
+Important n8n context:
+- Most n8n nodes automatically process ALL incoming items one by one — this is correct default behavior
+- A workflow designed for single-item processing (manual trigger + one record) does NOT need batch handling
+- Merge nodes with "combineByPosition" are correct for merging parallel single-item branches
+- AI Agent nodes process one item at a time, which is normal
 
-Respond with pass: true if the workflow handles multiple items correctly, false otherwise.
-Provide clear reasoning for your decision.`,
+Only FAIL if there is a clear structural problem:
+- A node configured with multipleFiles/multiple inputs but no downstream handling for arrays
+- A splitInBatches that's clearly needed but missing (e.g., sending individual API calls for each item in a large list)
+- An aggregate node producing an array that downstream nodes don't handle
+
+Do NOT fail for:
+- Single-item workflows (manual trigger processing one record)
+- Workflows where n8n's automatic item-by-item processing is sufficient
+- Chatbot/agent workflows that process one message at a time
+
+Respond with pass: true if the workflow handles items correctly for its use case.`,
 	humanTemplate: `User Request: {userPrompt}
 
 Generated Workflow:
@@ -20,5 +28,5 @@ Generated Workflow:
 
 {referenceSection}
 
-Does this workflow properly handle cases where multiple items flow through the nodes?`,
+Does this workflow handle multiple items correctly for its intended use case?`,
 });

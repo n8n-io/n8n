@@ -65,7 +65,6 @@ const BINARY_CHECK_NAMES = [
 	'correct_node_operations',
 	'valid_data_flow',
 	'handles_multiple_items',
-	'agent_prompt_mentions_tools',
 	'descriptive_node_names',
 ] as const;
 

@@ -1,5 +1,4 @@
 import type { BinaryCheck } from '../types';
-import { agentPromptMentionsTools } from './agent-prompt-mentions-tools';
 import { correctNodeOperations } from './correct-node-operations';
 import { descriptiveNodeNames } from './descriptive-node-names';
 import { fulfillsUserRequest } from './fulfills-user-request';
@@ -11,6 +10,5 @@ export const LLM_CHECKS: BinaryCheck[] = [
 	correctNodeOperations,
 	validDataFlow,
 	handlesMultipleItems,
-	agentPromptMentionsTools,
 	descriptiveNodeNames,
 ];
