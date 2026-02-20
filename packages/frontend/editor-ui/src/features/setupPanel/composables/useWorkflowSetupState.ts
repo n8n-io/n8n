@@ -45,6 +45,22 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		return credentialTypeInfo?.displayName ?? credentialType;
 	};
 
+	/**
+	 * Checks whether a credential type has a test mechanism defined.
+	 * Returns true if either the credential type itself defines a `test` block
+	 * or any node with access declares `testedBy` for it.
+	 * Non-testable types (e.g. Header Auth) are considered complete when just set.
+	 */
+	const isCredentialTypeTestable = (credentialTypeName: string): boolean => {
+		const credType = credentialsStore.getCredentialTypeByName(credentialTypeName);
+		if (credType?.test) return true;
+
+		const nodesWithAccess = credentialsStore.getNodesWithAccess(credentialTypeName);
+		return nodesWithAccess.some((node) =>
+			node.credentials?.some((cred) => cred.name === credentialTypeName && cred.testedBy),
+		);
+	};
+
 	const isTriggerNode = (node: INodeUi): boolean => {
 		return nodeTypesStore.isTriggerNode(node.type);
 	};
@@ -152,13 +168,18 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			const nodesForCompletion = embeddedTrigger
 				? state.nodes.filter((node) => !isTriggerNode(node) || node === embeddedTrigger)
 				: state.nodes.filter((node) => !isTriggerNode(node));
+			// Only require a passing test for credential types that actually have a test mechanism.
+			// Non-testable types (e.g. header auth) are complete when just set.
+			const testChecker = isCredentialTypeTestable(state.credentialType)
+				? credentialsStore.isCredentialTestedOk
+				: undefined;
 			return {
 				...state,
 				isComplete: isCredentialCardComplete(
 					{ ...state, nodes: nodesForCompletion },
 					hasTriggerExecutedSuccessfully,
 					isTriggerNodeType,
-					credentialsStore.isCredentialTestedOk,
+					testChecker,
 				),
 			};
 		});
@@ -237,6 +258,12 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		credentialName: string,
 		credentialType: string,
 	) {
+		// Non-testable credential types (e.g. header auth, generic credentials)
+		// are considered complete when just set — no API test needed.
+		if (!isCredentialTypeTestable(credentialType)) {
+			return;
+		}
+
 		if (
 			credentialsStore.isCredentialTestedOk(credentialId) ||
 			credentialsStore.isCredentialTestPending(credentialId)
