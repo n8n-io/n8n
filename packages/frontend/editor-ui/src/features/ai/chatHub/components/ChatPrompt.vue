@@ -353,7 +353,9 @@ defineExpose({
 							:disabled-tooltip="
 								isToolsSelectable
 									? undefined
-									: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+									: selectedModel
+										? i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+										: i18n.baseText('chatHub.tools.selector.disabled.noModel.tooltip')
 							"
 							@toggle="handleToolToggle"
 						/>
