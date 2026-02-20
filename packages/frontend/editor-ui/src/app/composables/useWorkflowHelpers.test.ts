@@ -326,6 +326,37 @@ describe('useWorkflowHelpers', () => {
 		});
 	});
 
+	describe('getWorkflowDataToSave', () => {
+		it('should read tags from workflowDocumentStore', async () => {
+			const workflowId = 'test-workflow-id';
+			const tagIds = ['tag1', 'tag2'];
+
+			workflowsStore.workflowId = workflowId;
+			workflowsStore.workflowName = 'Test Workflow';
+			workflowsStore.allNodes = [];
+			workflowsStore.allConnections = {};
+			workflowsStore.isWorkflowActive = false;
+			workflowsStore.workflow.settings = { executionOrder: 'v1' };
+			workflowsStore.workflow.versionId = 'v1';
+			workflowsStore.workflow.meta = {};
+			workflowsStore.pinnedWorkflowData = {};
+
+			const documentId = createWorkflowDocumentId(workflowId);
+			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+
+			// Note: createTestingPinia() stubs actions by default, so setTags() won't work
+			Object.defineProperty(workflowDocumentStore, 'tags', {
+				value: tagIds,
+			});
+
+			const { getWorkflowDataToSave } = useWorkflowHelpers();
+			const workflowData = await getWorkflowDataToSave();
+
+			expect(workflowData.tags).toEqual(tagIds);
+			expect(workflowData.id).toBe(workflowId);
+		});
+	});
+
 	describe('checkConflictingWebhooks', () => {
 		it('should return null if no conflicts', async () => {
 			const workflowHelpers = useWorkflowHelpers();

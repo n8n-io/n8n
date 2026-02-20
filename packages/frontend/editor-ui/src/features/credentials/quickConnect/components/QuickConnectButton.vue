@@ -6,13 +6,20 @@ import CredentialIcon from '../../components/CredentialIcon.vue';
 import GoogleAuthButton from '../../components/CredentialEdit/GoogleAuthButton.vue';
 import { useCredentialOAuth } from '../../composables/useCredentialOAuth';
 
-const props = defineProps<{
-	credentialTypeName: string;
-	serviceName: string;
-	label?: string;
-	disabled?: boolean;
-	disabledTooltip?: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		credentialTypeName: string;
+		serviceName: string;
+		label?: string;
+		size?: 'small' | 'medium';
+		disabled?: boolean;
+		disabledTooltip?: string;
+	}>(),
+	{
+		size: 'medium',
+		disabled: false,
+	},
+);
 
 defineEmits<{
 	click: [];
@@ -41,12 +48,12 @@ const buttonLabel = computed(() => {
 			<N8nButton
 				v-else
 				variant="subtle"
-				size="small"
+				:size="size"
 				:class="$style.quickConnectButton"
 				:disabled="disabled"
 				@click="$emit('click')"
 			>
-				<CredentialIcon :credential-type-name="credentialTypeName" :size="16" />
+				<CredentialIcon theme="light" :credential-type-name="credentialTypeName" :size="16" />
 				<span>{{ buttonLabel }}</span>
 			</N8nButton>
 		</span>
