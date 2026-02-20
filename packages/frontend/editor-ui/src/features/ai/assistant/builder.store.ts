@@ -13,9 +13,14 @@ import { assert } from '@n8n/utils/assert';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useBuilderMessages } from './composables/useBuilderMessages';
 import {
 	chatWithBuilder,
+	clearBuilderSession,
 	getAiSessions,
 	getBuilderCredits,
 	truncateBuilderMessages,
@@ -292,6 +297,18 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		builderMode.value = 'build';
 	}
 
+	/**
+	 * Explicitly clear the backend session for the current workflow.
+	 * Only called when the user explicitly requests a clear (e.g. /clear command).
+	 * This deletes persisted messages so they won't be reloaded on next visit.
+	 */
+	function clearBackendSession() {
+		const workflowId = workflowsStore.workflowId;
+		if (workflowId) {
+			void clearBuilderSession(rootStore.restApiContext, workflowId);
+		}
+	}
+
 	function setBuilderMode(mode: 'build' | 'plan') {
 		if (mode === 'plan' && !isPlanModeAvailable.value) return;
 		builderMode.value = mode;
@@ -516,7 +533,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			? createUserAnswersMessage(planAnswers, messageId)
 			: createUserMessage(userMessage, messageId, undefined, focusedNodeNames ?? []);
 		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
-		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
+		const thinkingKey =
+			userMessage.trim() === '/compact'
+				? 'aiAssistant.thinkingSteps.compacting'
+				: 'aiAssistant.thinkingSteps.thinking';
+		addLoadingAssistantMessage(locale.baseText(thinkingKey));
 		streaming.value = true;
 
 		// Updates page title to show AI is building
@@ -942,14 +963,18 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function unpinAllNodes() {
-		const pinData = workflowsStore.workflow.pinData;
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+		const pinData = workflowDocumentStore?.pinData;
 		if (!pinData) return;
 		for (const nodeName of Object.keys(pinData)) {
-			const node = workflowsStore.getNodeByName(nodeName);
-			if (node) {
-				workflowsStore.unpinData({ node });
+			workflowDocumentStore?.unpinNodeData(nodeName);
+			if (workflowsStore.nodeMetadata[nodeName]) {
+				workflowsStore.nodeMetadata[nodeName].pinnedDataLastRemovedAt = Date.now();
 			}
 		}
+		uiStore.markStateDirty();
 	}
 
 	function clearExistingWorkflow() {
@@ -1127,6 +1152,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			chatMessages.value = chatMessages.value.slice(0, msgIndex);
 		}
 
+		builderMode.value = 'build';
+
 		// 4. Track telemetry event for version restore
 		trackWorkflowBuilderJourney('revert_version_from_builder', {
 			revert_user_message_id: messageId,
@@ -1198,6 +1225,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// Version management
 		restoreToVersion,
 		clearExistingWorkflow,
+		// Session management
+		clearBackendSession,
 		// Title management for AI builder
 		clearDoneIndicatorTitle,
 	};

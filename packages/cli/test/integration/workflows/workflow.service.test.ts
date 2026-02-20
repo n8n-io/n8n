@@ -14,7 +14,6 @@ import {
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 	ProjectRepository,
-	ProjectRelationRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -29,9 +28,9 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createOwner, createMember } from '../shared/db/users';
@@ -68,11 +67,10 @@ beforeAll(async () => {
 		workflowHistoryService,
 		mock(),
 		activeWorkflowManager,
-		mock(),
-		Container.get(WorkflowSharingService), // workflowSharingService
+		Container.get(RoleService), // roleService
 		Container.get(ProjectService), // projectService
-		mock(),
-		mock(),
+		mock(), // executionRepository
+		mock(), // eventService
 		globalConfig,
 		mock(),
 		Container.get(WorkflowFinderService),
@@ -82,7 +80,6 @@ beforeAll(async () => {
 		webhookServiceMock,
 		mock(), // licenseState
 		Container.get(ProjectRepository), // projectRepository
-		Container.get(ProjectRelationRepository), // projectRelationRepository
 	);
 });
 

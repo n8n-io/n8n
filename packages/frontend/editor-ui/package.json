@@ -49,6 +49,7 @@
     "@n8n/rest-api-client": "workspace:*",
     "@n8n/stores": "workspace:*",
     "@n8n/utils": "workspace:*",
+    "@pinecone-database/connect": "0.0.4",
     "@replit/codemirror-indentation-markers": "^6.5.3",
     "@sentry/vue": "catalog:frontend",
     "@types/semver": "^7.7.0",

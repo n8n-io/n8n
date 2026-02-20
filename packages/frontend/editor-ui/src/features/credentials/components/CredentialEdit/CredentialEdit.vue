@@ -93,7 +93,6 @@ const telemetry = useTelemetry();
 const router = useRouter();
 const rootStore = useRootStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
-
 const activeTab = ref('connection');
 const authError = ref('');
 const credentialId = ref('');

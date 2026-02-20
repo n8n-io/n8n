@@ -98,6 +98,7 @@
     "@azure/identity": "catalog:",
     "@azure/keyvault-secrets": "4.8.0",
     "@google-cloud/secret-manager": "5.6.0",
+    "@n8n/ai-utilities": "workspace:*",
     "@n8n/ai-workflow-builder": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:*",
