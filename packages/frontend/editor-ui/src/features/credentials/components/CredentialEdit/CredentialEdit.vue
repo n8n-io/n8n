@@ -1418,6 +1418,7 @@ const { width } = useElementSize(credNameRef);
 .mainContent {
 	flex: 1;
 	overflow: auto;
+	padding-left: var(--spacing--5xs);
 	padding-bottom: 100px;
 }
 
