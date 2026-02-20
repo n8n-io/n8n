@@ -2,7 +2,6 @@
 import {
 	computed,
 	defineAsyncComponent,
-	inject,
 	nextTick,
 	onActivated,
 	onBeforeMount,
