@@ -1,8 +1,12 @@
 import { defineStore, getActivePinia, type StoreGeneric } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { ref, readonly, computed, inject } from 'vue';
-import type { WorkflowHistory } from '@n8n/rest-api-client';
+import { inject } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	useWorkflowDocumentActive,
+	isActiveAction,
+	type ActiveAction,
+} from './workflowDocument/useWorkflowDocumentActive';
 import {
 	useWorkflowDocumentPinData,
 	isPinDataAction,
@@ -33,34 +37,7 @@ export function createWorkflowDocumentId(
 	return `${workflowId}@${version}`;
 }
 
-type WorkflowDocumentAction = TagAction | PinDataAction;
-
-/**
- * Active State
- */
-
-interface useWorkflowDocumentActiveState {
-	activeVersionId: string | null;
-	activeVersion: WorkflowHistory | null;
-}
-
-function useActiveState() {
-	const activeVersionId = ref<string | null>(null);
-	const activeVersion = ref<WorkflowHistory | null>(null);
-	const active = computed(() => activeVersionId.value !== null);
-
-	function setActiveState(state: useWorkflowDocumentActiveState) {
-		activeVersionId.value = state.activeVersionId;
-		activeVersion.value = state.activeVersion;
-	}
-
-	return {
-		active,
-		activeVersionId: readonly(activeVersionId),
-		activeVersion: readonly(activeVersion),
-		setActiveState,
-	};
-}
+type WorkflowDocumentAction = ActiveAction | TagAction | PinDataAction;
 
 /**
  * Gets the store ID for a workflow document store.
@@ -88,17 +65,22 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		 * Single entry point for all mutations, enabling future CRDT sync integration.
 		 */
 		function onChange(action: WorkflowDocumentAction) {
-			if (isTagAction(action)) {
+			if (isActiveAction(action)) {
+				handleActiveAction(action);
+			} else if (isTagAction(action)) {
 				handleTagAction(action);
 			} else if (isPinDataAction(action)) {
 				handlePinDataAction(action);
 			}
 		}
 
-		/**
-		 * Active State
-		 */
-		const activeState = useActiveState();
+		const {
+			active,
+			activeVersionId,
+			activeVersion,
+			setActiveState,
+			handleAction: handleActiveAction,
+		} = useWorkflowDocumentActive(onChange);
 
 		const {
 			tags,
@@ -122,11 +104,14 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		return {
 			workflowId,
 			workflowVersion,
+			active,
+			activeVersionId,
+			activeVersion,
+			setActiveState,
 			tags,
 			setTags,
 			addTags,
 			removeTag,
-			...activeState,
 			pinData,
 			setPinData,
 			pinNodeData,
