@@ -19,6 +19,39 @@ function findTriggerNames(workflow: SimpleWorkflow, nodeTypes: INodeTypeDescript
 	return triggers;
 }
 
+/**
+ * Expand the reachable set by finding sub-nodes that connect TO already-reachable
+ * nodes via ai_* outputs. Repeats until no new nodes are discovered (fixpoint),
+ * so deeply nested sub-nodes (e.g., Tool → AgentTool → Agent) are handled.
+ */
+function expandReachableWithSubNodes(
+	reachable: Set<string>,
+	connections: SimpleWorkflow['connections'],
+	allNodeNames: string[],
+): void {
+	let changed = true;
+	while (changed) {
+		changed = false;
+		for (const nodeName of allNodeNames) {
+			if (reachable.has(nodeName)) continue;
+
+			const nodeConns = connections[nodeName];
+			if (!nodeConns) continue;
+
+			const connectsToReachable = Object.entries(nodeConns).some(
+				([connType, connGroups]) =>
+					connType.startsWith('ai_') &&
+					connGroups.some((group) => group?.some((conn) => conn?.node && reachable.has(conn.node))),
+			);
+
+			if (connectsToReachable) {
+				reachable.add(nodeName);
+				changed = true;
+			}
+		}
+	}
+}
+
 export const noUnreachableNodes: BinaryCheck = {
 	name: 'no_unreachable_nodes',
 	kind: 'deterministic',
@@ -50,26 +83,12 @@ export const noUnreachableNodes: BinaryCheck = {
 			}
 		}
 
-		// Sub-nodes connect TO a parent via ai_* outputs in workflow.connections
-		// (they are keyed as source in connections). Check if they connect to a reachable node.
-		const unreachable: string[] = [];
-		for (const node of activeNodes) {
-			if (reachable.has(node.name)) continue;
+		// Iteratively expand: sub-nodes connect TO parents via ai_* outputs.
+		// Repeat until stable so nested sub-nodes (Tool → AgentTool → Agent) are found.
+		const allNodeNames = activeNodes.map((n) => n.name);
+		expandReachableWithSubNodes(reachable, connections, allNodeNames);
 
-			const nodeConns = connections[node.name];
-			if (nodeConns) {
-				const hasAiConnectionToReachable = Object.entries(nodeConns).some(
-					([connType, connGroups]) =>
-						connType.startsWith('ai_') &&
-						connGroups.some((group) =>
-							group?.some((conn) => conn?.node && reachable.has(conn.node)),
-						),
-				);
-				if (hasAiConnectionToReachable) continue;
-			}
-
-			unreachable.push(node.name);
-		}
+		const unreachable = activeNodes.filter((n) => !reachable.has(n.name)).map((n) => n.name);
 
 		return {
 			pass: unreachable.length === 0,

@@ -282,6 +282,63 @@ describe('no_unreachable_nodes', () => {
 		);
 		expect(result.pass).toBe(true);
 	});
+
+	it('handles nested sub-nodes (Tool → AgentTool → Agent)', async () => {
+		// Simulates: Trigger → Agent ← AgentTool ← LLM Model + Tool
+		const result = await noUnreachableNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3.1,
+						position: [200, 0],
+					},
+					{
+						name: 'LLM',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [200, 200],
+					},
+					{
+						name: 'SubAgent',
+						type: '@n8n/n8n-nodes-langchain.agentTool',
+						typeVersion: 3,
+						position: [400, 200],
+					},
+					{
+						name: 'SubLLM',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [400, 400],
+					},
+					{
+						name: 'SearchTool',
+						type: '@n8n/n8n-nodes-langchain.toolSerpApi',
+						typeVersion: 1,
+						position: [500, 400],
+					},
+				],
+				connections: {
+					Trigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					LLM: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+					SubAgent: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+					SubLLM: {
+						ai_languageModel: [[{ node: 'SubAgent', type: 'ai_languageModel', index: 0 }]],
+					},
+					SearchTool: { ai_tool: [[{ node: 'SubAgent', type: 'ai_tool', index: 0 }]] },
+				},
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
 });
 
 describe('no_empty_set_nodes', () => {
