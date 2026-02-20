@@ -201,6 +201,10 @@ const isChatInputDisabled = computed(() => {
 const { showReviewChanges, nodeChanges, isExpanded, toggleExpanded, openDiffView } =
 	useReviewChanges();
 
+function onSelectChangedNode(nodeId: string) {
+	canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });
+}
+
 const disabledTooltip = computed(() => {
 	if (!isChatInputDisabled.value) {
 		return undefined;
@@ -550,6 +554,7 @@ defineExpose({
 					:expanded="isExpanded"
 					@toggle="toggleExpanded"
 					@open-diff="openDiffView"
+					@select-node="onSelectChangedNode"
 				/>
 				<Transition v-else name="slide">
 					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />

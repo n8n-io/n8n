@@ -13,6 +13,7 @@ defineProps<{
 const emit = defineEmits<{
 	toggle: [];
 	openDiff: [];
+	selectNode: [nodeId: string];
 }>();
 
 const i18n = useI18n();
@@ -48,7 +49,15 @@ const i18n = useI18n();
 		</div>
 		<div :class="[$style.body, expanded && $style.bodyExpanded]">
 			<ul :class="$style.nodeList">
-				<li v-for="change in nodeChanges" :key="change.node.id" :class="$style.nodeItem">
+				<li
+					v-for="change in nodeChanges"
+					:key="change.node.id"
+					:class="$style.nodeItem"
+					role="button"
+					tabindex="0"
+					@click="emit('selectNode', change.node.id)"
+					@keydown.enter="emit('selectNode', change.node.id)"
+				>
 					<DiffBadge :type="change.status" />
 					<NodeIcon :node-type="change.nodeType" :size="16" :class="$style.nodeIcon" />
 					<span :class="$style.nodeName">{{ change.node.name }}</span>
@@ -138,7 +147,13 @@ const i18n = useI18n();
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--4xs) 0;
+	padding: var(--spacing--4xs) var(--spacing--4xs);
+	border-radius: var(--radius);
+	cursor: pointer;
+
+	&:hover {
+		background-color: var(--color--background--shade-1);
+	}
 }
 
 .nodeIcon {
