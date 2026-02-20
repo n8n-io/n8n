@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 
@@ -43,26 +43,16 @@ const onHeaderClick = () => {
 watch(
 	() => props.isComplete,
 	(isComplete) => {
-		if (isComplete) {
-			expanded.value = false;
-
-			if (hadManualInteraction.value) {
-				telemetry.track('User completed setup step', {
-					template_id: workflowsStore.workflow.meta?.templateId,
-					workflow_id: workflowsStore.workflowId,
-					...props.telemetryPayload,
-				});
-				hadManualInteraction.value = false;
-			}
+		if (isComplete && hadManualInteraction.value) {
+			telemetry.track('User completed setup step', {
+				template_id: workflowsStore.workflow.meta?.templateId,
+				workflow_id: workflowsStore.workflowId,
+				...props.telemetryPayload,
+			});
+			hadManualInteraction.value = false;
 		}
 	},
 );
-
-onMounted(() => {
-	if (props.isComplete) {
-		expanded.value = false;
-	}
-});
 
 defineExpose({ markInteracted });
 </script>

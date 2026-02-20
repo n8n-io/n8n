@@ -73,13 +73,14 @@ watch(
 			}
 			initialized = true;
 		} else {
-			// When a card completes, auto-expand the next uncompleted card
+			// When a card completes, collapse it and auto-expand the next uncompleted card
 			for (let i = 0; i < cards.length; i++) {
 				const card = cards[i];
 				const key = cardKey(card);
 				const wasComplete = prevCompleteStates.get(key) ?? false;
 
 				if (card.state.isComplete && !wasComplete) {
+					expandedStates[key] = false;
 					const nextUncompleted = cards.find((c, j) => j > i && !c.state.isComplete);
 					if (nextUncompleted) {
 						expandedStates[cardKey(nextUncompleted)] = true;

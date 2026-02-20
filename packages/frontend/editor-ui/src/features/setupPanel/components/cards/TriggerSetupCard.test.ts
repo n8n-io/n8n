@@ -123,26 +123,8 @@ describe('TriggerSetupCard', () => {
 			expect(emitted('update:expanded')).toEqual([[true]]);
 		});
 
-		it('should auto-collapse when isComplete changes to true', async () => {
-			const state = createState({ isComplete: false });
-			const { emitted, rerender } = renderComponent({
-				props: { state, expanded: true },
-			});
-
-			await rerender({ state: { ...state, isComplete: true }, expanded: true });
-
-			await waitFor(() => {
-				expect(emitted('update:expanded')).toEqual([[false]]);
-			});
-		});
-
-		it('should start collapsed when mounted with isComplete true', () => {
-			const { emitted } = renderComponent({
-				props: { state: createState({ isComplete: true }), expanded: true },
-			});
-
-			expect(emitted('update:expanded')).toEqual([[false]]);
-		});
+		// Auto-collapse on completion and initial-collapse-if-complete
+		// are handled by the parent (SetupPanelCards) which owns expanded state.
 	});
 
 	describe('complete state', () => {
