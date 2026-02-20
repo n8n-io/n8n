@@ -22,8 +22,8 @@ import { createConnectNodesTool } from '../tools/connect-nodes.tool';
 import { createGetExecutionLogsTool } from '../tools/get-execution-logs.tool';
 import { createGetExecutionSchemaTool } from '../tools/get-execution-schema.tool';
 import { createGetExpressionDataMappingTool } from '../tools/get-expression-data-mapping.tool';
-import { createGetExpressionExamplesTool } from '../tools/get-expression-examples.tool';
 import { createGetNodeContextTool } from '../tools/get-node-context.tool';
+import { createGetNodeExamplesTool } from '../tools/get-node-examples.tool';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createGetResourceLocatorOptionsTool } from '../tools/get-resource-locator-options.tool';
 import { createGetWorkflowOverviewTool } from '../tools/get-workflow-overview.tool';
@@ -206,9 +206,9 @@ export class BuilderSubgraph extends BaseSubgraph<
 			createGetNodeContextTool(config.logger),
 		];
 
-		// Conditionally add expression examples tool if template examples are enabled
+		// Conditionally add node examples tool if template examples are enabled
 		if (includeExamples) {
-			baseTools.push(createGetExpressionExamplesTool(config.logger));
+			baseTools.push(createGetNodeExamplesTool(config.logger));
 		}
 
 		// Conditionally add resource locator tool if callback is provided
@@ -318,7 +318,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 			applySubgraphCacheMarkers(state.messages);
 
 			// Messages already contain context from transformInput
-			// Expression examples are returned directly in the get_expression_examples
+			// Expression examples are returned directly in the get_node_examples
 			// tool response, so the agent sees them naturally in the conversation.
 			const response: unknown = await this.agent.invoke({
 				messages: state.messages,

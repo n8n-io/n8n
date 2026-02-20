@@ -515,7 +515,7 @@ export function createUpdateNodeParametersTool(
 		{
 			name: UPDATING_NODE_PARAMETER_TOOL.toolName,
 			description:
-				'Update the parameters of an existing node in the workflow based on natural language changes. This tool intelligently modifies only the specified parameters while preserving others. Expression examples from get_expression_examples are automatically used when available. Examples: "Set the URL to https://api.example.com", "Add authentication header", "Change method to POST", "Set the condition to check if status equals success".',
+				'Update the parameters of an existing node in the workflow based on natural language changes. This tool intelligently modifies only the specified parameters while preserving others. Expression examples from get_node_examples are automatically used when available. Examples: "Set the URL to https://api.example.com", "Add authentication header", "Change method to POST", "Set the condition to check if status equals success".',
 			schema: updateNodeParametersSchema,
 		},
 	);
