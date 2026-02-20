@@ -135,7 +135,6 @@ describe('useQuickConnect()', () => {
 			credentialType: 'googleSheetsOAuth2Api',
 			text: 'Google Sheets',
 			quickConnectType: 'oauth',
-			serviceName: 'Google Sheets',
 		};
 
 		beforeEach(() => {
@@ -186,7 +185,6 @@ describe('useQuickConnect()', () => {
 								credentialType: 'openAiApi',
 								text: 'OpenAI',
 								quickConnectType: 'oauth',
-								serviceName: 'OpenAI',
 							},
 						],
 					};
@@ -268,7 +266,6 @@ describe('useQuickConnect()', () => {
 						credentialType: 'second-credentials',
 						text: 'second promotion text',
 						quickConnectType: 'manual',
-						serviceName: 'Other test service',
 					};
 
 					settingsStore.moduleSettings['quick-connect'] = {
@@ -322,6 +319,7 @@ describe('useQuickConnect()', () => {
 						credentialTypeName: 'googleSheetsOAuth2Api',
 						nodeType: 'n8n-nodes-base.googleSheets',
 						source: 'node',
+						serviceName: 'Google',
 					});
 
 					expect(telemetry.track).toHaveBeenCalledWith('User clicked quick connect button', {
@@ -340,6 +338,7 @@ describe('useQuickConnect()', () => {
 						credentialTypeName: 'slackOAuth2Api',
 						nodeType: 'n8n-nodes-base.slack',
 						source: 'node',
+						serviceName: 'Slack',
 					});
 
 					expect(mockCreateAndAuthorize).toHaveBeenCalledWith(
@@ -356,13 +355,13 @@ describe('useQuickConnect()', () => {
 							credentialType: 'pineconeApi',
 							text: 'Pinecone',
 							quickConnectType: 'pinecone',
-							serviceName: 'Pinecone',
 							config: {
 								integrationId: 'test-integration-id',
 							},
 						};
 
 						beforeEach(() => {
+							mockIsOAuthCredentialType.mockReturnValue(false);
 							settingsStore.moduleSettings['quick-connect'] = {
 								options: [pineconeOption],
 							};
@@ -403,6 +402,7 @@ describe('useQuickConnect()', () => {
 								credentialTypeName: 'pineconeApi',
 								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
 								source: 'node',
+								serviceName: 'Pinecone',
 							});
 
 							expect(mockPineconeConnectPopup).toHaveBeenCalledWith({
@@ -434,6 +434,7 @@ describe('useQuickConnect()', () => {
 								credentialTypeName: 'pineconeApi',
 								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
 								source: 'node',
+								serviceName: 'Pinecone',
 							});
 
 							expect(result).toBeNull();
@@ -461,6 +462,7 @@ describe('useQuickConnect()', () => {
 								credentialTypeName: 'pineconeApi',
 								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
 								source: 'node',
+								serviceName: 'Pinecone',
 							});
 
 							expect(result).toBeNull();
@@ -493,6 +495,7 @@ describe('useQuickConnect()', () => {
 								credentialTypeName: 'pineconeApi',
 								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
 								source: 'node',
+								serviceName: 'Pinecone',
 							});
 
 							expect(result).toBeNull();
@@ -508,7 +511,6 @@ describe('useQuickConnect()', () => {
 								credentialType: 'testApi',
 								text: 'Test',
 								quickConnectType: 'unsupported-type',
-								serviceName: 'Test Service',
 							};
 
 							settingsStore.moduleSettings['quick-connect'] = {
@@ -526,6 +528,7 @@ describe('useQuickConnect()', () => {
 								credentialTypeName: 'testApi',
 								nodeType: 'test-package.testNode',
 								source: 'node',
+								serviceName: 'Pinecone',
 							});
 
 							expect(result).toBeNull();
