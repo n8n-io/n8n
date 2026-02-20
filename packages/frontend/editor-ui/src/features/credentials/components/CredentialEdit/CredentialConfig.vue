@@ -80,12 +80,11 @@ const props = withDefaults(defineProps<Props>(), {
 });
 const emit = defineEmits<{
 	update: [value: IUpdateInformation];
-	authTypeChanged: [value: string];
+	authTypeChanged: [value: { type: string; useCustomOauth?: boolean }];
 	scrollToTop: [];
 	retest: [];
 	oauth: [];
 	'update:isResolvable': [value: boolean];
-	'update:useCustomOauth': [value: boolean];
 }>();
 
 const credentialsStore = useCredentialsStore();
@@ -228,8 +227,8 @@ function onDocumentationUrlClick(): void {
 	});
 }
 
-function onAuthTypeChange(newType: string): void {
-	emit('authTypeChanged', newType);
+function onAuthTypeChange(value: { type: string; useCustomOauth?: boolean }): void {
+	emit('authTypeChanged', value);
 }
 
 async function onAskAssistantClick() {
@@ -271,7 +270,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				:use-custom-oauth="useCustomOauth"
 				:show-managed-oauth-options="managedOauthAvailable"
 				@update:auth-type="onAuthTypeChange"
-				@update:use-custom-oauth="emit('update:useCustomOauth', $event)"
 			/>
 
 			<N8nCallout

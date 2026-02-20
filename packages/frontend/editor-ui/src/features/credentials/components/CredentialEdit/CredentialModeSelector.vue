@@ -24,8 +24,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	'update:authType': [value: string];
-	'update:useCustomOauth': [value: boolean];
+	'update:authType': [value: { type: string; useCustomOauth?: boolean }];
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
@@ -126,13 +125,14 @@ function onOptionChange(value: Option['value']): void {
 	if (isSelected(value)) return;
 
 	if ('oauthMode' in value) {
-		const useCustomOauth = value.oauthMode === 'custom';
-		emit('update:useCustomOauth', useCustomOauth);
-		emit('update:authType', 'oAuth2');
+		emit('update:authType', {
+			type: 'oAuth2',
+			useCustomOauth: value.oauthMode === 'custom',
+		});
 		return;
 	}
 
-	emit('update:authType', value.type);
+	emit('update:authType', { type: value.type });
 }
 
 function switchToOther(): void {

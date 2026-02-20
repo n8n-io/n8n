@@ -198,7 +198,7 @@ describe('CredentialModeSelector', () => {
 			await userEvent.click(screen.getByTestId('credential-mode-switch-link'));
 
 			expect(emitted('update:authType')).toHaveLength(1);
-			expect(emitted('update:authType')[0]).toEqual(['oAuth2']);
+			expect(emitted('update:authType')[0]).toEqual([{ type: 'oAuth2' }]);
 		});
 
 		it('should emit the other auth type when switch link is clicked from OAuth2', async () => {
@@ -220,7 +220,7 @@ describe('CredentialModeSelector', () => {
 
 			// From OAuth2, switch to Access Token
 			await userEvent.click(screen.getByTestId('credential-mode-switch-link'));
-			expect(emitted('update:authType')[0]).toEqual(['accessToken']);
+			expect(emitted('update:authType')[0]).toEqual([{ type: 'accessToken' }]);
 		});
 	});
 
@@ -302,7 +302,7 @@ describe('CredentialModeSelector', () => {
 
 			await waitFor(() => {
 				expect(emitted('update:authType')).toHaveLength(1);
-				expect(emitted('update:authType')[0]).toEqual(['apiKey']);
+				expect(emitted('update:authType')[0]).toEqual([{ type: 'apiKey' }]);
 			});
 		});
 	});
@@ -335,7 +335,7 @@ describe('CredentialModeSelector', () => {
 			expect(screen.getByText('Setup credential')).toBeInTheDocument();
 		});
 
-		it('should emit update:useCustomOauth when switching from managed to custom OAuth', async () => {
+		it('should emit update:authType with useCustomOauth when switching from managed to custom OAuth', async () => {
 			const pinia = setupStores({
 				nodeType: twoAuthNodeType,
 				node: makeNode('n8n-nodes-base.dropbox', 'oAuth2'),
@@ -363,12 +363,12 @@ describe('CredentialModeSelector', () => {
 			await userEvent.click(screen.getByRole('menuitem', { name: /Custom OAuth2/ }));
 
 			await waitFor(() => {
-				expect(emitted('update:useCustomOauth')).toHaveLength(1);
-				expect(emitted('update:useCustomOauth')[0]).toEqual([true]);
+				expect(emitted('update:authType')).toHaveLength(1);
+				expect(emitted('update:authType')[0]).toEqual([{ type: 'oAuth2', useCustomOauth: true }]);
 			});
 		});
 
-		it('should emit update:useCustomOauth=false when switching from custom to managed OAuth', async () => {
+		it('should emit update:authType with useCustomOauth when switching from custom to managed OAuth', async () => {
 			const pinia = setupStores({
 				nodeType: twoAuthNodeType,
 				node: makeNode('n8n-nodes-base.dropbox', 'oAuth2'),
@@ -396,8 +396,8 @@ describe('CredentialModeSelector', () => {
 			await userEvent.click(screen.getByRole('menuitem', { name: /Managed OAuth2/ }));
 
 			await waitFor(() => {
-				expect(emitted('update:useCustomOauth')).toHaveLength(1);
-				expect(emitted('update:useCustomOauth')[0]).toEqual([false]);
+				expect(emitted('update:authType')).toHaveLength(1);
+				expect(emitted('update:authType')[0]).toEqual([{ type: 'oAuth2', useCustomOauth: false }]);
 			});
 		});
 
@@ -430,7 +430,7 @@ describe('CredentialModeSelector', () => {
 
 			await waitFor(() => {
 				expect(emitted('update:authType')).toHaveLength(1);
-				expect(emitted('update:authType')[0]).toEqual(['accessToken']);
+				expect(emitted('update:authType')[0]).toEqual([{ type: 'accessToken' }]);
 			});
 		});
 	});
