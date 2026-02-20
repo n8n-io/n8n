@@ -344,9 +344,9 @@ describe('useWorkflowHelpers', () => {
 			const documentId = createWorkflowDocumentId(workflowId);
 			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 
+			// Note: createTestingPinia() stubs actions by default, so setTags() won't work
 			Object.defineProperty(workflowDocumentStore, 'tags', {
 				value: tagIds,
-				writable: true,
 			});
 
 			const { getWorkflowDataToSave } = useWorkflowHelpers();
