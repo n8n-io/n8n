@@ -33,12 +33,15 @@ watch(isAllComplete, (allComplete) => {
 	}
 });
 
-const onCredentialSelected = (payload: { credentialType: string; credentialId: string }) => {
-	setCredential(payload.credentialType, payload.credentialId);
+const onCredentialSelected = (
+	payload: { credentialType: string; credentialId: string },
+	sourceNodeName?: string,
+) => {
+	setCredential(payload.credentialType, payload.credentialId, sourceNodeName);
 };
 
-const onCredentialDeselected = (credentialType: string) => {
-	unsetCredential(credentialType);
+const onCredentialDeselected = (credentialType: string, sourceNodeName?: string) => {
+	unsetCredential(credentialType, sourceNodeName);
 };
 
 const visibleCards = computed(() => {
@@ -48,7 +51,7 @@ const visibleCards = computed(() => {
 
 const cardKey = (card: SetupCardItem): string => {
 	if (card.type === 'trigger') return `trigger-${card.state.node.id}`;
-	return `credential-${card.state.credentialType}`;
+	return `credential-${card.state.credentialType}-${card.state.nodes[0]?.name ?? ''}`;
 };
 
 // --- Expanded state management ---

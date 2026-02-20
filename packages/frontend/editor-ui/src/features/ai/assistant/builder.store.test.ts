@@ -3128,5 +3128,79 @@ describe('AI Builder store', () => {
 			expect(userMessage).toBeDefined();
 			expect((userMessage as Record<string, unknown>).focusedNodeNames).toEqual(['HTTP Request']);
 		});
+
+		it('should set isHelpStreaming when streaming response contains assistant tool message', async () => {
+			const builderStore = useBuilderStore();
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			let capturedOnMessage: ((data: any) => void) | null = null;
+			let capturedOnDone: (() => void) | null = null;
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				capturedOnMessage = onMessage;
+				capturedOnDone = onDone;
+			});
+
+			await builderStore.sendChatMessage({ text: 'what does this node do?' });
+
+			expect(builderStore.streaming).toBe(true);
+			expect(builderStore.isHelpStreaming).toBe(false);
+
+			// Simulate backend routing to the assistant (help path)
+			capturedOnMessage!({
+				messages: [
+					{
+						type: 'tool',
+						toolName: 'assistant',
+						toolCallId: 'assistant-123',
+						displayTitle: 'Asking assistant',
+						status: 'running',
+					},
+				],
+				sessionId: 'test-session',
+			});
+
+			expect(builderStore.isHelpStreaming).toBe(true);
+
+			// Complete streaming
+			capturedOnDone!();
+			expect(builderStore.streaming).toBe(false);
+			expect(builderStore.isHelpStreaming).toBe(false);
+		});
+
+		it('should NOT set isHelpStreaming for regular build tool messages', async () => {
+			const builderStore = useBuilderStore();
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			let capturedOnMessage: ((data: any) => void) | null = null;
+			let capturedOnDone: (() => void) | null = null;
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				capturedOnMessage = onMessage;
+				capturedOnDone = onDone;
+			});
+
+			await builderStore.sendChatMessage({ text: 'build a workflow' });
+
+			expect(builderStore.isHelpStreaming).toBe(false);
+
+			// Simulate a build tool message (not assistant)
+			capturedOnMessage!({
+				messages: [
+					{
+						type: 'tool',
+						toolName: 'generate_workflow',
+						toolCallId: 'tool-456',
+						displayTitle: 'Building workflow',
+						status: 'running',
+					},
+				],
+				sessionId: 'test-session',
+			});
+
+			expect(builderStore.isHelpStreaming).toBe(false);
+
+			capturedOnDone!();
+		});
 	});
 });

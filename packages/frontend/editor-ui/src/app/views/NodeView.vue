@@ -297,7 +297,7 @@ const isCanvasReadOnly = computed(() => {
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
 		editableWorkflow.value.isArchived ||
-		builderStore.streaming
+		(builderStore.streaming && !builderStore.isHelpStreaming)
 	);
 });
 
@@ -1852,7 +1852,7 @@ onBeforeUnmount(() => {
 			/>
 
 			<N8nCanvasThinkingPill
-				v-if="builderStore.streaming"
+				v-if="builderStore.streaming && !builderStore.isHelpStreaming"
 				:class="$style.canvasCenterPill"
 				show-stop
 				@stop="builderStore.abortStreaming"
