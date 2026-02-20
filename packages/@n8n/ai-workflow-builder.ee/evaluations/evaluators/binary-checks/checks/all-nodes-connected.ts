@@ -2,11 +2,16 @@ import { getChildNodes, mapConnectionsByDestination } from 'n8n-workflow';
 
 import type { BinaryCheck, SimpleWorkflow } from '../types';
 
+const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
+
 export const allNodesConnected: BinaryCheck = {
 	name: 'all_nodes_connected',
 	kind: 'deterministic',
 	async run(workflow: SimpleWorkflow) {
-		if (!workflow.nodes || workflow.nodes.length === 0) {
+		// Filter out sticky notes — they are visual annotations, not part of the workflow graph
+		const activeNodes = (workflow.nodes ?? []).filter((n) => n.type !== STICKY_NOTE_TYPE);
+
+		if (activeNodes.length === 0) {
 			return { pass: true };
 		}
 
@@ -29,7 +34,7 @@ export const allNodesConnected: BinaryCheck = {
 		}
 
 		const disconnected: string[] = [];
-		for (const node of workflow.nodes) {
+		for (const node of activeNodes) {
 			if (!connected.has(node.name)) {
 				disconnected.push(node.name);
 			}
