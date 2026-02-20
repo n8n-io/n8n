@@ -80,8 +80,6 @@ on:
 
 env:
   NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
-  # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
-  TESTCONTAINERS_RYUK_DISABLED: true
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
   # Browser cache location - must match install-browsers script
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
@@ -116,6 +114,9 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || inputs.runner }}
     timeout-minutes: 30
+    permissions:
+      packages: read
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -135,13 +136,17 @@ jobs:
           # docker-build: build app + docker image locally
           # docker-pull: no build needed, image is pre-built
           # local: build app for local server
-          build-command: ${{ inputs.test-mode == 'docker-build' && 'pnpm build:docker' || (inputs.test-mode == 'local' && 'pnpm build' || '') }}
+          build-command: ${{ inputs.test-mode == 'docker-build' && 'pnpm build:docker' || 'pnpm build' }}
           enable-docker-cache: ${{ inputs.test-mode == 'docker-build' }}
         env:
           INCLUDE_TEST_CONTROLLER: ${{ inputs.test-mode == 'docker-build' && 'true' || '' }}
 
       - name: Install Browsers
         run: pnpm turbo run install-browsers --filter=n8n-playwright
+
+      - name: Login to GHCR
+        if: ${{ inputs.test-mode == 'docker-pull' }}
+        uses: ./.github/actions/docker-registry-login
 
       - name: Pre-pull Test Container Images
         if: ${{ !contains(inputs.test-command, 'test:local') }}

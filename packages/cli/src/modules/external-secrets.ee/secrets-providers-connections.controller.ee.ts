@@ -37,15 +37,41 @@ export class SecretProvidersConnectionsController {
 	}
 
 	@Middleware()
-	checkFeatureFlag(_req: Request, res: Response, next: NextFunction) {
-		if (!this.config.externalSecretsForProjects) {
-			this.logger.warn('External secrets for projects feature is not enabled');
+	checkFeatureFlag(req: Request, res: Response, next: NextFunction) {
+		// Project-scoped connections require externalSecretsForProjects
+		const isProjectScopedRequest =
+			(req.method === 'POST' || req.method === 'PATCH') &&
+			(req.body.projectIds as string[])?.length > 0;
+		if (isProjectScopedRequest) {
+			if (!this.config.externalSecretsForProjects) {
+				this.logger.warn(
+					'Tried to create a project-scoped external secret connection without feature flag enabled',
+				);
+				sendErrorResponse(
+					res,
+					new ForbiddenError(
+						'Tried to create a project-scoped external secret connection without feature flag enabled',
+					),
+				);
+				return;
+			}
+			next();
+			return;
+		}
+
+		// All other requests require at least one feature flag
+		if (
+			!this.config.externalSecretsForProjects &&
+			!this.config.externalSecretsMultipleConnections
+		) {
+			this.logger.warn('Requested beta external secret endpoint without feature flag enabled');
 			sendErrorResponse(
 				res,
-				new ForbiddenError('External secrets for projects feature is not enabled'),
+				new ForbiddenError('Requested beta external secret endpoint without feature flag enabled'),
 			);
 			return;
 		}
+
 		next();
 	}
 
@@ -85,12 +111,13 @@ export class SecretProvidersConnectionsController {
 	@GlobalScope('externalSecretsProvider:delete')
 	async deleteConnection(
 		req: AuthenticatedRequest,
-		_res: Response,
+		res: Response,
 		@Param('providerKey') providerKey: string,
-	): Promise<SecretsProvidersResponses.PublicConnection> {
+	) {
 		this.logger.debug('Deleting connection', { providerKey });
-		const connection = await this.connectionsService.deleteConnection(providerKey, req.user.id);
-		return this.connectionsService.toPublicConnection(connection);
+		await this.connectionsService.deleteConnection(providerKey, req.user.id);
+		res.status(204).send();
+		return;
 	}
 
 	@Get('/')

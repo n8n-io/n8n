@@ -1,7 +1,22 @@
 import { defineStore, getActivePinia, type StoreGeneric } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { ref, readonly, inject } from 'vue';
+import { inject } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	useWorkflowDocumentPinData,
+	isPinDataAction,
+	type PinDataAction,
+} from './workflowDocument/useWorkflowDocumentPinData';
+import {
+	useWorkflowDocumentTags,
+	isTagAction,
+	type TagAction,
+} from './workflowDocument/useWorkflowDocumentTags';
+
+export {
+	getPinDataSize,
+	pinDataToExecutionData,
+} from './workflowDocument/useWorkflowDocumentPinData';
 
 // Pinia internal type - _s is the store registry Map
 type PiniaInternal = ReturnType<typeof getActivePinia> & {
@@ -17,13 +32,7 @@ export function createWorkflowDocumentId(
 	return `${workflowId}@${version}`;
 }
 
-type Action<N, P> = { name: N; payload: P };
-
-type SetTagsAction = Action<'setTags', { tags: string[] }>;
-type AddTagsAction = Action<'addTags', { tags: string[] }>;
-type RemoveTagAction = Action<'removeTag', { tagId: string }>;
-
-type WorkflowDocumentAction = SetTagsAction | AddTagsAction | RemoveTagAction;
+type WorkflowDocumentAction = TagAction | PinDataAction;
 
 /**
  * Gets the store ID for a workflow document store.
@@ -47,45 +56,50 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const [workflowId, workflowVersion] = id.split('@');
 
 		/**
-		 * Tags
+		 * Handle all document actions in a CRDT-like manner.
+		 * Single entry point for all mutations, enabling future CRDT sync integration.
 		 */
-
-		const tags = ref<string[]>([]);
-
-		function setTags(newTags: string[]) {
-			onChange({ name: 'setTags', payload: { tags: newTags } });
-		}
-
-		function addTags(newTags: string[]) {
-			onChange({ name: 'addTags', payload: { tags: newTags } });
-		}
-
-		function removeTag(tagId: string) {
-			onChange({ name: 'removeTag', payload: { tagId } });
-		}
-
-		/**
-		 * Handle actions in a CRDT like manner
-		 */
-
 		function onChange(action: WorkflowDocumentAction) {
-			if (action.name === 'setTags') {
-				tags.value = action.payload.tags;
-			} else if (action.name === 'addTags') {
-				const uniqueTags = new Set([...tags.value, ...action.payload.tags]);
-				tags.value = Array.from(uniqueTags);
-			} else if (action.name === 'removeTag') {
-				tags.value = tags.value.filter((tag) => tag !== action.payload.tagId);
+			if (isTagAction(action)) {
+				handleTagAction(action);
+			} else if (isPinDataAction(action)) {
+				handlePinDataAction(action);
 			}
 		}
+
+		const {
+			tags,
+			setTags,
+			addTags,
+			removeTag,
+			handleAction: handleTagAction,
+		} = useWorkflowDocumentTags(onChange);
+
+		const {
+			pinData,
+			setPinData,
+			pinNodeData,
+			unpinNodeData,
+			renamePinDataNode,
+			getPinDataSnapshot,
+			getNodePinData,
+			handleAction: handlePinDataAction,
+		} = useWorkflowDocumentPinData(onChange);
 
 		return {
 			workflowId,
 			workflowVersion,
-			tags: readonly(tags),
+			tags,
 			setTags,
 			addTags,
 			removeTag,
+			pinData,
+			setPinData,
+			pinNodeData,
+			unpinNodeData,
+			renamePinDataNode,
+			getPinDataSnapshot,
+			getNodePinData,
 		};
 	})();
 }

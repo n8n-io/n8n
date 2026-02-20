@@ -86,6 +86,7 @@ export const shouldAssignExecuteMethod = (nodeType: INodeType) => {
 
 	return (
 		!nodeType.execute &&
+		!nodeType.supplyData &&
 		!nodeType.poll &&
 		!nodeType.trigger &&
 		(!nodeType.webhook || isDeclarativeNode) &&

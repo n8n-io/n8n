@@ -22,12 +22,11 @@ import {
 	type IDataObject,
 	type INodeParameters,
 	type IWorkflowSettings,
-	type IPinData,
 } from 'n8n-workflow';
 import { inject } from 'vue';
 import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { isEmpty, isJsonKeyObject } from '@/app/utils/typesUtils';
+import { isEmpty } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
@@ -40,7 +39,10 @@ import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowMetadata } from '@n8n/rest-api-client';
-import { dataPinningEventBus } from '../event-bus';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 export type WorkflowStateBusEvents = {
 	updateNodeProperties: [WorkflowState, INodeUpdatePropertiesInformation];
@@ -62,7 +64,7 @@ export function useWorkflowState() {
 
 	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
 		if (data.setStateDirty) {
-			uiStore.markStateDirty();
+			uiStore.markStateDirty('metadata');
 		}
 		ws.workflow.name = data.newName;
 		ws.workflowObject.name = data.newName;
@@ -87,7 +89,12 @@ export function useWorkflowState() {
 		}
 
 		if (data.removePinData) {
-			ws.workflow.pinData = {};
+			if (ws.workflow.id) {
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(ws.workflow.id),
+				);
+				workflowDocumentStore.setPinData({});
+			}
 		}
 
 		ws.workflow.nodes.splice(0, ws.workflow.nodes.length);
@@ -217,25 +224,6 @@ export function useWorkflowState() {
 			...ws.workflow.meta,
 			...data,
 		};
-	}
-
-	function setWorkflowPinData(data: IPinData = {}) {
-		const validPinData = Object.keys(data).reduce((accu, nodeName) => {
-			accu[nodeName] = data[nodeName].map((item) => {
-				if (!isJsonKeyObject(item)) {
-					return { json: item };
-				}
-
-				return item;
-			});
-
-			return accu;
-		}, {} as IPinData);
-
-		ws.workflow.pinData = validPinData;
-		ws.workflowObject.setPinData(validPinData);
-
-		dataPinningEventBus.emit('pin-data', validPinData);
 	}
 
 	////
@@ -499,7 +487,6 @@ export function useWorkflowState() {
 		setWorkflowScopes,
 		setWorkflowMetadata,
 		addToWorkflowMetadata,
-		setWorkflowPinData,
 
 		// Execution
 		markExecutionAsStopped,

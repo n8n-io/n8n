@@ -10,11 +10,13 @@ import { Client as TracingClient } from 'langsmith';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { AssistantHandler } from '@/assistant';
 import { LLMServiceError } from '@/errors';
 import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
 import type { HITLInterruptValue } from '@/types/planning';
+import { ISessionStorage } from '@/types/session-storage';
 import {
 	BuilderFeatureFlags,
 	WorkflowBuilderAgent,
@@ -33,6 +35,7 @@ export class AiWorkflowBuilderService {
 
 	constructor(
 		parsedNodeTypes: INodeTypeDescription[],
+		sessionStorage?: ISessionStorage,
 		private readonly client?: AiAssistantClient,
 		private readonly logger?: Logger,
 		private readonly instanceId?: string,
@@ -44,7 +47,7 @@ export class AiWorkflowBuilderService {
 		private readonly resourceLocatorCallbackFactory?: ResourceLocatorCallbackFactory,
 	) {
 		this.nodeTypes = this.filterNodeTypes(parsedNodeTypes);
-		this.sessionManager = new SessionManagerService(this.nodeTypes, logger);
+		this.sessionManager = new SessionManagerService(this.nodeTypes, sessionStorage, logger);
 	}
 
 	/**
@@ -192,6 +195,10 @@ export class AiWorkflowBuilderService {
 		// Create resource locator callback scoped to this user if factory is provided
 		const resourceLocatorCallback = this.resourceLocatorCallbackFactory?.(user.id);
 
+		const assistantHandler = this.client
+			? new AssistantHandler(this.client, this.logger)
+			: undefined;
+
 		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.nodeTypes,
 			// Use the same model for all stages
@@ -222,6 +229,7 @@ export class AiWorkflowBuilderService {
 			nodeDefinitionDirs: this.nodeDefinitionDirs,
 			resourceLocatorCallback,
 			onTelemetryEvent: this.onTelemetryEvent,
+			assistantHandler,
 		});
 
 		return { agent };
@@ -258,6 +266,10 @@ export class AiWorkflowBuilderService {
 
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
 
+		// Load historical messages from persistent storage to include in initial state.
+		// Degrades gracefully if storage is temporarily unavailable.
+		const historicalMessages = await this.loadSessionMessagesSafe(threadId);
+
 		const pendingHitl = payload.resumeData
 			? this.sessionManager.getAndClearPendingHitl(threadId)
 			: undefined;
@@ -271,7 +283,13 @@ export class AiWorkflowBuilderService {
 		const resumeInterrupt = pendingHitl?.value;
 		const agentPayload = resumeInterrupt ? { ...payload, resumeInterrupt } : payload;
 
-		for await (const output of agent.chat(agentPayload, userId, abortSignal)) {
+		for await (const output of agent.chat(
+			agentPayload,
+			userId,
+			abortSignal,
+			undefined,
+			historicalMessages,
+		)) {
 			const streamHitl = this.extractHitlFromStreamOutput(output);
 			if (streamHitl) {
 				this.sessionManager.setPendingHitl(threadId, streamHitl, payload.id);
@@ -280,10 +298,21 @@ export class AiWorkflowBuilderService {
 			yield output;
 		}
 
+		// Save session to persistent storage after chat completes.
+		// Non-critical: if storage is unavailable, the in-memory checkpointer still has the state.
+		await this.saveSessionSafe(agent, workflowId, userId, threadId);
+
 		// Track telemetry after stream completes (onGenerationSuccess is called by the agent)
 		if (this.onTelemetryEvent && userId) {
 			try {
-				await this.trackBuilderReplyTelemetry(agent, workflowId, userId, payload.id, isCodeBuilder);
+				await this.trackBuilderReplyTelemetry(
+					agent,
+					workflowId,
+					userId,
+					payload.id,
+					threadId,
+					isCodeBuilder,
+				);
 			} catch (error) {
 				this.logger?.error('Failed to track builder reply telemetry', { error });
 			}
@@ -344,12 +373,12 @@ export class AiWorkflowBuilderService {
 		workflowId: string | undefined,
 		userId: string,
 		userMessageId: string,
+		threadId: string,
 		isCodeBuilder: boolean,
 	): Promise<void> {
 		if (!this.onTelemetryEvent) return;
 
 		const state = await agent.getState(workflowId, userId);
-		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
 		const messages = state?.values?.messages ?? [];
 
 		const properties: ITelemetryTrackProperties = {
@@ -408,6 +437,49 @@ export class AiWorkflowBuilderService {
 			messageId,
 			agentType,
 		);
+	}
+
+	/**
+	 * Load session messages, degrading gracefully if storage is unavailable.
+	 * Chat still works via the in-memory checkpointer, just without cross-restart persistence.
+	 */
+	private async loadSessionMessagesSafe(threadId: string) {
+		try {
+			return await this.sessionManager.loadSessionMessages(threadId);
+		} catch (error) {
+			this.logger?.error(
+				'Failed to load session messages from storage, continuing without history',
+				{ threadId, error },
+			);
+			return [];
+		}
+	}
+
+	/**
+	 * Save session to persistent storage, logging errors without propagating.
+	 * Non-critical: the in-memory checkpointer still has the state.
+	 */
+	private async saveSessionSafe(
+		agent: WorkflowBuilderAgent,
+		workflowId: string | undefined,
+		userId: string | undefined,
+		threadId: string,
+	) {
+		try {
+			const state = await agent.getState(workflowId, userId);
+			const previousSummary = state?.values?.previousSummary;
+			await this.sessionManager.saveSessionFromCheckpointer(threadId, previousSummary);
+		} catch (error) {
+			this.logger?.error('Failed to save session to persistent storage', { threadId, error });
+		}
+	}
+
+	/**
+	 * Clear all sessions for a given workflow and user.
+	 * Used when user explicitly clears the chat.
+	 */
+	async clearSession(workflowId: string, user: IUser): Promise<void> {
+		await this.sessionManager.clearAllSessions(workflowId, user.id);
 	}
 
 	private static readonly questionsInterruptSchema = z.object({

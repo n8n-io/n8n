@@ -210,6 +210,7 @@ describe('ChatView', () => {
 			status: 'streaming',
 		});
 		vi.mocked(chatApi.stopGenerationApi).mockClear();
+		vi.mocked(chatApi.fetchToolsApi).mockResolvedValue([]);
 
 		vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValue(
 			createMockModelsResponse({

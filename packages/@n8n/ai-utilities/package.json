@@ -1,23 +1,29 @@
 {
 	"name": "@n8n/ai-utilities",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "Utilities for building AI nodes in n8n",
-	"main": "dist/index.js",
-	"module": "src/index.ts",
-	"types": "dist/index.d.ts",
+	"types": "dist/esm/index.d.ts",
+	"module": "dist/esm/index.js",
+	"main": "dist/cjs/index.js",
+	"exports": {
+		".": {
+			"types": "./dist/esm/index.d.ts",
+			"import": "./dist/esm/index.js",
+			"require": "./dist/cjs/index.js"
+		},
+		"./*": "./*"
+	},
 	"scripts": {
-		"example:run": "tsx examples/run.ts",
 		"clean": "rimraf dist .turbo",
 		"dev": "pnpm run watch",
 		"typecheck": "tsc --noEmit",
 		"copy-tokenizer-json": "node scripts/copy-tokenizer-json.js .",
-		"build:examples": "tsc --build tsconfig.examples.json && tsc-alias -p tsconfig.examples.json && pnpm copy-tokenizer-json ./dist_examples/src/",
-		"build": "tsc --build tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json",
+		"build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json && tsc-alias -p tsconfig.build.esm.json && tsc-alias -p tsconfig.build.cjs.json && pnpm copy-tokenizer-json dist/cjs && pnpm copy-tokenizer-json dist/esm",
 		"format": "biome format --write .",
 		"format:check": "biome ci .",
 		"lint": "eslint . --quiet",
 		"lint:fix": "eslint . --fix",
-		"watch": "tsc-watch -p tsconfig.build.json",
+		"watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
 		"test": "jest",
 		"test:unit": "jest",
 		"test:dev": "jest --watch"
@@ -29,7 +35,8 @@
 		"@types/json-schema": "^7.0.15",
 		"jest-mock-extended": "^3.0.4",
 		"@types/mime-types": "catalog:",
-		"tsx": "catalog:"
+		"tsx": "catalog:",
+		"axios": "catalog:"
 	},
 	"dependencies": {
 		"zod": "catalog:",

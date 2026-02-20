@@ -6,6 +6,10 @@
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -318,16 +322,13 @@ export function useWorkflowUpdate() {
 	}
 
 	/**
-	 * Tidy up new node positions
+	 * Tidy up node positions. When nodeIdsFilter is provided, only those nodes
+	 * are laid out. When omitted, all nodes are laid out (full re-layout).
 	 */
-	function tidyUpNewNodes(nodeIds: string[]): void {
-		if (nodeIds.length === 0) {
-			return;
-		}
-
+	function tidyUpNodes(nodeIdsFilter?: string[]): void {
 		canvasEventBus.emit('tidyUp', {
 			source: 'builder-update',
-			nodeIdsFilter: nodeIds,
+			nodeIdsFilter,
 			trackEvents: false,
 			trackHistory: true,
 			trackBulk: false,
@@ -357,18 +358,22 @@ export function useWorkflowUpdate() {
 			updateWorkflowNameIfNeeded(workflowData.name, options?.isInitialGeneration);
 
 			// Merge pin data from workflow data with existing pin data
-			if (workflowData.pinData) {
-				workflowsStore.setWorkflowPinData({
-					...workflowsStore.workflow.pinData,
+			if (workflowData.pinData && workflowsStore.workflowId) {
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowsStore.workflowId),
+				);
+				workflowDocumentStore.setPinData({
+					...workflowDocumentStore.getPinDataSnapshot(),
 					...workflowData.pinData,
 				});
 			}
 
 			builderStore.setBuilderMadeEdits(true);
 
-			// Combine newly added node IDs with any additional IDs from previous messages
-			const allNodeIdsToTidyUp = [...newNodeIds, ...(options?.nodeIdsToTidyUp ?? [])];
-			tidyUpNewNodes(allNodeIdsToTidyUp);
+			const hasStructuralChanges = nodesToAdd.length > 0 || nodesToRemove.length > 0;
+			if (hasStructuralChanges) {
+				tidyUpNodes();
+			}
 
 			return { success: true, newNodeIds };
 		} catch (error) {
