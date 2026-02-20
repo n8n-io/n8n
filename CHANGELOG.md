@@ -1,3 +1,12 @@
+## [2.9.2](https://github.com/n8n-io/n8n/compare/n8n@2.9.1...n8n@2.9.2) (2026-02-20)
+
+
+### Bug Fixes
+
+* **editor:** Fix bug with tags not being sent to backend ([#26040](https://github.com/n8n-io/n8n/issues/26040)) ([db70c39](https://github.com/n8n-io/n8n/commit/db70c391b821c446ad9564a87322507d7ec7eee2))
+
+
+
 ## [2.9.1](https://github.com/n8n-io/n8n/compare/n8n@2.9.0...n8n@2.9.1) (2026-02-18)
 
 
