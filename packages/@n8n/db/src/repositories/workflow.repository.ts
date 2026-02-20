@@ -635,7 +635,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	/**
-	 * Builds search conditions and parameters for matching any of the search words
+	 * Builds search conditions and parameters for matching all of the search words
 	 */
 	private buildSearchConditions(searchWords: string[]): {
 		conditions: string[];
@@ -657,7 +657,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	/**
 	 * Applies a name or description filter to the query builder.
-	 * We are supporting searching by multiple words, where any of the words can match
+	 * We are supporting searching by multiple words, where all words must match
 	 */
 	private applyNameFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
@@ -667,7 +667,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		if (searchWords.length > 0) {
 			const { conditions, parameters } = this.buildSearchConditions(searchWords);
-			qb.andWhere(`(${conditions.join(' OR ')})`, parameters);
+			qb.andWhere(`(${conditions.join(' AND ')})`, parameters);
 		}
 	}
 
