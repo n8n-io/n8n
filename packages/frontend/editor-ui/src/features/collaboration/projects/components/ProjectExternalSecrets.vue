@@ -118,11 +118,15 @@ const emptyStateConfig = computed(() => {
 	return configs[type];
 });
 
+const sortedConnections = computed(() =>
+	[...projectSecretConnections.value].sort((a, b) => b.secretsCount - a.secretsCount),
+);
+
 const filteredConnections = computed(() => {
-	if (!secretsSearch.value.trim()) return projectSecretConnections.value;
+	if (!secretsSearch.value.trim()) return sortedConnections.value;
 
 	const searchTerm = secretsSearch.value.toLowerCase();
-	return projectSecretConnections.value.filter((connection) => {
+	return sortedConnections.value.filter((connection) => {
 		if (connection.name.toLowerCase().includes(searchTerm)) return true;
 		const secrets = connectionSecrets[connection.name] ?? [];
 		return secrets.some((s) => s.name.toLowerCase().includes(searchTerm));
