@@ -3203,4 +3203,69 @@ describe('AI Builder store', () => {
 			capturedOnDone!();
 		});
 	});
+
+	describe('latestRevertVersion', () => {
+		it('returns null when chatMessages is empty', () => {
+			const builderStore = useBuilderStore();
+			expect(builderStore.latestRevertVersion).toBeNull();
+		});
+
+		it('returns null when no messages have revertVersion', () => {
+			const builderStore = useBuilderStore();
+			builderStore.$patch({
+				chatMessages: [
+					{ id: '1', type: 'text', role: 'user', content: 'hello', read: true },
+					{ id: '2', type: 'text', role: 'assistant', content: 'hi', read: true },
+				],
+			});
+			expect(builderStore.latestRevertVersion).toBeNull();
+		});
+
+		it('returns the revertVersion when only one message has it', () => {
+			const builderStore = useBuilderStore();
+			const revertVersion = { id: 'version-1', createdAt: '2024-01-01T00:00:00Z' };
+			builderStore.$patch({
+				chatMessages: [
+					{
+						id: '1',
+						type: 'text',
+						role: 'user',
+						content: 'build a workflow',
+						read: true,
+						revertVersion,
+					},
+					{ id: '2', type: 'text', role: 'assistant', content: 'done', read: true },
+				],
+			});
+			expect(builderStore.latestRevertVersion).toEqual(revertVersion);
+		});
+
+		it('returns the latest revertVersion when multiple messages have revertVersion', () => {
+			const builderStore = useBuilderStore();
+			const firstRevertVersion = { id: 'version-1', createdAt: '2024-01-01T00:00:00Z' };
+			const secondRevertVersion = { id: 'version-2', createdAt: '2024-01-02T00:00:00Z' };
+			builderStore.$patch({
+				chatMessages: [
+					{
+						id: '1',
+						type: 'text',
+						role: 'user',
+						content: 'build a workflow',
+						read: true,
+						revertVersion: firstRevertVersion,
+					},
+					{ id: '2', type: 'text', role: 'assistant', content: 'done', read: true },
+					{
+						id: '3',
+						type: 'text',
+						role: 'user',
+						content: 'modify it',
+						read: true,
+						revertVersion: secondRevertVersion,
+					},
+				],
+			});
+			expect(builderStore.latestRevertVersion).toEqual(secondRevertVersion);
+		});
+	});
 });

@@ -51,6 +51,10 @@ export const AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT = createExperiment(
 
 export const AI_BUILDER_PLAN_MODE_EXPERIMENT = createExperiment('073_builder_plan_mode');
 
+export const AI_BUILDER_REVIEW_CHANGES_EXPERIMENT = createExperiment(
+	'075_ai_builder_review_changes',
+);
+
 export const EXECUTION_LOGIC_V2_EXPERIMENT = {
 	name: '062_execution_logic_v2',
 	control: 'control',
@@ -116,4 +120,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT.name,
 	FOCUSED_NODES_EXPERIMENT.name,
 	QUICK_CONNECT_EXPERIMENT.name,
+	AI_BUILDER_REVIEW_CHANGES_EXPERIMENT.name,
 ];

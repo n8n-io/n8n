@@ -71,7 +71,9 @@ export type WorkflowBuilderJourneyEventType =
 	| 'browser_notification_dismiss'
 	| 'browser_generation_done_notified'
 	| 'user_switched_builder_mode'
-	| 'user_clicked_implement_plan';
+	| 'user_clicked_implement_plan'
+	| 'user_opened_review_changes'
+	| 'user_closed_review_changes';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -239,6 +241,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	});
 
 	const hasMessages = computed(() => chatMessages.value.length > 0);
+
+	const latestRevertVersion = computed(() => {
+		const msg = chatMessages.value.findLast((m) => 'revertVersion' in m && m.revertVersion);
+		return msg && 'revertVersion' in msg ? msg.revertVersion : null;
+	});
 
 	const isPlanModeAvailable = computed(() => {
 		const variant = posthogStore.getVariant(AI_BUILDER_PLAN_MODE_EXPERIMENT.name);
@@ -1216,6 +1223,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsRemaining,
 		hasNoCreditsRemaining,
 		hasMessages,
+		latestRevertVersion,
 		workflowTodos,
 		hasTodosHiddenByPinnedData,
 		hasHadSuccessfulExecution,
