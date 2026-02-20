@@ -158,7 +158,6 @@ Abstract interface for bridge implementations.
 interface RuntimeBridge {
   initialize(): Promise<void>;
   execute(code: string, data: Record<string, unknown>): unknown;
-  getDataSync(path: string): unknown;
   dispose(): Promise<void>;
   isDisposed(): boolean;
 }

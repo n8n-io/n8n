@@ -35,22 +35,6 @@ export interface RuntimeBridge {
 	execute(code: string, data: Record<string, unknown>): unknown;
 
 	/**
-	 * Handle synchronous data request from runtime (lazy loading).
-	 *
-	 * Called when runtime accesses a property it doesn't have locally.
-	 * The bridge looks up the property in the current workflow data.
-	 *
-	 * IMPORTANT: This must be SYNCHRONOUS for lazy-loading proxies to work.
-	 * - IsolatedVmBridge: Uses ivm.Reference for synchronous callbacks
-	 * - WebWorkerBridge: Must pre-fetch data (no lazy loading in Phase 1)
-	 *
-	 * @param path - Property path (e.g., "user.email")
-	 * @returns Value at the path, or undefined if not found.
-	 *          Must be JSON-serializable.
-	 */
-	getDataSync(path: string): unknown;
-
-	/**
 	 * Dispose of the isolated context and free resources.
 	 * After disposal, the bridge cannot be used again.
 	 */

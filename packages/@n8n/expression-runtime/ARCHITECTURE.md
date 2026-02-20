@@ -132,19 +132,20 @@ sequenceDiagram
 
 ### Lazy Data Loading
 
+Data access from inside the isolate goes through `ivm.Reference` callbacks
+registered by the bridge — not through a method on `RuntimeBridge` itself.
+
 ```mermaid
 sequenceDiagram
     participant Runtime as Runtime (Isolated)
     participant Proxy as Lazy Proxy
-    participant Bridge as Bridge
+    participant Bridge as IsolatedVmBridge (host)
 
     Runtime->>Proxy: $json.user.email
-    Proxy->>Bridge: getDataSync('user.email')
-    Bridge->>Bridge: Lookup path in current data
-    Bridge-->>Proxy: "test@example.com"
+    Proxy->>Bridge: __getValueAtPath(['$json','user','email']) via ivm.Reference
+    Bridge->>Bridge: Navigate data object registered via registerCallbacks()
+    Bridge-->>Proxy: "test@example.com" (primitive copied into isolate)
     Proxy-->>Runtime: "test@example.com"
-
-    Note over Bridge: Bridge stores current WorkflowDataProxy<br/>during execute() call
 ```
 
 ## Environment-Specific Implementations
