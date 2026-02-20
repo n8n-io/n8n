@@ -1,3 +1,14 @@
+## [1.123.21](https://github.com/n8n-io/n8n/compare/n8n@1.123.20...n8n@1.123.21) (2026-02-20)
+
+
+### Bug Fixes
+
+* **core:** Remove --tunnel option after hooks.n8n.cloud shutdown ([#25944](https://github.com/n8n-io/n8n/issues/25944)) ([b045eb9](https://github.com/n8n-io/n8n/commit/b045eb9b5f04802054fb4d236f89bb54251375d1))
+* Dependency bump backport ([#25788](https://github.com/n8n-io/n8n/issues/25788)) ([d106182](https://github.com/n8n-io/n8n/commit/d1061826e9f753a9f572f253a265fbba0414a5da))
+* Use task runners for AI Transform node ([#25917](https://github.com/n8n-io/n8n/issues/25917)) ([b30ed4c](https://github.com/n8n-io/n8n/commit/b30ed4c662c5e67bfbc35ff5ab5789cc1d3d70d5))
+
+
+
 ## [1.123.20](https://github.com/n8n-io/n8n/compare/n8n@1.123.19...n8n@1.123.20) (2026-02-06)
 
 
