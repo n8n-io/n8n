@@ -128,6 +128,7 @@ const {
 	node,
 	nodeType,
 	computed(() => props.overrideCredType),
+	() => props.showAll,
 );
 
 const credentialTypeNames = computed(() => {
@@ -178,7 +179,6 @@ watch(
 		if (isActive && nodeType.value && listeningForAuthChange.value) {
 			if (mainNodeAuthField.value && oldValue && newValue) {
 				const newAuth = newValue[mainNodeAuthField.value.name];
-
 				if (newAuth) {
 					const authType =
 						typeof newAuth === 'object' ? JSON.stringify(newAuth) : newAuth.toString();
@@ -602,7 +602,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					/>
 				</div>
 				<div
-					v-else-if="showQuickConnectEmptyState(type) && quickConnectCredentialType"
+					v-else-if="
+						options.length === 0 && showQuickConnectEmptyState(type) && quickConnectCredentialType
+					"
 					:class="[
 						$style.quickConnectContainer,
 						{ [$style.noMarginTop]: isGoogleOAuthType(quickConnectCredentialType) },
@@ -610,6 +612,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					data-test-id="quick-connect-empty-state"
 				>
 					<QuickConnectButton
+						size="small"
 						:disabled="quickConnectLoading"
 						:credential-type-name="quickConnectCredentialType"
 						:service-name="getServiceName(quickConnectCredentialType)"
@@ -645,8 +648,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					/>
 					<N8nButton
 						v-if="canCreateCredentials"
-						type="highlightFill"
-						size="medium"
+						variant="subtle"
+						size="small"
 						data-test-id="setup-credential-button"
 						@click="createNewCredential(type.name, true, showMixedCredentials(type))"
 					>
