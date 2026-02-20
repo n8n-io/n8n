@@ -98,7 +98,7 @@ const chatPanelStore = useChatPanelStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { isQuickConnectEnabled, getQuickConnectOption } = useQuickConnect();
+const { isQuickConnectEnabled } = useQuickConnect();
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -213,23 +213,6 @@ const canEdit = computed(() => {
 
 const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
-});
-
-const serviceName = computed(() => {
-	const nodeType = ndvStore.activeNode?.type;
-
-	if (!nodeType) return appName.value;
-
-	const quickConnectOption = getQuickConnectOption(
-		credentialTypeName.value,
-		ndvStore.activeNode?.type,
-	);
-
-	if (quickConnectOption?.serviceName) {
-		return quickConnectOption.serviceName;
-	}
-
-	return appName.value;
 });
 
 function onDataChange(event: IUpdateInformation): void {
@@ -356,7 +339,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				<template v-else-if="isQuickConnectEnabled" #button>
 					<QuickConnectButton
 						size="small"
-						:service-name="serviceName"
+						:service-name="appName"
 						:credential-type-name="credentialType.name"
 						:label="i18n.baseText('credentialEdit.credentialConfig.reconnect')"
 						data-test-id="quick-connect-reconnect-button"
@@ -460,7 +443,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			<template v-if="isOAuthType && !isOAuthConnected && canWrite">
 				<QuickConnectButton
 					v-if="isQuickConnectEnabled"
-					:service-name="serviceName"
+					:service-name="appName"
 					:credential-type-name="credentialType.name"
 					:disabled="!requiredPropertiesFilled"
 					:disabled-tooltip="i18n.baseText('credentialEdit.credentialConfig.oauthDisabledTooltip')"

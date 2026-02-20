@@ -521,11 +521,6 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 }
 
 function getServiceName(credentialTypeName: string): string {
-	const quickConnectOption = getQuickConnectOption(credentialTypeName, props.node.type);
-	if (quickConnectOption?.serviceName) {
-		return quickConnectOption.serviceName;
-	}
-
 	const displayName = credentialTypeNames.value[credentialTypeName] ?? credentialTypeName;
 	return getAppNameFromCredType(displayName);
 }
