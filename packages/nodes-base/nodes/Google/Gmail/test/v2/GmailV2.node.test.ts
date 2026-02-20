@@ -28,7 +28,6 @@ describe('Test Gmail Node v2', () => {
 					includeSpamTrash: 'true',
 					labelIds: 'CHAT',
 					q: 'test from:Test Sender after:1734393600 before:1735171200',
-					readStatus: 'both',
 					maxResults: '2',
 				})
 				.reply(200, { messages });
@@ -46,7 +45,6 @@ describe('Test Gmail Node v2', () => {
 					includeSpamTrash: 'true',
 					labelIds: 'CHAT',
 					q: 'test from:Test Sender after:1734393600 before:1735171200',
-					readStatus: 'both',
 					maxResults: '2',
 					format: 'raw',
 				})
@@ -60,7 +58,6 @@ describe('Test Gmail Node v2', () => {
 					includeSpamTrash: 'true',
 					labelIds: 'CHAT',
 					q: 'test from:Test Sender after:1734393600 before:1735171200',
-					readStatus: 'both',
 					maxResults: '2',
 					format: 'raw',
 				})
