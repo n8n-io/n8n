@@ -41,7 +41,7 @@ export async function customerIoApiRequest(
 
 /** Convert dot-separated event names to underscore-separated API format */
 export function toApiEventName(event: string): string {
-	return event.replace('.', '_');
+	return event.replaceAll('.', '_');
 }
 
 /** Check if all current events exist in the webhook's event list */
