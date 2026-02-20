@@ -16,7 +16,8 @@ import {
 } from '../workflow-builder/string-utils';
 
 // Workflows with known issues that need to be skipped entirely
-const SKIP_WORKFLOWS = new Set<string>(['3672']);
+// (prefer adding skip: true + skipReason in manifest.json instead)
+const SKIP_WORKFLOWS = new Set<string>([]);
 
 // Workflows to skip validation due to known codegen bugs (invalid warnings)
 // These produce warnings that don't exist in the original workflow (codegen issues to fix)
