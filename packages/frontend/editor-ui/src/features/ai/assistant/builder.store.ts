@@ -71,7 +71,9 @@ export type WorkflowBuilderJourneyEventType =
 	| 'browser_notification_dismiss'
 	| 'browser_generation_done_notified'
 	| 'user_switched_builder_mode'
-	| 'user_clicked_implement_plan';
+	| 'user_clicked_implement_plan'
+	| 'user_opened_review_changes'
+	| 'user_closed_review_changes';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -124,6 +126,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Core state
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
 	const streaming = ref<boolean>(false);
+	// Track whether the current streaming is for a help question (not a build)
+	const isHelpStreaming = ref<boolean>(false);
 	const builderThinkingMessage = ref<string | undefined>();
 	const streamingAbortController = ref<AbortController | null>(null);
 	const initialGeneration = ref<boolean>(false);
@@ -237,6 +241,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	});
 
 	const hasMessages = computed(() => chatMessages.value.length > 0);
+
+	const latestRevertVersion = computed(() => {
+		const msg = chatMessages.value.findLast((m) => 'revertVersion' in m && m.revertVersion);
+		return msg && 'revertVersion' in msg ? msg.revertVersion : null;
+	});
 
 	const isPlanModeAvailable = computed(() => {
 		const variant = posthogStore.getVariant(AI_BUILDER_PLAN_MODE_EXPERIMENT.name);
@@ -435,6 +444,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	function stopStreaming(payload?: StopStreamingPayload) {
 		streaming.value = false;
+		isHelpStreaming.value = false;
 		if (streamingAbortController.value) {
 			streamingAbortController.value.abort();
 			streamingAbortController.value = null;
@@ -540,8 +550,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		addLoadingAssistantMessage(locale.baseText(thinkingKey));
 		streaming.value = true;
 
-		// Updates page title to show AI is building
-		documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_BUILDING');
+		// Updates page title to show AI is building (skip for help questions)
+		if (!isHelpStreaming.value) {
+			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_BUILDING');
+		}
 	}
 
 	/**
@@ -687,7 +699,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		mode?: 'build' | 'plan';
 		/** Plan mode answers for custom message display */
 		planAnswers?: PlanMode.QuestionResponse[];
+		/** Whether this is a help question (e.g. credential or error help) that should not lock the canvas */
+		helpMessage?: boolean;
 	}) {
+		isHelpStreaming.value = Boolean(options.helpMessage);
 		if (streaming.value) {
 			return;
 		}
@@ -795,6 +810,15 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				rootStore.restApiContext,
 				{ payload },
 				(response) => {
+					if (!isHelpStreaming.value) {
+						const hasAssistantToolCall = response.messages.some(
+							(msg) => 'toolName' in msg && msg.toolName === 'assistant',
+						);
+						if (hasAssistantToolCall) {
+							isHelpStreaming.value = true;
+						}
+					}
+
 					const result = processAssistantMessages(
 						chatMessages.value,
 						response.messages,
@@ -1179,6 +1203,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// State
 		chatMessages,
 		streaming,
+		isHelpStreaming,
 		builderThinkingMessage,
 		isAIBuilderEnabled,
 		isCodeBuilder,
@@ -1198,6 +1223,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsRemaining,
 		hasNoCreditsRemaining,
 		hasMessages,
+		latestRevertVersion,
 		workflowTodos,
 		hasTodosHiddenByPinnedData,
 		hasHadSuccessfulExecution,
