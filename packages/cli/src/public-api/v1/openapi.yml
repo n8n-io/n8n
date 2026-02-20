@@ -36,8 +36,14 @@ tags:
     description: Operations about data tables and their rows
   - name: Projects
     description: Operations about projects
+  - name: Agent
+    description: Agent-to-agent (A2A) communication
 
 paths:
+  /agents/{id}/card:
+    $ref: './handlers/agents/spec/paths/agents.id.card.yml'
+  /agents/{id}/task:
+    $ref: './handlers/agents/spec/paths/agents.id.task.yml'
   /audit:
     $ref: './handlers/audit/spec/paths/audit.yml'
   /credentials:

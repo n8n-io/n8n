@@ -1,0 +1,39 @@
+post:
+  x-eov-operation-id: dispatchAgentTask
+  x-eov-operation-handler: v1/handlers/agents/agents.handler
+  tags:
+    - Agent
+  summary: Dispatch a task to an agent
+  description: >-
+    Send a prompt to an agent for execution. Supports JSON response or
+    SSE streaming via Accept: text/event-stream header.
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: The ID of the agent.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/agentTaskRequest.yml'
+  responses:
+    '200':
+      description: Task result (JSON or SSE stream).
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/agentTaskResponse.yml'
+        text/event-stream:
+          schema:
+            type: string
+            description: SSE stream of task events.
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      description: Forbidden - caller does not have access to this agent.
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

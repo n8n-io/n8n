@@ -1,0 +1,25 @@
+get:
+  x-eov-operation-id: getAgentCard
+  x-eov-operation-handler: v1/handlers/agents/agents.handler
+  tags:
+    - Agent
+  summary: Get agent card
+  description: Retrieve the A2A-compliant agent card for discovery.
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: The ID of the agent.
+  responses:
+    '200':
+      description: The agent card.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/agentCard.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

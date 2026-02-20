@@ -29,6 +29,7 @@ import type { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
 import type { License } from '@/license';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
+import type { PublicApiKeyService } from '@/services/public-api-key.service';
 import { RateLimitService } from '@/services/rate-limit.service';
 import type { SuperAgentTest } from '@test-integration/types';
 
@@ -53,6 +54,7 @@ describe('ControllerRegistry', () => {
 			metadata,
 			lastActiveAtService,
 			new RateLimitService(),
+			mock<PublicApiKeyService>(),
 		).activate(app);
 		agent = testAgent(app);
 	});

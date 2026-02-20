@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>n8n A2A Streaming Demo</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface-alt: #0f3460;
+    --primary: #e94560;
+    --success: #00b894;
+    --warning: #fdcb6e;
+    --error: #d63031;
+    --text: #eee;
+    --text-dim: #a0a0b8;
+    --radius: 8px;
+    --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 16px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+
+  header .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--primary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .container {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Left Panel: Config ── */
+  .config {
+    background: var(--surface);
+    padding: 20px;
+    overflow-y: auto;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .field input, .field textarea, .field select {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 13px;
+    font-family: var(--mono);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .field input:focus, .field textarea:focus {
+    border-color: var(--primary);
+  }
+
+  .field textarea { resize: vertical; min-height: 80px; }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  details {
+    background: rgba(255,255,255,0.03);
+    border-radius: var(--radius);
+    padding: 12px;
+  }
+
+  details summary {
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    user-select: none;
+  }
+
+  details[open] summary { margin-bottom: 12px; }
+  details .field { margin-top: 10px; }
+  details .field:first-of-type { margin-top: 0; }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 12px;
+  }
+
+  button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+
+  button:active { transform: scale(0.98); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-run {
+    background: var(--primary);
+    color: white;
+  }
+
+  .btn-stop {
+    background: var(--error);
+    color: white;
+    flex: 0 0 auto;
+    padding: 12px 20px;
+  }
+
+  .btn-clear {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: var(--text-dim);
+    flex: 0 0 auto;
+    padding: 12px 20px;
+  }
+
+  /* ── Right Panel: Stream ── */
+  .stream-panel {
+    padding: 24px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    gap: 12px;
+  }
+
+  .empty-state .icon { font-size: 48px; opacity: 0.3; }
+  .empty-state p { font-size: 14px; }
+
+  /* ── Step Cards ── */
+  .step {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    animation: slideIn 0.3s ease-out both;
+    border-left: 3px solid transparent;
+  }
+
+  .step.running { border-left-color: var(--primary); }
+  .step.success { border-left-color: var(--success); }
+  .step.failed, .step.error { border-left-color: var(--error); }
+
+  .step-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .step.running .step-icon { background: rgba(233,69,96,0.15); }
+  .step.success .step-icon { background: rgba(0,184,148,0.15); }
+  .step.failed .step-icon, .step.error .step-icon { background: rgba(214,48,49,0.15); }
+
+  .step-body { flex: 1; min-width: 0; }
+
+  .step-action {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .step-detail {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+
+  .step-result {
+    margin-top: 6px;
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text-dim);
+    background: rgba(0,0,0,0.2);
+    padding: 6px 10px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .step-status {
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* ── Thinking Indicator ── */
+  .thinking {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    color: var(--text-dim);
+    font-size: 13px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .thinking-dots {
+    display: flex;
+    gap: 4px;
+  }
+
+  .thinking-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+    animation: bounce 1.4s ease-in-out infinite;
+  }
+
+  .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  /* ── Summary Card ── */
+  .summary {
+    background: linear-gradient(135deg, rgba(0,184,148,0.08), rgba(0,184,148,0.02));
+    border: 1px solid rgba(0,184,148,0.2);
+    border-radius: var(--radius);
+    padding: 16px;
+    animation: fadeIn 0.5s ease;
+  }
+
+  .summary-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--success);
+  }
+
+  .summary-text {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .error-card {
+    background: linear-gradient(135deg, rgba(214,48,49,0.08), rgba(214,48,49,0.02));
+    border: 1px solid rgba(214,48,49,0.2);
+    border-radius: var(--radius);
+    padding: 16px;
+    animation: fadeIn 0.5s ease;
+  }
+
+  .error-card .summary-header { color: var(--error); }
+
+  /* ── Raw Events Log ── */
+  .raw-log {
+    margin-top: auto;
+    background: rgba(0,0,0,0.3);
+    border-radius: var(--radius);
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .raw-log summary {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    user-select: none;
+  }
+
+  .raw-log pre {
+    padding: 0 14px 14px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.6;
+  }
+
+  .raw-log .event-line { display: block; }
+  .raw-log .event-type { color: var(--primary); font-weight: 600; }
+
+  /* ── Animations ── */
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-8px); }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(233,69,96,0.3);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  /* ── Timer ── */
+  .timer {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    padding: 4px 0;
+    text-align: center;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 800px) {
+    .container { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+    .config { max-height: 40vh; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>n8n A2A Streaming Demo</h1>
+  <span class="badge">SSE</span>
+</header>
+
+<div class="container">
+  <!-- Config Panel -->
+  <div class="config">
+    <div class="field">
+      <label>Backend URL</label>
+      <input id="backendUrl" placeholder="http://localhost:5678 (leave empty for same-origin)">
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Agent ID</label>
+        <input id="agentId" placeholder="uuid...">
+      </div>
+      <div class="field">
+        <label>API Key</label>
+        <input id="apiKey" type="password" placeholder="n8n API key">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Prompt</label>
+      <textarea id="prompt" rows="3">Run your available workflows and report the results.</textarea>
+    </div>
+
+    <details id="externalSection">
+      <summary>External Agent (Cross-Instance)</summary>
+      <div class="field">
+        <label>Agent Name</label>
+        <input id="extName" placeholder="RemoteWorker">
+      </div>
+      <div class="field">
+        <label>Agent URL</label>
+        <input id="extUrl" placeholder="http://host.docker.internal:5681/rest/agents/{id}/task">
+      </div>
+      <div class="field">
+        <label>Agent API Key</label>
+        <input id="extApiKey" type="password" placeholder="Remote instance API key">
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <input id="extDesc" value="Remote worker agent" placeholder="What this agent does">
+      </div>
+    </details>
+
+    <details>
+      <summary>BYOK (Bring Your Own Key)</summary>
+      <div class="field">
+        <label>LLM API Key</label>
+        <input id="llmKey" type="password" placeholder="sk-ant-... or sk-...">
+      </div>
+      <div class="field">
+        <label>Caller ID</label>
+        <input id="callerId" placeholder="caller-identity (for dynamic credential resolution)">
+      </div>
+    </details>
+
+    <details id="workflowCredsSection">
+      <summary>Workflow Credentials (Per-Request)</summary>
+      <div id="workflowCredRows"></div>
+      <button type="button" style="margin-top:8px;flex:0;padding:6px 12px;font-size:12px;background:var(--surface-alt);color:var(--text);border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);cursor:pointer;" onclick="addWorkflowCredRow()">+ Add Credential</button>
+    </details>
+
+    <div class="actions">
+      <button class="btn-clear" onclick="clearStream()">Clear</button>
+      <button class="btn-stop" id="stopBtn" onclick="stopStream()" disabled>Stop</button>
+      <button class="btn-run" id="runBtn" onclick="runTask()">Run Task</button>
+    </div>
+  </div>
+
+  <!-- Stream Panel -->
+  <div class="stream-panel" id="streamPanel">
+    <div class="empty-state" id="emptyState">
+      <div class="icon">&#x1F916;</div>
+      <p>Configure an agent and click Run Task to start streaming</p>
+    </div>
+  </div>
+</div>
+
+<script>
+let abortController = null;
+let startTime = null;
+let timerInterval = null;
+
+function $(id) { return document.getElementById(id); }
+
+function runTask() {
+  const backendUrl = $('backendUrl').value.trim().replace(/\/$/, '') || window.location.origin;
+  const agentId = $('agentId').value.trim();
+  const apiKey = $('apiKey').value.trim();
+  const prompt = $('prompt').value.trim();
+
+  if (!agentId || !apiKey || !prompt) {
+    alert('Fill in Agent ID, API Key, and Prompt');
+    return;
+  }
+
+  clearStream();
+  $('emptyState')?.remove();
+
+  const body = { prompt };
+
+  // External agent config
+  const extName = $('extName').value.trim();
+  const extUrl = $('extUrl').value.trim();
+  const extApiKey = $('extApiKey').value.trim();
+  if (extName && extUrl && extApiKey) {
+    body.externalAgents = [{
+      name: extName,
+      description: $('extDesc').value.trim() || extName,
+      url: extUrl,
+      apiKey: extApiKey,
+    }];
+  }
+
+  // BYOK
+  const llmKey = $('llmKey').value.trim();
+  if (llmKey) {
+    body.byokCredentials = { anthropicApiKey: llmKey };
+  }
+
+  // Workflow Credentials
+  const wfCreds = collectWorkflowCredentials();
+  if (Object.keys(wfCreds).length > 0) {
+    if (!body.byokCredentials) body.byokCredentials = {};
+    body.byokCredentials.workflowCredentials = wfCreds;
+  }
+
+  // Caller ID
+  const callerId = $('callerId').value.trim();
+  if (callerId) {
+    body.callerId = callerId;
+  }
+
+  $('runBtn').disabled = true;
+  $('stopBtn').disabled = false;
+
+  startTime = Date.now();
+  const timerEl = document.createElement('div');
+  timerEl.className = 'timer';
+  timerEl.id = 'timer';
+  $('streamPanel').appendChild(timerEl);
+  timerInterval = setInterval(() => {
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    timerEl.textContent = `${elapsed}s`;
+  }, 100);
+
+  // Add raw log
+  const rawLog = document.createElement('details');
+  rawLog.className = 'raw-log';
+  rawLog.id = 'rawLog';
+  rawLog.innerHTML = '<summary>Raw SSE Events</summary><pre id="rawPre"></pre>';
+  $('streamPanel').appendChild(rawLog);
+
+  abortController = new AbortController();
+
+  fetch(`${backendUrl}/api/v1/agents/${agentId}/task`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'text/event-stream',
+      'x-n8n-api-key': apiKey,
+    },
+    body: JSON.stringify(body),
+    signal: abortController.signal,
+  })
+  .then(response => {
+    if (!response.ok) {
+      return response.text().then(text => { throw new Error(`HTTP ${response.status}: ${text}`); });
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+
+    // JSON fallback (non-streaming response)
+    if (!contentType.includes('text/event-stream')) {
+      return response.json().then(json => {
+        const data = json.data || json;
+        if (data.steps && data.steps.length) {
+          data.steps.forEach(s => addStep(s.action, s.workflowName, s.toAgent, false, 'success', s.result));
+        }
+        const text = data.summary || data.message || JSON.stringify(data);
+        addSummary(text, data.status || 'completed');
+        finish();
+      });
+    }
+
+    // SSE streaming
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    addThinking();
+
+    function pump() {
+      return reader.read().then(({ done, value }) => {
+        if (done) { finish(); return; }
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop();
+
+        for (const part of parts) {
+          for (const line of part.split('\n')) {
+            if (line.startsWith('data: ')) {
+              try {
+                const event = JSON.parse(line.slice(6));
+                handleEvent(event);
+                logRaw(event);
+              } catch (e) {
+                logRaw({ raw: line.slice(6), parseError: e.message });
+              }
+            }
+          }
+        }
+
+        return pump();
+      });
+    }
+
+    return pump();
+  })
+  .catch(err => {
+    if (err.name === 'AbortError') {
+      addError('Stream cancelled by user');
+    } else {
+      addError(err.message);
+    }
+    finish();
+  });
+}
+
+function handleEvent(event) {
+  removeThinking();
+
+  switch (event.type) {
+    case 'step':
+      addStep(
+        event.action,
+        event.workflowName,
+        event.toAgent,
+        event.external,
+        'running'
+      );
+      addThinking();
+      break;
+
+    case 'observation':
+      updateMatchingStep(event);
+      addThinking();
+      break;
+
+    case 'done':
+      removeThinking();
+      addSummary(event.summary || event.message || 'Task finished', event.status || 'completed');
+      break;
+
+    default:
+      // Unknown event type — render as a generic step
+      addStep(event.type || 'unknown', null, null, false, 'success', JSON.stringify(event));
+  }
+}
+
+function addStep(action, workflowName, toAgent, external, status, result) {
+  const panel = $('streamPanel');
+  const el = document.createElement('div');
+  el.className = `step ${status}`;
+  el.dataset.status = status;
+  el.dataset.action = action || '';
+  if (toAgent) el.dataset.toAgent = toAgent;
+  if (workflowName) el.dataset.workflowName = workflowName;
+
+  const icon = action === 'execute_workflow' ? '\u2699\uFE0F'
+    : action === 'send_message' ? '\uD83D\uDCE4'
+    : '\u26A1';
+
+  const externalBadge = external ? ' <span style="font-size:10px;background:var(--warning);color:#333;padding:1px 6px;border-radius:8px;font-weight:600;">EXTERNAL</span>' : '';
+
+  let detail = '';
+  if (workflowName) detail = workflowName;
+  else if (toAgent) detail = `\u2192 ${toAgent}`;
+
+  el.innerHTML = `
+    <div class="step-icon">${icon}</div>
+    <div class="step-body">
+      <div class="step-action">${formatAction(action)}${externalBadge}</div>
+      ${detail ? `<div class="step-detail">${detail}</div>` : ''}
+      ${result ? `<div class="step-result">${escapeHtml(result)}</div>` : ''}
+    </div>
+    <div class="step-status">${status === 'running' ? '<div class="spinner"></div>' : statusIcon(status)}</div>
+  `;
+
+  // Insert before thinking/timer/rawLog
+  const thinking = panel.querySelector('.thinking');
+  const timer = $('timer');
+  const insertBefore = thinking || timer;
+  if (insertBefore) {
+    panel.insertBefore(el, insertBefore);
+  } else {
+    panel.appendChild(el);
+  }
+}
+
+function updateLastStep(result, error) {
+  const steps = document.querySelectorAll('.step');
+  const last = steps[steps.length - 1];
+  if (!last) return;
+
+  const status = error ? 'error' : 'success';
+  last.className = `step ${status}`;
+  last.dataset.status = status;
+
+  const statusEl = last.querySelector('.step-status');
+  if (statusEl) statusEl.innerHTML = statusIcon(status);
+
+  if (result || error) {
+    let resultEl = last.querySelector('.step-result');
+    if (!resultEl) {
+      resultEl = document.createElement('div');
+      resultEl.className = 'step-result';
+      last.querySelector('.step-body').appendChild(resultEl);
+    }
+    resultEl.textContent = error || result;
+  }
+}
+
+function updateMatchingStep(event) {
+  // Reverse once so we search from newest to oldest
+  const steps = Array.from(document.querySelectorAll('.step')).reverse();
+  let target = null;
+
+  // If the observation has toAgent, find the matching send_message step
+  if (event.toAgent) {
+    target = steps.find(
+      s => s.dataset.action === 'send_message' && s.dataset.toAgent === event.toAgent
+    );
+  }
+
+  // If the observation has workflowName, find the matching execute_workflow step
+  if (!target && event.workflowName) {
+    target = steps.find(
+      s => s.dataset.action === 'execute_workflow' && s.dataset.workflowName === event.workflowName
+    );
+  }
+
+  // Fallback: last running step (first in reversed array)
+  if (!target) {
+    target = steps.find(s => s.dataset.status === 'running') || steps[0];
+  }
+
+  if (!target) return;
+
+  const status = event.error ? 'error' : 'success';
+  target.className = `step ${status}`;
+  target.dataset.status = status;
+
+  const statusEl = target.querySelector('.step-status');
+  if (statusEl) statusEl.innerHTML = statusIcon(status);
+
+  const result = event.error || event.result;
+  if (result) {
+    let resultEl = target.querySelector('.step-result');
+    if (!resultEl) {
+      resultEl = document.createElement('div');
+      resultEl.className = 'step-result';
+      target.querySelector('.step-body').appendChild(resultEl);
+    }
+    resultEl.textContent = result;
+  }
+}
+
+function addThinking() {
+  removeThinking();
+  const panel = $('streamPanel');
+  const el = document.createElement('div');
+  el.className = 'thinking';
+  el.innerHTML = `
+    <div class="thinking-dots"><span></span><span></span><span></span></div>
+    Agent is thinking...
+  `;
+  const timer = $('timer');
+  if (timer) {
+    panel.insertBefore(el, timer);
+  } else {
+    panel.appendChild(el);
+  }
+}
+
+function removeThinking() {
+  document.querySelectorAll('.thinking').forEach(el => el.remove());
+}
+
+function addSummary(text, status) {
+  const panel = $('streamPanel');
+  const isError = status === 'error' || status === 'failed';
+  const el = document.createElement('div');
+  el.className = isError ? 'error-card' : 'summary';
+  el.innerHTML = `
+    <div class="summary-header">${isError ? '\u274C' : '\u2705'} ${status === 'completed' ? 'Task Completed' : status}</div>
+    <div class="summary-text">${escapeHtml(text)}</div>
+  `;
+  const timer = $('timer');
+  if (timer) {
+    panel.insertBefore(el, timer);
+  } else {
+    panel.appendChild(el);
+  }
+}
+
+function addError(message) {
+  removeThinking();
+  addSummary(message, 'error');
+}
+
+function logRaw(event) {
+  const pre = $('rawPre');
+  if (!pre) return;
+  const line = document.createElement('span');
+  line.className = 'event-line';
+  const type = event.type || 'raw';
+  line.innerHTML = `<span class="event-type">${type}</span> ${escapeHtml(JSON.stringify(event))}\n`;
+  pre.appendChild(line);
+  pre.scrollTop = pre.scrollHeight;
+}
+
+function formatAction(action) {
+  return action.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function statusIcon(status) {
+  switch (status) {
+    case 'success': return '\u2705';
+    case 'failed': case 'error': return '\u274C';
+    default: return '';
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function stopStream() {
+  if (abortController) {
+    abortController.abort();
+    abortController = null;
+  }
+}
+
+function clearStream() {
+  stopStream();
+  const panel = $('streamPanel');
+  panel.innerHTML = '';
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  $('runBtn').disabled = false;
+  $('stopBtn').disabled = true;
+}
+
+function finish() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  const elapsed = startTime ? ((Date.now() - startTime) / 1000).toFixed(1) : '0';
+  const timer = $('timer');
+  if (timer) timer.textContent = `Completed in ${elapsed}s`;
+  $('runBtn').disabled = false;
+  $('stopBtn').disabled = true;
+  abortController = null;
+}
+
+// --- Workflow Credentials ---
+function addWorkflowCredRow(credType, credKey, credValue) {
+  const container = $('workflowCredRows');
+  const row = document.createElement('div');
+  row.className = 'field-row';
+  row.style.marginTop = '8px';
+  row.style.gridTemplateColumns = '1fr 1fr 1fr auto';
+  row.innerHTML = `
+    <input class="wc-type" placeholder="Credential type (e.g. currentsApi)" value="${credType || ''}" style="padding:8px;background:var(--bg);border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);color:var(--text);font-size:12px;font-family:var(--mono);">
+    <input class="wc-key" placeholder="Key (e.g. apiKey)" value="${credKey || ''}" style="padding:8px;background:var(--bg);border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);color:var(--text);font-size:12px;font-family:var(--mono);">
+    <input class="wc-value" placeholder="Value" type="password" value="${credValue || ''}" style="padding:8px;background:var(--bg);border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius);color:var(--text);font-size:12px;font-family:var(--mono);">
+    <button type="button" onclick="this.parentElement.remove()" style="flex:0;padding:6px 10px;font-size:12px;background:var(--error);color:white;border:none;border-radius:var(--radius);cursor:pointer;">x</button>
+  `;
+  container.appendChild(row);
+}
+
+function collectWorkflowCredentials() {
+  const result = {};
+  const rows = $('workflowCredRows').querySelectorAll('.field-row');
+  rows.forEach(row => {
+    const type = row.querySelector('.wc-type').value.trim();
+    const key = row.querySelector('.wc-key').value.trim();
+    const value = row.querySelector('.wc-value').value.trim();
+    if (type && key && value) {
+      if (!result[type]) result[type] = {};
+      result[type][key] = value;
+    }
+  });
+  return result;
+}
+
+// Enter key in prompt runs task
+$('prompt').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.metaKey) runTask();
+});
+</script>
+
+</body>
+</html>

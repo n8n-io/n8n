@@ -74,6 +74,7 @@ export const API_KEY_RESOURCES = {
 	executionTags: ['update', 'list'] as const,
 	dataTable: ['create', 'read', 'update', 'delete', 'list'] as const,
 	dataTableRow: ['create', 'read', 'update', 'delete', 'upsert'] as const,
+	agent: ['read', 'execute', 'receive'] as const,
 } as const;
 
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';

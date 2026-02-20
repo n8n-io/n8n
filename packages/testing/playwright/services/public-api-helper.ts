@@ -33,6 +33,8 @@ const DEFAULT_API_KEY_SCOPES: ApiKeyScope[] = [
 	'project:update',
 	'project:delete',
 	'project:list',
+	'agent:read',
+	'agent:execute',
 ];
 
 /** Helper for working with n8n's Public API using API key authentication. */

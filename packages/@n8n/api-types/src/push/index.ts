@@ -1,3 +1,4 @@
+import type { AgentTaskPushMessage } from './agents';
 import type { BuilderCreditsPushMessage } from './builder-credits';
 import type { ChatHubPushMessage } from './chat-hub';
 import type { CollaborationPushMessage } from './collaboration';
@@ -17,7 +18,8 @@ export type PushMessage =
 	| CollaborationPushMessage
 	| DebugPushMessage
 	| BuilderCreditsPushMessage
-	| ChatHubPushMessage;
+	| ChatHubPushMessage
+	| AgentTaskPushMessage;
 
 export type PushType = PushMessage['type'];
 

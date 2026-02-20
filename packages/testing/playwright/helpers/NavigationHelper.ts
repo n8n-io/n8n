@@ -210,6 +210,14 @@ export class NavigationHelper {
 	}
 
 	/**
+	 * Navigate to agents page
+	 * URL: /agents
+	 */
+	async toAgents() {
+		await this.page.goto('/agents');
+	}
+
+	/**
 	 * Navigate to ChatHub chat page
 	 * URL: /home/chat
 	 */

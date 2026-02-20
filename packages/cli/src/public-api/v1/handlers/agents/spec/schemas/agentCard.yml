@@ -1,0 +1,79 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Unique identifier of the agent.
+    example: 5f3b1c2d-4e5a-6b7c-8d9e-0f1a2b3c4d5e
+  name:
+    type: string
+    description: Display name of the agent.
+    example: DataProcessor
+  provider:
+    type: object
+    properties:
+      name:
+        type: string
+        example: n8n
+      description:
+        type: string
+        example: Handles data processing tasks
+  capabilities:
+    type: object
+    properties:
+      streaming:
+        type: boolean
+        example: true
+      pushNotifications:
+        type: boolean
+        example: false
+      multiTurn:
+        type: boolean
+        example: true
+  skills:
+    type: array
+    items:
+      type: object
+  interfaces:
+    type: array
+    items:
+      type: object
+      properties:
+        type:
+          type: string
+          example: http+json
+        url:
+          type: string
+          example: https://n8n.example.com/api/v1/agents/abc123/task
+  securitySchemes:
+    type: object
+    properties:
+      apiKey:
+        type: object
+        properties:
+          type:
+            type: string
+            example: apiKey
+          name:
+            type: string
+            example: x-n8n-api-key
+          in:
+            type: string
+            example: header
+  security:
+    type: array
+    items:
+      type: object
+  requiredCredentials:
+    type: array
+    description: Credential types the agent needs. Callers should provide these via BYOK or ensure the agent has shared access.
+    items:
+      type: object
+      properties:
+        type:
+          type: string
+          description: The credential type identifier.
+          example: anthropicApi
+        description:
+          type: string
+          description: Human-readable name of the credential.
+          example: My Anthropic Key

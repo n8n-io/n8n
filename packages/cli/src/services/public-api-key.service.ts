@@ -216,6 +216,25 @@ export class PublicApiKeyService {
 		};
 	}
 
+	async resolveUserFromApiKey(apiKey: string): Promise<User | null> {
+		const user = await this.getUserForApiKey(apiKey);
+		if (!user || user.disabled) return null;
+
+		if (!apiKey.startsWith(PREFIX_LEGACY_API_KEY)) {
+			try {
+				this.jwtService.verify(apiKey, {
+					issuer: API_KEY_ISSUER,
+					audience: API_KEY_AUDIENCE,
+				});
+			} catch (e) {
+				if (e instanceof TokenExpiredError) return null;
+				throw e;
+			}
+		}
+
+		return user;
+	}
+
 	async removeOwnerOnlyScopesFromApiKeys(user: User, tx?: EntityManager) {
 		const manager = tx ?? this.apiKeyRepository.manager;
 

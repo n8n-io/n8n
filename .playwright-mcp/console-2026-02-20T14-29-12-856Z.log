@@ -1,0 +1,3 @@
+[      76ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8888/favicon.ico:0
+[   15239ms] [ERROR] Access to fetch at 'http://localhost:51198/rest/agents/3fa411f9-9533-4a81-a7cf-3355f8034a47/task' from origin 'http://localhost:8888' has been blocked by CORS policy: Request header field x-n8n-api-key is not allowed by Access-Control-Allow-Headers in preflight response. @ http://localhost:8888/a2a-demo.html:0
+[   15239ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:51198/rest/agents/3fa411f9-9533-4a81-a7cf-3355f8034a47/task:0

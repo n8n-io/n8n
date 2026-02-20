@@ -1,0 +1,57 @@
+type: object
+required:
+  - prompt
+additionalProperties: false
+properties:
+  prompt:
+    type: string
+    description: The task prompt to send to the agent.
+    minLength: 1
+    maxLength: 10000
+    example: Execute the data processing workflow and report the result.
+  externalAgents:
+    type: array
+    description: Optional list of external agents available for delegation.
+    maxItems: 10
+    items:
+      type: object
+      required:
+        - name
+        - url
+        - apiKey
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+        apiKey:
+          type: string
+          minLength: 1
+          maxLength: 512
+  byokCredentials:
+    type: object
+    description: Bring Your Own Key credentials. When provided, the agent uses these instead of shared credentials.
+    properties:
+      anthropicApiKey:
+        type: string
+        description: Anthropic API key for LLM reasoning.
+        minLength: 1
+        maxLength: 512
+      workflowCredentials:
+        type: object
+        description: Per-request credential overrides keyed by credential type. Values are key-value pairs that override the static credential data at runtime.
+        additionalProperties:
+          type: object
+          additionalProperties:
+            type: string
+  callerId:
+    type: string
+    description: Caller identity for dynamic credential resolution in workflow executions.
+    maxLength: 256
