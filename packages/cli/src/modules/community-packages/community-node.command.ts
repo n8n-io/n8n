@@ -12,7 +12,7 @@ import { CommunityPackagesService } from './community-packages.service';
 import { InstalledNodes } from './installed-nodes.entity';
 import { InstalledNodesRepository } from './installed-nodes.repository';
 import { InstalledPackages } from './installed-packages.entity';
-import { executeNpmCommand } from './npm-utils';
+import { executeNpmCommand, getNpmOverrides } from './npm-utils';
 
 const flagsSchema = z.object({
 	uninstall: z.boolean().describe('Uninstalls the node').optional(),
@@ -140,7 +140,11 @@ export class CommunityNode extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	async pruneDependencies() {
 		const instanceSettings = Container.get(InstanceSettings);
-		await executeNpmCommand(['prune'], { cwd: instanceSettings.nodesDownloadDir });
+		const npmOverrides = getNpmOverrides(instanceSettings.nodesDownloadDir);
+		await executeNpmCommand(['prune', ...npmOverrides.cacheArgs], {
+			cwd: instanceSettings.nodesDownloadDir,
+			env: npmOverrides.env,
+		});
 	}
 
 	async deleteCommunityNode(node: InstalledNodes) {

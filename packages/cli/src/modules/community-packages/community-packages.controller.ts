@@ -16,7 +16,7 @@ import { CommunityNodeTypesService } from './community-node-types.service';
 import { CommunityPackagesService } from './community-packages.service';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
-import { executeNpmCommand } from './npm-utils';
+import { executeNpmCommand, getNpmOverrides } from './npm-utils';
 import { InstanceSettings } from 'n8n-core';
 
 const {
@@ -171,10 +171,12 @@ export class CommunityPackagesController {
 
 		let pendingUpdates: CommunityPackages.AvailableUpdates | undefined;
 
+		const npmOverrides = getNpmOverrides(this.instanceSettings.nodesDownloadDir);
 		try {
-			await executeNpmCommand(['outdated', '--json'], {
+			await executeNpmCommand(['outdated', '--json', ...npmOverrides.cacheArgs], {
 				doNotHandleError: true,
 				cwd: this.instanceSettings.nodesDownloadDir,
+				env: npmOverrides.env,
 			});
 		} catch (error) {
 			// when there are updates, npm exits with code 1

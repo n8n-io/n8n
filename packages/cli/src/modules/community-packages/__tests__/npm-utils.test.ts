@@ -21,7 +21,12 @@ jest.mock('node:util', () => {
 	};
 });
 
-import { executeNpmCommand, verifyIntegrity, checkIfVersionExistsOrThrow } from '../npm-utils';
+import {
+	executeNpmCommand,
+	getNpmOverrides,
+	verifyIntegrity,
+	checkIfVersionExistsOrThrow,
+} from '../npm-utils';
 import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 describe('executeNpmCommand', () => {
@@ -44,7 +49,7 @@ describe('executeNpmCommand', () => {
 			const result = await executeNpmCommand(['install', 'some-package']);
 
 			expect(result).toBe('command output');
-			expect(mockAsyncExec).toHaveBeenCalledWith('npm', ['install', 'some-package'], undefined);
+			expect(mockAsyncExec).toHaveBeenCalledWith('npm', ['install', 'some-package'], {});
 		});
 
 		it('should execute npm command with cwd option', async () => {
@@ -59,15 +64,32 @@ describe('executeNpmCommand', () => {
 			expect(mockAsyncExec).toHaveBeenCalledWith('npm', ['install'], { cwd: '/some/path' });
 		});
 
-		it('should convert Buffer stdout to string', async () => {
+		it('should execute npm command with env option merged with process.env', async () => {
 			mockAsyncExec.mockResolvedValue({
-				stdout: Buffer.from('buffer output'),
+				stdout: 'output',
 				stderr: '',
 			});
 
-			const result = await executeNpmCommand(['list']);
+			await executeNpmCommand(['install'], {
+				cwd: '/some/path',
+				env: { TMPDIR: '/custom/tmp' },
+			});
 
-			expect(result).toBe('buffer output');
+			expect(mockAsyncExec).toHaveBeenCalledWith('npm', ['install'], {
+				cwd: '/some/path',
+				env: expect.objectContaining({ TMPDIR: '/custom/tmp' }),
+			});
+		});
+
+		it('should not include env in exec options when env is not provided', async () => {
+			mockAsyncExec.mockResolvedValue({
+				stdout: 'output',
+				stderr: '',
+			});
+
+			await executeNpmCommand(['install'], { cwd: '/some/path' });
+
+			expect(mockAsyncExec).toHaveBeenCalledWith('npm', ['install'], { cwd: '/some/path' });
 		});
 	});
 
@@ -237,7 +259,7 @@ describe('executeNpmCommand', () => {
 			expect(mockAsyncExec).toHaveBeenCalledWith(
 				'npm',
 				['install', 'package-name@1.0.0', '--registry=https://custom-registry.com', '--json'],
-				undefined,
+				{},
 			);
 		});
 
@@ -250,7 +272,7 @@ describe('executeNpmCommand', () => {
 			const result = await executeNpmCommand([]);
 
 			expect(result).toBe('npm help output');
-			expect(mockAsyncExec).toHaveBeenCalledWith('npm', [], undefined);
+			expect(mockAsyncExec).toHaveBeenCalledWith('npm', [], {});
 		});
 	});
 
@@ -405,7 +427,7 @@ describe('verifyIntegrity', () => {
 					`--registry=${registryUrl}`,
 					'--json',
 				],
-				undefined,
+				{},
 			);
 		});
 
@@ -453,7 +475,7 @@ describe('verifyIntegrity', () => {
 					`--registry=${registryUrl}`,
 					'--json',
 				],
-				undefined,
+				{},
 			);
 		});
 
@@ -627,7 +649,7 @@ describe('checkIfVersionExistsOrThrow', () => {
 			expect(mockAsyncExec).toHaveBeenCalledWith(
 				'npm',
 				['view', `${packageName}@${version}`, 'version', `--registry=${registryUrl}`, '--json'],
-				undefined,
+				{},
 			);
 		});
 
@@ -678,7 +700,7 @@ describe('checkIfVersionExistsOrThrow', () => {
 					`--registry=${registryUrl}`,
 					'--json',
 				],
-				undefined,
+				{},
 			);
 		});
 
@@ -759,5 +781,19 @@ describe('checkIfVersionExistsOrThrow', () => {
 			const result = await checkIfVersionExistsOrThrow(packageName, version, registryWithSlashes);
 			expect(result).toBe(true);
 		});
+	});
+});
+
+describe('getNpmOverrides', () => {
+	it('should return cache args pointing to .npm-cache under the given directory', () => {
+		const overrides = getNpmOverrides('/home/node/.n8n/nodes');
+
+		expect(overrides.cacheArgs).toEqual(['--cache=/home/node/.n8n/nodes/.npm-cache']);
+	});
+
+	it('should return TMPDIR env pointing to .tmp under the given directory', () => {
+		const overrides = getNpmOverrides('/home/node/.n8n/nodes');
+
+		expect(overrides.env).toEqual({ TMPDIR: '/home/node/.n8n/nodes/.tmp' });
 	});
 });

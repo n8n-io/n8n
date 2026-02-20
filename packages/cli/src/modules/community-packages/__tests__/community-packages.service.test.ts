@@ -26,7 +26,7 @@ import { InstalledNodes } from '../installed-nodes.entity';
 import { InstalledNodesRepository } from '../installed-nodes.repository';
 import { InstalledPackages } from '../installed-packages.entity';
 import { InstalledPackagesRepository } from '../installed-packages.repository';
-import { executeNpmCommand } from '../npm-utils';
+import { executeNpmCommand, getNpmOverrides } from '../npm-utils';
 
 jest.mock('node:fs/promises');
 jest.mock('node:child_process');
@@ -344,6 +344,7 @@ describe('CommunityPackagesService', () => {
 		const testBlockPackageDir = `${testBlockDownloadDir}/node_modules/${PACKAGE_NAME}`;
 		const testBlockTarballName = `${PACKAGE_NAME}-latest.tgz`;
 		const testBlockRegistry = config.registry;
+		const testBlockNpmOverrides = getNpmOverrides(testBlockDownloadDir);
 		const testBlockNpmInstallArgs = [
 			'--audit=false',
 			'--fund=false',
@@ -423,14 +424,20 @@ describe('CommunityPackagesService', () => {
 			expect(executeNpmCommand).toHaveBeenCalledTimes(2);
 			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				1,
-				['pack', `${PACKAGE_NAME}@latest`, `--registry=${testBlockRegistry}`, '--quiet'],
-				{ cwd: testBlockDownloadDir },
+				[
+					'pack',
+					`${PACKAGE_NAME}@latest`,
+					`--registry=${testBlockRegistry}`,
+					'--quiet',
+					...testBlockNpmOverrides.cacheArgs,
+				],
+				{ cwd: testBlockDownloadDir, env: testBlockNpmOverrides.env },
 			);
 
 			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				2,
-				['install', ...testBlockNpmInstallArgs.split(' ')],
-				{ cwd: testBlockPackageDir },
+				['install', ...testBlockNpmInstallArgs.split(' '), ...testBlockNpmOverrides.cacheArgs],
+				{ cwd: testBlockPackageDir, env: testBlockNpmOverrides.env },
 			);
 
 			// Check execFile was called only for tar command
