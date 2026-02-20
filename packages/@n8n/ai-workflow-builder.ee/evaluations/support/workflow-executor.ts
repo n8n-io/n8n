@@ -17,6 +17,7 @@
 
 import type {
 	IExecuteFunctions,
+	INode,
 	IPinData,
 	IRun,
 	INodeType,
@@ -241,6 +242,23 @@ function makeAdditionalDataStub(
 }
 
 // ---------------------------------------------------------------------------
+// Start node detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Fallback start-node finder for trigger nodes whose type description
+ * includes 'trigger' in its group (e.g. ChatTrigger, which is webhook-based
+ * and not recognised by Workflow.getStartNode()).
+ */
+export function findTriggerByGroup(nodes: INode[], nodeTypes: INodeTypes): INode | undefined {
+	return nodes.find((currentNode) => {
+		if (currentNode.disabled) return false;
+		const nt = nodeTypes.getByNameAndVersion(currentNode.type, currentNode.typeVersion);
+		return nt.description.group?.includes('trigger');
+	});
+}
+
+// ---------------------------------------------------------------------------
 // Main execution function
 // ---------------------------------------------------------------------------
 
@@ -277,13 +295,7 @@ export async function executeWorkflowWithPinData(
 		// method or those in STARTING_NODE_TYPES. Webhook-based triggers like ChatTrigger
 		// are missed, so fall back to any node whose description group includes 'trigger'.
 		let startNode = workflowInstance.getStartNode();
-		if (!startNode) {
-			startNode = workflow.nodes.find((n) => {
-				if (n.disabled) return false;
-				const nt = imports.nodeTypes.getByNameAndVersion(n.type, n.typeVersion);
-				return nt.description.group?.includes('trigger');
-			});
-		}
+		startNode ??= findTriggerByGroup(workflow.nodes, imports.nodeTypes);
 		if (!startNode) {
 			return {
 				success: false,

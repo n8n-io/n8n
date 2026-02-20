@@ -98,6 +98,68 @@ describe('identifyPinDataNodes', () => {
 		expect(result.map((n) => n.name)).toEqual(['Code', 'Exec']);
 	});
 
+	it('should include DataTable nodes', () => {
+		const workflow: SimpleWorkflow = {
+			name: 'Test',
+			nodes: [makeNode({ name: 'Table', type: 'n8n-nodes-base.dataTable' })],
+			connections: {},
+		};
+
+		const result = identifyPinDataNodes(workflow, nodeTypes);
+		expect(result).toHaveLength(1);
+		expect(result[0].name).toBe('Table');
+	});
+
+	it('should include root AI nodes targeted by ai_* connections', () => {
+		const workflow: SimpleWorkflow = {
+			name: 'Test',
+			nodes: [
+				makeNode({ name: 'Chat Trigger', type: '@n8n/n8n-nodes-langchain.chatTrigger' }),
+				makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+				makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmOpenAi' }),
+				makeNode({ name: 'Tool', type: '@n8n/n8n-nodes-langchain.toolCalculator' }),
+			],
+			connections: {
+				'Chat Trigger': {
+					main: [[{ node: 'Agent', type: 'main', index: 0 }]],
+				},
+				OpenAI: {
+					ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+				Tool: {
+					ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]],
+				},
+			},
+		};
+
+		const result = identifyPinDataNodes(workflow, nodeTypes);
+		const names = result.map((n) => n.name);
+		// Agent is a root AI node (target of ai_* connections) → pinned
+		expect(names).toContain('Agent');
+		// Sub-nodes (OpenAI, Tool) are not pinned — they won't execute
+		// because the root is pinned
+		expect(names).not.toContain('OpenAI');
+		expect(names).not.toContain('Tool');
+	});
+
+	it('should not treat nodes targeted only by main connections as AI roots', () => {
+		const workflow: SimpleWorkflow = {
+			name: 'Test',
+			nodes: [
+				makeNode({ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' }),
+				makeNode({ name: 'Set', type: 'n8n-nodes-base.set' }),
+			],
+			connections: {
+				Trigger: {
+					main: [[{ node: 'Set', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		const result = identifyPinDataNodes(workflow, nodeTypes);
+		expect(result).toHaveLength(0);
+	});
+
 	it('should include HTTP Request and Webhook nodes even without credentials', () => {
 		const workflow: SimpleWorkflow = {
 			name: 'Test',
