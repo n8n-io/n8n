@@ -217,6 +217,7 @@ function isSelected(option: Option['value']): boolean {
 }
 
 .dropdownContent {
+	width: auto;
 	z-index: var(--modals--z);
 }
 </style>
