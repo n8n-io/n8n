@@ -84,6 +84,7 @@ defineExpose({ markInteracted });
 				v-if="!expanded && loading && !isComplete"
 				:data-test-id="`${cardTestId}-loading-icon`"
 				icon="spinner"
+				:spin="true"
 				:class="$style['loading-icon']"
 				size="medium"
 			/>
@@ -191,17 +192,6 @@ defineExpose({ markInteracted });
 
 .loading-icon {
 	color: var(--color--text--tint-1);
-	animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-	from {
-		transform: rotate(0deg);
-	}
-
-	to {
-		transform: rotate(360deg);
-	}
 }
 
 .footer {
