@@ -59,30 +59,13 @@ describe('FirecrawlHandler', () => {
 
 			const scope = nock(FIRECRAWL_API_BASE_URL)
 				.post('/admin/integration/create-user', { email: 'test@example.com' })
-				.matchHeader('authorization', 'Bearer test-secret-key')
-				.matchHeader('contentType', 'application/json')
+				.matchHeader('Authorization', 'Bearer test-secret-key')
+				.matchHeader('Content-Type', 'application/json')
 				.reply(200, { apiKey: expectedApiKey });
 
 			const result = await handler.getCredentialData(user);
 
 			expect(result).toEqual({ apiKey: expectedApiKey });
-			expect(scope.isDone()).toBe(true);
-		});
-
-		it('should send correct authorization header', async () => {
-			const user = mock<User>({ email: 'user@test.com' });
-			let capturedHeaders: Record<string, string | string[] | undefined> = {};
-
-			const scope = nock(FIRECRAWL_API_BASE_URL)
-				.post('/admin/integration/create-user')
-				.reply(function () {
-					capturedHeaders = this.req.headers;
-					return [200, { apiKey: 'test-key' }];
-				});
-
-			await handler.getCredentialData(user);
-
-			expect(capturedHeaders.authorization).toBe('Bearer test-secret-key');
 			expect(scope.isDone()).toBe(true);
 		});
 
