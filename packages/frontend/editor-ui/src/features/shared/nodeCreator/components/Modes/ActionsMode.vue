@@ -34,6 +34,8 @@ import { isNodePreviewKey } from '../../nodeCreator.utils';
 import CommunityNodeInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
+import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
 
 import { N8nCallout, N8nInfoTip } from '@n8n/design-system';
 const emit = defineEmits<{
@@ -102,6 +104,16 @@ const rootView = computed(() => useViewStacks().activeViewStack.rootView);
 const communityNodeDetails = computed(() => useViewStacks().activeViewStack?.communityNodeDetails);
 
 const placeholderTriggerActions = getPlaceholderTriggerActions(subcategory.value || '');
+
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => {
+	const items = useViewStacks().activeViewStack.items;
+	if (!communityNodeDetails.value && items?.length) {
+		return getQuickConnectOptionByPackageName(items[0].key);
+	}
+
+	return null;
+});
 
 const hasNoTriggerActions = computed(
 	() =>
@@ -260,6 +272,9 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 		<ItemsRenderer :elements="callouts" :class="$style.items" @selected="onSelected" />
 
 		<CommunityNodeInfo v-if="communityNodeDetails" />
+		<div :class="$style.banner" v-if="quickConnect">
+			<QuickConnectBanner :text="quickConnect.text" />
+		</div>
 		<OrderSwitcher v-if="rootView" :root-view="rootView">
 			<template v-if="shouldShowTriggers" #triggers>
 				<!-- Triggers Category -->
@@ -404,5 +419,9 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 	color: var(--color--text);
 	line-height: var(--line-height--md);
 	z-index: 1;
+}
+.banner {
+	margin: var(--spacing--sm);
+	margin-top: 0;
 }
 </style>

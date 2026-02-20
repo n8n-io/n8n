@@ -68,7 +68,7 @@ export function useQuickConnect() {
 		const option = optionsByCredentialType.value.get(credentialType);
 		if (!option) return undefined;
 		const pkg = nodeType.split('.')[0];
-		return option.packageName === pkg ? option : undefined;
+		return option.packageName.split('.')[0] === pkg ? option : undefined;
 	}
 
 	function getQuickConnectOptionByPackageName(packageName: string): QuickConnectOption | undefined {
