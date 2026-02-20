@@ -5,6 +5,7 @@ import { ChatAnthropic } from '@langchain/anthropic';
 import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { LmChatAnthropic } from '../LmChatAnthropic.node';
 
@@ -429,6 +430,75 @@ describe('LmChatAnthropic', () => {
 			await lmChatAnthropic.supplyData.call(mockContext, 0);
 
 			expect(mockedMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(mockContext);
+		});
+
+		it('should throw when model is empty (v1.3)', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.3 });
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return '';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await expect(lmChatAnthropic.supplyData.call(mockContext, 0)).rejects.toThrow(
+				NodeOperationError,
+			);
+			expect(MockedChatAnthropic).not.toHaveBeenCalled();
+		});
+
+		it('should throw when model is empty (v1.2)', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.2 });
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return '';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await expect(lmChatAnthropic.supplyData.call(mockContext, 0)).rejects.toThrow(
+				NodeOperationError,
+			);
+			expect(MockedChatAnthropic).not.toHaveBeenCalled();
+		});
+
+		it('should use gateway-provided model name via custom base URL without hardcoded defaults', async () => {
+			const gatewayURL = 'https://ai-gateway.example.com';
+			const gatewayModel = 'my-org/claude-3-sonnet';
+			const mockContext = setupMockContext({ typeVersion: 1.3 });
+
+			mockContext.getCredentials.mockResolvedValue({
+				apiKey: 'gateway-api-key',
+				url: gatewayURL,
+			});
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return gatewayModel;
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					anthropicApiKey: 'gateway-api-key',
+					model: gatewayModel,
+					anthropicApiUrl: gatewayURL,
+				}),
+			);
+		});
+
+		it('should have no hardcoded default model in v1.3 resource locator', () => {
+			const v13ModelField = lmChatAnthropic.description.properties.find(
+				(p) =>
+					p.name === 'model' &&
+					p.type === 'resourceLocator' &&
+					p.displayOptions?.show?.['@version']?.[0] !== undefined,
+			);
+
+			expect(v13ModelField).toBeDefined();
+			expect(v13ModelField!.default).toEqual({ mode: 'list', value: '' });
 		});
 	});
 

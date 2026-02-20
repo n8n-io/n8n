@@ -3,6 +3,7 @@ import type { LLMResult } from '@langchain/core/outputs';
 import { getProxyAgent, makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
+	NodeOperationError,
 	type INodeProperties,
 	type INodePropertyOptions,
 	type INodeType,
@@ -272,6 +273,12 @@ export class LmChatAnthropic implements INodeType {
 			version >= 1.3
 				? (this.getNodeParameter('model.value', itemIndex) as string)
 				: (this.getNodeParameter('model', itemIndex) as string);
+
+		if (!modelName) {
+			throw new NodeOperationError(this.getNode(), 'No model selected. Please choose a model.', {
+				itemIndex,
+			});
+		}
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			maxTokensToSample?: number;
