@@ -150,7 +150,11 @@ export class LmChatAnthropic implements INodeType {
 				displayName: 'Model',
 				name: 'model',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				default: {
+					mode: 'list',
+					value: 'claude-sonnet-4-5-20250929',
+					cachedResultName: 'Claude Sonnet 4.5',
+				},
 				required: true,
 				modes: [
 					{
@@ -345,6 +349,22 @@ export class LmChatAnthropic implements INodeType {
 			};
 		}
 
+		const isUsingGateway = baseURL !== 'https://api.anthropic.com';
+		const gatewayErrorHandler = isUsingGateway
+			? (error: unknown) => {
+					const message = error instanceof Error ? error.message : String(error);
+					const isModelError =
+						/model.*not found|not found.*model|invalid model|does not exist/i.test(message);
+					if (isModelError) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The model "${modelName}" was not found at ${baseURL}. If you're using an AI gateway, select a model that your gateway supports.`,
+							{ itemIndex },
+						);
+					}
+				}
+			: undefined;
+
 		const model = new ChatAnthropic({
 			anthropicApiKey: credentials.apiKey,
 			model: modelName,
@@ -354,7 +374,7 @@ export class LmChatAnthropic implements INodeType {
 			topK: options.topK,
 			topP: options.topP,
 			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, gatewayErrorHandler),
 			invocationKwargs,
 			clientOptions,
 		});
