@@ -255,6 +255,33 @@ describe('no_unreachable_nodes', () => {
 		expect(result.pass).toBe(false);
 		expect(result.comment).toContain('Orphan');
 	});
+
+	it('ignores sticky notes when checking reachability', async () => {
+		const result = await noUnreachableNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{ name: 'Set', type: 'n8n-nodes-base.set', typeVersion: 3, position: [200, 0] },
+					{
+						name: 'Note',
+						type: 'n8n-nodes-base.stickyNote',
+						typeVersion: 1,
+						position: [400, 200],
+					},
+				],
+				connections: {
+					Trigger: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+				},
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
 });
 
 describe('no_empty_set_nodes', () => {

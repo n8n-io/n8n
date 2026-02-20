@@ -5,6 +5,8 @@ import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-
 
 import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types';
 
+const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
+
 function findTriggerNames(workflow: SimpleWorkflow, nodeTypes: INodeTypeDescription[]): string[] {
 	const { nodeTypeMap, nodeTypesByName } = createNodeTypeMaps(nodeTypes);
 	const triggers: string[] = [];
@@ -21,7 +23,10 @@ export const noUnreachableNodes: BinaryCheck = {
 	name: 'no_unreachable_nodes',
 	kind: 'deterministic',
 	async run(workflow: SimpleWorkflow, ctx: BinaryCheckContext) {
-		if (!workflow.nodes || workflow.nodes.length === 0) {
+		// Filter out sticky notes — they are visual annotations, not part of the workflow graph
+		const activeNodes = (workflow.nodes ?? []).filter((n) => n.type !== STICKY_NOTE_TYPE);
+
+		if (activeNodes.length === 0) {
 			return { pass: true };
 		}
 
@@ -30,7 +35,7 @@ export const noUnreachableNodes: BinaryCheck = {
 
 		// No triggers means all nodes are unreachable — fail explicitly
 		if (triggers.length === 0) {
-			const nodeNames = workflow.nodes.map((n) => n.name);
+			const nodeNames = activeNodes.map((n) => n.name);
 			return {
 				pass: false,
 				comment: `No trigger found — all nodes unreachable: ${nodeNames.join(', ')}`,
@@ -48,7 +53,7 @@ export const noUnreachableNodes: BinaryCheck = {
 		// Sub-nodes connect TO a parent via ai_* outputs in workflow.connections
 		// (they are keyed as source in connections). Check if they connect to a reachable node.
 		const unreachable: string[] = [];
-		for (const node of workflow.nodes) {
+		for (const node of activeNodes) {
 			if (reachable.has(node.name)) continue;
 
 			const nodeConns = connections[node.name];
