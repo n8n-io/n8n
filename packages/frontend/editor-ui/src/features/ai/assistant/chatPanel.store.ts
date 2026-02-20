@@ -3,7 +3,11 @@ import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useRoute } from 'vue-router';
-import { ASK_AI_SLIDE_OUT_DURATION_MS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
+import {
+	ASK_AI_SLIDE_IN_DURATION_MS,
+	ASK_AI_SLIDE_OUT_DURATION_MS,
+	EDITABLE_CANVAS_VIEWS,
+} from '@/app/constants';
 import type { VIEWS } from '@/app/constants';
 import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
 import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.store';
@@ -105,7 +109,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 				...uiStore.appGridDimensions,
 				width: window.innerWidth - chatPanelStateStore.width,
 			};
-		}, ASK_AI_SLIDE_OUT_DURATION_MS);
+		}, ASK_AI_SLIDE_IN_DURATION_MS);
 	}
 
 	function close() {

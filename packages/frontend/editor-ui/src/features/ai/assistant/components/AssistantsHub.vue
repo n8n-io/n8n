@@ -4,6 +4,7 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useDebounce } from '@/app/composables/useDebounce';
+import { ASK_AI_SLIDE_IN_DURATION_MS, ASK_AI_SLIDE_OUT_DURATION_MS } from '@/app/constants';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
@@ -44,6 +45,8 @@ const askAssistantBuildRef = ref<InstanceType<typeof AskAssistantBuild>>();
 const askAssistantChatRef = ref<InstanceType<typeof AskAssistantChat>>();
 
 const chatWidth = computed(() => chatPanelStore.width);
+const slideInDuration = `${ASK_AI_SLIDE_IN_DURATION_MS}ms`;
+const slideOutDuration = `${ASK_AI_SLIDE_OUT_DURATION_MS}ms`;
 
 function onResize(data: { direction: string; x: number; width: number }) {
 	chatPanelStore.updateWidth(data.width);
@@ -128,9 +131,9 @@ onBeforeUnmount(() => {
 
 <template>
 	<Transition
-		:enter-active-class="$style.slideActive"
+		:enter-active-class="$style.slideEnterActive"
 		:enter-from-class="$style.slideFrom"
-		:leave-active-class="$style.slideActive"
+		:leave-active-class="$style.slideLeaveActive"
 		:leave-to-class="$style.slideFrom"
 		@after-enter="onSlideEnterComplete"
 	>
@@ -176,9 +179,12 @@ onBeforeUnmount(() => {
 	height: 100%;
 }
 
-.slideActive {
-	// Keep duration in sync with ASK_AI_SLIDE_OUT_DURATION_MS
-	transition: width var(--animation--duration--snappy) var(--animation--easing);
+.slideEnterActive {
+	transition: width v-bind(slideInDuration) ease-in-out;
+}
+
+.slideLeaveActive {
+	transition: width v-bind(slideOutDuration) ease-in-out;
 }
 
 .slideFrom {
