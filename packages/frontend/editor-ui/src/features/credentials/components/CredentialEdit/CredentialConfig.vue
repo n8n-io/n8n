@@ -214,6 +214,10 @@ const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
 });
 
+const isManagedOAuth = computed(
+	() => props.isOAuthType && props.managedOauthAvailable && !props.useCustomOauth,
+);
+
 function onDataChange(event: IUpdateInformation): void {
 	emit('update', event);
 }
@@ -273,7 +277,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			/>
 
 			<N8nCallout
-				v-if="documentationUrl && credentialProperties.length"
+				v-if="documentationUrl && credentialProperties.length && !isManagedOAuth"
 				:class="$style.docsCallout"
 				theme="custom"
 				iconless
