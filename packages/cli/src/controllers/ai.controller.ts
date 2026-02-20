@@ -131,20 +131,34 @@ export class AiController {
 	@Post('/chat', { ipRateLimit: { limit: 100 } })
 	async chat(req: AuthenticatedRequest, res: FlushableResponse, @Body payload: AiChatRequestDto) {
 		try {
+			const abortController = new AbortController();
+			const { signal } = abortController;
+
+			const handleClose = () => abortController.abort();
+			res.on('close', handleClose);
+
 			const aiResponse = await this.aiService.chat(payload, req.user);
 			if (aiResponse.body) {
 				res.header('Content-type', 'application/json-lines').flush();
-				await aiResponse.body.pipeTo(
-					new WritableStream({
-						write(chunk) {
-							res.write(chunk);
-							res.flush();
-						},
-					}),
-				);
+				try {
+					await aiResponse.body.pipeTo(
+						new WritableStream({
+							write(chunk) {
+								res.write(chunk);
+								res.flush();
+							},
+						}),
+						{ signal },
+					);
+				} finally {
+					res.off('close', handleClose);
+				}
 				res.end();
 			}
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') {
+				return;
+			}
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
 		}
