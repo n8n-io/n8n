@@ -278,6 +278,275 @@ describe('setupPanel.utils', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].nodes.map((n) => n.name)).toEqual(['SlackNode', 'SlackTrigger']);
 		});
+
+		it('should group HTTP Request nodes with the same credential type and URL', () => {
+			const httpNode1 = createNode({
+				name: 'Google',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://www.google.com' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'Google 2',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://www.google.com' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].credentialType).toBe('httpHeaderAuth');
+			expect(result[0].nodes.map((n) => n.name)).toEqual(['Google', 'Google 2']);
+		});
+
+		it('should create separate cards for HTTP Request nodes with different URLs', () => {
+			const httpNode1 = createNode({
+				name: 'Google',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://www.google.com' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'Example',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://www.example.com' },
+				credentials: { httpHeaderAuth: { id: 'cred-2', name: 'Auth 2' } },
+			});
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+			);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].nodes[0].name).toBe('Google');
+			expect(result[1].nodes[0].name).toBe('Example');
+		});
+
+		it('should still group non-HTTP-Request nodes normally alongside HTTP Request cards', () => {
+			const slackNode1 = createNode({
+				name: 'Slack1',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const slackNode2 = createNode({
+				name: 'Slack2',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://api.example.com' },
+				credentials: { httpHeaderAuth: { id: 'cred-2', name: 'Auth 2' } },
+			});
+
+			const result = groupCredentialsByType(
+				[
+					{ node: slackNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: slackNode2, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+			);
+
+			expect(result).toHaveLength(2);
+			// First entry: grouped non-HTTP nodes
+			expect(result[0].nodes.map((n) => n.name)).toEqual(['Slack1', 'Slack2']);
+			// Second entry: HTTP Request card
+			expect(result[1].nodes.map((n) => n.name)).toEqual(['HTTP Request']);
+		});
+
+		it('should apply URL-based grouping to HTTP Request Tool nodes', () => {
+			const toolNode1 = createNode({
+				name: 'Tool 1',
+				type: 'n8n-nodes-base.httpRequestTool',
+				parameters: { url: 'https://api.example.com/batch' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const toolNode2 = createNode({
+				name: 'Tool 2',
+				type: 'n8n-nodes-base.httpRequestTool',
+				parameters: { url: 'https://api.example.com/batch' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const toolNode3 = createNode({
+				name: 'Tool 3',
+				type: 'n8n-nodes-base.httpRequestTool',
+				parameters: { url: 'https://api.example.com/db' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+
+			const result = groupCredentialsByType(
+				[
+					{ node: toolNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: toolNode2, credentialTypes: ['httpHeaderAuth'] },
+					{ node: toolNode3, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+			);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].nodes.map((n) => n.name)).toEqual(['Tool 1', 'Tool 2']);
+			expect(result[1].nodes.map((n) => n.name)).toEqual(['Tool 3']);
+		});
+
+		it('should create separate cards for HTTP Request nodes with unresolvable expression URLs', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ $json.url }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ $json.url }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+			);
+
+			// Same expression but can't be resolved — each gets its own card
+			expect(result).toHaveLength(2);
+			expect(result[0].nodes[0].name).toBe('HTTP Request');
+			expect(result[1].nodes[0].name).toBe('HTTP Request1');
+		});
+
+		it('should group HTTP Request nodes when expression URLs resolve to the same value', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ "https://api.example.com" }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ "https://api.example.com" }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+
+			const resolveExpressionUrl = vi.fn().mockReturnValue('https://api.example.com');
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+				resolveExpressionUrl,
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].nodes.map((n) => n.name)).toEqual(['HTTP Request', 'HTTP Request1']);
+		});
+
+		it('should create separate cards when expression URLs resolve to different values', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ "https://api.google.com" }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ "https://api.example.com" }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+
+			const resolveExpressionUrl = vi.fn().mockImplementation((url: string) => {
+				if (url.includes('google')) return 'https://api.google.com';
+				return 'https://api.example.com';
+			});
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+				resolveExpressionUrl,
+			);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].nodes[0].name).toBe('HTTP Request');
+			expect(result[1].nodes[0].name).toBe('HTTP Request1');
+		});
+
+		it('should group resolved expression URL with matching static URL', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Static',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://api.example.com' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Expression',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ "https://api.example.com" }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+
+			const resolveExpressionUrl = vi.fn().mockReturnValue('https://api.example.com');
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+				resolveExpressionUrl,
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].nodes.map((n) => n.name)).toEqual(['HTTP Static', 'HTTP Expression']);
+		});
+
+		it('should fall back to separate cards when resolveExpressionUrl returns null', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ $json.url }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ $json.url }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+
+			const resolveExpressionUrl = vi.fn().mockReturnValue(null);
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+				resolveExpressionUrl,
+			);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].nodes[0].name).toBe('HTTP Request');
+			expect(result[1].nodes[0].name).toBe('HTTP Request1');
+		});
 	});
 
 	describe('isCredentialCardComplete', () => {

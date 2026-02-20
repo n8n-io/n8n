@@ -24,17 +24,20 @@ watch(isAllComplete, (allComplete) => {
 	}
 });
 
-const onCredentialSelected = (payload: { credentialType: string; credentialId: string }) => {
-	setCredential(payload.credentialType, payload.credentialId);
+const onCredentialSelected = (
+	payload: { credentialType: string; credentialId: string },
+	sourceNodeName?: string,
+) => {
+	setCredential(payload.credentialType, payload.credentialId, sourceNodeName);
 };
 
-const onCredentialDeselected = (credentialType: string) => {
-	unsetCredential(credentialType);
+const onCredentialDeselected = (credentialType: string, sourceNodeName?: string) => {
+	unsetCredential(credentialType, sourceNodeName);
 };
 
 const cardKey = (card: SetupCardItem): string => {
 	if (card.type === 'trigger') return `trigger-${card.state.node.id}`;
-	return `credential-${card.state.credentialType}`;
+	return `credential-${card.state.credentialType}-${card.state.nodes[0]?.name ?? ''}`;
 };
 </script>
 
@@ -72,8 +75,12 @@ const cardKey = (card: SetupCardItem): string => {
 					:state="card.state"
 					:first-trigger-name="firstTriggerName"
 					:expanded="index === 0"
-					@credential-selected="onCredentialSelected"
-					@credential-deselected="onCredentialDeselected"
+					@credential-selected="
+						(payload) => onCredentialSelected(payload, card.state.nodes[0]?.name)
+					"
+					@credential-deselected="
+						(credType) => onCredentialDeselected(credType, card.state.nodes[0]?.name)
+					"
 				/>
 			</template>
 			<div
