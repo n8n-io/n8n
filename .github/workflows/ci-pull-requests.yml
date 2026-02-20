@@ -21,6 +21,7 @@ jobs:
     outputs:
       ci: ${{ fromJSON(steps.ci-filter.outputs.results).ci == true }}
       unit: ${{ fromJSON(steps.ci-filter.outputs.results).unit == true }}
+      e2e: ${{ fromJSON(steps.ci-filter.outputs.results).e2e == true }}
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
@@ -49,6 +50,11 @@ jobs:
               !packages/@n8n/task-runner-python/**
               !packages/testing/playwright/**
               !.github/**
+            e2e:
+              .github/workflows/test-e2e-*.yml
+              .github/scripts/cleanup-ghcr-images.mjs
+              packages/testing/playwright/**
+              packages/testing/containers/**
             workflows: .github/**
             db:
               packages/cli/src/databases/**
@@ -111,7 +117,7 @@ jobs:
   e2e-tests:
     name: E2E Tests
     needs: install-and-build
-    if: needs.install-and-build.outputs.ci == 'true' && github.repository == 'n8n-io/n8n'
+    if: (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') && github.repository == 'n8n-io/n8n'
     uses: ./.github/workflows/test-e2e-ci-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
