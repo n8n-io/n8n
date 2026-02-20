@@ -10,7 +10,7 @@ import type {
 import { isCommunityPackageName } from 'n8n-workflow';
 
 import type { IUpdateInformation } from '@/Interface';
-import AuthTypeSelector from './AuthTypeSelector.vue';
+import CredentialModeSelector from './CredentialModeSelector.vue';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useI18n, addCredentialTranslation } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -41,11 +41,12 @@ import {
 	N8nInfoTip,
 	N8nInlineAskAssistantButton,
 	N8nLink,
-	N8nNotice,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
+import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
+import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 
 type Props = {
 	mode: string;
@@ -59,15 +60,15 @@ type Props = {
 	authError?: string;
 	testedSuccessfully?: boolean;
 	isOAuthType?: boolean;
-	allOAuth2BasePropertiesOverridden?: boolean;
 	isOAuthConnected?: boolean;
 	isRetesting?: boolean;
 	requiredPropertiesFilled?: boolean;
-	showAuthTypeSelector?: boolean;
 	isManaged?: boolean;
 	isDynamicCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
 	isNewCredential?: boolean;
+	managedOauthAvailable?: boolean;
+	useCustomOauth?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -79,7 +80,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 const emit = defineEmits<{
 	update: [value: IUpdateInformation];
-	authTypeChanged: [value: string];
+	authTypeChanged: [value: { type: string; useCustomOauth?: boolean }];
 	scrollToTop: [];
 	retest: [];
 	oauth: [];
@@ -96,6 +97,7 @@ const chatPanelStore = useChatPanelStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const { isQuickConnectEnabled } = useQuickConnect();
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -202,6 +204,16 @@ const assistantAlreadyAsked = computed<boolean>(() => {
 	return assistantStore.isCredTypeActive(props.credentialType);
 });
 
+const canCreate = computed(() => isNewCredential.value && !!props.credentialPermissions.create);
+
+const canEdit = computed(() => {
+	return !isNewCredential.value && !!props.credentialPermissions.update;
+});
+
+const canWrite = computed(() => {
+	return canCreate.value || canEdit.value;
+});
+
 function onDataChange(event: IUpdateInformation): void {
 	emit('update', event);
 }
@@ -215,8 +227,8 @@ function onDocumentationUrlClick(): void {
 	});
 }
 
-function onAuthTypeChange(newType: string): void {
-	emit('authTypeChanged', newType);
+function onAuthTypeChange(value: { type: string; useCustomOauth?: boolean }): void {
+	emit('authTypeChanged', value);
 }
 
 async function onAskAssistantClick() {
@@ -252,14 +264,27 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 		<div :class="$style.config" data-test-id="node-credentials-config-container">
 			<FreeAiCreditsCallout :credential-type-name="credentialType?.name" />
 
-			<N8nNotice v-if="documentationUrl && credentialProperties.length" theme="warning">
+			<CredentialModeSelector
+				v-if="canWrite"
+				:credential-type="credentialType"
+				:use-custom-oauth="useCustomOauth"
+				:show-managed-oauth-options="managedOauthAvailable"
+				@update:auth-type="onAuthTypeChange"
+			/>
+
+			<N8nCallout
+				v-if="documentationUrl && credentialProperties.length"
+				:class="$style.docsCallout"
+				theme="custom"
+				iconless
+			>
 				{{ i18n.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
-				<span class="ml-4xs">
-					<N8nLink :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
+				<template #actions>
+					<N8nLink :to="documentationUrl" size="small" @click="onDocumentationUrlClick">
 						{{ i18n.baseText('credentialEdit.credentialConfig.openDocs') }}
 					</N8nLink>
-				</span>
-			</N8nNotice>
+				</template>
+			</N8nCallout>
 
 			<Banner
 				v-show="showValidationWarning"
@@ -309,6 +334,16 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					/>
 					<GoogleAuthButton @click="$emit('oauth')" />
 				</template>
+				<template v-else-if="isQuickConnectEnabled" #button>
+					<QuickConnectButton
+						size="small"
+						:service-name="appName"
+						:credential-type-name="credentialType.name"
+						:label="i18n.baseText('credentialEdit.credentialConfig.reconnect')"
+						data-test-id="quick-connect-reconnect-button"
+						@click="$emit('oauth')"
+					/>
+				</template>
 			</Banner>
 
 			<Banner
@@ -328,7 +363,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					isDynamicCredentialsEnabled &&
 					// Only OAuth credentials can be dynamic for now, as they are the only ones with the managed authorize endpoint
 					isOAuthType &&
-					((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
+					canWrite
 				"
 				:class="$style.dynamicCredentials"
 				data-test-id="dynamic-credentials-section"
@@ -353,15 +388,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				</div>
 			</div>
 
-			<template
-				v-if="(credentialPermissions.create && isNewCredential) || credentialPermissions.update"
-			>
-				<AuthTypeSelector
-					v-if="showAuthTypeSelector && isNewCredential"
-					:credential-type="credentialType"
-					@auth-type-changed="onAuthTypeChange"
-				/>
-
+			<template v-if="canWrite">
 				<div
 					v-if="isAskAssistantAvailable"
 					:class="$style.askAssistantButton"
@@ -375,7 +402,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				</div>
 
 				<CopyInput
-					v-if="isOAuthType && !allOAuth2BasePropertiesOverridden"
+					v-if="isOAuthType && useCustomOauth"
 					:label="i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 					:value="oAuthCallbackUrl"
 					:copy-button-text="i18n.baseText('credentialEdit.credentialConfig.clickToCopy')"
@@ -403,10 +430,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			</EnterpriseEdition>
 
 			<CredentialInputs
-				v-if="
-					credentialType &&
-					((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
-				"
+				v-if="credentialType && canWrite"
 				:credential-data="credentialData"
 				:credential-properties="credentialProperties"
 				:documentation-url="documentationUrl"
@@ -414,17 +438,23 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				@update="onDataChange"
 			/>
 
-			<OauthButton
-				v-if="
-					isOAuthType &&
-					requiredPropertiesFilled &&
-					!isOAuthConnected &&
-					((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
-				"
-				:is-google-o-auth-type="isGoogleOAuthType"
-				data-test-id="oauth-connect-button"
-				@click="$emit('oauth')"
-			/>
+			<template v-if="isOAuthType && !isOAuthConnected && canWrite">
+				<QuickConnectButton
+					v-if="isQuickConnectEnabled"
+					:service-name="appName"
+					:credential-type-name="credentialType.name"
+					:disabled="!requiredPropertiesFilled"
+					:disabled-tooltip="i18n.baseText('credentialEdit.credentialConfig.oauthDisabledTooltip')"
+					data-test-id="quick-connect-button"
+					@click="$emit('oauth')"
+				/>
+				<OauthButton
+					v-else-if="requiredPropertiesFilled"
+					:is-google-o-auth-type="isGoogleOAuthType"
+					data-test-id="oauth-connect-button"
+					@click="$emit('oauth')"
+				/>
+			</template>
 
 			<N8nText v-if="isMissingCredentials" color="text-base" size="medium">
 				{{ i18n.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
@@ -449,7 +479,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	--notice--margin: 0;
 	flex-grow: 1;
 
-	> * {
+	> * + * {
 		margin-bottom: var(--spacing--lg);
 	}
 }
@@ -485,5 +515,14 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 .dynamicCredentialsNotice {
 	margin-top: var(--spacing--xs);
+}
+
+.docsCallout {
+	background-color: light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
+	border-color: light-dark(var(--color--black-alpha-200), var(--color--white-alpha-300));
+
+	a {
+		text-decoration: none;
+	}
 }
 </style>

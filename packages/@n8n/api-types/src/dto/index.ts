@@ -62,7 +62,10 @@ export { type GitCommitInfo } from './source-control/push-work-folder-response.d
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
-export { CreateVariableRequestDto } from './variables/create-variable-request.dto';
+export {
+	CreateVariableRequestDto,
+	NEW_VARIABLE_KEY_REGEX,
+} from './variables/create-variable-request.dto';
 export { UpdateVariableRequestDto } from './variables/update-variable-request.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
@@ -155,4 +158,4 @@ export { SetSecretsProviderConnectionIsEnabledDto } from './secrets-provider/set
 export { TestSecretsProviderConnectionDto } from './secrets-provider/test-secrets-provider-connection.dto';
 export { UpdateSecretsProviderConnectionDto } from './secrets-provider/update-secrets-provider-connection.dto';
 
-export { CreateQuickConnectCredentialDto } from './quick-connect/create-quick-connect-credential.dto';
+export { GetQuickConnectApiKeyDto } from './quick-connect/create-quick-connect-credential.dto';

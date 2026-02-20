@@ -80,8 +80,6 @@ on:
 
 env:
   NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
-  # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
-  TESTCONTAINERS_RYUK_DISABLED: true
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
   # Browser cache location - must match install-browsers script
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
@@ -176,6 +174,13 @@ jobs:
             packages/testing/playwright/test-results/
             packages/testing/playwright/playwright-report/
           retention-days: 7
+
+      - name: Cleanup cached CI images
+        if: ${{ inputs.test-mode == 'docker-pull' }}
+        continue-on-error: true
+        run: |
+          docker images --format '{{.Repository}}:{{.Tag}}' | grep -E 'ghcr\.io/n8n-io/(n8n|runners):(ci|pr)-' | xargs -r docker rmi || true
+          docker system prune -f || true
 
       - name: Cancel Currents run if workflow is cancelled
         if: ${{ cancelled() }}
