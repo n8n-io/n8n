@@ -918,6 +918,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
+	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--4xs);
 
