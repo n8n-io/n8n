@@ -723,6 +723,14 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 				for (const branchName of mergePattern.branches) {
 					if (!ctx.visited.has(branchName)) {
 						builtBranches.push(buildFromNode(branchName, ctx));
+					} else {
+						// Branch already visited (e.g. multi-trigger fan-out to shared targets).
+						// Create a varRef so the source→branch connection is preserved.
+						const branchNode = ctx.graph.nodes.get(branchName);
+						if (branchNode) {
+							ctx.variables.set(branchName, branchNode);
+							builtBranches.push(createVarRef(branchName));
+						}
 					}
 				}
 

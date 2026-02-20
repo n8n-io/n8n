@@ -17,9 +17,8 @@ import {
 
 // Workflows with known issues that need to be skipped entirely
 // 4889, 4468, 10143: Nodes inside .onError()/.onCase() chains not extracted by parser
-// 5042, 2986, 9881: Connection source keys lost (fan-in / multiple sources to same target)
 // 13291: Duplicate node names in source JSON lose connections (irrecoverable format limitation)
-const SKIP_WORKFLOWS = new Set<string>(['4889', '4468', '10143', '5042', '13291', '2986', '9881']);
+const SKIP_WORKFLOWS = new Set<string>(['4889', '4468', '10143', '13291']);
 
 // Workflows to skip validation due to known codegen bugs (invalid warnings)
 // These produce warnings that don't exist in the original workflow (codegen issues to fix)

@@ -2188,6 +2188,111 @@ describe('code-generator', () => {
 			});
 		});
 
+		describe('multi-trigger fan-out to shared merge targets', () => {
+			it('preserves connections from second trigger when both fan out to same already-visited targets', () => {
+				// Pattern: Two triggers both fan out to the same pair of nodes that converge at a Merge.
+				// Trigger1 → [BranchA, BranchB] → Merge → Output
+				// Trigger2 → [BranchA, BranchB] → Merge → Output
+				// After Trigger1 builds BranchA and BranchB, Trigger2's fan-out targets
+				// are already visited. The codegen must still produce Trigger2's connections.
+				const json: WorkflowJSON = {
+					id: 'multi-trigger-merge',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'Schedule Trigger',
+							type: 'n8n-nodes-base.scheduleTrigger',
+							typeVersion: 1,
+							position: [0, 200],
+							parameters: {},
+						},
+						{
+							id: '3',
+							name: 'Branch A',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4,
+							position: [300, 0],
+							parameters: {},
+						},
+						{
+							id: '4',
+							name: 'Branch B',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4,
+							position: [300, 200],
+							parameters: {},
+						},
+						{
+							id: '5',
+							name: 'Merge',
+							type: 'n8n-nodes-base.merge',
+							typeVersion: 3,
+							position: [600, 100],
+							parameters: {},
+						},
+						{
+							id: '6',
+							name: 'Output',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [900, 100],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [
+								[
+									{ node: 'Branch A', type: 'main', index: 0 },
+									{ node: 'Branch B', type: 'main', index: 0 },
+								],
+							],
+						},
+						'Schedule Trigger': {
+							main: [
+								[
+									{ node: 'Branch A', type: 'main', index: 0 },
+									{ node: 'Branch B', type: 'main', index: 0 },
+								],
+							],
+						},
+						'Branch A': {
+							main: [[{ node: 'Merge', type: 'main', index: 0 }]],
+						},
+						'Branch B': {
+							main: [[{ node: 'Merge', type: 'main', index: 1 }]],
+						},
+						Merge: {
+							main: [[{ node: 'Output', type: 'main', index: 0 }]],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+				const parsed = parseWorkflowCode(code);
+
+				// Both triggers must appear as connection sources
+				const connectionKeys = Object.keys(parsed.connections);
+				expect(connectionKeys).toContain('Schedule Trigger');
+				expect(connectionKeys).toContain('Manual Trigger');
+
+				// Schedule Trigger must connect to both Branch A and Branch B
+				const scheduleTriggerConns = parsed.connections['Schedule Trigger']?.main?.[0];
+				expect(scheduleTriggerConns).toBeDefined();
+				const scheduleTargets = scheduleTriggerConns!.map((c: { node: string }) => c.node).sort();
+				expect(scheduleTargets).toEqual(['Branch A', 'Branch B']);
+			});
+		});
+
 		describe('merge node outgoing connections', () => {
 			it('preserves merge node outgoing connections when merge has .to()', () => {
 				// Pattern: trigger → [branch1, branch2] → merge → loopOverItems
