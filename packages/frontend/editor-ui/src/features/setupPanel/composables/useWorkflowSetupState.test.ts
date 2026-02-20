@@ -706,6 +706,125 @@ describe('useWorkflowSetupState', () => {
 		});
 	});
 
+	describe('setCredential — HTTP Request auto-assign', () => {
+		it('should auto-assign to another HTTP Request node with the same URL and credential type', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [0, 0],
+				parameters: { url: 'https://api.example.com/data' },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [100, 0],
+				parameters: { url: 'https://api.example.com/data' },
+			});
+			workflowsStore.allNodes = [httpNode1, httpNode2];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				displayName: 'Header Auth',
+			});
+			workflowsStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP Request') return httpNode1;
+				if (name === 'HTTP Request1') return httpNode2;
+				return null;
+			});
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
+				id: 'cred-1',
+				name: 'My Auth',
+			});
+
+			const { setCredential } = useWorkflowSetupState();
+			setCredential('httpHeaderAuth', 'cred-1', 'HTTP Request');
+
+			// Both nodes should get the credential because they share the same URL
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
+				name: 'HTTP Request',
+				properties: {
+					credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Auth' } },
+				},
+			});
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
+				name: 'HTTP Request1',
+				properties: {
+					credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Auth' } },
+				},
+			});
+		});
+
+		it('should NOT auto-assign to another HTTP Request node with a different URL', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [0, 0],
+				parameters: { url: 'https://api.example.com/data' },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [100, 0],
+				parameters: { url: 'https://api.other.com/data' },
+			});
+			workflowsStore.allNodes = [httpNode1, httpNode2];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				displayName: 'Header Auth',
+			});
+			workflowsStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP Request') return httpNode1;
+				if (name === 'HTTP Request1') return httpNode2;
+				return null;
+			});
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
+				id: 'cred-1',
+				name: 'My Auth',
+			});
+
+			const { setCredential } = useWorkflowSetupState();
+			setCredential('httpHeaderAuth', 'cred-1', 'HTTP Request');
+
+			// Only the source node should get the credential
+			expect(mockUpdateNodeProperties).toHaveBeenCalledTimes(1);
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
+				name: 'HTTP Request',
+				properties: {
+					credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Auth' } },
+				},
+			});
+		});
+
+		it('should create separate cards for HTTP Request nodes with same credential type', () => {
+			const httpNode = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [0, 0],
+				parameters: { url: 'https://api.example.com' },
+			});
+			const regularNode = createNode({
+				name: 'Slack',
+				position: [100, 0],
+			});
+			workflowsStore.allNodes = [httpNode, regularNode];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				displayName: 'Header Auth',
+			});
+			workflowsStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP Request') return httpNode;
+				if (name === 'Slack') return regularNode;
+				return null;
+			});
+
+			const { credentialTypeStates } = useWorkflowSetupState();
+
+			// HTTP Request gets its own card, regular node gets its own card
+			expect(credentialTypeStates.value).toHaveLength(2);
+			expect(credentialTypeStates.value[0].nodes[0].name).toBe('HTTP Request');
+			expect(credentialTypeStates.value[1].nodes[0].name).toBe('Slack');
+		});
+	});
+
 	describe('unsetCredential', () => {
 		it('should remove credential from all nodes that need the type', () => {
 			const node1 = createNode({
