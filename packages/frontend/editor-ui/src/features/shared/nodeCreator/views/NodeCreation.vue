@@ -183,7 +183,6 @@ function openCommandBar(event: MouseEvent) {
 				variant="subtle"
 				size="large"
 				icon="panel-right"
-				:class="focusPanelActive ? $style.activeButton : ''"
 				:active="focusPanelActive"
 				data-test-id="toggle-focus-panel-button"
 				@click="toggleFocusPanel"
@@ -236,9 +235,5 @@ function openCommandBar(event: MouseEvent) {
 	svg {
 		display: block;
 	}
-}
-
-.activeButton {
-	background-color: var(--button--color--background--hover) !important;
 }
 </style>

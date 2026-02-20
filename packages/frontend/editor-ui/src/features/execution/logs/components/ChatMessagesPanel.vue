@@ -184,7 +184,7 @@ async function copySessionId() {
 						{{ locale.baseText('chat.window.session.id.copy') }}
 					</template>
 					<N8nButton
-						variant="outline"
+						variant="ghost"
 						data-test-id="chat-session-id"
 						size="xsmall"
 						:class="$style.newHeaderButton"
@@ -197,10 +197,10 @@ async function copySessionId() {
 					:content="locale.baseText('chat.window.session.resetSession')"
 				>
 					<N8nIconButton
-						variant="subtle"
+						variant="ghost"
 						:class="$style.newHeaderButton"
 						data-test-id="refresh-session-button"
-						size="small"
+						size="xsmall"
 						icon-size="medium"
 						icon="undo-2"
 						:title="locale.baseText('chat.window.session.reset')"

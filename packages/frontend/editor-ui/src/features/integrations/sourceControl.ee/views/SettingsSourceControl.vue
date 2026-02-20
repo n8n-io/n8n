@@ -487,10 +487,10 @@ watch(connectionType, () => {
 							<N8nButton
 								variant="subtle"
 								iconOnly
-								size="small"
+								size="xlarge"
 								icon="refresh-cw"
-								:class="$style.refreshBranches"
 								data-test-id="source-control-refresh-branches-button"
+								:class="$style.refreshBranches"
 								@click="refreshBranches"
 							/>
 						</N8nTooltip>
@@ -646,9 +646,12 @@ watch(connectionType, () => {
 	}
 
 	button.refreshBranches {
-		height: 36px;
-		width: 36px;
 		margin-left: var(--spacing--xs);
+
+		svg {
+			width: 16px;
+			height: 16px;
+		}
 	}
 }
 </style>
