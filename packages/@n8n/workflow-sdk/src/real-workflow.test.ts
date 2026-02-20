@@ -26,9 +26,6 @@ function writeGeneratedTsFile(id: string, json: WorkflowJSON): void {
 	}
 }
 
-// Workflows with known SDK round-trip issues (node loss, connection format bugs)
-const SKIP_WORKFLOWS = new Set<string>([]);
-
 interface TestWorkflow {
 	id: string;
 	name: string;
@@ -56,7 +53,6 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 	for (const entry of manifest.workflows) {
 		if (!entry.success) continue;
 		if (entry.skip) continue;
-		if (SKIP_WORKFLOWS.has(String(entry.id))) continue;
 
 		const filePath = path.join(dir, `${entry.id}.json`);
 		if (fs.existsSync(filePath)) {

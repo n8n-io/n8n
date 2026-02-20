@@ -137,20 +137,11 @@ function parseErrorConnections(
 /**
  * Check if a node type is a subnode type (language model, memory, output parser, etc.)
  * as opposed to an agent/chain type that accepts subnodes.
+ * Derives from AI_CONNECTION_SUBNODE_PATTERNS to avoid duplicating pattern lists.
  */
 function isSubnodeType(nodeType: string): boolean {
-	return (
-		nodeType.includes('lmChat') ||
-		nodeType.includes('memory') ||
-		nodeType.includes('outputParser') ||
-		nodeType.includes('embedding') ||
-		nodeType.includes('vectorStore') ||
-		nodeType.includes('retriever') ||
-		nodeType.includes('textSplitter') ||
-		nodeType.includes('reranker') ||
-		nodeType.includes('lmCohere') ||
-		nodeType.includes('lmOllama') ||
-		nodeType.includes('lmAnthropic')
+	return Object.values(AI_CONNECTION_SUBNODE_PATTERNS).some((patterns) =>
+		patterns.some((p) => nodeType.includes(p)),
 	);
 }
 
@@ -201,10 +192,10 @@ function isReversedAiConnection(
 }
 
 /**
- * Find the nearest parent node that accepts an AI connection type.
- * Used when a subnode references a non-existent parent (e.g., renamed node with stale connections).
- * Matches by: accepts the AI connection type, doesn't already have a subnode of that type,
- * and is closest by canvas position.
+ * Best-effort recovery for malformed workflow data.
+ * Uses canvas position proximity as a heuristic — may pick the wrong parent
+ * if multiple candidates are equidistant. Only used as a fallback when the
+ * referenced parent node doesn't exist (stale connections from renamed nodes).
  */
 function findNearestParent(
 	sourceNode: SemanticNode,
@@ -551,7 +542,7 @@ function redistributeDuplicateConnections(
 			}
 		}
 
-		// Step 3: Redistribute AI subnodes using position proximity
+		// Step 2: Redistribute AI subnodes using position proximity
 		if (firstInstance.subnodes.length <= 1) continue;
 
 		const allInstances = graphKeys

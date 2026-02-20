@@ -104,7 +104,8 @@ function hashFallbackName(nodeName: string): string {
 	for (let i = 0; i < nodeName.length; i++) {
 		hash = ((hash << 5) - hash + nodeName.charCodeAt(i)) | 0;
 	}
-	// Convert to base36 and replace minus sign for negative hashes
+	// Math.abs loses sign bit so distinct strings can map to the same hash,
+	// but makeUnique() in the caller handles collisions via numeric suffixes.
 	return 'node_' + Math.abs(hash).toString(36);
 }
 

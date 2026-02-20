@@ -169,7 +169,7 @@ export function normalizeConnections(connections: IConnections): void {
 				const slot = outputs[i] as unknown;
 				if (!Array.isArray(slot)) continue;
 				// Flat tuple: [string, string, number] instead of [{node, type, index}]
-				if (slot.length > 0 && typeof slot[0] === 'string') {
+				if (slot.length > 0 && slot.length <= 3 && typeof slot[0] === 'string') {
 					outputs[i] = [
 						{
 							node: slot[0] as string,

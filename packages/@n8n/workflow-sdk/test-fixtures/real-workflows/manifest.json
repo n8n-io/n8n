@@ -3369,67 +3369,6 @@
 			"success": true
 		},
 		{
-			"id": 5674,
-			"name": "Generate trend-based marketing videos with Seedance AI, Perplexity, and GPT",
-			"success": true
-		},
-		{
-			"id": 4887,
-			"name": "Auto-create podcast from YouTube transcript using Dumpling AI and GPT-4o",
-			"success": true
-		},
-		{
-			"id": 3940,
-			"name": "Document Q&A chatbot with Gemini AI and Supabase vector search for Telegram",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "TOOL_NO_PARAMETERS",
-					"nodeName": "Think"
-				}
-			]
-		},
-		{
-			"id": 3291,
-			"name": "🔍🛠️Generate SEO-optimized WordPress content with AI powered perplexity research",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Copywriter AI Agent"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Create Title, Slug, Meta"
-				}
-			]
-		},
-		{
-			"id": 3135,
-			"name": "✨🩷Automated social media content publishing factory + system prompt composition",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Prepare Email Contents"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Prepare Social Media Email Contents"
-				}
-			]
-		},
-		{
-			"id": 5794,
-			"name": "Extract business contact leads from Google Maps with RapidAPI and Google Sheets",
-			"success": true
-		},
-		{
-			"id": 5466,
-			"name": "Automated restaurant call handling & table booking system with VAPI and PostgreSQL",
-			"success": true
-		},
-		{
 			"id": 4733,
 			"name": "Automated job hunter: Upwork opportunity aggregator & AI-powered notifier",
 			"success": true,
@@ -4126,50 +4065,6 @@
 			"id": 8067,
 			"name": "Personalized evening wind-down system with mood tracking via Telegram, Notion & Email",
 			"success": true
-		},
-		{
-			"id": 8042,
-			"name": "Version control n8n workflows in GitLab with customer tag organization",
-			"success": true
-		},
-		{
-			"id": 6273,
-			"name": "Daily business news briefings with NewsAPI & GPT-4 insights to Slack",
-			"success": true
-		},
-		{
-			"id": 5805,
-			"name": "Create YouTube shorts scripts from video links with Gemini AI and Telegram",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Create Script"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Script mapping"
-				}
-			]
-		},
-		{
-			"id": 5862,
-			"name": "Dynamic AI model selector with GDPR compliance via Requesty and Google Sheets",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "AI Agent (Optional)"
-				},
-				{
-					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "AI API Request"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "AI API Request"
-				}
-			]
 		},
 		{
 			"id": 8042,
@@ -5520,7 +5415,12 @@
 			"id": 7643,
 			"name": "Auto-categorize Gmail emails with AI and send prioritized Slack alerts",
 			"success": true,
-			"expectedWarnings": [{ "code": "AGENT_NO_SYSTEM_MESSAGE", "nodeName": "AI Agent" }]
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 7470,
@@ -9203,9 +9103,18 @@
 			"name": "Gmail smart auto-responder with GPT-4o and Google Drive context memory",
 			"success": true,
 			"expectedWarnings": [
-				{ "code": "MISSING_EXPRESSION_PREFIX", "nodeName": "Simple Vector Store" },
-				{ "code": "MISSING_EXPRESSION_PREFIX", "nodeName": "Vector Store Retriever" },
-				{ "code": "DISCONNECTED_NODE", "nodeName": "Simple Vector Store" }
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Simple Vector Store"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Vector Store Retriever"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Simple Vector Store"
+				}
 			]
 		},
 		{
