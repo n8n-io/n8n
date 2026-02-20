@@ -48,6 +48,10 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { injectWorkflowState, type WorkflowState } from './useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -187,7 +191,10 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 		workflow: Workflow,
 		ignoreIssues?: string[],
 	): INodeIssues | null {
-		const pinDataNodeNames = Object.keys(workflowsStore.pinnedWorkflowData ?? {});
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+		const pinDataNodeNames = Object.keys(workflowDocumentStore?.pinData ?? {});
 
 		let nodeIssues: INodeIssues | null = null;
 		ignoreIssues = ignoreIssues ?? [];

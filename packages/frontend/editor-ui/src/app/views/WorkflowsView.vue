@@ -1815,8 +1815,9 @@ const onNameSubmit = async (name: string) => {
 					</span>
 				</template>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="small"
+					iconOnly
 					icon="folder-plus"
 					data-test-id="add-folder-button"
 					:class="$style['add-folder-button']"

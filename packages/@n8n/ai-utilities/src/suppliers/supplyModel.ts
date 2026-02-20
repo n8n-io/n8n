@@ -1,8 +1,8 @@
 import type { ServerTool } from '@langchain/core/tools';
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
-import type { ISupplyDataFunctions } from 'n8n-workflow';
+import type { ISupplyDataFunctions, SupplyData } from 'n8n-workflow';
 
-import { LangchainAdapter } from '../adapters/langchain-chat-model';
+import { LangchainChatModelAdapter } from '../adapters/langchain-chat-model';
 import { BaseChatModel } from '../chat-model/base';
 import type { ChatModel } from '../types/chat-model';
 import type { OpenAIModelOptions } from '../types/openai';
@@ -10,7 +10,7 @@ import { makeN8nLlmFailedAttemptHandler } from '../utils/failed-attempt-handler/
 import { getProxyAgent } from '../utils/http-proxy-agent';
 import { N8nLlmTracing } from '../utils/n8n-llm-tracing';
 
-type OpenAiModel = OpenAIModelOptions & {
+export type OpenAiModel = OpenAIModelOptions & {
 	type: 'openai';
 };
 export type SupplyModelOptions = ChatModel | OpenAiModel;
@@ -82,14 +82,14 @@ function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 	return openAiModel;
 }
 
-export function supplyModel(ctx: ISupplyDataFunctions, model: SupplyModelOptions) {
+export function supplyModel(ctx: ISupplyDataFunctions, model: SupplyModelOptions): SupplyData {
 	if (isOpenAiModel(model)) {
 		const openAiModel = getOpenAiModel(ctx, model);
 		return {
 			response: openAiModel,
 		};
 	}
-	const adapter = new LangchainAdapter(model, ctx);
+	const adapter = new LangchainChatModelAdapter(model, ctx);
 	return {
 		response: adapter,
 	};

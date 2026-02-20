@@ -81,6 +81,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		projectName,
 		resourceQuota,
 		services: enabledServices = [],
+		external = false,
 	} = config;
 
 	const log = createElapsedLogger('stack');
@@ -127,6 +128,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			isQueueMode,
 			usePostgres,
 			needsLoadBalancer,
+			external,
 			environment,
 			serviceResults,
 			allocatedPorts: {
