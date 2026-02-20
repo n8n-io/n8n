@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import {
 	fetchChatModelsApi,
 	sendMessageApi,
+	sendMessageManualApi,
 	editMessageApi,
 	regenerateMessageApi,
 	reconnectToSessionApi,
@@ -29,6 +30,8 @@ import {
 	deleteToolApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import {
 	emptyChatModelsResponse,
 	type ChatHubConversationModel,
@@ -56,6 +59,7 @@ import {
 	type ChatHubExecutionBegin,
 	type ChatHubExecutionEnd,
 	type ChatMessageContentChunk,
+	type ChatHubN8nModel,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -76,7 +80,8 @@ import {
 } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { deepCopy, type INode } from 'n8n-workflow';
+import { createRunExecutionData, deepCopy, type INode } from 'n8n-workflow';
+import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores/constants';
@@ -496,6 +501,28 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		await fetchConversationTitle(sessionId);
 	}
 
+	/**
+	 * Check if the current canvas context allows manual (draft) execution.
+	 * Returns true when:
+	 * 1. The agent is an n8n workflow
+	 * 2. The workflow is currently open on the canvas
+	 * 3. The workflow has a chat trigger with availableInChat enabled
+	 */
+	function isCanvasManualMode(model: ChatHubConversationModel): boolean {
+		if (model.provider !== 'n8n') return false;
+
+		const workflowsStore = useWorkflowsStore();
+		if (workflowsStore.workflowId !== model.workflowId) return false;
+
+		const chatTrigger = workflowsStore.allNodes.find(
+			(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
+		);
+		if (!chatTrigger) return false;
+
+		const availableInChat = chatTrigger.parameters?.availableInChat;
+		return availableInChat === true;
+	}
+
 	async function sendMessage(
 		sessionId: ChatSessionId,
 		message: string,
@@ -545,6 +572,11 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 		};
 
+		// Detect if this is a manual (draft) execution from the canvas.
+		// When the user is on a canvas with the same workflow as the selected n8n agent,
+		// use the manual endpoint to execute the draft version with canvas events.
+		const useManualMode = isCanvasManualMode(agent.model);
+
 		try {
 			// Create session entry if new
 			if (!sessions.value.byId[sessionId]) {
@@ -556,7 +588,37 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 				sessions.value.ids.unshift(sessionId);
 			}
 
-			await sendMessageApi(rootStore.restApiContext, payload);
+			if (useManualMode) {
+				const workflowsStore = useWorkflowsStore();
+
+				// Initialize workflowExecutionData scaffold so nodeExecuteAfter push
+				// handlers can write node results into it (makes nodes turn green).
+				workflowsStore.workflowExecutionData = {
+					id: IN_PROGRESS_EXECUTION_ID,
+					finished: false,
+					mode: 'manual',
+					status: 'running',
+					createdAt: new Date(),
+					startedAt: new Date(),
+					stoppedAt: undefined,
+					workflowId: workflowsStore.workflowId,
+					data: createRunExecutionData({
+						resultData: { runData: {} },
+					}),
+					workflowData: workflowsStore.workflow,
+				};
+
+				// Signal canvas that an execution is pending (null = waiting for execution ID)
+				workflowsStore.private.setActiveExecutionId(null);
+
+				// model is guaranteed to be n8n type here (checked in isCanvasManualMode)
+				await sendMessageManualApi(rootStore.restApiContext, {
+					...payload,
+					model: agent.model as ChatHubN8nModel,
+				});
+			} else {
+				await sendMessageApi(rootStore.restApiContext, payload);
+			}
 
 			// Note: Actual streaming content comes via Push events using pushConnection store.
 			// The push handler will call handleWebSocketStreamBegin, handleWebSocketStreamChunk, etc.
@@ -1089,6 +1151,13 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 					updateMessage(sessionId, streaming.value.messageId, status);
 				}
 			}
+
+			// For manual mode (canvas execution), do NOT clear activeExecutionId here.
+			// The standard `executionFinished` push handler (sent via pushRef) will:
+			// 1. Fetch the complete execution data from the API
+			// 2. Update workflowExecutionData with full results
+			// 3. Clear activeExecutionId
+			// Clearing it here would cause executionFinished to skip processing.
 
 			streaming.value = undefined;
 

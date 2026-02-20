@@ -1,6 +1,7 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
+	ChatHubManualSendMessageRequest,
 	ChatHubSendMessageRequest,
 	ChatModelsRequest,
 	ChatModelsResponse,
@@ -43,6 +44,24 @@ export async function sendMessageApi(
 		ctx,
 		'POST',
 		'/chat/conversations/send',
+		payload,
+	);
+}
+
+/**
+ * Send a message using the draft workflow version (manual execution from canvas).
+ * The push-ref header is sent automatically via context.pushRef, enabling canvas
+ * execution events (nodeExecuteBefore/After).
+ * Returns immediately; actual content comes via Push events.
+ */
+export async function sendMessageManualApi(
+	ctx: IRestApiContext,
+	payload: ChatHubManualSendMessageRequest,
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
+		ctx,
+		'POST',
+		'/chat/conversations/send/manual',
 		payload,
 	);
 }

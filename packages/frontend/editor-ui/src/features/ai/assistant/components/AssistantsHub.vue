@@ -9,6 +9,7 @@ import SlideTransition from '@/app/components/transitions/SlideTransition.vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
 import AskModeCoachmark from './AskModeCoachmark.vue';
+import CanvasChatHubPanel from '@/features/ai/chatHub/components/CanvasChatHubPanel.vue';
 import { useAskModeCoachmark } from '../composables/useAskModeCoachmark';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
@@ -43,6 +44,9 @@ watch(
 
 const askAssistantBuildRef = ref<InstanceType<typeof AskAssistantBuild>>();
 const askAssistantChatRef = ref<InstanceType<typeof AskAssistantChat>>();
+const canvasChatHubRef = ref<InstanceType<typeof CanvasChatHubPanel>>();
+
+const isChatHubMode = computed(() => chatPanelStore.isChatHubModeActive);
 
 const chatWidth = computed(() => chatPanelStore.width);
 
@@ -86,7 +90,9 @@ function onClose() {
 
 function onSlideEnterComplete() {
 	slideAnimationComplete.value = true;
-	if (isBuildMode.value) {
+	if (isChatHubMode.value) {
+		canvasChatHubRef.value?.focusInput();
+	} else if (isBuildMode.value) {
 		askAssistantBuildRef.value?.focusInput();
 	} else {
 		askAssistantChatRef.value?.focusInput();
@@ -133,15 +139,16 @@ onBeforeUnmount(() => {
 			v-show="chatPanelStore.isOpen"
 			:supported-directions="['left']"
 			:width="chatWidth"
-			:min-width="chatPanelStore.MIN_CHAT_WIDTH"
-			:max-width="chatPanelStore.MAX_CHAT_WIDTH"
+			:min-width="chatPanelStore.activeMinWidth"
+			:max-width="chatPanelStore.activeMaxWidth"
 			:class="$style.resizeWrapper"
 			data-test-id="ask-assistant-sidebar"
 			@resize="onResizeDebounced"
 		>
 			<div :style="{ width: `${chatWidth}px` }" :class="$style.wrapper">
 				<div :class="$style.assistantContent">
-					<AskAssistantBuild v-if="isBuildMode" ref="askAssistantBuildRef" @close="onClose">
+					<CanvasChatHubPanel v-if="isChatHubMode" ref="canvasChatHubRef" @close="onClose" />
+					<AskAssistantBuild v-else-if="isBuildMode" ref="askAssistantBuildRef" @close="onClose">
 						<template v-if="canToggleModes" #header>
 							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
 						</template>

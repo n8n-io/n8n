@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
 
-export type ChatPanelMode = 'assistant' | 'builder';
+export type ChatPanelMode = 'assistant' | 'builder' | 'chatHub';
 
 export const DEFAULT_CHAT_WIDTH = 400;
 

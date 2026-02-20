@@ -5,7 +5,11 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useRoute } from 'vue-router';
 import { ASK_AI_SLIDE_OUT_DURATION_MS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import type { VIEWS } from '@/app/constants';
-import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
+import {
+	ASSISTANT_ENABLED_VIEWS,
+	BUILDER_ENABLED_VIEWS,
+	CHAT_HUB_ENABLED_VIEWS,
+} from './constants';
 import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.store';
 import { useAssistantStore } from './assistant.store';
 import { useBuilderStore } from './builder.store';
@@ -19,6 +23,10 @@ import { useI18n } from '@n8n/i18n';
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 380;
 export const DEFAULT_CHAT_WIDTH = 400;
+
+export const CHAT_HUB_MAX_CHAT_WIDTH = 800;
+export const CHAT_HUB_MIN_CHAT_WIDTH = 400;
+export const CHAT_HUB_DEFAULT_CHAT_WIDTH = 560;
 
 /**
  * Type guard to check if a route name is a valid VIEWS value within the enabled views
@@ -54,12 +62,35 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	// Computed
 	const isAssistantModeActive = computed(() => chatPanelStateStore.activeMode === 'assistant');
 	const isBuilderModeActive = computed(() => chatPanelStateStore.activeMode === 'builder');
+	const isChatHubModeActive = computed(() => chatPanelStateStore.activeMode === 'chatHub');
+
+	const activeMinWidth = computed(() =>
+		isChatHubModeActive.value ? CHAT_HUB_MIN_CHAT_WIDTH : MIN_CHAT_WIDTH,
+	);
+	const activeMaxWidth = computed(() =>
+		isChatHubModeActive.value ? CHAT_HUB_MAX_CHAT_WIDTH : MAX_CHAT_WIDTH,
+	);
+	const activeDefaultWidth = computed(() =>
+		isChatHubModeActive.value ? CHAT_HUB_DEFAULT_CHAT_WIDTH : DEFAULT_CHAT_WIDTH,
+	);
 
 	const canShowAiButtonOnCanvas = computed(
 		() =>
 			settingsStore.isAiAssistantOrBuilderEnabled &&
 			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
+
+	function getEnabledViewsForMode(mode: ChatPanelMode): readonly VIEWS[] {
+		switch (mode) {
+			case 'assistant':
+				return ASSISTANT_ENABLED_VIEWS;
+			case 'chatHub':
+				return CHAT_HUB_ENABLED_VIEWS;
+			case 'builder':
+			default:
+				return BUILDER_ENABLED_VIEWS;
+		}
+	}
 
 	// Actions
 	async function open(options?: { mode?: ChatPanelMode; showCoachmark?: boolean }) {
@@ -71,11 +102,11 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		}
 		chatPanelStateStore.showCoachmark = showCoachmark;
 
+		// Set mode-appropriate default width
+		chatPanelStateStore.width = activeDefaultWidth.value;
+
 		// Check if the mode is enabled in the current view
-		const enabledViews =
-			chatPanelStateStore.activeMode === 'assistant'
-				? ASSISTANT_ENABLED_VIEWS
-				: BUILDER_ENABLED_VIEWS;
+		const enabledViews = getEnabledViewsForMode(chatPanelStateStore.activeMode);
 		const currentRoute = route?.name;
 
 		if (!isEnabledView(currentRoute, enabledViews)) {
@@ -137,7 +168,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		const resolved = resolveMode(mode);
 
 		// Check if the mode is enabled in the current view
-		const enabledViews = resolved === 'assistant' ? ASSISTANT_ENABLED_VIEWS : BUILDER_ENABLED_VIEWS;
+		const enabledViews = getEnabledViewsForMode(resolved);
 		const currentRoute = route?.name;
 
 		if (!isEnabledView(currentRoute, enabledViews)) {
@@ -152,7 +183,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	}
 
 	function updateWidth(newWidth: number) {
-		const clampedWidth = Math.min(Math.max(newWidth, MIN_CHAT_WIDTH), MAX_CHAT_WIDTH);
+		const clampedWidth = Math.min(Math.max(newWidth, activeMinWidth.value), activeMaxWidth.value);
 		chatPanelStateStore.width = clampedWidth;
 		if (chatPanelStateStore.isOpen) {
 			uiStore.appGridDimensions = {
@@ -222,14 +253,15 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 				return;
 			}
 
-			const enabledViews =
-				chatPanelStateStore.activeMode === 'assistant'
-					? ASSISTANT_ENABLED_VIEWS
-					: BUILDER_ENABLED_VIEWS;
+			const enabledViews = getEnabledViewsForMode(chatPanelStateStore.activeMode);
 
 			if (!isEnabledView(newRoute, enabledViews)) {
 				close();
-			} else if (isEnabledView(newRoute, BUILDER_ENABLED_VIEWS) && !builderStore.streaming) {
+			} else if (
+				chatPanelStateStore.activeMode === 'builder' &&
+				isEnabledView(newRoute, BUILDER_ENABLED_VIEWS) &&
+				!builderStore.streaming
+			) {
 				builderStore.resetBuilderChat();
 			}
 		},
@@ -244,6 +276,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		// Computed
 		isAssistantModeActive,
 		isBuilderModeActive,
+		isChatHubModeActive,
 		canShowAiButtonOnCanvas,
 		// Actions
 		open,
@@ -253,6 +286,10 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		updateWidth,
 		openWithCredHelp,
 		openWithErrorHelper,
+		// Mode-aware width bounds
+		activeMinWidth,
+		activeMaxWidth,
+		activeDefaultWidth,
 		// Constants
 		DEFAULT_CHAT_WIDTH,
 		MIN_CHAT_WIDTH,

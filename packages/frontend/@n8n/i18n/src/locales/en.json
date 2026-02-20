@@ -506,6 +506,7 @@
 	"chatHub.chat.prompt.button.stopGenerating": "Stop generating",
 	"chatHub.chat.prompt.placeholder.withModel": "Message {model}...",
 	"chatHub.chat.prompt.placeholder.selectModel": "Select a model",
+	"chatHub.canvas.previewBadge": "Preview",
 	"chatHub.tools.editor.title": "Add Tools",
 	"chatHub.tools.editor.credential": "Credential",
 	"chatHub.tools.editor.credential.placeholder": "Select credential…",

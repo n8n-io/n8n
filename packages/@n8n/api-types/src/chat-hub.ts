@@ -330,6 +330,28 @@ export class ChatHubSendMessageRequest extends Z.class({
 	timeZone: TimeZoneSchema,
 }) {}
 
+/**
+ * Request schema for sending a message via the manual (draft) execution path.
+ * Same shape as ChatHubSendMessageRequest — the endpoint itself signals "use draft from DB".
+ * Requires workflow:execute permission (not available to chat-only users).
+ */
+export class ChatHubManualSendMessageRequest extends Z.class({
+	messageId: z.string().uuid(),
+	sessionId: z.string().uuid(),
+	message: z.string(),
+	model: n8nModelSchema,
+	previousMessageId: z.string().uuid().nullable(),
+	credentials: z.record(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+		}),
+	),
+	attachments: z.array(chatAttachmentSchema),
+	agentName: z.string().optional(),
+	timeZone: TimeZoneSchema,
+}) {}
+
 export class ChatHubRegenerateMessageRequest extends Z.class({
 	model: chatHubConversationModelSchema,
 	credentials: z.record(

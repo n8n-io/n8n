@@ -523,6 +523,133 @@ export class ChatHubService {
 	}
 
 	/**
+	 * Send a human message using the draft (unpublished) version of a workflow.
+	 * Requires workflow:execute permission. Passes pushRef for canvas execution events.
+	 */
+	async sendHumanMessageManual(
+		user: User,
+		payload: HumanMessagePayload,
+		executionMetadata: ChatHubAuthenticationMetadata,
+		pushRef: string,
+	): Promise<void> {
+		const {
+			sessionId,
+			messageId,
+			message,
+			model,
+			credentials,
+			previousMessageId,
+			attachments,
+			timeZone,
+		} = payload;
+		const tz = timeZone ?? this.globalConfig.generic.timezone;
+
+		if (model.provider !== 'n8n') {
+			throw new BadRequestError('Manual execution is only supported for n8n workflow agents');
+		}
+
+		const credentialId = this.getModelCredential(model, credentials);
+
+		let processedAttachments: IBinaryData[] = [];
+		let workflow: PreparedChatWorkflow;
+		try {
+			const result = await this.messageRepository.manager.transaction(async (trx) => {
+				let session = await this.getChatSession(user, sessionId, trx);
+				session ??= await this.createChatSession(
+					user,
+					sessionId,
+					model,
+					credentialId,
+					payload.agentName,
+					trx,
+				);
+
+				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+				const history = this.buildMessageHistory(messages, previousMessageId);
+
+				processedAttachments = await this.chatHubAttachmentService.store(
+					sessionId,
+					messageId,
+					attachments,
+				);
+
+				await this.messageRepository.createHumanMessage(
+					payload,
+					processedAttachments,
+					user,
+					previousMessageId,
+					model,
+					undefined,
+					trx,
+				);
+
+				const tools = await this.chatHubToolService.getToolDefinitionsForSession(sessionId, trx);
+
+				const replyWorkflow = await this.chatHubWorkflowService.prepareReplyWorkflow(
+					user,
+					sessionId,
+					credentials,
+					model,
+					history,
+					message,
+					tools,
+					processedAttachments,
+					tz,
+					trx,
+					executionMetadata,
+					true, // manual
+				);
+
+				return { workflow: replyWorkflow };
+			});
+			workflow = result.workflow;
+		} catch (error) {
+			if (processedAttachments.length > 0) {
+				try {
+					await this.chatHubAttachmentService.deleteAttachments(processedAttachments);
+				} catch {
+					this.errorReporter.warn(`Could not clean up ${processedAttachments.length} files`);
+				}
+			}
+
+			throw error;
+		}
+
+		if (!workflow) {
+			throw new UnexpectedError('Failed to prepare chat workflow.');
+		}
+
+		// Broadcast human message to all user connections for cross-client sync
+		await this.chatStreamService.sendHumanMessage({
+			userId: user.id,
+			sessionId,
+			messageId,
+			previousMessageId,
+			content: message,
+			attachments: processedAttachments.map((a) => ({
+				id: a.id!,
+				fileName: a.fileName ?? 'file',
+				mimeType: a.mimeType,
+			})),
+		});
+
+		// Start the workflow execution with pushRef for canvas events
+		void this.executeChatWorkflowWithCleanup(
+			user,
+			model,
+			workflow,
+			sessionId,
+			messageId,
+			null,
+			previousMessageId,
+			credentials,
+			message,
+			processedAttachments,
+			pushRef,
+		);
+	}
+
+	/**
 	 * Edit a message and stream the AI response via Push events.
 	 * Returns immediately, streaming happens in background after.
 	 */
@@ -777,6 +904,7 @@ export class ChatHubService {
 		credentials: INodeCredentials,
 		humanMessage: string,
 		processedAttachments: IBinaryData[],
+		pushRef?: string,
 	) {
 		await this.chatHubExecutionService.executeChatWorkflowWithCleanup(
 			user,
@@ -787,6 +915,7 @@ export class ChatHubService {
 			previousMessageId,
 			retryOfMessageId,
 			workflow.responseMode,
+			pushRef,
 		);
 
 		// Generate title for the session on receiving the first human message
