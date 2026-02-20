@@ -25,7 +25,7 @@ export const nodeTypePrompt = async () =>
 					hint: 'Low-code, faster approval for n8n Cloud',
 				},
 				{
-					label: 'Other',
+					label: 'Programmatic',
 					value: 'programmatic',
 					hint: 'Programmatic node with full flexibility',
 				},
@@ -44,5 +44,55 @@ export const declarativeTemplatePrompt = async () =>
 				hint: template.description,
 			})),
 			initialValue: 'githubIssues',
+		}),
+	);
+
+export const programmaticNodeTypePrompt = async () =>
+	await withCancelHandler(
+		select<'basic' | 'chatModel' | 'chatMemory'>({
+			message: 'What type of programmatic node are you building?',
+			options: [
+				{
+					label: 'Basic',
+					value: 'basic',
+					hint: 'Standard programmatic node',
+				},
+				{
+					label: 'Chat Model',
+					value: 'chatModel',
+					hint: 'AI chat model node',
+				},
+				{
+					label: 'Chat Memory',
+					value: 'chatMemory',
+					hint: 'AI chat memory node',
+				},
+			],
+			initialValue: 'basic',
+		}),
+	);
+
+export const chatModelTypePrompt = async () =>
+	await withCancelHandler(
+		select<'openaiCompatible' | 'custom' | 'customExample'>({
+			message: 'What type of chat model?',
+			options: [
+				{
+					label: 'OpenAI compatible',
+					value: 'openaiCompatible',
+					hint: 'Chat model for OpenAI-compatible providers',
+				},
+				{
+					label: 'Custom',
+					value: 'custom',
+					hint: 'Custom chat model implementation',
+				},
+				{
+					label: 'Custom Example',
+					value: 'customExample',
+					hint: 'OpenAI chat model example implementation',
+				},
+			],
+			initialValue: 'openaiCompatible',
 		}),
 	);

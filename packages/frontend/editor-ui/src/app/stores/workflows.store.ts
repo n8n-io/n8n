@@ -35,9 +35,7 @@ import type {
 	INodeConnections,
 	INodeCredentials,
 	INodeCredentialsDetails,
-	INodeExecutionData,
 	INodeTypes,
-	IPinData,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
@@ -58,8 +56,7 @@ import * as workflowUtils from 'n8n-workflow/common';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/app/api/workflows';
 import { useUIStore } from '@/app/stores/ui.store';
-import { dataPinningEventBus } from '@/app/event-bus';
-import { isJsonKeyObject, stringSizeInBytes, isPresent } from '@/app/utils/typesUtils';
+import { isPresent } from '@/app/utils/typesUtils';
 import {
 	makeRestApiRequest,
 	ResponseError,
@@ -93,6 +90,10 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -335,8 +336,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return String(issue);
 	}
 
-	const pinnedWorkflowData = computed(() => workflow.value.pinData);
-
 	const executedNode = computed(() => workflowExecutionData.value?.executedNode);
 
 	const getAllLoadedFinishedExecutions = computed(() => {
@@ -508,12 +507,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return currentWorkflowExecutions.value.find((execution) => execution.id === id);
 	}
 
-	function getPinDataSize(pinData: Record<string, string | INodeExecutionData[]> = {}): number {
-		return Object.values(pinData).reduce<number>((acc, value) => {
-			return acc + stringSizeInBytes(value);
-		}, 0);
-	}
-
 	function getNodeTypes(): INodeTypes {
 		const nodeTypes: INodeTypes = {
 			nodeTypes: {},
@@ -586,6 +579,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			id = undefined;
 		}
 
+		const wfId = workflow.value.id;
+		const workflowDocumentStore = wfId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(wfId))
+			: undefined;
+
 		return new Workflow({
 			id,
 			name: workflow.value.name,
@@ -594,7 +592,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			active: false,
 			nodeTypes,
 			settings: workflow.value.settings ?? { ...defaults.settings },
-			pinData: workflow.value.pinData,
+			pinData: workflowDocumentStore?.getPinDataSnapshot() ?? {},
 		});
 	}
 
@@ -854,25 +852,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setSettings(workflowSettings);
 	}
 
-	function setWorkflowPinData(data: IPinData = {}) {
-		const validPinData = Object.keys(data).reduce((accu, nodeName) => {
-			accu[nodeName] = data[nodeName].map((item) => {
-				if (!isJsonKeyObject(item)) {
-					return { json: item };
-				}
-
-				return item;
-			});
-
-			return accu;
-		}, {} as IPinData);
-
-		workflow.value.pinData = validPinData;
-		workflowObject.value.setPinData(validPinData);
-
-		dataPinningEventBus.emit('pin-data', validPinData);
-	}
-
 	function setWorkflow(value: IWorkflowDb): void {
 		const tags = convertWorkflowTagsToIds(value.tags);
 		workflow.value = {
@@ -891,78 +870,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflow.value.connections,
 			true,
 		);
-	}
-
-	function pinData(payload: {
-		node: INodeUi;
-		data: INodeExecutionData[];
-		isRestoration?: boolean;
-	}): void {
-		const nodeName = payload.node.name;
-
-		if (!workflow.value.pinData) {
-			workflow.value.pinData = {};
-		}
-
-		if (!Array.isArray(payload.data)) {
-			payload.data = [payload.data];
-		}
-
-		if (
-			(workflow.value.pinData?.[nodeName] ?? []).length > 0 &&
-			nodeMetadata.value[nodeName] &&
-			!payload.isRestoration
-		) {
-			// Updating existing pinned data
-			nodeMetadata.value[nodeName].pinnedDataLastUpdatedAt = Date.now();
-		} else if (payload.isRestoration && nodeMetadata.value[nodeName]) {
-			// Clear timestamps during restoration to prevent incorrect dirty marking
-			delete nodeMetadata.value[nodeName].pinnedDataLastUpdatedAt;
-			delete nodeMetadata.value[nodeName].pinnedDataLastRemovedAt;
-		}
-
-		const storedPinData = payload.data.map((item) => {
-			// Store only essential properties: json, binary, and pairedItem
-			// Exclude runtime properties (error, metadata, evaluationData, etc.)
-			if (isJsonKeyObject(item)) {
-				const { json, binary, pairedItem } = item;
-				return {
-					json,
-					...(binary && { binary }),
-					...(pairedItem !== undefined && { pairedItem }),
-				};
-			}
-			return { json: item };
-		});
-
-		workflow.value.pinData[nodeName] = storedPinData;
-		workflowObject.value.setPinData(workflow.value.pinData);
-
-		uiStore.markStateDirty();
-
-		dataPinningEventBus.emit('pin-data', { [payload.node.name]: storedPinData });
-	}
-
-	function unpinData(payload: { node: INodeUi }): void {
-		const nodeName = payload.node.name;
-
-		if (!workflow.value.pinData) {
-			workflow.value.pinData = {};
-		}
-
-		const { [nodeName]: _, ...pinData } = workflow.value.pinData;
-		workflow.value.pinData = pinData;
-		workflowObject.value.setPinData(pinData);
-
-		if (nodeMetadata.value[nodeName]) {
-			nodeMetadata.value[nodeName].pinnedDataLastRemovedAt = Date.now();
-		}
-
-		uiStore.markStateDirty();
-
-		dataPinningEventBus.emit('unpin-data', {
-			nodeNames: [nodeName],
-		});
 	}
 
 	function addConnection(data: { connection: IConnection[] }): void {
@@ -1137,14 +1044,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const { [nameData.old]: removed, ...rest } = nodeMetadata.value;
 		nodeMetadata.value = { ...rest, [nameData.new]: nodeMetadata.value[nameData.old] };
 
-		if (workflow.value.pinData?.[nameData.old]) {
-			const { [nameData.old]: renamed, ...restPinData } = workflow.value.pinData;
-			workflow.value.pinData = {
-				...restPinData,
-				[nameData.new]: renamed,
-			};
-
-			workflowObject.value.setPinData(workflow.value.pinData);
+		if (workflowId.value) {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowId.value),
+			);
+			workflowDocumentStore.renamePinDataNode(nameData.old, nameData.new);
 		}
 
 		const resultData = workflowExecutionData.value?.data?.resultData;
@@ -1153,9 +1057,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			delete resultData.pinData[nameData.old];
 		}
 
-		// Update the name in pinData
-		Object.values(workflow.value.pinData ?? {})
-			.concat(Object.values(workflowExecutionData.value?.data?.resultData.pinData ?? {}))
+		// Update the name in execution result pinData pairedItem references
+		Object.values(workflowExecutionData.value?.data?.resultData.pinData ?? {})
 			.flatMap((executionData) =>
 				executionData.flatMap((nodeExecution) =>
 					Array.isArray(nodeExecution.pairedItem)
@@ -1235,9 +1138,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const { [node.name]: removedNodeMetadata, ...remainingNodeMetadata } = nodeMetadata.value;
 		nodeMetadata.value = remainingNodeMetadata;
 
-		if (workflow.value.pinData?.hasOwnProperty(node.name)) {
-			const { [node.name]: removedPinData, ...remainingPinData } = workflow.value.pinData;
-			workflow.value.pinData = remainingPinData;
+		if (workflowId.value) {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowId.value),
+			);
+			workflowDocumentStore.unpinNodeData(node.name);
 		}
 
 		for (let i = 0; i < workflow.value.nodes.length; i++) {
@@ -1370,12 +1275,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const { [nodeName]: removedRunData, ...remainingRunData } =
 			workflowExecutionData.value.data.resultData.runData;
 		workflowExecutionData.value.data.resultData.runData = remainingRunData;
-	}
-
-	function pinDataByNodeName(nodeName: string): INodeExecutionData[] | undefined {
-		if (!workflow.value.pinData?.[nodeName]) return undefined;
-
-		return workflow.value.pinData[nodeName].map((item) => item.json) as INodeExecutionData[];
 	}
 
 	function activeNode(): INodeUi | null {
@@ -1854,7 +1753,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		nodesIssuesExist,
 		workflowValidationIssues,
 		formatIssueMessage,
-		pinnedWorkflowData,
 		executedNode,
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,
@@ -1874,7 +1772,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getPinnedDataLastRemovedAt,
 		isNodePristine,
 		getExecutionDataById,
-		getPinDataSize,
 		getNodeTypes,
 		getNodes,
 		convertTemplateNodeToNodeUi,
@@ -1898,11 +1795,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setDescription,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,
-		setWorkflowPinData,
 		setParentFolder,
 		setWorkflow,
-		pinData,
-		unpinData,
 		addConnection,
 		removeConnection,
 		removeAllNodeConnection,
@@ -1912,7 +1806,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		updateNodeExecutionRunData,
 		updateNodeExecutionStatus,
 		clearNodeExecutionData,
-		pinDataByNodeName,
 		activeNode,
 		getPastExecutions,
 		getExecution,
