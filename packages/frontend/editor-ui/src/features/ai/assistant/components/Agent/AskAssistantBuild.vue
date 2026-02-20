@@ -198,7 +198,8 @@ const isChatInputDisabled = computed(() => {
 	return isInputDisabled.value || builderStore.shouldDisableChatInput;
 });
 
-const { showReviewChanges, editedNodesCount, isLoadingDiff, openDiffView } = useReviewChanges();
+const { showReviewChanges, nodeChanges, isExpanded, toggleExpanded, openDiffView } =
+	useReviewChanges();
 
 const disabledTooltip = computed(() => {
 	if (!isChatInputDisabled.value) {
@@ -545,9 +546,10 @@ defineExpose({
 			<template #inputHeader>
 				<ReviewChangesBanner
 					v-if="showReviewChanges"
-					:edited-nodes-count="editedNodesCount"
-					:loading="isLoadingDiff"
-					@click="openDiffView"
+					:node-changes="nodeChanges"
+					:expanded="isExpanded"
+					@toggle="toggleExpanded"
+					@open-diff="openDiffView"
 				/>
 				<Transition v-else name="slide">
 					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />

@@ -15,6 +15,13 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { AI_BUILDER_DIFF_MODAL_KEY, AI_BUILDER_REVIEW_CHANGES_EXPERIMENT } from '@/app/constants';
+import type { SimplifiedNodeType } from '@/Interface';
+
+export interface NodeChangeEntry {
+	status: NodeDiffStatus;
+	node: INode;
+	nodeType: SimplifiedNodeType | null;
+}
 
 export function useReviewChanges() {
 	const builderStore = useBuilderStore();
@@ -78,12 +85,37 @@ export function useReviewChanges() {
 		});
 	}
 
-	const editedNodesCount = computed(() => {
-		if (!cachedVersionLoaded.value || builderStore.streaming) return 0;
+	const nodeChanges = computed<NodeChangeEntry[]>(() => {
+		if (!cachedVersionLoaded.value || builderStore.streaming) return [];
 		const normalized = resolveNodeDefaults(cachedVersionNodes.value);
 		const diff = compareWorkflowsNodes(normalized, workflowsStore.workflow.nodes);
-		return [...diff.values()].filter((d) => d.status !== NodeDiffStatus.Eq).length;
+		const currentNodesById = new Map(workflowsStore.workflow.nodes.map((n) => [n.id, n]));
+		return [...diff.values()]
+			.filter((d) => d.status !== NodeDiffStatus.Eq)
+			.map((d) => {
+				// For Added/Modified nodes, use the current version; for Deleted, use the cached version
+				const node =
+					d.status === NodeDiffStatus.Deleted
+						? d.node
+						: (currentNodesById.get(d.node.id) ?? d.node);
+				return {
+					status: d.status,
+					node,
+					nodeType: nodeTypesStore.getNodeType(node.type, node.typeVersion),
+				};
+			});
 	});
+
+	const editedNodesCount = computed(() => nodeChanges.value.length);
+
+	const isExpanded = ref(false);
+
+	function toggleExpanded() {
+		isExpanded.value = !isExpanded.value;
+		builderStore.trackWorkflowBuilderJourney(
+			isExpanded.value ? 'user_expanded_review_changes' : 'user_collapsed_review_changes',
+		);
+	}
 
 	const showReviewChanges = computed(() => {
 		return (
@@ -119,6 +151,9 @@ export function useReviewChanges() {
 	return {
 		showReviewChanges,
 		editedNodesCount,
+		nodeChanges,
+		isExpanded,
+		toggleExpanded,
 		isLoadingDiff,
 		openDiffView,
 	};

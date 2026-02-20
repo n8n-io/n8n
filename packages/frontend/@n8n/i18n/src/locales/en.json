@@ -290,6 +290,8 @@
 	"aiAssistant.builder.error.title": "Workflow update failed",
 	"aiAssistant.builder.reviewChanges.button": "Review changes",
 	"aiAssistant.builder.reviewChanges.editedNodes": "Edited {count} nodes",
+	"aiAssistant.builder.reviewChanges.editsCount": "Edits · {count} nodes",
+	"aiAssistant.builder.reviewChanges.openDiff": "Open diff",
 	"aiAssistant.builder.reviewChanges.previousVersion": "Previous version",
 	"aiAssistant.builder.reviewChanges.currentVersion": "Current version",
 	"aiAssistant.builder.reviewChanges.error": "Could not load the previous version of the workflow. The version history may no longer be available.",
