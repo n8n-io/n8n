@@ -370,6 +370,38 @@ describe('writeResultsCsv', () => {
 		expect(lines[0]).not.toContain('functionality_detail');
 	});
 
+	it('writes binary-checks format with correct columns', () => {
+		const results: ExampleResult[] = [
+			{
+				index: 1,
+				prompt: 'Test workflow',
+				status: 'pass',
+				score: 0,
+				feedback: [
+					{ evaluator: 'binary-checks', metric: 'has_nodes', score: 1, kind: 'metric' as const },
+					{ evaluator: 'binary-checks', metric: 'has_trigger', score: 0, kind: 'metric' as const },
+				],
+				durationMs: 1000,
+				generationDurationMs: 500,
+			},
+		];
+
+		const outputPath = join(tempDir, 'binary-results.csv');
+		writeResultsCsv(results, outputPath, { suite: 'binary-checks' });
+
+		const content = readFileSync(outputPath, 'utf-8');
+		const lines = content.trim().split('\n');
+
+		// Check header includes binary check names
+		expect(lines[0]).toContain('prompt,status,gen_latency_ms');
+		expect(lines[0]).toContain('has_nodes');
+		expect(lines[0]).toContain('has_trigger');
+		expect(lines[0]).toContain('descriptive_node_names');
+
+		// Check data row
+		expect(lines[1]).toContain('Test workflow');
+	});
+
 	it('falls back to auto-detection when suite option is not provided', () => {
 		// Results with runner errors should fall back to llm-judge format when no suite specified
 		const results: ExampleResult[] = [
