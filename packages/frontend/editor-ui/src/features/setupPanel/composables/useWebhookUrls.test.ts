@@ -5,7 +5,7 @@ import { createTestNode } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INodeUi } from '@/Interface';
-import type { IWebhookDescription } from 'n8n-workflow';
+import type { IWebhookDescription, WebhookType } from 'n8n-workflow';
 
 import { useWebhookUrls } from '@/features/setupPanel/composables/useWebhookUrls';
 
@@ -30,6 +30,7 @@ const createNode = (overrides: Partial<INodeUi> = {}): INodeUi =>
 
 const createWebhook = (overrides: Partial<IWebhookDescription> = {}): IWebhookDescription => ({
 	httpMethod: 'GET',
+	name: 'default' as WebhookType,
 	responseMode: 'onReceived',
 	path: '/test',
 	...overrides,

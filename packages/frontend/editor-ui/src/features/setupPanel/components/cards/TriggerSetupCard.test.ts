@@ -2,7 +2,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import TriggerSetupCard from '@/features/setupPanel/components/cards/TriggerSetupCard.vue';

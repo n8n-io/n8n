@@ -2,7 +2,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestNode } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import CredentialTypeSetupCard from '@/features/setupPanel/components/cards/CredentialTypeSetupCard.vue';
 import type { CredentialTypeSetupState } from '@/features/setupPanel/setupPanel.types';
