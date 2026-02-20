@@ -57,22 +57,36 @@ export function extractExpressionsFromParameters(
 	return results;
 }
 
-// Regex patterns for extracting field paths from expressions
-const FIELD_PATH_PATTERNS = [
-	// $json.field.nested or $json["field"]
-	/\$json\.([a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*)/g,
-	/\$json\["([^"]+)"\]/g,
+// --- Regex building blocks for field path extraction ---
 
-	// $input.first().json.field or $input.item.json.field or $input.all()[0].json.field
-	/\$input\.(?:first|last|all)\(\)(?:\[\d+\])?\.json\.([a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*)/g,
-	/\$input\.item\.json\.([a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*)/g,
+/** Matches a dotted identifier path: field, field.nested, field.deeply.nested */
+const FIELD_PATH = '([a-zA-Z_]\\w*(?:\\.[a-zA-Z_]\\w*)*)';
 
-	// $('Name').first().json.field or $('Name').item.json.field
-	/\$\(['"][^'"]+['"]\)\.(?:first|last|all)\(\)(?:\[\d+\])?\.json\.([a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*)/g,
-	/\$\(['"][^'"]+['"]\)\.item\.json\.([a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*)/g,
+/** Matches n8n data accessors: .first(), .last(), .all(), .all()[0], .item */
+const ACCESSOR = '(?:(?:first|last|all)\\(\\)(?:\\[\\d+\\])?|item)';
 
+/** Matches a named node reference: $('Node Name') or $("Node Name") */
+const NAMED_REF = '\\$\\([\'"][^\'"]+[\'"]\\)';
+
+interface FieldPathPattern {
+	pattern: RegExp;
+	binary?: boolean;
+}
+
+const FIELD_PATH_PATTERNS: FieldPathPattern[] = [
+	// $json.field.nested
+	{ pattern: new RegExp('\\$json\\.' + FIELD_PATH, 'g') },
+	// $json["field"]
+	{ pattern: new RegExp('\\$json\\["([^"]+)"\\]', 'g') },
+	// $input.first().json.field  OR  $('Name').item.json.field  (all combos)
+	{
+		pattern: new RegExp(
+			'(?:\\$input|' + NAMED_REF + ')\\.' + ACCESSOR + '\\.json\\.' + FIELD_PATH,
+			'g',
+		),
+	},
 	// $binary.propertyName
-	/\$binary\.([a-zA-Z_]\w*)/g,
+	{ pattern: new RegExp('\\$binary\\.([a-zA-Z_]\\w*)', 'g'), binary: true },
 ];
 
 /**
@@ -82,7 +96,7 @@ const FIELD_PATH_PATTERNS = [
 export function extractFieldPaths(expression: string): string[] {
 	const fieldPaths = new Set<string>();
 
-	for (const pattern of FIELD_PATH_PATTERNS) {
+	for (const { pattern, binary } of FIELD_PATH_PATTERNS) {
 		// Reset lastIndex for global regex reuse
 		pattern.lastIndex = 0;
 		let match: RegExpExecArray | null;
@@ -102,9 +116,7 @@ export function extractFieldPaths(expression: string): string[] {
 					}
 				}
 
-				// Prefix binary paths to distinguish them
-				const isBinary = pattern.source.includes('\\$binary');
-				fieldPaths.add(isBinary ? `binary:${path}` : path);
+				fieldPaths.add(binary ? `binary:${path}` : path);
 			}
 		}
 	}

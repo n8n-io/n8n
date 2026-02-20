@@ -87,39 +87,122 @@ describe('expression-extraction.utils', () => {
 	});
 
 	describe('extractFieldPaths', () => {
-		it('should extract field paths from $json references', () => {
-			expect(extractFieldPaths('={{ $json.data }}')).toEqual(['data']);
-			expect(extractFieldPaths('={{ $json.data.id }}')).toEqual(['data.id']);
-			expect(extractFieldPaths('={{ $json.body.results }}')).toEqual(['body.results']);
+		// -- $json dot notation --
+		it('should extract a single field from $json.field', () => {
+			expect(extractFieldPaths('={{ $json.field }}')).toEqual(['field']);
 		});
 
-		it('should extract field paths from $json bracket notation', () => {
-			expect(extractFieldPaths('={{ $json["data"] }}')).toEqual(['data']);
+		it('should extract nested dotted path from $json.field.nested.deep', () => {
+			expect(extractFieldPaths('={{ $json.field.nested.deep }}')).toEqual(['field.nested.deep']);
 		});
 
-		it('should extract field paths from named references', () => {
-			expect(extractFieldPaths("={{ $('HTTP Request').first().json.data }}")).toEqual(['data']);
-			expect(extractFieldPaths("={{ $('Fetch API').item.json.body }}")).toEqual(['body']);
+		// -- $json bracket notation --
+		it('should extract field from $json["bracket_field"]', () => {
+			expect(extractFieldPaths('={{ $json["bracket_field"] }}')).toEqual(['bracket_field']);
 		});
 
-		it('should extract field paths from $input references', () => {
-			expect(extractFieldPaths('={{ $input.first().json.field }}')).toEqual(['field']);
-			expect(extractFieldPaths('={{ $input.item.json.name }}')).toEqual(['name']);
-		});
-
-		it('should extract field paths from $binary references', () => {
-			expect(extractFieldPaths('={{ $binary.data }}')).toEqual(['binary:data']);
-		});
-
-		it('should extract multiple field paths from a single expression', () => {
+		// -- multiple $json in one expression --
+		it('should extract multiple $json fields from one expression', () => {
 			const paths = extractFieldPaths('={{ $json.first_name + " " + $json.last_name }}');
 			expect(paths).toContain('first_name');
 			expect(paths).toContain('last_name');
+			expect(paths).toHaveLength(2);
 		});
 
+		// -- $input patterns --
+		it('should extract from $input.first().json.field', () => {
+			expect(extractFieldPaths('={{ $input.first().json.field }}')).toEqual(['field']);
+		});
+
+		it('should extract from $input.last().json.field', () => {
+			expect(extractFieldPaths('={{ $input.last().json.field }}')).toEqual(['field']);
+		});
+
+		it('should extract from $input.all().json.field', () => {
+			expect(extractFieldPaths('={{ $input.all().json.field }}')).toEqual(['field']);
+		});
+
+		it('should extract from $input.all()[0].json.field (indexed)', () => {
+			expect(extractFieldPaths('={{ $input.all()[0].json.field }}')).toEqual(['field']);
+		});
+
+		it('should extract from $input.item.json.field', () => {
+			expect(extractFieldPaths('={{ $input.item.json.field }}')).toEqual(['field']);
+		});
+
+		it('should extract deeply nested path from $input.item.json.deeply.nested', () => {
+			expect(extractFieldPaths('={{ $input.item.json.deeply.nested }}')).toEqual(['deeply.nested']);
+		});
+
+		// -- $('Name') patterns --
+		it("should extract from $('Node').first().json.field (single quotes)", () => {
+			expect(extractFieldPaths("={{ $('Node').first().json.field }}")).toEqual(['field']);
+		});
+
+		it('should extract from $("Node").first().json.field (double quotes)', () => {
+			expect(extractFieldPaths('={{ $("Node").first().json.field }}')).toEqual(['field']);
+		});
+
+		it("should extract from $('Node').last().json.field", () => {
+			expect(extractFieldPaths("={{ $('Node').last().json.field }}")).toEqual(['field']);
+		});
+
+		it("should extract from $('Node').all()[2].json.field (indexed)", () => {
+			expect(extractFieldPaths("={{ $('Node').all()[2].json.field }}")).toEqual(['field']);
+		});
+
+		it("should extract from $('Node').item.json.field", () => {
+			expect(extractFieldPaths("={{ $('Node').item.json.field }}")).toEqual(['field']);
+		});
+
+		it("should extract deep path from $('Node').item.json.a.b.c", () => {
+			expect(extractFieldPaths("={{ $('Node').item.json.a.b.c }}")).toEqual(['a.b.c']);
+		});
+
+		// -- $binary --
+		it('should extract $binary.data as binary:data', () => {
+			expect(extractFieldPaths('={{ $binary.data }}')).toEqual(['binary:data']);
+		});
+
+		it('should extract $binary.attachment_0 as binary:attachment_0', () => {
+			expect(extractFieldPaths('={{ $binary.attachment_0 }}')).toEqual(['binary:attachment_0']);
+		});
+
+		// -- method-call stripping --
+		it('should strip method calls like .includes() from field paths', () => {
+			expect(extractFieldPaths('={{ $json.items.includes("foo") }}')).toEqual(['items']);
+		});
+
+		it('should skip entirely when the whole path is a method call like $json.toString()', () => {
+			expect(extractFieldPaths('={{ $json.toString() }}')).toEqual([]);
+		});
+
+		it('should strip .map() from field paths', () => {
+			expect(extractFieldPaths('={{ $json.arr.map(x => x) }}')).toEqual(['arr']);
+		});
+
+		// -- edge cases --
 		it('should return empty array for expressions without recognizable patterns', () => {
 			expect(extractFieldPaths('={{ 1 + 2 }}')).toEqual([]);
 			expect(extractFieldPaths('={{ Date.now() }}')).toEqual([]);
+		});
+
+		it('should return empty array for empty string', () => {
+			expect(extractFieldPaths('')).toEqual([]);
+		});
+
+		// -- mixed patterns in one expression --
+		it('should extract from mixed $json and named ref in one expression', () => {
+			const paths = extractFieldPaths("={{ $json.x + $('Node').item.json.y }}");
+			expect(paths).toContain('x');
+			expect(paths).toContain('y');
+			expect(paths).toHaveLength(2);
+		});
+
+		// -- deduplication --
+		it('should deduplicate same path accessed via different patterns', () => {
+			const paths = extractFieldPaths("={{ $json.field + $('Node').item.json.field }}");
+			expect(paths).toEqual(['field']);
 		});
 	});
 
