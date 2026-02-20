@@ -126,7 +126,6 @@ onMounted(async () => {
 				/>
 				<ElDropdown
 					trigger="click"
-					:teleported="false"
 					:popper-options="{
 						placement: 'bottom-end',
 						modifiers,

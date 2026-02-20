@@ -8,11 +8,12 @@ import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { generateVersionName } from '../utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
+import omit from 'lodash/omit';
 
 const props = defineProps<{
 	workflowId: string;
-	baseVersionId: string;
-	compareWithVersionId: string;
+	sourceWorkflowVersionId: string;
+	targetWorkflowVersionId: string;
 }>();
 const emit = defineEmits<{
 	close: [];
@@ -39,37 +40,43 @@ function getVersionLabel(versionId: string, name: string | null): string {
 
 onMounted(async () => {
 	try {
-		const [workflow, leftVersion, rightVersion] = await Promise.all([
+		const [workflow, sourceWorkflowVersion, targetWorkflowVersion] = await Promise.all([
 			workflowsListStore.fetchWorkflow(props.workflowId),
-			workflowHistoryStore.getWorkflowVersion(props.workflowId, props.baseVersionId),
-			workflowHistoryStore.getWorkflowVersion(props.workflowId, props.compareWithVersionId),
+			workflowHistoryStore.getWorkflowVersion(props.workflowId, props.sourceWorkflowVersionId),
+			workflowHistoryStore.getWorkflowVersion(props.workflowId, props.targetWorkflowVersionId),
 		]);
 
 		// Hard guard in case a malformed URL mixes workflow and version IDs.
 		if (
-			leftVersion.workflowId !== props.workflowId ||
-			rightVersion.workflowId !== props.workflowId
+			sourceWorkflowVersion.workflowId !== props.workflowId ||
+			targetWorkflowVersion.workflowId !== props.workflowId
 		) {
 			throw new Error(i18n.baseText('workflowDiff.versionMismatchError'));
 		}
 
-		const workflowWithoutPinData = { ...workflow, pinData: undefined };
+		const workflowWithoutPinData: IWorkflowDb = omit(workflow, 'pinData');
 
 		sourceWorkflow.value = {
 			...workflowWithoutPinData,
-			versionId: leftVersion.versionId,
-			nodes: leftVersion.nodes,
-			connections: leftVersion.connections,
+			versionId: sourceWorkflowVersion.versionId,
+			nodes: sourceWorkflowVersion.nodes,
+			connections: sourceWorkflowVersion.connections,
 		};
 		targetWorkflow.value = {
 			...workflowWithoutPinData,
-			versionId: rightVersion.versionId,
-			nodes: rightVersion.nodes,
-			connections: rightVersion.connections,
+			versionId: targetWorkflowVersion.versionId,
+			nodes: targetWorkflowVersion.nodes,
+			connections: targetWorkflowVersion.connections,
 		};
 
-		sourceLabel.value = getVersionLabel(leftVersion.versionId, leftVersion.name);
-		targetLabel.value = getVersionLabel(rightVersion.versionId, rightVersion.name);
+		sourceLabel.value = getVersionLabel(
+			sourceWorkflowVersion.versionId,
+			sourceWorkflowVersion.name,
+		);
+		targetLabel.value = getVersionLabel(
+			targetWorkflowVersion.versionId,
+			targetWorkflowVersion.name,
+		);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowDiff.compareVersionsLoadError'));
 		emit('close');
