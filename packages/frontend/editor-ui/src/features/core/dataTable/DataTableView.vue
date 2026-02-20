@@ -12,6 +12,7 @@ import {
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
 import { useDebounce } from '@/app/composables/useDebounce';
+import debounce from 'lodash/debounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -47,13 +48,7 @@ const pageSize = ref(DEFAULT_DATA_TABLE_PAGE_SIZE);
 
 const SEARCH_DEBOUNCE_TIME = 300;
 
-interface Filters extends BaseFilters {
-	// status: string | boolean;
-	// showArchived: boolean;
-	// tags: string[];
-}
-
-const filters = ref<Filters>({
+const filters = ref<BaseFilters>({
 	search: '',
 	homeProject: '',
 });
@@ -78,19 +73,7 @@ const currentProject = computed(() => {
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
-const initialize = async () => {
-	loading.value = true;
-	const projectIdFilter = projectPages.isOverviewSubPage ? '' : projectsStore.currentProjectId;
-	try {
-		await dataTableStore.fetchDataTables(projectIdFilter ?? '', currentPage.value, pageSize.value);
-	} catch (error) {
-		toast.showError(error, 'Error loading data tables');
-	} finally {
-		loading.value = false;
-	}
-};
-
-const WORKFLOWS_SORT_MAP = {
+const DATA_TABLE_SORT_MAP = {
 	lastUpdated: 'updatedAt:desc',
 	lastCreated: 'createdAt:desc',
 	nameAsc: 'name:asc',
@@ -98,15 +81,18 @@ const WORKFLOWS_SORT_MAP = {
 	sizeAsc: 'size:asc',
 	sizeDesc: 'size:desc',
 } as const;
-type SORT_TYPE = typeof WORKFLOWS_SORT_MAP;
+type SORT_TYPE = typeof DATA_TABLE_SORT_MAP;
 
 const currentSort = ref<SORT_TYPE[keyof SORT_TYPE]>('updatedAt:desc');
 
 const fetchDataTables = async () => {
-	loading.value = true;
+	const delayedLoading = debounce(() => {
+		loading.value = true;
+	}, 300);
+
 	const projectIdFilter = projectPages.isOverviewSubPage ? '' : projectsStore.currentProjectId;
 	try {
-		console.log('CCC' + currentSort.value);
+		delayedLoading();
 		await dataTableStore.fetchDataTables(
 			projectIdFilter ?? '',
 			currentPage.value,
@@ -120,12 +106,12 @@ const fetchDataTables = async () => {
 	} catch (error) {
 		toast.showError(error, 'Error loading data tables');
 	} finally {
+		delayedLoading.cancel();
 		loading.value = false;
 	}
 };
 
 const onPaginationUpdate = async (payload: SortingAndPaginationUpdates) => {
-	console.log(payload);
 	if (payload.page) {
 		currentPage.value = payload.page;
 	}
@@ -134,7 +120,7 @@ const onPaginationUpdate = async (payload: SortingAndPaginationUpdates) => {
 	}
 	if (payload.sort) {
 		currentSort.value =
-			WORKFLOWS_SORT_MAP[payload.sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
+			DATA_TABLE_SORT_MAP[payload.sort as keyof typeof DATA_TABLE_SORT_MAP] ?? 'updatedAt:desc';
 	}
 
 	if (!loading.value) {
@@ -146,28 +132,6 @@ const onAddModalClick = () => {
 	void router.push({
 		name: PROJECT_DATA_TABLES,
 		params: { projectId: currentProject.value?.id, new: 'new' },
-	});
-};
-
-const saveFiltersOnQueryString = () => {
-	// Get current query parameters
-	const currentQuery = { ...route.query };
-
-	// Update filter parameters
-	if (filters.value.search) {
-		currentQuery.search = filters.value.search;
-	} else {
-		delete currentQuery.search;
-	}
-
-	if (filters.value.homeProject) {
-		currentQuery.homeProject = filters.value.homeProject;
-	} else {
-		delete currentQuery.homeProject;
-	}
-
-	void router.replace({
-		query: Object.keys(currentQuery).length ? currentQuery : undefined,
 	});
 };
 
@@ -205,19 +169,23 @@ watch(
 		resource-key="dataTable"
 		type="list-paginated"
 		:resources="dataTableResources"
-		:initialize="initialize"
+		:initialize="fetchDataTables"
 		:type-props="{ itemSize: 80 }"
 		:loading="false"
 		:disabled="false"
 		:total-items="totalCount"
 		:resources-refreshing="loading"
-		:sort-options="Object.keys(WORKFLOWS_SORT_MAP)"
+		:sort-options="Object.keys(DATA_TABLE_SORT_MAP)"
 		:dont-perform-sorting-and-filtering="true"
 		:ui-config="{
 			searchEnabled: true,
 			showFiltersDropdown: false,
 			sortEnabled: true,
 		}"
+		tab-key="dataTable"
+		:persist-key-exclusions="
+			['sizeAsc', 'sizeDesc'] satisfies Array<keyof typeof DATA_TABLE_SORT_MAP>
+		"
 		@update:search="onSearchUpdated"
 		@update:pagination-and-sort="onPaginationUpdate"
 	>

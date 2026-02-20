@@ -19,16 +19,15 @@ export class DataTableSizeValidator {
 	) {}
 
 	private shouldRefresh(now: Date): boolean {
-		return true;
-		// if (
-		// 	!this.lastCheck ||
-		// 	!this.cachedSizeData ||
-		// 	now.getTime() - this.lastCheck.getTime() >= this.globalConfig.dataTable.sizeCheckCacheDuration
-		// ) {
-		// 	return true;
-		// }
+		if (
+			!this.lastCheck ||
+			!this.cachedSizeData ||
+			now.getTime() - this.lastCheck.getTime() >= this.globalConfig.dataTable.sizeCheckCacheDuration
+		) {
+			return true;
+		}
 
-		// return false;
+		return false;
 	}
 
 	async getCachedSizeData(
