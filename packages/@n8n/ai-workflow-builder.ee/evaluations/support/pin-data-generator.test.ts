@@ -68,19 +68,34 @@ describe('identifyPinDataNodes', () => {
 		expect(result[0].name).toBe('Slack');
 	});
 
-	it('should exclude utility nodes from deny-list', () => {
+	it('should exclude utility nodes that can run without infrastructure', () => {
 		const workflow: SimpleWorkflow = {
 			name: 'Test',
 			nodes: [
 				makeNode({ name: 'Set', type: 'n8n-nodes-base.set' }),
 				makeNode({ name: 'If', type: 'n8n-nodes-base.if' }),
-				makeNode({ name: 'Code', type: 'n8n-nodes-base.code' }),
+				makeNode({ name: 'Merge', type: 'n8n-nodes-base.merge' }),
 			],
 			connections: {},
 		};
 
 		const result = identifyPinDataNodes(workflow, nodeTypes);
 		expect(result).toHaveLength(0);
+	});
+
+	it('should include Code and ExecuteCommand nodes (require task runner)', () => {
+		const workflow: SimpleWorkflow = {
+			name: 'Test',
+			nodes: [
+				makeNode({ name: 'Code', type: 'n8n-nodes-base.code' }),
+				makeNode({ name: 'Exec', type: 'n8n-nodes-base.executeCommand' }),
+			],
+			connections: {},
+		};
+
+		const result = identifyPinDataNodes(workflow, nodeTypes);
+		expect(result).toHaveLength(2);
+		expect(result.map((n) => n.name)).toEqual(['Code', 'Exec']);
 	});
 
 	it('should include HTTP Request and Webhook nodes even without credentials', () => {

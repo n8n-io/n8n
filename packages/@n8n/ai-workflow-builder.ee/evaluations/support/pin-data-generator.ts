@@ -64,6 +64,29 @@ const NON_SERVICE_NODES_WITH_CREDENTIALS = new Set([
 // ---------------------------------------------------------------------------
 
 /**
+ * Build a set of node names that are targets of AI-type connections
+ * (ai_languageModel, ai_tool, ai_memory, etc.). These are root AI nodes
+ * (e.g. Agent, Chain) whose sub-nodes can't be individually pinned.
+ * Pinning the root prevents sub-node execution entirely.
+ */
+function findAiRootNodeNames(workflow: SimpleWorkflow): Set<string> {
+	const roots = new Set<string>();
+	for (const nodeConns of Object.values(workflow.connections)) {
+		for (const [connType, outputs] of Object.entries(nodeConns)) {
+			if (!connType.startsWith('ai_')) continue;
+			if (!Array.isArray(outputs)) continue;
+			for (const group of outputs) {
+				if (!Array.isArray(group)) continue;
+				for (const conn of group) {
+					if (conn?.node) roots.add(conn.node);
+				}
+			}
+		}
+	}
+	return roots;
+}
+
+/**
  * Identify which nodes in a workflow need pin data.
  * In eval context, we pin all service/API nodes since none have real credentials.
  */
@@ -72,10 +95,15 @@ export function identifyPinDataNodes(
 	nodeTypes: INodeTypeDescription[],
 ): INode[] {
 	const nodeTypeMap = new Map(nodeTypes.map((nt) => [nt.name, nt]));
+	const aiRootNodes = findAiRootNodeNames(workflow);
 
 	return workflow.nodes.filter((node) => {
 		// Skip disabled nodes
 		if (node.disabled) return false;
+
+		// Pin root AI nodes (Agent, Chain, etc.) — their sub-nodes (tools,
+		// memory, LLMs) can't run without real providers in the eval context.
+		if (aiRootNodes.has(node.name)) return true;
 
 		// Check if the node type definition has credentials (→ it's a service node)
 		const typeDesc = nodeTypeMap.get(node.type);
@@ -84,13 +112,16 @@ export function identifyPinDataNodes(
 			return !NON_SERVICE_NODES_WITH_CREDENTIALS.has(node.type);
 		}
 
-		// Also include HTTP Request, Webhook, and DataTable nodes.
-		// HTTP/Webhook have optional credentials; DataTable has none but requires
-		// the data-table module which isn't available in the eval context.
+		// Nodes that require infrastructure unavailable in the eval context:
+		// - HTTP/Webhook: optional credentials, may call external APIs
+		// - DataTable: requires the data-table module
+		// - Code/ExecuteCommand: require a task runner to execute
 		if (
 			node.type === 'n8n-nodes-base.httpRequest' ||
 			node.type === 'n8n-nodes-base.webhook' ||
-			node.type === 'n8n-nodes-base.dataTable'
+			node.type === 'n8n-nodes-base.dataTable' ||
+			node.type === 'n8n-nodes-base.code' ||
+			node.type === 'n8n-nodes-base.executeCommand'
 		) {
 			return true;
 		}
