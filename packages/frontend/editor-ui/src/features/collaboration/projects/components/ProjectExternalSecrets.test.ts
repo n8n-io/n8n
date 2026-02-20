@@ -100,6 +100,23 @@ vi.mock(
 	}),
 );
 
+const mockGetConnection = vi.fn();
+vi.mock(
+	'@/features/integrations/secretsProviders.ee/composables/useSecretsProviderConnection.ee',
+	() => ({
+		useSecretsProviderConnection: vi.fn(() => ({
+			getConnection: mockGetConnection,
+			connectionState: { value: 'connected' },
+			connectionError: { value: undefined },
+			isLoading: { value: false },
+			isTesting: { value: false },
+			createConnection: vi.fn(),
+			updateConnection: vi.fn(),
+			testConnection: vi.fn(),
+		})),
+	}),
+);
+
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: vi.fn(),
@@ -196,12 +213,12 @@ describe('ProjectExternalSecrets', () => {
 	describe('Rendering', () => {
 		it('should render external secrets section when feature is enabled', () => {
 			renderComponent();
-			expect(screen.getByText(/External secret stores/)).toBeInTheDocument();
+			expect(screen.getByTestId('external-secrets-section')).toBeInTheDocument();
 		});
 
 		it('should show empty state when no providers exist', () => {
 			renderComponent();
-			expect(screen.getByText('No external secrets available yet')).toBeInTheDocument();
+			expect(screen.getByTestId('external-secrets-empty-state-project-admin')).toBeInTheDocument();
 		});
 	});
 
@@ -224,8 +241,14 @@ describe('ProjectExternalSecrets', () => {
 			renderComponent();
 
 			await vi.waitFor(() => {
-				expect(screen.getByText(/Add a secrets store/)).toBeInTheDocument();
-				expect(screen.getByText('Add secrets store')).toBeInTheDocument();
+				expect(
+					screen.getByTestId('external-secrets-empty-state-project-admin'),
+				).toBeInTheDocument();
+				expect(
+					document
+						.querySelector('[data-test-id="external-secrets-empty-state-project-admin"]')
+						?.querySelector('button'),
+				).toBeInTheDocument();
 			});
 		});
 	});
@@ -233,6 +256,10 @@ describe('ProjectExternalSecrets', () => {
 	describe('Provider List', () => {
 		beforeEach(() => {
 			vi.spyOn(projectsStore, 'getProjectSecretProviders').mockResolvedValue(mockProviders);
+			mockGetConnection.mockImplementation((name: string) => {
+				const provider = mockProviders.find((p) => p.name === name);
+				return provider ?? { secrets: [] };
+			});
 		});
 
 		it('should render table when providers exist', async () => {
@@ -243,37 +270,44 @@ describe('ProjectExternalSecrets', () => {
 			});
 		});
 
-		it('should display provider type names in headers', async () => {
+		it('should display connection names in grouped header rows', async () => {
 			renderComponent();
 
 			await vi.waitFor(() => {
-				expect(screen.getByText('AWS Secrets Manager')).toBeInTheDocument();
-				expect(screen.getByText('Azure Key Vault')).toBeInTheDocument();
+				expect(screen.getByText('aws-prod')).toBeInTheDocument();
+				expect(screen.getByText('azure-dev')).toBeInTheDocument();
 			});
 		});
 
-		it('should have correct table headers', async () => {
+		it('should display secrets when a connection row is expanded', async () => {
 			renderComponent();
+			const user = userEvent.setup();
 
 			await vi.waitFor(() => {
-				expect(screen.getByText('Secret name')).toBeInTheDocument();
-				expect(screen.getByText('Secrets store')).toBeInTheDocument();
-				expect(screen.getByText('Used in credentials')).toBeInTheDocument();
+				expect(screen.getByText('aws-prod')).toBeInTheDocument();
+			});
+
+			const expandButton = screen.getAllByTestId('external-secrets-expand-button')[0];
+			await user.click(expandButton);
+
+			await vi.waitFor(() => {
+				expect(screen.getByText('API_KEY')).toBeInTheDocument();
+				expect(screen.getByText('DATABASE_PASSWORD')).toBeInTheDocument();
+				expect(screen.getByText('SECRET_TOKEN')).toBeInTheDocument();
 			});
 		});
 	});
 
 	describe('Search Functionality', () => {
 		beforeEach(() => {
-			// Create 6 providers to trigger search input (threshold is 5)
-			const manyProviders = Array.from({ length: 6 }, (_, i) => ({
-				...mockProviders[0],
-				name: `provider-${i}`,
-			}));
-			vi.spyOn(projectsStore, 'getProjectSecretProviders').mockResolvedValue(manyProviders);
+			vi.spyOn(projectsStore, 'getProjectSecretProviders').mockResolvedValue(mockProviders);
+			mockGetConnection.mockImplementation((name: string) => {
+				const provider = mockProviders.find((p) => p.name === name);
+				return provider ?? { secrets: [] };
+			});
 		});
 
-		it('should show search input when there are 5 or more providers', async () => {
+		it('should show search input when providers exist', async () => {
 			renderComponent();
 
 			await vi.waitFor(() => {
@@ -287,6 +321,29 @@ describe('ProjectExternalSecrets', () => {
 			await vi.waitFor(() => {
 				const searchInput = screen.getByTestId('secrets-providers-search').querySelector('input');
 				expect(searchInput).toHaveAttribute('placeholder', 'Search secrets...');
+			});
+		});
+
+		it('should filter secrets by name', async () => {
+			renderComponent();
+			const user = userEvent.setup();
+
+			await vi.waitFor(() => {
+				expect(screen.getByTestId('secrets-providers-search')).toBeInTheDocument();
+			});
+
+			const searchInput = screen.getByTestId('secrets-providers-search').querySelector('input');
+			if (!searchInput) throw new Error('Search input not found');
+
+			await user.type(searchInput, 'api_key');
+
+			const expandButton = screen.getAllByTestId('external-secrets-expand-button')[0];
+			await user.click(expandButton);
+
+			await vi.waitFor(() => {
+				expect(screen.getByText('API_KEY')).toBeInTheDocument();
+				expect(screen.queryByText('DATABASE_PASSWORD')).not.toBeInTheDocument();
+				expect(screen.queryByText('SECRET_TOKEN')).not.toBeInTheDocument();
 			});
 		});
 	});
@@ -331,11 +388,14 @@ describe('ProjectExternalSecrets', () => {
 			renderComponent();
 			const user = userEvent.setup();
 
-			await vi.waitFor(() => {
-				expect(screen.getByText('Add secrets store')).toBeInTheDocument();
-			});
+			const addButton = document
+				.querySelector('[data-test-id="external-secrets-empty-state-project-admin"]')
+				?.querySelector('button');
 
-			const addButton = screen.getByText('Add secrets store');
+			if (!addButton) throw new Error('Add button not found');
+
+			expect(addButton).toBeInTheDocument();
+
 			await user.click(addButton);
 
 			expect(openModalSpy).toHaveBeenCalledWith(
@@ -353,11 +413,14 @@ describe('ProjectExternalSecrets', () => {
 			renderComponent();
 			const user = userEvent.setup();
 
-			await vi.waitFor(() => {
-				expect(screen.getByText('Add secrets store')).toBeInTheDocument();
-			});
+			const addButton = document
+				.querySelector('[data-test-id="external-secrets-empty-state-project-admin"]')
+				?.querySelector('button');
 
-			const addButton = screen.getByText('Add secrets store');
+			if (!addButton) throw new Error('Add button not found');
+
+			expect(addButton).toBeInTheDocument();
+
 			await user.click(addButton);
 
 			expect(openModalSpy).toHaveBeenCalled();
