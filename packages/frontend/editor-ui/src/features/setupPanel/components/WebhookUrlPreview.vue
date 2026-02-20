@@ -113,7 +113,7 @@ function copyUrl(url: string) {
 	font-weight: var(--font-weight--bold);
 	border-radius: var(--radius--sm);
 	padding: 0 var(--spacing--4xs);
-	line-height: 16px;
+	line-height: var(--spacing--sm);
 	text-align: center;
 	flex-shrink: 0;
 }
