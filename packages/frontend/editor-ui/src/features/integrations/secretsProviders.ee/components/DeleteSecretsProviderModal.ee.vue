@@ -50,9 +50,9 @@ const credentialsPageUrl = computed(() => ({
 const secretsLabel = computed(() => {
 	const count = props.data.secretsCount;
 	if (count === 1) {
-		return i18n.baseText('settings.secretsProviderConnections.delete.description.oneSecret');
+		return i18n.baseText('settings.secretsProviderConnections.oneSecret');
 	}
-	return i18n.baseText('settings.secretsProviderConnections.delete.description.secrets', {
+	return i18n.baseText('settings.secretsProviderConnections.secrets', {
 		interpolate: { count: count.toString() },
 	});
 });
