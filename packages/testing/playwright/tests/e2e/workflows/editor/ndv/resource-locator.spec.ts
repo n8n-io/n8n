@@ -75,7 +75,17 @@ test.describe(
 				clientId: 'dummy-client-id',
 				clientSecret: 'dummy-client-secret',
 			});
-			await n8n.canvas.credentialModal.save();
+
+			// OAuth: Save button is hidden. Click Connect to trigger implicit save.
+			const credentialSaved = n8n.page.waitForResponse(
+				(resp) => resp.url().includes('/rest/credentials') && resp.request().method() === 'POST',
+			);
+			const popupPromise = n8n.page.context().waitForEvent('page');
+			await n8n.canvas.credentialModal.oauthConnectButton.click();
+			await credentialSaved;
+			const popup = await popupPromise;
+			await popup.close();
+
 			await n8n.canvas.credentialModal.close();
 			// Close warning modal about not connecting the OAuth credentials
 			const closeButton = n8n.page.locator('.el-message-box').locator('button:has-text("Close")');
