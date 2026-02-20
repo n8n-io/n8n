@@ -326,7 +326,7 @@ const getPropertyValues = (
 	}
 };
 
-const checkConditions = (
+export const checkConditions = (
 	conditions: Array<NodeParameterValue | DisplayCondition>,
 	actualValues: NodeParameterValue[],
 ) => {
@@ -1134,6 +1134,10 @@ export function getNodeOutputs(
 ): Array<NodeConnectionType | INodeOutputConfiguration> {
 	let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
 
+	if (!nodeTypeData) {
+		return [];
+	}
+
 	if (Array.isArray(nodeTypeData.outputs)) {
 		outputs = nodeTypeData.outputs;
 	} else {
@@ -1659,6 +1663,9 @@ export function isTriggerNode(nodeTypeData: INodeTypeDescription) {
 }
 
 export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INodeTypeDescription) {
+	if (!nodeTypeData) {
+		return false;
+	}
 	const outputs = getNodeOutputs(workflow, node, nodeTypeData);
 	const outputNames = getConnectionTypes(outputs);
 	return (
@@ -1741,6 +1748,27 @@ export function makeDescription(
 	return nodeTypeDescription.description;
 }
 
+export function isToolType(
+	nodeType?: string,
+	{ includeHitl = true }: { includeHitl?: boolean } = {},
+) {
+	if (!nodeType) return false;
+	const node = nodeType.split('.').pop();
+	if (node?.endsWith('Tool') || node?.startsWith('tool')) {
+		// don't check if it's hitl
+		if (includeHitl) {
+			return true;
+		}
+		return !isHitlToolType(nodeType);
+	}
+	return false;
+}
+
+export function isHitlToolType(nodeType?: string) {
+	if (!nodeType) return false;
+	return nodeType.endsWith('HitlTool');
+}
+
 export function isTool(
 	nodeTypeDescription: INodeTypeDescription,
 	parameters: INodeParameters,
@@ -1779,6 +1807,11 @@ export function makeNodeName(
 	nodeParameters: INodeParameters,
 	nodeTypeDescription: INodeTypeDescription,
 ): string {
+	// If skipNameGeneration is set, skip resource/operation resolution
+	if (nodeTypeDescription.skipNameGeneration) {
+		return nodeTypeDescription.defaults.name ?? nodeTypeDescription.displayName;
+	}
+
 	const { action, operation, resource } = resolveResourceAndOperation(
 		nodeParameters,
 		nodeTypeDescription,
@@ -1867,4 +1900,57 @@ export function getSubworkflowId(node: INode): string | undefined {
 		return node.parameters.workflowId.value as string;
 	}
 	return;
+}
+
+/**
+ * Check if a node type accepts a specific input connection type
+ * @param nodeType - The node type description
+ * @param connectionType - The connection type to check (e.g., 'main', 'ai_tool')
+ * @returns True if the node accepts the input type
+ */
+export function nodeAcceptsInputType(
+	nodeType: INodeTypeDescription,
+	connectionType: string,
+): boolean {
+	// Handle string-based inputs (expression or simple string)
+	if (typeof nodeType.inputs === 'string') {
+		return nodeType.inputs === connectionType || nodeType.inputs.includes(connectionType);
+	}
+
+	// Handle array-based inputs
+	if (!nodeType.inputs || !Array.isArray(nodeType.inputs)) {
+		return false;
+	}
+
+	return nodeType.inputs.some((input) => {
+		if (typeof input === 'string') {
+			return input === connectionType || input.includes(connectionType);
+		}
+		return input.type === connectionType;
+	});
+}
+
+/**
+ * Check if a node type has a specific output connection type
+ * @param nodeType - The node type description
+ * @param connectionType - The connection type to check (e.g., 'main', 'ai_tool')
+ * @returns True if the node supports the output type
+ */
+export function nodeHasOutputType(nodeType: INodeTypeDescription, connectionType: string): boolean {
+	// Handle string-based outputs (expression or simple string)
+	if (typeof nodeType.outputs === 'string') {
+		return nodeType.outputs === connectionType || nodeType.outputs.includes(connectionType);
+	}
+
+	// Handle array-based outputs
+	if (!nodeType.outputs || !Array.isArray(nodeType.outputs)) {
+		return false;
+	}
+
+	return nodeType.outputs.some((output) => {
+		if (typeof output === 'string') {
+			return output === connectionType || output.includes(connectionType);
+		}
+		return output.type === connectionType;
+	});
 }

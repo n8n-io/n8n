@@ -1,0 +1,261 @@
+name: 'Util: Claude Task Runner'
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task description - what should Claude do?'
+        required: true
+        type: string
+      user_token:
+        description: 'Your GitHub PAT (required for PR authorship - you cannot approve PRs you author)'
+        required: false
+        type: string
+      resumeUrl:
+        description: 'Optional callback URL to call with the result when the workflow completes'
+        required: false
+        type: string
+      createPr:
+        description: 'Create a pull request with the changes'
+        required: false
+        type: boolean
+        default: false
+      model:
+        description: 'Claude model to use (e.g., claude-opus-4-6, claude-sonnet-4-5, claude-haiku-4-5)'
+        required: false
+        type: string
+        default: 'claude-sonnet-4-5-20250929'
+      ref:
+        description: 'Git ref (branch/tag/SHA) to check out and work on'
+        required: false
+        type: string
+        default: 'master'
+
+jobs:
+  run-claude-task:
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Mask user token
+        run: echo "::add-mask::${{ inputs.user_token }}"
+
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+
+      - name: Create working branch
+        run: |
+          BRANCH_NAME="claude/task-${{ github.run_id }}-${{ github.run_attempt }}"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> "$GITHUB_ENV"
+          git checkout -b "$BRANCH_NAME"
+
+      - name: Configure git author
+        env:
+          GH_TOKEN: ${{ inputs.user_token || github.token }}
+        run: |
+          if [ -n "${{ inputs.user_token }}" ]; then
+            # Resolve identity from the PAT owner
+            USER_DATA=$(gh api user)
+            USER_NAME=$(echo "$USER_DATA" | jq -r '.name // .login')
+            USER_LOGIN=$(echo "$USER_DATA" | jq -r '.login')
+            USER_ID=$(echo "$USER_DATA" | jq -r '.id')
+            git config user.name "$USER_NAME"
+            git config user.email "${USER_ID}+${USER_LOGIN}@users.noreply.github.com"
+            echo "Git author configured as: $USER_NAME <${USER_ID}+${USER_LOGIN}@users.noreply.github.com>"
+          else
+            # Fall back to the user who triggered the workflow
+            git config user.name "${{ github.actor }}"
+            git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+            echo "Git author configured as: ${{ github.actor }}"
+          fi
+
+      - name: Prepare Claude prompt
+        env:
+          INPUT_TASK: ${{ inputs.task }}
+        run: |
+          # Build the prompt with task and pointer to templates
+          {
+            echo 'CLAUDE_PROMPT<<EOF'
+            echo "# Task"
+            echo "$INPUT_TASK"
+            echo ""
+            echo "# Guidelines"
+            echo "Check .github/claude-templates/ for relevant guides before starting."
+            echo "Read any templates that match your task type (e.g., security-fix.md for CVE fixes)."
+            echo ""
+            echo "# Instructions"
+            echo "1. Read relevant templates from .github/claude-templates/ first"
+            echo "2. Complete the task described above"
+            echo "3. Follow the guidelines from the templates"
+            echo "4. Make commits as you work - the last commit message will be used as the PR title"
+            echo "5. IMPORTANT: End every commit message with: Co-authored-by: Claude <noreply@anthropic.com>"
+            echo "6. Ensure code passes linting and type checks before finishing"
+            echo ""
+            echo "# Token Optimization"
+            echo "When running lint/typecheck, suppress verbose output:"
+            echo "  pnpm lint 2>&1 | tail -30"
+            echo "  pnpm typecheck 2>&1 | tail -30"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+
+      - name: Create MCP config
+        run: |
+          cat > /tmp/mcp-config.json << 'MCPEOF'
+          {
+            "mcpServers": {
+              "linear": {
+                "command": "npx",
+                "args": [
+                  "-y",
+                  "mcp-remote",
+                  "https://mcp.linear.app/sse",
+                  "--header",
+                  "Authorization:${AUTH_HEADER}"
+                ],
+                "env": {
+                  "AUTH_HEADER": "Bearer MCP_LINEAR_API_KEY_PLACEHOLDER"
+                }
+              },
+              "notion": {
+                "command": "npx",
+                "args": ["-y", "@notionhq/notion-mcp-server"],
+                "env": {
+                  "OPENAPI_MCP_HEADERS": "{\"Authorization\":\"Bearer MCP_NOTION_TOKEN_PLACEHOLDER\",\"Notion-Version\":\"2025-02-19\"}"
+                }
+              }
+            }
+          }
+          MCPEOF
+          sed -i "s|MCP_LINEAR_API_KEY_PLACEHOLDER|${{ secrets.MCP_LINEAR_API_KEY }}|g" /tmp/mcp-config.json
+          sed -i "s|MCP_NOTION_TOKEN_PLACEHOLDER|${{ secrets.MCP_NOTION_TOKEN }}|g" /tmp/mcp-config.json
+
+      - name: Run Claude
+        id: claude
+        uses: anthropics/claude-code-action@1b8ee3b94104046d71fde52ec3557651ad8c0d71 # v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: ${{ env.CLAUDE_PROMPT }}
+          settings: |
+            {
+              "permissions": {
+                "allow": [
+                  "Bash",
+                  "Read",
+                  "Write",
+                  "Edit",
+                  "Glob",
+                  "Grep",
+                  "WebFetch",
+                  "WebSearch",
+                  "TodoWrite",
+                  "Skill",
+                  "Task",
+                  "mcp__linear__*",
+                  "mcp__notion__*"
+                ]
+              }
+            }
+          claude_args: |
+            --model ${{ inputs.model }} --mcp-config /tmp/mcp-config.json
+
+      - name: Extract PR title
+        run: |
+          # Use the last commit message as PR title
+          PR_TITLE=$(git log -1 --format='%s' 2>/dev/null | head -1)
+          # Strip Co-authored-by suffix if present
+          PR_TITLE="${PR_TITLE%%[Cc]o-[Aa]uthored-[Bb]y:*}"
+          PR_TITLE="${PR_TITLE%% }"
+          if [ -z "$PR_TITLE" ]; then
+            PR_TITLE="chore: Claude automated task (run ${{ github.run_id }})"
+          fi
+          echo "PR_TITLE=$PR_TITLE" >> "$GITHUB_ENV"
+          echo "Extracted PR title: $PR_TITLE"
+
+      - name: Push branch and create PR
+        env:
+          INPUT_TASK: ${{ inputs.task }}
+          TRIGGERED_BY: ${{ github.actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if ! git diff --quiet "${{ inputs.ref }}"; then
+            # Push using github.token (has write access via workflow permissions)
+            git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+            git push -u origin "$BRANCH_NAME"
+
+            if [ "${{ inputs.createPr }}" = "true" ]; then
+              # Switch to PAT for PR creation (so PR is authored by the user)
+              export GH_TOKEN="${{ inputs.user_token }}"
+              if [ -z "${{ inputs.user_token }}" ]; then
+                echo "::error::createPr is enabled but user_token was not provided. A personal access token is required to create PRs under your identity."
+                exit 1
+              fi
+
+              {
+                echo "## Summary"
+                echo "Automated task completed by Claude."
+                echo ""
+                echo "### Task Description"
+                echo "$INPUT_TASK"
+                echo ""
+                echo "### Generated by"
+                echo "[Workflow Run #${{ github.run_id }}]($RUN_URL)"
+                echo ""
+                echo "---"
+                echo "*Triggered by @$TRIGGERED_BY via the Claude Task Runner workflow.*"
+              } > /tmp/pr-body.md
+
+              EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --base "${{ inputs.ref }}" --json number --jq '.[0].number')
+              if [ -n "$EXISTING_PR" ]; then
+                gh pr edit "$EXISTING_PR" --title "$PR_TITLE" --body-file /tmp/pr-body.md
+                echo "::notice::Updated existing PR #$EXISTING_PR"
+              else
+                gh pr create --title "$PR_TITLE" --body-file /tmp/pr-body.md --base "${{ inputs.ref }}"
+              fi
+            else
+              echo "::notice::PR creation is disabled. Changes pushed to branch but no PR created."
+            fi
+          else
+            echo "::notice::No changes made by Claude. Skipping PR creation."
+          fi
+
+      - name: Summary
+        env:
+          INPUT_TASK: ${{ inputs.task }}
+        run: |
+          {
+            echo "## Claude Task Runner Summary"
+            echo ""
+            echo "**Task:** $INPUT_TASK"
+            echo "**Branch:** $BRANCH_NAME"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Call resume url
+        if: inputs.resumeUrl != ''
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          # Extract only the result message (last element) from Claude's output
+          if [ -f "$EXECUTION_FILE" ]; then
+            jq --arg branch "$BRANCH_NAME" \
+              '{success: true, branch: $branch, result: .[-1]}' "$EXECUTION_FILE" \
+            | curl -X POST "${{ inputs.resumeUrl }}" \
+              -H "Content-Type: application/json" \
+              --data-binary @-
+          else
+            curl -X POST "${{ inputs.resumeUrl }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"success\": true, \"branch\": \"$BRANCH_NAME\", \"result\": null}"
+          fi

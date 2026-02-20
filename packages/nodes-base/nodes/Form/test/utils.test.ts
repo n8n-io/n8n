@@ -21,11 +21,14 @@ import {
 	resolveRawData,
 	isFormConnected,
 	sanitizeHtml,
+	sanitizeCustomCss,
 	validateResponseModeConfiguration,
 	prepareFormFields,
 	addFormResponseDataToReturnItem,
 	validateSafeRedirectUrl,
+	handleNewlines,
 } from '../utils/utils';
+import { isIpAllowed } from '../../Webhook/utils';
 
 describe('FormTrigger, parseFormDescription', () => {
 	it('should remove HTML tags and truncate to 150 characters', () => {
@@ -347,6 +350,55 @@ describe('FormTrigger, sanitizeHtml', () => {
 	});
 });
 
+describe('sanitizeCustomCss', () => {
+	it('should return undefined for undefined input', () => {
+		expect(sanitizeCustomCss(undefined)).toBeUndefined();
+	});
+
+	it('should return undefined for empty string', () => {
+		expect(sanitizeCustomCss('')).toBeUndefined();
+	});
+
+	it('should preserve CSS child combinator selectors (>)', () => {
+		const css = '#n8n-form > div.form-header > p { text-align: left; }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should preserve CSS adjacent sibling selectors (+)', () => {
+		const css = 'h1 + p { margin-top: 0; }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should preserve CSS general sibling selectors (~)', () => {
+		const css = 'h1 ~ p { color: gray; }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should remove script tags from CSS', () => {
+		const css = '.container { color: red; }<script>alert("xss")</script>';
+		expect(sanitizeCustomCss(css)).toBe('.container { color: red; }');
+	});
+
+	it('should remove style closing tags that could break out of style block', () => {
+		const css = '.container { color: red; }</style><script>alert("xss")</script>';
+		expect(sanitizeCustomCss(css)).toBe('.container { color: red; }');
+	});
+
+	it('should preserve url() in CSS', () => {
+		const css = '.bg { background-image: url(https://example.com/image.png); }';
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+
+	it('should preserve complex CSS with multiple selectors and properties', () => {
+		const css = `
+			#n8n-form > div.form-header > p { text-align: left; }
+			.form-container > .input-group + .input-group { margin-top: 1rem; }
+			button:hover { background-color: #0056b3; }
+		`;
+		expect(sanitizeCustomCss(css)).toBe(css);
+	});
+});
+
 describe('FormTrigger, formWebhook', () => {
 	const executeFunctions = mock<IWebhookFunctions>();
 	executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
@@ -356,6 +408,7 @@ describe('FormTrigger, formWebhook', () => {
 		.calledWith('formDescription')
 		.mockReturnValue('Test Description');
 	executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+	executeFunctions.getNodeParameter.calledWith('authentication').mockReturnValue('none');
 	executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
 	executeFunctions.getMode.mockReturnValue('manual');
 	executeFunctions.getInstanceId.mockReturnValue('instanceId');
@@ -533,6 +586,51 @@ describe('FormTrigger, formWebhook', () => {
 				useResponseData: false,
 			});
 		}
+	});
+
+	it.each([
+		['\\n', '\n'],
+		['\\\\n', '\\n'],
+	])('should replace %j with %j in form descriptions', async (pattern, replacement) => {
+		const description = `Some message${pattern}Other text`;
+		const expected = `Some message${replacement}Other text`;
+		const mockRender = jest.fn();
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: jest.fn(),
+		} as any);
+		executeFunctions.getNodeParameter.calledWith('formDescription').mockReturnValue(description);
+
+		await formWebhook(executeFunctions);
+
+		expect(mockRender).toHaveBeenCalledWith('form-trigger', {
+			appendAttribution: true,
+			buttonLabel: 'Submit',
+			formDescription: expected,
+			formDescriptionMetadata: createDescriptionMetadata(expected),
+			formFields: [
+				{
+					defaultValue: '',
+					errorId: 'error-field-0',
+					id: 'field-0',
+					inputRequired: 'form-required',
+					isInput: true,
+					label: 'Name',
+					placeholder: undefined,
+					type: 'text',
+				},
+			],
+			formSubmittedText: 'Your response has been recorded',
+			formTitle: 'Test Form',
+			n8nWebsiteLink:
+				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
+			testRun: true,
+			useResponseData: false,
+		});
 	});
 
 	it('should return workflowData on POST request', async () => {
@@ -2721,5 +2819,59 @@ describe('FormTrigger, prepareFormData - Default Value', () => {
 		});
 
 		expect(result.formFields[0].defaultValue).toBe('');
+	});
+});
+
+describe('FormTrigger IP Whitelist', () => {
+	describe('isIpAllowed (reused from Webhook)', () => {
+		it('should return true if whitelist is undefined', () => {
+			expect(isIpAllowed(undefined, ['192.168.1.1'], '192.168.1.1')).toBe(true);
+		});
+
+		it('should return true if whitelist is an empty string', () => {
+			expect(isIpAllowed('', ['192.168.1.1'], '192.168.1.1')).toBe(true);
+		});
+
+		it('should allow IP in whitelist', () => {
+			expect(isIpAllowed('192.168.1.1', [], '192.168.1.1')).toBe(true);
+		});
+
+		it('should block IP not in whitelist', () => {
+			expect(isIpAllowed('192.168.1.1', [], '192.168.1.2')).toBe(false);
+		});
+
+		it('should support CIDR notation', () => {
+			expect(isIpAllowed('192.168.1.0/24', [], '192.168.1.50')).toBe(true);
+			expect(isIpAllowed('192.168.1.0/24', [], '192.168.2.1')).toBe(false);
+		});
+
+		it('should support comma-separated mixed entries', () => {
+			expect(isIpAllowed('127.0.0.1, 192.168.1.0/24', [], '192.168.1.100')).toBe(true);
+			expect(isIpAllowed('127.0.0.1, 192.168.1.0/24', [], '10.0.0.1')).toBe(false);
+		});
+
+		it('should handle IPv6 addresses', () => {
+			expect(isIpAllowed('::1', [], '::1')).toBe(true);
+			expect(isIpAllowed('::1', [], '::2')).toBe(false);
+		});
+
+		it('should check both direct IP and proxy IPs', () => {
+			expect(isIpAllowed('192.168.1.1', ['192.168.1.1', '10.0.0.1'], '10.0.0.2')).toBe(true);
+		});
+	});
+});
+
+describe('handleNewlines', () => {
+	it.each([
+		['\\n', '\n'], // \n => newline character
+		['\\\\n', '\\n'], // \\n => \n
+		['\\\\\\n', '\\\\n'], // \\\n => \\n
+	])('should replace %j with %j in text', (pattern, replacement) => {
+		const text = `Some message${pattern}Other text`;
+		const expected = `Some message${replacement}Other text`;
+
+		const result = handleNewlines(text);
+
+		expect(result).toBe(expected);
 	});
 });

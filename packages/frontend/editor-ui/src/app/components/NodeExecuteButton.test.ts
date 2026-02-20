@@ -2,11 +2,16 @@ import { reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { type MockedStore, mockedStore, getTooltip } from '@/__tests__/utils';
 import { mockNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { nodeViewEventBus } from '@/app/event-bus';
-import { AI_TRANSFORM_NODE_TYPE, AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT } from 'n8n-workflow';
+import {
+	AI_TRANSFORM_NODE_TYPE,
+	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
+	AI_TRANSFORM_JS_CODE,
+} from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -220,7 +225,7 @@ describe('NodeExecuteButton', () => {
 		workflowsStore.isWorkflowRunning = true;
 
 		const { getByRole } = renderComponent();
-		expect(getByRole('button').querySelector('.n8n-spinner')).toBeVisible();
+		expect(getByRole('button')).toHaveAttribute('aria-busy', 'true');
 	});
 
 	it('should be disabled if the node is disabled and show tooltip', async () => {
@@ -228,16 +233,17 @@ describe('NodeExecuteButton', () => {
 			mockNode({ name: 'test', type: SET_NODE_TYPE, disabled: true }),
 		);
 
-		const { getByRole, queryByRole } = renderComponent();
+		const { getByRole } = renderComponent();
 
 		const button = getByRole('button');
 		expect(button).toBeDisabled();
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
 
 		await userEvent.hover(button);
 
-		expect(getByRole('tooltip')).toBeVisible();
-		expect(getByRole('tooltip')).toHaveTextContent('Enable node to execute');
+		await waitFor(() => {
+			const tooltip = getTooltip();
+			expect(tooltip).toHaveTextContent('Enable node to execute');
+		});
 	});
 
 	it('should be disabled when workflow is running but node is not executing', async () => {
@@ -247,16 +253,17 @@ describe('NodeExecuteButton', () => {
 			mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
 		);
 
-		const { getByRole, queryByRole } = renderComponent();
+		const { getByRole } = renderComponent();
 
 		const button = getByRole('button');
 		expect(button).toBeDisabled();
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
 
 		await userEvent.hover(button);
 
-		expect(getByRole('tooltip')).toBeVisible();
-		expect(getByRole('tooltip')).toHaveTextContent('Workflow is already running');
+		await waitFor(() => {
+			const tooltip = getTooltip();
+			expect(tooltip).toHaveTextContent('Workflow is already running');
+		});
 	});
 
 	it('disables button when trigger node has issues', async () => {
@@ -377,6 +384,7 @@ describe('NodeExecuteButton', () => {
 				name: 'test',
 				value: 'Test',
 			}));
+		const updateNodePropertiesSpy = vi.spyOn(workflowState, 'updateNodeProperties');
 		const node = mockNode({
 			name: 'test-node',
 			type: AI_TRANSFORM_NODE_TYPE,
@@ -387,20 +395,21 @@ describe('NodeExecuteButton', () => {
 		});
 		workflowsStore.getNodeByName.mockReturnValue(node);
 
-		const { getByRole, emitted } = renderComponent();
+		const { getByRole } = renderComponent();
 
 		await userEvent.click(getByRole('button'));
 
 		expect(generateCodeForAiTransformSpy).toHaveBeenCalledTimes(1);
 		expect(toast.showMessage).toHaveBeenCalledTimes(1);
-		expect(emitted().valueChanged).toEqual([
-			[{ name: 'test', value: 'Test' }],
-			[
-				{
-					name: `parameters.${AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT}`,
-					value: 'Test instructions',
-				},
-			],
-		]);
+		expect(updateNodePropertiesSpy).toHaveBeenCalledWith({
+			name: 'test-node',
+			properties: {
+				parameters: expect.objectContaining({
+					instructions: 'Test instructions',
+					[AI_TRANSFORM_JS_CODE]: 'Test',
+					[AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT]: 'Test instructions',
+				}),
+			},
+		});
 	});
 });

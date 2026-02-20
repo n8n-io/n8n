@@ -13,13 +13,14 @@ import {
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { computed, inject, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { RouteLocation, RouteLocationRaw } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
+import { injectStrict } from '@/app/utils/injectStrict';
+import { WorkflowIdKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
@@ -34,9 +35,8 @@ const pushConnection = usePushConnection({ router });
 const toast = useToast();
 const ndvStore = useNDVStore();
 const uiStore = useUIStore();
-const sourceControlStore = useSourceControlStore();
-const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
 
@@ -72,12 +72,11 @@ const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );
 const workflow = computed(() => workflowsStore.workflow);
-const workflowId = computed(() => String(route.params.name || workflowsStore.workflowId));
+const workflowId = injectStrict(WorkflowIdKey);
+const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
+const workflowTags = computed(() => workflowDocumentStore?.value?.tags ?? []);
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 
-const readOnly = computed(
-	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
-);
 const isEnterprise = computed(
 	() => settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable,
 );
@@ -261,7 +260,7 @@ async function onWorkflowDeactivated() {
 	if (settingsStore.isModuleActive('mcp') && workflow.value.settings?.availableInMCP) {
 		try {
 			// Fetch the updated workflow to get the latest settings after backend processing
-			const updatedWorkflow = await workflowsStore.fetchWorkflow(workflow.value.id);
+			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflow.value.id);
 			workflowsStore.setWorkflow(updatedWorkflow);
 			toast.showToast({
 				title: locale.baseText('mcp.workflowDeactivated.title'),
@@ -284,12 +283,11 @@ async function onWorkflowDeactivated() {
 				<WorkflowDetails
 					v-if="workflow?.name"
 					:id="workflow.id"
-					:tags="workflow.tags"
+					:tags="workflowTags"
 					:name="workflow.name"
 					:meta="workflow.meta"
 					:scopes="workflow.scopes"
 					:active="workflow.active"
-					:read-only="readOnly"
 					:current-folder="parentFolderForBreadcrumbs"
 					:is-archived="workflow.isArchived"
 					:description="workflow.description"

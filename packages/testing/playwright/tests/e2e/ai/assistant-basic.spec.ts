@@ -19,7 +19,11 @@ type ChatRequestBody = {
 	};
 };
 
-test.describe('AI Assistant::disabled', () => {
+test.describe('AI Assistant::disabled', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
 	test('does not show assistant button if feature is disabled', async ({
 		n8n,
 		setupRequirements,

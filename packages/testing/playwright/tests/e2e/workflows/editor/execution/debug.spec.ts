@@ -2,7 +2,11 @@ import { test, expect } from '../../../../../fixtures/base';
 import type { n8nPage } from '../../../../../pages/n8nPage';
 
 // Example of using helper functions inside a test
-test.describe('Debug mode', () => {
+test.describe('Debug mode', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	// Constants to avoid magic strings
 	const URLS = {
 		FAILING: 'https://foo.bar',
@@ -10,7 +14,6 @@ test.describe('Debug mode', () => {
 	};
 
 	const NOTIFICATIONS = {
-		WORKFLOW_CREATED: 'Workflow successfully created',
 		EXECUTION_IMPORTED: 'Execution data imported',
 		PROBLEM_IN_NODE: 'Problem in node',
 		SUCCESSFUL: 'Successful',
@@ -30,7 +33,6 @@ test.describe('Debug mode', () => {
 		await n8n.ndv.fillParameterInput('URL', url);
 		await n8n.canvas.waitForSaveWorkflowCompleted();
 		await n8n.ndv.close();
-		await n8n.notifications.waitForNotificationAndClose(NOTIFICATIONS.WORKFLOW_CREATED);
 	}
 
 	// Helper function to import execution for debugging

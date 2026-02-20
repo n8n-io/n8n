@@ -29,9 +29,14 @@ const alias = [
 	{ find: 'stream', replacement: 'stream-browserify' },
 	// Ensure bare imports resolve to sources (not dist)
 	{ find: '@n8n/i18n', replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src') },
+	{ find: '@n8n/chat-hub', replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src') },
 	{
 		find: /^@n8n\/chat(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
+	},
+	{
+		find: /^@n8n\/chat-hub(.+)$/,
+		replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src$1'),
 	},
 	{
 		find: /^@n8n\/api-requests(.+)$/,
@@ -105,6 +110,15 @@ const plugins: UserConfig['plugins'] = [
 			{
 				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
 				dest: resolve(__dirname, 'dist'),
+			},
+			// wa-sqlite WASM files for OPFS database support (no cross-origin isolation needed)
+			{
+				src: pathPosix.resolve('node_modules/wa-sqlite/dist/wa-sqlite.wasm'),
+				dest: 'assets',
+			},
+			{
+				src: pathPosix.resolve('node_modules/wa-sqlite/dist/wa-sqlite-async.wasm'),
+				dest: 'assets',
 			},
 		],
 	}),
@@ -227,6 +241,7 @@ export default mergeConfig(
 			target,
 		},
 		optimizeDeps: {
+			exclude: ['wa-sqlite'],
 			esbuildOptions: {
 				target,
 			},

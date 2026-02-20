@@ -26,7 +26,11 @@ import sanitize from 'sanitize-html';
 
 import { getResolvables } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
-import { validateWebhookAuthentication } from '../../Webhook/utils';
+import {
+	generateFormPostBasicAuthToken,
+	isIpAllowed,
+	validateWebhookAuthentication,
+} from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import type { FormTriggerData, FormField } from '../interfaces';
 
@@ -102,6 +106,16 @@ export function sanitizeHtml(text: string) {
 	});
 }
 
+/**
+ *  Replaces `\n` strings with actual newline characters.
+ *  Also replaces `\\n` strings with `\n` string
+ * @param text - The text to replace newlines in
+ * @returns Updated text
+ */
+export const handleNewlines = (text: string) => {
+	return text.replace(/\\n|\\\\n/g, (match) => (match === '\\\\n' ? '\\n' : '\n'));
+};
+
 export const prepareFormFields = (context: IWebhookFunctions, fields: FormFieldsParameter) => {
 	return fields.map((field) => {
 		if (field.fieldType === 'html') {
@@ -131,8 +145,8 @@ export function sanitizeCustomCss(css: string | undefined): string | undefined {
 	return sanitize(css, {
 		allowedTags: [], // No HTML tags allowed
 		allowedAttributes: {}, // No attributes allowed
-		// This ensures we're only keeping the text content
-		// which should be the CSS, while removing any HTML/script tags
+		// Decode HTML entities that sanitize-html encodes, as they break CSS selectors like ">"
+		textFilter: (text) => text.replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&'),
 	});
 }
 
@@ -186,6 +200,7 @@ export function prepareFormData({
 	buttonLabel,
 	customCss,
 	nodeVersion,
+	authToken,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -201,6 +216,7 @@ export function prepareFormData({
 	formSubmittedHeader?: string;
 	customCss?: string;
 	nodeVersion?: number;
+	authToken?: string;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -222,6 +238,7 @@ export function prepareFormData({
 		appendAttribution,
 		buttonLabel,
 		dangerousCustomCss: sanitizeCustomCss(customCss),
+		authToken,
 	};
 
 	if (redirectUrl) {
@@ -495,6 +512,7 @@ export function renderForm({
 	appendAttribution,
 	buttonLabel,
 	customCss,
+	authToken,
 }: {
 	context: IWebhookFunctions;
 	res: Response;
@@ -508,8 +526,8 @@ export function renderForm({
 	appendAttribution?: boolean;
 	buttonLabel?: string;
 	customCss?: string;
+	authToken?: string;
 }) {
-	formDescription = (formDescription || '').replace(/\\n/g, '\n').replace(/<br>/g, '\n');
 	const instanceId = context.getInstanceId();
 
 	const useResponseData = responseMode === 'responseNode';
@@ -550,6 +568,7 @@ export function renderForm({
 		buttonLabel,
 		customCss,
 		nodeVersion: context.getNode().typeVersion,
+		authToken,
 	});
 
 	res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
@@ -570,6 +589,7 @@ export async function formWebhook(
 	const node = context.getNode();
 	const options = context.getNodeParameter('options', {}) as {
 		ignoreBots?: boolean;
+		ipWhitelist?: string;
 		respondWithOptions?: {
 			values: {
 				respondWith: 'text' | 'redirect';
@@ -585,6 +605,13 @@ export async function formWebhook(
 	};
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
+
+	// Check IP allowlist first (before bot detection and authentication)
+	if (!isIpAllowed(options.ipWhitelist, req.ips, req.ip)) {
+		res.writeHead(403);
+		res.end('IP is not allowed to access this form!');
+		return { noWebhookResponse: true };
+	}
 
 	try {
 		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
@@ -612,7 +639,9 @@ export async function formWebhook(
 	//Show the form on GET request
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
-		const formDescription = sanitizeHtml(context.getNodeParameter('formDescription', '') as string);
+		const formDescription = handleNewlines(
+			sanitizeHtml(context.getNodeParameter('formDescription', '') as string),
+		);
 		let responseMode = context.getNodeParameter('responseMode', '') as string;
 
 		let formSubmittedText;
@@ -651,6 +680,11 @@ export async function formWebhook(
 			responseMode = 'responseNode';
 		}
 
+		let authToken: string | undefined;
+		if (node.typeVersion > 1) {
+			authToken = await generateFormPostBasicAuthToken(context, authProperty);
+		}
+
 		renderForm({
 			context,
 			res,
@@ -664,6 +698,7 @@ export async function formWebhook(
 			appendAttribution,
 			buttonLabel,
 			customCss: options.customCss,
+			authToken,
 		});
 
 		return {

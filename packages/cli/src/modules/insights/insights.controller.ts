@@ -100,16 +100,10 @@ export class InsightsController {
 	}
 
 	private validateQueryDates(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto) {
-		const inThePast = (date?: Date) => !date || date <= new Date();
-		const dateInThePastSchema = z.coerce
-			.date()
-			.optional()
-			.refine(inThePast, { message: 'must be in the past' });
-
 		const schema = z
 			.object({
-				startDate: dateInThePastSchema,
-				endDate: dateInThePastSchema,
+				startDate: z.coerce.date().optional(),
+				endDate: z.coerce.date().optional(),
 			})
 			.refine(
 				(data) => {

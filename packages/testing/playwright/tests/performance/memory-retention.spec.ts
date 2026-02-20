@@ -1,65 +1,51 @@
 import { test, expect } from '../../fixtures/base';
 import type { n8nPage } from '../../pages/n8nPage';
-import { attachMetric } from '../../utils/performance-helper';
+import { attachMetric, getStableHeap } from '../../utils/performance-helper';
 
 test.use({
 	capability: {
-		resourceQuota: {
-			memory: 0.75,
-			cpu: 0.5,
-		},
+		resourceQuota: { memory: 0.75, cpu: 0.5 },
 		services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
 	},
 });
 
-test.describe('Memory Leak Detection @capability:observability', () => {
-	const METRICS_TIMEOUT_MS = 60000;
-
+test.describe('Memory Leak Detection @capability:observability', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	async function performMemoryAction(n8n: n8nPage) {
 		await n8n.start.fromBlankCanvas();
 		await n8n.navigate.toWorkflows();
 	}
 
-	test('Memory should be released after actions', async ({ n8nContainer, n8n }, testInfo) => {
-		const obs = n8nContainer.services.observability;
+	test('Memory should be released after actions', async ({
+		n8nContainer,
+		n8n,
+		services,
+	}, testInfo) => {
+		const obs = services.observability;
 
-		// Get baseline heap usage (V8 heap is better for leak detection than RSS)
-		// RSS can stay high after GC due to OS memory management
-		// waitForMetric polls until metrics are available from VictoriaMetrics
-		const heapQuery = 'avg_over_time(n8n_nodejs_heap_size_used_bytes[10s]) / 1024 / 1024';
-		const baselineResult = await obs.metrics.waitForMetric(heapQuery, {
-			timeoutMs: METRICS_TIMEOUT_MS,
-			intervalMs: 2000,
-		});
-		expect(baselineResult, 'Expected baseline metrics to be available').not.toBeNull();
-		const baselineMemoryMB = baselineResult!.value;
-
+		const baseline = await getStableHeap(n8nContainer.baseUrl, obs.metrics);
 		await performMemoryAction(n8n);
 		await n8n.page.goto('/home/workflows');
+		const final = await getStableHeap(n8nContainer.baseUrl, obs.metrics);
 
-		await new Promise((resolve) => setTimeout(resolve, 5000));
-
-		const finalQuery = 'avg_over_time(n8n_nodejs_heap_size_used_bytes[30s]) / 1024 / 1024';
-		const finalResult = await obs.metrics.waitForMetric(finalQuery, {
-			timeoutMs: METRICS_TIMEOUT_MS,
-			intervalMs: 2000,
-		});
-		expect(finalResult, 'Expected final metrics to be available').not.toBeNull();
-		const finalMemoryMB = finalResult!.value;
-
-		const memoryRetainedMB = finalMemoryMB - baselineMemoryMB;
-		const retentionPercent = (memoryRetainedMB / baselineMemoryMB) * 100;
+		const retainedMB = final.heapUsedMB - baseline.heapUsedMB;
+		const retentionPercent = (retainedMB / baseline.heapUsedMB) * 100;
 
 		await attachMetric(testInfo, 'memory-heap-retention-percent', retentionPercent, '%');
-		await attachMetric(testInfo, 'memory-heap-used-pre-action', baselineMemoryMB, 'MB');
-		await attachMetric(testInfo, 'memory-heap-used-post-action', finalMemoryMB, 'MB');
-		await attachMetric(testInfo, 'memory-heap-retained', memoryRetainedMB, 'MB');
+		await attachMetric(testInfo, 'memory-heap-used-pre-action', baseline.heapUsedMB, 'MB');
+		await attachMetric(testInfo, 'memory-heap-used-post-action', final.heapUsedMB, 'MB');
+		await attachMetric(testInfo, 'memory-heap-retained', retainedMB, 'MB');
 
-		expect(baselineMemoryMB).toBeGreaterThan(0);
-		expect(finalMemoryMB).toBeGreaterThan(0);
+		expect(baseline.heapUsedMB).toBeGreaterThan(0);
+		expect(final.heapUsedMB).toBeGreaterThan(0);
+
 		console.log(
-			`[MEMORY RETENTION] Baseline: ${baselineMemoryMB.toFixed(1)} MB | Final: ${finalMemoryMB.toFixed(1)} MB | ` +
-				`Retained: ${memoryRetainedMB.toFixed(1)} MB (${retentionPercent.toFixed(1)}%)`,
+			`[MEMORY RETENTION] Baseline: ${baseline.heapUsedMB.toFixed(1)} MB | ` +
+				`Final: ${final.heapUsedMB.toFixed(1)} MB | ` +
+				`Retained: ${retainedMB.toFixed(1)} MB (${retentionPercent.toFixed(1)}%)`,
 		);
 	});
 });

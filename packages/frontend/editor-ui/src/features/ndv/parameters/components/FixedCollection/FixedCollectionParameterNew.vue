@@ -653,7 +653,7 @@ const onAddButtonClick = () => {
 						hide-delete
 						:parameters="getVisiblePropertyValues(property)"
 						:node-values="nodeValues"
-						:path="getPropertyPath(property.name, 0)"
+						:path="getPropertyPath(property.name)"
 						:is-read-only="!!isReadOnly"
 						:is-nested="false"
 						:remove-first-parameter-margin="true"
@@ -666,8 +666,9 @@ const onAddButtonClick = () => {
 
 			<div v-if="shouldShowAddAtBottom" :class="$style.controls">
 				<N8nButton
+					class="n8n-button--highlightFill"
+					variant="subtle"
 					v-if="hasSingleOption"
-					type="highlightFill"
 					icon="plus"
 					:data-test-id="`fixed-collection-add-top-level-button`"
 					:label="placeholder"
@@ -684,7 +685,8 @@ const onAddButtonClick = () => {
 				>
 					<template #trigger>
 						<N8nButton
-							type="highlightFill"
+							class="n8n-button--highlightFill"
+							variant="subtle"
 							icon="plus"
 							:label="placeholder"
 							:disabled="isAddDisabled"
@@ -763,8 +765,9 @@ const onAddButtonClick = () => {
 
 					<div v-if="shouldShowAddAtBottom" :class="$style.controls">
 						<N8nButton
+							class="n8n-button--highlightFill"
+							variant="subtle"
 							v-if="hasSingleOption"
-							type="highlightFill"
 							icon="plus"
 							:data-test-id="`fixed-collection-add-nested-button`"
 							:label="placeholder"
@@ -778,7 +781,12 @@ const onAddButtonClick = () => {
 							@select="optionSelected"
 						>
 							<template #trigger>
-								<N8nButton type="highlightFill" icon="plus" :label="placeholder" />
+								<N8nButton
+									class="n8n-button--highlightFill"
+									variant="subtle"
+									icon="plus"
+									:label="placeholder"
+								/>
 							</template>
 						</N8nDropdown>
 					</div>
@@ -846,7 +854,7 @@ const onAddButtonClick = () => {
 						hide-delete
 						:parameters="getVisiblePropertyValues(property)"
 						:node-values="nodeValues"
-						:path="getPropertyPath(property.name, 0)"
+						:path="getPropertyPath(property.name)"
 						:is-read-only="!!isReadOnly"
 						:is-nested="false"
 						:remove-first-parameter-margin="true"

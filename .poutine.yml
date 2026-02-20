@@ -4,6 +4,10 @@
 # This file defines skip rules for known-safe patterns.
 # Add new entries only after security review.
 
+# Custom rules for additional security checks
+include:
+  - path: .github/poutine-rules
+
 skip:
   # === SELF-HOSTED RUNNERS ===
   # We use Blacksmith (trusted CI provider) for self-hosted runners.

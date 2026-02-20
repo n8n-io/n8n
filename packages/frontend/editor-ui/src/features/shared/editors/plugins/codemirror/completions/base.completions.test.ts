@@ -20,33 +20,33 @@ import uniqBy from 'lodash/uniqBy';
 beforeEach(async () => {
 	setActivePinia(createTestingPinia());
 
-	vi.spyOn(utils, 'receivesNoBinaryData').mockReturnValue(true); // hide $binary
+	vi.spyOn(utils, 'receivesNoBinaryData').mockResolvedValue(true); // hide $binary
 	vi.spyOn(utils, 'isSplitInBatchesAbsent').mockReturnValue(false); // show context
 	vi.spyOn(utils, 'hasActiveNode').mockReturnValue(true);
 });
 
 describe('Additional Tests', () => {
 	describe('Edge Case Completions', () => {
-		test('should return no completions for empty string: {{ ""| }}', () => {
-			expect(completions('{{ ""| }}')).toBeNull();
+		test('should return no completions for empty string: {{ ""| }}', async () => {
+			expect(await completions('{{ ""| }}')).toBeNull();
 		});
 
-		test('should return no completions for null value: {{ null.| }}', () => {
-			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(null);
-			expect(completions('{{ null.| }}')).toBeNull();
+		test('should return no completions for null value: {{ null.| }}', async () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValueOnce(null);
+			expect(await completions('{{ null.| }}')).toBeNull();
 		});
 
-		test('should return no completions for undefined value: {{ undefined.| }}', () => {
-			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(undefined);
-			expect(completions('{{ undefined.| }}')).toBeNull();
+		test('should return no completions for undefined value: {{ undefined.| }}', async () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValueOnce(undefined);
+			expect(await completions('{{ undefined.| }}')).toBeNull();
 		});
 
-		test('should return completions for deeply nested object: {{ $json.deep.nested.value.| }}', () => {
+		test('should return completions for deeply nested object: {{ $json.deep.nested.value.| }}', async () => {
 			const nestedObject = { deep: { nested: { value: 'test' } } };
-			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValueOnce(
 				nestedObject.deep.nested.value,
 			);
-			expect(completions('{{ $json.deep.nested.value.| }}')).toHaveLength(
+			expect(await completions('{{ $json.deep.nested.value.| }}')).toHaveLength(
 				natives({ typeName: 'string' }).length +
 					extensions({ typeName: 'string' }).length +
 					STRING_RECOMMENDED_OPTIONS.length,
@@ -55,18 +55,18 @@ describe('Additional Tests', () => {
 	});
 
 	describe('Special Characters', () => {
-		test('should handle completions for strings with special characters: {{ "special@char!".| }}', () => {
-			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('special@char!');
-			expect(completions('{{ "special@char!".| }}')).toHaveLength(
+		test('should handle completions for strings with special characters: {{ "special@char!".| }}', async () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValueOnce('special@char!');
+			expect(await completions('{{ "special@char!".| }}')).toHaveLength(
 				natives({ typeName: 'string' }).length +
 					extensions({ typeName: 'string' }).length +
 					STRING_RECOMMENDED_OPTIONS.length,
 			);
 		});
 
-		test('should handle completions for strings with escape sequences: {{ "escape\\nsequence".| }}', () => {
-			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('escape\nsequence');
-			expect(completions('{{ "escape\\nsequence".| }}')).toHaveLength(
+		test('should handle completions for strings with escape sequences: {{ "escape\\nsequence".| }}', async () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValueOnce('escape\nsequence');
+			expect(await completions('{{ "escape\\nsequence".| }}')).toHaveLength(
 				natives({ typeName: 'string' }).length +
 					extensions({ typeName: 'string' }).length +
 					STRING_RECOMMENDED_OPTIONS.length,
@@ -75,20 +75,20 @@ describe('Additional Tests', () => {
 	});
 
 	describe('Function Calls', () => {
-		test('should return completions for function call results: {{ Math.abs(-5).| }}', () => {
-			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(5);
-			expect(completions('{{ Math.abs(-5).| }}')).toHaveLength(
+		test('should return completions for function call results: {{ Math.abs(-5).| }}', async () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValueOnce(5);
+			expect(await completions('{{ Math.abs(-5).| }}')).toHaveLength(
 				natives({ typeName: 'number' }).length +
 					extensions({ typeName: 'number' }).length +
 					['isEven()', 'isOdd()'].length,
 			);
 		});
 
-		test('should return completions for chained function calls: {{ $now.plus({ days: 1 }).| }}', () => {
-			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(
+		test('should return completions for chained function calls: {{ $now.plus({ days: 1 }).| }}', async () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValueOnce(
 				DateTime.now().plus({ days: 1 }),
 			);
-			expect(completions('{{ $now.plus({ days: 1 }).| }}')).toHaveLength(
+			expect(await completions('{{ $now.plus({ days: 1 }).| }}')).toHaveLength(
 				uniqBy(
 					luxonInstanceOptions().concat(extensions({ typeName: 'date' })),
 					(option) => option.label,
@@ -98,7 +98,7 @@ describe('Additional Tests', () => {
 	});
 });
 
-export function completions(docWithCursor: string, explicit = false) {
+export async function completions(docWithCursor: string, explicit = false) {
 	const cursorPosition = docWithCursor.indexOf('|');
 
 	const doc = docWithCursor.slice(0, cursorPosition) + docWithCursor.slice(cursorPosition + 1);
@@ -115,7 +115,7 @@ export function completions(docWithCursor: string, explicit = false) {
 		'autocomplete',
 		cursorPosition,
 	)) {
-		const result = completionSource(context);
+		const result = await completionSource(context);
 
 		if (isCompletionResult(result)) return result.options;
 	}
@@ -123,8 +123,11 @@ export function completions(docWithCursor: string, explicit = false) {
 	return null;
 }
 
-function isCompletionResult(
-	candidate: ReturnType<CompletionSource>,
-): candidate is CompletionResult {
-	return candidate !== null && 'from' in candidate && 'options' in candidate;
+function isCompletionResult(candidate: unknown): candidate is CompletionResult {
+	return (
+		candidate !== null &&
+		typeof candidate === 'object' &&
+		'from' in candidate &&
+		'options' in candidate
+	);
 }

@@ -7,7 +7,11 @@ import { ChatHubChatPage } from '../../../pages/ChatHubChatPage';
 
 test.use(chatHubTestConfig);
 
-test.describe('File attachment @capability:proxy', () => {
+test.describe('File attachment @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'Chat' },
+	],
+}, () => {
 	let tmpDir: string;
 	let testImagePath: string;
 	let testTextPath: string;
@@ -38,6 +42,7 @@ test.describe('File attachment @capability:proxy', () => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
+		await page.dismissWelcomeScreen();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i); // auto-select a model
 
 		await page.getFileInput().setInputFiles(testImagePath);
@@ -63,6 +68,7 @@ test.describe('File attachment @capability:proxy', () => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
+		await page.dismissWelcomeScreen();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i);
 
 		await page.getFileInput().setInputFiles(testTextPath);
@@ -78,6 +84,7 @@ test.describe('File attachment @capability:proxy', () => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
+		await page.dismissWelcomeScreen();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i);
 
 		// Send initial message with attachment

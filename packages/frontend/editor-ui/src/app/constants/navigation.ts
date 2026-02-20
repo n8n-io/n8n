@@ -12,6 +12,7 @@ export const enum VIEWS {
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
 	DEMO = 'WorkflowDemo',
+	DEMO_DIFF = 'WorkflowDemoDiff',
 	TEMPLATE_IMPORT = 'WorkflowTemplate',
 	WORKFLOW_ONBOARDING = 'WorkflowOnboarding',
 	SIGNIN = 'SigninView',
@@ -24,6 +25,7 @@ export const enum VIEWS {
 	USERS_SETTINGS = 'UsersSettings',
 	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
+	SECURITY_SETTINGS = 'SecuritySettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
 	COMMUNITY_NODES = 'CommunityNodes',
@@ -50,6 +52,7 @@ export const enum VIEWS {
 	PROJECT_ROLES_SETTINGS = 'ProjectRolesSettingsView',
 	PROJECT_ROLE_SETTINGS = 'ProjectRoleSettingsView',
 	PROJECT_NEW_ROLE = 'ProjectNewRoleView',
+	PROJECT_ROLE_VIEW = 'ProjectRoleViewView',
 	PROJECTS_VARIABLES = 'ProjectsVariables',
 	HOME_VARIABLES = 'HomeVariables',
 	FOLDERS = 'Folders',
@@ -60,10 +63,14 @@ export const enum VIEWS {
 	SHARED_CREDENTIALS = 'SharedCredentials',
 	ENTITY_NOT_FOUND = 'EntityNotFound',
 	ENTITY_UNAUTHORIZED = 'EntityUnAuthorized',
+	PRE_BUILT_AGENT_TEMPLATES = 'PreBuiltAgentTemplates',
+	AI_SETTINGS = 'AISettingsView',
 	OAUTH_CONSENT = 'OAuthConsent',
 	MIGRATION_REPORT = 'MigrationReport',
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',
+	RESOURCE_CENTER = 'ResourceCenter',
+	RESOURCE_CENTER_SECTION = 'ResourceCenterSection',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];

@@ -13,7 +13,7 @@ import { DateTime } from 'luxon';
  *
  * @param startDate - The start date of the range (inclusive)
  * @param endDate - The end date of the range (inclusive, or "now" if today)
- * @param dbType - The database type (postgresdb, mysqldb, mariadb, or sqlite)
+ * @param dbType - The database type (postgresdb or sqlite)
  * @returns SQL CTE query with `prev_start_date`, `start_date`, and `end_date` columns
  * - `prev_start_date`: The start of the previous period (used for comparison)
  * - `start_date`: The start of the current period (inclusive)
@@ -67,7 +67,7 @@ export function getDateRangesSelectQuery({
 
 	// Database-specific timestamp casting
 	// PostgreSQL requires explicit CAST or :: syntax for timestamp comparisons
-	// SQLite and MySQL/MariaDB can work with string literals in comparisons
+	// SQLite can work with string literals in comparisons
 	if (dbType === 'postgresdb') {
 		return sql`SELECT
 			CAST('${prevStartStr}' AS TIMESTAMP) AS prev_start_date,

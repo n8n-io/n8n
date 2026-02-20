@@ -79,6 +79,7 @@ const getPropertyPath = (name: string, index?: number): string => {
 };
 
 const multipleValues = computed(() => !!props.parameter.typeOptions?.multipleValues);
+const hideEmptyMessage = computed(() => !props.parameter.typeOptions?.hideEmptyMessage);
 const sortable = computed(() => !!props.parameter.typeOptions?.sortable);
 
 const getPlaceholderText = computed(() => {
@@ -429,7 +430,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 		@keydown.stop
 	>
 		<div v-if="getProperties.length === 0" :class="$style.noItemsExist">
-			<N8nText size="small">{{
+			<N8nText v-if="hideEmptyMessage" size="small">{{
 				locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
 			}}</N8nText>
 		</div>
@@ -462,9 +463,8 @@ function getItemKey(_item: INodeParameters, index: number) {
 							<div :class="[$style.parameterItemWrapper, { [$style.borderTopDashed]: index }]">
 								<div v-if="!isReadOnly" :class="[$style.iconButton, $style.defaultTopPadding]">
 									<N8nIconButton
+										variant="ghost"
 										v-if="sortable"
-										type="tertiary"
-										text
 										size="small"
 										icon="grip-vertical"
 										:title="locale.baseText('fixedCollectionParameter.dragItem')"
@@ -473,8 +473,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 								</div>
 								<div v-if="!isReadOnly" :class="[$style.iconButton, $style.extraTopPadding]">
 									<N8nIconButton
-										type="tertiary"
-										text
+										variant="ghost"
 										size="small"
 										icon="trash-2"
 										data-test-id="fixed-collection-delete"
@@ -535,8 +534,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 				<div :class="$style.parameterItemWrapper">
 					<div v-if="!isReadOnly" :class="$style.iconButton">
 						<N8nIconButton
-							type="tertiary"
-							text
+							variant="ghost"
 							size="small"
 							icon="trash-2"
 							data-test-id="fixed-collection-delete"
@@ -590,9 +588,9 @@ function getItemKey(_item: INodeParameters, index: number) {
 
 		<div v-if="parameterOptions.length > 0 && !isReadOnly" :class="$style.controls">
 			<N8nButton
+				style="width: 100%"
+				variant="subtle"
 				v-if="parameter.options && parameter.options.length === 1"
-				type="tertiary"
-				block
 				data-test-id="fixed-collection-add"
 				:label="getPlaceholderText"
 				@click="onAddButtonClick(parameter.options[0].name)"

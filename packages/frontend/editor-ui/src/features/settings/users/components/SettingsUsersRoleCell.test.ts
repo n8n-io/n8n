@@ -105,4 +105,27 @@ describe('SettingsUsersRoleCell', () => {
 		expect(emitted()).toHaveProperty('update:role');
 		expect(emitted()['update:role'][0]).toEqual([{ role: ROLE.Admin, userId: '1' }]);
 	});
+
+	it('should disable the activator button when loading', () => {
+		renderComponent({ props: { loading: true } });
+
+		expect(screen.getByRole('button', { name: 'Member' })).toBeDisabled();
+	});
+
+	it('should not update displayed role until prop changes', async () => {
+		const { rerender } = renderComponent();
+		const user = userEvent.setup();
+
+		// Click "Admin" role option
+		await user.click(screen.getByTestId('action-global:admin'));
+
+		// The activator button should still show "Member" (not optimistically updated)
+		expect(screen.getByRole('button', { name: 'Member' })).toBeInTheDocument();
+
+		// Simulate parent updating the prop after a successful API call
+		await rerender({ data: { ...mockUser, role: ROLE.Admin } });
+
+		// Now the activator button should show "Admin"
+		expect(screen.getByRole('button', { name: 'Admin' })).toBeInTheDocument();
+	});
 });

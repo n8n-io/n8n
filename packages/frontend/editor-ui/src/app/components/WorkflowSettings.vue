@@ -18,6 +18,7 @@ import {
 	N8nButton,
 	N8nIcon,
 	N8nInput,
+	N8nInputNumber,
 	N8nLink,
 	N8nIconButton,
 	N8nOption,
@@ -30,6 +31,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -43,8 +45,8 @@ import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -56,13 +58,14 @@ const modalBus = createEventBus();
 const telemetry = useTelemetry();
 const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow, mcpTriggerMap } = useMcp();
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
-const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
+const { isEnabled: isCredentialResolverEnabled } = useDynamicCredentials();
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const workflowState = injectWorkflowState();
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
@@ -141,15 +144,12 @@ const executionLogic = computed(() => {
 const isMCPEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
-const isCredentialResolverEnabled = computed(() =>
-	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
-);
 const readOnlyEnv = computed(
 	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 );
 const workflowName = computed(() => workflowsStore.workflowName);
 const workflowId = computed(() => workflowsStore.workflowId);
-const workflow = computed(() => workflowsStore.getWorkflowById(workflowId.value));
+const workflow = computed(() => workflowsListStore.getWorkflowById(workflowId.value));
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
@@ -193,11 +193,11 @@ const hasSavedTimeNodes = computed(() => {
 
 const timeSavedModeOptions = computed(() => [
 	{
-		label: 'Fixed',
+		label: i18n.baseText('workflowSettings.timeSavedPerExecution.tab.fixed'),
 		value: 'fixed' as const,
 	},
 	{
-		label: 'Dynamic (uses time saved nodes)',
+		label: i18n.baseText('workflowSettings.timeSavedPerExecution.tab.dynamic'),
 		value: 'dynamic' as const,
 	},
 ]);
@@ -220,9 +220,9 @@ const executionLogicOptions = computed(() => {
 });
 
 const onCallerIdsInput = (str: string) => {
-	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
+	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s_-]+$/.test(str)
 		? str
-		: str.replace(/[^a-zA-Z0-9,\s]/g, '');
+		: str.replace(/[^a-zA-Z0-9,\s_-]/g, '');
 };
 
 const closeDialog = () => {
@@ -393,7 +393,7 @@ const loadTimezones = async () => {
 };
 
 const loadWorkflows = async (searchTerm?: string) => {
-	const workflowsData = (await workflowsStore.searchWorkflows({
+	const workflowsData = (await workflowsListStore.searchWorkflows({
 		query: searchTerm,
 		isArchived: false,
 		triggerNodeTypes: ['n8n-nodes-base.errorTrigger'],
@@ -409,7 +409,7 @@ const loadWorkflows = async (searchTerm?: string) => {
 	});
 
 	workflowsData.unshift({
-		id: undefined as unknown as string,
+		id: 'DEFAULT',
 		name: i18n.baseText('workflowSettings.noWorkflow'),
 	} as IWorkflowShortResponse);
 
@@ -617,7 +617,7 @@ onMounted(async () => {
 
 	try {
 		const promises = [
-			workflowsStore.fetchWorkflow(workflowId.value),
+			workflowsListStore.fetchWorkflow(workflowId.value),
 			loadWorkflows(),
 			loadSaveDataErrorExecutionOptions(),
 			loadSaveDataSuccessExecutionOptions(),
@@ -644,6 +644,9 @@ onMounted(async () => {
 
 	if (workflowSettingsData.timeSavedMode === undefined) {
 		workflowSettingsData.timeSavedMode = 'fixed';
+	}
+	if (workflowSettingsData.errorWorkflow === undefined) {
+		workflowSettingsData.errorWorkflow = 'DEFAULT';
 	}
 	if (workflowSettingsData.timezone === undefined) {
 		workflowSettingsData.timezone = 'DEFAULT';
@@ -847,9 +850,8 @@ onBeforeUnmount(() => {
 							</N8nSelect>
 							<N8nIconButton
 								v-if="workflowSettings.credentialResolverId"
+								variant="ghost"
 								icon="pen"
-								type="tertiary"
-								:text="true"
 								size="small"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:title="i18n.baseText('workflowSettings.credentialResolver.edit')"
@@ -1190,13 +1192,15 @@ onBeforeUnmount(() => {
 				<ElRow v-if="workflowSettings.timeSavedMode === 'fixed'">
 					<ElCol :span="14" :offset="10">
 						<div :class="$style['time-saved-input']">
-							<N8nInput
+							<N8nInputNumber
 								id="timeSavedPerExecution"
 								v-model="workflowSettings.timeSavedPerExecution"
+								controls-position="right"
+								size="medium"
+								:controls="true"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								data-test-id="workflow-settings-time-saved-per-execution"
-								type="number"
-								min="0"
+								:min="0"
 								@update:model-value="updateTimeSavedPerExecution"
 							/>
 							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
@@ -1341,13 +1345,10 @@ onBeforeUnmount(() => {
 .time-saved-input {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing--2xs);
 
-	:global(.el-input) {
-		width: var(--spacing--3xl);
-	}
-
-	span {
-		margin-left: var(--spacing--2xs);
+	:global(.el-input-number) {
+		width: var(--spacing--4xl);
 	}
 }
 

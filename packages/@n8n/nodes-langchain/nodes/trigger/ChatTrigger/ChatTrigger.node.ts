@@ -64,7 +64,7 @@ const streamingResponseMode = {
 const respondNodesResponseMode = {
 	name: 'Using Response Nodes',
 	value: 'responseNodes',
-	description: "Send responses to the chat by using 'Respond to Chat' node",
+	description: 'Send responses to the chat by using one or more Chat nodes',
 };
 
 const commonOptionsFields: INodeProperties[] = [
@@ -134,6 +134,7 @@ const commonOptionsFields: INodeProperties[] = [
 		],
 		default: 'notSupported',
 		description: 'If loading messages of a previous session should be enabled',
+		builderHint: { message: "Set to 'memory' to persist conversation history across sessions" },
 	},
 	{
 		displayName: 'Require Button Click to Start Chat',
@@ -254,6 +255,19 @@ export class ChatTrigger extends Node {
 			];
 		 })() }}`,
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			inputs: {
+				ai_memory: {
+					required: true,
+					displayOptions: {
+						show: {
+							mode: ['hostedChat', 'webhook'],
+							'options.loadPreviousSession': ['memory'],
+						},
+					},
+				},
+			},
+		},
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
@@ -395,12 +409,13 @@ export class ChatTrigger extends Node {
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				displayName: 'Make Available in n8n Chat',
+				displayName: 'Make Available in n8n Chat Hub',
 				name: 'availableInChat',
 				type: 'boolean',
 				default: false,
 				noDataExpression: true,
-				description: 'Whether to make the agent available in n8n Chat',
+				description:
+					'Whether to make the agent available in n8n Chat Hub for n8n instance users to chat with',
 			},
 			{
 				displayName:
@@ -713,7 +728,10 @@ export class ChatTrigger extends Node {
 		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');
 		assertParamIsString('mode', nodeMode, ctx.getNode());
 
-		if (!isPublic) {
+		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
+
+		// Allow execution in manual mode (test) even when not public
+		if (!isPublic && mode !== 'test') {
 			res.status(404).end();
 			return {
 				noWebhookResponse: true,
@@ -748,7 +766,6 @@ export class ChatTrigger extends Node {
 
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
-		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 		const bodyData = ctx.getBodyData() ?? {};
 
 		try {

@@ -93,7 +93,7 @@ export type CanvasNodeStickyNoteRender = {
 	options: Partial<{
 		width: number;
 		height: number;
-		color: number;
+		color: number | string; // 1-7 for presets, hex string for custom colors
 		content: string;
 	}>;
 };
@@ -186,7 +186,13 @@ export type CanvasEventBusEvents = {
 		action: keyof CanvasNodeEventBusEvents;
 		payload?: CanvasNodeEventBusEvents[keyof CanvasNodeEventBusEvents];
 	};
-	tidyUp: { source: CanvasLayoutSource; nodeIdsFilter?: string[]; trackEvents?: boolean };
+	tidyUp: {
+		source: CanvasLayoutSource;
+		nodeIdsFilter?: string[];
+		trackEvents?: boolean;
+		trackHistory?: boolean;
+		trackBulk?: boolean;
+	};
 	'create:sticky': never;
 };
 

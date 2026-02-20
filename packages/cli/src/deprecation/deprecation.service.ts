@@ -31,6 +31,10 @@ const SAFE_TO_REMOVE = 'Remove this environment variable; it is no longer needed
 @Service()
 export class DeprecationService {
 	private readonly deprecations: Deprecation[] = [
+		{
+			envVar: 'N8N_BINARY_DATA_STORAGE_PATH',
+			message: 'Use N8N_STORAGE_PATH instead.',
+		},
 		{ envVar: 'N8N_BINARY_DATA_TTL', message: SAFE_TO_REMOVE },
 		{ envVar: 'N8N_PERSISTED_BINARY_DATA_TTL', message: SAFE_TO_REMOVE },
 		{ envVar: 'EXECUTIONS_DATA_PRUNE_TIMEOUT', message: SAFE_TO_REMOVE },

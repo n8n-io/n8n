@@ -3,7 +3,6 @@ import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import path from 'path';
 
-import { mysqlMigrations } from '../../migrations/mysqldb';
 import { postgresMigrations } from '../../migrations/postgresdb';
 import { sqliteMigrations } from '../../migrations/sqlite';
 import { DbConnectionOptions } from '../db-connection-options';
@@ -53,32 +52,17 @@ describe('DbConnectionOptions', () => {
 				dbConfig.type = 'sqlite';
 				dbConfig.sqlite = {
 					database: 'test.sqlite',
-					poolSize: 0,
-					enableWAL: false,
+					poolSize: 3,
 					executeVacuumOnStartup: false,
 				};
 			});
 
-			it('should return SQLite connection options when type is sqlite', () => {
-				const result = dbConnectionOptions.getOptions();
-
-				expect(result).toEqual({
-					type: 'sqlite',
-					enableWAL: false,
-					...commonOptions,
-					database: path.resolve(n8nFolder, 'test.sqlite'),
-					migrations: sqliteMigrations,
-				});
-			});
-
-			it('should return SQLite connection options with pooling when poolSize > 0', () => {
-				dbConfig.sqlite.poolSize = 5;
-
+			it('should return SQLite pooled connection options when type is sqlite', () => {
 				const result = dbConnectionOptions.getOptions();
 
 				expect(result).toEqual({
 					type: 'sqlite-pooled',
-					poolSize: 5,
+					poolSize: 3,
 					enableWAL: true,
 					acquireTimeout: 60_000,
 					destroyTimeout: 5_000,
@@ -101,6 +85,8 @@ describe('DbConnectionOptions', () => {
 					schema: 'public',
 					poolSize: 2,
 					connectionTimeoutMs: 20000,
+					idleTimeoutMs: 30000,
+					statementTimeoutMs: 300000,
 					ssl: {
 						enabled: false,
 						ca: '',
@@ -108,7 +94,6 @@ describe('DbConnectionOptions', () => {
 						key: '',
 						rejectUnauthorized: true,
 					},
-					idleTimeoutMs: 30000,
 				};
 			});
 
@@ -127,6 +112,7 @@ describe('DbConnectionOptions', () => {
 					poolSize: 2,
 					migrations: postgresMigrations,
 					connectTimeoutMS: 20000,
+					statementTimeout: 300_000,
 					ssl: false,
 					extra: {
 						idleTimeoutMillis: 30000,
@@ -146,57 +132,6 @@ describe('DbConnectionOptions', () => {
 				const result = dbConnectionOptions.getOptions();
 
 				expect(result).toMatchObject({ ssl });
-			});
-		});
-
-		describe('for MySQL / MariaDB', () => {
-			beforeEach(() => {
-				dbConfig.mysqldb = {
-					database: 'test_db',
-					host: 'localhost',
-					port: 3306,
-					user: 'root',
-					password: 'password',
-					poolSize: 10,
-				};
-			});
-
-			it('should return MySQL connection options when type is mysqldb', () => {
-				dbConfig.type = 'mysqldb';
-
-				const result = dbConnectionOptions.getOptions();
-
-				expect(result).toEqual({
-					type: 'mysql',
-					...commonOptions,
-					database: 'test_db',
-					host: 'localhost',
-					port: 3306,
-					username: 'root',
-					password: 'password',
-					migrations: mysqlMigrations,
-					timezone: 'Z',
-					poolSize: 10,
-				});
-			});
-
-			it('should return MariaDB connection options when type is mariadb', () => {
-				dbConfig.type = 'mariadb';
-
-				const result = dbConnectionOptions.getOptions();
-
-				expect(result).toEqual({
-					type: 'mariadb',
-					...commonOptions,
-					database: 'test_db',
-					host: 'localhost',
-					port: 3306,
-					username: 'root',
-					password: 'password',
-					migrations: mysqlMigrations,
-					timezone: 'Z',
-					poolSize: 10,
-				});
 			});
 		});
 

@@ -8,7 +8,7 @@ export const RESOURCE_LOCATOR_GUIDE: NodeTypeGuide = {
 
 ResourceLocator parameters are special fields used for selecting resources like Slack channels, Google Drive files, Notion pages, etc. They MUST have a specific structure:
 
-### Required ResourceLocator Structure:
+### Required ResourceLocator Structure (required fields):
 \`\`\`json
 {
   "__rl": true,
@@ -18,80 +18,21 @@ ResourceLocator parameters are special fields used for selecting resources like 
 \`\`\`
 
 ### Mode Detection Guidelines:
+- Use the node type definition to determine the default mode and available modes for specific parameter
+- Prefer default mode from node type definition when possible
+- Switch the mode based on the input value format when necessary
+- Use mode "list" when the value is an ID + display name (e.g. "Marketing Team (ID: C0122KQ70S7E)"). Value should be set to the ID part, and cachedResultName to the display name part
 - Use mode "url" when the value is a URL (starts with http:// or https://)
-- Use mode "id" when the value looks like an ID (alphanumeric string)
-- Use mode "name" when the value has a prefix like # (Slack channels) or @ (users)
-- Use mode "list" when referencing a dropdown selection (rarely needed in updates)
+- Use mode "id" when the value looks like an ID (alphanumeric string, UUID, or other identifier)
 
-### ResourceLocator Examples:
-
-#### Example 1: Slack Channel by ID
-Parameter name: channelId
-Change: "Set channel to C0122KQ70S7E"
-Output:
+List mode structure with optional cached fields:
 \`\`\`json
 {
-  "channelId": {
-    "__rl": true,
-    "mode": "id",
-    "value": "C0122KQ70S7E"
-  }
+  "__rl": true,
+  "mode": "list",
+  "value": "actual-id-from-list",
+  "cachedResultName": "Display Name"
 }
 \`\`\`
-
-#### Example 2: Google Drive File by URL
-Parameter name: fileId
-Change: "Use file https://drive.google.com/file/d/1Nvdl7bEfDW33cKQuwfItPhIk479--WYY/view"
-Output:
-\`\`\`json
-{
-  "fileId": {
-    "__rl": true,
-    "mode": "url",
-    "value": "https://drive.google.com/file/d/1Nvdl7bEfDW33cKQuwfItPhIk479--WYY/view"
-  }
-}
-\`\`\`
-
-#### Example 3: Notion Page by ID
-Parameter name: pageId
-Change: "Set page ID to 123e4567-e89b-12d3"
-Output:
-\`\`\`json
-{
-  "pageId": {
-    "__rl": true,
-    "mode": "id",
-    "value": "123e4567-e89b-12d3"
-  }
-}
-\`\`\`
-
-#### Example 4: Slack Channel by Name
-Parameter name: channelId
-Change: "Send to #general channel"
-Output:
-\`\`\`json
-{
-  "channelId": {
-    "__rl": true,
-    "mode": "name",
-    "value": "#general"
-  }
-}
-\`\`\`
-
-#### Example 5: Using Expression with ResourceLocator
-Parameter name: channelId
-Change: "Use channel ID from previous node"
-Output:
-\`\`\`json
-{
-  "channelId": {
-    "__rl": true,
-    "mode": "id",
-    "value": "={{ $('Previous Node').item.json.channelId }}"
-  }
-}
-\`\`\``,
+`,
 };

@@ -138,23 +138,41 @@ export const isAllowedInDotNotation = (str: string) => {
 	return !DOT_NOTATION_BANNED_CHARS.test(str);
 };
 
+/**
+ * Whether is a string is a valid identifier to be used in dot notation.
+ * Allow-list alternative to the blocked-list approach in isAllowedInDotNotation.
+ * Rules:
+ * - Must start with a letter, underscore, or dollar sign.
+ * - Followed by zero or more letters, numbers, underscores, or dollar signs.
+ * - Nothing else allowed after that.
+ *
+ * Link to the spec: https://tc39.es/ecma262/#prod-IdentifierStart
+ */
+export const isValidJavascriptIdentifier = (str: string) => {
+	const VALID_IDENTIFIER = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+
+	return VALID_IDENTIFIER.test(str);
+};
+
 // ----------------------------------
 //      resolution-based utils
 // ----------------------------------
 
-export function receivesNoBinaryData(contextNodeName?: string) {
+export async function receivesNoBinaryData(contextNodeName?: string) {
 	try {
-		return resolveAutocompleteExpression('={{ $binary }}', contextNodeName)?.data === undefined;
+		return (
+			(await resolveAutocompleteExpression('={{ $binary }}', contextNodeName))?.data === undefined
+		);
 	} catch {
 		return true;
 	}
 }
 
-export function hasNoParams(toResolve: string, contextNodeName?: string) {
+export async function hasNoParams(toResolve: string, contextNodeName?: string) {
 	let params;
 
 	try {
-		params = resolveAutocompleteExpression(`={{ ${toResolve}.params }}`, contextNodeName);
+		params = await resolveAutocompleteExpression(`={{ ${toResolve}.params }}`, contextNodeName);
 	} catch {
 		return true;
 	}
@@ -166,7 +184,7 @@ export function hasNoParams(toResolve: string, contextNodeName?: string) {
 	return paramKeys.length === 1 && isPseudoParam(paramKeys[0]);
 }
 
-export function resolveAutocompleteExpression(expression: string, contextNodeName?: string) {
+export async function resolveAutocompleteExpression(expression: string, contextNodeName?: string) {
 	const ndvStore = useNDVStore();
 	const inputData =
 		contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
@@ -177,7 +195,7 @@ export function resolveAutocompleteExpression(expression: string, contextNodeNam
 					inputBranchIndex: ndvStore.ndvInputBranchIndex,
 				}
 			: {};
-	return resolveParameter(expression, {
+	return await resolveParameter(expression, {
 		...inputData,
 		contextNodeName,
 	});
