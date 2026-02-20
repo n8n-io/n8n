@@ -40,9 +40,12 @@ function openNativeColorPicker() {
 	colorInputRef.value?.click();
 }
 
-function onNativeColorChange(event: Event) {
+function onNativeColorInput(event: Event) {
 	const input = event.target as HTMLInputElement;
 	emit('update', input.value.toUpperCase());
+}
+
+function onNativeColorChange() {
 	hidePopover();
 }
 
@@ -128,6 +131,7 @@ onBeforeUnmount(() => {
 			type="color"
 			:class="$style.hiddenColorInput"
 			data-test-id="native-color-input"
+			@input="onNativeColorInput"
 			@change="onNativeColorChange"
 		/>
 	</div>
