@@ -32,6 +32,21 @@ export { BaseChatMemory } from '@n8n/ai-utilities';
 // Memory implementations
 export { WindowedChatMemory, type WindowedChatMemoryConfig } from '@n8n/ai-utilities';
 
+// Vector store types
+export type {
+	VectorStore,
+	VectorStoreConfig,
+	VectorStoreDocument,
+	VectorStoreSearchResult,
+} from '@n8n/ai-utilities';
+
+// Vector store base classes
+export { BaseVectorStore } from '@n8n/ai-utilities';
+
 // Suppliers
 export { supplyMemory, type SupplyMemoryOptions } from '@n8n/ai-utilities';
 export { supplyModel, type SupplyModelOptions, type OpenAiModel } from '@n8n/ai-utilities';
+export {
+	supplyVectorStore,
+	type SupplyVectorStoreOptions,
+} from '@n8n/ai-utilities';

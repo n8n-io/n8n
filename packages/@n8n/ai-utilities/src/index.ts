@@ -51,6 +51,7 @@ export {
 	isBaseChatMessageHistory,
 	isChatInstance,
 	isToolsInstance,
+	isBaseVectorStore,
 } from './guards';
 
 // Types
@@ -70,10 +71,20 @@ export type {
 	MessageRole,
 } from './types/message';
 export type { JSONArray, JSONObject, JSONValue } from './types/json';
+export type {
+	VectorStore,
+	VectorStoreConfig,
+	VectorStoreDocument,
+	VectorStoreSearchResult,
+} from './types/vector-store';
 
 // Chat model classes
 export { LangchainChatModelAdapter } from './adapters/langchain-chat-model';
 export { BaseChatModel } from './chat-model/base';
+
+// Vector store classes
+export { BaseVectorStore } from './vector-store/base';
+export { LangchainVectorStoreAdapter } from './adapters/langchain-vector-store';
 
 // Memory base classes
 export { BaseChatHistory } from './memory/base-chat-history';
@@ -85,3 +96,4 @@ export { WindowedChatMemory, type WindowedChatMemoryConfig } from './memory/wind
 // Suppliers
 export { supplyMemory, type SupplyMemoryOptions } from './suppliers/supplyMemory';
 export { supplyModel, type SupplyModelOptions, type OpenAiModel } from './suppliers/supplyModel';
+export { supplyVectorStore, type SupplyVectorStoreOptions } from './suppliers/supplyVectorStore';
