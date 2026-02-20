@@ -26,85 +26,97 @@ const EXTERNAL_SECRETS_DB_KEY = 'feature.externalSecrets';
 export class MigrateExternalSecretsToEntityStorage1771500000000 implements IrreversibleMigration {
 	private readonly cipher = Container.get(Cipher);
 
-	async up({ escape, runQuery, logger, migrationName }: MigrationContext) {
+	async up(context: MigrationContext) {
+		const allSettings = await this.readSettings(context);
+		if (!allSettings) return;
+
+		const providerNames = Object.keys(allSettings);
+		if (providerNames.length === 0) {
+			context.logger.info(
+				`[${context.migrationName}] External secrets settings blob is empty, skipping`,
+			);
+			return;
+		}
+
+		for (const providerName of providerNames) {
+			await this.migrateProvider(context, providerName, allSettings[providerName]);
+		}
+
+		context.logger.info(
+			`[${context.migrationName}] Migration complete. Old settings row preserved in settings table.`,
+		);
+	}
+
+	private async readSettings({
+		escape,
+		runQuery,
+		logger,
+		migrationName,
+	}: MigrationContext): Promise<ExternalSecretsSettings | undefined> {
 		const settingsTable = escape.tableName('settings');
 		const keyCol = escape.columnName('key');
 		const valueCol = escape.columnName('value');
 
-		// Step 1: Read the encrypted settings blob
 		const rows: Array<{ value: string }> = await runQuery(
 			`SELECT ${valueCol} FROM ${settingsTable} WHERE ${keyCol} = '${EXTERNAL_SECRETS_DB_KEY}';`,
 		);
 
 		if (rows.length === 0) {
 			logger.info(`[${migrationName}] No external secrets settings found, skipping`);
-			return;
+			return undefined;
 		}
 
-		const [row] = rows;
-
-		// Step 2: Decrypt the blob
-		let allSettings: ExternalSecretsSettings;
 		try {
-			const decrypted = this.cipher.decrypt(row.value);
-			allSettings = jsonParse<ExternalSecretsSettings>(decrypted);
-		} catch (e) {
+			const decrypted = this.cipher.decrypt(rows[0].value);
+			return jsonParse<ExternalSecretsSettings>(decrypted);
+		} catch {
 			logger.error(
 				`[${migrationName}] Failed to decrypt external secrets settings, skipping migration`,
 			);
+			return undefined;
+		}
+	}
+
+	private async migrateProvider(
+		{ escape, runQuery, logger, migrationName }: MigrationContext,
+		providerName: string,
+		providerData: ProviderData,
+	) {
+		if (!providerData.connected) {
+			logger.info(`[${migrationName}] Provider "${providerName}" is not connected, skipping`);
 			return;
 		}
 
-		const providerNames = Object.keys(allSettings);
-		if (providerNames.length === 0) {
-			logger.info(`[${migrationName}] External secrets settings blob is empty, skipping`);
-			return;
-		}
-
-		// Step 3: Insert each provider into secrets_provider_connection
 		const connectionTable = escape.tableName('secrets_provider_connection');
 		const providerKeyCol = escape.columnName('providerKey');
 		const typeCol = escape.columnName('type');
 		const encryptedSettingsCol = escape.columnName('encryptedSettings');
 
-		for (const providerName of providerNames) {
-			const providerData = allSettings[providerName];
+		const existing: Array<{ providerKey: string }> = await runQuery(
+			`SELECT ${providerKeyCol} FROM ${connectionTable} WHERE ${providerKeyCol} = :providerKey;`,
+			{ providerKey: providerName },
+		);
 
-			if (!providerData.connected) {
-				logger.info(`[${migrationName}] Provider "${providerName}" is not connected, skipping`);
-				continue;
-			}
-
-			const existing: Array<{ providerKey: string }> = await runQuery(
-				`SELECT ${providerKeyCol} FROM ${connectionTable} WHERE ${providerKeyCol} = :providerKey;`,
-				{ providerKey: providerName },
-			);
-
-			if (existing.length > 0) {
-				logger.info(
-					`[${migrationName}] Provider "${providerName}" already exists in secrets_provider_connection, skipping`,
-				);
-				continue;
-			}
-
-			const encryptedSettings = this.cipher.encrypt(providerData.settings ?? {});
-
-			await runQuery(
-				`INSERT INTO ${connectionTable} (${providerKeyCol}, ${typeCol}, ${encryptedSettingsCol}) VALUES (:providerKey, :type, :encryptedSettings);`,
-				{
-					providerKey: providerName,
-					type: providerName,
-					encryptedSettings,
-				},
-			);
-
+		if (existing.length > 0) {
 			logger.info(
-				`[${migrationName}] Migrated provider "${providerName}" to secrets_provider_connection`,
+				`[${migrationName}] Provider "${providerName}" already exists in secrets_provider_connection, skipping`,
 			);
+			return;
 		}
 
+		const encryptedSettings = this.cipher.encrypt(providerData.settings ?? {});
+
+		await runQuery(
+			`INSERT INTO ${connectionTable} (${providerKeyCol}, ${typeCol}, ${encryptedSettingsCol}) VALUES (:providerKey, :type, :encryptedSettings);`,
+			{
+				providerKey: providerName,
+				type: providerName,
+				encryptedSettings,
+			},
+		);
+
 		logger.info(
-			`[${migrationName}] Migration complete. Old settings row preserved in settings table.`,
+			`[${migrationName}] Migrated provider "${providerName}" to secrets_provider_connection`,
 		);
 	}
 }
