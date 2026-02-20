@@ -11,7 +11,7 @@ import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
-import N8nIcon from '../N8nIcon';
+import N8nIconButton from '../N8nIconButton';
 import N8nPromptInput from '../N8nPromptInput';
 import N8nPromptInputSuggestions from '../N8nPromptInputSuggestions';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
@@ -469,9 +469,13 @@ defineExpose({
 				</div>
 				<slot name="header" />
 			</div>
-			<div :class="$style.back" data-test-id="close-chat-button" @click="onClose">
-				<N8nIcon icon="arrow-right" color="text-base" />
-			</div>
+			<N8nIconButton
+				icon="x"
+				variant="ghost"
+				size="large"
+				data-test-id="close-chat-button"
+				@click="onClose"
+			/>
 		</div>
 		<div :class="$style.body">
 			<div v-if="normalizedMessages?.length || loadingMessage" :class="$style.messages">
@@ -708,11 +712,12 @@ defineExpose({
 
 .header {
 	height: 65px; // same as header height in editor
-	padding: 0 var(--spacing--lg);
+	padding: 0 var(--spacing--sm) 0 var(--spacing--lg);
 	background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-top: 0;
 	display: flex;
+	align-items: center;
 
 	div {
 		display: flex;
@@ -828,10 +833,6 @@ defineExpose({
 	button {
 		display: inline-flex;
 	}
-}
-
-.back:hover {
-	cursor: pointer;
 }
 
 .quickReplies {

@@ -1,10 +1,8 @@
 <script lang="ts" setup>
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { computed, ref, useSlots } from 'vue';
 import { N8nAskAssistantChat } from '@n8n/design-system';
-import AISettingsButton from '@/features/ai/assistant/components/Chat/AISettingsButton.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useI18n } from '@n8n/i18n';
@@ -17,16 +15,11 @@ const emit = defineEmits<{
 const assistantStore = useAssistantStore();
 const workflowState = injectWorkflowState();
 const usersStore = useUsersStore();
-const settingsStore = useSettingsStore();
 const telemetry = useTelemetry();
 const slots = useSlots();
 const i18n = useI18n();
 
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
-
-const allowSendingParameterValues = computed(
-	() => settingsStore.settings.ai.allowSendingParameterValues,
-);
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -34,10 +27,6 @@ const user = computed(() => ({
 }));
 
 const loadingMessage = computed(() => assistantStore.assistantThinkingMessage);
-
-const showSettingsButton = computed(() => {
-	return assistantStore.canManageAISettings;
-});
 
 async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
 	// If there is no current session running, initialize the support chat session
@@ -98,15 +87,8 @@ defineExpose({
 			@code-replace="onCodeReplace"
 			@code-undo="undoCodeDiff"
 		>
-			<template #header>
-				<div :class="{ [$style.header]: true, [$style['with-slot']]: !!slots.header }">
-					<slot name="header" />
-					<AISettingsButton
-						v-if="showSettingsButton"
-						:show-usability-notice="!allowSendingParameterValues"
-						:disabled="assistantStore.streaming"
-					/>
-				</div>
+			<template v-if="slots.header" #header>
+				<slot name="header" />
 			</template>
 			<template #placeholder>
 				<AskModeEmptyState />
@@ -119,16 +101,5 @@ defineExpose({
 .wrapper {
 	height: 100%;
 	width: 100%;
-}
-
-.header {
-	display: flex;
-	justify-content: end;
-	align-items: center;
-	flex: 1;
-
-	&.with-slot {
-		justify-content: space-between;
-	}
 }
 </style>
