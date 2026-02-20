@@ -3,11 +3,17 @@ import { createEvaluatorChain, invokeEvaluatorChain } from '../../llm-judge/eval
 import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types';
 import { binaryJudgeResultSchema } from './schemas';
 
+const REASONING_FIRST_SUFFIX = `
+
+IMPORTANT: Write your full reasoning FIRST. Only AFTER completing your analysis, decide on pass or fail based on what you wrote. Do not decide pass/fail before reasoning.`;
+
 export function createLlmCheck(options: {
 	name: string;
 	systemPrompt: string;
 	humanTemplate: string;
 }): BinaryCheck {
+	const systemPrompt = options.systemPrompt + REASONING_FIRST_SUFFIX;
+
 	return {
 		name: options.name,
 		kind: 'llm',
@@ -19,7 +25,7 @@ export function createLlmCheck(options: {
 			const chain = createEvaluatorChain(
 				ctx.llm,
 				binaryJudgeResultSchema,
-				options.systemPrompt,
+				systemPrompt,
 				options.humanTemplate,
 			);
 
