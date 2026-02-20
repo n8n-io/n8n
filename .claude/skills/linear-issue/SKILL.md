@@ -108,12 +108,11 @@ Determine whether this issue is specific to a particular n8n node (e.g. a trigge
 
 If the issue is node-specific:
 
-1. **Map the node name to its node type ID.** Node IDs follow these patterns:
-   - Core nodes: `n8n-nodes-base.<camelCaseName>` (e.g. "Linear Trigger" → `n8n-nodes-base.linearTrigger`, "HTTP Request" → `n8n-nodes-base.httpRequest`)
+1. **Find the node type ID.** Use `Grep` to search for the node's display name (or keywords from it) in `packages/frontend/editor-ui/data/node-popularity.json` to find the exact node type ID. For reference, common ID patterns are:
+   - Core nodes: `n8n-nodes-base.<camelCaseName>` (e.g. "HTTP Request" → `n8n-nodes-base.httpRequest`)
    - Trigger variants: `n8n-nodes-base.<name>Trigger` (e.g. "Gmail Trigger" → `n8n-nodes-base.gmailTrigger`)
    - Tool variants: `n8n-nodes-base.<name>Tool` (e.g. "Google Sheets Tool" → `n8n-nodes-base.googleSheetsTool`)
    - LangChain/AI nodes: `@n8n/n8n-nodes-langchain.<camelCaseName>` (e.g. "OpenAI Chat Model" → `@n8n/n8n-nodes-langchain.lmChatOpenAi`)
-   - If unsure about the exact ID, search for the node name in the popularity file
 
 2. **Look up the node's popularity score** from `packages/frontend/editor-ui/data/node-popularity.json`. Use `Grep` to search for the node ID in that file. The popularity score is a value between 0 and 1, where 1 means the most popular node. Include this in the summary to help gauge the impact/reach of the issue.
 
