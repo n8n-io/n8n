@@ -129,7 +129,7 @@ test.describe(
 
 			await expect(n8n.templateCredentialSetup.getContinueButton()).toBeEnabled();
 
-			await n8n.templatesComposer.fillOAuthCredentialForAppWithConfirm('X (Formerly Twitter)', {
+			await n8n.templatesComposer.fillDummyCredentialForOAuthApp('X (Formerly Twitter)', {
 				fields: { consumerKey: 'consumer-key', consumerSecret: 'consumer-secret' },
 			});
 			await n8n.templatesComposer.fillDummyCredentialForApp('Telegram', {
@@ -256,7 +256,7 @@ test.describe(
 				await n8n.templatesComposer.fillDummyCredentialForApp('Shopify', {
 					fields: { shopSubdomain: 'test-shop', apiKey: 'test-token', password: 'test-key' },
 				});
-				await n8n.templatesComposer.fillOAuthCredentialForAppWithConfirm('X (Formerly Twitter)', {
+				await n8n.templatesComposer.fillDummyCredentialForOAuthApp('X (Formerly Twitter)', {
 					fields: { consumerKey: 'consumer-key', consumerSecret: 'consumer-secret' },
 				});
 				await n8n.templatesComposer.fillDummyCredentialForApp('Telegram', {
