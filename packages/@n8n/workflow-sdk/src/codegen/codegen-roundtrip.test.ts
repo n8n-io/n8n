@@ -2396,9 +2396,18 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				if (!p || typeof p !== 'object') return p;
 				const obj = p as Record<string, unknown>;
 				if (Object.keys(obj).length === 0) return undefined;
-				if (nodeType === 'n8n-nodes-base.stickyNote' && obj.content === '') {
-					const { content, ...rest } = obj;
-					return Object.keys(rest).length === 0 ? undefined : rest;
+				if (nodeType === 'n8n-nodes-base.stickyNote') {
+					// Strip empty content and empty object color (non-serializable values)
+					const cleaned = { ...obj };
+					if (cleaned.content === '') delete cleaned.content;
+					if (
+						typeof cleaned.color === 'object' &&
+						cleaned.color !== null &&
+						Object.keys(cleaned.color as Record<string, unknown>).length === 0
+					) {
+						delete cleaned.color;
+					}
+					return Object.keys(cleaned).length === 0 ? undefined : cleaned;
 				}
 				// Normalize resource locators (add __rl: true) for fair comparison
 				// since SDK-generated code adds __rl: true to all resource locators

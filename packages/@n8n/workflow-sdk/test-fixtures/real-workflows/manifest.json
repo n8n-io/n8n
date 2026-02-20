@@ -17777,8 +17777,12 @@
 			"id": 4022,
 			"name": "AI-optimized content posting to X, Discord & LinkedIn with OpenRouter",
 			"success": true,
-			"skip": true,
-			"skipReason": "SyntaxError — codegen produces unparseable code"
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Content Optimizer"
+				}
+			]
 		},
 		{
 			"id": 4020,
@@ -18304,9 +18308,7 @@
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Generate Webpage"
 				}
-			],
-			"skip": true,
-			"skipReason": "Parameter mismatch after codegen roundtrip"
+			]
 		},
 		{
 			"id": 3223,

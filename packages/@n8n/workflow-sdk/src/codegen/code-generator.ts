@@ -524,11 +524,12 @@ function generateStickyCall(node: SemanticNode, ctx: GenerationContext): string 
 
 	const params = node.json.parameters;
 	if (params?.color !== undefined) {
-		if (typeof params.color === 'string') {
-			options.push(`color: '${escapeString(String(params.color))}'`);
-		} else {
-			options.push(`color: ${String(params.color)}`);
+		if (typeof params.color === 'number') {
+			options.push(`color: ${params.color}`);
+		} else if (typeof params.color === 'string') {
+			options.push(`color: '${escapeString(params.color)}'`);
 		}
+		// Skip object/other types — they're invalid color values
 	}
 	if (params?.width !== undefined) {
 		options.push(`width: ${Number(params.width)}`);

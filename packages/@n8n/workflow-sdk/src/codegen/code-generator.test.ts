@@ -1196,6 +1196,62 @@ describe('code-generator', () => {
 				// It should have empty nodes array
 				expect(code).toContain("sticky('Outer', []");
 			});
+			it('handles object color by omitting it from output', () => {
+				const json: WorkflowJSON = {
+					id: 'sticky-object-color-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Sticky Note',
+							type: 'n8n-nodes-base.stickyNote',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {
+								content: 'Note',
+								color: {},
+								width: 300,
+								height: 200,
+							},
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Object color should be omitted (it's an invalid value like {})
+				expect(code).not.toContain('[object Object]');
+				// Code should be parseable (no SyntaxError)
+				expect(() => parseWorkflowCode(code)).not.toThrow();
+			});
+
+			it('handles string color values correctly', () => {
+				const json: WorkflowJSON = {
+					id: 'sticky-string-color-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Sticky Note',
+							type: 'n8n-nodes-base.stickyNote',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {
+								content: 'Note',
+								color: '#FF0000',
+								width: 300,
+								height: 200,
+							},
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain("color: '#FF0000'");
+			});
 		});
 
 		describe('AI subnodes', () => {
