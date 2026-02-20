@@ -16,3 +16,7 @@ export {
 	type SimilarityEvaluatorOptions,
 } from './similarity';
 export { createExecutionEvaluator } from './execution';
+export {
+	createBinaryChecksEvaluator,
+	type BinaryChecksEvaluatorOptions,
+} from './binary-checks';

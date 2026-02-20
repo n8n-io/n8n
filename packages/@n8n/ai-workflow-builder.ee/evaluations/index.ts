@@ -46,8 +46,10 @@ export {
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
 	createExecutionEvaluator,
+	createBinaryChecksEvaluator,
 	type PairwiseEvaluatorOptions,
 	type SimilarityEvaluatorOptions,
+	type BinaryChecksEvaluatorOptions,
 } from './evaluators';
 
 // Introspection lifecycle
