@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import {
 	compareWorkflowsNodes,
 	NodeDiffStatus,
@@ -15,7 +15,13 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { AI_BUILDER_DIFF_MODAL_KEY, AI_BUILDER_REVIEW_CHANGES_EXPERIMENT } from '@/app/constants';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { SimplifiedNodeType } from '@/Interface';
+
+const AI_DIFF_CLASS_MAP: Partial<Record<NodeDiffStatus, string>> = {
+	[NodeDiffStatus.Added]: 'ai-diff-added',
+	[NodeDiffStatus.Modified]: 'ai-diff-modified',
+};
 
 export interface NodeChangeEntry {
 	status: NodeDiffStatus;
@@ -117,6 +123,70 @@ export function useReviewChanges() {
 			isExpanded.value ? 'user_expanded_review_changes' : 'user_collapsed_review_changes',
 		);
 	}
+
+	// Track which node IDs currently have highlight classes applied
+	const highlightedNodeIds = ref<string[]>([]);
+
+	function applyCanvasHighlights() {
+		clearCanvasHighlights();
+		for (const change of nodeChanges.value) {
+			const className = AI_DIFF_CLASS_MAP[change.status];
+			if (!className) continue;
+			canvasEventBus.emit('nodes:action', {
+				ids: [change.node.id],
+				action: 'update:node:class',
+				payload: { className, add: true },
+			});
+			highlightedNodeIds.value.push(change.node.id);
+		}
+	}
+
+	function clearCanvasHighlights() {
+		for (const nodeId of highlightedNodeIds.value) {
+			for (const className of Object.values(AI_DIFF_CLASS_MAP)) {
+				canvasEventBus.emit('nodes:action', {
+					ids: [nodeId],
+					action: 'update:node:class',
+					payload: { className, add: false },
+				});
+			}
+		}
+		highlightedNodeIds.value = [];
+	}
+
+	// Toggle canvas highlights with expand/collapse
+	watch(isExpanded, (expanded) => {
+		if (expanded) {
+			applyCanvasHighlights();
+		} else {
+			clearCanvasHighlights();
+		}
+	});
+
+	// Auto-collapse and clear highlights when streaming starts or version changes
+	watch(
+		() => builderStore.streaming,
+		(streaming) => {
+			if (streaming && isExpanded.value) {
+				isExpanded.value = false;
+				clearCanvasHighlights();
+			}
+		},
+	);
+
+	watch(
+		() => builderStore.latestRevertVersion,
+		() => {
+			if (isExpanded.value) {
+				isExpanded.value = false;
+				clearCanvasHighlights();
+			}
+		},
+	);
+
+	onBeforeUnmount(() => {
+		clearCanvasHighlights();
+	});
 
 	const showReviewChanges = computed(() => {
 		return (
