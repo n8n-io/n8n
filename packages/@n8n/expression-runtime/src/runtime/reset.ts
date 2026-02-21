@@ -123,15 +123,11 @@ export function resetDataProxies(): void {
 	}
 
 	// -------------------------------------------------------------------------
-	// Expose library globals on __data so tournament's "x in this ? this : global"
+	// Expose globals on __data so tournament's "x in this ? this.x : global.x"
 	// pattern resolves them correctly (tournament checks __data before global)
 	// -------------------------------------------------------------------------
 
-	(globalThis.__data as any)._ = (globalThis as any)._;
 	(globalThis.__data as any).DateTime = globalThis.DateTime;
-	(globalThis.__data as any).Duration = globalThis.Duration;
-	(globalThis.__data as any).Interval = globalThis.Interval;
-	(globalThis.__data as any).luxon = (globalThis as any).luxon;
 
 	// Expose extend/extendOptional on __data so tournament's "x in this ? this.x : global.x"
 	// pattern resolves them correctly when the VM checks __data first

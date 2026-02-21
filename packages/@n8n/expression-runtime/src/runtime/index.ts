@@ -1,5 +1,4 @@
-import { DateTime, Duration, Interval } from 'luxon';
-import * as lodash from 'lodash';
+import { DateTime } from 'luxon';
 
 import { extend, extendOptional } from '../extensions/extend';
 
@@ -28,11 +27,10 @@ declare global {
 		var SafeObject: typeof Object;
 		var SafeError: typeof Error;
 
-		// Libraries (already declared via lodash import, but needed for runtime)
-		// Note: _ causes duplicate identifier error, will be assigned without type declaration
+		// Expression engine globals
 		var DateTime: typeof import('luxon').DateTime;
-		var Duration: typeof import('luxon').Duration;
-		var Interval: typeof import('luxon').Interval;
+		var extend: typeof import('../extensions/extend').extend;
+		var extendOptional: typeof import('../extensions/extend').extendOptional;
 	}
 }
 
@@ -40,24 +38,10 @@ declare global {
 // Library Setup
 // ============================================================================
 
-// @ts-ignore - _ is assigned to globalThis for expression runtime
-globalThis._ = lodash;
-
-// Expose extend/extendOptional globally so tournament-transformed expressions work
-(globalThis as any).extend = extend;
-(globalThis as any).extendOptional = extendOptional;
-
-// Expose Luxon both as individual globals and as luxon object
+// Expose globals required by tournament-transformed expressions
+globalThis.extend = extend;
+globalThis.extendOptional = extendOptional;
 globalThis.DateTime = DateTime;
-globalThis.Duration = Duration;
-globalThis.Interval = Interval;
-
-// Also expose as luxon namespace (for expressions like luxon.DateTime.now())
-(globalThis as any).luxon = {
-	DateTime,
-	Duration,
-	Interval,
-};
 
 // ============================================================================
 // Expose security globals and runtime functions
