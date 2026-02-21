@@ -2153,4 +2153,74 @@ describe('JsTaskRunner', () => {
 			});
 		});
 	});
+
+	describe('createVmExecutableCode', () => {
+		type RunnerWithPrivate = { createVmExecutableCode: (code: string) => string };
+
+		it('joins preamble statements with newlines so each occupies its own line', () => {
+			const result = (defaultTaskRunner as unknown as RunnerWithPrivate).createVmExecutableCode(
+				'return 1',
+			);
+			const lines = result.split('\n');
+			// No line should be empty (no spurious blank lines from join)
+			expect(lines.every((l) => l.length > 0)).toBe(true);
+			// There must be more than one statement line (preamble + wrapper)
+			expect(lines.length).toBeGreaterThan(1);
+		});
+
+		it('starts user code on a fresh line inside VmCodeWrapper', () => {
+			const code = 'const x = /[:.]/g;';
+			const result = (defaultTaskRunner as unknown as RunnerWithPrivate).createVmExecutableCode(
+				code,
+			);
+			// The wrapper opening brace must be followed by a newline, not the code directly
+			expect(result).toContain(`VmCodeWrapper() {\n${code}`);
+		});
+
+		it('ends user code with a newline before the closing brace', () => {
+			const code = 'return 42';
+			const result = (defaultTaskRunner as unknown as RunnerWithPrivate).createVmExecutableCode(
+				code,
+			);
+			expect(result).toContain(`${code}\n}()`);
+		});
+	});
+
+	describe('V8 parser edge cases – preamble line separation', () => {
+		// These patterns produced false SyntaxErrors when the preamble and user
+		// code were concatenated onto a single line (pre-fix behaviour).
+		test.each<[string, string, IDataObject]>([
+			[
+				'regex character class on first line',
+				`const d = new Date('2024-01-15T10:30:00.000Z').toISOString().replace(/[:.]/g, '-');
+return [{ json: { d } }];`,
+				{ d: '2024-01-15T10-30-00-000Z' },
+			],
+			[
+				'nested object literal on first line',
+				`const body = { model: 'llama3', options: { temperature: 0.3 } };
+return [{ json: body }];`,
+				{ model: 'llama3', options: { temperature: 0.3 } },
+			],
+			[
+				'multiline if-else block starting on first line',
+				`const x = 1;
+if (x > 0) {
+  return [{ json: { sign: 'positive' } }];
+} else {
+  return [{ json: { sign: 'non-positive' } }];
+}`,
+				{ sign: 'positive' },
+			],
+		])(
+			'should execute without SyntaxError: %s',
+			async (_label, code, expected) => {
+				const outcome = await executeForAllItems({
+					code,
+					inputItems: [{}],
+				});
+				expect(outcome.result).toEqual([wrapIntoJson(expected)]);
+			},
+		);
+	});
 });

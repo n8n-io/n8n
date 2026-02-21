@@ -650,6 +650,23 @@ export class JsTaskRunner extends TaskRunner {
 		});
 	}
 
+	/**
+	 * Assembles the VM-executable code string for use with `runInContext`.
+	 *
+	 * Prepends a security preamble (sandbox restrictions, prototype lockdown, etc.)
+	 * to the user-supplied code. Each preamble statement occupies its own line via
+	 * `';\n'` joining, and `code` begins on a fresh line inside the `VmCodeWrapper`
+	 * function body (i.e. `{\n${code}\n}`).
+	 *
+	 * This line separation is required to prevent V8 from misattributing tokens on
+	 * the user's first line back to the preamble parse context. Without it, valid
+	 * JavaScript patterns such as regex character classes (`/[:.]/g`) or nested
+	 * object literals (`{ options: { temperature: 0.3 } }`) produce false
+	 * `SyntaxError`s depending on the length of the preamble.
+	 *
+	 * @param code Raw user-provided JavaScript string (may be multi-line).
+	 * @returns A newline-separated string ready to be passed to `runInContext`.
+	 */
 	private createVmExecutableCode(code: string) {
 		return [
 			// shim for `global` compatibility
