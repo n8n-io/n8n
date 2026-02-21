@@ -674,15 +674,15 @@ export class JsTaskRunner extends TaskRunner {
 			'Object.defineProperties = () => ({})',
 
 			// wrap user code
-			`module.exports = async function VmCodeWrapper() {${code}\n}()`,
-		].join('; ');
+			`module.exports = async function VmCodeWrapper() {\n${code}\n}()`,
+		].join(';\n');
 	}
 
 	private async runDirectly<T>(code: string, context: Context): Promise<T> {
 		// eslint-disable-next-line @typescript-eslint/no-implied-eval
 		const fn = new Function(
 			'context',
-			`with(context) { return (async function() {${code}\n})(); }`,
+			`with(context) { return (async function() {\n${code}\n})(); }`,
 		);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
 		return await fn(context);
