@@ -1,0 +1,54 @@
+name: 'Release: Update pointer tag'
+
+on:
+  workflow_call:
+    inputs:
+      track:
+        required: true
+        type: string
+      version-tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Release Track'
+        required: true
+        type: choice
+        options: [stable, beta, v1]
+      version-tag:
+        description: 'Version tag (e.g. n8n@2.7.0). Track tag will point to this version tag.'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  update-pointer-tags:
+    name: Update pointer tags
+    runs-on: ubuntu-slim
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup NodeJS
+        uses: ./.github/actions/setup-nodejs
+        with:
+          install-command: npm install --prefix=.github/scripts --no-package-lock
+          build-command: ''
+
+      - name: Configure git author
+        run: |
+          git config user.name "n8n-release-tag-merge[bot]"
+          git config user.email "256767729+n8n-release-tag-merge[bot]@users.noreply.github.com"
+
+      - name: Move track tag
+        env:
+          TRACK: ${{ inputs.track }}
+          VERSION_TAG: ${{ inputs.version-tag }}
+        run: node ./.github/scripts/move-track-tag.mjs

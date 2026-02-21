@@ -15,8 +15,8 @@ import {
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
-
 import { jsonParse } from 'n8n-workflow';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -25,12 +25,15 @@ import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-s
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 import { SecretsProvidersResponses } from '@/modules/external-secrets.ee/secrets-providers.responses.ee';
 
+import { ExternalSecretsProviderRegistry } from './provider-registry.service';
+
 @Service()
 export class SecretsProvidersConnectionsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly repository: SecretsProviderConnectionRepository,
 		private readonly projectAccessRepository: ProjectSecretsProviderAccessRepository,
+		private readonly providerRegistry: ExternalSecretsProviderRegistry,
 		private readonly cipher: Cipher,
 		private readonly externalSecretsManager: ExternalSecretsManager,
 		private readonly redactionService: RedactionService,
@@ -179,11 +182,19 @@ export class SecretsProvidersConnectionsService {
 	}
 
 	async getGlobalCompletions(): Promise<SecretsProviderConnection[]> {
-		return await this.repository.findGlobalConnections();
+		const connectedProviderKeys = this.providerRegistry.getConnectedNames();
+
+		return await this.repository.findGlobalConnections({
+			providerKeys: connectedProviderKeys,
+		});
 	}
 
 	async getProjectCompletions(projectId: string): Promise<SecretsProviderConnection[]> {
-		return await this.repository.findByProjectId(projectId);
+		const connectedProviderKeys = this.providerRegistry.getConnectedNames();
+
+		return await this.repository.findByProjectId(projectId, {
+			providerKeys: connectedProviderKeys,
+		});
 	}
 
 	async listConnectionsForProject(projectId: string): Promise<SecretsProviderConnection[]> {
@@ -203,12 +214,16 @@ export class SecretsProvidersConnectionsService {
 		connection: SecretsProviderConnection,
 	): SecretsProvidersResponses.ConnectionListItem {
 		const secretNames = this.externalSecretsManager.getSecretNames(connection.providerKey);
+		const connectionInstance = this.externalSecretsManager.getProvider(connection.providerKey);
 
 		return {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
 			secretsCount: secretNames.length,
+			// Provider may not be registered yet in multi-main setups.
+			// When that's the case the default state is 'initializing'.
+			state: connectionInstance?.state ?? 'initializing',
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
 				name: access.project.name,
@@ -220,15 +235,19 @@ export class SecretsProvidersConnectionsService {
 
 	toPublicConnection(connection: SecretsProviderConnection): SecretsProvidersResponses.Connection {
 		const decryptedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
-		const { provider } = this.externalSecretsManager.getProviderWithSettings(connection.type);
-		const redactedSettings = this.redactionService.redact(decryptedSettings, provider.properties);
+		const properties = this.externalSecretsManager.getProviderProperties(connection.type);
+		const redactedSettings = this.redactionService.redact(decryptedSettings, properties);
 		const secretNames = this.externalSecretsManager.getSecretNames(connection.providerKey);
+		const connectionInstance = this.externalSecretsManager.getProvider(connection.providerKey);
 
 		return {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
 			secretsCount: secretNames.length,
+			// Provider may not be registered yet in multi-main setups.
+			// When that's the case the default state is 'initializing'.
+			state: connectionInstance?.state ?? 'initializing',
 			secrets: secretNames.map((name) => ({ name })),
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,

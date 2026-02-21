@@ -5,6 +5,10 @@ import { usePinnedData } from '@/app/composables/usePinnedData';
 import type { INodeUi } from '@/Interface';
 import { HTTP_REQUEST_NODE_TYPE, IF_NODE_TYPE, MAX_PINNED_DATA_SIZE } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { NodeConnectionTypes, STICKY_NODE_TYPE } from 'n8n-workflow';
 import type { NodeConnectionType, INodeTypeDescription } from 'n8n-workflow';
@@ -81,18 +85,23 @@ describe('usePinnedData', () => {
 
 		it('should set data correctly for valid inputs', () => {
 			const workflowsStore = useWorkflowsStore();
+			workflowsStore.workflow.id = 'test-workflow';
 			const node = ref({ name: 'testNode' } as INodeUi);
 			const { setData } = usePinnedData(node);
 			const testData = [{ json: { key: 'value' } }];
 
 			expect(() => setData(testData, 'pin-icon-click')).not.toThrow();
-			expect(workflowsStore.workflow.pinData?.[node.value.name]).toEqual(testData);
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			expect(workflowDocumentStore.pinData?.[node.value.name]).toEqual(testData);
 		});
 	});
 
 	describe('unsetData()', () => {
 		it('should unset data correctly', () => {
 			const workflowsStore = useWorkflowsStore();
+			workflowsStore.workflow.id = 'test-workflow';
 			const node = ref({ name: 'testNode' } as INodeUi);
 			const { setData, unsetData } = usePinnedData(node);
 			const testData = [{ json: { key: 'value' } }];
@@ -100,7 +109,10 @@ describe('usePinnedData', () => {
 			setData(testData, 'pin-icon-click');
 			unsetData('context-menu');
 
-			expect(workflowsStore.workflow.pinData?.[node.value.name]).toBeUndefined();
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			expect(workflowDocumentStore.pinData?.[node.value.name]).toBeUndefined();
 		});
 	});
 
