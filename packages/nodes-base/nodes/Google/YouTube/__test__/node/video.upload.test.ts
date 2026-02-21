@@ -148,8 +148,7 @@ describe('Test YouTube, video => upload', () => {
 			expect.anything(),
 			expect.anything(),
 			expect.anything(),
-			expect.anything(),
-			expect.anything(),
+			undefined,
 			expect.objectContaining({
 				headers: expect.objectContaining({
 					'X-Upload-Content-Type': 'video/mp4',
