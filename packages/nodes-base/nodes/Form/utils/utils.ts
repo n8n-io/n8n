@@ -106,6 +106,16 @@ export function sanitizeHtml(text: string) {
 	});
 }
 
+/**
+ *  Replaces `\n` strings with actual newline characters.
+ *  Also replaces `\\n` strings with `\n` string
+ * @param text - The text to replace newlines in
+ * @returns Updated text
+ */
+export const handleNewlines = (text: string) => {
+	return text.replace(/\\n|\\\\n/g, (match) => (match === '\\\\n' ? '\\n' : '\n'));
+};
+
 export const prepareFormFields = (context: IWebhookFunctions, fields: FormFieldsParameter) => {
 	return fields.map((field) => {
 		if (field.fieldType === 'html') {
@@ -518,7 +528,6 @@ export function renderForm({
 	customCss?: string;
 	authToken?: string;
 }) {
-	formDescription = (formDescription || '').replace(/\\n/g, '\n').replace(/<br>/g, '\n');
 	const instanceId = context.getInstanceId();
 
 	const useResponseData = responseMode === 'responseNode';
@@ -630,7 +639,9 @@ export async function formWebhook(
 	//Show the form on GET request
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
-		const formDescription = sanitizeHtml(context.getNodeParameter('formDescription', '') as string);
+		const formDescription = handleNewlines(
+			sanitizeHtml(context.getNodeParameter('formDescription', '') as string),
+		);
 		let responseMode = context.getNodeParameter('responseMode', '') as string;
 
 		let formSubmittedText;

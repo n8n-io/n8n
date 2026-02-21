@@ -226,18 +226,16 @@ watch(
 		data-test-id="filter-condition"
 	>
 		<N8nIconButton
+			variant="ghost"
 			v-if="canDrag && !readOnly"
-			type="tertiary"
-			text
 			size="small"
 			icon="grip-vertical"
 			:title="i18n.baseText('filter.dragCondition')"
 			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
 		/>
 		<N8nIconButton
+			variant="ghost"
 			v-if="canRemove && !readOnly"
-			type="tertiary"
-			text
 			size="small"
 			icon="trash-2"
 			data-test-id="filter-remove-condition"
@@ -273,13 +271,13 @@ watch(
 					@operator-change="onOperatorChange"
 				></OperatorSelect>
 			</template>
-			<template v-if="!operator.singleValue" #right="{ breakpoint }">
+			<template v-if="!operator.singleValue" #right="{ isStacked }">
 				<ParameterInputFull
 					display-options
 					hide-label
 					hide-hint
 					hide-issues
-					:options-position="breakpoint === 'default' ? 'top-absolute' : 'bottom'"
+					:options-position="isStacked ? 'bottom' : 'top-absolute'"
 					:is-read-only="readOnly"
 					:parameter="rightParameter"
 					:value="condition.rightValue"

@@ -2,6 +2,7 @@ import {
 	checkConditions,
 	type INodeProperties,
 	type INodeTypeDescription,
+	type IParameterBuilderHint,
 	type Logger,
 } from 'n8n-workflow';
 
@@ -11,6 +12,8 @@ import {
 export interface OperationInfo {
 	value: string;
 	displayName: string;
+	description?: string;
+	builderHint?: IParameterBuilderHint;
 }
 
 /**
@@ -19,6 +22,8 @@ export interface OperationInfo {
 export interface ResourceInfo {
 	value: string;
 	displayName: string;
+	description?: string;
+	builderHint?: IParameterBuilderHint;
 	operations: OperationInfo[];
 }
 
@@ -27,6 +32,19 @@ export interface ResourceInfo {
  */
 export interface ResourceOperationInfo {
 	resources: ResourceInfo[];
+}
+
+/**
+ * Options for controlling which fields are included in extraction
+ */
+export interface ExtractOptions {
+	/** Which optional fields to include in the output */
+	fields?: {
+		/** Include description field (default: false) */
+		description?: boolean;
+		/** Include builderHint field (default: false) */
+		builderHint?: boolean;
+	};
 }
 
 /**
@@ -126,38 +144,62 @@ function findOperationProperties(
  * Only extracts options with string values - resource/operation values
  * are always strings in n8n. Non-string values (number/boolean) are
  * used for other option types like toggles.
+ *
+ * @param property - The node property to extract options from
+ * @param logger - Optional logger for debugging
+ * @param options - Options controlling which fields to include
  */
 function extractOptions(
 	property: INodeProperties,
 	logger?: Logger,
-): Array<{ value: string; displayName: string }> {
+	options?: ExtractOptions,
+): Array<{
+	value: string;
+	displayName: string;
+	description?: string;
+	builderHint?: IParameterBuilderHint;
+}> {
 	if (!property.options || !Array.isArray(property.options)) {
 		return [];
 	}
 
+	const includeDescription = options?.fields?.description ?? false;
+	const includeBuilderHint = options?.fields?.builderHint ?? false;
+
 	return property.options
-		.filter((opt): opt is { name: string; value: string } => {
-			if (typeof opt !== 'object' || opt === null || !('name' in opt) || !('value' in opt)) {
-				return false;
-			}
-			// Extract after guards pass - TypeScript now knows these exist
-			const optName = opt.name;
-			const optValue = opt.value;
-			// Resource/operation values are always strings in n8n.
-			// Non-string values (number/boolean) are used for other option types.
-			if (typeof optValue !== 'string') {
-				logger?.debug('Skipping non-string option value in resource/operation extraction', {
-					propertyName: property.name,
-					optionName: optName,
-					valueType: typeof optValue,
-				});
-				return false;
-			}
-			return true;
-		})
+		.filter(
+			(
+				opt,
+			): opt is {
+				name: string;
+				value: string;
+				description?: string;
+				builderHint?: IParameterBuilderHint;
+			} => {
+				if (typeof opt !== 'object' || opt === null || !('name' in opt) || !('value' in opt)) {
+					return false;
+				}
+				// Extract after guards pass - TypeScript now knows these exist
+				const optName = opt.name;
+				const optValue = opt.value;
+				// Resource/operation values are always strings in n8n.
+				// Non-string values (number/boolean) are used for other option types.
+				if (typeof optValue !== 'string') {
+					logger?.debug('Skipping non-string option value in resource/operation extraction', {
+						propertyName: property.name,
+						optionName: optName,
+						valueType: typeof optValue,
+					});
+					return false;
+				}
+				return true;
+			},
+		)
 		.map((opt) => ({
 			value: opt.value,
 			displayName: opt.name,
+			...(includeDescription && opt.description && { description: opt.description }),
+			...(includeBuilderHint && opt.builderHint && { builderHint: opt.builderHint }),
 		}));
 }
 
@@ -168,12 +210,14 @@ function extractOptions(
  * @param nodeType - The node type description
  * @param nodeVersion - The version of the node to extract info for
  * @param logger - Optional logger for debugging extraction issues
+ * @param options - Options controlling which fields to include (description, builderHint)
  * @returns Resource/operation info, or null if the node doesn't follow the resource/operation pattern
  */
 export function extractResourceOperations(
 	nodeType: INodeTypeDescription,
 	nodeVersion: number,
 	logger?: Logger,
+	options?: ExtractOptions,
 ): ResourceOperationInfo | null {
 	const properties = nodeType.properties;
 	if (!properties || properties.length === 0) {
@@ -192,7 +236,7 @@ export function extractResourceOperations(
 	}
 
 	// Extract resource options
-	const resourceOptions = extractOptions(resourceProperty, logger);
+	const resourceOptions = extractOptions(resourceProperty, logger, options);
 	if (resourceOptions.length === 0) {
 		logger?.warn('extractResourceOperations: Resource property found but no string options', {
 			nodeType: nodeType.name,
@@ -211,13 +255,15 @@ export function extractResourceOperations(
 		const seenValues = new Set<string>();
 
 		for (const opProp of operationProperties) {
-			const ops = extractOptions(opProp, logger);
+			const ops = extractOptions(opProp, logger, options);
 			for (const op of ops) {
 				if (!seenValues.has(op.value)) {
 					seenValues.add(op.value);
 					allOperations.push({
 						value: op.value,
 						displayName: op.displayName,
+						...(op.description && { description: op.description }),
+						...(op.builderHint && { builderHint: op.builderHint }),
 					});
 				}
 			}
@@ -226,6 +272,8 @@ export function extractResourceOperations(
 		return {
 			value: resource.value,
 			displayName: resource.displayName,
+			...(resource.description && { description: resource.description }),
+			...(resource.builderHint && { builderHint: resource.builderHint }),
 			operations: allOperations,
 		};
 	});

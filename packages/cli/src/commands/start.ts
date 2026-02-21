@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { ExecutionRepository, SettingsRepository } from '@n8n/db';
+import { AuthRolesService, ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -225,6 +226,17 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 		}
 
+		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
+		// Only run on main instance - workers should not modify auth roles/scopes as they may have
+		// different code versions, and scope sync would incorrectly delete scopes they don't know about.
+		// In multi-main setups, only sync on the leader instance to avoid race conditions.
+		if (
+			this.instanceSettings.instanceType === 'main' &&
+			(!this.instanceSettings.isMultiMain || this.instanceSettings.isLeader)
+		) {
+			await Container.get(AuthRolesService).init();
+		}
+
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
 		await Container.get(CredentialsOverwrites).init();
@@ -278,13 +290,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await subscriber.subscribe(subscriber.getMcpRelayChannel());
 
 		// Set up MCP relay handler for multi-main queue mode
-		subscriber.setMcpRelayHandler(async (msg) => {
+		subscriber.setMcpRelayHandler((msg) => {
 			try {
-				const { McpServerManager } = await import(
-					'@n8n/n8n-nodes-langchain/dist/nodes/mcp/McpTrigger/McpServer'
-				);
-				const mcpServerManager = McpServerManager.instance(this.logger);
-				mcpServerManager.handleWorkerResponse(msg.sessionId, msg.messageId, msg.response);
+				const mcpServer = McpServer.instance(this.logger);
+				mcpServer.handleWorkerResponse(msg.sessionId, msg.messageId, msg.response);
 			} catch (error) {
 				this.logger.error('Failed to handle MCP relay message', {
 					sessionId: msg.sessionId,

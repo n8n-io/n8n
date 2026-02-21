@@ -80,38 +80,30 @@ export class ScalingService {
 
 		this.scheduleQueueMetrics();
 
-		// Initialize MCP Server Manager with queue mode enabled
-		// This tells the MCP Trigger to delegate tool executions to workers
-		const { McpServerManager } = await import(
-			'@n8n/n8n-nodes-langchain/dist/nodes/mcp/McpTrigger/McpServer'
+		const { McpServer, QueuedExecutionStrategy, RedisSessionStore } = await import(
+			'@n8n/n8n-nodes-langchain/mcp/core'
 		);
-		const mcpServerManager = McpServerManager.instance(this.logger);
-		mcpServerManager.setQueueMode(true);
+		const { Publisher } = await import('@/scaling/pubsub/publisher.service');
 
-		// Configure session validation callbacks using Redis to prevent session fixation attacks
-		// when recreating transports on different main instances
-		const MCP_SESSION_TTL = 86400; // 24 hours in seconds
+		const publisher = Container.get(Publisher);
+
+		const MCP_SESSION_TTL = 86400;
 		const getMcpSessionKey = (sessionId: string) =>
 			`${this.globalConfig.redis.prefix}:mcp-session:${sessionId}`;
 
-		const { Publisher } = await import('@/scaling/pubsub/publisher.service');
-		const publisher = Container.get(Publisher);
-
-		mcpServerManager.setSessionCallbacks(
-			// Register session: store in Redis with TTL
-			async (sessionId: string) => {
-				await publisher.set(getMcpSessionKey(sessionId), '1', MCP_SESSION_TTL);
+		const mcpServer = McpServer.instance(this.logger);
+		const redisStore = new RedisSessionStore(
+			{
+				set: async (key, value, ttl) => await publisher.set(key, value, ttl),
+				get: async (key) => await publisher.get(key),
+				clear: async (key) => await publisher.clear(key),
 			},
-			// Validate session: check if exists in Redis
-			async (sessionId: string) => {
-				const result = await publisher.get(getMcpSessionKey(sessionId));
-				return result !== null;
-			},
-			// Unregister session: remove from Redis
-			async (sessionId: string) => {
-				await publisher.clear(getMcpSessionKey(sessionId));
-			},
+			getMcpSessionKey,
+			MCP_SESSION_TTL,
 		);
+
+		mcpServer.setSessionStore(redisStore);
+		mcpServer.setExecutionStrategy(new QueuedExecutionStrategy(mcpServer.getPendingCallsManager()));
 
 		this.logger.debug('Queue setup completed');
 	}
@@ -486,14 +478,9 @@ export class ScalingService {
 				const mcpService = Container.get(McpService);
 				mcpService.handleWorkerResponse(executionId, runData);
 			} else {
-				// For MCP Trigger, forward the response directly (tool result)
-				const { McpServerManager } = await import(
-					'@n8n/n8n-nodes-langchain/dist/nodes/mcp/McpTrigger/McpServer'
-				);
-				// McpServerManager is a singleton that requires a logger for first initialization
-				// At this point it should already be initialized by the MCP Trigger node
-				const mcpServerManager = McpServerManager.instance(this.logger);
-				mcpServerManager.handleWorkerResponse(sessionId, messageId, response);
+				const { McpServer } = await import('@n8n/n8n-nodes-langchain/mcp/core');
+				const mcpServer = McpServer.instance(this.logger);
+				mcpServer.handleWorkerResponse(sessionId, messageId, response);
 			}
 		} catch (error) {
 			this.logger.error('Failed to handle MCP response', {

@@ -45,6 +45,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const workflowsStore = useWorkflowsStore();
 	const route = useRoute();
 	const streaming = ref<boolean>();
+	const streamingAbortController = ref<AbortController | null>(null);
 	const ndvStore = useNDVStore();
 	const locale = useI18n();
 	const telemetry = useTelemetry();
@@ -216,6 +217,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	function stopStreaming() {
 		streaming.value = false;
+		if (streamingAbortController.value) {
+			streamingAbortController.value.abort();
+			streamingAbortController.value = null;
+		}
+	}
+
+	function abortStreaming() {
+		stopStreaming();
 	}
 
 	function addAssistantError(content: string, id: string, retry?: () => Promise<void>) {
@@ -247,6 +256,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		assert(e instanceof Error);
 		stopStreaming();
 		assistantThinkingMessage.value = undefined;
+
+		if (e.name === 'AbortError') {
+			return;
+		}
+
 		addAssistantError(
 			locale.baseText('aiAssistant.serviceError.message', { interpolate: { message: e.message } }),
 			id,
@@ -295,8 +309,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	async function initCredHelp(credType: ICredentialType) {
 		const hasExistingSession = !!currentSessionId.value;
-		const credentialName = credType.displayName;
-		const question = `How do I set up the credentials for ${credentialName}?`;
+		const question = locale.baseText('aiAssistant.builder.credentialHelpMessage', {
+			interpolate: { credentialName: credType.displayName },
+		});
 
 		await initSupportChat(question, credType);
 
@@ -327,7 +342,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					activeNode,
 					['position', 'parameters.notice'],
 					{
-						trimParameterValues: !allowSendingParameterValues.value,
+						excludeParameterValues: !allowSendingParameterValues.value,
 					},
 				)
 			: null;
@@ -376,7 +391,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				: undefined,
 			currentWorkflow: workflowDataStale.value
 				? await assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow, {
-						trimParameterValues: !allowSendingParameterValues.value,
+						excludeParameterValues: !allowSendingParameterValues.value,
 					})
 				: undefined,
 			executionData:
@@ -393,7 +408,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
 		const activeNode = workflowsStore.activeNode() as INode;
 		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode, {
-			trimParameterValues: !allowSendingParameterValues.value,
+			excludeParameterValues: !allowSendingParameterValues.value,
 		});
 		// For the initial message, only provide visual context if the task is support
 		const visualContext =
@@ -435,6 +450,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			};
 		}
 
+		if (streamingAbortController.value) {
+			streamingAbortController.value.abort();
+		}
+		streamingAbortController.value = new AbortController();
+
 		chatWithAssistant(
 			rootStore.restApiContext,
 			{
@@ -444,6 +464,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			() => onDoneStreaming(id),
 			(e) =>
 				handleServiceError(e, id, async () => await initSupportChat(userMessage, credentialType)),
+			streamingAbortController.value.signal,
 		);
 	}
 
@@ -467,7 +488,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
 			context.node,
-			{ trimParameterValues: !allowSendingParameterValues.value },
+			{ excludeParameterValues: !allowSendingParameterValues.value },
 		);
 
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
@@ -483,7 +504,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				context.node,
 				['position', 'parameters.notice'],
 				{
-					trimParameterValues: !allowSendingParameterValues.value,
+					excludeParameterValues: !allowSendingParameterValues.value,
 				},
 			),
 			nodeInputData,
@@ -495,6 +516,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				},
 			},
 		};
+		if (streamingAbortController.value) {
+			streamingAbortController.value.abort();
+		}
+		streamingAbortController.value = new AbortController();
+
 		chatWithAssistant(
 			rootStore.restApiContext,
 			{
@@ -503,6 +529,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
 			(e) => handleServiceError(e, id, async () => await initErrorHelper(context)),
+			streamingAbortController.value.signal,
 		);
 	}
 
@@ -518,6 +545,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const id = getRandomId();
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
+
+		if (streamingAbortController.value) {
+			streamingAbortController.value.abort();
+		}
+		streamingAbortController.value = new AbortController();
+
 		chatWithAssistant(
 			rootStore.restApiContext,
 			{
@@ -532,6 +565,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
 			(e) => handleServiceError(e, id, async () => await sendEvent(eventName, error)),
+			streamingAbortController.value.signal,
 		);
 	}
 
@@ -594,9 +628,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			}
 			const activeNode = workflowsStore.activeNode() as INode;
 			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode, {
-				trimParameterValues: !allowSendingParameterValues.value,
+				excludeParameterValues: !allowSendingParameterValues.value,
 			});
 			const userContext = await getVisualContext(nodeInfo);
+
+			if (streamingAbortController.value) {
+				streamingAbortController.value.abort();
+			}
+			streamingAbortController.value = new AbortController();
 
 			chatWithAssistant(
 				rootStore.restApiContext,
@@ -614,6 +653,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				(msg) => onEachStreamingMessage(msg, id),
 				() => onDoneStreaming(id),
 				(e) => handleServiceError(e, id, retry),
+				streamingAbortController.value.signal,
 			);
 			trackUserMessage(chatMessage.text, !!chatMessage.quickReplyType);
 		} catch (e: unknown) {
@@ -851,5 +891,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		initCredHelp,
 		isCredTypeActive,
 		handleServiceError,
+		abortStreaming,
 	};
 });

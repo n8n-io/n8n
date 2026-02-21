@@ -1,6 +1,8 @@
 /**
  * Agent message chunk for streaming
  */
+import type { PlanOutput, PlannerQuestion } from './planning';
+
 export interface AgentMessageChunk {
 	role: 'assistant';
 	type: 'message';
@@ -23,7 +25,12 @@ export interface ToolProgressChunk {
 export interface WorkflowUpdateChunk {
 	role: 'assistant';
 	type: 'workflow-updated';
+	/** JSON-stringified workflow */
 	codeSnippet: string;
+	/** Number of agentic loop iterations required */
+	iterationCount?: number;
+	/** Source code that generated the workflow (only populated during evaluations) */
+	sourceCode?: string;
 }
 
 /**
@@ -35,6 +42,37 @@ export interface ExecutionRequestChunk {
 	reason: string;
 }
 
+export interface QuestionsChunk {
+	role: 'assistant';
+	type: 'questions';
+	introMessage?: string;
+	questions: PlannerQuestion[];
+}
+
+export interface PlanChunk {
+	role: 'assistant';
+	type: 'plan';
+	plan: PlanOutput;
+}
+
+/**
+ * Session messages chunk for persistence
+ * Contains the full message history for saving to session storage
+ */
+export interface SessionMessagesChunk {
+	type: 'session-messages';
+	/** Raw LangChain messages for session persistence */
+	messages: unknown[];
+}
+
+/**
+ * Signals that message history was compacted (e.g. via /compact).
+ * Frontend should clear old messages when this is received.
+ */
+export interface MessagesCompactedChunk {
+	type: 'messages-compacted';
+}
+
 /**
  * Union type for all stream chunks
  */
@@ -42,13 +80,19 @@ export type StreamChunk =
 	| AgentMessageChunk
 	| ToolProgressChunk
 	| WorkflowUpdateChunk
-	| ExecutionRequestChunk;
+	| ExecutionRequestChunk
+	| SessionMessagesChunk
+	| QuestionsChunk
+	| PlanChunk
+	| MessagesCompactedChunk;
 
 /**
  * Stream output containing messages
  */
 export interface StreamOutput {
 	messages: StreamChunk[];
+	/** Optional interrupt id for deduping repeated interrupt emissions */
+	interruptId?: string;
 }
 
 /**

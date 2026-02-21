@@ -4,11 +4,12 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Middleware, Param, RestController } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-import { ExternalSecretsProviders } from './external-secrets-providers.ee';
 import { ExternalSecretsConfig } from './external-secrets.config';
+import { ExternalSecretsProviders } from './external-secrets-providers.ee';
+
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { sendErrorResponse } from '@/response-helper';
 
 @RestController('/secret-providers/types')
 export class SecretProvidersTypesController {
@@ -21,10 +22,17 @@ export class SecretProvidersTypesController {
 	}
 
 	@Middleware()
-	checkFeatureFlag(_req: Request, _res: Response, next: NextFunction) {
-		if (!this.config.externalSecretsForProjects) {
-			this.logger.warn('External secrets for projects feature is not enabled');
-			throw new BadRequestError('External secrets for projects feature is not enabled');
+	checkFeatureFlag(_req: Request, res: Response, next: NextFunction) {
+		const hasAccess =
+			this.config.externalSecretsMultipleConnections || this.config.externalSecretsForProjects;
+
+		if (!hasAccess) {
+			this.logger.warn('Requested beta external secret endpoint without feature flag enabled');
+			sendErrorResponse(
+				res,
+				new ForbiddenError('Requested beta external secret endpoint without feature flag enabled'),
+			);
+			return;
 		}
 		next();
 	}

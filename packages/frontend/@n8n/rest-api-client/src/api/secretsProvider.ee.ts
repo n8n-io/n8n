@@ -1,4 +1,5 @@
 import type {
+	ReloadSecretProviderConnectionResponse,
 	SecretProviderConnection,
 	SecretProviderTypeResponse,
 	TestSecretProviderConnectionResponse,
@@ -58,11 +59,44 @@ export const updateSecretProviderConnection = async (
 
 export const testSecretProviderConnection = async (
 	context: IRestApiContext,
-	connectionId: string,
+	providerKey: string,
 ): Promise<TestSecretProviderConnectionResponse> => {
 	return await makeRestApiRequest(
 		context,
 		'POST',
-		`/secret-providers/connections/${connectionId}/test`,
+		`/secret-providers/connections/${providerKey}/test`,
+	);
+};
+
+export const reloadSecretProviderConnection = async (
+	context: IRestApiContext,
+	providerKey: string,
+): Promise<ReloadSecretProviderConnectionResponse> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/secret-providers/connections/${providerKey}/reload`,
+	);
+};
+
+export const deleteSecretProviderConnection = async (
+	context: IRestApiContext,
+	providerKey: string,
+): Promise<void> => {
+	return await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/secret-providers/connections/${providerKey}`,
+	);
+};
+
+export const getProjectSecretProviderConnectionsByProjectId = async (
+	context: IRestApiContext,
+	projectId: string,
+): Promise<SecretProviderConnection[]> => {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/secret-providers/projects/${projectId}/connections`,
 	);
 };

@@ -4,13 +4,18 @@ import BaseLayout from './BaseLayout.vue';
 import { useLayoutProps } from '@/app/composables/useLayoutProps';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
+import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
 import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import AppHeader from '@/app/components/app/AppHeader.vue';
 import AppSidebar from '@/app/components/app/AppSidebar.vue';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import LoadingView from '@/app/views/LoadingView.vue';
-import { WorkflowIdKey, WorkflowStateKey } from '@/app/constants/injectionKeys';
+import {
+	WorkflowIdKey,
+	WorkflowStateKey,
+	WorkflowDocumentStoreKey,
+} from '@/app/constants/injectionKeys';
 
 const { layoutProps } = useLayoutProps();
 const assistantStore = useAssistantStore();
@@ -21,6 +26,7 @@ provide(WorkflowStateKey, workflowState);
 const {
 	isLoading,
 	workflowId,
+	currentWorkflowDocumentStore,
 	isDebugRoute,
 	initializeData,
 	initializeWorkflow,
@@ -29,8 +35,15 @@ const {
 } = useWorkflowInitialization(workflowState);
 
 provide(WorkflowIdKey, workflowId);
+provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
+
+const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
+	workflowState,
+	currentWorkflowDocumentStore,
+});
 
 onMounted(async () => {
+	setupPostMessages();
 	await initializeData();
 	await initializeWorkflow();
 });
@@ -58,7 +71,10 @@ watch(
 	{ flush: 'post' },
 );
 
-onBeforeUnmount(() => cleanup());
+onBeforeUnmount(() => {
+	cleanupPostMessages();
+	cleanup();
+});
 </script>
 
 <template>

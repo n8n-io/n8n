@@ -45,6 +45,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
+import { ChatHubToolService } from './chat-hub-tool.service';
 import { CHATHUB_EXTRACTOR_NAME, ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 import { ChatHubMessage } from './chat-hub-message.entity';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
@@ -78,6 +79,7 @@ export class ChatHubWorkflowService {
 		private readonly chatHubAgentService: ChatHubAgentService,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
+		private readonly chatHubToolService: ChatHubToolService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly cipher: Cipher,
 	) {
@@ -483,19 +485,24 @@ export class ChatHubWorkflowService {
 	}
 
 	getSystemMessageMetadata(timeZone: string) {
-		const now = inE2ETests ? DateTime.fromISO('2025-01-15T12:00:00.000Z') : DateTime.now();
+		if (inE2ETests) {
+			return '__e2e_system_prompt_placeholder__';
+		}
+
+		const now = DateTime.now();
 		const isoTime = now.setZone(timeZone).toISO({ includeOffset: true });
 
 		return `
-## Current Date and Time
+# Current Date and Time
 
 The user's current local date and time is: ${isoTime} (timezone: ${timeZone}).
 When you need to reference "now", use this date and time.
 
-## Content Capabilities
+# Output Capabilities
 
-You can only produce text responses.
-You cannot create, generate, edit, or display images, videos, or other non-text content.
+## Multimedia Generation
+
+You are allowed to describe, explain and analyze provided multimedia data if you're capable of, but not allowed to create, generate, edit, or display images, videos, or other non-text content.
 If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.
 
 ## Document Generation
@@ -1107,7 +1114,7 @@ Respond the title only:`,
 		trx: EntityManager,
 		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
-		await this.chatHubSettingsService.ensureModelIsAllowed(model);
+		await this.chatHubSettingsService.ensureModelIsAllowed(model, trx);
 		this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
 		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 
@@ -1170,7 +1177,7 @@ Respond the title only:`,
 			},
 		};
 
-		const { tools } = agent;
+		const tools = await this.chatHubToolService.getToolDefinitionsForAgent(agentId, trx);
 
 		return await this.prepareBaseChatWorkflow(
 			user,

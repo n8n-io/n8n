@@ -18,20 +18,22 @@ export function useSecretsProviderConnection() {
 	const rootStore = useRootStore();
 
 	const connectionState = ref<SecretProviderConnection['state']>('initializing');
+	const connectionError = ref<string | undefined>(undefined);
 	const isLoading = ref(false);
 	const isTesting = ref(false);
 
 	// API operations
-	async function testConnection(connectionId: string): Promise<SecretProviderConnection['state']> {
+	async function testConnection(providerKey: string): Promise<SecretProviderConnection['state']> {
 		// POST /rest/secret-providers/connections/:connectionId/test
 		isTesting.value = true;
 		try {
-			const { testState } = await testSecretProviderConnection(
+			const { testState, error } = await testSecretProviderConnection(
 				rootStore.restApiContext,
-				connectionId,
+				providerKey,
 			);
 
 			connectionState.value = testState === 'tested' ? 'connected' : testState;
+			connectionError.value = error;
 
 			return connectionState.value;
 		} catch {
@@ -51,7 +53,6 @@ export function useSecretsProviderConnection() {
 				providerKey,
 			);
 
-			await testConnection(connection.id);
 			return connection;
 		} finally {
 			isLoading.value = false;
@@ -94,6 +95,7 @@ export function useSecretsProviderConnection() {
 	return {
 		// State
 		connectionState,
+		connectionError,
 		isLoading,
 		isTesting,
 

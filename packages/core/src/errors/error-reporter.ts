@@ -43,6 +43,9 @@ type ErrorReporterInitOptions = {
 	 * whether they are actually enabled or not.
 	 */
 	eligibleIntegrations?: Partial<Record<SentryIntegration, boolean>>;
+
+	/** Health endpoint path */
+	healthEndpoint?: string;
 };
 
 const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
@@ -114,6 +117,7 @@ export class ErrorReporter {
 		profilesSampleRate,
 		tracesSampleRate,
 		eligibleIntegrations = {},
+		healthEndpoint = '/healthz',
 	}: ErrorReporterInitOptions) {
 		if (inTest) return;
 
@@ -147,8 +151,14 @@ export class ErrorReporter {
 		Error.stackTraceLimit = 50;
 
 		const sentry = await import('@sentry/node');
-		const { init, captureException, setTag, requestDataIntegration, rewriteFramesIntegration } =
-			sentry;
+		const {
+			init,
+			captureException,
+			setTag,
+			setUser,
+			requestDataIntegration,
+			rewriteFramesIntegration,
+		} = sentry;
 
 		// Most of the integrations are listed here:
 		// https://docs.sentry.io/platforms/javascript/guides/node/configuration/integrations/
@@ -197,8 +207,8 @@ export class ErrorReporter {
 			...(isTracingEnabled ? { tracesSampleRate } : {}),
 			...(isProfilingEnabled ? { profilesSampleRate, profileLifecycle: 'trace' } : {}),
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
-			ignoreTransactions: ['GET /healthz', 'GET /metrics'],
-			ignoreSpans: ['GET /healthz', 'GET /metrics'],
+			ignoreTransactions: [`GET ${healthEndpoint}`, 'GET /metrics'],
+			ignoreSpans: [`GET ${healthEndpoint}`, 'GET /metrics'],
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => enabledIntegrations.has(name)),
 				rewriteFramesIntegration({ root: '/' }),
@@ -217,6 +227,10 @@ export class ErrorReporter {
 		});
 
 		setTag('server_type', serverType);
+
+		if (serverName) {
+			setUser({ id: serverName });
+		}
 
 		this.report = (error, options) => captureException(error, options);
 		this.beforeSendFilter = beforeSendFilter;
