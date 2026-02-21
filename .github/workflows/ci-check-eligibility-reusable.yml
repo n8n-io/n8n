@@ -50,6 +50,9 @@ on:
         description: "Outputs 'true' if all eligibility checks pass, otherwise 'false'."
         value: ${{ jobs.evaluate_conditions.outputs.run_decision }}
 
+permissions:
+  contents: read
+
 jobs:
   evaluate_conditions:
     runs-on: ubuntu-latest
