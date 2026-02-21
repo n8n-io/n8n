@@ -114,4 +114,47 @@ describe('Test YouTube, video => upload', () => {
 		});
 		expect(fromSpy).toHaveBeenCalledTimes(1);
 	});
+
+	it('should map application/mp4 to video/mp4', async () => {
+		const items = [{ json: { data: 'test' } }];
+		const buffer = Buffer.alloc(2 * 1024 * 1024, 'a');
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
+			switch (key) {
+				case 'resource':
+					return 'video';
+				case 'operation':
+					return 'upload';
+				case 'title':
+					return 'test';
+				case 'categoryId':
+					return '11';
+				case 'options':
+					return {};
+				case 'binaryProperty':
+					return 'data';
+				default:
+			}
+		});
+		mockExecuteFunctions.helpers.assertBinaryData = jest.fn(() => ({
+			data: buffer.toString('base64'),
+			mimeType: 'application/mp4',
+		}));
+
+		await youTube.execute.call(mockExecuteFunctions);
+
+		expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.anything(),
+			expect.anything(),
+			expect.anything(),
+			expect.anything(),
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					'X-Upload-Content-Type': 'video/mp4',
+				}),
+			}),
+		);
+	});
 });
