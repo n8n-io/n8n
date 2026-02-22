@@ -145,3 +145,5 @@ minimumReleaseAgeExclude:
   - vm2
   - tar
   - qs
+  # Renovate security update: jsonpath@1.2.1
+  - jsonpath@1.2.1
