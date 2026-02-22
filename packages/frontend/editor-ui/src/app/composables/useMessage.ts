@@ -4,6 +4,10 @@ import { sanitizeIfString } from '@/app/utils/htmlUtils';
 
 export type MessageBoxConfirmResult = 'confirm' | 'cancel';
 
+type AdditionalConfirmOptions = {
+	confirmationCheckbox?: ElMessageBoxOptions['message'];
+};
+
 export function useMessage() {
 	const handleCancelOrClose = (e: Action | Error): Action => {
 		if (e instanceof Error) throw e;
@@ -42,7 +46,7 @@ export function useMessage() {
 	async function confirm(
 		message: ElMessageBoxOptions['message'],
 		configOrTitle?: string | ElMessageBoxOptions,
-		config?: ElMessageBoxOptions,
+		config?: ElMessageBoxOptions & AdditionalConfirmOptions,
 	) {
 		const resolvedConfig = {
 			cancelButtonClass: 'btn--cancel',

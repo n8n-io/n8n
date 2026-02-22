@@ -4,11 +4,12 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { computed, ref } from 'vue';
+import { computed, ref, h } from 'vue';
 
 import type { ICredentialsResponse } from '../../credentials.types';
 import { useCredentialOAuth } from '../../composables/useCredentialOAuth';
 import { useCredentialsStore } from '../../credentials.store';
+import QuickConnectConfirmationMessage from '../components/QuickConnectConfirmationMessage.vue';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { getQuickConnectApiKey } from '../quickConnect.api';
@@ -143,8 +144,18 @@ export function useQuickConnect() {
 
 			try {
 				if (quickConnectOption.consentText) {
+					const showError = ref(false);
+					const allCheckboxConfirmed = ref(false);
+					console.log(quickConnectOption);
+					const messageBody = h(QuickConnectConfirmationMessage, {
+						quickConnectOption,
+						serviceName: connectParams.serviceName,
+						showError,
+						confirmed: allCheckboxConfirmed,
+					});
+					console.log('message body', messageBody, showError, allCheckboxConfirmed);
 					const confirmed = await message.confirm(
-						quickConnectOption.consentText,
+						messageBody,
 						i18n.baseText('nodeCredentials.quickConnect.connectTo', {
 							interpolate: { provider: connectParams.serviceName },
 						}),
