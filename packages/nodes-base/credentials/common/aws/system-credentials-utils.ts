@@ -206,6 +206,10 @@ async function getContainerMetadataCredentials() {
  * it includes the Authorization header as required by AWS for Pod Identity credential endpoints.
  * The file-based token takes precedence over the direct token, following AWS SDK behavior.
  *
+ * Unlike when retrieving AWS Credentials from Container Metadata for ECS/Fargate, the Authorization
+ * header should NOT include a 'Bearer ' prefix as the EKS Pod Identity Agent uses the header value
+ * directly when making the AssumeRoleForPodIdentity API call.
+ *
  * @returns Promise resolving to credentials object or null if not running with EKS Pod Identity
  *
  * @see {@link https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html EKS Pod Identities}
@@ -239,7 +243,7 @@ async function getPodIdentityCredentials() {
 		};
 
 		if (authToken) {
-			headers.Authorization = `Bearer ${authToken}`;
+			headers.Authorization = `${authToken}`;
 		}
 
 		const response = await fetch(fullUri, {
