@@ -145,3 +145,5 @@ minimumReleaseAgeExclude:
   - vm2
   - tar
   - qs
+  # Renovate security update: hono@4.11.10
+  - hono@4.11.10
