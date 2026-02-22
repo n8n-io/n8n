@@ -1,7 +1,7 @@
 name: 'Test: E2E'
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       branch:
         description: 'GitHub branch to test.'

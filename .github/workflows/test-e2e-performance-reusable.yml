@@ -1,10 +1,7 @@
 name: 'Test: E2E Performance'
 
 on:
-  workflow_call:
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *' # Runs daily at midnight
   pull_request:
     paths:
       - '.github/workflows/test-e2e-performance-reusable.yml'

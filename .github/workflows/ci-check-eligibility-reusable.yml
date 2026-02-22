@@ -16,6 +16,7 @@
 name: 'CI: Check Eligibility'
 
 on:
+  workflow_dispatch:
   workflow_call:
     inputs:
       is_pr_approved_by_maintainer:

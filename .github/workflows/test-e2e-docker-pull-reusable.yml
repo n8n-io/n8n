@@ -2,7 +2,7 @@ name: 'Test: E2E Docker Pull'
 # This workflow is used to run Playwright tests in a Docker container pulled from the registry
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       shards:
         description: 'Shards for parallel execution'

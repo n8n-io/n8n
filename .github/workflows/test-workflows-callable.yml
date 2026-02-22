@@ -1,7 +1,7 @@
 name: 'Test: Workflows'
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       git_ref:
         description: 'The Git ref (branch, tag, or SHA) to checkout and test.'

@@ -1,6 +1,7 @@
 name: 'CI: Pull Requests (Build, Test, Lint)'
 
 on:
+  workflow_dispatch:
   pull_request:
   merge_group:
 

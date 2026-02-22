@@ -1,6 +1,7 @@
 name: 'Test: Workflows PR Comment'
 
 on:
+  workflow_dispatch:
   issue_comment:
     types: [created]
 

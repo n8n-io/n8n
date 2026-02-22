@@ -1,6 +1,7 @@
 name: 'CI: Python'
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - packages/@n8n/task-runner-python/**

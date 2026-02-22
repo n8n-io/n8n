@@ -1,6 +1,7 @@
 name: 'Build: Unit Test PR Comment'
 
 on:
+  workflow_dispatch:
   issue_comment:
     types: [created]
 

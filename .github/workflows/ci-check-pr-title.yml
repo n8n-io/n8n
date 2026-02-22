@@ -1,6 +1,7 @@
 name: 'CI: Check PR Title'
 
 on:
+  workflow_dispatch:
   pull_request:
     types:
       - opened

@@ -1,7 +1,7 @@
 name: 'Sec: CI Checks'
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       ref:
         description: GitHub ref to scan.

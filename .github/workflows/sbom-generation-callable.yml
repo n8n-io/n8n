@@ -1,7 +1,7 @@
 name: 'Release: Attach SBOM'
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       n8n_version:
         description: 'N8N version to generate SBOM for'

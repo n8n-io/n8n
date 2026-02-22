@@ -1,6 +1,7 @@
 name: 'Test: Evals Python'
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**

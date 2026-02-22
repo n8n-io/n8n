@@ -1,6 +1,7 @@
 name: 'Util: Sync API Docs'
 
 on:
+  workflow_dispatch:
   # Triggers for the master branch if relevant Public API files have changed
   push:
     branches:
