@@ -16,6 +16,7 @@ import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 
+import { loadMemory } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import {
 	getOptionalOutputParser,
@@ -294,12 +295,7 @@ export async function toolsAgentExecute(
 				this.getNode().typeVersion >= 2.1
 			) {
 				// Get chat history respecting the context window length configured in memory
-				let chatHistory;
-				if (memory) {
-					// Load memory variables to respect context window length
-					const memoryVariables = await memory.loadMemoryVariables({});
-					chatHistory = memoryVariables['chat_history'];
-				}
+				const chatHistory = memory ? await loadMemory(memory, model) : undefined;
 				const eventStream = executor.streamEvents(
 					{
 						...invokeParams,

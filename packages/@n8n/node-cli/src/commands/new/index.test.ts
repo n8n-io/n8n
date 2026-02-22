@@ -25,6 +25,10 @@ describe('new command', () => {
 				question: 'What kind of node are you building?',
 				answer: 'programmatic',
 			},
+			{
+				question: 'What type of programmatic node are you building?',
+				answer: 'basic',
+			},
 		]);
 
 		mockExecSync([
@@ -288,6 +292,253 @@ describe('new command', () => {
 			} catch {
 				// Credentials directory doesn't exist, which is fine
 			}
+		},
+	);
+
+	tmpdirTest('creates new node project with OpenAI compatible chat model', async ({ tmpdir }) => {
+		MockPrompt.setup([
+			{
+				question: 'What kind of node are you building?',
+				answer: 'programmatic',
+			},
+			{
+				question: 'What type of programmatic node are you building?',
+				answer: 'chatModel',
+			},
+			{
+				question: 'What type of chat model?',
+				answer: 'openaiCompatible',
+			},
+		]);
+
+		mockExecSync([
+			{ command: 'git config --get user.name', result: 'Chat User\n' },
+			{ command: 'git config --get user.email', result: 'chat@example.com\n' },
+		]);
+
+		mockSpawn([
+			{
+				command: 'git',
+				args: ['init', '-b', 'main'],
+				options: { exitCode: 0 },
+			},
+			{
+				command: 'pnpm',
+				args: ['install'],
+				options: { exitCode: 0 },
+			},
+		]);
+
+		await CommandTester.run('new n8n-nodes-chat-openai --skip-install');
+
+		expect(MockPrompt).toHaveAskedAllQuestions();
+		expect(MockPrompt).toHaveAskedQuestion('What type of chat model?');
+
+		const projectName = 'n8n-nodes-chat-openai';
+		expect(tmpdir).toHaveFile(projectName);
+
+		await expect(tmpdir).toHaveFileContaining(
+			`${projectName}/nodes/ExampleChatModel/ExampleChatModel.node.ts`,
+			'export class ExampleChatModel implements INodeType',
+		);
+		await expect(tmpdir).toHaveFileContaining(
+			`${projectName}/nodes/ExampleChatModel/ExampleChatModel.node.ts`,
+			'Chat model node for OpenAI API compatible providers',
+		);
+	});
+
+	tmpdirTest('creates new node project with custom chat model', async ({ tmpdir }) => {
+		MockPrompt.setup([
+			{
+				question: 'What kind of node are you building?',
+				answer: 'programmatic',
+			},
+			{
+				question: 'What type of programmatic node are you building?',
+				answer: 'chatModel',
+			},
+			{
+				question: 'What type of chat model?',
+				answer: 'custom',
+			},
+		]);
+
+		mockExecSync([
+			{ command: 'git config --get user.name', result: 'Custom Chat User\n' },
+			{ command: 'git config --get user.email', result: 'customchat@example.com\n' },
+		]);
+
+		mockSpawn([
+			{
+				command: 'git',
+				args: ['init', '-b', 'main'],
+				options: { exitCode: 0 },
+			},
+		]);
+
+		await CommandTester.run('new n8n-nodes-custom-chat --skip-install');
+
+		expect(MockPrompt).toHaveAskedAllQuestions();
+
+		const projectName = 'n8n-nodes-custom-chat';
+		expect(tmpdir).toHaveFile(projectName);
+
+		await expect(tmpdir).toHaveFileContaining(
+			`${projectName}/nodes/ExampleChatModel/ExampleChatModel.node.ts`,
+			'export class ExampleChatModel implements INodeType',
+		);
+	});
+
+	tmpdirTest('creates new node project with custom chat model example', async ({ tmpdir }) => {
+		MockPrompt.setup([
+			{
+				question: 'What kind of node are you building?',
+				answer: 'programmatic',
+			},
+			{
+				question: 'What type of programmatic node are you building?',
+				answer: 'chatModel',
+			},
+			{
+				question: 'What type of chat model?',
+				answer: 'customExample',
+			},
+		]);
+
+		mockExecSync([
+			{ command: 'git config --get user.name', result: 'Example User\n' },
+			{ command: 'git config --get user.email', result: 'example@example.com\n' },
+		]);
+
+		mockSpawn([
+			{
+				command: 'git',
+				args: ['init', '-b', 'main'],
+				options: { exitCode: 0 },
+			},
+		]);
+
+		await CommandTester.run('new n8n-nodes-chat-example --skip-install');
+
+		expect(MockPrompt).toHaveAskedAllQuestions();
+
+		const projectName = 'n8n-nodes-chat-example';
+		expect(tmpdir).toHaveFile(projectName);
+
+		await expect(tmpdir).toHaveFileContaining(
+			`${projectName}/nodes/ExampleChatModel/ExampleChatModel.node.ts`,
+			'export class ExampleChatModel implements INodeType',
+		);
+	});
+
+	tmpdirTest('creates new node project with chat memory', async ({ tmpdir }) => {
+		MockPrompt.setup([
+			{
+				question: 'What kind of node are you building?',
+				answer: 'programmatic',
+			},
+			{
+				question: 'What type of programmatic node are you building?',
+				answer: 'chatMemory',
+			},
+		]);
+
+		mockExecSync([
+			{ command: 'git config --get user.name', result: 'Memory User\n' },
+			{ command: 'git config --get user.email', result: 'memory@example.com\n' },
+		]);
+
+		mockSpawn([
+			{
+				command: 'git',
+				args: ['init', '-b', 'main'],
+				options: { exitCode: 0 },
+			},
+		]);
+
+		await CommandTester.run('new n8n-nodes-chat-memory --skip-install');
+
+		expect(MockPrompt).toHaveAskedAllQuestions();
+		expect(MockPrompt).toHaveAskedQuestion('What type of programmatic node are you building?');
+
+		const projectName = 'n8n-nodes-chat-memory';
+		expect(tmpdir).toHaveFile(projectName);
+
+		await expect(tmpdir).toHaveFileContaining(
+			`${projectName}/nodes/ExampleChatMemory/ExampleChatMemory.node.ts`,
+			'export class ExampleChatMemory implements INodeType',
+		);
+		await expect(tmpdir).toHaveFileContaining(
+			`${projectName}/nodes/ExampleChatMemory/ExampleChatMemory.node.ts`,
+			'Store conversation history in memory',
+		);
+	});
+
+	tmpdirTest(
+		'creates new node project with --template programmatic/openai-chat-model',
+		async ({ tmpdir }) => {
+			MockPrompt.setup([]);
+
+			mockExecSync([
+				{ command: 'git config --get user.name', result: 'Template User\n' },
+				{ command: 'git config --get user.email', result: 'template@example.com\n' },
+			]);
+
+			mockSpawn([
+				{
+					command: 'git',
+					args: ['init', '-b', 'main'],
+					options: { exitCode: 0 },
+				},
+			]);
+
+			await CommandTester.run(
+				'new n8n-nodes-template-chat --template programmatic/openai-chat-model --skip-install',
+			);
+
+			expect(MockPrompt).toHaveAskedAllQuestions();
+
+			const projectName = 'n8n-nodes-template-chat';
+			expect(tmpdir).toHaveFile(projectName);
+
+			await expect(tmpdir).toHaveFileContaining(
+				`${projectName}/nodes/ExampleChatModel/ExampleChatModel.node.ts`,
+				'export class ExampleChatModel implements INodeType',
+			);
+		},
+	);
+
+	tmpdirTest(
+		'creates new node project with --template programmatic/custom-chat-memory',
+		async ({ tmpdir }) => {
+			MockPrompt.setup([]);
+
+			mockExecSync([
+				{ command: 'git config --get user.name', result: 'Memory Template User\n' },
+				{ command: 'git config --get user.email', result: 'memory-tpl@example.com\n' },
+			]);
+
+			mockSpawn([
+				{
+					command: 'git',
+					args: ['init', '-b', 'main'],
+					options: { exitCode: 0 },
+				},
+			]);
+
+			await CommandTester.run(
+				'new n8n-nodes-template-memory --template programmatic/custom-chat-memory --skip-install',
+			);
+
+			expect(MockPrompt).toHaveAskedAllQuestions();
+
+			const projectName = 'n8n-nodes-template-memory';
+			expect(tmpdir).toHaveFile(projectName);
+
+			await expect(tmpdir).toHaveFileContaining(
+				`${projectName}/nodes/ExampleChatMemory/ExampleChatMemory.node.ts`,
+				'export class ExampleChatMemory implements INodeType',
+			);
 		},
 	);
 });
