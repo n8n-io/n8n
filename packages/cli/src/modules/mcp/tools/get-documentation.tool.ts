@@ -4,7 +4,7 @@ import z from 'zod';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 
-import { documentation } from '@n8n/ai-workflow-builder/dist/tools/best-practices';
+import { documentation } from '@n8n/ai-workflow-builder';
 
 import type { Telemetry } from '@/telemetry';
 

@@ -5,8 +5,7 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { workflowJsonSchema } from './schemas';
 
-import { mermaidStringify } from '@n8n/ai-workflow-builder/dist/tools/utils/mermaid.utils';
-import { isTriggerNodeType } from '@n8n/ai-workflow-builder/dist/utils/node-helpers';
+import { mermaidStringify, isTriggerNodeType } from '@n8n/ai-workflow-builder';
 
 import type { Telemetry } from '@/telemetry';
 

@@ -7,9 +7,9 @@ import {
 	createNodeInstance,
 	generateUniqueName,
 	getLatestVersion,
-} from '@n8n/ai-workflow-builder/dist/tools/utils/node-creation.utils';
-import { calculateNodePosition } from '@n8n/ai-workflow-builder/dist/tools/utils/node-positioning.utils';
-import { isSubNode } from '@n8n/ai-workflow-builder/dist/utils/node-helpers';
+	calculateNodePosition,
+	isSubNode,
+} from '@n8n/ai-workflow-builder';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';

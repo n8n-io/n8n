@@ -6,10 +6,7 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { workflowJsonSchema } from './schemas';
 
-import {
-	getNodeConnections,
-	removeConnection,
-} from '@n8n/ai-workflow-builder/dist/tools/utils/connection.utils';
+import { getNodeConnections, removeConnection } from '@n8n/ai-workflow-builder';
 
 import type { Telemetry } from '@/telemetry';
 

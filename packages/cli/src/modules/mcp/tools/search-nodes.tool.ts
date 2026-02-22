@@ -1,4 +1,4 @@
-import { NodeSearchEngine } from '@n8n/ai-workflow-builder/dist/tools/engines/node-search-engine';
+import { NodeSearchEngine } from '@n8n/ai-workflow-builder';
 import type { User } from '@n8n/db';
 import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import z from 'zod';

@@ -37,7 +37,9 @@ describe('McpService', () => {
 		});
 		logger = mockLogger();
 		loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
-		jest.spyOn(loadNodesAndCredentials, 'collectTypes').mockResolvedValue({ nodes: [] });
+		jest
+			.spyOn(loadNodesAndCredentials, 'collectTypes')
+			.mockResolvedValue({ nodes: [], credentials: [] });
 
 		mcpService = new McpService(
 			logger,
