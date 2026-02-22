@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import { User, WorkflowRepository } from '@n8n/db';
+import { ProjectRepository, User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -10,12 +10,24 @@ import {
 	type IRun,
 } from 'n8n-workflow';
 
+import type { ToolDefinition } from './mcp.types';
+import { createAddNodeTool } from './tools/add-node.tool';
+import { createConnectNodesTool } from './tools/connect-nodes.tool';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
+import { createGetDocumentationTool } from './tools/get-documentation.tool';
+import { createGetNodeDetailsTool } from './tools/get-node-details.tool';
+import { createGetWorkflowOverviewTool } from './tools/get-workflow-overview.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
+import { createRemoveConnectionTool } from './tools/remove-connection.tool';
+import { createRemoveNodeTool } from './tools/remove-node.tool';
+import { createSaveWorkflowTool } from './tools/save-workflow.tool';
+import { createSearchNodesTool } from './tools/search-nodes.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
+import { createValidateWorkflowTool } from './tools/validate-workflow.tool';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { UrlService } from '@/services/url.service';
@@ -56,6 +68,8 @@ export class McpService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly roleService: RoleService,
 		private readonly projectService: ProjectService,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	async getServer(user: User) {
@@ -65,49 +79,58 @@ export class McpService {
 			version: '1.0.0',
 		});
 
-		const workflowSearchTool = createSearchWorkflowsTool(
-			user,
-			this.workflowService,
-			this.telemetry,
+		// Load node type descriptions for workflow builder tools
+		const { nodes: nodeTypes } = await this.loadNodesAndCredentials.collectTypes();
+
+		const register = (tool: ToolDefinition) => {
+			server.registerTool(tool.name, tool.config, tool.handler);
+		};
+
+		// Existing tools
+		register(createSearchWorkflowsTool(user, this.workflowService, this.telemetry));
+		register(
+			createExecuteWorkflowTool(
+				user,
+				this.workflowFinderService,
+				this.workflowRepository,
+				this.activeExecutions,
+				this.workflowRunner,
+				this.telemetry,
+				this,
+			),
 		);
-		server.registerTool(
-			workflowSearchTool.name,
-			workflowSearchTool.config,
-			workflowSearchTool.handler,
+		register(
+			createWorkflowDetailsTool(
+				user,
+				this.urlService.getWebhookBaseUrl(),
+				this.workflowFinderService,
+				this.credentialsService,
+				{
+					webhook: this.globalConfig.endpoints.webhook,
+					webhookTest: this.globalConfig.endpoints.webhookTest,
+				},
+				this.telemetry,
+				this.roleService,
+				this.projectService,
+			),
 		);
 
-		const executeWorkflowTool = createExecuteWorkflowTool(
-			user,
-			this.workflowFinderService,
-			this.workflowRepository,
-			this.activeExecutions,
-			this.workflowRunner,
-			this.telemetry,
-			this,
-		);
-		server.registerTool(
-			executeWorkflowTool.name,
-			executeWorkflowTool.config,
-			executeWorkflowTool.handler,
-		);
+		// Read-only tools
+		register(createSearchNodesTool(user, nodeTypes, this.telemetry));
+		register(createGetNodeDetailsTool(user, nodeTypes, this.telemetry));
+		register(createGetDocumentationTool(user, this.telemetry));
+		register(createGetWorkflowOverviewTool(user, this.telemetry));
+		register(createValidateWorkflowTool(user, nodeTypes, this.telemetry));
 
-		const workflowDetailsTool = createWorkflowDetailsTool(
-			user,
-			this.urlService.getWebhookBaseUrl(),
-			this.workflowFinderService,
-			this.credentialsService,
-			{
-				webhook: this.globalConfig.endpoints.webhook,
-				webhookTest: this.globalConfig.endpoints.webhookTest,
-			},
-			this.telemetry,
-			this.roleService,
-			this.projectService,
-		);
-		server.registerTool(
-			workflowDetailsTool.name,
-			workflowDetailsTool.config,
-			workflowDetailsTool.handler,
+		// Workflow manipulation tools
+		register(createAddNodeTool(user, nodeTypes, this.telemetry));
+		register(createConnectNodesTool(user, nodeTypes, this.telemetry));
+		register(createRemoveNodeTool(user, this.telemetry));
+		register(createRemoveConnectionTool(user, this.telemetry));
+
+		// Persistence
+		register(
+			createSaveWorkflowTool(user, this.projectRepository, this.projectService, this.telemetry),
 		);
 
 		return server;

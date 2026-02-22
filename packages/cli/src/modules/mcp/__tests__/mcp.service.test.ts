@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import { User, WorkflowRepository } from '@n8n/db';
+import { ProjectRepository, User, WorkflowRepository } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
@@ -10,6 +10,7 @@ import { McpService } from '../mcp.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { UrlService } from '@/services/url.service';
@@ -23,6 +24,7 @@ describe('McpService', () => {
 	let activeExecutions: ActiveExecutions;
 	let executionsConfig: ExecutionsConfig;
 	let instanceSettings: InstanceSettings;
+	let loadNodesAndCredentials: LoadNodesAndCredentials;
 	let logger: Logger;
 
 	beforeEach(() => {
@@ -34,6 +36,8 @@ describe('McpService', () => {
 			hostId: 'test-host-id',
 		});
 		logger = mockLogger();
+		loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+		jest.spyOn(loadNodesAndCredentials, 'collectTypes').mockResolvedValue({ nodes: [] });
 
 		mcpService = new McpService(
 			logger,
@@ -52,6 +56,8 @@ describe('McpService', () => {
 			mockInstance(WorkflowRunner),
 			mockInstance(RoleService),
 			mockInstance(ProjectService),
+			loadNodesAndCredentials,
+			mockInstance(ProjectRepository),
 		);
 	});
 
@@ -83,6 +89,8 @@ describe('McpService', () => {
 				mockInstance(WorkflowRunner),
 				mockInstance(RoleService),
 				mockInstance(ProjectService),
+				mockInstance(LoadNodesAndCredentials),
+				mockInstance(ProjectRepository),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);

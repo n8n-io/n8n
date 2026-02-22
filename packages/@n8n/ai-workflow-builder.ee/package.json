@@ -51,7 +51,8 @@
       "require": "./dist/index.js",
       "import": "./src/index.ts",
       "types": "./dist/index.d.ts"
-    }
+    },
+    "./dist/*": "./dist/*"
   },
   "dependencies": {
     "@langchain/anthropic": "catalog:",
