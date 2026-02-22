@@ -5,7 +5,12 @@ import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import type { IEmail } from '@utils/sendAndWait/interfaces';
 
 import * as GenericFunctions from '../../GenericFunctions';
-import { parseRawEmail, prepareTimestamp } from '../../GenericFunctions';
+import {
+	parseRawEmail,
+	prepareEmailBody,
+	prepareEmailsInput,
+	prepareTimestamp,
+} from '../../GenericFunctions';
 import { addThreadHeadersToEmail } from '../../v2/utils/draft';
 
 const node: INode = {
@@ -130,6 +135,107 @@ describe('parseRawEmail', () => {
 
 		// ASSERT
 		expect(typeof json.date).toBe('string');
+	});
+});
+
+describe('prepareEmailsInput', () => {
+	it('should handle a normal string email address', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: jest.fn(() => mock<INode>()),
+		});
+
+		const result = prepareEmailsInput.call(
+			executionFunctions,
+			'test@example.com',
+			'To',
+			0,
+		);
+		expect(result).toBe('<test@example.com>, ');
+	});
+
+	it('should coerce a number to string and process it (will fail validation for non-email)', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: jest.fn(() => mock<INode>()),
+		});
+
+		// A number without "@" should throw an "Invalid email address" error (not "trim is not a function")
+		expect(() =>
+			prepareEmailsInput.call(executionFunctions, 42 as unknown as string, 'To', 0),
+		).toThrow('Invalid email address');
+	});
+
+	it('should coerce a number that looks like an email-containing value', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: jest.fn(() => mock<INode>()),
+		});
+
+		// Ensure String() coercion is applied and does not throw "trim is not a function"
+		expect(() =>
+			prepareEmailsInput.call(executionFunctions, 123 as unknown as string, 'Message', 0),
+		).toThrow('Invalid email address');
+	});
+});
+
+describe('prepareEmailBody', () => {
+	it('should handle a normal string message', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: jest.fn(() => mock<INode>()),
+			getNodeParameter: jest.fn((paramName: string) => {
+				if (paramName === 'emailType') return 'text';
+				if (paramName === 'message') return 'Hello World';
+				return '';
+			}),
+		});
+
+		const result = prepareEmailBody.call(executionFunctions, 0);
+		expect(result.body).toBe('Hello World');
+		expect(result.htmlBody).toBe('');
+	});
+
+	it('should coerce a numeric message to string without throwing "trim is not a function"', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: jest.fn(() => mock<INode>()),
+			getNodeParameter: jest.fn((paramName: string) => {
+				if (paramName === 'emailType') return 'text';
+				if (paramName === 'message') return 42; // numeric value from expression
+				return '';
+			}),
+		});
+
+		// Should not throw - numeric value gets coerced to string "42"
+		const result = prepareEmailBody.call(executionFunctions, 0);
+		expect(result.body).toBe('42');
+		expect(result.htmlBody).toBe('');
+	});
+
+	it('should coerce null/undefined message to empty string', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: jest.fn(() => mock<INode>()),
+			getNodeParameter: jest.fn((paramName: string) => {
+				if (paramName === 'emailType') return 'text';
+				if (paramName === 'message') return null;
+				return '';
+			}),
+		});
+
+		const result = prepareEmailBody.call(executionFunctions, 0);
+		expect(result.body).toBe('');
+		expect(result.htmlBody).toBe('');
+	});
+
+	it('should handle html email type with numeric message', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: jest.fn(() => mock<INode>()),
+			getNodeParameter: jest.fn((paramName: string) => {
+				if (paramName === 'emailType') return 'html';
+				if (paramName === 'message') return 100;
+				return '';
+			}),
+		});
+
+		const result = prepareEmailBody.call(executionFunctions, 0);
+		expect(result.htmlBody).toBe('100');
+		expect(result.body).toBe('');
 	});
 });
 

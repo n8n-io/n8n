@@ -402,7 +402,10 @@ export function prepareEmailsInput(
 ) {
 	let emails = '';
 
-	input.split(',').forEach((entry) => {
+	// Coerce to string to handle cases where an expression returns a non-string value
+	const inputStr = String(input);
+
+	inputStr.split(',').forEach((entry) => {
 		const email = entry.trim();
 
 		if (email.indexOf('@') === -1) {
@@ -429,7 +432,8 @@ export function prepareEmailBody(
 	instanceId?: string,
 ) {
 	const emailType = this.getNodeParameter('emailType', itemIndex) as string;
-	let message = (this.getNodeParameter('message', itemIndex, '') as string).trim();
+	// Coerce to string to handle cases where an expression returns a non-string value (e.g. a number)
+	let message = String(this.getNodeParameter('message', itemIndex, '') ?? '').trim();
 
 	if (appendAttribution) {
 		const attributionText = 'This email was sent automatically with ';
