@@ -133,7 +133,7 @@
       "undici@6": "^6.23.0",
       "undici@7": "^7.18.2",
       "tar": "^7.5.7",
-      "fast-xml-parser@5": "5.3.4",
+      "fast-xml-parser@5": "5.3.6",
       "hono": "4.11.7",
       "langsmith": ">=0.4.6",
       "lodash-es": "4.17.23"

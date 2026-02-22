@@ -145,3 +145,5 @@ minimumReleaseAgeExclude:
   - vm2
   - tar
   - qs
+  # Renovate security update: fast-xml-parser@5@5.3.6
+  - fast-xml-parser@5@5.3.6
