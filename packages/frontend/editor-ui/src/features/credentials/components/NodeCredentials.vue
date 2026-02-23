@@ -95,7 +95,7 @@ const {
 	connect,
 	cancelConnect,
 } = useQuickConnect();
-const { isGoogleOAuthType, hasManagedOAuthCredentials } = useCredentialOAuth();
+const { hasManagedOAuthCredentials } = useCredentialOAuth();
 
 const canCreateCredentials = computed(
 	() =>
@@ -605,10 +605,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					v-else-if="
 						options.length === 0 && showQuickConnectEmptyState(type) && quickConnectCredentialType
 					"
-					:class="[
-						$style.quickConnectContainer,
-						{ [$style.noMarginTop]: isGoogleOAuthType(quickConnectCredentialType) },
-					]"
+					:class="[$style.quickConnectContainer]"
 					data-test-id="quick-connect-empty-state"
 				>
 					<QuickConnectButton
@@ -921,10 +918,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--4xs);
-
-	&.noMarginTop {
-		margin-top: 0;
-	}
 }
 
 .setupManuallyContainer {
