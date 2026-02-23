@@ -299,16 +299,29 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		run(`kubectl set env deployment/n8n-main WEBHOOK_URL=${webhookUrl}`, env, 'Set WEBHOOK_URL');
 		run('kubectl rollout status deployment/n8n-main --timeout=3m', env, 'Wait for rollout');
 
-		// Step 9: Port forward from host via kubectl
+		// Step 9: Port forward from host via kubectl (self-healing — auto-restarts on exit).
 		// pollHealthEndpoint below validates the full path: pod → service → port-forward → localhost.
 		// Log to file (not pipe — avoids buffer blocking; not ignore — enables post-mortem debugging).
 		const pfLogPath = join(tmpdir(), `n8n-port-forward-${Date.now()}.log`);
 		const pfLogFd = openSync(pfLogPath, 'w');
-		log(`Starting port forward on localhost:${port} -> svc/n8n-main:5678 (log: ${pfLogPath})`);
-		portForward = spawn('kubectl', ['port-forward', 'svc/n8n-main', `${port}:5678`], {
-			env,
-			stdio: ['ignore', pfLogFd, pfLogFd],
-		});
+		let stopping = false;
+
+		const spawnPortForward = () => {
+			log(`Starting port forward on localhost:${port} -> svc/n8n-main:5678`);
+			const pf = spawn('kubectl', ['port-forward', 'svc/n8n-main', `${port}:5678`], {
+				env,
+				stdio: ['ignore', pfLogFd, pfLogFd],
+			});
+			pf.on('exit', (code) => {
+				if (!stopping) {
+					log(`Port forward exited (code ${code}), restarting...`);
+					portForward = spawnPortForward();
+				}
+			});
+			return pf;
+		};
+
+		portForward = spawnPortForward();
 
 		// Give port-forward a moment to establish
 		await wait(2000);
@@ -320,13 +333,13 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		await pollHealthEndpoint(baseUrl, Math.min(startupTimeoutMs, 120_000));
 		log(`n8n is ready at ${baseUrl}`);
 
-		const pf = portForward;
 		return {
 			baseUrl,
 			kubeConfigPath,
 			stop: async () => {
 				log('Shutting down...');
-				pf.kill();
+				stopping = true;
+				portForward?.kill();
 				try {
 					unlinkSync(kubeConfigPath);
 				} catch {
