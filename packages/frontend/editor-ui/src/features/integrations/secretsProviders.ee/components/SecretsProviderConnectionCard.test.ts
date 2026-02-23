@@ -45,7 +45,6 @@ describe('SecretsProviderConnectionCard', () => {
 		name: 'aws-production',
 		type: 'awsSecretsManager',
 		state: 'connected',
-		isEnabled: true,
 		projects: [],
 		secretsCount: 5,
 		secrets: [
