@@ -14,7 +14,7 @@ describe('createBinaryChecksEvaluator', () => {
 		const evaluator = createBinaryChecksEvaluator({ nodeTypes: mockNodeTypes });
 		const workflow = { name: 'test', nodes: [], connections: {} };
 		const feedback = await evaluator.evaluate(workflow, { prompt: 'test' });
-		expect(feedback.length).toBe(12); // 12 deterministic checks
+		expect(feedback.length).toBe(17); // 17 deterministic checks
 		expect(feedback.every((f) => f.evaluator === 'binary-checks')).toBe(true);
 		expect(feedback.every((f) => f.kind === 'metric')).toBe(true);
 		expect(feedback.every((f) => f.score === 0 || f.score === 1)).toBe(true);

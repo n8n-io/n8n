@@ -2,13 +2,18 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { BinaryCheckContext } from '../../types';
 import { allNodesConnected } from '../all-nodes-connected';
+import { expressionsReferenceExistingNodes } from '../expressions-reference-existing-nodes';
 import { hasNodes } from '../has-nodes';
 import { hasStartNode } from '../has-start-node';
 import { hasTrigger } from '../has-trigger';
 import { noEmptySetNodes } from '../no-empty-set-nodes';
 import { noHardcodedCredentials } from '../no-hardcoded-credentials';
+import { noInvalidFromAi } from '../no-invalid-from-ai';
 import { noUnnecessaryCodeNodes } from '../no-unnecessary-code-nodes';
 import { noUnreachableNodes } from '../no-unreachable-nodes';
+import { toolsHaveParameters } from '../tools-have-parameters';
+import { validOptionsValues } from '../valid-options-values';
+import { validRequiredParameters } from '../valid-required-parameters';
 
 // Minimal trigger node type for tests
 const triggerNodeType: INodeTypeDescription = {
@@ -526,5 +531,423 @@ describe('has_start_node', () => {
 			makeCtx(),
 		);
 		expect(result.pass).toBe(false);
+	});
+});
+
+describe('expressions_reference_existing_nodes', () => {
+	it('passes when expressions reference existing nodes', async () => {
+		const result = await expressionsReferenceExistingNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [200, 0],
+						parameters: {
+							assignments: {
+								assignments: [
+									{ name: 'val', value: "={{ $('Trigger').first().json.data }}", type: 'string' },
+								],
+							},
+						},
+					},
+				],
+				connections: {
+					Trigger: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+				},
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('fails when expression references non-existent node', async () => {
+		const result = await expressionsReferenceExistingNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {
+							assignments: {
+								assignments: [
+									{
+										name: 'val',
+										value: "={{ $('NonExistent').first().json.data }}",
+										type: 'string',
+									},
+								],
+							},
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('NonExistent');
+		expect(result.comment).toContain('Set');
+	});
+
+	it('passes when no expressions are present', async () => {
+		const result = await expressionsReferenceExistingNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: { mode: 'manual' },
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('passes for $json references (no node name)', async () => {
+		const result = await expressionsReferenceExistingNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {
+							assignments: {
+								assignments: [{ name: 'val', value: '={{ $json.field }}', type: 'string' }],
+							},
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('detects legacy $node["Name"] syntax', async () => {
+		const result = await expressionsReferenceExistingNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {
+							assignments: {
+								assignments: [
+									{
+										name: 'val',
+										value: '={{ $node["Missing"].json.field }}',
+										type: 'string',
+									},
+								],
+							},
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('Missing');
+	});
+
+	it('passes for empty workflow', async () => {
+		const result = await expressionsReferenceExistingNodes.run(
+			makeWorkflow({ nodes: [] }),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
+});
+
+describe('valid_required_parameters', () => {
+	const nodeTypeWithRequired: INodeTypeDescription = {
+		displayName: 'HTTP Request',
+		name: 'n8n-nodes-base.httpRequest',
+		group: ['transform'],
+		version: 1,
+		defaults: { name: 'HTTP Request' },
+		inputs: ['main'],
+		outputs: ['main'],
+		description: 'HTTP',
+		properties: [
+			{
+				displayName: 'URL',
+				name: 'url',
+				type: 'string',
+				default: '',
+				required: true,
+			},
+		],
+	};
+
+	it('passes when required parameters are present', async () => {
+		const result = await validRequiredParameters.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: { url: 'https://example.com' },
+					},
+				],
+			}),
+			makeCtx({ nodeTypes: [...nodeTypes, nodeTypeWithRequired] }),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('fails when required parameter is missing', async () => {
+		const result = await validRequiredParameters.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+			}),
+			makeCtx({ nodeTypes: [...nodeTypes, nodeTypeWithRequired] }),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('URL');
+	});
+});
+
+describe('valid_options_values', () => {
+	const nodeTypeWithOptions: INodeTypeDescription = {
+		displayName: 'HTTP Request',
+		name: 'n8n-nodes-base.httpRequest',
+		group: ['transform'],
+		version: 1,
+		defaults: { name: 'HTTP Request' },
+		inputs: ['main'],
+		outputs: ['main'],
+		description: 'HTTP',
+		properties: [
+			{
+				displayName: 'Method',
+				name: 'method',
+				type: 'options',
+				default: 'GET',
+				options: [
+					{ name: 'GET', value: 'GET' },
+					{ name: 'POST', value: 'POST' },
+					{ name: 'PUT', value: 'PUT' },
+				],
+			},
+		],
+	};
+
+	it('passes when option value is valid', async () => {
+		const result = await validOptionsValues.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: { method: 'POST' },
+					},
+				],
+			}),
+			makeCtx({ nodeTypes: [...nodeTypes, nodeTypeWithOptions] }),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('fails when option value is invalid', async () => {
+		const result = await validOptionsValues.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: { method: 'INVALID' },
+					},
+				],
+			}),
+			makeCtx({ nodeTypes: [...nodeTypes, nodeTypeWithOptions] }),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('INVALID');
+	});
+});
+
+describe('no_invalid_from_ai', () => {
+	const toolNodeType: INodeTypeDescription = {
+		displayName: 'HTTP Tool',
+		name: 'n8n-nodes-base.httpRequestTool',
+		group: ['transform'],
+		version: 1,
+		defaults: { name: 'HTTP Tool' },
+		inputs: ['main'],
+		outputs: ['main'],
+		description: 'HTTP tool',
+		properties: [],
+		codex: { subcategories: { AI: ['Tools'] } },
+	};
+
+	it('passes when $fromAI is used in tool nodes', async () => {
+		const result = await noInvalidFromAi.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Tool',
+						type: 'n8n-nodes-base.httpRequestTool',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: { url: '={{ $fromAI("url", "The URL to fetch") }}' },
+					},
+				],
+			}),
+			makeCtx({ nodeTypes: [...nodeTypes, toolNodeType] }),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('fails when $fromAI is used in non-tool nodes', async () => {
+		const result = await noInvalidFromAi.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: { value: '={{ $fromAI("name", "User name") }}' },
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('Set');
+		expect(result.comment).toContain('$fromAI');
+	});
+
+	it('passes when no $fromAI usage', async () => {
+		const result = await noInvalidFromAi.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: { value: '={{ $json.name }}' },
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
+});
+
+describe('tools_have_parameters', () => {
+	const toolNodeType: INodeTypeDescription = {
+		displayName: 'HTTP Tool',
+		name: 'n8n-nodes-base.httpRequestTool',
+		group: ['transform'],
+		version: 1,
+		defaults: { name: 'HTTP Tool' },
+		inputs: ['main'],
+		outputs: ['main'],
+		description: 'HTTP tool',
+		properties: [],
+		codex: { subcategories: { AI: ['Tools'] } },
+	};
+
+	const excludedToolType: INodeTypeDescription = {
+		displayName: 'Calculator',
+		name: '@n8n/n8n-nodes-langchain.toolCalculator',
+		group: ['transform'],
+		version: 1,
+		defaults: { name: 'Calculator' },
+		inputs: ['main'],
+		outputs: ['main'],
+		description: 'Calculator tool',
+		properties: [],
+		codex: { subcategories: { AI: ['Tools'] } },
+	};
+
+	it('passes when tool has parameters', async () => {
+		const result = await toolsHaveParameters.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Tool',
+						type: 'n8n-nodes-base.httpRequestTool',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: { url: 'https://example.com' },
+					},
+				],
+			}),
+			makeCtx({ nodeTypes: [...nodeTypes, toolNodeType] }),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('fails when tool has no parameters', async () => {
+		const result = await toolsHaveParameters.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Tool',
+						type: 'n8n-nodes-base.httpRequestTool',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+			}),
+			makeCtx({ nodeTypes: [...nodeTypes, toolNodeType] }),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('Tool');
+	});
+
+	it('passes for excluded tool types without parameters', async () => {
+		const result = await toolsHaveParameters.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Calc',
+						type: '@n8n/n8n-nodes-langchain.toolCalculator',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+			}),
+			makeCtx({ nodeTypes: [...nodeTypes, excludedToolType] }),
+		);
+		expect(result.pass).toBe(true);
 	});
 });
