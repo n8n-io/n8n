@@ -440,7 +440,7 @@ describe('useQuickConnect()', () => {
 							await connect({
 								credentialTypeName: 'pineconeApi',
 								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
-								source: 'node',
+								source: 'node_type',
 								serviceName: 'Pinecone',
 							});
 
@@ -463,7 +463,7 @@ describe('useQuickConnect()', () => {
 							await connect({
 								credentialTypeName: 'pineconeApi',
 								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
-								source: 'node',
+								source: 'node_type',
 								serviceName: 'Pinecone',
 							});
 
