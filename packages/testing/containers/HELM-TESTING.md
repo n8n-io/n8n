@@ -70,7 +70,7 @@ kubectl logs -l app.kubernetes.io/name=n8n
 
 # 4. Run tests
 N8N_BASE_URL=http://localhost:<port> RESET_E2E_DB=true \
-  npx playwright test tests/e2e/building-blocks/ --workers=2
+  npx playwright test tests/e2e/building-blocks/ --workers=1
 
 # 5. Cleanup
 pnpm stack:helm:clean

@@ -115,7 +115,7 @@ async function main() {
 	console.log('');
 	log.info('Run tests against this instance:');
 	log.info(
-		`  ${colors.bright}N8N_BASE_URL=${stack.baseUrl} RESET_E2E_DB=true npx playwright test tests/e2e/building-blocks/ --workers=2${colors.reset}`,
+		`  ${colors.bright}N8N_BASE_URL=${stack.baseUrl} RESET_E2E_DB=true npx playwright test tests/e2e/building-blocks/ --workers=1${colors.reset}`,
 	);
 	console.log('');
 	log.info('Press Ctrl+C to stop');

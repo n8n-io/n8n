@@ -299,7 +299,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		log(`Starting port forward on localhost:${port} -> svc/n8n-main:5678`);
 		portForward = spawn('kubectl', ['port-forward', 'svc/n8n-main', `${port}:5678`], {
 			env,
-			stdio: 'pipe',
+			stdio: 'ignore',
 		});
 
 		// Give port-forward a moment to establish
