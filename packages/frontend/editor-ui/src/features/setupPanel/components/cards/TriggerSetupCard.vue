@@ -5,9 +5,11 @@ import { N8nCallout, N8nIcon, N8nTooltip } from '@n8n/design-system';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
+import WebhookUrlPreview from '@/features/setupPanel/components/WebhookUrlPreview.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
+import { useWebhookUrls } from '@/features/setupPanel/composables/useWebhookUrls';
 
 import type { TriggerSetupState } from '@/features/setupPanel/setupPanel.types';
 import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
@@ -31,11 +33,13 @@ const {
 	isButtonDisabled,
 	label,
 	buttonIcon,
-	tooltipText,
+	tooltipItems,
 	execute,
 	isInListeningState,
 	listeningHint,
 } = useTriggerExecution(nodeRef);
+
+const { webhookUrls } = useWebhookUrls(nodeRef);
 
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),
@@ -96,13 +100,16 @@ onBeforeUnmount(() => {
 				{{ listeningHint }}
 			</N8nCallout>
 		</template>
+		<template #webhook-urls>
+			<WebhookUrlPreview v-if="isInListeningState && webhookUrls.length > 0" :urls="webhookUrls" />
+		</template>
 		<template #footer-actions>
 			<TriggerExecuteButton
 				:label="label"
 				:icon="buttonIcon"
 				:disabled="isButtonDisabled"
 				:loading="isExecuting"
-				:tooltip-text="tooltipText"
+				:tooltip-items="tooltipItems"
 				@click="onExecuteClick"
 			/>
 		</template>
