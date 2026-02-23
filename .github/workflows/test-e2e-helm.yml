@@ -52,10 +52,14 @@ jobs:
           RUNNERS_IMAGE_BASE_NAME: ghcr.io/${{ github.repository_owner }}/runners
 
   helm-e2e:
-    name: 'Helm Chart E2E'
+    name: 'Helm E2E (${{ matrix.mode }})'
     needs: build
     runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [standalone, queue]
     permissions:
       packages: read
       contents: read
@@ -94,6 +98,7 @@ jobs:
       - name: Start K3s + Helm stack
         run: |
           npx tsx packages/testing/containers/helm-start-stack.ts \
+            --mode "${{ matrix.mode }}" \
             --image "${{ env.DOCKER_IMAGE }}" \
             --chart-ref "${{ env.HELM_CHART_REF }}" \
             --url-file /tmp/n8n-helm-url.txt &
@@ -132,7 +137,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: helm-e2e-report
+          name: helm-e2e-report-${{ matrix.mode }}
           path: |
             packages/testing/playwright/test-results/
             packages/testing/playwright/playwright-report/
