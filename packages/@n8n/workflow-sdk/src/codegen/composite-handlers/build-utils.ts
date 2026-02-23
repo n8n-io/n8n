@@ -93,8 +93,12 @@ export function extractInputIndex(slotName: string): number {
 
 /**
  * Extract output index from semantic output name (e.g., 'output0' → 0, 'output1' → 1)
+ * The 'error' output maps to index 1 (for nodes with continueErrorOutput).
  */
 export function getOutputIndex(outputName: string): number {
+	if (outputName === 'error') {
+		return 1;
+	}
 	const match = outputName.match(/^output(\d+)$/);
 	if (match) {
 		return parseInt(match[1], 10);

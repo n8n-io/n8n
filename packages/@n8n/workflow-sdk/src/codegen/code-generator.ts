@@ -845,10 +845,12 @@ function generateSplitInBatches(sib: SplitInBatchesCompositeNode, ctx: Generatio
 					if (strippedCode === null) {
 						// Branch is just the self-loop
 						branchCode = `nextBatch(${sibVarName})`;
-					} else {
-						// Has processing nodes before the loop back
+					} else if (strippedCode !== branchCode) {
+						// Has processing nodes before the loop back to SIB
 						branchCode = `${strippedCode}.to(nextBatch(${sibVarName}))`;
 					}
+					// else: VarRef is NOT to the SIB - leave unchanged.
+					// The loop-back connection already exists via the main chain.
 				}
 
 				return branchCode;
@@ -865,10 +867,12 @@ function generateSplitInBatches(sib: SplitInBatchesCompositeNode, ctx: Generatio
 				if (strippedCode === null) {
 					// Entire each branch is just the self-loop (no processing nodes)
 					eachCode = `nextBatch(${sibVarName})`;
-				} else {
-					// Has processing nodes before the loop back
+				} else if (strippedCode !== eachCode) {
+					// Has processing nodes before the loop back to SIB
 					eachCode = `${strippedCode}.to(nextBatch(${sibVarName}))`;
 				}
+				// else: VarRef is NOT to the SIB - leave unchanged.
+				// The loop-back connection already exists via the main chain.
 			}
 		}
 
@@ -1094,6 +1098,30 @@ export function collectNestedMultiOutputs(
 }
 
 /**
+ * Generate a multi-output target code string.
+ * When a fan-out's source node matches the multi-output source, unwraps it to just the
+ * targets array, avoiding self-referencing connections (e.g., webhook.output(1).to(webhook...)).
+ */
+function generateMultiOutputTarget(
+	targetComposite: CompositeNode,
+	multiOutputSourceName: string,
+	ctx: GenerationContext,
+): string {
+	if (
+		targetComposite.kind === 'fanOut' &&
+		targetComposite.sourceNode.kind === 'leaf' &&
+		targetComposite.sourceNode.node.name === multiOutputSourceName
+	) {
+		const innerCtx = { ...ctx, indent: ctx.indent + 1 };
+		const targetsCode = targetComposite.targets
+			.map((target) => generateComposite(target, innerCtx))
+			.join(',\n' + getIndent(innerCtx));
+		return `[\n${getIndent(innerCtx)}${targetsCode}]`;
+	}
+	return generateComposite(targetComposite, ctx);
+}
+
+/**
  * Generate the output connections for a multiOutput node as separate .add() calls.
  */
 function generateMultiOutputConnections(
@@ -1107,7 +1135,7 @@ function generateMultiOutputConnections(
 	const sortedOutputs = [...multiOutput.outputTargets.entries()].sort((a, b) => a[0] - b[0]);
 
 	for (const [outputIndex, targetComposite] of sortedOutputs) {
-		const targetCode = generateComposite(targetComposite, ctx);
+		const targetCode = generateMultiOutputTarget(targetComposite, multiOutput.sourceNode.name, ctx);
 		calls.push(['add', `${sourceVarName}.output(${outputIndex}).to(${targetCode})`]);
 	}
 
@@ -1139,7 +1167,11 @@ function flattenToWorkflowCalls(
 		// Collect nested multiOutput nodes from output targets
 		const nestedMultiOutputs: MultiOutputNode[] = [];
 		for (const [outputIndex, targetComposite] of sortedOutputs) {
-			const targetCode = generateComposite(targetComposite, ctx);
+			const targetCode = generateMultiOutputTarget(
+				targetComposite,
+				multiOutput.sourceNode.name,
+				ctx,
+			);
 			calls.push(['add', `${sourceVarName}.output(${outputIndex}).to(${targetCode})`]);
 			collectNestedMultiOutputs(targetComposite, nestedMultiOutputs);
 		}
@@ -1189,7 +1221,11 @@ function flattenToWorkflowCalls(
 				const sortedOutputs = [...multiOutput.outputTargets.entries()].sort((a, b) => a[0] - b[0]);
 
 				for (const [outputIndex, targetComposite] of sortedOutputs) {
-					const targetCode = generateComposite(targetComposite, ctx);
+					const targetCode = generateMultiOutputTarget(
+						targetComposite,
+						multiOutput.sourceNode.name,
+						ctx,
+					);
 					calls.push(['add', `${sourceVarName}.output(${outputIndex}).to(${targetCode})`]);
 
 					// Collect nested multiOutput nodes from output targets
