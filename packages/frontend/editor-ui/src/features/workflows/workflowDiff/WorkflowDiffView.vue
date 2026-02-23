@@ -296,7 +296,7 @@ onMounted(async () => {
 }
 
 .popper {
-	box-shadow: 0 6px 16px 0 rgba(68, 28, 23, 0.06);
+	box-shadow: var(--shadow--light);
 	:global(.el-popper__arrow) {
 		display: none;
 	}
