@@ -1,11 +1,12 @@
 <template>
-	<button :class="$style.googleAuthBtn">
+	<button :class="$style.googleAuthBtn" aria-label="Sign in with Google">
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
 			width="175"
 			height="40"
 			fill="none"
 			viewBox="0 0 175 40"
+			aria-hidden="true"
 		>
 			<rect width="174" height="39" x=".5" y=".5" fill="#fff" rx="3.5" />
 			<g clip-path="url(#a)">
