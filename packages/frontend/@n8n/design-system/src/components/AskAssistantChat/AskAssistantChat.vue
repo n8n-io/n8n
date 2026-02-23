@@ -465,7 +465,6 @@ defineExpose({
 						<AssistantIcon size="large" />
 						<AssistantText size="large" :text="t('assistantChat.aiAssistantLabel')" />
 					</div>
-					<span :class="$style.betaTag">{{ t('assistantChat.aiAssistantBetaLabel') }}</span>
 				</div>
 				<slot name="header" />
 			</div>
@@ -727,12 +726,6 @@ defineExpose({
 	> div:first-of-type {
 		width: 100%;
 	}
-}
-
-.betaTag {
-	color: var(--color--text);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
 }
 
 .body {
