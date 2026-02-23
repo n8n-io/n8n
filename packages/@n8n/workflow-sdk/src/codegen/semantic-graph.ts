@@ -8,8 +8,8 @@
 import { getOutputName, getInputName } from './semantic-registry';
 import type { SemanticGraph, SemanticNode, SemanticConnection, AiConnectionType } from './types';
 import { AI_CONNECTION_TYPES } from './types';
-import type { WorkflowJSON, NodeJSON } from '../types/base';
-import { normalizeConnections } from '../types/base';
+import type { WorkflowJSON, NodeJSON, IConnections } from '../types/base';
+import { normalizeConnections, generateUniqueName } from '../types/base';
 import { isTriggerNodeType } from '../utils/trigger-detection';
 
 /**
@@ -331,11 +331,12 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 		cycleEdges: new Map(),
 	};
 
-	// Phase 1: Create nodes
+	// Phase 1: Create nodes (shallow-clone each NodeJSON to avoid mutating the input)
 	// Generate unique names for nodes with undefined/empty names or duplicate names
 	// to prevent Map key collisions
 	const unnamedCounters = new Map<string, number>();
-	for (const nodeJson of json.nodes) {
+	for (const rawNode of json.nodes) {
+		const nodeJson = { ...rawNode };
 		let nodeName = nodeJson.name;
 		if (nodeName === undefined || nodeName === '') {
 			// Generate a unique name based on type, preserving the undefined/empty name in json
@@ -346,13 +347,7 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 		} else if (graph.nodes.has(nodeName)) {
 			// Duplicate node name — generate a unique key to avoid Map collision.
 			// The first instance keeps the original name (connections reference it).
-			let uniqueName = nodeName;
-			let counter = 2;
-			while (graph.nodes.has(uniqueName)) {
-				uniqueName = `${nodeName} ${counter}`;
-				counter++;
-			}
-			nodeName = uniqueName;
+			nodeName = generateUniqueName(nodeName, (n) => graph.nodes.has(n));
 		}
 		const semanticNode = createSemanticNode(nodeJson);
 		// Ensure SemanticNode.name matches the unique graph key for variable name generation
@@ -360,10 +355,11 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 		graph.nodes.set(nodeName, semanticNode);
 	}
 
-	// Phase 2: Normalize and parse connections
-	normalizeConnections(json.connections);
+	// Phase 2: Normalize and parse connections (deep-clone to avoid mutating input)
+	const connections: IConnections = JSON.parse(JSON.stringify(json.connections)) as IConnections;
+	normalizeConnections(connections);
 
-	for (const [sourceName, connectionTypes] of Object.entries(json.connections)) {
+	for (const [sourceName, connectionTypes] of Object.entries(connections)) {
 		for (const [connType, outputs] of Object.entries(connectionTypes)) {
 			const typedOutputs = outputs as Array<Array<{
 				node: string;

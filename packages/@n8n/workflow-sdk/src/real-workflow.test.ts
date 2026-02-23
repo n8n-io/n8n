@@ -8,7 +8,8 @@ import {
 	COMMITTED_FIXTURES_DIR,
 } from './__tests__/fixtures-download';
 import { generateWorkflowCode } from './codegen';
-import type { WorkflowJSON } from './types/base';
+import type { WorkflowJSON, IConnections } from './types/base';
+import { normalizeConnections } from './types/base';
 import { workflow } from './workflow-builder';
 
 /**
@@ -150,8 +151,9 @@ describe('Real Workflow Round-Trip', () => {
 							expect(exportedNode.name).toBe(originalNode.name);
 							expect(exportedNode.position).toEqual(originalNode.position);
 							// SDK defaults undefined typeVersion to 1
+							// Compare as numbers since string typeVersions are normalized to numbers
 							if (originalNode.typeVersion !== undefined) {
-								expect(exportedNode.typeVersion).toBe(originalNode.typeVersion);
+								expect(exportedNode.typeVersion).toBe(Number(originalNode.typeVersion));
 							}
 							expect(exportedNode.parameters).toEqual(originalNode.parameters);
 
@@ -161,7 +163,13 @@ describe('Real Workflow Round-Trip', () => {
 						}
 					}
 
-					const filteredOriginal = filterEmptyConnections(json.connections);
+					// Normalize original connections (clone first to avoid mutating input)
+					// since the original JSON may have flat tuple connections
+					const normalizedOriginalConns: IConnections = JSON.parse(
+						JSON.stringify(json.connections),
+					) as IConnections;
+					normalizeConnections(normalizedOriginalConns);
+					const filteredOriginal = filterEmptyConnections(normalizedOriginalConns);
 					const filteredExported = filterEmptyConnections(exported.connections);
 
 					const nodeNames = new Set(json.nodes.map((n) => n.name));

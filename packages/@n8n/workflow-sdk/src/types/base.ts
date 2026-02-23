@@ -184,6 +184,24 @@ export function normalizeConnections(connections: IConnections): void {
 	}
 }
 
+/**
+ * Generate a unique name by appending an incrementing counter (starting at 2).
+ * The first instance keeps the original baseName; duplicates get "baseName 2", "baseName 3", etc.
+ *
+ * @param baseName - The original name to deduplicate
+ * @param exists - Callback that returns true if a name is already taken
+ * @returns A unique name derived from baseName
+ */
+export function generateUniqueName(baseName: string, exists: (name: string) => boolean): string {
+	let counter = 2;
+	let uniqueName = `${baseName} ${counter}`;
+	while (exists(uniqueName)) {
+		counter++;
+		uniqueName = `${baseName} ${counter}`;
+	}
+	return uniqueName;
+}
+
 // =============================================================================
 // Internal: Serialization types
 // =============================================================================

@@ -359,4 +359,33 @@ describe('parseWorkflowJSON', () => {
 			index: 0,
 		});
 	});
+
+	it('does not mutate the input WorkflowJSON', () => {
+		const json: WorkflowJSON = {
+			id: 'test',
+			name: 'Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: '3' as unknown as number,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Node: {
+					main: [['Target', 'main', 0] as unknown as null],
+				},
+			},
+		};
+		const originalConnections = JSON.stringify(json.connections);
+		const originalTypeVersion = json.nodes[0].typeVersion;
+
+		parseWorkflowJSON(json);
+
+		expect(json.nodes[0].typeVersion).toBe(originalTypeVersion);
+		expect(JSON.stringify(json.connections)).toBe(originalConnections);
+	});
 });

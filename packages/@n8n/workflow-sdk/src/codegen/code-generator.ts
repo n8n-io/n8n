@@ -1016,49 +1016,55 @@ function generateVariableDeclarations(
  * Recursively collect all nested multiOutput nodes from a composite tree.
  * These need to be extracted and their output connections generated as separate .add() calls.
  */
-function collectNestedMultiOutputs(node: CompositeNode, collected: MultiOutputNode[]): void {
+export function collectNestedMultiOutputs(
+	node: CompositeNode,
+	collected: MultiOutputNode[],
+	visited: WeakSet<CompositeNode> = new WeakSet(),
+): void {
 	if (!node) return;
+	if (visited.has(node)) return;
+	visited.add(node);
 
 	if (node.kind === 'multiOutput') {
 		collected.push(node);
 		// Also check the output targets for nested multiOutput nodes
 		for (const [, target] of node.outputTargets) {
-			collectNestedMultiOutputs(target, collected);
+			collectNestedMultiOutputs(target, collected, visited);
 		}
 	} else if (node.kind === 'chain') {
 		for (const n of node.nodes) {
-			collectNestedMultiOutputs(n, collected);
+			collectNestedMultiOutputs(n, collected, visited);
 		}
 	} else if (node.kind === 'splitInBatches') {
 		const sib = node;
 		if (sib.doneChain) {
 			if (Array.isArray(sib.doneChain)) {
-				for (const b of sib.doneChain) collectNestedMultiOutputs(b, collected);
+				for (const b of sib.doneChain) collectNestedMultiOutputs(b, collected, visited);
 			} else {
-				collectNestedMultiOutputs(sib.doneChain, collected);
+				collectNestedMultiOutputs(sib.doneChain, collected, visited);
 			}
 		}
 		if (sib.loopChain) {
 			if (Array.isArray(sib.loopChain)) {
-				for (const b of sib.loopChain) collectNestedMultiOutputs(b, collected);
+				for (const b of sib.loopChain) collectNestedMultiOutputs(b, collected, visited);
 			} else {
-				collectNestedMultiOutputs(sib.loopChain, collected);
+				collectNestedMultiOutputs(sib.loopChain, collected, visited);
 			}
 		}
 	} else if (node.kind === 'ifElse') {
 		const ifElse = node;
 		if (ifElse.trueBranch) {
 			if (Array.isArray(ifElse.trueBranch)) {
-				for (const b of ifElse.trueBranch) collectNestedMultiOutputs(b, collected);
+				for (const b of ifElse.trueBranch) collectNestedMultiOutputs(b, collected, visited);
 			} else {
-				collectNestedMultiOutputs(ifElse.trueBranch, collected);
+				collectNestedMultiOutputs(ifElse.trueBranch, collected, visited);
 			}
 		}
 		if (ifElse.falseBranch) {
 			if (Array.isArray(ifElse.falseBranch)) {
-				for (const b of ifElse.falseBranch) collectNestedMultiOutputs(b, collected);
+				for (const b of ifElse.falseBranch) collectNestedMultiOutputs(b, collected, visited);
 			} else {
-				collectNestedMultiOutputs(ifElse.falseBranch, collected);
+				collectNestedMultiOutputs(ifElse.falseBranch, collected, visited);
 			}
 		}
 	} else if (node.kind === 'switchCase') {
@@ -1066,22 +1072,22 @@ function collectNestedMultiOutputs(node: CompositeNode, collected: MultiOutputNo
 		for (const c of switchCase.cases) {
 			if (c) {
 				if (Array.isArray(c)) {
-					for (const b of c) collectNestedMultiOutputs(b, collected);
+					for (const b of c) collectNestedMultiOutputs(b, collected, visited);
 				} else {
-					collectNestedMultiOutputs(c, collected);
+					collectNestedMultiOutputs(c, collected, visited);
 				}
 			}
 		}
 	} else if (node.kind === 'fanOut') {
 		const fanOut = node;
-		collectNestedMultiOutputs(fanOut.sourceNode, collected);
+		collectNestedMultiOutputs(fanOut.sourceNode, collected, visited);
 		for (const t of fanOut.targets) {
-			collectNestedMultiOutputs(t, collected);
+			collectNestedMultiOutputs(t, collected, visited);
 		}
 	} else if (node.kind === 'merge') {
 		const merge = node;
 		for (const b of merge.branches) {
-			collectNestedMultiOutputs(b, collected);
+			collectNestedMultiOutputs(b, collected, visited);
 		}
 	}
 	// leaf, varRef, explicitConnections don't need recursive checking

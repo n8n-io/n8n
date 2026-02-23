@@ -5,7 +5,7 @@ import type {
 	StickyNoteConfig,
 	IConnections,
 } from './base';
-import { isNodeChain, isNodeInstance, normalizeConnections } from './base';
+import { isNodeChain, isNodeInstance, normalizeConnections, generateUniqueName } from './base';
 
 describe('Base Types', () => {
 	describe('WorkflowSettings', () => {
@@ -165,6 +165,24 @@ describe('Base Types', () => {
 
 			// Should remain unchanged — 4-element arrays are not flat tuples
 			expect(connections.Trigger.main[0]).toHaveLength(4);
+		});
+	});
+
+	describe('generateUniqueName', () => {
+		it('returns baseName with suffix 2 when baseName exists', () => {
+			const existing = new Set(['HTTP']);
+			expect(generateUniqueName('HTTP', (n) => existing.has(n))).toBe('HTTP 2');
+		});
+
+		it('increments suffix when lower suffixes exist', () => {
+			const existing = new Set(['HTTP', 'HTTP 2', 'HTTP 3']);
+			expect(generateUniqueName('HTTP', (n) => existing.has(n))).toBe('HTTP 4');
+		});
+
+		it('always starts checking at 2', () => {
+			const existing = new Set(['HTTP']);
+			// Should return "HTTP 2", not "HTTP 1"
+			expect(generateUniqueName('HTTP', (n) => existing.has(n))).toBe('HTTP 2');
 		});
 	});
 

@@ -595,5 +595,32 @@ describe('semantic-graph', () => {
 				{ target: 'Process', targetInputSlot: 'input0' },
 			]);
 		});
+
+		it('does not mutate the input WorkflowJSON', () => {
+			const json: WorkflowJSON = {
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'Node',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: '2' as unknown as number,
+						position: [0, 0],
+					},
+				],
+				connections: {
+					Node: {
+						main: [['Target', 'main', 0] as unknown as null],
+					},
+				},
+			};
+			const originalConnections = JSON.stringify(json.connections);
+			const originalTypeVersion = json.nodes[0].typeVersion;
+
+			buildSemanticGraph(json);
+
+			expect(json.nodes[0].typeVersion).toBe(originalTypeVersion); // still string
+			expect(JSON.stringify(json.connections)).toBe(originalConnections); // still flat tuple
+		});
 	});
 });

@@ -8,11 +8,13 @@ import { deepCopy } from 'n8n-workflow';
 
 import {
 	normalizeConnections,
+	generateUniqueName,
 	type WorkflowJSON,
 	type NodeInstance,
 	type GraphNode,
 	type ConnectionTarget,
 	type IDataObject,
+	type IConnections,
 	type CredentialReference,
 	type NewCredentialValue,
 } from '../types/base';
@@ -39,9 +41,10 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 	// Map from connection name (how nodes reference each other) to map key
 	const nameToKey = new Map<string, string>();
 
-	// Create node instances from JSON
+	// Create node instances from JSON (shallow-clone each node to avoid mutating the input)
 	let unnamedCounter = 0;
-	for (const n8nNode of json.nodes) {
+	for (const rawNode of json.nodes) {
+		const n8nNode = { ...rawNode };
 		// Normalize typeVersion to number (some workflows store it as a string)
 		if (typeof n8nNode.typeVersion === 'string') {
 			n8nNode.typeVersion = Number(n8nNode.typeVersion);
@@ -100,11 +103,7 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 		// Handle duplicate node names: generate unique key for duplicates
 		// The first instance keeps the original name (connections reference it)
 		if (nodes.has(mapKey)) {
-			let counter = 2;
-			while (nodes.has(`${nodeName} ${counter}`)) {
-				counter++;
-			}
-			mapKey = `${nodeName} ${counter}`;
+			mapKey = generateUniqueName(nodeName, (n) => nodes.has(n));
 		} else {
 			nameToKey.set(nodeName, mapKey);
 		}
@@ -115,11 +114,12 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 		});
 	}
 
-	// Rebuild connections
+	// Rebuild connections (deep-clone to avoid mutating the input)
 	if (json.connections) {
-		normalizeConnections(json.connections);
+		const connections: IConnections = JSON.parse(JSON.stringify(json.connections)) as IConnections;
+		normalizeConnections(connections);
 
-		for (const [sourceName, nodeConns] of Object.entries(json.connections)) {
+		for (const [sourceName, nodeConns] of Object.entries(connections)) {
 			const mapKey = nameToKey.get(sourceName);
 			const graphNode = mapKey ? nodes.get(mapKey) : undefined;
 			if (!graphNode) continue;

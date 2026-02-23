@@ -2556,4 +2556,28 @@ describe('Workflow Builder', () => {
 			});
 		});
 	});
+
+	describe('depth overflow protection', () => {
+		it('throws when branch depth exceeds MAX_BRANCH_DEPTH', () => {
+			// Build deeply nested IF composites — each true branch is another IF builder
+			// This triggers recursive addBranchToGraph calls via the IfElse composite handler
+			// MAX_BRANCH_DEPTH is 500, so we need > 500 nesting levels
+			const leaf = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Leaf' } });
+			let current: NodeInstance<string, string, unknown> = leaf;
+			for (let i = 0; i < 510; i++) {
+				const ifNode = node({
+					type: 'n8n-nodes-base.if' as const,
+					version: 2,
+					config: { name: `IF ${i}` },
+				});
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				current = ifNode.onTrue!(current) as unknown as NodeInstance<string, string, unknown>;
+			}
+
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			const wf = workflow('test', 'Test').add(t);
+
+			expect(() => wf.to(current)).toThrow(/Maximum branch depth/);
+		});
+	});
 });

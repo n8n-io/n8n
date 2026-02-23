@@ -49,7 +49,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private _staleIdToKeyMap?: Map<string, string>;
 	private _branchDepth = 0;
 	private _dispatchedComposites = new WeakSet<object>();
-	private static readonly MAX_BRANCH_DEPTH = 200;
+	private static readonly MAX_BRANCH_DEPTH = 500;
 
 	constructor(
 		id: string,
@@ -970,11 +970,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	): string {
 		// Guard against infinite recursion from cycles in branch chains
 		if (this._branchDepth >= WorkflowBuilderImpl.MAX_BRANCH_DEPTH) {
-			// Return the branch name without further processing to break the cycle
-			if ('name' in branch && typeof branch.name === 'string') {
-				return branch.name;
-			}
-			return '';
+			throw new Error(
+				`Maximum branch depth (${WorkflowBuilderImpl.MAX_BRANCH_DEPTH}) exceeded while building workflow graph`,
+			);
 		}
 		this._branchDepth++;
 		try {

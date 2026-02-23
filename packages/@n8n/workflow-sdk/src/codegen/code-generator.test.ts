@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll } from '@jest/globals';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { generateCode } from './code-generator';
+import { generateCode, collectNestedMultiOutputs } from './code-generator';
+import type { MultiOutputNode } from './composite-tree';
 import { buildCompositeTree } from './composite-builder';
 import { annotateGraph } from './graph-annotator';
 import { parseWorkflowCode } from './parse-workflow-code';
@@ -3179,6 +3180,25 @@ describe('code-generator', () => {
 				expect(nodeNames).toContain('NodeC');
 				expect(nodeNames).toContain('NodeD');
 			});
+		});
+	});
+
+	describe('collectNestedMultiOutputs', () => {
+		it('handles cycles without infinite recursion', () => {
+			const multiOutput: MultiOutputNode = {
+				kind: 'multiOutput',
+				sourceNode: { name: 'Switch1' } as MultiOutputNode['sourceNode'],
+				outputTargets: new Map(),
+			};
+			// Create a cycle: multiOutput's target points back to itself
+			multiOutput.outputTargets.set(0, multiOutput);
+
+			const collected: MultiOutputNode[] = [];
+			collectNestedMultiOutputs(multiOutput, collected);
+
+			// Should collect the node once and not infinite-loop
+			expect(collected).toHaveLength(1);
+			expect(collected[0]).toBe(multiOutput);
 		});
 	});
 });
