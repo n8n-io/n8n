@@ -1,5 +1,11 @@
-import type { WorkflowSettings, CredentialReference, NodeConfig, StickyNoteConfig } from './base';
-import { isNodeChain, isNodeInstance } from './base';
+import type {
+	WorkflowSettings,
+	CredentialReference,
+	NodeConfig,
+	StickyNoteConfig,
+	IConnections,
+} from './base';
+import { isNodeChain, isNodeInstance, normalizeConnections } from './base';
 
 describe('Base Types', () => {
 	describe('WorkflowSettings', () => {
@@ -88,6 +94,77 @@ describe('Base Types', () => {
 
 		it('returns false for object with _isChain: false', () => {
 			expect(isNodeChain({ _isChain: false })).toBe(false);
+		});
+	});
+
+	describe('normalizeConnections', () => {
+		it('converts flat tuple [node, type, index] to object format', () => {
+			const connections: IConnections = {
+				Trigger: {
+					main: [['Process', 'main', 0] as unknown as null],
+				},
+			};
+
+			normalizeConnections(connections);
+
+			expect(connections.Trigger.main[0]).toEqual([{ node: 'Process', type: 'main', index: 0 }]);
+		});
+
+		it('defaults type to main and index to 0 for short tuples', () => {
+			const connections: IConnections = {
+				Trigger: {
+					main: [['Process'] as unknown as null],
+				},
+			};
+
+			normalizeConnections(connections);
+
+			expect(connections.Trigger.main[0]).toEqual([{ node: 'Process', type: 'main', index: 0 }]);
+		});
+
+		it('preserves standard object format connections', () => {
+			const connections: IConnections = {
+				Trigger: {
+					main: [[{ node: 'Process', type: 'main', index: 0 }]],
+				},
+			};
+
+			normalizeConnections(connections);
+
+			expect(connections.Trigger.main[0]).toEqual([{ node: 'Process', type: 'main', index: 0 }]);
+		});
+
+		it('skips null slots', () => {
+			const connections: IConnections = {
+				Trigger: {
+					main: [null, [{ node: 'Process', type: 'main', index: 0 }]],
+				},
+			};
+
+			normalizeConnections(connections);
+
+			expect(connections.Trigger.main[0]).toBeNull();
+			expect(connections.Trigger.main[1]).toEqual([{ node: 'Process', type: 'main', index: 0 }]);
+		});
+
+		it('does not treat arrays with >3 elements as flat tuples', () => {
+			const connections: IConnections = {
+				Trigger: {
+					main: [
+						[
+							{ node: 'A', type: 'main', index: 0 },
+							{ node: 'B', type: 'main', index: 0 },
+							{ node: 'C', type: 'main', index: 0 },
+							{ node: 'D', type: 'main', index: 0 },
+						],
+					],
+				},
+			};
+
+			normalizeConnections(connections);
+
+			// Should remain unchanged — 4-element arrays are not flat tuples
+			expect(connections.Trigger.main[0]).toHaveLength(4);
 		});
 	});
 

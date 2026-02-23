@@ -172,7 +172,7 @@ export function normalizeConnections(connections: IConnections): void {
 				if (slot.length > 0 && slot.length <= 3 && typeof slot[0] === 'string') {
 					outputs[i] = [
 						{
-							node: slot[0] as string,
+							node: slot[0],
 							type: (slot[1] as string) ?? 'main',
 							index: (slot[2] as number) ?? 0,
 						},

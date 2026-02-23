@@ -472,5 +472,163 @@ describe('semantic-graph', () => {
 			expect(graph.nodes.size).toBe(0);
 			expect(graph.roots).toHaveLength(0);
 		});
+
+		it('parses error type connections', () => {
+			const json: WorkflowJSON = {
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4,
+						position: [0, 0],
+						onError: 'continueErrorOutput',
+					},
+					{
+						id: '2',
+						name: 'ErrorHandler',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 100],
+					},
+				],
+				connections: {
+					HTTP: {
+						error: [[{ node: 'ErrorHandler', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const graph = buildSemanticGraph(json);
+			const http = graph.nodes.get('HTTP')!;
+
+			expect(http.outputs.get('error')).toEqual([
+				{ target: 'ErrorHandler', targetInputSlot: 'input0' },
+			]);
+		});
+
+		it('normalizes string typeVersion to number', () => {
+			const json: WorkflowJSON = {
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'Node',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: '2' as unknown as number,
+						position: [0, 0],
+					},
+				],
+				connections: {},
+			};
+
+			const graph = buildSemanticGraph(json);
+			const node = graph.nodes.get('Node')!;
+
+			expect(node.json.typeVersion).toBe(2);
+			expect(typeof node.json.typeVersion).toBe('number');
+		});
+
+		it('handles duplicate node names with unique graph keys', () => {
+			const json: WorkflowJSON = {
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4,
+						position: [0, 0],
+					},
+					{
+						id: '2',
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4,
+						position: [200, 0],
+					},
+				],
+				connections: {},
+			};
+
+			const graph = buildSemanticGraph(json);
+
+			// Both nodes should exist with unique keys
+			expect(graph.nodes.size).toBe(2);
+			expect(graph.nodes.has('HTTP')).toBe(true);
+			expect(graph.nodes.has('HTTP 2')).toBe(true);
+		});
+
+		it('detects reversed AI connections (parent → subnode)', () => {
+			const json: WorkflowJSON = {
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1.7,
+						position: [0, 0],
+					},
+					{
+						id: '2',
+						name: 'Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {
+					// Reversed: agent (parent) listed as source → model (subnode) as target
+					Agent: {
+						ai_languageModel: [[{ node: 'Model', type: 'ai_languageModel', index: 0 }]],
+					},
+				},
+			};
+
+			const graph = buildSemanticGraph(json);
+			const agent = graph.nodes.get('Agent')!;
+
+			// Should still correctly attach Model as a subnode of Agent
+			expect(agent.subnodes).toContainEqual({
+				connectionType: 'ai_languageModel',
+				subnodeName: 'Model',
+			});
+		});
+
+		it('normalizes flat tuple connections to object format', () => {
+			const json: WorkflowJSON = {
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: '2',
+						name: 'Process',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 0],
+					},
+				],
+				connections: {
+					Trigger: {
+						main: [['Process', 'main', 0] as unknown as null],
+					},
+				},
+			};
+
+			const graph = buildSemanticGraph(json);
+			const trigger = graph.nodes.get('Trigger')!;
+
+			expect(trigger.outputs.get('output0')).toEqual([
+				{ target: 'Process', targetInputSlot: 'input0' },
+			]);
+		});
 	});
 });

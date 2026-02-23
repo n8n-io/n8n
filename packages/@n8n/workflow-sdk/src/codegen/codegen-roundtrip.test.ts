@@ -2342,7 +2342,7 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				const result: Record<string, unknown> = {};
 				for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
 					if (isResourceLocatorLike(value)) {
-						const rlValue = value as Record<string, unknown>;
+						const rlValue = value;
 						const normalized = normalizeResourceLocators(value) as Record<string, unknown>;
 						// Clear placeholder values in list mode (matches builder behavior)
 						if (rlValue.mode === 'list' && isPlaceholderValue(rlValue.value)) {
