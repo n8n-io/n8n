@@ -16,7 +16,7 @@ describe('Sizes', () => {
 
 		const wrapper = render(Sizes, {
 			props: {
-				variables: ['--font-weight-regular'],
+				variables: ['--font-weight--regular'],
 			},
 		});
 		expect(wrapper.html()).toMatchSnapshot();

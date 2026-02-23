@@ -31,10 +31,14 @@ export class TemplatesComposer {
 	 * Opens credential creation, fills name, saves, and closes modal
 	 * @param appName - The name of the app (e.g. 'Shopify', 'X (Formerly Twitter)')
 	 */
-	async fillDummyCredentialForApp(appName: string): Promise<void> {
+	async fillDummyCredentialForApp(
+		appName: string,
+		{ fields }: { fields: Record<string, string> } = { fields: {} },
+	): Promise<void> {
 		await this.n8n.templateCredentialSetup.openCredentialCreation(appName);
 		await this.n8n.templateCredentialSetup.credentialModal.getCredentialName().click();
 		await this.n8n.templateCredentialSetup.credentialModal.getNameInput().fill('test');
+		await this.n8n.templateCredentialSetup.credentialModal.fillAllFields(fields);
 		await this.n8n.templateCredentialSetup.credentialModal.save();
 		await this.n8n.templateCredentialSetup.credentialModal.close();
 	}
@@ -43,8 +47,11 @@ export class TemplatesComposer {
 	 * Fill in dummy credentials for an app and handle confirmation dialog
 	 * @param appName - The name of the app
 	 */
-	async fillDummyCredentialForAppWithConfirm(appName: string): Promise<void> {
-		await this.fillDummyCredentialForApp(appName);
+	async fillDummyCredentialForAppWithConfirm(
+		appName: string,
+		{ fields }: { fields: Record<string, string> } = { fields: {} },
+	): Promise<void> {
+		await this.fillDummyCredentialForApp(appName, { fields });
 		await this.n8n.templateCredentialSetup.dismissMessageBox();
 	}
 }

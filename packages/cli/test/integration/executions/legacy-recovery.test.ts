@@ -4,6 +4,7 @@ import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { DbConnection, ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { v4 as uuid } from 'uuid';
 
 const globalConfig = Container.get(GlobalConfig);
 
@@ -37,6 +38,7 @@ if (globalConfig.database.isLegacySqlite) {
 				nodes: [],
 				connections: {},
 				settings: {},
+				versionId: uuid(),
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			});

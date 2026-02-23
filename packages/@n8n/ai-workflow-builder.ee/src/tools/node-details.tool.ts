@@ -1,12 +1,14 @@
 import { tool } from '@langchain/core/tools';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { MAX_NODE_EXAMPLE_CHARS } from '@/constants';
 import type { BuilderToolBase } from '@/utils/stream-processor';
 
 import { ValidationError, ToolExecutionError } from '../errors';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
+import { getWorkflowState } from './helpers/state';
 import { findNodeType, createNodeTypeNotFoundError } from './helpers/validation';
 import type { NodeDetails } from '../types/nodes';
 import type { NodeDetailsOutput } from '../types/tools';
@@ -16,6 +18,7 @@ import type { NodeDetailsOutput } from '../types/tools';
  */
 const nodeDetailsSchema = z.object({
 	nodeName: z.string().describe('The exact node type name (e.g., n8n-nodes-base.httpRequest)'),
+	nodeVersion: z.number().describe('The exact node version'),
 	withParameters: z
 		.boolean()
 		.optional()
@@ -75,6 +78,7 @@ function formatNodeDetails(
 	details: NodeDetails,
 	withParameters: boolean = false,
 	withConnections: boolean = true,
+	examples: INodeParameters[] = [],
 ): string {
 	const parts: string[] = [];
 
@@ -102,6 +106,27 @@ function formatNodeDetails(
 		parts.push(formatInputs(details.inputs));
 		parts.push(formatOutputs(details.outputs));
 		parts.push('</connections>');
+	}
+
+	// Example configurations from workflow examples (with token limit)
+	if (examples.length > 0) {
+		const { parts: exampleParts } = examples.reduce<{ parts: string[]; chars: number }>(
+			(acc, example) => {
+				const exampleStr = JSON.stringify(example, null, 2);
+				if (acc.chars + exampleStr.length <= MAX_NODE_EXAMPLE_CHARS) {
+					acc.parts.push(exampleStr);
+					acc.chars += exampleStr.length;
+				}
+				return acc;
+			},
+			{ parts: [], chars: 0 },
+		);
+
+		if (exampleParts.length > 0) {
+			parts.push('<node_examples>');
+			parts.push(...exampleParts);
+			parts.push('</node_examples>');
+		}
 	}
 
 	parts.push('</node_details>');
@@ -144,7 +169,7 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 			try {
 				// Validate input using Zod schema
 				const validatedInput = nodeDetailsSchema.parse(input);
-				const { nodeName, withParameters, withConnections } = validatedInput;
+				const { nodeName, nodeVersion, withParameters, withConnections } = validatedInput;
 
 				// Report tool start
 				reporter.start(validatedInput);
@@ -153,7 +178,7 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 				reportProgress(reporter, `Looking up details for ${nodeName}...`);
 
 				// Find the node type
-				const nodeType = findNodeType(nodeName, nodeTypes);
+				const nodeType = findNodeType(nodeName, nodeVersion, nodeTypes);
 
 				if (!nodeType) {
 					const error = createNodeTypeNotFoundError(nodeName);
@@ -164,8 +189,21 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 				// Extract node details
 				const details = extractNodeDetails(nodeType);
 
-				// Format the output message
-				const message = formatNodeDetails(details, withParameters, withConnections);
+				// Get example configurations from state, filtered by node type and version
+				let examples: INodeParameters[] = [];
+				try {
+					const state = getWorkflowState();
+					const allNodeConfigs = state?.nodeConfigurations?.[nodeName] ?? [];
+					examples = allNodeConfigs
+						.filter((config) => config.version === nodeVersion)
+						.map((config) => config.parameters);
+				} catch {
+					// State may not be available in test environments
+					examples = [];
+				}
+
+				// Format the output message with examples
+				const message = formatNodeDetails(details, withParameters, withConnections, examples);
 
 				// Report completion
 				const output: NodeDetailsOutput = {

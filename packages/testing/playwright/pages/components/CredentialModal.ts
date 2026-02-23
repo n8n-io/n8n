@@ -96,6 +96,10 @@ export class CredentialModal {
 		return this.root.getByTestId('oauth-connect-success-banner');
 	}
 
+	getTestSuccessTag(): Locator {
+		return this.root.getByTestId('credentials-config-container-test-success');
+	}
+
 	async editCredential(): Promise<void> {
 		await this.root.page().getByTestId('credential-edit-button').click();
 	}
@@ -124,5 +128,55 @@ export class CredentialModal {
 
 	getAuthTypeRadioButtons() {
 		return this.root.page().locator('label.el-radio');
+	}
+
+	async changeTab(tabName: 'Sharing'): Promise<void> {
+		await this.root.getByTestId('menu-item').filter({ hasText: tabName }).click();
+	}
+
+	/**
+	 * Get the users select dropdown in the Sharing tab
+	 */
+	getUsersSelect(): Locator {
+		return this.root.getByTestId('project-sharing-select').filter({ visible: true });
+	}
+
+	/**
+	 * Get the visible dropdown popper (for sharing dropdown interactions)
+	 */
+	getVisibleDropdown(): Locator {
+		return this.root.page().locator('.el-popper[aria-hidden="false"]');
+	}
+
+	/**
+	 * Add a user to credential sharing
+	 * @param email - User email to share with
+	 */
+	async addUserToSharing(email: string): Promise<void> {
+		await this.getUsersSelect().click();
+		await this.getVisibleDropdown().getByText(email.toLowerCase(), { exact: false }).click();
+	}
+
+	/**
+	 * Save credential sharing (different from regular save - hits /share endpoint)
+	 */
+	async saveSharing(): Promise<void> {
+		const saveBtn = this.getSaveButton();
+		await saveBtn.click();
+
+		// Wait for share API call to complete
+		await this.root
+			.page()
+			.waitForResponse(
+				(response) =>
+					response.url().includes('/rest/credentials/') &&
+					response.url().includes('/share') &&
+					response.request().method() === 'PUT',
+			);
+
+		await saveBtn.getByText('Saved', { exact: true }).waitFor({
+			state: 'visible',
+			timeout: 3000,
+		});
 	}
 }

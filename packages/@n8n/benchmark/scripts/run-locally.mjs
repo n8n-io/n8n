@@ -35,6 +35,7 @@ const paths = {
  * @property {string} [n8nLicenseCert]
  * @property {string} [vus]
  * @property {string} [duration]
+ * @property {string} [scenarioFilter]
  *
  * @param {Config} config
  */
@@ -47,6 +48,7 @@ export async function runLocally(config) {
 		runDir: config.runDir,
 		vus: config.vus,
 		duration: config.duration,
+		scenarioFilter: config.scenarioFilter,
 		env: 'local',
 	});
 

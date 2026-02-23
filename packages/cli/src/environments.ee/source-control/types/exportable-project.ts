@@ -1,3 +1,4 @@
+import type { ExportableVariable } from './exportable-variable';
 import type { TeamResourceOwner } from './resource-owner';
 
 export interface ExportableProject {
@@ -10,6 +11,7 @@ export interface ExportableProject {
 	 */
 	type: 'team';
 	owner: TeamResourceOwner;
+	variableStubs?: ExportableVariable[];
 }
 
 export type ExportableProjectWithFileName = ExportableProject & {

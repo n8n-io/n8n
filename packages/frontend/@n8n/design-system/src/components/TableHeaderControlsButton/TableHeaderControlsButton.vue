@@ -228,9 +228,9 @@ const handleDragEnd = () => {
 
 <style lang="scss" module>
 .header {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-bold);
-	margin-bottom: var(--spacing-xs);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--bold);
+	margin-bottom: var(--spacing--xs);
 }
 
 .grip {
@@ -243,7 +243,7 @@ const handleDragEnd = () => {
 }
 
 .contentContainer {
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 }
 
 .column {
@@ -254,7 +254,7 @@ const handleDragEnd = () => {
 	align-items: center;
 
 	label {
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size--xs);
 		flex-grow: 1;
 	}
 }
@@ -283,7 +283,7 @@ const handleDragEnd = () => {
 	left: 0;
 	right: 0;
 	height: 3px;
-	background-color: var(--prim-color-secondary);
+	background-color: var(--color--secondary);
 	border-radius: 2px;
 	z-index: 10;
 }

@@ -6,6 +6,7 @@ export interface ActionDropdownItem<T extends string> {
 	id: T;
 	label: string;
 	badge?: string;
+	description?: string;
 	badgeProps?: Record<string, unknown>;
 	icon?: IconName;
 	divided?: boolean;

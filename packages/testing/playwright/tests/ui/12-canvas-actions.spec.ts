@@ -9,8 +9,7 @@ import { test, expect } from '../../fixtures/base';
 
 test.describe('Canvas Actions', () => {
 	test.beforeEach(async ({ n8n }) => {
-		await n8n.goHome();
-		await n8n.workflows.addResource.workflow();
+		await n8n.start.fromBlankCanvas();
 	});
 
 	test('should add first step', async ({ n8n }) => {

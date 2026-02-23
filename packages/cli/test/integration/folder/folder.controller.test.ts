@@ -8,6 +8,7 @@ import {
 	linkUserToProject,
 	testDb,
 	mockInstance,
+	createActiveWorkflow,
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { FolderRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
@@ -388,7 +389,6 @@ describe('GET /projects/:projectId/folders/:folderId/credentials', () => {
 				{
 					name: 'Test Workflow',
 					parentFolder: folder,
-					active: false,
 					nodes: [
 						{
 							parameters: {},
@@ -480,7 +480,6 @@ describe('GET /projects/:projectId/folders/:folderId/credentials', () => {
 				{
 					name: 'Test Workflow',
 					parentFolder: folder,
-					active: false,
 					nodes: [
 						{
 							parameters: {},
@@ -1093,8 +1092,8 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		});
 
 		// Create workflows in the folders
-		const workflow1 = await createWorkflow({ parentFolder: rootFolder, active: false }, owner);
-		const workflow2 = await createWorkflow({ parentFolder: childFolder, active: true }, owner);
+		const workflow1 = await createWorkflow({ parentFolder: rootFolder }, owner);
+		const workflow2 = await createActiveWorkflow({ parentFolder: childFolder }, owner);
 
 		await authOwnerAgent.delete(`/projects/${project.id}/folders/${rootFolder.id}`);
 
@@ -1115,6 +1114,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(workflow1InDb?.isArchived).toBe(true);
 		expect(workflow1InDb?.parentFolder).toBe(null);
 		expect(workflow1InDb?.active).toBe(false);
+		expect(workflow1InDb?.activeVersionId).toBeNull();
 
 		const workflow2InDb = await workflowRepository.findOne({
 			where: { id: workflow2.id },
@@ -1124,6 +1124,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(workflow2InDb?.isArchived).toBe(true);
 		expect(workflow2InDb?.parentFolder).toBe(null);
 		expect(workflow2InDb?.active).toBe(false);
+		expect(workflow2InDb?.activeVersionId).toBeNull();
 	});
 
 	test('should transfer folder contents when transferToFolderId is specified', async () => {
@@ -1823,7 +1824,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 
 		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
 
-		await createWorkflow({ active: true, parentFolder: sourceFolder1 }, destinationProject);
+		await createActiveWorkflow({ parentFolder: sourceFolder1 }, destinationProject);
 
 		await testServer
 			.authAgentFor(member)
@@ -1856,7 +1857,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 
 		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
 
-		await createWorkflow({ active: true }, destinationProject);
+		await createActiveWorkflow({}, destinationProject);
 
 		await testServer
 			.authAgentFor(member)
@@ -2599,7 +2600,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 			parentFolder: sourceFolder1,
 		});
 
-		await createWorkflow({ active: true, parentFolder: sourceFolder1 }, sourceProject);
+		await createActiveWorkflow({ parentFolder: sourceFolder1 }, sourceProject);
 		await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
 
 		activeWorkflowManager.add.mockRejectedValue(new ApplicationError('Oh no!'));

@@ -1,4 +1,5 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import { PackageNameConventionRule } from './package-name-convention.js';
 
 const ruleTester = new RuleTester();
@@ -80,33 +81,109 @@ ruleTester.run('package-name-convention', PackageNameConventionRule, {
 			name: 'invalid package name - generic',
 			filename: 'package.json',
 			code: '{ "name": "my-package", "version": "1.0.0" }',
-			errors: [{ messageId: 'invalidPackageName', data: { packageName: 'my-package' } }],
+			errors: [
+				{
+					messageId: 'invalidPackageName',
+					data: { packageName: 'my-package' },
+					suggestions: [
+						{
+							messageId: 'renameTo',
+							data: { suggestedName: 'n8n-nodes-my-package' },
+							output: '{ "name": "n8n-nodes-my-package", "version": "1.0.0" }',
+						},
+					],
+				},
+			],
 		},
 		{
 			name: 'invalid package name - missing nodes',
 			filename: 'package.json',
 			code: '{ "name": "n8n-example", "version": "1.0.0" }',
-			errors: [{ messageId: 'invalidPackageName', data: { packageName: 'n8n-example' } }],
+			errors: [
+				{
+					messageId: 'invalidPackageName',
+					data: { packageName: 'n8n-example' },
+					suggestions: [
+						{
+							messageId: 'renameTo',
+							data: { suggestedName: 'n8n-nodes-example' },
+							output: '{ "name": "n8n-nodes-example", "version": "1.0.0" }',
+						},
+					],
+				},
+			],
 		},
 		{
 			name: 'invalid scoped package name',
 			filename: 'package.json',
 			code: '{ "name": "@company/example-nodes", "version": "1.0.0" }',
 			errors: [
-				{ messageId: 'invalidPackageName', data: { packageName: '@company/example-nodes' } },
+				{
+					messageId: 'invalidPackageName',
+					data: { packageName: '@company/example-nodes' },
+					suggestions: [
+						{
+							messageId: 'renameTo',
+							data: { suggestedName: '@company/n8n-nodes-example' },
+							output: '{ "name": "@company/n8n-nodes-example", "version": "1.0.0" }',
+						},
+					],
+				},
 			],
 		},
 		{
 			name: 'invalid package name - wrong order',
 			filename: 'package.json',
 			code: '{ "name": "nodes-n8n-example", "version": "1.0.0" }',
-			errors: [{ messageId: 'invalidPackageName', data: { packageName: 'nodes-n8n-example' } }],
+			errors: [
+				{
+					messageId: 'invalidPackageName',
+					data: { packageName: 'nodes-n8n-example' },
+					suggestions: [
+						{
+							messageId: 'renameTo',
+							data: { suggestedName: 'n8n-nodes-example' },
+							output: '{ "name": "n8n-nodes-example", "version": "1.0.0" }',
+						},
+					],
+				},
+			],
 		},
 		{
 			name: 'empty package name',
 			filename: 'package.json',
 			code: '{ "name": "", "version": "1.0.0" }',
-			errors: [{ messageId: 'invalidPackageName', data: { packageName: '' } }],
+			errors: [
+				{
+					messageId: 'invalidPackageName',
+					data: { packageName: '' },
+					suggestions: [],
+				},
+			],
+		},
+		{
+			name: 'incomplete package name with missing suffix',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-", "version": "1.0.0" }',
+			errors: [
+				{
+					messageId: 'invalidPackageName',
+					data: { packageName: 'n8n-nodes-' },
+					suggestions: [],
+				},
+			],
+		},
+		{
+			name: 'incomplete scoped package name with missing suffix',
+			filename: 'package.json',
+			code: '{ "name": "@company/n8n-nodes-", "version": "1.0.0" }',
+			errors: [
+				{
+					messageId: 'invalidPackageName',
+					data: { packageName: '@company/n8n-nodes-' },
+					suggestions: [],
+				},
+			],
 		},
 	],
 });

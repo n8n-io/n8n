@@ -443,4 +443,162 @@ describe('Logger', () => {
 			expect(internalLogger.silent).toBe(true);
 		});
 	});
+
+	describe('production debug logging without color codes', () => {
+		// eslint-disable-next-line no-control-regex
+		const ANSI_COLOR_PATTERN = /\x1b\[\d+m/g; // Pattern to match ANSI color escape codes
+
+		afterEach(() => {
+			jest.resetAllMocks();
+			delete process.env.NO_COLOR;
+		});
+
+		test('production debug logs default to no colors (NO_COLOR not set)', () => {
+			// ARRANGE
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json', // Use json format so we can check the format property directly
+					level: 'debug',
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+
+			// Create logger
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+
+			// ACT
+			logger.debug('Test message', { testKey: 'testValue' });
+
+			// ASSERT
+			// If json format is used, uncolorize should be in the pipeline (as it's used in debugProdConsoleFormat)
+			expect(stdoutSpy).toHaveBeenCalled();
+			const output = stdoutSpy.mock.lastCall?.[0];
+			if (typeof output !== 'string') {
+				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+			}
+
+			// JSON logs should be parseable and not contain ANSI codes
+			expect(() => JSON.parse(output)).not.toThrow();
+			const hasAnsiCodes = ANSI_COLOR_PATTERN.test(output);
+			expect(hasAnsiCodes).toBe(false);
+		});
+
+		test('NO_COLOR environment variable is respected and prevents colors', () => {
+			// ARRANGE
+			process.env.NO_COLOR = '1';
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json',
+					level: 'info',
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+
+			// ACT
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+			logger.info('Test message with NO_COLOR', { key: 'value' });
+
+			// ASSERT
+			expect(stdoutSpy).toHaveBeenCalled();
+			const output = stdoutSpy.mock.lastCall?.[0];
+			if (typeof output !== 'string') {
+				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+			}
+
+			// Should not contain ANSI color codes even with colorize in dev format
+			const hasAnsiCodes = ANSI_COLOR_PATTERN.test(output);
+			expect(hasAnsiCodes).toBe(false);
+
+			// Cleanup
+			delete process.env.NO_COLOR;
+		});
+
+		test('debugProdConsoleFormat produces uncolored structured output', () => {
+			// ARRANGE
+			// Note: This test inspects the actual formatter method signature
+			// We verify that when level is debug in production mode,
+			// the output doesn't include color codes
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const globalConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json', // Using json to ensure we test the basic behavior
+					level: 'debug',
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+
+			const logger = new Logger(globalConfig, mock<InstanceSettingsConfig>());
+			const testMessage = 'Debug operation completed';
+			const testMetadata = { operation: 'database_query', duration_ms: 234 };
+
+			// ACT
+			logger.debug(testMessage, testMetadata);
+
+			// ASSERT
+			expect(stdoutSpy).toHaveBeenCalled();
+			const output = stdoutSpy.mock.lastCall?.[0];
+			if (typeof output !== 'string') {
+				fail(`expected 'output' to be of type 'string', got ${typeof output}`);
+			}
+
+			// Verify output is valid JSON (our format configuration)
+			const parsed = JSON.parse(output) as { message: string; metadata: { operation: string } };
+			expect(parsed.message).toBe(testMessage);
+			expect(parsed.metadata.operation).toBe('database_query');
+
+			// Most importantly: verify no ANSI color codes are present
+			const hasAnsiCodes = ANSI_COLOR_PATTERN.test(output);
+			expect(hasAnsiCodes).toBe(false);
+		});
+
+		test('logger format selection respects environment and level', () => {
+			// ARRANGE
+			// Create two loggers with different configurations
+			const stdoutSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+
+			const infoProdConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json',
+					level: 'info', // Not debug level
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+
+			const debugProdConfig = mock<GlobalConfig>({
+				logging: {
+					format: 'json',
+					level: 'debug', // Debug level - should use debugProdConsoleFormat when in production
+					outputs: ['console'],
+					scopes: [],
+				},
+			});
+
+			// ACT
+			const infoLogger = new Logger(infoProdConfig, mock<InstanceSettingsConfig>());
+			const debugLogger = new Logger(debugProdConfig, mock<InstanceSettingsConfig>());
+
+			infoLogger.info('Info level message', {});
+			debugLogger.debug('Debug level message', { context: 'important' });
+
+			// ASSERT
+			expect(stdoutSpy).toHaveBeenCalledTimes(2);
+
+			// Both outputs should be ANSI-free
+			const infoOutput = stdoutSpy.mock.calls[0]?.[0];
+			const debugOutput = stdoutSpy.mock.calls[1]?.[0];
+
+			if (typeof infoOutput !== 'string' || typeof debugOutput !== 'string') {
+				fail('expected both outputs to be strings');
+			}
+
+			expect(ANSI_COLOR_PATTERN.test(infoOutput)).toBe(false);
+			expect(ANSI_COLOR_PATTERN.test(debugOutput)).toBe(false);
+		});
+	});
 });

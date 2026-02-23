@@ -9,13 +9,6 @@ describe('InsightsDateFilterDto', () => {
 				parsedResult: {},
 			},
 			{
-				name: 'valid dateRange',
-				request: {
-					dateRange: 'week', // Using a valid option from the provided list
-				},
-				parsedResult: {},
-			},
-			{
 				name: 'valid startDate and endDate (as strings)',
 				request: {
 					startDate: '2025-01-01',
@@ -129,13 +122,6 @@ describe('InsightsDateFilterDto', () => {
 				expectedErrorPaths: ['endDate'],
 			},
 			{
-				name: 'invalid dateRange value',
-				request: {
-					dateRange: 'invalid-value',
-				},
-				expectedErrorPaths: ['dateRange'],
-			},
-			{
 				name: 'invalid projectId value',
 				request: {
 					projectId: 10,
@@ -145,12 +131,11 @@ describe('InsightsDateFilterDto', () => {
 			{
 				name: 'all fields invalid',
 				request: {
-					dateRange: 'invalid-value',
 					startDate: '2025-13-01', // Invalid month
 					endDate: 'not-a-date',
 					projectId: 10,
 				},
-				expectedErrorPaths: ['dateRange', 'startDate', 'endDate', 'projectId'],
+				expectedErrorPaths: ['startDate', 'endDate', 'projectId'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPaths }) => {
 			const result = InsightsDateFilterDto.safeParse(request);

@@ -36,21 +36,30 @@ export class ResponseError extends ApplicationError {
 	// The stack trace of the server
 	serverStackTrace?: string;
 
+	// Additional metadata from the server (e.g., EULA URL)
+	meta?: Record<string, unknown>;
+
 	/**
 	 * Creates an instance of ResponseError.
 	 * @param {string} message The error message
 	 * @param {number} [errorCode] The error code which can be used by frontend to identify the actual error
 	 * @param {number} [httpStatusCode] The HTTP status code the response should have
 	 * @param {string} [stack] The stack trace
+	 * @param {Record<string, unknown>} [meta] Additional metadata from the server
 	 */
 	constructor(
 		message: string,
-		options: { errorCode?: number; httpStatusCode?: number; stack?: string } = {},
+		options: {
+			errorCode?: number;
+			httpStatusCode?: number;
+			stack?: string;
+			meta?: Record<string, unknown>;
+		} = {},
 	) {
 		super(message);
 		this.name = 'ResponseError';
 
-		const { errorCode, httpStatusCode, stack } = options;
+		const { errorCode, httpStatusCode, stack, meta } = options;
 		if (errorCode) {
 			this.errorCode = errorCode;
 		}
@@ -59,6 +68,9 @@ export class ResponseError extends ApplicationError {
 		}
 		if (stack) {
 			this.serverStackTrace = stack;
+		}
+		if (meta) {
+			this.meta = meta;
 		}
 	}
 }
@@ -134,6 +146,7 @@ export async function request(config: {
 				errorCode: errorResponseData.code,
 				httpStatusCode: error.response.status,
 				stack: errorResponseData.stack,
+				meta: errorResponseData.meta,
 			});
 		}
 

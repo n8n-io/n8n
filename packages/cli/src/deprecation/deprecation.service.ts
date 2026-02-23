@@ -3,8 +3,6 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import config from '@/config';
-
 type EnvVarName = string;
 
 type Deprecation = {
@@ -71,7 +69,7 @@ export class DeprecationService {
 				'Running manual executions in the main instance in scaling mode is deprecated. Manual executions will be routed to workers in a future version. Please set `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true` to offload manual executions to workers and avoid potential issues in the future. Consider increasing memory available to workers and reducing memory available to main.',
 			checkValue: (value?: string) => value?.toLowerCase() !== 'true' && value !== '1',
 			warnIfMissing: true,
-			matchConfig: config.getEnv('executions.mode') === 'queue',
+			matchConfig: this.globalConfig.executions.mode === 'queue',
 			disableIf: () => this.instanceSettings.instanceType !== 'main',
 		},
 		{

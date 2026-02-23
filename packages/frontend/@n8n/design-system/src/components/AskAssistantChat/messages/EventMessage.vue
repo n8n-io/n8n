@@ -55,14 +55,14 @@ const eventMessages: Record<EventName, { part1: string; part2: string }> = {
 
 <style lang="scss" module>
 .eventText {
-	margin-top: var(--spacing-l);
-	padding-top: var(--spacing-3xs);
-	border-top: var(--border-base);
+	margin-top: var(--spacing--lg);
+	padding-top: var(--spacing--3xs);
+	border-top: var(--border);
 	color: var(--color--text);
 
 	> button,
 	> span {
-		margin-right: var(--spacing-3xs);
+		margin-right: var(--spacing--3xs);
 	}
 
 	button {

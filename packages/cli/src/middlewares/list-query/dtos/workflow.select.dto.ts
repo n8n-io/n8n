@@ -6,6 +6,7 @@ export class WorkflowSelect extends BaseSelect {
 			'id', // always included downstream
 			'name',
 			'active',
+			'activeVersionId',
 			'tags',
 			'createdAt',
 			'updatedAt',
@@ -13,6 +14,8 @@ export class WorkflowSelect extends BaseSelect {
 			'ownedBy', // non-entity field
 			'parentFolder',
 			'nodes',
+			'isArchived',
+			'description',
 		]);
 	}
 

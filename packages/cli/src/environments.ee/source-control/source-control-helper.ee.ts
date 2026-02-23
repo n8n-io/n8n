@@ -21,6 +21,7 @@ import type { ExportedFolders } from './types/exportable-folders';
 import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import type { StatusResourceOwner } from './types/resource-owner';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
@@ -246,6 +247,19 @@ export function normalizeAndValidateSourceControlledFilePath(
 	return normalizedPath;
 }
 
+export function hasOwnerChanged(
+	owner1?: StatusResourceOwner,
+	owner2?: StatusResourceOwner,
+): boolean {
+	// We only compare owners when there is at least one team owner
+	// because personal owners projects are not synced with source control
+	if (owner1?.type !== 'team' && owner2?.type !== 'team') {
+		return false;
+	}
+
+	return owner1?.projectId !== owner2?.projectId;
+}
+
 /**
  * Checks if a workflow has been modified by comparing version IDs and parent folder IDs
  * between local and remote versions
@@ -254,8 +268,10 @@ export function isWorkflowModified(
 	local: SourceControlWorkflowVersionId,
 	remote: SourceControlWorkflowVersionId,
 ): boolean {
-	return (
-		remote.versionId !== local.versionId ||
-		(remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId)
-	);
+	const hasVersionIdChanged = remote.versionId !== local.versionId;
+	const hasParentFolderIdChanged =
+		remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId;
+	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
+
+	return hasVersionIdChanged || hasParentFolderIdChanged || ownerChanged;
 }

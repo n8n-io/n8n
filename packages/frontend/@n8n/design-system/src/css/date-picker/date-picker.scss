@@ -49,7 +49,7 @@
 		@include mixins.m(bordered) {
 			margin-bottom: 0;
 			padding-bottom: 12px;
-			border-bottom: solid 1px var(--border-color-light);
+			border-bottom: solid 1px var(--border-color--light);
 
 			& + .el-picker-panel__content {
 				margin-top: 0;
@@ -59,7 +59,7 @@
 
 	@include mixins.e(header-label) {
 		font-size: 16px;
-		font-weight: var(--font-weight-medium);
+		font-weight: var(--font-weight--medium);
 		padding: 0 5px;
 		line-height: 22px;
 		text-align: center;

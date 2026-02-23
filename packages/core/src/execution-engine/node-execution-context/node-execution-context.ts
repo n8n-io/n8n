@@ -67,6 +67,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return Container.get(Logger);
 	}
 
+	getExecutionContext() {
+		return this.runExecutionData?.executionData?.runtimeData;
+	}
+
 	getExecutionId() {
 		return this.additionalData.executionId!;
 	}

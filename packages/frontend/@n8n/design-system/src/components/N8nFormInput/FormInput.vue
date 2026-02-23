@@ -276,9 +276,9 @@ defineExpose({ inputRef });
 
 <style lang="scss" module>
 .infoText {
-	margin-top: var(--spacing-2xs);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-regular);
+	margin-top: var(--spacing--2xs);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
 	color: var(--color--text);
 }
 
@@ -288,7 +288,7 @@ defineExpose({ inputRef });
 }
 
 .errorInput {
-	--input-border-color: var(--color--danger);
+	--input--border-color: var(--color--danger);
 }
 
 .multiSelectSmallTags {

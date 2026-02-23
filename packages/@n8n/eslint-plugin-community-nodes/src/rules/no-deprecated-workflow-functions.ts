@@ -1,4 +1,7 @@
-import { ESLintUtils, TSESTree } from '@typescript-eslint/utils';
+import type { TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+
+import { createRule } from '../utils/index.js';
 
 const DEPRECATED_FUNCTIONS = {
 	request: 'httpRequest',
@@ -21,7 +24,8 @@ function isDeprecatedTypeName(name: string): name is keyof typeof DEPRECATED_TYP
 	return name in DEPRECATED_TYPES;
 }
 
-export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.withoutDocs({
+export const NoDeprecatedWorkflowFunctionsRule = createRule({
+	name: 'no-deprecated-workflow-functions',
 	meta: {
 		type: 'problem',
 		docs: {
@@ -34,8 +38,11 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 			deprecatedType: "'{{ typeName }}' is deprecated. Use '{{ replacement }}' instead.",
 			deprecatedWithoutReplacement:
 				"'{{ functionName }}' is deprecated and should be removed or replaced with alternative implementation.",
+			suggestReplaceFunction: "Replace '{{ functionName }}' with '{{ replacement }}'",
+			suggestReplaceType: "Replace '{{ typeName }}' with '{{ replacement }}'",
 		},
 		schema: [],
+		hasSuggestions: true,
 	},
 	defaultOptions: [],
 	create(context) {
@@ -45,7 +52,10 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 			ImportDeclaration(node) {
 				if (node.source.value === 'n8n-workflow') {
 					node.specifiers.forEach((specifier) => {
-						if (specifier.type === 'ImportSpecifier' && specifier.imported.type === 'Identifier') {
+						if (
+							specifier.type === AST_NODE_TYPES.ImportSpecifier &&
+							specifier.imported.type === AST_NODE_TYPES.Identifier
+						) {
 							n8nWorkflowTypes.add(specifier.local.name);
 						}
 					});
@@ -53,7 +63,10 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 			},
 
 			MemberExpression(node) {
-				if (node.property.type === 'Identifier' && isDeprecatedFunctionName(node.property.name)) {
+				if (
+					node.property.type === AST_NODE_TYPES.Identifier &&
+					isDeprecatedFunctionName(node.property.name)
+				) {
 					if (!isThisHelpersAccess(node)) {
 						return;
 					}
@@ -74,6 +87,13 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 								replacement,
 								message: getDeprecationMessage(functionName),
 							},
+							suggest: [
+								{
+									messageId: 'suggestReplaceFunction',
+									data: { functionName, replacement },
+									fix: (fixer) => fixer.replaceText(node.property, replacement),
+								},
+							],
 						});
 					} else {
 						context.report({
@@ -89,7 +109,7 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 
 			TSTypeReference(node) {
 				if (
-					node.typeName.type === 'Identifier' &&
+					node.typeName.type === AST_NODE_TYPES.Identifier &&
 					isDeprecatedTypeName(node.typeName.name) &&
 					n8nWorkflowTypes.has(node.typeName.name)
 				) {
@@ -103,6 +123,13 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 							typeName,
 							replacement,
 						},
+						suggest: [
+							{
+								messageId: 'suggestReplaceType',
+								data: { typeName, replacement },
+								fix: (fixer) => fixer.replaceText(node.typeName, replacement),
+							},
+						],
 					});
 				}
 			},
@@ -111,9 +138,9 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 				// Check if this import is from n8n-workflow by looking at the parent ImportDeclaration
 				const importDeclaration = node.parent;
 				if (
-					importDeclaration?.type === 'ImportDeclaration' &&
+					importDeclaration?.type === AST_NODE_TYPES.ImportDeclaration &&
 					importDeclaration.source.value === 'n8n-workflow' &&
-					node.imported.type === 'Identifier' &&
+					node.imported.type === AST_NODE_TYPES.Identifier &&
 					isDeprecatedTypeName(node.imported.name)
 				) {
 					const typeName = node.imported.name;
@@ -126,6 +153,13 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
 							typeName,
 							replacement,
 						},
+						suggest: [
+							{
+								messageId: 'suggestReplaceType',
+								data: { typeName, replacement },
+								fix: (fixer) => fixer.replaceText(node.imported, replacement),
+							},
+						],
 					});
 				}
 			},
@@ -137,11 +171,11 @@ export const NoDeprecatedWorkflowFunctionsRule = ESLintUtils.RuleCreator.without
  * Check if the MemberExpression follows the this.helpers.* pattern
  */
 function isThisHelpersAccess(node: TSESTree.MemberExpression): boolean {
-	if (node.object?.type === 'MemberExpression') {
+	if (node.object?.type === AST_NODE_TYPES.MemberExpression) {
 		const outerObject = node.object;
 		return (
-			outerObject.object?.type === 'ThisExpression' &&
-			outerObject.property?.type === 'Identifier' &&
+			outerObject.object?.type === AST_NODE_TYPES.ThisExpression &&
+			outerObject.property?.type === AST_NODE_TYPES.Identifier &&
 			outerObject.property.name === 'helpers'
 		);
 	}

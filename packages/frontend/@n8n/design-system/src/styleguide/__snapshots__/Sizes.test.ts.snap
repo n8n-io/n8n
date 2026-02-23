@@ -8,7 +8,7 @@ exports[`Sizes > should render a section with a variable 1`] = `
     <th class="row">px</th>
   </tr>
   <tr>
-    <td>--font-weight-regular</td>
+    <td>--font-weight--regular</td>
     <td>400</td>
     <td>6400</td>
   </tr>

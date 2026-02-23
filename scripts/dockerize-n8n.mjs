@@ -72,16 +72,44 @@ async function commandExists(command) {
 	}
 }
 
-const SupportedContainerEngines = /** @type {const} */(['docker', 'podman'])
+const SupportedContainerEngines = /** @type {const} */ (['docker', 'podman']);
+
+/**
+ * Detect if the local `docker` CLI is actually Podman via the docker shim.
+ * @returns {Promise<boolean>}
+ */
+async function isDockerPodmanShim() {
+	try {
+		const { stdout } = await $`docker version`;
+		return stdout.toLowerCase().includes('podman');
+	} catch {
+		return false;
+	}
+}
 /**
  * @returns {Promise<(typeof SupportedContainerEngines[number])>}
  */
 async function getContainerEngine() {
-	if (await commandExists('podman')) {
-		return 'podman';
+	// Allow explicit override via env var
+	const override = process.env.CONTAINER_ENGINE?.toLowerCase();
+	if (override && /** @type {readonly string[]} */ (SupportedContainerEngines).includes(override)) {
+		return /** @type {typeof SupportedContainerEngines[number]} */ (override);
 	}
-	// use docker by default
-	return 'docker';
+
+	const hasDocker = await commandExists('docker');
+	const hasPodman = await commandExists('podman');
+
+	if (hasDocker) {
+		// If docker is actually a Podman shim, use podman path to avoid unsupported flags like --load
+		if (hasPodman && (await isDockerPodmanShim())) {
+			return 'podman';
+		}
+		return 'docker';
+	}
+
+	if (hasPodman) return 'podman';
+
+	throw new Error('No supported container engine found. Please install Docker or Podman.');
 }
 
 // #endregion ===== Helper Functions =====
@@ -136,8 +164,9 @@ async function checkPrerequisites() {
 		process.exit(1);
 	}
 
-	if (!(await commandExists('docker'))) {
-		echo(chalk.red('Error: Docker is not installed or not in PATH'));
+	// Ensure at least one supported container engine is available
+	if (!(await commandExists('docker')) && !(await commandExists('podman'))) {
+		echo(chalk.red('Error: Neither Docker nor Podman is installed or in PATH'));
 		process.exit(1);
 	}
 }

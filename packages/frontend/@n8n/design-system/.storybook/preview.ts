@@ -1,5 +1,3 @@
-import { library } from '@fortawesome/fontawesome-svg-core';
-import { fas } from '@fortawesome/free-solid-svg-icons';
 import { sharedTags } from '@n8n/storybook/main';
 import { withThemeByDataAttribute } from '@storybook/addon-themes';
 import { setup } from '@storybook/vue3';
@@ -10,11 +8,10 @@ import lang from 'element-plus/dist/locale/en.mjs';
 import { N8nPlugin } from '../src/plugin';
 
 import './storybook.scss';
+import { allModes } from './modes';
 // import '../src/css/tailwind/index.css';
 
 setup((app) => {
-	library.add(fas);
-
 	app.use(ElementPlus, {
 		locale: lang,
 	});
@@ -51,7 +48,13 @@ export const parameters = {
 		],
 	},
 	themes: {
+		default: 'light',
 		list: [
+			{
+				name: 'light',
+				class: 'theme-light',
+				color: '#fff',
+			},
 			{
 				name: 'dark',
 				class: 'theme-dark-beta',
@@ -69,6 +72,13 @@ export const parameters = {
 				'Modules',
 			],
 		},
+	},
+	chromatic: {
+		modes: {
+			light: allModes['light'],
+			dark: allModes['dark'],
+		},
+		disableSnapshot: false,
 	},
 };
 

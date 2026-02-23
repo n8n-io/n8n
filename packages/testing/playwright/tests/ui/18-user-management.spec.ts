@@ -11,14 +11,14 @@ test.describe('User Management', () => {
 			INSTANCE_OWNER_CREDENTIALS.email,
 			INSTANCE_OWNER_CREDENTIALS.password,
 		);
-		await expect(n8n.workflows.getProjectName()).toBeVisible();
+		await expect(n8n.sideBar.getUserMenu()).toBeVisible();
 	});
 
 	test('should prevent non-owners to access UM settings', async ({ n8n }) => {
 		// This creates a new user in the same context, so the cookies are refreshed and owner is no longer logged in
 		await n8n.api.users.create();
 		await n8n.navigate.toUsers();
-		await expect(n8n.workflows.getProjectName()).toBeVisible();
+		await expect(n8n.workflows.getNewWorkflowCard()).toBeVisible();
 	});
 
 	test('should allow instance owner to access UM settings', async ({ n8n }) => {

@@ -40,9 +40,7 @@ test.describe('Data Table list view', () => {
 		}
 
 		// Go to overview, both data tables should be visible
-		await n8n.sideBar.clickHomeMenuItem();
-		await n8n.dataTable.clickDataTableOverviewTab();
-
+		await n8n.navigate.toDatatables();
 		for (const project of TEST_PROJECTS) {
 			await expect(n8n.dataTable.getDataTableCardByName(project.dataTable)).toBeVisible();
 		}
@@ -93,6 +91,20 @@ test.describe('Data Table list view', () => {
 			TEST_PROJECT_NAME,
 			TEST_DATA_TABLE_NAME,
 			'header-dropdown',
+		);
+
+		await expect(n8n.dataTable.getDataTableCardByName(TEST_DATA_TABLE_NAME)).toBeVisible();
+	});
+
+	test('Should create data table from workflows tab', async ({ n8n }) => {
+		const TEST_PROJECT_NAME = `Project ${nanoid(8)}`;
+		const TEST_DATA_TABLE_NAME = `Data Table ${nanoid(8)}`;
+
+		await n8n.dataTableComposer.createDataTableInNewProject(
+			TEST_PROJECT_NAME,
+			TEST_DATA_TABLE_NAME,
+			'header-dropdown',
+			false,
 		);
 
 		await expect(n8n.dataTable.getDataTableCardByName(TEST_DATA_TABLE_NAME)).toBeVisible();

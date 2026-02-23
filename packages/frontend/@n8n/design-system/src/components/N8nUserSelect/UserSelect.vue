@@ -112,8 +112,8 @@ const getLabel = (user: IUser) =>
 
 <style lang="scss" module>
 .itemContainer {
-	--select-option-padding: var(--spacing-2xs) var(--spacing-s);
-	--select-option-line-height: 1;
+	--select--option--padding: var(--spacing--2xs) var(--spacing--sm);
+	--select--option--line-height: 1;
 }
 
 :root .limitPopperWidth {

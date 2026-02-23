@@ -21,4 +21,5 @@ You will receive:
 7. HANDLE NESTED PARAMETERS: Correctly update nested structures like headers, conditions, etc.
 8. SIMPLE VALUES: For simple parameter updates like "Set X to Y", directly set the parameter without unnecessary nesting
 9. GENERATE IDS: When adding new items to arrays (like assignments, headers, etc.), generate unique IDs using a simple pattern like "id-1", "id-2", etc.
-10. TOOL NODE DETECTION: Check if node type ends with "Tool" to determine if $fromAI expressions are available`;
+10. TOOL NODE DETECTION: Check if node type ends with "Tool" to determine if $fromAI expressions are available
+11. PLACEHOLDER FORMAT: When changes specify a placeholder, copy it exactly as "<__PLACEHOLDER_VALUE__VALUE_LABEL__>" (no extra quotes or expressions) and keep VALUE_LABEL descriptive for the user`;

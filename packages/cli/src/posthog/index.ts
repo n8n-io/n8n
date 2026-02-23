@@ -24,11 +24,6 @@ export class PostHogClient {
 		this.postHog = new PostHog(posthogConfig.apiKey, {
 			host: posthogConfig.apiHost,
 		});
-
-		const logLevel = this.globalConfig.logging.level;
-		if (logLevel === 'debug') {
-			this.postHog.debug(true);
-		}
 	}
 
 	async stop(): Promise<void> {

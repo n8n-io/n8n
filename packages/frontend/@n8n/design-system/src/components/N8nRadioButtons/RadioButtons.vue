@@ -69,8 +69,8 @@ const onClick = (
 	vertical-align: middle;
 	font-size: 0;
 	background-color: var(--color--foreground);
-	padding: var(--spacing-5xs);
-	border-radius: var(--border-radius-base);
+	padding: var(--spacing--5xs);
+	border-radius: var(--radius);
 }
 
 .disabled {

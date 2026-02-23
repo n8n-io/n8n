@@ -25,10 +25,24 @@
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"]
 		},
+		"test:unit": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"]
+		},
+		"test:integration": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"]
+		},
 		"watch": { "cache": false, "persistent": true },
 		"dev": { "cache": false, "persistent": true },
 		"build:playwright": {
 			"dependsOn": ["install-browsers:ci", "build"]
+		},
+		"install-browsers": {
+			"cache": true,
+			"inputs": ["package.json"],
+			"outputs": [".playwright-browsers/**"],
+			"env": ["PLAYWRIGHT_BROWSERS_PATH"]
 		},
 		"install-browsers:ci": {
 			"cache": true,

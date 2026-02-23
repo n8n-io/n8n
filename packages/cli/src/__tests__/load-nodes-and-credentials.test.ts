@@ -1,12 +1,12 @@
+import { Service } from '@n8n/di';
+import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { DirectoryLoader } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import watcher from '@parcel/watcher';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
-import { Service } from '@n8n/di';
 
 jest.mock('lodash/debounce', () => (fn: () => void) => fn);
 
@@ -30,7 +30,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
 			instance.loaders.package1 = mock<DirectoryLoader>({
 				directory: '/icons/package1',
 			});
@@ -58,7 +58,7 @@ describe('LoadNodesAndCredentials', () => {
 	});
 
 	describe('convertNodeToAiTool', () => {
-		const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
+		const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
 
 		let fullNodeWrapper: { description: INodeTypeDescription };
 
@@ -290,7 +290,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
 			instance.knownNodes['n8n-nodes-base.test'] = {
 				className: 'Test',
 				sourcePath: '/nodes-base/dist/nodes/Test/Test.node.js',
@@ -330,7 +330,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
 			instance.types.nodes = [
 				{
 					name: 'testNode',
@@ -447,7 +447,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
 		});
 		it('should return true for credentials with authenticate property', () => {
 			const credential = {
@@ -572,6 +572,257 @@ describe('LoadNodesAndCredentials', () => {
 		});
 	});
 
+	describe('injectContextEstablishmentHooks', () => {
+		let instance: LoadNodesAndCredentials;
+		let mockLogger: { debug: jest.Mock };
+		let mockExecutionContextHookRegistry: { getHookForTriggerType: jest.Mock };
+
+		beforeEach(() => {
+			// Enable the feature flag for tests
+			process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS = 'true';
+
+			mockLogger = {
+				debug: jest.fn(),
+			};
+			mockExecutionContextHookRegistry = {
+				getHookForTriggerType: jest.fn(),
+			};
+			instance = new LoadNodesAndCredentials(
+				mockLogger as never,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mockExecutionContextHookRegistry as never,
+			);
+		});
+
+		afterEach(() => {
+			// Clean up the environment variable after each test
+			delete process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS;
+		});
+
+		it('should not inject hooks when feature flag is disabled', () => {
+			// Disable the feature flag
+			delete process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS;
+
+			const triggerNode: INodeTypeDescription = {
+				name: 'webhookTrigger',
+				displayName: 'Webhook Trigger',
+				group: ['trigger'],
+				description: 'A webhook trigger',
+				version: 1,
+				defaults: {},
+				inputs: [],
+				outputs: ['main'],
+				properties: [],
+			};
+
+			instance.types.nodes = [triggerNode];
+
+			const mockHook = {
+				hookDescription: {
+					name: 'credentials.bearerToken',
+					displayName: 'Bearer Token',
+					options: [],
+				},
+			};
+
+			mockExecutionContextHookRegistry.getHookForTriggerType.mockReturnValue([mockHook]);
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(instance as any).injectContextEstablishmentHooks();
+
+			expect(triggerNode.properties).toHaveLength(0);
+			expect(mockLogger.debug).toHaveBeenCalledWith(
+				'Context establishment hooks feature is disabled',
+			);
+
+			// Re-enable for other tests
+			process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS = 'true';
+		});
+
+		it('should not inject hooks if no hooks exist', () => {
+			const triggerNode: INodeTypeDescription = {
+				name: 'manualTrigger',
+				displayName: 'Manual Trigger',
+				group: ['trigger'],
+				description: 'A manual trigger',
+				version: 1,
+				defaults: {},
+				inputs: [],
+				outputs: ['main'],
+				properties: [],
+			};
+
+			instance.types.nodes = [triggerNode];
+
+			mockExecutionContextHookRegistry.getHookForTriggerType.mockReturnValue([]);
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(instance as any).injectContextEstablishmentHooks();
+
+			expect(triggerNode.properties).toHaveLength(0);
+		});
+
+		it('should not inject hooks when isApplicableToTriggerNode returns false', () => {
+			const manualTriggerNode: INodeTypeDescription = {
+				name: 'manualTrigger',
+				displayName: 'Manual Trigger',
+				group: ['trigger'],
+				description: 'A manual trigger',
+				version: 1,
+				defaults: {},
+				inputs: [],
+				outputs: ['main'],
+				properties: [],
+			};
+
+			instance.types.nodes = [manualTriggerNode];
+
+			const mockNonApplicableHook = {
+				hookDescription: {
+					name: 'credentials.bearerToken',
+					displayName: 'Bearer Token',
+					options: [
+						{
+							displayName: 'Remove from Item',
+							name: 'removeFromItem',
+							type: 'boolean',
+							default: true,
+						},
+					],
+				},
+				isApplicableToTriggerNode: jest.fn((nodeType: string) => {
+					// Only applicable to webhook trigger
+					return nodeType === 'webhookTrigger';
+				}),
+			};
+
+			// Mock getHookForTriggerType to simulate real filtering behavior
+			mockExecutionContextHookRegistry.getHookForTriggerType.mockImplementation((nodeType) => {
+				const allHooks = [mockNonApplicableHook];
+				// Filter hooks based on isApplicableToTriggerNode
+				return allHooks.filter((hook) => hook.isApplicableToTriggerNode(nodeType));
+			});
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(instance as any).injectContextEstablishmentHooks();
+
+			// Verify isApplicableToTriggerNode was called, but no properties added
+			expect(mockNonApplicableHook.isApplicableToTriggerNode).toHaveBeenCalledWith('manualTrigger');
+			expect(manualTriggerNode.properties).toHaveLength(0);
+		});
+
+		it('should inject hooks with multiple hook types and options', () => {
+			const triggerNode: INodeTypeDescription = {
+				name: 'webhookTrigger',
+				displayName: 'Webhook Trigger',
+				group: ['trigger'],
+				description: 'A webhook trigger',
+				version: 1,
+				defaults: {},
+				inputs: [],
+				outputs: ['main'],
+				properties: [],
+			};
+
+			instance.types.nodes = [triggerNode];
+
+			// Hook 1: With 2 options (one with existing displayOptions)
+			const mockHookWithOptions = {
+				hookDescription: {
+					name: 'credentials.bearerToken',
+					displayName: 'Bearer Token',
+					options: [
+						{
+							displayName: 'Remove from Item',
+							name: 'removeFromItem',
+							type: 'boolean',
+							default: true,
+						},
+						{
+							displayName: 'Advanced Option',
+							name: 'advancedOption',
+							type: 'string',
+							default: '',
+							displayOptions: {
+								show: {
+									someOtherField: ['value'],
+								},
+							},
+						},
+					],
+				},
+			};
+
+			// Hook 2: Without options
+			const mockHookWithoutOptions = {
+				hookDescription: {
+					name: 'credentials.apiKey',
+					displayName: 'API Key',
+					options: [],
+				},
+			};
+
+			mockExecutionContextHookRegistry.getHookForTriggerType.mockReturnValue([
+				mockHookWithOptions,
+				mockHookWithoutOptions,
+			]);
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(instance as any).injectContextEstablishmentHooks();
+
+			// Verify three properties are injected
+			expect(triggerNode.properties).toHaveLength(3);
+			expect(triggerNode.properties[0].name).toBe('executionsHooksVersion');
+			expect(triggerNode.properties[0].type).toBe('hidden');
+			expect(triggerNode.properties[1].name).toBe('contextEstablishmentHooks');
+			expect(triggerNode.properties[1].type).toBe('fixedCollection');
+			expect(triggerNode.properties[2].name).toBe('contextHooksNotice');
+			expect(triggerNode.properties[2].type).toBe('notice');
+
+			// Verify the hook collection structure
+			const hookProperty = triggerNode.properties[1];
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const hookValues = (hookProperty as any).options?.[0]?.values as INodeProperties[];
+
+			// Should have: hookName selector + isAllowedToFail + 2 options from first hook = 4 values
+			expect(hookValues).toHaveLength(4);
+
+			// Verify hookName selector with both hook options
+			expect(hookValues[0].name).toBe('hookName');
+			expect(hookValues[0].type).toBe('options');
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const hookNameOptions = (hookValues[0] as any).options;
+			expect(hookNameOptions).toHaveLength(2);
+			expect(hookNameOptions[0].value).toBe('credentials.bearerToken');
+			expect(hookNameOptions[1].value).toBe('credentials.apiKey');
+
+			// Verify isAllowedToFail field
+			expect(hookValues[1].name).toBe('isAllowedToFail');
+			expect(hookValues[1].type).toBe('boolean');
+			expect(hookValues[1].default).toBe(false);
+
+			// Verify first option has display condition
+			expect(hookValues[2].name).toBe('removeFromItem');
+			expect(hookValues[2].displayOptions).toEqual({
+				show: {
+					hookName: ['credentials.bearerToken'],
+				},
+			});
+
+			// Verify second option merges existing displayOptions with hookName
+			expect(hookValues[3].name).toBe('advancedOption');
+			expect(hookValues[3].displayOptions).toEqual({
+				show: {
+					someOtherField: ['value'],
+					hookName: ['credentials.bearerToken'],
+				},
+			});
+		});
+	});
+
 	describe('setupHotReload', () => {
 		let instance: LoadNodesAndCredentials;
 
@@ -584,7 +835,7 @@ describe('LoadNodesAndCredentials', () => {
 		});
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
 			instance.loaders = { CUSTOM: mockLoader };
 
 			// Allow access to directory

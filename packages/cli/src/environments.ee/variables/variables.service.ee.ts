@@ -61,11 +61,19 @@ export class VariablesService {
 		return !!project;
 	}
 
-	async getAllCached(): Promise<Variables[]> {
-		const variables = await this.cacheService.get('variables', {
-			refreshFn: async () => await this.findAll(),
-		});
-		return variables ?? [];
+	async getAllCached(
+		filters: { globalOnly: boolean } = { globalOnly: false },
+	): Promise<Variables[]> {
+		const variables =
+			(await this.cacheService.get('variables', {
+				refreshFn: async () => await this.findAll(),
+			})) ?? [];
+
+		if (filters.globalOnly) {
+			return variables.filter((v) => !v.project);
+		}
+
+		return variables;
 	}
 
 	async getCached(id: string): Promise<Variables | null> {
@@ -150,6 +158,11 @@ export class VariablesService {
 		await this.updateCache();
 	}
 
+	async deleteByIds(ids: string[]): Promise<void> {
+		await this.variablesRepository.deleteByIds(ids);
+		await this.updateCache();
+	}
+
 	private async canCreateNewVariable() {
 		if (!this.licenseState.isVariablesLicensed()) {
 			throw new FeatureNotLicensedError('feat:variables');
@@ -205,7 +218,6 @@ export class VariablesService {
 		// Check that variable key is unique (globally or in the project)
 		await this.validateUniqueVariable(variable.key, variable.projectId);
 
-		this.eventService.emit('variable-created');
 		const saveResult = await this.variablesRepository.save(
 			{
 				...variable,
@@ -214,6 +226,9 @@ export class VariablesService {
 			},
 			{ transaction: false },
 		);
+		this.eventService.emit('variable-created', {
+			projectId: variable.projectId,
+		});
 		await this.updateCache();
 		return saveResult;
 	}
@@ -267,6 +282,9 @@ export class VariablesService {
 			...(typeof variable.projectId !== 'undefined'
 				? { project: variable.projectId ? { id: variable.projectId } : null }
 				: {}),
+		});
+		this.eventService.emit('variable-updated', {
+			projectId: newProjectId,
 		});
 		await this.updateCache();
 		return (await this.getCached(id))!;

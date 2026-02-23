@@ -88,6 +88,7 @@ export function createAgent(
 		llmSimpleTask: llm,
 		llmComplexTask: llm,
 		checkpointer: new MemorySaver(),
+		enableMultiAgent: true,
 		tracer,
 	});
 }

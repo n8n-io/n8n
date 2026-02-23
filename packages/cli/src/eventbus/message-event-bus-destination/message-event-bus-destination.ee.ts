@@ -1,4 +1,11 @@
 import { Logger } from '@n8n/backend-common';
+import {
+	LOGSTREAMING_CB_DEFAULT_CONCURRENT_HALF_OPEN_REQUESTS,
+	LOGSTREAMING_CB_DEFAULT_FAILURE_WINDOW_MS,
+	LOGSTREAMING_CB_DEFAULT_HALF_OPEN_REQUESTS,
+	LOGSTREAMING_CB_DEFAULT_MAX_DURATION_MS,
+	LOGSTREAMING_CB_DEFAULT_MAX_FAILURES,
+} from '@n8n/constants';
 import { EventDestinationsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-workflow';
@@ -6,6 +13,7 @@ import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { License } from '@/license';
+import { CircuitBreaker } from '@/utils/circuit-breaker';
 
 import type { EventMessageTypes } from '../event-message-classes';
 import type { AbstractEventMessage } from '../event-message-classes/abstract-event-message';
@@ -23,6 +31,8 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 
 	protected readonly license: License;
 
+	protected circuitBreakerInstance: CircuitBreaker;
+
 	__type: MessageEventBusDestinationTypeNames;
 
 	label: string;
@@ -39,6 +49,24 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 		// @TODO: Use DI
 		this.logger = Container.get(Logger);
 		this.license = Container.get(License);
+
+		const timeout = options.circuitBreaker?.maxDuration ?? LOGSTREAMING_CB_DEFAULT_MAX_DURATION_MS;
+		const maxFailures = options.circuitBreaker?.maxFailures ?? LOGSTREAMING_CB_DEFAULT_MAX_FAILURES;
+		const halfOpenRequests =
+			options.circuitBreaker?.halfOpenRequests ?? LOGSTREAMING_CB_DEFAULT_HALF_OPEN_REQUESTS;
+		const failureWindow =
+			options.circuitBreaker?.failureWindow ?? LOGSTREAMING_CB_DEFAULT_FAILURE_WINDOW_MS;
+		const maxConcurrentHalfOpenRequests =
+			options.circuitBreaker?.maxConcurrentHalfOpenRequests ??
+			LOGSTREAMING_CB_DEFAULT_CONCURRENT_HALF_OPEN_REQUESTS;
+
+		this.circuitBreakerInstance = new CircuitBreaker({
+			timeout,
+			maxFailures,
+			halfOpenRequests,
+			failureWindow,
+			maxConcurrentHalfOpenRequests,
+		});
 
 		this.eventBusInstance = eventBusInstance;
 		this.id = !options.id || options.id.length !== 36 ? uuid() : options.id;
@@ -59,7 +87,16 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 					msg: EventMessageTypes,
 					confirmCallback: (message: EventMessageTypes, src: EventMessageConfirmSource) => void,
 				) => {
-					await this.receiveFromEventBus({ msg, confirmCallback });
+					try {
+						await this.circuitBreakerInstance.execute(async () => {
+							await this.receiveFromEventBus({ msg, confirmCallback });
+						});
+					} catch (error) {
+						this.logger.error(
+							`${this.__type}(${this.id}) event destination ${this.label} failed to send message`,
+							{ error },
+						);
+					}
 				},
 			);
 			this.logger.debug(`${this.id} listener started`);

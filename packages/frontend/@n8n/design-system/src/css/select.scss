@@ -29,7 +29,7 @@
 	.el-select__tags + .el-input {
 		input {
 			box-sizing: border-box;
-			padding: 0 0 0 var(--spacing-2xs);
+			padding: 0 0 0 var(--spacing--2xs);
 			text-indent: 0;
 		}
 	}
@@ -82,7 +82,7 @@
 		}
 
 		&__prefix {
-			left: var(--spacing-2xs);
+			left: var(--spacing--2xs);
 		}
 
 		&--prefix .el-input__inner {
@@ -98,7 +98,7 @@
 		border: none;
 		outline: none;
 		padding: 0;
-		margin-left: var(--spacing-2xs);
+		margin-left: var(--spacing--2xs);
 		color: var.$select-multiple-input-color;
 		font-size: var.$select-font-size;
 		appearance: none;
@@ -147,7 +147,7 @@
 		background-color: var(--color--foreground);
 		color: var(--color--text--shade-1);
 		border-radius: 20px;
-		font-weight: var(--font-weight-regular);
+		font-weight: var(--font-weight--regular);
 
 		&__close.el-icon-close {
 			background-color: var(--color--text--tint-1);
@@ -174,7 +174,7 @@
 	}
 	&--default {
 		.el-tag {
-			padding: var(--spacing-5xs) var(--spacing-xs);
+			padding: var(--spacing--5xs) var(--spacing--xs);
 		}
 	}
 }

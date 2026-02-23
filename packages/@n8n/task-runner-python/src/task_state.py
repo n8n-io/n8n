@@ -1,7 +1,6 @@
 from enum import Enum
 from dataclasses import dataclass
 from multiprocessing.context import ForkServerProcess
-from typing import Optional
 
 
 class TaskStatus(Enum):
@@ -14,11 +13,11 @@ class TaskStatus(Enum):
 class TaskState:
     task_id: str
     status: TaskStatus
-    process: Optional[ForkServerProcess] = None
-    workflow_name: Optional[str] = None
-    workflow_id: Optional[str] = None
-    node_name: Optional[str] = None
-    node_id: Optional[str] = None
+    process: ForkServerProcess | None = None
+    workflow_name: str | None = None
+    workflow_id: str | None = None
+    node_name: str | None = None
+    node_id: str | None = None
 
     def __init__(self, task_id: str):
         self.task_id = task_id

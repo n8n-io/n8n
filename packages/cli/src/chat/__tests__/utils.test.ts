@@ -191,6 +191,102 @@ describe('getMessage', () => {
 		const result = getMessage(execution);
 		expect(result).toBe('Message from first branch');
 	});
+
+	it('should return sendMessage from ai_tool output when main is not available', () => {
+		const execution = createMockExecution({}, undefined, [
+			{
+				data: {
+					ai_tool: [
+						[
+							{
+								json: { test: 'data' },
+								sendMessage: 'Message from ai_tool',
+							},
+						],
+					],
+				},
+			},
+		]);
+		const result = getMessage(execution);
+		expect(result).toBe('Message from ai_tool');
+	});
+
+	it('should prioritize main output over ai_tool output when both exist', () => {
+		const execution = createMockExecution({}, undefined, [
+			{
+				data: {
+					main: [
+						[
+							{
+								json: { test: 'main_data' },
+								sendMessage: 'Message from main',
+							},
+						],
+					],
+					ai_tool: [
+						[
+							{
+								json: { test: 'ai_data' },
+								sendMessage: 'Message from ai_tool',
+							},
+						],
+					],
+				},
+			},
+		]);
+		const result = getMessage(execution);
+		expect(result).toBe('Message from main');
+	});
+
+	it('should return undefined when ai_tool output has no sendMessage', () => {
+		const execution = createMockExecution({}, undefined, [
+			{
+				data: {
+					ai_tool: [
+						[
+							{
+								json: { test: 'data' },
+							},
+						],
+					],
+				},
+			},
+		]);
+		const result = getMessage(execution);
+		expect(result).toBeUndefined();
+	});
+
+	it('should return undefined when ai_tool output is empty', () => {
+		const execution = createMockExecution({}, undefined, [
+			{
+				data: {
+					ai_tool: [[]],
+				},
+			},
+		]);
+		const result = getMessage(execution);
+		expect(result).toBeUndefined();
+	});
+
+	it('should handle multiple branches in ai_tool output', () => {
+		const execution = createMockExecution({}, undefined, [
+			{
+				data: {
+					ai_tool: [
+						[], // First branch is empty
+						[
+							{
+								json: { test: 'data' },
+								sendMessage: 'Message from second ai_tool branch',
+							},
+						],
+					],
+				},
+			},
+		]);
+		const result = getMessage(execution);
+		expect(result).toBe('Message from second ai_tool branch');
+	});
 });
 
 describe('getLastNodeExecuted', () => {

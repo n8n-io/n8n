@@ -22,6 +22,7 @@ import {
 	validateResponseModeConfiguration,
 	prepareFormFields,
 	addFormResponseDataToReturnItem,
+	validateSafeRedirectUrl,
 } from '../utils/utils';
 
 describe('FormTrigger, parseFormDescription', () => {
@@ -397,7 +398,10 @@ describe('FormTrigger, formWebhook', () => {
 		];
 
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
-		executeFunctions.getResponseObject.mockReturnValue({ render: mockRender } as any);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: jest.fn(),
+		} as any);
 
 		await formWebhook(executeFunctions);
 
@@ -492,7 +496,10 @@ describe('FormTrigger, formWebhook', () => {
 		];
 
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
-		executeFunctions.getResponseObject.mockReturnValue({ render: mockRender } as any);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: jest.fn(),
+		} as any);
 
 		for (const { description, expected } of formDescription) {
 			executeFunctions.getNodeParameter.calledWith('formDescription').mockReturnValue(description);
@@ -542,7 +549,10 @@ describe('FormTrigger, formWebhook', () => {
 
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
 		executeFunctions.getResponseObject.mockReturnValue({ status: mockStatus, end: mockEnd } as any);
-		executeFunctions.getRequestObject.mockReturnValue({ method: 'POST' } as any);
+		executeFunctions.getRequestObject.mockReturnValue({
+			method: 'POST',
+			contentType: 'multipart/form-data',
+		} as any);
 		executeFunctions.getBodyData.mockReturnValue({ data: bodyData, files: {} });
 
 		const result = await formWebhook(executeFunctions);
@@ -562,6 +572,68 @@ describe('FormTrigger, formWebhook', () => {
 				],
 			],
 		});
+	});
+
+	it('should set Content-Security-Policy header with sandbox CSP on GET request', async () => {
+		const mockRender = jest.fn();
+		const mockSetHeader = jest.fn();
+
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+
+		executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
+		executeFunctions.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+		executeFunctions.getNodeParameter.calledWith('formDescription').mockReturnValue('Test');
+		executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+		executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
+		executeFunctions.getMode.mockReturnValue('manual');
+		executeFunctions.getInstanceId.mockReturnValue('instanceId');
+		executeFunctions.getChildNodes.mockReturnValue([]);
+		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: mockSetHeader,
+		} as any);
+
+		await formWebhook(executeFunctions);
+
+		expect(mockSetHeader).toHaveBeenCalledWith(
+			'Content-Security-Policy',
+			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+		);
+	});
+
+	it('should include sandbox directive in CSP header for security', async () => {
+		const mockRender = jest.fn();
+		const mockSetHeader = jest.fn();
+
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+
+		executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		executeFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
+		executeFunctions.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+		executeFunctions.getNodeParameter.calledWith('formDescription').mockReturnValue('Test');
+		executeFunctions.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+		executeFunctions.getRequestObject.mockReturnValue({ method: 'GET', query: {} } as any);
+		executeFunctions.getMode.mockReturnValue('manual');
+		executeFunctions.getInstanceId.mockReturnValue('instanceId');
+		executeFunctions.getChildNodes.mockReturnValue([]);
+		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: mockSetHeader,
+		} as any);
+
+		await formWebhook(executeFunctions);
+
+		expect(mockSetHeader).toHaveBeenCalledWith(
+			'Content-Security-Policy',
+			expect.stringContaining('sandbox'),
+		);
 	});
 });
 
@@ -748,7 +820,7 @@ describe('FormTrigger, prepareFormData', () => {
 		});
 	});
 
-	it('should set redirectUrl with http if protocol is missing', () => {
+	it('should set redirectUrl with https if protocol is missing', () => {
 		const formFields: FormFieldsParameter = [
 			{
 				fieldLabel: 'Name',
@@ -770,7 +842,7 @@ describe('FormTrigger, prepareFormData', () => {
 			query,
 		});
 
-		expect(result.redirectUrl).toBe('http://example.com/thank-you');
+		expect(result.redirectUrl).toBe('https://example.com/thank-you');
 	});
 
 	it('should return invalid form data when formFields are empty', () => {
@@ -1310,7 +1382,9 @@ jest.mock('luxon', () => ({
 
 describe('prepareFormReturnItem', () => {
 	const mockContext = mock<IWebhookFunctions>({
-		getRequestObject: jest.fn().mockReturnValue({ method: 'GET', query: {} }),
+		getRequestObject: jest
+			.fn()
+			.mockReturnValue({ method: 'GET', query: {}, contentType: 'multipart/form-data' }),
 		nodeHelpers: mock({
 			copyBinaryFile: jest.fn().mockResolvedValue({}),
 		}),
@@ -1422,6 +1496,19 @@ describe('prepareFormReturnItem', () => {
 		expect(DateTime.fromFormat).toHaveBeenCalledWith('2023-04-01', 'yyyy-mm-dd');
 	});
 
+	it('should not format date fields when formatDate is undefined', async () => {
+		mockContext.getBodyData.mockReturnValue({
+			data: { 'field-0': '2023-04-01' },
+			files: {},
+		});
+
+		const formFields = [{ fieldLabel: 'Date Field', fieldType: 'date', formatDate: undefined }];
+		const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+		expect(DateTime.fromFormat).not.toHaveBeenCalled();
+		expect(result.json['Date Field']).toBe('2023-04-01');
+	});
+
 	it('should handle multiselect fields', async () => {
 		mockContext.getBodyData.mockReturnValue({
 			data: { 'field-0': '["option1", "option2"]' },
@@ -1456,6 +1543,7 @@ describe('prepareFormReturnItem', () => {
 		mockContext.getRequestObject.mockReturnValue({
 			method: 'POST',
 			query: { param: 'value' },
+			contentType: 'multipart/form-data',
 		} as unknown as Request);
 
 		const result = await prepareFormReturnItem(mockContext, [], 'test');
@@ -1467,6 +1555,7 @@ describe('prepareFormReturnItem', () => {
 		mockContext.getRequestObject.mockReturnValue({
 			method: 'POST',
 			query: {},
+			contentType: 'multipart/form-data',
 		} as unknown as Request);
 
 		const result = await prepareFormReturnItem(mockContext, [], 'test');
@@ -1846,5 +1935,123 @@ describe('addFormResponseDataToReturnItem', () => {
 
 		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
 		expect(returnItem.json['File Field']).toEqual(['file1.pdf']);
+	});
+});
+
+describe('validateSafeRedirectUrl', () => {
+	it('should return null for undefined input', () => {
+		expect(validateSafeRedirectUrl(undefined)).toBeNull();
+	});
+
+	it('should return null for empty string', () => {
+		expect(validateSafeRedirectUrl('')).toBeNull();
+		expect(validateSafeRedirectUrl('   ')).toBeNull();
+	});
+
+	it('should return valid http/https URLs', () => {
+		expect(validateSafeRedirectUrl('https://example.com')).toBe('https://example.com');
+		expect(validateSafeRedirectUrl('http://example.com/path')).toBe('http://example.com/path');
+	});
+
+	it('should add https:// prefix to URLs without protocol', () => {
+		expect(validateSafeRedirectUrl('example.com')).toBe('https://example.com');
+		expect(validateSafeRedirectUrl('example.com/path')).toBe('https://example.com/path');
+	});
+
+	it('should trim whitespace from URLs', () => {
+		expect(validateSafeRedirectUrl('  https://example.com  ')).toBe('https://example.com');
+	});
+
+	it('should return null for javascript: URLs', () => {
+		expect(validateSafeRedirectUrl('javascript:alert(1)')).toBeNull();
+	});
+
+	it('should return null for data: URLs', () => {
+		expect(validateSafeRedirectUrl('data:text/html,<script>alert(1)</script>')).toBeNull();
+	});
+
+	it('should return null for invalid URLs', () => {
+		expect(validateSafeRedirectUrl('not a valid url')).toBeNull();
+	});
+});
+
+describe('FormTrigger, prepareFormData - Default Value', () => {
+	it('should use defaultValue when no query parameter is provided', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+				placeholder: 'Enter your name',
+				defaultValue: 'John Doe',
+			},
+			{
+				fieldLabel: 'Email',
+				fieldType: 'email',
+				requiredField: true,
+				placeholder: 'Enter your email',
+				defaultValue: 'john@example.com',
+			},
+		];
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query: {},
+		});
+
+		expect(result.formFields[0].defaultValue).toBe('John Doe');
+		expect(result.formFields[1].defaultValue).toBe('john@example.com');
+	});
+
+	it('should prioritize query parameter over defaultValue', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+				defaultValue: 'Default Name',
+			},
+		];
+
+		const query = { Name: 'Query Name' };
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].defaultValue).toBe('Query Name');
+	});
+
+	it('should use empty string when neither defaultValue nor query parameter is provided', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+			},
+		];
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query: {},
+		});
+
+		expect(result.formFields[0].defaultValue).toBe('');
 	});
 });

@@ -14,6 +14,7 @@ import {
 	displayTestResults,
 	displaySummaryTable,
 	displayViolationsDetail,
+	displayCacheStatistics,
 } from '../utils/evaluation-reporter.js';
 
 /**
@@ -86,7 +87,10 @@ export function displayResults(
 	};
 
 	// Display summary
-	displaySummaryTable(results, combinedMetrics);
+	displaySummaryTable(combinedMetrics);
+
+	// Display cache statistics
+	displayCacheStatistics(results);
 
 	// Display violations if any exist (from either LLM or programmatic evaluation)
 	const hasLLMViolations =

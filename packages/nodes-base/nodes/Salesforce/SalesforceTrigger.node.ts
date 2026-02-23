@@ -118,7 +118,7 @@ export class SalesforceTrigger implements INodeType {
 					{
 						name: 'Opportunity Updated',
 						value: 'opportunityUpdated',
-						description: 'When an existing opportunity is created',
+						description: 'When an existing opportunity is modified',
 					},
 					{
 						name: 'Task Created',

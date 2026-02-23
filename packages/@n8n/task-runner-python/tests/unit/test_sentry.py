@@ -3,6 +3,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+pytest.importorskip("sentry_sdk")
+
 from src.config.sentry_config import SentryConfig
 from src.sentry import TaskRunnerSentry, setup_sentry
 from src.constants import (

@@ -1,0 +1,462 @@
+{
+	"nodes": [
+		{
+			"id": "473427fa-0214-43ef-b751-39ee6daa5a3a",
+			"name": "Document Upload Form",
+			"type": "n8n-nodes-base.formTrigger",
+			"typeVersion": 2.3,
+			"position": [250, 450],
+			"parameters": {
+				"formTitle": "Upload Documents for RAG",
+				"formDescription": "Upload PDF, CSV, or JSON files to add to the knowledge base",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Upload Files",
+							"fieldType": "file",
+							"multipleFiles": true,
+							"acceptFileTypes": ".pdf, .csv, .json",
+							"requiredField": false
+						}
+					]
+				},
+				"responseMode": "onReceived",
+				"options": {
+					"buttonLabel": "Submit Documents",
+					"appendAttribution": false
+				}
+			},
+			"webhookId": "7e9115b4-c8ce-40a0-9442-d02af625c024"
+		},
+		{
+			"id": "e718fcb0-e68f-4ee6-b1cd-ac413107dd04",
+			"name": "Workflow Configuration",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"includeOtherFields": true,
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "pineconeIndex",
+							"value": "<__PLACEHOLDER_VALUE__Pinecone index name__>",
+							"type": "string"
+						},
+						{
+							"id": "id-2",
+							"name": "pineconeNamespace",
+							"value": "documents",
+							"type": "string"
+						},
+						{
+							"id": "id-3",
+							"name": "emailRecipient",
+							"value": "<__PLACEHOLDER_VALUE__Email address for daily summaries__>",
+							"type": "string"
+						}
+					]
+				},
+				"include": "all",
+				"options": {}
+			}
+		},
+		{
+			"id": "32b53c4f-154f-48c7-a787-6e4d235c5886",
+			"name": "Store Form Submissions",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "row",
+				"operation": "insert",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "FormSubmissions"
+				},
+				"columns": {
+					"mappingMode": "autoMapInputData",
+					"value": null
+				}
+			}
+		},
+		{
+			"id": "5002630b-8a9f-418c-8bbb-fda5deece841",
+			"name": "Text Splitter",
+			"type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+			"typeVersion": 1,
+			"position": [250, 450],
+			"parameters": {
+				"chunkSize": 1000,
+				"chunkOverlap": 200
+			}
+		},
+		{
+			"id": "12ad3c9b-09e8-42a3-a09a-15050fb6e617",
+			"name": "Document Loader",
+			"type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+			"typeVersion": 1.1,
+			"position": [250, 450],
+			"parameters": {
+				"dataType": "binary",
+				"loader": "auto",
+				"textSplittingMode": "custom"
+			}
+		},
+		{
+			"id": "75480e8a-dabb-4ab7-a5d3-65519d1c59c1",
+			"name": "OpenAI Embeddings",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"typeVersion": 1.2,
+			"position": [250, 450],
+			"parameters": {
+				"model": "text-embedding-3-small"
+			}
+		},
+		{
+			"id": "a3630a75-2c51-4a88-ab8f-d4ecee55b87e",
+			"name": "Insert to Pinecone",
+			"type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+			"typeVersion": 1.3,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "insert",
+				"pineconeIndex": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $('Workflow Configuration').first().json.pineconeIndex }}"
+				},
+				"options": {
+					"pineconeNamespace": "={{ $('Workflow Configuration').first().json.pineconeNamespace }}"
+				}
+			}
+		},
+		{
+			"id": "b11a8868-d2f8-4af5-a2d9-ace2daa51a20",
+			"name": "Chat Trigger",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.4,
+			"position": [250, 450],
+			"parameters": {
+				"public": true,
+				"mode": "hostedChat",
+				"options": {
+					"appendAttribution": false
+				}
+			},
+			"webhookId": "f5df1f38-127e-4ef7-b64d-b8caf785a2b7"
+		},
+		{
+			"id": "9136278a-e398-4d4c-98aa-69c152b07014",
+			"name": "Chat Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"sessionIdType": "fromInput",
+				"sessionKey": "={{ $json.sessionId }}",
+				"contextWindowLength": 10
+			}
+		},
+		{
+			"id": "156081db-905d-4247-8264-b7e509e6a328",
+			"name": "Retrieve from Pinecone",
+			"type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+			"typeVersion": 1.3,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "retrieve",
+				"pineconeIndex": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $('Workflow Configuration').first().json.pineconeIndex }}"
+				},
+				"options": {
+					"pineconeNamespace": "={{ $('Workflow Configuration').first().json.pineconeNamespace }}"
+				}
+			}
+		},
+		{
+			"id": "f6ed6977-fe24-448a-9588-a24de7658264",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				}
+			}
+		},
+		{
+			"id": "85a28100-2aa4-419b-88bf-130d801ccad4",
+			"name": "RAG Chatbot Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3,
+			"position": [250, 300],
+			"parameters": {
+				"promptType": "auto",
+				"text": "={{ $json.chatInput }}",
+				"hasOutputParser": false,
+				"needsFallback": false,
+				"options": {
+					"systemMessage": "You are a helpful assistant that answers questions based on uploaded documents.\n\nYour task is to:\n1. Use the document_search tool to find relevant information from the uploaded documents\n2. Answer the user's question using ONLY the information retrieved from the documents\n3. If the retrieved documents do not contain enough information to answer confidently, respond with: \"I couldn't find that in the uploaded documents.\"\n4. Always cite which documents or sections you used to answer the question\n5. Be concise and accurate in your responses"
+				}
+			}
+		},
+		{
+			"id": "00498b3d-756e-41a1-b7ed-b1f9a12704a1",
+			"name": "Log Chat Interactions",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "row",
+				"operation": "insert",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "ChatLogs"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"timestamp": "={{ $now.toISO() }}",
+						"sessionId": "={{ $json.sessionId }}",
+						"userQuery": "={{ $json.chatInput }}",
+						"agentResponse": "={{ $json.output }}",
+						"matchedFiles": "={{ $json.matchedFiles || 'N/A' }}"
+					}
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "9cb17f88-b893-4290-a609-b4c24092d5c7",
+			"name": "Daily Schedule",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "days",
+							"daysInterval": 1,
+							"triggerAtHour": 9,
+							"triggerAtMinute": 0
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "ed00e71b-f7f7-4322-85bf-0c62840e40e6",
+			"name": "Get Chat Logs",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "row",
+				"operation": "get",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "ChatLogs"
+				},
+				"returnAll": true,
+				"matchType": "anyCondition",
+				"filters": {}
+			}
+		},
+		{
+			"id": "1aa7c207-ef7d-404e-9b4a-d7392e1cffd4",
+			"name": "Generate Summary Report",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"language": "javaScript",
+				"jsCode": "// Analyze chat logs and generate summary statistics\nconst items = $input.all();\n\n// Initialize counters\nlet totalQuestions = items.length;\nlet failedLookups = 0;\nconst fileReferences = {};\n\n// Process each chat log entry\nfor (const item of items) {\n  const response = item.json.agentResponse || '';\n  const matchedFiles = item.json.matchedFiles || '';\n  \n  // Count failed lookups (when agent couldn't find information)\n  if (response.toLowerCase().includes(\"couldn't find\") || \n      response.toLowerCase().includes(\"don't have\") ||\n      response.toLowerCase().includes(\"no information\")) {\n    failedLookups++;\n  }\n  \n  // Track file references\n  if (matchedFiles && matchedFiles !== 'N/A') {\n    const files = matchedFiles.split(',').map(f => f.trim());\n    for (const file of files) {\n      if (file) {\n        fileReferences[file] = (fileReferences[file] || 0) + 1;\n      }\n    }\n  }\n}\n\n// Get top 5 referenced files\nconst sortedFiles = Object.entries(fileReferences)\n  .sort((a, b) => b[1] - a[1])\n  .slice(0, 5);\n\nconst topFiles = sortedFiles.length > 0\n  ? sortedFiles.map((entry, index) => `${index + 1}. ${entry[0]} (${entry[1]} references)`).join('\\n')\n  : 'No file references found';\n\n// Get current date\nconst date = $now.toFormat('yyyy-MM-dd');\n\n// Return summary statistics\nreturn [{\n  json: {\n    date: date,\n    totalQuestions: totalQuestions,\n    failedLookups: failedLookups,\n    topFiles: topFiles,\n    fileReferenceCounts: fileReferences\n  }\n}];"
+			}
+		},
+		{
+			"id": "b42a61f5-a102-4aa5-befc-fb291dec1e9a",
+			"name": "Send Daily Summary Email",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "message",
+				"operation": "send",
+				"sendTo": "={{ $('Workflow Configuration').first().json.emailRecipient }}",
+				"subject": "=Daily RAG Chatbot Summary - {{ $json.date }}",
+				"emailType": "text",
+				"message": "=Daily RAG Chatbot Analytics Summary\n\nDate: {{ $json.date }}\n\nTotal Questions Asked: {{ $json.totalQuestions }}\nFailed Lookups: {{ $json.failedLookups }}\n\nTop Referenced Files:\n{{ $json.topFiles }}\n\n---\nThis is an automated summary from your n8n RAG workflow."
+			},
+			"webhookId": "d2ee52fc-9031-48e5-a42d-c6b2c7aaf2e9"
+		}
+	],
+	"connections": {
+		"Document Upload Form": {
+			"main": [
+				[
+					{
+						"node": "Workflow Configuration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Workflow Configuration": {
+			"main": [
+				[
+					{
+						"node": "Store Form Submissions",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Insert to Pinecone",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Text Splitter": {
+			"ai_textSplitter": [
+				[
+					{
+						"node": "Document Loader",
+						"type": "ai_textSplitter",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Document Loader": {
+			"ai_document": [
+				[
+					{
+						"node": "Insert to Pinecone",
+						"type": "ai_document",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Embeddings": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Insert to Pinecone",
+						"type": "ai_embedding",
+						"index": 0
+					},
+					{
+						"node": "Retrieve from Pinecone",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chat Trigger": {
+			"main": [
+				[
+					{
+						"node": "RAG Chatbot Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chat Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "RAG Chatbot Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Retrieve from Pinecone": {
+			"ai_tool": [
+				[
+					{
+						"node": "RAG Chatbot Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "RAG Chatbot Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"RAG Chatbot Agent": {
+			"main": [
+				[
+					{
+						"node": "Log Chat Interactions",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Daily Schedule": {
+			"main": [
+				[
+					{
+						"node": "Get Chat Logs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Chat Logs": {
+			"main": [
+				[
+					{
+						"node": "Generate Summary Report",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Summary Report": {
+			"main": [
+				[
+					{
+						"node": "Send Daily Summary Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"name": "Document Upload RAG Chatbot with Pinecone and Daily Analytics"
+}

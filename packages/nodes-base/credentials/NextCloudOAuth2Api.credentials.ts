@@ -7,7 +7,7 @@ export class NextCloudOAuth2Api implements ICredentialType {
 
 	displayName = 'NextCloud OAuth2 API';
 
-	documentationUrl = 'nextCloud';
+	documentationUrl = 'nextcloud';
 
 	properties: INodeProperties[] = [
 		{

@@ -10,7 +10,12 @@ describe('Test Crypto Node', () => {
 	const realpathSpy = jest.spyOn(fsPromises, 'realpath');
 	realpathSpy.mockImplementation(async (path) => path as string);
 	jest.mock('fs');
-	fs.createReadStream = () => Readable.from(Buffer.from('test')) as fs.ReadStream;
+	fs.createReadStream = () => {
+		const stream = Readable.from(Buffer.from('test')) as fs.ReadStream;
+		// Emit 'open' event asynchronously to match real fs.ReadStream behavior
+		setImmediate(() => stream.emit('open'));
+		return stream;
+	};
 
 	new NodeTestHarness().setupTests();
 });

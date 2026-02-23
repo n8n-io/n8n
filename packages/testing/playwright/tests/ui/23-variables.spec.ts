@@ -64,22 +64,17 @@ test.describe('Variables', () => {
 				`ENV_BASE_${generateValidId()}`,
 				'base_value',
 			);
+			await expect(n8n.variables.getVariablesRows()).toHaveCount(1);
 			const initialCount = await n8n.variables.getVariablesRows().count();
 
 			const key = `ENV_VAR_INVALID_${generateValidId()}$`; // Invalid key with special character
 			const value = 'test_value';
 
-			await n8n.variables.getCreateVariableButton().click();
-			const editingRow = n8n.variables.getVariablesEditableRows().first();
-			await n8n.variables.setRowValue(editingRow, 'key', key);
-			await n8n.variables.setRowValue(editingRow, 'value', value);
-			await n8n.variables.saveRowEditing(editingRow);
+			await n8n.variables.createVariable(key, value, { shouldSave: false });
+			const saveButton = n8n.variables.variableModal.getSaveButton();
+			await expect(saveButton).toBeDisabled();
+			await n8n.variables.variableModal.close();
 
-			await expect(editingRow).toContainText(
-				'This field may contain only letters, numbers, and underscores',
-			);
-
-			await n8n.variables.cancelRowEditing(editingRow);
 			await expect(n8n.variables.getVariablesRows()).toHaveCount(initialCount);
 		});
 
@@ -90,10 +85,7 @@ test.describe('Variables', () => {
 
 			const newValue = 'updated_value';
 
-			await n8n.variables.editRow(key);
-			const editingRow = n8n.variables.getVariablesEditableRows().first();
-			await n8n.variables.setRowValue(editingRow, 'value', newValue);
-			await n8n.variables.saveRowEditing(editingRow);
+			await n8n.variables.editVariable(key, newValue, { shouldSave: true });
 
 			const variableRow = n8n.variables.getVariableRow(key);
 			await expect(variableRow).toContainText(newValue);
@@ -105,6 +97,7 @@ test.describe('Variables', () => {
 			const value = 'delete_test_value';
 
 			await n8n.variables.createVariableFromEmptyState(key, value);
+			await expect(n8n.variables.getVariablesRows()).toHaveCount(1);
 			const initialCount = await n8n.variables.getVariablesRows().count();
 
 			await n8n.variables.deleteVariable(key);

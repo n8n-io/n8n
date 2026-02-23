@@ -200,20 +200,21 @@ defineExpose({
 	overflow: hidden;
 	width: 100%;
 	height: 100%;
-	--scrollbar-size: 10px;
+	contain: layout style;
 }
 
 .viewport {
 	width: 100%;
 	height: 100%;
 	border-radius: inherit;
+	overflow-anchor: none;
 }
 
 .scrollbar {
 	display: flex;
 	user-select: none;
 	touch-action: none;
-	padding: var(--spacing-5xs);
+	padding: var(--spacing--5xs);
 	background: transparent;
 	transition: background 160ms ease-out;
 	pointer-events: none;
@@ -223,11 +224,11 @@ defineExpose({
 	}
 
 	&[data-orientation='vertical'] {
-		width: var(--spacing-xs);
+		width: var(--spacing--xs);
 	}
 
 	&[data-orientation='horizontal'] {
-		height: var(--spacing-xs);
+		height: var(--spacing--xs);
 		flex-direction: row;
 	}
 }

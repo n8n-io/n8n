@@ -29,15 +29,18 @@ import type {
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
 	WebhookResponseData,
+	IDestinationNode,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	createDeferredPromise,
+	createRunExecutionData,
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	OperationalError,
+	tryToParseUrl,
 	UnexpectedError,
 	WAIT_NODE_TYPE,
 	WorkflowConfigurationError,
@@ -92,7 +95,7 @@ export function handleHostedChatResponse(
 export function getWorkflowWebhooks(
 	workflow: Workflow,
 	additionalData: IWorkflowExecuteAdditionalData,
-	destinationNode?: string,
+	destinationNode?: IDestinationNode,
 	ignoreRestartWebhooks = false,
 ): IWebhookData[] {
 	// Check all the nodes in the workflow if they have webhooks
@@ -101,9 +104,11 @@ export function getWorkflowWebhooks(
 
 	let parentNodes: string[] | undefined;
 	if (destinationNode !== undefined) {
-		parentNodes = workflow.getParentNodes(destinationNode);
+		parentNodes = workflow.getParentNodes(destinationNode.nodeName);
 		// Also add the destination node in case it itself is a webhook node
-		parentNodes.push(destinationNode);
+		if (destinationNode.mode === 'inclusive') {
+			parentNodes.push(destinationNode.nodeName);
+		}
 	}
 
 	for (const node of Object.values(workflow.nodes)) {
@@ -229,10 +234,20 @@ export const handleFormRedirectionCase = (
 		(data?.headers as IDataObject)?.location &&
 		String(data?.responseCode).startsWith('3')
 	) {
+		const locationUrl = String((data?.headers as IDataObject)?.location);
+		let validatedUrl: string | undefined;
+		try {
+			validatedUrl = tryToParseUrl(locationUrl);
+		} catch {
+			// Invalid URL, don't redirect
+		}
+
 		data.responseCode = 200;
-		data.data = {
-			redirectURL: (data?.headers as IDataObject)?.location,
-		};
+		if (validatedUrl) {
+			data.data = {
+				redirectURL: validatedUrl,
+			};
+		}
 		(data.headers as IDataObject).location = undefined;
 	}
 
@@ -296,7 +311,7 @@ export function prepareExecutionData(
 	webhookResultData: IWebhookResponseData,
 	runExecutionData: IRunExecutionData | undefined,
 	runExecutionDataMerge: object = {},
-	destinationNode?: string,
+	destinationNode?: IDestinationNode,
 	executionId?: string,
 	workflowData?: IWorkflowBase,
 ): { runExecutionData: IRunExecutionData; pinData: IPinData | undefined } {
@@ -311,17 +326,11 @@ export function prepareExecutionData(
 		},
 	];
 
-	runExecutionData ??= {
-		startData: {},
-		resultData: {
-			runData: {},
-		},
+	runExecutionData ??= createRunExecutionData({
 		executionData: {
-			contextData: {},
 			nodeExecutionStack,
-			waitingExecution: {},
 		},
-	} as IRunExecutionData;
+	});
 
 	if (destinationNode && runExecutionData.startData) {
 		runExecutionData.startData.destinationNode = destinationNode;
@@ -368,7 +377,7 @@ export async function executeWebhook(
 		error: Error | null,
 		data: IWebhookResponseCallbackData | WebhookResponse,
 	) => void,
-	destinationNode?: string,
+	destinationNode?: IDestinationNode,
 ): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(
@@ -451,18 +460,12 @@ export async function executeWebhook(
 				source: null,
 			});
 			runExecutionData =
-				runExecutionData ||
-				({
-					startData: {},
-					resultData: {
-						runData: {},
-					},
+				runExecutionData ??
+				createRunExecutionData({
 					executionData: {
-						contextData: {},
 						nodeExecutionStack,
-						waitingExecution: {},
 					},
-				} as IRunExecutionData);
+				});
 		}
 
 		try {

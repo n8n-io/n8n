@@ -1,0 +1,272 @@
+{
+	"nodes": [
+		{
+			"id": "a0942cc5-a244-4205-abed-397a31f355de",
+			"name": "Every Night at 8pm",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "days",
+							"daysInterval": 1,
+							"triggerAtHour": 20,
+							"triggerAtMinute": 0
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "508922f0-e2ba-4a8b-8397-fa12f36933d4",
+			"name": "Workflow Configuration",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"duplicateItem": false,
+				"includeOtherFields": true,
+				"include": "all",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "newsApiKey",
+							"value": "<__PLACEHOLDER_VALUE__NewsAPI Key__>",
+							"type": "string"
+						},
+						{
+							"id": "id-2",
+							"name": "telegramChatId",
+							"value": "<__PLACEHOLDER_VALUE__Telegram Chat ID__>",
+							"type": "string"
+						},
+						{
+							"id": "id-3",
+							"name": "searchQuery",
+							"value": "artificial intelligence OR AI OR machine learning",
+							"type": "string"
+						},
+						{
+							"id": "id-4",
+							"name": "fromDate",
+							"value": "={{ $now.toFormat('yyyy-MM-dd') }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "12d07412-22f5-40f5-8a80-5403aeb6bc72",
+			"name": "Fetch AI News from NewsAPI",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.3,
+			"position": [250, 300],
+			"parameters": {
+				"method": "GET",
+				"url": "https://newsapi.org/v2/everything",
+				"authentication": "none",
+				"sendQuery": true,
+				"specifyQuery": "keypair",
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "q",
+							"value": "={{ $('Workflow Configuration').first().json.searchQuery }}"
+						},
+						{
+							"name": "from",
+							"value": "={{ $('Workflow Configuration').first().json.fromDate }}"
+						},
+						{
+							"name": "sortBy",
+							"value": "popularity"
+						},
+						{
+							"name": "language",
+							"value": "en"
+						},
+						{
+							"name": "apiKey",
+							"value": "={{ $('Workflow Configuration').first().json.newsApiKey }}"
+						}
+					]
+				},
+				"sendHeaders": false,
+				"sendBody": false,
+				"options": {}
+			}
+		},
+		{
+			"id": "929f4b47-e149-4b6d-8225-c1fcf11750ae",
+			"name": "Extract Top 5 Articles",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"language": "javaScript",
+				"jsCode": "// Extract top 5 articles from NewsAPI response\nconst articles = $input.first().json.articles || [];\n\n// Take the first 5 articles\nconst top5Articles = articles.slice(0, 5);\n\n// Map each article to the desired format\nconst outputItems = top5Articles.map(article => ({\n  json: {\n    title: article.title,\n    description: article.description,\n    url: article.url,\n    publishedAt: article.publishedAt,\n    source: article.source?.name\n  }\n}));\n\nreturn outputItems;"
+			}
+		},
+		{
+			"id": "f9bb837e-4ef3-4724-838d-21498b2023df",
+			"name": "Summarize Articles with GPT-4o-mini",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"typeVersion": 2,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "text",
+				"operation": "response",
+				"modelId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				},
+				"responses": {
+					"values": [
+						{
+							"type": "text",
+							"role": "user",
+							"content": "={{ 'Summarize this article in exactly two sentences:\\n\\nTitle: ' + $json.title + '\\n\\nDescription: ' + $json.description }}"
+						}
+					]
+				},
+				"simplify": true
+			}
+		},
+		{
+			"id": "13f39397-537f-4ec4-9d40-7d3326207471",
+			"name": "Aggregate Summaries",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"language": "javaScript",
+				"jsCode": "// Aggregate all article summaries into a single formatted message\nconst items = $input.all();\n\nif (!items || items.length === 0) {\n  return [{ json: { message: 'No articles to summarize', topArticleSummary: '' } }];\n}\n\n// Build the formatted message for Telegram\nlet telegramMessage = '🤖 *Daily AI News Digest*\\n\\n';\n\n// Store the top article summary separately for image generation\nlet topArticleSummary = '';\n\nitems.forEach((item, index) => {\n  const title = item.json.title || 'No title';\n  // Extract summary from OpenAI response message field\n  const summary = item.json.message || 'No summary available';\n  const url = item.json.url || '';\n  // Extract source from the original article data\n  const source = item.json.source?.name || item.json.source || 'Unknown source';\n  \n  // Store the first article's summary for image generation\n  if (index === 0) {\n    topArticleSummary = summary;\n  }\n  \n  // Format each article\n  telegramMessage += `*${index + 1}. ${title}*\\n`;\n  telegramMessage += `📰 Source: ${source}\\n`;\n  telegramMessage += `${summary}\\n`;\n  \n  if (url) {\n    telegramMessage += `🔗 [Read more](${url})\\n`;\n  }\n  \n  telegramMessage += '\\n';\n});\n\ntelegramMessage += '\\n_Generated at ' + new Date().toLocaleString() + '_';\n\nreturn [{\n  json: {\n    message: telegramMessage,\n    topArticleSummary: topArticleSummary,\n    articleCount: items.length\n  }\n}];"
+			}
+		},
+		{
+			"id": "8cf9e959-308f-4394-a1f2-8e960a2a51e4",
+			"name": "Generate Image for Top Article",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"typeVersion": 2,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "image",
+				"operation": "generate",
+				"model": "dall-e-3",
+				"prompt": "={{ 'Create a modern, professional illustration representing this AI news: ' + $json.topArticleSummary }}",
+				"options": {
+					"size": "1024x1024",
+					"returnImageUrls": false
+				}
+			}
+		},
+		{
+			"id": "871fdf3b-c938-49b8-a191-41f3a7807657",
+			"name": "Send to Telegram",
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "message",
+				"operation": "sendPhoto",
+				"chatId": "={{ $('Workflow Configuration').first().json.telegramChatId }}",
+				"binaryData": true,
+				"binaryPropertyName": "data",
+				"additionalFields": {
+					"caption": "={{ $('Aggregate Summaries').first().json.message }}",
+					"parse_mode": "Markdown"
+				}
+			},
+			"webhookId": "20d8bdd5-3903-44e0-9bdb-0897614722c5"
+		}
+	],
+	"connections": {
+		"Every Night at 8pm": {
+			"main": [
+				[
+					{
+						"node": "Workflow Configuration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Workflow Configuration": {
+			"main": [
+				[
+					{
+						"node": "Fetch AI News from NewsAPI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch AI News from NewsAPI": {
+			"main": [
+				[
+					{
+						"node": "Extract Top 5 Articles",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Top 5 Articles": {
+			"main": [
+				[
+					{
+						"node": "Summarize Articles with GPT-4o-mini",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Summarize Articles with GPT-4o-mini": {
+			"main": [
+				[
+					{
+						"node": "Aggregate Summaries",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate Summaries": {
+			"main": [
+				[
+					{
+						"node": "Generate Image for Top Article",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Image for Top Article": {
+			"main": [
+				[
+					{
+						"node": "Send to Telegram",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"name": "Daily AI News Digest with Summary and Image to Telegram"
+}

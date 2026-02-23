@@ -5,10 +5,13 @@ import { createWorkflow } from './mock.utils';
 import { getWorkflowDetails, createWorkflowDetailsTool } from '../tools/get-workflow-details.tool';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { v4 as uuid } from 'uuid';
+
 jest.mock('../tools/webhook-utils', () => ({
-	getWebhookDetails: jest.fn().mockResolvedValue('MOCK_TRIGGER_DETAILS'),
+	getTriggerDetails: jest.fn().mockResolvedValue('MOCK_TRIGGER_DETAILS'),
 }));
 
 describe('get-workflow-details MCP tool', () => {
@@ -21,6 +24,9 @@ describe('get-workflow-details MCP tool', () => {
 				findWorkflowForUser: jest.fn(),
 			});
 			const credentialsService = mockInstance(CredentialsService, {});
+			const telemetry = mockInstance(Telemetry, {
+				track: jest.fn(),
+			});
 			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
 
 			const tool = createWorkflowDetailsTool(
@@ -29,6 +35,7 @@ describe('get-workflow-details MCP tool', () => {
 				workflowFinderService,
 				credentialsService,
 				endpoints,
+				telemetry,
 			);
 
 			expect(tool.name).toBe('get_workflow_details');
@@ -41,7 +48,7 @@ describe('get-workflow-details MCP tool', () => {
 
 	describe('handler tests', () => {
 		test('returns sanitized workflow and trigger info (active)', async () => {
-			const workflow = createWorkflow({ active: true });
+			const workflow = createWorkflow({ activeVersionId: uuid() });
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
 				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
 			});
@@ -60,32 +67,14 @@ describe('get-workflow-details MCP tool', () => {
 			expect('pinData' in payload.workflow).toBe(false);
 			expect(payload.workflow.nodes.every((n) => !('credentials' in n))).toBe(true);
 			expect(payload.triggerInfo).toContain('MOCK_TRIGGER_DETAILS');
-			expect(payload.triggerInfo).toContain('Workflow is active and accessible');
-		});
-
-		test('returns trigger info (inactive)', async () => {
-			const workflow = createWorkflow({ active: false });
-			const workflowFinderService = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
-			});
-			const credentialsService = mockInstance(CredentialsService, {});
-			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
-
-			const payload = await getWorkflowDetails(
-				user,
-				baseWebhookUrl,
-				workflowFinderService,
-				credentialsService,
-				endpoints,
-				{ workflowId: 'wf-2' },
-			);
-
-			expect(payload.triggerInfo).toContain('Workflow is not active');
 		});
 
 		test('throws for not found/archived/unavailable workflow', async () => {
-			const archived = createWorkflow({ isArchived: true });
-			const unavailable = createWorkflow({ settings: { availableInMCP: false } });
+			const archived = createWorkflow({ activeVersionId: uuid(), isArchived: true });
+			const unavailable = createWorkflow({
+				activeVersionId: uuid(),
+				settings: { availableInMCP: false },
+			});
 
 			const credentialsService = mockInstance(CredentialsService, {});
 			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };

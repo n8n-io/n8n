@@ -7,7 +7,7 @@ export class WorkflowFilter extends BaseFilter {
 	@IsString()
 	@IsOptional()
 	@Expose()
-	name?: string;
+	query?: string;
 
 	@IsBoolean()
 	@IsOptional()

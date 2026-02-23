@@ -3,6 +3,8 @@ import {
 	getPersonalProject,
 	linkUserToProject,
 	createWorkflow,
+	createActiveWorkflow,
+	createWorkflowWithHistory,
 	getWorkflowSharing,
 	shareWorkflowWithProjects,
 	shareWorkflowWithUsers,
@@ -360,9 +362,136 @@ describe('GET /workflows/new', () => {
 			await createWorkflow({ name: 'My workflow' }, owner);
 			await createWorkflow({ name: 'My workflow 7' }, owner);
 
-			const response = await authOwnerAgent.get('/workflows/new');
+			const response = await authOwnerAgent.get('/workflows/new').query({
+				projectId: ownerPersonalProject.id,
+			});
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.name).toEqual('My workflow 8');
+		});
+	});
+
+	test('should return 403 when user does not have workflow:create permission in the project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const response = await authMemberAgent
+			.get('/workflows/new')
+			.query({
+				projectId: teamProject.id,
+			})
+			.expect(403);
+
+		expect(response.body).toMatchObject({
+			message: "You don't have the permissions to create a workflow in this project.",
+		});
+	});
+
+	test('should return 403 when user is not part of the project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(anotherMember, teamProject, 'project:admin');
+
+		const response = await authMemberAgent
+			.get('/workflows/new')
+			.query({
+				projectId: teamProject.id,
+			})
+			.expect(403);
+
+		expect(response.body).toMatchObject({
+			message: "You don't have the permissions to create a workflow in this project.",
+		});
+	});
+
+	test('should allow user with workflow:create permission in personal project', async () => {
+		await createWorkflow({ name: 'My workflow' }, member);
+
+		const response = await authMemberAgent
+			.get('/workflows/new')
+			.query({
+				projectId: memberPersonalProject.id,
+			})
+			.expect(200);
+
+		expect(response.body.data.name).toEqual('My workflow 2');
+	});
+
+	test('should allow user with workflow:create permission in team project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:editor');
+
+		const response = await authMemberAgent
+			.get('/workflows/new')
+			.query({
+				projectId: teamProject.id,
+			})
+			.expect(200);
+
+		// The naming service generates unique names globally, not per-project
+		expect(response.body.data.name).toBeDefined();
+		expect(typeof response.body.data.name).toBe('string');
+	});
+
+	test('should allow project admin to get new workflow name', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:admin');
+
+		const response = await authMemberAgent
+			.get('/workflows/new')
+			.query({
+				projectId: teamProject.id,
+			})
+			.expect(200);
+
+		expect(response.body.data.name).toBeDefined();
+	});
+
+	test('should allow instance owner to get new workflow name for any project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(anotherMember, teamProject, 'project:admin');
+
+		const response = await authOwnerAgent
+			.get('/workflows/new')
+			.query({
+				projectId: teamProject.id,
+			})
+			.expect(200);
+
+		expect(response.body.data.name).toBeDefined();
+	});
+});
+
+describe('GET /workflows/from-url', () => {
+	test('should return 403 when user does not have workflow:create permission in the project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const response = await authMemberAgent
+			.get('/workflows/from-url')
+			.query({
+				url: 'https://example.com/workflow.json',
+				projectId: teamProject.id,
+			})
+			.expect(403);
+
+		expect(response.body).toMatchObject({
+			message: "You don't have the permissions to create a workflow in this project.",
+		});
+	});
+
+	test('should return 403 when user is not part of the project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(anotherMember, teamProject, 'project:admin');
+
+		const response = await authMemberAgent
+			.get('/workflows/from-url')
+			.query({
+				url: 'https://example.com/workflow.json',
+				projectId: teamProject.id,
+			})
+			.expect(403);
+
+		expect(response.body).toMatchObject({
+			message: "You don't have the permissions to create a workflow in this project.",
 		});
 	});
 });
@@ -704,8 +833,7 @@ describe('POST /workflows', () => {
 		expect(response.statusCode).toBe(200);
 	});
 
-	test('Should create workflow history version when licensed', async () => {
-		license.enable('feat:workflowHistory');
+	test('Should always create workflow history version', async () => {
 		const payload = {
 			name: 'testing',
 			nodes: [
@@ -751,47 +879,6 @@ describe('POST /workflows', () => {
 		expect(historyVersion).not.toBeNull();
 		expect(historyVersion!.connections).toEqual(payload.connections);
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
-	});
-
-	test('Should not create workflow history version when not licensed', async () => {
-		license.disable('feat:workflowHistory');
-		const payload = {
-			name: 'testing',
-			nodes: [
-				{
-					id: 'uuid-1234',
-					parameters: {},
-					name: 'Start',
-					type: 'n8n-nodes-base.start',
-					typeVersion: 1,
-					position: [240, 300],
-				},
-			],
-			connections: {},
-			staticData: null,
-			settings: {
-				saveExecutionProgress: true,
-				saveManualExecutions: true,
-				saveDataErrorExecution: 'all',
-				saveDataSuccessExecution: 'all',
-				executionTimeout: 3600,
-				timezone: 'America/New_York',
-			},
-			active: false,
-		};
-
-		const response = await authOwnerAgent.post('/workflows').send(payload);
-
-		expect(response.statusCode).toBe(200);
-
-		const {
-			data: { id },
-		} = response.body;
-
-		expect(id).toBeDefined();
-		expect(
-			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
-		).toBe(0);
 	});
 });
 
@@ -1274,9 +1361,8 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	describe('workflow history', () => {
-		test('Should create workflow history version when licensed', async () => {
-			license.enable('feat:workflowHistory');
-			const workflow = await createWorkflow({}, owner);
+		test('Should always create workflow history version', async () => {
+			const workflow = await createWorkflowWithHistory({}, owner);
 			const payload = {
 				name: 'name updated',
 				versionId: workflow.versionId,
@@ -1313,7 +1399,7 @@ describe('PATCH /workflows/:workflowId', () => {
 			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 			const {
-				data: { id },
+				data: { id, versionId: updatedVersionId },
 			} = response.body;
 
 			expect(response.statusCode).toBe(200);
@@ -1321,72 +1407,22 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(id).toBe(workflow.id);
 			expect(
 				await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
-			).toBe(1);
+			).toBe(2);
 			const historyVersion = await Container.get(WorkflowHistoryRepository).findOne({
 				where: {
 					workflowId: id,
+					versionId: updatedVersionId,
 				},
 			});
 			expect(historyVersion).not.toBeNull();
 			expect(historyVersion!.connections).toEqual(payload.connections);
 			expect(historyVersion!.nodes).toEqual(payload.nodes);
 		});
-
-		test('Should not create workflow history version when not licensed', async () => {
-			license.disable('feat:workflowHistory');
-			const workflow = await createWorkflow({}, owner);
-			const payload = {
-				name: 'name updated',
-				versionId: workflow.versionId,
-				nodes: [
-					{
-						id: 'uuid-1234',
-						parameters: {},
-						name: 'Start',
-						type: 'n8n-nodes-base.start',
-						typeVersion: 1,
-						position: [240, 300],
-					},
-					{
-						id: 'uuid-1234',
-						parameters: {},
-						name: 'Cron',
-						type: 'n8n-nodes-base.cron',
-						typeVersion: 1,
-						position: [400, 300],
-					},
-				],
-				connections: {},
-				staticData: '{"id":1}',
-				settings: {
-					saveExecutionProgress: false,
-					saveManualExecutions: false,
-					saveDataErrorExecution: 'all',
-					saveDataSuccessExecution: 'all',
-					executionTimeout: 3600,
-					timezone: 'America/New_York',
-				},
-			};
-
-			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
-
-			const {
-				data: { id },
-			} = response.body;
-
-			expect(response.statusCode).toBe(200);
-
-			expect(id).toBe(workflow.id);
-			expect(
-				await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
-			).toBe(0);
-		});
 	});
 
 	describe('activate workflow', () => {
 		test('should activate workflow without changing version ID', async () => {
-			license.disable('feat:workflowHistory');
-			const workflow = await createWorkflow({}, owner);
+			const workflow = await createWorkflowWithHistory({}, owner);
 			const payload = {
 				versionId: workflow.versionId,
 				active: true,
@@ -1398,17 +1434,17 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(activeWorkflowManager.add).toBeCalled();
 
 			const {
-				data: { id, versionId, active },
+				data: { id, versionId, active, activeVersionId },
 			} = response.body;
 
 			expect(id).toBe(workflow.id);
 			expect(versionId).toBe(workflow.versionId);
 			expect(active).toBe(true);
+			expect(activeVersionId).toBe(workflow.versionId);
 		});
 
 		test('should deactivate workflow without changing version ID', async () => {
-			license.disable('feat:workflowHistory');
-			const workflow = await createWorkflow({ active: true }, owner);
+			const workflow = await createActiveWorkflow({}, owner);
 			const payload = {
 				versionId: workflow.versionId,
 				active: false,
@@ -1421,12 +1457,13 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(activeWorkflowManager.remove).toBeCalled();
 
 			const {
-				data: { id, versionId, active },
+				data: { id, versionId, active, activeVersionId },
 			} = response.body;
 
 			expect(id).toBe(workflow.id);
 			expect(versionId).toBe(workflow.versionId);
 			expect(active).toBe(false);
+			expect(activeVersionId).toBeNull();
 		});
 	});
 });
@@ -1602,7 +1639,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const destinationProject = await createTeamProject('Team Project', member);
 
-		const workflow = await createWorkflow({ active: true }, member);
+		const workflow = await createActiveWorkflow({}, member);
 
 		//
 		// ACT
@@ -1630,7 +1667,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const folder = await createFolder(destinationProject, { name: 'Test Folder' });
 
-		const workflow = await createWorkflow({ active: true, parentFolder: folder }, member);
+		const workflow = await createActiveWorkflow({ parentFolder: folder }, member);
 
 		//
 		// ACT
@@ -1662,7 +1699,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const folder = await createFolder(destinationProject, { name: 'Test Folder' });
 
-		const workflow = await createWorkflow({ active: true, parentFolder: folder }, member);
+		const workflow = await createActiveWorkflow({ parentFolder: folder }, member);
 
 		//
 		// ACT
@@ -1702,10 +1739,7 @@ describe('PUT /:workflowId/transfer', () => {
 			name: 'Another Test Folder',
 		});
 
-		const workflow = await createWorkflow(
-			{ active: true, parentFolder: folderInDestinationProject },
-			member,
-		);
+		const workflow = await createWorkflow({ parentFolder: folderInDestinationProject }, member);
 
 		//
 		// ACT
@@ -1726,7 +1760,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const destinationProject = await createTeamProject('Team Project', member);
 
-		const workflow = await createWorkflow({ active: true }, member);
+		const workflow = await createActiveWorkflow({}, member);
 
 		activeWorkflowManager.add.mockRejectedValue(new WorkflowActivationError('Failed'));
 
@@ -1755,7 +1789,8 @@ describe('PUT /:workflowId/transfer', () => {
 		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
 
 		const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });
-		expect(workflowFromDB).toMatchObject({ active: false });
+		expect(workflowFromDB.active).toBe(false);
+		expect(workflowFromDB.activeVersionId).toBeNull();
 	});
 
 	test('owner transfers workflow from project they are not part of, e.g. test global cred sharing scope', async () => {
@@ -2096,7 +2131,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const destinationProject = await createTeamProject('Team Project', member);
 
-		const workflow = await createWorkflow({ active: true }, member);
+		const workflow = await createActiveWorkflow({}, member);
 
 		activeWorkflowManager.add.mockRejectedValue(new ApplicationError('Oh no!'));
 

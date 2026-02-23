@@ -5,7 +5,7 @@ export class FileMaker implements ICredentialType {
 
 	displayName = 'FileMaker API';
 
-	documentationUrl = 'fileMaker';
+	documentationUrl = 'filemaker';
 
 	properties: INodeProperties[] = [
 		{

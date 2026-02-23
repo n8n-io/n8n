@@ -247,7 +247,7 @@ describe('McpServer', () => {
 					// Simulate session initialization asynchronously using queueMicrotask instead of setTimeout
 					queueMicrotask(() => {
 						if (options.onsessioninitialized) {
-							options.onsessioninitialized(sessionId);
+							void options.onsessioninitialized(sessionId);
 						}
 					});
 					return mockStreamableTransport;
@@ -283,7 +283,7 @@ describe('McpServer', () => {
 					// Simulate session initialization and capture onclose callback asynchronously using queueMicrotask
 					queueMicrotask(() => {
 						if (options.onsessioninitialized) {
-							options.onsessioninitialized(sessionId);
+							void options.onsessioninitialized(sessionId);
 							onCloseCallback = mockStreamableTransport.onclose;
 						}
 					});

@@ -7,12 +7,16 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	INodeTypes,
-	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { createEnvProviderState, NodeConnectionTypes, Workflow } from 'n8n-workflow';
+import {
+	createEnvProviderState,
+	createRunExecutionData,
+	NodeConnectionTypes,
+	Workflow,
+} from 'n8n-workflow';
 
 import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requester';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
@@ -101,7 +105,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 			main: [inputData],
 		};
 
-		const runExecutionData: IRunExecutionData = {
+		const runExecutionData = createRunExecutionData({
 			startData: {},
 			resultData: {
 				runData: {
@@ -127,7 +131,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 				waitingExecution: {},
 				waitingExecutionSource: {},
 			},
-		};
+		});
 
 		return {
 			additionalData: mock<IWorkflowExecuteAdditionalData>(),

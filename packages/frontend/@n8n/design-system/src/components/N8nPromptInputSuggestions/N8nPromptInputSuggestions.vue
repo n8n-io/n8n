@@ -60,7 +60,7 @@ function onSuggestionClick(suggestion: WorkflowSuggestion) {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: var(--spacing-m);
+	gap: var(--spacing--md);
 	max-width: 710px;
 	width: 100%;
 }
@@ -69,7 +69,7 @@ function onSuggestionClick(suggestion: WorkflowSuggestion) {
 .promptContainer {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 	align-self: stretch;
 }
 
@@ -78,24 +78,24 @@ function onSuggestionClick(suggestion: WorkflowSuggestion) {
 	display: flex;
 	justify-content: center;
 	align-items: flex-start;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	flex-wrap: wrap;
 }
 
 .suggestionPill {
 	display: flex;
-	padding: var(--spacing-4xs) var(--spacing-2xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
 	justify-content: center;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	border-radius: 56px;
-	border: var(--border-base);
+	border: var(--border);
 	background: var(--color--background--light-3);
 	cursor: pointer;
 	transition: all 0.2s ease;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
-	font-weight: var(--font-weight-regular);
+	font-weight: var(--font-weight--regular);
 
 	&:hover:not(:disabled) {
 		color: var(--color--primary);

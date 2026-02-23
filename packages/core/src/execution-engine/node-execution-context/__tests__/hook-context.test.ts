@@ -144,4 +144,10 @@ describe('HookContext', () => {
 			expect(description).toEqual<IWebhookDescription>(webhookDescription);
 		});
 	});
+
+	describe('getExecutionContext', () => {
+		it('should return undefined', () => {
+			expect(hookContext.getExecutionContext()).toBeUndefined();
+		});
+	});
 });

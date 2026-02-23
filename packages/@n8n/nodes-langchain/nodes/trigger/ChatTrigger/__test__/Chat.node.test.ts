@@ -67,12 +67,12 @@ describe('Test Chat Node', () => {
 			} as any,
 		]);
 
-		const memory = { chatHistory: { addAIChatMessage: jest.fn() } };
+		const memory = { chatHistory: { addAIMessage: jest.fn() } };
 		mockExecuteFunctions.getInputConnectionData.mockResolvedValueOnce(memory);
 
 		await chat.execute.call(mockExecuteFunctions);
 
-		expect(memory.chatHistory.addAIChatMessage).toHaveBeenCalledWith('message');
+		expect(memory.chatHistory.addAIMessage).toHaveBeenCalledWith('message');
 	});
 
 	it('should execute without memory connection', async () => {

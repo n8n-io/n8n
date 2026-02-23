@@ -1,4 +1,4 @@
-name: Test Workflows Nightly and Manual
+name: 'Test: Workflows Nightly'
 
 on:
   schedule:

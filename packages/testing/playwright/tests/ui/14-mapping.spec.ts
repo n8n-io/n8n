@@ -51,8 +51,10 @@ test.describe('Data Mapping', () => {
 		await n8n.ndv.inputPanel.switchDisplayMode('json');
 
 		const expectedJsonText =
-			'[{"input": [{"count": 0,"with space": "!!","with.dot": "!!","with"quotes": "!!"}]},{"input": [{"count": 1}]}]';
-		await expect(n8n.ndv.inputPanel.get().getByText(expectedJsonText)).toBeVisible();
+			'[  {    "input": [      {        "count": 0,        "with space": "!!",        "with.dot": "!!",        "with"quotes": "!!"      }    ]  },  {    "input": [      {        "count": 1      }    ]  }]';
+		await expect(async () => {
+			await expect(n8n.ndv.inputPanel.get().getByText(expectedJsonText)).toBeVisible();
+		}).toPass({ timeout: 1000 });
 
 		await expect(n8n.ndv.inputPanel.getJsonDataContainer()).toBeVisible();
 

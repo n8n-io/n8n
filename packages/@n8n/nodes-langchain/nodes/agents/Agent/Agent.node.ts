@@ -28,8 +28,7 @@ export class Agent extends VersionedNodeType {
 					],
 				},
 			},
-			// Keep 2.2 until blocking bugs are fixed
-			defaultVersion: 2.2,
+			defaultVersion: 3,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

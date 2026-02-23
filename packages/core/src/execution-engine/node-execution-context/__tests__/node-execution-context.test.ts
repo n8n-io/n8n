@@ -10,7 +10,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE, createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 
 import { InstanceSettings } from '@/instance-settings';
 
@@ -381,10 +381,10 @@ describe('NodeExecutionContext', () => {
 					webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
 				}),
 				mode,
-				{
+				createRunExecutionData({
 					validateSignature: true,
 					resultData: { runData: {} },
-				},
+				}),
 			);
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		});

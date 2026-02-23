@@ -5,12 +5,18 @@ import { z } from 'zod';
 
 import { InstanceSettings } from '@/instance-settings';
 
-const binaryDataModesSchema = z.enum(['default', 'filesystem', 's3']);
+export const BINARY_DATA_MODES = ['default', 'filesystem', 's3', 'database'] as const;
+
+const binaryDataModesSchema = z.enum(BINARY_DATA_MODES);
 
 const availableModesSchema = z
 	.string()
 	.transform((value) => value.split(','))
 	.pipe(binaryDataModesSchema.array());
+
+const dbMaxFileSizeSchema = z
+	.number()
+	.max(1024, 'Binary data max file size in `database` mode cannot exceed 1024 MiB'); // because of Postgres BYTEA hard limit
 
 @Config
 export class BinaryDataConfig {
@@ -32,6 +38,10 @@ export class BinaryDataConfig {
 	 **/
 	@Env('N8N_BINARY_DATA_SIGNING_SECRET')
 	signingSecret: string;
+
+	/** Maximum file size (in MiB) for binary data in `database` mode. **/
+	@Env('N8N_BINARY_DATA_DATABASE_MAX_FILE_SIZE', dbMaxFileSizeSchema)
+	dbMaxFileSize: number = 512;
 
 	constructor({ encryptionKey, n8nFolder }: InstanceSettings) {
 		this.localStoragePath = path.join(n8nFolder, 'binaryData');

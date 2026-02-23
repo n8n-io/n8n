@@ -30,7 +30,7 @@ withDefaults(
 .container {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	user-select: none;
 }
 
@@ -38,7 +38,7 @@ withDefaults(
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: var(--spacing-m);
+	width: var(--spacing--md);
 	flex-shrink: 0;
 }
 </style>

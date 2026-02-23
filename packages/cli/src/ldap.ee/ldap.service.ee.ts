@@ -85,6 +85,12 @@ export class LdapService {
 			key: LDAP_FEATURE_NAME,
 		});
 		const ldapConfig = jsonParse<LdapConfig>(value);
+
+		// Apply secure default for new security field on existing instances
+		if (ldapConfig.enforceEmailUniqueness === undefined) {
+			ldapConfig.enforceEmailUniqueness = true;
+		}
+
 		ldapConfig.bindingAdminPassword = this.cipher.decrypt(ldapConfig.bindingAdminPassword);
 		return ldapConfig;
 	}
@@ -226,6 +232,33 @@ export class LdapService {
 			return searchEntries;
 		}
 		return [];
+	}
+
+	/**
+	 * Check if multiple LDAP accounts exist with the same email address.
+	 * Returns true if duplicates found, false otherwise.
+	 * This prevents privilege escalation attacks via email-based account linking.
+	 */
+	private async hasEmailDuplicatesInLdap(email: string): Promise<boolean> {
+		try {
+			const searchResults = await this.searchWithAdminBinding(
+				createFilter(
+					`(${this.config.emailAttribute}=${escapeFilter(email)})`,
+					this.config.userFilter,
+				),
+			);
+
+			// If more than one LDAP entry has this email, it's a duplicate
+			return searchResults.length > 1;
+		} catch (error) {
+			// Log error but don't block login if search fails
+			this.logger.error('LDAP - Error checking for duplicate emails', {
+				email,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			// Fail closed: treat search errors as potential duplicates for security
+			return true;
+		}
 	}
 
 	/**
@@ -482,6 +515,19 @@ export class LdapService {
 
 		const ldapAuthIdentity = await getAuthIdentityByLdapId(ldapId);
 		if (!ldapAuthIdentity) {
+			if (this.config.enforceEmailUniqueness) {
+				const hasDuplicates = await this.hasEmailDuplicatesInLdap(emailAttributeValue);
+
+				if (hasDuplicates) {
+					this.logger.warn('LDAP login blocked: Multiple LDAP accounts share the same email', {
+						email: emailAttributeValue,
+						ldapId,
+					});
+
+					return undefined;
+				}
+			}
+
 			const emailUser = await getUserByEmail(emailAttributeValue);
 
 			// check if there is an email user with the same email as the authenticated LDAP user trying to log-in

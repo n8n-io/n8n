@@ -198,6 +198,8 @@ test.describe('Security Notifications', () => {
 			await setupApiFailure(n8n);
 
 			await n8n.goHome();
+			const { projectId } = await n8n.projectComposer.createProject();
+			await n8n.page.goto(`projects/${projectId}/workflows`);
 
 			// Verify no security notification appears on API failure
 			const notification = n8n.notifications.getNotificationByTitle('Critical update available');

@@ -25,6 +25,18 @@ export class ProjectSettingsPage extends BasePage {
 		await this.page.getByTestId('project-settings-cancel-button').click();
 	}
 
+	getSaveButton() {
+		return this.page.getByTestId('project-settings-save-button');
+	}
+
+	getCancelButton() {
+		return this.page.getByTestId('project-settings-cancel-button');
+	}
+
+	getDeleteButton() {
+		return this.page.getByTestId('project-settings-delete-button');
+	}
+
 	async clearMemberSearch() {
 		const searchInput = this.page.getByTestId('project-members-search');
 		const clearButton = searchInput.locator('+ span');
@@ -82,5 +94,22 @@ export class ProjectSettingsPage extends BasePage {
 	async expectMembersSelectIsVisible() {
 		const select = this.page.getByTestId('project-members-select');
 		await expect(select).toBeVisible();
+	}
+
+	// Icon picker methods
+	getIconPickerButton() {
+		return this.page.getByTestId('icon-picker-button');
+	}
+
+	async clickIconPickerButton() {
+		await this.getIconPickerButton().click();
+	}
+
+	async selectIconTab(tabName: string) {
+		await this.page.getByTestId('icon-picker-tabs').getByText(tabName).click();
+	}
+
+	async selectFirstEmoji() {
+		await this.page.getByTestId('icon-picker-emoji').first().click();
 	}
 }

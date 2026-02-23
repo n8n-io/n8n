@@ -519,6 +519,40 @@ master_failover_state:no-failover
 				expect(mockClient.get).toHaveBeenCalled();
 				expect(mockClient.quit).toHaveBeenCalled();
 			});
+
+			describe('llen operation', () => {
+				beforeEach(() => {
+					thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+					thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('llen');
+					thisArg.getNodeParameter.calledWith('list', 0).mockReturnValue('bull:main:q');
+				});
+
+				it('should return the length of a list', async () => {
+					mockClient.lLen.calledWith('bull:main:q').mockResolvedValue(42);
+
+					const output = await node.execute.call(thisArg);
+					expect(mockClient.lLen).toHaveBeenCalledWith('bull:main:q');
+					expect(output[0][0].json).toEqual({ 'bull:main:q': 42 });
+				});
+
+				it('should continue and return an error when continue on fail is enabled and an error is thrown', async () => {
+					thisArg.continueOnFail.mockReturnValue(true);
+					mockClient.lLen.mockRejectedValue(new Error('Redis error'));
+
+					const output = await node.execute.call(thisArg);
+					expect(mockClient.lLen).toHaveBeenCalled();
+					expect(output[0][0].json).toEqual({ error: 'Redis error' });
+				});
+
+				it('should throw an error when continue on fail is disabled and an error is thrown', async () => {
+					mockClient.lLen.mockRejectedValue(new Error('Redis error'));
+
+					await expect(node.execute.call(thisArg)).rejects.toThrow(NodeOperationError);
+
+					expect(mockClient.lLen).toHaveBeenCalled();
+					expect(mockClient.quit).toHaveBeenCalled();
+				});
+			});
 		});
 	});
 });

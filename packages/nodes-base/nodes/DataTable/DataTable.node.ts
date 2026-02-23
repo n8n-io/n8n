@@ -24,9 +24,6 @@ export class DataTable implements INodeType {
 			name: 'Data table',
 		},
 		usableAsTool: true,
-		// We have custom logic in the frontend to ignore `hidden` for this
-		// particular node type if the data-table module is enabled
-		hidden: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		hints: [

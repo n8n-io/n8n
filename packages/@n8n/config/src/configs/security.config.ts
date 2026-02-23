@@ -20,6 +20,14 @@ export class SecurityConfig {
 	blockFileAccessToN8nFiles: boolean = true;
 
 	/**
+	 * Blocked file and folder regular expression patterns that `ReadWriteFile` and `ReadBinaryFiles` nodes cant access. Separate multiple patterns with with semicolon `;`.
+	 * - `^(.*\/)*\.git(\/.*)*$`
+	 * Set to empty to not block based on file patterns.
+	 */
+	@Env('N8N_BLOCK_FILE_PATTERNS')
+	blockFilePatterns: string = '^(.*\\/)*\\.git(\\/.*)*$';
+
+	/**
 	 * In a [security audit](https://docs.n8n.io/hosting/securing/security-audit/), how many days for a workflow to be considered abandoned if not executed.
 	 */
 	@Env('N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW')
@@ -51,4 +59,20 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_GIT_NODE_DISABLE_BARE_REPOS')
 	disableBareRepos: boolean = false;
+
+	/** Whether to allow access to AWS system credentials, e.g. in awsAssumeRole credentials */
+	@Env('N8N_AWS_SYSTEM_CREDENTIALS_ACCESS_ENABLED')
+	awsSystemCredentialsAccess: boolean = false;
+
+	/**
+	 * Whether to enable hooks (like pre-commit hooks) for the Git node.
+	 */
+	@Env('N8N_GIT_NODE_ENABLE_HOOKS')
+	enableGitNodeHooks: boolean = false;
+
+	/**
+	 * Whether to enable arbitrary git config keys.
+	 */
+	@Env('N8N_GIT_NODE_ENABLE_ALL_CONFIG_KEYS')
+	enableGitNodeAllConfigKeys: boolean = false;
 }

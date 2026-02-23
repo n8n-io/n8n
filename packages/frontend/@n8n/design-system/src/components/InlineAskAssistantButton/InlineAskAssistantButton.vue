@@ -63,15 +63,15 @@ const onClick = () => {
 
 <style lang="scss" module>
 .button {
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 	position: relative;
 	border: 1px solid transparent;
 	padding: 0;
 	overflow: hidden;
 
 	background:
-		var(--color-askAssistant-button-background-gradient) padding-box,
-		var(--color-assistant-highlight-gradient) border-box;
+		var(--assistant--button--color--background--gradient) padding-box,
+		var(--assistant--color--highlight-gradient) border-box;
 
 	> div {
 		height: 100%;
@@ -86,21 +86,21 @@ const onClick = () => {
 	&:hover {
 		cursor: pointer;
 		background:
-			var(--color-askAssistant-button-background-gradient-hover) padding-box,
-			var(--color-assistant-highlight-reverse) border-box;
+			var(--assistant--button--color--background--gradient--hover) padding-box,
+			var(--assistant--color--highlight-gradient--reverse) border-box;
 
 		> div {
-			background: var(--color-assistant-inner-highlight-hover);
+			background: var(--assistant--button--color--background--hover);
 		}
 	}
 
 	&:active {
 		background:
-			var(--color-askAssistant-button-background-gradient-active) padding-box,
-			var(--color-assistant-highlight-reverse) border-box;
+			var(--assistant--button--color--background--gradient--active) padding-box,
+			var(--assistant--color--highlight-gradient--reverse) border-box;
 
 		> div {
-			background: var(--color-assistant-inner-highlight-active);
+			background: var(--assistant--button--color--background--active);
 		}
 	}
 }
@@ -112,6 +112,6 @@ const onClick = () => {
 }
 
 .icon {
-	margin-right: var(--spacing-3xs);
+	margin-right: var(--spacing--3xs);
 }
 </style>

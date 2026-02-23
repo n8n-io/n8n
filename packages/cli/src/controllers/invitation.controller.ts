@@ -17,7 +17,7 @@ import { PostHogClient } from '@/posthog';
 import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';
+import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 
 @RestController('/invitations')
 export class InvitationController {
@@ -48,12 +48,12 @@ export class InvitationController {
 
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
-		if (isSamlLicensedAndEnabled()) {
+		if (isSsoCurrentAuthenticationMethod()) {
 			this.logger.debug(
-				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
+				'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
 			throw new BadRequestError(
-				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
+				'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
 		}
 
@@ -97,6 +97,15 @@ export class InvitationController {
 		@Body payload: AcceptInvitationRequestDto,
 		@Param('id') inviteeId: string,
 	) {
+		if (isSsoCurrentAuthenticationMethod()) {
+			this.logger.debug(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+			throw new BadRequestError(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+		}
+
 		const { inviterId, firstName, lastName, password } = payload;
 
 		const users = await this.userRepository.find({

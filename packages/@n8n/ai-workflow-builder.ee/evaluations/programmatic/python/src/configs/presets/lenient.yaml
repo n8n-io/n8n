@@ -1,0 +1,83 @@
+version: "1.0"
+name: "lenient"
+description: "Lenient comparison - focus on structure over details"
+
+# Cost weights - lower penalties
+costs:
+  nodes:
+    insertion: 7.0
+    deletion: 7.0
+    substitution:
+      same_type: 0.1  # Very low cost for parameter differences
+      similar_type: 2.0
+      different_type: 8.0
+      trigger_mismatch: 50.0
+
+  edges:
+    insertion: 3.0
+    deletion: 3.0
+    substitution: 2.0
+
+  parameters:
+    mismatch_weight: 0.2  # Low weight for parameter differences
+    nested_weight: 0.1
+
+# Node type similarity groups (same as standard)
+similarity_groups:
+  ai_llms:
+    - "@n8n/n8n-nodes-langchain.lmChatOpenAi"
+    - "@n8n/n8n-nodes-langchain.lmChatAnthropic"
+    - "@n8n/n8n-nodes-langchain.lmChatOllama"
+    - "@n8n/n8n-nodes-langchain.lmChatMistralCloud"
+    - "@n8n/n8n-nodes-langchain.lmChatAws"
+    - "@n8n/n8n-nodes-langchain.lmChatGroq"
+
+
+ignore:
+  node_types:
+    - "n8n-nodes-base.stickyNote"
+    - "n8n-nodes-base.noOp"
+
+  global_parameters:
+    - "position"
+    - "name"
+    - "id"
+    - "notes"
+    - "notesInFlow"
+    - "color"
+    - "alwaysOutputData"
+    - "executeOnce"
+
+  # Ignore implementation details for specific node types
+  node_type_parameters:
+    "@n8n/n8n-nodes-langchain.agent":
+      - "options.*"  # Ignore all options
+
+    "@n8n/n8n-nodes-langchain.lmChatOpenAi":
+      - "model"  # Model choice is flexible
+
+    "@n8n/n8n-nodes-langchain.lmChatAnthropic":
+      - "model"
+
+  # Ignore credential references (might differ between environments)
+  parameter_paths:
+    - "**.credentials"
+
+# Parameter comparison - very tolerant
+parameter_comparison:
+  # High tolerance for numeric values
+  numeric_tolerance:
+    - parameter: "options.temperature"
+      tolerance: 0.3
+      cost_if_exceeded: 0.5
+
+    - parameter: "options.maxTokens"
+      tolerance: 500
+      cost_if_exceeded: 0.5
+
+# Output configuration
+output:
+  max_edits: 10  # Show fewer edits since many are ignored
+  group_by: "priority"
+  include_explanations: true
+  include_suggestions: true

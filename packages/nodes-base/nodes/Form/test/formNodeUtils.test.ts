@@ -5,9 +5,11 @@ import {
 	type FormFieldsParameter,
 	type IWebhookFunctions,
 	type NodeTypeAndVersion,
+	NodeOperationError,
+	FORM_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 
-import { renderFormNode } from '../utils/formNodeUtils';
+import { renderFormNode, getFormTriggerNode } from '../utils/formNodeUtils';
 
 describe('formNodeUtils', () => {
 	let webhookFunctions: MockProxy<IWebhookFunctions>;
@@ -117,6 +119,183 @@ describe('formNodeUtils', () => {
 			n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
 			testRun: true,
 			useResponseData: true,
+		});
+	});
+
+	describe('getFormTriggerNode', () => {
+		const mockCurrentNode = { name: 'currentNode' };
+
+		beforeEach(() => {
+			webhookFunctions.getNode.mockReturnValue(mockCurrentNode as any);
+		});
+
+		it('should return the first executed form trigger node', () => {
+			const formTrigger1: NodeTypeAndVersion = {
+				name: 'FormTrigger1',
+				type: FORM_TRIGGER_NODE_TYPE,
+				typeVersion: 1,
+				disabled: false,
+			};
+			const formTrigger2: NodeTypeAndVersion = {
+				name: 'FormTrigger2',
+				type: FORM_TRIGGER_NODE_TYPE,
+				typeVersion: 1,
+				disabled: false,
+			};
+			const otherNode: NodeTypeAndVersion = {
+				name: 'OtherNode',
+				type: 'n8n-nodes-base.other',
+				typeVersion: 1,
+				disabled: false,
+			};
+
+			const parentNodes = [otherNode, formTrigger1, formTrigger2];
+			webhookFunctions.getParentNodes.mockReturnValue(parentNodes);
+
+			webhookFunctions.evaluateExpression
+				.calledWith(`{{ $('${formTrigger1.name}').first() }}`)
+				.mockReturnValue('success');
+
+			const result = getFormTriggerNode(webhookFunctions);
+
+			expect(result).toBe(formTrigger1);
+			expect(webhookFunctions.getParentNodes).toHaveBeenCalledWith('currentNode');
+			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
+				`{{ $('${formTrigger1.name}').first() }}`,
+			);
+		});
+
+		it('should return the second form trigger if the first one fails evaluation', () => {
+			const formTrigger1: NodeTypeAndVersion = {
+				name: 'FormTrigger1',
+				type: FORM_TRIGGER_NODE_TYPE,
+				typeVersion: 1,
+				disabled: false,
+			};
+			const formTrigger2: NodeTypeAndVersion = {
+				name: 'FormTrigger2',
+				type: FORM_TRIGGER_NODE_TYPE,
+				typeVersion: 1,
+				disabled: false,
+			};
+
+			const parentNodes = [formTrigger1, formTrigger2];
+			webhookFunctions.getParentNodes.mockReturnValue(parentNodes);
+
+			webhookFunctions.evaluateExpression
+				.calledWith(`{{ $('${formTrigger1.name}').first() }}`)
+				.mockImplementation(() => {
+					throw new Error('Evaluation failed');
+				});
+			webhookFunctions.evaluateExpression
+				.calledWith(`{{ $('${formTrigger2.name}').first() }}`)
+				.mockReturnValue('success');
+
+			const result = getFormTriggerNode(webhookFunctions);
+
+			expect(result).toBe(formTrigger2);
+			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
+				`{{ $('${formTrigger1.name}').first() }}`,
+			);
+			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
+				`{{ $('${formTrigger2.name}').first() }}`,
+			);
+		});
+
+		it('should throw NodeOperationError when no form trigger nodes are found', () => {
+			const otherNode: NodeTypeAndVersion = {
+				name: 'OtherNode',
+				type: 'n8n-nodes-base.other',
+				typeVersion: 1,
+				disabled: false,
+			};
+
+			const parentNodes = [otherNode];
+			webhookFunctions.getParentNodes.mockReturnValue(parentNodes);
+
+			expect(() => getFormTriggerNode(webhookFunctions)).toThrow(NodeOperationError);
+			expect(() => getFormTriggerNode(webhookFunctions)).toThrow(
+				'Form Trigger node must be set before this node',
+			);
+		});
+
+		it('should throw NodeOperationError when form trigger nodes exist but none are executed', () => {
+			const formTrigger1: NodeTypeAndVersion = {
+				name: 'FormTrigger1',
+				type: FORM_TRIGGER_NODE_TYPE,
+				typeVersion: 1,
+				disabled: false,
+			};
+			const formTrigger2: NodeTypeAndVersion = {
+				name: 'FormTrigger2',
+				type: FORM_TRIGGER_NODE_TYPE,
+				typeVersion: 1,
+				disabled: false,
+			};
+
+			const parentNodes = [formTrigger1, formTrigger2];
+			webhookFunctions.getParentNodes.mockReturnValue(parentNodes);
+
+			webhookFunctions.evaluateExpression.mockImplementation(() => {
+				throw new Error('Evaluation failed');
+			});
+
+			expect(() => getFormTriggerNode(webhookFunctions)).toThrow(NodeOperationError);
+			expect(() => getFormTriggerNode(webhookFunctions)).toThrow(
+				'Form Trigger node was not executed',
+			);
+
+			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
+				`{{ $('${formTrigger1.name}').first() }}`,
+			);
+			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
+				`{{ $('${formTrigger2.name}').first() }}`,
+			);
+		});
+
+		it('should handle empty parent nodes array', () => {
+			webhookFunctions.getParentNodes.mockReturnValue([]);
+
+			expect(() => getFormTriggerNode(webhookFunctions)).toThrow(NodeOperationError);
+			expect(() => getFormTriggerNode(webhookFunctions)).toThrow(
+				'Form Trigger node must be set before this node',
+			);
+		});
+
+		it('should filter out non-form-trigger nodes correctly', () => {
+			const formTrigger: NodeTypeAndVersion = {
+				name: 'FormTrigger',
+				type: FORM_TRIGGER_NODE_TYPE,
+				typeVersion: 1,
+				disabled: false,
+			};
+			const webhookNode: NodeTypeAndVersion = {
+				name: 'WebhookNode',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 1,
+				disabled: false,
+			};
+			const httpNode: NodeTypeAndVersion = {
+				name: 'HttpNode',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				disabled: false,
+			};
+
+			const parentNodes = [webhookNode, formTrigger, httpNode];
+			webhookFunctions.getParentNodes.mockReturnValue(parentNodes);
+
+			webhookFunctions.evaluateExpression
+				.calledWith(`{{ $('${formTrigger.name}').first() }}`)
+				.mockReturnValue('success');
+
+			const result = getFormTriggerNode(webhookFunctions);
+
+			expect(result).toBe(formTrigger);
+			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledTimes(1);
+			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
+				`{{ $('${formTrigger.name}').first() }}`,
+			);
 		});
 	});
 });

@@ -12,7 +12,7 @@ export class ServiceNowBasicApi implements ICredentialType {
 
 	displayName = 'ServiceNow Basic Auth API';
 
-	documentationUrl = 'serviceNow';
+	documentationUrl = 'servicenow';
 
 	properties: INodeProperties[] = [
 		{

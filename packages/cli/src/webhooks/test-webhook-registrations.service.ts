@@ -8,6 +8,7 @@ import { CacheService } from '@/services/cache/cache.service';
 export type TestWebhookRegistration = {
 	pushRef?: string;
 	workflowEntity: IWorkflowBase;
+	// TODO: update this type to close CAT-1265 properly
 	destinationNode?: string;
 	webhook: IWebhookData;
 };

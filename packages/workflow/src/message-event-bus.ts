@@ -63,6 +63,13 @@ export interface MessageEventBusDestinationOptions {
 	subscribedEvents?: string[];
 	credentials?: INodeCredentials;
 	anonymizeAuditMessages?: boolean;
+	circuitBreaker?: {
+		maxFailures?: number;
+		maxDuration?: number;
+		halfOpenRequests?: number;
+		failureWindow?: number;
+		maxConcurrentHalfOpenRequests?: number;
+	};
 }
 
 export interface MessageEventBusDestinationWebhookParameterItem {
@@ -97,6 +104,11 @@ export interface MessageEventBusDestinationWebhookParameterOptions {
 		port: number;
 	};
 	timeout?: number;
+	socket?: {
+		keepAlive?: boolean;
+		maxSockets?: number;
+		maxFreeSockets?: number;
+	};
 }
 
 export interface MessageEventBusDestinationWebhookOptions

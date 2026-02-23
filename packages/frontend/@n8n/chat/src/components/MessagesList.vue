@@ -87,9 +87,9 @@ watch(
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: var(--spacing-xs);
-	padding-inline: var(--spacing-m);
-	padding-bottom: var(--spacing-l);
+	gap: var(--spacing--xs);
+	padding-inline: var(--spacing--md);
+	padding-bottom: var(--spacing--lg);
 	overflow: hidden;
 }
 

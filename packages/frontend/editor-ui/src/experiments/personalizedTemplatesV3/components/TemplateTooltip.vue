@@ -156,13 +156,13 @@ onUnmounted(() => {
 .tooltipContent {
 	display: flex;
 	align-items: flex-start;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .text {
 	flex: 1;
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-regular);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--md);
 }
 
 .dismissButton {

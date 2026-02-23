@@ -3,11 +3,10 @@ import { Command } from '@oclif/core';
 import glob from 'fast-glob';
 import { cp, mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import picocolors from 'picocolors';
 import { rimraf } from 'rimraf';
 
 import { runCommand } from '../utils/child-process';
-import { ensureN8nPackage } from '../utils/prompts';
+import { ensureN8nPackage, getCommandHeader } from '../utils/prompts';
 
 export default class Build extends Command {
 	static override description = 'Compile the node in the current directory and copy assets';
@@ -18,7 +17,7 @@ export default class Build extends Command {
 		await this.parse(Build);
 
 		const commandName = 'n8n-node build';
-		intro(picocolors.inverse(` ${commandName} `));
+		intro(await getCommandHeader(commandName));
 
 		await ensureN8nPackage(commandName);
 

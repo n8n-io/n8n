@@ -2,6 +2,8 @@ import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
+import { stringify } from 'flatted';
 
 describe('ExecutionRepository', () => {
 	beforeAll(async () => {
@@ -83,6 +85,51 @@ describe('ExecutionRepository', () => {
 
 			const executionEntities = await executionRepo.find();
 			expect(executionEntities).toBeEmptyArray();
+		});
+	});
+
+	describe('run execution data migration', () => {
+		it('should automatically migrate IRunExecutionDataV0 to V1 when reading', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const executionDataRepo = Container.get(ExecutionDataRepository);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			// Create V0 data with string destinationNode
+			const v0Data: IRunExecutionDataAll = {
+				version: 0,
+				startData: { destinationNode: 'TestNode' },
+				resultData: { runData: {} },
+			};
+
+			// Insert execution with V0 data directly into the database
+			const { identifiers } = await executionRepo.insert({
+				workflowId: workflow.id,
+				mode: 'manual',
+				startedAt: new Date(),
+				status: 'success',
+				finished: true,
+				createdAt: new Date(),
+			});
+			const executionId = identifiers[0].id as string;
+			await executionDataRepo.insert({
+				executionId,
+				workflowData: { id: workflow.id, connections: {}, nodes: [], name: workflow.name },
+				data: stringify(v0Data),
+			});
+
+			// Read the execution back
+			const execution = await executionRepo.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			// Verify that the data was migrated to V1
+			const data = execution?.data as IRunExecutionData;
+			expect(data.version).toBe(1);
+			expect(data.startData?.destinationNode).toEqual({
+				nodeName: 'TestNode',
+				mode: 'inclusive',
+			});
 		});
 	});
 });

@@ -1,0 +1,74 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages"
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["3045"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"retry-after": ["23"],
+			"request-id": ["req_011CUfbHrBTPPrNvcotdaj3Q"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2025-10-31T16:28:38Z"],
+			"anthropic-ratelimit-tokens-remaining": ["15500000"],
+			"anthropic-ratelimit-tokens-limit": ["15500000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2025-10-31T16:28:39Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["500000"],
+			"anthropic-ratelimit-output-tokens-limit": ["500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2025-10-31T16:28:38Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["15000000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Fri, 31 Oct 2025 16:28:39 GMT"],
+			"Content-Type": ["application/json"],
+			"CF-RAY": ["997486c7489f1118-MAN"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_01PSRaKpMw6PaaxVLCvLoUND",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_01BhBeBg6qzPtUf9951vxfre",
+						"name": "remove_node",
+						"input": {
+							"nodeId": "d472a92f-5792-4e22-89f1-a5b5ecf7d7ce"
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 2,
+					"cache_creation_input_tokens": 6206,
+					"cache_read_input_tokens": 26920,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 6206,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 80,
+					"service_tier": "standard"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDFQU1JhS3BNdzZQYWF4VkxDdkxvVU5EIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUJoQmVCZzZxelB0VWY5OTUxdnhmcmUiLCJuYW1lIjoicmVtb3ZlX25vZGUiLCJpbnB1dCI6eyJub2RlSWQiOiJkNDcyYTkyZi01NzkyLTRlMjItODlmMS1hNWI1ZWNmN2Q3Y2UifX1dLCJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjYyMDYsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjoyNjkyMCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6NjIwNiwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjgwLCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCJ9fQ=="
+		}
+	},
+	"id": "1761928197573-unknown-host-POST-_v1_messages-2dfa2300.json",
+	"priority": 16,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"remainingTimes": 1,
+		"unlimited": false
+	}
+}

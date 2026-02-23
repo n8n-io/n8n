@@ -3,6 +3,8 @@ import type {
 	AiApplySuggestionRequestDto,
 	AiChatRequestDto,
 	AiBuilderChatRequestDto,
+	AiSessionRetrievalRequestDto,
+	AiSessionMetadataResponseDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
@@ -122,7 +124,6 @@ describe('AiController', () => {
 				workflowContext: {
 					currentWorkflow: { id: 'workflow123' },
 				},
-				useDeprecatedCredentials: false,
 			},
 		};
 
@@ -151,7 +152,6 @@ describe('AiController', () => {
 						executionData: undefined,
 						executionSchema: undefined,
 					},
-					useDeprecatedCredentials: false,
 				},
 				request.user,
 				expect.any(AbortSignal),
@@ -421,6 +421,57 @@ describe('AiController', () => {
 				InternalServerError,
 			);
 			expect(workflowBuilderService.getBuilderInstanceCredits).toHaveBeenCalledWith(request.user);
+		});
+	});
+
+	describe('getSessionsMetadata', () => {
+		const payload: AiSessionRetrievalRequestDto = {
+			workflowId: 'workflow123',
+		};
+
+		it('should return sessions metadata successfully when messages exist', async () => {
+			const expectedMetadata: AiSessionMetadataResponseDto = {
+				hasMessages: true,
+			};
+
+			workflowBuilderService.getSessionsMetadata.mockResolvedValue(expectedMetadata);
+
+			const result = await controller.getSessionsMetadata(request, response, payload);
+
+			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+			);
+			expect(result).toEqual(expectedMetadata);
+		});
+
+		it('should return sessions metadata successfully when no messages exist', async () => {
+			const expectedMetadata: AiSessionMetadataResponseDto = {
+				hasMessages: false,
+			};
+
+			workflowBuilderService.getSessionsMetadata.mockResolvedValue(expectedMetadata);
+
+			const result = await controller.getSessionsMetadata(request, response, payload);
+
+			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+			);
+			expect(result).toEqual(expectedMetadata);
+		});
+
+		it('should throw InternalServerError if getting sessions metadata fails', async () => {
+			const mockError = new Error('Failed to get sessions metadata');
+			workflowBuilderService.getSessionsMetadata.mockRejectedValue(mockError);
+
+			await expect(controller.getSessionsMetadata(request, response, payload)).rejects.toThrow(
+				InternalServerError,
+			);
+			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+			);
 		});
 	});
 });

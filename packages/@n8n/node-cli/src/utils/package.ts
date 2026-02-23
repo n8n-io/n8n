@@ -5,12 +5,13 @@ import prettier from 'prettier';
 import { writeFileSafe } from './filesystem';
 import { jsonParse } from './json';
 
-type N8nPackageJson = {
+export type N8nPackageJson = {
 	name: string;
 	version: string;
 	n8n?: {
 		nodes?: string[];
 		credentials?: string[];
+		strict?: boolean;
 	};
 };
 

@@ -54,7 +54,15 @@ void (async function start() {
 	});
 
 	sentry = Container.get(TaskRunnerSentry);
-	await sentry.initIfEnabled();
+	try {
+		await sentry.initIfEnabled();
+	} catch (error) {
+		console.error(
+			'FAILED TO INITIALIZE SENTRY. ERROR REPORTING WILL BE DISABLED. THIS IS LIKELY A CONFIGURATION OR ENVIRONMENT ISSUE.',
+			error,
+		);
+		sentry = undefined;
+	}
 
 	runner = new JsTaskRunner(config);
 	runner.on('runner:reached-idle-timeout', () => {

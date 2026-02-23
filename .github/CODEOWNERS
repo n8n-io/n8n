@@ -1,1 +1,4 @@
 packages/@n8n/db/src/migrations/ @n8n-io/migrations-review
+
+# Node popularity data updates
+packages/frontend/editor-ui/data/node-popularity.json @n8n-io/catalysts

@@ -1,4 +1,5 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
+
 import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
 
 const ruleTester = new RuleTester();

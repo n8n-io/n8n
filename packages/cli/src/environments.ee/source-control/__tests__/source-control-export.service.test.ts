@@ -1,5 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import type {
+	Folder,
 	FolderRepository,
 	Project,
 	ProjectRepository,
@@ -12,6 +13,7 @@ import type {
 	WorkflowRepository,
 	WorkflowTagMapping,
 	WorkflowTagMappingRepository,
+	Variables,
 } from '@n8n/db';
 import { GLOBAL_ADMIN_ROLE, In, PROJECT_OWNER_ROLE, User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -57,6 +59,7 @@ describe('SourceControlExportService', () => {
 	);
 
 	const fsWriteFile = jest.spyOn(fsp, 'writeFile');
+	const fsReadFile = jest.spyOn(fsp, 'readFile');
 
 	beforeEach(() => jest.clearAllMocks());
 
@@ -182,6 +185,164 @@ describe('SourceControlExportService', () => {
 			expect(result.missingIds).toHaveLength(1);
 			expect(result.missingIds?.[0]).toBe('cred1');
 		});
+
+		it('should export global credentials with isGlobal flag set to true', async () => {
+			// Arrange
+			const mockGlobalCredential = mock({
+				id: 'global-cred1',
+				name: 'Global Test Credential',
+				type: 'oauth2',
+				data: cipher.encrypt(credentialData),
+				isGlobal: true,
+			});
+
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
+				mock<SharedCredentials>({
+					credentials: mockGlobalCredential,
+					project: mock({
+						type: 'team',
+						id: 'team1',
+						name: 'Test Team',
+					}),
+				}),
+			]);
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder([
+				mock<SourceControlledFile>({ id: 'global-cred1' }),
+			]);
+
+			// Assert
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/credential_stubs/global-cred1.json',
+				dataCaptor,
+			);
+
+			const exportedData = JSON.parse(dataCaptor.value);
+			expect(exportedData).toEqual({
+				id: 'global-cred1',
+				name: 'Global Test Credential',
+				type: 'oauth2',
+				data: {
+					authUrl: '',
+					accessTokenUrl: '',
+					clientId: '',
+					clientSecret: '',
+				},
+				ownedBy: {
+					type: 'team',
+					teamId: 'team1',
+					teamName: 'Test Team',
+				},
+				isGlobal: true,
+			});
+		});
+
+		it('should export non-global credentials with isGlobal flag set to false', async () => {
+			// Arrange
+			const mockNonGlobalCredential = mock({
+				id: 'non-global-cred1',
+				name: 'Non-Global Test Credential',
+				type: 'oauth2',
+				data: cipher.encrypt(credentialData),
+				isGlobal: false,
+			});
+
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
+				mock<SharedCredentials>({
+					credentials: mockNonGlobalCredential,
+					project: mock({
+						type: 'personal',
+						projectRelations: [
+							{
+								role: PROJECT_OWNER_ROLE,
+								user: mock({ email: 'user@example.com' }),
+							},
+						],
+					}),
+				}),
+			]);
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder([
+				mock<SourceControlledFile>({ id: 'non-global-cred1' }),
+			]);
+
+			// Assert
+			expect(result.count).toBe(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/credential_stubs/non-global-cred1.json',
+				dataCaptor,
+			);
+
+			const exportedData = JSON.parse(dataCaptor.value);
+			expect(exportedData).toEqual({
+				id: 'non-global-cred1',
+				name: 'Non-Global Test Credential',
+				type: 'oauth2',
+				data: {
+					authUrl: '',
+					accessTokenUrl: '',
+					clientId: '',
+					clientSecret: '',
+				},
+				ownedBy: {
+					type: 'personal',
+					personalEmail: 'user@example.com',
+				},
+				isGlobal: false,
+			});
+		});
+
+		it('should default isGlobal to false when not specified', async () => {
+			// Arrange
+			const mockCredentialWithoutIsGlobal = mock({
+				id: 'cred-no-flag',
+				name: 'Credential Without Flag',
+				type: 'oauth2',
+				data: cipher.encrypt(credentialData),
+				isGlobal: undefined, // explicitly undefined to test the default
+			});
+
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
+				mock<SharedCredentials>({
+					credentials: mockCredentialWithoutIsGlobal,
+					project: mock({
+						type: 'personal',
+						projectRelations: [
+							{
+								role: PROJECT_OWNER_ROLE,
+								user: mock({ email: 'user@example.com' }),
+							},
+						],
+					}),
+				}),
+			]);
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder([
+				mock<SourceControlledFile>({ id: 'cred-no-flag' }),
+			]);
+
+			// Assert
+			expect(result.count).toBe(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/credential_stubs/cred-no-flag.json',
+				dataCaptor,
+			);
+
+			const exportedData = JSON.parse(dataCaptor.value);
+			// When isGlobal is undefined, the service defaults it to false via destructuring
+			expect(exportedData.isGlobal).toBe(false);
+		});
 	});
 
 	describe('exportTagsToWorkFolder', () => {
@@ -273,6 +434,63 @@ describe('SourceControlExportService', () => {
 			expect(result.count).toBe(0);
 			expect(result.files).toHaveLength(0);
 		});
+
+		it('should not duplicate folders on push', async () => {
+			// Arrange
+			const newFolders = [
+				{
+					id: 'folder-id',
+					name: 'Folder Name',
+					parentFolderId: null,
+					homeProject: { id: 'project-id' },
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				} as Folder,
+			];
+			folderRepository.find.mockResolvedValue(newFolders);
+			workflowRepository.find.mockResolvedValue([mock()]);
+			const existingFolders = [
+				{
+					id: 'folder-id',
+					name: 'Folder Name',
+					parentFolderId: null,
+					homeProjectId: 'project-id',
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+				},
+			];
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					folders: existingFolders,
+				}),
+			);
+
+			// Act
+			const result = await service.exportFoldersToWorkFolder(globalAdminContext);
+
+			// Assert
+			// new json file should contain only the new folders
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/folders.json',
+				JSON.stringify(
+					{
+						folders: newFolders.map((f) => ({
+							id: f.id,
+							name: f.name,
+							parentFolderId: f.parentFolderId,
+							homeProjectId: f.homeProject.id,
+							createdAt: f.createdAt.toISOString(),
+							updatedAt: f.updatedAt.toISOString(),
+						})),
+					},
+					null,
+					2,
+				),
+			);
+
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
+		});
 	});
 
 	describe('exportVariablesToWorkFolder', () => {
@@ -281,7 +499,7 @@ describe('SourceControlExportService', () => {
 			variablesService.getAllCached.mockResolvedValue([mock()]);
 
 			// Act
-			const result = await service.exportVariablesToWorkFolder();
+			const result = await service.exportGlobalVariablesToWorkFolder();
 
 			// Assert
 			expect(result.count).toBe(1);
@@ -293,7 +511,7 @@ describe('SourceControlExportService', () => {
 			variablesService.getAllCached.mockResolvedValue([]);
 
 			// Act
-			const result = await service.exportVariablesToWorkFolder();
+			const result = await service.exportGlobalVariablesToWorkFolder();
 
 			// Assert
 			expect(result.count).toBe(0);
@@ -359,6 +577,7 @@ describe('SourceControlExportService', () => {
 				icon: { type: 'icon', value: 'icon.png' },
 				description: 'Project 1',
 				type: 'team',
+				variables: [],
 			});
 			const project2 = mock<Project>({
 				id: 'project-id-2',
@@ -366,6 +585,7 @@ describe('SourceControlExportService', () => {
 				icon: null,
 				description: 'Team Project',
 				type: 'team',
+				variables: [mock<Variables>({ key: 'VAR1', value: 'value1' })],
 			});
 
 			const expectedProject1Json = JSON.stringify(
@@ -380,6 +600,7 @@ describe('SourceControlExportService', () => {
 						teamId: project1.id,
 						teamName: project1.name,
 					},
+					variableStubs: [],
 				},
 				null,
 				2,
@@ -396,6 +617,12 @@ describe('SourceControlExportService', () => {
 						teamId: project2.id,
 						teamName: project2.name,
 					},
+					variableStubs: [
+						{
+							key: 'VAR1',
+							value: '',
+						},
+					],
 				},
 				null,
 				2,
@@ -409,6 +636,7 @@ describe('SourceControlExportService', () => {
 			// Assert
 			expect(projectRepository.find).toHaveBeenCalledWith({
 				where: { id: In([project1.id, project2.id]), type: 'team' },
+				relations: ['variables'],
 			});
 			expect(fsWriteFile).toHaveBeenCalledWith(
 				'/mock/n8n/git/projects/project-id-1.json',

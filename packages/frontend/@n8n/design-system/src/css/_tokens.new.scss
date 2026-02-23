@@ -1,0 +1,65 @@
+/* stylelint-disable */
+@mixin theme {
+	// Brand
+	--background--brand: var(--color--orange-300);
+	--background--brand--hover: var(--color--orange-400);
+	--background--brand--active: var(--color--orange-500);
+	--background--brand--focus: var(--color--orange-400);
+	--background--brand--disabled: var(--color--neutral-200);
+
+	// Surface
+	--background--surface: var(--color--neutral-white);
+	--background--surface--hover: var(--color--neutral-100);
+	--background--surface--active: var(--color--neutral-125);
+	--background--surface--focus: var(--color--neutral-100);
+	--background--surface--disabled: var(--color--neutral-200);
+
+	// Border
+	--border-color--subtle: var(--color--neutral-100);
+	--border-color: var(--color--neutral-200);
+	--border-color--strong: var(--color--neutral-800);
+
+	// Icon
+	--icon-color--subtle: var(--color--neutral-200);
+	--icon-color: var(--color--neutral-500);
+	--icon-color--strong: var(--color--neutral-800);
+
+	// Text
+	--text-color: var(--color--neutral-800);
+	--text-color--subtle: var(--color--neutral-500);
+	--text-color--subtler: var(--color--neutral-200);
+
+	// Success
+	--background--success: var(--color--green-50);
+	--border-color--success: var(--color--green-200);
+	--text-color--success: var(--color--green-800);
+	--icon-color--success: var(--color--green-800);
+
+	// Warning
+	--background--warning: var(--color--yellow-100);
+	--border-color--warning: var(--color--yellow-200);
+	--text-color--warning: var(--color--yellow-800);
+	--icon-color--warning: var(--color--yellow-800);
+
+	// Danger
+	--background--danger: var(--color--red-50);
+	--border-color--danger: var(--color--red-200);
+	--text-color--danger: var(--color--red-800);
+	--icon-color--danger: var(--color--red-800);
+
+	// Info
+	--background--info: var(--color--blue-50);
+	--border-color--info: var(--color--blue-200);
+	--text-color--info: var(--color--blue-800);
+	--icon-color--info: var(--color--blue-800);
+
+	// Inverse
+	--background--inverse: var(--color--neutral-900);
+	--border-color--inverse: var(--color--neutral-700);
+	--text-color--inverse: var(--color--neutral-100);
+	--icon-color--inverse: var(--color--neutral-100);
+}
+
+:root {
+	@include theme;
+}

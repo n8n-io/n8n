@@ -1,0 +1,145 @@
+{
+	"name": "Github Repository getIssues Limit Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "repository",
+				"operation": "getIssues",
+				"owner": {
+					"__rl": true,
+					"value": "testowner",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "testrepo",
+					"mode": "name"
+				},
+				"returnAll": false,
+				"limit": 1,
+				"getRepositoryIssuesFilters": {}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "github-node-id",
+			"name": "Get Repository Issues Limited",
+			"credentials": {
+				"githubApi": {
+					"id": "credential-id",
+					"name": "Test Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "noop-id",
+			"name": "Issues Response"
+		}
+	],
+	"pinData": {
+		"Issues Response": [
+			{
+				"json": {
+					"url": "https://api.github.com/repos/testowner/testrepo/issues/1",
+					"repository_url": "https://api.github.com/repos/testowner/testrepo",
+					"labels_url": "https://api.github.com/repos/testowner/testrepo/issues/1/labels{/name}",
+					"comments_url": "https://api.github.com/repos/testowner/testrepo/issues/1/comments",
+					"events_url": "https://api.github.com/repos/testowner/testrepo/issues/1/events",
+					"html_url": "https://github.com/testowner/testrepo/issues/1",
+					"id": 1,
+					"number": 1,
+					"title": "Found a bug",
+					"user": {
+						"login": "testuser",
+						"id": 1,
+						"node_id": "MDQ6VXNlcjE=",
+						"avatar_url": "https://github.com/images/error/testuser_happy.gif",
+						"gravatar_id": "",
+						"url": "https://api.github.com/users/testuser",
+						"html_url": "https://github.com/testuser",
+						"type": "User",
+						"site_admin": false
+					},
+					"labels": [
+						{
+							"id": 208045946,
+							"node_id": "MDU6TGFiZWwyMDgwNDU5NDY=",
+							"url": "https://api.github.com/repos/testowner/testrepo/labels/bug",
+							"name": "bug",
+							"description": "Something isn't working",
+							"color": "d73a49",
+							"default": true
+						}
+					],
+					"state": "open",
+					"locked": false,
+					"assignee": null,
+					"assignees": [],
+					"milestone": null,
+					"comments": 0,
+					"created_at": "2011-04-22T13:33:48Z",
+					"updated_at": "2011-04-22T13:33:48Z",
+					"closed_at": null,
+					"author_association": "COLLABORATOR",
+					"active_lock_reason": null,
+					"body": "I'm having a problem with this.",
+					"reactions": {
+						"url": "https://api.github.com/repos/testowner/testrepo/issues/1/reactions",
+						"total_count": 0,
+						"+1": 0,
+						"-1": 0,
+						"laugh": 0,
+						"hooray": 0,
+						"confused": 0,
+						"heart": 0,
+						"rocket": 0,
+						"eyes": 0
+					},
+					"timeline_url": "https://api.github.com/repos/testowner/testrepo/issues/1/timeline",
+					"performed_via_github_app": null,
+					"state_reason": null
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get Repository Issues Limited",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Repository Issues Limited": {
+			"main": [
+				[
+					{
+						"node": "Issues Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

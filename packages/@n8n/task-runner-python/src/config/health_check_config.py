@@ -22,8 +22,8 @@ class HealthCheckConfig:
         port = read_int_env(
             ENV_HEALTH_CHECK_SERVER_PORT, DEFAULT_HEALTH_CHECK_SERVER_PORT
         )
-        if port < 1 or port > 65535:
-            raise ConfigurationError(f"Port must be between 1 and 65535, got {port}")
+        if port < 0 or port > 65535:
+            raise ConfigurationError(f"Port must be between 0 and 65535, got {port}")
 
         return cls(
             enabled=read_bool_env(ENV_HEALTH_CHECK_SERVER_ENABLED, default=False),

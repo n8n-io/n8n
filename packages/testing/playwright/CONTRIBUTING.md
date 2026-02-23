@@ -562,7 +562,7 @@ test('should filter credentials by project ID', async ({ n8n, api }) => {
     NOTION_API_KEY,
   );
 
-  const credentials = await getCredentialsForProject(api, projectId);
+  const credentials = await n8n.api.credentials.getCredentialsByProject(projectId);
   expect(credentials).toHaveLength(1);
 });
 ```

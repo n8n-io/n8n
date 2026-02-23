@@ -180,4 +180,80 @@ export class ProjectApiHelper {
 		const result = await response.json();
 		return result.data ?? result;
 	}
+
+	/**
+	 * Private helper: Add multiple users to a project
+	 * @param projectId The ID of the project
+	 * @param relations Array of userId and role pairs
+	 * @returns True if users were added successfully
+	 */
+	private async addUsersToProject(
+		projectId: string,
+		relations: Array<{ userId: string; role: string }>,
+	): Promise<boolean> {
+		const response = await this.api.request.post(`/rest/projects/${projectId}/users`, {
+			data: { relations },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to add users to project: ${await response.text()}`);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Add a user to a project
+	 * @param projectId The ID of the project
+	 * @param userId The ID of the user to add
+	 * @param role The role to assign to the user (e.g., 'project:editor', 'project:viewer', 'project:admin')
+	 * @returns True if user was added successfully
+	 */
+	async addUserToProject(projectId: string, userId: string, role: string): Promise<boolean> {
+		return await this.addUsersToProject(projectId, [{ userId, role }]);
+	}
+
+	/**
+	 * Add a user to a project by email
+	 * @param projectId The ID of the project
+	 * @param email The email of the user to add
+	 * @param role The role to assign to the user (e.g., 'project:editor', 'project:viewer', 'project:admin')
+	 * @returns True if user was added successfully
+	 */
+	async addUserToProjectByEmail(projectId: string, email: string, role: string): Promise<boolean> {
+		const user = await this.api.users.getUserByEmail(email);
+		if (!user) {
+			throw new TestError(`User with email ${email} not found`);
+		}
+		return await this.addUserToProject(projectId, user.id, role);
+	}
+
+	/**
+	 * Add multiple users to a project by their emails
+	 * @param projectId The ID of the project
+	 * @param userRoles Array of user emails and their roles
+	 * @returns True if all users were added successfully
+	 * @example
+	 * await addMultipleUsersToProjectByEmails(projectId, [
+	 *   { email: 'user1@test.com', role: 'project:editor' },
+	 *   { email: 'user2@test.com', role: 'project:viewer' }
+	 * ]);
+	 */
+	async addMultipleUsersToProjectByEmails(
+		projectId: string,
+		userRoles: Array<{ email: string; role: string }>,
+	): Promise<boolean> {
+		// Fetch all users and build relations in parallel
+		const relations = await Promise.all(
+			userRoles.map(async ({ email, role }) => {
+				const user = await this.api.users.getUserByEmail(email);
+				if (!user) {
+					throw new TestError(`User with email ${email} not found`);
+				}
+				return { userId: user.id, role };
+			}),
+		);
+
+		return await this.addUsersToProject(projectId, relations);
+	}
 }

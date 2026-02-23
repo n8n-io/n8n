@@ -11,7 +11,7 @@ export class OpenAiApi implements ICredentialType {
 
 	displayName = 'OpenAi';
 
-	documentationUrl = 'openAi';
+	documentationUrl = 'openai';
 
 	properties: INodeProperties[] = [
 		{

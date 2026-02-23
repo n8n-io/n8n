@@ -1,6 +1,6 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { JSONSchema7 } from 'json-schema';
-import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
+import { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
 import { jsonParse, NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
 import type {
 	INodeType,

@@ -8,6 +8,7 @@ export type CredentialPayload = {
 	type: string;
 	data: ICredentialDataDecryptedObject;
 	isManaged?: boolean;
+	isGlobal?: boolean;
 };
 
 export const randomApiKey = () => `n8n_api_${randomString(40)}`;
@@ -44,11 +45,14 @@ export const randomEmail = () => `${randomName()}@${randomName()}.${randomTopLev
 
 export const randomCredentialPayload = ({
 	isManaged = false,
-}: { isManaged?: boolean } = {}): CredentialPayload => ({
+	isGlobal,
+	type,
+}: { isManaged?: boolean; isGlobal?: boolean; type?: string } = {}): CredentialPayload => ({
 	name: randomName(),
-	type: randomName(),
+	type: type ?? 'githubApi',
 	data: { accessToken: randomString(6, 16) },
 	isManaged,
+	isGlobal,
 });
 
 export const randomCredentialPayloadWithOauthTokenData = ({

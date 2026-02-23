@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { mkdtempSync, readFileSync } from 'fs';
 import { IncomingMessage } from 'http';
@@ -14,6 +15,7 @@ import { Readable } from 'stream';
 
 import type { BinaryDataConfig } from '@/binary-data';
 import { BinaryDataService } from '@/binary-data/binary-data.service';
+import type { ErrorReporter } from '@/errors';
 
 import {
 	assertBinaryData,
@@ -44,11 +46,13 @@ describe('test binary data helper methods', () => {
 		availableModes: ['default', 'filesystem'],
 		localStoragePath: temporaryDir,
 	});
+	const errorReporter = mock<ErrorReporter>();
+	const logger = mock<Logger>();
 	let binaryDataService: BinaryDataService;
 
 	beforeEach(() => {
 		jest.resetAllMocks();
-		binaryDataService = new BinaryDataService(binaryDataConfig);
+		binaryDataService = new BinaryDataService(binaryDataConfig, errorReporter, logger);
 		Container.set(BinaryDataService, binaryDataService);
 	});
 
@@ -592,8 +596,7 @@ describe('copyBinaryFile', () => {
 
 		expect(result.fileName).toBe(fileName);
 		expect(binaryDataService.copyBinaryFile).toHaveBeenCalledWith(
-			workflowId,
-			executionId,
+			{ type: 'execution', workflowId, executionId },
 			{
 				...binaryData,
 				fileExtension: 'txt',
@@ -614,8 +617,7 @@ describe('copyBinaryFile', () => {
 
 		expect(result.fileName).toBe(fileName);
 		expect(binaryDataService.copyBinaryFile).toHaveBeenCalledWith(
-			workflowId,
-			executionId,
+			{ type: 'execution', workflowId, executionId },
 			{
 				...binaryData,
 				fileExtension: 'bin',
@@ -635,7 +637,7 @@ describe('prepareBinaryData', () => {
 		jest.resetAllMocks();
 		Container.set(BinaryDataService, binaryDataService);
 
-		binaryDataService.store.mockImplementation(async (_w, _e, _b, binaryData) => binaryData);
+		binaryDataService.store.mockImplementation(async (_l, _b, binaryData) => binaryData);
 	});
 
 	it('parses filenames correctly', async () => {
@@ -644,13 +646,17 @@ describe('prepareBinaryData', () => {
 		const result = await prepareBinaryData(buffer, executionId, workflowId, fileName);
 
 		expect(result.fileName).toEqual(fileName);
-		expect(binaryDataService.store).toHaveBeenCalledWith(workflowId, executionId, buffer, {
-			data: '',
-			fileExtension: undefined,
-			fileName,
-			fileType: 'text',
-			mimeType: 'text/plain',
-		});
+		expect(binaryDataService.store).toHaveBeenCalledWith(
+			{ type: 'execution', executionId, workflowId },
+			buffer,
+			{
+				data: '',
+				fileExtension: undefined,
+				fileName,
+				fileType: 'text',
+				mimeType: 'text/plain',
+			},
+		);
 	});
 
 	it('handles IncomingMessage with responseUrl', async () => {

@@ -1,20 +1,29 @@
-import { test, expect } from '../../fixtures/cloud';
+import { test, expect } from '../../fixtures/base';
 import { attachMetric, pollMemoryMetric } from '../../utils/performance-helper';
+
+test.use({
+	addContainerCapability: {
+		resourceQuota: {
+			memory: 0.75,
+			cpu: 0.5,
+		},
+	},
+});
 
 test.describe('Memory Consumption', () => {
 	const CONTAINER_STABILIZATION_TIME = 20000;
 	const POLL_MEMORY_DURATION = 30000;
 	const STARTER_PLAN_MEMORY_LIMIT = 768;
 
-	test('Memory consumption baseline with starter plan resources @cloud:starter', async ({
-		cloudContainer,
+	test('Memory consumption baseline with starter plan resources', async ({
+		n8nContainer,
 	}, testInfo) => {
 		// Wait for container to stabilize
 		await new Promise((resolve) => setTimeout(resolve, CONTAINER_STABILIZATION_TIME));
 
 		// Poll memory metric for 30 seconds to get baseline
 		const averageMemoryBytes = await pollMemoryMetric(
-			cloudContainer.baseUrl,
+			n8nContainer.baseUrl,
 			POLL_MEMORY_DURATION,
 			1000,
 		);

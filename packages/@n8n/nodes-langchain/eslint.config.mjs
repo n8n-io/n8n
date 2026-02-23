@@ -1,10 +1,14 @@
 import { defineConfig } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 import nodesBasePlugin from 'eslint-plugin-n8n-nodes-base';
+import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
 
 export default defineConfig(
 	nodeConfig,
 	{
+		plugins: {
+			'@n8n/community-nodes': n8nCommunityNodesPlugin,
+		},
 		rules: {
 			// TODO: remove all the following rules
 			eqeqeq: 'warn',
@@ -20,6 +24,8 @@ export default defineConfig(
 			'import-x/extensions': 'warn',
 
 			'n8n-local-rules/no-argument-spread': 'warn', // TODO: mark error
+
+			'@n8n/community-nodes/credential-documentation-url': ['error', { allowSlugs: true }],
 
 			'@typescript-eslint/no-unnecessary-type-assertion': 'warn',
 			'@typescript-eslint/naming-convention': ['error', { selector: 'memberLike', format: null }],

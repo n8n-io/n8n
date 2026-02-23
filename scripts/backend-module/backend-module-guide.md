@@ -118,6 +118,21 @@ export class ExternalSecretsModule implements ModuleInterface {
 }
 ```
 
+A module may be restricted to specific instance types:
+
+```ts
+@BackendModule({
+  name: 'my-feature',
+  instanceTypes: ['main', 'webhook']
+})
+export class MyFeatureModule implements ModuleInterface {
+  // This module will only be initialized on main and webhook instances,
+  // not on worker instances.
+}
+```
+
+If `instanceTypes` is omitted, the module will be initialized on all instance types (`main`, `webhook`, and `worker`).
+
 If a module is only _partially_ behind a license flag, e.g. insights, then use the `@Licensed()` decorator instead:
 
 ```ts

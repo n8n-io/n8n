@@ -1,4 +1,4 @@
-name: Test Workflows on PR Comment
+name: 'Test: Workflows PR Comment'
 
 on:
   issue_comment:

@@ -1,9 +1,8 @@
 import os
 from pathlib import Path
-from typing import Optional
 
 
-def read_env(env_name: str) -> Optional[str]:
+def read_env(env_name: str) -> str | None:
     if env_name in os.environ:
         return os.environ[env_name]
 

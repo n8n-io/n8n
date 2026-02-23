@@ -22,7 +22,8 @@ export class BitbucketTrigger implements INodeType {
 		name: 'bitbucketTrigger',
 		icon: 'file:bitbucket.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Handle Bitbucket events via webhooks',
 		defaults: {
 			name: 'Bitbucket Trigger',
@@ -34,6 +35,20 @@ export class BitbucketTrigger implements INodeType {
 				name: 'bitbucketApi',
 				required: true,
 				testedBy: 'bitbucketApiTest',
+				displayOptions: {
+					show: {
+						authentication: ['password'],
+					},
+				},
+			},
+			{
+				name: 'bitbucketAccessTokenApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['accessToken'],
+					},
+				},
 			},
 		],
 		webhooks: [
@@ -45,6 +60,48 @@ export class BitbucketTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Password (Deprecated)',
+						value: 'password',
+					},
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+				],
+				default: 'password',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Password (Deprecated)',
+						value: 'password',
+					},
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+				],
+				default: 'accessToken',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

@@ -1,5 +1,5 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
+import { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
 import { NodeOperationError, NodeConnectionTypes, sleep } from 'n8n-workflow';
 import type {
 	IDataObject,
