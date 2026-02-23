@@ -653,36 +653,37 @@ export class Clockify implements INodeType {
 
 						Object.assign(body, updateFields);
 
-					if (body.estimate) {
-						const [hour, minute] = (body.estimate as string).split(':');
-						body.estimate = `PT${hour}H${minute}M`;
-					}
+						if (body.estimate) {
+							const [hour, minute] = (body.estimate as string).split(':');
+							body.estimate = `PT${hour}H${minute}M`;
+						}
 
-					if (!body.name) {
-						// Clockify API requires task name in the PUT request body.
-						// If the user did not set a new name, fetch the existing task
-						// to preserve its current name.
-						const { name } = await clockifyApiRequest.call(
+						if (!body.name) {
+							// The Clockify API requires `name` in every PUT /tasks request body.
+							// If the user did not set a new name, fetch the existing task
+							// to preserve its current name.
+							// See: https://docs.clockify.me/#tag/Task/operation/updateTask
+							const { name } = await clockifyApiRequest.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}`,
+								{},
+								qs,
+							);
+							body.name = name;
+						}
+
+						responseData = await clockifyApiRequest.call(
 							this,
-							'GET',
+							'PUT',
 							`/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}`,
-							{},
+							body,
 							qs,
 						);
-						body.name = name;
 					}
-
-					responseData = await clockifyApiRequest.call(
-						this,
-						'PUT',
-						`/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}`,
-						body,
-						qs,
-					);
 				}
-			}
 
-			if (resource === 'timeEntry') {
+				if (resource === 'timeEntry') {
 					if (operation === 'create') {
 						const timezone = this.getTimezone();
 
