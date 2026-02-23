@@ -40,7 +40,7 @@ const uiStore = useUIStore();
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
 
 const sortedProviders = computed(() => {
-	return [...secretsProviders.activeProviders.value].sort((a, b) => b.type.localeCompare(a.type));
+	return [...secretsProviders.activeProviders.value].sort((a, b) => a.name.localeCompare(b.name));
 });
 
 function getProjectForProvider(provider: SecretProviderConnection): ProjectListItem | null {
