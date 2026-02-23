@@ -406,7 +406,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				</div>
 
 				<CopyInput
-					v-if="isOAuthType && useCustomOauth"
+					v-if="isOAuthType && !isManagedOAuth"
 					:label="i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 					:value="oAuthCallbackUrl"
 					:copy-button-text="i18n.baseText('credentialEdit.credentialConfig.clickToCopy')"
