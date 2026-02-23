@@ -26,6 +26,7 @@ export const localRulesPlugin = {
 				'n8n-local-rules/no-useless-catch-throw': 'error',
 				'n8n-local-rules/no-internal-package-import': 'error',
 				'n8n-local-rules/no-type-only-import-in-di': 'error',
+				'n8n-local-rules/no-plain-errors': 'error',
 			},
 		},
 	},

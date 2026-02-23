@@ -5,13 +5,14 @@ export const NoPlainErrorsRule = ESLintUtils.RuleCreator.withoutDocs({
 		type: 'problem',
 		docs: {
 			description:
-				'Only `ApplicationError` (from the `workflow` package) or its child classes must be thrown. This ensures the error will be normalized when reported to Sentry, if applicable.',
+				'Disallow throwing plain `Error` or deprecated `ApplicationError`. Use `UnexpectedError`, `OperationalError`, or `UserError` instead.',
 		},
 		messages: {
-			useApplicationError:
-				'Throw an `ApplicationError` (from the `workflow` package) or its child classes.',
+			useProperErrorClass:
+				'Do not throw plain `Error`. Use `UnexpectedError`, `OperationalError`, or `UserError` instead. Import from the appropriate package. See AGENTS.md for guidance.',
+			noApplicationError:
+				'Do not throw `ApplicationError` directly — it is deprecated. Use `UnexpectedError`, `OperationalError`, or `UserError` instead. Import from the appropriate package. See AGENTS.md for guidance.',
 		},
-		fixable: 'code',
 		schema: [],
 	},
 	defaultOptions: [],
@@ -20,27 +21,22 @@ export const NoPlainErrorsRule = ESLintUtils.RuleCreator.withoutDocs({
 			ThrowStatement(node) {
 				if (!node.argument) return;
 
-				const isNewError =
-					node.argument.type === TSESTree.AST_NODE_TYPES.NewExpression &&
-					node.argument.callee.type === TSESTree.AST_NODE_TYPES.Identifier &&
-					node.argument.callee.name === 'Error';
+				if (node.argument.type !== TSESTree.AST_NODE_TYPES.NewExpression) return;
 
-				const isNewlessError =
-					node.argument.type === TSESTree.AST_NODE_TYPES.CallExpression &&
-					node.argument.callee.type === TSESTree.AST_NODE_TYPES.Identifier &&
-					node.argument.callee.name === 'Error';
+				const { callee } = node.argument;
+				if (callee.type !== TSESTree.AST_NODE_TYPES.Identifier) return;
 
-				if (isNewError || isNewlessError) {
+				if (callee.name === 'Error') {
 					return context.report({
-						messageId: 'useApplicationError',
+						messageId: 'useProperErrorClass',
 						node,
-						fix: (fixer) =>
-							fixer.replaceText(
-								node,
-								`throw new ApplicationError(${(node.argument as TSESTree.CallExpression).arguments
-									.map((arg) => context.sourceCode.getText(arg))
-									.join(', ')})`,
-							),
+					});
+				}
+
+				if (callee.name === 'ApplicationError') {
+					return context.report({
+						messageId: 'noApplicationError',
+						node,
 					});
 				}
 			},

@@ -20,7 +20,6 @@ export const frontendConfig = tseslint.config(
 			semi: [2, 'always'],
 			'comma-dangle': ['error', 'always-multiline'],
 			'@typescript-eslint/no-use-before-define': 'warn',
-			'@typescript-eslint/no-explicit-any': 'error',
 		},
 	},
 	{
@@ -109,6 +108,19 @@ export const frontendConfig = tseslint.config(
 				},
 			],
 			'vue/no-v-html': 'error',
+
+			/**
+			 * data-testid must be a single value (no spaces or multiple values).
+			 * See AGENTS.md for guidance.
+			 */
+			'n8n-local-rules/no-invalid-data-testid': 'error',
+
+			/**
+			 * All UI text must use i18n. Add translations to the @n8n/i18n package.
+			 * Starting as `warn` due to high false-positive risk on existing code.
+			 * See AGENTS.md for guidance.
+			 */
+			'n8n-local-rules/no-hardcoded-ui-text': 'warn',
 
 			// TODO: remove these
 			'vue/no-mutating-props': 'warn',
