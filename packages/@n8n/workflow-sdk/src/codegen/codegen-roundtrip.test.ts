@@ -10,7 +10,7 @@ import {
 	DOWNLOADED_FIXTURES_DIR,
 	COMMITTED_FIXTURES_DIR,
 } from '../__tests__/fixtures-download';
-import type { WorkflowJSON, IConnections } from '../types/base';
+import type { WorkflowJSON } from '../types/base';
 import { normalizeConnections } from '../types/base';
 import {
 	escapeNewlinesInExpressionStrings,

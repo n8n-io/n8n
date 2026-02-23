@@ -9,7 +9,7 @@ import {
 	COMMITTED_FIXTURES_DIR,
 } from './__tests__/fixtures-download';
 import { generateWorkflowCode } from './codegen';
-import type { WorkflowJSON, IConnections } from './types/base';
+import type { WorkflowJSON } from './types/base';
 import { normalizeConnections } from './types/base';
 import { workflow } from './workflow-builder';
 

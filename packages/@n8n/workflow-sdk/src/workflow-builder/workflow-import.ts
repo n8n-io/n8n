@@ -14,7 +14,6 @@ import {
 	type GraphNode,
 	type ConnectionTarget,
 	type IDataObject,
-	type IConnections,
 	type CredentialReference,
 	type NewCredentialValue,
 } from '../types/base';

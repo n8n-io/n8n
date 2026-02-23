@@ -10,7 +10,7 @@ import { deepCopy } from 'n8n-workflow';
 import { getOutputName, getInputName } from './semantic-registry';
 import type { SemanticGraph, SemanticNode, SemanticConnection, AiConnectionType } from './types';
 import { AI_CONNECTION_TYPES } from './types';
-import type { WorkflowJSON, NodeJSON, IConnections } from '../types/base';
+import type { WorkflowJSON, NodeJSON } from '../types/base';
 import { normalizeConnections, generateUniqueName } from '../types/base';
 import { isTriggerNodeType } from '../utils/trigger-detection';
 
