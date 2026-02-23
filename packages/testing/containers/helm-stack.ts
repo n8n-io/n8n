@@ -122,12 +122,11 @@ function buildHelmSetFlags(imageName: string, mode: HelmStackMode): string[] {
 		// Image
 		`--set image.repository=${repository}`,
 		`--set image.tag=${tag}`,
-		// Resources — chart defaults (200m/1 CPU, 512Mi/1Gi) throttle on CI runners.
-		// Remove limits so n8n can use available resources freely during E2E tests.
+		// Resources — chart defaults (200m/1 CPU, 512Mi/1Gi) throttle on CI runners (4 vCPU / 16Gi).
 		'--set resources.main.requests.cpu=500m',
 		'--set resources.main.requests.memory=1Gi',
-		'--set resources.main.limits.cpu=0',
-		'--set resources.main.limits.memory=0',
+		'--set resources.main.limits.cpu=2',
+		'--set resources.main.limits.memory=4Gi',
 		// Secrets (chart defaults are placeholder values)
 		'--set secretRefs.env.N8N_ENCRYPTION_KEY=test-encryption-key-for-e2e-testing',
 		'--set secretRefs.env.N8N_HOST=localhost',
@@ -178,8 +177,8 @@ function buildHelmSetFlags(imageName: string, mode: HelmStackMode): string[] {
 			'--set redis.host=redis-master',
 			'--set resources.worker.requests.cpu=250m',
 			'--set resources.worker.requests.memory=512Mi',
-			'--set resources.worker.limits.cpu=0',
-			'--set resources.worker.limits.memory=0',
+			'--set resources.worker.limits.cpu=2',
+			'--set resources.worker.limits.memory=4Gi',
 		);
 	}
 
