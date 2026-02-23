@@ -40,13 +40,22 @@ export async function linearApiRequest(
 		);
 
 		if (response?.errors) {
+			const errorMessage = response.errors[0].message ?? 'Unknown API Error';
+			const description = response.errors[0].extensions?.userPresentableMessage;
+
 			throw new NodeApiError(this.getNode(), response.errors, {
-				message: response.errors[0].message ?? 'Unknown API Error',
+				message: `Linear API error: ${errorMessage}`,
+				description,
 			});
 		}
 
 		return response;
 	} catch (error) {
+		// If this is already a NodeApiError with custom formatting, re-throw it as-is
+		if (error instanceof NodeApiError) {
+			throw error;
+		}
+
 		throw new NodeApiError(
 			this.getNode(),
 			{},

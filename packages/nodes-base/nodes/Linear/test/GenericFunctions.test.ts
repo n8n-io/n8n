@@ -72,9 +72,15 @@ describe('Linear -> GenericFunctions', () => {
 
 			mockHttpRequestWithAuthentication.mockResolvedValue(errorResponse);
 
-			await expect(
-				linearApiRequest.call(mockExecuteFunctions, { query: '{ viewer { id } }' }),
-			).rejects.toThrow(NodeApiError);
+			try {
+				await linearApiRequest.call(mockExecuteFunctions, { query: '{ viewer { id } }' });
+				fail('Expected error to be thrown');
+			} catch (error) {
+				expect(error).toBeInstanceOf(NodeApiError);
+				expect(error.message).toContain('Linear API error');
+				expect(error.message).toContain('Access denied');
+				expect(error.description).toContain('Admin');
+			}
 
 			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'linearApi',
