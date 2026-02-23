@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
-import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted } from 'vue';
+import { computed, defineAsyncComponent, nextTick } from 'vue';
 import { getMidCanvasPosition } from '@/app/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
@@ -19,7 +19,6 @@ import { useActions } from '../composables/useActions';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import NodeCreatorShortcutCoachmark from '../components/NodeCreatorShortcutCoachmark.vue';
 import { useNodeCreatorShortcutCoachmark } from '../composables/useNodeCreatorShortcutCoachmark';
-import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
@@ -60,19 +59,7 @@ const chatPanelStore = useChatPanelStore();
 const settingsStore = useSettingsStore();
 
 const { getAddedNodesAndConnections } = useActions();
-const { isTabPressed, shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
-
-function onDeprecatedTabShortcut() {
-	isTabPressed.value = true;
-}
-
-onMounted(() => {
-	canvasEventBus.on('deprecated:tab-shortcut', onDeprecatedTabShortcut);
-});
-
-onUnmounted(() => {
-	canvasEventBus.off('deprecated:tab-shortcut', onDeprecatedTabShortcut);
-});
+const { shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
 
 const allowSendingParameterValues = computed(
 	() => settingsStore.settings.ai.allowSendingParameterValues,
