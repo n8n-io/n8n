@@ -182,6 +182,22 @@ export function normalizeConnections(connections: IConnections): void {
 			nodeConns[connType] = outputs;
 		}
 	}
+
+	// Ensure every connection object has an explicit `index` property.
+	// Some original JSON omits it (semantically equivalent to 0).
+	for (const nodeConns of Object.values(connections)) {
+		for (const outputs of Object.values(nodeConns)) {
+			if (!Array.isArray(outputs)) continue;
+			for (const slot of outputs) {
+				if (!Array.isArray(slot)) continue;
+				for (const conn of slot) {
+					if (typeof conn === 'object' && conn !== null && conn.index === undefined) {
+						conn.index = 0;
+					}
+				}
+			}
+		}
+	}
 }
 
 /**
