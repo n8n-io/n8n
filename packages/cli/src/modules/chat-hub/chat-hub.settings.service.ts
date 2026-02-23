@@ -16,6 +16,8 @@ const CHAT_PROVIDER_SETTINGS_KEY = (provider: ChatHubLLMProvider) =>
 const CHAT_ENABLED_KEY = 'chat.access.enabled';
 const CHAT_MEMORY_KEY = 'chat.memory';
 
+export const MAX_MEMORY_ENTRIES = 3;
+
 const getDefaultProviderSettings = (provider: ChatHubLLMProvider): ChatProviderSettingsDto => ({
 	provider,
 	credentialId: null,
@@ -109,7 +111,19 @@ export class ChatHubSettingsService {
 		return row.value;
 	}
 
+	async getMemoryFacts(): Promise<string[]> {
+		const memory = await this.getMemory();
+		return memory
+			.split('\n')
+			.map((f) => f.trim())
+			.filter((f) => f.length > 0);
+	}
+
 	async addMemoryFact(fact: string): Promise<void> {
+		const facts = await this.getMemoryFacts();
+		if (facts.length >= MAX_MEMORY_ENTRIES) {
+			return;
+		}
 		const current = await this.getMemory();
 		const updated = current ? `${current}\n${fact}` : fact;
 		await this.settingsRepository.upsert(

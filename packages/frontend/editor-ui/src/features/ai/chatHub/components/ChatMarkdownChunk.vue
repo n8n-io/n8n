@@ -73,14 +73,14 @@ defineExpose({
 	<div v-else-if="source.type === 'hidden'" />
 	<button
 		v-else-if="source.type === 'artifact-edit' && !source.isIncomplete"
-		:class="$style.command"
+		:class="$style.documentCommand"
 		@click="emit('openArtifact', source.command.title)"
 	>
 		Updated <b>{{ source.command.title }}</b>
 	</button>
 	<button
 		v-else-if="source.type === 'artifact-create' && !source.isIncomplete"
-		:class="$style.command"
+		:class="$style.documentCommand"
 		@click="emit('openArtifact', source.command.title)"
 	>
 		Created <b>{{ source.command.title }}</b>
@@ -458,19 +458,7 @@ defineExpose({
 	}
 }
 
-.command {
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--sm);
-	margin-bottom: var(--spacing--sm);
-	background-color: transparent;
-	display: block;
-	width: 100%;
-	text-align: left;
-	font-weight: var(--font-weight--regular);
-	cursor: pointer;
-}
-
+.documentCommand,
 .memoryCommand {
 	border: var(--border);
 	border-radius: var(--radius--lg);
@@ -480,7 +468,14 @@ defineExpose({
 	display: block;
 	width: 100%;
 	text-align: left;
+}
+
+.documentCommand {
+	font-weight: var(--font-weight--regular);
+	cursor: pointer;
+}
+
+.memoryCommand {
 	font-size: var(--font-size--sm);
-	color: var(--color--text--tint-1);
 }
 </style>

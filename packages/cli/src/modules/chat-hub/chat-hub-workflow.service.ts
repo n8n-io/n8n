@@ -57,7 +57,7 @@ import {
 	type ChatHubInputModality,
 	type InternalModelMetadata,
 } from './chat-hub.constants';
-import { ChatHubSettingsService } from './chat-hub.settings.service';
+import { ChatHubSettingsService, MAX_MEMORY_ENTRIES } from './chat-hub.settings.service';
 import {
 	chatTriggerParamsShape,
 	MessageRecord,
@@ -564,7 +564,7 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	getSystemMessageMetadata(timeZone: string, memory?: string) {
+	getSystemMessageMetadata(timeZone: string, memory: string[] = []) {
 		if (inE2ETests) {
 			return '__e2e_system_prompt_placeholder__';
 		}
@@ -572,16 +572,17 @@ export class ChatHubWorkflowService {
 		const now = DateTime.now();
 		const isoTime = now.setZone(timeZone).toISO({ includeOffset: true });
 
-		const memoryContext = memory
-			? `
+		const memoryContext =
+			memory.length > 0
+				? `
 # Known Facts About the User
 
 The following facts about the user have been remembered from previous conversations:
 
-${memory}
+${memory.join('\n')}
 
 `
-			: '';
+				: '';
 
 		return `
 # Current Date and Time
@@ -652,25 +653,28 @@ To make targeted edits to a document, you must specify the exact title of the do
 
 ## Memory
 
-You can remember facts about the user for use in future conversations using these commands:
+Memory usage: ${memory.length}/${MAX_MEMORY_ENTRIES} entries.
+${
+	memory.length >= MAX_MEMORY_ENTRIES
+		? 'Memory is full. Do NOT use memory-create. If the user shares something worth remembering as a new entry, tell them memory is full and suggest they free up space in Settings → Chat Hub.'
+		: `To add a new entry:
+<command:memory-create>entry about the user</command:memory-create>`
+}
 
-To add a new fact:
-<command:memory-create>fact about the user</command:memory-create>
-
-To correct or update an existing fact:
+To correct or update an existing entry:
 <command:memory-edit>
-<oldFact>the exact existing fact to replace</oldFact>
-<newFact>the updated fact</newFact>
+<oldFact>the exact existing entry to replace</oldFact>
+<newFact>the updated entry</newFact>
 </command:memory-edit>
 
-Use these to remember anything that would help you assist the user better in future conversations, including:
+Each entry should be concise and not exceed 20 words. Remember anything that would help you assist the user better in future conversations, including:
 - Personal facts (name, location, occupation, life situation)
 - Preferences and tastes (tools they like, communication style, topics they enjoy or avoid)
 - Beliefs and opinions (things they agree or disagree with, values they've expressed)
 - Goals and context (what they're working on, recurring needs)
 
 Only save genuinely useful, distinct information. Do not duplicate entries already listed in "Known Facts About the User".
-Use memory-edit when correcting or refining an existing entry rather than adding a duplicate.
+Prefer memory-edit over memory-create when elaborating or refining an existing entry.
 
 IMPORTANT:
 - Write these commands directly in your response text, NOT inside code blocks or fences.
@@ -680,11 +684,11 @@ IMPORTANT:
 
 	private async getBaseSystemMessage(history: ChatHubMessage[], timeZone: string) {
 		const artifactContext = this.buildArtifactContext(history);
-		const memory = await this.chatHubSettingsService.getMemory();
+		const facts = await this.chatHubSettingsService.getMemoryFacts();
 
 		return `You are a helpful assistant.
 
-${this.getSystemMessageMetadata(timeZone, memory || undefined) + artifactContext}`;
+${this.getSystemMessageMetadata(timeZone, facts) + artifactContext}`;
 	}
 
 	private buildToolsAgentNode(
@@ -1276,11 +1280,11 @@ Respond the title only:`,
 		}
 
 		const artifactContext = this.buildArtifactContext(history);
-		const memory = await this.chatHubSettingsService.getMemory();
+		const facts = await this.chatHubSettingsService.getMemoryFacts();
 		const systemMessage =
 			agent.systemPrompt +
 			'\n\n' +
-			this.getSystemMessageMetadata(timeZone, memory || undefined) +
+			this.getSystemMessageMetadata(timeZone, facts) +
 			artifactContext;
 
 		const model: ChatHubBaseLLMModel = {
