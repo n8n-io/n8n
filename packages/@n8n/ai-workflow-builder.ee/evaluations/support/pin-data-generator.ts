@@ -49,49 +49,42 @@ interface NodeSchemaContext {
 // Utility node deny-list
 // ---------------------------------------------------------------------------
 
-/** Node types that don't call external APIs and don't need pin data. */
-const UTILITY_NODE_TYPES = new Set([
-	'n8n-nodes-base.set',
-	'n8n-nodes-base.if',
-	'n8n-nodes-base.switch',
-	'n8n-nodes-base.merge',
-	'n8n-nodes-base.code',
-	'n8n-nodes-base.splitInBatches',
-	'n8n-nodes-base.noOp',
-	'n8n-nodes-base.stickyNote',
-	'n8n-nodes-base.manualTrigger',
-	'n8n-nodes-base.scheduleTrigger',
-	'n8n-nodes-base.cronTrigger',
-	'n8n-nodes-base.executeWorkflowTrigger',
-	'n8n-nodes-base.errorTrigger',
-	'n8n-nodes-base.start',
-	'n8n-nodes-base.functionItem',
-	'n8n-nodes-base.function',
-	'n8n-nodes-base.itemLists',
-	'n8n-nodes-base.filter',
-	'n8n-nodes-base.removeDuplicates',
-	'n8n-nodes-base.sort',
-	'n8n-nodes-base.limit',
-	'n8n-nodes-base.aggregate',
-	'n8n-nodes-base.summarize',
-	'n8n-nodes-base.splitOut',
-	'n8n-nodes-base.dateTime',
-	'n8n-nodes-base.crypto',
-	'n8n-nodes-base.xml',
-	'n8n-nodes-base.html',
-	'n8n-nodes-base.markdown',
-	'n8n-nodes-base.compareDatasets',
-	'n8n-nodes-base.respondToWebhook',
-	'n8n-nodes-base.wait',
-	'n8n-nodes-base.executeCommand',
-	'n8n-nodes-base.convertToFile',
-	'n8n-nodes-base.extractFromFile',
-	'n8n-nodes-base.renameKeys',
+/**
+ * Nodes that define credentials in their type description but don't actually
+ * call external APIs, so they don't need pin data. All other non-service nodes
+ * are excluded naturally because they have no credentials defined.
+ */
+const NON_SERVICE_NODES_WITH_CREDENTIALS = new Set([
+	'n8n-nodes-base.wait', // optional webhook-resumption auth
+	'n8n-nodes-base.respondToWebhook', // optional JWT signing when responding
 ]);
 
 // ---------------------------------------------------------------------------
 // Node identification
 // ---------------------------------------------------------------------------
+
+/**
+ * Build a set of node names that are targets of AI-type connections
+ * (ai_languageModel, ai_tool, ai_memory, etc.). These are root AI nodes
+ * (e.g. Agent, Chain) whose sub-nodes can't be individually pinned.
+ * Pinning the root prevents sub-node execution entirely.
+ */
+function findAiRootNodeNames(workflow: SimpleWorkflow): Set<string> {
+	const roots = new Set<string>();
+	for (const nodeConns of Object.values(workflow.connections)) {
+		for (const [connType, outputs] of Object.entries(nodeConns)) {
+			if (!connType.startsWith('ai_')) continue;
+			if (!Array.isArray(outputs)) continue;
+			for (const group of outputs) {
+				if (!Array.isArray(group)) continue;
+				for (const conn of group) {
+					if (conn?.node) roots.add(conn.node);
+				}
+			}
+		}
+	}
+	return roots;
+}
 
 /**
  * Identify which nodes in a workflow need pin data.
@@ -102,20 +95,34 @@ export function identifyPinDataNodes(
 	nodeTypes: INodeTypeDescription[],
 ): INode[] {
 	const nodeTypeMap = new Map(nodeTypes.map((nt) => [nt.name, nt]));
+	const aiRootNodes = findAiRootNodeNames(workflow);
 
 	return workflow.nodes.filter((node) => {
 		// Skip disabled nodes
 		if (node.disabled) return false;
 
-		// Skip utility nodes by deny-list
-		if (UTILITY_NODE_TYPES.has(node.type)) return false;
+		// Pin root AI nodes (Agent, Chain, etc.) — their sub-nodes (tools,
+		// memory, LLMs) can't run without real providers in the eval context.
+		if (aiRootNodes.has(node.name)) return true;
 
 		// Check if the node type definition has credentials (→ it's a service node)
 		const typeDesc = nodeTypeMap.get(node.type);
-		if (typeDesc?.credentials && typeDesc.credentials.length > 0) return true;
+		if (typeDesc?.credentials && typeDesc.credentials.length > 0) {
+			// Exclude nodes that define credentials for local/optional auth, not external APIs
+			return !NON_SERVICE_NODES_WITH_CREDENTIALS.has(node.type);
+		}
 
-		// Also include HTTP Request and Webhook nodes (may not have credentials defined)
-		if (node.type === 'n8n-nodes-base.httpRequest' || node.type === 'n8n-nodes-base.webhook') {
+		// Nodes that require infrastructure unavailable in the eval context:
+		// - HTTP/Webhook: optional credentials, may call external APIs
+		// - DataTable: requires the data-table module
+		// - Code/ExecuteCommand: require a task runner to execute
+		if (
+			node.type === 'n8n-nodes-base.httpRequest' ||
+			node.type === 'n8n-nodes-base.webhook' ||
+			node.type === 'n8n-nodes-base.dataTable' ||
+			node.type === 'n8n-nodes-base.code' ||
+			node.type === 'n8n-nodes-base.executeCommand'
+		) {
 			return true;
 		}
 

@@ -131,14 +131,6 @@ export function useWorkflowState() {
 		ws.private.setWorkflowSettings(workflowSettings);
 	}
 
-	function setWorkflowTagIds(tags: string[]) {
-		ws.workflow.tags = tags;
-
-		if (ws.workflow.id && workflowsListStore.workflowsById[ws.workflow.id]) {
-			workflowsListStore.workflowsById[ws.workflow.id].tags = tags;
-		}
-	}
-
 	function setWorkflowProperty<K extends keyof IWorkflowDb>(key: K, value: IWorkflowDb[K]) {
 		ws.workflow[key] = value;
 	}
@@ -194,16 +186,6 @@ export function useWorkflowState() {
 		const workflowData = await getNewWorkflowData(name, projectId, parentFolderId);
 		makeNewWorkflowShareable();
 		return workflowData;
-	}
-
-	function addWorkflowTagIds(tags: string[]) {
-		ws.workflow.tags = [...new Set([...(ws.workflow.tags ?? []), ...tags])] as IWorkflowDb['tags'];
-	}
-
-	function removeWorkflowTagId(tagId: string) {
-		const tags = ws.workflow.tags as string[];
-		const updated = tags.filter((id: string) => id !== tagId);
-		ws.workflow.tags = updated as IWorkflowDb['tags'];
 	}
 
 	function setWorkflowScopes(scopes: IWorkflowDb['scopes']): void {
@@ -266,7 +248,7 @@ export function useWorkflowState() {
 		setWorkflowId('');
 		setWorkflowName({ newName: '', setStateDirty: false });
 		setWorkflowSettings({ ...ws.defaults.settings });
-		setWorkflowTagIds([]);
+		// Note: Tags are now managed by workflowDocumentStore, which is disposed during reset
 
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.executingNode.length = 0;
@@ -471,12 +453,9 @@ export function useWorkflowState() {
 		setWorkflowId,
 		setWorkflowName,
 		setWorkflowSettings,
-		setWorkflowTagIds,
 		setWorkflowProperty,
 		setActiveExecutionId,
 		getNewWorkflowDataAndMakeShareable,
-		addWorkflowTagIds,
-		removeWorkflowTagId,
 		setWorkflowScopes,
 		setWorkflowMetadata,
 		addToWorkflowMetadata,

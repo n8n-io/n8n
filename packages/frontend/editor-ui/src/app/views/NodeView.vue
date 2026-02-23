@@ -297,8 +297,12 @@ const isCanvasReadOnly = computed(() => {
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
 		editableWorkflow.value.isArchived ||
-		builderStore.streaming
+		(builderStore.streaming && !builderStore.isHelpStreaming)
 	);
+});
+
+const isWriterAnotherTab = computed(() => {
+	return collaborationStore.isCurrentUserWriter && !collaborationStore.isCurrentTabWriter;
 });
 
 const showFallbackNodes = computed(() => triggerNodes.value.length === 0);
@@ -1315,6 +1319,10 @@ function checkIfEditingIsAllowed(): boolean {
 	return true;
 }
 
+function onAcquireEditingClick() {
+	collaborationStore.requestWriteAccessForce();
+}
+
 function checkIfRouteIsAllowed() {
 	if (
 		isReadOnlyEnvironment.value &&
@@ -1835,14 +1843,16 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 
 			<N8nCanvasCollaborationPill
-				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentUserWriter"
+				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentTabWriter"
+				:class="$style.canvasCenterPill"
+				:is-another-tab="isWriterAnotherTab"
 				:first-name="collaborationStore.currentWriter.user.firstName"
 				:last-name="collaborationStore.currentWriter.user.lastName"
-				:class="$style.canvasCenterPill"
+				@button-click="onAcquireEditingClick"
 			/>
 
 			<N8nCanvasThinkingPill
-				v-if="builderStore.streaming"
+				v-if="builderStore.streaming && !builderStore.isHelpStreaming"
 				:class="$style.canvasCenterPill"
 				show-stop
 				@stop="builderStore.abortStreaming"
