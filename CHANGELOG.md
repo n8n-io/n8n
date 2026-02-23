@@ -1,3 +1,14 @@
+## [2.8.4](https://github.com/n8n-io/n8n/compare/n8n@2.8.3...n8n@2.8.4) (2026-02-23)
+
+
+### Bug Fixes
+
+* **core:** Handle tool wrapper nodes without supplyData in queue mode MCP Trigger ([#26007](https://github.com/n8n-io/n8n/issues/26007)) ([6e65b51](https://github.com/n8n-io/n8n/commit/6e65b5198879e445924a595d13cbe858a3d00155))
+* **editor:** Fix bug with tags not being sent to backend ([#26040](https://github.com/n8n-io/n8n/issues/26040)) ([7676837](https://github.com/n8n-io/n8n/commit/76768376a187feb12257f1503029184d6405e261))
+* **editor:** Fix bug with two consecutive saves ([#25577](https://github.com/n8n-io/n8n/issues/25577)) ([ff329aa](https://github.com/n8n-io/n8n/commit/ff329aabf22bbb77e19ef7f6ae635daef4398276))
+
+
+
 ## [2.8.3](https://github.com/n8n-io/n8n/compare/n8n@2.8.2...n8n@2.8.3) (2026-02-13)
 
 
