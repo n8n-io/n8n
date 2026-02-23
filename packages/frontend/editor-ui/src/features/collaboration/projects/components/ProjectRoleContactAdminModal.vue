@@ -40,10 +40,11 @@ const bodyKey = computed(() =>
 
 		<div :class="$style.content">
 			<N8nText tag="p" size="medium">
-				{{ i18n.baseText(bodyKey).replace('{documentation}', '') }}
-				<N8nLink :href="CUSTOM_ROLES_DOCS_URL" :new-window="true">
-					{{ i18n.baseText('generic.documentation') }}
-				</N8nLink>
+				{{ i18n.baseText(bodyKey).split('{documentation}')[0]
+				}}<N8nLink :href="CUSTOM_ROLES_DOCS_URL" :new-window="true">{{
+					i18n.baseText('generic.documentation')
+				}}</N8nLink
+				>{{ i18n.baseText(bodyKey).split('{documentation}')[1] || '' }}
 			</N8nText>
 		</div>
 	</ElDialog>
@@ -51,6 +52,6 @@ const bodyKey = computed(() =>
 
 <style lang="scss" module>
 .content {
-	padding: var(--spacing--xs) 0;
+	padding: 0;
 }
 </style>
