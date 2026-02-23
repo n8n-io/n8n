@@ -61,7 +61,6 @@ jobs:
       matrix:
         mode: [standalone, queue]
     permissions:
-      packages: read
       contents: read
     steps:
       - name: Checkout
@@ -79,21 +78,11 @@ jobs:
         working-directory: packages/testing/playwright
         run: pnpm exec playwright install chromium
 
-      - name: Login to GHCR
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Install Helm
         uses: azure/setup-helm@bf6a7d304bc2fdb57e0331155b7ebf2c504acf0a # v4
 
       - name: Install kubectl
         uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415 # v4
-
-      - name: Pull n8n Docker image
-        run: docker pull ${{ env.DOCKER_IMAGE }}
 
       - name: Start K3s + Helm stack
         run: |
@@ -119,8 +108,6 @@ jobs:
           N8N_URL=$(cat /tmp/n8n-helm-url.txt)
           echo "n8n URL: ${N8N_URL}"
           echo "N8N_BASE_URL=${N8N_URL}" >> "$GITHUB_ENV"
-        env:
-          TEST_IMAGE_N8N: ${{ env.DOCKER_IMAGE }}
 
       - name: Run Building Blocks E2E Tests
         working-directory: packages/testing/playwright

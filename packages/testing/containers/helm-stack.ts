@@ -61,38 +61,37 @@ function run(cmd: string, env: NodeJS.ProcessEnv, description: string): string {
 // -- Image preloading (must run inside K3s containerd) ------------------------
 
 async function preloadImage(container: StartedK3sContainer, imageName: string): Promise<void> {
-	// Try docker save + ctr import (works for any image in local Docker).
-	// K3s v1.32+ has containerd 2.0 with zstd layer support.
-	// Falls back to crictl pull if the image isn't in local Docker.
-	const tarPath = `/tmp/n8n-helm-${Date.now()}.tar`;
-	try {
-		log(`Exporting ${imageName} from local Docker...`);
-		execSync(`docker save ${imageName} -o ${tarPath}`, { stdio: 'pipe' });
-		execSync(`docker cp ${tarPath} ${container.getId()}:/tmp/n8n-image.tar`, { stdio: 'pipe' });
-
-		const importResult = await container.exec([
-			'ctr',
-			'--namespace',
-			'k8s.io',
-			'images',
-			'import',
-			'/tmp/n8n-image.tar',
-		]);
-		if (importResult.exitCode !== 0) {
-			throw new Error(`ctr import failed: ${importResult.output}`);
-		}
-		await container.exec(['rm', '-f', '/tmp/n8n-image.tar']);
-	} catch {
-		log(`Local export failed, pulling ${imageName} from registry...`);
-		const pullResult = await container.exec(['crictl', 'pull', `docker.io/${imageName}`]);
-		if (pullResult.exitCode !== 0) {
-			throw new Error(`crictl pull failed: ${pullResult.output}`);
-		}
-	} finally {
+	// Try crictl pull first (fast for public registry images like GHCR).
+	// Falls back to docker save + ctr import for local-only images (e.g. n8nio/n8n:local).
+	log(`Pulling ${imageName} inside K3s...`);
+	const pullResult = await container.exec(['crictl', 'pull', imageName]);
+	if (pullResult.exitCode !== 0) {
+		log(`Registry pull failed, importing from local Docker...`);
+		const tarPath = `/tmp/n8n-helm-${Date.now()}.tar`;
 		try {
-			unlinkSync(tarPath);
-		} catch {
-			/* ignore */
+			execSync(`docker save ${imageName} -o ${tarPath}`, { stdio: 'pipe' });
+			execSync(`docker cp ${tarPath} ${container.getId()}:/tmp/n8n-image.tar`, {
+				stdio: 'pipe',
+			});
+
+			const importResult = await container.exec([
+				'ctr',
+				'--namespace',
+				'k8s.io',
+				'images',
+				'import',
+				'/tmp/n8n-image.tar',
+			]);
+			if (importResult.exitCode !== 0) {
+				throw new Error(`ctr import failed: ${importResult.output}`);
+			}
+			await container.exec(['rm', '-f', '/tmp/n8n-image.tar']);
+		} finally {
+			try {
+				unlinkSync(tarPath);
+			} catch {
+				/* ignore */
+			}
 		}
 	}
 
