@@ -4,6 +4,7 @@ import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWork
 import TriggerSetupCard from '@/features/setupPanel/components/cards/TriggerSetupCard.vue';
 import CredentialTypeSetupCard from '@/features/setupPanel/components/cards/CredentialTypeSetupCard.vue';
 import NodeParameterSetupCard from '@/features/setupPanel/components/cards/NodeParameterSetupCard.vue';
+import NodeCredentialSetupCard from '@/features/setupPanel/components/cards/NodeCredentialSetupCard.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -34,15 +35,26 @@ watch(isAllComplete, (allComplete) => {
 	}
 });
 
-const onCredentialSelected = (
-	payload: { credentialType: string; credentialId: string },
-	sourceNodeName?: string,
-) => {
-	setCredential(payload.credentialType, payload.credentialId, sourceNodeName);
+// For CredentialTypeSetupCard (old format)
+const onCredentialSelected = (payload: { credentialType: string; credentialId: string }) => {
+	setCredential(payload.credentialType, payload.credentialId);
 };
 
-const onCredentialDeselected = (credentialType: string, sourceNodeName?: string) => {
-	unsetCredential(credentialType, sourceNodeName);
+const onCredentialDeselected = (credentialType: string) => {
+	unsetCredential(credentialType);
+};
+
+// For NodeCredentialSetupCard (new format with nodeName)
+const onNodeCredentialSelected = (payload: {
+	credentialType: string;
+	credentialId: string;
+	nodeName: string;
+}) => {
+	setCredential(payload.credentialType, payload.credentialId, payload.nodeName);
+};
+
+const onNodeCredentialDeselected = (payload: { credentialType: string; nodeName: string }) => {
+	unsetCredential(payload.credentialType, payload.nodeName);
 };
 
 const visibleCards = computed(() => {
@@ -51,8 +63,16 @@ const visibleCards = computed(() => {
 });
 
 const cardKey = (card: SetupCardItem): string => {
-	if (card.type === 'trigger') return `trigger-${card.state.node.id}`;
-	if (card.type === 'parameter') return `parameter-${card.state.node.id}`;
+	if (card.type === 'trigger') {
+		return `trigger-${card.state.node.id}`;
+	}
+	if (card.type === 'parameter') {
+		return `parameter-${card.state.node.id}`;
+	}
+	if (card.type === 'nodeCredential') {
+		return `nodeCredential-${card.state.credentialType}-${card.state.node.id}`;
+	}
+	// card.type === 'credential'
 	return `credential-${card.state.credentialType}-${card.state.nodes[0]?.name ?? ''}`;
 };
 
@@ -137,7 +157,17 @@ watch(
 				<NodeParameterSetupCard
 					v-else-if="card.type === 'parameter'"
 					:state="card.state"
-					:expanded="index === 0"
+					:expanded="isCardExpanded(cardKey(card))"
+					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
+				/>
+				<NodeCredentialSetupCard
+					v-else-if="card.type === 'nodeCredential'"
+					:state="card.state"
+					:first-trigger-name="firstTriggerName"
+					:expanded="isCardExpanded(cardKey(card))"
+					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
+					@credential-selected="onNodeCredentialSelected"
+					@credential-deselected="onNodeCredentialDeselected"
 				/>
 				<CredentialTypeSetupCard
 					v-else

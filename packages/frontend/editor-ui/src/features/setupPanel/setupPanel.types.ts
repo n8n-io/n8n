@@ -27,8 +27,25 @@ export interface NodeParameterSetupState {
 	isComplete: boolean;
 }
 
+/** Node credential card — combines credential picker and parameters for a single node */
+export interface NodeCredentialSetupState {
+	node: INodeUi;
+	credentialType: string;
+	credentialDisplayName: string;
+	selectedCredentialId?: string;
+	issues: string[];
+	parameterIssues: Record<string, string[]>;
+	isTrigger: boolean;
+	isFirstNodeWithCredential: boolean;
+	showCredentialPicker: boolean;
+	isComplete: boolean;
+	/** All nodes that use this credential type (for "Used in X nodes" hint) */
+	allNodesUsingCredential: INodeUi[];
+}
+
 /** Discriminated union for the setup card list */
 export type SetupCardItem =
 	| { type: 'trigger'; state: TriggerSetupState }
 	| { type: 'credential'; state: CredentialTypeSetupState }
-	| { type: 'parameter'; state: NodeParameterSetupState };
+	| { type: 'parameter'; state: NodeParameterSetupState }
+	| { type: 'nodeCredential'; state: NodeCredentialSetupState };
