@@ -34,6 +34,7 @@ import { findDirectMergeInFanOut, detectMergePattern, findMergeInputIndex } from
 import {
 	getAllOutputTargets,
 	hasMultipleOutputSlots,
+	hasNonZeroOutputIndex,
 	getOutputTargetsByIndex,
 } from './output-utils';
 import { getCompositeType } from './semantic-registry';
@@ -583,8 +584,9 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 	if (compositeType === undefined) {
 		// Check for multi-output nodes (like text classifiers, compareDatasets)
 		// These need special handling to preserve output indices.
-		// Handles both consecutive (0,1,2) and non-consecutive (0,2) outputs.
-		if (hasMultipleOutputSlots(node)) {
+		// Handles both consecutive (0,1,2) and non-consecutive (0,2) outputs,
+		// and single connections at non-zero indices (e.g., output 3 only).
+		if (hasMultipleOutputSlots(node) || hasNonZeroOutputIndex(node)) {
 			const targetsByIndex = getOutputTargetsByIndex(node);
 
 			// Build targets for each output index

@@ -679,8 +679,8 @@ function generateChain(chain: ChainNode, ctx: GenerationContext): string {
 /**
  * Generate code for a variable reference
  */
-function generateVarRef(varRef: VariableReference, _ctx: GenerationContext): string {
-	return varRef.varName;
+function generateVarRef(varRef: VariableReference, ctx: GenerationContext): string {
+	return getVarName(varRef.nodeName, ctx);
 }
 
 /**
@@ -1295,6 +1295,14 @@ export function generateCode(
 		valuesExcluded: executionContext?.valuesExcluded,
 		pinnedNodes: executionContext?.pinnedNodes,
 	};
+
+	// Pre-register all node variable names to detect and resolve collisions.
+	// This ensures getVarName() lookups always find the deduplicated name,
+	// even for nodes whose names normalize to the same variable (e.g.,
+	// "Get_Analysis" vs "Get Analysis" both → get_Analysis).
+	for (const nodeName of graph.nodes.keys()) {
+		getUniqueVarName(nodeName, ctx);
+	}
 
 	// Collect all subnodes from all nodes in the graph (not just variable nodes)
 	for (const node of graph.nodes.values()) {
