@@ -15,6 +15,10 @@ import { mockedStore } from '@/__tests__/utils';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 const modalConfirmSpy = vi.fn();
 
@@ -536,9 +540,12 @@ describe('useWorkflowSaving', () => {
 			);
 		});
 
-		it('should include tags from store when saving workflow', async () => {
+		it('should include tags when saving workflow', async () => {
+			const workflowId = 'w5';
+			const tagIds = ['tag1', 'tag2'];
+
 			const workflow = createTestWorkflow({
-				id: 'w5',
+				id: workflowId,
 				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
 				active: true,
 				tags: ['tag1', 'tag2'],
@@ -560,22 +567,26 @@ describe('useWorkflowSaving', () => {
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
-			const mockWorkflowState: Partial<WorkflowState> = {
+			// Tags are now managed by workflowDocumentStore, not workflowState
+			const documentId = createWorkflowDocumentId(workflowId);
+			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+			workflowDocumentStore.setTags(tagIds);
+
+			const testWorkflowState: Partial<WorkflowState> = {
 				setWorkflowName: vi.fn(),
 				setWorkflowProperty: vi.fn(),
 			};
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: mockWorkflowState as WorkflowState,
+				workflowState: testWorkflowState as WorkflowState,
 			});
 
-			await saveCurrentWorkflow({ id: 'w5' }, true, false, false);
+			await saveCurrentWorkflow({ id: workflowId }, true, false, false);
 
-			// Tags are now managed by workflowDocumentStore, not workflowState
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				'w5',
-				expect.objectContaining({ tags: ['tag1', 'tag2'] }),
+				workflowId,
+				expect.objectContaining({ tags: tagIds }),
 				false,
 			);
 		});

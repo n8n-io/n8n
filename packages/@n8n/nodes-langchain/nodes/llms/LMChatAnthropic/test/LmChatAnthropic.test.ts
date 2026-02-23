@@ -5,6 +5,7 @@ import { ChatAnthropic } from '@langchain/anthropic';
 import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { LmChatAnthropic } from '../LmChatAnthropic.node';
 
@@ -417,7 +418,7 @@ describe('LmChatAnthropic', () => {
 			);
 		});
 
-		it('should create failed attempt handler', async () => {
+		it('should create failed attempt handler without gateway handler for direct API', async () => {
 			const mockContext = setupMockContext();
 
 			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
@@ -428,7 +429,138 @@ describe('LmChatAnthropic', () => {
 
 			await lmChatAnthropic.supplyData.call(mockContext, 0);
 
-			expect(mockedMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(mockContext);
+			expect(mockedMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(mockContext, undefined);
+		});
+
+		it('should create failed attempt handler with gateway handler for custom URL', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getCredentials.mockResolvedValue({
+				apiKey: 'test-api-key',
+				url: 'https://ai-gateway.example.com',
+			});
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(mockedMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(
+				mockContext,
+				expect.any(Function),
+			);
+		});
+
+		it('should enrich model-not-found errors with gateway hint when using custom URL', async () => {
+			const gatewayURL = 'https://ai-gateway.example.com';
+			const mockContext = setupMockContext();
+
+			mockContext.getCredentials.mockResolvedValue({
+				apiKey: 'test-api-key',
+				url: gatewayURL,
+			});
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			// Capture the gateway handler passed to makeN8nLlmFailedAttemptHandler
+			let capturedHandler: ((error: unknown) => void) | undefined;
+			mockedMakeN8nLlmFailedAttemptHandler.mockImplementation((_ctx, handler) => {
+				capturedHandler = handler as (error: unknown) => void;
+				return jest.fn();
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(capturedHandler).toBeDefined();
+
+			// Model-not-found error should be enriched
+			expect(() => capturedHandler!(new Error('model not found'))).toThrow(NodeOperationError);
+			expect(() => capturedHandler!(new Error('model not found'))).toThrow(
+				/ai-gateway\.example\.com/,
+			);
+
+			// Non-model errors should pass through without throwing
+			expect(() => capturedHandler!(new Error('rate limit exceeded'))).not.toThrow();
+		});
+
+		it('should throw when model is empty (v1.3)', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.3 });
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return '';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await expect(lmChatAnthropic.supplyData.call(mockContext, 0)).rejects.toThrow(
+				NodeOperationError,
+			);
+			expect(MockedChatAnthropic).not.toHaveBeenCalled();
+		});
+
+		it('should throw when model is empty (v1.2)', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.2 });
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return '';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await expect(lmChatAnthropic.supplyData.call(mockContext, 0)).rejects.toThrow(
+				NodeOperationError,
+			);
+			expect(MockedChatAnthropic).not.toHaveBeenCalled();
+		});
+
+		it('should use gateway-provided model name via custom base URL without hardcoded defaults', async () => {
+			const gatewayURL = 'https://ai-gateway.example.com';
+			const gatewayModel = 'my-org/claude-3-sonnet';
+			const mockContext = setupMockContext({ typeVersion: 1.3 });
+
+			mockContext.getCredentials.mockResolvedValue({
+				apiKey: 'gateway-api-key',
+				url: gatewayURL,
+			});
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return gatewayModel;
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					anthropicApiKey: 'gateway-api-key',
+					model: gatewayModel,
+					anthropicApiUrl: gatewayURL,
+				}),
+			);
+		});
+
+		it('should have a default model in v1.3 resource locator', () => {
+			const v13ModelField = lmChatAnthropic.description.properties.find(
+				(p) =>
+					p.name === 'model' &&
+					p.type === 'resourceLocator' &&
+					p.displayOptions?.show?.['@version']?.[0] !== undefined,
+			);
+
+			expect(v13ModelField).toBeDefined();
+			expect(v13ModelField!.default).toEqual({
+				mode: 'list',
+				value: 'claude-sonnet-4-5-20250929',
+				cachedResultName: 'Claude Sonnet 4.5',
+			});
 		});
 	});
 

@@ -1,27 +1,28 @@
 <script setup lang="ts">
-import { watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import NodeSetupCard from './NodeSetupCard.vue';
+import TriggerSetupCard from '@/features/setupPanel/components/cards/TriggerSetupCard.vue';
+import CredentialTypeSetupCard from '@/features/setupPanel/components/cards/CredentialTypeSetupCard.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import type { NodeSetupState } from '../setupPanel.types';
+import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
+
+const props = withDefaults(
+	defineProps<{
+		showCompleted?: boolean;
+	}>(),
+	{
+		showCompleted: true,
+	},
+);
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
-const credentialsStore = useCredentialsStore();
-const { nodeSetupStates, isAllComplete, setCredential, unsetCredential } = useWorkflowSetupState();
-
-const isCardLoading = (state: NodeSetupState): boolean => {
-	return state.credentialRequirements.some(
-		(req) =>
-			req.selectedCredentialId &&
-			credentialsStore.isCredentialTestPending(req.selectedCredentialId),
-	);
-};
+const { setupCards, isAllComplete, setCredential, unsetCredential, firstTriggerName } =
+	useWorkflowSetupState();
 
 watch(isAllComplete, (allComplete) => {
 	if (allComplete) {
@@ -33,21 +34,78 @@ watch(isAllComplete, (allComplete) => {
 });
 
 const onCredentialSelected = (
-	nodeName: string,
 	payload: { credentialType: string; credentialId: string },
+	sourceNodeName?: string,
 ) => {
-	setCredential(nodeName, payload.credentialType, payload.credentialId);
+	setCredential(payload.credentialType, payload.credentialId, sourceNodeName);
 };
 
-const onCredentialDeselected = (nodeName: string, credentialType: string) => {
-	unsetCredential(nodeName, credentialType);
+const onCredentialDeselected = (credentialType: string, sourceNodeName?: string) => {
+	unsetCredential(credentialType, sourceNodeName);
 };
+
+const visibleCards = computed(() => {
+	if (props.showCompleted) return setupCards.value;
+	return setupCards.value.filter((card) => !card.state.isComplete);
+});
+
+const cardKey = (card: SetupCardItem): string => {
+	if (card.type === 'trigger') return `trigger-${card.state.node.id}`;
+	return `credential-${card.state.credentialType}-${card.state.nodes[0]?.name ?? ''}`;
+};
+
+// --- Expanded state management ---
+const expandedStates = reactive<Record<string, boolean>>({});
+const prevCompleteStates = new Map<string, boolean>();
+let initialized = false;
+
+const isCardExpanded = (key: string): boolean => expandedStates[key] ?? false;
+
+const setCardExpanded = (key: string, value: boolean) => {
+	expandedStates[key] = value;
+};
+
+watch(
+	setupCards,
+	(cards) => {
+		if (!initialized) {
+			// On first load, expand the first uncompleted card
+			const firstUncompleted = cards.find((c) => !c.state.isComplete);
+			if (firstUncompleted) {
+				expandedStates[cardKey(firstUncompleted)] = true;
+			}
+			initialized = true;
+		} else {
+			// When a card completes, collapse it and auto-expand the next uncompleted card
+			for (let i = 0; i < cards.length; i++) {
+				const card = cards[i];
+				const key = cardKey(card);
+				const wasComplete = prevCompleteStates.get(key) ?? false;
+
+				if (card.state.isComplete && !wasComplete) {
+					expandedStates[key] = false;
+					const nextUncompleted = cards.find((c, j) => j > i && !c.state.isComplete);
+					if (nextUncompleted) {
+						expandedStates[cardKey(nextUncompleted)] = true;
+					}
+					break;
+				}
+			}
+		}
+
+		prevCompleteStates.clear();
+		for (const card of cards) {
+			prevCompleteStates.set(cardKey(card), card.state.isComplete);
+		}
+	},
+	{ deep: true, immediate: true },
+);
 </script>
 
 <template>
 	<div :class="$style.container" data-test-id="setup-panel-cards-container">
 		<div
-			v-if="nodeSetupStates.length === 0"
+			v-if="setupCards.length === 0"
 			:class="$style['empty-state']"
 			data-test-id="setup-cards-empty"
 		>
@@ -67,15 +125,23 @@ const onCredentialDeselected = (nodeName: string, credentialType: string) => {
 			</div>
 		</div>
 		<div v-else :class="$style['card-list']" data-test-id="setup-cards-list">
-			<NodeSetupCard
-				v-for="(state, index) in nodeSetupStates"
-				:key="state.node.id"
-				:state="state"
-				:loading="isCardLoading(state)"
-				:expanded="index === 0"
-				@credential-selected="onCredentialSelected(state.node.name, $event)"
-				@credential-deselected="onCredentialDeselected(state.node.name, $event)"
-			/>
+			<template v-for="card in visibleCards" :key="cardKey(card)">
+				<TriggerSetupCard
+					v-if="card.type === 'trigger'"
+					:state="card.state"
+					:expanded="isCardExpanded(cardKey(card))"
+					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
+				/>
+				<CredentialTypeSetupCard
+					v-else
+					:state="card.state"
+					:first-trigger-name="firstTriggerName"
+					:expanded="isCardExpanded(cardKey(card))"
+					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
+					@credential-selected="onCredentialSelected"
+					@credential-deselected="onCredentialDeselected"
+				/>
+			</template>
 			<div
 				v-if="isAllComplete"
 				:class="$style['complete-message']"

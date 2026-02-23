@@ -21,6 +21,10 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { computed, ref } from 'vue';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
@@ -93,6 +97,11 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const lastSetActiveNodeSource = ref<TelemetryNdvSource>();
 
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const workflowState = injectWorkflowState();
 
 	const activeNode = computed(() => {
@@ -128,7 +137,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const ndvInputDataWithPinnedData = computed(() => {
 		const data = ndvInputData.value;
 		return ndvInputNodeName.value
-			? (workflowsStore.pinDataByNodeName(ndvInputNodeName.value) ?? data)
+			? (workflowDocumentStore.value?.pinData?.[ndvInputNodeName.value] ?? data)
 			: data;
 	});
 
