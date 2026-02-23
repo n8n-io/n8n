@@ -1,15 +1,13 @@
-import type {
-	SecretCompletionsResponse,
-	SecretProviderConnection,
-	SecretProviderConnectionListItem,
-	SecretsProviderType,
-} from '@n8n/api-types';
 import {
 	CreateSecretsProviderConnectionDto,
+	ReloadSecretProviderConnectionResponse,
 	TestSecretProviderConnectionResponse,
+	type SecretCompletionsResponse,
+	type SecretProviderConnection,
+	type SecretProviderConnectionListItem,
+	type SecretsProviderType,
 	testSecretProviderConnectionResponseSchema,
 	reloadSecretProviderConnectionResponseSchema,
-	ReloadSecretProviderConnectionResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { SecretsProviderConnection } from '@n8n/db';
