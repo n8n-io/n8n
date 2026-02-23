@@ -16,5 +16,5 @@ export class ExternalSecretsConfig {
 
 	/** Whether to enable multiple connections to global secret providers */
 	@Env('N8N_ENV_FEAT_EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS')
-	externalSecretsMultipleConnections: boolean = false;
+	externalSecretsMultipleConnections: boolean = true;
 }
