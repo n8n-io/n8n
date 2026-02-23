@@ -75,23 +75,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// Define proxy system in isolate (Step 2 - stub for now)
 		await this.defineProxySystem();
 
-		// Inject E() error handler needed by tournament-generated try-catch code.
-		// Tournament wraps expressions with try-catch that calls E(error, this).
-		await this.context.eval(`
-			if (typeof E === 'undefined') {
-				globalThis.E = function(error, _context) {
-					// Re-throw security violations from __sanitize
-					if (error && error.message && error.message.includes('due to security concerns')) {
-						throw error;
-					}
-					// Swallow TypeErrors (failed attack attempts return undefined)
-					if (error instanceof TypeError) {
-						return undefined;
-					}
-					throw error;
-				};
-			}
-		`);
+		// Inject E() error handler needed by tournament-generated try-catch code
+		await this.injectErrorHandler();
 
 		this.initialized = true;
 
@@ -185,6 +170,44 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			throw new Error(`Failed to verify proxy system: ${errorMessage}`);
+		}
+	}
+
+	/**
+	 * Inject the E() error handler into the isolate context.
+	 *
+	 * Tournament wraps expressions with try-catch that calls E(error, this).
+	 * This handler:
+	 * - Re-throws security violations from __sanitize
+	 * - Swallows TypeErrors (failed attack attempts return undefined)
+	 * - Re-throws all other errors
+	 *
+	 * @private
+	 * @throws {Error} If context not initialized
+	 */
+	private async injectErrorHandler(): Promise<void> {
+		if (!this.context) {
+			throw new Error('Context not initialized');
+		}
+
+		await this.context.eval(`
+			if (typeof E === 'undefined') {
+				globalThis.E = function(error, _context) {
+					// Re-throw security violations from __sanitize
+					if (error && error.message && error.message.includes('due to security concerns')) {
+						throw error;
+					}
+					// Swallow TypeErrors (failed attack attempts return undefined)
+					if (error instanceof TypeError) {
+						return undefined;
+					}
+					throw error;
+				};
+			}
+		`);
+
+		if (this.config.debug) {
+			console.log('[IsolatedVmBridge] Error handler injected successfully');
 		}
 	}
 
