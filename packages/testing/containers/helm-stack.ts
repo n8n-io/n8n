@@ -121,11 +121,6 @@ function buildHelmSetFlags(imageName: string, mode: HelmStackMode, baseUrl: stri
 		// Image
 		`--set image.repository=${repository}`,
 		`--set image.tag=${tag}`,
-		// Resources — chart defaults (200m/1 CPU, 512Mi/1Gi) throttle on CI runners (4 vCPU / 16Gi).
-		'--set resources.main.requests.cpu=500m',
-		'--set resources.main.requests.memory=1Gi',
-		'--set resources.main.limits.cpu=2',
-		'--set resources.main.limits.memory=4Gi',
 		// Secrets (chart defaults are placeholder values)
 		'--set secretRefs.env.N8N_ENCRYPTION_KEY=test-encryption-key-for-e2e-testing',
 		'--set secretRefs.env.N8N_HOST=localhost',
@@ -173,14 +168,7 @@ function buildHelmSetFlags(imageName: string, mode: HelmStackMode, baseUrl: stri
 		);
 	} else {
 		// Queue mode: only override the hosts to point at our Bitnami services
-		flags.push(
-			'--set database.host=postgresql',
-			'--set redis.host=redis-master',
-			'--set resources.worker.requests.cpu=250m',
-			'--set resources.worker.requests.memory=512Mi',
-			'--set resources.worker.limits.cpu=2',
-			'--set resources.worker.limits.memory=4Gi',
-		);
+		flags.push('--set database.host=postgresql', '--set redis.host=redis-master');
 	}
 
 	return flags;
