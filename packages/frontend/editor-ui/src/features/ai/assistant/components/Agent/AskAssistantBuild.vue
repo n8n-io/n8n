@@ -30,13 +30,12 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useErrorHandler } from '@/app/composables/useErrorHandler';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import shuffle from 'lodash/shuffle';
-import AISettingsButton from '@/features/ai/assistant/components/Chat/AISettingsButton.vue';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { useReviewChanges } from '@/features/ai/assistant/composables/useReviewChanges';
 
-import { N8nAskAssistantChat } from '@n8n/design-system';
+import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
 import BuildModeEmptyState from './BuildModeEmptyState.vue';
 import {
 	isPlanModePlanMessage,
@@ -59,11 +58,11 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const historyStore = useHistoryStore();
 const collaborationStore = useCollaborationStore();
 const workflowAutosaveStore = useWorkflowSaveStore();
-const settingsStore = useSettingsStore();
 const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
 const assistantStore = useAssistantStore();
+const settingsStore = useSettingsStore();
 const chatPanelStateStore = useChatPanelStateStore();
 const router = useRouter();
 const i18n = useI18n();
@@ -101,12 +100,9 @@ watch(
 	},
 );
 
-const showSettingsButton = computed(() => {
-	return assistantStore.canManageAISettings;
-});
-
-const allowSendingParameterValues = computed(
-	() => settingsStore.settings.ai.allowSendingParameterValues,
+const showUsabilityNotice = computed(
+	() =>
+		assistantStore.canManageAISettings && !settingsStore.settings.ai.allowSendingParameterValues,
 );
 
 const shouldShowNotificationBanner = computed(() => {
@@ -532,15 +528,11 @@ defineExpose({
 			<template #focused-nodes-chips="{ message }">
 				<MessageFocusedNodesChips :focused-node-names="message.focusedNodeNames" />
 			</template>
-			<template #header>
-				<div :class="{ [$style.header]: true, [$style['with-slot']]: !!slots.header }">
-					<slot name="header" />
-					<AISettingsButton
-						v-if="showSettingsButton"
-						:show-usability-notice="!allowSendingParameterValues"
-						:disabled="builderStore.streaming"
-					/>
-				</div>
+			<template v-if="slots.header || showUsabilityNotice" #header>
+				<slot name="header" />
+				<N8nInfoTip v-if="showUsabilityNotice" theme="warning" type="tooltip">
+					<span>{{ i18n.baseText('aiAssistant.reducedHelp.chat.notice') }}</span>
+				</N8nInfoTip>
 			</template>
 			<template #inputHeader>
 				<ReviewChangesBanner
@@ -665,17 +657,6 @@ defineExpose({
 .container {
 	height: 100%;
 	width: 100%;
-}
-
-.header {
-	display: flex;
-	justify-content: end;
-	align-items: center;
-	flex: 1;
-
-	&.with-slot {
-		justify-content: space-between;
-	}
 }
 
 .newWorkflowButtonWrapper {
