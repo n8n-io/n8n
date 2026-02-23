@@ -54,7 +54,7 @@ import {
 	handleCreateWorkflowName,
 	handleDeleteMessages,
 } from './utils/state-modifier';
-import { extractUserRequest } from './utils/subgraph-helpers';
+import { extractUserRequest, filterOutSubgraphToolMessages } from './utils/subgraph-helpers';
 import type { BuilderFeatureFlags, StageLLMs } from './workflow-builder-agent';
 
 /**
@@ -275,9 +275,10 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			// Add Supervisor Node (only used for initial routing)
 			// Accepts config as second param to propagate callbacks for tracing
 			.addNode('supervisor', async (state, config) => {
+				const conversationMessages = filterOutSubgraphToolMessages(state.messages);
 				const routing = await supervisorAgent.invoke(
 					{
-						messages: state.messages,
+						messages: conversationMessages,
 						workflowJSON: state.workflowJSON,
 						coordinationLog: state.coordinationLog,
 						previousSummary: state.previousSummary,
@@ -332,10 +333,11 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					};
 				}
 
+				const responderMessages = filterOutSubgraphToolMessages(state.messages);
 				const { response, introspectionEvents } = await invokeResponderAgent(
 					responderAgent,
 					{
-						messages: state.messages,
+						messages: responderMessages,
 						coordinationLog: state.coordinationLog,
 						discoveryContext: state.discoveryContext,
 						workflowJSON: state.workflowJSON,
