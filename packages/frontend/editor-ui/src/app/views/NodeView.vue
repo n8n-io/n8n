@@ -89,6 +89,7 @@ import type {
 import { useToast } from '@/app/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { historyBus } from '@/app/models/history';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useCanvasStore } from '@/app/stores/canvas.store';
@@ -194,6 +195,7 @@ const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
+const settingsStore = useSettingsStore();
 const focusPanelStore = useFocusPanelStore();
 const builderStore = useBuilderStore();
 const agentRequestStore = useAgentRequestStore();
@@ -1197,7 +1199,10 @@ const chatTriggerNodePinnedData = computed(() => {
 });
 
 const isChatHubAvailable = computed(() => {
-	return chatTriggerNode.value?.parameters?.availableInChat === true;
+	return (
+		settingsStore.isChatFeatureEnabled &&
+		chatTriggerNode.value?.parameters?.availableInChat === true
+	);
 });
 
 const isChatHubPanelOpen = computed(
@@ -1831,7 +1836,7 @@ onBeforeUnmount(() => {
 				/>
 				<template v-if="containsChatTriggerNodes">
 					<CanvasChatButton
-						v-if="isLogsPanelOpen || isChatHubPanelOpen"
+						v-if="isChatHubAvailable ? isChatHubPanelOpen : isLogsPanelOpen"
 						variant="subtle"
 						:label="i18n.baseText('chat.hide')"
 						:class="$style.chatButton"
