@@ -5,34 +5,16 @@ import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeStickyNoteRender } from '../../../../canvas.types';
 
-import {
-	N8nIcon,
-	N8nPopover,
-	isValidHexColor,
-	normalizeCustomColorForTheme,
-} from '@n8n/design-system';
-import { useUIStore } from '@/app/stores/ui.store';
+import { N8nIcon, N8nPopover } from '@n8n/design-system';
 
 const emit = defineEmits<{
 	update: [color: number | string];
 }>();
 
 const i18n = useI18n();
-const uiStore = useUIStore();
 
 const { render, eventBus } = useCanvasNode();
 const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']);
-
-const isDarkTheme = computed(() => uiStore.appliedTheme === 'dark');
-
-const customColorDotStyle = computed(() => {
-	const color = renderOptions.value.color;
-	if (typeof color !== 'string' || !isValidHexColor(color)) {
-		return {};
-	}
-	const { background } = normalizeCustomColorForTheme(color, isDarkTheme.value);
-	return { backgroundColor: background };
-});
 
 const autoHideTimeout = ref<NodeJS.Timeout | null>(null);
 
@@ -131,7 +113,11 @@ onBeforeUnmount(() => {
 							$style.customColorButton,
 							typeof renderOptions.color === 'string' ? $style.selected : '',
 						]"
-						:style="customColorDotStyle"
+						:style="
+							typeof renderOptions.color === 'string'
+								? { backgroundColor: renderOptions.color }
+								: {}
+						"
 						:title="i18n.baseText('node.customColor')"
 						@click.stop="openNativeColorPicker"
 					>
