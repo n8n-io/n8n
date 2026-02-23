@@ -8,6 +8,7 @@ interface VueComponentInstance {
 			onUserMessage?: (message: string) => Promise<void>;
 			showAskOwnerTooltip?: boolean;
 			showExecuteMessage?: boolean;
+			showReviewChanges?: boolean;
 			isInputDisabled?: boolean;
 			disabledTooltip?: string;
 			workflowSuggestions?: unknown[] | undefined;
@@ -32,6 +33,14 @@ const updateWorkflowMock = vi.hoisted(() =>
 vi.mock('@/app/composables/useWorkflowUpdate', () => ({
 	useWorkflowUpdate: vi.fn().mockReturnValue({
 		updateWorkflow: updateWorkflowMock,
+	}),
+}));
+
+// Mock focusedNodes store to prevent defineStore from failing during module load
+vi.mock('@/features/ai/assistant/focusedNodes.store', () => ({
+	useFocusedNodesStore: vi.fn().mockReturnValue({
+		buildContextPayload: vi.fn().mockReturnValue([]),
+		isFeatureEnabled: false,
 	}),
 }));
 
@@ -150,6 +159,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 const nodeViewEventBusEmitMock = vi.hoisted(() => vi.fn());
 vi.mock('@/app/event-bus', () => ({
@@ -160,6 +170,15 @@ vi.mock('@/app/event-bus', () => ({
 		on: vi.fn(),
 		off: vi.fn(),
 		emit: vi.fn(),
+	},
+}));
+
+const canvasEventBusEmitMock = vi.hoisted(() => vi.fn());
+vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
+	canvasEventBus: {
+		emit: canvasEventBusEmitMock,
+		on: vi.fn(),
+		off: vi.fn(),
 	},
 }));
 
@@ -789,6 +808,68 @@ describe('AskAssistantBuild', () => {
 
 			// Verify initialGeneration flag was NOT reset since workflow is still empty
 			expect(builderStore.initialGeneration).toBe(true);
+		});
+	});
+
+	describe('zoom to fit after streaming ends', () => {
+		it('should emit fitView when streaming ends and new nodes were added', async () => {
+			const newWorkflow = {
+				nodes: [
+					{
+						id: 'new-node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						position: [0, 0] as [number, number],
+						typeVersion: 1,
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
+
+			updateWorkflowMock.mockResolvedValue({ success: true, newNodeIds: ['new-node-1'] });
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			renderComponent();
+
+			// Start streaming and trigger a workflow update with new nodes
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify(newWorkflow),
+				},
+			];
+			await flushPromises();
+
+			canvasEventBusEmitMock.mockClear();
+
+			// End streaming
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			expect(canvasEventBusEmitMock).toHaveBeenCalledWith('fitView');
+		});
+
+		it('should NOT emit fitView when streaming ends without new nodes', async () => {
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			renderComponent();
+
+			// Start and end streaming without any workflow updates
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			canvasEventBusEmitMock.mockClear();
+
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			expect(canvasEventBusEmitMock).not.toHaveBeenCalledWith('fitView');
 		});
 	});
 
@@ -1632,6 +1713,81 @@ describe('AskAssistantBuild', () => {
 
 			// Banner should NOT be shown since streaming hasn't started in this session
 			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('review changes button', () => {
+		it('showReviewChanges is false when feature flag is disabled', () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(false);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+
+			const { container } = renderComponent();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is false when streaming is true', () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = true;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+
+			const { container } = renderComponent();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is false when no latestRevertVersion exists', () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = null;
+
+			const { container } = renderComponent();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is false when editedNodesCount is 0', async () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			const { container } = renderComponent();
+			await flushPromises();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is true when feature flag is enabled, not streaming, latestRevertVersion exists, and nodes were edited', async () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+
+			const { container } = renderComponent();
+			await flushPromises();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(true);
 		});
 	});
 });

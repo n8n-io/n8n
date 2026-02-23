@@ -100,6 +100,10 @@ const resetFilters = () => {
 	selectedProject.value = null;
 };
 
+const shouldBeIconButton = computed(() => {
+	return !hasFilters.value;
+});
+
 watch(filtersLength, (value) => {
 	emit('update:filtersLength', value);
 });
@@ -113,9 +117,10 @@ onBeforeMount(async () => {
 	<N8nPopover width="304px" :content-class="$style['popover-content']">
 		<template #trigger>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				icon="funnel"
 				size="small"
+				:iconOnly="shouldBeIconButton"
 				:active="hasFilters"
 				:class="{
 					[$style['filter-button']]: true,
@@ -180,12 +185,9 @@ onBeforeMount(async () => {
 		}
 	}
 
-	.filter-button-count {
-		margin-right: var(--spacing--4xs);
-
-		@include mixins.breakpoint('xs-only') {
-			margin-right: 0;
-		}
+	.filter-button-count > span {
+		font-size: var(--font-size--3xs);
+		font-weight: var(--font-weight--semibold);
 	}
 
 	@media screen and (max-width: 480px) {

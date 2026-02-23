@@ -1,6 +1,6 @@
 {
   "name": "@n8n/node-cli",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "description": "Official CLI for developing community nodes for n8n",
   "bin": {
     "n8n-node": "bin/n8n-node.mjs"
@@ -47,6 +47,7 @@
   "dependencies": {
     "@clack/prompts": "^0.11.0",
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
+    "@n8n/ai-node-sdk": "workspace:*",
     "@oclif/core": "^4.5.2",
     "change-case": "^5.4.4",
     "eslint-import-resolver-typescript": "^4.4.3",

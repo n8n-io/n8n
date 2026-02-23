@@ -174,8 +174,7 @@ function onTagsBlur() {
 	if (workflowDocumentStore?.value) {
 		workflowDocumentStore.value.setTags(tags);
 	}
-	workflowState.setWorkflowTagIds(tags);
-	uiStore.markStateDirty();
+	uiStore.markStateDirty('metadata');
 
 	telemetry.track('User edited workflow tags', {
 		workflow_id: props.id,

@@ -89,6 +89,82 @@ describe('memoryManagement', () => {
 			expect(result?.[1]).toBeInstanceOf(AIMessage);
 		});
 
+		it('should remove multiple consecutive orphaned ToolMessages at start', async () => {
+			const chatHistory = [
+				new ToolMessage({ content: 'Result 1', tool_call_id: 'id-1', name: 'tool1' }),
+				new ToolMessage({ content: 'Result 2', tool_call_id: 'id-2', name: 'tool2' }),
+				new ToolMessage({ content: 'Result 3', tool_call_id: 'id-3', name: 'tool3' }),
+				new HumanMessage('Next question'),
+				new AIMessage('Answer'),
+			];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			expect(result).toHaveLength(2);
+			expect(result?.[0]).toBeInstanceOf(HumanMessage);
+			expect(result?.[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should remove chain of ToolMessage -> AIMessage(tool_calls) at start via recursive cleanup', async () => {
+			// After removing the first ToolMessage, an orphaned AIMessage with tool_calls is revealed
+			// (not followed by a ToolMessage), requiring another cleanup pass
+			const chatHistory = [
+				new ToolMessage({ content: 'Orphan result', tool_call_id: 'id-1', name: 'tool1' }),
+				new AIMessage({
+					content: 'Calling another tool',
+					tool_calls: [{ id: 'call-2', name: 'tool2', args: {}, type: 'tool_call' as const }],
+				}),
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+			];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			expect(result).toHaveLength(2);
+			expect(result?.[0]).toBeInstanceOf(HumanMessage);
+			expect(result?.[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should handle orphaned AIMessage(tool_calls) followed by more orphaned ToolMessages', async () => {
+			const chatHistory = [
+				new AIMessage({
+					content: 'Calling tool',
+					tool_calls: [{ id: 'call-1', name: 'tool1', args: {}, type: 'tool_call' as const }],
+				}),
+				// This AIMessage has tool_calls but no following ToolMessage (next is HumanMessage)
+				new AIMessage({
+					content: 'Another call',
+					tool_calls: [{ id: 'call-2', name: 'tool2', args: {}, type: 'tool_call' as const }],
+				}),
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+			];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			expect(result).toHaveLength(2);
+			expect(result?.[0]).toBeInstanceOf(HumanMessage);
+			expect(result?.[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should return empty array when all messages are orphans', async () => {
+			const chatHistory = [
+				new ToolMessage({ content: 'Result', tool_call_id: 'id-1', name: 'tool' }),
+				new AIMessage({
+					content: 'Call',
+					tool_calls: [{ id: 'call-1', name: 'tool', args: {}, type: 'tool_call' as const }],
+				}),
+			];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			expect(result).toHaveLength(0);
+		});
+
 		it('should trim messages when maxTokens is provided', async () => {
 			const chatHistory = [
 				new SystemMessage('System prompt'),
