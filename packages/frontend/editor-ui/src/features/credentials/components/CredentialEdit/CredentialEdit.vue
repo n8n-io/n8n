@@ -1353,6 +1353,7 @@ const { width } = useElementSize(credNameRef);
 					/>
 					<SaveButton
 						v-if="showSaveButton"
+						:class="$style.saveButton"
 						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
 						:is-saving="isSaving || isTesting"
 						:saved="false"
@@ -1378,6 +1379,7 @@ const { width } = useElementSize(credNameRef);
 					/>
 					<SaveButton
 						v-if="showSaveButton"
+						:class="$style.saveButton"
 						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
 						:is-saving="isSaving || isTesting"
 						:saved="false"
@@ -1418,7 +1420,6 @@ const { width } = useElementSize(credNameRef);
 .mainContent {
 	flex: 1;
 	overflow: auto;
-	padding-left: 1px;
 	padding-bottom: 100px;
 }
 
@@ -1486,5 +1487,9 @@ const { width } = useElementSize(credNameRef);
 	display: flex;
 	align-items: center;
 	margin-right: var(--spacing--xs);
+}
+
+.saveButton {
+	margin-left: 1px;
 }
 </style>
