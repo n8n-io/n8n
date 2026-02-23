@@ -127,6 +127,7 @@ const menuItems = computed<ToolMenuItem[]>(() => {
 		id: CREATE_NEW_TOOL_ID,
 		label: i18n.baseText('chatHub.tools.selector.createNew'),
 		icon: { type: 'icon', value: 'plus' },
+		divided: true,
 	});
 
 	return toolItems;
