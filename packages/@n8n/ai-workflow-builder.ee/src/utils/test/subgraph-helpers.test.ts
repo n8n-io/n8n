@@ -7,6 +7,7 @@ import {
 	extractUserRequest,
 	createStandardShouldContinue,
 	extractToolMessagesForPersistence,
+	filterOutSubgraphToolMessages,
 	executeSubgraphTools,
 } from '../subgraph-helpers';
 
@@ -372,6 +373,78 @@ describe('subgraph-helpers', () => {
 			// AIMessage should NOT be included because tool_call.id is undefined
 			expect(result).toHaveLength(1);
 			expect(result[0]).toBeInstanceOf(ToolMessage);
+		});
+	});
+
+	describe('filterOutSubgraphToolMessages', () => {
+		it('should return empty array for empty messages', () => {
+			expect(filterOutSubgraphToolMessages([])).toEqual([]);
+		});
+
+		it('should keep HumanMessages and text-only AIMessages', () => {
+			const human = new HumanMessage('Build a workflow');
+			const aiResponse = new AIMessage('Here is your workflow');
+			const messages: BaseMessage[] = [human, aiResponse];
+
+			const result = filterOutSubgraphToolMessages(messages);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toBe(human);
+			expect(result[1]).toBe(aiResponse);
+		});
+
+		it('should remove ToolMessages', () => {
+			const messages: BaseMessage[] = [
+				new HumanMessage('Build a workflow'),
+				new ToolMessage({ content: 'Node added', tool_call_id: 'call-1' }),
+			];
+
+			const result = filterOutSubgraphToolMessages(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+		});
+
+		it('should remove AIMessages with tool_calls', () => {
+			const messages: BaseMessage[] = [
+				new HumanMessage('Build a workflow'),
+				new AIMessage({
+					content: '',
+					tool_calls: [{ name: 'add_node', args: {}, id: 'call-1' }],
+				}),
+			];
+
+			const result = filterOutSubgraphToolMessages(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+		});
+
+		it('should filter out complete tool call pairs from a mixed conversation', () => {
+			const human = new HumanMessage('Build a workflow');
+			const aiResponse = new AIMessage('Your workflow is ready');
+			const messages: BaseMessage[] = [
+				human,
+				// Subgraph tool messages (should be removed)
+				new AIMessage({
+					content: '',
+					tool_calls: [{ name: 'search_nodes', args: {}, id: 'call-1' }],
+				}),
+				new ToolMessage({ content: 'Found 3 nodes', tool_call_id: 'call-1' }),
+				new AIMessage({
+					content: '',
+					tool_calls: [{ name: 'add_node', args: {}, id: 'call-2' }],
+				}),
+				new ToolMessage({ content: 'Node added', tool_call_id: 'call-2' }),
+				// Responder response (should be kept)
+				aiResponse,
+			];
+
+			const result = filterOutSubgraphToolMessages(messages);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toBe(human);
+			expect(result[1]).toBe(aiResponse);
 		});
 	});
 
