@@ -16,8 +16,10 @@ import { createConnectNodesTool } from './tools/connect-nodes.tool';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetDocumentationTool } from './tools/get-documentation.tool';
 import { createGetNodeDetailsTool } from './tools/get-node-details.tool';
+import { createGetWorkflowTool } from './tools/get-workflow.tool';
 import { createGetWorkflowOverviewTool } from './tools/get-workflow-overview.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
+import { createListWorkflowsTool } from './tools/list-workflows.tool';
 import { createRemoveConnectionTool } from './tools/remove-connection.tool';
 import { createRemoveNodeTool } from './tools/remove-node.tool';
 import { createSaveWorkflowTool } from './tools/save-workflow.tool';
@@ -88,6 +90,8 @@ export class McpService {
 
 		// Existing tools
 		register(createSearchWorkflowsTool(user, this.workflowService, this.telemetry));
+		register(createListWorkflowsTool(user, this.workflowService, this.telemetry));
+		register(createGetWorkflowTool(user, this.workflowFinderService, this.telemetry));
 		register(
 			createExecuteWorkflowTool(
 				user,
