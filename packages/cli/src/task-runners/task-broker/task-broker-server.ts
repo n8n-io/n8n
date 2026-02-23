@@ -19,6 +19,7 @@ import type {
 	TaskBrokerServerInitResponse,
 } from '@/task-runners/task-broker/task-broker-types';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
+import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
 
 /**
  * Task Broker HTTP & WS server
@@ -170,7 +171,7 @@ export class TaskBrokerServer {
 			send(async (req) => await this.authController.createGrantToken(req)),
 		);
 
-		const healthPath = this.globalConfig.endpoints.health;
+		const healthPath = resolveHealthEndpointPath(this.globalConfig);
 		this.app.get(healthPath, (_, res) => {
 			res.send({ status: 'ok' });
 		});
