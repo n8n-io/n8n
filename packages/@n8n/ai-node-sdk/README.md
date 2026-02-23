@@ -1,5 +1,7 @@
 # @n8n/ai-node-sdk
 
+> **Preview:** This package is in preview. The API may change without notice. AI nodes are not yet accepted for verification.
+
 Public SDK for building AI nodes in n8n. This package provides a simplified API for creating chat model and memory nodes without LangChain dependencies.
 
 ## Installation in node packages

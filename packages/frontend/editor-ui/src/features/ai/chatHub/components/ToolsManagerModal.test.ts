@@ -119,15 +119,40 @@ function createMockToolDto(overrides: Partial<INode> = {}, enabled = true): Chat
 	};
 }
 
+const ElDialogStub = {
+	template: `
+		<div role="dialog">
+			<slot name="header" />
+			<slot />
+			<slot name="footer" />
+		</div>
+	`,
+	props: [
+		'modelValue',
+		'beforeClose',
+		'class',
+		'center',
+		'width',
+		'showClose',
+		'closeOnClickModal',
+		'closeOnPressEscape',
+		'style',
+		'appendTo',
+		'lockScroll',
+		'appendToBody',
+		'dataTestId',
+		'modalClass',
+		'zIndex',
+	],
+};
+
 const MODAL_NAME = 'ToolsManagerModal';
 const onConfirmMock = vi.fn();
 
 const renderComponent = createComponentRenderer(ToolsManagerModal, {
 	global: {
 		stubs: {
-			// Render dialog portal content inline instead of teleporting
-			DialogPortal: { template: '<div><slot /></div>' },
-			DialogOverlay: { template: '<div />' },
+			ElDialog: ElDialogStub,
 			ToolSettingsContent: {
 				template: '<div data-test-id="tool-settings-content" />',
 				props: ['initialNode', 'existingToolNames'],
@@ -185,6 +210,7 @@ describe('ToolsManagerModal', () => {
 		chatStore.toggleToolEnabled = vi.fn().mockResolvedValue(undefined);
 		chatStore.toggleCustomAgentTool = vi.fn().mockResolvedValue(undefined);
 
+		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
 	});
 

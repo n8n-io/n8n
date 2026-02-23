@@ -5,7 +5,7 @@ import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/wo
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
-import { AutoSaveState } from '@/app/constants';
+import { AutoSaveState, VIEWS } from '@/app/constants';
 import { computed, watch, ref, nextTick, useSlots } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -14,8 +14,10 @@ import { useRoute, useRouter } from 'vue-router';
 import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
 import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/app/event-bus';
+import { jsonParse } from 'n8n-workflow';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
+import ReviewChangesBanner from './ReviewChangesBanner.vue';
 import ChatInputWithMention from '../FocusedNodes/ChatInputWithMention.vue';
 import MessageFocusedNodesChips from '../FocusedNodes/MessageFocusedNodesChips.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -23,17 +25,16 @@ import { useBrowserNotifications } from '@/app/composables/useBrowserNotificatio
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
-import { VIEWS } from '@/app/constants';
 import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useErrorHandler } from '@/app/composables/useErrorHandler';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import { jsonParse } from 'n8n-workflow';
 import shuffle from 'lodash/shuffle';
 import AISettingsButton from '@/features/ai/assistant/components/Chat/AISettingsButton.vue';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
+import { useReviewChanges } from '@/features/ai/assistant/composables/useReviewChanges';
 
 import { N8nAskAssistantChat } from '@n8n/design-system';
 import BuildModeEmptyState from './BuildModeEmptyState.vue';
@@ -196,6 +197,8 @@ const isInputDisabled = computed(() => {
 const isChatInputDisabled = computed(() => {
 	return isInputDisabled.value || builderStore.shouldDisableChatInput;
 });
+
+const { showReviewChanges, editedNodesCount, isLoadingDiff, openDiffView } = useReviewChanges();
 
 const disabledTooltip = computed(() => {
 	if (!isChatInputDisabled.value) {
@@ -540,7 +543,13 @@ defineExpose({
 				</div>
 			</template>
 			<template #inputHeader>
-				<Transition name="slide">
+				<ReviewChangesBanner
+					v-if="showReviewChanges"
+					:edited-nodes-count="editedNodesCount"
+					:loading="isLoadingDiff"
+					@click="openDiffView"
+				/>
+				<Transition v-else name="slide">
 					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />
 				</Transition>
 			</template>
