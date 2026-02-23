@@ -24,7 +24,9 @@ export function appendChunkToParsedMessageItems(
 			remaining = lastItem.content + chunk;
 			result.pop(); // Remove it so we can re-parse
 		} else if (
-			(lastItem.type === 'artifact-create' || lastItem.type === 'artifact-edit') &&
+			(lastItem.type === 'artifact-create' ||
+				lastItem.type === 'artifact-edit' ||
+				lastItem.type === 'add-memory') &&
 			lastItem.isIncomplete
 		) {
 			// Incomplete command - append chunk and re-parse
@@ -45,33 +47,31 @@ export function appendChunkToParsedMessageItems(
 	let currentPos = 0;
 	const createCommandRegex = /<command:artifact-create>/g;
 	const editCommandRegex = /<command:artifact-edit>/g;
+	const addMemoryCommandRegex = /<command:add-memory>/g;
 
 	while (currentPos < remaining.length) {
 		// Find the next command
 		createCommandRegex.lastIndex = currentPos;
 		editCommandRegex.lastIndex = currentPos;
+		addMemoryCommandRegex.lastIndex = currentPos;
 
 		const createMatch = createCommandRegex.exec(remaining);
 		const editMatch = editCommandRegex.exec(remaining);
+		const addMemoryMatch = addMemoryCommandRegex.exec(remaining);
 
 		let nextMatch: RegExpExecArray | null = null;
-		let commandType: 'create' | 'edit' | null = null;
+		let commandType: 'create' | 'edit' | 'add-memory' | null = null;
 
-		if (createMatch && editMatch) {
-			// Both found, use the earlier one
-			if (createMatch.index < editMatch.index) {
-				nextMatch = createMatch;
-				commandType = 'create';
-			} else {
-				nextMatch = editMatch;
-				commandType = 'edit';
-			}
-		} else if (createMatch) {
-			nextMatch = createMatch;
-			commandType = 'create';
-		} else if (editMatch) {
-			nextMatch = editMatch;
-			commandType = 'edit';
+		const candidates: Array<{ match: RegExpExecArray; type: 'create' | 'edit' | 'add-memory' }> =
+			[];
+		if (createMatch) candidates.push({ match: createMatch, type: 'create' });
+		if (editMatch) candidates.push({ match: editMatch, type: 'edit' });
+		if (addMemoryMatch) candidates.push({ match: addMemoryMatch, type: 'add-memory' });
+
+		if (candidates.length > 0) {
+			candidates.sort((a, b) => a.match.index - b.match.index);
+			nextMatch = candidates[0].match;
+			commandType = candidates[0].type;
 		}
 
 		if (!nextMatch || !commandType) {
@@ -104,8 +104,12 @@ export function appendChunkToParsedMessageItems(
 			const parsed = parseArtifactCreateCommand(commandContent);
 			result.push(parsed.item);
 			currentPos = commandStart + parsed.consumed;
-		} else {
+		} else if (commandType === 'edit') {
 			const parsed = parseArtifactEditCommand(commandContent);
+			result.push(parsed.item);
+			currentPos = commandStart + parsed.consumed;
+		} else {
+			const parsed = parseAddMemoryCommand(commandContent);
 			result.push(parsed.item);
 			currentPos = commandStart + parsed.consumed;
 		}
@@ -135,7 +139,11 @@ function splitPotentialCommandPrefix(text: string): {
 	text: string;
 	hiddenPrefix: string;
 } {
-	const commandTags = ['<command:artifact-create>', '<command:artifact-edit>'];
+	const commandTags = [
+		'<command:artifact-create>',
+		'<command:artifact-edit>',
+		'<command:add-memory>',
+	];
 
 	// Check if the end of text matches any prefix of a command tag
 	for (let len = 1; len <= Math.min(text.length, 30); len++) {
@@ -208,6 +216,33 @@ function parseArtifactEditCommand(content: string): {
 			type: 'artifact-edit',
 			content: commandContent,
 			command: { title, oldString, newString, replaceAll },
+			isIncomplete,
+		},
+		consumed: commandContent.length,
+	};
+}
+
+function parseAddMemoryCommand(content: string): {
+	item: ChatMessageContentChunk;
+	consumed: number;
+} {
+	const closingTag = '</command:add-memory>';
+	const closingIndex = content.indexOf(closingTag);
+
+	const isIncomplete = closingIndex === -1;
+	const commandContent = isIncomplete
+		? content
+		: content.slice(0, closingIndex + closingTag.length);
+
+	const openTag = '<command:add-memory>';
+	const factStart = openTag.length;
+	const fact = isIncomplete ? content.slice(factStart) : content.slice(factStart, closingIndex);
+
+	return {
+		item: {
+			type: 'add-memory',
+			content: commandContent,
+			fact: fact.trim(),
 			isIncomplete,
 		},
 		consumed: commandContent.length,

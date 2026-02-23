@@ -4,6 +4,7 @@ import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/use
 import { ref, useCssModule } from 'vue';
 import type { ChatMessageContentChunk } from '@n8n/api-types';
 import ChatButtons from './ChatButtons.vue';
+import { useI18n } from '@n8n/i18n';
 
 const {
 	source,
@@ -20,6 +21,7 @@ const emit = defineEmits<{ openArtifact: [title: string] }>();
 const styles = useCssModule();
 const markdown = useChatHubMarkdownOptions(styles.codeBlockActions, styles.tableContainer);
 const hoveredCodeBlockActions = ref<HTMLElement | null>(null);
+const i18n = useI18n();
 
 function getHoveredCodeBlockContent() {
 	const idx = hoveredCodeBlockActions.value?.getAttribute('data-markdown-token-idx');
@@ -83,6 +85,12 @@ defineExpose({
 	>
 		Created <b>{{ source.command.title }}</b>
 	</button>
+	<div
+		v-else-if="source.type === 'add-memory' && !source.isIncomplete"
+		:class="$style.memoryCommand"
+	>
+		{{ i18n.baseText('chatHub.message.memoryUpdated') }}: <b>{{ source.fact }}</b>
+	</div>
 </template>
 
 <style lang="scss" module>
@@ -455,5 +463,18 @@ defineExpose({
 	text-align: left;
 	font-weight: var(--font-weight--regular);
 	cursor: pointer;
+}
+
+.memoryCommand {
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--sm);
+	margin-bottom: var(--spacing--sm);
+	background-color: transparent;
+	display: block;
+	width: 100%;
+	text-align: left;
+	font-size: var(--font-size--sm);
+	color: var(--color--text--tint-1);
 }
 </style>

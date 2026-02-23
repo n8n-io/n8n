@@ -14,6 +14,7 @@ const CHAT_PROVIDER_SETTINGS_KEY_PREFIX = 'chat.provider.';
 const CHAT_PROVIDER_SETTINGS_KEY = (provider: ChatHubLLMProvider) =>
 	`${CHAT_PROVIDER_SETTINGS_KEY_PREFIX}${provider}`;
 const CHAT_ENABLED_KEY = 'chat.access.enabled';
+const CHAT_MEMORY_KEY = 'chat.memory';
 
 const getDefaultProviderSettings = (provider: ChatHubLLMProvider): ChatProviderSettingsDto => ({
 	provider,
@@ -100,6 +101,21 @@ export class ChatHubSettingsService {
 		}
 
 		return result;
+	}
+
+	async getMemory(): Promise<string> {
+		const row = await this.settingsRepository.findByKey(CHAT_MEMORY_KEY);
+		if (!row) return '';
+		return row.value;
+	}
+
+	async addMemoryFact(fact: string): Promise<void> {
+		const current = await this.getMemory();
+		const updated = current ? `${current}\n${fact}` : fact;
+		await this.settingsRepository.upsert(
+			{ key: CHAT_MEMORY_KEY, value: updated, loadOnStartup: false },
+			['key'],
+		);
 	}
 
 	async setProviderSettings(

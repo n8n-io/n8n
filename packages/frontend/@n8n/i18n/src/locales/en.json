@@ -565,6 +565,7 @@
 	"chatHub.message.edit.cancel": "Cancel",
 	"chatHub.message.edit.send": "Send",
 	"chatHub.message.error.unknown": "Something went wrong. Please try again.",
+	"chatHub.message.memoryUpdated": "Memory updated",
 	"chatHub.error.payloadTooLarge": "Message too large",
 	"chatHub.error.badRequest": "Invalid request",
 	"chatHub.error.forbidden": "Permission denied",

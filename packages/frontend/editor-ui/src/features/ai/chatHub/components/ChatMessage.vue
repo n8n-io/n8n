@@ -126,6 +126,10 @@ const messageChunks = computed(() =>
 			return prev?.type === chunk.type && prev.command.title === chunk.command.title ? [] : [chunk]; // dedupe command
 		}
 
+		if (chunk.type === 'add-memory') {
+			return [chunk];
+		}
+
 		// Handle error case with no content
 		if (message.status === 'error' && !chunk.content) {
 			return [{ type: 'text', content: i18n.baseText('chatHub.message.error.unknown') }];
@@ -181,7 +185,8 @@ const hideMessage = computed(() => {
 	return (
 		message.status === 'success' &&
 		text.value === '' &&
-		!message.content.some((c) => c.type === 'with-buttons')
+		!message.content.some((c) => c.type === 'with-buttons') &&
+		!message.content.some((c) => c.type === 'add-memory')
 	);
 });
 

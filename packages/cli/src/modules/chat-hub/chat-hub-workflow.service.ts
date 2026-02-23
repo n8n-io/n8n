@@ -122,7 +122,7 @@ export class ChatHubWorkflowService {
 				attachments,
 				credentials,
 				model,
-				systemMessage: systemMessage ?? this.getBaseSystemMessage(history, timeZone),
+				systemMessage: systemMessage ?? (await this.getBaseSystemMessage(history, timeZone)),
 				tools,
 				executionMetadata,
 			});
@@ -564,7 +564,7 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	getSystemMessageMetadata(timeZone: string) {
+	getSystemMessageMetadata(timeZone: string, memory?: string) {
 		if (inE2ETests) {
 			return '__e2e_system_prompt_placeholder__';
 		}
@@ -572,12 +572,23 @@ export class ChatHubWorkflowService {
 		const now = DateTime.now();
 		const isoTime = now.setZone(timeZone).toISO({ includeOffset: true });
 
+		const memoryContext = memory
+			? `
+# Known Facts About the User
+
+The following facts about the user have been remembered from previous conversations:
+
+${memory}
+
+`
+			: '';
+
 		return `
 # Current Date and Time
 
 The user's current local date and time is: ${isoTime} (timezone: ${timeZone}).
 When you need to reference "now", use this date and time.
-
+${memoryContext}
 # Output Capabilities
 
 ## Multimedia Generation
@@ -639,18 +650,28 @@ To make targeted edits to a document, you must specify the exact title of the do
 - Set replaceAll to true to replace all occurrences, or false to replace only the first occurrence.
 - If the document title doesn't exist, the edit command will be ignored.
 
+## Memory
+
+You can remember facts about the user for use in future conversations by including this command in your response:
+
+<command:add-memory>fact about the user</command:add-memory>
+
+Use this to save important, long-term facts (preferences, background, context) that would be useful to know in future conversations.
+Only save genuinely useful, distinct facts. Do not duplicate facts already listed in "Known Facts About the User".
+
 IMPORTANT:
 - Write these commands directly in your response text, NOT inside code blocks or fences.
 - ALWAYS include conversational text before and/or after document commands. Never send a message with only commands and no explanation.
 `;
 	}
 
-	private getBaseSystemMessage(history: ChatHubMessage[], timeZone: string) {
+	private async getBaseSystemMessage(history: ChatHubMessage[], timeZone: string) {
 		const artifactContext = this.buildArtifactContext(history);
+		const memory = await this.chatHubSettingsService.getMemory();
 
 		return `You are a helpful assistant.
 
-${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
+${this.getSystemMessageMetadata(timeZone, memory || undefined) + artifactContext}`;
 	}
 
 	private buildToolsAgentNode(
@@ -1242,8 +1263,12 @@ Respond the title only:`,
 		}
 
 		const artifactContext = this.buildArtifactContext(history);
+		const memory = await this.chatHubSettingsService.getMemory();
 		const systemMessage =
-			agent.systemPrompt + '\n\n' + this.getSystemMessageMetadata(timeZone) + artifactContext;
+			agent.systemPrompt +
+			'\n\n' +
+			this.getSystemMessageMetadata(timeZone, memory || undefined) +
+			artifactContext;
 
 		const model: ChatHubBaseLLMModel = {
 			provider: agent.provider,

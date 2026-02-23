@@ -34,6 +34,7 @@ import { WorkflowExecutionService } from '@/workflows/workflow-execution.service
 
 import { ChatHubExecutionStore } from './chat-hub-execution-store.service';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
+import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
 	EXECUTION_FINISHED_STATUSES,
 	EXECUTION_POLL_INTERVAL,
@@ -43,6 +44,7 @@ import type { NonStreamingResponseMode, ChatTriggerResponseMode } from './chat-h
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatStreamService } from './chat-stream.service';
 import { createStructuredChunkAggregator } from './stream-capturer';
+import { parseMessage } from '@n8n/chat-hub';
 
 @Service()
 export class ChatHubExecutionService {
@@ -58,6 +60,7 @@ export class ChatHubExecutionService {
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly chatHubExecutionStore: ChatHubExecutionStore,
 		private readonly messageRepository: ChatHubMessageRepository,
+		private readonly chatHubSettingsService: ChatHubSettingsService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -243,6 +246,11 @@ export class ChatHubExecutionService {
 					content: message.content,
 					status: message.status,
 				});
+
+				// Extract and save any memory facts from the AI response
+				if (message.status === 'success' && message.content) {
+					await this.extractAndSaveMemoryFacts(message.content);
+				}
 
 				// End the stream for this message
 				await this.chatStreamService.endStream(sessionId, message.id, message.status);
@@ -651,6 +659,24 @@ export class ChatHubExecutionService {
 		};
 
 		return { adapter: adapter as unknown as Response, waitForPendingOperations };
+	}
+
+	/**
+	 * Parse AI message content for add-memory commands and save each fact
+	 */
+	private async extractAndSaveMemoryFacts(content: string): Promise<void> {
+		const chunks = parseMessage({ type: 'ai', content });
+		for (const chunk of chunks) {
+			if (chunk.type === 'add-memory' && !chunk.isIncomplete && chunk.fact) {
+				try {
+					await this.chatHubSettingsService.addMemoryFact(chunk.fact);
+				} catch (error) {
+					this.logger.warn('Failed to save memory fact', {
+						cause: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+		}
 	}
 
 	/**

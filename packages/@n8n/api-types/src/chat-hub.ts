@@ -407,6 +407,12 @@ export type ChatMessageContentChunk =
 			isIncomplete: boolean;
 	  }
 	| {
+			type: 'add-memory';
+			content: string;
+			fact: string;
+			isIncomplete: boolean;
+	  }
+	| {
 			type: 'with-buttons';
 			content: string;
 			buttons: ChatHubMessageButton[];
@@ -529,6 +535,7 @@ export class UpdateChatSettingsRequest extends Z.class({
 export interface ChatHubModuleSettings {
 	enabled: boolean;
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+	memory: string;
 }
 
 /**
