@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
-import { computed, defineAsyncComponent, nextTick } from 'vue';
+import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted } from 'vue';
 import { getMidCanvasPosition } from '@/app/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
@@ -17,6 +17,9 @@ import type {
 } from '@/Interface';
 import { useActions } from '../composables/useActions';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
+import NodeCreatorShortcutCoachmark from '../components/NodeCreatorShortcutCoachmark.vue';
+import { useNodeCreatorShortcutCoachmark } from '../composables/useNodeCreatorShortcutCoachmark';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
@@ -57,6 +60,19 @@ const chatPanelStore = useChatPanelStore();
 const settingsStore = useSettingsStore();
 
 const { getAddedNodesAndConnections } = useActions();
+const { isTabPressed, shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
+
+function onDeprecatedTabShortcut() {
+	isTabPressed.value = true;
+}
+
+onMounted(() => {
+	canvasEventBus.on('deprecated:tab-shortcut', onDeprecatedTabShortcut);
+});
+
+onUnmounted(() => {
+	canvasEventBus.off('deprecated:tab-shortcut', onDeprecatedTabShortcut);
+});
 
 const allowSendingParameterValues = computed(
 	() => settingsStore.settings.ai.allowSendingParameterValues,
@@ -141,19 +157,21 @@ function openCommandBar(event: MouseEvent) {
 
 <template>
 	<div v-if="!createNodeActive" :class="$style.nodeButtonsWrapper">
-		<KeyboardShortcutTooltip
-			:label="i18n.baseText('nodeView.openNodesPanel')"
-			:shortcut="{ keys: ['Tab'] }"
-			placement="left"
-		>
-			<N8nIconButton
-				size="large"
-				icon="plus"
-				type="tertiary"
-				data-test-id="node-creator-plus-button"
-				@click="openNodeCreator"
-			/>
-		</KeyboardShortcutTooltip>
+		<NodeCreatorShortcutCoachmark :visible="shouldShowCoachmark" @dismiss="onDismissCoachmark">
+			<KeyboardShortcutTooltip
+				:label="i18n.baseText('nodeView.openNodesPanel')"
+				:shortcut="{ keys: ['N'] }"
+				placement="left"
+			>
+				<N8nIconButton
+					size="large"
+					icon="plus"
+					type="tertiary"
+					data-test-id="node-creator-plus-button"
+					@click="openNodeCreator"
+				/>
+			</KeyboardShortcutTooltip>
+		</NodeCreatorShortcutCoachmark>
 		<KeyboardShortcutTooltip
 			:label="i18n.baseText('nodeView.openCommandBar')"
 			:shortcut="{ keys: ['k'], metaKey: true }"

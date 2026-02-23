@@ -153,7 +153,7 @@ export function useNodeCommands(options: {
 								props: {
 									title: i18n.baseText('commandBar.nodes.addNode'),
 									shortcut: {
-										keys: ['tab'],
+										keys: ['n'],
 									},
 								},
 							},
