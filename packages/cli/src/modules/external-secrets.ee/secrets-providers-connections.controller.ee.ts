@@ -1,10 +1,10 @@
-import type {
+import {
 	CreateSecretsProviderConnectionDto,
 	UpdateSecretsProviderConnectionDto,
-	SecretProviderConnectionListItem,
-	SecretProviderConnection,
-	ReloadSecretProviderConnectionResponse,
-	TestSecretProviderConnectionResponse,
+	type SecretProviderConnectionListItem,
+	type SecretProviderConnection,
+	type ReloadSecretProviderConnectionResponse,
+	type TestSecretProviderConnectionResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
