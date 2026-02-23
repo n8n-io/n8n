@@ -86,6 +86,29 @@ describe('Linear -> GenericFunctions', () => {
 				}),
 			);
 		});
+
+		it('should include "Linear" in error message for insufficient permissions', async () => {
+			const errorResponse = {
+				errors: [
+					{
+						message: 'Invalid role: admin required',
+						extensions: {
+							userPresentableMessage: 'You need to have the "Admin" scope to create webhooks.',
+						},
+					},
+				],
+			};
+
+			mockHttpRequestWithAuthentication.mockResolvedValue(errorResponse);
+
+			try {
+				await linearApiRequest.call(mockExecuteFunctions, { query: '{ viewer { id } }' });
+				fail('Expected an error to be thrown');
+			} catch (error) {
+				expect(error).toBeInstanceOf(NodeApiError);
+				expect(error.message).toContain('Linear');
+			}
+		});
 	});
 
 	describe('capitalizeFirstLetter', () => {

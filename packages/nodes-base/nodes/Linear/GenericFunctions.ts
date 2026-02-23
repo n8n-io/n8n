@@ -41,20 +41,21 @@ export async function linearApiRequest(
 
 		if (response?.errors) {
 			throw new NodeApiError(this.getNode(), response.errors, {
-				message: response.errors[0].message ?? 'Unknown API Error',
+				message: `Linear: ${response.errors[0].message ?? 'Unknown API Error'}`,
 			});
 		}
 
 		return response;
 	} catch (error) {
+		const message =
+			error.errorResponse?.[0]?.message ||
+			error.context.data.errors[0]?.message ||
+			'Unknown API error';
 		throw new NodeApiError(
 			this.getNode(),
 			{},
 			{
-				message:
-					error.errorResponse?.[0]?.message ||
-					error.context.data.errors[0]?.message ||
-					'Unknown API error',
+				message: `Linear: ${message}`,
 				description:
 					error.errorResponse?.[0]?.extensions?.userPresentableMessage ||
 					error.context.data.errors[0]?.extensions?.userPresentableMessage,
