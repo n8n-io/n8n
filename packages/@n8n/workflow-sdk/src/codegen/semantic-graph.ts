@@ -5,6 +5,8 @@
  * graph where connections use meaningful names instead of indices.
  */
 
+import { deepCopy } from 'n8n-workflow';
+
 import { getOutputName, getInputName } from './semantic-registry';
 import type { SemanticGraph, SemanticNode, SemanticConnection, AiConnectionType } from './types';
 import { AI_CONNECTION_TYPES } from './types';
@@ -356,7 +358,7 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 	}
 
 	// Phase 2: Normalize and parse connections (deep-clone to avoid mutating input)
-	const connections: IConnections = JSON.parse(JSON.stringify(json.connections)) as IConnections;
+	const connections: IConnections = deepCopy(json.connections) as IConnections;
 	normalizeConnections(connections);
 
 	for (const [sourceName, connectionTypes] of Object.entries(connections)) {

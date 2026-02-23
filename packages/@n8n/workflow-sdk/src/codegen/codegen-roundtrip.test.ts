@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { deepCopy } from 'n8n-workflow';
+
 import { generateWorkflowCode } from './index';
 import { parseWorkflowCode, parseWorkflowCodeToBuilder } from './parse-workflow-code';
 import {
@@ -2585,9 +2587,7 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					);
 					// Normalize original connections (clone first to avoid mutating input)
 					// since the original JSON may have flat tuple connections
-					const normalizedOriginalConns: IConnections = JSON.parse(
-						JSON.stringify(json.connections),
-					) as IConnections;
+					const normalizedOriginalConns: IConnections = deepCopy(json.connections) as IConnections;
 					normalizeConnections(normalizedOriginalConns);
 					const filteredOriginal = filterEmptyConnections(normalizedOriginalConns, validNodeNames);
 					const filteredParsed = filterEmptyConnections(parsedJson.connections);

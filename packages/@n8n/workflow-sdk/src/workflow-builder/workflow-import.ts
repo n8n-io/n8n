@@ -116,7 +116,7 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 
 	// Rebuild connections (deep-clone to avoid mutating the input)
 	if (json.connections) {
-		const connections: IConnections = JSON.parse(JSON.stringify(json.connections)) as IConnections;
+		const connections: IConnections = deepCopy(json.connections) as IConnections;
 		normalizeConnections(connections);
 
 		for (const [sourceName, nodeConns] of Object.entries(connections)) {

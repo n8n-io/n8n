@@ -3,8 +3,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { generateCode, collectNestedMultiOutputs } from './code-generator';
-import type { MultiOutputNode } from './composite-tree';
 import { buildCompositeTree } from './composite-builder';
+import type { MultiOutputNode } from './composite-tree';
 import { annotateGraph } from './graph-annotator';
 import { parseWorkflowCode } from './parse-workflow-code';
 import { buildSemanticGraph } from './semantic-graph';
