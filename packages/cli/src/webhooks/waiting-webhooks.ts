@@ -10,6 +10,7 @@ import {
 	prepareUrlForSigning,
 	generateUrlSignature,
 } from 'n8n-core';
+import { UrlService } from '@/services/url.service';
 import {
 	FORM_NODE_TYPE,
 	type INodes,
@@ -45,13 +46,18 @@ import { applyCors } from '@/utils/cors.util';
 export class WaitingWebhooks implements IWebhookManager {
 	protected includeForms = false;
 
+	protected readonly instanceOrigin: string;
+
 	constructor(
 		protected readonly logger: Logger,
 		protected readonly nodeTypes: NodeTypes,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly webhookService: WebhookService,
 		private readonly instanceSettings: InstanceSettings,
-	) {}
+		urlService: UrlService,
+	) {
+		this.instanceOrigin = new URL(urlService.getWebhookBaseUrl()).origin;
+	}
 
 	// TODO: implement `getWebhookMethods` for CORS support
 
@@ -180,7 +186,7 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
-		applyCors(req, res);
+		applyCors(req, res, this.instanceOrigin);
 
 		return await this.getWebhookExecutionData({
 			execution,

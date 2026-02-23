@@ -60,6 +60,46 @@ describe('applyCors', () => {
 		expect(setHeaderSpy).toHaveBeenCalledTimes(3);
 	});
 
+	it('should use instanceOrigin instead of * when origin is "null" and instanceOrigin is provided', () => {
+		getHeaderSpy.mockReturnValue(undefined);
+		mockReq.headers = { origin: 'null' };
+
+		applyCors(mockReq as Request, mockRes as Response, 'https://n8n.example.com');
+
+		expect(setHeaderSpy).toHaveBeenCalledWith(
+			'Access-Control-Allow-Origin',
+			'https://n8n.example.com',
+		);
+		expect(setHeaderSpy).toHaveBeenCalledWith('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+		expect(setHeaderSpy).toHaveBeenCalledWith('Access-Control-Allow-Headers', 'Content-Type');
+		expect(setHeaderSpy).toHaveBeenCalledTimes(3);
+	});
+
+	it('should use instanceOrigin instead of * when origin is undefined and instanceOrigin is provided', () => {
+		getHeaderSpy.mockReturnValue(undefined);
+		mockReq.headers = {};
+
+		applyCors(mockReq as Request, mockRes as Response, 'https://n8n.example.com');
+
+		expect(setHeaderSpy).toHaveBeenCalledWith(
+			'Access-Control-Allow-Origin',
+			'https://n8n.example.com',
+		);
+		expect(setHeaderSpy).toHaveBeenCalledWith('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+		expect(setHeaderSpy).toHaveBeenCalledWith('Access-Control-Allow-Headers', 'Content-Type');
+		expect(setHeaderSpy).toHaveBeenCalledTimes(3);
+	});
+
+	it('should ignore instanceOrigin and use the real request origin when origin is a non-null value', () => {
+		getHeaderSpy.mockReturnValue(undefined);
+		const origin = 'https://other.example.com';
+		mockReq.headers = { origin };
+
+		applyCors(mockReq as Request, mockRes as Response, 'https://n8n.example.com');
+
+		expect(setHeaderSpy).toHaveBeenCalledWith('Access-Control-Allow-Origin', origin);
+	});
+
 	it('should set Access-Control-Allow-Origin to the request origin when origin is provided', () => {
 		getHeaderSpy.mockReturnValue(undefined);
 		const origin = 'https://example.com';
