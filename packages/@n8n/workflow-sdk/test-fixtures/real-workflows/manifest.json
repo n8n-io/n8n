@@ -8,7 +8,7 @@
 		},
 		{
 			"id": 5819,
-			"name": "🤖 Build an interactive AI agent with chat interface and multiple tools",
+			"name": "\ud83e\udd16 Build an interactive AI agent with chat interface and multiple tools",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -125,7 +125,7 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "🤖 SERP Scraper Agent (MCP)"
+					"nodeName": "\ud83e\udd16 SERP Scraper Agent (MCP)"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
@@ -150,7 +150,7 @@
 		},
 		{
 			"id": 5271,
-			"name": "🎓 Learn n8n expressions with an interactive step-by-step tutorial for beginners",
+			"name": "\ud83c\udf93 Learn n8n expressions with an interactive step-by-step tutorial for beginners",
 			"success": true
 		},
 		{
@@ -226,7 +226,7 @@
 		},
 		{
 			"id": 5170,
-			"name": "🎓 Learn JSON basics with an interactive step-by-step tutorial for beginners",
+			"name": "\ud83c\udf93 Learn JSON basics with an interactive step-by-step tutorial for beginners",
 			"success": true
 		},
 		{
@@ -286,27 +286,27 @@
 			"expectedWarnings": [
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "📝 Update Changed Status"
+					"nodeName": "\ud83d\udcdd Update Changed Status"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "📝 Update Job Status"
+					"nodeName": "\ud83d\udcdd Update Job Status"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "📧 Send Application Notification"
+					"nodeName": "\ud83d\udce7 Send Application Notification"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "📧 Send Application Notification"
+					"nodeName": "\ud83d\udce7 Send Application Notification"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "📧 Send Status Update"
+					"nodeName": "\ud83d\udce7 Send Status Update"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "📧 Send Status Update"
+					"nodeName": "\ud83d\udce7 Send Status Update"
 				}
 			]
 		},
@@ -740,17 +740,17 @@
 			"expectedWarnings": [
 				{
 					"code": "MERGE_SINGLE_INPUT",
-					"nodeName": "🔗 Merge All Data"
+					"nodeName": "\ud83d\udd17 Merge All Data"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "📝 Prepare AI Prompt"
+					"nodeName": "\ud83d\udcdd Prepare AI Prompt"
 				}
 			]
 		},
 		{
 			"id": 4600,
-			"name": "🤖 AI content generation for auto service 🚘 automate your social media📲!",
+			"name": "\ud83e\udd16 AI content generation for auto service \ud83d\ude98 automate your social media\ud83d\udcf2!",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -888,7 +888,7 @@
 		},
 		{
 			"id": 3066,
-			"name": "✨🤖Automate Multi-Platform Social Media Content Creation with AI",
+			"name": "\u2728\ud83e\udd16Automate Multi-Platform Social Media Content Creation with AI",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -973,7 +973,7 @@
 		},
 		{
 			"id": 7467,
-			"name": "LeadBot autopilot — chat-to-lead for Salesforce",
+			"name": "LeadBot autopilot \u2014 chat-to-lead for Salesforce",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -1273,7 +1273,7 @@
 		},
 		{
 			"id": 5296,
-			"name": "AI YouTube trend explorer – n8n automation workflow with Gemini/ChatGPT",
+			"name": "AI YouTube trend explorer \u2013 n8n automation workflow with Gemini/ChatGPT",
 			"success": true
 		},
 		{
@@ -1287,7 +1287,7 @@
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Typing…"
+					"nodeName": "Typing\u2026"
 				}
 			]
 		},
@@ -1298,7 +1298,7 @@
 		},
 		{
 			"id": 6236,
-			"name": "🧑‍🎓 Test your data access techniques with progressive expression challenges",
+			"name": "\ud83e\uddd1\u200d\ud83c\udf93 Test your data access techniques with progressive expression challenges",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -1380,7 +1380,7 @@
 		},
 		{
 			"id": 11047,
-			"name": "Automated 🤖🎵 AI music generation with ElevenLabs, Google Sheets & Drive",
+			"name": "Automated \ud83e\udd16\ud83c\udfb5 AI music generation with ElevenLabs, Google Sheets & Drive",
 			"success": true
 		},
 		{
@@ -1457,7 +1457,7 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "🤖 Agent: Scrape Forum & Extract Insights"
+					"nodeName": "\ud83e\udd16 Agent: Scrape Forum & Extract Insights"
 				}
 			]
 		},
@@ -1484,7 +1484,7 @@
 		},
 		{
 			"id": 3586,
-			"name": "AI-powered WhatsApp chatbot 🤖📲 for text, voice, images & PDFs with memory 🧠",
+			"name": "AI-powered WhatsApp chatbot \ud83e\udd16\ud83d\udcf2 for text, voice, images & PDFs with memory \ud83e\udde0",
 			"success": true
 		},
 		{
@@ -1494,7 +1494,7 @@
 		},
 		{
 			"id": 11532,
-			"name": "Automated AI voice cloning 🤖🎤 from YouTube videos to ElevenLabs & Google Sheets",
+			"name": "Automated AI voice cloning \ud83e\udd16\ud83c\udfa4 from YouTube videos to ElevenLabs & Google Sheets",
 			"success": true
 		},
 		{
@@ -1520,11 +1520,11 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "🤖 Agent: Scrape & Analyze Campaign Performance"
+					"nodeName": "\ud83e\udd16 Agent: Scrape & Analyze Campaign Performance"
 				},
 				{
 					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "🤖 Agent: Scrape & Analyze Campaign Performance"
+					"nodeName": "\ud83e\udd16 Agent: Scrape & Analyze Campaign Performance"
 				}
 			]
 		},
@@ -1560,7 +1560,7 @@
 		},
 		{
 			"id": 3859,
-			"name": "Ai customer support assistant · WhatsApp ready · works for any business",
+			"name": "Ai customer support assistant \u00b7 WhatsApp ready \u00b7 works for any business",
 			"success": true
 		},
 		{
@@ -1888,24 +1888,24 @@
 		},
 		{
 			"id": 5270,
-			"name": "🎓 Learn n8n keyboard shortcuts with an interactive hands-on tutorial workflow",
+			"name": "\ud83c\udf93 Learn n8n keyboard shortcuts with an interactive hands-on tutorial workflow",
 			"success": true,
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "➡️ First, Rename Me!"
+					"nodeName": "\u27a1\ufe0f First, Rename Me!"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "➡️ Let's add a new node"
+					"nodeName": "\u27a1\ufe0f Let's add a new node"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "➡️ Now select everything"
+					"nodeName": "\u27a1\ufe0f Now select everything"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "➡️ Select these three nodes"
+					"nodeName": "\u27a1\ufe0f Select these three nodes"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
@@ -2416,7 +2416,7 @@
 		},
 		{
 			"id": 11049,
-			"name": "Generate professional documents with Claude AI skills🤹🤖 & upload to Google Drive",
+			"name": "Generate professional documents with Claude AI skills\ud83e\udd39\ud83e\udd16 & upload to Google Drive",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -2472,6 +2472,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Google Docs"
+				},
+				{
+					"code": "MERGE_SINGLE_INPUT",
+					"nodeName": "Merge5"
 				},
 				{
 					"code": "TOOL_NO_PARAMETERS",
@@ -2611,7 +2615,7 @@
 		},
 		{
 			"id": 4365,
-			"name": "🤖💬 Conversational AI Chatbot with Google Gemini for Text & Image | Telegram",
+			"name": "\ud83e\udd16\ud83d\udcac Conversational AI Chatbot with Google Gemini for Text & Image | Telegram",
 			"success": true,
 			"searchTerm": "Code"
 		},
@@ -2785,15 +2789,15 @@
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Apify抓取x推文"
+					"nodeName": "Apify\u6293\u53d6x\u63a8\u6587"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "ScrapingBee抓取x推文"
+					"nodeName": "ScrapingBee\u6293\u53d6x\u63a8\u6587"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "twitterapi抓取x推文"
+					"nodeName": "twitterapi\u6293\u53d6x\u63a8\u6587"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
@@ -2815,7 +2819,7 @@
 		},
 		{
 			"id": 12536,
-			"name": "Create AI Viral Selfie videos 🎬 with celebrities 😎 using Google Veo 3.1",
+			"name": "Create AI Viral Selfie videos \ud83c\udfac with celebrities \ud83d\ude0e using Google Veo 3.1",
 			"success": true,
 			"nodeType": "splitInBatches"
 		},
@@ -2867,7 +2871,7 @@
 		},
 		{
 			"id": 5310,
-			"name": "🤖 AI customer support agent - never sleep, never miss a customer again!",
+			"name": "\ud83e\udd16 AI customer support agent - never sleep, never miss a customer again!",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -2923,7 +2927,7 @@
 		},
 		{
 			"id": 7456,
-			"name": "🤖 Automate CV screening with AI candidate analysis",
+			"name": "\ud83e\udd16 Automate CV screening with AI candidate analysis",
 			"success": true
 		},
 		{
@@ -3079,7 +3083,7 @@
 		},
 		{
 			"id": 5294,
-			"name": "🧑‍⚖️ Ai legal assistant agent — AI-powered legal Q&A with document retrieval",
+			"name": "\ud83e\uddd1\u200d\u2696\ufe0f Ai legal assistant agent \u2014 AI-powered legal Q&A with document retrieval",
 			"success": true
 		},
 		{
@@ -3115,7 +3119,7 @@
 		},
 		{
 			"id": 9061,
-			"name": "📁 Extract and clean PDF data from Google Drive",
+			"name": "\ud83d\udcc1 Extract and clean PDF data from Google Drive",
 			"success": true
 		},
 		{
@@ -3173,7 +3177,7 @@
 		},
 		{
 			"id": 9254,
-			"name": "Automate Telegram message processing - separate text and files 💬📁",
+			"name": "Automate Telegram message processing - separate text and files \ud83d\udcac\ud83d\udcc1",
 			"success": true
 		},
 		{
@@ -3202,7 +3206,7 @@
 		},
 		{
 			"id": 5202,
-			"name": "🧠 AI blog post journalist (Perplexity for research, Anthropic Claude for blog)",
+			"name": "\ud83e\udde0 AI blog post journalist (Perplexity for research, Anthropic Claude for blog)",
 			"success": true
 		},
 		{
@@ -3277,7 +3281,7 @@
 		},
 		{
 			"id": 3900,
-			"name": "Automated YouTube video scheduling & AI metadata generation 🎬",
+			"name": "Automated YouTube video scheduling & AI metadata generation \ud83c\udfac",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -3330,7 +3334,7 @@
 		},
 		{
 			"id": 3291,
-			"name": "🔍🛠️Generate SEO-optimized WordPress content with AI powered perplexity research",
+			"name": "\ud83d\udd0d\ud83d\udee0\ufe0fGenerate SEO-optimized WordPress content with AI powered perplexity research",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -3345,7 +3349,7 @@
 		},
 		{
 			"id": 3135,
-			"name": "✨🩷Automated social media content publishing factory + system prompt composition",
+			"name": "\u2728\ud83e\ude77Automated social media content publishing factory + system prompt composition",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -3420,7 +3424,7 @@
 		},
 		{
 			"id": 2982,
-			"name": "🤖 AI powered RAG chatbot for your docs + Google Drive + Gemini + Qdrant",
+			"name": "\ud83e\udd16 AI powered RAG chatbot for your docs + Google Drive + Gemini + Qdrant",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -3456,7 +3460,7 @@
 		},
 		{
 			"id": 10779,
-			"name": "👲 Monitor & debug n8n workflows with Claude AI assistant and MCP server",
+			"name": "\ud83d\udc72 Monitor & debug n8n workflows with Claude AI assistant and MCP server",
 			"success": true
 		},
 		{
@@ -3714,7 +3718,7 @@
 		},
 		{
 			"id": 5702,
-			"name": "🚀 Automated Stripe payment recovery: track failures & follow-up emails",
+			"name": "\ud83d\ude80 Automated Stripe payment recovery: track failures & follow-up emails",
 			"success": true
 		},
 		{
@@ -4264,7 +4268,7 @@
 		},
 		{
 			"id": 2872,
-			"name": "🤖🧠 AI agent chatbot + LONG TERM memory + note storage + Telegram",
+			"name": "\ud83e\udd16\ud83e\udde0 AI agent chatbot + LONG TERM memory + note storage + Telegram",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -4413,7 +4417,7 @@
 		},
 		{
 			"id": 2679,
-			"name": "⚡AI-powered YouTube video summarization & analysis",
+			"name": "\u26a1AI-powered YouTube video summarization & analysis",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -4448,7 +4452,7 @@
 		},
 		{
 			"id": 12441,
-			"name": "Generate AI search–driven FAQ insights for SEO with SE Ranking and OpenAI GPT-4.1-mini",
+			"name": "Generate AI search\u2013driven FAQ insights for SEO with SE Ranking and OpenAI GPT-4.1-mini",
 			"success": true
 		},
 		{
@@ -4468,7 +4472,7 @@
 		},
 		{
 			"id": 13269,
-			"name": "Design UI projects 🎨🖼️ with Google Stitch via Telegram using MCP and Gemini AI",
+			"name": "Design UI projects \ud83c\udfa8\ud83d\uddbc\ufe0f with Google Stitch via Telegram using MCP and Gemini AI",
 			"success": true
 		},
 		{
@@ -4754,7 +4758,7 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "🤖 Bright Data AI Agent"
+					"nodeName": "\ud83e\udd16 Bright Data AI Agent"
 				}
 			]
 		},
@@ -4770,7 +4774,7 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "🤖 AI Content Generator"
+					"nodeName": "\ud83e\udd16 AI Content Generator"
 				}
 			]
 		},
@@ -5339,7 +5343,7 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Assistente de confirmação"
+					"nodeName": "Assistente de confirma\u00e7\u00e3o"
 				},
 				{
 					"code": "FROM_AI_IN_NON_TOOL",
@@ -5416,7 +5420,7 @@
 			"name": "Auto-categorize Gmail emails with AI and send prioritized Slack alerts",
 			"success": true,
 			"skip": true,
-			"skipReason": "Reversed AI connections (parent→subnode instead of subnode→parent) in source JSON",
+			"skipReason": "Reversed AI connections (parent\u2192subnode instead of subnode\u2192parent) in source JSON",
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
@@ -5535,7 +5539,7 @@
 		},
 		{
 			"id": 11606,
-			"name": "Clone and change your voice 🤖🎙️with Elevenlabs and Telegram",
+			"name": "Clone and change your voice \ud83e\udd16\ud83c\udf99\ufe0fwith Elevenlabs and Telegram",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -5561,7 +5565,7 @@
 		},
 		{
 			"id": 10187,
-			"name": "Voice translator bridge (Telegram → Slack) with GPT-4o-mini + Whisper",
+			"name": "Voice translator bridge (Telegram \u2192 Slack) with GPT-4o-mini + Whisper",
 			"success": true
 		},
 		{
@@ -5653,7 +5657,7 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "🤖 Agent: Scrape Medium Blog (OpenAI Mentions)"
+					"nodeName": "\ud83e\udd16 Agent: Scrape Medium Blog (OpenAI Mentions)"
 				}
 			]
 		},
@@ -5664,7 +5668,7 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "🤖 AI Agent (Keyword Finder)"
+					"nodeName": "\ud83e\udd16 AI Agent (Keyword Finder)"
 				}
 			]
 		},
@@ -5857,7 +5861,7 @@
 		},
 		{
 			"id": 3189,
-			"name": "💥🛠️Build a web search chatbot with GPT-4o and MCP Brave Search",
+			"name": "\ud83d\udca5\ud83d\udee0\ufe0fBuild a web search chatbot with GPT-4o and MCP Brave Search",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -5879,7 +5883,7 @@
 		},
 		{
 			"id": 3025,
-			"name": "🧠 Empower your AI chatbot with long-term memory and dynamic tool routing",
+			"name": "\ud83e\udde0 Empower your AI chatbot with long-term memory and dynamic tool routing",
 			"success": true
 		},
 		{
@@ -5900,7 +5904,7 @@
 		},
 		{
 			"id": 2751,
-			"name": "🤖 Telegram messaging agent for text/audio/images",
+			"name": "\ud83e\udd16 Telegram messaging agent for text/audio/images",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -6042,7 +6046,7 @@
 		},
 		{
 			"id": 4783,
-			"name": "Automated weekly Google Calendar summary via email with AI ✨🗓️📧",
+			"name": "Automated weekly Google Calendar summary via email with AI \u2728\ud83d\uddd3\ufe0f\ud83d\udce7",
 			"success": true
 		},
 		{
@@ -6174,7 +6178,7 @@
 		},
 		{
 			"id": 13182,
-			"name": " Grok Imagine Video Chatbot 🤖📺: Generate & Modify Videos via Natural Language",
+			"name": " Grok Imagine Video Chatbot \ud83e\udd16\ud83d\udcfa: Generate & Modify Videos via Natural Language",
 			"success": true
 		},
 		{
@@ -6369,7 +6373,7 @@
 		},
 		{
 			"id": 4638,
-			"name": "🎙️ VoiceFlow AI: Telegram + Deepgram + OpenAI + Supabase audio assistant",
+			"name": "\ud83c\udf99\ufe0f VoiceFlow AI: Telegram + Deepgram + OpenAI + Supabase audio assistant",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -6461,7 +6465,7 @@
 		},
 		{
 			"id": 2729,
-			"name": "🔐🦙🤖 Private & local Ollama self-hosted AI assistant",
+			"name": "\ud83d\udd10\ud83e\udd99\ud83e\udd16 Private & local Ollama self-hosted AI assistant",
 			"success": true
 		},
 		{
@@ -6794,7 +6798,7 @@
 		},
 		{
 			"id": 2986,
-			"name": "All-in-one Telegram/Baserow AI assistant 🤖🧠 Voice/Photo/Save notes/Long term mem",
+			"name": "All-in-one Telegram/Baserow AI assistant \ud83e\udd16\ud83e\udde0 Voice/Photo/Save notes/Long term mem",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -6805,7 +6809,7 @@
 		},
 		{
 			"id": 2864,
-			"name": "🐋🤖 DeepSeek AI agent + Telegram + LONG TERM memory 🧠",
+			"name": "\ud83d\udc0b\ud83e\udd16 DeepSeek AI agent + Telegram + LONG TERM memory \ud83e\udde0",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -6839,7 +6843,7 @@
 		},
 		{
 			"id": 2777,
-			"name": "🐋DeepSeek V3 chat & R1 reasoning quick start",
+			"name": "\ud83d\udc0bDeepSeek V3 chat & R1 reasoning quick start",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -6946,7 +6950,7 @@
 		},
 		{
 			"id": 5407,
-			"name": "🎓 Learn Code Node (JavaScript) with an Interactive Hands-On Tutorial",
+			"name": "\ud83c\udf93 Learn Code Node (JavaScript) with an Interactive Hands-On Tutorial",
 			"success": true
 		},
 		{
@@ -6961,7 +6965,7 @@
 		},
 		{
 			"id": 5259,
-			"name": "💰 Financial AI agent Telegram and WhatsApp",
+			"name": "\ud83d\udcb0 Financial AI agent Telegram and WhatsApp",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -6976,7 +6980,7 @@
 		},
 		{
 			"id": 5171,
-			"name": "🎓 Learn API Fundamentals with an Interactive Hands-On Tutorial Workflow",
+			"name": "\ud83c\udf93 Learn API Fundamentals with an Interactive Hands-On Tutorial Workflow",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -7255,7 +7259,7 @@
 		},
 		{
 			"id": 13367,
-			"name": "Generate Images on Telegram 🤖🖼️ from Text and Voice using Grok Imagine & Kie AI",
+			"name": "Generate Images on Telegram \ud83e\udd16\ud83d\uddbc\ufe0f from Text and Voice using Grok Imagine & Kie AI",
 			"success": true
 		},
 		{
@@ -7314,7 +7318,7 @@
 		},
 		{
 			"id": 12542,
-			"name": "Create Viral 😎 AI celebrity selfies 📸 with Nano Banana Pro & upload to Instagram",
+			"name": "Create Viral \ud83d\ude0e AI celebrity selfies \ud83d\udcf8 with Nano Banana Pro & upload to Instagram",
 			"success": true
 		},
 		{
@@ -7366,7 +7370,7 @@
 		},
 		{
 			"id": 12447,
-			"name": "Extract text from PDFs and images in Google Drive and post to WordPress and social media with OpenAI GPT-4.1 and DALL·E",
+			"name": "Extract text from PDFs and images in Google Drive and post to WordPress and social media with OpenAI GPT-4.1 and DALL\u00b7E",
 			"success": true
 		},
 		{
@@ -8164,7 +8168,7 @@
 		},
 		{
 			"id": 10185,
-			"name": "Automate multilingual Slack communication (JA ⇄ EN) with Gemini 2.5 Flash",
+			"name": "Automate multilingual Slack communication (JA \u21c4 EN) with Gemini 2.5 Flash",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -8243,7 +8247,7 @@
 		},
 		{
 			"id": 10060,
-			"name": "🛍️ Google Shopping feed optimization with Channable, Relevance AI & Merchant API",
+			"name": "\ud83d\udecd\ufe0f Google Shopping feed optimization with Channable, Relevance AI & Merchant API",
 			"success": true
 		},
 		{
@@ -8253,7 +8257,7 @@
 		},
 		{
 			"id": 10086,
-			"name": "🎓 How to transform unstructured email data into structured format with AI agent",
+			"name": "\ud83c\udf93 How to transform unstructured email data into structured format with AI agent",
 			"success": true
 		},
 		{
@@ -8766,7 +8770,7 @@
 		},
 		{
 			"id": 7632,
-			"name": "Automate Morning Brew–style Reddit Digests and Publish to DEV using AI",
+			"name": "Automate Morning Brew\u2013style Reddit Digests and Publish to DEV using AI",
 			"success": true
 		},
 		{
@@ -8805,7 +8809,7 @@
 			"expectedWarnings": [
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "🕵️‍♂️ Hunter.io Email Verifier"
+					"nodeName": "\ud83d\udd75\ufe0f\u200d\u2642\ufe0f Hunter.io Email Verifier"
 				}
 			]
 		},
@@ -8865,7 +8869,7 @@
 		},
 		{
 			"id": 5993,
-			"name": "🤖 Create a Documentation Expert Bot with RAG, Gemini, and Supabase",
+			"name": "\ud83e\udd16 Create a Documentation Expert Bot with RAG, Gemini, and Supabase",
 			"success": true
 		},
 		{
@@ -8875,7 +8879,7 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "🤖 AI Agent: Scrape & Understand"
+					"nodeName": "\ud83e\udd16 AI Agent: Scrape & Understand"
 				}
 			]
 		},
@@ -8945,7 +8949,7 @@
 		},
 		{
 			"id": 5909,
-			"name": "Automate daily Hindu festival posts on X with Google Gemini and GPT-4o Mini 🤖",
+			"name": "Automate daily Hindu festival posts on X with Google Gemini and GPT-4o Mini \ud83e\udd16",
 			"success": true
 		},
 		{
@@ -9132,7 +9136,7 @@
 		},
 		{
 			"id": 5173,
-			"name": "🗲 Serve custom websites (HTML webpages) with webhooks",
+			"name": "\ud83d\uddf2 Serve custom websites (HTML webpages) with webhooks",
 			"success": true
 		},
 		{
@@ -9673,7 +9677,7 @@
 		},
 		{
 			"id": 3460,
-			"name": "🎨 AI design team - generate and review AI images with Ideogram and OpenAI",
+			"name": "\ud83c\udfa8 AI design team - generate and review AI images with Ideogram and OpenAI",
 			"success": true
 		},
 		{
@@ -9683,7 +9687,7 @@
 		},
 		{
 			"id": 3076,
-			"name": "🦜✨Use OpenAI to transcribe audio + summarize with AI + save to Google Drive",
+			"name": "\ud83e\udd9c\u2728Use OpenAI to transcribe audio + summarize with AI + save to Google Drive",
 			"success": true
 		},
 		{
@@ -9924,7 +9928,7 @@
 		},
 		{
 			"id": 5160,
-			"name": "🤖 Build resilient AI workflows with automatic GPT and Gemini failover chain",
+			"name": "\ud83e\udd16 Build resilient AI workflows with automatic GPT and Gemini failover chain",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -10019,15 +10023,15 @@
 			"expectedWarnings": [
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "📢 Notify Admin of Error"
+					"nodeName": "\ud83d\udce2 Notify Admin of Error"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "🧠 Gmail Memory"
+					"nodeName": "\ud83e\udde0 Gmail Memory"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "🧠 Telegram Memory"
+					"nodeName": "\ud83e\udde0 Telegram Memory"
 				}
 			]
 		},
@@ -10087,7 +10091,7 @@
 		},
 		{
 			"id": 3896,
-			"name": "🤖 Instagram MCP AI agent – read, reply & manage comments with GPT-4o",
+			"name": "\ud83e\udd16 Instagram MCP AI agent \u2013 read, reply & manage comments with GPT-4o",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -10187,7 +10191,7 @@
 		},
 		{
 			"id": 2682,
-			"name": "🔍 Perplexity research to HTML: AI-powered content creation",
+			"name": "\ud83d\udd0d Perplexity research to HTML: AI-powered content creation",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -10517,12 +10521,12 @@
 		},
 		{
 			"id": 4873,
-			"name": "🎯 Precision prospecting: Automate LinkedIn lead gen with Bright Data",
+			"name": "\ud83c\udfaf Precision prospecting: Automate LinkedIn lead gen with Bright Data",
 			"success": true
 		},
 		{
 			"id": 4872,
-			"name": "🏠 Find your home with Real Estate Agent and Bright Data",
+			"name": "\ud83c\udfe0 Find your home with Real Estate Agent and Bright Data",
 			"success": true
 		},
 		{
@@ -10557,7 +10561,7 @@
 		},
 		{
 			"id": 4635,
-			"name": "Extract & enrich LinkedIn comments to leads with Apify → Google Sheets/CSV",
+			"name": "Extract & enrich LinkedIn comments to leads with Apify \u2192 Google Sheets/CSV",
 			"success": true
 		},
 		{
@@ -10593,12 +10597,12 @@
 		},
 		{
 			"id": 3895,
-			"name": "📢 Multi-platform video publisher – YouTube, Instagram & TikTok",
+			"name": "\ud83d\udce2 Multi-platform video publisher \u2013 YouTube, Instagram & TikTok",
 			"success": true
 		},
 		{
 			"id": 3799,
-			"name": "Interactive knowledge base chat with Supabase RAG using AI 📚💬",
+			"name": "Interactive knowledge base chat with Supabase RAG using AI \ud83d\udcda\ud83d\udcac",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -10688,7 +10692,7 @@
 		},
 		{
 			"id": 3605,
-			"name": "Gmail MCP server – your all‑in‑one AI email toolkit",
+			"name": "Gmail MCP server \u2013 your all\u2011in\u2011one AI email toolkit",
 			"success": true
 		},
 		{
@@ -10698,7 +10702,7 @@
 		},
 		{
 			"id": 3585,
-			"name": "🤖 AI restaurant assistant for WhatsApp, Instagram & Messenger",
+			"name": "\ud83e\udd16 AI restaurant assistant for WhatsApp, Instagram & Messenger",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -10826,12 +10830,12 @@
 		},
 		{
 			"id": 3005,
-			"name": "✨🔪 Advanced AI powered document parsing & text extraction with Llama Parse",
+			"name": "\u2728\ud83d\udd2a Advanced AI powered document parsing & text extraction with Llama Parse",
 			"success": true
 		},
 		{
 			"id": 2956,
-			"name": "⚡📽️ Ultimate AI-powered chatbot for YouTube summarization & analysis",
+			"name": "\u26a1\ud83d\udcfd\ufe0f Ultimate AI-powered chatbot for YouTube summarization & analysis",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -10902,7 +10906,7 @@
 		},
 		{
 			"id": 13030,
-			"name": "Create long Audiobooks 🔊📚 with custom voices using Qwen3-TTS Voice Design",
+			"name": "Create long Audiobooks \ud83d\udd0a\ud83d\udcda with custom voices using Qwen3-TTS Voice Design",
 			"success": true
 		},
 		{
@@ -11204,7 +11208,7 @@
 		},
 		{
 			"id": 4509,
-			"name": "🏛️ Daily US Congress members stock trades report via Firecrawl + OpenAI + Gmail",
+			"name": "\ud83c\udfdb\ufe0f Daily US Congress members stock trades report via Firecrawl + OpenAI + Gmail",
 			"success": true
 		},
 		{
@@ -11374,7 +11378,7 @@
 		},
 		{
 			"id": 3563,
-			"name": "Build an AI powered phone agent 📞🤖 with Retell, Google Calendar and RAG",
+			"name": "Build an AI powered phone agent \ud83d\udcde\ud83e\udd16 with Retell, Google Calendar and RAG",
 			"success": true
 		},
 		{
@@ -11420,7 +11424,7 @@
 		},
 		{
 			"id": 3139,
-			"name": "🔐🦙Private & local Ollama self-hosted + dynamic LLM router",
+			"name": "\ud83d\udd10\ud83e\udd99Private & local Ollama self-hosted + dynamic LLM router",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -11436,12 +11440,12 @@
 		},
 		{
 			"id": 3004,
-			"name": "🚀 TikTok video automation tool ✨ – highly optimized with OpenAI & Replicate",
+			"name": "\ud83d\ude80 TikTok video automation tool \u2728 \u2013 highly optimized with OpenAI & Replicate",
 			"success": true
 		},
 		{
 			"id": 2957,
-			"name": "💡🌐 Essential multipage website scraper with Jina.ai",
+			"name": "\ud83d\udca1\ud83c\udf10 Essential multipage website scraper with Jina.ai",
 			"success": true
 		},
 		{
@@ -11451,7 +11455,7 @@
 		},
 		{
 			"id": 2768,
-			"name": "🤖🔍 The ultimate free AI-powered researcher with Tavily web search & extract",
+			"name": "\ud83e\udd16\ud83d\udd0d The ultimate free AI-powered researcher with Tavily web search & extract",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -11480,7 +11484,7 @@
 		},
 		{
 			"id": 13261,
-			"name": "Multi-AI Council Research 🔍: GPT 5.2, Claude Opus 4.6 & Gemini 3 Pro Aggregation",
+			"name": "Multi-AI Council Research \ud83d\udd0d: GPT 5.2, Claude Opus 4.6 & Gemini 3 Pro Aggregation",
 			"success": true
 		},
 		{
@@ -11490,7 +11494,7 @@
 		},
 		{
 			"id": 13234,
-			"name": "Extract and analyze 🔬 ALL Facebook post comments with sentiment AI using Gemini",
+			"name": "Extract and analyze \ud83d\udd2c ALL Facebook post comments with sentiment AI using Gemini",
 			"success": true
 		},
 		{
@@ -11726,7 +11730,7 @@
 		},
 		{
 			"id": 6137,
-			"name": "🤖 Build a Documentation Expert Chatbot with Gemini RAG Pipeline",
+			"name": "\ud83e\udd16 Build a Documentation Expert Chatbot with Gemini RAG Pipeline",
 			"success": true
 		},
 		{
@@ -12071,7 +12075,7 @@
 		},
 		{
 			"id": 3647,
-			"name": "📥 Transform Google Drive documents into vector embeddings",
+			"name": "\ud83d\udce5 Transform Google Drive documents into vector embeddings",
 			"success": true
 		},
 		{
@@ -12116,12 +12120,12 @@
 		},
 		{
 			"id": 3090,
-			"name": "✨📊Multi-AI agent chatbot for Postgres/Supabase DB and QuickCharts + tool router",
+			"name": "\u2728\ud83d\udccaMulti-AI agent chatbot for Postgres/Supabase DB and QuickCharts + tool router",
 			"success": true,
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "🤖Secondary QuickChart Agent"
+					"nodeName": "\ud83e\udd16Secondary QuickChart Agent"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
@@ -12150,7 +12154,7 @@
 		},
 		{
 			"id": 3012,
-			"name": "🌐 Confluence page AI chatbot workflow",
+			"name": "\ud83c\udf10 Confluence page AI chatbot workflow",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -12172,7 +12176,7 @@
 		},
 		{
 			"id": 2981,
-			"name": "✍️🌄 Your first Wordpress + AI content creator - quick start",
+			"name": "\u270d\ufe0f\ud83c\udf04 Your first Wordpress + AI content creator - quick start",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -12218,7 +12222,7 @@
 		},
 		{
 			"id": 2941,
-			"name": "🎬 YouTube shorts automation tool 🚀",
+			"name": "\ud83c\udfac YouTube shorts automation tool \ud83d\ude80",
 			"success": true
 		},
 		{
@@ -12254,7 +12258,7 @@
 		},
 		{
 			"id": 2563,
-			"name": "✨ Vision-based AI agent scraper - with Google Sheets, ScrapingBee, and Gemini",
+			"name": "\u2728 Vision-based AI agent scraper - with Google Sheets, ScrapingBee, and Gemini",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -12368,7 +12372,7 @@
 		},
 		{
 			"id": 13110,
-			"name": "Generate daily AI reels from Google Drive images with GPT‑5.1, Wavespeed and Submagic",
+			"name": "Generate daily AI reels from Google Drive images with GPT\u20115.1, Wavespeed and Submagic",
 			"success": true
 		},
 		{
@@ -12399,7 +12403,7 @@
 		},
 		{
 			"id": 12663,
-			"name": "Create and schedule LinkedIn posts from Google Sheets with Gemini and DALL·E",
+			"name": "Create and schedule LinkedIn posts from Google Sheets with Gemini and DALL\u00b7E",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -12505,7 +12509,7 @@
 		},
 		{
 			"id": 10724,
-			"name": "fluidX THE EYE — Create & invite via SMS for live camera session",
+			"name": "fluidX THE EYE \u2014 Create & invite via SMS for live camera session",
 			"success": true
 		},
 		{
@@ -12735,7 +12739,7 @@
 		},
 		{
 			"id": 10787,
-			"name": "Scrape LinkedIn post comments & reactions with Browserflow → export to Google Sheets",
+			"name": "Scrape LinkedIn post comments & reactions with Browserflow \u2192 export to Google Sheets",
 			"success": true
 		},
 		{
@@ -12886,7 +12890,7 @@
 		},
 		{
 			"id": 10198,
-			"name": "Discord setup guidelines 📜 - get all channels & categories of a Discord server",
+			"name": "Discord setup guidelines \ud83d\udcdc - get all channels & categories of a Discord server",
 			"success": true
 		},
 		{
@@ -13087,7 +13091,7 @@
 		},
 		{
 			"id": 10101,
-			"name": "AI recruiter – analyze multiple CVs vs job description using OpenAI GPT",
+			"name": "AI recruiter \u2013 analyze multiple CVs vs job description using OpenAI GPT",
 			"success": true
 		},
 		{
@@ -13364,7 +13368,7 @@
 		},
 		{
 			"id": 8018,
-			"name": "LeadChat Booker — conversational lead capture that schedules",
+			"name": "LeadChat Booker \u2014 conversational lead capture that schedules",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -13736,7 +13740,7 @@
 		},
 		{
 			"id": 5060,
-			"name": "Create, update posts 🛠️ Wordpress tool MCP server 💪 all 12 operations",
+			"name": "Create, update posts \ud83d\udee0\ufe0f Wordpress tool MCP server \ud83d\udcaa all 12 operations",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -13812,7 +13816,7 @@
 		},
 		{
 			"id": 4941,
-			"name": "Build your first AI agent – powered by Google Gemini with memory",
+			"name": "Build your first AI agent \u2013 powered by Google Gemini with memory",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -14265,7 +14269,7 @@
 		},
 		{
 			"id": 3618,
-			"name": "Auto invoice & receipt OCR to Google Sheets – Drive, Gmail, & Telegram triggers",
+			"name": "Auto invoice & receipt OCR to Google Sheets \u2013 Drive, Gmail, & Telegram triggers",
 			"success": true
 		},
 		{
@@ -14311,7 +14315,7 @@
 		},
 		{
 			"id": 3289,
-			"name": "🎥 Analyze YouTube video for summaries, transcripts & content + Google Gemini AI",
+			"name": "\ud83c\udfa5 Analyze YouTube video for summaries, transcripts & content + Google Gemini AI",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -14401,7 +14405,7 @@
 		},
 		{
 			"id": 2747,
-			"name": "🎨 Interactive image editor with FLUX.1 fill tool for inpainting",
+			"name": "\ud83c\udfa8 Interactive image editor with FLUX.1 fill tool for inpainting",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -14537,13 +14541,13 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent – Script & Avatar Director"
+					"nodeName": "AI Agent \u2013 Script & Avatar Director"
 				}
 			]
 		},
 		{
 			"id": 12834,
-			"name": "💅 AI Agents Generate Content & Automate Posting for Beauty Salon Social Media 📲",
+			"name": "\ud83d\udc85 AI Agents Generate Content & Automate Posting for Beauty Salon Social Media \ud83d\udcf2",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -14717,7 +14721,7 @@
 		},
 		{
 			"id": 11055,
-			"name": "🔄️ AI warehouse inventory cycle count bot using GPT, Telegram and Google Sheets",
+			"name": "\ud83d\udd04\ufe0f AI warehouse inventory cycle count bot using GPT, Telegram and Google Sheets",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -15029,7 +15033,7 @@
 		},
 		{
 			"id": 6035,
-			"name": "🤖 Create Your First AI Agent with Weather & Web Scraping (Starter Kit)",
+			"name": "\ud83e\udd16 Create Your First AI Agent with Weather & Web Scraping (Starter Kit)",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -15124,7 +15128,7 @@
 		},
 		{
 			"id": 5365,
-			"name": "🛠️ TheHive tool MCP server",
+			"name": "\ud83d\udee0\ufe0f TheHive tool MCP server",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -15157,7 +15161,7 @@
 		},
 		{
 			"id": 5289,
-			"name": "🛠️ AI Prompt Maker",
+			"name": "\ud83d\udee0\ufe0f AI Prompt Maker",
 			"success": true
 		},
 		{
@@ -15178,7 +15182,7 @@
 		},
 		{
 			"id": 5262,
-			"name": "Let AI agents get campaigns with 🛠️ Google Ads tool MCP server",
+			"name": "Let AI agents get campaigns with \ud83d\udee0\ufe0f Google Ads tool MCP server",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -15256,15 +15260,15 @@
 			"expectedWarnings": [
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "⏳ Check Scraping Job Status"
+					"nodeName": "\u23f3 Check Scraping Job Status"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "📤 Trigger Bright Data Scraping Job"
+					"nodeName": "\ud83d\udce4 Trigger Bright Data Scraping Job"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "📥 Fetch Property Listing Data"
+					"nodeName": "\ud83d\udce5 Fetch Property Listing Data"
 				}
 			]
 		},
@@ -15373,7 +15377,7 @@
 		},
 		{
 			"id": 4838,
-			"name": "WhatsApp group chat with your vector database — no Facebook Business required",
+			"name": "WhatsApp group chat with your vector database \u2014 no Facebook Business required",
 			"success": true
 		},
 		{
@@ -15539,7 +15543,7 @@
 		},
 		{
 			"id": 4569,
-			"name": "Create AI videos with scripts, images & HeyGen avatars (🔥 LIMITED-TIME OFFER)",
+			"name": "Create AI videos with scripts, images & HeyGen avatars (\ud83d\udd25 LIMITED-TIME OFFER)",
 			"success": true
 		},
 		{
@@ -15681,7 +15685,7 @@
 		},
 		{
 			"id": 4191,
-			"name": "Automated lead research – from LinkedIn to ready-to-send report",
+			"name": "Automated lead research \u2013 from LinkedIn to ready-to-send report",
 			"success": true
 		},
 		{
@@ -16015,7 +16019,7 @@
 		},
 		{
 			"id": 3393,
-			"name": "Google Calendar 📅 reminder system with GPT-4o and Telegram",
+			"name": "Google Calendar \ud83d\udcc5 reminder system with GPT-4o and Telegram",
 			"success": true
 		},
 		{
@@ -16104,7 +16108,7 @@
 		},
 		{
 			"id": 2943,
-			"name": "🌐🪛 AI agent chatbot with Jina.ai webpage scraper",
+			"name": "\ud83c\udf10\ud83e\ude9b AI agent chatbot with Jina.ai webpage scraper",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -16293,7 +16297,7 @@
 		},
 		{
 			"id": 13160,
-			"name": "Manage finances, tasks, tweets and Gmail with GPT‑4.1 on WhatsApp",
+			"name": "Manage finances, tasks, tweets and Gmail with GPT\u20114.1 on WhatsApp",
 			"success": true
 		},
 		{
@@ -16382,7 +16386,7 @@
 		},
 		{
 			"id": 12682,
-			"name": "⚡ Text → Viral Shorts | AI Video Studio in Telegram /w Setup Video",
+			"name": "\u26a1 Text \u2192 Viral Shorts | AI Video Studio in Telegram /w Setup Video",
 			"success": true
 		},
 		{
@@ -16683,7 +16687,7 @@
 		},
 		{
 			"id": 7067,
-			"name": "🤖 AI-powered prompt enhancement assistant using Google Sheets",
+			"name": "\ud83e\udd16 AI-powered prompt enhancement assistant using Google Sheets",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -17070,7 +17074,7 @@
 		},
 		{
 			"id": 5198,
-			"name": "🛠️ Auto n8n updater (Docker)",
+			"name": "\ud83d\udee0\ufe0f Auto n8n updater (Docker)",
 			"success": true
 		},
 		{
@@ -17080,7 +17084,7 @@
 		},
 		{
 			"id": 5149,
-			"name": "🛠️ Create PDF from HTML with Gotenberg",
+			"name": "\ud83d\udee0\ufe0f Create PDF from HTML with Gotenberg",
 			"success": true
 		},
 		{
@@ -17334,7 +17338,7 @@
 		},
 		{
 			"id": 4764,
-			"name": "🌐 Firecrawl website content extractor",
+			"name": "\ud83c\udf10 Firecrawl website content extractor",
 			"success": true
 		},
 		{
@@ -17605,7 +17609,7 @@
 		},
 		{
 			"id": 4090,
-			"name": "Auto workflow backup to Google Drive – automated export of all your workflows",
+			"name": "Auto workflow backup to Google Drive \u2013 automated export of all your workflows",
 			"success": true
 		},
 		{
@@ -17630,7 +17634,7 @@
 		},
 		{
 			"id": 4055,
-			"name": "AI talent screener – CV parser, job fit evaluator & email notifier",
+			"name": "AI talent screener \u2013 CV parser, job fit evaluator & email notifier",
 			"success": true
 		},
 		{
@@ -17715,7 +17719,7 @@
 		},
 		{
 			"id": 3890,
-			"name": "Create customized Google Slides presentations from CSV data for cold outreach 🚀",
+			"name": "Create customized Google Slides presentations from CSV data for cold outreach \ud83d\ude80",
 			"success": true
 		},
 		{
@@ -17775,7 +17779,7 @@
 		},
 		{
 			"id": 3683,
-			"name": "🐶 AI Petshop Assistant with GPT-4o, Google Calendar & WhatsApp/Instagram/FB",
+			"name": "\ud83d\udc36 AI Petshop Assistant with GPT-4o, Google Calendar & WhatsApp/Instagram/FB",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -17891,7 +17895,7 @@
 		},
 		{
 			"id": 3641,
-			"name": "MCP Supabase agent – manage your database with AI",
+			"name": "MCP Supabase agent \u2013 manage your database with AI",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -18142,7 +18146,7 @@
 		},
 		{
 			"id": 3411,
-			"name": "Generate 360° virtual try-on videos for clothing with Kling API (unofficial)",
+			"name": "Generate 360\u00b0 virtual try-on videos for clothing with Kling API (unofficial)",
 			"success": true
 		},
 		{
@@ -18213,7 +18217,7 @@
 		},
 		{
 			"id": 3223,
-			"name": "AI research agents to automate PDF analysis with Mistral’s best-in-class OCR",
+			"name": "AI research agents to automate PDF analysis with Mistral\u2019s best-in-class OCR",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -18303,7 +18307,7 @@
 		},
 		{
 			"id": 2940,
-			"name": "🔥📈🤖 AI agent for n8n creators leaderboard - find popular workflows",
+			"name": "\ud83d\udd25\ud83d\udcc8\ud83e\udd16 AI agent for n8n creators leaderboard - find popular workflows",
 			"success": true,
 			"expectedWarnings": [
 				{
@@ -18526,7 +18530,7 @@
 		},
 		{
 			"id": 2340,
-			"name": "🚀 Boost your customer service with this WhatsApp Business bot!",
+			"name": "\ud83d\ude80 Boost your customer service with this WhatsApp Business bot!",
 			"success": true
 		},
 		{
