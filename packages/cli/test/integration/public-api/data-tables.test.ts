@@ -4,6 +4,7 @@ import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import type { DataTable } from '@/modules/data-table/data-table.entity';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
 import { createDataTable } from '../shared/db/data-tables';
 import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/users';
@@ -1537,6 +1538,137 @@ describe('Filter Parameter Validation', () => {
 			const getResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/rows`);
 
 			expect(getResponse.body.data.length).toBe(4); // Bob (75) should be deleted
+		});
+	});
+
+	describe('PUT /data-tables/:dataTableId/transfer', () => {
+		let sourceProject: Project;
+		let destinationProject: Project;
+		let dataTableInSourceProject: DataTable;
+
+		beforeEach(async () => {
+			sourceProject = await createTeamProject('Source Project', owner);
+			destinationProject = await createTeamProject('Destination Project', owner);
+
+			dataTableInSourceProject = await createDataTable(sourceProject, {
+				name: 'Test Table for Transfer',
+				columns: [
+					{ name: 'column1', type: 'string' },
+					{ name: 'column2', type: 'number' },
+				],
+			});
+		});
+
+		test('should transfer data table from one project to another', async () => {
+			const response = await authOwnerAgent
+				.put(`/data-tables/${dataTableInSourceProject.id}/transfer`)
+				.send({
+					destinationProjectId: destinationProject.id,
+				});
+
+			expect(response.statusCode).toBe(204);
+
+			const dataTable = await Container.get(DataTableRepository).findOne({
+				where: { id: dataTableInSourceProject.id },
+				relations: ['project'],
+			});
+			expect(dataTable?.project.id).toBe(destinationProject.id);
+		});
+
+		test('should fail to transfer data table to the same project', async () => {
+			const response = await authOwnerAgent
+				.put(`/data-tables/${dataTableInSourceProject.id}/transfer`)
+				.send({
+					destinationProjectId: sourceProject.id,
+				});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toContain("can't transfer a data table into the same project");
+		});
+
+		test('should fail to transfer data table if user does not have access to destination project', async () => {
+			const restrictedProject = await createTeamProject('Restricted Project');
+
+			const response = await authMemberAgent
+				.put(`/data-tables/${dataTableInSourceProject.id}/transfer`)
+				.send({
+					destinationProjectId: restrictedProject.id,
+				});
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe('Forbidden');
+		});
+
+		test('should fail to transfer data table if user does not have access to source project', async () => {
+			const restrictedSourceProject = await createTeamProject('Restricted Source Project');
+			const dataTableInRestrictedProject = await createDataTable(restrictedSourceProject, {
+				name: 'Restricted Table',
+				columns: [{ name: 'column1', type: 'string' }],
+			});
+
+			const response = await authMemberAgent
+				.put(`/data-tables/${dataTableInRestrictedProject.id}/transfer`)
+				.send({
+					destinationProjectId: destinationProject.id,
+				});
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe('Forbidden');
+		});
+
+		test('should fail to transfer data table with invalid destination project ID', async () => {
+			const response = await authOwnerAgent
+				.put(`/data-tables/${dataTableInSourceProject.id}/transfer`)
+				.send({
+					destinationProjectId: 'invalid-project-id',
+				});
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe('Forbidden');
+		});
+
+		test('should fail to transfer non-existent data table', async () => {
+			const response = await authOwnerAgent.put('/data-tables/non-existent-id/transfer').send({
+				destinationProjectId: destinationProject.id,
+			});
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe('Forbidden');
+		});
+
+		test('should fail to transfer data table without destinationProjectId', async () => {
+			const response = await authOwnerAgent
+				.put(`/data-tables/${dataTableInSourceProject.id}/transfer`)
+				.send({});
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should allow member to transfer data table between projects they have access to', async () => {
+			const memberSourceProject = await createTeamProject('Member Source Project');
+			const memberDestinationProject = await createTeamProject('Member Destination Project');
+
+			await linkUserToProject(member, memberSourceProject, 'project:editor');
+			await linkUserToProject(member, memberDestinationProject, 'project:editor');
+
+			const dataTableForMember = await createDataTable(memberSourceProject, {
+				name: 'Table for Member',
+				columns: [{ name: 'test', type: 'string' }],
+			});
+
+			const response = await authMemberAgent
+				.put(`/data-tables/${dataTableForMember.id}/transfer`)
+				.send({
+					destinationProjectId: memberDestinationProject.id,
+				});
+
+			expect(response.statusCode).toBe(204);
+
+			const dataTable = await Container.get(DataTableRepository).findOne({
+				where: { id: dataTableForMember.id },
+				relations: ['project'],
+			});
+			expect(dataTable?.project.id).toBe(memberDestinationProject.id);
 		});
 	});
 });

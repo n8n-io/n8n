@@ -123,6 +123,7 @@ export { UpdateDataTableDto } from './data-table/update-data-table.dto';
 export { UpdateDataTableRowDto } from './data-table/update-data-table-row.dto';
 export { DeleteDataTableRowsDto } from './data-table/delete-data-table-rows.dto';
 export { UpsertDataTableRowDto } from './data-table/upsert-data-table-row.dto';
+export { TransferDataTableDto } from './data-table/transfer-data-table.dto';
 export {
 	ListDataTableQueryDto,
 	PublicApiListDataTableQueryDto,

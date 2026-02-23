@@ -3,6 +3,7 @@ import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workfl
 import type {
 	AddDataTableRowsDto,
 	CreateDataTableDto,
+	TransferDataTableDto,
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
@@ -245,6 +246,8 @@ export declare namespace DataTableRequest {
 	type Update = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableDto, {}>;
 
 	type Delete = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
+
+	type Transfer = AuthenticatedRequest<{ dataTableId: string }, {}, TransferDataTableDto, {}>;
 
 	type GetRows = AuthenticatedRequest<
 		{ dataTableId: string },

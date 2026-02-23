@@ -44,6 +44,8 @@ import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
 @Service()
@@ -55,6 +57,7 @@ export class DataTableService {
 		private readonly logger: Logger,
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly projectService: ProjectService,
 		private readonly roleService: RoleService,
 		private readonly csvParserService: CsvParserService,
 		private readonly fileCleanupService: DataTableFileCleanupService,
@@ -166,6 +169,40 @@ export class DataTableService {
 
 	async transferDataTablesByProjectId(fromProjectId: string, toProjectId: string) {
 		return await this.dataTableRepository.transferDataTableByProjectId(fromProjectId, toProjectId);
+	}
+
+	async transferDataTable(
+		user: User,
+		dataTableId: string,
+		currentProjectId: string,
+		destinationProjectId: string,
+	) {
+		// 1. Validate data table exists in current project
+		await this.validateDataTableExists(dataTableId, currentProjectId);
+
+		// 2. Check if source and destination are the same
+		if (currentProjectId === destinationProjectId) {
+			throw new DataTableValidationError(
+				"You can't transfer a data table into the same project it already belongs to.",
+			);
+		}
+
+		// 3. Validate user has access to destination project (with dataTable:create permission)
+		const destinationProject = await this.projectService.getProjectWithScope(
+			user,
+			destinationProjectId,
+			['dataTable:create'],
+		);
+		NotFoundError.isDefinedAndNotNull(
+			destinationProject,
+			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create data tables in it.`,
+		);
+
+		// 4. Transfer the data table
+		return await this.dataTableRepository.update(
+			{ id: dataTableId },
+			{ project: { id: destinationProjectId } },
+		);
 	}
 
 	async deleteDataTableByProjectId(projectId: string) {
