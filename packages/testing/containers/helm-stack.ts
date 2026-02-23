@@ -1,6 +1,6 @@
 import { K3sContainer, type StartedK3sContainer } from '@testcontainers/k3s';
 import { type ChildProcess, execSync, spawn } from 'node:child_process';
-import { mkdtempSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, openSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
@@ -301,10 +301,13 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 
 		// Step 9: Port forward from host via kubectl
 		// pollHealthEndpoint below validates the full path: pod → service → port-forward → localhost.
-		log(`Starting port forward on localhost:${port} -> svc/n8n-main:5678`);
+		// Log to file (not pipe — avoids buffer blocking; not ignore — enables post-mortem debugging).
+		const pfLogPath = join(tmpdir(), `n8n-port-forward-${Date.now()}.log`);
+		const pfLogFd = openSync(pfLogPath, 'w');
+		log(`Starting port forward on localhost:${port} -> svc/n8n-main:5678 (log: ${pfLogPath})`);
 		portForward = spawn('kubectl', ['port-forward', 'svc/n8n-main', `${port}:5678`], {
 			env,
-			stdio: 'ignore',
+			stdio: ['ignore', pfLogFd, pfLogFd],
 		});
 
 		// Give port-forward a moment to establish

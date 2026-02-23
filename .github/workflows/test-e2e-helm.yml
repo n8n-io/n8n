@@ -118,6 +118,7 @@ jobs:
             --project=e2e \
             tests/e2e/building-blocks/ \
             --workers=1 \
+            --retries=0 \
             --reporter=list
 
       - name: Upload Failure Artifacts
