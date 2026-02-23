@@ -43,6 +43,7 @@ function processSubnodesRecursively(
 	const addNestedSubnode = (
 		subnode: NodeInstance<string, string, unknown>,
 		connectionType: string,
+		index: number,
 	) => {
 		const subnodeName = resolveSubnodeName(subnode);
 		if (!subnodeName) return;
@@ -59,7 +60,7 @@ function processSubnodesRecursively(
 			const existingOutputConns = existingAiConns.get(0) ?? [];
 			existingAiConns.set(0, [
 				...existingOutputConns,
-				{ node: parentNode.name, type: connectionType, index: 0 },
+				{ node: parentNode.name, type: connectionType, index },
 			]);
 			return;
 		}
@@ -68,7 +69,7 @@ function processSubnodesRecursively(
 		const subnodeConns = new Map<string, Map<number, ConnectionTarget[]>>();
 		subnodeConns.set('main', new Map());
 		const aiConnMap = new Map<number, ConnectionTarget[]>();
-		aiConnMap.set(0, [{ node: parentNode.name, type: connectionType, index: 0 }]);
+		aiConnMap.set(0, [{ node: parentNode.name, type: connectionType, index }]);
 		subnodeConns.set(connectionType, aiConnMap);
 		nodes.set(subnodeName, {
 			instance: subnode,
@@ -91,29 +92,29 @@ function processSubnodesRecursively(
 	) => {
 		if (!subnodeOrArray) return;
 		if (Array.isArray(subnodeOrArray)) {
-			for (const subnode of subnodeOrArray) {
-				addNestedSubnode(subnode, connectionType);
+			for (let i = 0; i < subnodeOrArray.length; i++) {
+				addNestedSubnode(subnodeOrArray[i], connectionType, i);
 			}
 		} else {
-			addNestedSubnode(subnodeOrArray, connectionType);
+			addNestedSubnode(subnodeOrArray, connectionType, 0);
 		}
 	};
 
 	// Process all subnode types
 	addNestedSubnodeOrArray(subnodes.model, 'ai_languageModel');
-	if (subnodes.memory) addNestedSubnode(subnodes.memory, 'ai_memory');
+	if (subnodes.memory) addNestedSubnode(subnodes.memory, 'ai_memory', 0);
 	if (subnodes.tools) {
-		for (const tool of subnodes.tools) {
-			addNestedSubnode(tool, 'ai_tool');
+		for (let i = 0; i < subnodes.tools.length; i++) {
+			addNestedSubnode(subnodes.tools[i], 'ai_tool', i);
 		}
 	}
-	if (subnodes.outputParser) addNestedSubnode(subnodes.outputParser, 'ai_outputParser');
+	if (subnodes.outputParser) addNestedSubnode(subnodes.outputParser, 'ai_outputParser', 0);
 	addNestedSubnodeOrArray(subnodes.embedding ?? subnodes.embeddings, 'ai_embedding');
-	if (subnodes.vectorStore) addNestedSubnode(subnodes.vectorStore, 'ai_vectorStore');
-	if (subnodes.retriever) addNestedSubnode(subnodes.retriever, 'ai_retriever');
+	if (subnodes.vectorStore) addNestedSubnode(subnodes.vectorStore, 'ai_vectorStore', 0);
+	if (subnodes.retriever) addNestedSubnode(subnodes.retriever, 'ai_retriever', 0);
 	addNestedSubnodeOrArray(subnodes.documentLoader, 'ai_document');
-	if (subnodes.textSplitter) addNestedSubnode(subnodes.textSplitter, 'ai_textSplitter');
-	if (subnodes.reranker) addNestedSubnode(subnodes.reranker, 'ai_reranker');
+	if (subnodes.textSplitter) addNestedSubnode(subnodes.textSplitter, 'ai_textSplitter', 0);
+	addNestedSubnodeOrArray(subnodes.reranker, 'ai_reranker');
 }
 
 /**
@@ -165,7 +166,11 @@ export function addNodeWithSubnodes(
 
 	// Helper to add a subnode with its AI connection.
 	// Uses mapKey (the resolved name) for connection targets, not nodeInstance.name.
-	const addSubnode = (subnode: NodeInstance<string, string, unknown>, connectionType: string) => {
+	const addSubnode = (
+		subnode: NodeInstance<string, string, unknown>,
+		connectionType: string,
+		index: number,
+	) => {
 		const subnodeName = resolveSubnodeName(subnode);
 		if (!subnodeName) return;
 
@@ -181,7 +186,7 @@ export function addNodeWithSubnodes(
 			const existingOutputConns = existingAiConns.get(0) ?? [];
 			existingAiConns.set(0, [
 				...existingOutputConns,
-				{ node: mapKey, type: connectionType, index: 0 },
+				{ node: mapKey, type: connectionType, index },
 			]);
 			return;
 		}
@@ -190,7 +195,7 @@ export function addNodeWithSubnodes(
 		const subnodeConns = new Map<string, Map<number, ConnectionTarget[]>>();
 		subnodeConns.set('main', new Map());
 		const aiConnMap = new Map<number, ConnectionTarget[]>();
-		aiConnMap.set(0, [{ node: mapKey, type: connectionType, index: 0 }]);
+		aiConnMap.set(0, [{ node: mapKey, type: connectionType, index }]);
 		subnodeConns.set(connectionType, aiConnMap);
 		nodes.set(subnodeName, {
 			instance: subnode,
@@ -213,29 +218,29 @@ export function addNodeWithSubnodes(
 	) => {
 		if (!subnodeOrArray) return;
 		if (Array.isArray(subnodeOrArray)) {
-			for (const subnode of subnodeOrArray) {
-				addSubnode(subnode, connectionType);
+			for (let i = 0; i < subnodeOrArray.length; i++) {
+				addSubnode(subnodeOrArray[i], connectionType, i);
 			}
 		} else {
-			addSubnode(subnodeOrArray, connectionType);
+			addSubnode(subnodeOrArray, connectionType, 0);
 		}
 	};
 
 	// Add all subnode types
 	addSubnodeOrArray(subnodes.model, 'ai_languageModel');
-	if (subnodes.memory) addSubnode(subnodes.memory, 'ai_memory');
+	if (subnodes.memory) addSubnode(subnodes.memory, 'ai_memory', 0);
 	if (subnodes.tools) {
-		for (const tool of subnodes.tools) {
-			addSubnode(tool, 'ai_tool');
+		for (let i = 0; i < subnodes.tools.length; i++) {
+			addSubnode(subnodes.tools[i], 'ai_tool', i);
 		}
 	}
-	if (subnodes.outputParser) addSubnode(subnodes.outputParser, 'ai_outputParser');
+	if (subnodes.outputParser) addSubnode(subnodes.outputParser, 'ai_outputParser', 0);
 	addSubnodeOrArray(subnodes.embedding ?? subnodes.embeddings, 'ai_embedding');
-	if (subnodes.vectorStore) addSubnode(subnodes.vectorStore, 'ai_vectorStore');
-	if (subnodes.retriever) addSubnode(subnodes.retriever, 'ai_retriever');
+	if (subnodes.vectorStore) addSubnode(subnodes.vectorStore, 'ai_vectorStore', 0);
+	if (subnodes.retriever) addSubnode(subnodes.retriever, 'ai_retriever', 0);
 	addSubnodeOrArray(subnodes.documentLoader, 'ai_document');
-	if (subnodes.textSplitter) addSubnode(subnodes.textSplitter, 'ai_textSplitter');
-	if (subnodes.reranker) addSubnode(subnodes.reranker, 'ai_reranker');
+	if (subnodes.textSplitter) addSubnode(subnodes.textSplitter, 'ai_textSplitter', 0);
+	addSubnodeOrArray(subnodes.reranker, 'ai_reranker');
 
 	return mapKey;
 }

@@ -135,87 +135,10 @@ function parseErrorConnections(
 }
 
 /**
- * Check if a node type is a subnode type (language model, memory, output parser, etc.)
- * as opposed to an agent/chain type that accepts subnodes.
- * Derives from AI_CONNECTION_SUBNODE_PATTERNS to avoid duplicating pattern lists.
- */
-function isSubnodeType(nodeType: string): boolean {
-	return Object.values(AI_CONNECTION_SUBNODE_PATTERNS).some((patterns) =>
-		patterns.some((p) => nodeType.includes(p)),
-	);
-}
-
-/**
- * Patterns matching expected subnode types for each AI connection type.
- * Used by isSubnodeType() to distinguish subnodes from parent nodes
- * (e.g., in findNearestParent for stale-reference recovery).
- */
-const AI_CONNECTION_SUBNODE_PATTERNS: Record<string, string[]> = {
-	ai_languageModel: ['lmChat', 'lmCohere', 'lmOllama', 'lmAnthropic', 'lmGoogleVertex'],
-	ai_outputParser: ['outputParser'],
-	ai_memory: ['memory'],
-	ai_embedding: ['embedding'],
-	ai_vectorStore: ['vectorStore'],
-	ai_retriever: ['retriever'],
-	ai_document: ['document'],
-	ai_textSplitter: ['textSplitter'],
-	ai_reranker: ['reranker'],
-	ai_tool: ['tool'],
-};
-
-/**
- * Best-effort recovery for malformed workflow data.
- * Uses canvas position proximity as a heuristic — may pick the wrong parent
- * if multiple candidates are equidistant. Only used as a fallback when the
- * referenced parent node doesn't exist (stale connections from renamed nodes).
- */
-function findNearestParent(
-	sourceNode: SemanticNode,
-	connectionType: AiConnectionType,
-	graph: SemanticGraph,
-): SemanticNode | undefined {
-	const sourcePos = sourceNode.json.position;
-	if (!sourcePos) return undefined;
-
-	// AI connection types that allow multiple subnodes (array types)
-	const multiSubnodeTypes = new Set(['ai_tool']);
-
-	let bestMatch: SemanticNode | undefined;
-	let bestDistance = Infinity;
-
-	for (const [, candidate] of graph.nodes) {
-		// Only consider agent-like nodes (langchain nodes that accept AI inputs)
-		if (!candidate.type.includes('langchain')) continue;
-		// Don't match other subnodes
-		if (isSubnodeType(candidate.type)) continue;
-
-		// Skip if this candidate already has a subnode of this connection type (unless it's a multi type)
-		if (!multiSubnodeTypes.has(connectionType)) {
-			const alreadyHasType = candidate.subnodes.some((s) => s.connectionType === connectionType);
-			if (alreadyHasType) continue;
-		}
-
-		const candidatePos = candidate.json.position;
-		if (!candidatePos) continue;
-
-		const dx = sourcePos[0] - candidatePos[0];
-		const dy = sourcePos[1] - candidatePos[1];
-		const distance = dx * dx + dy * dy;
-
-		if (distance < bestDistance) {
-			bestDistance = distance;
-			bestMatch = candidate;
-		}
-	}
-
-	return bestMatch;
-}
-
-/**
- * Parse AI subnode connections and add to graph
- * Skips connections from non-existent source nodes (dangling connections from malformed workflow data)
- * When target parent doesn't exist (stale references), tries to find the nearest matching parent
- * Detects and corrects reversed AI connections (parent → subnode instead of subnode → parent)
+ * Parse AI subnode connections and add to graph.
+ * Uses `target.index` to preserve ordering when multiple subnodes of the same type
+ * connect to the same parent (e.g., primary + fallback language model).
+ * Skips connections to non-existent parent nodes (stale references from malformed workflow data).
  */
 function parseAiConnections(
 	sourceName: string,
@@ -223,43 +146,21 @@ function parseAiConnections(
 	outputs: Array<Array<{ node: string; type: string; index: number }> | null>,
 	graph: SemanticGraph,
 ): void {
-	// Skip connections from non-existent source nodes
 	const sourceNode = graph.nodes.get(sourceName);
 	if (!sourceNode) return;
 
-	// AI connections go from subnode → parent node
 	outputs.forEach((targets) => {
 		if (!targets) return;
 
 		targets.forEach((target) => {
-			let parentNode = graph.nodes.get(target.node);
+			const parentNode = graph.nodes.get(target.node);
+			if (!parentNode) return; // stale ref — skip
 
-			// If parent doesn't exist (stale reference from renamed node),
-			// try to find the nearest matching parent by position and type
-			if (!parentNode) {
-				parentNode = findNearestParent(sourceNode, connectionType, graph);
-			} else {
-				// Parent exists but may already have this connection type filled
-				// (e.g., duplicate node names where multiple instances share the same name).
-				// In that case, use position proximity to find the correct parent.
-				const multiSubnodeTypes = new Set(['ai_tool']);
-				if (!multiSubnodeTypes.has(connectionType)) {
-					const alreadyHasType = parentNode.subnodes.some(
-						(s) => s.connectionType === connectionType,
-					);
-					if (alreadyHasType) {
-						const nearest = findNearestParent(sourceNode, connectionType, graph);
-						if (nearest) parentNode = nearest;
-					}
-				}
-			}
-
-			if (parentNode) {
-				parentNode.subnodes.push({
-					connectionType,
-					subnodeName: sourceName,
-				});
-			}
+			parentNode.subnodes.push({
+				connectionType,
+				subnodeName: sourceName,
+				index: target.index,
+			});
 		});
 	});
 }
@@ -620,6 +521,11 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 	// Phase 2b: Redistribute connections for duplicate node names
 	if (duplicateKeys.size > 0) {
 		redistributeDuplicateConnections(graph, duplicateKeys);
+	}
+
+	// Phase 2c: Sort subnodes by index for deterministic ordering
+	for (const [, node] of graph.nodes) {
+		node.subnodes.sort((a, b) => a.index - b.index);
 	}
 
 	// Phase 3: Identify roots (triggers + nodes with no incoming connections)

@@ -401,10 +401,12 @@ describe('semantic-graph', () => {
 			expect(agent.subnodes).toContainEqual({
 				connectionType: 'ai_languageModel',
 				subnodeName: 'Model',
+				index: 0,
 			});
 			expect(agent.subnodes).toContainEqual({
 				connectionType: 'ai_tool',
 				subnodeName: 'Tool',
+				index: 0,
 			});
 		});
 

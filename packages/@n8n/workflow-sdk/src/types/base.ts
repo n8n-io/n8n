@@ -364,7 +364,7 @@ export interface SubnodeConfig {
 	retriever?: RetrieverInstance;
 	documentLoader?: DocumentLoaderInstance | DocumentLoaderInstance[];
 	textSplitter?: TextSplitterInstance;
-	reranker?: RerankerInstance;
+	reranker?: RerankerInstance | RerankerInstance[];
 }
 
 // =============================================================================
