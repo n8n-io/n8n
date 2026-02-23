@@ -134,26 +134,18 @@ describe('Real Workflow Round-Trip', () => {
 
 					writeGeneratedTsFile(id, json);
 
-					const idCounts = new Map<string, number>();
-					for (const node of json.nodes) {
-						idCounts.set(node.id, (idCounts.get(node.id) ?? 0) + 1);
-					}
-					const hasDuplicateIds = [...idCounts.values()].some((count) => count > 1);
+					expect(exported.nodes.length).toBe(json.nodes.length);
 
-					// SDK deduplicates nodes with identical IDs, so allow fewer nodes
-					if (hasDuplicateIds) {
-						expect(exported.nodes.length).toBeLessThanOrEqual(json.nodes.length);
-					} else {
-						expect(exported.nodes.length).toBe(json.nodes.length);
-					}
-
+					// Use greedy matching to handle workflows with duplicate node names
+					const matchedIndices = new Set<number>();
 					for (const originalNode of json.nodes) {
-						const exportedNode = hasDuplicateIds
-							? exported.nodes.find((n) => n.name === originalNode.name)
-							: exported.nodes.find((n) => n.id === originalNode.id);
+						const exportedNode = exported.nodes.find(
+							(n, i) => !matchedIndices.has(i) && n.name === originalNode.name,
+						);
 						expect(exportedNode).toBeDefined();
 
 						if (exportedNode) {
+							matchedIndices.add(exported.nodes.indexOf(exportedNode));
 							expect(exportedNode.type).toBe(originalNode.type);
 							expect(exportedNode.name).toBe(originalNode.name);
 							expect(exportedNode.position).toEqual(originalNode.position);
