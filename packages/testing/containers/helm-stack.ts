@@ -126,11 +126,11 @@ function buildHelmSetFlags(imageName: string, mode: HelmStackMode): string[] {
 		// Secrets (chart defaults are placeholder values)
 		'--set secretRefs.env.N8N_ENCRYPTION_KEY=test-encryption-key-for-e2e-testing',
 		'--set secretRefs.env.N8N_HOST=localhost',
-		// E2E-specific env vars
-		'--set config.extraEnv[0].name=E2E_TESTS --set config.extraEnv[0].value=true',
-		'--set config.extraEnv[1].name=NODE_ENV --set config.extraEnv[1].value=development',
-		'--set config.extraEnv[2].name=N8N_DIAGNOSTICS_ENABLED --set config.extraEnv[2].value=false',
-		'--set config.extraEnv[3].name=N8N_DYNAMIC_BANNERS_ENABLED --set config.extraEnv[3].value=false',
+		// E2E-specific env vars (--set-string because K8s env values must be strings)
+		'--set config.extraEnv[0].name=E2E_TESTS --set-string config.extraEnv[0].value=true',
+		'--set config.extraEnv[1].name=NODE_ENV --set-string config.extraEnv[1].value=development',
+		'--set config.extraEnv[2].name=N8N_DIAGNOSTICS_ENABLED --set-string config.extraEnv[2].value=false',
+		'--set config.extraEnv[3].name=N8N_DYNAMIC_BANNERS_ENABLED --set-string config.extraEnv[3].value=false',
 	];
 
 	// License env vars from host (same pattern as testcontainers stack)
@@ -138,21 +138,21 @@ function buildHelmSetFlags(imageName: string, mode: HelmStackMode): string[] {
 	const licenseTenantId = process.env.N8N_LICENSE_TENANT_ID;
 	if (licenseTenantId) {
 		flags.push(
-			`--set config.extraEnv[${envIdx}].name=N8N_LICENSE_TENANT_ID --set config.extraEnv[${envIdx}].value=${licenseTenantId}`,
+			`--set config.extraEnv[${envIdx}].name=N8N_LICENSE_TENANT_ID --set-string config.extraEnv[${envIdx}].value=${licenseTenantId}`,
 		);
 		envIdx++;
 	}
 	const licenseActivationKey = process.env.N8N_LICENSE_ACTIVATION_KEY;
 	if (licenseActivationKey) {
 		flags.push(
-			`--set config.extraEnv[${envIdx}].name=N8N_LICENSE_ACTIVATION_KEY --set config.extraEnv[${envIdx}].value=${licenseActivationKey}`,
+			`--set config.extraEnv[${envIdx}].name=N8N_LICENSE_ACTIVATION_KEY --set-string config.extraEnv[${envIdx}].value=${licenseActivationKey}`,
 		);
 		envIdx++;
 	}
 	const licenseCert = process.env.N8N_LICENSE_CERT;
 	if (licenseCert) {
 		flags.push(
-			`--set config.extraEnv[${envIdx}].name=N8N_LICENSE_CERT --set config.extraEnv[${envIdx}].value=${licenseCert}`,
+			`--set config.extraEnv[${envIdx}].name=N8N_LICENSE_CERT --set-string config.extraEnv[${envIdx}].value=${licenseCert}`,
 		);
 	}
 
