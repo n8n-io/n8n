@@ -1,9 +1,12 @@
 <script lang="ts" setup>
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import { onBeforeRouteLeave } from 'vue-router';
 
 import { N8nActionBox, N8nHeading, N8nInfoTip, N8nOption, N8nSelect } from '@n8n/design-system';
 import SamlSettingsForm from '../components/SamlSettingsForm.vue';
@@ -13,6 +16,10 @@ const i18n = useI18n();
 const ssoStore = useSSOStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const message = useMessage();
+
+const samlFormRef = useTemplateRef<InstanceType<typeof SamlSettingsForm>>('samlForm');
+const oidcFormRef = useTemplateRef<InstanceType<typeof OidcSettingsForm>>('oidcForm');
 
 const options = computed(() => {
 	return [
@@ -33,6 +40,12 @@ const hasAnySsoEnabled = computed(
 	() => ssoStore.isEnterpriseSamlEnabled || ssoStore.isEnterpriseOidcEnabled,
 );
 
+const activeForm = computed(() => {
+	if (authProtocol.value === SupportedProtocols.SAML) return samlFormRef.value;
+	if (authProtocol.value === SupportedProtocols.OIDC) return oidcFormRef.value;
+	return null;
+});
+
 const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
 function onAuthProtocolUpdated(value: SupportedProtocolType) {
 	authProtocol.value = value;
@@ -41,6 +54,36 @@ function onAuthProtocolUpdated(value: SupportedProtocolType) {
 const goToUpgrade = () => {
 	void pageRedirectionHelper.goToUpgrade('sso', 'upgrade-sso');
 };
+
+onBeforeRouteLeave(async (_to, _from, next) => {
+	if (!activeForm.value?.hasUnsavedChanges) {
+		next();
+		return;
+	}
+
+	const response = await message.confirm(
+		i18n.baseText('settings.sso.settings.unsavedChanges.message'),
+		{
+			title: i18n.baseText('settings.sso.settings.unsavedChanges.title'),
+			confirmButtonText: i18n.baseText('settings.sso.settings.unsavedChanges.saveAndLeave'),
+			cancelButtonText: i18n.baseText('settings.sso.settings.unsavedChanges.leaveWithoutSaving'),
+			showClose: true,
+		},
+	);
+
+	switch (response) {
+		case MODAL_CONFIRM:
+			await activeForm.value.onSave();
+			next();
+			break;
+		case MODAL_CANCEL:
+			next();
+			break;
+		default:
+			next(false);
+			break;
+	}
+});
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.sso.title'));
@@ -85,13 +128,13 @@ onMounted(() => {
 			v-if="ssoStore.isEnterpriseSamlEnabled && authProtocol === SupportedProtocols.SAML"
 			data-test-id="sso-content-licensed"
 		>
-			<SamlSettingsForm />
+			<SamlSettingsForm ref="samlForm" />
 		</div>
 		<div
 			v-if="ssoStore.isEnterpriseOidcEnabled && authProtocol === SupportedProtocols.OIDC"
 			data-test-id="sso-content-licensed"
 		>
-			<OidcSettingsForm />
+			<OidcSettingsForm ref="oidcForm" />
 		</div>
 		<N8nActionBox
 			v-if="!hasAnySsoEnabled"
