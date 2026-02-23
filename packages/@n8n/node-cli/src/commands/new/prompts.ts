@@ -58,12 +58,12 @@ export const programmaticNodeTypePrompt = async () =>
 					hint: 'Standard programmatic node',
 				},
 				{
-					label: 'Chat Model',
+					label: 'Chat Model (preview)',
 					value: 'chatModel',
 					hint: 'AI chat model node',
 				},
 				{
-					label: 'Chat Memory',
+					label: 'Chat Memory (preview)',
 					value: 'chatMemory',
 					hint: 'AI chat memory node',
 				},
