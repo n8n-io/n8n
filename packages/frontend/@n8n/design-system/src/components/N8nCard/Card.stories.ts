@@ -6,7 +6,7 @@ import N8nIcon from '../N8nIcon/Icon.vue';
 import N8nText from '../N8nText/Text.vue';
 
 export default {
-	title: 'Atoms/Card',
+	title: 'Core/Card',
 	component: N8nCard,
 };
 

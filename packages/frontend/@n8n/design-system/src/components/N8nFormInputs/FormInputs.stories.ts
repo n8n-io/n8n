@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import N8nFormInputs from './FormInputs.vue';
 
 export default {
-	title: 'Modules/FormInputs',
+	title: 'Core/FormInputs',
 	component: N8nFormInputs,
 	argTypes: {},
 	parameters: {

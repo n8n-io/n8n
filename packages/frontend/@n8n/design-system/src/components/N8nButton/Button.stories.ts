@@ -4,7 +4,7 @@ import N8nButton from './Button.vue';
 import N8nIcon from '../N8nIcon/Icon.vue';
 
 const meta = {
-	title: 'Atoms/Button',
+	title: 'Core/Button',
 	component: N8nButton,
 	argTypes: {
 		variant: {
