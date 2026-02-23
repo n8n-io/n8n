@@ -369,7 +369,7 @@ const keyMap = computed(() => {
 		d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
 		p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
 		f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
-		n: () => emit('create:node', 'tab'),
+		n: () => emit('create:node', 'node_shortcut'),
 		tab: {
 			disabled: () => usersStore.isCalloutDismissed(NODE_CREATOR_SHORTCUT_COACHMARK_KEY),
 			run: () => {

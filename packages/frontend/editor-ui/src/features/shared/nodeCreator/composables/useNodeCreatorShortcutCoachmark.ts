@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onScopeDispose, ref } from 'vue';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 
@@ -17,11 +17,9 @@ export function useNodeCreatorShortcutCoachmark() {
 		isTabPressed.value = true;
 	}
 
-	onMounted(() => {
-		canvasEventBus.on('deprecated:tab-shortcut', onDeprecatedTabShortcut);
-	});
+	canvasEventBus.on('deprecated:tab-shortcut', onDeprecatedTabShortcut);
 
-	onUnmounted(() => {
+	onScopeDispose(() => {
 		canvasEventBus.off('deprecated:tab-shortcut', onDeprecatedTabShortcut);
 	});
 
