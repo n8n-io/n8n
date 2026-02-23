@@ -40,17 +40,4 @@ export class SecretsProviderConnection extends WithTimestamps {
 	 */
 	@Column()
 	encryptedSettings: string;
-
-	/**
-	 * @deprecated This field is no longer used.
-	 * Whether the secrets provider connection is enabled.
-	 * When enabled, a connection attempt will be made to the external secrets provider.
-	 * If the connection is successful, secrets will be available to be used in credentials.
-	 *
-	 * When disabled, the secrets provider connection will not be used to connect to the external secrets provider.
-	 *
-	 * This describes an intent rather than a state.
-	 */
-	@Column({ default: false })
-	isEnabled: boolean;
 }

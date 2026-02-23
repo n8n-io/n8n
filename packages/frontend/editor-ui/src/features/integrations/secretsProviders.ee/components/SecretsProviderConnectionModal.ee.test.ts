@@ -21,7 +21,6 @@ const createMockConnectionData = (overrides: Partial<SecretProviderConnection> =
 	type: 'awsSecretsManager',
 	settings: { region: 'us-east-1' },
 	state: 'connected',
-	isEnabled: true,
 	projects: [],
 	secretsCount: 0,
 	createdAt: new Date().toISOString(),

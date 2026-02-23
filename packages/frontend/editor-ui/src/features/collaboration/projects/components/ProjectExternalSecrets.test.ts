@@ -139,7 +139,6 @@ const mockProviders: SecretProviderConnection[] = [
 		type: 'awsSecretsManager',
 		projects: [{ id: 'project-1', name: 'Test Project' }],
 		settings: {},
-		isEnabled: true,
 		secretsCount: 3,
 		state: 'connected',
 		secrets: [
@@ -156,7 +155,6 @@ const mockProviders: SecretProviderConnection[] = [
 		type: 'azureKeyVault',
 		projects: [{ id: 'project-1', name: 'Test Project' }],
 		settings: {},
-		isEnabled: true,
 		secretsCount: 1,
 		state: 'connected',
 		secrets: [{ name: 'DEV_API_KEY', credentialsCount: 1 }],
