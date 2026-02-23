@@ -37,9 +37,9 @@ const buttonLabel = computed(() => {
 </script>
 
 <template>
-	<N8nTooltip :disabled="!disabled || !disabledTooltip" placement="top">
+	<N8nTooltip :disabled="!disabled || !disabledTooltip" placement="right">
 		<template #content>{{ disabledTooltip }}</template>
-		<span>
+		<template #default>
 			<GoogleAuthButton
 				v-if="isGoogleOAuthType(credentialTypeName)"
 				:disabled="disabled"
@@ -56,7 +56,7 @@ const buttonLabel = computed(() => {
 				<CredentialIcon theme="light" :credential-type-name="credentialTypeName" :size="16" />
 				<span>{{ buttonLabel }}</span>
 			</N8nButton>
-		</span>
+		</template>
 	</N8nTooltip>
 </template>
 

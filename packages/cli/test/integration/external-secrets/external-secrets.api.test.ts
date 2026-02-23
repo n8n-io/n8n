@@ -136,6 +136,7 @@ beforeAll(async () => {
 
 	// Get all service dependencies from Container
 	const config = Container.get(ExternalSecretsConfig);
+	config.externalSecretsMultipleConnections = false;
 	const settingsStore = Container.get(ExternalSecretsSettingsStore);
 	const providerRegistry = Container.get(ExternalSecretsProviderRegistry);
 	const providerLifecycle = Container.get(ExternalSecretsProviderLifecycle);
