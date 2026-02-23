@@ -98,6 +98,7 @@ onMounted(async () => {
 	<div :class="$style.workflowDiffViewContainer">
 		<div :class="$style.header">
 			<div :class="$style.headerLeft">
+				<slot name="header-prefix" />
 				<N8nHeading tag="h4" size="medium">
 					{{ sourceWorkflow?.name || targetWorkflow?.name }}
 				</N8nHeading>

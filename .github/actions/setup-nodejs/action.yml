@@ -18,6 +18,10 @@ inputs:
     description: 'Command to execute for building the project or an optional command. Leave empty to skip build step.'
     required: false
     default: 'pnpm build'
+  install-command:
+    description: 'Command to execute for installing project dependencies. Leave empty to skip install step.'
+    required: false
+    default: 'pnpm install --frozen-lockfile'
 
 runs:
   using: 'composite'
@@ -44,7 +48,9 @@ runs:
       shell: bash
 
     - name: Install Dependencies
-      run: pnpm install --frozen-lockfile
+      if: ${{ inputs.install-command != '' }}
+      run: |
+        ${{ inputs.install-command }}
       shell: bash
 
     - name: Disable safe-chain

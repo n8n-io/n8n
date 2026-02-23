@@ -111,12 +111,13 @@ export class SecretProvidersConnectionsController {
 	@GlobalScope('externalSecretsProvider:delete')
 	async deleteConnection(
 		req: AuthenticatedRequest,
-		_res: Response,
+		res: Response,
 		@Param('providerKey') providerKey: string,
-	): Promise<SecretsProvidersResponses.PublicConnection> {
+	) {
 		this.logger.debug('Deleting connection', { providerKey });
-		const connection = await this.connectionsService.deleteConnection(providerKey, req.user.id);
-		return this.connectionsService.toPublicConnection(connection);
+		await this.connectionsService.deleteConnection(providerKey, req.user.id);
+		res.status(204).send();
+		return;
 	}
 
 	@Get('/')
