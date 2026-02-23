@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 
@@ -9,6 +9,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 const props = withDefaults(
 	defineProps<{
 		isComplete: boolean;
+		loading?: boolean;
 		cardTestId: string;
 		title: string;
 		showFooter?: boolean;
@@ -16,6 +17,7 @@ const props = withDefaults(
 		telemetryPayload?: Record<string, unknown>;
 	}>(),
 	{
+		loading: false,
 		showFooter: true,
 		showCallout: false,
 		telemetryPayload: () => ({}),
@@ -41,26 +43,16 @@ const onHeaderClick = () => {
 watch(
 	() => props.isComplete,
 	(isComplete) => {
-		if (isComplete) {
-			expanded.value = false;
-
-			if (hadManualInteraction.value) {
-				telemetry.track('User completed setup step', {
-					template_id: workflowsStore.workflow.meta?.templateId,
-					workflow_id: workflowsStore.workflowId,
-					...props.telemetryPayload,
-				});
-				hadManualInteraction.value = false;
-			}
+		if (isComplete && hadManualInteraction.value) {
+			telemetry.track('User completed setup step', {
+				template_id: workflowsStore.workflow.meta?.templateId,
+				workflow_id: workflowsStore.workflowId,
+				...props.telemetryPayload,
+			});
+			hadManualInteraction.value = false;
 		}
 	},
 );
-
-onMounted(() => {
-	if (props.isComplete) {
-		expanded.value = false;
-	}
-});
 
 defineExpose({ markInteracted });
 </script>
@@ -79,7 +71,15 @@ defineExpose({ markInteracted });
 	>
 		<header :data-test-id="`${cardTestId}-header`" :class="$style.header" @click="onHeaderClick">
 			<N8nIcon
-				v-if="!expanded && isComplete"
+				v-if="!expanded && loading && !isComplete"
+				:data-test-id="`${cardTestId}-loading-icon`"
+				icon="spinner"
+				:spin="true"
+				:class="$style['loading-icon']"
+				size="medium"
+			/>
+			<N8nIcon
+				v-else-if="!expanded && isComplete"
 				:data-test-id="`${cardTestId}-complete-icon`"
 				icon="check"
 				:class="$style['complete-icon']"
@@ -109,6 +109,7 @@ defineExpose({ markInteracted });
 					</div>
 				</div>
 			</Transition>
+			<slot name="webhook-urls" />
 			<slot />
 
 			<footer v-if="showFooter" :class="$style.footer">
@@ -177,6 +178,10 @@ defineExpose({ markInteracted });
 
 .complete-icon {
 	color: var(--color--success);
+}
+
+.loading-icon {
+	color: var(--color--text--tint-1);
 }
 
 .footer {
