@@ -10,8 +10,11 @@ import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.sto
 import { useAssistantStore } from './assistant.store';
 import { useBuilderStore } from './builder.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { MERGE_ASK_BUILD_EXPERIMENT } from '@/app/constants/experiments';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ChatRequest } from './assistant.types';
+import { useI18n } from '@n8n/i18n';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 380;
@@ -33,6 +36,20 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	const route = useRoute();
 	const chatPanelStateStore = useChatPanelStateStore();
 	const settingsStore = useSettingsStore();
+	const posthogStore = usePostHog();
+	const locale = useI18n();
+
+	const isMergeAskBuildEnabled = computed(
+		() =>
+			posthogStore.isFeatureEnabled(MERGE_ASK_BUILD_EXPERIMENT.name) &&
+			settingsStore.isAiAssistantEnabled &&
+			useBuilderStore().isAIBuilderEnabled,
+	);
+
+	/** When merge is enabled, redirect assistant mode requests to builder */
+	function resolveMode(mode: ChatPanelMode): ChatPanelMode {
+		return mode === 'assistant' && isMergeAskBuildEnabled.value ? 'builder' : mode;
+	}
 
 	// Computed
 	const isAssistantModeActive = computed(() => chatPanelStateStore.activeMode === 'assistant');
@@ -46,7 +63,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 	// Actions
 	async function open(options?: { mode?: ChatPanelMode; showCoachmark?: boolean }) {
-		const mode = options?.mode;
+		const mode = options?.mode ? resolveMode(options.mode) : undefined;
 		const showCoachmark = options?.showCoachmark ?? true;
 
 		if (mode) {
@@ -117,8 +134,10 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	}
 
 	function switchMode(mode: ChatPanelMode) {
+		const resolved = resolveMode(mode);
+
 		// Check if the mode is enabled in the current view
-		const enabledViews = mode === 'assistant' ? ASSISTANT_ENABLED_VIEWS : BUILDER_ENABLED_VIEWS;
+		const enabledViews = resolved === 'assistant' ? ASSISTANT_ENABLED_VIEWS : BUILDER_ENABLED_VIEWS;
 		const currentRoute = route?.name;
 
 		if (!isEnabledView(currentRoute, enabledViews)) {
@@ -128,7 +147,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		}
 
 		// Switch the mode without re-initialization
-		chatPanelStateStore.activeMode = mode;
+		chatPanelStateStore.activeMode = resolved;
 		chatPanelStateStore.showCoachmark = false;
 	}
 
@@ -147,6 +166,15 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	 * Opens assistant with credential help context
 	 */
 	async function openWithCredHelp(credentialType: ICredentialType) {
+		if (isMergeAskBuildEnabled.value) {
+			const question = locale.baseText('aiAssistant.builder.credentialHelpMessage', {
+				interpolate: { credentialName: credentialType.displayName },
+			});
+			await open({ mode: 'builder' });
+			const builderStore = useBuilderStore();
+			await builderStore.sendChatMessage({ text: question, helpMessage: true });
+			return;
+		}
 		const assistantStore = useAssistantStore();
 		await assistantStore.initCredHelp(credentialType);
 		await open({ mode: 'assistant' });
@@ -156,6 +184,15 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	 * Opens assistant with error helper context
 	 */
 	async function openWithErrorHelper(context: ChatRequest.ErrorContext) {
+		if (isMergeAskBuildEnabled.value) {
+			const errorText = locale.baseText('aiAssistant.builder.errorHelpMessage', {
+				interpolate: { nodeName: context.node.name, errorMessage: context.error.message },
+			});
+			await open({ mode: 'builder' });
+			const builderStore = useBuilderStore();
+			await builderStore.sendChatMessage({ text: errorText, helpMessage: true });
+			return;
+		}
 		const assistantStore = useAssistantStore();
 		await assistantStore.initErrorHelper(context);
 		await open({ mode: 'assistant' });

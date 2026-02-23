@@ -252,6 +252,13 @@ const userNotices = computed(() => {
 
 	return messages;
 });
+
+const hasModifiedCredentialsSelected = computed(() => {
+	return changes.value.credential.some(
+		(credential) => selectedCredentials.has(credential.id) && credential.status === 'modified',
+	);
+});
+
 const workflowId = computed(
 	() =>
 		([VIEWS.WORKFLOW].includes(route.name as VIEWS) && route.params.name?.toString()) || undefined,
@@ -816,8 +823,8 @@ onMounted(async () => {
 					>
 						<template #trigger>
 							<N8nButton
+								variant="subtle"
 								icon="funnel"
-								type="tertiary"
 								style="height: 100%"
 								:active="Boolean(filterCount)"
 								data-test-id="source-control-filter-dropdown"
@@ -1030,9 +1037,9 @@ onMounted(async () => {
 																placement="top"
 															>
 																<N8nIconButton
+																	variant="subtle"
 																	data-test-id="source-control-workflow-diff-button"
 																	icon="file-diff"
-																	type="secondary"
 																	@click="openDiffModal(file.id, file.status)"
 																/>
 															</N8nTooltip>
@@ -1052,17 +1059,24 @@ onMounted(async () => {
 
 		<template #footer>
 			<N8nNotice
-				v-if="userNotices.length"
+				v-if="userNotices.length || hasModifiedCredentialsSelected"
 				:compact="false"
 				class="mt-0"
 				id="source-control-push-modal-notice"
 			>
-				<N8nText bold size="medium">Changes to variables, tags, folders and projects </N8nText>
-				<br />
-				<template v-for="{ title, content } in userNotices" :key="title">
-					<N8nText bold size="small"> {{ title }}</N8nText>
-					<N8nText size="small"> : {{ content }}. </N8nText>
+				<template v-if="userNotices.length">
+					<N8nText bold size="medium">Changes to variables, tags, folders and projects </N8nText>
+					<br />
+					<template v-for="{ title, content } in userNotices" :key="title">
+						<N8nText bold size="small"> {{ title }}</N8nText>
+						<N8nText size="small"> : {{ content }}. </N8nText>
+					</template>
+					<br v-if="hasModifiedCredentialsSelected" />
 				</template>
+
+				<N8nText v-if="hasModifiedCredentialsSelected" size="small">
+					{{ i18n.baseText('settings.sourceControl.modals.push.modifiedCredentialsNotice') }}
+				</N8nText>
 			</N8nNotice>
 
 			<N8nText bold tag="p">
@@ -1080,8 +1094,8 @@ onMounted(async () => {
 					@keydown.enter.stop="onCommitKeyDownEnter"
 				/>
 				<N8nButton
+					variant="solid"
 					data-test-id="source-control-push-modal-submit"
-					type="primary"
 					:disabled="isSubmitDisabled"
 					size="large"
 					@click="commitAndPush"

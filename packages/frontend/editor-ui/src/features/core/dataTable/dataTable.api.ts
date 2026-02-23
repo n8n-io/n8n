@@ -244,11 +244,15 @@ export const downloadDataTableCsvApi = async (
 	context: IRestApiContext,
 	dataTableId: string,
 	projectId: string,
+	includeSystemColumns = true,
 ): Promise<{ csvContent: string; filename: string }> => {
 	const response = await makeRestApiRequest<{ csvContent: string; dataTableName: string }>(
 		context,
 		'GET',
 		`/projects/${projectId}/data-tables/${dataTableId}/download-csv`,
+		{
+			includeSystemColumns,
+		},
 	);
 
 	// Use just the data table name as filename

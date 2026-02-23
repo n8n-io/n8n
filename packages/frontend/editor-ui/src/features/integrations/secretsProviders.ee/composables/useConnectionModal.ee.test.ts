@@ -4,6 +4,14 @@ import { vi } from 'vitest';
 import type { SecretProviderTypeResponse } from '@n8n/api-types';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
+// Mock feature flag composable
+const { useEnvFeatureFlag } = vi.hoisted(() => ({
+	useEnvFeatureFlag: vi.fn(),
+}));
+vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
+	useEnvFeatureFlag,
+}));
+
 // Mock dependencies
 const mockConnection = {
 	getConnection: vi.fn(),
@@ -16,6 +24,7 @@ const mockConnection = {
 
 const mockHasScope = vi.fn((_scope?: string) => true);
 const mockShowError = vi.fn();
+const mockShowMessage = vi.fn();
 
 vi.mock('./useSecretsProviderConnection.ee', () => ({
 	useSecretsProviderConnection: () => mockConnection,
@@ -30,6 +39,7 @@ vi.mock('@/app/stores/rbac.store', () => ({
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: mockShowError,
+		showMessage: mockShowMessage,
 	})),
 }));
 
@@ -71,6 +81,16 @@ describe('useConnectionModal', () => {
 		mockHasScope.mockReturnValue(true);
 		mockProjectsStore.projects = [];
 		mockProjectsStore.myProjects = [];
+		mockConnection.connectionState.value = 'initializing';
+		mockConnection.testConnection.mockImplementation(async () => {
+			mockConnection.connectionState.value = 'connected';
+		});
+		mockShowError.mockClear();
+		mockShowMessage.mockClear();
+		// Mock feature flag to return false by default
+		useEnvFeatureFlag.mockReturnValue({
+			check: ref(() => false),
+		});
 	});
 
 	describe('initialization', () => {
@@ -90,7 +110,7 @@ describe('useConnectionModal', () => {
 			expect(isValidName.value).toBe(false);
 			expect(connectionNameError.value).not.toBeNull();
 
-			connectionName.value = 'valid-name-123';
+			connectionName.value = 'validName123';
 			expect(isValidName.value).toBe(true);
 			expect(connectionNameError.value).toBeNull();
 		});
@@ -98,11 +118,11 @@ describe('useConnectionModal', () => {
 		it('should validate unique connection name', () => {
 			const options = {
 				...defaultOptions,
-				existingProviderNames: ref(['existing-name']),
+				existingProviderNames: ref(['existingName']),
 			};
 			const { connectionName, isValidName, connectionNameError } = useConnectionModal(options);
 
-			connectionName.value = 'existing-name';
+			connectionName.value = 'existingName';
 			expect(isValidName.value).toBe(false);
 			expect(connectionNameError.value).not.toBeNull();
 		});
@@ -112,7 +132,7 @@ describe('useConnectionModal', () => {
 				useConnectionModal(defaultOptions);
 
 			selectedProviderType.value = mockProviderTypes[0];
-			connectionName.value = 'valid-name';
+			connectionName.value = 'validName';
 			connectionSettings.value.region = '';
 			expect(canSave.value).toBe(false);
 
@@ -143,27 +163,27 @@ describe('useConnectionModal', () => {
 
 			// Set up required state for creating a connection
 			selectProviderType('awsSecretsManager');
-			connectionName.value = 'new-provider';
+			connectionName.value = 'newProvider';
 			mockConnection.createConnection.mockResolvedValue({ id: 'new-id' });
 
 			await saveConnection();
 
 			expect(mockConnection.createConnection).toHaveBeenCalledWith({
-				providerKey: 'new-provider',
+				providerKey: 'newProvider',
 				type: 'awsSecretsManager',
 				settings: { region: 'us-east-1' },
 				projectIds: [],
 			});
-			expect(mockConnection.testConnection).toHaveBeenCalledWith('new-provider');
+			expect(mockConnection.testConnection).toHaveBeenCalledWith('newProvider');
 		});
 
 		it('should call updateConnection when saving existing connection', async () => {
-			const options = { ...defaultOptions, providerKey: ref('existing-key') };
+			const options = { ...defaultOptions, providerKey: ref('existingKey') };
 
 			// Set initial state as if loaded
 			mockConnection.getConnection.mockResolvedValue({
 				id: 'existing-id',
-				name: 'existing-name',
+				name: 'existingKey',
 				type: 'awsSecretsManager',
 				settings: { region: 'us-east-1' },
 			});
@@ -176,21 +196,81 @@ describe('useConnectionModal', () => {
 
 			await modal.saveConnection();
 
-			expect(mockConnection.updateConnection).toHaveBeenCalledWith('existing-key', {
+			expect(mockConnection.updateConnection).toHaveBeenCalledWith('existingKey', {
 				isGlobal: true,
 				settings: { region: 'us-west-2' },
 				projectIds: [],
 			});
-			expect(mockConnection.testConnection).toHaveBeenCalledWith('existing-key');
+			expect(mockConnection.testConnection).toHaveBeenCalledWith('existingKey');
+		});
+	});
+
+	describe('infisical deprecation', () => {
+		beforeEach(() => {
+			useEnvFeatureFlag.mockReturnValue({
+				check: ref((key: string) => key === 'EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS'),
+			});
+		});
+		it('should not provide option to create new infisical connection if new feature flag is enabled', () => {
+			const providerTypesWithInfisical = ref([
+				...mockProviderTypes,
+				{
+					type: 'infisical',
+					displayName: 'Infisical',
+					icon: 'infisical',
+					properties: [],
+				} as SecretProviderTypeResponse,
+			]);
+
+			const { providerTypeOptions } = useConnectionModal({
+				...defaultOptions,
+				providerTypes: providerTypesWithInfisical,
+			});
+
+			expect(providerTypeOptions.value.find((opt) => opt.value === 'infisical')).toBeUndefined();
+			expect(providerTypeOptions.value.length).toEqual(1);
+			expect(providerTypeOptions.value[0].value).toEqual('awsSecretsManager');
+		});
+
+		it('should still set selectedProviderType to infisical on existing infisical connection', async () => {
+			const providerTypesWithInfisical = ref([
+				...mockProviderTypes,
+				{
+					type: 'infisical',
+					displayName: 'Infisical',
+					icon: 'infisical',
+					properties: [],
+				} as SecretProviderTypeResponse,
+			]);
+
+			// Mock existing infisical connection
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'infisical-id',
+				name: 'infisical-connection',
+				type: 'infisical',
+				settings: {},
+			});
+
+			const options = {
+				...defaultOptions,
+				providerTypes: providerTypesWithInfisical,
+				providerKey: ref('infisical-key'),
+			};
+
+			const { selectedProviderType, loadConnection } = useConnectionModal(options);
+
+			await loadConnection();
+
+			expect(selectedProviderType.value?.type).toBe('infisical');
 		});
 	});
 
 	describe('computed properties', () => {
 		it('should detect unsaved changes', async () => {
-			const options = { ...defaultOptions, providerKey: ref('test-key') };
+			const options = { ...defaultOptions, providerKey: ref('testKey') };
 			mockConnection.getConnection.mockResolvedValue({
 				id: 'test-id',
-				name: 'test-connection',
+				name: 'testConnection',
 				type: 'awsSecretsManager',
 				settings: { region: 'us-east-1' },
 			});
@@ -203,7 +283,7 @@ describe('useConnectionModal', () => {
 			modal.connectionName.value = 'changed';
 			expect(modal.hasUnsavedChanges.value).toBe(true);
 
-			modal.connectionName.value = 'test-connection';
+			modal.connectionName.value = 'testConnection';
 			expect(modal.hasUnsavedChanges.value).toBe(false);
 
 			modal.updateSettings('region', 'us-west-2');
@@ -213,15 +293,15 @@ describe('useConnectionModal', () => {
 		it('should generate expression example', () => {
 			const { expressionExample, originalConnectionName } = useConnectionModal(defaultOptions);
 
-			originalConnectionName.value = 'my-vault';
-			expect(expressionExample.value).toBe('{{ $secrets.my-vault.secret_name }}');
+			originalConnectionName.value = 'myVault';
+			expect(expressionExample.value).toBe('{{ $secrets.myVault.secret_name }}');
 		});
 
 		it('should detect scope changes', async () => {
-			const options = { ...defaultOptions, providerKey: ref('test-key') };
+			const options = { ...defaultOptions, providerKey: ref('testKey') };
 			mockConnection.getConnection.mockResolvedValue({
 				id: 'test-id',
-				name: 'test-connection',
+				name: 'testConnection',
 				type: 'awsSecretsManager',
 				settings: { region: 'us-east-1' },
 				projects: [],
@@ -249,7 +329,7 @@ describe('useConnectionModal', () => {
 			const { selectProviderType, connectionName, canSave } = useConnectionModal(defaultOptions);
 
 			selectProviderType('awsSecretsManager');
-			connectionName.value = 'new-connection';
+			connectionName.value = 'newConnection';
 
 			expect(canSave.value).toBe(false);
 		});
@@ -257,10 +337,10 @@ describe('useConnectionModal', () => {
 		it('should disable save when user lacks update permission in edit mode', async () => {
 			mockHasScope.mockImplementation(() => false);
 
-			const options = { ...defaultOptions, providerKey: ref('existing-key') };
+			const options = { ...defaultOptions, providerKey: ref('existingKey') };
 			mockConnection.getConnection.mockResolvedValue({
 				id: 'existing-id',
-				name: 'existing-name',
+				name: 'existingKey',
 				type: 'awsSecretsManager',
 				settings: { region: 'us-east-1' },
 			});
@@ -279,7 +359,7 @@ describe('useConnectionModal', () => {
 				useConnectionModal(defaultOptions);
 
 			selectProviderType('awsSecretsManager');
-			connectionName.value = 'new-connection';
+			connectionName.value = 'newConnection';
 
 			expect(canSave.value).toBe(false);
 
@@ -294,10 +374,10 @@ describe('useConnectionModal', () => {
 				return scope === 'externalSecretsProvider:update';
 			});
 
-			const options = { ...defaultOptions, providerKey: ref('existing-key') };
+			const options = { ...defaultOptions, providerKey: ref('existingKey') };
 			mockConnection.getConnection.mockResolvedValue({
 				id: 'existing-id',
-				name: 'existing-name',
+				name: 'existingKey',
 				type: 'awsSecretsManager',
 				settings: { region: 'us-east-1' },
 			});
@@ -325,10 +405,10 @@ describe('useConnectionModal', () => {
 				},
 			];
 
-			const options = { ...defaultOptions, providerKey: ref('existing-key') };
+			const options = { ...defaultOptions, providerKey: ref('existingKey') };
 			mockConnection.getConnection.mockResolvedValue({
 				id: 'existing-id',
-				name: 'existing-name',
+				name: 'existingKey',
 				type: 'awsSecretsManager',
 				settings: { region: 'us-east-1' },
 				projects: [{ id: 'project-1', name: 'Project 1' }],
@@ -357,10 +437,10 @@ describe('useConnectionModal', () => {
 				},
 			];
 
-			const options = { ...defaultOptions, providerKey: ref('existing-key') };
+			const options = { ...defaultOptions, providerKey: ref('existingKey') };
 			mockConnection.getConnection.mockResolvedValue({
 				id: 'existing-id',
-				name: 'existing-name',
+				name: 'existingKey',
 				type: 'awsSecretsManager',
 				settings: { region: 'us-east-1' },
 				projects: [{ id: 'project-1', name: 'Project 1' }],
@@ -399,10 +479,10 @@ describe('useConnectionModal', () => {
 				},
 			];
 
-			const options = { ...defaultOptions, providerKey: ref('existing-key') };
+			const options = { ...defaultOptions, providerKey: ref('existingKey') };
 			mockConnection.getConnection.mockResolvedValue({
 				id: 'existing-id',
-				name: 'existing-name',
+				name: 'existingKey',
 				type: 'awsSecretsManager',
 				settings: { region: 'us-east-1' },
 				projects: [{ id: 'project-1', name: 'Project 1' }],
@@ -440,10 +520,10 @@ describe('useConnectionModal', () => {
 				},
 			];
 
-			const options = { ...defaultOptions, providerKey: ref('existing-key') };
+			const options = { ...defaultOptions, providerKey: ref('existingKey') };
 			mockConnection.getConnection.mockResolvedValue({
 				id: 'existing-id',
-				name: 'existing-name',
+				name: 'existingKey',
 				type: 'awsSecretsManager',
 				settings: { region: 'us-east-1' },
 				projects: [
@@ -466,7 +546,7 @@ describe('useConnectionModal', () => {
 			const error = new Error('Failed to load');
 			mockConnection.getConnection.mockRejectedValue(error);
 
-			const options = { ...defaultOptions, providerKey: ref('test-key') };
+			const options = { ...defaultOptions, providerKey: ref('testKey') };
 			const modal = useConnectionModal(options);
 
 			await modal.loadConnection();
@@ -487,7 +567,7 @@ describe('useConnectionModal', () => {
 			};
 			mockConnection.getConnection.mockRejectedValue(error);
 
-			const options = { ...defaultOptions, providerKey: ref('test-key') };
+			const options = { ...defaultOptions, providerKey: ref('testKey') };
 			const modal = useConnectionModal(options);
 
 			await modal.loadConnection();
@@ -507,7 +587,7 @@ describe('useConnectionModal', () => {
 				useConnectionModal(defaultOptions);
 
 			selectProviderType('awsSecretsManager');
-			connectionName.value = 'new-connection';
+			connectionName.value = 'newConnection';
 
 			const result = await saveConnection();
 
@@ -523,7 +603,7 @@ describe('useConnectionModal', () => {
 				useConnectionModal(defaultOptions);
 
 			selectProviderType('awsSecretsManager');
-			connectionName.value = 'new-connection';
+			connectionName.value = 'newConnection';
 
 			expect(isSaving.value).toBe(false);
 
@@ -540,15 +620,14 @@ describe('useConnectionModal', () => {
 
 			mockConnection.createConnection.mockResolvedValue({
 				id: 'new-id',
-				name: 'new-connection',
+				name: 'newConnection',
 				type: 'awsSecretsManager',
 				settings: {},
 				secretsCount: 5,
 			});
-			mockConnection.connectionState.value = 'connected';
 
 			selectProviderType('awsSecretsManager');
-			connectionName.value = 'new-connection';
+			connectionName.value = 'newConnection';
 
 			expect(didSave.value).toBe(false);
 
@@ -564,7 +643,7 @@ describe('useConnectionModal', () => {
 			mockConnection.createConnection.mockRejectedValue(new Error('Save failed'));
 
 			selectProviderType('awsSecretsManager');
-			connectionName.value = 'new-connection';
+			connectionName.value = 'newConnection';
 
 			expect(didSave.value).toBe(false);
 
@@ -583,10 +662,10 @@ describe('useConnectionModal', () => {
 		});
 
 		it('should load connection with project scope', async () => {
-			const options = { ...defaultOptions, providerKey: ref('test-key') };
+			const options = { ...defaultOptions, providerKey: ref('testKey') };
 			mockConnection.getConnection.mockResolvedValue({
 				id: 'test-id',
-				name: 'test-connection',
+				name: 'testConnection',
 				type: 'awsSecretsManager',
 				settings: { region: 'us-east-1' },
 				projects: [{ id: 'project-1', name: 'Project 1' }],
@@ -601,10 +680,10 @@ describe('useConnectionModal', () => {
 		});
 
 		it('should update connection with project scope', async () => {
-			const options = { ...defaultOptions, providerKey: ref('existing-key') };
+			const options = { ...defaultOptions, providerKey: ref('existingKey') };
 			mockConnection.getConnection.mockResolvedValue({
 				id: 'existing-id',
-				name: 'existing-name',
+				name: 'existingKey',
 				type: 'awsSecretsManager',
 				settings: { region: 'us-east-1' },
 			});
@@ -617,7 +696,7 @@ describe('useConnectionModal', () => {
 
 			await modal.saveConnection();
 
-			expect(mockConnection.updateConnection).toHaveBeenCalledWith('existing-key', {
+			expect(mockConnection.updateConnection).toHaveBeenCalledWith('existingKey', {
 				isGlobal: false,
 				settings: { region: 'us-west-2' },
 				projectIds: ['project-1'],

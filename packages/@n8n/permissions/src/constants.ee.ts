@@ -66,7 +66,7 @@ export const API_KEY_RESOURCES = {
 	securityAudit: ['generate'] as const,
 	project: ['create', 'update', 'delete', 'list'] as const,
 	user: ['read', 'list', 'create', 'changeRole', 'delete', 'enforceMfa'] as const,
-	execution: ['delete', 'read', 'retry', 'list', 'get'] as const,
+	execution: ['delete', 'read', 'retry', 'list', 'get', 'stop'] as const,
 	credential: ['create', 'update', 'move', 'delete', 'list'] as const,
 	sourceControl: ['pull'] as const,
 	workflowTags: ['update', 'list'] as const,
@@ -86,5 +86,5 @@ export const PERSONAL_SPACE_PUBLISHING_SETTING = {
 };
 export const PERSONAL_SPACE_SHARING_SETTING = {
 	key: 'security.personalSpaceSharing',
-	scopes: ['workflow:share', 'credential:share', 'credential:move'],
+	scopes: ['workflow:share', 'credential:share'],
 };

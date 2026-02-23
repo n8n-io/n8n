@@ -1,5 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 import { DataSource, Repository, In, Like, Not, IsNull } from '@n8n/typeorm';
 import type {
 	SelectQueryBuilder,
@@ -20,6 +21,10 @@ import {
 	WorkflowEntity,
 	WorkflowTagMapping,
 	WorkflowDependency,
+	User,
+	SharedWorkflow,
+	Project,
+	ProjectRelation,
 } from '../entities';
 import type {
 	ListQueryDb,
@@ -170,7 +175,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return totalWorkflowCount ?? 0;
 	}
 
-	private buildBaseUnionQuery(workflowIds: string[], options: ListQuery.Options = {}) {
+	private buildBaseUnionQuery(
+		workflowIds: string[],
+		options: ListQuery.Options = {},
+		accessibleProjectIds?: string[],
+	) {
 		// Common fields for both folders and workflows
 		const commonFields = {
 			updatedAt: true,
@@ -220,6 +229,20 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.addSelect('NULL', 'description') // Add NULL for description in folders
 			.addSelect("'folder'", 'resource');
 
+		// Restrict folders to only those in projects the user has access to.
+		// Without this, folders from other users' projects leak into the count/list
+		// and prevent the empty-state screen from showing for users with no accessible content.
+		// When undefined (admin users), no filtering is applied — they can see all folders.
+		if (accessibleProjectIds !== undefined) {
+			if (accessibleProjectIds.length > 0) {
+				foldersQuery.andWhere('folder.projectId IN (:...accessibleProjectIds)', {
+					accessibleProjectIds,
+				});
+			} else {
+				foldersQuery.andWhere('1 = 0');
+			}
+		}
+
 		const workflowsQuery = this.getManyQuery(workflowIds, workflowQueryParameters).addSelect(
 			"'workflow'",
 			'resource',
@@ -241,10 +264,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		};
 	}
 
-	async getWorkflowsAndFoldersUnion(workflowIds: string[], options: ListQuery.Options = {}) {
+	async getWorkflowsAndFoldersUnion(
+		workflowIds: string[],
+		options: ListQuery.Options = {},
+		accessibleProjectIds?: string[],
+	) {
 		const { baseQuery, sortByColumn, sortByDirection } = this.buildBaseUnionQuery(
 			workflowIds,
 			options,
+			accessibleProjectIds,
 		);
 
 		const query = this.buildUnionQuery(baseQuery, {
@@ -323,10 +351,18 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return results.map(({ name_lower, ...rest }) => rest);
 	}
 
-	async getWorkflowsAndFoldersCount(workflowIds: string[], options: ListQuery.Options = {}) {
+	async getWorkflowsAndFoldersCount(
+		workflowIds: string[],
+		options: ListQuery.Options = {},
+		accessibleProjectIds?: string[],
+	) {
 		const { skip, take, ...baseQueryParameters } = options;
 
-		const { baseQuery } = this.buildBaseUnionQuery(workflowIds, baseQueryParameters);
+		const { baseQuery } = this.buildBaseUnionQuery(
+			workflowIds,
+			baseQueryParameters,
+			accessibleProjectIds,
+		);
 
 		const response = await baseQuery
 			.select(`COUNT(DISTINCT ${baseQuery.escape('RESULT')}.${baseQuery.escape('id')})`, 'count')
@@ -337,7 +373,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return Number(response?.count) || 0;
 	}
 
-	async getWorkflowsAndFoldersWithCount(workflowIds: string[], options: ListQuery.Options = {}) {
+	async getWorkflowsAndFoldersWithCount(
+		workflowIds: string[],
+		options: ListQuery.Options = {},
+		accessibleProjectIds?: string[],
+	) {
 		if (
 			options.filter?.parentFolderId &&
 			typeof options.filter?.parentFolderId === 'string' &&
@@ -356,8 +396,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		}
 
 		const [workflowsAndFolders, count] = await Promise.all([
-			this.getWorkflowsAndFoldersUnion(workflowIds, options),
-			this.getWorkflowsAndFoldersCount(workflowIds, options),
+			this.getWorkflowsAndFoldersUnion(workflowIds, options, accessibleProjectIds),
+			this.getWorkflowsAndFoldersCount(workflowIds, options, accessibleProjectIds),
 		]);
 
 		const isArchived =
@@ -371,6 +411,190 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 
 		return [enrichedWorkflowsAndFolders, count] as const;
+	}
+
+	/**
+	 * Get workflows and folders with sharing permissions using a subquery.
+	 * This combines the workflow and sharing queries into a single database query.
+	 */
+	async getWorkflowsAndFoldersWithCountWithSharingSubquery(
+		user: User,
+		sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+			isPersonalProject?: boolean;
+			personalProjectOwnerId?: string;
+			onlySharedWithMe?: boolean;
+		},
+		options: ListQuery.Options = {},
+	) {
+		if (
+			options.filter?.parentFolderId &&
+			typeof options.filter?.parentFolderId === 'string' &&
+			options.filter.parentFolderId !== PROJECT_ROOT &&
+			typeof options.filter?.projectId === 'string' &&
+			options.filter.query
+		) {
+			const folderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
+				options.filter.parentFolderId,
+				options.filter.projectId,
+			);
+
+			options.filter.parentFolderIds = [options.filter.parentFolderId, ...folderIds];
+			options.filter.folderIds = folderIds;
+			delete options.filter.parentFolderId;
+		}
+
+		const [workflowsAndFolders, count] = await Promise.all([
+			this.getWorkflowsAndFoldersUnionWithSharingSubquery(user, sharingOptions, options),
+			this.getWorkflowsAndFoldersCountWithSharingSubquery(user, sharingOptions, options),
+		]);
+
+		const isArchived =
+			typeof options.filter?.isArchived === 'boolean' ? options.filter.isArchived : undefined;
+
+		const { workflows, folders } = await this.fetchExtraData(workflowsAndFolders, isArchived);
+
+		const enrichedWorkflowsAndFolders = this.enrichDataWithExtras(workflowsAndFolders, {
+			workflows,
+			folders,
+		});
+
+		return [enrichedWorkflowsAndFolders, count] as const;
+	}
+
+	private async getWorkflowsAndFoldersUnionWithSharingSubquery(
+		user: User,
+		sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+			isPersonalProject?: boolean;
+			personalProjectOwnerId?: string;
+			onlySharedWithMe?: boolean;
+		},
+		options: ListQuery.Options = {},
+	) {
+		const { baseQuery, sortByColumn, sortByDirection } =
+			this.buildBaseUnionQueryWithSharingSubquery(user, sharingOptions, options);
+
+		const query = this.buildUnionQuery(baseQuery, {
+			sortByColumn,
+			sortByDirection,
+			pagination: {
+				take: options.take,
+				skip: options.skip ?? 0,
+			},
+		});
+
+		const workflowsAndFolders = await query.getRawMany<WorkflowFolderUnionRow>();
+		return this.removeNameLowerFromResults(workflowsAndFolders);
+	}
+
+	private async getWorkflowsAndFoldersCountWithSharingSubquery(
+		user: User,
+		sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+			isPersonalProject?: boolean;
+			personalProjectOwnerId?: string;
+			onlySharedWithMe?: boolean;
+		},
+		options: ListQuery.Options = {},
+	) {
+		const { skip, take, ...baseQueryParameters } = options;
+
+		const { baseQuery } = this.buildBaseUnionQueryWithSharingSubquery(
+			user,
+			sharingOptions,
+			baseQueryParameters,
+		);
+
+		const response = await baseQuery
+			.select('COUNT(*)', 'count')
+			.from('RESULT_QUERY', 'RESULT')
+			.getRawOne<{ count: number | string }>();
+
+		return Number(response?.count) || 0;
+	}
+
+	private buildBaseUnionQueryWithSharingSubquery(
+		user: User,
+		sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+			isPersonalProject?: boolean;
+			personalProjectOwnerId?: string;
+			onlySharedWithMe?: boolean;
+		},
+		options: ListQuery.Options = {},
+	) {
+		// Common fields for both folders and workflows
+		const commonFields = {
+			updatedAt: true,
+			createdAt: true,
+			id: true,
+			name: true,
+		} as const;
+
+		// Transform `query` => `name` for folder repository
+		const folderFilter = options.filter ? { ...options.filter } : undefined;
+		if (folderFilter?.query) {
+			folderFilter.name = folderFilter.query;
+		}
+
+		const folderQueryParameters: ListQuery.Options = {
+			select: commonFields,
+			filter: folderFilter,
+		};
+
+		const workflowQueryParameters: ListQuery.Options = {
+			select: {
+				...commonFields,
+				description: true,
+				updatedAt: true,
+				createdAt: true,
+				id: true,
+				name: true,
+			},
+			filter: options.filter,
+		};
+
+		// For union, we need to have the same columns, so add NULL as description for folders
+		const columnNames = [...Object.keys(workflowQueryParameters.select ?? {}), 'resource'];
+
+		const [sortByColumn, sortByDirection] = this.parseSortingParams(
+			options.sortBy ?? 'updatedAt:asc',
+		);
+
+		const foldersQuery = this.folderRepository
+			.getManyQuery(folderQueryParameters)
+			.addSelect('NULL', 'description') // Add NULL for description in folders
+			.addSelect("'folder'", 'resource');
+
+		const workflowsQuery = this.getManyQueryWithSharingSubquery(
+			user,
+			sharingOptions,
+			workflowQueryParameters,
+		).addSelect("'workflow'", 'resource');
+
+		const qb = this.manager.createQueryBuilder();
+
+		return {
+			baseQuery: qb
+				.createQueryBuilder()
+				.addCommonTableExpression(foldersQuery, 'FOLDERS_QUERY', { columnNames })
+				.addCommonTableExpression(workflowsQuery, 'WORKFLOWS_QUERY', { columnNames })
+				.addCommonTableExpression(
+					`SELECT * FROM ${qb.escape('FOLDERS_QUERY')} UNION ALL SELECT * FROM ${qb.escape('WORKFLOWS_QUERY')}`,
+					'RESULT_QUERY',
+				),
+			sortByColumn,
+			sortByDirection,
+		};
 	}
 
 	async getAllWorkflowIdsInHierarchy(folderId: string, projectId: string): Promise<string[]> {
@@ -460,6 +684,164 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		];
 
 		return { workflows, count };
+	}
+
+	/**
+	 * Get workflows with sharing permissions using a subquery instead of pre-fetched IDs.
+	 * This combines the workflow and sharing queries into a single database query.
+	 */
+	async getManyAndCountWithSharingSubquery(
+		user: User,
+		sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+			isPersonalProject?: boolean;
+			personalProjectOwnerId?: string;
+			onlySharedWithMe?: boolean;
+		},
+		options: ListQuery.Options = {},
+	) {
+		const query = this.getManyQueryWithSharingSubquery(user, sharingOptions, options);
+
+		const [workflows, count] = (await query.getManyAndCount()) as [
+			ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[],
+			number,
+		];
+
+		return { workflows, count };
+	}
+
+	/**
+	 * Build a query that filters workflows based on sharing permissions using a subquery.
+	 */
+	private getManyQueryWithSharingSubquery(
+		user: User,
+		sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+			isPersonalProject?: boolean;
+			personalProjectOwnerId?: string;
+			onlySharedWithMe?: boolean;
+		},
+		options: ListQuery.Options = {},
+	): SelectQueryBuilder<WorkflowEntity> {
+		const qb = this.createQueryBuilder('workflow');
+
+		// Pass projectId from options to sharing options
+		const projectId =
+			typeof options.filter?.projectId === 'string' ? options.filter.projectId : undefined;
+		const sharingOptionsWithProjectId = {
+			...sharingOptions,
+			projectId,
+		};
+
+		// Build the subquery for shared workflow IDs
+		const sharedWorkflowSubquery = this.buildSharedWorkflowIdsSubquery(
+			user,
+			sharingOptionsWithProjectId,
+		);
+
+		// Apply the sharing filter using the subquery
+		qb.andWhere(`workflow.id IN (${sharedWorkflowSubquery.getQuery()})`);
+		qb.setParameters(sharedWorkflowSubquery.getParameters());
+
+		// Apply other filters
+		// For personal project and shared-with-me cases, projectId is already handled in the subquery
+		// so we need to skip it to avoid double-filtering
+		const shouldSkipProjectIdFilter =
+			sharingOptions.isPersonalProject || sharingOptions.onlySharedWithMe;
+		const filtersToApply =
+			shouldSkipProjectIdFilter && options.filter
+				? { ...options.filter, projectId: undefined }
+				: options.filter;
+
+		this.applyFilters(qb, filtersToApply);
+		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
+		this.applySelect(qb, options.select);
+		this.applyRelations(qb, options.select);
+		this.applySorting(qb, options.sortBy);
+		this.applyPagination(qb, options);
+
+		return qb;
+	}
+
+	/**
+	 * Build a subquery that returns workflow IDs based on sharing permissions.
+	 * This replicates the logic from WorkflowSharingService but as a subquery.
+	 */
+	private buildSharedWorkflowIdsSubquery(
+		user: User,
+		sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+			isPersonalProject?: boolean;
+			personalProjectOwnerId?: string;
+			onlySharedWithMe?: boolean;
+			projectId?: string;
+		},
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	): SelectQueryBuilder<any> {
+		const {
+			projectRoles,
+			workflowRoles,
+			isPersonalProject,
+			personalProjectOwnerId,
+			onlySharedWithMe,
+			projectId,
+		} = sharingOptions;
+
+		const subquery = this.manager
+			.createQueryBuilder()
+			.select('sw.workflowId')
+			.from(SharedWorkflow, 'sw');
+
+		// Handle different sharing scenarios
+		// Check explicit filters first (isPersonalProject, onlySharedWithMe) before falling back to user's global permissions
+		if (isPersonalProject) {
+			// Personal project - get owned workflows using the project owner's ID (not the requesting user's)
+			const ownerUserId = personalProjectOwnerId ?? user.id;
+			subquery
+				.innerJoin(Project, 'p', 'sw.projectId = p.id')
+				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
+				.where('sw.role = :ownerRole', { ownerRole: 'workflow:owner' })
+				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: ownerUserId })
+				.andWhere('pr.role = :projectOwnerRole', { projectOwnerRole: PROJECT_OWNER_ROLE_SLUG });
+
+			// Filter by the specific project ID when specified
+			if (projectId && typeof projectId === 'string' && projectId !== '') {
+				subquery.andWhere('sw.projectId = :subqueryProjectId', { subqueryProjectId: projectId });
+			}
+		} else if (onlySharedWithMe) {
+			// Shared with me - workflows shared (as editor) to user's personal project
+			subquery
+				.innerJoin(Project, 'p', 'sw.projectId = p.id')
+				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
+				.where('sw.role = :editorRole', { editorRole: 'workflow:editor' })
+				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
+				.andWhere('pr.role = :projectOwnerRole', { projectOwnerRole: PROJECT_OWNER_ROLE_SLUG });
+		} else if (hasGlobalScope(user, 'workflow:read')) {
+			// User has global scope - return all workflow IDs in the specified project (if any)
+			if (projectId && typeof projectId === 'string' && projectId !== '') {
+				subquery.where('sw.projectId = :subqueryProjectId', { subqueryProjectId: projectId });
+			}
+		} else {
+			// Standard sharing based on roles
+			if (!workflowRoles || !projectRoles) {
+				throw new Error('workflowRoles and projectRoles are required when not using special cases');
+			}
+
+			subquery
+				.innerJoin(Project, 'p', 'sw.projectId = p.id')
+				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
+				.where('sw.role IN (:...workflowRoles)', { workflowRoles })
+				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
+				.andWhere('pr.role IN (:...projectRoles)', { projectRoles });
+		}
+
+		return subquery;
 	}
 
 	getManyQuery(workflowIds: string[], options: ListQuery.Options = {}) {

@@ -3,22 +3,29 @@ import type { Scope } from '@n8n/permissions';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
+import type { RoleService } from '@/services/role.service';
 import type { WebhookService } from '@/webhooks/webhook.service';
-import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 describe('WorkflowService', () => {
 	describe('getMany()', () => {
 		let workflowService: WorkflowService;
-		let workflowSharingServiceMock: MockProxy<WorkflowSharingService>;
-		let workflowRepositoryMock: MockProxy<{ getManyAndCount: jest.Mock }>;
+		let workflowRepositoryMock: MockProxy<{
+			getManyAndCountWithSharingSubquery: jest.Mock;
+		}>;
+		let roleServiceMock: MockProxy<RoleService>;
 		let webhookServiceMock: MockProxy<WebhookService>;
 
 		beforeEach(() => {
-			workflowSharingServiceMock = mock<WorkflowSharingService>();
 			workflowRepositoryMock = mock();
-			workflowRepositoryMock.getManyAndCount.mockResolvedValue({ workflows: [], count: 0 });
-			workflowSharingServiceMock.getSharedWorkflowIds.mockResolvedValue([]);
+			workflowRepositoryMock.getManyAndCountWithSharingSubquery.mockResolvedValue({
+				workflows: [],
+				count: 0,
+			});
+
+			roleServiceMock = mock<RoleService>();
+			roleServiceMock.rolesWithScope.mockResolvedValue(['project:viewer']);
+
 			webhookServiceMock = mock<WebhookService>();
 
 			workflowService = new WorkflowService(
@@ -32,8 +39,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowHistoryService
 				mock(), // externalHooks
 				mock(), // activeWorkflowManager
-				mock(), // roleService
-				workflowSharingServiceMock, // workflowSharingService
+				roleServiceMock, // roleService
 				mock(), // projectService
 				mock(), // executionRepository
 				mock(), // eventService
@@ -54,9 +60,17 @@ describe('WorkflowService', () => {
 
 			await workflowService.getMany(user);
 
-			expect(workflowSharingServiceMock.getSharedWorkflowIds).toHaveBeenCalledWith(user, {
-				scopes: ['workflow:read'],
-			});
+			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', ['workflow:read']);
+			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', ['workflow:read']);
+			expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({
+					scopes: ['workflow:read'],
+					projectRoles: expect.any(Array),
+					workflowRoles: expect.any(Array),
+				}),
+				undefined,
+			);
 		});
 
 		test('should use provided requiredScopes when specified', async () => {
@@ -72,9 +86,17 @@ describe('WorkflowService', () => {
 				customScopes,
 			);
 
-			expect(workflowSharingServiceMock.getSharedWorkflowIds).toHaveBeenCalledWith(user, {
-				scopes: customScopes,
-			});
+			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', customScopes);
+			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', customScopes);
+			expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({
+					scopes: customScopes,
+					projectRoles: expect.any(Array),
+					workflowRoles: expect.any(Array),
+				}),
+				undefined,
+			);
 		});
 
 		test('should use provided requiredScopes with multiple scopes', async () => {
@@ -90,9 +112,17 @@ describe('WorkflowService', () => {
 				customScopes,
 			);
 
-			expect(workflowSharingServiceMock.getSharedWorkflowIds).toHaveBeenCalledWith(user, {
-				scopes: customScopes,
-			});
+			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', customScopes);
+			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', customScopes);
+			expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({
+					scopes: customScopes,
+					projectRoles: expect.any(Array),
+					workflowRoles: expect.any(Array),
+				}),
+				undefined,
+			);
 		});
 
 		test('should use "workflow:execute" scope when required', async () => {
@@ -108,9 +138,17 @@ describe('WorkflowService', () => {
 				executeScope,
 			);
 
-			expect(workflowSharingServiceMock.getSharedWorkflowIds).toHaveBeenCalledWith(user, {
-				scopes: executeScope,
-			});
+			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', executeScope);
+			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', executeScope);
+			expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({
+					scopes: executeScope,
+					projectRoles: expect.any(Array),
+					workflowRoles: expect.any(Array),
+				}),
+				undefined,
+			);
 		});
 	});
 });

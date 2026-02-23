@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "2.7.0",
+  "version": "2.9.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "type": "module",
@@ -49,6 +49,7 @@
     "@n8n/rest-api-client": "workspace:*",
     "@n8n/stores": "workspace:*",
     "@n8n/utils": "workspace:*",
+    "@pinecone-database/connect": "0.0.4",
     "@replit/codemirror-indentation-markers": "^6.5.3",
     "@sentry/vue": "catalog:frontend",
     "@types/semver": "^7.7.0",

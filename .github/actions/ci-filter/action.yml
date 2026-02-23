@@ -1,0 +1,39 @@
+name: 'CI Filter'
+description: |
+  Filter CI jobs by changed files and validate results.
+
+  Modes:
+    - filter: Determines which jobs to run based on changed files and a provided filter definition.
+    - validate: Checks the results of required jobs and fails if any of them failed or were cancelled.
+
+inputs:
+  mode:
+    description: 'filter or validate'
+    required: true
+  filters:
+    description: 'Filter definitions (gitignore-style DSL)'
+    required: false
+  base-ref:
+    description: 'Base branch for diff. Auto-detected if not specified.'
+    required: false
+  job-results:
+    description: 'Job results from needs context as JSON (mode=validate)'
+    required: false
+
+outputs:
+  results:
+    description: 'JSON object: { "filter-name": true/false }'
+    value: ${{ steps.run.outputs.results }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run CI Filter
+      id: run
+      shell: bash
+      env:
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_FILTERS: ${{ inputs.filters }}
+        INPUT_BASE_REF: ${{ inputs.base-ref || github.event.pull_request.base.ref || github.event.merge_group.base_ref || 'master' }}
+        INPUT_JOB_RESULTS: ${{ inputs.job-results }}
+      run: node ${{ github.action_path }}/ci-filter.mjs

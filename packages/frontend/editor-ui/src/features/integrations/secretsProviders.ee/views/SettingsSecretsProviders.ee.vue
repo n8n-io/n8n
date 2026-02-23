@@ -3,7 +3,9 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useSecretsProvidersList } from '../composables/useSecretsProvidersList.ee';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { computed, onMounted } from 'vue';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import {
 	N8nActionBox,
 	N8nButton,
@@ -17,17 +19,33 @@ import SecretsProviderConnectionCard from '../components/SecretsProviderConnecti
 import SecretsProvidersEmptyState from '../components/SecretsProvidersEmptyState.ee.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/app/stores/ui.store';
-import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY } from '@/app/constants/modals';
+import {
+	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+	DELETE_SECRETS_PROVIDER_MODAL_KEY,
+} from '@/app/constants/modals';
 import { I18nT } from 'vue-i18n';
+import type { SecretProviderConnection } from '@n8n/api-types';
+import { reloadSecretProviderConnection } from '@n8n/rest-api-client';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 const i18n = useI18n();
 const secretsProviders = useSecretsProvidersList();
+const projectsStore = useProjectsStore();
+const rootStore = useRootStore();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const uiStore = useUIStore();
 
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
+
+function getProjectForProvider(provider: SecretProviderConnection): ProjectListItem | null {
+	if (!provider || provider.projects.length === 0) return null;
+
+	return (
+		projectsStore.projects.find((p: ProjectListItem) => p.id === provider.projects[0].id) ?? null
+	);
+}
 
 function getProviderTypeInfo(providerType: string) {
 	return secretsProviders.providerTypes.value.find((type) => type.type === providerType);
@@ -46,13 +64,15 @@ function openConnectionModal(
 			providerKey,
 			providerTypes: secretsProviders.providerTypes.value,
 			existingProviderNames: existingNames,
-			onClose: async (saved?: boolean) => {
-				if (saved) {
-					await secretsProviders.fetchActiveConnections();
-				}
+			onClose: async () => {
+				await secretsProviders.fetchActiveConnections();
 			},
 		},
 	});
+}
+
+function handleCardClick(providerKey: string) {
+	openConnectionModal(providerKey, 'connection');
 }
 
 function handleEdit(providerKey: string) {
@@ -63,12 +83,53 @@ function handleShare(providerKey: string) {
 	openConnectionModal(providerKey, 'sharing');
 }
 
+async function handleReload(providerKey: string) {
+	try {
+		const result = await reloadSecretProviderConnection(rootStore.restApiContext, providerKey);
+		if (!result.success) {
+			toast.showError(new Error('Reload failed'), i18n.baseText('error'));
+			return;
+		}
+		toast.showMessage({
+			title: i18n.baseText('settings.externalSecrets.card.reload.success.title'),
+			message: i18n.baseText('settings.externalSecrets.card.reload.success.description', {
+				interpolate: { provider: providerKey },
+			}),
+			type: 'success',
+		});
+		await secretsProviders.fetchConnection(providerKey);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('error'));
+	}
+}
+
+function handleDelete(providerKey: string) {
+	const provider = secretsProviders.activeProviders.value.find((p) => p.name === providerKey);
+
+	if (!provider) return;
+
+	uiStore.openModalWithData({
+		name: DELETE_SECRETS_PROVIDER_MODAL_KEY,
+		data: {
+			providerKey: provider.name,
+			providerName: provider.name,
+			secretsCount: provider.secretsCount ?? 0,
+			onConfirm: async () => {
+				await secretsProviders.fetchActiveConnections();
+			},
+		},
+	});
+}
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.secretsProviderConnections.title'));
 	if (!secretsProviders.isEnterpriseExternalSecretsEnabled.value) return;
 	try {
-		await secretsProviders.fetchProviderTypes();
-		await secretsProviders.fetchActiveConnections();
+		await Promise.all([
+			secretsProviders.fetchProviderTypes(),
+			secretsProviders.fetchActiveConnections(),
+			projectsStore.getAllProjects(),
+		]);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
 	}
@@ -140,9 +201,13 @@ function goToUpgrade() {
 					class="mb-2xs"
 					:provider="provider"
 					:provider-type-info="getProviderTypeInfo(provider.type)"
+					:project="getProjectForProvider(provider)"
 					:can-update="secretsProviders.canUpdate.value"
+					@click="handleCardClick(provider.name)"
 					@edit="handleEdit"
 					@share="handleShare"
+					@reload="handleReload"
+					@delete="handleDelete"
 				/>
 			</div>
 		</div>

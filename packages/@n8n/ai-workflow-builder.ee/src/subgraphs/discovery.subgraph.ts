@@ -21,6 +21,10 @@ import type { ParentGraphState } from '@/parent-graph-state';
 import { buildDiscoveryPrompt } from '@/prompts';
 import { createGetDocumentationTool } from '@/tools/get-documentation.tool';
 import { createGetWorkflowExamplesTool } from '@/tools/get-workflow-examples.tool';
+import {
+	createIntrospectTool,
+	extractIntrospectionEventsFromMessages,
+} from '@/tools/introspect.tool';
 import { createNodeSearchTool } from '@/tools/node-search.tool';
 import { submitQuestionsTool } from '@/tools/submit-questions.tool';
 import type { CoordinationLogEntry } from '@/types/coordination';
@@ -41,7 +45,11 @@ import {
 	type ResourceOperationInfo,
 } from '@/utils/resource-operation-extractor';
 import { appendArrayReducer, cachedTemplatesReducer } from '@/utils/state-reducers';
-import { executeSubgraphTools, extractUserRequest } from '@/utils/subgraph-helpers';
+import {
+	executeSubgraphTools,
+	extractUserRequest,
+	extractToolMessagesForPersistence,
+} from '@/utils/subgraph-helpers';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
@@ -186,6 +194,12 @@ export const DiscoverySubgraphState = Annotation.Root({
 		default: () => ({}),
 	}),
 
+	// Selected nodes context for planner (built from workflowContext.selectedNodes)
+	selectedNodesContext: Annotation<string>({
+		reducer: (x, y) => y ?? x,
+		default: () => '',
+	}),
+
 	// Retry count for when LLM fails to use tool calls properly
 	toolCallRetryCount: Annotation<number>({
 		reducer: (x, y) => y ?? x,
@@ -226,11 +240,17 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		// Check feature flags
 		const includeExamples = config.featureFlags?.templateExamples === true;
 		const includePlanMode = config.featureFlags?.planMode === true;
+		const enableIntrospection = config.featureFlags?.enableIntrospection === true;
 
 		// Create base tools - search_nodes provides all data needed for discovery
-		const baseTools = includePlanMode
+		const baseTools: StructuredTool[] = includePlanMode
 			? [createNodeSearchTool(config.parsedNodeTypes).tool, submitQuestionsTool]
 			: [createNodeSearchTool(config.parsedNodeTypes).tool];
+
+		// Conditionally add introspect tool if feature flag is enabled
+		if (enableIntrospection) {
+			baseTools.push(createIntrospectTool(config.logger).tool);
+		}
 
 		// Conditionally add documentation and workflow examples tools if feature flag is enabled
 		const tools = includeExamples
@@ -353,6 +373,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 				workflowJSON: state.workflowJSON,
 				planPrevious: state.planPrevious,
 				planFeedback: state.planFeedback,
+				selectedNodesContext: state.selectedNodesContext,
 			},
 			runnableConfig,
 		);
@@ -685,6 +706,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			planDecision: null,
 			planFeedback: parentState.planFeedback ?? null,
 			planPrevious: parentState.planPrevious ?? null,
+			selectedNodesContext: selectedNodesSummary ?? '',
 			messages: [contextMessage], // Context already in messages
 			cachedTemplates: parentState.cachedTemplates,
 		};
@@ -714,6 +736,10 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			}),
 		};
 
+		// Extract tool-related messages for persistence (skip the first context message).
+		// This allows the frontend to restore UI state after page refresh.
+		const toolMessages = extractToolMessagesForPersistence(subgraphOutput.messages);
+
 		// If the modify-loop cap was reached, the subgraph exited with the
 		// last plan but planDecision is still 'modify'. Clear it so the
 		// parent router doesn't send the flow back to discovery again,
@@ -721,6 +747,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		const cappedModify =
 			subgraphOutput.planDecision === 'modify' &&
 			subgraphOutput.planModifyCount >= DiscoverySubgraph.MAX_PLAN_MODIFY_ITERATIONS;
+
+		// Extract introspection events from subgraph messages
+		const introspectionEvents = extractIntrospectionEventsFromMessages(subgraphOutput.messages);
 
 		return {
 			discoveryContext,
@@ -734,6 +763,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			planFeedback: subgraphOutput.planFeedback,
 			planPrevious: subgraphOutput.planPrevious,
 			...(subgraphOutput.mode ? { mode: subgraphOutput.mode } : {}),
+			introspectionEvents,
+			// Include tool messages for persistence to restore frontend state on refresh
+			messages: toolMessages,
 		};
 	}
 }

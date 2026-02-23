@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.7.0",
+  "version": "2.9.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -24,12 +24,12 @@
     "test:dev": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite jest --watch",
     "test:sqlite": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite jest --config=jest.config.integration.js --no-coverage",
     "test:sqlite:migrations": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite jest --config=jest.config.migration.js --no-coverage",
-    "test:sqlite:migrations:tc": "TESTCONTAINERS_RYUK_DISABLED=true N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite jest --config=jest.config.migration.testcontainers.js --no-coverage",
+    "test:sqlite:migrations:tc": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite jest --config=jest.config.migration.testcontainers.js --no-coverage",
     "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb DB_POSTGRESDB_SCHEMA=alt_schema DB_TABLE_PREFIX=test_ jest --config=jest.config.integration.js --no-coverage",
     "test:postgres:migrations": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb DB_POSTGRESDB_SCHEMA=alt_schema DB_TABLE_PREFIX=test_ jest --config=jest.config.migration.js --no-coverage",
-    "test:postgres:migrations:tc": "TESTCONTAINERS_RYUK_DISABLED=true N8N_LOG_LEVEL=silent DB_TYPE=postgresdb DB_POSTGRESDB_SCHEMA=alt_schema DB_TABLE_PREFIX=test_ jest --config=jest.config.migration.testcontainers.js --no-coverage",
-    "test:postgres:tc": "TESTCONTAINERS_RYUK_DISABLED=true N8N_LOG_LEVEL=silent jest --config=jest.config.integration.testcontainers.js --no-coverage",
-    "test:postgres:integration:tc": "TESTCONTAINERS_RYUK_DISABLED=true N8N_LOG_LEVEL=silent jest --config=jest.config.integration.testcontainers.js --no-coverage --testPathIgnorePatterns=/test/migration/",
+    "test:postgres:migrations:tc": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb DB_POSTGRESDB_SCHEMA=alt_schema DB_TABLE_PREFIX=test_ jest --config=jest.config.migration.testcontainers.js --no-coverage",
+    "test:postgres:tc": "N8N_LOG_LEVEL=silent jest --config=jest.config.integration.testcontainers.js --no-coverage",
+    "test:postgres:integration:tc": "N8N_LOG_LEVEL=silent jest --config=jest.config.integration.testcontainers.js --no-coverage --testPathIgnorePatterns=/test/migration/",
     "test:mariadb": "echo true",
     "test:win": "set N8N_LOG_LEVEL=silent&& set DB_SQLITE_POOL_SIZE=4&& set DB_TYPE=sqlite&& jest",
     "test:dev:win": "set N8N_LOG_LEVEL=silent&& set DB_SQLITE_POOL_SIZE=4&& set DB_TYPE=sqlite&& jest --watch",
@@ -50,7 +50,7 @@
     "workflow"
   ],
   "engines": {
-    "node": ">=20.19 <= 24.x"
+    "node": ">=22.16"
   },
   "files": [
     "bin",
@@ -98,6 +98,7 @@
     "@azure/identity": "catalog:",
     "@azure/keyvault-secrets": "4.8.0",
     "@google-cloud/secret-manager": "5.6.0",
+    "@n8n/ai-utilities": "workspace:*",
     "@n8n/ai-workflow-builder": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:*",
@@ -109,7 +110,7 @@
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
-    "@modelcontextprotocol/sdk": "1.25.2",
+    "@modelcontextprotocol/sdk": "1.26.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/syslog-client": "workspace:*",

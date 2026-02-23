@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "1.7.0",
+  "version": "1.9.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -33,6 +33,7 @@
     "eval:langsmith": "tsx evaluations/cli/index.ts --backend langsmith",
     "eval:pairwise": "tsx evaluations/cli/index.ts --suite pairwise",
     "eval:pairwise:langsmith": "tsx evaluations/cli/index.ts --suite pairwise --backend langsmith",
+    "eval:introspection": "tsx evaluations/cli/index.ts --suite introspection --agent multi-agent",
     "workflow:mermaid": "tsx scripts/workflow-to-mermaid.ts",
     "python:check": "cd evaluations/programmatic/python && just check",
     "python:test": "cd evaluations/programmatic/python && just test",
@@ -66,7 +67,7 @@
     "@n8n/workflow-sdk": "workspace:*",
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "csv-parse": "5.5.0",
-    "langsmith": "^0.4.2",
+    "langsmith": "^0.4.6",
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
     "picocolors": "catalog:",

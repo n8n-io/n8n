@@ -194,6 +194,7 @@ export interface IStartRunData {
 		name: string;
 		data?: ITaskData;
 	};
+	chatSessionId?: string;
 	agentRequest?: {
 		query: AgentRequestQuery;
 		tool: {
@@ -948,7 +949,9 @@ export type EnterpriseEditionFeatureKey =
 	| 'ApiKeyScopes'
 	| 'EnforceMFA'
 	| 'NamedVersions'
-	| 'Provisioning';
+	| 'Provisioning'
+	| 'PersonalSpacePolicy'
+	| 'CustomRoles';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 
