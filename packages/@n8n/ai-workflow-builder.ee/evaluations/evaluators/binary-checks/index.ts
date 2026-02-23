@@ -61,7 +61,8 @@ export function createBinaryChecksEvaluator(
 				nodeTypes: options.nodeTypes,
 				annotations: ctx.annotations,
 				llm: options.llm,
-				llmCallLimiter: ctx.llmCallLimiter,
+				// Intentionally omit llmCallLimiter: binary-checks LLM judges are small,
+				// cheap calls that should run in parallel, not throttled by the shared limiter.
 				timeoutMs: ctx.timeoutMs,
 			};
 
