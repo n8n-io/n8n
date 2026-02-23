@@ -1209,6 +1209,13 @@ const isChatHubPanelOpen = computed(
 	() => chatPanelStore.isOpen && chatPanelStore.isChatHubModeActive,
 );
 
+// Close chat hub panel when availableInChat is toggled off
+watch(isChatHubAvailable, (available) => {
+	if (!available && isChatHubPanelOpen.value) {
+		chatPanelStore.close();
+	}
+});
+
 function onOpenChat() {
 	if (isChatHubAvailable.value) {
 		void chatPanelStore.open({ mode: 'chatHub' });
