@@ -37,6 +37,7 @@
     "generate:third-party-licenses": "node scripts/generate-third-party-licenses.mjs",
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
     "start": "node scripts/os-normalize.mjs --dir packages/cli/bin n8n",
+    "start:dev": "node --env-file=.env.dev scripts/os-normalize.mjs --dir packages/cli/bin n8n",
     "test": "JEST_JUNIT_CLASSNAME={filepath} turbo run test",
     "test:ci": "turbo run test --continue --concurrency=1",
     "test:ci:frontend": "turbo run test --continue --filter='./packages/frontend/**'",
@@ -77,7 +78,7 @@
     "ts-jest": "^29.1.1",
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
-    "turbo": "2.7.3",
+    "turbo": "2.8.3",
     "typescript": "*",
     "zx": "^8.1.4"
   },
@@ -155,5 +156,8 @@
       "v-code-diff": "patches/v-code-diff.patch",
       "assert@2.1.0": "patches/assert@2.1.0.patch"
     }
+  },
+  "dependencies": {
+    "playwright": "^1.58.2"
   }
 }

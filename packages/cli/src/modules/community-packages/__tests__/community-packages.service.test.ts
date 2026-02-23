@@ -349,7 +349,6 @@ describe('CommunityPackagesService', () => {
 			'--fund=false',
 			'--bin-links=false',
 			'--install-strategy=shallow',
-			'--ignore-scripts=true',
 			'--package-lock=false',
 			`--registry=${testBlockRegistry}`,
 		].join(' ');

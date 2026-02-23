@@ -39,7 +39,6 @@ const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
 const NPM_INSTALL_ARGS = [
 	'--bin-links=false',
 	'--install-strategy=shallow',
-	'--ignore-scripts=true',
 	'--package-lock=false',
 ];
 
