@@ -2351,6 +2351,8 @@
 	"projectRoles.credential:create.tooltip": "Create new credentials",
 	"projectRoles.credential:share": "Share",
 	"projectRoles.credential:share.tooltip": "Share credentials with other projects or users",
+	"projectRoles.credential:unshare": "Unshare",
+	"projectRoles.credential:unshare.tooltip": "Remove credential sharing with other projects or users",
 	"projectRoles.credential:move": "Transfer",
 	"projectRoles.credential:move.tooltip": "Move credentials to another project",
 	"projectRoles.credential:delete": "Delete",
