@@ -142,6 +142,10 @@ function toggleScope(scope: string) {
 	if (scope === 'workflow:update') {
 		toggleScope('workflow:execute');
 	}
+
+	if (scope === 'externalSecretsProvider:read') {
+		toggleScope('externalSecret:list');
+	}
 }
 
 async function createProjectRole() {
