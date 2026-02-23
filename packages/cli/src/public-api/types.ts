@@ -42,6 +42,17 @@ export declare namespace ExecutionRequest {
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { includeData?: boolean }>;
 	type Delete = Get;
 	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
+	type Stop = AuthenticatedRequest<{ id: string }>;
+	type StopMany = AuthenticatedRequest<
+		{},
+		{},
+		{
+			status: Array<Extract<ExecutionStatus, 'waiting' | 'running'> | 'queued'>;
+			workflowId?: string;
+			startedAfter?: string;
+			startedBefore?: string;
+		}
+	>;
 	type GetTags = AuthenticatedRequest<{ id: string }>;
 	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, Array<{ id: string }>>;
 }

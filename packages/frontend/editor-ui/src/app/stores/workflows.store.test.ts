@@ -9,6 +9,10 @@ import {
 } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
@@ -19,15 +23,7 @@ import {
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
-import type {
-	IConnection,
-	IConnections,
-	INodeExecutionData,
-	INode,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-import { stringSizeInBytes } from '@/app/utils/typesUtils';
-import { dataPinningEventBus } from '@/app/event-bus';
+import type { IConnection, IConnections, INode, INodeTypeDescription } from 'n8n-workflow';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { PushPayload } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
@@ -669,41 +665,6 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('getPinDataSize()', () => {
-		it('returns zero when pinData is empty', () => {
-			const pinData = {};
-			const result = workflowsStore.getPinDataSize(pinData);
-			expect(result).toBe(0);
-		});
-
-		it('returns correct size when pinData contains string values', () => {
-			const pinData = {
-				key1: 'value1',
-				key2: 'value2',
-			} as Record<string, string | INodeExecutionData[]>;
-			const result = workflowsStore.getPinDataSize(pinData);
-			expect(result).toBe(stringSizeInBytes(pinData.key1) + stringSizeInBytes(pinData.key2));
-		});
-
-		it('returns correct size when pinData contains array values', () => {
-			const pinData = {
-				key1: [{ parameters: 'value1', data: null }],
-				key2: [{ parameters: 'value2', data: null }],
-			} as unknown as Record<string, string | INodeExecutionData[]>;
-			const result = workflowsStore.getPinDataSize(pinData);
-			expect(result).toBe(stringSizeInBytes(pinData.key1) + stringSizeInBytes(pinData.key2));
-		});
-
-		it('returns correct size when pinData contains mixed string and array values', () => {
-			const pinData = {
-				key1: 'value1',
-				key2: [{ parameters: 'value2', data: null }],
-			} as unknown as Record<string, string | INodeExecutionData[]>;
-			const result = workflowsStore.getPinDataSize(pinData);
-			expect(result).toBe(stringSizeInBytes(pinData.key1) + stringSizeInBytes(pinData.key2));
-		});
-	});
-
 	describe('fetchAllWorkflows()', () => {
 		it('should fetch workflows successfully', async () => {
 			const workflowsListStore = useWorkflowsListStore();
@@ -1028,107 +989,6 @@ describe('useWorkflowsStore', () => {
 			vi.mocked(workflowsApi).getNewWorkflow.mockRejectedValue(new Error('API Error'));
 			const newName = await workflowsStore.getDuplicateCurrentWorkflowName(name);
 			expect(newName).toBe(expectedName);
-		});
-	});
-
-	describe('pinData', () => {
-		it('should create pinData object if it does not exist', async () => {
-			workflowsStore.workflow.pinData = undefined;
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-			workflowsStore.pinData({ node, data });
-			expect(workflowsStore.workflow.pinData).toBeDefined();
-		});
-
-		it('should convert data to array if it is not', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = { json: 'testData' } as unknown as INodeExecutionData;
-			workflowsStore.pinData({ node, data: data as unknown as INodeExecutionData[] });
-			expect(Array.isArray(workflowsStore.workflow.pinData?.[node.name])).toBe(true);
-		});
-
-		it('should store pinData correctly', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-			workflowsStore.pinData({ node, data });
-			expect(workflowsStore.workflow.pinData?.[node.name]).toEqual(data);
-		});
-
-		it('should emit pin-data event', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-			const emitSpy = vi.spyOn(dataPinningEventBus, 'emit');
-			workflowsStore.pinData({ node, data });
-			expect(emitSpy).toHaveBeenCalledWith('pin-data', { [node.name]: data });
-		});
-
-		it('should set stateIsDirty to true', async () => {
-			uiStore.markStateClean();
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-			workflowsStore.pinData({ node, data });
-			expect(uiStore.stateIsDirty).toBe(true);
-		});
-
-		it('should preserve binary data when pinning', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [
-				{
-					json: { test: 'data' },
-					binary: {
-						data: {
-							fileName: 'test.txt',
-							mimeType: 'text/plain',
-							data: 'dGVzdCBkYXRh',
-						},
-					},
-				},
-			] as unknown as INodeExecutionData[];
-
-			workflowsStore.pinData({ node, data });
-
-			expect(workflowsStore.workflow.pinData?.[node.name]).toEqual([
-				{
-					json: { test: 'data' },
-					binary: {
-						data: {
-							fileName: 'test.txt',
-							mimeType: 'text/plain',
-							data: 'dGVzdCBkYXRh',
-						},
-					},
-				},
-			]);
-		});
-
-		it('should not update timestamp during restoration', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-
-			// Set up existing pinned data with metadata
-			workflowsStore.workflow.pinData = { [node.name]: data };
-			workflowsStore.nodeMetadata[node.name] = { pristine: false, pinnedDataLastUpdatedAt: 1000 };
-
-			workflowsStore.pinData({ node, data, isRestoration: true });
-
-			expect(workflowsStore.nodeMetadata[node.name].pinnedDataLastUpdatedAt).toBeUndefined();
-		});
-
-		it('should clear timestamps during restoration', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-
-			// Set up existing metadata with timestamps
-			workflowsStore.nodeMetadata[node.name] = {
-				pristine: false,
-				pinnedDataLastUpdatedAt: 1000,
-				pinnedDataLastRemovedAt: 2000,
-			};
-
-			workflowsStore.pinData({ node, data, isRestoration: true });
-
-			expect(workflowsStore.nodeMetadata[node.name].pinnedDataLastUpdatedAt).toBeUndefined();
-			expect(workflowsStore.nodeMetadata[node.name].pinnedDataLastRemovedAt).toBeUndefined();
 		});
 	});
 
@@ -1813,6 +1673,8 @@ describe('useWorkflowsStore', () => {
 				},
 			} as unknown as IExecutionResponse;
 
+			workflowsStore.workflow.id = 'test-workflow-id';
+
 			workflowsStore.addNode({
 				parameters: {},
 				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
@@ -1822,7 +1684,10 @@ describe('useWorkflowsStore', () => {
 				typeVersion: 3.4,
 			});
 
-			workflowsStore.workflow.pinData = {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			workflowDocumentStore.setPinData({
 				[nodeName]: [
 					{
 						json: {
@@ -1851,7 +1716,7 @@ describe('useWorkflowsStore', () => {
 						],
 					},
 				],
-			};
+			});
 
 			workflowsStore.renameNodeSelectedAndExecution({ old: nodeName, new: newName });
 
@@ -1884,9 +1749,9 @@ describe('useWorkflowsStore', () => {
 				},
 			});
 
-			expect(workflowsStore.workflow.pinData?.[nodeName]).not.toBeDefined();
-			expect(workflowsStore.workflow.pinData?.[newName]).toBeDefined();
-			expect(workflowsStore.workflow.pinData?.['Edit Fields'][0].pairedItem).toEqual([
+			expect(workflowDocumentStore.pinData?.[nodeName]).not.toBeDefined();
+			expect(workflowDocumentStore.pinData?.[newName]).toBeDefined();
+			expect(workflowDocumentStore.pinData?.['Edit Fields'][0].pairedItem).toEqual([
 				{
 					item: 3,
 					sourceOverwrite: {

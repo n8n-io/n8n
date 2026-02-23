@@ -230,7 +230,7 @@ function addRole() {
 				class="mt-2xl mb-l"
 				:button-text="i18n.baseText('settings.externalSecrets.actionBox.buttonText')"
 				description="yes"
-				@click="goToUpgrade('custom-roles', 'upgrade-custom-roles')"
+				@click="goToUpgrade('custom-roles-list', 'upgrade-custom-roles')"
 			>
 				<template #heading>
 					<span>{{ i18n.baseText('projectRoles.manageRoles.paywall.title') }}</span>

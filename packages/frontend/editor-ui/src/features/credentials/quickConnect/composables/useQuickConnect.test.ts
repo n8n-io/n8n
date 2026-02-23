@@ -135,7 +135,6 @@ describe('useQuickConnect()', () => {
 			credentialType: 'googleSheetsOAuth2Api',
 			text: 'Google Sheets',
 			quickConnectType: 'oauth',
-			serviceName: 'Google Sheets',
 		};
 
 		beforeEach(() => {
@@ -186,7 +185,6 @@ describe('useQuickConnect()', () => {
 								credentialType: 'openAiApi',
 								text: 'OpenAI',
 								quickConnectType: 'oauth',
-								serviceName: 'OpenAI',
 							},
 						],
 					};
@@ -268,7 +266,6 @@ describe('useQuickConnect()', () => {
 						credentialType: 'second-credentials',
 						text: 'second promotion text',
 						quickConnectType: 'manual',
-						serviceName: 'Other test service',
 					};
 
 					settingsStore.moduleSettings['quick-connect'] = {
@@ -322,6 +319,7 @@ describe('useQuickConnect()', () => {
 						credentialTypeName: 'googleSheetsOAuth2Api',
 						nodeType: 'n8n-nodes-base.googleSheets',
 						source: 'node',
+						serviceName: 'Google',
 					});
 
 					expect(telemetry.track).toHaveBeenCalledWith('User clicked quick connect button', {
@@ -340,6 +338,7 @@ describe('useQuickConnect()', () => {
 						credentialTypeName: 'slackOAuth2Api',
 						nodeType: 'n8n-nodes-base.slack',
 						source: 'node',
+						serviceName: 'Slack',
 					});
 
 					expect(mockCreateAndAuthorize).toHaveBeenCalledWith(
@@ -348,193 +347,230 @@ describe('useQuickConnect()', () => {
 					);
 				});
 
-				describe('pinecone quick connect', () => {
-					const pineconeOption: QuickConnectOption = {
-						packageName: '@n8n/n8n-nodes-langchain',
-						credentialType: 'pineconeApi',
-						text: 'Pinecone',
-						quickConnectType: 'pinecone',
-						serviceName: 'Pinecone',
-						config: {
-							integrationId: 'test-integration-id',
-						},
-					};
-
-					beforeEach(() => {
-						settingsStore.moduleSettings['quick-connect'] = {
-							options: [pineconeOption],
-						};
-					});
-
-					it('creates credential with API key from Pinecone popup', async () => {
-						const mockPopup = {
-							open: vi.fn(),
-						};
-						mockPineconeConnectPopup.mockImplementation(({ onConnect }) => {
-							// Simulate user connecting and providing API key
-							setTimeout(() => onConnect({ key: 'test-api-key-123' }), 0);
-							return mockPopup;
-						});
-
-						mockGetCredentialTypeByName.mockReturnValue({
-							name: 'pineconeApi',
-							displayName: 'Pinecone API',
-							properties: [],
-						});
-
-						const mockCredential = {
-							id: 'cred-123',
-							name: 'Pinecone API',
-							type: 'pineconeApi',
-							data: {
-								apiKey: 'test-api-key-123',
-								allowedHttpRequestDomains: 'none',
+				describe.each(['@n8n/n8n-nodes-langchain', '@n8n/n8n-nodes-langchain.pinecone'])(
+					'pinecone quick connect with packageName configured as "%s"',
+					(packageName) => {
+						const pineconeOption: QuickConnectOption = {
+							packageName,
+							credentialType: 'pineconeApi',
+							text: 'Pinecone',
+							quickConnectType: 'pinecone',
+							config: {
+								integrationId: 'test-integration-id',
 							},
-							createdAt: new Date().toISOString(),
-							updatedAt: new Date().toISOString(),
-							isManaged: false,
 						};
-						mockCreateNewCredential.mockResolvedValue(mockCredential);
 
-						const { connect } = useQuickConnect();
-						const result = await connect({
-							credentialTypeName: 'pineconeApi',
-							nodeType: '@n8n/n8n-nodes-langchain.pinecone',
-							source: 'node',
+						beforeEach(() => {
+							mockGetCredentialTypeByName.mockReturnValue({
+								name: 'pineconeApi',
+								displayName: 'Pinecone API',
+								properties: [],
+							});
+							mockIsOAuthCredentialType.mockReturnValue(false);
+							settingsStore.moduleSettings['quick-connect'] = {
+								options: [pineconeOption],
+							};
 						});
 
-						expect(mockPineconeConnectPopup).toHaveBeenCalledWith({
-							onConnect: expect.any(Function),
-							onCancel: expect.any(Function),
-							integrationId: 'test-integration-id',
-						});
-						expect(mockPopup.open).toHaveBeenCalled();
-						expect(mockCreateNewCredential).toHaveBeenCalledWith(
-							{
-								id: '',
+						it('creates credential with API key from Pinecone popup', async () => {
+							const mockPopup = {
+								open: vi.fn(),
+							};
+							mockPineconeConnectPopup.mockImplementation(({ onConnect }) => {
+								// Simulate user connecting and providing API key
+								setTimeout(() => onConnect({ key: 'test-api-key-123' }), 0);
+								return mockPopup;
+							});
+
+							const mockCredential = {
+								id: 'cred-123',
 								name: 'Pinecone API',
 								type: 'pineconeApi',
 								data: {
 									apiKey: 'test-api-key-123',
 									allowedHttpRequestDomains: 'none',
 								},
-							},
-							'project-123',
-						);
-						expect(result).toEqual(mockCredential);
-					});
+								createdAt: new Date().toISOString(),
+								updatedAt: new Date().toISOString(),
+								isManaged: false,
+							};
+							mockCreateNewCredential.mockResolvedValue(mockCredential);
 
-					it('returns null when credential type is not found', async () => {
-						mockGetCredentialTypeByName.mockReturnValue(null);
+							const { connect } = useQuickConnect();
+							const result = await connect({
+								credentialTypeName: 'pineconeApi',
+								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
+								source: 'node',
+								serviceName: 'Pinecone',
+							});
 
-						const { connect } = useQuickConnect();
-						const result = await connect({
-							credentialTypeName: 'pineconeApi',
-							nodeType: '@n8n/n8n-nodes-langchain.pinecone',
-							source: 'node',
+							expect(mockPineconeConnectPopup).toHaveBeenCalledWith({
+								onConnect: expect.any(Function),
+								onCancel: expect.any(Function),
+								integrationId: 'test-integration-id',
+							});
+							expect(mockPopup.open).toHaveBeenCalled();
+							expect(mockCreateNewCredential).toHaveBeenCalledWith(
+								{
+									id: '',
+									name: 'Pinecone API',
+									type: 'pineconeApi',
+									data: {
+										apiKey: 'test-api-key-123',
+										allowedHttpRequestDomains: 'none',
+									},
+								},
+								'project-123',
+							);
+							expect(result).toEqual(mockCredential);
 						});
 
-						expect(result).toBeNull();
-						expect(mockPineconeConnectPopup).not.toHaveBeenCalled();
-					});
+						it('cleans up dangling popup handler on successful connection', async () => {
+							const mockPopup = {
+								open: vi.fn(),
+								cleanup: vi.fn(),
+							};
+							mockPineconeConnectPopup.mockImplementation(({ onConnect }) => {
+								// Simulate user connecting and providing API key
+								setTimeout(() => onConnect({ key: 'test-api-key-123' }), 0);
+								return mockPopup;
+							});
 
-					it('shows error toast when Pinecone connection is cancelled', async () => {
-						const mockPopup = {
-							open: vi.fn(),
-						};
-						mockPineconeConnectPopup.mockImplementation(({ onCancel }) => {
-							// Simulate user cancelling the connection
-							setTimeout(() => onCancel(), 0);
-							return mockPopup;
+							const { connect } = useQuickConnect();
+							await connect({
+								credentialTypeName: 'pineconeApi',
+								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
+								source: 'node',
+								serviceName: 'Pinecone',
+							});
+
+							expect(mockCreateNewCredential).toHaveBeenCalled();
+							expect(mockPopup.open).toHaveBeenCalled();
+							expect(mockPopup.cleanup).toHaveBeenCalled();
 						});
 
-						mockGetCredentialTypeByName.mockReturnValue({
-							name: 'pineconeApi',
-							displayName: 'Pinecone API',
-							properties: [],
+						it('cleans up dangling popup handler when connection is canceled in Pinecone popup', async () => {
+							const mockPopup = {
+								open: vi.fn(),
+								cleanup: vi.fn(),
+							};
+							mockPineconeConnectPopup.mockImplementation(({ onCancel }) => {
+								setTimeout(() => onCancel(), 0);
+								return mockPopup;
+							});
+
+							const { connect } = useQuickConnect();
+							await connect({
+								credentialTypeName: 'pineconeApi',
+								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
+								source: 'node',
+								serviceName: 'Pinecone',
+							});
+
+							expect(mockPopup.open).toHaveBeenCalled();
+							expect(mockPopup.cleanup).toHaveBeenCalled();
 						});
 
-						const { connect } = useQuickConnect();
-						const result = await connect({
-							credentialTypeName: 'pineconeApi',
-							nodeType: '@n8n/n8n-nodes-langchain.pinecone',
-							source: 'node',
+						it('returns null when credential type is not found', async () => {
+							mockGetCredentialTypeByName.mockReturnValue(null);
+
+							const { connect } = useQuickConnect();
+							const result = await connect({
+								credentialTypeName: 'pineconeApi',
+								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
+								source: 'node',
+								serviceName: 'Pinecone',
+							});
+
+							expect(result).toBeNull();
+							expect(mockPineconeConnectPopup).not.toHaveBeenCalled();
 						});
 
-						expect(result).toBeNull();
-						expect(mockToastShowError).toHaveBeenCalledWith(
-							undefined,
-							'credentialEdit.credentialEdit.showError.createCredential.title',
-						);
-					});
+						it('doe not show error toast when Pinecone connection is cancelled', async () => {
+							const mockPopup = {
+								open: vi.fn(),
+							};
+							mockPineconeConnectPopup.mockImplementation(({ onCancel }) => {
+								// Simulate user cancelling the connection
+								setTimeout(() => onCancel(), 0);
+								return mockPopup;
+							});
 
-					it('shows error toast when credential creation fails', async () => {
-						const mockPopup = {
-							open: vi.fn(),
-						};
-						mockPineconeConnectPopup.mockImplementation(({ onConnect }) => {
-							setTimeout(() => onConnect({ key: 'test-api-key-123' }), 0);
-							return mockPopup;
+							const { connect } = useQuickConnect();
+							const result = await connect({
+								credentialTypeName: 'pineconeApi',
+								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
+								source: 'node',
+								serviceName: 'Pinecone',
+							});
+
+							expect(result).toBeNull();
+							expect(mockToastShowError).not.toHaveBeenCalled();
 						});
 
-						mockGetCredentialTypeByName.mockReturnValue({
-							name: 'pineconeApi',
-							displayName: 'Pinecone API',
-							properties: [],
+						it('shows error toast when credential creation fails', async () => {
+							const mockPopup = {
+								open: vi.fn(),
+							};
+							mockPineconeConnectPopup.mockImplementation(({ onConnect }) => {
+								setTimeout(() => onConnect({ key: 'test-api-key-123' }), 0);
+								return mockPopup;
+							});
+
+							const error = new Error('Failed to create credential');
+							mockCreateNewCredential.mockRejectedValue(error);
+
+							const { connect } = useQuickConnect();
+							const result = await connect({
+								credentialTypeName: 'pineconeApi',
+								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
+								source: 'node',
+								serviceName: 'Pinecone',
+							});
+
+							expect(result).toBeNull();
+							expect(mockToastShowError).toHaveBeenCalledWith(
+								error,
+								'credentialEdit.credentialEdit.showError.createCredential.title',
+							);
 						});
 
-						const error = new Error('Failed to create credential');
-						mockCreateNewCredential.mockRejectedValue(error);
+						it('throws error for unsupported quick connect type', async () => {
+							const unsupportedOption: QuickConnectOption = {
+								packageName: 'test-package',
+								credentialType: 'testApi',
+								text: 'Test',
+								quickConnectType: 'unsupported-type',
+							};
 
-						const { connect } = useQuickConnect();
-						const result = await connect({
-							credentialTypeName: 'pineconeApi',
-							nodeType: '@n8n/n8n-nodes-langchain.pinecone',
-							source: 'node',
+							settingsStore.moduleSettings['quick-connect'] = {
+								options: [unsupportedOption],
+							};
+
+							mockGetCredentialTypeByName.mockReturnValue({
+								name: 'testApi',
+								displayName: 'Test API',
+								properties: [],
+							});
+
+							const { connect } = useQuickConnect();
+							const result = await connect({
+								credentialTypeName: 'testApi',
+								nodeType: 'test-package.testNode',
+								source: 'node',
+								serviceName: 'Pinecone',
+							});
+
+							expect(result).toBeNull();
+							expect(mockToastShowError).toHaveBeenCalledWith(
+								expect.objectContaining({
+									message: 'Quick connect for type unsupported-type is not implemented',
+								}),
+								'credentialEdit.credentialEdit.showError.createCredential.title',
+							);
 						});
-
-						expect(result).toBeNull();
-						expect(mockToastShowError).toHaveBeenCalledWith(
-							error,
-							'credentialEdit.credentialEdit.showError.createCredential.title',
-						);
-					});
-
-					it('throws error for unsupported quick connect type', async () => {
-						const unsupportedOption: QuickConnectOption = {
-							packageName: 'test-package',
-							credentialType: 'testApi',
-							text: 'Test',
-							quickConnectType: 'unsupported-type',
-							serviceName: 'Test Service',
-						};
-
-						settingsStore.moduleSettings['quick-connect'] = {
-							options: [unsupportedOption],
-						};
-
-						mockGetCredentialTypeByName.mockReturnValue({
-							name: 'testApi',
-							displayName: 'Test API',
-							properties: [],
-						});
-
-						const { connect } = useQuickConnect();
-						const result = await connect({
-							credentialTypeName: 'testApi',
-							nodeType: 'test-package.testNode',
-							source: 'node',
-						});
-
-						expect(result).toBeNull();
-						expect(mockToastShowError).toHaveBeenCalledWith(
-							expect.objectContaining({
-								message: 'Quick connect for type unsupported-type is not implemented',
-							}),
-							'credentialEdit.credentialEdit.showError.createCredential.title',
-						);
-					});
-				});
+					},
+				);
 			});
 		});
 	});
