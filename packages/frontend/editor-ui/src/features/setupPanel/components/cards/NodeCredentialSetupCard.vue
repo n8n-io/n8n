@@ -108,6 +108,9 @@ const parameters = computed<INodeProperties[]>(() => {
 	return shownParameters.value;
 });
 
+// Check if we've ever shown parameters (persistent across parameter fills)
+const hasShownParameters = computed(() => shownParameters.value.length > 0);
+
 const onCredentialSelected = (credentialId: string) => {
 	setupCard.value?.markInteracted();
 	emit('credentialSelected', {
@@ -235,7 +238,7 @@ watch(expanded, (value, oldValue) => {
 			<N8nText v-if="triggerNode" size="medium" color="text-base" class="pl-xs pr-xs">
 				{{ i18n.baseText('setupPanel.trigger.credential.note') }}
 			</N8nText>
-			<N8nText v-else-if="hasParameters" size="medium" color="text-base" class="pl-xs pr-xs">
+			<N8nText v-else-if="hasShownParameters" size="medium" color="text-base" class="pl-xs pr-xs">
 				{{ i18n.baseText('setupPanel.parameter.description') }}
 			</N8nText>
 		</template>
@@ -279,7 +282,7 @@ watch(expanded, (value, oldValue) => {
 			</div>
 
 			<ParameterInputList
-				v-if="hasParameters"
+				v-if="parameters.length > 0"
 				:parameters="parameters"
 				:node-values="state.node.parameters"
 				:node="state.node"

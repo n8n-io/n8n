@@ -118,6 +118,9 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		return result;
 	});
 
+	const seenNodeCredentials = new Set<string>();
+	const seenCredentialTypesWithParameters = new Set<string>();
+
 	/**
 	 * Credential type states — one entry per unique credential type.
 	 * Ordered by leftmost node X position (inherited from nodesWithCredentials iteration order).
@@ -138,9 +141,14 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		}
 
 		// Only group credential types that have NO nodes with parameter issues
+		// AND that have never been seen with parameters (to prevent duplication with nodeCredentialStates)
 		const nodesWithoutParameters = nodesWithCredentials.value.filter(
 			({ credentialTypes }) =>
-				!credentialTypes.some((credType) => credentialTypesWithParameters.has(credType)),
+				!credentialTypes.some(
+					(credType) =>
+						credentialTypesWithParameters.has(credType) ||
+						seenCredentialTypesWithParameters.has(credType),
+				),
 		);
 
 		const grouped = groupCredentialsByType(
@@ -242,12 +250,13 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 * Only the first node with each credential type shows the credential picker.
 	 */
 	const nodeCredentialStates = computed(() => {
-		// Identify which credential types have ANY nodes with parameter issues
+		// Identify which credential types have ANY nodes with parameter issues (or had in the past)
 		const credentialTypesWithParameters = new Set<string>();
 		for (const { credentialTypes, parameterIssues } of nodesRequiringSetup.value) {
 			if (Object.keys(parameterIssues).length > 0) {
 				for (const credType of credentialTypes) {
 					credentialTypesWithParameters.add(credType);
+					seenCredentialTypesWithParameters.add(credType); // Remember this credential type
 				}
 			}
 		}
@@ -271,7 +280,12 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			if (credentialTypes.length === 0) continue;
 
 			for (const credType of credentialTypes) {
-				if (!credentialTypesWithParameters.has(credType)) continue;
+				// Include if currently has parameters OR was previously tracked
+				if (
+					!credentialTypesWithParameters.has(credType) &&
+					!seenCredentialTypesWithParameters.has(credType)
+				)
+					continue;
 
 				// Track all nodes using this credential type
 				if (!credTypeToAllNodes.has(credType)) {
@@ -281,9 +295,12 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 					credTypeToAllNodes.get(credType)!.push(node);
 				}
 
-				// Track only nodes with parameters for card creation
+				// Track nodes with parameters OR nodes we've already shown (to prevent disappearing)
+				const combinationKey = `${credType}:${node.id}`;
 				const hasParameters = Object.keys(parameterIssues).length > 0;
-				if (hasParameters) {
+				const alreadySeen = seenNodeCredentials.has(combinationKey);
+
+				if (hasParameters || alreadySeen) {
 					if (!credTypeToNodesWithParams.has(credType)) {
 						credTypeToNodesWithParams.set(credType, []);
 					}
@@ -306,6 +323,9 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				// Skip duplicates (same node might appear if it has multiple credential types)
 				if (seenCombinations.has(combinationKey)) continue;
 				seenCombinations.add(combinationKey);
+
+				// Mark this combination as seen so it persists even after parameters are filled
+				seenNodeCredentials.add(combinationKey);
 
 				// Get the selected credential ID for this node
 				const credValue = node.credentials?.[credType];
