@@ -663,9 +663,14 @@ To correct or update an existing fact:
 <newFact>the updated fact</newFact>
 </command:memory-edit>
 
-Use these to save important, long-term facts (preferences, background, context) that would be useful to know in future conversations.
-Only save genuinely useful, distinct facts. Do not duplicate facts already listed in "Known Facts About the User".
-Use memory-edit when correcting or refining an existing fact rather than adding a duplicate.
+Use these to remember anything that would help you assist the user better in future conversations, including:
+- Personal facts (name, location, occupation, life situation)
+- Preferences and tastes (tools they like, communication style, topics they enjoy or avoid)
+- Beliefs and opinions (things they agree or disagree with, values they've expressed)
+- Goals and context (what they're working on, recurring needs)
+
+Only save genuinely useful, distinct information. Do not duplicate entries already listed in "Known Facts About the User".
+Use memory-edit when correcting or refining an existing entry rather than adding a duplicate.
 
 IMPORTANT:
 - Write these commands directly in your response text, NOT inside code blocks or fences.
