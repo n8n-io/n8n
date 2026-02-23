@@ -517,6 +517,7 @@
 	"chatHub.tools.selector.label.count": "{count} Tool | {count} Tools",
 	"chatHub.tools.selector.label.default": "Tools",
 	"chatHub.tools.selector.disabled.tooltip": "Tools are not supported by the selected model",
+	"chatHub.tools.selector.disabled.noModel.tooltip": "Select a model to use tools",
 	"chatHub.toolSettings.title": "Configure Tool",
 	"chatHub.toolSettings.confirm": "Save",
 	"chatHub.toolSettings.cancel": "Cancel",
