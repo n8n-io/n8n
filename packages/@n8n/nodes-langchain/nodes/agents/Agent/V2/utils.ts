@@ -7,6 +7,7 @@ import {
 } from 'n8n-workflow';
 
 // display based on the agent type
+/* istanbul ignore next */
 export function getInputs(
 	hasMainInput?: boolean,
 	hasOutputParser?: boolean,

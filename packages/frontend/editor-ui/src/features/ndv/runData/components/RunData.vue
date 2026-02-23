@@ -1524,6 +1524,7 @@ defineExpose({ enterEditMode });
 
 				<N8nIconButton
 					variant="subtle"
+					size="small"
 					v-if="!props.disableEdit && canPinData && !isReadOnlyRoute && !readOnlyEnv"
 					v-show="!editMode.enabled"
 					:title="i18n.baseText('runData.editOutput')"
@@ -2024,8 +2025,6 @@ defineExpose({ enterEditMode });
 	margin-bottom: var(--ndv--spacing);
 	padding: var(--ndv--spacing) var(--spacing--3xs) 0 var(--ndv--spacing);
 	position: relative;
-	overflow-x: auto;
-	overflow-y: hidden;
 	min-height: calc(30px + var(--ndv--spacing));
 	scrollbar-width: thin;
 	container-type: inline-size;

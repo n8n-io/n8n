@@ -343,7 +343,7 @@ defineExpose({ focus, blur, select });
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
 				:name="name"
-				:style="autosize ? { ...textareaStyles, resize: 'none', overflow: 'hidden' } : undefined"
+				:style="autosize ? { ...textareaStyles, resize: 'none', overflow: 'auto' } : undefined"
 				v-bind="inputAttrs"
 				@input="onInput"
 				@blur="onBlur"
