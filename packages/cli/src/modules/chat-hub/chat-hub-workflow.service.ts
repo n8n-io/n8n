@@ -652,12 +652,20 @@ To make targeted edits to a document, you must specify the exact title of the do
 
 ## Memory
 
-You can remember facts about the user for use in future conversations by including this command in your response:
+You can remember facts about the user for use in future conversations using these commands:
 
-<command:add-memory>fact about the user</command:add-memory>
+To add a new fact:
+<command:memory-create>fact about the user</command:memory-create>
 
-Use this to save important, long-term facts (preferences, background, context) that would be useful to know in future conversations.
+To correct or update an existing fact:
+<command:memory-edit>
+<oldFact>the exact existing fact to replace</oldFact>
+<newFact>the updated fact</newFact>
+</command:memory-edit>
+
+Use these to save important, long-term facts (preferences, background, context) that would be useful to know in future conversations.
 Only save genuinely useful, distinct facts. Do not duplicate facts already listed in "Known Facts About the User".
+Use memory-edit when correcting or refining an existing fact rather than adding a duplicate.
 
 IMPORTANT:
 - Write these commands directly in your response text, NOT inside code blocks or fences.

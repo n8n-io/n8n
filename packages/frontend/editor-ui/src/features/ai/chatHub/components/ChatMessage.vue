@@ -126,7 +126,7 @@ const messageChunks = computed(() =>
 			return prev?.type === chunk.type && prev.command.title === chunk.command.title ? [] : [chunk]; // dedupe command
 		}
 
-		if (chunk.type === 'add-memory') {
+		if (chunk.type === 'memory-create' || chunk.type === 'memory-edit') {
 			return [chunk];
 		}
 
@@ -186,7 +186,8 @@ const hideMessage = computed(() => {
 		message.status === 'success' &&
 		text.value === '' &&
 		!message.content.some((c) => c.type === 'with-buttons') &&
-		!message.content.some((c) => c.type === 'add-memory')
+		!message.content.some((c) => c.type === 'memory-create') &&
+		!message.content.some((c) => c.type === 'memory-edit')
 	);
 });
 

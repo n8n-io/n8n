@@ -407,9 +407,16 @@ export type ChatMessageContentChunk =
 			isIncomplete: boolean;
 	  }
 	| {
-			type: 'add-memory';
+			type: 'memory-create';
 			content: string;
 			fact: string;
+			isIncomplete: boolean;
+	  }
+	| {
+			type: 'memory-edit';
+			content: string;
+			oldFact: string;
+			newFact: string;
 			isIncomplete: boolean;
 	  }
 	| {

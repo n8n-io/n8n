@@ -662,16 +662,27 @@ export class ChatHubExecutionService {
 	}
 
 	/**
-	 * Parse AI message content for add-memory commands and save each fact
+	 * Parse AI message content for memory commands and save/update facts
 	 */
 	private async extractAndSaveMemoryFacts(content: string): Promise<void> {
 		const chunks = parseMessage({ type: 'ai', content });
 		for (const chunk of chunks) {
-			if (chunk.type === 'add-memory' && !chunk.isIncomplete && chunk.fact) {
+			if (chunk.type === 'memory-create' && !chunk.isIncomplete && chunk.fact) {
 				try {
 					await this.chatHubSettingsService.addMemoryFact(chunk.fact);
 				} catch (error) {
 					this.logger.warn('Failed to save memory fact', {
+						cause: error instanceof Error ? error.message : String(error),
+					});
+				}
+			} else if (chunk.type === 'memory-edit' && !chunk.isIncomplete && chunk.newFact) {
+				try {
+					if (chunk.oldFact) {
+						await this.chatHubSettingsService.deleteMemoryFact(chunk.oldFact);
+					}
+					await this.chatHubSettingsService.addMemoryFact(chunk.newFact);
+				} catch (error) {
+					this.logger.warn('Failed to update memory fact', {
 						cause: error instanceof Error ? error.message : String(error),
 					});
 				}

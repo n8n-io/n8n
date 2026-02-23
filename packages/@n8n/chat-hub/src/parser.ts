@@ -26,7 +26,8 @@ export function appendChunkToParsedMessageItems(
 		} else if (
 			(lastItem.type === 'artifact-create' ||
 				lastItem.type === 'artifact-edit' ||
-				lastItem.type === 'add-memory') &&
+				lastItem.type === 'memory-create' ||
+				lastItem.type === 'memory-edit') &&
 			lastItem.isIncomplete
 		) {
 			// Incomplete command - append chunk and re-parse
@@ -47,26 +48,32 @@ export function appendChunkToParsedMessageItems(
 	let currentPos = 0;
 	const createCommandRegex = /<command:artifact-create>/g;
 	const editCommandRegex = /<command:artifact-edit>/g;
-	const addMemoryCommandRegex = /<command:add-memory>/g;
+	const memoryCreateCommandRegex = /<command:memory-create>/g;
+	const memoryEditCommandRegex = /<command:memory-edit>/g;
 
 	while (currentPos < remaining.length) {
 		// Find the next command
 		createCommandRegex.lastIndex = currentPos;
 		editCommandRegex.lastIndex = currentPos;
-		addMemoryCommandRegex.lastIndex = currentPos;
+		memoryCreateCommandRegex.lastIndex = currentPos;
+		memoryEditCommandRegex.lastIndex = currentPos;
 
 		const createMatch = createCommandRegex.exec(remaining);
 		const editMatch = editCommandRegex.exec(remaining);
-		const addMemoryMatch = addMemoryCommandRegex.exec(remaining);
+		const memoryCreateMatch = memoryCreateCommandRegex.exec(remaining);
+		const memoryEditMatch = memoryEditCommandRegex.exec(remaining);
 
 		let nextMatch: RegExpExecArray | null = null;
-		let commandType: 'create' | 'edit' | 'add-memory' | null = null;
+		let commandType: 'create' | 'edit' | 'memory-create' | 'memory-edit' | null = null;
 
-		const candidates: Array<{ match: RegExpExecArray; type: 'create' | 'edit' | 'add-memory' }> =
-			[];
+		const candidates: Array<{
+			match: RegExpExecArray;
+			type: 'create' | 'edit' | 'memory-create' | 'memory-edit';
+		}> = [];
 		if (createMatch) candidates.push({ match: createMatch, type: 'create' });
 		if (editMatch) candidates.push({ match: editMatch, type: 'edit' });
-		if (addMemoryMatch) candidates.push({ match: addMemoryMatch, type: 'add-memory' });
+		if (memoryCreateMatch) candidates.push({ match: memoryCreateMatch, type: 'memory-create' });
+		if (memoryEditMatch) candidates.push({ match: memoryEditMatch, type: 'memory-edit' });
 
 		if (candidates.length > 0) {
 			candidates.sort((a, b) => a.match.index - b.match.index);
@@ -108,8 +115,12 @@ export function appendChunkToParsedMessageItems(
 			const parsed = parseArtifactEditCommand(commandContent);
 			result.push(parsed.item);
 			currentPos = commandStart + parsed.consumed;
+		} else if (commandType === 'memory-create') {
+			const parsed = parseMemoryCreateCommand(commandContent);
+			result.push(parsed.item);
+			currentPos = commandStart + parsed.consumed;
 		} else {
-			const parsed = parseAddMemoryCommand(commandContent);
+			const parsed = parseMemoryEditCommand(commandContent);
 			result.push(parsed.item);
 			currentPos = commandStart + parsed.consumed;
 		}
@@ -142,7 +153,8 @@ function splitPotentialCommandPrefix(text: string): {
 	const commandTags = [
 		'<command:artifact-create>',
 		'<command:artifact-edit>',
-		'<command:add-memory>',
+		'<command:memory-create>',
+		'<command:memory-edit>',
 	];
 
 	// Check if the end of text matches any prefix of a command tag
@@ -222,11 +234,11 @@ function parseArtifactEditCommand(content: string): {
 	};
 }
 
-function parseAddMemoryCommand(content: string): {
+function parseMemoryCreateCommand(content: string): {
 	item: ChatMessageContentChunk;
 	consumed: number;
 } {
-	const closingTag = '</command:add-memory>';
+	const closingTag = '</command:memory-create>';
 	const closingIndex = content.indexOf(closingTag);
 
 	const isIncomplete = closingIndex === -1;
@@ -234,15 +246,42 @@ function parseAddMemoryCommand(content: string): {
 		? content
 		: content.slice(0, closingIndex + closingTag.length);
 
-	const openTag = '<command:add-memory>';
+	const openTag = '<command:memory-create>';
 	const factStart = openTag.length;
 	const fact = isIncomplete ? content.slice(factStart) : content.slice(factStart, closingIndex);
 
 	return {
 		item: {
-			type: 'add-memory',
+			type: 'memory-create',
 			content: commandContent,
 			fact: fact.trim(),
+			isIncomplete,
+		},
+		consumed: commandContent.length,
+	};
+}
+
+function parseMemoryEditCommand(content: string): {
+	item: ChatMessageContentChunk;
+	consumed: number;
+} {
+	const closingTag = '</command:memory-edit>';
+	const closingIndex = content.indexOf(closingTag);
+
+	const isIncomplete = closingIndex === -1;
+	const commandContent = isIncomplete
+		? content
+		: content.slice(0, closingIndex + closingTag.length);
+
+	const oldFact = extractTagContent(commandContent, 'oldFact') ?? '';
+	const newFact = extractTagContent(commandContent, 'newFact') ?? '';
+
+	return {
+		item: {
+			type: 'memory-edit',
+			content: commandContent,
+			oldFact: oldFact.trim(),
+			newFact: newFact.trim(),
 			isIncomplete,
 		},
 		consumed: commandContent.length,
