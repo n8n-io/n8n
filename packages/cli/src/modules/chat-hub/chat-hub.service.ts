@@ -104,6 +104,59 @@ export class ChatHubService {
 		return previousMessage;
 	}
 
+	/**
+	 * If the previous message is in 'waiting' state (e.g. Chat node waiting for user input),
+	 * resume the waiting execution instead of starting a new one. Returns true if resumed.
+	 */
+	private async tryResumeWaitingExecution(opts: {
+		workflow: PreparedChatWorkflow;
+		previousMessage: ChatHubMessage | undefined;
+		message: string;
+		sessionId: ChatSessionId;
+		user: User;
+		messageId: ChatMessageId;
+		model: ChatHubConversationModel;
+	}): Promise<boolean> {
+		const { workflow, previousMessage, message, sessionId, user, messageId, model } = opts;
+
+		if (
+			workflow.responseMode !== 'responseNodes' ||
+			previousMessage?.status !== 'waiting' ||
+			!previousMessage?.executionId
+		) {
+			return false;
+		}
+
+		const execution = await this.executionRepository.findSingleExecution(
+			previousMessage.executionId.toString(),
+			{
+				includeData: true,
+				unflattenData: true,
+			},
+		);
+		if (!execution) {
+			throw new OperationalError('Chat session has expired.');
+		}
+		this.logger.debug(
+			`Resuming execution ${execution.id} from waiting state for session ${sessionId}`,
+		);
+
+		await this.messageRepository.updateChatMessage(previousMessage.id, {
+			status: 'success',
+		});
+
+		void this.chatHubExecutionService.resumeChatExecution(
+			execution,
+			message,
+			sessionId,
+			user,
+			messageId,
+			model,
+			workflow.responseMode,
+		);
+		return true;
+	}
+
 	async stopGeneration(user: User, sessionId: ChatSessionId, messageId: ChatMessageId) {
 		await this.ensureConversation(user.id, sessionId);
 
@@ -485,44 +538,16 @@ export class ChatHubService {
 			})),
 		});
 
-		// Check if we should resume a waiting execution instead of starting a new one
-		// This happens when the previous message is in 'waiting' state (Chat node waiting for user input)
-		if (
-			model.provider === 'n8n' &&
-			workflow.responseMode === 'responseNodes' &&
-			previousMessage?.status === 'waiting' &&
-			previousMessage?.executionId
-		) {
-			const execution = await this.executionRepository.findSingleExecution(
-				previousMessage.executionId.toString(),
-				{
-					includeData: true,
-					unflattenData: true,
-				},
-			);
-			if (!execution) {
-				throw new OperationalError('Chat session has expired.');
-			}
-			this.logger.debug(
-				`Resuming execution ${execution.id} from waiting state for session ${sessionId}`,
-			);
-
-			// Mark the waiting AI message as successful before resuming
-			await this.messageRepository.updateChatMessage(previousMessage.id, {
-				status: 'success',
-			});
-
-			void this.chatHubExecutionService.resumeChatExecution(
-				execution,
-				message,
-				sessionId,
-				user,
-				messageId,
-				model,
-				workflow.responseMode,
-			);
-			return;
-		}
+		const resumed = await this.tryResumeWaitingExecution({
+			workflow,
+			previousMessage,
+			message,
+			sessionId,
+			user,
+			messageId,
+			model,
+		});
+		if (resumed) return;
 
 		// Start the workflow execution with streaming
 		void this.executeChatWorkflowWithCleanup(
@@ -569,6 +594,7 @@ export class ChatHubService {
 
 		let processedAttachments: IBinaryData[] = [];
 		let workflow: PreparedChatWorkflow;
+		let previousMessage: ChatHubMessage | undefined;
 		try {
 			const result = await this.messageRepository.manager.transaction(async (trx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
@@ -582,6 +608,7 @@ export class ChatHubService {
 					trx,
 				);
 
+				const previousMessage = await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
 				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
 				const history = this.buildMessageHistory(messages, previousMessageId);
 
@@ -618,9 +645,10 @@ export class ChatHubService {
 					true, // manual
 				);
 
-				return { workflow: replyWorkflow };
+				return { workflow: replyWorkflow, previousMessage };
 			});
 			workflow = result.workflow;
+			previousMessage = result.previousMessage;
 		} catch (error) {
 			if (processedAttachments.length > 0) {
 				try {
@@ -650,6 +678,17 @@ export class ChatHubService {
 				mimeType: a.mimeType,
 			})),
 		});
+
+		const resumed = await this.tryResumeWaitingExecution({
+			workflow,
+			previousMessage,
+			message,
+			sessionId,
+			user,
+			messageId,
+			model,
+		});
+		if (resumed) return;
 
 		// Start the workflow execution with pushRef for canvas events
 		void this.executeChatWorkflowWithCleanup(
