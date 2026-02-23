@@ -140,7 +140,7 @@ import { ExpandProviderIdColumnLength1770000000000 } from '../common/17700000000
 import { CreateWorkflowBuilderSessionTable1770220686000 } from '../common/1770220686000-CreateWorkflowBuilderSessionTable';
 import { AddScalingFieldsToTestRun1771417407753 } from '../common/1771417407753-AddScalingFieldsToTestRun';
 import { MigrateExternalSecretsToEntityStorage1771500000000 } from '../common/1771500000000-MigrateExternalSecretsToEntityStorage';
-import { RemoveIsEnabledFlagExternalSecrets1771490438204 } from '../common/1771490438204-RemoveIsEnabledFlagExternalSecrets';
+import { RemoveIsEnabledFlagExternalSecrets1771862675638 } from '../common/1771862675638-RemoveIsEnabledFlagExternalSecrets';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -286,7 +286,7 @@ const sqliteMigrations: Migration[] = [
 	CreateWorkflowBuilderSessionTable1770220686000,
 	AddScalingFieldsToTestRun1771417407753,
 	MigrateExternalSecretsToEntityStorage1771500000000,
-	RemoveIsEnabledFlagExternalSecrets1771490438204,
+	RemoveIsEnabledFlagExternalSecrets1771862675638,
 ];
 
 export { sqliteMigrations };
