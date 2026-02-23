@@ -258,6 +258,11 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			const enabledViews = getEnabledViewsForMode(chatPanelStateStore.activeMode);
 
 			if (!isEnabledView(newRoute, enabledViews)) {
+				// Reset chatHub mode before closing so CanvasChatHubPanel unmounts
+				// via v-if and its push handler gets properly terminated
+				if (chatPanelStateStore.activeMode === 'chatHub') {
+					chatPanelStateStore.activeMode = 'builder';
+				}
 				close();
 			} else if (
 				chatPanelStateStore.activeMode === 'builder' &&
