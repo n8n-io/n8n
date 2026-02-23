@@ -25,6 +25,7 @@ jobs:
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
       design_system: ${{ fromJSON(steps.ci-filter.outputs.results)['design-system'] == true }}
+      bench: ${{ fromJSON(steps.ci-filter.outputs.results).bench == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -62,6 +63,10 @@ jobs:
               packages/frontend/@n8n/chat/**
               packages/frontend/@n8n/storybook/**
               .github/workflows/test-visual-chromatic.yml
+            bench:
+              packages/testing/performance/**
+              packages/workflow/src/**
+              .github/workflows/test-bench-codspeed-reusable.yml
             db:
               packages/cli/src/databases/**
               packages/cli/src/modules/*/database/**
@@ -137,6 +142,14 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
+  bench:
+    name: Benchmarks
+    needs: install-and-build
+    if: needs.install-and-build.outputs.bench == 'true'
+    uses: ./.github/workflows/test-bench-codspeed-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
   security-checks:
     name: Security Checks
     needs: install-and-build
@@ -159,7 +172,7 @@ jobs:
   # PRs cannot be merged unless this job passes.
   required-checks:
     name: Required Checks
-    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests, db-tests, security-checks, chromatic]
+    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests, db-tests, bench, security-checks, chromatic]
     if: always()
     runs-on: ubuntu-slim
     steps:
