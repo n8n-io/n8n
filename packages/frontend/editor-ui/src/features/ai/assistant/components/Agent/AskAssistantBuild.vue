@@ -30,9 +30,11 @@ import { useErrorHandler } from '@/app/composables/useErrorHandler';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { jsonParse } from 'n8n-workflow';
 import shuffle from 'lodash/shuffle';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 
-import { N8nAskAssistantChat } from '@n8n/design-system';
+import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
 import BuildModeEmptyState from './BuildModeEmptyState.vue';
 import {
 	isPlanModePlanMessage,
@@ -58,6 +60,8 @@ const workflowAutosaveStore = useWorkflowSaveStore();
 const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
+const assistantStore = useAssistantStore();
+const settingsStore = useSettingsStore();
 const chatPanelStateStore = useChatPanelStateStore();
 const router = useRouter();
 const i18n = useI18n();
@@ -93,6 +97,11 @@ watch(
 			notificationsPermissionsBannerTriggered.value = true;
 		}
 	},
+);
+
+const showUsabilityNotice = computed(
+	() =>
+		assistantStore.canManageAISettings && !settingsStore.settings.ai.allowSendingParameterValues,
 );
 
 const shouldShowNotificationBanner = computed(() => {
@@ -516,8 +525,11 @@ defineExpose({
 			<template #focused-nodes-chips="{ message }">
 				<MessageFocusedNodesChips :focused-node-names="message.focusedNodeNames" />
 			</template>
-			<template v-if="slots.header" #header>
+			<template v-if="slots.header || showUsabilityNotice" #header>
 				<slot name="header" />
+				<N8nInfoTip v-if="showUsabilityNotice" theme="warning" type="tooltip">
+					<span>{{ i18n.baseText('aiAssistant.reducedHelp.chat.notice') }}</span>
+				</N8nInfoTip>
 			</template>
 			<template #inputHeader>
 				<Transition name="slide">
