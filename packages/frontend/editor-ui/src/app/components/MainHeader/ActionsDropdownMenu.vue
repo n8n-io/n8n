@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, ref, useCssModule } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
 import { useToast } from '@/app/composables/useToast';
@@ -11,7 +11,6 @@ import {
 	DUPLICATE_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
-	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EnterpriseEditionFeature,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
@@ -31,30 +30,25 @@ import { sanitizeFilename } from '@n8n/utils';
 import saveAs from 'file-saver';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
-import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
 	isNewWorkflow: boolean;
-	readOnly?: boolean;
 	isArchived: IWorkflowDb['isArchived'];
 	id: IWorkflowDb['id'];
 	name: IWorkflowDb['name'];
-	tags: IWorkflowDb['tags'];
+	tags: readonly string[];
 	currentFolder?: FolderShortInfo;
 	meta: IWorkflowDb['meta'];
-}>();
-
-const emit = defineEmits<{
-	'workflow:saved': [];
 }>();
 
 const importFileRef = ref<HTMLInputElement | undefined>();
@@ -63,7 +57,8 @@ const locale = useI18n();
 const route = useRoute();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
-const workflowsStore = useWorkflowsStore();
+const collaborationStore = useCollaborationStore();
+const workflowsListStore = useWorkflowsListStore();
 const uiStore = useUIStore();
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -71,7 +66,6 @@ const tagsStore = useTagsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const workflowHelpers = useWorkflowHelpers();
-const workflowActivate = useWorkflowActivate();
 const changeOwnerEventBus = createEventBus();
 const workflowTelemetry = useTelemetry();
 
@@ -87,7 +81,7 @@ const onExecutionsTab = computed(() => {
 	].includes((route.name as string) || '');
 });
 
-const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
+const collaborationReadOnly = computed(() => collaborationStore.shouldBeReadOnly);
 
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
@@ -144,7 +138,11 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		});
 	}
 
-	if (!props.readOnly && !props.isArchived) {
+	if (
+		!collaborationReadOnly.value &&
+		!props.isArchived &&
+		!sourceControlStore.preferences.branchReadOnly
+	) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.RENAME,
 			label: locale.baseText('generic.rename'),
@@ -153,7 +151,10 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	}
 
 	if (
-		(props.workflowPermissions.update === true && !props.readOnly && !props.isArchived) ||
+		(props.workflowPermissions.update === true &&
+			!collaborationReadOnly.value &&
+			!props.isArchived &&
+			!sourceControlStore.preferences.branchReadOnly) ||
 		props.isNewWorkflow
 	) {
 		actions.unshift({
@@ -199,15 +200,12 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		disabled: !onWorkflowPage.value || props.isNewWorkflow,
 	});
 
-	if (activeVersion.value && props.workflowPermissions.publish && !props.readOnly) {
-		actions.push({
-			id: WORKFLOW_MENU_ACTIONS.UNPUBLISH,
-			label: locale.baseText('menuActions.unpublish'),
-			disabled: !onWorkflowPage.value,
-		});
-	}
-
-	if ((props.workflowPermissions.delete === true && !props.readOnly) || props.isNewWorkflow) {
+	if (
+		(props.workflowPermissions.delete === true &&
+			!collaborationReadOnly.value &&
+			!sourceControlStore.preferences.branchReadOnly) ||
+		props.isNewWorkflow
+	) {
 		if (props.isArchived) {
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.UNARCHIVE,
@@ -235,45 +233,13 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	return actions;
 });
 
-function onUnpublishWorkflow() {
-	const workflowId = getWorkflowId(props.id, route.params.name);
-
-	if (!workflowId || !activeVersion.value) {
-		toast.showMessage({
-			title: locale.baseText('workflowHistory.action.unpublish.notAvailable'),
-			type: 'warning',
-		});
-		return;
-	}
-
-	const unpublishEventBus = createEventBus();
-	unpublishEventBus.once('unpublish', async () => {
-		const success = await workflowActivate.unpublishWorkflowFromHistory(workflowId);
-		uiStore.closeModal(WORKFLOW_HISTORY_VERSION_UNPUBLISH);
-		if (success) {
-			toast.showMessage({
-				title: locale.baseText('workflowHistory.action.unpublish.success.title'),
-				type: 'success',
-			});
-		}
-	});
-
-	uiStore.openModalWithData({
-		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
-		data: {
-			versionName: activeVersion.value.name,
-			eventBus: unpublishEventBus,
-		},
-	});
-}
-
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION: {
 			const workflowId = getWorkflowId(props.id, route.params.name);
 			if (!workflowId) return;
 
-			const workflowDescription = workflowsStore.getWorkflowById(workflowId).description;
+			const workflowDescription = workflowsListStore.getWorkflowById(workflowId).description;
 			uiStore.openModalWithData({
 				name: WORKFLOW_DESCRIPTION_MODAL_KEY,
 				data: {
@@ -336,8 +302,6 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		}
 		case WORKFLOW_MENU_ACTIONS.PUSH: {
 			try {
-				emit('workflow:saved');
-
 				// Navigate to route with sourceControl param - modal will handle data loading and loading states
 				void router.push({
 					query: {
@@ -404,7 +368,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			uiStore.openModalWithData({
 				name: PROJECT_MOVE_RESOURCE_MODAL,
 				data: {
-					resource: workflowsStore.workflowsById[workflowId],
+					resource: workflowsListStore.workflowsById[workflowId],
 					resourceType: ResourceType.Workflow,
 					resourceTypeLabel: locale.baseText('generic.workflow').toLowerCase(),
 					eventBus: changeOwnerEventBus,
@@ -412,22 +376,10 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			});
 			break;
 		}
-		case WORKFLOW_MENU_ACTIONS.UNPUBLISH: {
-			onUnpublishWorkflow();
-			break;
-		}
 		default:
 			break;
 	}
 }
-
-onMounted(() => {
-	nodeViewEventBus.on('unpublishWorkflow', onUnpublishWorkflow);
-});
-
-onBeforeUnmount(() => {
-	nodeViewEventBus.off('unpublishWorkflow', onUnpublishWorkflow);
-});
 
 defineExpose({
 	importFileRef,

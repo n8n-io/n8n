@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { MCP_STORE } from './mcp.constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { WorkflowListItem } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -19,6 +20,7 @@ import type { ApiKey, OAuthClientResponseDto, DeleteOAuthClientResponseDto } fro
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
@@ -32,7 +34,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		page = 1,
 		pageSize = 50,
 	): Promise<WorkflowListItem[]> {
-		const workflows = await workflowsStore.fetchWorkflowsPage(
+		const workflows = await workflowsListStore.fetchWorkflowsPage(
 			undefined, // projectId
 			page,
 			pageSize,
@@ -74,14 +76,18 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 		// Update local  version of the workflow
 		if (id === workflowsStore.workflowId) {
-			workflowsStore.setWorkflowVersionId(versionId);
+			workflowsStore.setWorkflowVersionData({
+				versionId,
+				name: workflowsStore.versionData?.name ?? null,
+				description: workflowsStore.versionData?.description ?? null,
+			});
 			if (settings) {
 				workflowsStore.private.setWorkflowSettings(settings);
 			}
 		}
-		if (workflowsStore.workflowsById[id]) {
-			workflowsStore.workflowsById[id] = {
-				...workflowsStore.workflowsById[id],
+		if (workflowsListStore.workflowsById[id]) {
+			workflowsListStore.workflowsById[id] = {
+				...workflowsListStore.workflowsById[id],
 				settings,
 				versionId,
 			};

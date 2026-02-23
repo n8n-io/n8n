@@ -219,6 +219,7 @@ export class NodeTestHarness {
 			hooks,
 			// Get from node.parameters
 			currentNodeParameters: undefined,
+			parentCallbackManager: undefined,
 		});
 		additionalData.credentialsHelper = credentialsHelper;
 
@@ -315,6 +316,7 @@ export class NodeTestHarness {
 						} else {
 							for (const key in binary) {
 								delete binary[key].directory;
+								delete binary[key].bytes;
 							}
 						}
 					}

@@ -31,6 +31,7 @@ import { useNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
@@ -44,7 +45,6 @@ import { nodeViewEventBus } from '@/app/event-bus';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import NDVFloatingNodes from '@/features/ndv/panel/components/NDVFloatingNodes.vue';
 const emit = defineEmits<{
-	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
 	switchSelectedNode: [nodeTypeName: string];
 	openConnectionNodeCreator: [nodeTypeName: string, connectionType: NodeConnectionType];
@@ -72,6 +72,7 @@ const pinnedData = usePinnedData(activeNode);
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
@@ -139,7 +140,7 @@ const parentNodes = computed(() => {
 
 const parentNode = computed(() => {
 	for (const parentNodeName of parentNodes.value) {
-		if (workflowsStore?.pinnedWorkflowData?.[parentNodeName]) {
+		if (workflowDocumentStore?.pinData?.[parentNodeName]) {
 			return parentNodeName;
 		}
 
@@ -348,17 +349,8 @@ const setSelectedInput = (value: string | undefined) => {
 
 const onKeyDown = (e: KeyboardEvent) => {
 	if (e.key === 's' && deviceSupport.isCtrlKeyPressed(e)) {
-		onSaveWorkflow(e);
+		e.preventDefault();
 	}
-};
-
-const onSaveWorkflow = (e: KeyboardEvent) => {
-	e.stopPropagation();
-	e.preventDefault();
-
-	if (props.readOnly) return;
-
-	emit('saveKeyboardShortcut', e);
 };
 
 const onInputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {

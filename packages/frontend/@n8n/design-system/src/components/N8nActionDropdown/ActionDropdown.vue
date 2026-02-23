@@ -104,9 +104,8 @@ defineExpose({ open, close });
 		>
 			<slot v-if="$slots.activator" name="activator" />
 			<N8nIconButton
+				variant="ghost"
 				v-else
-				type="tertiary"
-				text
 				:class="$style.activator"
 				:size="activatorSize"
 				:icon="activatorIcon"

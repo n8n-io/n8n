@@ -59,4 +59,23 @@ describe('apiRequest', () => {
 			},
 		);
 	});
+
+	it('should normalize error: null to error: undefined', async () => {
+		// Arrange
+		mockedExecutionContext.getCredentials.mockResolvedValue({});
+		mockedExecutionContext.helpers.requestWithAuthentication.mockResolvedValue({
+			id: 'test',
+			error: null,
+		});
+
+		// Act
+		const response = await apiRequest.call(
+			mockedExecutionContext as unknown as IExecuteFunctions,
+			'GET',
+			'/test',
+		);
+
+		// Assert
+		expect(response.error).toBeUndefined();
+	});
 });

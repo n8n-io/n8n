@@ -32,9 +32,11 @@ describe('ExecutionService', () => {
 		executionRepository,
 		mock(),
 		mock(),
+		mock(),
 		waitTracker,
 		mock(),
 		concurrencyControl,
+		mock(),
 		mock(),
 		mock(),
 	);

@@ -4,7 +4,7 @@ import { useSidebarLayout } from './useSidebarLayout';
 
 // Mock UI Store
 const mockUIStore = {
-	sidebarMenuCollapsed: false,
+	sidebarMenuCollapsed: false as boolean | null,
 	toggleSidebarMenuCollapse: vi.fn(),
 };
 
@@ -44,6 +44,15 @@ describe('useSidebarLayout', () => {
 			const { sidebarWidth } = useSidebarLayout();
 
 			expect(sidebarWidth.value).toBe(42);
+		});
+
+		it('should default to expanded (not collapsed) when sidebarMenuCollapsed is null', () => {
+			mockUIStore.sidebarMenuCollapsed = null;
+
+			const { isCollapsed, sidebarWidth } = useSidebarLayout();
+
+			expect(isCollapsed.value).toBe(false);
+			expect(sidebarWidth.value).toBe(300);
 		});
 
 		it('should return computed isCollapsed from store', () => {

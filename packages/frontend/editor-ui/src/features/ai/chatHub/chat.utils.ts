@@ -10,7 +10,6 @@ import {
 	type ChatHubLLMProvider,
 	type ChatHubInputModality,
 	type AgentIconOrEmoji,
-	type EnrichedStructuredChunk,
 	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
 import type {
@@ -23,7 +22,6 @@ import type {
 } from './chat.types';
 import { CHAT_VIEW } from './constants';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-import type { IRestApiContext } from '@n8n/rest-api-client';
 
 export function getRelativeDate(now: Date, dateString: string): string {
 	const date = new Date(dateString);
@@ -237,7 +235,7 @@ export function createAiMessageFromStreamingState(
 		sessionId,
 		type: 'ai',
 		name: 'AI',
-		content: '',
+		content: [],
 		executionId: streaming?.executionId ?? null,
 		status: 'running',
 		createdAt: new Date().toISOString(),
@@ -265,12 +263,8 @@ export function createHumanMessageFromStreamingState(streaming: ChatStreamingSta
 		sessionId: streaming.sessionId,
 		type: 'human',
 		name: 'User',
-		content: streaming.promptText,
-		provider: null,
-		model: null,
-		workflowId: null,
+		content: [{ type: 'text', content: streaming.promptText }],
 		executionId: null,
-		agentId: null,
 		status: 'success',
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
@@ -280,6 +274,7 @@ export function createHumanMessageFromStreamingState(streaming: ChatStreamingSta
 		responses: [],
 		alternatives: [],
 		attachments: streaming.attachments,
+		...flattenModel(streaming.agent.model),
 	};
 }
 
@@ -311,7 +306,7 @@ export function buildUiMessages(
 			// in running state as an immediate feedback
 			messagesToShow.push({
 				...message,
-				content: '',
+				content: [],
 				status: 'running',
 				...flattenModel(streaming.agent.model),
 			});
@@ -344,37 +339,50 @@ export function isLlmProviderModel(
 	return isLlmProvider(model?.provider);
 }
 
+export function isAllowedModel(
+	{ enabled = true, allowedModels }: ChatProviderSettingsDto,
+	model: ChatHubConversationModel,
+): boolean {
+	return (
+		enabled &&
+		(allowedModels.length === 0 ||
+			allowedModels.some((agent) => 'model' in model && agent.model === model.model))
+	);
+}
+
 export function findOneFromModelsResponse(
 	response: ChatModelsResponse,
-	providerSettings: Record<ChatHubLLMProvider, ChatProviderSettingsDto>,
+	providerSettings: Partial<Record<ChatHubLLMProvider, ChatProviderSettingsDto>>,
 ): ChatModelDto | undefined {
 	for (const provider of chatHubProviderSchema.options) {
-		const settings: ChatProviderSettingsDto | undefined = isLlmProvider(provider)
-			? providerSettings[provider]
-			: undefined;
+		let bestModel: ChatModelDto | undefined;
+		let bestPriority = -Infinity;
 
-		if (!settings?.enabled) {
-			continue;
+		const settings = isLlmProvider(provider) ? providerSettings[provider] : undefined;
+		const availableModels = response[provider].models.filter(
+			(agent) => !settings || isAllowedModel(settings, agent.model),
+		);
+
+		for (const model of availableModels) {
+			const priority = model.metadata.priority ?? 0;
+			if (priority > bestPriority) {
+				bestPriority = priority;
+				bestModel = model;
+			}
 		}
 
-		const availableModels = response[provider].models.filter((providerModel) => {
-			const { model } = providerModel;
-			if (isLlmProviderModel(model) && settings.allowedModels.length > 0) {
-				return settings.allowedModels.some((allowed) => allowed.model === model.model);
-			}
-
-			return true;
-		});
-
-		if (availableModels.length > 0) {
-			return availableModels[0];
+		if (bestModel) {
+			return bestModel;
 		}
 	}
 
 	return undefined;
 }
 
-export function createSessionFromStreamingState(streaming: ChatStreamingState): ChatHubSessionDto {
+export function createSessionFromStreamingState(
+	streaming: ChatStreamingState,
+	toolIds: string[],
+): ChatHubSessionDto {
 	return {
 		id: streaming.sessionId,
 		title: 'New Chat',
@@ -385,7 +393,7 @@ export function createSessionFromStreamingState(streaming: ChatStreamingState): 
 		agentIcon: streaming.agent.icon,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
-		tools: streaming.tools,
+		toolIds,
 		...flattenModel(streaming.agent.model),
 	};
 }
@@ -423,56 +431,155 @@ export const workflowAgentDefaultIcon: AgentIconOrEmoji = {
 	value: 'bot' satisfies IconName,
 };
 
-type StreamApi<T> = (
-	ctx: IRestApiContext,
-	payload: T,
-	onChunk: (data: EnrichedStructuredChunk) => void,
-	onDone: () => void,
-	onError: (e: unknown) => void,
-) => void;
+export function createFakeAgent(
+	model: ChatHubConversationModel,
+	fallback?: Partial<{ name: string | null; icon: AgentIconOrEmoji | null }>,
+): ChatModelDto {
+	return {
+		model,
+		name: fallback?.name || '',
+		description: null,
+		icon: fallback?.icon ?? null,
+		createdAt: null,
+		updatedAt: null,
+		// Assume file attachment and tools are supported (except n8n provider which never supports function calling)
+		metadata: {
+			inputModalities: ['text', 'file'],
+			capabilities: {
+				functionCalling: model.provider !== 'n8n',
+			},
+			available: true,
+		},
+		groupName: null,
+		groupIcon: null,
+	};
+}
+
+export const isEditable = (message: ChatMessage): boolean => {
+	return message.status === 'success' && message.type !== 'ai';
+};
+
+export const isRegenerable = (message: ChatMessage): boolean => {
+	return message.type === 'ai';
+};
+
+type ChunkState =
+	| { type: 'normal' }
+	| { type: 'backtick-fence'; count: number }
+	| { type: 'tilde-fence'; count: number }
+	| { type: 'indented' };
 
 /**
- * Converts streaming API to return a promise that resolves when the first chunk is received.
+ * Splits markdown content into chunks to allow text selection while streaming.
+ * Splits on: paragraphs (double newlines), code blocks, and headers.
  */
-export function promisifyStreamingApi<T>(
-	streamingApi: StreamApi<T>,
-): (...args: Parameters<StreamApi<T>>) => Promise<void> {
-	return async (ctx, payload, onChunk, onDone, onError) => {
-		let settled = false;
-		let resolvePromise: () => void;
-		let rejectPromise: (reason?: unknown) => void;
+export function splitMarkdownIntoChunks(content: string): string[] {
+	if (!content) {
+		return [];
+	}
 
-		const promise = new Promise<void>((resolve, reject) => {
-			resolvePromise = resolve;
-			rejectPromise = reject;
-		});
+	const chunks: string[] = [];
+	let currentChunk = '';
+	let state: ChunkState = { type: 'normal' };
+	const lines = content.split('\n');
 
-		streamingApi(
-			ctx,
-			payload,
-			(chunk) => {
-				if (!settled) {
-					settled = true;
-					resolvePromise();
-				}
-				onChunk(chunk);
-			},
-			() => {
-				if (!settled) {
-					settled = true;
-					resolvePromise();
-				}
-				onDone();
-			},
-			(error: unknown) => {
-				if (!settled) {
-					settled = true;
-					rejectPromise(error);
-				}
-				onError(error);
-			},
-		);
-
-		return await promise;
+	const endChunk = () => {
+		if (currentChunk.trim()) {
+			chunks.push(currentChunk.trimEnd());
+			currentChunk = '';
+		}
 	};
+
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i];
+		const nextLine = i < lines.length - 1 ? lines[i + 1] : '';
+		const trimmedLine = line.trim();
+		const isIndented = /^( {4}|\t)/.test(line);
+		const hasValidFenceIndent = /^( {0,3})(`{3,}|~{3,})/.test(line);
+
+		// Handle state transitions based on current state
+		if (state.type === 'backtick-fence') {
+			// Check if this line closes the backtick fence
+			if (hasValidFenceIndent && trimmedLine.startsWith('```')) {
+				const fenceMatch = trimmedLine.match(/^(`+)/);
+				const fenceCount = fenceMatch ? fenceMatch[1].length : 0;
+
+				if (fenceCount >= state.count) {
+					// Closing fence
+					currentChunk += line + '\n';
+					state = { type: 'normal' };
+					endChunk();
+					continue;
+				}
+			}
+		} else if (state.type === 'tilde-fence') {
+			// Check if this line closes the tilde fence
+			if (hasValidFenceIndent && trimmedLine.startsWith('~~~')) {
+				const fenceMatch = trimmedLine.match(/^(~+)/);
+				const fenceCount = fenceMatch ? fenceMatch[1].length : 0;
+
+				if (fenceCount >= state.count) {
+					// Closing fence
+					currentChunk += line + '\n';
+					state = { type: 'normal' };
+					endChunk();
+					continue;
+				}
+			}
+		} else if (state.type === 'indented') {
+			// Exit indented code block if line is not indented and not empty
+			if (!isIndented && trimmedLine !== '') {
+				state = { type: 'normal' };
+				endChunk();
+			}
+		} else {
+			// state.type === 'normal'
+			// Check for fence openings
+			if (hasValidFenceIndent && trimmedLine.startsWith('```')) {
+				const fenceMatch = trimmedLine.match(/^(`+)/);
+				const fenceCount = fenceMatch ? fenceMatch[1].length : 0;
+				state = { type: 'backtick-fence', count: fenceCount };
+			} else if (hasValidFenceIndent && trimmedLine.startsWith('~~~')) {
+				const fenceMatch = trimmedLine.match(/^(~+)/);
+				const fenceCount = fenceMatch ? fenceMatch[1].length : 0;
+				state = { type: 'tilde-fence', count: fenceCount };
+			} else if (isIndented && trimmedLine !== '') {
+				// Start indented code block
+				endChunk();
+				state = { type: 'indented' };
+			}
+		}
+
+		// Add line to current chunk
+		currentChunk += line + '\n';
+
+		// Split on double newlines or headers (only in normal state)
+		if (state.type === 'normal') {
+			const isEmptyLine = trimmedLine === '';
+			const nextLineIsEmpty = nextLine.trim() === '';
+			const nextLineIsHeader = nextLine.trim().startsWith('#');
+
+			if ((isEmptyLine && nextLineIsEmpty) || (isEmptyLine && nextLineIsHeader)) {
+				endChunk();
+			}
+		}
+	}
+
+	// Add remaining content as the last chunk
+	endChunk();
+
+	return chunks;
+}
+
+/**
+ * Checks if a message represents a waiting-for-approval state.
+ * This occurs when the message has 'waiting' status and contains
+ * a with-buttons chunk that blocks user input.
+ */
+export function isWaitingForApproval(message: ChatMessage | null | undefined): boolean {
+	if (!message || message.status !== 'waiting') {
+		return false;
+	}
+
+	return message.content.some((c) => c.type === 'with-buttons' && c.blockUserInput);
 }

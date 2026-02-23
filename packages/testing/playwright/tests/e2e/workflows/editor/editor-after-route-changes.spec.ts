@@ -1,10 +1,10 @@
 import { test, expect } from '../../../../fixtures/base';
 
-const NOTIFICATIONS = {
-	WORKFLOW_CREATED: 'Workflow successfully created',
-};
-
-test.describe('Editor zoom should work after route changes', () => {
+test.describe('Editor zoom should work after route changes', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.api.enableFeature('debugInEditor');
 		await n8n.api.enableFeature('workflowHistory');
@@ -13,7 +13,6 @@ test.describe('Editor zoom should work after route changes', () => {
 			'Lots_of_nodes.json',
 			'Lots of nodes test',
 		);
-		await n8n.notifications.waitForNotificationAndClose(NOTIFICATIONS.WORKFLOW_CREATED);
 	});
 
 	test('should maintain zoom functionality after switching between Editor and Workflow history and Workflow list', async ({

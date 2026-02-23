@@ -10,7 +10,6 @@ import { useInsightsStore } from '@/features/execution/insights/insights.store';
 
 const i18n = useI18n();
 
-const MainSidebar = async () => await import('@/app/components/MainSidebar.vue');
 const DataTableView = async () => await import('@/features/core/dataTable/DataTableView.vue');
 const DataTableDetailsView = async () =>
 	await import('@/features/core/dataTable/DataTableDetailsView.vue');
@@ -31,10 +30,7 @@ export const DataTableModule: FrontendModuleDescription = {
 		{
 			name: DATA_TABLE_VIEW,
 			path: '/home/datatables',
-			components: {
-				default: DataTableView,
-				sidebar: MainSidebar,
-			},
+			component: DataTableView,
 			meta: {
 				middleware: ['authenticated', 'custom'],
 			},
@@ -51,10 +47,7 @@ export const DataTableModule: FrontendModuleDescription = {
 			name: PROJECT_DATA_TABLES,
 			path: 'datatables/:new(new)?',
 			props: true,
-			components: {
-				default: DataTableView,
-				sidebar: MainSidebar,
-			},
+			component: DataTableView,
 			meta: {
 				projectRoute: true,
 				middleware: ['authenticated', 'custom'],
@@ -64,10 +57,7 @@ export const DataTableModule: FrontendModuleDescription = {
 			name: DATA_TABLE_DETAILS,
 			path: 'datatables/:id',
 			props: true,
-			components: {
-				default: DataTableDetailsView,
-				sidebar: MainSidebar,
-			},
+			component: DataTableDetailsView,
 			meta: {
 				projectRoute: true,
 				middleware: ['authenticated', 'custom'],

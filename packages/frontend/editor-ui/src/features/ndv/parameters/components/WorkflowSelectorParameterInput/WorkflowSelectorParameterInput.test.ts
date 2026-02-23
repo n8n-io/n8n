@@ -5,12 +5,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
 import WorkflowSelectorParameterInput, { type Props } from './WorkflowSelectorParameterInput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
 const { onDocumentVisible } = vi.hoisted(() => ({
 	onDocumentVisible: vi.fn(),
@@ -44,27 +46,32 @@ vi.mock('vue-router', () => {
 	};
 });
 
-const renderComponent = createComponentRenderer(WorkflowSelectorParameterInput, {
-	pinia: createTestingPinia({}),
-});
+const renderComponent = createComponentRenderer(WorkflowSelectorParameterInput);
 
-const projectsStore = mockedStore(useProjectsStore);
-projectsStore.isTeamProjectFeatureEnabled = false;
-
-const workflowsStore = mockedStore(useWorkflowsStore);
+let projectsStore: MockedStore<typeof useProjectsStore>;
+let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 
 describe('WorkflowSelectorParameterInput', () => {
 	beforeEach(() => {
+		setActivePinia(createTestingPinia({}));
+
+		projectsStore = mockedStore(useProjectsStore);
+		projectsStore.isTeamProjectFeatureEnabled = false;
+
+		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
+
 		// Mock store methods to prevent unhandled errors
-		workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
-		workflowsStore.totalWorkflowCount = 0;
-		workflowsStore.getWorkflowById.mockReturnValue(null as any);
-		workflowsStore.fetchWorkflow.mockResolvedValue({} as any);
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
+		workflowsListStore.totalWorkflowCount = 0;
+		workflowsListStore.getWorkflowById.mockReturnValue(null as any);
+		workflowsListStore.fetchWorkflow.mockResolvedValue({} as any);
 		workflowsStore.createNewWorkflow.mockResolvedValue({
 			id: 'new-workflow-id',
 			name: 'New Workflow',
 		} as any);
-		workflowsStore.allWorkflows = [];
+		workflowsListStore.allWorkflows = [];
 		mockToast.showError.mockClear();
 	});
 
@@ -97,7 +104,7 @@ describe('WorkflowSelectorParameterInput', () => {
 		};
 
 		expect(wrapper.emitted()['update:modelValue']?.[0]).toEqual([expectedModelValue]);
-		expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith(props.modelValue.value);
+		expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith(props.modelValue.value);
 	});
 
 	it('should update cached workflow when document becomes visible', async () => {
@@ -125,15 +132,15 @@ describe('WorkflowSelectorParameterInput', () => {
 		};
 
 		expect(emitted()['update:modelValue']?.[0]).toEqual([expectedModelValue]);
-		expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith(props.modelValue.value);
-		workflowsStore.fetchWorkflow.mockReset();
+		expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith(props.modelValue.value);
+		workflowsListStore.fetchWorkflow.mockReset();
 
 		expect(onDocumentVisible).toHaveBeenCalled();
 		const onDocumentVisibleCallback = onDocumentVisible.mock.lastCall?.[0];
 		await onDocumentVisibleCallback();
 
 		expect(emitted()['update:modelValue']?.[1]).toEqual([expectedModelValue]);
-		expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith(props.modelValue.value);
+		expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith(props.modelValue.value);
 	});
 
 	it('should show parameter issues selector with resource link', async () => {
@@ -155,7 +162,7 @@ describe('WorkflowSelectorParameterInput', () => {
 
 		const { getByTestId } = renderComponent({ props });
 		await flushPromises();
-		expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith(props.modelValue.value);
+		expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith(props.modelValue.value);
 
 		expect(getByTestId('parameter-issues')).toBeInTheDocument();
 		expect(getByTestId('rlc-open-resource-link')).toBeInTheDocument();
@@ -198,7 +205,7 @@ describe('WorkflowSelectorParameterInput', () => {
 				name: 'Existing Workflow',
 			};
 
-			workflowsStore.getWorkflowById.mockReturnValue(mockWorkflow as any);
+			workflowsListStore.getWorkflowById.mockReturnValue(mockWorkflow as any);
 
 			const props: Props = {
 				modelValue: {
@@ -219,7 +226,7 @@ describe('WorkflowSelectorParameterInput', () => {
 			await flushPromises();
 
 			// Verify workflow was fetched via fetchWorkflow, not getWorkflowById directly
-			expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith('existing-workflow');
+			expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith('existing-workflow');
 		});
 	});
 

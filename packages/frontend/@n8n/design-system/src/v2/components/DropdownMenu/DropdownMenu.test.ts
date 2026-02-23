@@ -2,7 +2,7 @@ import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
 import { ref } from 'vue';
 
-import type { DropdownMenuItemProps, Placement } from './DropdownMenu.types';
+import type { DropdownMenuItemProps, DropdownMenuPlacement } from './DropdownMenu.types';
 import DropdownMenu from './DropdownMenu.vue';
 
 const createItems = (count: number): DropdownMenuItemProps[] => {
@@ -428,7 +428,7 @@ describe('v2/components/DropdownMenu', () => {
 	});
 
 	describe('placements', () => {
-		const placements: Placement[] = [
+		const placements: DropdownMenuPlacement[] = [
 			'top',
 			'top-start',
 			'top-end',

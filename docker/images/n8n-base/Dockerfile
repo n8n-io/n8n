@@ -1,6 +1,8 @@
-ARG NODE_VERSION=22.21.1
+ARG NODE_VERSION=24.13.1
 
 FROM dhi.io/node:${NODE_VERSION}-alpine3.22-dev
+
+ARG NODE_VERSION
 
 # Install all dependencies in a single layer to minimize image size
 RUN apk add --no-cache busybox-binsh && \
@@ -17,17 +19,17 @@ RUN apk add --no-cache busybox-binsh && \
         git \
         openssh \
         openssl \
-        graphicsmagick \
+        graphicsmagick=1.3.45-r0 `# pinned to avoid ghostscript-fonts (AGPL)` \
         tini \
         tzdata \
         ca-certificates \
         libc6-compat && \
-    # Install full-icu
-    npm install -g full-icu@1.5.0 && \
     # Cleanup
     rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
     apk del apk-tools
 
 WORKDIR /home/node
-ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu
+# DHI images use a non-standard global npm path, so we need to set NODE_PATH
+# to allow externally installed npm packages to be found by require()
+ENV NODE_PATH=/opt/nodejs/node-v${NODE_VERSION}/lib/node_modules
 EXPOSE 5678/tcp

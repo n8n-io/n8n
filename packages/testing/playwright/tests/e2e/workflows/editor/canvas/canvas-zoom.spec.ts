@@ -17,7 +17,11 @@ const ZOOM_OUT_X1_FACTOR = 0.8; // Expected zoom after 1 zoom-out click (80%)
 const ZOOM_OUT_X2_FACTOR = 0.64; // Expected zoom after 2 zoom-out clicks (64%)
 const ZOOM_TOLERANCE = 0.2; // Acceptable variance for floating-point zoom comparisons
 
-test.describe('Canvas Zoom Functionality', () => {
+test.describe('Canvas Zoom Functionality', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});
@@ -174,6 +178,7 @@ test.describe('Canvas Zoom Functionality', () => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
 		await n8n.canvas.clickExecuteWorkflowButton();
+		await expect(n8n.canvas.stopExecutionButton()).toBeHidden();
 
 		await expect(
 			n8n.notifications.getNotificationByTitleOrContent('Workflow executed successfully'),
@@ -194,8 +199,7 @@ test.describe('Canvas Zoom Functionality', () => {
 		await n8n.canvasComposer.renameNodeViaShortcut(CODE_NODE_DISPLAY_NAME, 'Something else');
 		await expect(n8n.canvas.nodeByName('Something else')).toBeAttached();
 
-		await n8n.canvasComposer.saveWorkflowAndWaitForUrl();
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
+		await n8n.canvasComposer.waitForWorkflowSaveAndUrl();
 
 		await n8n.canvasComposer.reloadAndWaitForCanvas();
 
@@ -221,9 +225,12 @@ test.describe('Canvas Zoom Functionality', () => {
 		await expect(n8n.ndv.getNodesWithIssues()).toHaveCount(1);
 	});
 
-	test.skip('should open and close the about modal on keyboard shortcut', async ({ n8n }) => {
-		await n8n.sideBar.openAboutModalViaShortcut();
-		await expect(n8n.sideBar.getAboutModal()).toBeVisible();
-		await n8n.sideBar.closeAboutModal();
-	});
+	test.fixme(
+		'should open and close the about modal on keyboard shortcut @fixme',
+		async ({ n8n }) => {
+			await n8n.sideBar.openAboutModalViaShortcut();
+			await expect(n8n.sideBar.getAboutModal()).toBeVisible();
+			await n8n.sideBar.closeAboutModal();
+		},
+	);
 });

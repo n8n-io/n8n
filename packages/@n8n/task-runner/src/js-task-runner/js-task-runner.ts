@@ -30,15 +30,15 @@ import { type Context, createContext, runInContext } from 'node:vm';
 
 import type { MainConfig } from '@/config/main-config';
 import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
+import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
 import type {
 	DataRequestResponse,
 	InputDataChunkDefinition,
 	PartialAdditionalData,
 	TaskResultData,
 } from '@/runner-types';
-import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
-import { noOp, TaskRunner } from '@/task-runner';
 import type { TaskParams } from '@/task-runner';
+import { noOp, TaskRunner } from '@/task-runner';
 
 import { BuiltInsParser } from './built-ins-parser/built-ins-parser';
 import { BuiltInsParserState } from './built-ins-parser/built-ins-parser-state';
@@ -54,11 +54,20 @@ export interface RpcCallObject {
 	[name: string]: ((...args: unknown[]) => Promise<unknown>) | RpcCallObject;
 }
 
+/**
+ * The mode in which the code is executed:
+ * - 'runCode': The code is executed in a limited environment that doesn't have
+ *    access to builtins or RPC and doesn't fetch any input data separately.
+ * - 'runOnceForAllItems': The code is executed for all items in a single run.
+ * - 'runOnceForEachItem': The code is executed for each item in the input data.
+ */
+export type RunnerExecutionMode = 'runCode' | CodeExecutionMode;
+
 export interface JSExecSettings {
 	code: string;
 	// Additional properties to add to the context
 	additionalProperties?: Record<string, unknown>;
-	nodeMode: CodeExecutionMode;
+	nodeMode: RunnerExecutionMode;
 	workflowMode: WorkflowExecuteMode;
 	continueOnFail: boolean;
 	// For executing partial input data
@@ -178,6 +187,15 @@ export class JsTaskRunner extends TaskRunner {
 
 		this.validateTaskSettings(settings);
 
+		if (settings.nodeMode === 'runCode') {
+			const result = await this.runCode(settings, abortSignal);
+			return {
+				result,
+				customData: undefined,
+				staticData: undefined,
+			};
+		}
+
 		const neededBuiltInsResult = this.builtInsParser.parseUsedBuiltIns(settings.code);
 		const neededBuiltIns = neededBuiltInsResult.ok
 			? neededBuiltInsResult.result
@@ -250,6 +268,48 @@ export class JsTaskRunner extends TaskRunner {
 			TextEncoderStream,
 			FormData,
 		};
+	}
+
+	/**
+	 * Runs the given code in an environment that doesn't have access to
+	 * builtins or RPC and doesn't fetch any input data separately. Any data
+	 * can be passed in as additional properties.
+	 */
+	async runCode(settings: JSExecSettings, abortSignal: AbortSignal): Promise<unknown> {
+		const context = createContext({
+			__isExecutionContext: true,
+			module: { exports: {} },
+			...settings.additionalProperties,
+		});
+
+		try {
+			const result = await new Promise<unknown>((resolve, reject) => {
+				const abortHandler = () => {
+					reject(new TimeoutError(this.taskTimeout));
+				};
+
+				abortSignal.addEventListener('abort', abortHandler, { once: true });
+
+				// We don't need to check for the insecure mode since we are not
+				// giving access to any third party libraries.
+				const taskResult: Promise<unknown> = runInContext(
+					this.createVmExecutableCode(settings.code),
+					context,
+					{ timeout: this.taskTimeout * 1000 },
+				) as Promise<unknown>;
+
+				void taskResult
+					.then(resolve)
+					.catch(reject)
+					.finally(() => {
+						abortSignal.removeEventListener('abort', abortHandler);
+					});
+			});
+
+			return result;
+		} catch (e) {
+			throw this.toExecutionErrorIfNeeded(e);
+		}
 	}
 
 	/**

@@ -65,9 +65,7 @@ import {
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import get from 'lodash/get';
-import { ElSwitch } from 'element-plus';
-import { N8nLink, N8nTooltip } from '@n8n/design-system';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 type Props = {
 	modalName: string;
@@ -94,8 +92,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const router = useRouter();
 const rootStore = useRootStore();
-const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
-
+const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 const activeTab = ref('connection');
 const authError = ref('');
 const credentialId = ref('');
@@ -119,6 +116,9 @@ const requiredCredentials = ref(false); // Are credentials required or optional 
 const contentRef = ref<HTMLDivElement>();
 const isSharedGlobally = ref(false);
 const isResolvable = ref(false);
+const useCustomOAuth = ref(false);
+const pendingAuthType = ref<string | null>(null);
+const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
 
 const activeNodeType = computed(() => {
 	const activeNode = ndvStore.activeNode;
@@ -170,6 +170,7 @@ const credentialType = computed(() => {
 
 const credentialTypeName = computed(() => {
 	if (props.mode === 'edit') {
+		if (selectedCredential.value) return selectedCredential.value;
 		if (currentCredential.value) {
 			return currentCredential.value.type;
 		}
@@ -242,14 +243,11 @@ const isOAuthType = computed(() => {
 	);
 });
 
-const allOAuth2BasePropertiesOverridden = computed(() => {
-	if (credentialType.value?.__overwrittenProperties) {
-		return (
-			credentialType.value.__overwrittenProperties.includes('clientId') &&
-			credentialType.value.__overwrittenProperties.includes('clientSecret')
-		);
-	}
-	return false;
+const managedOAuthAvailable = computed(() => {
+	return (
+		activeNodeType.value?.credentials?.some((type) => hasManagedOAuthCredentials(type.name)) ??
+		false
+	);
 });
 
 const isOAuthConnected = computed(() => isOAuthType.value && !!credentialData.value.oauthTokenData);
@@ -263,7 +261,7 @@ const credentialProperties = computed(() => {
 		if (!displayCredentialParameter(propertyData)) {
 			return false;
 		}
-		return !type.__overwrittenProperties?.includes(propertyData.name);
+		return useCustomOAuth.value || !type.__overwrittenProperties?.includes(propertyData.name);
 	});
 
 	/**
@@ -341,10 +339,10 @@ const defaultCredentialTypeName = computed(() => {
 });
 
 const showSaveButton = computed(() => {
-	return (
-		(props.mode === 'new' || hasUnsavedChanges.value || isSaved.value) &&
-		(credentialPermissions.value.create ?? credentialPermissions.value.update)
-	);
+	const hasPermission = credentialPermissions.value.create ?? credentialPermissions.value.update;
+	if (!hasPermission) return false;
+	if (isOAuthType.value && !isOAuthConnected.value) return false;
+	return true;
 });
 
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
@@ -352,10 +350,6 @@ const showSharingContent = computed(() => activeTab.value === 'sharing' && !!cre
 const homeProject = computed(() => {
 	const { currentProject, personalProject } = projectsStore;
 	return currentProject ?? personalProject;
-});
-
-const isDynamicCredentialsEnabled = computed<boolean>(() => {
-	return checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS');
 });
 
 const isNewCredential = computed(() => props.mode === 'new' && !credentialId.value);
@@ -390,6 +384,15 @@ onMounted(async () => {
 				};
 			}
 		}
+	}
+
+	// Detect if existing credential uses custom OAuth (user-provided clientId/clientSecret)
+	if (
+		managedOAuthAvailable.value &&
+		credentialData.value.clientId &&
+		credentialData.value.clientSecret
+	) {
+		useCustomOAuth.value = true;
 	}
 
 	await externalHooks.run('credentialsEdit.credentialModalOpened', {
@@ -450,6 +453,7 @@ async function beforeClose() {
 	}
 
 	if (!keepEditing) {
+		pendingAuthType.value = null;
 		uiStore.activeCredentialType = null;
 		return true;
 	} else if (!requiredPropertiesFilled.value) {
@@ -599,6 +603,35 @@ function onShareWithAllUsersUpdate(shareWithAllUsers: boolean) {
 	hasUnsavedChanges.value = true;
 }
 
+function getCurrentModeCacheKey(): string {
+	const base = credentialTypeName.value ?? '';
+	if (isOAuthType.value) {
+		return `${base}:${useCustomOAuth.value ? 'custom' : 'managed'}`;
+	}
+	return base;
+}
+
+function cacheCurrentData(): void {
+	const key = getCurrentModeCacheKey();
+	if (!key) return;
+
+	credentialDataCache.value[key] = { ...credentialData.value };
+}
+
+function restoreOrReset(): void {
+	const cached = credentialDataCache.value[getCurrentModeCacheKey()];
+	if (cached) {
+		credentialData.value = { ...cached };
+	} else {
+		resetCredentialData();
+	}
+}
+
+function onResolvableChange(value: boolean) {
+	isResolvable.value = value;
+	hasUnsavedChanges.value = true;
+}
+
 function onDataChange({ name, value }: IUpdateInformation) {
 	const currentValue = get(credentialData.value, name);
 	if (currentValue === value) {
@@ -607,8 +640,10 @@ function onDataChange({ name, value }: IUpdateInformation) {
 
 	hasUnsavedChanges.value = true;
 
-	const { oauthTokenData, ...credData } = credentialData.value;
-	credentialData.value = deepCopy(credData);
+	if (isOAuthType.value && (name === 'clientId' || name === 'clientSecret')) {
+		const { oauthTokenData, ...credData } = credentialData.value;
+		credentialData.value = deepCopy(credData);
+	}
 
 	setParameterValue(credentialData.value, name, value);
 }
@@ -699,6 +734,14 @@ function usesExternalSecrets(data: Record<string, unknown>): boolean {
 	);
 }
 
+function hasManagedOAuthCredentials(credType: string) {
+	const type = credentialsStore.getCredentialTypeByName(credType);
+	return (
+		type?.__overwrittenProperties?.includes('clientId') &&
+		type.__overwrittenProperties.includes('clientSecret')
+	);
+}
+
 async function saveCredential(): Promise<ICredentialsResponse | null> {
 	if (!requiredPropertiesFilled.value) {
 		showValidationWarning.value = true;
@@ -741,6 +784,12 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 	if (credentialData.value.homeProject) {
 		credentialDetails.homeProject = credentialData.value.homeProject as ProjectSharingData;
+	}
+
+	const appliedAuthType = pendingAuthType.value;
+	if (appliedAuthType && ndvStore.activeNode) {
+		updateNodeAuthType(workflowState, ndvStore.activeNode, appliedAuthType);
+		pendingAuthType.value = null;
 	}
 
 	let credential: ICredentialsResponse | null = null;
@@ -1054,6 +1103,33 @@ async function oAuthCredentialAuthorize() {
 		return;
 	}
 
+	if (url === undefined || url === '') {
+		toast.showError(
+			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
+			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
+		);
+		return;
+	}
+
+	// Prevent javascript:, data:, vbscript: and other non-http(s) protocols (XSS)
+	const allowedOAuthUrlProtocols = ['http:', 'https:'];
+	try {
+		const parsedUrl = new URL(url);
+		if (!allowedOAuthUrlProtocols.includes(parsedUrl.protocol)) {
+			toast.showError(
+				new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
+				i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
+			);
+			return;
+		}
+	} catch {
+		toast.showError(
+			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
+			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
+		);
+		return;
+	}
+
 	const params =
 		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
 	const oauthPopup = window.open(url, 'OAuth Authorization', params);
@@ -1103,17 +1179,28 @@ async function oAuthCredentialAuthorize() {
 	oauthChannel.addEventListener('message', receiveMessage);
 }
 
-async function onAuthTypeChanged(type: string): Promise<void> {
+async function onAuthTypeChanged(payload: {
+	type: string;
+	useCustomOauth?: boolean;
+}): Promise<void> {
+	cacheCurrentData();
+	authError.value = '';
+	useCustomOAuth.value = payload.useCustomOauth ?? false;
+
 	if (!activeNodeType.value?.credentials) {
 		return;
 	}
-	const credentialsForType = getNodeCredentialForSelectedAuthType(activeNodeType.value, type);
+	const credentialsForType = getNodeCredentialForSelectedAuthType(
+		activeNodeType.value,
+		payload.type,
+	);
 	if (credentialsForType) {
 		selectedCredential.value = credentialsForType.name;
 		uiStore.activeCredentialType = credentialsForType.name;
-		resetCredentialData();
-		// Update current node auth type so credentials dropdown can be displayed properly
-		updateNodeAuthType(workflowState, ndvStore.activeNode, type);
+
+		restoreOrReset();
+
+		pendingAuthType.value = payload.type;
 		// Also update credential name but only if the default name is still used
 		if (hasUnsavedChanges.value && !hasUserSpecifiedName.value) {
 			const newDefaultName = await credentialsStore.getNewCredentialName({
@@ -1207,26 +1294,14 @@ const { width } = useElementSize(credNameRef);
 				</div>
 				<div :class="$style.credActions">
 					<N8nIconButton
+						variant="subtle"
 						v-if="currentCredential && credentialPermissions.delete"
 						:title="i18n.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash-2"
-						type="tertiary"
 						:disabled="isSaving"
 						:loading="isDeleting"
 						data-test-id="credential-delete-button"
 						@click="deleteCredential"
-					/>
-					<SaveButton
-						v-if="showSaveButton"
-						:saved="!hasUnsavedChanges && !isTesting && !!credentialId"
-						:is-saving="isSaving || isTesting"
-						:saving-label="
-							isTesting
-								? i18n.baseText('credentialEdit.credentialEdit.testing')
-								: i18n.baseText('credentialEdit.credentialEdit.saving')
-						"
-						data-test-id="credential-save-button"
-						@click="saveCredential"
 					/>
 				</div>
 			</div>
@@ -1262,69 +1337,34 @@ const { width } = useElementSize(credNameRef);
 						:parent-types="parentTypes"
 						:required-properties-filled="requiredPropertiesFilled"
 						:credential-permissions="credentialPermissions"
-						:all-o-auth2-base-properties-overridden="allOAuth2BasePropertiesOverridden"
 						:mode="mode"
 						:selected-credential="selectedCredential"
-						:show-auth-type-selector="requiredCredentials"
+						:is-dynamic-credentials-enabled="isDynamicCredentialsEnabled"
+						:is-resolvable="isResolvable"
+						:is-new-credential="isNewCredential"
+						:managed-oauth-available="managedOAuthAvailable"
+						:use-custom-oauth="useCustomOAuth"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
 						@scroll-to-top="scrollToTop"
 						@auth-type-changed="onAuthTypeChanged"
+						@update:is-resolvable="onResolvableChange"
 					/>
-					<div
-						v-if="
-							isDynamicCredentialsEnabled &&
-							((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
+					<SaveButton
+						v-if="showSaveButton"
+						:class="$style.saveButton"
+						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
+						:is-saving="isSaving || isTesting"
+						:saved="false"
+						:saving-label="
+							isTesting
+								? i18n.baseText('credentialEdit.credentialEdit.testing')
+								: i18n.baseText('credentialEdit.credentialEdit.saving')
 						"
-						:class="$style.dynamicCredentials"
-						data-test-id="dynamic-credentials-section"
-					>
-						<div :class="$style.dynamicCredentialsHeader">
-							<N8nText size="medium" weight="bold">
-								{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.title') }}
-							</N8nText>
-							<N8nTooltip placement="top">
-								<template #content>
-									<div>
-										{{
-											i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip')
-										}}
-									</div>
-								</template>
-								<N8nIcon icon="circle-help" size="small" />
-							</N8nTooltip>
-						</div>
-						<ElSwitch
-							v-model="isResolvable"
-							data-test-id="dynamic-credentials-toggle"
-							@update:model-value="() => (hasUnsavedChanges = true)"
-						/>
-						<div :class="$style.dynamicCredentialsDescription">
-							<N8nText :tag="'div'" size="small" color="text-light">
-								{{
-									i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.description1')
-								}}
-							</N8nText>
-							<N8nText size="small" color="text-light">
-								{{
-									i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.description2')
-								}}
-								<N8nLink
-									:to="i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.docsUrl')"
-									size="small"
-									theme="text"
-									underline
-								>
-									{{
-										i18n.baseText(
-											'credentialEdit.credentialConfig.dynamicCredentials.documentation',
-										)
-									}}
-								</N8nLink>
-							</N8nText>
-						</div>
-					</div>
+						data-test-id="credential-save-button"
+						@click="saveCredential"
+					/>
 				</div>
 				<div v-else-if="showSharingContent" :class="$style.mainContent">
 					<CredentialSharing
@@ -1336,6 +1376,20 @@ const { width } = useElementSize(credNameRef);
 						:modal-bus="modalBus"
 						@update:model-value="onChangeSharedWith"
 						@update:share-with-all-users="onShareWithAllUsersUpdate"
+					/>
+					<SaveButton
+						v-if="showSaveButton"
+						:class="$style.saveButton"
+						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
+						:is-saving="isSaving || isTesting"
+						:saved="false"
+						:saving-label="
+							isTesting
+								? i18n.baseText('credentialEdit.credentialEdit.testing')
+								: i18n.baseText('credentialEdit.credentialEdit.saving')
+						"
+						data-test-id="credential-save-button"
+						@click="saveCredential"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
@@ -1349,7 +1403,7 @@ const { width } = useElementSize(credNameRef);
 <style module lang="scss">
 .credentialModal {
 	--dialog--max-width: 1200px;
-	--dialog--close--spacing--top: 31px;
+	--dialog--close--spacing--top: 36px;
 	--dialog--max-height: 750px;
 
 	:global(.el-dialog__header) {
@@ -1435,21 +1489,7 @@ const { width } = useElementSize(credNameRef);
 	margin-right: var(--spacing--xs);
 }
 
-.dynamicCredentials {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	padding-top: var(--spacing--lg);
-	border-top: var(--border);
-}
-
-.dynamicCredentialsHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.dynamicCredentialsDescription {
-	margin-top: var(--spacing--2xs);
+.saveButton {
+	margin-left: 1px;
 }
 </style>

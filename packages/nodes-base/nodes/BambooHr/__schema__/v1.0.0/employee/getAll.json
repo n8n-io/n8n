@@ -22,6 +22,9 @@
         "lastName": {
             "type": "string"
         },
+        "location": {
+            "type": "string"
+        },
         "photoUploaded": {
             "type": "boolean"
         },
@@ -33,7 +36,10 @@
         },
         "supervisor": {
             "type": "string"
+        },
+        "workEmail": {
+            "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

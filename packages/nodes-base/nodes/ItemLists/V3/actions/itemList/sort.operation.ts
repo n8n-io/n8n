@@ -268,7 +268,7 @@ export async function execute(
 			return result;
 		});
 	} else {
-		returnData = sortByCode.call(this, returnData);
+		returnData = await sortByCode.call(this, returnData);
 	}
 	return returnData;
 }

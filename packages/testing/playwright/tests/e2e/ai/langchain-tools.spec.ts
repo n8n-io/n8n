@@ -52,16 +52,21 @@ async function setupBasicAgentWorkflow(n8n: n8nPage, additionalNodes: string[] =
 }
 
 test.use({ capability: 'proxy' });
-test.describe('Langchain Integration @capability:proxy', () => {
-	test.beforeEach(async ({ n8n, proxyServer }) => {
-		await proxyServer.clearAllExpectations();
-		await proxyServer.loadExpectations('langchain');
+test.describe('Langchain Integration @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
+	test.beforeEach(async ({ n8n, services }) => {
+		await services.proxy.clearAllExpectations();
+		await services.proxy.loadExpectations('langchain');
 		await n8n.canvas.openNewWorkflow();
 	});
 
 	// @AI team to look at this
-	// eslint-disable-next-line playwright/no-skipped-test
-	test.skip('Tool Usage Notifications', () => {
+	test.describe('Tool Usage Notifications @fixme', () => {
+		test.fixme();
+
 		test('should show tool info notice if no existing tools were used during execution', async ({
 			n8n,
 		}) => {

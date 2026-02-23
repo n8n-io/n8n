@@ -8,6 +8,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { I18nT } from 'vue-i18n';
 
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
@@ -15,9 +16,12 @@ import { useToast } from '@/app/composables/useToast';
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
+import { CREDENTIAL_ONLY_NODE_PREFIX, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
+import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
+import { useCredentialOAuth } from '../composables/useCredentialOAuth';
+import QuickConnectButton from '../quickConnect/components/QuickConnectButton.vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -25,6 +29,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { assert } from '@n8n/utils/assert';
 import {
+	getAppNameFromCredType,
 	getAuthTypeForNodeCredential,
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
@@ -32,11 +37,16 @@ import {
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 import {
+	N8nBadge,
+	N8nButton,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
+	N8nLink,
+	N8nNotice,
 	N8nOption,
 	N8nSelect,
 	N8nText,
@@ -75,6 +85,17 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const workflowState = injectWorkflowState();
+const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+
+// Quick connect
+const {
+	loading: quickConnectLoading,
+	isQuickConnectEnabled,
+	getQuickConnectOption,
+	connect,
+	cancelConnect,
+} = useQuickConnect();
+const { hasManagedOAuthCredentials } = useCredentialOAuth();
 
 const canCreateCredentials = computed(
 	() =>
@@ -107,6 +128,7 @@ const {
 	node,
 	nodeType,
 	computed(() => props.overrideCredType),
+	() => props.showAll,
 );
 
 const credentialTypeNames = computed(() => {
@@ -124,6 +146,29 @@ const selected = computed<Record<string, INodeCredentialsDetails>>(
 	() => props.node.credentials ?? {},
 );
 
+const hasWorkflowResolver = computed(() => {
+	return !!workflowsStore.workflowSettings?.credentialResolverId;
+});
+
+function isCredentialResolvable(credentialType: string): boolean {
+	if (!isDynamicCredentialsEnabled.value) return false;
+	const credentialId = selected.value[credentialType]?.id;
+	if (!credentialId) return false;
+	const credential = credentialsStore.getCredentialById(credentialId);
+	return credential?.isResolvable === true;
+}
+
+function showResolvableWarning(credentialType: string): boolean {
+	return isCredentialResolvable(credentialType) && !hasWorkflowResolver.value;
+}
+
+// TODO: use actual docs link when available
+const dynamicCredentialsDocsUrl = '';
+
+function openWorkflowSettings() {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+}
+
 watch(
 	() => props.node.parameters,
 	(newValue, oldValue) => {
@@ -134,7 +179,6 @@ watch(
 		if (isActive && nodeType.value && listeningForAuthChange.value) {
 			if (mainNodeAuthField.value && oldValue && newValue) {
 				const newAuth = newValue[mainNodeAuthField.value.name];
-
 				if (newAuth) {
 					const authType =
 						typeof newAuth === 'object' ? JSON.stringify(newAuth) : newAuth.toString();
@@ -165,7 +209,12 @@ watch(
 			allOptions[0],
 		);
 
-		onCredentialSelected(mostRecentCredential.type, mostRecentCredential.id);
+		onCredentialSelected(
+			mostRecentCredential.type,
+			mostRecentCredential.id,
+			false, // showAuthOptions
+			false, // isUserAction
+		);
 	},
 	{ immediate: true },
 );
@@ -182,6 +231,17 @@ onMounted(() => {
 			if (!listeningForActions.includes(name)) {
 				return;
 			}
+
+			if (name === 'createNewCredential') {
+				// If store update is skipped, it means the credential creation is part of an OAuth flow
+				// the store will be updated on OAuth success, so we can ignore this action here
+				const options = args[3];
+
+				if (options?.skipStoreUpdate) {
+					return;
+				}
+			}
+
 			const current = selected.value[credentialType];
 			let credentialsOfType: ICredentialsResponse[] = [];
 			if (props.showAll) {
@@ -231,6 +291,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	ndvEventBus.off('credential.createNew', onCreateAndAssignNewCredential);
+	cancelConnect();
 });
 
 function getSelectedId(type: INodeCredentialDescription) {
@@ -306,6 +367,7 @@ function onCredentialSelected(
 	credentialType: string,
 	credentialId: string | null | undefined,
 	showAuthOptions = false,
+	isUserAction = true,
 ) {
 	if (!credentialId) {
 		createNewCredential(credentialType, false, showAuthOptions);
@@ -355,21 +417,24 @@ function onCredentialSelected(
 	}
 
 	// Auto-assign credential to other matching nodes
-	const updatedNodesCount = workflowsStore.assignCredentialToMatchingNodes({
-		credentials: newSelectedCredentials,
-		type: selectedCredentialsType,
-		currentNodeName: props.node.name,
-	});
-
-	if (updatedNodesCount > 0) {
-		nodeHelpers.updateNodesCredentialsIssues();
-		toast.showMessage({
-			title: i18n.baseText('nodeCredentials.showMessage.title'),
-			message: i18n.baseText('nodeCredentials.autoAssigned.message', {
-				interpolate: { count: String(updatedNodesCount) },
-			}),
-			type: 'success',
+	// Skip auto-assign for automatic/system actions (e.g., auto-selecting on mount)
+	if (isUserAction) {
+		const updatedNodesCount = workflowsStore.assignCredentialToMatchingNodes({
+			credentials: newSelectedCredentials,
+			type: selectedCredentialsType,
+			currentNodeName: props.node.name,
 		});
+
+		if (updatedNodesCount > 0) {
+			nodeHelpers.updateNodesCredentialsIssues();
+			toast.showMessage({
+				title: i18n.baseText('nodeCredentials.showMessage.title'),
+				message: i18n.baseText('nodeCredentials.autoAssigned.message', {
+					interpolate: { count: String(updatedNodesCount) },
+				}),
+				type: 'success',
+			});
+		}
 	}
 
 	// If credential is selected from mixed credential dropdown, update node's auth filed based on selected credential
@@ -449,7 +514,11 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 			interpolate: { credentialType: credentialTypeName },
 		});
 	}
-	return i18n.baseText('nodeCredentials.credentialsLabel');
+	return i18n.baseText(
+		isQuickConnectEnabled.value
+			? 'nodeCredentials.credentialsLabelShort'
+			: 'nodeCredentials.credentialsLabel',
+	);
 }
 
 function setFilter(newFilter = '') {
@@ -464,6 +533,50 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	selectRefs.value.forEach((select) => select.blur());
 	await nextTick();
 	createNewCredential(type.name, true, showMixedCredentials(type));
+}
+
+function getServiceName(credentialTypeName: string): string {
+	const displayName = credentialTypeNames.value[credentialTypeName] ?? credentialTypeName;
+	return getAppNameFromCredType(displayName);
+}
+
+const quickConnectCredentialType = computed(() => {
+	if (!isQuickConnectEnabled.value) return undefined;
+	return credentialTypesNodeDescriptions.value.find(
+		(t) => !!getQuickConnectOption(t.name, props.node.type) || hasManagedOAuthCredentials(t.name),
+	)?.name;
+});
+
+function showQuickConnectEmptyState(type: INodeCredentialDescription): boolean {
+	return !isCredentialExisting(type) && !!quickConnectCredentialType.value;
+}
+
+function showStandardEmptyState(type: INodeCredentialDescription): boolean {
+	return !isCredentialExisting(type) && !quickConnectCredentialType.value;
+}
+
+async function onQuickConnectSignIn(credentialTypeName: string) {
+	subscribedToCredentialType.value = credentialTypeName;
+	const serviceName = getServiceName(credentialTypeName);
+
+	try {
+		const credential = await connect({
+			credentialTypeName,
+			nodeType: props.node.type,
+			source: 'node',
+			serviceName,
+		});
+
+		if (credential) {
+			onCredentialSelected(credentialTypeName, credential.id);
+			toast.showMessage({
+				title: i18n.baseText('nodeCredentials.quickConnect.credential.created.success'),
+				type: 'success',
+			});
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('nodeCredentials.quickConnect.credential.created.error'));
+	}
 }
 </script>
 
@@ -489,49 +602,136 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 					/>
 				</div>
 				<div
+					v-else-if="
+						options.length === 0 && showQuickConnectEmptyState(type) && quickConnectCredentialType
+					"
+					:class="[$style.quickConnectContainer]"
+					data-test-id="quick-connect-empty-state"
+				>
+					<QuickConnectButton
+						size="small"
+						:disabled="quickConnectLoading"
+						:credential-type-name="quickConnectCredentialType"
+						:service-name="getServiceName(quickConnectCredentialType)"
+						@click="onQuickConnectSignIn(quickConnectCredentialType)"
+					/>
+					<span :class="$style.setupManuallyContainer">
+						<N8nText size="small" :class="$style.setupManuallyOr">
+							{{ i18n.baseText('nodeCredentials.quickConnect.or') }}
+						</N8nText>
+						<N8nLink
+							:class="$style.setupManuallyLink"
+							theme="secondary"
+							underline
+							size="small"
+							data-test-id="setup-manually-link"
+							@click="createNewCredential(type.name, true, showMixedCredentials(type))"
+						>
+							{{ i18n.baseText('nodeCredentials.quickConnect.setupManually') }}
+						</N8nLink>
+					</span>
+				</div>
+
+				<div
+					v-else-if="isQuickConnectEnabled && showStandardEmptyState(type)"
+					:class="$style.standardEmptyContainer"
+					data-test-id="standard-empty-state"
+				>
+					<N8nSelect
+						:class="$style.emptySelect"
+						size="small"
+						disabled
+						:placeholder="i18n.baseText('nodeCredentials.emptyState.noCredentials')"
+					/>
+					<N8nButton
+						v-if="canCreateCredentials"
+						variant="subtle"
+						size="small"
+						data-test-id="setup-credential-button"
+						@click="createNewCredential(type.name, true, showMixedCredentials(type))"
+					>
+						{{ i18n.baseText('nodeCredentials.emptyState.setupCredential') }}
+					</N8nButton>
+				</div>
+				<div
 					v-else
 					:class="getIssues(type.name).length && !hideIssues ? $style.hasIssues : $style.input"
 					data-test-id="node-credentials-select"
 				>
-					<N8nSelect
-						ref="selectRefs"
-						:model-value="getSelectedId(type)"
-						:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
-						size="small"
-						filterable
-						:filter-method="setFilter"
-						:popper-class="$style.selectPopper"
-						@update:model-value="
-							(value: string) => onCredentialSelected(type.name, value, showMixedCredentials(type))
-						"
-						@blur="emit('blur', 'credentials')"
-					>
-						<N8nOption
-							v-for="item in options.filter((o) => matches(filter, o.name))"
-							:key="item.id"
-							:data-test-id="`node-credentials-select-item-${item.id}`"
-							:label="item.name"
-							:value="item.id"
+					<div :class="$style.selectContainer">
+						<N8nSelect
+							ref="selectRefs"
+							:model-value="getSelectedId(type)"
+							:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
+							size="small"
+							filterable
+							:filter-method="setFilter"
+							:popper-class="$style.selectPopper"
+							:class="{ [$style.selectWithDynamic]: isCredentialResolvable(type.name) }"
+							@update:model-value="
+								(value: string) =>
+									onCredentialSelected(type.name, value, showMixedCredentials(type))
+							"
+							@blur="emit('blur', 'credentials')"
 						>
-							<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
-								<N8nText bold>{{ item.name }}</N8nText>
-								<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
-							</div>
-						</N8nOption>
-						<template #empty> </template>
-						<template #footer>
-							<button
-								type="button"
-								data-test-id="node-credentials-select-item-new"
-								:class="[$style.newCredential]"
-								:disabled="!canCreateCredentials"
-								@click="onClickCreateCredential(type)"
+							<N8nOption
+								v-for="item in options.filter((o) => matches(filter, o.name))"
+								:key="item.id"
+								:data-test-id="`node-credentials-select-item-${item.id}`"
+								:label="item.name"
+								:value="item.id"
 							>
-								<N8nIcon size="xsmall" icon="plus" />
-								{{ NEW_CREDENTIALS_TEXT }}
-							</button>
-						</template>
-					</N8nSelect>
+								<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
+									<div :class="$style.credentialOptionName">
+										<N8nText bold>{{ item.name }}</N8nText>
+										<N8nTooltip
+											v-if="isDynamicCredentialsEnabled && item.isResolvable"
+											placement="top"
+										>
+											<template #content>{{
+												i18n.baseText('credentials.dynamic.tooltip')
+											}}</template>
+											<N8nIcon
+												icon="key-round"
+												size="medium"
+												:class="$style.dynamicIcon"
+												data-test-id="credential-option-dynamic-icon"
+											/>
+										</N8nTooltip>
+									</div>
+									<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
+								</div>
+							</N8nOption>
+							<template #empty> </template>
+							<template #footer>
+								<button
+									type="button"
+									data-test-id="node-credentials-select-item-new"
+									:class="[$style.newCredential]"
+									:disabled="!canCreateCredentials"
+									@click="onClickCreateCredential(type)"
+								>
+									<N8nIcon size="xsmall" icon="plus" />
+									{{ NEW_CREDENTIALS_TEXT }}
+								</button>
+							</template>
+						</N8nSelect>
+						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
+							<N8nTooltip placement="top">
+								<template #content>{{ i18n.baseText('credentials.dynamic.tooltip') }}</template>
+								<N8nBadge
+									theme="tertiary"
+									class="pl-3xs pr-3xs"
+									data-test-id="node-credential-dynamic-icon"
+								>
+									<span :class="$style.dynamicBadgeText">
+										<N8nIcon icon="key-round" size="medium" />
+										{{ i18n.baseText('credentials.dynamic.badge') }}
+									</span>
+								</N8nBadge>
+							</N8nTooltip>
+						</div>
+					</div>
 
 					<div v-if="getIssues(type.name).length && !hideIssues" :class="$style.warning">
 						<N8nTooltip placement="top">
@@ -558,6 +758,25 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 						/>
 					</div>
 				</div>
+				<N8nNotice
+					v-if="showResolvableWarning(type.name)"
+					theme="warning"
+					:class="$style.resolverWarning"
+					data-test-id="node-credential-resolver-warning"
+				>
+					<I18nT keypath="credentials.dynamic.warning.noResolver" tag="span" scope="global">
+						<template #workflowSettings>
+							<N8nLink @click="openWorkflowSettings">
+								{{ i18n.baseText('credentials.dynamic.warning.noResolver.workflowSettings') }}
+							</N8nLink>
+						</template>
+						<template v-if="dynamicCredentialsDocsUrl" #documentation>
+							<N8nLink :href="dynamicCredentialsDocsUrl" new-window>
+								{{ i18n.baseText('credentials.dynamic.warning.noResolver.documentation') }}
+							</N8nLink>
+						</template>
+					</I18nT>
+				</N8nNotice>
 			</N8nInputLabel>
 		</div>
 	</div>
@@ -601,11 +820,21 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	color: var(--color--text);
 	margin-left: var(--spacing--3xs);
 	font-size: var(--font-size--sm);
+
+	&:hover,
+	&:focus {
+		color: var(--color--primary);
+	}
 }
 
 .input {
 	display: flex;
 	align-items: center;
+}
+
+.selectContainer {
+	position: relative;
+	flex: 1;
 }
 
 .hasIssues {
@@ -616,6 +845,42 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 .credentialOption {
 	display: flex;
 	flex-direction: column;
+}
+
+.credentialOptionName {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.dynamicIcon {
+	color: var(--color--text--tint-1);
+}
+
+.selectWithDynamic {
+	:global(.el-input__inner) {
+		padding-right: 80px;
+	}
+}
+
+.dynamicIndicator {
+	position: absolute;
+	right: 28px;
+	top: 50%;
+	transform: translateY(-50%);
+	z-index: 1;
+}
+
+.dynamicBadgeText {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--3xs);
+	height: 18px;
+}
+
+.resolverWarning {
+	margin-top: var(--spacing--2xs);
 }
 
 .newCredential {
@@ -644,5 +909,47 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
+}
+
+.quickConnectContainer {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--4xs);
+}
+
+.setupManuallyContainer {
+	display: inline-flex;
+	align-items: baseline;
+	gap: var(--spacing--4xs);
+}
+
+.setupManuallyOr {
+	color: var(--color--text);
+}
+
+.setupManuallyLink {
+	--link--color--secondary: var(--color--text);
+
+	&:hover,
+	&:focus,
+	&:active {
+		:global(span) {
+			color: var(--color--text--shade-1);
+		}
+	}
+}
+
+.standardEmptyContainer {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	margin-top: var(--spacing--4xs);
+}
+
+.emptySelect {
+	flex: 1;
 }
 </style>

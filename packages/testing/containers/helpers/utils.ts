@@ -4,11 +4,14 @@ import type { StartedTestContainer } from 'testcontainers';
 
 /**
  * Create a logger that prefixes messages with elapsed time since creation.
+ * Only outputs when CONTAINER_TELEMETRY_VERBOSE=1 is set.
  */
 export function createElapsedLogger(prefix: string) {
 	const startTime = Date.now();
+	const isVerbose = process.env.CONTAINER_TELEMETRY_VERBOSE === '1';
 
 	return (message: string) => {
+		if (!isVerbose) return;
 		const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 		console.log(`[${prefix} +${elapsed}s] ${message}`);
 	};

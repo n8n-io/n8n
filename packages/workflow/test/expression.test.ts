@@ -6,10 +6,13 @@ import { workflow } from './ExpressionExtensions/helpers';
 import { baseFixtures } from './ExpressionFixtures/base';
 import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
 import * as Helpers from './helpers';
+import { ExpressionReservedVariableError } from '../src/errors/expression-reserved-variable.error';
 import { ExpressionError } from '../src/errors/expression.error';
+import { Expression } from '../src/expression';
 import { extendSyntax } from '../src/extensions/expression-extension';
 import type { INodeExecutionData } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
+import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 
 describe('Expression', () => {
 	describe('getParameterValue()', () => {
@@ -173,6 +176,28 @@ describe('Expression', () => {
 			expect(testFn).not.toHaveBeenCalled();
 		});
 
+		it('should include runIndex and itemIndex in error when .constructor is used', () => {
+			let thrownError: ExpressionError | undefined;
+			try {
+				expression.getParameterValue(
+					'={{ {}.constructor() }}',
+					null,
+					2,
+					3,
+					'node',
+					[],
+					'manual',
+					{},
+				);
+			} catch (e) {
+				thrownError = e as ExpressionError;
+			}
+
+			expect(thrownError).toBeInstanceOf(ExpressionError);
+			expect(thrownError?.context.runIndex).toBe(2);
+			expect(thrownError?.context.itemIndex).toBe(3);
+		});
+
 		describe('SafeObject security wrapper', () => {
 			it('should block Object.defineProperty', () => {
 				expect(evaluate('={{Object.defineProperty}}')).toBeUndefined();
@@ -199,19 +224,27 @@ describe('Expression', () => {
 			});
 
 			it('should block __defineGetter__ on Object', () => {
-				expect(evaluate('={{Object.__defineGetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
 			});
 
 			it('should block __defineSetter__ on Object', () => {
-				expect(evaluate('={{Object.__defineSetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.__defineSetter__}}')).toThrow(
+					'Cannot access "__defineSetter__" due to security concerns',
+				);
 			});
 
 			it('should block __lookupGetter__ on Object', () => {
-				expect(evaluate('={{Object.__lookupGetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.__lookupGetter__}}')).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
 			});
 
 			it('should block __lookupSetter__ on Object', () => {
-				expect(evaluate('={{Object.__lookupSetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{Object.__lookupSetter__}}')).toThrow(
+					'Cannot access "__lookupSetter__" due to security concerns',
+				);
 			});
 
 			it('should allow safe Object methods', () => {
@@ -255,11 +288,15 @@ describe('Expression', () => {
 			});
 
 			it('should block __defineGetter__ on Error', () => {
-				expect(evaluate('={{Error.__defineGetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{Error.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
 			});
 
 			it('should block __defineSetter__ on Error', () => {
-				expect(evaluate('={{Error.__defineSetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{Error.__defineSetter__}}')).toThrow(
+					'Cannot access "__defineSetter__" due to security concerns',
+				);
 			});
 
 			it('should prevent setting Error.prepareStackTrace via assignment', () => {
@@ -277,11 +314,15 @@ describe('Expression', () => {
 
 		describe('Error subclass security wrappers', () => {
 			it('should block __defineGetter__ on TypeError', () => {
-				expect(evaluate('={{TypeError.__defineGetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{TypeError.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
 			});
 
 			it('should block __defineGetter__ on SyntaxError', () => {
-				expect(evaluate('={{SyntaxError.__defineGetter__}}')).toBeUndefined();
+				expect(() => evaluate('={{SyntaxError.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
 			});
 
 			it('should block prepareStackTrace on all error types', () => {
@@ -332,8 +373,7 @@ describe('Expression', () => {
 
 			it('should block __defineGetter__ bypass attack', () => {
 				// Alternative attack using __defineGetter__ to set prepareStackTrace
-				// Attack fails because __defineGetter__ is undefined,
-				// calling undefined(...) throws TypeError
+				// Attack fails because __defineGetter__ is blocked at AST level
 				const payload = `={{(() => {
 					Error.__defineGetter__('prepareStackTrace', function() {
 						return (e, stack) => 'ATTACK_WORKED';
@@ -341,9 +381,10 @@ describe('Expression', () => {
 					return new Error().stack;
 				})()}}`;
 
-				// Attack is blocked - calling undefined() throws, result is undefined
-				const result = evaluate(payload);
-				expect(result).toBeUndefined();
+				// Attack is blocked at AST parsing level
+				expect(() => evaluate(payload)).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
 			});
 
 			it('should block getOwnPropertyDescriptor bypass attempt', () => {
@@ -367,6 +408,129 @@ describe('Expression', () => {
 				// Even if you try to store it, you get undefined
 				const result = evaluate('={{(() => { const dp = Object.defineProperty; return dp; })()}}');
 				expect(result).toBeUndefined();
+			});
+
+			it('should block prototype pollution via __lookupGetter__ as bare identifier', () => {
+				const payload = `={{(() => {
+					const getProto = __lookupGetter__('__proto__');
+					const objProto = getProto.call({});
+					objProto['win'] = 1337;
+					const empty = {};
+					return empty['win'];
+				})()}}`;
+
+				// Now blocked at AST level when trying to call __lookupGetter__
+				expect(() => evaluate(payload)).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __lookupGetter__ as bare identifier', () => {
+				expect(() => evaluate('={{__lookupGetter__}}')).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __lookupSetter__ as bare identifier', () => {
+				expect(() => evaluate('={{__lookupSetter__}}')).toThrow(
+					'Cannot access "__lookupSetter__" due to security concerns',
+				);
+			});
+
+			it('should block __defineGetter__ as bare identifier', () => {
+				expect(() => evaluate('={{__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __defineSetter__ as bare identifier', () => {
+				expect(() => evaluate('={{__defineSetter__}}')).toThrow(
+					'Cannot access "__defineSetter__" due to security concerns',
+				);
+			});
+
+			it('should block __lookupGetter__ on object literals', () => {
+				expect(() => evaluate('={{{}.__lookupGetter__("__proto__")}}')).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
+			});
+
+			it('should block prototype pollution RCE via __lookupGetter__ on object literal', () => {
+				const payload = `={{(() => {
+					const getProto = {}.__lookupGetter__("__proto__");
+					const setProto = getProto.call(new Set());
+					if (!setProto._has) {
+						setProto._has = setProto.has;
+						setProto.has = function (a) {
+							if (["construct" + "or"].includes(a)) {
+								return false;
+							}
+							try {
+								return this._has(a);
+							} catch {
+								return false;
+							}
+						};
+					}
+					return setProto;
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
+			});
+
+			it('should block TOCTOU bypass via custom toString()', () => {
+				const payload = `={{(() => {
+					function createBypass() {
+						let value = 'noop';
+						return {
+							toString: () => {
+								const current = value;
+								value = 'constructor';
+								return current;
+							}
+						}
+					}
+					return ({})[createBypass()][createBypass()]('return 1')();
+				})()}}`;
+
+				expect(evaluate(payload)).toBeUndefined();
+			});
+
+			it('should block `__sanitize` override attempt', () => {
+				const payload = `={{(() => {
+					__sanitize = a => a;
+					return this['const' + 'ructor']['const' + 'ructor']('return 1')();
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow();
+			});
+
+			it('should block `___n8n_data` shadowing attempt', () => {
+				const payload = `={{(() => {
+					const ___n8n_data = {__sanitize: a => a};
+					return ({})['const'+'ructor']['const'+'ructor']('return 1')();
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+			});
+
+			it('should block `__sanitize` variable declaration', () => {
+				const payload = `={{(() => {
+					const __sanitize = a => a;
+					return 1;
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+			});
+
+			it('should block `___n8n_data` as function parameter', () => {
+				const payload = `={{((___n8n_data) => {
+					return 1;
+				})({})}}`;
+
+				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
 			});
 		});
 	});
@@ -425,5 +589,139 @@ describe('Expression', () => {
 				vi.useRealTimers();
 			});
 		}
+	});
+
+	describe('resolveSimpleParameterValue with IWorkflowDataProxyData', () => {
+		it('should evaluate expression with provided IWorkflowDataProxyData', () => {
+			const nodeTypes = Helpers.NodeTypes();
+			const workflow = new Workflow({
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'TestNode',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			// Create WorkflowDataProxy to get IWorkflowDataProxyData
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				null,
+				0,
+				0,
+				'TestNode',
+				[{ json: { value: 42 } }],
+				{},
+				'manual',
+				{},
+			);
+			const data = dataProxy.getDataProxy();
+
+			// Test Expression with new API
+			const timezone = workflow.settings?.timezone ?? 'UTC';
+			const expression = new Expression(timezone);
+			const result = expression.resolveSimpleParameterValue('={{ $json.value * 2 }}', data, false);
+
+			expect(result).toBe(84);
+		});
+
+		it('should handle non-expression values', () => {
+			const nodeTypes = Helpers.NodeTypes();
+			const workflow = new Workflow({
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'TestNode',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				null,
+				0,
+				0,
+				'TestNode',
+				[],
+				{},
+				'manual',
+				{},
+			);
+			const data = dataProxy.getDataProxy();
+
+			const timezone = workflow.settings?.timezone ?? 'UTC';
+			const expression = new Expression(timezone);
+
+			// Non-expression value should be returned as-is
+			expect(expression.resolveSimpleParameterValue('plain string', data, false)).toBe(
+				'plain string',
+			);
+			expect(expression.resolveSimpleParameterValue(123, data, false)).toBe(123);
+			expect(expression.resolveSimpleParameterValue(true, data, false)).toBe(true);
+		});
+	});
+
+	describe('getParameterValue with IWorkflowDataProxyData', () => {
+		it('should evaluate simple expression with provided IWorkflowDataProxyData', () => {
+			const nodeTypes = Helpers.NodeTypes();
+			const workflow = new Workflow({
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'TestNode',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				null,
+				0,
+				0,
+				'TestNode',
+				[{ json: { text: 'hello' } }],
+				{},
+				'manual',
+				{},
+			);
+			const data = dataProxy.getDataProxy();
+
+			const timezone = workflow.settings?.timezone ?? 'UTC';
+			const expression = new Expression(timezone);
+			const result = expression.resolveSimpleParameterValue(
+				'={{ $json.text.toUpperCase() }}',
+				data,
+				false,
+			);
+
+			expect(result).toBe('HELLO');
+		});
 	});
 });

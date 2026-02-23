@@ -4,20 +4,20 @@ import type {
 	ChatHubSessionDto,
 	ChatHubMessageDto,
 	ChatHubConversationResponse,
-	EnrichedStructuredChunk,
+	MessageChunk,
 	ChatHubModuleSettings,
 } from '@n8n/api-types';
 import { emptyChatModelsResponse } from '@n8n/api-types';
 import type { ChatMessage } from '../chat.types';
 
-export type SimulateStreamChunkFn = (
-	type: EnrichedStructuredChunk['type'],
+export type SimulateMessageChunkFn = (
+	type: MessageChunk['type'],
 	content: string,
-	metadata: Partial<EnrichedStructuredChunk['metadata']>,
+	metadata: Partial<MessageChunk['metadata']>,
 ) => void;
 
-export function wrapOnMessageUpdate(fn: (chunk: EnrichedStructuredChunk) => void) {
-	return (...[type, content, metadata]: Parameters<SimulateStreamChunkFn>) =>
+export function wrapOnMessageUpdate(fn: (chunk: MessageChunk) => void) {
+	return (...[type, content, metadata]: Parameters<SimulateMessageChunkFn>) =>
 		fn(createMockStreamChunk({ type, content, metadata }));
 }
 
@@ -36,6 +36,8 @@ export function createMockAgent(overrides: Partial<ChatModelDto> = {}): ChatMode
 			},
 			available: true,
 		},
+		groupName: null,
+		groupIcon: null,
 		...overrides,
 	};
 }
@@ -72,7 +74,7 @@ export function createMockSession(overrides: Partial<ChatHubSessionDto> = {}): C
 		agentIcon: null,
 		createdAt: '2024-01-15T12:00:00Z',
 		updatedAt: '2024-01-15T12:00:00Z',
-		tools: [],
+		toolIds: [],
 		...overrides,
 	};
 }
@@ -85,7 +87,7 @@ export function createMockMessageDto(
 		sessionId: 'session-123',
 		type: 'human',
 		name: 'User',
-		content: 'Test message',
+		content: [{ type: 'text', content: 'Test message' }],
 		status: 'success',
 		provider: null,
 		model: null,
@@ -123,20 +125,16 @@ export function createMockConversationResponse(
 }
 
 export function createMockStreamChunk(
-	overrides: Partial<Omit<EnrichedStructuredChunk, 'metadata'>> & {
-		metadata?: Partial<EnrichedStructuredChunk['metadata']>;
+	overrides: Partial<Omit<MessageChunk, 'metadata'>> & {
+		metadata?: Partial<MessageChunk['metadata']>;
 	} = {},
-): EnrichedStructuredChunk {
+): MessageChunk {
 	const { metadata, ...rest } = overrides;
 	return {
 		type: 'item',
 		content: 'Test content',
 		...rest,
 		metadata: {
-			nodeId: 'test-node',
-			nodeName: 'Test Node',
-			runIndex: 0,
-			itemIndex: 0,
 			timestamp: Date.now(),
 			messageId: 'message-123',
 			previousMessageId: null,

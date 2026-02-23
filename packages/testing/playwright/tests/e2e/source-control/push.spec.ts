@@ -17,14 +17,22 @@ async function expectNoChangesToCommit(n8n: n8nPage) {
 	).toBe(true);
 }
 
-test.describe('Push resources to Git @capability:source-control', () => {
+// Skipped: These tests are flaky. Re-enable when PAY-4365 is resolved.
+// https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
+test.describe('Push resources to Git @capability:source-control @fixme', {
+	annotation: [
+		{ type: 'owner', description: 'Lifecycle & Governance' },
+	],
+}, () => {
+	test.fixme();
+
 	let gitRepo: GitRepoHelper;
 
-	test.beforeEach(async ({ n8n, n8nContainer }) => {
+	test.beforeEach(async ({ n8n, services }) => {
 		await n8n.api.enableFeature('sourceControl');
 		await n8n.api.enableFeature('variables');
 
-		gitRepo = await setupGitRepo(n8n, n8nContainer.services.gitea);
+		gitRepo = await setupGitRepo(n8n, services.gitea);
 	});
 
 	test('should push a new workflow', async ({ n8n }) => {
@@ -152,7 +160,7 @@ test.describe('Push resources to Git @capability:source-control', () => {
 		// modify and delete resources
 		await n8n.navigate.toWorkflow(workflow.id);
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await n8n.canvas.saveWorkflow();
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		await n8n.api.credentials.deleteCredential(credential.id);
 
@@ -230,7 +238,7 @@ test.describe('Push resources to Git @capability:source-control', () => {
 		// modify workflow A
 		await n8n.navigate.toWorkflow(workflowA.id);
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await n8n.canvas.saveWorkflow();
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		// check resources
 		await n8n.navigate.toHome();

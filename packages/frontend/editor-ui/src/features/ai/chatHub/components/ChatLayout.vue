@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { CHAT_VIEW, MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
-import { useMediaQuery, useEventListener } from '@vueuse/core';
-import { useRouter } from 'vue-router';
 import { useUIStore } from '@/app/stores/ui.store';
+import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useEventListener } from '@vueuse/core';
+import { useRouter } from 'vue-router';
 
-const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const router = useRouter();
 const uiStore = useUIStore();
 const { isCtrlKeyPressed } = useDeviceSupport();
@@ -26,26 +25,18 @@ useEventListener(document, 'keydown', (event: KeyboardEvent) => {
 </script>
 
 <template>
-	<div :class="[$style.component, { [$style.isMobileDevice]: isMobileDevice }]">
+	<div :class="$style.component">
 		<slot />
 	</div>
 </template>
 
 <style lang="scss" module>
 .component {
-	margin: var(--spacing--4xs);
 	width: 100%;
 	background-color: var(--color--background--light-2);
-	border: var(--border);
-	border-radius: var(--radius);
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
 	overflow: hidden;
-
-	&.isMobileDevice {
-		margin: 0;
-		border: none;
-	}
 }
 </style>

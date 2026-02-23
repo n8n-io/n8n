@@ -49,16 +49,21 @@ async function verifyChatMessages(n8n: n8nPage, expectedCount: number, inputMess
 }
 
 test.use({ capability: 'proxy' });
-test.describe('Langchain Integration @capability:proxy', () => {
-	test.beforeEach(async ({ n8n, proxyServer }) => {
-		await proxyServer.clearAllExpectations();
-		await proxyServer.loadExpectations('langchain');
+test.describe('Langchain Integration @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
+	test.beforeEach(async ({ n8n, services }) => {
+		await services.proxy.clearAllExpectations();
+		await services.proxy.loadExpectations('langchain');
 		await n8n.canvas.openNewWorkflow();
 	});
 
 	// Create a ticket for this for AI team to fix
-	// eslint-disable-next-line playwright/no-skipped-test
-	test.skip('Error Handling and Logs Display', () => {
+	test.describe('Error Handling and Logs Display @fixme', () => {
+		test.fixme();
+
 		// Helper function to set up the agent workflow with Postgres error configuration
 		async function setupAgentWorkflowWithPostgresError(n8n: n8nPage) {
 			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });

@@ -10,7 +10,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import WorkflowHistoryPage from './WorkflowHistory.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { STORES } from '@n8n/stores';
 import { VIEWS } from '@/app/constants';
 import { workflowHistoryDataFactory, workflowVersionDataFactory } from '../__tests__/utils';
@@ -60,6 +60,7 @@ const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 						<button data-test-id="stub-open-button" @click="() => $emit('action', { action: 'open', id })" />
 						<button data-test-id="stub-clone-button" @click="() => $emit('action', { action: 'clone', id })" />
 						<button data-test-id="stub-download-button" @click="() => $emit('action', { action: 'download', id })" />
+						<button data-test-id="stub-name-button" @click="() => $emit('action', { action: 'name', id, data: { formattedCreatedAt: '2024-01-01', versionName: 'Test Version', description: 'Test description' } })" />
 					</div>`,
 			}),
 		},
@@ -70,7 +71,7 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let router: ReturnType<typeof useRouter>;
 let route: ReturnType<typeof useRoute>;
 let workflowHistoryStore: ReturnType<typeof useWorkflowHistoryStore>;
-let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+let workflowsListStore: ReturnType<typeof useWorkflowsListStore>;
 let windowOpenSpy: MockInstance;
 
 describe('WorkflowHistory', () => {
@@ -81,11 +82,11 @@ describe('WorkflowHistory', () => {
 			},
 		});
 		workflowHistoryStore = useWorkflowHistoryStore();
-		workflowsStore = useWorkflowsStore();
+		workflowsListStore = useWorkflowsListStore();
 		route = useRoute();
 		router = useRouter();
 
-		vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({} as IWorkflowDb);
+		vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({} as IWorkflowDb);
 		vi.spyOn(workflowHistoryStore, 'getWorkflowHistory').mockResolvedValue(historyData);
 		vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockResolvedValue(versionData);
 		vi.spyOn(telemetry, 'track').mockImplementation(() => {});
@@ -230,7 +231,7 @@ describe('WorkflowHistory', () => {
 	});
 
 	it('should display archived tag on header if workflow is archived', async () => {
-		vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+		vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 			id: workflowId,
 			name: 'Test Workflow',
 			isArchived: true,
@@ -246,7 +247,7 @@ describe('WorkflowHistory', () => {
 	});
 
 	it('should not display archived tag on header if workflow is not archived', async () => {
-		vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+		vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 			id: workflowId,
 			name: 'Test Workflow',
 			isArchived: false,
@@ -259,5 +260,17 @@ describe('WorkflowHistory', () => {
 
 		expect(queryByTestId('workflow-archived-tag')).not.toBeInTheDocument();
 		expect(container.textContent).toContain('Test Workflow');
+	});
+
+	it('should open name version modal when name action is triggered', async () => {
+		route.params.workflowId = workflowId;
+		vi.spyOn(workflowHistoryStore, 'updateWorkflowHistoryVersion').mockResolvedValue(undefined);
+
+		const { getByTestId, container } = renderComponent({ pinia });
+		await userEvent.click(getByTestId('stub-name-button'));
+
+		await flushPromises();
+
+		expect(container).toBeInTheDocument();
 	});
 });
