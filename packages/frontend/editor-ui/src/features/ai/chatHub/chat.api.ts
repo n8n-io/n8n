@@ -238,9 +238,9 @@ export const updateChatSettingsApi = async (
 
 export const deleteMemoryFactApi = async (
 	context: IRestApiContext,
-	fact: string,
+	index: number,
 ): Promise<void> => {
-	await makeRestApiRequest(context, 'DELETE', '/chat/memory', { fact });
+	await makeRestApiRequest(context, 'DELETE', `/chat/memory/${index}`);
 };
 
 export function buildChatAttachmentUrl(

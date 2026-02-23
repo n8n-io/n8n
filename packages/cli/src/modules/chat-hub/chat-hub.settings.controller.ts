@@ -1,6 +1,6 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import { type AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Post, RestController, GlobalScope, Param } from '@n8n/decorators';
+import { Delete, Get, Post, RestController, GlobalScope, Param, Body } from '@n8n/decorators';
 
 import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
@@ -65,9 +65,13 @@ export class ChatHubSettingsController {
 		return await this.settings.getProviderSettings(payload.provider);
 	}
 
-	@Delete('/memory')
+	@Delete('/memory/:index')
 	@GlobalScope('chatHub:manage')
-	async deleteMemoryFact(_req: AuthenticatedRequest, _res: Response, @Body body: { fact: string }) {
-		await this.settings.deleteMemoryFact(body.fact);
+	async deleteMemoryFact(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('index') index: string,
+	) {
+		await this.settings.deleteMemoryFactByIndex(Number(index));
 	}
 }

@@ -128,6 +128,17 @@ export class ChatHubSettingsService {
 		);
 	}
 
+	async deleteMemoryFactByIndex(index: number): Promise<void> {
+		const current = await this.getMemory();
+		const facts = current.split('\n').filter((f) => f.trim().length > 0);
+		facts.splice(index, 1);
+		const updated = facts.join('\n');
+		await this.settingsRepository.upsert(
+			{ key: CHAT_MEMORY_KEY, value: updated, loadOnStartup: false },
+			['key'],
+		);
+	}
+
 	async setProviderSettings(
 		provider: ChatHubLLMProvider,
 		settings: ChatProviderSettingsDto,

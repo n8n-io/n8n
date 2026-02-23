@@ -91,9 +91,9 @@ async function onRefreshWorkflows() {
 	await fetchSettings();
 }
 
-async function onDeleteMemoryFact(fact: string) {
+async function onDeleteMemoryFact(index: number) {
 	try {
-		await deleteMemoryFactApi(rootStore.restApiContext, fact);
+		await deleteMemoryFactApi(rootStore.restApiContext, index);
 		await fetchSettings();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.chatHub.memory.delete.error'));
@@ -141,7 +141,7 @@ onMounted(async () => {
 					</N8nText>
 				</div>
 				<ul v-else :class="$style.memoryList">
-					<li v-for="fact in memoryFacts" :key="fact" :class="$style.memoryRow">
+					<li v-for="(fact, index) in memoryFacts" :key="index" :class="$style.memoryRow">
 						<N8nText size="small" :class="$style.memoryFact">{{ fact }}</N8nText>
 						<N8nIconButton
 							v-if="!disabled"
@@ -149,7 +149,7 @@ onMounted(async () => {
 							type="tertiary"
 							size="mini"
 							:title="i18n.baseText('settings.chatHub.memory.delete.tooltip')"
-							@click="onDeleteMemoryFact(fact)"
+							@click="onDeleteMemoryFact(index)"
 						/>
 					</li>
 				</ul>
