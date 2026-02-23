@@ -72,9 +72,35 @@ function createToolSettingsStub(emitValid: boolean) {
 	});
 }
 
+const ElDialogStub = {
+	template: `
+		<div role="dialog">
+			<slot name="header" />
+			<slot />
+			<slot name="footer" />
+		</div>
+	`,
+	props: [
+		'modelValue',
+		'beforeClose',
+		'class',
+		'center',
+		'width',
+		'showClose',
+		'closeOnClickModal',
+		'closeOnPressEscape',
+		'style',
+		'appendTo',
+		'lockScroll',
+		'appendToBody',
+		'dataTestId',
+		'modalClass',
+		'zIndex',
+	],
+};
+
 const sharedStubs = {
-	DialogPortal: { template: '<div><slot /></div>' },
-	DialogOverlay: { template: '<div />' },
+	ElDialog: ElDialogStub,
 	NodeIcon: { template: '<div />' },
 };
 
@@ -109,6 +135,7 @@ describe('ToolSettingsModal', () => {
 		createTestingPinia({ stubActions: false });
 
 		uiStore = mockedStore(useUIStore);
+		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
 	});
 

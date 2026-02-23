@@ -412,7 +412,7 @@ describe('system-credentials-utils', () => {
 				expect.objectContaining({
 					headers: {
 						'User-Agent': 'n8n-aws-credential',
-						Authorization: 'Bearer test-auth-token',
+						Authorization: 'test-auth-token',
 					},
 				}),
 			);
@@ -491,7 +491,7 @@ describe('system-credentials-utils', () => {
 				expect.objectContaining({
 					headers: {
 						'User-Agent': 'n8n-aws-credential',
-						Authorization: 'Bearer file-based-token',
+						Authorization: 'file-based-token',
 					},
 				}),
 			);
@@ -531,7 +531,7 @@ describe('system-credentials-utils', () => {
 				expect.objectContaining({
 					headers: {
 						'User-Agent': 'n8n-aws-credential',
-						Authorization: 'Bearer file-token-with-whitespace',
+						Authorization: 'file-token-with-whitespace',
 					},
 				}),
 			);
@@ -577,7 +577,7 @@ describe('system-credentials-utils', () => {
 				expect.objectContaining({
 					headers: {
 						'User-Agent': 'n8n-aws-credential',
-						Authorization: 'Bearer fallback-direct-token',
+						Authorization: 'fallback-direct-token',
 					},
 				}),
 			);
@@ -618,7 +618,7 @@ describe('system-credentials-utils', () => {
 				expect.objectContaining({
 					headers: {
 						'User-Agent': 'n8n-aws-credential',
-						Authorization: 'Bearer file-token-has-priority',
+						Authorization: 'file-token-has-priority',
 					},
 				}),
 			);
@@ -657,7 +657,7 @@ describe('system-credentials-utils', () => {
 				expect.objectContaining({
 					headers: {
 						'User-Agent': 'n8n-aws-credential',
-						Authorization: 'Bearer direct-token',
+						Authorization: 'direct-token',
 					},
 				}),
 			);

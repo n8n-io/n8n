@@ -8,9 +8,11 @@ import type { ExpressionTestEvaluation, ExpressionTestTransform } from './Expres
 import * as Helpers from './helpers';
 import { ExpressionReservedVariableError } from '../src/errors/expression-reserved-variable.error';
 import { ExpressionError } from '../src/errors/expression.error';
+import { Expression } from '../src/expression';
 import { extendSyntax } from '../src/extensions/expression-extension';
 import type { INodeExecutionData } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
+import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 
 describe('Expression', () => {
 	describe('getParameterValue()', () => {
@@ -172,6 +174,28 @@ describe('Expression', () => {
 			vi.useRealTimers();
 
 			expect(testFn).not.toHaveBeenCalled();
+		});
+
+		it('should include runIndex and itemIndex in error when .constructor is used', () => {
+			let thrownError: ExpressionError | undefined;
+			try {
+				expression.getParameterValue(
+					'={{ {}.constructor() }}',
+					null,
+					2,
+					3,
+					'node',
+					[],
+					'manual',
+					{},
+				);
+			} catch (e) {
+				thrownError = e as ExpressionError;
+			}
+
+			expect(thrownError).toBeInstanceOf(ExpressionError);
+			expect(thrownError?.context.runIndex).toBe(2);
+			expect(thrownError?.context.itemIndex).toBe(3);
 		});
 
 		describe('SafeObject security wrapper', () => {
@@ -565,5 +589,139 @@ describe('Expression', () => {
 				vi.useRealTimers();
 			});
 		}
+	});
+
+	describe('resolveSimpleParameterValue with IWorkflowDataProxyData', () => {
+		it('should evaluate expression with provided IWorkflowDataProxyData', () => {
+			const nodeTypes = Helpers.NodeTypes();
+			const workflow = new Workflow({
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'TestNode',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			// Create WorkflowDataProxy to get IWorkflowDataProxyData
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				null,
+				0,
+				0,
+				'TestNode',
+				[{ json: { value: 42 } }],
+				{},
+				'manual',
+				{},
+			);
+			const data = dataProxy.getDataProxy();
+
+			// Test Expression with new API
+			const timezone = workflow.settings?.timezone ?? 'UTC';
+			const expression = new Expression(timezone);
+			const result = expression.resolveSimpleParameterValue('={{ $json.value * 2 }}', data, false);
+
+			expect(result).toBe(84);
+		});
+
+		it('should handle non-expression values', () => {
+			const nodeTypes = Helpers.NodeTypes();
+			const workflow = new Workflow({
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'TestNode',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				null,
+				0,
+				0,
+				'TestNode',
+				[],
+				{},
+				'manual',
+				{},
+			);
+			const data = dataProxy.getDataProxy();
+
+			const timezone = workflow.settings?.timezone ?? 'UTC';
+			const expression = new Expression(timezone);
+
+			// Non-expression value should be returned as-is
+			expect(expression.resolveSimpleParameterValue('plain string', data, false)).toBe(
+				'plain string',
+			);
+			expect(expression.resolveSimpleParameterValue(123, data, false)).toBe(123);
+			expect(expression.resolveSimpleParameterValue(true, data, false)).toBe(true);
+		});
+	});
+
+	describe('getParameterValue with IWorkflowDataProxyData', () => {
+		it('should evaluate simple expression with provided IWorkflowDataProxyData', () => {
+			const nodeTypes = Helpers.NodeTypes();
+			const workflow = new Workflow({
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'TestNode',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				null,
+				0,
+				0,
+				'TestNode',
+				[{ json: { text: 'hello' } }],
+				{},
+				'manual',
+				{},
+			);
+			const data = dataProxy.getDataProxy();
+
+			const timezone = workflow.settings?.timezone ?? 'UTC';
+			const expression = new Expression(timezone);
+			const result = expression.resolveSimpleParameterValue(
+				'={{ $json.text.toUpperCase() }}',
+				data,
+				false,
+			);
+
+			expect(result).toBe('HELLO');
+		});
 	});
 });

@@ -395,6 +395,10 @@
 	--button--border-color--highlight-fill--disabled: transparent;
 	--button--color--background--highlight-fill--disabled: var(--color--background);
 
+	// Focus
+	--focus--border-width: 1px;
+	--focus--border-color: var(--color--secondary);
+
 	// Button success, warning, danger
 	--button--color--text--success: var(--color--neutral-white);
 	--button--color--text--success--disabled: var(--color--white-alpha-800);
