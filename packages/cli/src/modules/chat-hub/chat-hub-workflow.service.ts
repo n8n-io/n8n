@@ -1246,8 +1246,7 @@ Respond the title only:`,
 			throw new BadRequestError('Chat Trigger node has invalid parameters');
 		}
 
-		// In manual mode, skip the availableInChat check — the user is testing their draft
-		if (!manual && !chatTriggerParams.availableInChat) {
+		if (!chatTriggerParams.availableInChat) {
 			throw new BadRequestError('Chat Trigger node must be made available in Chat');
 		}
 
