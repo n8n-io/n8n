@@ -358,7 +358,7 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 	}
 
 	// Phase 2: Normalize and parse connections (deep-clone to avoid mutating input)
-	const connections: IConnections = deepCopy(json.connections) as IConnections;
+	const connections = deepCopy(json.connections);
 	normalizeConnections(connections);
 
 	for (const [sourceName, connectionTypes] of Object.entries(connections)) {
