@@ -25,16 +25,23 @@ import {
 } from '@/app/constants/modals';
 import { I18nT } from 'vue-i18n';
 import type { SecretProviderConnection } from '@n8n/api-types';
+import { reloadSecretProviderConnection } from '@n8n/rest-api-client';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 const i18n = useI18n();
 const secretsProviders = useSecretsProvidersList();
 const projectsStore = useProjectsStore();
+const rootStore = useRootStore();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const uiStore = useUIStore();
 
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
+
+const sortedProviders = computed(() => {
+	return [...secretsProviders.activeProviders.value].sort((a, b) => a.name.localeCompare(b.name));
+});
 
 function getProjectForProvider(provider: SecretProviderConnection): ProjectListItem | null {
 	if (!provider || provider.projects.length === 0) return null;
@@ -78,6 +85,26 @@ function handleEdit(providerKey: string) {
 
 function handleShare(providerKey: string) {
 	openConnectionModal(providerKey, 'sharing');
+}
+
+async function handleReload(providerKey: string) {
+	try {
+		const result = await reloadSecretProviderConnection(rootStore.restApiContext, providerKey);
+		if (!result.success) {
+			toast.showError(new Error('Reload failed'), i18n.baseText('error'));
+			return;
+		}
+		toast.showMessage({
+			title: i18n.baseText('settings.externalSecrets.card.reload.success.title'),
+			message: i18n.baseText('settings.externalSecrets.card.reload.success.description', {
+				interpolate: { provider: providerKey },
+			}),
+			type: 'success',
+		});
+		await secretsProviders.fetchConnection(providerKey);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('error'));
+	}
 }
 
 function handleDelete(providerKey: string) {
@@ -173,7 +200,7 @@ function goToUpgrade() {
 			/>
 			<div v-else>
 				<SecretsProviderConnectionCard
-					v-for="provider in secretsProviders.activeProviders.value"
+					v-for="provider in sortedProviders"
 					:key="provider.name"
 					class="mb-2xs"
 					:provider="provider"
@@ -183,6 +210,7 @@ function goToUpgrade() {
 					@click="handleCardClick(provider.name)"
 					@edit="handleEdit"
 					@share="handleShare"
+					@reload="handleReload"
 					@delete="handleDelete"
 				/>
 			</div>

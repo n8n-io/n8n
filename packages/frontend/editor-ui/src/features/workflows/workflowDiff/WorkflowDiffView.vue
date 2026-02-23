@@ -98,6 +98,7 @@ onMounted(async () => {
 	<div :class="$style.workflowDiffViewContainer">
 		<div :class="$style.header">
 			<div :class="$style.headerLeft">
+				<slot name="header-prefix" />
 				<N8nHeading tag="h4" size="medium">
 					{{ sourceWorkflow?.name || targetWorkflow?.name }}
 				</N8nHeading>
@@ -295,7 +296,7 @@ onMounted(async () => {
 }
 
 .popper {
-	box-shadow: 0 6px 16px 0 rgba(68, 28, 23, 0.06);
+	box-shadow: var(--shadow--light);
 	:global(.el-popper__arrow) {
 		display: none;
 	}

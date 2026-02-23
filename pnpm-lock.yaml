@@ -165,6 +165,9 @@ catalogs:
     simple-git:
       specifier: 3.28.0
       version: 3.28.0
+    stream-json:
+      specifier: 1.9.1
+      version: 1.9.1
     ts-morph:
       specifier: ^27.0.2
       version: 27.0.2
@@ -187,8 +190,8 @@ catalogs:
       specifier: ^3.1.0
       version: 3.1.0
     vm2:
-      specifier: ^3.10.2
-      version: 3.10.2
+      specifier: ^3.10.5
+      version: 3.10.5
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
@@ -485,14 +488,24 @@ importers:
         specifier: ^6.2.0
         version: 6.2.0(typescript@5.9.2)
       turbo:
-        specifier: 2.7.3
-        version: 2.7.3
+        specifier: 2.8.9
+        version: 2.8.9
       typescript:
         specifier: 5.9.2
         version: 5.9.2
       zx:
         specifier: ^8.1.4
         version: 8.1.4
+
+  packages/@n8n/ai-node-sdk:
+    dependencies:
+      '@n8n/ai-utilities':
+        specifier: workspace:*
+        version: link:../ai-utilities
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
 
   packages/@n8n/ai-utilities:
     dependencies:
@@ -551,6 +564,9 @@ importers:
       '@types/mime-types':
         specifier: 'catalog:'
         version: 3.0.1
+      axios:
+        specifier: 1.13.5
+        version: 1.13.5
       jest-mock-extended:
         specifier: ^3.0.4
         version: 3.0.4(jest@29.7.0(@types/node@20.19.21)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.21)(typescript@5.9.2)))(typescript@5.9.2)
@@ -676,6 +692,9 @@ importers:
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
+      flatted:
+        specifier: 'catalog:'
+        version: 3.2.7
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -685,6 +704,9 @@ importers:
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
+      stream-json:
+        specifier: 'catalog:'
+        version: 1.9.1
       winston:
         specifier: 3.14.2
         version: 3.14.2
@@ -695,6 +717,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@types/stream-json':
+        specifier: 1.7.8
+        version: 1.7.8
       '@types/yargs-parser':
         specifier: 21.0.0
         version: 21.0.0
@@ -1186,6 +1211,46 @@ importers:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
 
+  packages/@n8n/expression-runtime:
+    dependencies:
+      js-base64:
+        specifier: 'catalog:'
+        version: 3.7.2(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
+      jssha:
+        specifier: 3.3.1
+        version: 3.3.1
+      lodash:
+        specifier: 'catalog:'
+        version: 4.17.23
+      luxon:
+        specifier: 'catalog:'
+        version: 3.7.2
+      md5:
+        specifier: 2.3.0
+        version: 2.3.0
+      title-case:
+        specifier: 3.0.3
+        version: 3.0.3
+      transliteration:
+        specifier: 2.3.5
+        version: 2.3.5
+    devDependencies:
+      '@types/lodash':
+        specifier: 'catalog:'
+        version: 4.17.17
+      '@types/luxon':
+        specifier: 3.2.0
+        version: 3.2.0
+      '@types/md5':
+        specifier: ^2.3.5
+        version: 2.3.5
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+      vitest:
+        specifier: 'catalog:'
+        version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
+
   packages/@n8n/extension-sdk:
     dependencies:
       zod:
@@ -1283,6 +1348,9 @@ importers:
       '@clack/prompts':
         specifier: ^0.11.0
         version: 0.11.0
+      '@n8n/ai-node-sdk':
+        specifier: workspace:*
+        version: link:../ai-node-sdk
       '@n8n/eslint-plugin-community-nodes':
         specifier: workspace:*
         version: link:../eslint-plugin-community-nodes
@@ -1450,11 +1518,11 @@ importers:
         specifier: 0.1.0-preview.64
         version: 0.1.0-preview.64(20a6a3036fb3eae368730af7ed3b8ad2)
       '@microsoft/agents-activity':
-        specifier: 1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: 1.2.3
+        version: 1.2.3
       '@microsoft/agents-hosting':
-        specifier: 1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: 1.2.3
+        version: 1.2.3
       '@modelcontextprotocol/sdk':
         specifier: 1.26.0
         version: 1.26.0(zod@3.25.67)
@@ -1583,7 +1651,7 @@ importers:
         version: 3.0.3
       vm2:
         specifier: 'catalog:'
-        version: 3.10.2
+        version: 3.10.5
       weaviate-client:
         specifier: 3.9.0
         version: 3.9.0(encoding@0.1.13)
@@ -1852,6 +1920,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 1.26.0
         version: 1.26.0(zod@3.25.67)
+      '@n8n/ai-utilities':
+        specifier: workspace:*
+        version: link:../@n8n/ai-utilities
       '@n8n/ai-workflow-builder':
         specifier: workspace:*
         version: link:../@n8n/ai-workflow-builder.ee
@@ -2880,6 +2951,9 @@ importers:
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@5.9.2)
+      vue-router:
+        specifier: catalog:frontend
+        version: 4.5.0(vue@3.5.26(typescript@5.9.2))
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)
@@ -3028,6 +3102,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../@n8n/utils
+      '@pinecone-database/connect':
+        specifier: 0.0.4
+        version: 0.0.4
       '@replit/codemirror-indentation-markers':
         specifier: ^6.5.3
         version: 6.5.3(@codemirror/language@6.12.1)(@codemirror/state@6.5.3)(@codemirror/view@6.39.8)
@@ -3563,7 +3640,7 @@ importers:
         version: 10.0.0
       vm2:
         specifier: 'catalog:'
-        version: 3.10.2
+        version: 3.10.5
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
@@ -3755,6 +3832,9 @@ importers:
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../janitor
+      '@n8n/workflow-sdk':
+        specifier: workspace:*
+        version: link:../../@n8n/workflow-sdk
       '@playwright/cli':
         specifier: catalog:e2e
         version: 0.1.0
@@ -6657,12 +6737,12 @@ packages:
     resolution: {integrity: sha512-mn+AjqbZPTk4yrLMv5GZ+tQSZMtxH8fu5fLynKukYNKuxClKmUhLmkQIqS9mKnheZpC52HyveCanDCKQKDLmcw==}
     engines: {node: '>=18.0.0'}
 
-  '@microsoft/agents-activity@1.1.0-alpha.85':
-    resolution: {integrity: sha512-iMzeYFJZPSrXkhHpHesKQ1gjvCm6uyPlH0ojsNf8Z3EODCeiFsxHOahoLyzCuqzcWBYhNCcQ45aarNbeJ84HgA==}
+  '@microsoft/agents-activity@1.2.3':
+    resolution: {integrity: sha512-XRQF+AVn6f9sGDUsfDQFiwLtmqqWNhM9JIwZRzK9XQLPTQmoWwjoWz8KMKc5fuvj5Ybly3974VrqYUbDOeMyTg==}
     engines: {node: '>=20.0.0'}
 
-  '@microsoft/agents-hosting@1.1.0-alpha.85':
-    resolution: {integrity: sha512-1Ii92EJSaQTuqjOBWUqoioClum+6Dh82uBmzoExMi3ZDJ9UTV6Kqg4W1h4PYhUZPmqIP3HLSVNvty84Gx/mqYg==}
+  '@microsoft/agents-hosting@1.2.3':
+    resolution: {integrity: sha512-8paXuxdbRc9X6tccYoR3lk0DSglt1SxpJG+6qDa8TVTuGiTvIuhnN4st9JZhIiazxPiFPTJAkhK5JSsOk+wLVQ==}
     engines: {node: '>=20.0.0'}
 
   '@microsoft/api-extractor-model@7.30.4':
@@ -7491,6 +7571,9 @@ packages:
 
   '@petamoriken/float16@3.9.2':
     resolution: {integrity: sha512-VgffxawQde93xKxT3qap3OH+meZf7VaSB5Sqd4Rqc+FP5alWbpOyan/7tRbOAvynjpG3GpdtAuGU/NdhQpmrog==}
+
+  '@pinecone-database/connect@0.0.4':
+    resolution: {integrity: sha512-3qGeN8atUqLtEiYSH8KGfAE85HtziGEER1GPRKnubel/RGH+pp5OS0CgWysridGuMNcUk4kjSIL/8B10XwumSQ==}
 
   '@pinecone-database/pinecone@5.1.2':
     resolution: {integrity: sha512-z7737KUA1hXwd508q1+o4bnRxj0NpMmzA2beyaFm7Y+EC2TYLT5ABuYsn/qhiwiEsYp8v1qS596eBhhvgNagig==}
@@ -9344,6 +9427,12 @@ packages:
 
   '@types/stack-utils@2.0.3':
     resolution: {integrity: sha512-9aEbYZ3TbYMznPdcdr3SmIrLXwC/AKZXQeCf9Pgao5CKb8CyHuEX5jzWPTkvregvhRJHcpRO6BFoGW9ycaOkYw==}
+
+  '@types/stream-chain@2.1.0':
+    resolution: {integrity: sha512-guDyAl6s/CAzXUOWpGK2bHvdiopLIwpGu8v10+lb9hnQOyo4oj/ZUQFOvqFjKGsE3wJP1fpIesCcMvbXuWsqOg==}
+
+  '@types/stream-json@1.7.8':
+    resolution: {integrity: sha512-MU1OB1eFLcYWd1LjwKXrxdoPtXSRzRmAnnxs4Js/ayB5O/NvHraWwuOaqMWIebpYwM6khFlsJOHEhI9xK/ab4Q==}
 
   '@types/stylis@4.2.0':
     resolution: {integrity: sha512-n4sx2bqL0mW1tvDf/loQ+aMX7GQD3lc3fkCMC55VFNDu/vBOabO+LTIeXKM14xK0ppk5TUGcWRjiSpIlUpghKw==}
@@ -12848,7 +12937,7 @@ packages:
   glob@8.1.0:
     resolution: {integrity: sha512-r8hpEjiQEYlF2QU0df3dS+nxxSIreXQS1qRhMJM0Q5NDdR386C7jb7Hwwod8Fgiuex+k0GFjgft18yvxm5XoCQ==}
     engines: {node: '>=12'}
-    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@9.3.5:
     resolution: {integrity: sha512-e1LleDykUz2Iu+MTYdkSsuWX8lvAjAcs0Xef0lNIu0S2wOAzuTxCJtcd9S3cijlwYF18EsU3rzb8jPVobxDh9Q==}
@@ -14126,9 +14215,6 @@ packages:
   jsonwebtoken@9.0.3:
     resolution: {integrity: sha512-MT/xP0CrubFRNLNKvxJ2BYfy53Zkm++5bX9dtuPbqAeQpTVe0MQTFhao8+Cp//EmJp244xt6Drw/GVEGCUj40g==}
     engines: {node: '>=12', npm: '>=6'}
-
-  jssha@3.3.0:
-    resolution: {integrity: sha512-w9OtT4ALL+fbbwG3gw7erAO0jvS5nfvrukGPMWIAoea359B26ALXGpzy4YJSp9yGnpUvuvOw1nSjSoHDfWSr1w==}
 
   jssha@3.3.1:
     resolution: {integrity: sha512-VCMZj12FCFMQYcFLPRm/0lOBbLi8uM2BhXPTqw3U4YAfs4AZfiApOoBLoN8cQE60Z50m1MYMTQVCfgF/KaCVhQ==}
@@ -16403,6 +16489,7 @@ packages:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
     deprecated: |-
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
+
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qrcode.vue@3.3.4:
@@ -17369,6 +17456,9 @@ packages:
   stream-browserify@3.0.0:
     resolution: {integrity: sha512-H73RAHsVBapbim0tU2JwwOiXUj+fikfiaoYAKHF3VJfA0pe2BCzkhAHBlLG6REzE+2WNZcxOXjK7lkso+9euLA==}
 
+  stream-chain@2.2.5:
+    resolution: {integrity: sha512-1TJmBx6aSWqZ4tx7aTpBDXK0/e2hhcNSTV8+CbFJtDjbb+I1mZ8lHit0Grw9GRT+6JbIrrDd8esncgBi8aBXGA==}
+
   stream-combiner@0.0.4:
     resolution: {integrity: sha512-rT00SPnTVyRsaSz5zgSPma/aHSOic5U1prhYdRy5HS2kTZviFpmDgzilbtsJsxiroqACmayynDN/9VzIbX5DOw==}
 
@@ -17377,6 +17467,9 @@ packages:
 
   stream-http@3.2.0:
     resolution: {integrity: sha512-Oq1bLqisTyK3TSCXpPbT4sdeYNdmyZJv1LxpEm2vu1ZhK89kSE5YXwZc3cWk0MagGaKriBh9mCFbVGtO+vY29A==}
+
+  stream-json@1.9.1:
+    resolution: {integrity: sha512-uWkjJ+2Nt/LO9Z/JyKZbMusL8Dkh97uUBTv3AJQ74y07lVahLY4eEFsPsE97pxYBwr8nnjMAIch5eqI0gPShyw==}
 
   stream-shift@1.0.3:
     resolution: {integrity: sha512-76ORR0DO1o1hlKwTbi/DM3EXWGf3ZJYO8cXX5RJwnul2DEg2oyoZyjLNoQM8WsvZiFKCRfC1O0J7iCvie3RZmQ==}
@@ -18021,38 +18114,38 @@ packages:
     resolution: {integrity: sha512-1h/Lnq9yajKY2PEbBadPXj3VxsDDu844OnaAo52UVmIzIvwwtBPIuNvkjuzBlTWpfJyUbG3ez0KSBibQkj4ojg==}
     engines: {node: '>=0.6.11 <=0.7.0 || >=0.7.3'}
 
-  turbo-darwin-64@2.7.3:
-    resolution: {integrity: sha512-aZHhvRiRHXbJw1EcEAq4aws1hsVVUZ9DPuSFaq9VVFAKCup7niIEwc22glxb7240yYEr1vLafdQ2U294Vcwz+w==}
+  turbo-darwin-64@2.8.9:
+    resolution: {integrity: sha512-KnCw1ZI9KTnEAhdI9avZrnZ/z4wsM++flMA1w8s8PKOqi5daGpFV36qoPafg4S8TmYMe52JPWEoFr0L+lQ5JIw==}
     cpu: [x64]
     os: [darwin]
 
-  turbo-darwin-arm64@2.7.3:
-    resolution: {integrity: sha512-CkVrHSq+Bnhl9sX2LQgqQYVfLTWC2gvI74C4758OmU0djfrssDKU9d4YQF0AYXXhIIRZipSXfxClQziIMD+EAg==}
+  turbo-darwin-arm64@2.8.9:
+    resolution: {integrity: sha512-CbD5Y2NKJKBXTOZ7z7Cc7vGlFPZkYjApA7ri9lH4iFwKV1X7MoZswh9gyRLetXYWImVX1BqIvP8KftulJg/wIA==}
     cpu: [arm64]
     os: [darwin]
 
-  turbo-linux-64@2.7.3:
-    resolution: {integrity: sha512-GqDsCNnzzr89kMaLGpRALyigUklzgxIrSy2pHZVXyifgczvYPnLglex78Aj3T2gu+T3trPPH2iJ+pWucVOCC2Q==}
+  turbo-linux-64@2.8.9:
+    resolution: {integrity: sha512-OXC9HdCtsHvyH+5KUoH8ds+p5WU13vdif0OPbsFzZca4cUXMwKA3HWwUuCgQetk0iAE4cscXpi/t8A263n3VTg==}
     cpu: [x64]
     os: [linux]
 
-  turbo-linux-arm64@2.7.3:
-    resolution: {integrity: sha512-NdCDTfIcIo3dWjsiaAHlxu5gW61Ed/8maah1IAF/9E3EtX0aAHNiBMbuYLZaR4vRJ7BeVkYB6xKWRtdFLZ0y3g==}
+  turbo-linux-arm64@2.8.9:
+    resolution: {integrity: sha512-yI5n8jNXiFA6+CxnXG0gO7h5ZF1+19K8uO3/kXPQmyl37AdiA7ehKJQOvf9OPAnmkGDHcF2HSCPltabERNRmug==}
     cpu: [arm64]
     os: [linux]
 
-  turbo-windows-64@2.7.3:
-    resolution: {integrity: sha512-7bVvO987daXGSJVYBoG8R4Q+csT1pKIgLJYZevXRQ0Hqw0Vv4mKme/TOjYXs9Qb1xMKh51Tb3bXKDbd8/4G08g==}
+  turbo-windows-64@2.8.9:
+    resolution: {integrity: sha512-/OztzeGftJAg258M/9vK2ZCkUKUzqrWXJIikiD2pm8TlqHcIYUmepDbyZSDfOiUjMy6NzrLFahpNLnY7b5vNgg==}
     cpu: [x64]
     os: [win32]
 
-  turbo-windows-arm64@2.7.3:
-    resolution: {integrity: sha512-nTodweTbPmkvwMu/a55XvjMsPtuyUSC+sV7f/SR57K36rB2I0YG21qNETN+00LOTUW9B3omd8XkiXJkt4kx/cw==}
+  turbo-windows-arm64@2.8.9:
+    resolution: {integrity: sha512-xZ2VTwVTjIqpFZKN4UBxDHCPM3oJ2J5cpRzCBSmRpJ/Pn33wpiYjs+9FB2E03svKaD04/lSSLlEUej0UYsugfg==}
     cpu: [arm64]
     os: [win32]
 
-  turbo@2.7.3:
-    resolution: {integrity: sha512-+HjKlP4OfYk+qzvWNETA3cUO5UuK6b5MSc2UJOKyvBceKucQoQGb2g7HlC2H1GHdkfKrk4YF1VPvROkhVZDDLQ==}
+  turbo@2.8.9:
+    resolution: {integrity: sha512-G+Mq8VVQAlpz/0HTsxiNNk/xywaHGl+dk1oiBREgOEVCCDjXInDlONWUn5srRnC9s5tdHTFD1bx1N19eR4hI+g==}
     hasBin: true
 
   tweetnacl-util@0.15.1:
@@ -18628,8 +18721,8 @@ packages:
   vm-browserify@1.1.2:
     resolution: {integrity: sha512-2ham8XPWTONajOR0ohOKOHXkm3+gaBmGut3SRuu75xLd/RRaY6vqgh8NBYYk7+RW3u5AtzPQZG8F10LHkl0lAQ==}
 
-  vm2@3.10.2:
-    resolution: {integrity: sha512-qTnbvpada8qlEEyIPFwhTcF5Ns+k83fVlOSE8XvAtHkhcQ+okMnbvryVQBfP/ExRT1CRsQpYusdATR+FBJfrnQ==}
+  vm2@3.10.5:
+    resolution: {integrity: sha512-3P/2QDccVFBcujfCOeP8vVNuGfuBJHEuvGR8eMmI10p/iwLL2UwF5PDaNaoOS2pRGQEDmJRyeEcc8kmm2Z59RA==}
     engines: {node: '>=6.0'}
     hasBin: true
 
@@ -23585,8 +23678,8 @@ snapshots:
   '@microsoft/agents-a365-notifications@0.1.0-preview.64':
     dependencies:
       '@microsoft/agents-a365-runtime': 0.1.0-preview.64
-      '@microsoft/agents-activity': 1.1.0-alpha.85
-      '@microsoft/agents-hosting': 1.1.0-alpha.85
+      '@microsoft/agents-activity': 1.2.3
+      '@microsoft/agents-hosting': 1.2.3
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -23609,7 +23702,7 @@ snapshots:
   '@microsoft/agents-a365-runtime@0.1.0-preview.64':
     dependencies:
       '@azure/identity': 4.13.0
-      '@microsoft/agents-hosting': 1.1.0-alpha.85
+      '@microsoft/agents-hosting': 1.2.3
       jsonwebtoken: 9.0.3
     transitivePeerDependencies:
       - debug
@@ -23620,7 +23713,7 @@ snapshots:
       '@langchain/mcp-adapters': 1.1.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(@langchain/langgraph@1.0.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod-to-json-schema@3.23.3(zod@3.25.67))(zod@3.25.67))
       '@microsoft/agents-a365-runtime': 0.1.0-preview.64
       '@microsoft/agents-a365-tooling': 0.1.0-preview.64(zod@3.25.67)
-      '@microsoft/agents-hosting': 1.1.0-alpha.85
+      '@microsoft/agents-hosting': 1.2.3
       langchain: 1.2.3(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod-to-json-schema@3.23.3(zod@3.25.67))
     transitivePeerDependencies:
       - '@cfworker/json-schema'
@@ -23640,7 +23733,7 @@ snapshots:
   '@microsoft/agents-a365-tooling@0.1.0-preview.64(zod@3.25.67)':
     dependencies:
       '@microsoft/agents-a365-runtime': 0.1.0-preview.64
-      '@microsoft/agents-hosting': 1.1.0-alpha.85
+      '@microsoft/agents-hosting': 1.2.3
       '@modelcontextprotocol/sdk': 1.26.0(zod@3.25.67)
       express: 5.2.1
     transitivePeerDependencies:
@@ -23649,7 +23742,7 @@ snapshots:
       - supports-color
       - zod
 
-  '@microsoft/agents-activity@1.1.0-alpha.85':
+  '@microsoft/agents-activity@1.2.3':
     dependencies:
       debug: 4.4.3(supports-color@8.1.1)
       uuid: 11.1.0
@@ -23657,15 +23750,16 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@microsoft/agents-hosting@1.1.0-alpha.85':
+  '@microsoft/agents-hosting@1.2.3':
     dependencies:
       '@azure/core-auth': 1.10.1
       '@azure/msal-node': 3.8.4
-      '@microsoft/agents-activity': 1.1.0-alpha.85
+      '@microsoft/agents-activity': 1.2.3
       axios: 1.13.5
       jsonwebtoken: 9.0.3
       jwks-rsa: 3.2.2
       object-path: 0.11.8
+      zod: 3.25.67
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -24659,6 +24753,8 @@ snapshots:
       '@parcel/watcher-win32-x64': 2.5.1
 
   '@petamoriken/float16@3.9.2': {}
+
+  '@pinecone-database/connect@0.0.4': {}
 
   '@pinecone-database/pinecone@5.1.2': {}
 
@@ -26857,6 +26953,15 @@ snapshots:
   '@types/stack-utils@2.0.1': {}
 
   '@types/stack-utils@2.0.3': {}
+
+  '@types/stream-chain@2.1.0':
+    dependencies:
+      '@types/node': 20.19.21
+
+  '@types/stream-json@1.7.8':
+    dependencies:
+      '@types/node': 20.19.21
+      '@types/stream-chain': 2.1.0
 
   '@types/stylis@4.2.0': {}
 
@@ -33020,8 +33125,6 @@ snapshots:
       ms: 2.1.3
       semver: 7.7.3
 
-  jssha@3.3.0: {}
-
   jssha@3.3.1: {}
 
   jstransformer@1.0.0:
@@ -34888,7 +34991,7 @@ snapshots:
 
   otpauth@9.1.1:
     dependencies:
-      jssha: 3.3.0
+      jssha: 3.3.1
 
   otplib@12.0.1:
     dependencies:
@@ -36974,6 +37077,8 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.0
 
+  stream-chain@2.2.5: {}
+
   stream-combiner@0.0.4:
     dependencies:
       duplexer: 0.1.2
@@ -36988,6 +37093,10 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.0
       xtend: 4.0.2
+
+  stream-json@1.9.1:
+    dependencies:
+      stream-chain: 2.2.5
 
   stream-shift@1.0.3: {}
 
@@ -37508,7 +37617,7 @@ snapshots:
 
   title-case@3.0.3:
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
 
   tlds@1.248.0: {}
 
@@ -37784,32 +37893,32 @@ snapshots:
 
   tunnel@0.0.6: {}
 
-  turbo-darwin-64@2.7.3:
+  turbo-darwin-64@2.8.9:
     optional: true
 
-  turbo-darwin-arm64@2.7.3:
+  turbo-darwin-arm64@2.8.9:
     optional: true
 
-  turbo-linux-64@2.7.3:
+  turbo-linux-64@2.8.9:
     optional: true
 
-  turbo-linux-arm64@2.7.3:
+  turbo-linux-arm64@2.8.9:
     optional: true
 
-  turbo-windows-64@2.7.3:
+  turbo-windows-64@2.8.9:
     optional: true
 
-  turbo-windows-arm64@2.7.3:
+  turbo-windows-arm64@2.8.9:
     optional: true
 
-  turbo@2.7.3:
+  turbo@2.8.9:
     optionalDependencies:
-      turbo-darwin-64: 2.7.3
-      turbo-darwin-arm64: 2.7.3
-      turbo-linux-64: 2.7.3
-      turbo-linux-arm64: 2.7.3
-      turbo-windows-64: 2.7.3
-      turbo-windows-arm64: 2.7.3
+      turbo-darwin-64: 2.8.9
+      turbo-darwin-arm64: 2.8.9
+      turbo-linux-64: 2.8.9
+      turbo-linux-arm64: 2.8.9
+      turbo-windows-64: 2.8.9
+      turbo-windows-arm64: 2.8.9
 
   tweetnacl-util@0.15.1: {}
 
@@ -38423,7 +38532,7 @@ snapshots:
 
   vm-browserify@1.1.2: {}
 
-  vm2@3.10.2:
+  vm2@3.10.5:
     dependencies:
       acorn: 8.15.0
       acorn-walk: 8.3.4

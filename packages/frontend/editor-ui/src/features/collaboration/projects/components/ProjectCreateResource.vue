@@ -61,6 +61,7 @@ defineExpose({
 }
 
 .buttonGroupDropdown {
+	border-left: 1px solid var(--color--black-alpha-100);
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
 }

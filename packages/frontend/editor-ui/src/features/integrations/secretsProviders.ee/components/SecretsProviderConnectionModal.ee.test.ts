@@ -32,6 +32,7 @@ const createMockConnectionData = (overrides: Partial<SecretProviderConnection> =
 // Create the mock object that will be returned
 const mockConnection = {
 	connectionState: { value: 'initializing' },
+	connectionError: { value: undefined },
 	isLoading: { value: false },
 	isTesting: { value: false },
 	getConnection: vi.fn(),
@@ -55,6 +56,7 @@ const mockConnectionModal = {
 	connection: {
 		isLoading: { value: false },
 		connectionState: { value: 'initializing' },
+		connectionError: { value: undefined },
 	},
 	providerTypeOptions: { value: [] },
 	connectionSettings: { value: {} },
@@ -67,7 +69,6 @@ const mockConnectionModal = {
 	canShareGlobally: { value: true },
 	projectIds: { value: [] as string[] },
 	sharedWithProjects: { value: [] as ProjectSharingData[] },
-	hyphenateConnectionName: vi.fn((name) => name),
 	selectProviderType: vi.fn(),
 	updateSettings: vi.fn(),
 	loadConnection: vi.fn(),
@@ -346,14 +347,33 @@ describe('SecretsProviderConnectionModal', () => {
 
 			await nextTick();
 
-			const errorCallout = container.querySelector('[data-test-id="connection-error-callout"]');
-			expect(errorCallout).toBeInTheDocument();
+			const errorBanner = container.querySelector('[data-test-id="connection-error-banner"]');
+			expect(errorBanner).toBeInTheDocument();
 		});
 	});
 
 	describe('project sharing', () => {
 		beforeEach(() => {
 			mockConnectionModal.isEditMode.value = true;
+		});
+
+		it('should not show sharing tab navigation when user has no global update permission', async () => {
+			mockConnectionModal.canShareGlobally.value = false;
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+					data: {
+						activeTab: 'sharing',
+						providerKey: 'test-123',
+						providerTypes: mockProviderTypes,
+					},
+				},
+			});
+
+			await nextTick();
+
+			expect(queryByTestId('sharing-tab')).not.toBeInTheDocument();
 		});
 
 		it('should not fetch projects from store when projects are already in store', async () => {
@@ -416,6 +436,7 @@ describe('SecretsProviderConnectionModal', () => {
 			mockConnectionModal.projectIds.value = [];
 			mockConnectionModal.isSharedGlobally.value = false;
 			mockConnectionModal.canUpdate.value = true;
+			mockConnectionModal.canShareGlobally.value = true;
 			mockConnectionModal.isEditMode.value = true;
 			mockProjectsStore.projects = mockProjects;
 
@@ -455,6 +476,7 @@ describe('SecretsProviderConnectionModal', () => {
 			mockConnectionModal.projectIds.value = [];
 			mockConnectionModal.isSharedGlobally.value = false;
 			mockConnectionModal.canUpdate.value = true;
+			mockConnectionModal.canShareGlobally.value = true;
 			mockProjectsStore.projects = mockProjects;
 
 			const { queryByTestId } = renderComponent({

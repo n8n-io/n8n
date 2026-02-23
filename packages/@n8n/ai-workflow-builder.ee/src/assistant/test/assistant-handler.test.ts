@@ -1,5 +1,10 @@
 import { STREAM_SEPARATOR } from '../../constants';
-import type { AgentMessageChunk, StreamChunk, ToolProgressChunk } from '../../types/streaming';
+import type {
+	AgentMessageChunk,
+	CodeDiffChunk,
+	StreamChunk,
+	ToolProgressChunk,
+} from '../../types/streaming';
 import { AssistantHandler } from '../assistant-handler';
 import type { AssistantContext, AssistantSdkClient, SdkStreamChunk, StreamWriter } from '../types';
 
@@ -59,7 +64,9 @@ describe('AssistantHandler', () => {
 
 	beforeEach(() => {
 		writtenChunks = [];
-		writer = (chunk) => writtenChunks.push(chunk);
+		writer = (chunk) => {
+			writtenChunks.push(chunk);
+		};
 	});
 
 	it('should map SDK text message to AgentMessageChunk', async () => {
@@ -74,17 +81,25 @@ describe('AssistantHandler', () => {
 
 		const result = await handler.execute({ query: 'Help me' }, 'user-1', writer);
 
-		// First chunk is the "Connecting to assistant..." progress
-		expect(writtenChunks).toHaveLength(2);
+		// Chunks: "Connecting..." progress, text message, "Done" completion
+		expect(writtenChunks).toHaveLength(3);
 		const progressChunk = writtenChunks[0] as ToolProgressChunk;
 		expect(progressChunk.type).toBe('tool');
 		expect(progressChunk.status).toBe('running');
-		expect(progressChunk.customDisplayTitle).toBe('Connecting to assistant...');
+		expect(progressChunk.toolCallId).toMatch(/^assistant-/);
+		expect(progressChunk.displayTitle).toBe('Asking assistant');
 
 		const chunk = writtenChunks[1] as AgentMessageChunk;
 		expect(chunk.role).toBe('assistant');
 		expect(chunk.type).toBe('message');
 		expect(chunk.text).toBe('Hello, how can I help?');
+
+		const doneChunk = writtenChunks[2] as ToolProgressChunk;
+		expect(doneChunk.type).toBe('tool');
+		expect(doneChunk.status).toBe('completed');
+		// Same toolCallId within the same turn
+		expect(doneChunk.toolCallId).toBe(progressChunk.toolCallId);
+
 		expect(result.responseText).toBe('Hello, how can I help?');
 	});
 
@@ -123,12 +138,13 @@ describe('AssistantHandler', () => {
 
 		await handler.execute({ query: 'test' }, 'user-1', writer);
 
-		expect(writtenChunks).toHaveLength(3);
+		// Chunks: connecting, First, Second, done
+		expect(writtenChunks).toHaveLength(4);
 		expect((writtenChunks[1] as AgentMessageChunk).text).toBe('First');
 		expect((writtenChunks[2] as AgentMessageChunk).text).toBe('Second');
 	});
 
-	it('should degrade code-diff to AgentMessageChunk with fenced code block', async () => {
+	it('should emit CodeDiffChunk for code-diff messages', async () => {
 		const response = createMockSdkResponse([
 			{
 				sessionId: 'sess-1',
@@ -146,14 +162,20 @@ describe('AssistantHandler', () => {
 		const client = createMockClient(response);
 		const handler = new AssistantHandler(client);
 
-		const result = await handler.execute({ query: 'fix it' }, 'user-1', writer);
+		const context: AssistantContext = {
+			query: 'fix it',
+			errorContext: { nodeName: 'Code1', errorMessage: 'bad code' },
+		};
+		const result = await handler.execute(context, 'user-1', writer);
 
-		expect(writtenChunks).toHaveLength(2);
-		const chunk = writtenChunks[1] as AgentMessageChunk;
-		expect(chunk.type).toBe('message');
-		expect(chunk.text).toContain('Here is the fix');
-		expect(chunk.text).toContain('```diff');
-		expect(chunk.text).toContain('- old\n+ new');
+		expect(writtenChunks).toHaveLength(3);
+		const chunk = writtenChunks[1] as CodeDiffChunk;
+		expect(chunk.type).toBe('code-diff');
+		expect(chunk.suggestionId).toBe('sug-1');
+		expect(chunk.sdkSessionId).toBe('sess-1');
+		expect(chunk.codeDiff).toBe('- old\n+ new');
+		expect(chunk.description).toBe('Here is the fix');
+		expect(chunk.nodeName).toBe('Code1');
 		expect(result.hasCodeDiff).toBe(true);
 		expect(result.suggestionIds).toContain('sug-1');
 	});
@@ -177,7 +199,8 @@ describe('AssistantHandler', () => {
 
 		await handler.execute({ query: 'test' }, 'user-1', writer);
 
-		expect(writtenChunks).toHaveLength(2);
+		// Chunks: connecting, summary message, done
+		expect(writtenChunks).toHaveLength(3);
 		const chunk = writtenChunks[1] as AgentMessageChunk;
 		expect(chunk.text).toBe('**Summary Title**\n\nSummary content here');
 	});
@@ -202,13 +225,14 @@ describe('AssistantHandler', () => {
 
 		const result = await handler.execute({ query: 'test' }, 'user-1', writer);
 
-		expect(writtenChunks).toHaveLength(2);
+		// Chunks: connecting, suggestion message, done
+		expect(writtenChunks).toHaveLength(3);
 		const chunk = writtenChunks[1] as AgentMessageChunk;
 		expect(chunk.text).toBe('**Try this**\n\nUse the HTTP node instead');
 		expect(result.suggestionIds).toContain('sug-2');
 	});
 
-	it('should map intermediate-step to ToolProgressChunk', async () => {
+	it('should emit intermediate-step messages as tool progress updates', async () => {
 		const response = createMockSdkResponse([
 			{
 				sessionId: 'sess-1',
@@ -227,12 +251,22 @@ describe('AssistantHandler', () => {
 
 		await handler.execute({ query: 'test' }, 'user-1', writer);
 
-		expect(writtenChunks).toHaveLength(2);
-		const chunk = writtenChunks[1] as ToolProgressChunk;
-		expect(chunk.type).toBe('tool');
-		expect(chunk.toolName).toBe('assistant');
-		expect(chunk.status).toBe('running');
-		expect(chunk.customDisplayTitle).toBe('Searching documentation...');
+		// Chunks: connecting, intermediate step, done
+		expect(writtenChunks).toHaveLength(3);
+		expect((writtenChunks[0] as ToolProgressChunk).status).toBe('running');
+		expect((writtenChunks[0] as ToolProgressChunk).displayTitle).toBe('Asking assistant');
+
+		const connectingChunk = writtenChunks[0] as ToolProgressChunk;
+		const stepChunk = writtenChunks[1] as ToolProgressChunk;
+		expect(stepChunk.type).toBe('tool');
+		expect(stepChunk.toolName).toBe('assistant');
+		expect(stepChunk.status).toBe('running');
+		// Intermediate steps no longer carry dynamic customDisplayTitle
+		expect(stepChunk.customDisplayTitle).toBeUndefined();
+		// Same toolCallId as the initial connecting chunk (same turn)
+		expect(stepChunk.toolCallId).toBe(connectingChunk.toolCallId);
+
+		expect((writtenChunks[2] as ToolProgressChunk).status).toBe('completed');
 	});
 
 	it('should silently consume event messages without writing', async () => {
@@ -247,11 +281,10 @@ describe('AssistantHandler', () => {
 
 		await handler.execute({ query: 'test' }, 'user-1', writer);
 
-		// Only the "Connecting..." progress chunk, event message is consumed silently
-		expect(writtenChunks).toHaveLength(1);
-		expect((writtenChunks[0] as ToolProgressChunk).customDisplayTitle).toBe(
-			'Connecting to assistant...',
-		);
+		// Chunks: connecting, done (event message is consumed silently)
+		expect(writtenChunks).toHaveLength(2);
+		expect((writtenChunks[0] as ToolProgressChunk).displayTitle).toBe('Asking assistant');
+		expect((writtenChunks[1] as ToolProgressChunk).status).toBe('completed');
 	});
 
 	it('should map error message to AgentMessageChunk', async () => {
@@ -272,7 +305,8 @@ describe('AssistantHandler', () => {
 
 		await handler.execute({ query: 'test' }, 'user-1', writer);
 
-		expect(writtenChunks).toHaveLength(2);
+		// Chunks: connecting, error message, done
+		expect(writtenChunks).toHaveLength(3);
 		const chunk = writtenChunks[1] as AgentMessageChunk;
 		expect(chunk.type).toBe('message');
 		expect(chunk.text).toBe('Something went wrong');
@@ -290,8 +324,8 @@ describe('AssistantHandler', () => {
 
 		await handler.execute({ query: 'test' }, 'user-1', writer);
 
-		// Only the "Connecting..." progress chunk, empty text message is skipped
-		expect(writtenChunks).toHaveLength(1);
+		// Chunks: connecting, done (empty text message is skipped)
+		expect(writtenChunks).toHaveLength(2);
 	});
 
 	it('should collect all text and truncate summary to 200 chars', async () => {
@@ -315,7 +349,7 @@ describe('AssistantHandler', () => {
 		expect(result.summary.endsWith('...')).toBe(true);
 	});
 
-	it('should throw on non-ok SDK response', async () => {
+	it('should throw on non-ok SDK response and still emit Done', async () => {
 		const response = createMockSdkResponse([], false, 500);
 		const client = createMockClient(response);
 		const handler = new AssistantHandler(client);
@@ -323,9 +357,16 @@ describe('AssistantHandler', () => {
 		await expect(handler.execute({ query: 'test' }, 'user-1', writer)).rejects.toThrow(
 			'Assistant SDK returned HTTP 500',
 		);
+
+		// "Done" must still be emitted so the frontend clears the thinking indicator
+		const doneChunk = writtenChunks.find(
+			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
+		);
+		expect(doneChunk).toBeDefined();
+		expect(doneChunk!.status).toBe('completed');
 	});
 
-	it('should throw when response body is null', async () => {
+	it('should throw when response body is null and still emit Done', async () => {
 		const response = { ok: true, status: 200, body: null } as unknown as Response;
 		const client = createMockClient(response);
 		const handler = new AssistantHandler(client);
@@ -333,6 +374,13 @@ describe('AssistantHandler', () => {
 		await expect(handler.execute({ query: 'test' }, 'user-1', writer)).rejects.toThrow(
 			'Assistant SDK response has no body',
 		);
+
+		// "Done" must still be emitted so the frontend clears the thinking indicator
+		const doneChunk = writtenChunks.find(
+			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
+		);
+		expect(doneChunk).toBeDefined();
+		expect(doneChunk!.status).toBe('completed');
 	});
 
 	it('should return immediately without error when signal is pre-aborted', async () => {
@@ -352,8 +400,8 @@ describe('AssistantHandler', () => {
 
 		expect(result.responseText).toBe('');
 		expect(result.hasCodeDiff).toBe(false);
-		// Only the "Connecting..." progress chunk, stream is aborted before any SDK chunks
-		expect(writtenChunks).toHaveLength(1);
+		// Chunks: connecting, done (stream is aborted before any SDK chunks)
+		expect(writtenChunks).toHaveLength(2);
 	});
 
 	it('should correctly parse JSON split across two reader.read() calls', async () => {
@@ -370,7 +418,8 @@ describe('AssistantHandler', () => {
 
 		const result = await handler.execute({ query: 'test' }, 'user-1', writer);
 
-		expect(writtenChunks).toHaveLength(2);
+		// Chunks: connecting, text message, done
+		expect(writtenChunks).toHaveLength(3);
 		expect((writtenChunks[1] as AgentMessageChunk).text).toBe('Buffered correctly');
 		expect(result.responseText).toBe('Buffered correctly');
 	});
@@ -472,5 +521,81 @@ describe('AssistantHandler', () => {
 				user: { firstName: 'User' },
 			}),
 		);
+	});
+
+	it('should emit "Done" tool status even when remaining buffer causes an error', async () => {
+		// Simulate an SDK response where the stream ends with non-JSON garbage
+		// (e.g., a plain-text error from the SDK). The "Done" chunk must still be
+		// emitted so the frontend clears the thinking indicator.
+		const encoder = new TextEncoder();
+		const validChunk = JSON.stringify({
+			sessionId: 'sess-1',
+			messages: [{ role: 'assistant', type: 'message', text: 'Some response' }],
+		} satisfies SdkStreamChunk);
+		const trailingGarbage = 'Internal Server Error';
+
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(encoder.encode(validChunk + STREAM_SEPARATOR + trailingGarbage));
+				controller.close();
+			},
+		});
+
+		const response = { ok: true, status: 200, body: stream } as unknown as Response;
+		const client = createMockClient(response);
+		const handler = new AssistantHandler(client);
+
+		await expect(handler.execute({ query: 'test' }, 'user-1', writer)).rejects.toThrow(
+			'Assistant SDK error',
+		);
+
+		// Even though the call threw, the "Done" chunk should have been emitted
+		const doneChunk = writtenChunks.find(
+			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
+		);
+		expect(doneChunk).toBeDefined();
+		expect(doneChunk!.status).toBe('completed');
+
+		// The text message should also have been written before the error
+		const textChunk = writtenChunks.find(
+			(c): c is AgentMessageChunk => c.type === 'message' && 'text' in c,
+		);
+		expect(textChunk).toBeDefined();
+		expect(textChunk!.text).toBe('Some response');
+	});
+
+	it('should emit "Done" tool status even when reader.read() throws', async () => {
+		// Simulate a network error mid-stream
+		let readCount = 0;
+		const encoder = new TextEncoder();
+		const stream = new ReadableStream<Uint8Array>({
+			pull(controller) {
+				readCount++;
+				if (readCount === 1) {
+					const chunk = JSON.stringify({
+						sessionId: 'sess-1',
+						messages: [{ role: 'assistant', type: 'message', text: 'Partial' }],
+					} satisfies SdkStreamChunk);
+					controller.enqueue(encoder.encode(chunk + STREAM_SEPARATOR));
+				} else {
+					controller.error(new Error('Network failure'));
+				}
+			},
+		});
+
+		const response = { ok: true, status: 200, body: stream } as unknown as Response;
+		const client = createMockClient(response);
+		const handler = new AssistantHandler(client);
+
+		await expect(handler.execute({ query: 'test' }, 'user-1', writer)).rejects.toThrow(
+			'Network failure',
+		);
+
+		// "Done" must still be emitted despite the read error
+		const doneChunk = writtenChunks.find(
+			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
+		);
+		expect(doneChunk).toBeDefined();
+		expect(doneChunk!.status).toBe('completed');
 	});
 });

@@ -16,7 +16,12 @@ import type {
 	StreamWriter,
 } from './types';
 import { STREAM_SEPARATOR } from '../constants';
-import type { AgentMessageChunk, StreamChunk, ToolProgressChunk } from '../types/streaming';
+import type {
+	AgentMessageChunk,
+	CodeDiffChunk,
+	StreamChunk,
+	ToolProgressChunk,
+} from '../types/streaming';
 
 const SUMMARY_MAX_LENGTH = 200;
 
@@ -33,7 +38,7 @@ export class AssistantHandler {
 
 	/**
 	 * Execute an assistant SDK request: build payload, call SDK, consume stream.
-	 * Emits a "Connecting to assistant..." progress chunk before the HTTP call
+	 * Emits an "Asking assistant" progress chunk before the HTTP call
 	 * to fill the gap while waiting for the SDK to respond.
 	 */
 	async execute(
@@ -44,15 +49,27 @@ export class AssistantHandler {
 	): Promise<AssistantResult> {
 		const payload = this.buildSdkPayload(context);
 
-		writer({
+		const toolCallId = `assistant-${crypto.randomUUID()}`;
+
+		await writer({
 			type: 'tool',
 			toolName: 'assistant',
-			customDisplayTitle: 'Connecting to assistant...',
+			toolCallId,
+			displayTitle: 'Asking assistant',
 			status: 'running',
 		});
 
-		const response = await this.callSdk(payload, userId);
-		return await this.consumeSdkStream(response, writer, abortSignal);
+		try {
+			const response = await this.callSdk(payload, userId);
+			return await this.consumeSdkStream(response, writer, abortSignal, toolCallId, context);
+		} finally {
+			await writer({
+				type: 'tool',
+				toolName: 'assistant',
+				toolCallId,
+				status: 'completed',
+			});
+		}
 	}
 
 	/**
@@ -142,6 +159,8 @@ export class AssistantHandler {
 		response: Response,
 		writer: StreamWriter,
 		signal?: AbortSignal,
+		toolCallId?: string,
+		context?: AssistantContext,
 	): Promise<AssistantResult> {
 		const body = response.body;
 		if (!body) {
@@ -188,7 +207,7 @@ export class AssistantHandler {
 						continue;
 					}
 
-					this.processChunkMessages(chunk, state, writer);
+					await this.processChunkMessages(chunk, state, writer, toolCallId, context);
 				}
 			}
 		} finally {
@@ -199,7 +218,7 @@ export class AssistantHandler {
 		if (remaining) {
 			try {
 				const chunk = JSON.parse(remaining) as SdkStreamChunk;
-				this.processChunkMessages(chunk, state, writer);
+				await this.processChunkMessages(chunk, state, writer, toolCallId, context);
 			} catch {
 				// If the remaining buffer is not JSON, it's likely a plain-text error from the SDK.
 				// Throw so callers can handle it as a proper error instead of an empty response.
@@ -225,7 +244,7 @@ export class AssistantHandler {
 	/**
 	 * Process all messages in a single SDK stream chunk, updating state and writing mapped chunks.
 	 */
-	private processChunkMessages(
+	private async processChunkMessages(
 		chunk: SdkStreamChunk,
 		state: {
 			sdkSessionId: string | undefined;
@@ -234,13 +253,15 @@ export class AssistantHandler {
 			suggestionIds: string[];
 		},
 		writer: StreamWriter,
-	): void {
+		toolCallId?: string,
+		context?: AssistantContext,
+	): Promise<void> {
 		if (chunk.sessionId && !state.sdkSessionId) {
 			state.sdkSessionId = chunk.sessionId;
 		}
 
 		for (const msg of chunk.messages) {
-			const mapped = this.mapSdkMessage(msg);
+			const mapped = this.mapSdkMessage(msg, toolCallId, state.sdkSessionId, context);
 			if (!mapped) continue;
 
 			if (mapped.type === 'message' && 'text' in mapped && mapped.text) {
@@ -258,15 +279,16 @@ export class AssistantHandler {
 				state.suggestionIds.push(msg.suggestionId);
 			}
 
-			writer(mapped);
+			await writer(mapped);
 		}
 	}
 
-	/**
-	 * Map an SDK message to a builder StreamChunk type.
-	 * Phase 0 graceful degradation: only emits types the builder frontend already renders.
-	 */
-	private mapSdkMessage(msg: SdkMessageResponse): StreamChunk | null {
+	private mapSdkMessage(
+		msg: SdkMessageResponse,
+		toolCallId?: string,
+		sdkSessionId?: string,
+		context?: AssistantContext,
+	): StreamChunk | null {
 		if (this.isSdkText(msg)) {
 			if (!msg.text) return null;
 			return {
@@ -277,12 +299,16 @@ export class AssistantHandler {
 		}
 
 		if (this.isSdkCodeDiff(msg)) {
-			const text = `${msg.description}\n\n\`\`\`diff\n${msg.codeDiff}\n\`\`\``;
 			return {
 				role: 'assistant',
-				type: 'message',
-				text,
-			} satisfies AgentMessageChunk;
+				type: 'code-diff',
+				suggestionId: msg.suggestionId ?? '',
+				sdkSessionId: sdkSessionId ?? '',
+				codeDiff: msg.codeDiff,
+				description: msg.description,
+				nodeName: context?.errorContext?.nodeName,
+				quickReplies: msg.quickReplies,
+			} satisfies CodeDiffChunk;
 		}
 
 		if (this.isSdkSummary(msg)) {
@@ -305,13 +331,12 @@ export class AssistantHandler {
 			return {
 				type: 'tool',
 				toolName: 'assistant',
-				customDisplayTitle: msg.text,
+				toolCallId,
 				status: 'running',
 			} satisfies ToolProgressChunk;
 		}
 
 		if (this.isSdkEvent(msg)) {
-			// Silently consumed — end-session, session-timeout
 			return null;
 		}
 

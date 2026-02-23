@@ -44,6 +44,7 @@ export function chatWithAssistant(
 	onMessageUpdated: (data: ChatRequest.ResponsePayload) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
+	abortSignal?: AbortSignal,
 ): void {
 	try {
 		const payloadSize = getObjectSizeInKB(payload.payload);
@@ -61,6 +62,8 @@ export function chatWithAssistant(
 		onMessageUpdated,
 		onDone,
 		onError,
+		undefined,
+		abortSignal,
 	);
 }
 
@@ -121,6 +124,15 @@ export async function getBuilderCredits(ctx: IRestApiContext): Promise<{
 	creditsClaimed: number;
 }> {
 	return await makeRestApiRequest(ctx, 'GET', '/ai/build/credits');
+}
+
+export async function clearBuilderSession(
+	ctx: IRestApiContext,
+	workflowId: string,
+): Promise<{ success: boolean }> {
+	return await makeRestApiRequest(ctx, 'POST', '/ai/build/clear-session', {
+		workflowId,
+	});
 }
 
 export async function truncateBuilderMessages(
