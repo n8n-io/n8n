@@ -1,7 +1,7 @@
 import type { SecretCompletionsResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Get, GlobalScope, Middleware, Param, RestController } from '@n8n/decorators';
+import { Get, GlobalScope, Middleware, Param, ProjectScope, RestController } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
 import { ExternalSecretsConfig } from './external-secrets.config';
@@ -52,6 +52,7 @@ export class SecretProvidersCompletionsController {
 
 	@Get('/secrets/global')
 	@GlobalScope('externalSecret:list')
+	@ProjectScope('externalSecret:list')
 	async listGlobalSecrets(): Promise<SecretCompletionsResponse> {
 		this.logger.debug('Listing global secrets');
 		const connections = await this.connectionsService.getGlobalCompletions();
@@ -60,6 +61,7 @@ export class SecretProvidersCompletionsController {
 
 	@Get('/secrets/project/:projectId')
 	@GlobalScope('externalSecret:list')
+	@ProjectScope('externalSecret:list')
 	async listProjectSecrets(
 		_req: AuthenticatedRequest,
 		_res: Response,

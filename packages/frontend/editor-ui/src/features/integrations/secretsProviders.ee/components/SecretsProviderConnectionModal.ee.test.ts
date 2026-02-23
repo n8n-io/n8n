@@ -357,6 +357,25 @@ describe('SecretsProviderConnectionModal', () => {
 			mockConnectionModal.isEditMode.value = true;
 		});
 
+		it('should not show sharing tab navigation when user has no global update permission', async () => {
+			mockConnectionModal.canShareGlobally.value = false;
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+					data: {
+						activeTab: 'sharing',
+						providerKey: 'test-123',
+						providerTypes: mockProviderTypes,
+					},
+				},
+			});
+
+			await nextTick();
+
+			expect(queryByTestId('sharing-tab')).not.toBeInTheDocument();
+		});
+
 		it('should not fetch projects from store when projects are already in store', async () => {
 			mockConnectionModal.connectionProjects.value = mockProjects.map((p) => ({
 				id: p.id,
@@ -417,6 +436,7 @@ describe('SecretsProviderConnectionModal', () => {
 			mockConnectionModal.projectIds.value = [];
 			mockConnectionModal.isSharedGlobally.value = false;
 			mockConnectionModal.canUpdate.value = true;
+			mockConnectionModal.canShareGlobally.value = true;
 			mockConnectionModal.isEditMode.value = true;
 			mockProjectsStore.projects = mockProjects;
 
@@ -456,6 +476,7 @@ describe('SecretsProviderConnectionModal', () => {
 			mockConnectionModal.projectIds.value = [];
 			mockConnectionModal.isSharedGlobally.value = false;
 			mockConnectionModal.canUpdate.value = true;
+			mockConnectionModal.canShareGlobally.value = true;
 			mockProjectsStore.projects = mockProjects;
 
 			const { queryByTestId } = renderComponent({

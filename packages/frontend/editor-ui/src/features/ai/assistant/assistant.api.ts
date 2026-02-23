@@ -44,6 +44,7 @@ export function chatWithAssistant(
 	onMessageUpdated: (data: ChatRequest.ResponsePayload) => void,
 	onDone: () => void,
 	onError: (e: Error) => void,
+	abortSignal?: AbortSignal,
 ): void {
 	try {
 		const payloadSize = getObjectSizeInKB(payload.payload);
@@ -61,6 +62,8 @@ export function chatWithAssistant(
 		onMessageUpdated,
 		onDone,
 		onError,
+		undefined,
+		abortSignal,
 	);
 }
 

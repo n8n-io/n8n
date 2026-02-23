@@ -9,7 +9,7 @@ const defaultProps = {
 	icon: 'flask-conical' as const,
 	disabled: false,
 	loading: false,
-	tooltipText: '',
+	tooltipItems: [] as string[],
 };
 
 describe('TriggerExecuteButton', () => {

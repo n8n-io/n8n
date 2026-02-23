@@ -175,6 +175,13 @@ jobs:
             packages/testing/playwright/playwright-report/
           retention-days: 7
 
+      - name: Cleanup cached CI images
+        if: ${{ inputs.test-mode == 'docker-pull' }}
+        continue-on-error: true
+        run: |
+          docker images --format '{{.Repository}}:{{.Tag}}' | grep -E 'ghcr\.io/n8n-io/(n8n|runners):(ci|pr)-' | xargs -r docker rmi || true
+          docker system prune -f || true
+
       - name: Cancel Currents run if workflow is cancelled
         if: ${{ cancelled() }}
         env:

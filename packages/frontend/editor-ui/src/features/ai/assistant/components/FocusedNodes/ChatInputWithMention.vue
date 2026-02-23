@@ -268,7 +268,7 @@ defineExpose({
 				<N8nIconButton
 					v-if="isFeatureEnabled"
 					icon="at-sign"
-					type="tertiary"
+					variant="ghost"
 					:text="true"
 					size="small"
 					:title="i18n.baseText('focusedNodes.mentionTooltip')"
