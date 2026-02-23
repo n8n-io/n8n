@@ -120,12 +120,13 @@ jobs:
       - name: Run Building Blocks E2E Tests
         working-directory: packages/testing/playwright
         run: |
+          set -o pipefail
           N8N_BASE_URL="${{ env.N8N_BASE_URL }}" \
           RESET_E2E_DB=true \
           npx playwright test \
             --project=e2e \
             tests/e2e/building-blocks/ \
-            --workers=2 \
+            --workers=1 \
             --reporter=list \
             2>&1 | tail -100
 
