@@ -142,6 +142,13 @@ export class ChatHubSettingsService {
 		);
 	}
 
+	async clearMemory(): Promise<void> {
+		await this.settingsRepository.upsert(
+			{ key: CHAT_MEMORY_KEY, value: '', loadOnStartup: false },
+			['key'],
+		);
+	}
+
 	async deleteMemoryFactByIndex(index: number): Promise<void> {
 		const current = await this.getMemory();
 		const facts = current.split('\n').filter((f) => f.trim().length > 0);

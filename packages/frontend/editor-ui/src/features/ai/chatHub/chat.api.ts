@@ -236,6 +236,10 @@ export const updateChatSettingsApi = async (
 	});
 };
 
+export const clearAllMemoryApi = async (context: IRestApiContext): Promise<void> => {
+	await makeRestApiRequest(context, 'DELETE', '/chat/memory');
+};
+
 export const deleteMemoryFactApi = async (
 	context: IRestApiContext,
 	index: number,

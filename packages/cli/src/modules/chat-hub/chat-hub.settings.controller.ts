@@ -65,6 +65,12 @@ export class ChatHubSettingsController {
 		return await this.settings.getProviderSettings(payload.provider);
 	}
 
+	@Delete('/memory')
+	@GlobalScope('chatHub:manage')
+	async clearMemory(_req: AuthenticatedRequest) {
+		await this.settings.clearMemory();
+	}
+
 	@Delete('/memory/:index')
 	@GlobalScope('chatHub:manage')
 	async deleteMemoryFact(
