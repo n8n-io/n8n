@@ -12,9 +12,10 @@ import {
 	N8nUserInfo,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useAsyncState } from '@vueuse/core';
-import { watch } from 'vue';
+import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+
+import type { RoleProjectMembersResponse } from '@n8n/api-types';
 
 const props = defineProps<{
 	open: boolean;
@@ -31,23 +32,25 @@ const rolesStore = useRolesStore();
 const i18n = useI18n();
 const router = useRouter();
 
-const {
-	state: membersData,
-	isLoading,
-	execute,
-} = useAsyncState(
-	async () => await rolesStore.fetchRoleProjectMembers(props.roleSlug, props.projectId),
-	{ members: [] },
-	{ immediate: false },
-);
+const membersData = ref<RoleProjectMembersResponse>({ members: [] });
+const isLoading = ref(false);
 
 watch(
 	() => props.open,
-	(isOpen) => {
+	async (isOpen) => {
 		if (isOpen) {
-			void execute();
+			isLoading.value = true;
+			try {
+				membersData.value = await rolesStore.fetchRoleProjectMembers(
+					props.roleSlug,
+					props.projectId,
+				);
+			} finally {
+				isLoading.value = false;
+			}
 		}
 	},
+	{ immediate: true },
 );
 
 function getRoleDisplayName(roleSlug: string): string {

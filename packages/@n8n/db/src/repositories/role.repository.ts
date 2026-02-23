@@ -120,7 +120,10 @@ export class RoleRepository extends Repository<Role> {
 		}));
 	}
 
-	async findAllProjectMembers(projectId: string): Promise<
+	async findAllProjectMembers(
+		projectId: string,
+		roleSlug?: string,
+	): Promise<
 		Array<{
 			userId: string;
 			firstName: string | null;
@@ -129,7 +132,7 @@ export class RoleRepository extends Repository<Role> {
 			role: string;
 		}>
 	> {
-		return await this.manager
+		const qb = this.manager
 			.createQueryBuilder(ProjectRelation, 'pr')
 			.innerJoin(User, 'user', 'user.id = pr.userId')
 			.select('user.id', 'userId')
@@ -137,8 +140,13 @@ export class RoleRepository extends Repository<Role> {
 			.addSelect('user.lastName', 'lastName')
 			.addSelect('user.email', 'email')
 			.addSelect('pr.role', 'role')
-			.where('pr.projectId = :projectId', { projectId })
-			.getRawMany();
+			.where('pr.projectId = :projectId', { projectId });
+
+		if (roleSlug) {
+			qb.andWhere('pr.role = :roleSlug', { roleSlug });
+		}
+
+		return await qb.getRawMany();
 	}
 
 	async findBySlug(slug: string) {

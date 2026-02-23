@@ -119,7 +119,7 @@ export class RoleService {
 			throw new NotFoundError('Role not found');
 		}
 
-		const members = await this.roleRepository.findAllProjectMembers(projectId);
+		const members = await this.roleRepository.findAllProjectMembers(projectId, role.slug);
 		return { members };
 	}
 
