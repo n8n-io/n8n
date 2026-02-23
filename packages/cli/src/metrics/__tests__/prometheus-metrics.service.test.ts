@@ -10,6 +10,7 @@ import promClient from 'prom-client';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { EventService } from '@/events/event.service';
+import type { PathResolvingService } from '@/services/path-resolving.service';
 
 import { PrometheusMetricsService } from '../prometheus-metrics.service';
 
@@ -30,6 +31,7 @@ describe('PrometheusMetricsService', () => {
 	let instanceSettings: InstanceSettings;
 	let workflowRepository: WorkflowRepository;
 	let licenseMetricsRepository: LicenseMetricsRepository;
+	let pathResolvingService: PathResolvingService;
 	let prometheusMetricsService: PrometheusMetricsService;
 
 	beforeEach(() => {
@@ -72,6 +74,16 @@ describe('PrometheusMetricsService', () => {
 		instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 		workflowRepository = mock<WorkflowRepository>();
 		licenseMetricsRepository = mock<LicenseMetricsRepository>();
+		pathResolvingService = mock<PathResolvingService>({
+			getBasePath: () => '/',
+			resolveRestEndpoint: (path: string) => `/rest${path ? `/${path}` : ''}`,
+			resolveWebhookEndpoint: (path: string) => `/webhook${path ? `/${path}` : ''}`,
+			resolveWebhookTestEndpoint: (path: string) => `/webhook-test${path ? `/${path}` : ''}`,
+			resolveWebhookWaitingEndpoint: (path: string) => `/webhook-waiting${path ? `/${path}` : ''}`,
+			resolveFormEndpoint: (path: string) => `/form${path ? `/${path}` : ''}`,
+			resolveFormTestEndpoint: (path: string) => `/form-test${path ? `/${path}` : ''}`,
+			resolveFormWaitingEndpoint: (path: string) => `/form-waiting${path ? `/${path}` : ''}`,
+		});
 
 		prometheusMetricsService = new PrometheusMetricsService(
 			mock(),
@@ -81,6 +93,7 @@ describe('PrometheusMetricsService', () => {
 			instanceSettings,
 			workflowRepository,
 			licenseMetricsRepository,
+			pathResolvingService,
 		);
 
 		promClient.Counter.prototype.inc = jest.fn();
@@ -105,6 +118,7 @@ describe('PrometheusMetricsService', () => {
 				instanceSettings,
 				mock(),
 				mock(),
+				pathResolvingService,
 			);
 
 			await customPrometheusMetricsService.init(app);

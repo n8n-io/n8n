@@ -111,6 +111,10 @@ export class GlobalConfig {
 	@Env('N8N_PATH')
 	path: string = '/';
 
+	/** Base path n8n is deployed to */
+	@Env('N8N_BASE_PATH')
+	basePath: string = '';
+
 	/** Host name n8n can be reached */
 	@Env('N8N_HOST')
 	host: string = 'localhost';

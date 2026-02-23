@@ -182,7 +182,8 @@ export class AuthService {
 	}
 
 	clearCookie(res: Response) {
-		res.clearCookie(AUTH_COOKIE_NAME);
+		// Clear cookie with the same path it was set with
+		res.clearCookie(AUTH_COOKIE_NAME, { path: this.urlService.basePath });
 	}
 
 	async invalidateToken(req: AuthenticatedRequest) {
@@ -216,6 +217,8 @@ export class AuthService {
 			httpOnly: true,
 			sameSite: samesite,
 			secure,
+			// Scope the cookie to the base path so it's only sent for requests under this path
+			path: this.urlService.basePath,
 		});
 	}
 
@@ -268,7 +271,10 @@ export class AuthService {
 		endpoint: string,
 		method: string,
 	) {
-		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
+		if (
+			method === 'GET' &&
+			this.skipBrowserIdCheckEndpoints.some((skipEndpoint) => endpoint.includes(skipEndpoint))
+		) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&

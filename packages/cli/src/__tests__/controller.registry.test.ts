@@ -5,7 +5,6 @@ jest.mock('@n8n/backend-common', () => {
 	};
 });
 
-import type { GlobalConfig } from '@n8n/config';
 import {
 	ControllerRegistryMetadata,
 	Param,
@@ -30,14 +29,19 @@ import { ControllerRegistry } from '@/controller.registry';
 import type { License } from '@/license';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 import { RateLimitService } from '@/services/rate-limit.service';
+import type { PathResolvingService } from '@/services/path-resolving.service';
 import type { SuperAgentTest } from '@test-integration/types';
 
 describe('ControllerRegistry', () => {
 	const license = mock<License>();
 	const authService = mock<AuthService>();
-	const globalConfig = mock<GlobalConfig>({ endpoints: { rest: 'rest' } });
 	const metadata = Container.get(ControllerRegistryMetadata);
 	const lastActiveAtService = mock<LastActiveAtService>();
+	const pathResolvingService = mock<PathResolvingService>({
+		getBasePath: () => '/',
+		resolveEndpoint: (path: string) => (path.startsWith('/') ? path : `/${path}`),
+		resolveRestEndpoint: (path: string) => `/rest${path ? `/${path}` : ''}`,
+	});
 	let agent: SuperAgentTest;
 	const authMiddleware = jest.fn().mockImplementation(async (_req, _res, next) => next());
 
@@ -49,10 +53,10 @@ describe('ControllerRegistry', () => {
 		new ControllerRegistry(
 			license,
 			authService,
-			globalConfig,
 			metadata,
 			lastActiveAtService,
 			new RateLimitService(),
+			pathResolvingService,
 		).activate(app);
 		agent = testAgent(app);
 	});

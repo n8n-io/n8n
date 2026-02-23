@@ -203,7 +203,7 @@ export class LoadNodesAndCredentials {
 	 * @todo Instead of fixing the broken custom node loading strategy here, make custom-directory-loader.ts also use relative paths.
 	 * Besides having different icon loading strategies, encoding an absolute path in URLs seems a security risk.
 	 */
-	resolveIcon(packageName: string, url: string): string | undefined {
+	resolveIcon(basePath: string, packageName: string, url: string): string | undefined {
 		const isCustom = packageName === CUSTOM_NODES_PACKAGE_NAME;
 		const loader = this.loaders[packageName];
 		if (!loader) {
@@ -219,7 +219,7 @@ export class LoadNodesAndCredentials {
 			return path.startsWith('/') ? path : '/' + path;
 		};
 
-		const pathPrefix = `/icons/${packageName}/`;
+		const pathPrefix = `${basePath}/icons/${packageName}/`;
 		const urlFilePath = url.substring(pathPrefix.length);
 		const filePath = isCustom ? resolvePathCustom(urlFilePath) : resolvePath(urlFilePath);
 

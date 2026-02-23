@@ -43,6 +43,7 @@ describe('Push', () => {
 	});
 
 	describe('setupPushServer', () => {
+		const basePath = '';
 		const restEndpoint = 'rest';
 		const app = mock<Application>();
 		const server = mock<Server>();
@@ -54,7 +55,7 @@ describe('Push', () => {
 				config.backend = 'sse';
 				push = new Push(config, mock(), logger, mock(), mock());
 
-				push.setupPushServer(restEndpoint, server, app);
+				push.setupPushServer(basePath, restEndpoint, server, app);
 
 				expect(wssSpy).not.toHaveBeenCalled();
 				expect(server.on).not.toHaveBeenCalled();
@@ -72,7 +73,7 @@ describe('Push', () => {
 				push = new Push(config, mock(), logger, mock(), mock());
 				wssSpy.mockReturnValue(wsServer);
 
-				push.setupPushServer(restEndpoint, server, app);
+				push.setupPushServer(basePath, restEndpoint, server, app);
 
 				expect(wssSpy).toHaveBeenCalledWith({ noServer: true });
 				const onUpgradeCaptor = captor<typeof onUpgrade>();

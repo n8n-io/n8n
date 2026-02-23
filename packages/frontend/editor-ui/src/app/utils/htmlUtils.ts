@@ -11,7 +11,7 @@ export function sanitizeHtml(dirtyHtml: string) {
 			if (tag === 'img' && name === 'src') {
 				// Only allow http requests to supported image files from the `static` directory
 				const isImageFile = value.split('#')[0].match(/\.(jpeg|jpg|gif|png|webp)$/) !== null;
-				const isStaticImageFile = isImageFile && value.startsWith('/static/');
+				const isStaticImageFile = isImageFile && value.startsWith(`${window.BASE_PATH}static/`);
 				if (!value.startsWith('https://') && !isStaticImageFile) {
 					return '';
 				}

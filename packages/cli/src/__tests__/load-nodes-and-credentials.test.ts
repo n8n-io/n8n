@@ -62,28 +62,34 @@ describe('LoadNodesAndCredentials', () => {
 		});
 
 		it('should return undefined if the loader for the package is not found', () => {
-			const result = instance.resolveIcon('unknownPackage', '/icons/unknownPackage/icon.png');
+			const result = instance.resolveIcon('', 'unknownPackage', '/icons/unknownPackage/icon.png');
 			expect(result).toBeUndefined();
 		});
 
 		it('should return undefined if the resolved file path is outside the loader directory', () => {
-			const result = instance.resolveIcon('package1', '/some/other/path/icon.png');
+			const result = instance.resolveIcon('', 'package1', '/some/other/path/icon.png');
 			expect(result).toBeUndefined();
 		});
 
 		it('should return the file path if the file is within the loader directory', () => {
-			const result = instance.resolveIcon('package1', `${pathPrefix}/icon.png`);
-			expect(result).toBe(`${dir}/icon.png`);
+			const result = instance.resolveIcon('', 'package1', '/icons/package1/icon.png');
+			expect(result).toBe('/icons/package1/icon.png');
 		});
 
 		it('should return undefined if the URL is outside the package directory', () => {
-			const result = instance.resolveIcon('package1', `${pathPrefix}/../../../etc/passwd`);
+			const result = instance.resolveIcon('', 'package1', '/icons/package1/../../../etc/passwd');
 			expect(result).toBeUndefined();
+		});
+
+		it('should handle basePath correctly', () => {
+			const result = instance.resolveIcon('/test', 'package1', '/test/icons/package1/icon.png');
+			expect(result).toBe('/icons/package1/icon.png');
 		});
 
 		describe('N8N_CUSTOM_EXTENSIONS', () => {
 			it('should return file path if url contains "//" with absolute custom file path', () => {
 				const result = instanceCustom.resolveIcon(
+					'',
 					packageNameCustom,
 					`${pathPrefixAbsolute}/icon.png`,
 				);
@@ -93,6 +99,7 @@ describe('LoadNodesAndCredentials', () => {
 			it('should return file path if url contains "C:" with absolute custom windows file path', () => {
 				const winIconPath = `${dirCustomWin}/icon.png`;
 				const result = instanceCustomWin.resolveIcon(
+					'',
 					packageNameCustom,
 					`${pathPrefixAbsoluteWin}/icon.png`,
 				);

@@ -9,6 +9,7 @@ import promClient from 'prom-client';
 import { EventMessageWorkflow } from '@/eventbus/event-message-classes/event-message-workflow';
 import type { EventService } from '@/events/event.service';
 import type { CacheService } from '@/services/cache/cache.service';
+import type { PathResolvingService } from '@/services/path-resolving.service';
 
 import { MessageEventBus } from '../../eventbus/message-event-bus/message-event-bus';
 import { PrometheusMetricsService } from '../prometheus-metrics.service';
@@ -22,6 +23,16 @@ const eventService = mock<EventService>();
 const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 const workflowRepository = mock<WorkflowRepository>();
 const app = mock<express.Application>();
+const pathResolvingService = mock<PathResolvingService>({
+	getBasePath: () => '/',
+	resolveRestEndpoint: (path: string) => `/rest${path ? `/${path}` : ''}`,
+	resolveWebhookEndpoint: (path: string) => `/webhook${path ? `/${path}` : ''}`,
+	resolveWebhookTestEndpoint: (path: string) => `/webhook-test${path ? `/${path}` : ''}`,
+	resolveWebhookWaitingEndpoint: (path: string) => `/webhook-waiting${path ? `/${path}` : ''}`,
+	resolveFormEndpoint: (path: string) => `/form${path ? `/${path}` : ''}`,
+	resolveFormTestEndpoint: (path: string) => `/form-test${path ? `/${path}` : ''}`,
+	resolveFormWaitingEndpoint: (path: string) => `/form-waiting${path ? `/${path}` : ''}`,
+});
 const eventBus = new MessageEventBus(mock(), mock(), mock(), mock(), mock());
 
 describe('workflow_success_total', () => {
@@ -46,6 +57,7 @@ describe('workflow_success_total', () => {
 			instanceSettings,
 			workflowRepository,
 			mock<LicenseMetricsRepository>(),
+			pathResolvingService,
 		);
 
 		await prometheusMetricsService.init(app);
@@ -90,6 +102,7 @@ workflow_success_total{workflow_id="1234"} 1"
 			instanceSettings,
 			workflowRepository,
 			mock<LicenseMetricsRepository>(),
+			pathResolvingService,
 		);
 
 		await prometheusMetricsService.init(app);
@@ -131,6 +144,7 @@ workflow_success_total{workflow_name="wf_1234"} 1"
 			instanceSettings,
 			workflowRepository,
 			mock<LicenseMetricsRepository>(),
+			pathResolvingService,
 		);
 
 		// ACT
@@ -176,6 +190,7 @@ describe('Active workflow count', () => {
 		instanceSettings,
 		workflowRepository,
 		mock<LicenseMetricsRepository>(),
+		pathResolvingService,
 	);
 
 	afterEach(() => {

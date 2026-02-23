@@ -15,6 +15,8 @@ describe('ChatTrigger Templates Security', () => {
 		allowedFilesMimeTypes: '',
 		customCss: '',
 		enableStreaming: false,
+		instanceBaseUrl: '/',
+		initialMessages: '',
 	};
 
 	describe('XSS Prevention in initialMessages', () => {
@@ -326,6 +328,42 @@ describe('ChatTrigger Templates Security', () => {
 			expect(result.count).toBe('123');
 			expect(result.enabled).toBe('');
 			expect(result.obj).toBe('');
+		});
+	});
+
+	describe('BasePath functionality', () => {
+		it('should use custom instanceBaseUrl in redirect URL', () => {
+			const customBasePath = '/custom/path/';
+			const result = createPage({
+				...defaultParams,
+				instanceBaseUrl: customBasePath,
+				authentication: 'n8nUserAuth',
+			});
+
+			// Should contain the custom instanceBaseUrl in the redirect URL
+			expect(result).toContain(`window.location.href = '${customBasePath}signin?redirect='`);
+		});
+
+		it('should use default instanceBaseUrl when not provided', () => {
+			// Create params without instanceBaseUrl to test default behavior
+			const { instanceBaseUrl: _, ...paramsWithoutBaseUrl } = defaultParams;
+			const result = createPage({
+				...paramsWithoutBaseUrl,
+				authentication: 'n8nUserAuth',
+			});
+
+			// When instanceBaseUrl is not provided, it should default to '/'
+			expect(result).toContain(`window.location.href = '/signin?redirect='`);
+		});
+
+		it('should properly encode redirect URL', () => {
+			const result = createPage({
+				...defaultParams,
+				authentication: 'n8nUserAuth',
+			});
+
+			// Should use encodeURIComponent for the redirect parameter
+			expect(result).toContain('encodeURIComponent(window.location.href)');
 		});
 	});
 });

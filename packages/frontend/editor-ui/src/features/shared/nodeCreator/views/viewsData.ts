@@ -427,7 +427,10 @@ export function TriggerView() {
 					name: WEBHOOK_NODE_TYPE,
 					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDisplayName'),
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDescription'),
-					iconData: { type: 'icon', icon: 'webhook' },
+					iconData: {
+						type: 'file',
+						fileBuffer: `${window.BASE_PATH}static/webhook-icon.svg`,
+					},
 				},
 			},
 			{
@@ -439,7 +442,10 @@ export function TriggerView() {
 					name: FORM_TRIGGER_NODE_TYPE,
 					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.formTriggerDisplayName'),
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.formTriggerDescription'),
-					iconData: { type: 'icon', icon: 'form' },
+					iconData: {
+						type: 'file',
+						fileBuffer: `${window.BASE_PATH}static/form-grey.svg`,
+					},
 				},
 			},
 			{
