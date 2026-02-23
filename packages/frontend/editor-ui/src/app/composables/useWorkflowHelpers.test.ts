@@ -34,6 +34,10 @@ import {
 	useWorkflowState,
 	type WorkflowState,
 } from '@/app/composables/useWorkflowState';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '../stores/workflowDocument.store';
 
 vi.mock('@/app/composables/useWorkflowState', async () => {
 	const actual = await vi.importActual('@/app/composables/useWorkflowState');

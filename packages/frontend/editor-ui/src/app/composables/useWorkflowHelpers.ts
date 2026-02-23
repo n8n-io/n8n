@@ -585,6 +585,10 @@ export function useWorkflowHelpers() {
 			nodes.push(nodeData);
 		}
 
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+
 		const tags = workflowDocumentStore?.tags ? [...workflowDocumentStore.tags] : [];
 
 		const data: WorkflowData = {
