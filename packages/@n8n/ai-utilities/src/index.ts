@@ -38,7 +38,16 @@ export {
 	extractFromAIParameters,
 } from './utils/fromai-tool-factory';
 export { createVectorStoreNode } from './utils/vector-store/createVectorStoreNode/createVectorStoreNode';
+export type {
+	VectorStoreNodeConstructorArgs,
+	NodeOperationMode,
+	NodeMeta,
+} from './utils/vector-store/createVectorStoreNode/types';
 export { MemoryVectorStoreManager } from './utils/vector-store/MemoryManager/MemoryVectorStoreManager';
+export {
+	processDocuments,
+	processDocument,
+} from './utils/vector-store/processDocuments';
 export type { ServerSentEventMessage } from './utils/sse';
 
 // Converters

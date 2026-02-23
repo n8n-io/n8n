@@ -95,19 +95,3 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 	 */
 	releaseVectorStoreClient?: (vectorStore: T) => void;
 }
-
-export type QdrantCredential = {
-	qdrantUrl: string;
-	apiKey: string;
-};
-
-export type WeaviateCredential = {
-	weaviate_cloud_endpoint: string;
-	weaviate_api_key: string;
-	custom_connection_http_host: string;
-	custom_connection_http_port: number;
-	custom_connection_http_secure: boolean;
-	custom_connection_grpc_host: string;
-	custom_connection_grpc_port: number;
-	custom_connection_grpc_secure: boolean;
-};
