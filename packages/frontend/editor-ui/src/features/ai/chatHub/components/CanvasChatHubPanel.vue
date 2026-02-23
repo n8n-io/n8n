@@ -16,6 +16,7 @@ import type { ChatHubSendMessageRequest, ChatModelDto, ChatSessionId } from '@n8
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useChatStore } from '../chat.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useChatPushHandler } from '../composables/useChatPushHandler';
 import { isWaitingForApproval } from '../chat.utils';
 import ChatMessage from './ChatMessage.vue';
@@ -31,6 +32,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const chatStore = useChatStore();
 const workflowsStore = useWorkflowsStore();
+const chatPanelStore = useChatPanelStore();
 
 // Session management - one session per panel instance, keyed to the workflow
 const sessionId = ref<ChatSessionId>(uuidv4());
@@ -169,7 +171,7 @@ defineExpose({ focusInput });
 </script>
 
 <template>
-	<div :class="$style.panel">
+	<div :class="[$style.panel, { [$style.fullscreen]: chatPanelStore.isFullscreen }]">
 		<div :class="$style.header">
 			<div :class="$style.headerTitle">
 				<ChatAgentAvatar :agent="selectedModel" size="sm" />
@@ -180,13 +182,22 @@ defineExpose({ focusInput });
 					{{ i18n.baseText('chatHub.canvas.previewBadge') }}
 				</span>
 			</div>
-			<N8nIconButton
-				icon="x"
-				variant="ghost"
-				size="small"
-				data-test-id="canvas-chat-hub-close"
-				@click="emit('close')"
-			/>
+			<div :class="$style.headerActions">
+				<N8nIconButton
+					:icon="chatPanelStore.isFullscreen ? 'minimize-2' : 'expand'"
+					variant="ghost"
+					size="small"
+					data-test-id="canvas-chat-hub-fullscreen"
+					@click="chatPanelStore.toggleFullscreen()"
+				/>
+				<N8nIconButton
+					icon="x"
+					variant="ghost"
+					size="small"
+					data-test-id="canvas-chat-hub-close"
+					@click="emit('close')"
+				/>
+			</div>
 		</div>
 
 		<N8nScrollArea
@@ -279,6 +290,12 @@ defineExpose({ focusInput });
 	white-space: nowrap;
 }
 
+.headerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
 .previewBadge {
 	flex-shrink: 0;
 	display: inline-block;
@@ -341,5 +358,18 @@ defineExpose({ focusInput });
 	left: auto;
 	box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
 	border-radius: 50%;
+}
+
+.fullscreen {
+	.scrollable {
+		max-width: 768px;
+		margin-inline: auto;
+	}
+
+	.promptContainer {
+		max-width: 768px;
+		left: 50%;
+		transform: translateX(-50%);
+	}
 }
 </style>

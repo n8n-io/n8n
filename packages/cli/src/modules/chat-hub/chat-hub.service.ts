@@ -144,10 +144,11 @@ export class ChatHubService {
 		sessionId: ChatSessionId,
 		model: ChatHubConversationModel,
 		credentialId: string | null,
+		manual: boolean,
 		agentName?: string,
 		trx?: EntityManager,
 	) {
-		await this.ensureValidModel(user, model, trx);
+		await this.ensureValidModel(user, model, manual, trx);
 
 		const session = await this.sessionRepository.createChatSession(
 			{
@@ -282,7 +283,7 @@ export class ChatHubService {
 		if (updates.agent) {
 			const model = updates.agent.model;
 
-			await this.ensureValidModel(user, model);
+			await this.ensureValidModel(user, model, false);
 
 			sessionUpdates.agentName = updates.agent.name;
 			sessionUpdates.provider = model.provider;
@@ -321,7 +322,12 @@ export class ChatHubService {
 		});
 	}
 
-	private async ensureValidModel(user: User, model: ChatHubConversationModel, trx?: EntityManager) {
+	private async ensureValidModel(
+		user: User,
+		model: ChatHubConversationModel,
+		manual: boolean,
+		trx?: EntityManager,
+	) {
 		if (model.provider === 'custom-agent') {
 			// Find the agent to get its name
 			const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id, trx);
@@ -336,16 +342,26 @@ export class ChatHubService {
 				model.workflowId,
 				user,
 				['workflow:execute-chat'],
-				{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, em: trx },
+				{
+					includeTags: false,
+					includeParentFolder: false,
+					includeActiveVersion: manual ? false : true,
+					em: trx,
+				},
 			);
 
-			if (!workflowEntity?.activeVersion) {
+			if (!workflowEntity) {
 				throw new BadRequestError('Workflow not found for chat session initialization');
 			}
 
-			const chatTrigger = workflowEntity.activeVersion.nodes?.find(
-				(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
-			);
+			// In manual mode, validate against draft nodes; otherwise use activeVersion
+			const nodes = manual ? workflowEntity.nodes : workflowEntity.activeVersion?.nodes;
+
+			if (!nodes) {
+				throw new BadRequestError('Workflow not found for chat session initialization');
+			}
+
+			const chatTrigger = nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
 
 			if (!chatTrigger) {
 				throw new BadRequestError(
@@ -390,6 +406,7 @@ export class ChatHubService {
 					sessionId,
 					model,
 					credentialId,
+					false,
 					payload.agentName,
 					trx,
 				);
@@ -560,6 +577,7 @@ export class ChatHubService {
 					sessionId,
 					model,
 					credentialId,
+					true,
 					payload.agentName,
 					trx,
 				);

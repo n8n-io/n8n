@@ -140,6 +140,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	function close() {
 		chatPanelStateStore.isOpen = false;
 		chatPanelStateStore.showCoachmark = false;
+		chatPanelStateStore.isFullscreen = false;
 		// Wait for slide animation to finish before updating grid width and resetting
 		setTimeout(() => {
 			uiStore.appGridDimensions = {
@@ -180,6 +181,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		// Switch the mode without re-initialization
 		chatPanelStateStore.activeMode = resolved;
 		chatPanelStateStore.showCoachmark = false;
+		chatPanelStateStore.isFullscreen = false;
 	}
 
 	function updateWidth(newWidth: number) {
@@ -267,12 +269,29 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		},
 	);
 
+	function toggleFullscreen() {
+		chatPanelStateStore.isFullscreen = !chatPanelStateStore.isFullscreen;
+
+		if (chatPanelStateStore.isFullscreen) {
+			uiStore.appGridDimensions = {
+				...uiStore.appGridDimensions,
+				width: 0,
+			};
+		} else {
+			uiStore.appGridDimensions = {
+				...uiStore.appGridDimensions,
+				width: window.innerWidth - chatPanelStateStore.width,
+			};
+		}
+	}
+
 	return {
 		// State - expose from chatPanelStateStore
 		isOpen: computed(() => chatPanelStateStore.isOpen),
 		width: computed(() => chatPanelStateStore.width),
 		activeMode: computed(() => chatPanelStateStore.activeMode),
 		showCoachmark: computed(() => chatPanelStateStore.showCoachmark),
+		isFullscreen: computed(() => chatPanelStateStore.isFullscreen),
 		// Computed
 		isAssistantModeActive,
 		isBuilderModeActive,
@@ -284,6 +303,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		toggle,
 		switchMode,
 		updateWidth,
+		toggleFullscreen,
 		openWithCredHelp,
 		openWithErrorHelper,
 		// Mode-aware width bounds
