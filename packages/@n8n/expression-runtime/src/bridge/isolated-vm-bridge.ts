@@ -269,113 +269,95 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// Callback 1: Get value/metadata at path
 		// Used by createDeepLazyProxy when accessing properties
 		const getValueAtPath = new ivm.Reference((path: string[]) => {
-			function inner() {
-				console.log('getValueAtPath');
-				console.log('path', path);
-				// Navigate to value
-				let value: unknown = data;
-				for (const key of path) {
-					value = (value as Record<string, unknown>)?.[key];
-					if (value === undefined || value === null) {
-						return value;
-					}
+			// Navigate to value
+			let value: unknown = data;
+			for (const key of path) {
+				value = (value as Record<string, unknown>)?.[key];
+				if (value === undefined || value === null) {
+					return value;
 				}
-
-				// Handle functions - return metadata marker
-				if (typeof value === 'function') {
-					const fnString = value.toString();
-					// Block native functions for security
-					if (fnString.includes('[native code]')) {
-						return undefined;
-					}
-					return { __isFunction: true, __name: path[path.length - 1] };
-				}
-
-				// Handle arrays
-				if (Array.isArray(value)) {
-					const smallArrayThreshold = 100;
-					if (value.length <= smallArrayThreshold) {
-						// Small array: return with data
-						return {
-							__isArray: true,
-							__length: value.length,
-							__data: value,
-						};
-					} else {
-						// Large array: return metadata only
-						return {
-							__isArray: true,
-							__length: value.length,
-							__data: null,
-						};
-					}
-				}
-
-				// Handle objects - return metadata with keys
-				if (value !== null && typeof value === 'object') {
-					return {
-						__isObject: true,
-						__keys: Object.keys(value),
-					};
-				}
-
-				// Primitive value
-				return value;
 			}
 
-			const result = inner();
-			console.log('result', result);
-			return result;
+			// Handle functions - return metadata marker
+			if (typeof value === 'function') {
+				const fnString = value.toString();
+				// Block native functions for security
+				if (fnString.includes('[native code]')) {
+					return undefined;
+				}
+				return { __isFunction: true, __name: path[path.length - 1] };
+			}
+
+			// Handle arrays
+			if (Array.isArray(value)) {
+				const smallArrayThreshold = 100;
+				if (value.length <= smallArrayThreshold) {
+					// Small array: return with data
+					return {
+						__isArray: true,
+						__length: value.length,
+						__data: value,
+					};
+				} else {
+					// Large array: return metadata only
+					return {
+						__isArray: true,
+						__length: value.length,
+						__data: null,
+					};
+				}
+			}
+
+			// Handle objects - return metadata with keys
+			if (value !== null && typeof value === 'object') {
+				return {
+					__isObject: true,
+					__keys: Object.keys(value),
+				};
+			}
+
+			// Primitive value
+			return value;
 		});
 
 		// Callback 2: Get array element at index
 		// Used by array proxy when accessing numeric indices
 		const getArrayElement = new ivm.Reference((path: string[], index: number) => {
-			function inner() {
-				console.log('getArrayElement');
-				console.log('path', path);
-				console.log('index', index);
-				// Navigate to array
-				let arr: unknown = data;
-				for (const key of path) {
-					arr = (arr as Record<string, unknown>)?.[key];
-				}
-
-				if (!Array.isArray(arr)) {
-					return undefined;
-				}
-
-				const element = arr[index];
-
-				// If element is object/array, return metadata
-				if (element !== null && typeof element === 'object') {
-					if (Array.isArray(element)) {
-						const smallArrayThreshold = 100;
-						return {
-							__isArray: true,
-							__length: element.length,
-							__data: element.length <= smallArrayThreshold ? element : null,
-						};
-					}
-					return {
-						__isObject: true,
-						__keys: Object.keys(element),
-					};
-				}
-
-				// Primitive element
-				return element;
+			// Navigate to array
+			let arr: unknown = data;
+			for (const key of path) {
+				arr = (arr as Record<string, unknown>)?.[key];
 			}
 
-			const result = inner();
-			console.log('result', result);
-			return result;
+			if (!Array.isArray(arr)) {
+				return undefined;
+			}
+
+			const element = arr[index];
+
+			// If element is object/array, return metadata
+			if (element !== null && typeof element === 'object') {
+				if (Array.isArray(element)) {
+					const smallArrayThreshold = 100;
+					return {
+						__isArray: true,
+						__length: element.length,
+						__data: element.length <= smallArrayThreshold ? element : null,
+					};
+				}
+				return {
+					__isObject: true,
+					__keys: Object.keys(element),
+				};
+			}
+
+			// Primitive element
+			return element;
 		});
 
 		// Callback 3: Call function at path with arguments
 		// Used when expressions invoke functions from workflow data
 		const callFunctionAtPath = new ivm.Reference((path: string[], ...args: unknown[]) => {
-			console.log('callFunctionAtPath');
 			// Navigate to function
 			let fn: unknown = data;
 			for (const key of path) {
