@@ -83,6 +83,7 @@ function processSubnodesRecursively(
 		}
 	};
 
+	// For ai_languageModel, array index matters (primary=0, fallback=1)
 	const addNestedSubnodeOrArray = (
 		subnodeOrArray:
 			| NodeInstance<string, string, unknown>
@@ -100,21 +101,39 @@ function processSubnodesRecursively(
 		}
 	};
 
+	// For types with a single input (all connections target index 0)
+	const addNestedSubnodeFlat = (
+		subnodeOrArray:
+			| NodeInstance<string, string, unknown>
+			| Array<NodeInstance<string, string, unknown>>
+			| undefined,
+		connectionType: string,
+	) => {
+		if (!subnodeOrArray) return;
+		if (Array.isArray(subnodeOrArray)) {
+			for (const sub of subnodeOrArray) {
+				addNestedSubnode(sub, connectionType, 0);
+			}
+		} else {
+			addNestedSubnode(subnodeOrArray, connectionType, 0);
+		}
+	};
+
 	// Process all subnode types
 	addNestedSubnodeOrArray(subnodes.model, 'ai_languageModel');
 	if (subnodes.memory) addNestedSubnode(subnodes.memory, 'ai_memory', 0);
 	if (subnodes.tools) {
-		for (let i = 0; i < subnodes.tools.length; i++) {
-			addNestedSubnode(subnodes.tools[i], 'ai_tool', i);
+		for (const tool of subnodes.tools) {
+			addNestedSubnode(tool, 'ai_tool', 0);
 		}
 	}
 	if (subnodes.outputParser) addNestedSubnode(subnodes.outputParser, 'ai_outputParser', 0);
-	addNestedSubnodeOrArray(subnodes.embedding ?? subnodes.embeddings, 'ai_embedding');
+	addNestedSubnodeFlat(subnodes.embedding ?? subnodes.embeddings, 'ai_embedding');
 	if (subnodes.vectorStore) addNestedSubnode(subnodes.vectorStore, 'ai_vectorStore', 0);
 	if (subnodes.retriever) addNestedSubnode(subnodes.retriever, 'ai_retriever', 0);
-	addNestedSubnodeOrArray(subnodes.documentLoader, 'ai_document');
+	addNestedSubnodeFlat(subnodes.documentLoader, 'ai_document');
 	if (subnodes.textSplitter) addNestedSubnode(subnodes.textSplitter, 'ai_textSplitter', 0);
-	addNestedSubnodeOrArray(subnodes.reranker, 'ai_reranker');
+	addNestedSubnodeFlat(subnodes.reranker, 'ai_reranker');
 }
 
 /**
@@ -209,6 +228,7 @@ export function addNodeWithSubnodes(
 		}
 	};
 
+	// For ai_languageModel, array index matters (primary=0, fallback=1)
 	const addSubnodeOrArray = (
 		subnodeOrArray:
 			| NodeInstance<string, string, unknown>
@@ -226,21 +246,39 @@ export function addNodeWithSubnodes(
 		}
 	};
 
+	// For types with a single input (all connections target index 0)
+	const addSubnodeFlat = (
+		subnodeOrArray:
+			| NodeInstance<string, string, unknown>
+			| Array<NodeInstance<string, string, unknown>>
+			| undefined,
+		connectionType: string,
+	) => {
+		if (!subnodeOrArray) return;
+		if (Array.isArray(subnodeOrArray)) {
+			for (const sub of subnodeOrArray) {
+				addSubnode(sub, connectionType, 0);
+			}
+		} else {
+			addSubnode(subnodeOrArray, connectionType, 0);
+		}
+	};
+
 	// Add all subnode types
 	addSubnodeOrArray(subnodes.model, 'ai_languageModel');
 	if (subnodes.memory) addSubnode(subnodes.memory, 'ai_memory', 0);
 	if (subnodes.tools) {
-		for (let i = 0; i < subnodes.tools.length; i++) {
-			addSubnode(subnodes.tools[i], 'ai_tool', i);
+		for (const tool of subnodes.tools) {
+			addSubnode(tool, 'ai_tool', 0);
 		}
 	}
 	if (subnodes.outputParser) addSubnode(subnodes.outputParser, 'ai_outputParser', 0);
-	addSubnodeOrArray(subnodes.embedding ?? subnodes.embeddings, 'ai_embedding');
+	addSubnodeFlat(subnodes.embedding ?? subnodes.embeddings, 'ai_embedding');
 	if (subnodes.vectorStore) addSubnode(subnodes.vectorStore, 'ai_vectorStore', 0);
 	if (subnodes.retriever) addSubnode(subnodes.retriever, 'ai_retriever', 0);
-	addSubnodeOrArray(subnodes.documentLoader, 'ai_document');
+	addSubnodeFlat(subnodes.documentLoader, 'ai_document');
 	if (subnodes.textSplitter) addSubnode(subnodes.textSplitter, 'ai_textSplitter', 0);
-	addSubnodeOrArray(subnodes.reranker, 'ai_reranker');
+	addSubnodeFlat(subnodes.reranker, 'ai_reranker');
 
 	return mapKey;
 }

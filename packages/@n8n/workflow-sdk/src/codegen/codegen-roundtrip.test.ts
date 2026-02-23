@@ -16,6 +16,189 @@ import {
 	isPlaceholderValue,
 } from '../workflow-builder/string-utils';
 
+/** Workflow IDs where deep connection comparison is skipped (known codegen/parser gaps).
+ * Remaining failures are primarily from composite handler duplicate connections (If/Switch/SIB). */
+// prettier-ignore
+const SKIP_DEEP_CONNECTION_CHECK = new Set<string>([
+	'1',
+	'2',
+	'3',
+	'2315',
+	'2440',
+	'2454',
+	'2651',
+	'2747',
+	'2749',
+	'2803',
+	'2872',
+	'2878',
+	'2907',
+	'2982',
+	'3005',
+	'3066',
+	'3076',
+	'3121',
+	'3161',
+	'3167',
+	'3205',
+	'3314',
+	'3396',
+	'3442',
+	'3460',
+	'3490',
+	'3507',
+	'3560',
+	'3585',
+	'3634',
+	'3683',
+	'3694',
+	'3719',
+	'3761',
+	'3762',
+	'3820',
+	'3947',
+	'3959',
+	'4012',
+	'4082',
+	'4086',
+	'4116',
+	'4223',
+	'4252',
+	'4280',
+	'4395',
+	'4414',
+	'4424',
+	'4434',
+	'4462',
+	'4468',
+	'4498',
+	'4512',
+	'4553',
+	'4557',
+	'4558',
+	'4589',
+	'4622',
+	'4627',
+	'4637',
+	'4686',
+	'4748',
+	'4751',
+	'4755',
+	'4760',
+	'4777',
+	'4798',
+	'4829',
+	'4831',
+	'4868',
+	'4912',
+	'4929',
+	'4973',
+	'4975',
+	'5013',
+	'5014',
+	'5015',
+	'5023',
+	'5040',
+	'5045',
+	'5066',
+	'5067',
+	'5081',
+	'5123',
+	'5128',
+	'5147',
+	'5160',
+	'5285',
+	'5303',
+	'5308',
+	'5370',
+	'5374',
+	'5375',
+	'5383',
+	'5396',
+	'5400',
+	'5409',
+	'5449',
+	'5453',
+	'5478',
+	'5611',
+	'5713',
+	'5750',
+	'5795',
+	'5843',
+	'5873',
+	'5877',
+	'5887',
+	'5896',
+	'5902',
+	'5927',
+	'5933',
+	'5988',
+	'6083',
+	'6278',
+	'6403',
+	'6518',
+	'6586',
+	'6756',
+	'6783',
+	'6993',
+	'7154',
+	'7168',
+	'7291',
+	'7310',
+	'7632',
+	'7650',
+	'7673',
+	'7781',
+	'7791',
+	'8042',
+	'8051',
+	'8260',
+	'8292',
+	'8442',
+	'8448',
+	'8877',
+	'8904',
+	'9148',
+	'9151',
+	'9192',
+	'9363',
+	'9400',
+	'9660',
+	'9780',
+	'9826',
+	'9834',
+	'10132',
+	'10156',
+	'10196',
+	'10256',
+	'10370',
+	'10406',
+	'10514',
+	'10671',
+	'10749',
+	'10776',
+	'10901',
+	'11083',
+	'11152',
+	'11279',
+	'11466',
+	'11469',
+	'11572',
+	'11605',
+	'11674',
+	'11807',
+	'12115',
+	'12246',
+	'12387',
+	'12441',
+	'12447',
+	'12644',
+	'13080',
+	'13213',
+	'13248',
+	'13300',
+]);
+
 interface ExpectedWarning {
 	code: string;
 	nodeName?: string;
@@ -2415,6 +2598,8 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					)) {
 						// Filter each output slot to remove connections to non-existent target nodes
 						const filteredOutputs = (outputs || []).map((slot: unknown) => {
+							// Normalize null/undefined slots to empty arrays
+							if (slot === null || slot === undefined) return [] as unknown[];
 							if (!Array.isArray(slot)) return slot as unknown[];
 							// Filter out connections to non-existent nodes
 							if (validNodeNames) {
@@ -2437,6 +2622,23 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					}
 				}
 				return result;
+			};
+
+			const sortSlotConnections = (conns: Record<string, unknown>) => {
+				for (const nodeConns of Object.values(conns)) {
+					for (const outputs of Object.values(nodeConns as Record<string, unknown[][]>)) {
+						if (!Array.isArray(outputs)) continue;
+						for (const slot of outputs) {
+							if (Array.isArray(slot) && slot.length > 1) {
+								slot.sort((a: unknown, b: unknown) => {
+									const aNode = (a as { node?: string }).node ?? '';
+									const bNode = (b as { node?: string }).node ?? '';
+									return aNode.localeCompare(bNode);
+								});
+							}
+						}
+					}
+				}
 			};
 
 			// Helper to normalize warnings for comparison
@@ -2521,6 +2723,15 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 
 					// Verify all connection source keys match
 					expect(Object.keys(filteredParsed).sort()).toEqual(Object.keys(filteredOriginal).sort());
+
+					// Deep connection comparison (skip known-broken workflows)
+					if (!SKIP_DEEP_CONNECTION_CHECK.has(id)) {
+						sortSlotConnections(filteredOriginal);
+						sortSlotConnections(filteredParsed);
+						for (const nodeName of Object.keys(filteredOriginal)) {
+							expect(filteredParsed[nodeName]).toEqual(filteredOriginal[nodeName]);
+						}
+					}
 				});
 			});
 		});
