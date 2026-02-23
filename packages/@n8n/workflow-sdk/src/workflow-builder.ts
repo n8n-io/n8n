@@ -842,8 +842,16 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		//   .add(merge_node.to(set_Default_True_2.to(is_Approved.onTrue(x_Post.to(x_Result)))))
 		// The second line needs to add the onTrue() branch even though the IF node already exists.
 
-		// Try plugin dispatch
+		// Skip re-dispatch of already-processed composites.
+		// The first dispatch fully processes all branch nodes. Re-dispatching
+		// the same object causes exponential recursion in convergence patterns
+		// (multiple paths reaching the same node).
 		const registry = this._registry ?? pluginRegistry;
+		if (typeof target === 'object' && target !== null && this._dispatchedComposites.has(target)) {
+			return registry.resolveCompositeHeadName(target, nameMapping);
+		}
+
+		// Try plugin dispatch
 		const handler = registry.findCompositeHandler(target);
 		if (handler) {
 			// Track dispatched composites so addMissingCompositeTargets can skip them

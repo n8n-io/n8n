@@ -2558,6 +2558,43 @@ describe('Workflow Builder', () => {
 	});
 
 	describe('depth overflow protection', () => {
+		it('handles convergence patterns without depth overflow', () => {
+			// Diamond pattern: trigger → IF → (true: A, false: B) → both to Merge → End
+			// This creates convergence that previously caused exponential recursion
+			const mergeNode = node({
+				type: 'n8n-nodes-base.merge',
+				version: 3,
+				config: { name: 'Merge' },
+			});
+			const nodeA = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'A' },
+			}).to(mergeNode.input(0));
+			const nodeB = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'B' },
+			}).to(mergeNode.input(1));
+			const ifNode = node({
+				type: 'n8n-nodes-base.if' as const,
+				version: 2,
+				config: { name: 'IF' },
+			});
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			const ifBuilder = ifNode.onTrue!(nodeA).onFalse!(nodeB);
+			const end = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'End' } });
+
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			const wf = workflow('test', 'Test').add(t.to(ifBuilder));
+			// Also connect merge output to end
+			wf.add(mergeNode.to(end));
+
+			// Should not throw - convergence should be handled efficiently
+			const exported = wf.toJSON();
+			expect(exported.nodes.length).toBeGreaterThanOrEqual(5);
+		});
+
 		it('throws when branch depth exceeds MAX_BRANCH_DEPTH', () => {
 			// Build deeply nested IF composites — each true branch is another IF builder
 			// This triggers recursive addBranchToGraph calls via the IfElse composite handler

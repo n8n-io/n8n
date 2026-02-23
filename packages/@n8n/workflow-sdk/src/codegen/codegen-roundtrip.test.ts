@@ -2449,21 +2449,8 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					const code = generateWorkflowCode(json);
 
 					// Parse back to builder and JSON
-					let builder;
-					let parsedJson: WorkflowJSON;
-					try {
-						builder = parseWorkflowCodeToBuilder(code);
-						parsedJson = builder.toJSON();
-					} catch (error) {
-						if (error instanceof Error && /Maximum branch depth/.test(error.message)) {
-							// Known limitation: some workflows exceed MAX_BRANCH_DEPTH
-							// when rebuilding the composite tree from generated code.
-							// This was previously a silent failure (returned empty string
-							// for node names); now it throws explicitly.
-							return;
-						}
-						throw error;
-					}
+					const builder = parseWorkflowCodeToBuilder(code);
+					const parsedJson: WorkflowJSON = builder.toJSON();
 
 					// Validate the parsed workflow
 					const validationResult = builder.validate();
