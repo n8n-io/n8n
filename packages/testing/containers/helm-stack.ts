@@ -1,17 +1,16 @@
 import { K3sContainer, type StartedK3sContainer } from '@testcontainers/k3s';
-import { type ChildProcess, execSync, spawn } from 'node:child_process';
-import { mkdtempSync, openSync, unlinkSync, writeFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { mkdtempSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
-
-import getPort from 'get-port';
 
 import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 const DEFAULT_K3S_IMAGE = 'rancher/k3s:v1.32.2-k3s1';
 const DEFAULT_CHART_REPO = 'https://github.com/n8n-io/n8n-hosting.git';
 const DEFAULT_CHART_REF = 'krider2010/helm-chart-update';
+const N8N_NODE_PORT = 30080;
 
 export type HelmStackMode = 'standalone' | 'queue';
 
@@ -114,7 +113,7 @@ function cloneChartToHost(repo: string, ref: string): string {
 
 // -- Helm install flags -------------------------------------------------------
 
-function buildHelmSetFlags(imageName: string, mode: HelmStackMode): string[] {
+function buildHelmSetFlags(imageName: string, mode: HelmStackMode, baseUrl: string): string[] {
 	const [repository, tag = 'latest'] = imageName.split(':');
 
 	// Only override what differs from the chart's values.yaml defaults
@@ -135,10 +134,12 @@ function buildHelmSetFlags(imageName: string, mode: HelmStackMode): string[] {
 		'--set config.extraEnv[1].name=NODE_ENV --set-string config.extraEnv[1].value=development',
 		'--set config.extraEnv[2].name=N8N_DIAGNOSTICS_ENABLED --set-string config.extraEnv[2].value=false',
 		'--set config.extraEnv[3].name=N8N_DYNAMIC_BANNERS_ENABLED --set-string config.extraEnv[3].value=false',
+		// WEBHOOK_URL tells n8n its externally-accessible address (for invitation links, webhooks, etc.)
+		`--set config.extraEnv[4].name=WEBHOOK_URL --set-string config.extraEnv[4].value=${baseUrl}`,
 	];
 
 	// License env vars from host (same pattern as testcontainers stack)
-	let envIdx = 4;
+	let envIdx = 5;
 	const licenseTenantId = process.env.N8N_LICENSE_TENANT_ID;
 	if (licenseTenantId) {
 		flags.push(
@@ -257,10 +258,15 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 	log(`  K3s image: ${k3sImage}`);
 	log(`  Chart: ${helmChartRepo} @ ${helmChartRef}`);
 
-	// Step 1: Start K3s (only needs default ports — 6443 for kube API)
+	// Step 1: Start K3s with NodePort exposed (bypasses flaky kubectl port-forward)
 	log('Starting K3s container (privileged)...');
-	const k3s = await new K3sContainer(k3sImage).withStartupTimeout(120_000).start();
-	log('K3s started');
+	const k3s = await new K3sContainer(k3sImage)
+		.withExposedPorts(N8N_NODE_PORT)
+		.withStartupTimeout(120_000)
+		.start();
+	const hostPort = k3s.getMappedPort(N8N_NODE_PORT);
+	const baseUrl = `http://localhost:${hostPort}`;
+	log(`K3s started (NodePort ${N8N_NODE_PORT} -> host ${hostPort})`);
 
 	// Step 2: Write kubeconfig so host helm/kubectl can talk to K3s
 	const kubeConfigPath = join(tmpdir(), `helm-kubeconfig-${Date.now()}.yaml`);
@@ -269,7 +275,6 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 	log(`Kubeconfig written to ${kubeConfigPath}`);
 
 	let chartDir = '';
-	let portForward: ChildProcess | undefined;
 
 	try {
 		// Step 3: Wait for containerd readiness
@@ -293,9 +298,9 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 			deployQueueInfrastructure(env);
 		}
 
-		// Step 7: Install n8n chart (only overriding what differs from chart defaults)
+		// Step 7: Install n8n chart with WEBHOOK_URL baked in (no post-install rollout needed)
 		log('Installing Helm chart (this may take a few minutes)...');
-		const setFlags = buildHelmSetFlags(n8nImage, mode).join(' ');
+		const setFlags = buildHelmSetFlags(n8nImage, mode, baseUrl).join(' ');
 		const helmOutput = run(
 			`helm install n8n "${chartDir}/charts/n8n" ${setFlags} --wait --timeout 5m`,
 			env,
@@ -303,44 +308,16 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		);
 		log(`Helm install complete:\n${helmOutput.trim()}`);
 
-		// Step 8: Set WEBHOOK_URL so n8n generates correct external URLs (e.g. invitation links).
-		// Done via kubectl rather than helm --set-string to avoid URL value parsing issues.
-		const port = await getPort();
-		const webhookUrl = `http://localhost:${port}`;
-		log(`Setting WEBHOOK_URL=${webhookUrl} and waiting for rollout...`);
-		run(`kubectl set env deployment/n8n-main WEBHOOK_URL=${webhookUrl}`, env, 'Set WEBHOOK_URL');
-		run('kubectl rollout status deployment/n8n-main --timeout=3m', env, 'Wait for rollout');
+		// Step 8: Patch service to NodePort so traffic goes through K3s's exposed port
+		// (bypasses kubectl port-forward which silently breaks after many connections)
+		log(`Patching n8n service to NodePort ${N8N_NODE_PORT}...`);
+		run(
+			`kubectl patch svc n8n-main --type merge -p '{"spec":{"type":"NodePort","ports":[{"port":5678,"targetPort":5678,"nodePort":${N8N_NODE_PORT}}]}}'`,
+			env,
+			'Patch service to NodePort',
+		);
 
-		// Step 9: Port forward from host via kubectl (self-healing — auto-restarts on exit).
-		// pollHealthEndpoint below validates the full path: pod → service → port-forward → localhost.
-		// Log to file (not pipe — avoids buffer blocking; not ignore — enables post-mortem debugging).
-		const pfLogPath = join(tmpdir(), `n8n-port-forward-${Date.now()}.log`);
-		const pfLogFd = openSync(pfLogPath, 'w');
-		let stopping = false;
-
-		const spawnPortForward = () => {
-			log(`Starting port forward on localhost:${port} -> svc/n8n-main:5678`);
-			const pf = spawn('kubectl', ['port-forward', 'svc/n8n-main', `${port}:5678`], {
-				env,
-				stdio: ['ignore', pfLogFd, pfLogFd],
-			});
-			pf.on('exit', (code) => {
-				if (!stopping) {
-					log(`Port forward exited (code ${code}), restarting...`);
-					portForward = spawnPortForward();
-				}
-			});
-			return pf;
-		};
-
-		portForward = spawnPortForward();
-
-		// Give port-forward a moment to establish
-		await wait(2000);
-
-		const baseUrl = `http://localhost:${port}`;
-
-		// Step 10: Poll health endpoint (validates full path: pod → service → port-forward → localhost)
+		// Step 9: Poll health endpoint
 		log(`Polling ${baseUrl}/healthz/readiness...`);
 		await pollHealthEndpoint(baseUrl, Math.min(startupTimeoutMs, 120_000));
 		log(`n8n is ready at ${baseUrl}`);
@@ -350,8 +327,6 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 			kubeConfigPath,
 			stop: async () => {
 				log('Shutting down...');
-				stopping = true;
-				portForward?.kill();
 				try {
 					unlinkSync(kubeConfigPath);
 				} catch {
@@ -395,7 +370,6 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 			// Best-effort debugging output
 		}
 
-		portForward?.kill();
 		try {
 			unlinkSync(kubeConfigPath);
 		} catch {
