@@ -62,7 +62,7 @@ Both calls should be made together in the same step to gather the complete conte
 	- Markdown images `![](url)`
 	- Raw URLs (github.com/user-attachments, imgur.com, etc.)
 2. For EACH image found (in description or comments):
-	- Download using `curl -sL "url" -o /path/to/image.png` (GitHub URLs require following redirects)
+	- Download using `curl -sL "url" -o /path/to/image.png` (GitHub URLs require following redirects) OR the linear mcp
 	- Use the `Read` tool on the downloaded file to view it
 	- Describe what you see in detail
 3. Do NOT skip images - they often contain critical context like error messages, UI states, or configuration
@@ -98,22 +98,68 @@ Comments were already fetched in Step 1. Review them for:
 - Any attachments or media linked in comments (process in Step 2)
 - Clarifications or updates to the original issue description
 
-### 5. Present Summary
+### 5. Identify Affected Node (if applicable)
+
+Determine whether this issue is specific to a particular n8n node (e.g. a trigger, action, or tool node). Look for clues in:
+- The issue title (e.g. "Linear trigger", "Slack node", "HTTP Request")
+- The issue description and comments mentioning node names
+- Labels or tags on the issue (e.g. `node:linear`, `node:slack`)
+- Screenshots showing a specific node's configuration or error
+
+If the issue is node-specific:
+
+1. **Find the node type ID.** Use `Grep` to search for the node's display name (or keywords from it) in `packages/frontend/editor-ui/data/node-popularity.json` to find the exact node type ID. For reference, common ID patterns are:
+   - Core nodes: `n8n-nodes-base.<camelCaseName>` (e.g. "HTTP Request" → `n8n-nodes-base.httpRequest`)
+   - Trigger variants: `n8n-nodes-base.<name>Trigger` (e.g. "Gmail Trigger" → `n8n-nodes-base.gmailTrigger`)
+   - Tool variants: `n8n-nodes-base.<name>Tool` (e.g. "Google Sheets Tool" → `n8n-nodes-base.googleSheetsTool`)
+   - LangChain/AI nodes: `@n8n/n8n-nodes-langchain.<camelCaseName>` (e.g. "OpenAI Chat Model" → `@n8n/n8n-nodes-langchain.lmChatOpenAi`)
+
+2. **Look up the node's popularity score** from `packages/frontend/editor-ui/data/node-popularity.json`. Use `Grep` to search for the node ID in that file. The popularity score is a value between 0 and 1, where 1 means the most popular node. Include this in the summary to help gauge the impact/reach of the issue.
+
+3. If the node is **not found** in the popularity file, note that it may be a community node or a very new/niche node.
+
+### 6. Assess Effort/Complexity
+
+After gathering all context, assess the effort required to fix/implement the issue. Use the following T-shirt sizes:
+
+| Size | Approximate effort |
+|------|--------------------|
+| XS   | ≤ 1 hour           |
+| S    | ≤ 1 day            |
+| M    | 2-3 days           |
+| L    | 3-5 days           |
+| XL   | ≥ 6 days           |
+
+To make this assessment, consider:
+- **Scope of changes**: How many files/packages need to be modified? Is it a single node fix or a cross-cutting change?
+- **Complexity**: Is it a straightforward parameter change, a new API integration, a new credential type, or an architectural change?
+- **Testing**: How much test coverage is needed? Are E2E tests required?
+- **Risk**: Could this break existing functionality? Does it need backward compatibility?
+- **Dependencies**: Are there external API changes, new packages, or cross-team coordination needed?
+- **Documentation**: Does this require docs updates, migration guides, or changelog entries?
+
+Provide the T-shirt size along with a brief justification explaining the key factors that drove the estimate.
+
+### 7. Present Summary
 
 **Before presenting, verify you have completed:**
 - [ ] Downloaded and viewed ALL images in the description AND comments
 - [ ] Fetched transcripts for ALL Loom videos in the description AND comments
 - [ ] Fetched ALL linked GitHub issues/PRs via `gh` CLI
 - [ ] Listed all comments on the issue
+- [ ] Checked whether the issue is node-specific and looked up popularity if so
+- [ ] Assessed effort/complexity with T-shirt size
 
 After gathering all context, present a comprehensive summary including:
 
 1. **Issue Overview**: Title, status, priority, assignee, labels
 2. **Description**: Full issue description with any clarifications from comments
 3. **Visual Context**: Summary of screenshots/videos (what you observed in each)
-4. **Related Issues**: How this connects to other work
-5. **Technical Context**: Any PRs, code references, or documentation
-6. **Next Steps**: Suggested approach based on all gathered context
+4. **Affected Node** (if applicable): Node name, node type ID (`n8n-nodes-base.xxx`), and popularity score (e.g. `0.414` — higher means more widely used, so bugs have broader impact)
+5. **Related Issues**: How this connects to other work
+6. **Technical Context**: Any PRs, code references, or documentation
+7. **Effort Estimate**: T-shirt size (XS/S/M/L/XL) with justification
+8. **Next Steps**: Suggested approach based on all gathered context
 
 ## Notes
 

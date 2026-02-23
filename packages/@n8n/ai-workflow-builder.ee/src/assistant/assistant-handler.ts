@@ -33,7 +33,7 @@ export class AssistantHandler {
 
 	/**
 	 * Execute an assistant SDK request: build payload, call SDK, consume stream.
-	 * Emits a "Connecting to assistant..." progress chunk before the HTTP call
+	 * Emits an "Asking assistant" progress chunk before the HTTP call
 	 * to fill the gap while waiting for the SDK to respond.
 	 */
 	async execute(
@@ -50,7 +50,7 @@ export class AssistantHandler {
 			type: 'tool',
 			toolName: 'assistant',
 			toolCallId,
-			customDisplayTitle: 'Connecting to assistant...',
+			displayTitle: 'Asking assistant',
 			status: 'running',
 		});
 
@@ -62,7 +62,6 @@ export class AssistantHandler {
 				type: 'tool',
 				toolName: 'assistant',
 				toolCallId,
-				customDisplayTitle: 'Done',
 				status: 'completed',
 			});
 		}
@@ -321,7 +320,6 @@ export class AssistantHandler {
 				type: 'tool',
 				toolName: 'assistant',
 				toolCallId,
-				customDisplayTitle: msg.text,
 				status: 'running',
 			} satisfies ToolProgressChunk;
 		}

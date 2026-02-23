@@ -17,6 +17,7 @@ import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFi
 /**
  * Dynamic input configuration generation based on node parameters
  */
+/* istanbul ignore next */
 export function getInputs(parameters: IDataObject) {
 	const inputs: INodeInputConfiguration[] = [
 		{ displayName: '', type: 'main' },

@@ -10,7 +10,7 @@ on:
         default: ''
 
 env:
-  DOCKER_IMAGE: ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+  DOCKER_IMAGE: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
 
 jobs:
   prepare:
@@ -44,7 +44,7 @@ jobs:
         env:
           INCLUDE_TEST_CONTROLLER: 'true'
           IMAGE_BASE_NAME: ghcr.io/${{ github.repository }}
-          IMAGE_TAG: pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          IMAGE_TAG: ci-${{ github.run_id }}
           RUNNERS_IMAGE_BASE_NAME: ghcr.io/${{ github.repository_owner }}/runners
 
       - name: Generate shard matrix
@@ -59,7 +59,7 @@ jobs:
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-pull
-      docker-image: ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+      docker-image: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
       test-command: pnpm --filter=n8n-playwright test:container:sqlite:e2e tests/e2e/building-blocks/workflow-entry-points.spec.ts
       shards: 1
       runner: blacksmith-2vcpu-ubuntu-2204
@@ -77,7 +77,7 @@ jobs:
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-pull
-      docker-image: ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+      docker-image: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:e2e
       shards: 16
       runner: blacksmith-2vcpu-ubuntu-2204
@@ -101,9 +101,10 @@ jobs:
       workers: '1'
       upload-failure-artifacts: true
 
-  # Cleanup ephemeral Docker image from GHCR and local cache after tests complete
-  cleanup-docker:
-    name: 'Cleanup Docker Image'
+  # Cleanup ephemeral Docker image from GHCR after tests complete
+  # Local runner cleanup is handled by each test shard in test-e2e-reusable.yml
+  cleanup-ghcr:
+    name: 'Cleanup GHCR Image'
     needs: [prepare, multi-main-e2e, sqlite-sanity]
     if: ${{ !failure() && !cancelled() && !github.event.pull_request.head.repo.fork }}
     runs-on: blacksmith-2vcpu-ubuntu-2204
@@ -117,24 +118,10 @@ jobs:
           sparse-checkout: .github/scripts
           sparse-checkout-cone-mode: false
 
-      - name: Cleanup local Docker cache
-        run: |
-          echo "Removing PR images from local cache..."
-          docker rmi ghcr.io/n8n-io/n8n:pr-${{ github.event.pull_request.number }}-${{ github.run_id }} || true
-          docker rmi ghcr.io/n8n-io/runners:pr-${{ github.event.pull_request.number }}-${{ github.run_id }} || true
-          docker system prune -f || true
-
       - name: Delete images from GHCR
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_ORG: ${{ github.repository_owner }}
           GHCR_REPO: ${{ github.event.repository.name }}
-        run: |
-          if [ -n "${{ github.event.pull_request.number }}" ]; then
-            echo "PR context: cleaning all images for PR ${{ github.event.pull_request.number }}"
-            node .github/scripts/cleanup-ghcr-images.mjs --pr ${{ github.event.pull_request.number }}
-          else
-            echo "Merge queue context: cleaning image pr--${{ github.run_id }}"
-            node .github/scripts/cleanup-ghcr-images.mjs --tag pr--${{ github.run_id }}
-          fi
+        run: node .github/scripts/cleanup-ghcr-images.mjs --tag ci-${{ github.run_id }}
