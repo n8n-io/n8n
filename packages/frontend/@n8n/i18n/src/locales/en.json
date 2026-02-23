@@ -247,7 +247,7 @@
 	"aiAssistant.assistant": "Assistant",
 	"aiAssistant.tabs.ask": "Ask",
 	"aiAssistant.tabs.build": "Build",
-	"aiAssistant.reducedHelp.chat.notice": "You have opted not to share actual data values. As a result, AI responses will be less accurate and context-aware.",
+	"aiAssistant.reducedHelp.chat.notice": "Your admin turned off sending actual data values to the AI. Responses may be less accurate.",
 	"aiAssistant.tabs.builder.disabled.tooltip": "AI Builder is disabled because sending data values to AI is turned off. Enable it in AI Usage settings to use AI Builder.",
 	"aiAssistant.builder.mode": "AI Builder",
 	"aiAssistant.builder.placeholder": "Ask n8n to build...",
