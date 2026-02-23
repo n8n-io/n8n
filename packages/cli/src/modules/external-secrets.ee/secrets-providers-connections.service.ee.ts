@@ -1,7 +1,7 @@
 import {
-	CreateSecretsProviderConnectionDto,
-	ReloadSecretProviderConnectionResponse,
-	TestSecretProviderConnectionResponse,
+	type CreateSecretsProviderConnectionDto,
+	type ReloadSecretProviderConnectionResponse,
+	type TestSecretProviderConnectionResponse,
 	type SecretCompletionsResponse,
 	type SecretProviderConnection,
 	type SecretProviderConnectionListItem,
