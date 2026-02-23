@@ -96,6 +96,9 @@ export async function resolveParameter<T = IDataObject>(
 	}
 
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined;
 
 	return await resolveParameterImpl(
 		parameter,
@@ -104,7 +107,7 @@ export async function resolveParameter<T = IDataObject>(
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
 		workflowsStore.workflowExecutionData,
-		workflowsStore.pinnedWorkflowData,
+		workflowDocumentStore?.getPinDataSnapshot(),
 		opts,
 	);
 }
@@ -415,6 +418,9 @@ export function executeData(
 	parentRunIndex?: number,
 ): IExecuteData {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined;
 
 	return executeDataImpl(
 		connections,
@@ -422,7 +428,7 @@ export function executeData(
 		currentNode,
 		inputName,
 		runIndex,
-		workflowsStore.pinnedWorkflowData,
+		workflowDocumentStore?.getPinDataSnapshot(),
 		workflowsStore.getWorkflowRunData,
 		parentRunIndex,
 	);
@@ -585,15 +591,16 @@ export function useWorkflowHelpers() {
 			nodes.push(nodeData);
 		}
 
-		const wid = workflowsStore.workflowId;
-		const documentId = createWorkflowDocumentId(wid);
-		const workflowDocumentStore = useWorkflowDocumentStore(documentId);
-		const tags = [...workflowDocumentStore.tags];
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+
+		const tags = workflowDocumentStore?.tags ? [...workflowDocumentStore.tags] : [];
 
 		const data: WorkflowData = {
 			name: workflowsStore.workflowName,
 			nodes,
-			pinData: workflowsStore.pinnedWorkflowData,
+			pinData: workflowDocumentStore?.getPinDataSnapshot() ?? {},
 			connections: workflowConnections,
 			active: workflowsStore.isWorkflowActive,
 			settings: workflowsStore.workflow.settings,
@@ -965,7 +972,6 @@ export function useWorkflowHelpers() {
 			setStateDirty: uiStore.stateIsDirty,
 		});
 		ws.setWorkflowSettings(workflowData.settings ?? {});
-		ws.setWorkflowPinData(workflowData.pinData ?? {});
 		workflowsStore.setWorkflowVersionData(
 			{
 				versionId: workflowData.versionId,
@@ -1017,6 +1023,7 @@ export function useWorkflowHelpers() {
 		const workflowDocumentId = createWorkflowDocumentId(workflowData.id);
 		const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 		workflowDocumentStore.setTags(tagIds);
+		workflowDocumentStore.setPinData(workflowData.pinData ?? {});
 		tagsStore.upsertTags(tags);
 
 		return { workflowDocumentStore };

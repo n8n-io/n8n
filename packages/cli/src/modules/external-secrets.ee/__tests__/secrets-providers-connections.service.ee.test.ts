@@ -1,4 +1,3 @@
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
 	ProjectSecretsProviderAccessRepository,
@@ -6,11 +5,13 @@ import type {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { EventService } from '@/events/event.service';
 import type { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
+import type { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
 import type { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 import { SecretsProvidersConnectionsService } from '@/modules/external-secrets.ee/secrets-providers-connections.service.ee';
 import type { SecretsProvider } from '@/modules/external-secrets.ee/types';
@@ -20,6 +21,7 @@ describe('SecretsProvidersConnectionsService', () => {
 	const mockProjectAccessRepository = mock<ProjectSecretsProviderAccessRepository>();
 	const mockExternalSecretsManager = mock<ExternalSecretsManager>();
 	const mockRedactionService = mock<RedactionService>();
+	const mockProviderRegistry = mock<ExternalSecretsProviderRegistry>();
 	const mockEventService = mock<EventService>();
 	const mockCipher = {
 		encrypt: jest.fn((data: IDataObject) => JSON.stringify(data)),
@@ -30,6 +32,7 @@ describe('SecretsProvidersConnectionsService', () => {
 		mockLogger(),
 		mockRepository,
 		mockProjectAccessRepository,
+		mockProviderRegistry,
 		mockCipher as any,
 		mockExternalSecretsManager,
 		mockRedactionService,

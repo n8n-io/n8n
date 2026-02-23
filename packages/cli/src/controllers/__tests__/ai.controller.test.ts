@@ -73,6 +73,69 @@ describe('AiController', () => {
 				InternalServerError,
 			);
 		});
+
+		it('should register a close handler on the response for abort', async () => {
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: jest.fn().mockResolvedValue(undefined),
+					}),
+				}),
+			);
+
+			await controller.chat(request, response, payload);
+
+			expect(response.on).toHaveBeenCalledWith('close', expect.any(Function));
+		});
+
+		it('should remove close handler after streaming completes', async () => {
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: jest.fn().mockResolvedValue(undefined),
+					}),
+				}),
+			);
+
+			await controller.chat(request, response, payload);
+
+			expect(response.off).toHaveBeenCalledWith('close', expect.any(Function));
+		});
+
+		it('should silently return when pipeTo throws an AbortError', async () => {
+			const abortError = new DOMException('The operation was aborted', 'AbortError');
+
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: jest.fn().mockRejectedValue(abortError),
+					}),
+				}),
+			);
+
+			// Should not throw
+			await controller.chat(request, response, payload);
+
+			expect(response.end).not.toHaveBeenCalled();
+		});
+
+		it('should pass abort signal to pipeTo', async () => {
+			const pipeToMock = jest.fn().mockResolvedValue(undefined);
+
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: pipeToMock,
+					}),
+				}),
+			);
+
+			await controller.chat(request, response, payload);
+
+			expect(pipeToMock).toHaveBeenCalledWith(expect.any(WritableStream), {
+				signal: expect.any(AbortSignal),
+			});
+		});
 	});
 
 	describe('applySuggestion', () => {
@@ -430,6 +493,37 @@ describe('AiController', () => {
 				InternalServerError,
 			);
 			expect(workflowBuilderService.getBuilderInstanceCredits).toHaveBeenCalledWith(request.user);
+		});
+	});
+
+	describe('clearSession', () => {
+		it('should call workflowBuilderService.clearSession with correct parameters', async () => {
+			const payload = {
+				workflowId: 'workflow123',
+			};
+
+			workflowBuilderService.clearSession.mockResolvedValue(undefined);
+
+			const result = await controller.clearSession(request, response, payload);
+
+			expect(workflowBuilderService.clearSession).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+			);
+			expect(result).toEqual({ success: true });
+		});
+
+		it('should throw InternalServerError when service throws an error', async () => {
+			const payload = {
+				workflowId: 'workflow123',
+			};
+
+			const mockError = new Error('Database error');
+			workflowBuilderService.clearSession.mockRejectedValue(mockError);
+
+			await expect(controller.clearSession(request, response, payload)).rejects.toThrow(
+				InternalServerError,
+			);
 		});
 	});
 

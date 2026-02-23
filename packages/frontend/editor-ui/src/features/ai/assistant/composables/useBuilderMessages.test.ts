@@ -1359,6 +1359,77 @@ describe('useBuilderMessages', () => {
 		});
 	});
 
+	describe('messages-compacted event', () => {
+		it('should clear existing messages and show Compacting thinking message', () => {
+			const existingMessages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'old-1',
+					role: 'user',
+					type: 'text',
+					content: 'Build me a workflow',
+					read: true,
+				},
+				{
+					id: 'old-2',
+					role: 'assistant',
+					type: 'text',
+					content: 'Sure, here is the workflow.',
+					read: true,
+				},
+			];
+
+			const newMessages: ChatRequest.MessageResponse[] = [{ type: 'messages-compacted' }];
+
+			const result = builderMessages.processAssistantMessages(
+				existingMessages,
+				newMessages,
+				'compact-msg',
+			);
+
+			// All old messages should be cleared
+			expect(result.messages).toHaveLength(0);
+			// Should show "Compacting" instead of "Thinking"
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.compacting');
+		});
+
+		it('should clear old messages and then append new messages that follow compaction', () => {
+			const existingMessages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'old-1',
+					role: 'user',
+					type: 'text',
+					content: 'Build me a workflow',
+					read: true,
+				},
+			];
+
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{ type: 'messages-compacted' },
+				{
+					type: 'message',
+					role: 'assistant',
+					text: 'Chat history compacted.',
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				existingMessages,
+				newMessages,
+				'compact-msg',
+			);
+
+			// Only the new text message should remain
+			expect(result.messages).toHaveLength(1);
+			expect(result.messages[0]).toMatchObject({
+				role: 'assistant',
+				type: 'text',
+				content: 'Chat history compacted.',
+			});
+			// Still shows Compacting since compaction event was in the batch
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.compacting');
+		});
+	});
+
 	describe('plan mode messages', () => {
 		const sampleQuestions: ChatRequest.ApiQuestionsMessage = {
 			role: 'assistant',

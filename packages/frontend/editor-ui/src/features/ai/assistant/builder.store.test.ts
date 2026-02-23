@@ -2246,6 +2246,36 @@ describe('AI Builder store', () => {
 
 				expect(builderStore.builderMode).toBe('plan');
 			});
+
+			it('should not switch to plan mode after restoreToVersion truncates messages', async () => {
+				enablePlanModeExperiment();
+				const builderStore = useBuilderStore();
+
+				// Simulate a conversation with nodes on canvas (active build session)
+				builderStore.chatMessages = [
+					{ role: 'user', type: 'text', text: 'Build me something' } as never,
+					{ role: 'assistant', type: 'text', text: 'Done' } as never,
+				];
+				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				await nextTick();
+				expect(builderStore.builderMode).toBe('build');
+
+				// Simulate what happens during restore: chat messages are truncated to []
+				// and nodes are cleared. The watcher would normally switch to plan mode.
+				builderStore.chatMessages = [];
+				workflowsStore.workflow.nodes = [];
+				await nextTick();
+
+				// The watcher fires and sets plan mode
+				expect(builderStore.builderMode).toBe('plan');
+
+				// Simulate the nextTick override that onRestoreConfirm performs
+				builderStore.builderMode = 'build';
+				await nextTick();
+
+				// Should stay in build mode — the override sticks
+				expect(builderStore.builderMode).toBe('build');
+			});
 		});
 
 		describe('fetchExistingVersionIds and message enrichment', () => {
@@ -3097,6 +3127,145 @@ describe('AI Builder store', () => {
 			const userMessage = builderStore.chatMessages.find((m) => m.role === 'user');
 			expect(userMessage).toBeDefined();
 			expect((userMessage as Record<string, unknown>).focusedNodeNames).toEqual(['HTTP Request']);
+		});
+
+		it('should set isHelpStreaming when streaming response contains assistant tool message', async () => {
+			const builderStore = useBuilderStore();
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			let capturedOnMessage: ((data: any) => void) | null = null;
+			let capturedOnDone: (() => void) | null = null;
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				capturedOnMessage = onMessage;
+				capturedOnDone = onDone;
+			});
+
+			await builderStore.sendChatMessage({ text: 'what does this node do?' });
+
+			expect(builderStore.streaming).toBe(true);
+			expect(builderStore.isHelpStreaming).toBe(false);
+
+			// Simulate backend routing to the assistant (help path)
+			capturedOnMessage!({
+				messages: [
+					{
+						type: 'tool',
+						toolName: 'assistant',
+						toolCallId: 'assistant-123',
+						displayTitle: 'Asking assistant',
+						status: 'running',
+					},
+				],
+				sessionId: 'test-session',
+			});
+
+			expect(builderStore.isHelpStreaming).toBe(true);
+
+			// Complete streaming
+			capturedOnDone!();
+			expect(builderStore.streaming).toBe(false);
+			expect(builderStore.isHelpStreaming).toBe(false);
+		});
+
+		it('should NOT set isHelpStreaming for regular build tool messages', async () => {
+			const builderStore = useBuilderStore();
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			let capturedOnMessage: ((data: any) => void) | null = null;
+			let capturedOnDone: (() => void) | null = null;
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				capturedOnMessage = onMessage;
+				capturedOnDone = onDone;
+			});
+
+			await builderStore.sendChatMessage({ text: 'build a workflow' });
+
+			expect(builderStore.isHelpStreaming).toBe(false);
+
+			// Simulate a build tool message (not assistant)
+			capturedOnMessage!({
+				messages: [
+					{
+						type: 'tool',
+						toolName: 'generate_workflow',
+						toolCallId: 'tool-456',
+						displayTitle: 'Building workflow',
+						status: 'running',
+					},
+				],
+				sessionId: 'test-session',
+			});
+
+			expect(builderStore.isHelpStreaming).toBe(false);
+
+			capturedOnDone!();
+		});
+	});
+
+	describe('latestRevertVersion', () => {
+		it('returns null when chatMessages is empty', () => {
+			const builderStore = useBuilderStore();
+			expect(builderStore.latestRevertVersion).toBeNull();
+		});
+
+		it('returns null when no messages have revertVersion', () => {
+			const builderStore = useBuilderStore();
+			builderStore.$patch({
+				chatMessages: [
+					{ id: '1', type: 'text', role: 'user', content: 'hello', read: true },
+					{ id: '2', type: 'text', role: 'assistant', content: 'hi', read: true },
+				],
+			});
+			expect(builderStore.latestRevertVersion).toBeNull();
+		});
+
+		it('returns the revertVersion when only one message has it', () => {
+			const builderStore = useBuilderStore();
+			const revertVersion = { id: 'version-1', createdAt: '2024-01-01T00:00:00Z' };
+			builderStore.$patch({
+				chatMessages: [
+					{
+						id: '1',
+						type: 'text',
+						role: 'user',
+						content: 'build a workflow',
+						read: true,
+						revertVersion,
+					},
+					{ id: '2', type: 'text', role: 'assistant', content: 'done', read: true },
+				],
+			});
+			expect(builderStore.latestRevertVersion).toEqual(revertVersion);
+		});
+
+		it('returns the latest revertVersion when multiple messages have revertVersion', () => {
+			const builderStore = useBuilderStore();
+			const firstRevertVersion = { id: 'version-1', createdAt: '2024-01-01T00:00:00Z' };
+			const secondRevertVersion = { id: 'version-2', createdAt: '2024-01-02T00:00:00Z' };
+			builderStore.$patch({
+				chatMessages: [
+					{
+						id: '1',
+						type: 'text',
+						role: 'user',
+						content: 'build a workflow',
+						read: true,
+						revertVersion: firstRevertVersion,
+					},
+					{ id: '2', type: 'text', role: 'assistant', content: 'done', read: true },
+					{
+						id: '3',
+						type: 'text',
+						role: 'user',
+						content: 'modify it',
+						read: true,
+						revertVersion: secondRevertVersion,
+					},
+				],
+			});
+			expect(builderStore.latestRevertVersion).toEqual(secondRevertVersion);
 		});
 	});
 });

@@ -62,18 +62,29 @@ const parametersByTab = computed(() =>
 	collectParametersByTab(nodeTypeDescription.value?.properties ?? [], false),
 );
 
-const tabOptions = computed<Array<ITab<ToolSettingsTab>>>(() => [
-	{ label: i18n.baseText('nodeSettings.parameters'), value: 'params' },
-	{ label: i18n.baseText('nodeSettings.settings'), value: 'settings' },
-]);
+const hasSettings = computed(
+	() => nodeSettings.value.length > 0 || parametersByTab.value.settings.length > 0,
+);
 
-const nodeSettings = computed(() => createCommonNodeSettings(true, i18n.baseText.bind(i18n)));
+const tabOptions = computed<Array<ITab<ToolSettingsTab>>>(() => {
+	const tabs: Array<ITab<ToolSettingsTab>> = [
+		{ label: i18n.baseText('nodeSettings.parameters'), value: 'params' },
+	];
+	if (hasSettings.value) {
+		tabs.push({ label: i18n.baseText('nodeSettings.settings'), value: 'settings' });
+	}
+	return tabs;
+});
+
+const nodeSettings = computed(() =>
+	createCommonNodeSettings(true, i18n.baseText.bind(i18n)).filter(
+		(s) => s.name !== 'notes' && s.name !== 'notesInFlow',
+	),
+);
 
 const settingsNodeValues = computed<INodeParameters>(() => {
-	if (!node.value) return { notes: '', notesInFlow: false, parameters: {} };
+	if (!node.value) return { parameters: {} };
 	return {
-		notes: node.value.notes ?? '',
-		notesInFlow: node.value.notesInFlow ?? false,
 		parameters: deepCopy(node.value.parameters),
 	};
 });
@@ -347,6 +358,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 <template>
 	<div :class="$style.container">
 		<N8nTabs
+			v-if="tabOptions.length > 1"
 			:model-value="activeTab"
 			:options="tabOptions"
 			:class="$style.tabs"

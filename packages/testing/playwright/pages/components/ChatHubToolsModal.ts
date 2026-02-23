@@ -42,6 +42,6 @@ export class ChatHubToolsModal {
 
 	/** Close button (X) shown in list view */
 	getCloseButton(): Locator {
-		return this.root.getByTestId('dialog-close-button');
+		return this.root.locator('.el-dialog__close').first();
 	}
 }
