@@ -150,3 +150,5 @@ minimumReleaseAgeExclude:
   - fast-xml-parser
   - hono
   - minimatch
+  # Renovate security update: ajv@6@8.18.0
+  - ajv@6@8.18.0
