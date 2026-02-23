@@ -194,6 +194,7 @@ export interface IStartRunData {
 		name: string;
 		data?: ITaskData;
 	};
+	chatSessionId?: string;
 	agentRequest?: {
 		query: AgentRequestQuery;
 		tool: {
@@ -870,6 +871,8 @@ export type CloudUpdateLinkSourceType =
 	| 'ai-builder-sidebar'
 	| 'ai-builder-canvas'
 	| 'custom-roles'
+	| 'custom-roles-selector'
+	| 'custom-roles-list'
 	| 'main-sidebar'
 	| 'chat-hub'
 	| 'empty-state-builder-prompt';
