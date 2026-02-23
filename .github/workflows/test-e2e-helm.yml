@@ -90,7 +90,8 @@ jobs:
             --mode "${{ matrix.mode }}" \
             --image "${{ env.DOCKER_IMAGE }}" \
             --chart-ref "${{ env.HELM_CHART_REF }}" \
-            --url-file /tmp/n8n-helm-url.txt &
+            --url-file /tmp/n8n-helm-url.txt \
+            --kubeconfig-file /tmp/n8n-helm-kubeconfig.txt &
 
           echo "Waiting for Helm stack to be ready..."
           for i in $(seq 1 60); do
@@ -109,6 +110,9 @@ jobs:
           echo "n8n URL: ${N8N_URL}"
           echo "N8N_BASE_URL=${N8N_URL}" >> "$GITHUB_ENV"
 
+          KUBECONFIG_PATH=$(cat /tmp/n8n-helm-kubeconfig.txt)
+          echo "KUBECONFIG=${KUBECONFIG_PATH}" >> "$GITHUB_ENV"
+
       - name: Run Building Blocks E2E Tests
         working-directory: packages/testing/playwright
         run: |
@@ -120,6 +124,24 @@ jobs:
             --workers=1 \
             --retries=0 \
             --reporter=list
+
+      - name: Debug K8s State
+        if: failure()
+        run: |
+          echo "=== Pod Status ==="
+          kubectl get pods -o wide
+          echo ""
+          echo "=== Pod Descriptions ==="
+          kubectl describe pods -l app.kubernetes.io/name=n8n
+          echo ""
+          echo "=== Recent Events ==="
+          kubectl get events --sort-by=.lastTimestamp | tail -30
+          echo ""
+          echo "=== n8n Pod Logs (last 100 lines) ==="
+          kubectl logs -l app.kubernetes.io/name=n8n --tail=100 || true
+          echo ""
+          echo "=== Health Check ==="
+          curl -s -o /dev/null -w "HTTP %{http_code}" "${{ env.N8N_BASE_URL }}/healthz/readiness" || echo "UNREACHABLE"
 
       - name: Upload Failure Artifacts
         if: failure()

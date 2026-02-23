@@ -77,6 +77,7 @@ async function main() {
 			'chart-repo': { type: 'string' },
 			'k3s-image': { type: 'string' },
 			'url-file': { type: 'string' },
+			'kubeconfig-file': { type: 'string' },
 		},
 		allowPositionals: false,
 	});
@@ -105,6 +106,11 @@ async function main() {
 	if (values['url-file']) {
 		writeFileSync(values['url-file'], stack.baseUrl);
 		log.info(`URL written to ${values['url-file']}`);
+	}
+
+	if (values['kubeconfig-file']) {
+		writeFileSync(values['kubeconfig-file'], stack.kubeConfigPath);
+		log.info(`Kubeconfig path written to ${values['kubeconfig-file']}`);
 	}
 
 	console.log('');
