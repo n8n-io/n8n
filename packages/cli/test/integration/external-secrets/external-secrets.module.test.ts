@@ -59,6 +59,7 @@ describe('ExternalSecretsModule', () => {
 
 			const config = Container.get(ExternalSecretsConfig);
 			config.externalSecretsForProjects = false;
+			config.externalSecretsMultipleConnections = false;
 
 			module = Container.get(ExternalSecretsModule);
 
