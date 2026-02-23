@@ -103,6 +103,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const streaming = ref<ChatStreamingState>();
 	const settingsLoading = ref(false);
 	const settings = ref<Record<ChatHubLLMProvider, ChatProviderSettingsDto> | null>(null);
+	const memory = ref<string>('');
 	const configuredTools = ref<ChatHubToolDto[]>([]);
 	const configuredToolsLoaded = ref(false);
 
@@ -893,7 +894,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	async function fetchAllChatSettings() {
 		try {
 			settingsLoading.value = true;
-			settings.value = await fetchChatSettingsApi(rootStore.restApiContext);
+			const response = await fetchChatSettingsApi(rootStore.restApiContext);
+			settings.value = response.providers;
+			memory.value = response.memory;
 		} finally {
 			settingsLoading.value = false;
 		}
@@ -1300,6 +1303,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		 * settings
 		 */
 		settings,
+		memory,
 		settingsLoading,
 		fetchAllChatSettings,
 		fetchProviderSettings,

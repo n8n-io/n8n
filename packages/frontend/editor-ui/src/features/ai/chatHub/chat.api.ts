@@ -204,12 +204,12 @@ export const deleteAgentApi = async (context: IRestApiContext, agentId: string):
 
 export const fetchChatSettingsApi = async (
 	context: IRestApiContext,
-): Promise<Record<ChatHubLLMProvider, ChatProviderSettingsDto>> => {
+): Promise<{ providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>; memory: string }> => {
 	const apiEndpoint = '/chat/settings';
-	const response = await makeRestApiRequest<{
+	return await makeRestApiRequest<{
 		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+		memory: string;
 	}>(context, 'GET', apiEndpoint);
-	return response.providers;
 };
 
 export const fetchChatProviderSettingsApi = async (
@@ -234,6 +234,13 @@ export const updateChatSettingsApi = async (
 	return await makeRestApiRequest<ChatProviderSettingsDto>(context, 'POST', apiEndpoint, {
 		payload: settings,
 	});
+};
+
+export const deleteMemoryFactApi = async (
+	context: IRestApiContext,
+	fact: string,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'DELETE', '/chat/memory', { fact });
 };
 
 export function buildChatAttachmentUrl(
