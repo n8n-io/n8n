@@ -6,6 +6,7 @@ import { END, isCommand, isGraphInterrupt } from '@langchain/langgraph';
 import { isBaseMessage } from '../types/langchain';
 import type { WorkflowMetadata } from '../types/tools';
 import type { WorkflowOperation } from '../types/workflow';
+import { stripAllCacheControlMarkers } from './cache-control';
 
 interface CommandUpdate {
 	messages?: BaseMessage[];
@@ -244,7 +245,7 @@ export function extractToolMessagesForPersistence(messages: BaseMessage[]): Base
 		}
 	}
 
-	return messages.filter((msg) => {
+	const filtered = messages.filter((msg) => {
 		if (ToolMessage.isInstance(msg)) {
 			return true;
 		}
@@ -254,4 +255,10 @@ export function extractToolMessagesForPersistence(messages: BaseMessage[]): Base
 		}
 		return false;
 	});
+
+	// Strip cache_control markers from persisted messages to avoid exceeding
+	// Anthropic's cache marker limit when these are loaded in subsequent requests
+	stripAllCacheControlMarkers(filtered);
+
+	return filtered;
 }

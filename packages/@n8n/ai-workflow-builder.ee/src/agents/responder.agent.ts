@@ -6,6 +6,8 @@ import type { Logger } from '@n8n/backend-common';
 import { createAgent, createMiddleware } from 'langchain';
 import { z } from 'zod';
 
+import { stripAllCacheControlMarkers } from '@/utils/cache-control';
+
 import {
 	buildDataTableCreationGuidance,
 	buildGeneralErrorGuidance,
@@ -264,6 +266,12 @@ export async function invokeResponderAgent(
 	config?: RunnableConfig,
 	options?: { enableIntrospection?: boolean },
 ): Promise<ResponderResult> {
+	// Strip any stale cache_control markers from conversation messages before
+	// invoking the LLM. The responder's system prompt already has its own
+	// cache marker, and leftover markers from subgraph tool loops would push
+	// us over Anthropic's 4-marker limit.
+	stripAllCacheControlMarkers(context.messages);
+
 	const result = await agent.invoke(
 		{ messages: context.messages },
 		{

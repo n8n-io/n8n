@@ -291,6 +291,71 @@ describe('subgraph-helpers', () => {
 			expect(result).toHaveLength(0);
 		});
 
+		it('should strip cache_control markers from returned messages', () => {
+			// Simulate what happens after applySubgraphCacheMarkers mutates messages in-place:
+			// ToolMessages end up with cache_control markers in their content blocks
+			const toolMessageWithMarker = new ToolMessage({
+				content: [{ type: 'text', text: 'Result', cache_control: { type: 'ephemeral' } }],
+				tool_call_id: 'call-1',
+			});
+			const aiMessage = new AIMessage({
+				content: '',
+				tool_calls: [{ name: 'test_tool', args: {}, id: 'call-1' }],
+			});
+			const messages: BaseMessage[] = [
+				new HumanMessage('Context'),
+				aiMessage,
+				toolMessageWithMarker,
+			];
+
+			const result = extractToolMessagesForPersistence(messages);
+
+			expect(result).toHaveLength(2);
+			// Verify cache_control has been stripped from the content block
+			const toolMsg = result[1];
+			expect(Array.isArray(toolMsg.content)).toBe(true);
+			const contentBlock = (toolMsg.content as Array<Record<string, unknown>>)[0];
+			expect(contentBlock.cache_control).toBeUndefined();
+		});
+
+		it('should strip cache_control markers from multiple messages', () => {
+			const aiMessage1 = new AIMessage({
+				content: '',
+				tool_calls: [{ name: 'tool1', args: {}, id: 'call-1' }],
+			});
+			const toolMsg1 = new ToolMessage({
+				content: [{ type: 'text', text: 'Result 1', cache_control: { type: 'ephemeral' } }],
+				tool_call_id: 'call-1',
+			});
+			const aiMessage2 = new AIMessage({
+				content: '',
+				tool_calls: [{ name: 'tool2', args: {}, id: 'call-2' }],
+			});
+			const toolMsg2 = new ToolMessage({
+				content: [{ type: 'text', text: 'Result 2', cache_control: { type: 'ephemeral' } }],
+				tool_call_id: 'call-2',
+			});
+			const messages: BaseMessage[] = [
+				new HumanMessage('Context'),
+				aiMessage1,
+				toolMsg1,
+				aiMessage2,
+				toolMsg2,
+			];
+
+			const result = extractToolMessagesForPersistence(messages);
+
+			expect(result).toHaveLength(4);
+			// Both tool messages should have cache_control stripped
+			for (const msg of result) {
+				if (Array.isArray(msg.content)) {
+					for (const block of msg.content) {
+						expect((block as Record<string, unknown>).cache_control).toBeUndefined();
+					}
+				}
+			}
+		});
+
 		it('should handle tool_call with undefined id gracefully', () => {
 			const aiMessage = new AIMessage({
 				content: '',
