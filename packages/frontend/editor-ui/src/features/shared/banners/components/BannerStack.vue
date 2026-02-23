@@ -2,6 +2,7 @@
 import type { BannerName } from '@n8n/api-types';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import NonProductionLicenseBanner from './banners/NonProductionLicenseBanner.vue';
+import RecoveryModeBanner from './banners/RecoveryModeBanner.vue';
 import TrialOverBanner from './banners/TrialOverBanner.vue';
 import TrialBanner from './banners/TrialBanner.vue';
 import V1Banner from './banners/V1Banner.vue';
@@ -17,6 +18,7 @@ import type { N8nBanners } from '../banners.types';
 // When registering a new banner, please consult this document to determine it's priority:
 // https://www.notion.so/n8n/Banner-stack-60948c4167c743718fde80d6745258d5
 export const N8N_BANNERS: N8nBanners = {
+	RECOVERY_MODE: { priority: Number.MAX_SAFE_INTEGER, component: RecoveryModeBanner as Component },
 	V1: { priority: 350, component: V1Banner as Component },
 	WORKFLOW_AUTO_DEACTIVATED: {
 		priority: 340,

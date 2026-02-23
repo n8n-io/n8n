@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { WorkflowsConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
@@ -15,6 +16,7 @@ import type {
 } from './webhook.types';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
@@ -35,13 +37,18 @@ export class LiveWebhooks implements IWebhookManager {
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly workflowsConfig: WorkflowsConfig,
 	) {}
 
 	async getWebhookMethods(path: string) {
+		if (this.workflowsConfig.recoveryMode) return [];
+
 		return await this.webhookService.getWebhookMethods(path);
 	}
 
 	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
+		if (this.workflowsConfig.recoveryMode) return undefined;
+
 		const webhook = await this.findWebhook(path, httpMethod);
 
 		const workflowData = await this.workflowRepository.findOne({
@@ -185,6 +192,13 @@ export class LiveWebhooks implements IWebhookManager {
 		// Remove trailing slash
 		if (path.endsWith('/')) {
 			path = path.slice(0, -1);
+		}
+
+		if (this.workflowsConfig.recoveryMode) {
+			this.logger.info(
+				`Recovery mode enabled. Ignoring webhook "${httpMethod}" for path "${path}"`,
+			);
+			throw new ServiceUnavailableError('Recovery mode is enabled. Live webhooks are disabled.');
 		}
 
 		const webhook = await this.webhookService.findWebhook(httpMethod, path);

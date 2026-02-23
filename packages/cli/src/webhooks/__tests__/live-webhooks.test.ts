@@ -1,4 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { WorkflowsConfig } from '@n8n/config';
 import type { WebhookEntity, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
@@ -14,6 +15,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { NodeTypes } from '@/node-types';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
@@ -29,23 +31,55 @@ describe('LiveWebhooks', () => {
 	const webhookService = mock<WebhookService>();
 	const nodeTypes = mock<NodeTypes>();
 	const workflowStaticDataService = mock<WorkflowStaticDataService>();
+	const workflowsConfig = mock<WorkflowsConfig>({ recoveryMode: false });
 
 	let liveWebhooks: LiveWebhooks;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		workflowsConfig.recoveryMode = false;
 		liveWebhooks = new LiveWebhooks(
 			mockLogger(),
 			nodeTypes,
 			webhookService,
 			workflowRepository,
 			workflowStaticDataService,
+			workflowsConfig,
 		);
 
 		// Mock WorkflowExecuteAdditionalData.getBase to avoid DI issues
 		(WorkflowExecuteAdditionalData.getBase as jest.Mock).mockResolvedValue(
 			mock<IWorkflowExecuteAdditionalData>(),
 		);
+	});
+
+	describe('recovery mode', () => {
+		beforeEach(() => {
+			workflowsConfig.recoveryMode = true;
+		});
+
+		it('should return no allowed methods', async () => {
+			const methods = await liveWebhooks.getWebhookMethods('test-webhook');
+
+			expect(methods).toEqual([]);
+			expect(webhookService.getWebhookMethods).not.toHaveBeenCalled();
+		});
+
+		it('should not resolve access control options', async () => {
+			const options = await liveWebhooks.findAccessControlOptions('test-webhook', 'GET');
+
+			expect(options).toBeUndefined();
+			expect(webhookService.findWebhook).not.toHaveBeenCalled();
+		});
+
+		it('should throw ServiceUnavailableError on webhook execution', async () => {
+			const request = mock<WebhookRequest>({ method: 'GET', params: { path: 'test-webhook' } });
+
+			await expect(liveWebhooks.executeWebhook(request, mock<Response>())).rejects.toThrow(
+				ServiceUnavailableError,
+			);
+			expect(webhookService.findWebhook).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('executeWebhook', () => {

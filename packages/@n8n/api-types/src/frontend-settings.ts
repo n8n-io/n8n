@@ -153,6 +153,7 @@ export interface FrontendSettings {
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
+	recoveryMode?: boolean;
 	templates: {
 		enabled: boolean;
 		host: string;

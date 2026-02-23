@@ -373,6 +373,7 @@
 	"banners.confirmEmail.toast.error.heading": "Problem sending confirmation email",
 	"banners.confirmEmail.toast.error.message": "Please try again later.",
 	"banners.nonProductionLicense.message": "This n8n instance is not licensed for production purposes.",
+	"banners.recoveryMode.message": "N8N_RECOVERY_MODE is enabled, all workflow executions are stopped.",
 	"banners.trial.message.days": "1 day left in your n8n trial | {count} days left in your n8n trial",
 	"banners.trial.message.hours": "1 hour left in your n8n trial | {count} hours left in your n8n trial",
 	"banners.trial.message.minutes": "1 minute left in your n8n trial | {count} minutes left in your n8n trial",

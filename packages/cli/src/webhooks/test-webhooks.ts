@@ -1,4 +1,5 @@
 import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
+import { WorkflowsConfig } from '@n8n/config';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
@@ -24,6 +25,7 @@ import type {
 } from './webhook.types';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
@@ -56,6 +58,7 @@ export class TestWebhooks implements IWebhookManager {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly webhookService: WebhookService,
+		private readonly workflowsConfig: WorkflowsConfig,
 	) {}
 
 	private timeouts: { [webhookKey: string]: NodeJS.Timeout } = {};
@@ -71,6 +74,10 @@ export class TestWebhooks implements IWebhookManager {
 		const httpMethod = request.method;
 
 		let path = removeTrailingSlash(request.params.path);
+
+		if (this.workflowsConfig.recoveryMode) {
+			throw new ServiceUnavailableError('Recovery mode is enabled. Test webhooks are disabled.');
+		}
 
 		request.params = {} as WebhookRequest['params'];
 
@@ -232,6 +239,8 @@ export class TestWebhooks implements IWebhookManager {
 	}
 
 	async getWebhookMethods(rawPath: string) {
+		if (this.workflowsConfig.recoveryMode) return [];
+
 		const path = removeTrailingSlash(rawPath);
 		const webhooks = await this.getWebhooksFromPath(path);
 
@@ -243,6 +252,8 @@ export class TestWebhooks implements IWebhookManager {
 	}
 
 	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
+		if (this.workflowsConfig.recoveryMode) return;
+
 		const allKeys = await this.registrations.getAllKeys();
 
 		const webhookKey = allKeys.find((key) => key.includes(path) && key.startsWith(httpMethod));
@@ -282,6 +293,10 @@ export class TestWebhooks implements IWebhookManager {
 		chatSessionId?: string;
 		workflowIsActive?: boolean;
 	}) {
+		if (this.workflowsConfig.recoveryMode) {
+			throw new ServiceUnavailableError('Recovery mode is enabled. Test webhooks are disabled.');
+		}
+
 		const {
 			userId,
 			workflowEntity,

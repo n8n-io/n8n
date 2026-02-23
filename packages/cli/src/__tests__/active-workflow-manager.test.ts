@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ActiveWorkflows, InstanceSettings } from 'n8n-core';
@@ -16,6 +17,7 @@ import type {
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { EventService } from '@/events/event.service';
+import type { ExternalHooks } from '@/external-hooks';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
@@ -26,15 +28,19 @@ describe('ActiveWorkflowManager', () => {
 	const instanceSettings = mock<InstanceSettings>({ isMultiMain: false });
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const externalHooks = mock<ExternalHooks>();
+	const workflowsConfig = mock<WorkflowsConfig>({ recoveryMode: false });
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		workflowsConfig.recoveryMode = false;
+
 		activeWorkflowManager = new ActiveWorkflowManager(
 			mockLogger(),
 			mock(),
 			mock(),
 			mock(),
-			mock(),
+			externalHooks,
 			nodeTypes,
 			mock(),
 			workflowRepository,
@@ -45,7 +51,7 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			instanceSettings,
 			mock(),
-			mock(),
+			workflowsConfig,
 			mock(),
 			mock(),
 			mock(),
@@ -116,6 +122,14 @@ describe('ActiveWorkflowManager', () => {
 	});
 
 	describe('addActiveWorkflows', () => {
+		test('should skip activation in recovery mode', async () => {
+			workflowsConfig.recoveryMode = true;
+
+			await activeWorkflowManager.addActiveWorkflows('init');
+
+			expect(workflowRepository.getAllActiveIds).not.toHaveBeenCalled();
+		});
+
 		test('should prevent concurrent activations', async () => {
 			const getAllActiveIds = jest.spyOn(workflowRepository, 'getAllActiveIds');
 
@@ -129,6 +143,38 @@ describe('ActiveWorkflowManager', () => {
 			]);
 
 			expect(getAllActiveIds).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('recovery mode guards', () => {
+		test.each<WorkflowActivateMode>(['init', 'leadershipChange', 'update', 'activate'])(
+			'should never add webhooks for "%s"',
+			(activationMode) => {
+				workflowsConfig.recoveryMode = true;
+
+				const shouldAdd = activeWorkflowManager.shouldAddWebhooks(activationMode);
+
+				expect(shouldAdd).toBe(false);
+			},
+		);
+
+		test('should never add triggers and pollers', () => {
+			workflowsConfig.recoveryMode = true;
+
+			const shouldAdd = activeWorkflowManager.shouldAddTriggersAndPollers();
+
+			expect(shouldAdd).toBe(false);
+		});
+
+		test('init should skip loading active workflows and still fire initialized hook', async () => {
+			workflowsConfig.recoveryMode = true;
+
+			const addActiveWorkflowsSpy = jest.spyOn(activeWorkflowManager, 'addActiveWorkflows');
+
+			await activeWorkflowManager.init();
+
+			expect(addActiveWorkflowsSpy).not.toHaveBeenCalled();
+			expect(externalHooks.run).toHaveBeenCalledWith('activeWorkflows.initialized');
 		});
 	});
 

@@ -85,6 +85,7 @@ describe('DismissBannerRequestDto', () => {
 	describe('Exhaustive banner name check', () => {
 		test('should have all static banner names defined', () => {
 			const expectedBanners = [
+				'RECOVERY_MODE',
 				'V1',
 				'TRIAL_OVER',
 				'TRIAL',

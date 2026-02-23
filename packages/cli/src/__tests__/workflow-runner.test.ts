@@ -25,6 +25,7 @@ import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
@@ -60,6 +61,7 @@ afterAll(() => {
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
 	jest.clearAllMocks();
+	globalConfig.workflows.recoveryMode = false;
 });
 
 describe('processError', () => {
@@ -137,6 +139,14 @@ describe('processError', () => {
 });
 
 describe('run', () => {
+	it('throws ServiceUnavailableError when recovery mode is enabled', async () => {
+		globalConfig.workflows.recoveryMode = true;
+
+		await expect(runner.run(mock<IWorkflowExecutionDataProcess>())).rejects.toThrow(
+			ServiceUnavailableError,
+		);
+	});
+
 	it('uses recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom with data is sent', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
