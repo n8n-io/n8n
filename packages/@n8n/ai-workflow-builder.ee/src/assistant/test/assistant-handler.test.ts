@@ -82,7 +82,7 @@ describe('AssistantHandler', () => {
 		expect(progressChunk.type).toBe('tool');
 		expect(progressChunk.status).toBe('running');
 		expect(progressChunk.toolCallId).toMatch(/^assistant-/);
-		expect(progressChunk.customDisplayTitle).toBe('Connecting to assistant...');
+		expect(progressChunk.displayTitle).toBe('Asking assistant');
 
 		const chunk = writtenChunks[1] as AgentMessageChunk;
 		expect(chunk.role).toBe('assistant');
@@ -244,16 +244,15 @@ describe('AssistantHandler', () => {
 		// Chunks: connecting, intermediate step, done
 		expect(writtenChunks).toHaveLength(3);
 		expect((writtenChunks[0] as ToolProgressChunk).status).toBe('running');
-		expect((writtenChunks[0] as ToolProgressChunk).customDisplayTitle).toBe(
-			'Connecting to assistant...',
-		);
+		expect((writtenChunks[0] as ToolProgressChunk).displayTitle).toBe('Asking assistant');
 
 		const connectingChunk = writtenChunks[0] as ToolProgressChunk;
 		const stepChunk = writtenChunks[1] as ToolProgressChunk;
 		expect(stepChunk.type).toBe('tool');
 		expect(stepChunk.toolName).toBe('assistant');
 		expect(stepChunk.status).toBe('running');
-		expect(stepChunk.customDisplayTitle).toBe('Searching documentation...');
+		// Intermediate steps no longer carry dynamic customDisplayTitle
+		expect(stepChunk.customDisplayTitle).toBeUndefined();
 		// Same toolCallId as the initial connecting chunk (same turn)
 		expect(stepChunk.toolCallId).toBe(connectingChunk.toolCallId);
 
@@ -274,9 +273,7 @@ describe('AssistantHandler', () => {
 
 		// Chunks: connecting, done (event message is consumed silently)
 		expect(writtenChunks).toHaveLength(2);
-		expect((writtenChunks[0] as ToolProgressChunk).customDisplayTitle).toBe(
-			'Connecting to assistant...',
-		);
+		expect((writtenChunks[0] as ToolProgressChunk).displayTitle).toBe('Asking assistant');
 		expect((writtenChunks[1] as ToolProgressChunk).status).toBe('completed');
 	});
 
@@ -356,7 +353,7 @@ describe('AssistantHandler', () => {
 			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
 		);
 		expect(doneChunk).toBeDefined();
-		expect(doneChunk!.customDisplayTitle).toBe('Done');
+		expect(doneChunk!.status).toBe('completed');
 	});
 
 	it('should throw when response body is null and still emit Done', async () => {
@@ -373,7 +370,7 @@ describe('AssistantHandler', () => {
 			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
 		);
 		expect(doneChunk).toBeDefined();
-		expect(doneChunk!.customDisplayTitle).toBe('Done');
+		expect(doneChunk!.status).toBe('completed');
 	});
 
 	it('should return immediately without error when signal is pre-aborted', async () => {
@@ -547,7 +544,7 @@ describe('AssistantHandler', () => {
 			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
 		);
 		expect(doneChunk).toBeDefined();
-		expect(doneChunk!.customDisplayTitle).toBe('Done');
+		expect(doneChunk!.status).toBe('completed');
 
 		// The text message should also have been written before the error
 		const textChunk = writtenChunks.find(
@@ -589,6 +586,6 @@ describe('AssistantHandler', () => {
 			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
 		);
 		expect(doneChunk).toBeDefined();
-		expect(doneChunk!.customDisplayTitle).toBe('Done');
+		expect(doneChunk!.status).toBe('completed');
 	});
 });

@@ -96,9 +96,35 @@ const MOCK_AGENT_MODEL: ChatModelDto = {
 	groupIcon: null,
 };
 
+const ElDialogStub = {
+	template: `
+		<div role="dialog">
+			<slot name="header" />
+			<slot />
+			<slot name="footer" />
+		</div>
+	`,
+	props: [
+		'modelValue',
+		'beforeClose',
+		'class',
+		'center',
+		'width',
+		'showClose',
+		'closeOnClickModal',
+		'closeOnPressEscape',
+		'style',
+		'appendTo',
+		'lockScroll',
+		'appendToBody',
+		'dataTestId',
+		'modalClass',
+		'zIndex',
+	],
+};
+
 const sharedStubs = {
-	DialogPortal: { template: '<div><slot /></div>' },
-	DialogOverlay: { template: '<div />' },
+	ElDialog: ElDialogStub,
 	ModelSelector: {
 		template: '<div data-test-id="model-selector" />',
 		props: [
@@ -156,6 +182,7 @@ describe('AgentEditorModal', () => {
 		chatStore = mockedStore(useChatStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 
+		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
 		uiStore.openModalWithData = vi.fn();
 		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
@@ -427,8 +454,7 @@ describe('AgentEditorModal', () => {
 				},
 				global: {
 					stubs: {
-						DialogPortal: { template: '<div><slot /></div>' },
-						DialogOverlay: { template: '<div />' },
+						ElDialog: ElDialogStub,
 						ModelSelector: sharedStubs.ModelSelector,
 						N8nIconPicker: sharedStubs.N8nIconPicker,
 						NodeIcon: { template: '<div />' },

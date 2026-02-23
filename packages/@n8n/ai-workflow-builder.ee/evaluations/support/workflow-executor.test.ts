@@ -1,7 +1,7 @@
-import type { INode, IPinData } from 'n8n-workflow';
+import type { INode, INodeType, INodeTypes, IPinData } from 'n8n-workflow';
 
 import { findRepoRoot } from './environment';
-import { executeWorkflowWithPinData } from './workflow-executor';
+import { executeWorkflowWithPinData, findTriggerByGroup } from './workflow-executor';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 
 // ---------------------------------------------------------------------------
@@ -95,5 +95,90 @@ describe('ExecutionResult shape', () => {
 		expect(result.success).toBe(false);
 		expect(result.error).toBe('Something went wrong');
 		expect(result.errorNode).toBe('HTTP Request');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// findTriggerByGroup
+// ---------------------------------------------------------------------------
+
+describe('findTriggerByGroup', () => {
+	function makeNodeTypes(types: Record<string, { group: string[] }>): INodeTypes {
+		return {
+			getByName: jest.fn(),
+			getByNameAndVersion(type: string): INodeType {
+				const entry = types[type] ?? { group: ['transform'] };
+				return { description: { group: entry.group } } as unknown as INodeType;
+			},
+			getKnownTypes: jest.fn(),
+		};
+	}
+
+	it('should find a chat trigger node by its group', () => {
+		const nodes: INode[] = [
+			{
+				name: 'Chat Trigger',
+				type: '@n8n/n8n-nodes-langchain.chatTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+				id: '1',
+			} as INode,
+			{
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				position: [200, 0] as [number, number],
+				parameters: {},
+				id: '2',
+			} as INode,
+		];
+
+		const nodeTypes = makeNodeTypes({
+			'@n8n/n8n-nodes-langchain.chatTrigger': { group: ['trigger'] },
+			'@n8n/n8n-nodes-langchain.agent': { group: ['transform'] },
+		});
+
+		const result = findTriggerByGroup(nodes, nodeTypes);
+		expect(result?.name).toBe('Chat Trigger');
+	});
+
+	it('should skip disabled trigger nodes', () => {
+		const nodes: INode[] = [
+			{
+				name: 'Disabled Trigger',
+				type: '@n8n/n8n-nodes-langchain.chatTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+				id: '1',
+				disabled: true,
+			} as INode,
+		];
+
+		const nodeTypes = makeNodeTypes({
+			'@n8n/n8n-nodes-langchain.chatTrigger': { group: ['trigger'] },
+		});
+
+		const result = findTriggerByGroup(nodes, nodeTypes);
+		expect(result).toBeUndefined();
+	});
+
+	it('should return undefined when no trigger nodes exist', () => {
+		const nodes: INode[] = [
+			{
+				name: 'Set',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+				id: '1',
+			} as INode,
+		];
+
+		const nodeTypes = makeNodeTypes({});
+
+		const result = findTriggerByGroup(nodes, nodeTypes);
+		expect(result).toBeUndefined();
 	});
 });
