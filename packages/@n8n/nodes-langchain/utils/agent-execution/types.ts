@@ -35,6 +35,8 @@ export type ToolCallData = {
 		messageLog?: AIMessage[];
 		toolCallId: IDataObject | GenericValue | GenericValue[] | IDataObject[];
 		type: string | number | true | object;
+		/** Clean announcement text streamed by the LLM before a tool call */
+		realLlmContent?: string;
 	};
 	observation: string;
 };
@@ -152,6 +154,8 @@ export type RequestResponseMetadata = {
 	anthropic?: AnthropicThinkingMetadata;
 	/** HITL (Human-in-the-Loop) metadata - presence indicates this is an HITL tool action */
 	hitl?: HitlMetadata;
+	/** Clean announcement text streamed by the LLM before a tool call */
+	realLlmContent?: string;
 };
 
 /**

@@ -7,6 +7,7 @@ import {
 	loadMemory,
 	processEventStream,
 	saveToMemory,
+	saveIntermediateMemory,
 	type RequestResponseMetadata,
 } from '@utils/agent-execution';
 import { getTracingConfig } from '@utils/tracing';
@@ -79,6 +80,12 @@ export async function runAgent(
 
 		// If result contains tool calls, build the request object like the normal flow
 		if (result.toolCalls && result.toolCalls.length > 0) {
+			// Save intermediate memory (HumanMessage + Announcement) before tool execution
+			const previousCount = response?.metadata?.previousRequests?.length || 0;
+			if (previousCount === 0 && memory && input) {
+				await saveIntermediateMemory(input, memory, result.output);
+			}
+
 			const actions = createEngineRequests(result.toolCalls, itemIndex, tools);
 
 			return {
@@ -121,6 +128,19 @@ export async function runAgent(
 		}
 
 		// If response contains tool calls, we need to return this in the right format
+		// Save intermediate memory (HumanMessage + Announcement) before tool execution
+		const previousCount = response?.metadata?.previousRequests?.length || 0;
+		if (previousCount === 0 && memory && input) {
+			let announcement: string | undefined;
+			if (Array.isArray(modelResponse) && modelResponse.length > 0) {
+				const logText = modelResponse[0]?.log;
+				if (typeof logText === 'string') {
+					announcement = logText.replace(/^Calling .* with input: .*$/, '').trim();
+				}
+			}
+			await saveIntermediateMemory(input, memory, announcement);
+		}
+
 		const actions = createEngineRequests(modelResponse, itemIndex, tools);
 
 		return {

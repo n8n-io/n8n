@@ -175,6 +175,45 @@ function extractThinkingMetadata(
 }
 
 /**
+ * Extracts clean announcement text from the first message in a messageLog.
+ * Handles both string content and Gemini's array-of-blocks format.
+ */
+function extractAnnouncementText(
+	toolCall: ToolCallRequest,
+	sharedMessageLog: unknown[] | undefined,
+): string | undefined {
+	const effectiveMessageLog =
+		toolCall.messageLog && toolCall.messageLog.length > 0 ? toolCall.messageLog : sharedMessageLog;
+	if (!effectiveMessageLog || effectiveMessageLog.length === 0) return undefined;
+
+	const firstMsg = effectiveMessageLog[0];
+	if (!firstMsg || typeof firstMsg !== 'object' || !('content' in firstMsg)) return undefined;
+
+	const content = (firstMsg as Record<string, unknown>).content;
+	if (typeof content === 'string') {
+		const trimmed = content.trim();
+		return trimmed.length > 0 ? trimmed : undefined;
+	}
+	if (Array.isArray(content)) {
+		const text = content
+			.filter(
+				(block: unknown) =>
+					typeof block === 'object' &&
+					block !== null &&
+					'type' in block &&
+					(block as Record<string, unknown>).type === 'text' &&
+					'text' in block &&
+					typeof (block as Record<string, unknown>).text === 'string',
+			)
+			.map((block: Record<string, unknown>) => block.text as string)
+			.join('')
+			.trim();
+		return text.length > 0 ? text : undefined;
+	}
+	return undefined;
+}
+
+/**
  * Creates engine requests from tool calls.
  * Maps tool call information to the format expected by the n8n engine
  * for executing tool nodes.
@@ -240,6 +279,7 @@ export function createEngineRequests(
 				metadata: {
 					itemIndex,
 					hitl: hitlMetadata,
+					realLlmContent: extractAnnouncementText(toolCall, sharedMessageLog),
 					...extractThinkingMetadata(toolCall, sharedMessageLog, sharedAdditionalKwargs),
 				},
 			};

@@ -370,6 +370,9 @@ export function buildSteps(
 		// Exclude metadata fields (id, log, type) from the tool input forwarded to the result
 		const { id, log, type, ...toolInputForResult } = toolInput;
 
+		// Extract clean announcement text from metadata
+		const realLlmContent = tool.action.metadata?.realLlmContent;
+
 		// Parallel Gemini tool calls: first step gets the shared AIMessage,
 		// subsequent steps get empty messageLog. LangChain's formatToToolMessages
 		// will produce: [SharedAIMessage, ToolMsg_1, ToolMsg_2, ...]
@@ -379,6 +382,11 @@ export function buildSteps(
 				: []
 			: [buildIndividualAIMessage(toolId, toolName, toolInput, providerMetadata)];
 
+		// Prepend announcement AIMessage if we have clean announcement text
+		if (realLlmContent && messageLog.length > 0) {
+			messageLog.unshift(new AIMessage({ content: '[Announcement] ' + realLlmContent }));
+		}
+
 		steps.push({
 			action: {
 				tool: toolName,
@@ -387,6 +395,7 @@ export function buildSteps(
 				messageLog,
 				toolCallId: toolInput?.id,
 				type: toolInput.type || 'tool_call',
+				realLlmContent,
 			},
 			observation,
 		});

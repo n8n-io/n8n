@@ -6,6 +6,28 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import type { AgentResult, ToolCallRequest } from './types';
 
 /**
+ * Safely extracts text content from Gemini's array-format content blocks.
+ * Returns only the joined text from blocks with type === 'text'.
+ */
+function extractTextContent(content: unknown): string {
+	if (typeof content === 'string') return content.trim();
+	if (!Array.isArray(content)) return '';
+	return content
+		.filter(
+			(block: unknown) =>
+				typeof block === 'object' &&
+				block !== null &&
+				'type' in block &&
+				(block as Record<string, unknown>).type === 'text' &&
+				'text' in block &&
+				typeof (block as Record<string, unknown>).text === 'string',
+		)
+		.map((block: Record<string, unknown>) => block.text as string)
+		.join('')
+		.trim();
+}
+
+/**
  * Processes the event stream from a streaming agent execution.
  * Handles streaming chunks, tool calls, and intermediate steps.
  *
@@ -69,7 +91,8 @@ export async function processEventStream(
 								toolCallId: toolCall.id || 'unknown',
 								type: toolCall.type || 'tool_call',
 								log:
-									output.content ||
+									agentResult.output?.trim() ||
+									extractTextContent(output.content) ||
 									`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
 								messageLog: [output],
 								// Pass additional_kwargs to ALL tool calls so signature is available
