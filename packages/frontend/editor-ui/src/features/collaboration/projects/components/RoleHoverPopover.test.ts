@@ -6,6 +6,7 @@ import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import type { Role } from '@n8n/permissions';
 import RoleHoverPopover from './RoleHoverPopover.vue';
+import { VIEWS } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 const mockPush = vi.fn();
@@ -91,7 +92,7 @@ describe('RoleHoverPopover', () => {
 		it('should display permission count', () => {
 			const { getByText } = renderComponent();
 
-			expect(getByText('3/31 permissions')).toBeInTheDocument();
+			expect(getByText('3/32 permissions')).toBeInTheDocument();
 		});
 
 		it('should display role description when available', () => {
@@ -159,6 +160,7 @@ describe('RoleHoverPopover', () => {
 			expect(mockPush).toHaveBeenCalledWith({
 				name: 'ProjectRoleSettingsView',
 				params: { roleSlug: 'project:custom-role' },
+				query: { from: VIEWS.PROJECT_SETTINGS },
 			});
 		});
 
@@ -175,6 +177,7 @@ describe('RoleHoverPopover', () => {
 			expect(mockPush).toHaveBeenCalledWith({
 				name: 'ProjectRoleViewView',
 				params: { roleSlug: 'project:custom-role' },
+				query: { from: VIEWS.PROJECT_SETTINGS },
 			});
 		});
 
@@ -191,6 +194,7 @@ describe('RoleHoverPopover', () => {
 			expect(mockPush).toHaveBeenCalledWith({
 				name: 'ProjectRoleViewView',
 				params: { roleSlug: 'project:admin' },
+				query: { from: VIEWS.PROJECT_SETTINGS },
 			});
 		});
 	});
