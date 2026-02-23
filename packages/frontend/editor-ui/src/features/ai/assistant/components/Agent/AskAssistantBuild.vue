@@ -35,6 +35,7 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { useReviewChanges } from '@/features/ai/assistant/composables/useReviewChanges';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 import { N8nAskAssistantChat } from '@n8n/design-system';
 import BuildModeEmptyState from './BuildModeEmptyState.vue';
@@ -199,6 +200,16 @@ const isChatInputDisabled = computed(() => {
 });
 
 const { showReviewChanges, editedNodesCount, isLoadingDiff, openDiffView } = useReviewChanges();
+
+const codeDiffWorkflowState = injectWorkflowState();
+
+async function onCodeReplace(index: number) {
+	await builderStore.applyCodeDiff(codeDiffWorkflowState, index);
+}
+
+async function onCodeUndo(index: number) {
+	await builderStore.undoCodeDiff(codeDiffWorkflowState, index);
+}
 
 const disabledTooltip = computed(() => {
 	if (!isChatInputDisabled.value) {
@@ -528,6 +539,8 @@ defineExpose({
 			@stop="builderStore.abortStreaming"
 			@restore-confirm="onRestoreConfirm"
 			@show-version="onShowVersion"
+			@code-replace="onCodeReplace"
+			@code-undo="onCodeUndo"
 		>
 			<template #focused-nodes-chips="{ message }">
 				<MessageFocusedNodesChips :focused-node-names="message.focusedNodeNames" />
