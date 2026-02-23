@@ -2525,18 +2525,8 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					const filteredOriginal = filterEmptyConnections(json.connections, validNodeNames);
 					const filteredParsed = filterEmptyConnections(parsedJson.connections);
 
-					// Filter to only main connections for source key comparison
-					// AI connections (ai_languageModel, ai_tool, etc.) may change direction
-					// during roundtrip since reversed AI connections get normalized
-					const mainConnectionKeys = (conns: Record<string, unknown>) =>
-						Object.keys(conns)
-							.filter((key) => {
-								const nodeConns = conns[key] as Record<string, unknown>;
-								// Keep node if it has any non-AI connection type
-								return Object.keys(nodeConns).some((ct) => !ct.startsWith('ai_'));
-							})
-							.sort();
-					expect(mainConnectionKeys(filteredParsed)).toEqual(mainConnectionKeys(filteredOriginal));
+					// Verify all connection source keys match
+					expect(Object.keys(filteredParsed).sort()).toEqual(Object.keys(filteredOriginal).sort());
 				});
 			});
 		});

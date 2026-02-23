@@ -560,43 +560,6 @@ describe('semantic-graph', () => {
 			expect(graph.nodes.has('HTTP 2')).toBe(true);
 		});
 
-		it('detects reversed AI connections (parent → subnode)', () => {
-			const json: WorkflowJSON = {
-				name: 'Test',
-				nodes: [
-					{
-						id: '1',
-						name: 'Agent',
-						type: '@n8n/n8n-nodes-langchain.agent',
-						typeVersion: 1.7,
-						position: [0, 0],
-					},
-					{
-						id: '2',
-						name: 'Model',
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						typeVersion: 1,
-						position: [100, 100],
-					},
-				],
-				connections: {
-					// Reversed: agent (parent) listed as source → model (subnode) as target
-					Agent: {
-						ai_languageModel: [[{ node: 'Model', type: 'ai_languageModel', index: 0 }]],
-					},
-				},
-			};
-
-			const graph = buildSemanticGraph(json);
-			const agent = graph.nodes.get('Agent')!;
-
-			// Should still correctly attach Model as a subnode of Agent
-			expect(agent.subnodes).toContainEqual({
-				connectionType: 'ai_languageModel',
-				subnodeName: 'Model',
-			});
-		});
-
 		it('normalizes flat tuple connections to object format', () => {
 			const json: WorkflowJSON = {
 				name: 'Test',

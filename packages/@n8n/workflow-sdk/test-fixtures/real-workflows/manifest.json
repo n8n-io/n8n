@@ -5415,6 +5415,8 @@
 			"id": 7643,
 			"name": "Auto-categorize Gmail emails with AI and send prioritized Slack alerts",
 			"success": true,
+			"skip": true,
+			"skipReason": "Reversed AI connections (parent→subnode instead of subnode→parent) in source JSON",
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",

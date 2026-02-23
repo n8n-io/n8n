@@ -147,7 +147,8 @@ function isSubnodeType(nodeType: string): boolean {
 
 /**
  * Patterns matching expected subnode types for each AI connection type.
- * Used to detect reversed AI connections where the parent is listed as the source.
+ * Used by isSubnodeType() to distinguish subnodes from parent nodes
+ * (e.g., in findNearestParent for stale-reference recovery).
  */
 const AI_CONNECTION_SUBNODE_PATTERNS: Record<string, string[]> = {
 	ai_languageModel: ['lmChat', 'lmCohere', 'lmOllama', 'lmAnthropic', 'lmGoogleVertex'],
@@ -161,35 +162,6 @@ const AI_CONNECTION_SUBNODE_PATTERNS: Record<string, string[]> = {
 	ai_reranker: ['reranker'],
 	ai_tool: ['tool'],
 };
-
-/**
- * Check if a node type matches the expected subnode type for a given AI connection.
- * For example, ai_languageModel connections expect lmChat/lmCohere/etc. subnodes.
- */
-function matchesSubnodePatternForConnection(
-	nodeType: string,
-	connectionType: AiConnectionType,
-): boolean {
-	const patterns = AI_CONNECTION_SUBNODE_PATTERNS[connectionType];
-	if (!patterns) return false;
-	return patterns.some((p) => nodeType.includes(p));
-}
-
-/**
- * Detect if an AI connection is reversed (parent → subnode instead of subnode → parent).
- * Some workflow JSON stores AI connections in the wrong direction.
- * Returns true if the source is NOT the expected subnode type but the target IS.
- */
-function isReversedAiConnection(
-	sourceType: string,
-	targetType: string,
-	connectionType: AiConnectionType,
-): boolean {
-	const sourceMatchesSubnode = matchesSubnodePatternForConnection(sourceType, connectionType);
-	const targetMatchesSubnode = matchesSubnodePatternForConnection(targetType, connectionType);
-	// Reversed when target is the subnode but source is not
-	return !sourceMatchesSubnode && targetMatchesSubnode;
-}
 
 /**
  * Best-effort recovery for malformed workflow data.
@@ -255,26 +227,12 @@ function parseAiConnections(
 	const sourceNode = graph.nodes.get(sourceName);
 	if (!sourceNode) return;
 
-	// AI connections normally go from subnode → parent node
+	// AI connections go from subnode → parent node
 	outputs.forEach((targets) => {
 		if (!targets) return;
 
 		targets.forEach((target) => {
-			const targetNode = graph.nodes.get(target.node);
-
-			// Check if the connection direction is reversed
-			// (parent listed as source instead of subnode)
-			if (targetNode && isReversedAiConnection(sourceNode.type, targetNode.type, connectionType)) {
-				// Reversed: source is the parent, target is the subnode
-				sourceNode.subnodes.push({
-					connectionType,
-					subnodeName: target.node,
-				});
-				return;
-			}
-
-			// Normal direction: source is the subnode, target is the parent
-			let parentNode = targetNode;
+			let parentNode = graph.nodes.get(target.node);
 
 			// If parent doesn't exist (stale reference from renamed node),
 			// try to find the nearest matching parent by position and type
