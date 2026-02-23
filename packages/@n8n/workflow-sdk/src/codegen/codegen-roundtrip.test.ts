@@ -15,15 +15,6 @@ import {
 	isPlaceholderValue,
 } from '../workflow-builder/string-utils';
 
-// Workflows with known issues that need to be skipped entirely
-// (prefer adding skip: true + skipReason in manifest.json instead)
-const SKIP_WORKFLOWS = new Set<string>([]);
-
-// Workflows to skip validation due to known codegen bugs (invalid warnings)
-// These produce warnings that don't exist in the original workflow (codegen issues to fix)
-// Once fixed, these should be moved to expectedWarnings in manifest.json
-const SKIP_VALIDATION_WORKFLOWS = new Set<string>([]);
-
 interface ExpectedWarning {
 	code: string;
 	nodeName?: string;
@@ -58,8 +49,6 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 	for (const entry of manifest.workflows) {
 		if (!entry.success) continue;
 		if (entry.skip) continue;
-		if (SKIP_WORKFLOWS.has(String(entry.id))) continue;
-
 		const filePath = path.join(dir, `${entry.id}.json`);
 		if (fs.existsSync(filePath)) {
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- Test fixture file
@@ -2463,28 +2452,25 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					const parsedJson: WorkflowJSON = builder.toJSON();
 
 					// Validate the parsed workflow
-					if (!SKIP_VALIDATION_WORKFLOWS.has(id)) {
-						const validationResult = builder.validate();
+					const validationResult = builder.validate();
 
-						// Get actual warnings
-						const actualWarnings: ExpectedWarning[] = validationResult.warnings
-							.map((w: { code: string; nodeName?: string }) => ({
-								code: w.code,
-								nodeName: w.nodeName,
-							}))
-							.sort((a: ExpectedWarning, b: ExpectedWarning) =>
-								normalizeWarning(a).localeCompare(normalizeWarning(b)),
-							);
-
-						// Get expected warnings (from manifest or empty array)
-						const expected = (expectedWarnings ?? []).sort(
-							(a: ExpectedWarning, b: ExpectedWarning) =>
-								normalizeWarning(a).localeCompare(normalizeWarning(b)),
+					// Get actual warnings
+					const actualWarnings: ExpectedWarning[] = validationResult.warnings
+						.map((w: { code: string; nodeName?: string }) => ({
+							code: w.code,
+							nodeName: w.nodeName,
+						}))
+						.sort((a: ExpectedWarning, b: ExpectedWarning) =>
+							normalizeWarning(a).localeCompare(normalizeWarning(b)),
 						);
 
-						// Compare warnings
-						expect(actualWarnings).toEqual(expected);
-					}
+					// Get expected warnings (from manifest or empty array)
+					const expected = (expectedWarnings ?? []).sort((a: ExpectedWarning, b: ExpectedWarning) =>
+						normalizeWarning(a).localeCompare(normalizeWarning(b)),
+					);
+
+					// Compare warnings
+					expect(actualWarnings).toEqual(expected);
 
 					// Verify basic structure
 					expect(parsedJson.id ?? '').toBe(json.id ?? '');
