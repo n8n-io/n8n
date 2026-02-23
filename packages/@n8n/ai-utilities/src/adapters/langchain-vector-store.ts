@@ -1,19 +1,24 @@
 import type { Document as LangchainDocument } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import { VectorStore as LangchainVectorStore } from '@langchain/core/vectorstores';
-import { ApplicationError, type ISupplyDataFunctions } from 'n8n-workflow';
+import { ApplicationError, type IExecuteFunctions, type ISupplyDataFunctions } from 'n8n-workflow';
 
 import { fromLcDocument, toLcDocument } from '../converters/vector-store';
 import type { VectorStore } from '../types/vector-store';
 import { logAiEvent } from '../utils/log-ai-event';
 
 export class LangchainVectorStoreAdapter extends LangchainVectorStore {
+	private readonly provider: string;
+
 	constructor(
 		private vectorStore: VectorStore,
 		embeddings: Embeddings,
-		private ctx?: ISupplyDataFunctions,
+		private ctx?: IExecuteFunctions | ISupplyDataFunctions,
 	) {
+		// Store provider before calling super to avoid undefined access in _vectorstoreType()
+		const provider = vectorStore.provider;
 		super(embeddings, {});
+		this.provider = provider;
 	}
 
 	async addVectors(vectors: number[][], documents: LangchainDocument[]): Promise<string[]> {
@@ -108,6 +113,6 @@ export class LangchainVectorStoreAdapter extends LangchainVectorStore {
 	}
 
 	_vectorstoreType(): string {
-		return `n8n-${this.vectorStore.provider}`;
+		return `n8n-${this.provider}`;
 	}
 }

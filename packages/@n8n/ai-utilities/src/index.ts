@@ -44,6 +44,7 @@ export type { ServerSentEventMessage } from './utils/sse';
 // Converters
 export { getParametersJsonSchema } from './converters/tool';
 export { fromLcMessage, toLcMessage, toLcContent, fromLcContent } from './converters/message';
+export { fromLcDocument, toLcDocument } from './converters/vector-store';
 
 // Type guards
 export {

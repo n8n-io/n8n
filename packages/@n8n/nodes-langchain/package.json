@@ -172,6 +172,8 @@
       "dist/nodes/vector_store/VectorStorePineconeLoad/VectorStorePineconeLoad.node.js",
       "dist/nodes/vector_store/VectorStoreRedis/VectorStoreRedis.node.js",
       "dist/nodes/vector_store/VectorStoreQdrant/VectorStoreQdrant.node.js",
+      "dist/nodes/vector_store/VectorStoreQdrantTest/VectorStoreQdrantTest.node.js",
+      "dist/nodes/vector_store/VectorStoreQdrantAdaptersTest/VectorStoreQdrantAdaptersTest.node.js",
       "dist/nodes/vector_store/VectorStoreSupabase/VectorStoreSupabase.node.js",
       "dist/nodes/vector_store/VectorStoreSupabaseInsert/VectorStoreSupabaseInsert.node.js",
       "dist/nodes/vector_store/VectorStoreSupabaseLoad/VectorStoreSupabaseLoad.node.js",

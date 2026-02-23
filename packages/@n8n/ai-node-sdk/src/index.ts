@@ -43,6 +43,9 @@ export type {
 // Vector store base classes
 export { BaseVectorStore } from '@n8n/ai-utilities';
 
+// Vector store converters
+export { fromLcDocument, toLcDocument } from '@n8n/ai-utilities';
+
 // Suppliers
 export { supplyMemory, type SupplyMemoryOptions } from '@n8n/ai-utilities';
 export { supplyModel, type SupplyModelOptions, type OpenAiModel } from '@n8n/ai-utilities';
