@@ -12301,6 +12301,8 @@
 			"id": 13291,
 			"name": "Build a WordPress RAG chatbot with OpenAI, Qdrant or MongoDB",
 			"success": true,
+			"skip": true,
+			"skipReason": "Duplicate node names ('Qdrant Search (Collection_name)' appears twice); only template in 2002 fixtures with this issue",
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
