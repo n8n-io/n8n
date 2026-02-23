@@ -71,7 +71,6 @@ import {
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/app/utils/credentialOnlyNodes';
-import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { i18n } from '@n8n/i18n';
 
 import { computed, ref, watch } from 'vue';
@@ -164,8 +163,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const workflowChecksum = ref<string>('');
 
 	const workflowSettings = computed(() => workflow.value.settings ?? { ...defaults.settings });
-
-	const workflowTags = computed(() => workflow.value.tags as string[]);
 
 	// A workflow is new if it hasn't been saved to the backend yet
 	const isNewWorkflow = computed(() => {
@@ -853,10 +850,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflow(value: IWorkflowDb): void {
-		const tags = convertWorkflowTagsToIds(value.tags);
 		workflow.value = {
 			...value,
-			...(tags.length > 0 ? { tags } : {}),
 			...(!value.hasOwnProperty('active') ? { active: false } : {}),
 			...(!value.hasOwnProperty('connections') ? { connections: {} } : {}),
 			...(!value.hasOwnProperty('createdAt') ? { createdAt: -1 } : {}),
@@ -1732,7 +1727,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowVersionId,
 		workflowChecksum,
 		workflowSettings,
-		workflowTags,
 		isNewWorkflow,
 		isWorkflowSaved,
 		isWorkflowActive,

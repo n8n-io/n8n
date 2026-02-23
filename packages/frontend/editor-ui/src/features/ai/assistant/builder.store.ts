@@ -53,6 +53,7 @@ import {
 	isPlanModeQuestionsMessage,
 } from '@/features/ai/assistant/assistant.types';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
+import { useCodeDiff } from '@/features/ai/assistant/composables/useCodeDiff';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -188,6 +189,20 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	} = useBuilderMessages();
 
 	const { workflowTodos, getTodosToTrack, hasTodosHiddenByPinnedData } = useBuilderTodos();
+
+	const { applyCodeDiff, undoCodeDiff } = useCodeDiff({
+		chatMessages,
+		getTargetNodeName: (msg) =>
+			msg.nodeName ??
+			ndvStore.activeNodeName ??
+			focusedNodesStore.confirmedNodes[0]?.nodeName ??
+			'',
+		getSessionId: (msg) => {
+			const id = msg.sdkSessionId;
+			assert(id, 'No SDK session ID for code diff');
+			return id;
+		},
+	});
 
 	const trackingSessionId = computed(() => rootStore.pushRef);
 
@@ -1248,6 +1263,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		setBuilderMadeEdits,
 		incrementManualExecutionStats,
 		resetManualExecutionStats,
+		applyCodeDiff,
+		undoCodeDiff,
 		// Version management
 		restoreToVersion,
 		clearExistingWorkflow,

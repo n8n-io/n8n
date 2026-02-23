@@ -589,6 +589,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const toggleSidebarMenuCollapse = () => {
 		sidebarMenuCollapsed.value = !sidebarMenuCollapsed.value;
+		telemetry.track('User toggled sidebar', {
+			expanded: !sidebarMenuCollapsed.value,
+		});
 	};
 
 	const setNotificationsForView = (view: VIEWS, notifications: NotificationOptions[]) => {
