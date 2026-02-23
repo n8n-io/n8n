@@ -34,7 +34,6 @@ import { findDirectMergeInFanOut, detectMergePattern, findMergeInputIndex } from
 import {
 	getAllOutputTargets,
 	hasMultipleOutputSlots,
-	hasConsecutiveOutputSlots,
 	getOutputTargetsByIndex,
 } from './output-utils';
 import { getCompositeType } from './semantic-registry';
@@ -582,12 +581,10 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 
 	// Check if there's a chain continuation (single output to non-composite target)
 	if (compositeType === undefined) {
-		// Check for multi-output nodes (like text classifiers)
+		// Check for multi-output nodes (like text classifiers, compareDatasets)
 		// These need special handling to preserve output indices.
-		// Only use this for nodes with CONSECUTIVE output slots (0,1,2 not 0,2).
-		// Non-consecutive outputs (like compareDatasets with 0,2) suggest semantic
-		// meaning where we should use regular fan-out handling instead.
-		if (hasMultipleOutputSlots(node) && hasConsecutiveOutputSlots(node)) {
+		// Handles both consecutive (0,1,2) and non-consecutive (0,2) outputs.
+		if (hasMultipleOutputSlots(node)) {
 			const targetsByIndex = getOutputTargetsByIndex(node);
 
 			// Build targets for each output index
