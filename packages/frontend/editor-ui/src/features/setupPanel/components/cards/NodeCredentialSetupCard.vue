@@ -92,9 +92,23 @@ const telemetryPayload = computed(() => ({
 	missing_parameters_count: Object.keys(props.state.parameterIssues).length,
 }));
 
+/**
+ * Tracks which parameters have been shown to the user at least once.
+ * This ref is used to persist parameters in the UI even after their issues are resolved,
+ * preventing them from disappearing when the user fills them in.
+ */
 const shownParameters = ref<INodeProperties[]>([]);
 
-// Get only the parameters that have issues
+/**
+ * Get parameters that should be displayed in the card.
+ * Once a parameter has been shown (due to having issues), it continues to be shown
+ * even after the issue is resolved. This prevents the jarring experience of parameters
+ * disappearing as the user fills them in.
+ *
+ * Note: Uses a side effect (modifying shownParameters ref) to achieve persistence.
+ * This is intentional - computed properties normally shouldn't have side effects,
+ * but this pattern ensures parameters persist across reactivity updates.
+ */
 const parameters = computed<INodeProperties[]>(() => {
 	if (!nodeType.value?.properties) return [];
 
@@ -108,7 +122,10 @@ const parameters = computed<INodeProperties[]>(() => {
 	return shownParameters.value;
 });
 
-// Check if we've ever shown parameters (persistent across parameter fills)
+/**
+ * Check if we've ever shown parameters (persistent across parameter fills).
+ * Used to keep the parameter description visible even after all issues are resolved.
+ */
 const hasShownParameters = computed(() => shownParameters.value.length > 0);
 
 const onCredentialSelected = (credentialId: string) => {

@@ -8,7 +8,6 @@ import type { NodeCredentialSetupState } from '@/features/setupPanel/setupPanel.
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import type { INodeUi } from '@/Interface';
-import type { INodeProperties } from 'n8n-workflow';
 
 vi.mock('@/features/credentials/components/CredentialPicker/CredentialPicker.vue', () => ({
 	default: {
@@ -243,7 +242,7 @@ describe('NodeCredentialSetupCard', () => {
 		});
 
 		it('should emit valueChanged event when parameter is changed', async () => {
-			const { getByTestId, emitted } = renderComponent({
+			const { getByTestId } = renderComponent({
 				props: {
 					state: createState({
 						parameterIssues: { testParam: ['Parameter is required'] },

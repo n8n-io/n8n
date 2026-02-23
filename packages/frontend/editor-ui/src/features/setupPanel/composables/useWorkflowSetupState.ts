@@ -52,6 +52,10 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		return runData !== null && runData.length > 0;
 	};
 
+	/**
+	 * Tracks node IDs that have been shown in setup cards at least once.
+	 * Prevents cards from disappearing when nodes are temporarily valid.
+	 */
 	const seenNodes = new Set<string>();
 
 	/**
@@ -118,7 +122,17 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		return result;
 	});
 
+	/**
+	 * Tracks node-credential combinations (format: "credType:nodeId") that have been shown at least once.
+	 * Prevents cards from disappearing after parameters are filled.
+	 */
 	const seenNodeCredentials = new Set<string>();
+
+	/**
+	 * Tracks credential types that have ever had nodes with parameter issues.
+	 * Once a credential type is tracked here, it's handled by nodeCredentialStates instead of credentialTypeStates.
+	 * This prevents duplicate cards when parameters are filled but ensures the card persists.
+	 */
 	const seenCredentialTypesWithParameters = new Set<string>();
 
 	/**
@@ -384,6 +398,41 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 		return result;
 	});
+
+	/**
+	 * Cleanup: Remove tracking data for nodes that no longer exist in the workflow.
+	 * Prevents memory leaks in long-running sessions with many workflow changes.
+	 */
+	watch(
+		sourceNodes,
+		(currentNodes) => {
+			const currentNodeIds = new Set(currentNodes.map((n) => n.id));
+
+			// Clean up seenNodes for removed nodes
+			for (const nodeId of seenNodes) {
+				if (!currentNodeIds.has(nodeId)) {
+					seenNodes.delete(nodeId);
+				}
+			}
+
+			// Clean up seenParameterNodes for removed nodes
+			for (const nodeId of seenParameterNodes) {
+				if (!currentNodeIds.has(nodeId)) {
+					seenParameterNodes.delete(nodeId);
+				}
+			}
+
+			// Clean up seenNodeCredentials for removed nodes
+			// Format is "credType:nodeId", so extract nodeId and check if it exists
+			for (const key of seenNodeCredentials) {
+				const [, nodeId] = key.split(':');
+				if (nodeId && !currentNodeIds.has(nodeId)) {
+					seenNodeCredentials.delete(key);
+				}
+			}
+		},
+		{ deep: true },
+	);
 
 	/**
 	 * Ordered list of all setup cards, sorted by the position of each card's
