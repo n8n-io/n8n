@@ -42,11 +42,20 @@ vi.mock('@/app/composables/useNodeHelpers', () => ({
 }));
 
 const mockGetNodeTypeDisplayableCredentials = vi.fn().mockReturnValue([]);
+const mockGetNodeParametersIssues = vi.fn().mockReturnValue({});
 
 vi.mock('@/app/utils/nodes/nodeTransforms', () => ({
 	getNodeTypeDisplayableCredentials: (...args: unknown[]) =>
 		mockGetNodeTypeDisplayableCredentials(...args),
 }));
+
+vi.mock('@/features/setupPanel/setupPanel.utils', async () => {
+	const actual = await vi.importActual('@/features/setupPanel/setupPanel.utils');
+	return {
+		...actual,
+		getNodeParametersIssues: (...args: unknown[]) => mockGetNodeParametersIssues(...args),
+	};
+});
 
 // Sorting/filtering by execution order is tested in setupPanel.utils.test.ts.
 // Use a pass-through mock here so non-sorting tests are not affected.
@@ -1464,6 +1473,332 @@ describe('useWorkflowSetupState', () => {
 					}),
 				);
 			});
+		});
+	});
+
+	describe('nodeCredentialStates', () => {
+		it('should create node credential cards when nodes have both credentials and parameters', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			workflowsStore.allNodes = [node1];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			expect(state.nodeCredentialStates.value).toHaveLength(1);
+			expect(state.nodeCredentialStates.value[0]).toMatchObject({
+				node: node1,
+				credentialType: 'httpHeaderAuth',
+				showCredentialPicker: true,
+				isFirstNodeWithCredential: true,
+			});
+		});
+
+		it('should only show credential picker on first node with same credential type', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+			const node2 = createNode({
+				name: 'HTTP Request 2',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			workflowsStore.allNodes = [node1, node2];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			expect(state.nodeCredentialStates.value).toHaveLength(2);
+			expect(state.nodeCredentialStates.value[0].showCredentialPicker).toBe(true);
+			expect(state.nodeCredentialStates.value[0].isFirstNodeWithCredential).toBe(true);
+			expect(state.nodeCredentialStates.value[1].showCredentialPicker).toBe(false);
+			expect(state.nodeCredentialStates.value[1].isFirstNodeWithCredential).toBe(false);
+		});
+
+		it('should track all nodes using credential in allNodesUsingCredential', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+			const node2 = createNode({
+				name: 'HTTP Request 2',
+				type: 'n8n-nodes-base.httpRequest',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Credential' } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			workflowsStore.allNodes = [node1, node2];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			// Only node1 has parameter issues
+			mockGetNodeParametersIssues.mockImplementation((_, node) => {
+				if (node.name === 'HTTP Request 1') return { url: ['URL is required'] };
+				return {};
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			expect(state.nodeCredentialStates.value).toHaveLength(1);
+			expect(state.nodeCredentialStates.value[0].allNodesUsingCredential).toHaveLength(2);
+			expect(state.nodeCredentialStates.value[0].allNodesUsingCredential).toContain(node1);
+			expect(state.nodeCredentialStates.value[0].allNodesUsingCredential).toContain(node2);
+		});
+
+		it('should persist cards even after parameters are filled', async () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			workflowsStore.allNodes = [node1];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			// Initial state - has parameter issues
+			expect(state.nodeCredentialStates.value).toHaveLength(1);
+
+			// Simulate parameter being filled (remove parameter issues)
+			node1.issues = { credentials: { httpHeaderAuth: ['Credential is required'] } };
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+			await nextTick();
+
+			// Card should still exist due to persistence
+			expect(state.nodeCredentialStates.value).toHaveLength(1);
+		});
+
+		it('should not create duplicate cards with credentialTypeStates', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			workflowsStore.allNodes = [node1];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			// Should only be in nodeCredentialStates, not credentialTypeStates
+			expect(state.nodeCredentialStates.value).toHaveLength(1);
+			expect(state.credentialTypeStates.value).toHaveLength(0);
+		});
+
+		it('should exclude nodes without parameters from card list', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+			const node2 = createNode({
+				name: 'HTTP Request 2',
+				type: 'n8n-nodes-base.httpRequest',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Credential' } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			workflowsStore.allNodes = [node1, node2];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			mockGetNodeParametersIssues.mockImplementation((_, node) => {
+				if (node.name === 'HTTP Request 1') return { url: ['URL is required'] };
+				return {};
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			// Only node1 has parameter issues, so only it should get a card
+			expect(state.nodeCredentialStates.value).toHaveLength(1);
+			expect(state.nodeCredentialStates.value[0].node).toBe(node1);
+		});
+
+		it('should support node-specific credential assignment via setCredential', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			workflowsStore.allNodes = [node1];
+			workflowsStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP Request 1') return node1;
+				return null;
+			});
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+			credentialsStore.getCredentialById = vi
+				.fn()
+				.mockReturnValue({ id: 'cred-1', name: 'My Credential', type: 'httpHeaderAuth' });
+
+			const state = useWorkflowSetupState();
+
+			// Set credential for specific node
+			state.setCredential('httpHeaderAuth', 'cred-1', 'HTTP Request 1');
+
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
+				name: 'HTTP Request 1',
+				properties: {
+					credentials: {
+						httpHeaderAuth: { id: 'cred-1', name: 'My Credential' },
+					},
+				},
+			});
+		});
+
+		it('should support node-specific credential removal via unsetCredential', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Credential' } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			workflowsStore.allNodes = [node1];
+			workflowsStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP Request 1') return node1;
+				return null;
+			});
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			// Unset credential for specific node
+			state.unsetCredential('httpHeaderAuth', 'HTTP Request 1');
+
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
+				name: 'HTTP Request 1',
+				properties: {
+					credentials: {},
+				},
+			});
+		});
+
+		it('should mark as complete when credential is set, tested, and all parameters are filled', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Credential' } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			workflowsStore.allNodes = [node1];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			// Node has parameter issues, so card is created
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+			credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(true);
+
+			const state = useWorkflowSetupState();
+
+			// Card exists but is incomplete due to parameter issues
+			expect(state.nodeCredentialStates.value).toHaveLength(1);
+			expect(state.nodeCredentialStates.value[0].isComplete).toBe(false);
+		});
+
+		it('should mark as incomplete when credential is not tested', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Credential' } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			workflowsStore.allNodes = [node1];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			// Node has parameter issues, so card is created
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+			credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(false);
+
+			const state = useWorkflowSetupState();
+
+			// Card exists but is incomplete due to credential not tested
+			expect(state.nodeCredentialStates.value).toHaveLength(1);
+			expect(state.nodeCredentialStates.value[0].isComplete).toBe(false);
+		});
+
+		it('should include in setupCards in execution order', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+			const trigger = createNode({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+			});
+
+			workflowsStore.allNodes = [node1, trigger];
+			mockGetNodeTypeDisplayableCredentials.mockImplementation((_, node) => {
+				mockGetNodeParametersIssues.mockImplementation((_, node) => {
+					if (node.type === 'n8n-nodes-base.httpRequest') return { url: ['URL is required'] };
+					return {};
+				});
+				if (node.type === 'n8n-nodes-base.httpRequest') return [{ name: 'httpHeaderAuth' }];
+				return [];
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+			nodeTypesStore.isTriggerNode = vi.fn((type: string) => type === 'n8n-nodes-base.webhook');
+
+			const state = useWorkflowSetupState();
+
+			expect(state.setupCards.value).toHaveLength(2);
+			const nodeCredCard = state.setupCards.value.find((c) => c.type === 'nodeCredential');
+			expect(nodeCredCard).toBeDefined();
+			expect(nodeCredCard?.state.node).toBe(node1);
 		});
 	});
 });
