@@ -1,7 +1,7 @@
 import type { SecretCompletionsResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Get, GlobalScope, Middleware, Param, RestController } from '@n8n/decorators';
+import { Get, GlobalScope, Middleware, Param, ProjectScope, RestController } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
 import { ExternalSecretsConfig } from './external-secrets.config';
@@ -21,20 +21,38 @@ export class SecretProvidersCompletionsController {
 	}
 
 	@Middleware()
-	checkFeatureFlag(_req: Request, res: Response, next: NextFunction) {
-		if (!this.config.externalSecretsForProjects) {
-			this.logger.warn('External secrets for projects feature is not enabled');
-			sendErrorResponse(
-				res,
-				new ForbiddenError('External secrets for projects feature is not enabled'),
-			);
-			return;
+	checkFeatureFlag(req: Request, res: Response, next: NextFunction) {
+		const path = req.path;
+
+		if (path.startsWith('/secrets/global')) {
+			const hasAccess =
+				this.config.externalSecretsMultipleConnections || this.config.externalSecretsForProjects;
+
+			if (!hasAccess) {
+				this.logger.warn('External secrets multiple connections feature is not enabled');
+				sendErrorResponse(
+					res,
+					new ForbiddenError('External secrets multiple connections feature is not enabled'),
+				);
+				return;
+			}
+		} else if (path.startsWith('/secrets/project/')) {
+			if (!this.config.externalSecretsForProjects) {
+				this.logger.warn('External secrets for projects feature is not enabled');
+				sendErrorResponse(
+					res,
+					new ForbiddenError('External secrets for projects feature is not enabled'),
+				);
+				return;
+			}
 		}
+
 		next();
 	}
 
 	@Get('/secrets/global')
 	@GlobalScope('externalSecret:list')
+	@ProjectScope('externalSecret:list')
 	async listGlobalSecrets(): Promise<SecretCompletionsResponse> {
 		this.logger.debug('Listing global secrets');
 		const connections = await this.connectionsService.getGlobalCompletions();
@@ -43,6 +61,7 @@ export class SecretProvidersCompletionsController {
 
 	@Get('/secrets/project/:projectId')
 	@GlobalScope('externalSecret:list')
+	@ProjectScope('externalSecret:list')
 	async listProjectSecrets(
 		_req: AuthenticatedRequest,
 		_res: Response,

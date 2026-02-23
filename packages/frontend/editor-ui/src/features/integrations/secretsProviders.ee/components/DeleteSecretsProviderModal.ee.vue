@@ -50,9 +50,9 @@ const credentialsPageUrl = computed(() => ({
 const secretsLabel = computed(() => {
 	const count = props.data.secretsCount;
 	if (count === 1) {
-		return i18n.baseText('settings.secretsProviderConnections.delete.description.oneSecret');
+		return i18n.baseText('settings.secretsProviderConnections.oneSecret');
 	}
-	return i18n.baseText('settings.secretsProviderConnections.delete.description.secrets', {
+	return i18n.baseText('settings.secretsProviderConnections.secrets', {
 		interpolate: { count: count.toString() },
 	});
 });
@@ -182,11 +182,11 @@ function onCancel() {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="secondary" @click="onCancel">
+				<N8nButton variant="subtle" @click="onCancel">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
 				<N8nButton
-					type="danger"
+					variant="destructive"
 					:disabled="!deleteEnabled"
 					:loading="isDeleting"
 					data-test-id="confirm-delete-button"

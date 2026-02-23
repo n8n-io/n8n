@@ -29,7 +29,7 @@ describe('useBackendStatus', () => {
 		settingsStore = useSettingsStore();
 		settingsStore.setSettings(
 			merge({}, defaultSettings, {
-				endpointHealth: 'internal/health',
+				endpointHealth: '/internal/health',
 			}),
 		);
 

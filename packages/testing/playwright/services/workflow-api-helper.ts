@@ -82,6 +82,26 @@ export class WorkflowApiHelper {
 		}
 	}
 
+	async update(
+		workflowId: string,
+		versionId: string,
+		data: Partial<IWorkflowBase>,
+	): Promise<IWorkflowBase> {
+		const response = await this.api.request.patch(`/rest/workflows/${workflowId}`, {
+			data: {
+				...data,
+				versionId,
+			},
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to update workflow: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
 	async deactivate(workflowId: string) {
 		const response = await this.api.request.post(`/rest/workflows/${workflowId}/deactivate`);
 
