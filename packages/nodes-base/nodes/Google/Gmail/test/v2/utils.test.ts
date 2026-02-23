@@ -5,7 +5,7 @@ import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import type { IEmail } from '@utils/sendAndWait/interfaces';
 
 import * as GenericFunctions from '../../GenericFunctions';
-import { parseRawEmail, prepareTimestamp } from '../../GenericFunctions';
+import { parseRawEmail, prepareEmailBody, prepareEmailsInput, prepareTimestamp } from '../../GenericFunctions';
 import { addThreadHeadersToEmail } from '../../v2/utils/draft';
 
 const node: INode = {
@@ -130,6 +130,86 @@ describe('parseRawEmail', () => {
 
 		// ASSERT
 		expect(typeof json.date).toBe('string');
+	});
+});
+
+describe('prepareEmailsInput', () => {
+	const executionFunctions = mock<IExecuteFunctions>({
+		getNode: jest.fn(() => mock<INode>()),
+	});
+
+	it('should handle a plain string email address', () => {
+		const result = prepareEmailsInput.call(
+			executionFunctions,
+			'test@example.com',
+			'To',
+			0,
+		);
+		expect(result).toContain('test@example.com');
+	});
+
+	it('should coerce a number to string and throw invalid email error', () => {
+		// A number like 42 does not contain '@', so it should throw
+		expect(() =>
+			prepareEmailsInput.call(executionFunctions, 42, 'To', 0),
+		).toThrow('Invalid email address');
+	});
+
+	it('should coerce a number that happens to contain @ (via toString) gracefully', () => {
+		// Even a non-string value that becomes a valid email string should work
+		const result = prepareEmailsInput.call(
+			executionFunctions,
+			'user@domain.com',
+			'To',
+			0,
+		);
+		expect(result).toContain('user@domain.com');
+	});
+});
+
+describe('prepareEmailBody', () => {
+	it('should coerce a numeric message value to string without throwing', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: jest.fn(() => mock<INode>()),
+			getNodeParameter: jest.fn((paramName: string) => {
+				if (paramName === 'emailType') return 'text';
+				if (paramName === 'message') return 42; // numeric value from expression
+				return '';
+			}),
+		});
+
+		const result = prepareEmailBody.call(executionFunctions, 0);
+		expect(result.body).toBe('42');
+		expect(result.htmlBody).toBe('');
+	});
+
+	it('should coerce null message value to empty string', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: jest.fn(() => mock<INode>()),
+			getNodeParameter: jest.fn((paramName: string) => {
+				if (paramName === 'emailType') return 'text';
+				if (paramName === 'message') return null;
+				return '';
+			}),
+		});
+
+		const result = prepareEmailBody.call(executionFunctions, 0);
+		expect(result.body).toBe('');
+		expect(result.htmlBody).toBe('');
+	});
+
+	it('should handle a normal string message', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: jest.fn(() => mock<INode>()),
+			getNodeParameter: jest.fn((paramName: string) => {
+				if (paramName === 'emailType') return 'text';
+				if (paramName === 'message') return 'Hello World';
+				return '';
+			}),
+		});
+
+		const result = prepareEmailBody.call(executionFunctions, 0);
+		expect(result.body).toBe('Hello World');
 	});
 });
 
