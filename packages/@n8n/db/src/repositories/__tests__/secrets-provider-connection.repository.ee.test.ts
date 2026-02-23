@@ -1,4 +1,6 @@
 import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
+import random from 'lodash/random';
 
 import { SecretsProviderConnection } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -13,27 +15,22 @@ describe('SecretsProviderConnectionRepository', () => {
 	});
 
 	describe('findAll', () => {
+		const createMockConnection = (
+			overrides: Partial<SecretsProviderConnection> = {},
+		): SecretsProviderConnection => {
+			return mock<SecretsProviderConnection>({
+				id: random(1, Number.MAX_SAFE_INTEGER),
+				providerKey: 'myVault',
+				type: 'vault',
+				encryptedSettings: '',
+				isEnabled: false,
+				projectAccess: [],
+				...overrides,
+			});
+		};
+
 		it('should return all secrets provider connections', async () => {
-			const mockConnections = [
-				{
-					providerKey: 'awsSecretsManager',
-					type: 'awsSecretsManager',
-					encryptedSettings: '{}',
-					isEnabled: true,
-					projectAccess: [],
-					createdAt: new Date(),
-					updatedAt: new Date(),
-				},
-				{
-					providerKey: 'vault',
-					type: 'vault',
-					encryptedSettings: '{}',
-					isEnabled: false,
-					projectAccess: [],
-					createdAt: new Date(),
-					updatedAt: new Date(),
-				},
-			];
+			const mockConnections = [createMockConnection(), createMockConnection()];
 
 			entityManager.find.mockResolvedValueOnce(mockConnections);
 

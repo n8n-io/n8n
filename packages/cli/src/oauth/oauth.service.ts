@@ -332,9 +332,9 @@ export class OauthService {
 		const toUpdate: ICredentialDataDecryptedObject = {};
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
-			const serverUrl = new URL(oauthCredentials.serverUrl);
+			const serverUrl = oauthCredentials.serverUrl.replace(/\/$/, ''); // Remove trailing slash
 			const { data } = await axios.get<unknown>(
-				`${serverUrl.origin}/.well-known/oauth-authorization-server`,
+				`${serverUrl}/.well-known/oauth-authorization-server`,
 			);
 			const metadataValidation = oAuthAuthorizationServerMetadataSchema.safeParse(data);
 			if (!metadataValidation.success) {

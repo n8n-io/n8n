@@ -12,10 +12,12 @@ import type { Project, User, ListQueryDb } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
+import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
 import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { SecuritySettingsService } from '@/services/security-settings.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
 
@@ -1203,6 +1205,152 @@ describe('PUT /credentials/:id/share', () => {
 		const testShare = shares.find((s) => s.projectId === testProject.id);
 		expect(testShare).not.toBeUndefined();
 		expect(testShare?.role).toBe('credential:user');
+	});
+});
+
+describe('PUT /credentials/:id/share - split share/unshare scopes', () => {
+	test('should allow owner to add new shares (share operation)', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+
+		const response = await authMemberAgent
+			.put(`/credentials/${savedCredential.id}/share`)
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
+			where: { credentialsId: savedCredential.id },
+		});
+		expect(sharedCredentials).toHaveLength(2);
+	});
+
+	test('should allow owner to remove existing shares (unshare operation)', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+		await shareCredentialWithUsers(savedCredential, [anotherMember]);
+
+		// Verify initial state: owner + 1 shared
+		const initialSharing = await Container.get(SharedCredentialsRepository).find({
+			where: { credentialsId: savedCredential.id },
+		});
+		expect(initialSharing).toHaveLength(2);
+
+		// Send empty shareWithIds to remove all shares
+		const response = await authMemberAgent
+			.put(`/credentials/${savedCredential.id}/share`)
+			.send({ shareWithIds: [] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
+			where: { credentialsId: savedCredential.id },
+		});
+		expect(sharedCredentials).toHaveLength(1);
+	});
+
+	test('should allow both share and unshare in a single request', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		await shareCredentialWithUsers(savedCredential, [member]);
+
+		// Replace member with anotherMember
+		const response = await authOwnerAgent
+			.put(`/credentials/${savedCredential.id}/share`)
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
+			where: { credentialsId: savedCredential.id },
+		});
+		expect(sharedCredentials).toHaveLength(2);
+		const projectIds = sharedCredentials.map((sc) => sc.projectId);
+		expect(projectIds).toContain(anotherMemberPersonalProject.id);
+		expect(projectIds).not.toContain(memberPersonalProject.id);
+	});
+
+	describe('personal space sharing disabled', () => {
+		let securitySettingsService: SecuritySettingsService;
+
+		beforeEach(async () => {
+			securitySettingsService = Container.get(SecuritySettingsService);
+		});
+
+		test('should forbid adding new shares when personal space sharing is disabled', async () => {
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, false);
+
+			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+
+			const response = await authMemberAgent
+				.put(`/credentials/${savedCredential.id}/share`)
+				.send({ shareWithIds: [anotherMemberPersonalProject.id] });
+
+			expect(response.statusCode).toBe(403);
+
+			const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
+				where: { credentialsId: savedCredential.id },
+			});
+			expect(sharedCredentials).toHaveLength(1);
+
+			// Re-enable for cleanup
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, true);
+		});
+
+		test('should allow removing existing shares when personal space sharing is disabled', async () => {
+			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+			await shareCredentialWithUsers(savedCredential, [anotherMember]);
+
+			// Verify initial state
+			const initialSharing = await Container.get(SharedCredentialsRepository).find({
+				where: { credentialsId: savedCredential.id },
+			});
+			expect(initialSharing).toHaveLength(2);
+
+			// Disable personal space sharing
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, false);
+
+			// Unshare should still work
+			const response = await authMemberAgent
+				.put(`/credentials/${savedCredential.id}/share`)
+				.send({ shareWithIds: [] });
+
+			expect(response.statusCode).toBe(200);
+
+			const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
+				where: { credentialsId: savedCredential.id },
+			});
+			expect(sharedCredentials).toHaveLength(1);
+
+			// Re-enable for cleanup
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, true);
+		});
+
+		test('should forbid mixed share+unshare when user lacks share scope', async () => {
+			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+			await shareCredentialWithUsers(savedCredential, [anotherMember]);
+
+			// Disable sharing
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, false);
+
+			const tempUser = await createUser({ role: { slug: 'global:member' } });
+			const tempUserPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+				tempUser.id,
+			);
+
+			// Try to unshare anotherMember AND share tempUser - should fail because of share
+			const response = await authMemberAgent
+				.put(`/credentials/${savedCredential.id}/share`)
+				.send({ shareWithIds: [tempUserPersonalProject.id] });
+
+			expect(response.statusCode).toBe(403);
+
+			// State should be unchanged
+			const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
+				where: { credentialsId: savedCredential.id },
+			});
+			expect(sharedCredentials).toHaveLength(2);
+
+			// Re-enable for cleanup
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, true);
+		});
 	});
 });
 

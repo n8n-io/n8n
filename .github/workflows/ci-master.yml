@@ -12,9 +12,13 @@ jobs:
   build-github:
     name: Build for Github Cache
     runs-on: ubuntu-latest
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
+      BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
+      BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
 
@@ -22,12 +26,13 @@ jobs:
     name: Unit tests
     uses: ./.github/workflows/test-unit-reusable.yml
     strategy:
+      fail-fast: false
       matrix:
-        node-version: [20.x, 22.x, 24.3.x]
+        node-version: [22.x, 24.13.1, 25.x]
     with:
       ref: ${{ github.sha }}
       nodeVersion: ${{ matrix.node-version }}
-      collectCoverage: ${{ matrix.node-version == '22.x' }}
+      collectCoverage: ${{ matrix.node-version == '24.13.1' }}
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}

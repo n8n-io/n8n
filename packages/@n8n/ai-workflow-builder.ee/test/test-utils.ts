@@ -10,6 +10,11 @@ import type {
 	IConnection,
 	NodeConnectionType,
 	INodeListSearchResult,
+	IRunData,
+	ITaskDataConnections,
+	NodeExecutionSchema,
+	Schema,
+	IDataObject,
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
@@ -414,6 +419,124 @@ export const setupWorkflowState = (
 		messages: [],
 		previousSummary: 'EMPTY',
 	});
+};
+
+// ========== Execution Data Builders ==========
+
+// Build run data entry from simple JSON data
+export interface MockRunDataEntry {
+	json: Record<string, unknown>;
+	startTime?: number;
+	executionTime?: number;
+}
+
+// Create mock run data from simplified entries
+export const createMockRunData = (entries: Record<string, MockRunDataEntry[]>): IRunData => {
+	const runData: IRunData = {};
+	let executionIndex = 0;
+	for (const [nodeName, items] of Object.entries(entries)) {
+		runData[nodeName] = [
+			{
+				data: {
+					main: [items.map((item) => ({ json: item.json }))] as ITaskDataConnections['main'],
+				},
+				startTime: items[0]?.startTime ?? Date.now(),
+				executionTime: items[0]?.executionTime ?? 100,
+				executionIndex: executionIndex++,
+				source: [null],
+			},
+		];
+	}
+	return runData;
+};
+
+// Create mock execution schema from simplified entries
+export interface MockNodeSchema {
+	nodeName: string;
+	schema: Schema;
+}
+
+export const createMockExecutionSchema = (nodeSchemas: MockNodeSchema[]): NodeExecutionSchema[] => {
+	return nodeSchemas.map(({ nodeName, schema }) => ({
+		nodeName,
+		schema,
+	}));
+};
+
+// Helper to create a Schema object for testing
+export const createMockSchema = (
+	type: Schema['type'],
+	path: string,
+	value: Schema['value'],
+	key?: string,
+): Schema => ({
+	type,
+	path,
+	value,
+	...(key && { key }),
+});
+
+// Generate large test data for truncation tests
+export const createLargeTestData = (itemCount = 100, fieldValueSize = 30): IDataObject[] => {
+	return Array.from({ length: itemCount }, (_, i) => ({
+		id: i,
+		field: 'x'.repeat(fieldValueSize) + String(i),
+		extra: 'y'.repeat(fieldValueSize),
+	}));
+};
+
+// ========== Extended Workflow State Setup ==========
+
+export interface ExecutionDataOptions {
+	runData?: IRunData;
+	lastNodeExecuted?: string;
+	error?: { message: string; description?: string };
+}
+
+export interface ExpressionValueTestData {
+	expression: string;
+	resolvedValue: unknown;
+	nodeType?: string;
+}
+
+export interface WorkflowStateOptions {
+	workflow: SimpleWorkflow;
+	executionData?: ExecutionDataOptions;
+	executionSchema?: NodeExecutionSchema[];
+	expressionValues?: Record<string, ExpressionValueTestData[]>;
+}
+
+// Setup workflow state with execution context (extended version)
+export const setupWorkflowStateWithContext = (
+	mockGetCurrentTaskInput: jest.MockedFunction<typeof getCurrentTaskInput>,
+	options: WorkflowStateOptions,
+) => {
+	mockGetCurrentTaskInput.mockReturnValue({
+		workflowJSON: options.workflow,
+		workflowOperations: null,
+		workflowContext: {
+			executionData: options.executionData ?? null,
+			executionSchema: options.executionSchema ?? null,
+			expressionValues: options.expressionValues ?? null,
+		},
+		workflowValidation: null,
+		messages: [],
+		previousSummary: 'EMPTY',
+	});
+};
+
+// ========== AI Workflow Helpers ==========
+
+// Setup AI connections on workflow (e.g., model -> agent)
+export const setupAIWorkflowConnections = (
+	workflow: SimpleWorkflow,
+	modelNodeName: string,
+	agentNodeName: string,
+	connectionType: NodeConnectionType = 'ai_languageModel',
+) => {
+	workflow.connections[modelNodeName] = {
+		[connectionType]: [[{ node: agentNodeName, type: connectionType, index: 0 }]],
+	};
 };
 
 // ========== Common Tool Assertions ==========

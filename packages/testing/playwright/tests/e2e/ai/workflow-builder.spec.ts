@@ -30,11 +30,15 @@ test.use({
 	},
 });
 
-test.describe('Workflow Builder @auth:owner @ai @capability:proxy', () => {
-	test.beforeEach(async ({ setupRequirements, proxyServer }) => {
+test.describe('Workflow Builder @auth:owner @ai @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
+	test.beforeEach(async ({ setupRequirements, services }) => {
 		await setupRequirements(workflowBuilderEnabledRequirements);
-		await proxyServer.clearAllExpectations();
-		await proxyServer.loadExpectations('workflow-builder');
+		await services.proxy.clearAllExpectations();
+		await services.proxy.loadExpectations('workflow-builder');
 	});
 
 	test('should show Build with AI button on empty canvas', async ({ n8n }) => {

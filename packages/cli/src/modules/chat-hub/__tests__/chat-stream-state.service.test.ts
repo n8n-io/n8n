@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionsConfig, GlobalConfig } from '@n8n/config';
+import type { ChatHubConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -13,6 +13,7 @@ describe('ChatStreamStateService', () => {
 	const instanceSettings = mock<InstanceSettings>();
 	const executionsConfig = mock<ExecutionsConfig>();
 	const globalConfig = mock<GlobalConfig>();
+	const chatHubConfig = mock<ChatHubConfig>();
 	const redisClientService = mock<RedisClientService>();
 
 	beforeEach(() => {
@@ -22,6 +23,8 @@ describe('ChatStreamStateService', () => {
 		Object.defineProperty(instanceSettings, 'isMultiMain', { value: false, configurable: true });
 		executionsConfig.mode = 'regular';
 		globalConfig.redis = { prefix: 'n8n' } as GlobalConfig['redis'];
+		chatHubConfig.streamStateTtl = 300;
+		chatHubConfig.maxBufferedChunks = 1000;
 	});
 
 	afterEach(() => {
@@ -37,6 +40,7 @@ describe('ChatStreamStateService', () => {
 				instanceSettings,
 				executionsConfig,
 				globalConfig,
+				chatHubConfig,
 				redisClientService,
 			);
 		});
@@ -340,7 +344,7 @@ describe('ChatStreamStateService', () => {
 	describe('Redis mode (multi-main)', () => {
 		const mockRedisClient = {
 			get: jest.fn(),
-			setex: jest.fn(),
+			set: jest.fn(),
 			del: jest.fn(),
 			disconnect: jest.fn(),
 		};
@@ -360,6 +364,7 @@ describe('ChatStreamStateService', () => {
 				instanceSettings,
 				executionsConfig,
 				globalConfig,
+				chatHubConfig,
 				redisClientService,
 			);
 
@@ -377,6 +382,7 @@ describe('ChatStreamStateService', () => {
 				instanceSettings,
 				executionsConfig,
 				globalConfig,
+				chatHubConfig,
 				redisClientService,
 			);
 
@@ -392,21 +398,24 @@ describe('ChatStreamStateService', () => {
 					instanceSettings,
 					executionsConfig,
 					globalConfig,
+					chatHubConfig,
 					redisClientService,
 				);
 
 				await service.startExecution({ sessionId: 'session-1', userId: 'user-1' });
 
-				expect(mockRedisClient.setex).toHaveBeenCalledWith(
-					'n8n:chat-stream:state:session-1',
-					300,
+				expect(mockRedisClient.set).toHaveBeenCalledWith(
+					'n8n:chat-hub:stream:state:session-1',
 					expect.stringContaining('"sessionId":"session-1"'),
+					'EX',
+					300,
 				);
 
-				expect(mockRedisClient.setex).toHaveBeenCalledWith(
-					'n8n:chat-stream:chunks:session-1',
-					300,
+				expect(mockRedisClient.set).toHaveBeenCalledWith(
+					'n8n:chat-hub:stream:chunks:session-1',
 					'[]',
+					'EX',
+					300,
 				);
 
 				service.shutdown();
@@ -420,13 +429,14 @@ describe('ChatStreamStateService', () => {
 					instanceSettings,
 					executionsConfig,
 					globalConfig,
+					chatHubConfig,
 					redisClientService,
 				);
 
 				await service.endExecution('session-1');
 
-				expect(mockRedisClient.del).toHaveBeenCalledWith('n8n:chat-stream:state:session-1');
-				expect(mockRedisClient.del).toHaveBeenCalledWith('n8n:chat-stream:chunks:session-1');
+				expect(mockRedisClient.del).toHaveBeenCalledWith('n8n:chat-hub:stream:state:session-1');
+				expect(mockRedisClient.del).toHaveBeenCalledWith('n8n:chat-hub:stream:chunks:session-1');
 
 				service.shutdown();
 			});
@@ -448,12 +458,13 @@ describe('ChatStreamStateService', () => {
 					instanceSettings,
 					executionsConfig,
 					globalConfig,
+					chatHubConfig,
 					redisClientService,
 				);
 
 				const state = await service.getStreamState('session-1');
 
-				expect(mockRedisClient.get).toHaveBeenCalledWith('n8n:chat-stream:state:session-1');
+				expect(mockRedisClient.get).toHaveBeenCalledWith('n8n:chat-hub:stream:state:session-1');
 				expect(state).toEqual(mockState);
 
 				service.shutdown();
@@ -467,6 +478,7 @@ describe('ChatStreamStateService', () => {
 					instanceSettings,
 					executionsConfig,
 					globalConfig,
+					chatHubConfig,
 					redisClientService,
 				);
 
@@ -484,13 +496,14 @@ describe('ChatStreamStateService', () => {
 					instanceSettings,
 					executionsConfig,
 					globalConfig,
+					chatHubConfig,
 					redisClientService,
 				);
 
 				const state = await service.getStreamState('session-1');
 
 				expect(state).toBeNull();
-				expect(logger.error).toHaveBeenCalledWith(
+				expect(logger.warn).toHaveBeenCalledWith(
 					'Failed to get Redis state for session session-1',
 					expect.any(Object),
 				);
@@ -515,16 +528,18 @@ describe('ChatStreamStateService', () => {
 					instanceSettings,
 					executionsConfig,
 					globalConfig,
+					chatHubConfig,
 					redisClientService,
 				);
 
 				const seq = await service.incrementSequence('session-1');
 
 				expect(seq).toBe(6);
-				expect(mockRedisClient.setex).toHaveBeenCalledWith(
-					'n8n:chat-stream:state:session-1',
-					300,
+				expect(mockRedisClient.set).toHaveBeenCalledWith(
+					'n8n:chat-hub:stream:state:session-1',
 					expect.stringContaining('"sequenceNumber":6'),
+					'EX',
+					300,
 				);
 
 				service.shutdown();
@@ -538,6 +553,7 @@ describe('ChatStreamStateService', () => {
 					instanceSettings,
 					executionsConfig,
 					globalConfig,
+					chatHubConfig,
 					redisClientService,
 				);
 
@@ -559,18 +575,20 @@ describe('ChatStreamStateService', () => {
 					instanceSettings,
 					executionsConfig,
 					globalConfig,
+					chatHubConfig,
 					redisClientService,
 				);
 
 				await service.bufferChunk('session-1', { sequenceNumber: 2, content: 'b' });
 
-				expect(mockRedisClient.setex).toHaveBeenCalledWith(
-					'n8n:chat-stream:chunks:session-1',
-					300,
+				expect(mockRedisClient.set).toHaveBeenCalledWith(
+					'n8n:chat-hub:stream:chunks:session-1',
 					JSON.stringify([
 						{ sequenceNumber: 1, content: 'a' },
 						{ sequenceNumber: 2, content: 'b' },
 					]),
+					'EX',
+					300,
 				);
 
 				service.shutdown();
@@ -588,15 +606,16 @@ describe('ChatStreamStateService', () => {
 					instanceSettings,
 					executionsConfig,
 					globalConfig,
+					chatHubConfig,
 					redisClientService,
 				);
 
 				await service.bufferChunk('session-1', { sequenceNumber: 1001, content: 'new' });
 
-				const setexCall = mockRedisClient.setex.mock.calls.find(
-					(call) => call[0] === 'n8n:chat-stream:chunks:session-1',
+				const setCall = mockRedisClient.set.mock.calls.find(
+					(call) => call[0] === 'n8n:chat-hub:stream:chunks:session-1',
 				);
-				const savedChunks = JSON.parse(setexCall![2]);
+				const savedChunks = JSON.parse(setCall![1]);
 				expect(savedChunks.length).toBe(1000);
 				expect(savedChunks[0].sequenceNumber).toBe(2);
 				expect(savedChunks[999].sequenceNumber).toBe(1001);
@@ -620,6 +639,7 @@ describe('ChatStreamStateService', () => {
 					instanceSettings,
 					executionsConfig,
 					globalConfig,
+					chatHubConfig,
 					redisClientService,
 				);
 
@@ -641,6 +661,7 @@ describe('ChatStreamStateService', () => {
 					instanceSettings,
 					executionsConfig,
 					globalConfig,
+					chatHubConfig,
 					redisClientService,
 				);
 

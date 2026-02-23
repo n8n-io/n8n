@@ -9,7 +9,8 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { getConnectedTools, getPromptInputByType, isChatInstance } from '@utils/helpers';
+import { isChatInstance } from '@n8n/ai-utilities';
+import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
 import { getTracingConfig } from '@utils/tracing';

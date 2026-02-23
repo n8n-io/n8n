@@ -7,8 +7,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { logWrapper, N8nJsonLoader } from '@n8n/ai-utilities';
+
 import { getConnectionHintNoticeField, metadataFilterField } from '@utils/sharedFields';
 
 export class DocumentJsonInputLoader implements INodeType {
@@ -50,6 +50,11 @@ export class DocumentJsonInputLoader implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
+		builderHint: {
+			inputs: {
+				ai_textSplitter: { required: false },
+			},
+		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{

@@ -92,6 +92,10 @@ describe('getStatus', () => {
 		sourceControlImportService.getRemoteProjectsFromFiles.mockResolvedValue([]);
 		sourceControlImportService.getLocalTeamProjectsFromDb.mockResolvedValue([]);
 
+		// data tables
+		sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
+		sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
+
 		// repositories
 		tagRepository.find.mockResolvedValue([]);
 		folderRepository.find.mockResolvedValue([]);
@@ -832,21 +836,57 @@ describe('getStatus', () => {
 	});
 
 	describe('workflows', () => {
-		describe('owner changes', () => {
-			const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+		const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
 
-			const createWorkflow = (
-				overrides: Partial<SourceControlWorkflowVersionId> = {},
-			): SourceControlWorkflowVersionId => ({
-				id: 'wf1',
-				name: 'Test Workflow',
-				versionId: 'version1',
-				filename: 'workflows/wf1.json',
-				parentFolderId: 'folder1',
-				updatedAt: '2023-07-10T10:10:59.000Z',
-				...overrides,
+		const createWorkflow = (
+			overrides: Partial<SourceControlWorkflowVersionId> = {},
+		): SourceControlWorkflowVersionId => ({
+			id: 'wf1',
+			name: 'Test Workflow',
+			versionId: 'version1',
+			filename: 'workflows/wf1.json',
+			parentFolderId: 'folder1',
+			updatedAt: '2023-07-10T10:10:59.000Z',
+			...overrides,
+		});
+
+		describe('missing workflows (verbose)', () => {
+			it('should include workflows missing in local', async () => {
+				const remote = createWorkflow({ id: 'wf-remote', filename: 'workflows/wf-remote.json' });
+
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([remote]);
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([]);
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				expect(result.wfMissingInLocal).toMatchObject([remote]);
+				expect(result.sourceControlledFiles).toHaveLength(1);
 			});
 
+			it('should include workflows missing in remote', async () => {
+				const local = createWorkflow({ id: 'wf-local', filename: 'workflows/wf-local.json' });
+
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([]);
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([local]);
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				expect(result.wfMissingInRemote).toMatchObject([local]);
+				expect(result.sourceControlledFiles).toHaveLength(1);
+			});
+		});
+
+		describe('owner changes', () => {
 			describe('team project ownership changes (detected)', () => {
 				it('should detect when team project changes', async () => {
 					const local = createWorkflow({
@@ -1578,167 +1618,768 @@ describe('getStatus', () => {
 			});
 			expect(result.mappingsMissingInRemote).toHaveLength(0);
 		});
+	});
 
-		it('should correctly match mappings by both tagId and workflowId', async () => {
-			const tag1 = mock<TagEntity>({ id: 'tag1', name: 'Tag 1', updatedAt: new Date() });
-			const tag2 = mock<TagEntity>({ id: 'tag2', name: 'Tag 2', updatedAt: new Date() });
-			tagRepository.find.mockResolvedValue([tag1, tag2]);
-
-			// Remote
-			sourceControlImportService.getRemoteTagsAndMappingsFromFile.mockResolvedValue({
-				tags: [tag1, tag2],
-				mappings: [
-					{ tagId: 'tag1', workflowId: 'wf1' },
-					{ tagId: 'tag2', workflowId: 'wf2' },
-				],
+	describe('data tables', () => {
+		it('should handle undefined data tables from remote (null safety)', async () => {
+			// ARRANGE
+			const user = mock<User>({
+				id: '1',
+				role: GLOBAL_ADMIN_ROLE,
 			});
 
-			// Local
-			sourceControlImportService.getLocalTagsAndMappingsFromDb.mockResolvedValue({
-				tags: [tag1, tag2],
-				mappings: [
-					{ tagId: 'tag1', workflowId: 'wf1' },
-					{ tagId: 'tag1', workflowId: 'wf2' },
-				],
-			});
+			// Mock undefined data tables from remote
+			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue(undefined as any);
+			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
 
+			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
 				direction: 'push',
 				verbose: true,
 				preferLocalVersion: false,
 			});
 
-			if (Array.isArray(result)) {
-				fail('Expected result to be an object.');
-			}
-
-			// Should detect changes:
-			// - tag2 mapping with wf2 exists remote but not local (mappingsMissingInLocal)
-			expect(result.mappingsMissingInLocal).toHaveLength(1);
-			expect(result.mappingsMissingInLocal[0]).toMatchObject({
-				tagId: 'tag2',
-				workflowId: 'wf2',
-			});
-
-			// - tag1 mapping with wf2 exists local but not remote (mappingsMissingInRemote)
-			expect(result.mappingsMissingInRemote).toHaveLength(1);
-			expect(result.mappingsMissingInRemote[0]).toMatchObject({
-				tagId: 'tag1',
-				workflowId: 'wf2',
-			});
-
-			// The first mapping (tag1 + wf1) should match on both sides
+			// ASSERT
+			if (Array.isArray(result)) fail('Expected result to be an object.');
+			const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
+			expect(dataTableFiles).toHaveLength(0);
 		});
 
-		it('should not detect changes when mappings are identical', async () => {
-			const tag = mock<TagEntity>({ id: 'tag1', name: 'Test Tag', updatedAt: new Date() });
-			tagRepository.find.mockResolvedValue([tag]);
+		it('should handle undefined data tables from local (null safety)', async () => {
+			// ARRANGE
+			const user = mock<User>({
+				id: '1',
+				role: GLOBAL_ADMIN_ROLE,
+			});
 
-			const identicalMappings = [
-				{ tagId: 'tag1', workflowId: 'wf1' },
-				{ tagId: 'tag1', workflowId: 'wf2' },
+			// Mock undefined data tables from local
+			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
+			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue(undefined as any);
+
+			// ACT
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			if (Array.isArray(result)) fail('Expected result to be an object.');
+			const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
+			expect(dataTableFiles).toHaveLength(0);
+		});
+
+		it('should handle both data tables undefined (null safety)', async () => {
+			// ARRANGE
+			const user = mock<User>({
+				id: '1',
+				role: GLOBAL_ADMIN_ROLE,
+			});
+
+			// Mock both undefined
+			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue(undefined as any);
+			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue(undefined as any);
+
+			// ACT
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			if (Array.isArray(result)) fail('Expected result to be an object.');
+			const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
+			expect(dataTableFiles).toHaveLength(0);
+		});
+
+		it('should identify data tables missing in local (remote only)', async () => {
+			// ARRANGE
+			const user = mock<User>({
+				id: '1',
+				role: GLOBAL_ADMIN_ROLE,
+			});
+
+			const remoteDataTable = {
+				id: 'dt1',
+				name: 'Remote Data Table',
+				projectId: 'project1',
+				ownedBy: null,
+				filename: 'test.json',
+				columns: [],
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			};
+
+			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
+
+			// ACT
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			if (Array.isArray(result)) fail('Expected result to be an object.');
+			const dataTableFile = result.sourceControlledFiles.find(
+				(f) => f.type === 'datatable' && f.id === 'dt1',
+			);
+			expect(dataTableFile).toBeDefined();
+			expect(dataTableFile?.status).toBe('deleted');
+			expect(dataTableFile?.location).toBe('local');
+		});
+
+		it('should identify data tables missing in remote (local only)', async () => {
+			// ARRANGE
+			const user = mock<User>({
+				id: '1',
+				role: GLOBAL_ADMIN_ROLE,
+			});
+
+			const localDataTable = {
+				id: 'dt2',
+				name: 'Local Data Table',
+				projectId: 'project1',
+				ownedBy: null,
+				filename: 'test.json',
+				columns: [],
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			};
+
+			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
+			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+			// ACT
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			if (Array.isArray(result)) fail('Expected result to be an object.');
+			const dataTableFile = result.sourceControlledFiles.find(
+				(f) => f.type === 'datatable' && f.id === 'dt2',
+			);
+			expect(dataTableFile).toBeDefined();
+			expect(dataTableFile?.status).toBe('created');
+			expect(dataTableFile?.location).toBe('local');
+		});
+
+		it('should identify modified data tables (name changed)', async () => {
+			// ARRANGE
+			const user = mock<User>({
+				id: '1',
+				role: GLOBAL_ADMIN_ROLE,
+			});
+
+			const localDataTable = {
+				id: 'dt3',
+				name: 'Local Name',
+				projectId: 'project1',
+				ownedBy: null,
+				filename: 'test.json',
+				columns: [],
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			};
+
+			const remoteDataTable = {
+				id: 'dt3',
+				name: 'Remote Name',
+				projectId: 'project1',
+				ownedBy: null,
+				filename: 'test.json',
+				columns: [],
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			};
+
+			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+			// ACT
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			if (Array.isArray(result)) fail('Expected result to be an object.');
+			const dataTableFile = result.sourceControlledFiles.find(
+				(f) => f.type === 'datatable' && f.id === 'dt3',
+			);
+			expect(dataTableFile).toBeDefined();
+			expect(dataTableFile?.status).toBe('modified');
+		});
+
+		it('should not detect modifications when data tables are identical', async () => {
+			// ARRANGE
+			const user = mock<User>({
+				id: '1',
+				role: GLOBAL_ADMIN_ROLE,
+			});
+
+			const dataTable = {
+				id: 'dt4',
+				name: 'Identical Table',
+				projectId: 'project1',
+				ownedBy: null,
+				filename: 'test.json',
+				columns: [],
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			};
+
+			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([dataTable]);
+			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([dataTable]);
+
+			// ACT
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			if (Array.isArray(result)) fail('Expected result to be an object.');
+			const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
+			expect(dataTableFiles).toHaveLength(0);
+		});
+
+		it('should handle multiple data tables with mixed states', async () => {
+			// ARRANGE
+			const user = mock<User>({
+				id: '1',
+				role: GLOBAL_ADMIN_ROLE,
+			});
+
+			const localDataTables = [
+				{
+					id: 'dt5',
+					name: 'Local Only',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				},
+				{
+					id: 'dt6',
+					name: 'Modified Local',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				},
+				{
+					id: 'dt7',
+					name: 'Unchanged',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				},
 			];
 
-			sourceControlImportService.getRemoteTagsAndMappingsFromFile.mockResolvedValue({
-				tags: [tag],
-				mappings: identicalMappings,
-			});
+			const remoteDataTables = [
+				{
+					id: 'dt6',
+					name: 'Modified Remote',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				},
+				{
+					id: 'dt7',
+					name: 'Unchanged',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				},
+				{
+					id: 'dt8',
+					name: 'Remote Only',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				},
+			];
 
-			sourceControlImportService.getLocalTagsAndMappingsFromDb.mockResolvedValue({
-				tags: [tag],
-				mappings: identicalMappings,
-			});
+			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue(remoteDataTables);
+			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue(localDataTables);
 
+			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
 				direction: 'push',
 				verbose: true,
 				preferLocalVersion: false,
 			});
 
-			if (Array.isArray(result)) {
-				fail('Expected result to be an object in verbose mode.');
-			}
+			// ASSERT
+			if (Array.isArray(result)) fail('Expected result to be an object.');
+			const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
 
-			// Should not detect any mapping changes
-			expect(result.mappingsMissingInLocal).toHaveLength(0);
-			expect(result.mappingsMissingInRemote).toHaveLength(0);
+			// Should have: dt5 (created), dt6 (modified), dt8 (deleted)
+			expect(dataTableFiles).toHaveLength(3);
+
+			const createdFile = dataTableFiles.find((f) => f.id === 'dt5');
+			expect(createdFile?.status).toBe('created');
+
+			const modifiedFile = dataTableFiles.find((f) => f.id === 'dt6');
+			expect(modifiedFile?.status).toBe('modified');
+
+			const deletedFile = dataTableFiles.find((f) => f.id === 'dt8');
+			expect(deletedFile?.status).toBe('deleted');
 		});
 
-		it('should add tags file to sourceControlledFiles when only mappings change (push)', async () => {
-			const tag = mock<TagEntity>({ id: 'tag1', name: 'Test Tag', updatedAt: new Date() });
-			tagRepository.find.mockResolvedValue([tag]);
-
-			// Remote
-			sourceControlImportService.getRemoteTagsAndMappingsFromFile.mockResolvedValue({
-				tags: [tag],
-				mappings: [{ tagId: 'tag1', workflowId: 'wf1' }],
+		describe('schema change detection', () => {
+			const user = mock<User>({
+				id: '1',
+				role: GLOBAL_ADMIN_ROLE,
 			});
 
-			// Local: tag removed
-			sourceControlImportService.getLocalTagsAndMappingsFromDb.mockResolvedValue({
-				tags: [tag], // Tag still present
-				mappings: [], // Mapping gone
+			it('should detect column addition', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-1',
+					name: 'Schema Test',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+						{ id: 'col3', name: 'Column 3', type: 'boolean', index: 2 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteDataTable = {
+					id: 'dt-schema-1',
+					name: 'Schema Test',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteDataTable,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFile = result.sourceControlledFiles.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-schema-1',
+				);
+				expect(dataTableFile).toBeDefined();
+				expect(dataTableFile?.status).toBe('modified');
 			});
 
-			const result = await sourceControlStatusService.getStatus(user, {
-				direction: 'push',
-				verbose: false,
-				preferLocalVersion: false,
+			it('should detect column deletion', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-2',
+					name: 'Schema Test',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteDataTable = {
+					id: 'dt-schema-2',
+					name: 'Schema Test',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteDataTable,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFile = result.sourceControlledFiles.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-schema-2',
+				);
+				expect(dataTableFile).toBeDefined();
+				expect(dataTableFile?.status).toBe('modified');
 			});
 
-			if (!Array.isArray(result)) {
-				fail('Expected result to be an array in non-verbose mode.');
-			}
+			it('should detect column type change', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-3',
+					name: 'Schema Test',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'number', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'string', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
 
-			// Should have a tags entry in sourceControlledFiles
-			const tagsFiles = result.filter((f) => f.type === 'tags');
-			expect(tagsFiles).toHaveLength(1);
-			expect(tagsFiles[0]).toMatchObject({
-				id: 'tags',
-				name: 'Workflow Tags',
-				type: 'tags',
-				status: 'modified',
-				location: 'local',
-				conflict: false,
+				const remoteDataTable = {
+					id: 'dt-schema-3',
+					name: 'Schema Test',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'string', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteDataTable,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFile = result.sourceControlledFiles.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-schema-3',
+				);
+				expect(dataTableFile).toBeDefined();
+				expect(dataTableFile?.status).toBe('modified');
 			});
-		});
 
-		it('should add tags file to sourceControlledFiles when only mappings change (pull)', async () => {
-			const tag = mock<TagEntity>({ id: 'tag1', name: 'Test Tag', updatedAt: new Date() });
-			tagRepository.find.mockResolvedValue([tag]);
+			it('should detect column name change', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-4',
+					name: 'Schema Test',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [
+						{ id: 'col1', name: 'Updated Column Name', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
 
-			// Remote
-			sourceControlImportService.getRemoteTagsAndMappingsFromFile.mockResolvedValue({
-				tags: [tag],
-				mappings: [],
+				const remoteDataTable = {
+					id: 'dt-schema-4',
+					name: 'Schema Test',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteDataTable,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFile = result.sourceControlledFiles.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-schema-4',
+				);
+				expect(dataTableFile).toBeDefined();
+				expect(dataTableFile?.status).toBe('modified');
 			});
 
-			// Local
-			sourceControlImportService.getLocalTagsAndMappingsFromDb.mockResolvedValue({
-				tags: [tag],
-				mappings: [{ tagId: 'tag1', workflowId: 'wf1' }],
+			it('should detect column reordering (index change)', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-5',
+					name: 'Schema Test',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 1 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 0 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteDataTable = {
+					id: 'dt-schema-5',
+					name: 'Schema Test',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteDataTable,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFile = result.sourceControlledFiles.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-schema-5',
+				);
+				expect(dataTableFile).toBeDefined();
+				expect(dataTableFile?.status).toBe('modified');
 			});
 
-			const result = await sourceControlStatusService.getStatus(user, {
-				direction: 'pull',
-				verbose: false,
-				preferLocalVersion: false,
+			it('should not detect modifications when schemas are identical', async () => {
+				// ARRANGE
+				const dataTable = {
+					id: 'dt-schema-6',
+					name: 'Schema Test',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+						{ id: 'col3', name: 'Column 3', type: 'boolean', index: 2 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([dataTable]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([dataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
+				expect(dataTableFiles).toHaveLength(0);
 			});
 
-			if (!Array.isArray(result)) {
-				fail('Expected result to be an array');
-			}
+			it('should detect combined changes (name and schema)', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-7',
+					name: 'Updated Name',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+						{ id: 'col3', name: 'New Column', type: 'boolean', index: 2 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
 
-			// Should have a tags entry in sourceControlledFiles
-			const tagsFiles = result.filter((f) => f.type === 'tags');
-			expect(tagsFiles).toHaveLength(1);
-			expect(tagsFiles[0]).toMatchObject({
-				id: 'tags',
-				name: 'Workflow Tags',
-				type: 'tags',
-				status: 'modified',
-				location: 'remote',
-				conflict: true,
+				const remoteDataTable = {
+					id: 'dt-schema-7',
+					name: 'Original Name',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteDataTable,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFile = result.sourceControlledFiles.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-schema-7',
+				);
+				expect(dataTableFile).toBeDefined();
+				expect(dataTableFile?.status).toBe('modified');
+			});
+
+			it('should handle empty columns arrays correctly', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-8',
+					name: 'Empty Columns',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteDataTable = {
+					id: 'dt-schema-8',
+					name: 'Empty Columns',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteDataTable,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
+				expect(dataTableFiles).toHaveLength(0);
+			});
+
+			it('should detect when one has empty columns and other has columns', async () => {
+				// ARRANGE
+				const localDataTable = {
+					id: 'dt-schema-9',
+					name: 'Schema Test',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const remoteDataTable = {
+					id: 'dt-schema-9',
+					name: 'Schema Test',
+					projectId: 'project1',
+					ownedBy: null,
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteDataTable,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (Array.isArray(result)) fail('Expected result to be an object.');
+				const dataTableFile = result.sourceControlledFiles.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-schema-9',
+				);
+				expect(dataTableFile).toBeDefined();
+				expect(dataTableFile?.status).toBe('modified');
 			});
 		});
 	});

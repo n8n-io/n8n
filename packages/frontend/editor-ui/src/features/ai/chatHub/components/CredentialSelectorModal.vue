@@ -124,10 +124,10 @@ function onCancel() {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="tertiary" @click="onCancel">
+				<N8nButton variant="subtle" @click="onCancel">
 					{{ i18n.baseText('chatHub.credentials.selector.cancel') }}
 				</N8nButton>
-				<N8nButton type="primary" :disabled="!selectedCredentialId" @click="onConfirm">
+				<N8nButton variant="solid" :disabled="!selectedCredentialId" @click="onConfirm">
 					{{ i18n.baseText('chatHub.credentials.selector.confirm') }}
 				</N8nButton>
 			</div>
