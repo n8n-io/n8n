@@ -3,6 +3,7 @@ import type { ChatRequest, PlanMode } from '../assistant.types';
 import { useI18n } from '@n8n/i18n';
 import {
 	isTextMessage,
+	isCodeDiffMessage,
 	isWorkflowUpdatedMessage,
 	isToolMessage,
 	isQuestionsMessage,
@@ -204,6 +205,20 @@ export function useBuilderMessages() {
 				read: false,
 			} satisfies ChatUI.AssistantMessage);
 			shouldClearThinking = true;
+		} else if (isCodeDiffMessage(msg)) {
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'code-diff',
+				description: msg.description,
+				codeDiff: msg.codeDiff,
+				suggestionId: msg.suggestionId,
+				sdkSessionId: msg.sdkSessionId,
+				nodeName: msg.nodeName,
+				quickReplies: msg.quickReplies,
+				read: false,
+			});
+			shouldClearThinking = true;
 		} else if (isQuestionsMessage(msg)) {
 			// Check if we already have a questions message (prevent duplicates from streaming)
 			const existingQuestionsIndex = messages.findIndex(
@@ -308,7 +323,7 @@ export function useBuilderMessages() {
 		if (lastCompletedToolIndex !== -1) {
 			for (let i = lastCompletedToolIndex + 1; i < messages.length; i++) {
 				const msg = messages[i];
-				if (msg.type === 'text' || msg.type === 'custom') {
+				if (msg.type === 'text' || msg.type === 'custom' || msg.type === 'code-diff') {
 					hasResponseAfterTools = true;
 					break;
 				}
@@ -510,6 +525,21 @@ export function useBuilderMessages() {
 				revertVersion: message.revertVersion,
 				read: false,
 			} satisfies ChatUI.AssistantMessage;
+		}
+
+		if (isCodeDiffMessage(message)) {
+			return {
+				id,
+				role: 'assistant',
+				type: 'code-diff',
+				description: message.description,
+				codeDiff: message.codeDiff,
+				suggestionId: message.suggestionId,
+				sdkSessionId: message.sdkSessionId,
+				nodeName: message.nodeName,
+				quickReplies: message.quickReplies,
+				read: false,
+			};
 		}
 
 		if (isQuestionsMessage(message)) {
