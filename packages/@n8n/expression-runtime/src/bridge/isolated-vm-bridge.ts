@@ -2,11 +2,7 @@ import ivm from 'isolated-vm';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
 import type { RuntimeBridge, BridgeConfig } from '../types';
-
-// Create require function for resolving module paths (works in both CJS and ESM)
-const require = createRequire(import.meta.url);
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
