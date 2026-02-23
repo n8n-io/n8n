@@ -48,8 +48,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * Steps:
 	 * 1. Create context
 	 * 2. Set up basic globals (global reference)
-	 * 3. Load vendor libraries (Lodash, Luxon)
-	 * 4. Define proxy system (stub for Step 2)
+	 * 3. Load runtime bundle (DateTime, extend, proxy system)
+	 * 4. Verify proxy system
 	 *
 	 * Must be called before execute().
 	 */
@@ -69,11 +69,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// This allows code in isolate to access 'global.something'
 		await jail.set('global', jail.derefInto());
 
-		// Load vendor libraries (Lodash, Luxon)
+		// Load runtime bundle (DateTime, extend, SafeObject, proxy system)
 		await this.loadVendorLibraries();
 
-		// Define proxy system in isolate (Step 2 - stub for now)
-		await this.defineProxySystem();
+		// Verify proxy system loaded correctly
+		await this.verifyProxySystem();
 
 		// Inject E() error handler needed by tournament-generated try-catch code
 		await this.injectErrorHandler();
@@ -89,7 +89,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * Load runtime bundle into the isolate.
 	 *
 	 * The runtime bundle includes:
-	 * - Vendor libraries (Lodash, Luxon)
+	 * - DateTime, extend, extendOptional (expression engine globals)
 	 * - SafeObject and SafeError wrappers
 	 * - createDeepLazyProxy function
 	 * - __data object initialization
@@ -109,7 +109,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			const runtimeBundle = fs.readFileSync(runtimeBundlePath, 'utf-8');
 
 			// Evaluate bundle in isolate context
-			// This makes all exported globals available (_, luxon, SafeObject, createDeepLazyProxy, __data)
+			// This makes all exported globals available (DateTime, extend, extendOptional, SafeObject, SafeError, createDeepLazyProxy, resetDataProxies, __data)
 			await this.context.eval(runtimeBundle);
 
 			if (this.config.debug) {
@@ -144,7 +144,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @private
 	 * @throws {Error} If context not initialized or proxy system verification fails
 	 */
-	private async defineProxySystem(): Promise<void> {
+	private async verifyProxySystem(): Promise<void> {
 		if (!this.context) {
 			throw new Error('Context not initialized');
 		}
@@ -288,24 +288,13 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				return { __isFunction: true, __name: path[path.length - 1] };
 			}
 
-			// Handle arrays
+			// Handle arrays - always lazy, only transfer length
 			if (Array.isArray(value)) {
-				const smallArrayThreshold = 100;
-				if (value.length <= smallArrayThreshold) {
-					// Small array: return with data
-					return {
-						__isArray: true,
-						__length: value.length,
-						__data: value,
-					};
-				} else {
-					// Large array: return metadata only
-					return {
-						__isArray: true,
-						__length: value.length,
-						__data: null,
-					};
-				}
+				return {
+					__isArray: true,
+					__length: value.length,
+					__data: null,
+				};
 			}
 
 			// Handle objects - return metadata with keys
@@ -338,11 +327,10 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			// If element is object/array, return metadata
 			if (element !== null && typeof element === 'object') {
 				if (Array.isArray(element)) {
-					const smallArrayThreshold = 100;
 					return {
 						__isArray: true,
 						__length: element.length,
-						__data: element.length <= smallArrayThreshold ? element : null,
+						__data: null,
 					};
 				}
 				return {
@@ -440,24 +428,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		}
-	}
-
-	/**
-	 * Get data synchronously from host (used by lazy proxies).
-	 *
-	 * Note: This method is not used in the current implementation.
-	 * Data access is handled via the three registered callbacks:
-	 * __getValueAtPath, __getArrayElement, __callFunctionAtPath.
-	 *
-	 * Kept for RuntimeBridge interface compatibility.
-	 *
-	 * @param _path - Property path (unused)
-	 * @returns undefined
-	 * @deprecated Use callback-based approach instead
-	 */
-	getDataSync(_path: string): unknown {
-		// Callbacks handle all data access in isolated-vm implementation
-		return undefined;
 	}
 
 	/**
