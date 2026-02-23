@@ -17,6 +17,7 @@ export const useChatPanelStateStore = defineStore(STORES.CHAT_PANEL_STATE, () =>
 	const activeMode = ref<ChatPanelMode>('builder');
 	const showCoachmark = ref(false);
 	const focusRequested = ref(0);
+	const isFullscreen = ref(false);
 
 	return {
 		isOpen,
@@ -24,5 +25,6 @@ export const useChatPanelStateStore = defineStore(STORES.CHAT_PANEL_STATE, () =>
 		activeMode,
 		showCoachmark,
 		focusRequested,
+		isFullscreen,
 	};
 });
