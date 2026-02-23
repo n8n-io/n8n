@@ -27,4 +27,5 @@ jobs:
         continue-on-error: true
         uses: CodSpeedHQ/action@2ac572851726409c88c02a307f1ea2632a9ea59b # v4.11.0
         with:
+          mode: walltime
           run: pnpm --filter=@n8n/performance bench
