@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In, Repository } from '@n8n/typeorm';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { Project, ProjectRelation, Role, User } from '../entities';
 
@@ -86,38 +86,41 @@ export class RoleRepository extends Repository<Role> {
 			lastAssigned: string | null;
 		}>
 	> {
-		const results = await this.manager
+		// First get member counts per project for this role
+		const counts = await this.manager
 			.createQueryBuilder(ProjectRelation, 'pr')
-			.innerJoin(Project, 'project', 'project.id = pr.projectId')
-			.select('project.id', 'projectId')
-			.addSelect('project.name', 'projectName')
-			.addSelect('project.icon', 'projectIcon')
+			.select('pr.projectId', 'projectId')
 			.addSelect('COUNT(pr.userId)', 'memberCount')
 			.addSelect('MAX(pr.createdAt)', 'lastAssigned')
 			.where('pr.role = :roleSlug', { roleSlug })
-			.groupBy('project.id')
-			.addGroupBy('project.name')
-			.addGroupBy('project.icon')
+			.groupBy('pr.projectId')
 			.getRawMany<{
 				projectId: string;
-				projectName: string;
-				projectIcon: string | { type: string; value: string } | null;
 				memberCount: string;
 				lastAssigned: string | null;
 			}>();
 
-		return results.map((r) => ({
-			projectId: r.projectId,
-			projectName: r.projectName,
-			projectIcon:
-				typeof r.projectIcon === 'string'
-					? jsonParse<{ type: string; value: string } | null>(r.projectIcon, {
-							fallbackValue: null,
-						})
-					: r.projectIcon,
-			memberCount: parseInt(r.memberCount, 10),
-			lastAssigned: r.lastAssigned ?? null,
-		}));
+		if (counts.length === 0) return [];
+
+		// Then fetch project details separately to avoid JSON GROUP BY issues
+		const projectIds = counts.map((c) => c.projectId);
+		const projects = await this.manager.getRepository(Project).findBy({ id: In(projectIds) });
+
+		const projectMap = new Map(projects.map((p) => [p.id, p]));
+
+		return counts
+			.map((c) => {
+				const project = projectMap.get(c.projectId);
+				if (!project) return null;
+				return {
+					projectId: project.id,
+					projectName: project.name,
+					projectIcon: project.icon,
+					memberCount: parseInt(c.memberCount, 10),
+					lastAssigned: c.lastAssigned ?? null,
+				};
+			})
+			.filter((r) => r !== null);
 	}
 
 	async findAllProjectMembers(
