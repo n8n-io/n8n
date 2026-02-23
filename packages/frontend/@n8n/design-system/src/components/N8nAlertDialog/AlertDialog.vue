@@ -46,10 +46,29 @@ export interface AlertDialogProps {
 	 */
 	cancelLabel?: string;
 	/**
+	 * Show/hide the cancel button
+	 * @default true
+	 */
+	showCancel?: boolean;
+	/**
+	 * Shows/hides close button in top right
+	 * @default false
+	 */
+	showCloseButton?: boolean;
+	/**
+	 * Prevent clicks outside dialog
+	 * @default true
+	 */
+	disableOutsidePointerEvents?: boolean;
+	/**
 	 * Shows loading state on action button
 	 * @default false
 	 */
 	loading?: boolean;
+	/**
+	 * Additional class for dialog content
+	 */
+	contentClass?: string;
 	/**
 	 * Dialog width
 	 * @default 'small'
@@ -67,6 +86,9 @@ withDefaults(defineProps<AlertDialogProps>(), {
 	actionLabel: 'Confirm',
 	actionVariant: 'solid',
 	cancelLabel: 'Cancel',
+	showCancel: true,
+	showCloseButton: false,
+	disableOutsidePointerEvents: true,
 	loading: false,
 	size: 'small',
 });
@@ -98,18 +120,26 @@ const handleCancel = () => {
 	<DialogRoot :open="open" :default-open="defaultOpen" @update:open="handleOpenChange">
 		<DialogPortal>
 			<N8nDialogOverlay />
-			<N8nDialogContent :size="size" :show-close-button="false">
+			<N8nDialogContent
+				:size="size"
+				:show-close-button="showCloseButton"
+				:disable-outside-pointer-events="disableOutsidePointerEvents"
+				:class="contentClass"
+			>
 				<N8nDialogHeader>
 					<N8nDialogTitle>{{ title }}</N8nDialogTitle>
-					<N8nDialogDescription v-if="description">
-						{{ description }}
-					</N8nDialogDescription>
+					<N8nDialogDescription v-if="description" v-html="description" />
 				</N8nDialogHeader>
 
 				<slot />
 
 				<N8nDialogFooter>
-					<N8nButton variant="subtle" :label="cancelLabel" @click="handleCancel" />
+					<N8nButton
+						v-if="showCancel"
+						variant="subtle"
+						:label="cancelLabel"
+						@click="handleCancel"
+					/>
 					<N8nButton
 						:variant="actionVariant === 'destructive' ? 'destructive' : 'solid'"
 						:label="actionLabel"

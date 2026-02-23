@@ -1,100 +1,132 @@
-import type { ElMessageBoxOptions, Action, MessageBoxInputData } from 'element-plus';
-import { ElMessageBox as MessageBox } from 'element-plus';
 import { sanitizeIfString } from '@/app/utils/htmlUtils';
+import { useAlertDialogStore } from '@/app/stores/alertDialog.store';
+import { isVNode } from 'vue';
+import type {
+	DialogAction,
+	DialogMessage,
+	PromptDialogResult,
+} from '@/app/stores/alertDialog.store';
 
-export type MessageBoxConfirmResult = 'confirm' | 'cancel';
+export type MessageBoxConfirmResult = DialogAction;
+export type MessageBoxInputData = PromptDialogResult;
+
+export interface MessageBoxOptions {
+	title?: string;
+	confirmButtonText?: string;
+	cancelButtonText?: string;
+	showClose?: boolean;
+	closeOnClickModal?: boolean;
+	customClass?: string;
+	type?: 'success' | 'info' | 'warning' | 'error';
+	danger?: boolean;
+}
+
+export interface MessageBoxPromptOptions extends MessageBoxOptions {
+	inputValue?: string;
+	inputPlaceholder?: string;
+	inputValidator?: (value: string) => boolean | string;
+	inputErrorMessage?: string;
+}
 
 export function useMessage() {
-	const handleCancelOrClose = (e: Action | Error): Action => {
-		if (e instanceof Error) throw e;
+	const alertDialogStore = useAlertDialogStore();
 
-		return e;
+	const resolveMessage = (value: unknown): DialogMessage => {
+		if (isVNode(value)) return value;
+		if (value == null) return '';
+		if (typeof value === 'string') return sanitizeIfString(value);
+		return sanitizeIfString(String(value));
 	};
 
-	const handleCancelOrClosePrompt = (e: Error | Action): MessageBoxInputData => {
-		if (e instanceof Error) throw e;
+	const resolveTitle = (value: unknown, fallback: string) =>
+		typeof value === 'string' ? sanitizeIfString(value) : fallback;
 
-		return { value: '', action: e };
-	};
+	const resolveVariant = (options?: MessageBoxOptions) =>
+		options?.danger || options?.type === 'warning' || options?.type === 'error'
+			? 'destructive'
+			: 'solid';
 
 	async function alert(
-		message: ElMessageBoxOptions['message'],
-		configOrTitle?: string | ElMessageBoxOptions,
-		config?: ElMessageBoxOptions,
+		message: unknown,
+		configOrTitle?: string | MessageBoxOptions,
+		config?: MessageBoxOptions,
 	) {
-		const resolvedConfig = {
-			...(config ?? (typeof configOrTitle === 'object' ? configOrTitle : {})),
-			cancelButtonClass: 'btn--cancel',
-			confirmButtonClass: 'btn--confirm',
-			dangerouslyUseHTMLString: true,
-		};
-
-		if (typeof configOrTitle === 'string') {
-			return await MessageBox.alert(sanitizeIfString(message), configOrTitle, resolvedConfig).catch(
-				handleCancelOrClose,
-			);
-		}
-		return await MessageBox.alert(sanitizeIfString(message), resolvedConfig).catch(
-			handleCancelOrClose,
+		const resolvedConfig = config ?? (typeof configOrTitle === 'object' ? configOrTitle : {});
+		const title = resolveTitle(
+			typeof configOrTitle === 'string' ? configOrTitle : resolvedConfig?.title,
+			'Notice',
 		);
+
+		return await alertDialogStore.openAlert({
+			title,
+			message: resolveMessage(message),
+			actionLabel: resolvedConfig?.confirmButtonText ?? 'OK',
+			cancelLabel: resolvedConfig?.cancelButtonText ?? 'Cancel',
+			showCancel: false,
+			actionVariant: resolveVariant(resolvedConfig),
+			showCloseButton: resolvedConfig?.showClose ?? false,
+			closeOnClickModal: resolvedConfig?.closeOnClickModal,
+			customClass: resolvedConfig?.customClass,
+		});
 	}
 
 	async function confirm(
-		message: ElMessageBoxOptions['message'],
-		configOrTitle?: string | ElMessageBoxOptions,
-		config?: ElMessageBoxOptions,
+		message: unknown,
+		configOrTitle?: string | MessageBoxOptions,
+		config?: MessageBoxOptions,
 	) {
-		const resolvedConfig = {
-			cancelButtonClass: 'btn--cancel',
-			confirmButtonClass: 'btn--confirm',
-			distinguishCancelAndClose: true,
-			showClose: config?.showClose ?? false,
-			closeOnClickModal: false,
-			dangerouslyUseHTMLString: true,
-			...(config ?? (typeof configOrTitle === 'object' ? configOrTitle : {})),
-		};
-
-		if (typeof configOrTitle === 'string') {
-			return await MessageBox.confirm(
-				sanitizeIfString(message),
-				sanitizeIfString(configOrTitle),
-				resolvedConfig,
-			).catch(handleCancelOrClose);
-		}
-
-		return await MessageBox.confirm(sanitizeIfString(message), resolvedConfig).catch(
-			handleCancelOrClose,
+		const resolvedConfig = config ?? (typeof configOrTitle === 'object' ? configOrTitle : {});
+		const title = resolveTitle(
+			typeof configOrTitle === 'string' ? configOrTitle : resolvedConfig?.title,
+			'Confirm',
 		);
+		const showCancel = resolvedConfig?.cancelButtonText !== '';
+
+		return await alertDialogStore.openAlert({
+			title,
+			message: resolveMessage(message),
+			actionLabel: resolvedConfig?.confirmButtonText ?? 'Confirm',
+			cancelLabel: resolvedConfig?.cancelButtonText ?? 'Cancel',
+			showCancel,
+			actionVariant: resolveVariant(resolvedConfig),
+			showCloseButton: resolvedConfig?.showClose ?? false,
+			closeOnClickModal: resolvedConfig?.closeOnClickModal,
+			customClass: resolvedConfig?.customClass,
+		});
 	}
 
 	async function prompt(
-		message: ElMessageBoxOptions['message'],
-		configOrTitle?: string | ElMessageBoxOptions,
-		config?: ElMessageBoxOptions,
+		message: unknown,
+		configOrTitle?: string | MessageBoxPromptOptions,
+		config?: MessageBoxPromptOptions,
 	) {
-		const resolvedConfig = {
-			...(config ?? (typeof configOrTitle === 'object' ? configOrTitle : {})),
-			cancelButtonClass: 'btn--cancel',
-			confirmButtonClass: 'btn--confirm',
-			dangerouslyUseHTMLString: true,
-		};
-
-		if (typeof configOrTitle === 'string') {
-			return await MessageBox.prompt(
-				sanitizeIfString(message),
-				sanitizeIfString(configOrTitle),
-				resolvedConfig,
-			).catch(handleCancelOrClosePrompt);
-		}
-		return await MessageBox.prompt(sanitizeIfString(message), resolvedConfig).catch(
-			handleCancelOrClosePrompt,
+		const resolvedConfig = config ?? (typeof configOrTitle === 'object' ? configOrTitle : {});
+		const title = resolveTitle(
+			typeof configOrTitle === 'string' ? configOrTitle : resolvedConfig?.title,
+			'Enter value',
 		);
+		const showCancel = resolvedConfig?.cancelButtonText !== '';
+
+		return await alertDialogStore.openPrompt({
+			title,
+			message: resolveMessage(message),
+			actionLabel: resolvedConfig?.confirmButtonText ?? 'Confirm',
+			cancelLabel: resolvedConfig?.cancelButtonText ?? 'Cancel',
+			showCancel,
+			actionVariant: resolveVariant(resolvedConfig),
+			showCloseButton: resolvedConfig?.showClose ?? false,
+			closeOnClickModal: resolvedConfig?.closeOnClickModal,
+			customClass: resolvedConfig?.customClass,
+			inputValue: resolvedConfig?.inputValue,
+			inputPlaceholder: resolvedConfig?.inputPlaceholder,
+			inputValidator: resolvedConfig?.inputValidator,
+			inputErrorMessage: resolvedConfig?.inputErrorMessage,
+		});
 	}
 
 	return {
 		alert,
 		confirm,
 		prompt,
-		message: MessageBox,
 	};
 }
