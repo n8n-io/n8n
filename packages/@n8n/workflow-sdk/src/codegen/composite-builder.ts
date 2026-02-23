@@ -95,8 +95,9 @@ function buildBranchTargets(
 				targetInputIndex: inputIndex,
 			});
 
-			// Return variable reference to the merge node
-			return createVarRef(singleTarget.target);
+			// Return null so the branch handler doesn't emit .onTrue(merge)/.onCase(N, merge).
+			// The deferred .add(source.to(merge.input(N))) handles the connection at the correct index.
+			return null;
 		}
 
 		return buildFromNode(singleTarget.target, ctx);
@@ -985,6 +986,11 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 			}
 
 			const nextComposite = buildFromNode(nextTarget, ctx);
+			// If the next node became a deferred merge, don't chain to it.
+			// The deferred .add() connections handle the actual connection with correct input index.
+			if (nextComposite.kind === 'varRef' && ctx.deferredMergeNodes.has(nextTarget)) {
+				return compositeNode;
+			}
 			// Combine into chain
 			if (nextComposite.kind === 'chain') {
 				return {
