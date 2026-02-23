@@ -117,11 +117,13 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			}
 
 			// Verify vendor libraries loaded correctly
-			const hasLodash = await this.context.eval('typeof _ !== "undefined"');
-			const hasLuxon = await this.context.eval('typeof luxon !== "undefined"');
+			const hasDateTime = await this.context.eval('typeof DateTime !== "undefined"');
+			const hasExtend = await this.context.eval('typeof extend !== "undefined"');
 
-			if (!hasLodash || !hasLuxon) {
-				throw new Error(`Library verification failed: lodash=${hasLodash}, luxon=${hasLuxon}`);
+			if (!hasDateTime || !hasExtend) {
+				throw new Error(
+					`Library verification failed: DateTime=${hasDateTime}, extend=${hasExtend}`,
+				);
 			}
 
 			if (this.config.debug) {
