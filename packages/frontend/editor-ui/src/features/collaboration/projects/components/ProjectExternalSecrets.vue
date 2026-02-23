@@ -6,8 +6,6 @@ import { useProjectsStore } from '../projects.store';
 import { useSecretsProvidersList } from '@/features/integrations/secretsProviders.ee/composables/useSecretsProvidersList.ee';
 import type { SecretProviderConnection } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { ROLE } from '@n8n/api-types';
 import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY, VIEWS } from '@/app/constants';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useRouter } from 'vue-router';
@@ -24,13 +22,14 @@ import {
 } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { useSecretsProviderConnection } from '@/features/integrations/secretsProviders.ee/composables/useSecretsProviderConnection.ee';
+import { useRBACStore } from '@/app/stores/rbac.store';
 
 const i18n = useI18n();
 const toast = useToast();
 const router = useRouter();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
+const rbacStore = useRBACStore();
 const secretsProviders = useSecretsProvidersList();
 const secretsProviderConnection = useSecretsProviderConnection();
 const envFeatureFlag = useEnvFeatureFlag();
@@ -64,8 +63,8 @@ const hasProjectExternalSecretsCreatePermission = computed(
 	() => projectsStore.currentProject?.scopes?.includes('externalSecretsProvider:create') ?? false,
 );
 
-const isInstanceAdmin = computed(
-	() => usersStore.currentUser?.role === ROLE.Owner || usersStore.currentUser?.role === ROLE.Admin,
+const canCreateGlobalSecretsStore = computed(() =>
+	rbacStore.hasScope('externalSecretsProvider:create'),
 );
 
 const showExternalSecretsSection = computed(
@@ -78,7 +77,7 @@ type EmptyStateType = 'instance-admin-no-project-providers' | 'project-admin-no-
 const emptyStateType = computed<EmptyStateType>(() => {
 	if (projectSecretConnections.value.length > 0) return null;
 
-	if (isInstanceAdmin.value) {
+	if (canCreateGlobalSecretsStore.value) {
 		const hasGlobalProviders = secretsProviders.activeProviders.value.length > 0;
 		return hasGlobalProviders
 			? 'instance-admin-no-project-providers'
@@ -247,6 +246,7 @@ function openProviderModal(providerKey: string) {
 }
 
 function onAddSecretsStore() {
+	if (!hasProjectExternalSecretsCreatePermission.value) return;
 	openConnectionModal();
 }
 
@@ -279,6 +279,9 @@ onMounted(async () => {
 		secretsProviders.fetchProviderTypes(),
 		secretsProviders.fetchActiveConnections(),
 	]);
+	if (canCreateGlobalSecretsStore.value) {
+		await projectsStore.getAllProjects();
+	}
 });
 
 defineExpose({
@@ -332,18 +335,29 @@ defineExpose({
 
 		<!-- Table View: Show when there are providers -->
 		<div v-else-if="projectSecretConnections.length > 0" :class="$style.secretProvidersContainer">
-			<div :class="$style.searchContainer">
-				<N8nInput
-					v-model="secretsSearch"
-					:placeholder="i18n.baseText('projects.settings.externalSecrets.search.placeholder')"
-					clearable
-					data-test-id="secrets-providers-search"
+			<div :class="$style.actionsContainer">
+				<div :class="$style.searchContainer">
+					<N8nInput
+						v-model="secretsSearch"
+						:placeholder="i18n.baseText('projects.settings.externalSecrets.search.placeholder')"
+						clearable
+						data-test-id="secrets-providers-search"
+						size="small"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
+				</div>
+				<N8nButton
+					v-if="hasProjectExternalSecretsCreatePermission"
+					variant="outline"
 					size="small"
+					data-test-id="external-secrets-add-button"
+					@click="onAddSecretsStore"
 				>
-					<template #prefix>
-						<N8nIcon icon="search" />
-					</template>
-				</N8nInput>
+					{{ i18n.baseText('projects.settings.externalSecrets.button.addSecretsStore') }}
+				</N8nButton>
 			</div>
 
 			<N8nDataTableServer
@@ -424,6 +438,11 @@ defineExpose({
 	margin-top: var(--spacing--sm);
 	max-width: 100%;
 	overflow: auto;
+}
+
+.actionsContainer {
+	display: flex;
+	justify-content: space-between;
 }
 
 .searchContainer {

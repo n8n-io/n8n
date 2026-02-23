@@ -228,6 +228,10 @@ const quickConnectAvailable = computed(() => !!quickConnectOption.value);
 
 const quickConnectBannerText = computed(() => quickConnectOption.value?.text ?? '');
 
+const isManagedOAuth = computed(
+	() => props.isOAuthType && props.managedOauthAvailable && !props.useCustomOauth,
+);
+
 function onDataChange(event: IUpdateInformation): void {
 	emit('update', event);
 }
@@ -300,7 +304,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 			<template v-else>
 				<N8nCallout
-					v-if="documentationUrl && credentialProperties.length"
+					v-if="documentationUrl && credentialProperties.length && !isManagedOAuth"
 					:class="$style.docsCallout"
 					theme="custom"
 					iconless
@@ -429,7 +433,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					</div>
 
 					<CopyInput
-						v-if="isOAuthType && useCustomOauth"
+						v-if="isOAuthType && !isManagedOAuth"
 						:label="i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 						:value="oAuthCallbackUrl"
 						:copy-button-text="i18n.baseText('credentialEdit.credentialConfig.clickToCopy')"
