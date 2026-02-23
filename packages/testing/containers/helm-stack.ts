@@ -292,10 +292,16 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		);
 		log(`Helm install complete:\n${helmOutput.trim()}`);
 
-		// Step 8: Port forward from host via kubectl
-		// helm install --wait already guarantees pod readiness (K8s probes passed).
-		// pollHealthEndpoint below validates the full path: pod → service → port-forward → localhost.
+		// Step 8: Set WEBHOOK_URL so n8n generates correct external URLs (e.g. invitation links).
+		// Done via kubectl rather than helm --set-string to avoid URL value parsing issues.
 		const port = await getPort();
+		const webhookUrl = `http://localhost:${port}`;
+		log(`Setting WEBHOOK_URL=${webhookUrl} and waiting for rollout...`);
+		run(`kubectl set env deployment/n8n-main WEBHOOK_URL=${webhookUrl}`, env, 'Set WEBHOOK_URL');
+		run('kubectl rollout status deployment/n8n-main --timeout=3m', env, 'Wait for rollout');
+
+		// Step 9: Port forward from host via kubectl
+		// pollHealthEndpoint below validates the full path: pod → service → port-forward → localhost.
 		log(`Starting port forward on localhost:${port} -> svc/n8n-main:5678`);
 		portForward = spawn('kubectl', ['port-forward', 'svc/n8n-main', `${port}:5678`], {
 			env,
@@ -307,7 +313,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 
 		const baseUrl = `http://localhost:${port}`;
 
-		// Step 9: Poll health endpoint (validates full path: pod → service → port-forward → localhost)
+		// Step 10: Poll health endpoint (validates full path: pod → service → port-forward → localhost)
 		log(`Polling ${baseUrl}/healthz/readiness...`);
 		await pollHealthEndpoint(baseUrl, Math.min(startupTimeoutMs, 120_000));
 		log(`n8n is ready at ${baseUrl}`);
