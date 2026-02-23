@@ -396,13 +396,16 @@ export function prepareQuery(
 
 export function prepareEmailsInput(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	input: string,
+	input: unknown,
 	fieldName: string,
 	itemIndex: number,
 ) {
 	let emails = '';
 
-	input.split(',').forEach((entry) => {
+	// Convert non-string values (e.g. numbers from expressions) to strings
+	const inputStr = String(input);
+
+	inputStr.split(',').forEach((entry) => {
 		const email = entry.trim();
 
 		if (email.indexOf('@') === -1) {
@@ -429,7 +432,8 @@ export function prepareEmailBody(
 	instanceId?: string,
 ) {
 	const emailType = this.getNodeParameter('emailType', itemIndex) as string;
-	let message = (this.getNodeParameter('message', itemIndex, '') as string).trim();
+	// Convert non-string values (e.g. numbers from expressions) to strings before calling .trim()
+	let message = String(this.getNodeParameter('message', itemIndex, '')).trim();
 
 	if (appendAttribution) {
 		const attributionText = 'This email was sent automatically with ';

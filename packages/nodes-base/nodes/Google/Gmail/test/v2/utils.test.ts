@@ -5,7 +5,12 @@ import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import type { IEmail } from '@utils/sendAndWait/interfaces';
 
 import * as GenericFunctions from '../../GenericFunctions';
-import { parseRawEmail, prepareTimestamp } from '../../GenericFunctions';
+import {
+	parseRawEmail,
+	prepareEmailBody,
+	prepareEmailsInput,
+	prepareTimestamp,
+} from '../../GenericFunctions';
 import { addThreadHeadersToEmail } from '../../v2/utils/draft';
 
 const node: INode = {
@@ -130,6 +135,119 @@ describe('parseRawEmail', () => {
 
 		// ASSERT
 		expect(typeof json.date).toBe('string');
+	});
+});
+
+describe('prepareEmailsInput', () => {
+	it('should handle a string email address correctly', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: () => node,
+		});
+
+		const result = prepareEmailsInput.call(
+			executionFunctions,
+			'test@example.com',
+			'To',
+			0,
+		);
+
+		expect(result).toContain('test@example.com');
+	});
+
+	it('should convert a number to string and throw for invalid email (no @)', () => {
+		// A number like 1 becomes "1" which has no @, so it should throw
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: () => node,
+		});
+
+		expect(() =>
+			prepareEmailsInput.call(executionFunctions, 1 as unknown as string, 'To', 0),
+		).toThrow('Invalid email address');
+	});
+
+	it('should not throw when given a valid email string even if it came from an expression returning a string', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: () => node,
+		});
+
+		const result = prepareEmailsInput.call(
+			executionFunctions,
+			'user@example.com',
+			'To',
+			0,
+		);
+
+		expect(result).toBe('<user@example.com>, ');
+	});
+
+	it('should handle multiple comma-separated email addresses', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: () => node,
+		});
+
+		const result = prepareEmailsInput.call(
+			executionFunctions,
+			'a@example.com, b@example.com',
+			'To',
+			0,
+		);
+
+		expect(result).toContain('a@example.com');
+		expect(result).toContain('b@example.com');
+	});
+});
+
+describe('prepareEmailBody', () => {
+	it('should handle a non-string message value (number) without throwing', () => {
+		// This simulates the case where an expression returns a number (e.g. $json.code = 1)
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: () => node,
+			getNodeParameter: (parameterName: string) => {
+				if (parameterName === 'emailType') return 'text';
+				if (parameterName === 'message') return 42; // number, not a string
+				return '';
+			},
+		});
+
+		let result: ReturnType<typeof prepareEmailBody>;
+		expect(() => {
+			result = prepareEmailBody.call(executionFunctions, 0);
+		}).not.toThrow();
+
+		expect(result!.body).toBe('42');
+	});
+
+	it('should handle a string message value correctly', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: () => node,
+			getNodeParameter: (parameterName: string) => {
+				if (parameterName === 'emailType') return 'text';
+				if (parameterName === 'message') return 'Hello World';
+				return '';
+			},
+		});
+
+		const result = prepareEmailBody.call(executionFunctions, 0);
+
+		expect(result.body).toBe('Hello World');
+	});
+
+	it('should handle an object/null message value without throwing', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNode: () => node,
+			getNodeParameter: (parameterName: string) => {
+				if (parameterName === 'emailType') return 'text';
+				if (parameterName === 'message') return null;
+				return '';
+			},
+		});
+
+		let result: ReturnType<typeof prepareEmailBody>;
+		expect(() => {
+			result = prepareEmailBody.call(executionFunctions, 0);
+		}).not.toThrow();
+
+		expect(result!.body).toBe('null');
 	});
 });
 
