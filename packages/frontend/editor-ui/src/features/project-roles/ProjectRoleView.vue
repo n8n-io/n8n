@@ -19,6 +19,7 @@ import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
 import { computed, ref, toRaw } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { SCOPE_TYPES, SCOPES } from './projectRoleScopes';
 
 const rolesStore = useRolesStore();
 const route = useRoute();
@@ -29,6 +30,23 @@ const message = useMessage();
 const telemetry = useTelemetry();
 
 const props = defineProps<{ roleSlug?: string }>();
+
+// Dynamic back button text and navigation based on where the user navigated from
+const cameFromProjectSettings = computed(() => route.query.from === VIEWS.PROJECT_SETTINGS);
+
+const backButtonText = computed(() =>
+	cameFromProjectSettings.value
+		? i18n.baseText('projectRoles.backToProjectSettings')
+		: i18n.baseText('projectRoles.backToProjectRoles'),
+);
+
+const onBackClick = () => {
+	if (cameFromProjectSettings.value) {
+		router.back();
+	} else {
+		void router.push({ name: VIEWS.PROJECT_ROLES_SETTINGS });
+	}
+};
 
 const defaultForm = () => ({
 	displayName: '',
@@ -92,47 +110,8 @@ function resetForm(payload: Role | undefined) {
 		: defaultForm();
 }
 
-const project = (['read', 'update', 'delete'] as const).map(
-	(action) => `project:${action}` as const,
-);
-const folder = (['read', 'update', 'create', 'move', 'delete'] as const).map(
-	(action) => `folder:${action}` as const,
-);
-const workflow = (
-	['read', 'update', 'create', 'publish', 'unpublish', 'move', 'delete'] as const
-).map((action) => `workflow:${action}` as const);
-const credential = (['read', 'update', 'create', 'share', 'move', 'delete'] as const).map(
-	(action) => `credential:${action}` as const,
-);
-const sourceControl = (['push'] as const).map((action) => `sourceControl:${action}` as const);
-
-const dataTable = (['read', 'readRow', 'update', 'writeRow', 'create', 'delete'] as const).map(
-	(action) => `dataTable:${action}` as const,
-);
-
-const projectVariable = (['read', 'update', 'create', 'delete'] as const).map(
-	(action) => `projectVariable:${action}` as const,
-);
-
-const scopeTypes = [
-	'project',
-	'folder',
-	'workflow',
-	'credential',
-	'dataTable',
-	'projectVariable',
-	'sourceControl',
-] as const;
-
-const scopes = {
-	project,
-	folder,
-	workflow,
-	credential,
-	sourceControl,
-	dataTable,
-	projectVariable,
-} as const;
+const scopeTypes = SCOPE_TYPES;
+const scopes = SCOPES;
 
 function toggleScope(scope: string) {
 	const index = form.value.scopes.indexOf(scope);
@@ -325,9 +304,10 @@ const displayNameValidationRules = [
 			variant="ghost"
 			icon="arrow-left"
 			:class="$style.backButton"
-			@click="() => router.back()"
+			text
+			@click="onBackClick"
 		>
-			{{ i18n.baseText('projectRoles.backToRoleList') }}
+			{{ backButtonText }}
 		</N8nButton>
 		<div class="mb-xl" :class="$style.headerContainer">
 			<N8nHeading tag="h1" size="2xlarge">
