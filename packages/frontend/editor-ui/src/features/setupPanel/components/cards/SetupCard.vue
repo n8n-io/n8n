@@ -182,7 +182,7 @@ defineExpose({ markInteracted });
 	.header & {
 		display: flex;
 		justify-content: center;
-		width: 16px;
+		width: var(--spacing--sm);
 	}
 }
 
