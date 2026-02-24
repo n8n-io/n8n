@@ -590,7 +590,7 @@ const parentNodeOutputData = computed(() => {
 
 const parentNodePinnedData = computed(() => {
 	const parentNode = props.workflowObject.getParentNodesByDepth(node.value?.name ?? '')[0];
-	return workflowDocumentStore?.pinData?.[parentNode?.name || ''] ?? [];
+	return workflowDocumentStore?.value?.pinData?.[parentNode?.name || ''] ?? [];
 });
 
 const showPinButton = computed(

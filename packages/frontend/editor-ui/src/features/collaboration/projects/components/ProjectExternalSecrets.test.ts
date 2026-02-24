@@ -139,7 +139,6 @@ const mockProviders: SecretProviderConnection[] = [
 		type: 'awsSecretsManager',
 		projects: [{ id: 'project-1', name: 'Test Project' }],
 		settings: {},
-		isEnabled: true,
 		secretsCount: 3,
 		state: 'connected',
 		secrets: [
@@ -147,8 +146,8 @@ const mockProviders: SecretProviderConnection[] = [
 			{ name: 'DATABASE_PASSWORD', credentialsCount: 1 },
 			{ name: 'SECRET_TOKEN', credentialsCount: 0 },
 		],
-		createdAt: '2024-01-01T00:00:00.000Z',
-		updatedAt: '2024-01-01T00:00:00.000Z',
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
 	},
 	{
 		id: '2',
@@ -156,12 +155,11 @@ const mockProviders: SecretProviderConnection[] = [
 		type: 'azureKeyVault',
 		projects: [{ id: 'project-1', name: 'Test Project' }],
 		settings: {},
-		isEnabled: true,
 		secretsCount: 1,
 		state: 'connected',
 		secrets: [{ name: 'DEV_API_KEY', credentialsCount: 1 }],
-		createdAt: '2024-01-01T00:00:00.000Z',
-		updatedAt: '2024-01-01T00:00:00.000Z',
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
 	},
 ];
 

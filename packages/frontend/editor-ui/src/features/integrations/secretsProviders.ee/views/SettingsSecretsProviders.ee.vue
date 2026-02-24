@@ -173,7 +173,8 @@ function goToUpgrade() {
 				<N8nButton
 					v-if="hasActiveProviders && secretsProviders.canCreate.value"
 					:class="$style.addButton"
-					type="primary"
+					variant="solid"
+					size="small"
 					@click="openConnectionModal()"
 					><N8nIcon icon="plus" />
 					{{ i18n.baseText('settings.secretsProviderConnections.buttons.addSecretsStore') }}
