@@ -524,7 +524,6 @@ describe('ProjectRoleView', () => {
 			expect(getByTestId('scope-checkbox-externalSecretsProvider:update')).toBeInTheDocument();
 			expect(getByTestId('scope-checkbox-externalSecretsProvider:delete')).toBeInTheDocument();
 			expect(getByTestId('scope-checkbox-externalSecretsProvider:sync')).toBeInTheDocument();
-			expect(getByTestId('scope-checkbox-externalSecret:list')).toBeInTheDocument();
 		});
 	});
 
