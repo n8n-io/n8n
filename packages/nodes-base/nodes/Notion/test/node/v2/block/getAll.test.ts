@@ -205,6 +205,28 @@ const API_RESPONSE = {
 				],
 			},
 		},
+		{
+			object: 'block',
+			id: 'aabbccdd-1234-5678-9012-abcdef123456',
+			parent: {
+				type: 'block_id',
+				block_id: '90e03468-f8aa-4576-95da-02ccad963040',
+			},
+			created_time: '2024-12-13T03:40:00.000Z',
+			last_edited_time: '2024-12-13T06:15:00.000Z',
+			created_by: {
+				object: 'user',
+				id: 'f215e49c-4677-40c0-9adc-87440d341324',
+			},
+			last_edited_by: {
+				object: 'user',
+				id: '88f72c1a-07ed-4bae-9fa0-231365d813d9',
+			},
+			has_children: true,
+			archived: false,
+			in_trash: false,
+			type: 'unsupported',
+		},
 	],
 	has_more: false,
 };
