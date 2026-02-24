@@ -3,6 +3,11 @@ import { STORES } from '@n8n/stores';
 import { inject } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
+	useWorkflowDocumentActive,
+	isActiveAction,
+	type ActiveAction,
+} from './workflowDocument/useWorkflowDocumentActive';
+import {
 	useWorkflowDocumentPinData,
 	isPinDataAction,
 	type PinDataAction,
@@ -32,7 +37,7 @@ export function createWorkflowDocumentId(
 	return `${workflowId}@${version}`;
 }
 
-type WorkflowDocumentAction = TagAction | PinDataAction;
+type WorkflowDocumentAction = ActiveAction | TagAction | PinDataAction;
 
 /**
  * Gets the store ID for a workflow document store.
@@ -60,12 +65,22 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		 * Single entry point for all mutations, enabling future CRDT sync integration.
 		 */
 		function onChange(action: WorkflowDocumentAction) {
-			if (isTagAction(action)) {
+			if (isActiveAction(action)) {
+				handleActiveAction(action);
+			} else if (isTagAction(action)) {
 				handleTagAction(action);
 			} else if (isPinDataAction(action)) {
 				handlePinDataAction(action);
 			}
 		}
+
+		const {
+			active,
+			activeVersionId,
+			activeVersion,
+			setActiveState,
+			handleAction: handleActiveAction,
+		} = useWorkflowDocumentActive(onChange);
 
 		const {
 			tags,
@@ -89,6 +104,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		return {
 			workflowId,
 			workflowVersion,
+			active,
+			activeVersionId,
+			activeVersion,
+			setActiveState,
 			tags,
 			setTags,
 			addTags,

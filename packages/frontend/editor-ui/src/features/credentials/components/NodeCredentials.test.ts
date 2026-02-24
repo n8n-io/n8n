@@ -271,7 +271,7 @@ describe('NodeCredentials', () => {
 		await userEvent.click(credentialsSelect);
 		await userEvent.click(screen.getByTestId('node-credentials-select-item-new'));
 
-		expect(uiStore.openNewCredential).toHaveBeenCalledWith('openAiApi', true);
+		expect(uiStore.openNewCredential).toHaveBeenCalledWith('openAiApi', true, false);
 	});
 
 	describe('onCredentialSelected', () => {
@@ -591,9 +591,13 @@ describe('NodeCredentials', () => {
 
 			await userEvent.click(screen.getByTestId('setup-manually-link'));
 
-			// createNewCredential calls openNewCredential with (type, showAuthOptions)
-			// showMixedCredentials returns false for single-credential nodes
-			expect(uiStore.openNewCredential).toHaveBeenCalledWith('slackOAuth2Api', expect.any(Boolean));
+			// createNewCredential calls openNewCredential with (type, showAuthOptions, forceManualMode)
+			// "setup manually" passes forceManualMode=true
+			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+				'slackOAuth2Api',
+				expect.any(Boolean),
+				true,
+			);
 		});
 
 		it('should show "Set up credential" button in standard empty state', () => {

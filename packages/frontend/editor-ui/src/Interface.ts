@@ -642,6 +642,7 @@ export type ModalState = {
 
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
+	forceManualMode?: boolean;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
