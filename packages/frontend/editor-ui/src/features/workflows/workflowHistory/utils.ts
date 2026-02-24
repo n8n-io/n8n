@@ -4,7 +4,9 @@ import type {
 } from '@n8n/rest-api-client/api/workflowHistory';
 import dateformat from 'dateformat';
 
-export const getLastPublishedVersion = (workflowPublishHistory: WorkflowPublishHistory[]) => {
+export const getLastPublishedVersion = (
+	workflowPublishHistory: readonly WorkflowPublishHistory[],
+) => {
 	return workflowPublishHistory.findLast((history) => history.event === 'activated');
 };
 

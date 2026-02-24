@@ -1072,7 +1072,7 @@ async function onCopyTestUrl(id: string) {
 }
 
 async function onCopyProductionUrl(id: string) {
-	const isWorkflowActive = workflowsStore.workflow.active;
+	const isWorkflowActive = workflowDocumentStore?.active ?? false;
 	if (!isWorkflowActive) {
 		toast.showMessage({
 			title: i18n.baseText('nodeWebhooks.showMessage.not.active'),
