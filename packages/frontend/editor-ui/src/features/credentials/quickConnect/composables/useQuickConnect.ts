@@ -15,6 +15,7 @@ import { useI18n } from '@n8n/i18n';
 import { getQuickConnectApiKey } from '../quickConnect.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useMessage } from '@/app/composables/useMessage';
+import { N8nMarkdown } from '@n8n/design-system';
 
 export function useQuickConnect() {
 	const settingsStore = useSettingsStore();
@@ -144,24 +145,17 @@ export function useQuickConnect() {
 
 			try {
 				if (quickConnectOption.consentText) {
-					const showError = ref(false);
-					const allCheckboxConfirmed = ref(false);
-					console.log(quickConnectOption);
-					const messageBody = h(QuickConnectConfirmationMessage, {
-						quickConnectOption,
-						serviceName: connectParams.serviceName,
-						showError,
-						confirmed: allCheckboxConfirmed,
-					});
-					console.log('message body', messageBody, showError, allCheckboxConfirmed);
 					const confirmed = await message.confirm(
-						messageBody,
+						h(N8nMarkdown, { content: quickConnectOption.consentText }),
 						i18n.baseText('nodeCredentials.quickConnect.connectTo', {
 							interpolate: { provider: connectParams.serviceName },
 						}),
 						{
 							confirmButtonText: i18n.baseText('nodeCredentials.quickConnect.consent.confirm'),
 							cancelButtonText: i18n.baseText('nodeCredentials.quickConnect.consent.cancel'),
+							confirmationCheckboxMessage: quickConnectOption.consentCheckbox
+								? h(N8nMarkdown, { content: quickConnectOption.consentCheckbox })
+								: undefined,
 						},
 					);
 

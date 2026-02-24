@@ -4,7 +4,7 @@ type QuickConnectGenericOption = {
 	text: string;
 	quickConnectType: string;
 	consentText?: string;
-	consentCheckbox?: string[];
+	consentCheckbox?: string;
 	config?: never;
 };
 

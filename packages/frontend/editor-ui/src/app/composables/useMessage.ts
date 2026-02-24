@@ -1,11 +1,13 @@
 import type { ElMessageBoxOptions, Action, MessageBoxInputData } from 'element-plus';
 import { ElMessageBox as MessageBox } from 'element-plus';
+import { h } from 'vue';
 import { sanitizeIfString } from '@/app/utils/htmlUtils';
+import { N8nCheckbox } from '@n8n/design-system';
 
 export type MessageBoxConfirmResult = 'confirm' | 'cancel';
 
 type AdditionalConfirmOptions = {
-	confirmationCheckbox?: ElMessageBoxOptions['message'];
+	confirmationCheckboxMessage?: ElMessageBoxOptions['message'];
 };
 
 export function useMessage() {
@@ -48,27 +50,51 @@ export function useMessage() {
 		configOrTitle?: string | ElMessageBoxOptions,
 		config?: ElMessageBoxOptions & AdditionalConfirmOptions,
 	) {
-		const resolvedConfig = {
+		let content = sanitizeIfString(message);
+		let confirmedCheckbox = true;
+		const { confirmationCheckboxMessage, ...remainingConfig } = config ?? {};
+		const resolvedConfig: ElMessageBoxOptions = {
 			cancelButtonClass: 'btn--cancel',
 			confirmButtonClass: 'btn--confirm',
 			distinguishCancelAndClose: true,
 			showClose: config?.showClose ?? false,
 			closeOnClickModal: false,
 			dangerouslyUseHTMLString: true,
-			...(config ?? (typeof configOrTitle === 'object' ? configOrTitle : {})),
+			beforeClose: (action, _instance, done) => {
+				if (action !== 'confirm' || confirmedCheckbox) {
+					done();
+				}
+			},
+			...(config ? remainingConfig : typeof configOrTitle === 'object' ? configOrTitle : {}),
 		};
+
+		if (confirmationCheckboxMessage) {
+			confirmedCheckbox = false;
+			content = h('div', [
+				h('div', message),
+				h(
+					N8nCheckbox,
+					{
+						onChange: (_, data: { target: { value: boolean } }) =>
+							(confirmedCheckbox = data.target.value),
+						required: true,
+					},
+					{
+						label: () => h('span', confirmationCheckboxMessage),
+					},
+				),
+			]);
+		}
 
 		if (typeof configOrTitle === 'string') {
 			return await MessageBox.confirm(
-				sanitizeIfString(message),
+				content,
 				sanitizeIfString(configOrTitle),
 				resolvedConfig,
 			).catch(handleCancelOrClose);
 		}
 
-		return await MessageBox.confirm(sanitizeIfString(message), resolvedConfig).catch(
-			handleCancelOrClose,
-		);
+		return await MessageBox.confirm(content, resolvedConfig).catch(handleCancelOrClose);
 	}
 
 	async function prompt(
