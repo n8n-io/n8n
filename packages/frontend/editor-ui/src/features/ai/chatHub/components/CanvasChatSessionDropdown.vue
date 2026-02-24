@@ -64,6 +64,10 @@ function handleSelectSession(sessionId: ChatSessionId) {
 	isOpen.value = false;
 }
 
+function formatSessionLabel(session: ChatHubSessionDto): string {
+	return session.id;
+}
+
 // Reset fetch state when workflow changes so we re-fetch on next open
 watch(
 	() => props.workflowId,
@@ -124,7 +128,7 @@ watch(
 							@select="handleSelectSession(session.id)"
 						>
 							<span :class="$style.sessionTitle">
-								{{ session.title || i18n.baseText('chatHub.canvas.session.newChat') }}
+								{{ formatSessionLabel(session) }}
 							</span>
 						</DropdownMenuItem>
 					</DropdownMenuGroup>

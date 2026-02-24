@@ -987,8 +987,9 @@ export class ChatHubService {
 			pushRef,
 		);
 
-		// Generate title for the session on receiving the first human message
-		if (originalPreviousMessageId === null && humanMessage) {
+		// Generate title for the session on receiving the first human message.
+		// Skip for manual (canvas) executions - they are ephemeral test runs.
+		if (originalPreviousMessageId === null && humanMessage && !pushRef) {
 			try {
 				await this.chatHubTitleService.generateSessionTitle(
 					user,

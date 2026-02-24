@@ -10,7 +10,7 @@ import {
 } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nIconButton, N8nScrollArea, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nIconButton, N8nScrollArea, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useClipboard, useScroll } from '@vueuse/core';
 import { useToast } from '@/app/composables/useToast';
 import type { ChatHubSendMessageRequest, ChatModelDto, ChatSessionId } from '@n8n/api-types';
@@ -81,13 +81,6 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
 const isResponding = computed(() => chatStore.isResponding(sessionId.value));
 const isNewSession = computed(() => chatMessages.value.length === 0);
-
-const sessionTitle = computed(() => {
-	const session = chatStore.sessions.byId[sessionId.value];
-	return session?.title && session.title !== 'New Chat'
-		? session.title
-		: i18n.baseText('chatHub.canvas.session.newChat');
-});
 
 const sessionIdText = computed(() =>
 	i18n.baseText('chat.window.session.id', {
@@ -230,28 +223,27 @@ defineExpose({ focusInput });
 				<span :class="$style.previewBadge">
 					{{ i18n.baseText('chatHub.canvas.previewBadge') }}
 				</span>
+			</div>
+			<div :class="$style.headerActions">
 				<CanvasChatSessionDropdown
 					:session-id="sessionId"
-					:session-title="sessionTitle"
+					:session-title="sessionIdText"
 					:workflow-id="workflowsStore.workflowId"
 					@select-session="handleSelectSession"
 				/>
-			</div>
-			<div :class="$style.headerActions">
 				<N8nTooltip placement="bottom">
 					<template #content>
 						{{ sessionId }}
 						<br />
 						{{ i18n.baseText('chat.window.session.id.copy') }}
 					</template>
-					<N8nButton
+					<N8nIconButton
+						icon="copy"
 						variant="ghost"
-						size="xsmall"
+						size="small"
 						data-test-id="canvas-chat-session-id"
 						@click="copySessionId"
-					>
-						{{ sessionIdText }}
-					</N8nButton>
+					/>
 				</N8nTooltip>
 				<N8nTooltip placement="bottom">
 					<template #content>
@@ -376,6 +368,8 @@ defineExpose({ focusInput });
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	margin-left: var(--spacing--xs);
+	flex-shrink: 0;
 }
 
 .previewBadge {
