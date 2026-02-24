@@ -85,11 +85,11 @@ type SORT_TYPE = typeof DATA_TABLE_SORT_MAP;
 
 const currentSort = ref<SORT_TYPE[keyof SORT_TYPE]>('updatedAt:desc');
 
-const fetchDataTables = async () => {
-	const delayedLoading = debounce(() => {
-		loading.value = true;
-	}, 300);
+const delayedLoading = debounce(() => {
+	loading.value = true;
+}, 300);
 
+const fetchDataTables = async () => {
 	const projectIdFilter = projectPages.isOverviewSubPage ? '' : projectsStore.currentProjectId;
 	try {
 		delayedLoading();
