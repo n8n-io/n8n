@@ -349,6 +349,34 @@ const handleClick = (event: MouseEvent) => {
 		--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);
 	}
 
+	&.success {
+		--button--color--background: light-dark(var(--color--green-600), var(--color--green-700));
+		--button--color--background-hover: light-dark(var(--color--green-700), var(--color--green-600));
+		--button--color--background-active: light-dark(
+			var(--color--green-700),
+			var(--color--green-500)
+		);
+		--button--color: var(--color--neutral-white);
+		--button--shadow: light-dark(
+			0 1px 3px 0 var(--color--black-alpha-100),
+			0 1px 3px 0 var(--color--black-alpha-200)
+		);
+		--button--shadow--hover: light-dark(
+			0 1px 3px 0 var(--color--black-alpha-100),
+			0 1px 3px 0 var(--color--black-alpha-200)
+		);
+		--button--shadow--active: light-dark(
+			0 1px 3px 0 var(--color--black-alpha-100),
+			0 1px 3px 0 var(--color--black-alpha-200)
+		);
+		--button--border-color: light-dark(var(--color--green-600), var(--color--green-700));
+		--button--border-color--hover: light-dark(var(--color--green-700), var(--color--green-600));
+		--button--border-color--active: light-dark(var(--color--green-700), var(--color--green-500));
+		--button--border--shadow: 0 0 0 1px var(--button--border-color);
+		--button--border--shadow--hover: 0 0 0 1px var(--button--border-color--hover);
+		--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);
+	}
+
 	&.disabled {
 		opacity: 0.5;
 		cursor: not-allowed;

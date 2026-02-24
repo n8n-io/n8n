@@ -124,10 +124,13 @@ vi.mock('@/app/composables/useToast', () => ({
 	})),
 }));
 
-vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
-	useEnvFeatureFlag: vi.fn(() => ({
-		check: {
-			value: vi.fn((flag: string) => flag === 'EXTERNAL_SECRETS_FOR_PROJECTS'),
+vi.mock('@/app/stores/settings.store', () => ({
+	useSettingsStore: vi.fn(() => ({
+		moduleSettings: {
+			'external-secrets': {
+				multipleConnections: true,
+				forProjects: true,
+			},
 		},
 	})),
 }));
@@ -444,14 +447,15 @@ describe('ProjectExternalSecrets', () => {
 		});
 
 		it('should not fetch data when feature is disabled', async () => {
-			const { useEnvFeatureFlag } = await import(
-				'@/features/shared/envFeatureFlag/useEnvFeatureFlag'
-			);
-			vi.mocked(useEnvFeatureFlag).mockReturnValue({
-				check: {
-					value: vi.fn(() => false),
+			const { useSettingsStore } = await import('@/app/stores/settings.store');
+			vi.mocked(useSettingsStore).mockReturnValue({
+				moduleSettings: {
+					'external-secrets': {
+						multipleConnections: true,
+						forProjects: false,
+					},
 				},
-			} as unknown as ReturnType<typeof useEnvFeatureFlag>);
+			} as unknown as ReturnType<typeof useSettingsStore>);
 
 			const fetchSpy = vi.spyOn(projectsStore, 'getProjectSecretProviders');
 

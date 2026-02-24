@@ -191,16 +191,30 @@ export class SamlController {
 
 	/**
 	 * Test SAML config
-	 * This endpoint is available if SAML is licensed and the requestor is an instance owner
+	 * Accepts metadata from the request body so testing works without saving first.
+	 * This endpoint is available if SAML is licensed and the requestor is an instance owner.
 	 */
-	@Get('/config/test', { middlewares: [samlLicensedMiddleware] })
+	@Post('/config/test', { middlewares: [samlLicensedMiddleware] })
 	@GlobalScope('saml:manage')
-	async configTestGet(_: AuthenticatedRequest, res: Response) {
-		return await this.handleInitSSO(res, getServiceProviderConfigTestReturnUrl());
+	async configTestPost(_req: AuthenticatedRequest, res: Response, @Body payload: SamlPreferences) {
+		return await this.handleInitSSO(res, getServiceProviderConfigTestReturnUrl(), payload);
 	}
 
-	private async handleInitSSO(res: Response, relayState?: string) {
-		const result = await this.samlService.getLoginRequestUrl(relayState);
+	private async handleInitSSO(res: Response, relayState?: string, config?: SamlPreferences) {
+		let metadata: string | undefined;
+		if (config) {
+			metadata = config.metadata;
+			if (!metadata && config.metadataUrl) {
+				metadata =
+					(await this.samlService.fetchMetadataFromUrl(config.metadataUrl, config.ignoreSSL)) ?? '';
+			}
+		}
+
+		const result = await this.samlService.getLoginRequestUrl(
+			relayState,
+			config?.loginBinding,
+			metadata,
+		);
 		if (result?.binding === 'redirect') {
 			return result.context.context;
 		} else if (result?.binding === 'post') {

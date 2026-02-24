@@ -155,28 +155,21 @@ Suboptimal performance when:
 
 ## Testing
 
-### Unit Tests
+### Integration Tests
 
 ```bash
 cd packages/@n8n/expression-runtime
-pnpm test proxy
+pnpm test
 ```
 
 Test coverage:
 - ✅ Basic property access
 - ✅ Nested properties
-- ✅ Small/large arrays
+- ✅ Array element access (lazy-loaded via `__getArrayElement`)
 - ✅ Object proxies
 - ✅ Function handling
 - ✅ Caching behavior
 - ✅ Edge cases (circular refs, symbols, "in" operator)
-
-### Manual Testing
-
-Run the example:
-```bash
-npx tsx src/proxy/__tests__/manual-test.example.ts
-```
 
 ## API Reference (inside the isolate bundle)
 

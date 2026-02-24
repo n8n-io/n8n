@@ -35,7 +35,7 @@ import {
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import Banner from '@/app/components/Banner.vue';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
@@ -65,7 +65,7 @@ const { confirm } = useMessage();
 const eventBus = createEventBus();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
-const { check: checkDevFeatureFlag } = useEnvFeatureFlag();
+const settingsStore = useSettingsStore();
 
 // Constants
 const LABEL_SIZE: IParameterLabel = { size: 'medium' };
@@ -85,7 +85,8 @@ const modal = useConnectionModal({
 });
 
 const tabNavigationEnabled =
-	checkDevFeatureFlag.value('EXTERNAL_SECRETS_FOR_PROJECTS') && modal.canShareGlobally.value;
+	(settingsStore.moduleSettings['external-secrets']?.forProjects ?? false) &&
+	modal.canShareGlobally.value;
 
 const ACTIVE_TAB = computed({
 	get: () => (tabNavigationEnabled ? internalActiveTab.value : 'connection'),
