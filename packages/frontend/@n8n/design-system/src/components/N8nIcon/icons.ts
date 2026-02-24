@@ -244,6 +244,7 @@ import IconLucideYoutube from '~icons/lucide/youtube';
 import IconLucideZap from '~icons/lucide/zap';
 import IconLucideZoomIn from '~icons/lucide/zoom-in';
 import IconLucideZoomOut from '~icons/lucide/zoom-out';
+import IconLucideStar from '~icons/lucide/star';
 
 /**
  * Need to keep old icon names
@@ -453,6 +454,7 @@ export const deprecatedIconSet = {
 	'power-off': IconLucidePower,
 	'paper-plane': IconLucideSend,
 	bell: IconLucideBell,
+	star: IconLucideStar,
 } as const;
 
 export const updatedIconSet = {
@@ -704,6 +706,7 @@ export const updatedIconSet = {
 	'zoom-out': IconLucideZoomOut,
 	loader: IconLucideLoader2,
 	'quick-connect': IconLucideFlame,
+	star: IconLucideStar,
 } as const;
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward

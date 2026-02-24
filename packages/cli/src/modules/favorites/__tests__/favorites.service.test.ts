@@ -1,26 +1,37 @@
 import { mock } from 'jest-mock-extended';
+import type { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { UserFavoriteRepository } from '../database/repositories/user-favorite.repository';
 import type { UserFavorite } from '../database/entities/user-favorite.entity';
+import type { UserFavoriteRepository } from '../database/repositories/user-favorite.repository';
 import { FavoritesService } from '../favorites.service';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
 describe('FavoritesService', () => {
 	const repo = mock<UserFavoriteRepository>();
-	const service = new FavoritesService(repo);
+	const workflowRepository = mock<WorkflowRepository>();
+	const projectRepository = mock<ProjectRepository>();
+	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const dataTableRepository = mock<DataTableRepository>();
+	const service = new FavoritesService(
+		repo,
+		workflowRepository,
+		projectRepository,
+		sharedWorkflowRepository,
+		dataTableRepository,
+	);
 
 	afterEach(() => jest.clearAllMocks());
 
-	describe('getFavorites', () => {
-		it('should return all favorites for a user', async () => {
-			const favorites = [mock<UserFavorite>({ userId: 'user1' })];
-			repo.findByUser.mockResolvedValue(favorites);
+	describe('getEnrichedFavorites', () => {
+		it('should return empty array when user has no favorites', async () => {
+			repo.findByUser.mockResolvedValue([]);
 
-			const result = await service.getFavorites('user1');
+			const result = await service.getEnrichedFavorites('user1');
 
 			expect(repo.findByUser).toHaveBeenCalledWith('user1');
-			expect(result).toBe(favorites);
+			expect(result).toEqual([]);
 		});
 	});
 

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
+import { computed, onMounted, ref, useCssModule } from 'vue';
 import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
 import { useToast } from '@/app/composables/useToast';
@@ -39,6 +39,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -68,6 +69,11 @@ const usersStore = useUsersStore();
 const workflowHelpers = useWorkflowHelpers();
 const changeOwnerEventBus = createEventBus();
 const workflowTelemetry = useTelemetry();
+const favoritesStore = useFavoritesStore();
+
+onMounted(() => {
+	void favoritesStore.fetchFavorites();
+});
 
 const onWorkflowPage = computed(() => {
 	return route.meta && (route.meta.nodeView || route.meta.keepWorkflowAlive === true);
@@ -197,6 +203,14 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	actions.push({
 		id: WORKFLOW_MENU_ACTIONS.SETTINGS,
 		label: locale.baseText('generic.settings'),
+		disabled: !onWorkflowPage.value || props.isNewWorkflow,
+	});
+
+	actions.push({
+		id: WORKFLOW_MENU_ACTIONS.FAVORITE,
+		label: favoritesStore.isFavorite(props.id)
+			? locale.baseText('favorites.remove')
+			: locale.baseText('favorites.add'),
 		disabled: !onWorkflowPage.value || props.isNewWorkflow,
 	});
 
@@ -353,6 +367,10 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		}
 		case WORKFLOW_MENU_ACTIONS.DELETE: {
 			nodeViewEventBus.emit('deleteWorkflow');
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.FAVORITE: {
+			await favoritesStore.toggleFavorite(props.id, 'workflow');
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.CHANGE_OWNER: {

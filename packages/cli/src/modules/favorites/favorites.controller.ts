@@ -2,6 +2,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, RestController } from '@n8n/decorators';
 
 import { FavoritesService } from './favorites.service';
+import { AddFavoriteDto } from './dto/add-favorite.dto';
 
 @RestController('/favorites')
 export class FavoritesController {
@@ -9,15 +10,11 @@ export class FavoritesController {
 
 	@Get('/')
 	async getFavorites(req: AuthenticatedRequest) {
-		return await this.favoritesService.getFavorites(req.user.id);
+		return await this.favoritesService.getEnrichedFavorites(req.user.id);
 	}
 
 	@Post('/')
-	async addFavorite(
-		req: AuthenticatedRequest,
-		_res: unknown,
-		@Body body: { resourceId: string; resourceType: string },
-	) {
+	async addFavorite(req: AuthenticatedRequest, _res: unknown, @Body body: AddFavoriteDto) {
 		return await this.favoritesService.addFavorite(req.user.id, body.resourceId, body.resourceType);
 	}
 

@@ -4,14 +4,16 @@ import { VIEWS } from '@/app/constants';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { type IconName, N8nIcon, N8nMenuItem, N8nText } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeMount, onBeforeUnmount } from 'vue';
 import { useProjectsStore } from '../projects.store';
 import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
+import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 
-import { N8nMenuItem, N8nText } from '@n8n/design-system';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 type Props = {
@@ -27,6 +29,7 @@ const globalEntityCreation = useGlobalEntityCreation();
 const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
+const favoritesStore = useFavoritesStore();
 
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
@@ -81,6 +84,92 @@ const personalProject = computed<IMenuItem>(() => ({
 	},
 }));
 
+const favoriteWorkflowItems = computed<IMenuItem[]>(() =>
+	favoritesStore.favorites
+		.filter((f) => f.resourceType === 'workflow')
+		.map((f) => ({
+			id: `favorite-workflow-${f.resourceId}`,
+			label: f.resourceName,
+			icon: 'log-in' as IMenuItem['icon'],
+			route: { to: { name: VIEWS.WORKFLOW, params: { name: f.resourceId } } },
+		})),
+);
+
+const favoriteProjectItems = computed<IMenuItem[]>(() =>
+	favoritesStore.favorites
+		.filter((f) => f.resourceType === 'project')
+		.map((f) => {
+			const project = projectsStore.myProjects.find((p) => p.id === f.resourceId);
+			return {
+				id: `favorite-project-${f.resourceId}`,
+				label: f.resourceName,
+				icon: (project?.icon as IMenuItem['icon']) ?? ('layers' as IMenuItem['icon']),
+				route: { to: { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: f.resourceId } } },
+			};
+		}),
+);
+
+const favoriteDataTableItems = computed<IMenuItem[]>(() =>
+	favoritesStore.favorites
+		.filter((f) => f.resourceType === 'dataTable' && f.resourceProjectId)
+		.map((f) => ({
+			id: `favorite-datatable-${f.resourceId}`,
+			label: f.resourceName,
+			icon: 'table' as IMenuItem['icon'],
+			route: {
+				to: {
+					name: DATA_TABLE_DETAILS,
+					params: { projectId: f.resourceProjectId, id: f.resourceId },
+				},
+			},
+		})),
+);
+
+type FavoriteGroup = {
+	type: string;
+	icon: IconName;
+	items: IMenuItem[];
+	showIndividualIcons: boolean;
+};
+
+const favoriteGroups = computed<FavoriteGroup[]>(() => {
+	const groups: FavoriteGroup[] = [];
+	// Projects first, each with its own icon
+	if (favoriteProjectItems.value.length > 0) {
+		groups.push({
+			type: 'project',
+			icon: 'layers' as IconName,
+			items: favoriteProjectItems.value,
+			showIndividualIcons: true,
+		});
+	}
+	if (favoriteWorkflowItems.value.length > 0) {
+		groups.push({
+			type: 'workflow',
+			icon: 'log-in' as IconName,
+			items: favoriteWorkflowItems.value,
+			showIndividualIcons: false,
+		});
+	}
+	if (favoriteDataTableItems.value.length > 0) {
+		groups.push({
+			type: 'dataTable',
+			icon: 'table' as IconName,
+			items: favoriteDataTableItems.value,
+			showIndividualIcons: false,
+		});
+	}
+	return groups;
+});
+
+const allFavoriteItems = computed<IMenuItem[]>(() => [
+	...favoriteProjectItems.value,
+	...favoriteWorkflowItems.value,
+	...favoriteDataTableItems.value,
+]);
+
+const hasFavorites = computed(() => allFavoriteItems.value.length > 0);
+
 const activeTabId = computed(() => {
 	return (
 		(Array.isArray(projectsStore.projectNavActiveId)
@@ -105,6 +194,7 @@ async function onSourceControlPull() {
 
 onBeforeMount(async () => {
 	await usersStore.fetchUsers({ filter: { isPending: false }, take: 2 });
+	void favoritesStore.fetchFavorites();
 	sourceControlEventBus.on('pull', onSourceControlPull);
 });
 
@@ -147,6 +237,62 @@ onBeforeUnmount(() => {
 				data-test-id="project-chat-menu-item"
 			/>
 		</div>
+		<template v-if="hasFavorites">
+			<N8nText
+				v-if="!props.collapsed"
+				:class="$style.projectsLabel"
+				size="small"
+				bold
+				role="heading"
+				color="text-light"
+			>
+				{{ locale.baseText('favorites.menu.title') }}
+			</N8nText>
+			<div :class="$style.projectItems">
+				<!-- Expanded: grouped layout -->
+				<template v-if="!props.collapsed">
+					<template v-for="(group, groupIndex) in favoriteGroups" :key="group.type">
+						<div v-if="groupIndex > 0" :class="$style.groupSpacer" />
+						<!-- Projects: each item keeps its own icon -->
+						<template v-if="group.showIndividualIcons">
+							<N8nMenuItem
+								v-for="item in group.items"
+								:key="item.id"
+								:item="item"
+								:compact="false"
+								:active="activeTabId === item.id"
+							/>
+						</template>
+						<!-- Workflows / data tables: standalone group icon + icon-less items -->
+						<div v-else :class="$style.favoriteGroup">
+							<div :class="$style.groupIcon">
+								<N8nIcon :icon="group.icon" size="medium" />
+							</div>
+							<div :class="$style.groupItems">
+								<N8nMenuItem
+									v-for="item in group.items"
+									:key="item.id"
+									:item="{ ...item, icon: undefined }"
+									:compact="false"
+									:active="activeTabId === item.id"
+								/>
+							</div>
+						</div>
+					</template>
+				</template>
+				<!-- Collapsed: flat list, icons on all items -->
+				<template v-else>
+					<N8nMenuItem
+						v-for="item in allFavoriteItems"
+						:key="item.id"
+						:class="$style.collapsed"
+						:item="item"
+						:compact="true"
+						:active="activeTabId === item.id"
+					/>
+				</template>
+			</div>
+		</template>
 		<N8nText
 			v-if="
 				!props.collapsed && projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0
@@ -238,5 +384,32 @@ onBeforeUnmount(() => {
 	&.collapsed {
 		border-bottom: var(--border);
 	}
+}
+
+.groupSpacer {
+	height: var(--spacing--4xs);
+}
+
+.favoriteGroup {
+	display: flex;
+	align-items: flex-start;
+}
+
+.groupIcon {
+	// Same width as N8nMenuItem's icon slot; same height as one menu item row
+	// (icon height: --spacing--lg=24px + top/bottom padding: 2×--spacing--4xs=8px)
+	width: var(--spacing--lg);
+	height: calc(var(--spacing--lg) + 2 * var(--spacing--4xs));
+	flex-shrink: 0;
+	margin-right: var(--spacing--4xs);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color--text--tint-1);
+}
+
+.groupItems {
+	flex: 1;
+	min-width: 0;
 }
 </style>

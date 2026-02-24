@@ -22,6 +22,7 @@ export const DATA_TABLE_CARD_ACTIONS = {
 	DELETE: 'delete',
 	CLEAR: 'clear',
 	DOWNLOAD_CSV: 'download-csv',
+	FAVORITE: 'favorite',
 };
 
 export const ADD_DATA_TABLE_MODAL_KEY = 'addDataTableModal';

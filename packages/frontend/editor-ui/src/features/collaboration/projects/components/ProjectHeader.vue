@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { TabOptions, UserAction } from '@n8n/design-system';
@@ -22,10 +22,11 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
-import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
@@ -35,6 +36,24 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
 const usersStore = useUsersStore();
+const favoritesStore = useFavoritesStore();
+
+onMounted(() => {
+	void favoritesStore.fetchFavorites();
+});
+
+const currentProjectId = computed(() => projectsStore.currentProject?.id);
+
+const isTeamProject = computed(() => projectsStore.currentProject?.type === ProjectTypes.Team);
+
+const isProjectFavorited = computed(() =>
+	currentProjectId.value ? favoritesStore.isFavorite(currentProjectId.value) : false,
+);
+
+async function onToggleProjectFavorite() {
+	if (!currentProjectId.value) return;
+	await favoritesStore.toggleFavorite(currentProjectId.value, 'project');
+}
 
 const projectPages = useProjectPages();
 
@@ -432,6 +451,20 @@ const onSelect = (action: string) => {
 						</div>
 					</template>
 				</div>
+				<N8nTooltip
+					v-if="isTeamProject"
+					:content="
+						isProjectFavorited ? i18n.baseText('favorites.remove') : i18n.baseText('favorites.add')
+					"
+				>
+					<N8nIcon
+						:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
+						icon="star"
+						size="medium"
+						data-test-id="project-favorite-btn"
+						@click.stop="onToggleProjectFavorite"
+					/>
+				</N8nTooltip>
 			</div>
 			<div
 				v-if="route.name !== VIEWS.PROJECT_SETTINGS"
@@ -510,6 +543,30 @@ const onSelect = (action: string) => {
 	white-space: normal;
 	border-radius: 6px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.favoriteBtn {
+	color: var(--color--text--tint-2);
+	margin-left: var(--spacing--2xs);
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	opacity: 0;
+	transition:
+		opacity 0.15s ease,
+		color 0.15s ease;
+
+	&.favoriteBtnActive {
+		color: var(--color--warning);
+	}
+
+	&:hover {
+		color: var(--color--text);
+	}
+}
+
+.projectDetails:hover .favoriteBtn {
+	opacity: 1;
 }
 
 @include mixins.breakpoint('xs-only') {

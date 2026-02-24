@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { UserFavorite } from '../database/entities/user-favorite.entity';
 import { FavoritesController } from '../favorites.controller';
-import { FavoritesService } from '../favorites.service';
+import type { FavoritesService } from '../favorites.service';
 
 describe('FavoritesController', () => {
 	const favoritesService = mock<FavoritesService>();
@@ -14,13 +14,13 @@ describe('FavoritesController', () => {
 	afterEach(() => jest.clearAllMocks());
 
 	describe('getFavorites', () => {
-		it('should return favorites for the authenticated user', async () => {
-			const favorites = [mock<UserFavorite>()];
-			favoritesService.getFavorites.mockResolvedValue(favorites);
+		it('should return enriched favorites for the authenticated user', async () => {
+			const favorites = [mock<UserFavorite & { resourceName: string }>()];
+			favoritesService.getEnrichedFavorites.mockResolvedValue(favorites);
 
 			const result = await controller.getFavorites(req);
 
-			expect(favoritesService.getFavorites).toHaveBeenCalledWith('user1');
+			expect(favoritesService.getEnrichedFavorites).toHaveBeenCalledWith('user1');
 			expect(result).toBe(favorites);
 		});
 	});

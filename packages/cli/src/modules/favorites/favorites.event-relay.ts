@@ -16,7 +16,8 @@ export class FavoritesEventRelay extends EventRelay {
 
 	init() {
 		this.setupListeners({
-			'workflow-deleted': ({ workflowId }) => this.favoritesService.deleteByResource(workflowId),
+			'workflow-deleted': async ({ workflowId }) =>
+				await this.favoritesService.deleteByResource(workflowId),
 			'team-project-deleted': async ({ projectId, removalType }) => {
 				if (removalType === 'delete') {
 					await this.favoritesService.deleteByResource(projectId);
