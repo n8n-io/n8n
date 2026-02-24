@@ -272,7 +272,7 @@ watch(
 
 onMounted(async () => {
 	if (!showExternalSecretsSection.value) return;
-	await Promise.all([
+	await Promise.allSettled([
 		secretsProviders.fetchProviderTypes(projectsStore.currentProjectId ?? undefined),
 		secretsProviders.fetchActiveConnections(),
 	]);

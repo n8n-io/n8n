@@ -55,7 +55,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const parameterValidationStates = ref<Record<string, boolean>>({});
 
 	// Connection composable (low-level API operations)
-	const connection = useSecretsProviderConnection();
+	const connection = useSecretsProviderConnection(options.projectId);
 
 	// Display logic - determines which properties should be shown
 	function shouldDisplayProperty(property: INodeProperties): boolean {
