@@ -46,7 +46,7 @@ vi.mock('./cards/CredentialTypeSetupCard.vue', () => ({
 			'<div data-test-id="credential-type-setup-card">' +
 			'<span data-test-id="credential-type-name">{{ state.credentialDisplayName }}</span>' +
 			'<button data-test-id="select-credential-btn" @click="$emit(\'credentialSelected\', { credentialType: state.credentialType, credentialId: \'cred-123\' })">Select</button>' +
-			'<button data-test-id="deselect-credential-btn" @click="$emit(\'credentialDeselected\', state.credentialType)">Deselect</button>' +
+			'<button data-test-id="deselect-credential-btn" @click="$emit(\'credentialDeselected\', { credentialType: state.credentialType })">Deselect</button>' +
 			'</div>',
 		props: ['state', 'firstTriggerName'],
 		emits: ['credentialSelected', 'credentialDeselected'],
@@ -217,7 +217,7 @@ describe('SetupPanelCards', () => {
 
 			await userEvent.click(getByTestId('select-credential-btn'));
 
-			expect(mockSetCredential).toHaveBeenCalledWith('openAiApi', 'cred-123');
+			expect(mockSetCredential).toHaveBeenCalledWith('openAiApi', 'cred-123', undefined);
 		});
 
 		it('should call unsetCredential with credentialType when credential is deselected', async () => {
@@ -227,7 +227,7 @@ describe('SetupPanelCards', () => {
 
 			await userEvent.click(getByTestId('deselect-credential-btn'));
 
-			expect(mockUnsetCredential).toHaveBeenCalledWith('openAiApi');
+			expect(mockUnsetCredential).toHaveBeenCalledWith('openAiApi', undefined);
 		});
 	});
 });

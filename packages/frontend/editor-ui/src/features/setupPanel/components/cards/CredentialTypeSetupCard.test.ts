@@ -225,7 +225,7 @@ describe('CredentialTypeSetupCard', () => {
 
 			await userEvent.click(getByTestId('deselect-btn'));
 
-			expect(emitted('credentialDeselected')).toEqual([['openAiApi']]);
+			expect(emitted('credentialDeselected')).toEqual([[{ credentialType: 'openAiApi' }]]);
 		});
 	});
 

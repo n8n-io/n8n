@@ -192,7 +192,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 * Cards with embedded triggers have isComplete recomputed to include trigger execution.
 	 *
 	 * NOTE: This now only includes credential types where NONE of the nodes have parameter issues.
-	 * When nodes have both credentials and parameters, they're handled by nodeCredentialStates instead.
+	 * When nodes have both credentials and parameters, they're handled by nodeStates instead.
 	 */
 	const credentialTypeStates = computed(() => {
 		// First, identify which credential types have ANY nodes with parameter issues
@@ -551,11 +551,11 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	);
 
 	/**
-	 * Sets a credential for all nodes in a credential card.
-	 * When sourceNodeName is provided, it identifies the specific card (needed when
-	 * multiple HTTP Request nodes produce separate cards with the same credential type).
-	 * After assigning, auto-assigns to other HTTP Request cards that share the same
-	 * credential type and URL.
+	 * Sets a credential for nodes.
+	 * When sourceNodeName is provided, it first tries to find the matching credential card
+	 * (needed when multiple HTTP Request nodes produce separate cards with the same credential type).
+	 * If the node isn't in credentialTypeStates (e.g. it's in nodeStates due to parameter issues),
+	 * falls back to updating that specific node directly.
 	 */
 	const setCredential = (
 		credentialType: string,
@@ -564,19 +564,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	): void => {
 		const credential = credentialsStore.getCredentialById(credentialId);
 		if (!credential) return;
-
-		// Capture the computed snapshot once before any mutations.
-		// assignCredentialToNode modifies the store, which recomputes credentialTypeStates.value
-		// with new object references — breaking the === identity check in the auto-assign loop.
-		const allCredStates = credentialTypeStates.value;
-
-		const credState = sourceNodeName
-			? allCredStates.find(
-					(s) =>
-						s.credentialType === credentialType && s.nodes.some((n) => n.name === sourceNodeName),
-				)
-			: allCredStates.find((s) => s.credentialType === credentialType);
-		if (!credState) return;
 
 		const credentialDetails = { id: credentialId, name: credential.name };
 
@@ -596,40 +583,66 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			});
 		};
 
-		for (const stateNode of credState.nodes) {
-			assignCredentialToNode(stateNode.name);
+		// Capture the computed snapshot once before any mutations.
+		// assignCredentialToNode modifies the store, which recomputes credentialTypeStates.value
+		// with new object references — breaking the === identity check in the auto-assign loop.
+		const allCredStates = credentialTypeStates.value;
+
+		const credState = sourceNodeName
+			? allCredStates.find(
+					(s) =>
+						s.credentialType === credentialType && s.nodes.some((n) => n.name === sourceNodeName),
+				)
+			: allCredStates.find((s) => s.credentialType === credentialType);
+
+		if (credState) {
+			for (const stateNode of credState.nodes) {
+				assignCredentialToNode(stateNode.name);
+			}
+		} else if (sourceNodeName) {
+			// Node is handled by nodeStates (has parameter issues), update it directly
+			assignCredentialToNode(sourceNodeName);
 		}
 
 		nodeHelpers.updateNodesCredentialsIssues();
 	};
 
 	/**
-	 * Unsets a credential from all nodes in a credential card.
-	 * When sourceNodeName is provided, it identifies the specific card (needed when
-	 * multiple HTTP Request nodes produce separate cards with the same credential type).
+	 * Unsets a credential from nodes.
+	 * When sourceNodeName is provided, it first tries to find the matching credential card.
+	 * If the node isn't in credentialTypeStates (e.g. it's in nodeStates due to parameter issues),
+	 * falls back to updating that specific node directly.
 	 */
 	const unsetCredential = (credentialType: string, sourceNodeName?: string): void => {
+		const removeCredentialFromNode = (nodeName: string) => {
+			const node = workflowsStore.getNodeByName(nodeName);
+			if (!node) return;
+
+			const updatedCredentials = { ...node.credentials };
+			delete updatedCredentials[credentialType];
+
+			workflowState.updateNodeProperties({
+				name: nodeName,
+				properties: {
+					credentials: updatedCredentials,
+				},
+			});
+		};
+
 		const credState = sourceNodeName
 			? credentialTypeStates.value.find(
 					(s) =>
 						s.credentialType === credentialType && s.nodes.some((n) => n.name === sourceNodeName),
 				)
 			: credentialTypeStates.value.find((s) => s.credentialType === credentialType);
-		if (!credState) return;
 
-		for (const stateNode of credState.nodes) {
-			const node = workflowsStore.getNodeByName(stateNode.name);
-			if (!node) continue;
-
-			const updatedCredentials = { ...node.credentials };
-			delete updatedCredentials[credentialType];
-
-			workflowState.updateNodeProperties({
-				name: stateNode.name,
-				properties: {
-					credentials: updatedCredentials,
-				},
-			});
+		if (credState) {
+			for (const stateNode of credState.nodes) {
+				removeCredentialFromNode(stateNode.name);
+			}
+		} else if (sourceNodeName) {
+			// Node is handled by nodeStates (has parameter issues), update it directly
+			removeCredentialFromNode(sourceNodeName);
 		}
 
 		nodeHelpers.updateNodesCredentialsIssues();
