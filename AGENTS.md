@@ -141,7 +141,7 @@ Quick summary:
 - **Single `data-testid` value** — no spaces (`error`)
 - **Use workflow traversal utils** — don't write custom graph traversal
 - **Respect package boundaries** — packages must not import from layers above
-  them (structural test)
+  them (`error` lint rule + structural test)
 
 When implementing CSS, refer to @packages/frontend/CLAUDE.md for guidelines on
 CSS variables and styling conventions.

@@ -102,14 +102,17 @@ n8n-editor-ui   │  (frontend — no backend imports except types/workflow)
 @n8n/design-system (pure UI — no backend imports at all)
 ```
 
-- **Enforced by:** Structural test in
-  `packages/@n8n/eslint-config/src/architecture.test.ts`
-- **Applies to:** All packages. The test validates 6 boundaries across the
-  monorepo.
+- **Enforced by:**
+  - `n8n-local-rules/no-cross-boundary-import` = `error` (lint rule — fires
+    in IDE and CI as you write the import)
+  - Structural test in `packages/@n8n/eslint-config/src/architecture.test.ts`
+    (validates all boundaries in one pass)
+- **Applies to:** All packages. The rule and test validate 6 boundaries
+  across the monorepo.
 - **Fix:** Move the shared code down to the appropriate layer, or extract it
   into a shared package like `n8n-workflow` or `@n8n/api-types`.
 - **Known violations:** 3 files in `nodes-base` import from `n8n-core`
-  (baselined — tracked for cleanup, but new violations are blocked).
+  (baselined in the structural test — the lint rule flags them for cleanup).
 
 ---
 
@@ -125,7 +128,7 @@ n8n-editor-ui   │  (frontend — no backend imports except types/workflow)
 | 6 | CSS variables only | convention | — |
 | 7 | Single data-testid | `error` | `n8n-local-rules/no-invalid-data-testid` |
 | 8 | Traversal utilities | convention | — |
-| 9 | Package boundaries | `error` | `architecture.test.ts` (structural test) |
+| 9 | Package boundaries | `error` | `n8n-local-rules/no-cross-boundary-import` + `architecture.test.ts` |
 
 Rules at `warn` are for gradual adoption on existing code. New code must
 comply. Rules will be promoted to `error` once existing violations are

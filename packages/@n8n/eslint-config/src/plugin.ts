@@ -27,6 +27,7 @@ export const localRulesPlugin = {
 				'n8n-local-rules/no-internal-package-import': 'error',
 				'n8n-local-rules/no-type-only-import-in-di': 'error',
 				'n8n-local-rules/no-plain-errors': 'error',
+				'n8n-local-rules/no-cross-boundary-import': 'error',
 			},
 		},
 	},
