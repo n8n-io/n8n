@@ -25,7 +25,7 @@ const expanded = defineModel<boolean>('expanded', { default: false });
 
 const emit = defineEmits<{
 	credentialSelected: [payload: { credentialType: string; credentialId: string }];
-	credentialDeselected: [credentialType: string];
+	credentialDeselected: [payload: { credentialType: string }];
 }>();
 
 const i18n = useI18n();
@@ -89,7 +89,7 @@ const onCredentialSelected = (credentialId: string) => {
 
 const onCredentialDeselected = () => {
 	setupCard.value?.markInteracted();
-	emit('credentialDeselected', props.state.credentialType);
+	emit('credentialDeselected', { credentialType: props.state.credentialType });
 };
 
 const onExecuteClick = async () => {

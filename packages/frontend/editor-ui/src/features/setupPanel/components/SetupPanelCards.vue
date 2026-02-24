@@ -34,25 +34,15 @@ watch(isAllComplete, (allComplete) => {
 	}
 });
 
-// For CredentialTypeSetupCard (old format)
-const onCredentialSelected = (payload: { credentialType: string; credentialId: string }) => {
-	setCredential(payload.credentialType, payload.credentialId);
-};
-
-const onCredentialDeselected = (credentialType: string) => {
-	unsetCredential(credentialType);
-};
-
-// For NodeSetupCard (format with nodeName)
-const onNodeCredentialSelected = (payload: {
+const onCredentialSelected = (payload: {
 	credentialType: string;
 	credentialId: string;
-	nodeName: string;
+	nodeName?: string;
 }) => {
 	setCredential(payload.credentialType, payload.credentialId, payload.nodeName);
 };
 
-const onNodeCredentialDeselected = (payload: { credentialType: string; nodeName: string }) => {
+const onCredentialDeselected = (payload: { credentialType: string; nodeName?: string }) => {
 	unsetCredential(payload.credentialType, payload.nodeName);
 };
 
@@ -158,8 +148,8 @@ watch(
 					:first-trigger-name="firstTriggerName"
 					:expanded="isCardExpanded(cardKey(card))"
 					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
-					@credential-selected="onNodeCredentialSelected"
-					@credential-deselected="onNodeCredentialDeselected"
+					@credential-selected="onCredentialSelected"
+					@credential-deselected="onCredentialDeselected"
 				/>
 				<CredentialTypeSetupCard
 					v-else
