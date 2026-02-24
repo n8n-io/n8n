@@ -55,6 +55,7 @@ function createMockSession(overrides: Partial<ChatHubSessionDto> = {}): ChatHubS
 		agentId: null,
 		agentName: 'GPT-4',
 		agentIcon: null,
+		type: 'production',
 		toolIds: [],
 		...overrides,
 	};

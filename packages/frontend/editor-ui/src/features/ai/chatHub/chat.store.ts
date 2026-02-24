@@ -379,7 +379,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		try {
 			const cursor = reset ? undefined : (sessions.value?.nextCursor ?? undefined);
 			const [response] = await Promise.all([
-				fetchSessionsApi(rootStore.restApiContext, CHAT_SESSIONS_PAGE_SIZE, cursor),
+				fetchSessionsApi(rootStore.restApiContext, CHAT_SESSIONS_PAGE_SIZE, cursor, options.type),
 				new Promise((resolve) => setTimeout(resolve, options.minLoadingTime ?? 0)),
 			]);
 
@@ -583,6 +583,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 				sessions.value.byId[sessionId] = createSessionFromStreamingState(
 					streaming.value,
 					configuredTools.value.filter((t) => t.enabled).map((t) => t.definition.id),
+					useManualMode,
 				);
 				sessions.value.ids ??= [];
 				sessions.value.ids.unshift(sessionId);

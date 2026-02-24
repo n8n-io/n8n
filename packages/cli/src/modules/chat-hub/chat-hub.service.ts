@@ -211,6 +211,7 @@ export class ChatHubService {
 				lastMessageAt: new Date(),
 				agentName,
 				credentialId,
+				type: manual ? 'manual' : 'production',
 				...model,
 			},
 			trx,
@@ -246,8 +247,9 @@ export class ChatHubService {
 		userId: string,
 		limit: number,
 		cursor?: string,
+		type?: string,
 	): Promise<ChatHubConversationsResponse> {
-		const sessions = await this.sessionRepository.getManyByUserId(userId, limit + 1, cursor);
+		const sessions = await this.sessionRepository.getManyByUserId(userId, limit + 1, cursor, type);
 
 		const hasMore = sessions.length > limit;
 		const data = hasMore ? sessions.slice(0, limit) : sessions;
@@ -1051,6 +1053,7 @@ export class ChatHubService {
 			agentId: session.agentId,
 			agentName: agent?.name ?? session.agentName ?? session.model ?? '',
 			agentIcon: agent?.icon ?? null,
+			type: session.type ?? 'production',
 			createdAt: session.createdAt.toISOString(),
 			updatedAt: session.updatedAt.toISOString(),
 			toolIds,

@@ -62,6 +62,9 @@ export const chatHubProviderSchema = z.enum([
 ] as const);
 export type ChatHubProvider = z.infer<typeof chatHubProviderSchema>;
 
+export const chatHubSessionTypeSchema = z.enum(['production', 'manual']);
+export type ChatHubSessionType = z.infer<typeof chatHubSessionTypeSchema>;
+
 /**
  * Map of providers to their credential types
  * Only LLM providers (openai, anthropic, google) have credentials
@@ -416,6 +419,7 @@ export interface ChatHubSessionDto {
 	agentId: string | null;
 	agentName: string;
 	agentIcon: AgentIconOrEmoji | null;
+	type: ChatHubSessionType;
 	createdAt: string;
 	updatedAt: string;
 	toolIds: string[];
@@ -468,6 +472,7 @@ export interface ChatHubMessageDto {
 export class ChatHubConversationsRequest extends Z.class({
 	limit: z.coerce.number().int().min(1).max(100),
 	cursor: z.string().uuid().optional(),
+	type: chatHubSessionTypeSchema.optional(),
 }) {}
 
 export interface ChatHubConversationsResponse {

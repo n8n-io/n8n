@@ -36,7 +36,7 @@ const workflowSessions = computed(() => {
 	const ids = chatStore.sessions.ids ?? [];
 	return ids.reduce<ChatHubSessionDto[]>((acc, id) => {
 		const s = chatStore.sessions.byId[id];
-		if (s && s.workflowId === props.workflowId) {
+		if (s && s.workflowId === props.workflowId && s.type === 'manual') {
 			acc.push(s);
 		}
 		return acc;
@@ -52,7 +52,7 @@ async function handleOpenChange(open: boolean) {
 		hasFetchedForWorkflow.value = true;
 		isLoading.value = true;
 		try {
-			await chatStore.fetchSessions(true);
+			await chatStore.fetchSessions(true, { type: 'manual' });
 		} finally {
 			isLoading.value = false;
 		}

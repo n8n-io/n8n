@@ -73,7 +73,12 @@ export class ChatHubController {
 		_res: Response,
 		@Query query: ChatHubConversationsRequest,
 	): Promise<ChatHubConversationsResponse> {
-		return await this.chatService.getConversations(req.user.id, query.limit, query.cursor);
+		return await this.chatService.getConversations(
+			req.user.id,
+			query.limit,
+			query.cursor,
+			query.type,
+		);
 	}
 
 	@Get('/conversations/:sessionId')
