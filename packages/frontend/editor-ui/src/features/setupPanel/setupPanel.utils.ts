@@ -8,7 +8,7 @@ import type {
 	CredentialTypeSetupState,
 	TriggerSetupState,
 } from '@/features/setupPanel/setupPanel.types';
-import { INode, NodeHelpers } from 'n8n-workflow';
+import { type INode, NodeHelpers } from 'n8n-workflow';
 
 /**
  * Collects all credential types that a node requires from three sources:

@@ -475,6 +475,10 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		credentialName: string,
 		credentialType: string,
 	) {
+		if (!isCredentialTypeTestable(credentialType)) {
+			return;
+		}
+
 		if (
 			credentialsStore.isCredentialTestedOk(credentialId) ||
 			credentialsStore.isCredentialTestPending(credentialId)
