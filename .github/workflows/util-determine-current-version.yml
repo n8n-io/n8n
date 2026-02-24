@@ -28,8 +28,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Init NodeJS
-        uses: ./.github/actions/setup-github-actions-node
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: npm install --prefix=.github/scripts --no-package-lock
 
       - name: Extract release versions
         id: get-tags

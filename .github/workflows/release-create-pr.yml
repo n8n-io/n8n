@@ -1,6 +1,18 @@
 name: 'Release: Create Pull Request'
 
 on:
+  workflow_call:
+    inputs:
+      base-branch:
+        description: 'The branch, tag, or commit to create this release PR from.'
+        required: true
+        type: string
+
+      release-type:
+        description: 'A SemVer release type.'
+        required: true
+        type: string
+
   workflow_dispatch:
     inputs:
       base-branch:

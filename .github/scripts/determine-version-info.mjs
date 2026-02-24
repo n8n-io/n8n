@@ -26,19 +26,24 @@ export function determineTrack(packageVersion) {
 	// Check through our current release versions, if semver matches,
 	// we inherit the track pointer from them
 	for (const [releaseTrack, tagVersionInfo] of Object.entries(trackToReleaseMap)) {
-		if (matchesTrack(tagVersionInfo, packageVersion)) {
+		if (tagVersionInfo && matchesTrack(tagVersionInfo, packageVersion)) {
 			track = releaseTrack;
 			break;
 		}
 	}
 
 	if (!track) {
+		if (!trackToReleaseMap.beta?.version) {
+			throw new Error(
+				'Likely updating to new beta release, but no existing beta tag was found in git.',
+			);
+		}
 		// If not track was found in current versions, we verify we're building a
 		// new beta version and the input is not invalid.
-		if (isNewBetaRelease(trackToReleaseMap.beta.version, packageVersion)) {
-			track = 'beta';
-			newStable = trackToReleaseMap.beta.version;
-		}
+		assertNewBetaRelease(trackToReleaseMap.beta.version, packageVersion);
+
+		track = 'beta';
+		newStable = trackToReleaseMap.beta.version;
 	}
 
 	if (!track) {
@@ -83,7 +88,7 @@ function matchesTrack(tagVersionInfo, currentVersion) {
  * @param {string} currentBetaVersion
  * @param {any} currentVersion
  */
-function isNewBetaRelease(currentBetaVersion, currentVersion) {
+function assertNewBetaRelease(currentBetaVersion, currentVersion) {
 	if (semver.major(currentBetaVersion) !== semver.major(currentVersion)) {
 		throw new Error('Major version bumps are not allowed by this pipeline');
 	}
@@ -94,8 +99,6 @@ function isNewBetaRelease(currentBetaVersion, currentVersion) {
 			`Trying to upgrade minor version by more than one increment. Previous: ${bumpedCurrentBeta}, Requested: ${currentVersion}`,
 		);
 	}
-
-	return true;
 }
 
 function determineReleaseType(currentVersion) {
@@ -106,14 +109,14 @@ function determineReleaseType(currentVersion) {
 }
 
 function determineBump(currentVersion) {
-	if (semver.patch(currentVersion) === 0) {
+	if (semver.patch(currentVersion) === 0 && determineReleaseType(currentVersion) != 'rc') {
 		return 'minor';
 	}
 	return 'patch';
 }
 
 // only run when executed directly, not when imported by tests
-if (import.meta.url === new URL(process.argv[1], 'file:').href) {
+if (import.meta.url === `file://${process.argv[1]}`) {
 	const packageJson = JSON.parse(readFileSync('./package.json', 'utf8'));
 	determineTrack(packageJson.version);
 }

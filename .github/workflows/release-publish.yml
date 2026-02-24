@@ -36,6 +36,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: npm install --prefix=.github/scripts --no-package-lock
 
       - name: Determine track from package version number
         id: determine-info
@@ -93,7 +101,7 @@ jobs:
 
   publish-to-docker-hub:
     name: Publish to DockerHub
-    needs: [determine-version-info, build-arm64]
+    needs: [determine-version-info, publish-to-npm, build-arm64]
     uses: ./.github/workflows/docker-build-push.yml
     with:
       n8n_version: ${{ needs.determine-version-info.outputs.version }}

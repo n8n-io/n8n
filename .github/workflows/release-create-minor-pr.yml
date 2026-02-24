@@ -7,11 +7,8 @@ on:
 
 jobs:
   create-release-pr:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Create a Release PR for Minor Release
-        uses: ./.github/workflows/release-create-pr.yml
-        with:
-          base-branch: master
-          release-type: minor
+    name: Create release PR
+    uses: ./.github/workflows/release-create-pr.yml
+    with:
+      base-branch: master
+      release-type: minor
