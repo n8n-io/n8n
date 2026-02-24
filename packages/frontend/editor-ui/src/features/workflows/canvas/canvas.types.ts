@@ -194,6 +194,7 @@ export type CanvasEventBusEvents = {
 		trackBulk?: boolean;
 	};
 	'create:sticky': never;
+	'deprecated:tab-shortcut': never;
 };
 
 export interface CanvasNodeInjectionData {
