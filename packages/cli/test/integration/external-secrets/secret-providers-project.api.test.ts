@@ -549,11 +549,9 @@ describe('Secret Providers Project API', () => {
 		test('should delete a connection belonging to the project', async () => {
 			const connectionId = await createProviderConnection('del-conn', [teamProject1.id]);
 
-			const response = await ownerAgent
+			await ownerAgent
 				.delete(`/secret-providers/projects/${teamProject1.id}/connections/del-conn`)
-				.expect(200);
-
-			expect(response.body.data.name).toBe('del-conn');
+				.expect(204);
 
 			// Verify it's actually gone from the DB
 			const found = await connectionRepository.findOneBy({ id: connectionId });
@@ -596,7 +594,7 @@ describe('Secret Providers Project API', () => {
 
 					const response = await agents[role]
 						.delete(`/secret-providers/projects/${teamProject1.id}/connections/auth-del-${role}`)
-						.expect(allowed ? 200 : 403);
+						.expect(allowed ? 204 : 403);
 
 					if (!allowed) {
 						expect(response.body.message).toBe(FORBIDDEN_MESSAGE);

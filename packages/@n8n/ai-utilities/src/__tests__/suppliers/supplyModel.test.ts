@@ -2,7 +2,7 @@ import type { ISupplyDataFunctions } from 'n8n-workflow';
 
 import { supplyModel } from 'src/suppliers/supplyModel';
 
-const mockLangchainAdapterInstance = { __brand: 'LangchainAdapter' };
+const mockLangchainAdapterInstance = { __brand: 'LangchainChatModelAdapter' };
 
 jest.mock('@langchain/openai', () => ({
 	ChatOpenAI: jest.fn().mockImplementation(function (this: any) {
@@ -26,11 +26,11 @@ jest.mock('src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler', () => (
 }));
 
 jest.mock('src/adapters/langchain-chat-model', () => ({
-	LangchainAdapter: jest.fn().mockImplementation(() => mockLangchainAdapterInstance),
+	LangchainChatModelAdapter: jest.fn().mockImplementation(() => mockLangchainAdapterInstance),
 }));
 
 const { ChatOpenAI } = jest.requireMock('@langchain/openai');
-const { LangchainAdapter } = jest.requireMock('src/adapters/langchain-chat-model');
+const { LangchainChatModelAdapter } = jest.requireMock('src/adapters/langchain-chat-model');
 const { getProxyAgent } = jest.requireMock('src/utils/http-proxy-agent');
 const { makeN8nLlmFailedAttemptHandler } = jest.requireMock(
 	'src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler',
@@ -79,7 +79,7 @@ describe('supplyModel', () => {
 			);
 			expect(makeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(mockCtx, undefined);
 			expect(N8nLlmTracing).toHaveBeenCalledWith(mockCtx);
-			expect(LangchainAdapter).not.toHaveBeenCalled();
+			expect(LangchainChatModelAdapter).not.toHaveBeenCalled();
 		});
 
 		it('passes ctx and OpenAI options to ChatOpenAI when model has defaultHeaders and timeout', () => {
@@ -194,8 +194,8 @@ describe('supplyModel', () => {
 		});
 	});
 
-	describe('ChatModel (LangchainAdapter) path', () => {
-		it('returns response from LangchainAdapter when model does not have type "openai"', () => {
+	describe('ChatModel (LangchainChatModelAdapter) path', () => {
+		it('returns response from LangchainChatModelAdapter when model does not have type "openai"', () => {
 			const chatModel = {
 				provider: 'anthropic',
 				modelId: 'claude-3',
@@ -207,12 +207,12 @@ describe('supplyModel', () => {
 			const result = supplyModel(mockCtx, chatModel);
 
 			expect(result).toEqual({ response: mockLangchainAdapterInstance });
-			expect(LangchainAdapter).toHaveBeenCalledTimes(1);
-			expect(LangchainAdapter).toHaveBeenCalledWith(chatModel, mockCtx);
+			expect(LangchainChatModelAdapter).toHaveBeenCalledTimes(1);
+			expect(LangchainChatModelAdapter).toHaveBeenCalledWith(chatModel, mockCtx);
 			expect(ChatOpenAI).not.toHaveBeenCalled();
 		});
 
-		it('uses LangchainAdapter when model has type other than "openai"', () => {
+		it('uses LangchainChatModelAdapter when model has type other than "openai"', () => {
 			const modelWithOtherType = {
 				type: 'custom',
 				provider: 'custom',
@@ -225,11 +225,11 @@ describe('supplyModel', () => {
 			const result = supplyModel(mockCtx, modelWithOtherType);
 
 			expect(result).toEqual({ response: mockLangchainAdapterInstance });
-			expect(LangchainAdapter).toHaveBeenCalledWith(modelWithOtherType, mockCtx);
+			expect(LangchainChatModelAdapter).toHaveBeenCalledWith(modelWithOtherType, mockCtx);
 			expect(ChatOpenAI).not.toHaveBeenCalled();
 		});
 
-		it('uses LangchainAdapter when model has no type property', () => {
+		it('uses LangchainChatModelAdapter when model has no type property', () => {
 			const modelWithoutType = {
 				provider: 'google',
 				modelId: 'gemini-pro',
@@ -241,7 +241,7 @@ describe('supplyModel', () => {
 			const result = supplyModel(mockCtx, modelWithoutType);
 
 			expect(result).toEqual({ response: mockLangchainAdapterInstance });
-			expect(LangchainAdapter).toHaveBeenCalledWith(modelWithoutType, mockCtx);
+			expect(LangchainChatModelAdapter).toHaveBeenCalledWith(modelWithoutType, mockCtx);
 			expect(ChatOpenAI).not.toHaveBeenCalled();
 		});
 	});

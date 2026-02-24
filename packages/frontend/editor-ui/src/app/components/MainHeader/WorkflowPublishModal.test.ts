@@ -9,6 +9,10 @@ import { STORES } from '@n8n/stores';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 const mockPublishWorkflow = vi.fn();
 const mockShowMessage = vi.fn();
@@ -77,6 +81,20 @@ describe('WorkflowPublishModal', () => {
 	beforeEach(() => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
+
+		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-1'));
+		docStore.setActiveState({
+			activeVersionId: 'old-version',
+			activeVersion: {
+				versionId: 'old-version',
+				authors: 'Test Author',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				workflowPublishHistory: [],
+				name: 'Published Version',
+				description: null,
+			},
+		});
 
 		workflowsStore.workflow = {
 			id: 'workflow-1',

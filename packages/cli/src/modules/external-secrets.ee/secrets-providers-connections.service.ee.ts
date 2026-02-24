@@ -1,10 +1,13 @@
-import type { SecretCompletionsResponse, SecretsProviderType } from '@n8n/api-types';
 import {
-	CreateSecretsProviderConnectionDto,
-	TestSecretProviderConnectionResponse,
+	type CreateSecretsProviderConnectionDto,
+	type ReloadSecretProviderConnectionResponse,
+	type TestSecretProviderConnectionResponse,
+	type SecretCompletionsResponse,
+	type SecretProviderConnection,
+	type SecretProviderConnectionListItem,
+	type SecretsProviderType,
 	testSecretProviderConnectionResponseSchema,
 	reloadSecretProviderConnectionResponseSchema,
-	ReloadSecretProviderConnectionResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { SecretsProviderConnection } from '@n8n/db';
@@ -15,15 +18,16 @@ import {
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
-
 import { jsonParse } from 'n8n-workflow';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { ProjectSummary } from '@/events/maps/relay.event-map';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
-import { SecretsProvidersResponses } from '@/modules/external-secrets.ee/secrets-providers.responses.ee';
+
+import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 
 @Service()
 export class SecretsProvidersConnectionsService {
@@ -31,6 +35,7 @@ export class SecretsProvidersConnectionsService {
 		private readonly logger: Logger,
 		private readonly repository: SecretsProviderConnectionRepository,
 		private readonly projectAccessRepository: ProjectSecretsProviderAccessRepository,
+		private readonly providerRegistry: ExternalSecretsProviderRegistry,
 		private readonly cipher: Cipher,
 		private readonly externalSecretsManager: ExternalSecretsManager,
 		private readonly redactionService: RedactionService,
@@ -179,11 +184,19 @@ export class SecretsProvidersConnectionsService {
 	}
 
 	async getGlobalCompletions(): Promise<SecretsProviderConnection[]> {
-		return await this.repository.findGlobalConnections();
+		const connectedProviderKeys = this.providerRegistry.getConnectedNames();
+
+		return await this.repository.findGlobalConnections({
+			providerKeys: connectedProviderKeys,
+		});
 	}
 
 	async getProjectCompletions(projectId: string): Promise<SecretsProviderConnection[]> {
-		return await this.repository.findByProjectId(projectId);
+		const connectedProviderKeys = this.providerRegistry.getConnectedNames();
+
+		return await this.repository.findByProjectId(projectId, {
+			providerKeys: connectedProviderKeys,
+		});
 	}
 
 	async listConnectionsForProject(projectId: string): Promise<SecretsProviderConnection[]> {
@@ -201,7 +214,7 @@ export class SecretsProvidersConnectionsService {
 
 	toPublicConnectionListItem(
 		connection: SecretsProviderConnection,
-	): SecretsProvidersResponses.ConnectionListItem {
+	): SecretProviderConnectionListItem {
 		const secretNames = this.externalSecretsManager.getSecretNames(connection.providerKey);
 		const connectionInstance = this.externalSecretsManager.getProvider(connection.providerKey);
 
@@ -222,7 +235,7 @@ export class SecretsProvidersConnectionsService {
 		};
 	}
 
-	toPublicConnection(connection: SecretsProviderConnection): SecretsProvidersResponses.Connection {
+	toPublicConnection(connection: SecretsProviderConnection): SecretProviderConnection {
 		const decryptedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
 		const properties = this.externalSecretsManager.getProviderProperties(connection.type);
 		const redactedSettings = this.redactionService.redact(decryptedSettings, properties);

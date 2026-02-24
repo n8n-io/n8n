@@ -223,6 +223,7 @@ describe('POST /workflows', () => {
 				'workflow:read',
 				'workflow:share',
 				'workflow:unpublish',
+				'workflow:unshare',
 				'workflow:update',
 			].sort(),
 		);
@@ -1161,6 +1162,7 @@ describe('GET /workflows', () => {
 					'workflow:read',
 					'workflow:share',
 					'workflow:unpublish',
+					'workflow:unshare',
 					'workflow:update',
 				].sort(),
 			);
@@ -1189,6 +1191,7 @@ describe('GET /workflows', () => {
 					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unshare',
 					'workflow:update',
 				].sort(),
 			);
@@ -1206,6 +1209,7 @@ describe('GET /workflows', () => {
 					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unshare',
 					'workflow:update',
 				].sort(),
 			);
@@ -2329,6 +2333,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:read',
 					'workflow:share',
 					'workflow:unpublish',
+					'workflow:unshare',
 					'workflow:update',
 				].sort(),
 			);
@@ -2362,6 +2367,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unshare',
 					'workflow:update',
 				].sort(),
 			);
@@ -2379,6 +2385,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:publish',
 					'workflow:read',
 					'workflow:share',
+					'workflow:unshare',
 					'workflow:update',
 				].sort(),
 			);

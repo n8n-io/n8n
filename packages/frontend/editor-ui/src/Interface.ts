@@ -641,6 +641,7 @@ export type ModalState = {
 
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
+	forceManualMode?: boolean;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
@@ -870,6 +871,8 @@ export type CloudUpdateLinkSourceType =
 	| 'ai-builder-sidebar'
 	| 'ai-builder-canvas'
 	| 'custom-roles'
+	| 'custom-roles-selector'
+	| 'custom-roles-list'
 	| 'main-sidebar'
 	| 'chat-hub'
 	| 'empty-state-builder-prompt';

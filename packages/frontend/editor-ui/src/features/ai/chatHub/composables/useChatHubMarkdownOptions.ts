@@ -23,6 +23,7 @@ export function useChatHubMarkdownOptions(
 	const codeBlockContents = ref<Map<string, string>>();
 
 	const options = {
+		breaks: true,
 		highlight(str: string, lang: string) {
 			if (!lang) {
 				return ''; // use external default escaping

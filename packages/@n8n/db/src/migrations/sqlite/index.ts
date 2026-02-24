@@ -139,6 +139,8 @@ import { CreateChatHubToolsTable1770000000000 } from '../common/1770000000000-Cr
 import { ExpandProviderIdColumnLength1770000000000 } from '../common/1770000000000-ExpandProviderIdColumnLength';
 import { CreateWorkflowBuilderSessionTable1770220686000 } from '../common/1770220686000-CreateWorkflowBuilderSessionTable';
 import { AddScalingFieldsToTestRun1771417407753 } from '../common/1771417407753-AddScalingFieldsToTestRun';
+import { MigrateExternalSecretsToEntityStorage1771500000000 } from '../common/1771500000000-MigrateExternalSecretsToEntityStorage';
+import { AddUnshareScopeToCustomRoles1771500000001 } from '../common/1771500000001-AddUnshareScopeToCustomRoles';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -283,6 +285,8 @@ const sqliteMigrations: Migration[] = [
 	ExpandProviderIdColumnLength1770000000000,
 	CreateWorkflowBuilderSessionTable1770220686000,
 	AddScalingFieldsToTestRun1771417407753,
+	MigrateExternalSecretsToEntityStorage1771500000000,
+	AddUnshareScopeToCustomRoles1771500000001,
 ];
 
 export { sqliteMigrations };
