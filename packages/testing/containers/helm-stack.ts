@@ -11,6 +11,10 @@ const DEFAULT_K3S_IMAGE = 'rancher/k3s:v1.32.2-k3s1';
 const DEFAULT_CHART_REPO = 'https://github.com/n8n-io/n8n-hosting.git';
 const DEFAULT_CHART_REF = 'krider2010/helm-chart-update';
 const N8N_NODE_PORT = 30080;
+const HEALTH_POLL_INTERVAL_MS = 2_000;
+const CONTAINERD_READY_TIMEOUT_MS = 30_000;
+const K3S_STARTUP_TIMEOUT_MS = 120_000;
+const COMMAND_TIMEOUT_MS = 600_000;
 
 export type HelmStackMode = 'standalone' | 'queue';
 
@@ -49,7 +53,7 @@ function log(message: string) {
 
 function run(cmd: string, env: NodeJS.ProcessEnv, description: string): string {
 	try {
-		return execSync(cmd, { env, stdio: 'pipe', encoding: 'utf-8', timeout: 600_000 });
+		return execSync(cmd, { env, stdio: 'pipe', encoding: 'utf-8', timeout: COMMAND_TIMEOUT_MS });
 	} catch (error: unknown) {
 		const stderr = (error as { stderr?: string }).stderr ?? '';
 		const message = error instanceof Error ? error.message : String(error);
@@ -222,7 +226,7 @@ async function pollHealthEndpoint(baseUrl: string, timeoutMs: number): Promise<v
 		} catch {
 			// Retry
 		}
-		await wait(2000);
+		await wait(HEALTH_POLL_INTERVAL_MS);
 	}
 
 	throw new Error(`n8n health check at ${url} did not return 200 within ${timeoutMs / 1000}s`);
@@ -250,7 +254,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 	log('Starting K3s container (privileged)...');
 	const k3s = await new K3sContainer(k3sImage)
 		.withExposedPorts(N8N_NODE_PORT)
-		.withStartupTimeout(120_000)
+		.withStartupTimeout(K3S_STARTUP_TIMEOUT_MS)
 		.start();
 	const hostPort = k3s.getMappedPort(N8N_NODE_PORT);
 	const baseUrl = `http://localhost:${hostPort}`;
@@ -267,11 +271,11 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 	try {
 		// Step 3: Wait for containerd readiness
 		log('Waiting for containerd...');
-		const deadline = Date.now() + 30_000;
+		const deadline = Date.now() + CONTAINERD_READY_TIMEOUT_MS;
 		while (Date.now() < deadline) {
 			const result = await k3s.exec(['crictl', 'images']);
 			if (result.exitCode === 0) break;
-			await wait(2000);
+			await wait(HEALTH_POLL_INTERVAL_MS);
 		}
 
 		// Step 4: Preload n8n image into K3s containerd
