@@ -21,12 +21,15 @@ export function useSecretsProvidersList() {
 	const canCreate = computed(() => rbacStore.hasScope('externalSecretsProvider:create'));
 	const canUpdate = computed(() => rbacStore.hasScope('externalSecretsProvider:update'));
 
-	async function fetchProviderTypes() {
+	async function fetchProviderTypes(projectId?: string) {
 		isLoadingProviderTypes.value = true;
 		try {
-			providerTypes.value = await secretsProviderApi.getSecretProviderTypes(
-				rootStore.restApiContext,
-			);
+			providerTypes.value = projectId
+				? await secretsProviderApi.getProjectSecretProviderTypes(
+						rootStore.restApiContext,
+						projectId,
+					)
+				: await secretsProviderApi.getSecretProviderTypes(rootStore.restApiContext);
 		} finally {
 			isLoadingProviderTypes.value = false;
 		}

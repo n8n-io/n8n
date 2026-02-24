@@ -100,3 +100,10 @@ export const getProjectSecretProviderConnectionsByProjectId = async (
 		`/secret-providers/projects/${projectId}/connections`,
 	);
 };
+
+export const getProjectSecretProviderTypes = async (
+	context: IRestApiContext,
+	projectId: string,
+): Promise<SecretProviderTypeResponse[]> => {
+	return await makeRestApiRequest(context, 'GET', `/secret-providers/projects/${projectId}/types`);
+};

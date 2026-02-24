@@ -1,9 +1,10 @@
 import {
 	CreateSecretsProviderConnectionDto,
 	UpdateSecretsProviderConnectionDto,
+	type ReloadSecretProviderConnectionResponse,
 	type SecretProviderConnection,
 	type SecretProviderConnectionListItem,
-	type ReloadSecretProviderConnectionResponse,
+	type SecretProviderTypeResponse,
 	type TestSecretProviderConnectionResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -24,6 +25,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { sendErrorResponse } from '@/response-helper';
 
+import { ExternalSecretsProviders } from './external-secrets-providers.ee';
 import { ExternalSecretsConfig } from './external-secrets.config';
 import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee';
 
@@ -33,6 +35,7 @@ export class SecretProvidersProjectController {
 		private readonly config: ExternalSecretsConfig,
 		private readonly logger: Logger,
 		private readonly connectionsService: SecretsProvidersConnectionsService,
+		private readonly secretsProviders: ExternalSecretsProviders,
 	) {
 		this.logger = this.logger.scoped('external-secrets');
 	}
@@ -48,6 +51,17 @@ export class SecretProvidersProjectController {
 			return;
 		}
 		next();
+	}
+
+	@Get('/:projectId/types')
+	@ProjectScope('externalSecretsProvider:list')
+	listSecretProviderTypes(): SecretProviderTypeResponse[] {
+		this.logger.debug('List provider connection types for project');
+		const allProviders = this.secretsProviders.getAllProviders();
+		return Object.values(allProviders).map((providerClass) => {
+			const provider = new providerClass();
+			return this.secretsProviders.toProviderTypeResponse(provider);
+		});
 	}
 
 	@Post('/:projectId/connections')
