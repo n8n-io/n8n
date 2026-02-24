@@ -78,15 +78,8 @@ export function createDeepLazyProxy(basePath: string[] = []): any {
 				return target[prop];
 			}
 
-			// Handle arrays - metadata: { __isArray: true, __length: number, __data?: any[] }
+			// Handle arrays - metadata: { __isArray: true, __length: number }
 			if (value && typeof value === 'object' && value.__isArray) {
-				// Small array: metadata includes data
-				if (value.__data) {
-					target[prop] = value.__data;
-					return target[prop];
-				}
-
-				// Large array: create array proxy for lazy element loading
 				const arrayProxy = new Proxy([] as any[], {
 					get(arrTarget: any, arrProp: string | symbol): unknown {
 						// Handle array length
@@ -106,14 +99,8 @@ export function createDeepLazyProxy(basePath: string[] = []): any {
 								});
 								// Handle element metadata (arrays and objects need proxies)
 								if (element && typeof element === 'object' && element.__isArray) {
-									// Small array with data
-									if (element.__data) {
-										arrTarget[arrProp] = element.__data;
-									} else {
-										// Large array: create nested array proxy
-										const elementPath = [...path, String(index)];
-										arrTarget[arrProp] = createDeepLazyProxy(elementPath);
-									}
+									const elementPath = [...path, String(index)];
+									arrTarget[arrProp] = createDeepLazyProxy(elementPath);
 								} else if (element && typeof element === 'object' && element.__isObject) {
 									// Object metadata: create nested proxy
 									const elementPath = [...path, String(index)];
