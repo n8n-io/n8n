@@ -30,7 +30,6 @@ export interface BinaryDataCredentials {
  * This class bridges LangChain's VectorStore interface with LanceDB backend
  */
 export class InternalLanceDBVectorStore extends VectorStore {
-	private connection?: Connection;
 	private readonly storageConfig: BinaryDataCredentials;
 
 	constructor(
@@ -50,12 +49,10 @@ export class InternalLanceDBVectorStore extends VectorStore {
 		filter?: string,
 	): Promise<string[]> {
 		const storageConfig = binaryDataCredentials;
-		try {
-			// Lazy-load LanceDB
-			const { connect } = await import('@lancedb/lancedb');
+		const { connect } = await import('@lancedb/lancedb');
 
-			// Connect to LanceDB
-			let connection;
+		let connection;
+		try {
 			if (storageConfig.mode === 's3') {
 				connection = await connect({
 					uri: storageConfig.storagePath,
@@ -70,10 +67,8 @@ export class InternalLanceDBVectorStore extends VectorStore {
 				connection = await connect(storageConfig.storagePath);
 			}
 
-			// List tables
 			let tableNames = await connection.tableNames();
 
-			// Apply filter if provided
 			if (filter) {
 				const filterLower = filter.toLowerCase();
 				tableNames = tableNames.filter((name) => name.toLowerCase().includes(filterLower));
@@ -83,20 +78,22 @@ export class InternalLanceDBVectorStore extends VectorStore {
 		} catch (error) {
 			// Directory doesn't exist yet or connection failed
 			return [];
+		} finally {
+			connection?.close();
 		}
 	}
 
 	/**
 	 * Get or create a LanceDB connection
 	 */
-	private async getConnection(): Promise<Connection> {
-		if (!this.connection) {
+	private async withConnection<T>(fn: (conn: Connection) => Promise<T>): Promise<T> {
+		const getConn = async () => {
 			// Lazy-load LanceDB to avoid startup overhead
 			const { connect } = await import('@lancedb/lancedb');
 
 			if (this.storageConfig.mode === 's3') {
 				// S3 backend - connect with credentials
-				this.connection = await connect({
+				return await connect({
 					uri: this.storageConfig.storagePath,
 					storageOptions: {
 						region: this.storageConfig.region!,
@@ -105,13 +102,22 @@ export class InternalLanceDBVectorStore extends VectorStore {
 						...(this.storageConfig.endpoint && { endpoint: this.storageConfig.endpoint }),
 					},
 				});
-			} else {
-				// Filesystem backend - connect directly with path
-				this.connection = await connect(this.storageConfig.storagePath);
+			}
+
+			// Filesystem backend - connect directly with path
+			return await connect(this.storageConfig.storagePath);
+		};
+
+		let conn: Connection | undefined = undefined;
+
+		try {
+			conn = await getConn();
+			return await fn(conn);
+		} finally {
+			if (conn) {
+				conn.close();
 			}
 		}
-
-		return this.connection;
 	}
 
 	/**
@@ -125,21 +131,26 @@ export class InternalLanceDBVectorStore extends VectorStore {
 	/**
 	 * Get or create a LanceDB table
 	 */
-	private async getTable(createIfMissing: boolean = false): Promise<Table | null> {
-		const connection = await this.getConnection();
-		const tableName = this.sanitizeTableName(this.memoryKey);
+	private async withTable<T>(fn: (table: Table | null) => Promise<T>): Promise<T> {
+		return await this.withConnection(async (connection) => {
+			const tableName = this.sanitizeTableName(this.memoryKey);
+			const tableNames = await connection.tableNames();
 
-		const tableNames = await connection.tableNames();
-
-		if (!tableNames.includes(tableName)) {
-			if (!createIfMissing) {
-				return null;
+			if (!tableNames.includes(tableName)) {
+				return await fn(null);
 			}
-			// Table will be created in addVectors when we have actual data
-			throw new Error(`Table ${tableName} does not exist yet`);
-		}
 
-		return await connection.openTable(tableName);
+			let table: Table | undefined = undefined;
+
+			try {
+				table = await connection.openTable(tableName);
+				return await fn(table);
+			} finally {
+				if (table) {
+					table.close();
+				}
+			}
+		});
 	}
 
 	/**
@@ -179,36 +190,44 @@ export class InternalLanceDBVectorStore extends VectorStore {
 	 * Add vectors to the store
 	 */
 	async addVectors(vectors: number[][], documents: Document[]): Promise<string[]> {
-		const connection = await this.getConnection();
-		const tableName = this.sanitizeTableName(this.memoryKey);
-		const tableNames = await connection.tableNames();
-		const tableExists = tableNames.includes(tableName);
+		return await this.withConnection(async (connection) => {
+			const tableName = this.sanitizeTableName(this.memoryKey);
+			const tableNames = await connection.tableNames();
+			const tableExists = tableNames.includes(tableName);
 
-		const now = new Date().toISOString();
-		const records: LanceDBRecord[] = documents.map((doc, i) => ({
-			id: nanoid(),
-			vector: vectors[i],
-			content: doc.pageContent,
-			metadata: JSON.stringify(doc.metadata), // Serialize metadata to JSON string
-			createdAt: now,
-			updatedAt: now,
-		}));
+			const now = new Date().toISOString();
+			const records: LanceDBRecord[] = documents.map((doc, i) => ({
+				id: nanoid(),
+				vector: vectors[i],
+				content: doc.pageContent,
+				metadata: JSON.stringify(doc.metadata), // Serialize metadata to JSON string
+				createdAt: now,
+				updatedAt: now,
+			}));
 
-		if (!tableExists) {
-			// Create table with the first batch of records
-			if (records.length === 0) {
-				throw new Error('Cannot create table with no records');
+			if (!tableExists) {
+				// Create table with the first batch of records
+				if (records.length === 0) {
+					throw new Error('Cannot create table with no records');
+				}
+				const table = await connection.createTable(tableName, records);
+				table.close();
+			} else {
+				let table: Table | undefined = undefined;
+				try {
+					table = await connection.openTable(tableName);
+					await table.add(records);
+					// Compact accumulated fragment files and clean up old versions to keep
+					// mmap pressure low. Each add() creates a new fragment; without compaction
+					// these pile up and consume memory-mapped address space.
+					await table.optimize({ cleanupOlderThan: new Date() });
+				} finally {
+					table?.close();
+				}
 			}
-			await connection.createTable(tableName, records);
-		} else {
-			const table = await connection.openTable(tableName);
 
-			if (records.length > 0) {
-				await table.add(records);
-			}
-		}
-
-		return records.map(({ id }) => id);
+			return records.map(({ id }) => id);
+		});
 	}
 
 	/**
@@ -219,29 +238,29 @@ export class InternalLanceDBVectorStore extends VectorStore {
 		k: number,
 		filter?: Record<string, unknown>,
 	): Promise<Array<[Document, number]>> {
-		const table = await this.getTable();
+		return await this.withTable(async (table) => {
+			if (!table) {
+				// Table doesn't exist yet, return empty results
+				return [];
+			}
 
-		if (!table) {
-			// Table doesn't exist yet, return empty results
-			return [];
-		}
+			let lanceQuery = table.search(query).limit(k);
 
-		let lanceQuery = table.search(query).limit(k);
+			const whereClause = this.buildWhereClause(filter);
+			if (whereClause) {
+				lanceQuery = lanceQuery.where(whereClause);
+			}
 
-		const whereClause = this.buildWhereClause(filter);
-		if (whereClause) {
-			lanceQuery = lanceQuery.where(whereClause);
-		}
+			const results = await lanceQuery.toArray();
 
-		const results = await lanceQuery.toArray();
-
-		return results.map((row: LanceDBRecord & { _distance: number }) => {
-			const doc = new Document({
-				pageContent: row.content,
-				metadata: jsonParse(row.metadata), // Deserialize metadata from JSON string
+			return results.map((row: LanceDBRecord & { _distance: number }) => {
+				const doc = new Document({
+					pageContent: row.content,
+					metadata: jsonParse(row.metadata), // Deserialize metadata from JSON string
+				});
+				const score = 1 - row._distance; // Convert distance to similarity score (cosine: 0=identical, 2=opposite)
+				return [doc, score];
 			});
-			const score = 1 - row._distance; // Convert distance to similarity score (cosine: 0=identical, 2=opposite)
-			return [doc, score];
 		});
 	}
 
@@ -267,23 +286,17 @@ export class InternalLanceDBVectorStore extends VectorStore {
 	 * Clear all vectors for this memory key
 	 */
 	async clearStore(): Promise<void> {
-		const table = await this.getTable();
-		if (!table) {
-			// Table doesn't exist, nothing to clear
-			return;
-		}
-		await table.delete('true'); // Delete all rows
+		return await this.withTable(async (table) => {
+			await table?.delete('true'); // Delete all rows
+		});
 	}
 
 	/**
 	 * Get count of vectors in the store
 	 */
 	async getVectorCount(): Promise<number> {
-		const table = await this.getTable();
-		if (!table) {
-			// Table doesn't exist yet
-			return 0;
-		}
-		return await table.countRows();
+		return await this.withTable(async (table) => {
+			return (await table?.countRows()) ?? 0;
+		});
 	}
 }
