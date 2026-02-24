@@ -38,6 +38,7 @@ export const workflowStaticDataSchema = z.preprocess(
 			try {
 				return JSON.parse(val);
 			} catch {
+				// eslint-disable-next-line n8n-local-rules/no-plain-errors -- Zod preprocessor catches thrown errors internally
 				throw new Error('Static data string must be valid JSON');
 			}
 		}

@@ -16,7 +16,7 @@ import type {
 	NodeParameterValueType,
 	ResourceMapperFields,
 } from 'n8n-workflow';
-import { sleep } from 'n8n-workflow';
+import { OperationalError, sleep } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
@@ -32,7 +32,7 @@ async function fetchNodeTypesJsonWithRetry(url: string, retries = 5, delay = 500
 		await sleep(delay * attempt);
 	}
 
-	throw new Error('Could not fetch node types');
+	throw new OperationalError('Could not fetch node types');
 }
 
 export async function getNodeTypes(baseUrl: string) {

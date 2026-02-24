@@ -8,6 +8,8 @@ export default defineConfig(
 	{
 		rules: {
 			'vue/no-undef-components': ['error', { ignorePatterns: ['N8nDropdownMenuItem'] }],
+			// Pure UI library — no dependency on n8n-workflow where error classes live
+			'n8n-local-rules/no-plain-errors': 'off',
 
 			// TODO: Remove these
 			'import-x/no-default-export': 'warn',

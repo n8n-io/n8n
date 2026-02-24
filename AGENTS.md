@@ -131,7 +131,7 @@ that fire automatically — the error message tells you how to fix it.
 [`docs/principles/golden-rules.md`](docs/principles/golden-rules.md)
 
 Quick summary:
-- **No `any` type** — use proper types or `unknown` (`error` everywhere)
+- **No `any` type** — use proper types or `unknown` (`error`, `warn` in tests)
 - **No `as` casting** — use type guards instead (`warn`, except test files)
 - **Shared FE/BE types in `@n8n/api-types`** — not in individual packages
 - **No `ApplicationError`** — it's deprecated. Use `UnexpectedError`,

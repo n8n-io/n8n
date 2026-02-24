@@ -14,7 +14,7 @@ test — violations are caught automatically, not by code review.
 **Use proper types or `unknown` — never `any`.**
 
 - **Enforced by:** `@typescript-eslint/no-explicit-any` = `error` in base config
-- **Applies to:** All packages (frontend and backend)
+- **Applies to:** All non-test code. In test files, downgraded to `warn`.
 - **Fix:** Replace `any` with the actual type, a generic, or `unknown`
 
 ## 2. No type casting with `as`
@@ -120,7 +120,7 @@ n8n-editor-ui   │  (frontend — no backend imports except types/workflow)
 
 | # | Rule | Severity | Enforcement |
 |---|------|----------|-------------|
-| 1 | No `any` | `error` | `@typescript-eslint/no-explicit-any` |
+| 1 | No `any` | `error` (`warn` in tests) | `@typescript-eslint/no-explicit-any` |
 | 2 | No `as` casting | `warn` | `@typescript-eslint/consistent-type-assertions` |
 | 3 | Shared types in api-types | convention | — |
 | 4 | No ApplicationError | `error` | `n8n-local-rules/no-plain-errors` |

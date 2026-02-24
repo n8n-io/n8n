@@ -5,6 +5,12 @@ export default defineConfig(
 	globalIgnores(['src/template/templates/**/template', 'src/template/templates/shared']),
 	nodeConfig,
 	{
+		rules: {
+			// CLI tool — no dependency on n8n-workflow where error classes live
+			'n8n-local-rules/no-plain-errors': 'off',
+		},
+	},
+	{
 		files: ['**/*.test.ts', 'src/test-utils/**/*'],
 		rules: {
 			'import-x/no-extraneous-dependencies': ['error', { devDependencies: true }],
