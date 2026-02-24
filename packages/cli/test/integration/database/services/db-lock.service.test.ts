@@ -90,16 +90,20 @@ describe('DbLockService', () => {
 		it('should throw OperationalError when withLock times out', async () => {
 			if (!isPostgres) return;
 
-			// Hold the lock in a separate transaction using raw SQL
-			// so we can control when it releases
+			// Use a promise to signal when the lock is actually held,
+			// instead of a fixed sleep which is racy on CI.
+			let lockAcquired!: () => void;
+			const lockAcquiredPromise = new Promise<void>((resolve) => {
+				lockAcquired = resolve;
+			});
+
 			const holdLockPromise = dataSource.manager.transaction(async (tx) => {
 				await tx.query('SELECT pg_advisory_xact_lock($1)', [DbLock.TEST]);
-				// Hold the lock longer than the timeout
+				lockAcquired();
 				await sleep(2000);
 			});
 
-			// Wait for the lock to be acquired
-			await sleep(100);
+			await lockAcquiredPromise;
 
 			// Try to acquire with a short timeout — should fail
 			await expect(
@@ -115,20 +119,30 @@ describe('DbLockService', () => {
 		it('should throw OperationalError when tryWithLock cannot acquire', async () => {
 			if (!isPostgres) return;
 
-			let tryResult: unknown;
-
-			await dataSource.manager.transaction(async (tx) => {
-				// Hold the advisory lock inside this transaction
-				await tx.query('SELECT pg_advisory_xact_lock($1)', [DbLock.TEST]);
-
-				// While the lock is held, tryWithLock should fail immediately
-				tryResult = await dbLockService
-					.tryWithLock(DbLock.TEST, async () => 'should not reach')
-					.catch((e: unknown) => e);
+			// Hold the lock in a background transaction and signal when acquired.
+			// tryWithLock opens its own transaction (separate connection), so we
+			// must not nest it inside the holding transaction.
+			let lockAcquired!: () => void;
+			const lockAcquiredPromise = new Promise<void>((resolve) => {
+				lockAcquired = resolve;
 			});
 
-			expect(tryResult).toBeInstanceOf(OperationalError);
-			expect((tryResult as OperationalError).message).toMatch(/already held by another process/);
+			const holdLockPromise = dataSource.manager.transaction(async (tx) => {
+				await tx.query('SELECT pg_advisory_xact_lock($1)', [DbLock.TEST]);
+				lockAcquired();
+				await sleep(2000);
+			});
+
+			await lockAcquiredPromise;
+
+			const error = await dbLockService
+				.tryWithLock(DbLock.TEST, async () => 'should not reach')
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(OperationalError);
+			expect((error as OperationalError).message).toMatch(/already held by another process/);
+
+			await holdLockPromise;
 		});
 
 		it('tryWithLock should succeed when lock is not held', async () => {
