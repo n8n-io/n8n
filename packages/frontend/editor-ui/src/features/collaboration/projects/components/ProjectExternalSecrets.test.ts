@@ -7,10 +7,10 @@ import type { SecretProviderConnection } from '@n8n/api-types';
 import ProjectExternalSecrets from './ProjectExternalSecrets.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useProjectsStore } from '../projects.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { ROLE } from '@n8n/api-types';
 import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY } from '@/app/constants';
+import { useRBACStore } from '@/app/stores/rbac.store';
 
 // Mock vue-router
 const mockRouterPush = vi.fn();
@@ -139,7 +139,6 @@ const mockProviders: SecretProviderConnection[] = [
 		type: 'awsSecretsManager',
 		projects: [{ id: 'project-1', name: 'Test Project' }],
 		settings: {},
-		isEnabled: true,
 		secretsCount: 3,
 		state: 'connected',
 		secrets: [
@@ -147,8 +146,8 @@ const mockProviders: SecretProviderConnection[] = [
 			{ name: 'DATABASE_PASSWORD', credentialsCount: 1 },
 			{ name: 'SECRET_TOKEN', credentialsCount: 0 },
 		],
-		createdAt: '2024-01-01T00:00:00.000Z',
-		updatedAt: '2024-01-01T00:00:00.000Z',
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
 	},
 	{
 		id: '2',
@@ -156,12 +155,11 @@ const mockProviders: SecretProviderConnection[] = [
 		type: 'azureKeyVault',
 		projects: [{ id: 'project-1', name: 'Test Project' }],
 		settings: {},
-		isEnabled: true,
 		secretsCount: 1,
 		state: 'connected',
 		secrets: [{ name: 'DEV_API_KEY', credentialsCount: 1 }],
-		createdAt: '2024-01-01T00:00:00.000Z',
-		updatedAt: '2024-01-01T00:00:00.000Z',
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
 	},
 ];
 
@@ -169,8 +167,8 @@ let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 describe('ProjectExternalSecrets', () => {
 	let projectsStore: ReturnType<typeof useProjectsStore>;
-	let usersStore: ReturnType<typeof useUsersStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
+	let rbacStore: ReturnType<typeof useRBACStore>;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia({
@@ -196,8 +194,8 @@ describe('ProjectExternalSecrets', () => {
 
 		setActivePinia(pinia);
 		projectsStore = useProjectsStore();
-		usersStore = useUsersStore();
 		uiStore = useUIStore();
+		rbacStore = useRBACStore(pinia);
 
 		// Mock the store method
 		vi.spyOn(projectsStore, 'getProjectSecretProviders').mockResolvedValue([]);
@@ -222,19 +220,9 @@ describe('ProjectExternalSecrets', () => {
 		});
 	});
 
-	// Note: Instance Admin empty state tests are covered by E2E tests
-	// The unit test mocking for this scenario is complex due to reactive composable behavior
-
 	describe('Empty States - Project Admin', () => {
 		beforeEach(() => {
-			vi.spyOn(usersStore, 'currentUser', 'get').mockReturnValue({
-				id: 'user-1',
-				role: ROLE.Member,
-				isOwner: false,
-				isDefaultUser: false,
-				isPendingUser: false,
-				mfaEnabled: false,
-			});
+			vi.spyOn(rbacStore, 'hasScope').mockReturnValue(false);
 		});
 
 		it('should show project admin empty state with add button', async () => {
@@ -368,33 +356,42 @@ describe('ProjectExternalSecrets', () => {
 		});
 	});
 
-	describe('Modal Interactions', () => {
+	describe('Adding project scoped secrets store', () => {
 		beforeEach(() => {
-			// Start with empty providers so we see the "Add secrets store" button
-			vi.spyOn(projectsStore, 'getProjectSecretProviders').mockResolvedValue([]);
-			// Make sure the user is a project admin (not instance admin)
-			vi.spyOn(usersStore, 'currentUser', 'get').mockReturnValue({
-				id: 'user-1',
-				role: ROLE.Member,
-				isOwner: false,
-				isDefaultUser: false,
-				isPendingUser: false,
-				mfaEnabled: false,
+			vi.spyOn(projectsStore, 'getProjectSecretProviders').mockResolvedValue(mockProviders);
+			mockGetConnection.mockImplementation((name: string) => {
+				const provider = mockProviders.find((p) => p.name === name);
+				return provider ?? { secrets: [] };
 			});
+		});
+
+		it('should not show add button when user has no project external secrets create permission', async () => {
+			vi.spyOn(projectsStore, 'currentProject', 'get').mockReturnValue({
+				id: 'project-1',
+				name: 'Test Project',
+				type: 'team',
+				scopes: ['externalSecretsProvider:list'],
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+				relations: [],
+			});
+			const { queryByTestId } = renderComponent();
+			await vi.waitFor(() => {
+				expect(screen.getByTestId('external-secrets-table')).toBeInTheDocument();
+			});
+			expect(queryByTestId('external-secrets-add-button')).not.toBeInTheDocument();
 		});
 
 		it('should open connection modal when add button is clicked', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			renderComponent();
+			const { getByTestId } = renderComponent();
 			const user = userEvent.setup();
 
-			const addButton = document
-				.querySelector('[data-test-id="external-secrets-empty-state-project-admin"]')
-				?.querySelector('button');
-
-			if (!addButton) throw new Error('Add button not found');
-
-			expect(addButton).toBeInTheDocument();
+			let addButton!: HTMLElement;
+			await vi.waitFor(() => {
+				addButton = getByTestId('external-secrets-add-button');
+			});
 
 			await user.click(addButton);
 
@@ -410,16 +407,13 @@ describe('ProjectExternalSecrets', () => {
 
 		it('should pass project ID when opening modal', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			renderComponent();
+			const { getByTestId } = renderComponent();
 			const user = userEvent.setup();
 
-			const addButton = document
-				.querySelector('[data-test-id="external-secrets-empty-state-project-admin"]')
-				?.querySelector('button');
-
-			if (!addButton) throw new Error('Add button not found');
-
-			expect(addButton).toBeInTheDocument();
+			let addButton!: HTMLElement;
+			await vi.waitFor(() => {
+				addButton = getByTestId('external-secrets-add-button');
+			});
 
 			await user.click(addButton);
 

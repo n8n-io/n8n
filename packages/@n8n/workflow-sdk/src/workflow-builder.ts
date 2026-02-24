@@ -700,8 +700,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const registry = this._registry ?? pluginRegistry;
 		const connections = chain.getConnections();
 		for (const { target } of connections) {
-			// Skip if target is a composite type (already handled by plugin dispatch elsewhere)
-			if (registry.isCompositeType(target)) continue;
+			// Dispatch composite types (e.g. IfElseBuilder) via plugin handler
+			if (registry.isCompositeType(target)) {
+				this.tryPluginDispatch(nodes, target, nameMapping);
+				continue;
+			}
 
 			// Handle NodeChains - use addBranchToGraph to add all nodes with their connections
 			if (isNodeChain(target)) {
@@ -746,8 +749,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const registry = this._registry ?? pluginRegistry;
 		const connections = nodeInstance.getConnections();
 		for (const { target } of connections) {
-			// Skip if target is a composite type (already handled by plugin dispatch elsewhere)
-			if (registry.isCompositeType(target)) continue;
+			// Dispatch composite types (e.g. IfElseBuilder) via plugin handler
+			if (registry.isCompositeType(target)) {
+				this.tryPluginDispatch(nodes, target);
+				continue;
+			}
 
 			// Handle NodeChains - use addBranchToGraph to add all nodes with their connections
 			if (isNodeChain(target)) {
@@ -1007,6 +1013,13 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 										// Not a composite and not already present - add as regular node
 										this.addNodeWithSubnodes(nodes, targetChainNode);
 									}
+								}
+							} else if (registry.isCompositeType(target)) {
+								// Only dispatch if the composite's head node isn't already in the graph
+								// (avoids re-dispatching composites already handled by the allNodes loop above)
+								const compositeHeadName = this.resolveTargetNodeName(target, effectiveNameMapping);
+								if (!compositeHeadName || !nodes.has(compositeHeadName)) {
+									this.tryPluginDispatch(nodes, target, effectiveNameMapping);
 								}
 							} else if (
 								typeof (target as NodeInstance<string, string, unknown>).name === 'string' &&

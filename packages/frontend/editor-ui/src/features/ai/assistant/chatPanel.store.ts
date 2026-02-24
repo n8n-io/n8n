@@ -10,7 +10,8 @@ import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.sto
 import { useAssistantStore } from './assistant.store';
 import { useBuilderStore } from './builder.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { MERGE_ASK_BUILD_EXPERIMENT } from '@/app/constants/experiments';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ChatRequest } from './assistant.types';
 import { useI18n } from '@n8n/i18n';
@@ -35,12 +36,12 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	const route = useRoute();
 	const chatPanelStateStore = useChatPanelStateStore();
 	const settingsStore = useSettingsStore();
-	const { check } = useEnvFeatureFlag();
+	const posthogStore = usePostHog();
 	const locale = useI18n();
 
 	const isMergeAskBuildEnabled = computed(
 		() =>
-			check.value('MERGE_ASK_BUILD') &&
+			posthogStore.isFeatureEnabled(MERGE_ASK_BUILD_EXPERIMENT.name) &&
 			settingsStore.isAiAssistantEnabled &&
 			useBuilderStore().isAIBuilderEnabled,
 	);

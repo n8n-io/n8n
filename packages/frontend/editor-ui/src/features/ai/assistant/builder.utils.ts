@@ -9,6 +9,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import {
 	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT,
 	CODE_WORKFLOW_BUILDER_EXPERIMENT,
+	MERGE_ASK_BUILD_EXPERIMENT,
 } from '@/app/constants/experiments';
 import type { IRunExecutionData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
@@ -88,6 +89,7 @@ export async function createBuilderPayload(
 		codeBuilder: isCodeBuilderEnabled,
 		pinData: isPinDataEnabled,
 		planMode: options.isPlanModeEnabled ?? false,
+		mergeAskBuild: posthogStore.isFeatureEnabled(MERGE_ASK_BUILD_EXPERIMENT.name),
 	};
 
 	if (options.nodesForSchema?.length) {

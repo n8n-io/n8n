@@ -66,22 +66,10 @@ const eventBus = createEventBus();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 const { check: checkDevFeatureFlag } = useEnvFeatureFlag();
-const isProjectScopedSecretsEnabled = checkDevFeatureFlag.value('EXTERNAL_SECRETS_FOR_PROJECTS');
 
 // Constants
 const LABEL_SIZE: IParameterLabel = { size: 'medium' };
 const internalActiveTab = ref(props.data?.activeTab ?? 'connection');
-const ACTIVE_TAB = computed({
-	get: () => (isProjectScopedSecretsEnabled ? internalActiveTab.value : 'connection'),
-	set: (value) => {
-		if (isProjectScopedSecretsEnabled) {
-			// Additional frontend validation to ensure that other
-			// tabs than 'connection' are only accessible when project-scoped secrets
-			// are enabled.
-			internalActiveTab.value = value;
-		}
-	},
-});
 
 // Modal state
 const providerTypes = computed(() => props.data.providerTypes ?? []);
@@ -94,6 +82,21 @@ const modal = useConnectionModal({
 	providerKey,
 	existingProviderNames,
 	projectId: projectId.value,
+});
+
+const tabNavigationEnabled =
+	checkDevFeatureFlag.value('EXTERNAL_SECRETS_FOR_PROJECTS') && modal.canShareGlobally.value;
+
+const ACTIVE_TAB = computed({
+	get: () => (tabNavigationEnabled ? internalActiveTab.value : 'connection'),
+	set: (value) => {
+		if (tabNavigationEnabled) {
+			// Additional frontend validation to ensure that other
+			// tabs than 'connection' are only accessible when project-scoped secrets
+			// are enabled and the user has global update permission.
+			internalActiveTab.value = value;
+		}
+	},
 });
 
 const sidebarItems = computed(() => {
@@ -114,11 +117,9 @@ const sidebarItems = computed(() => {
 });
 
 const scopeProjects = computed(() =>
-	modal.canShareGlobally.value
-		? projectsStore.teamProjects.filter(
-				(p: ProjectSharingData) => !modal.projectIds.value.includes(p.id),
-			)
-		: [],
+	projectsStore.teamProjects.filter(
+		(p: ProjectSharingData) => !modal.projectIds.value.includes(p.id),
+	),
 );
 
 // Sync scope changes to composable (max 1 project)
@@ -268,7 +269,7 @@ onMounted(async () => {
 		<template #content>
 			<div :class="$style.container">
 				<!-- Left sidebar menu -->
-				<nav v-if="isProjectScopedSecretsEnabled" :class="$style.sidebar">
+				<nav v-if="tabNavigationEnabled" :class="$style.sidebar">
 					<N8nMenuItem
 						v-for="item in sidebarItems"
 						:key="item.id"
