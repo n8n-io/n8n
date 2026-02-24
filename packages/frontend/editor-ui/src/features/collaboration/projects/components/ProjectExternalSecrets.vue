@@ -261,9 +261,9 @@ watch([currentPage, itemsPerPage], async () => {
 
 // Fetch project secret providers when currentProjectId is available
 watch(
-	() => projectsStore.currentProjectId,
-	async (newProjectId) => {
-		if (newProjectId && showExternalSecretsSection.value) {
+	[() => projectsStore.currentProjectId, showExternalSecretsSection],
+	async ([newProjectId, showSection]) => {
+		if (newProjectId && showSection) {
 			await fetchProjectSecretConnections();
 		}
 	},
