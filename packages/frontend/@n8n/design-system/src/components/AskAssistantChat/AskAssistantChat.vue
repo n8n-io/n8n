@@ -741,19 +741,6 @@ defineExpose({
 	code {
 		text-wrap: wrap;
 	}
-
-	// Add a gradient fade at the bottom of the messages area
-	&::after {
-		content: '';
-		position: absolute;
-		bottom: 0;
-		left: 0;
-		right: var(--spacing--xs);
-		height: var(--spacing--md);
-		background: linear-gradient(to bottom, transparent 0%, var(--color--background--light-2) 100%);
-		pointer-events: none;
-		z-index: 1;
-	}
 }
 
 .placeholder {
@@ -845,10 +832,7 @@ defineExpose({
 .feedbackWrapper {
 	display: flex;
 	justify-content: start;
-	padding: 0 var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs);
-	border-left: var(--border);
-	border-right: var(--border);
-	background-color: var(--color--background--light-2);
+	padding: var(--spacing--2xs);
 }
 
 .inputHeaderWrapper {

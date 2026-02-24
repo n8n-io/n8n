@@ -199,6 +199,7 @@ function onCancelFeedback() {
 
 	.feedbackContainer {
 		gap: var(--spacing--3xs);
+		padding-top: var(--spacing--2xs);
 	}
 
 	.feedbackInput {
