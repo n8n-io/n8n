@@ -651,9 +651,9 @@ defineExpose({
 					</div>
 				</template>
 			</div>
-		</div>
-		<div v-if="showFooterRating" :class="$style.feedbackWrapper" data-test-id="footer-rating">
-			<MessageRating minimal @feedback="onRateMessage" />
+			<div v-if="showFooterRating" :class="$style.feedbackWrapper" data-test-id="footer-rating">
+				<MessageRating minimal @feedback="onRateMessage" />
+			</div>
 		</div>
 		<div
 			v-if="$slots.inputHeader && (showBottomInput || showSuggestions)"
@@ -707,7 +707,6 @@ defineExpose({
 	position: relative;
 	display: grid;
 	grid-template-rows: auto 1fr auto;
-	background-color: var(--color--background--light-2);
 }
 
 .header {
@@ -770,7 +769,7 @@ defineExpose({
 
 .messagesContent {
 	padding: var(--spacing--xs);
-	padding-bottom: var(--spacing--lg);
+	padding-bottom: var(--spacing--3xl);
 
 	// Override p line-height from reset.scss (1.8) to use chat standard (1.5)
 	:global(p) {
@@ -830,9 +829,19 @@ defineExpose({
 }
 
 .feedbackWrapper {
+	position: absolute;
+	bottom: 0;
+	left: 0;
 	display: flex;
 	justify-content: start;
 	padding: var(--spacing--2xs);
+	z-index: 1;
+
+	&:has([data-feedback-expanded]) {
+		right: 0;
+		padding-top: 0;
+		background-color: var(--color--background--light-2);
+	}
 }
 
 .inputHeaderWrapper {
@@ -841,7 +850,7 @@ defineExpose({
 	width: 100%;
 	border-left: var(--border);
 	border-right: var(--border);
-	background-color: transparent;
+	background-color: var(--color--background--light-2);
 
 	> :first-child {
 		width: 90%;
@@ -850,7 +859,7 @@ defineExpose({
 
 .inputWrapper {
 	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--xs);
-	background-color: transparent;
+	background-color: var(--color--background--light-2);
 	width: 100%;
 	position: relative;
 	border-left: var(--border);
