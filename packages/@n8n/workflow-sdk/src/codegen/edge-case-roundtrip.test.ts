@@ -887,4 +887,235 @@ export default workflow('test', 'Test').add(t.to(n));`;
 			expect(parsedJson.connections['Process']?.main[0]?.[0]?.node).toBe('Process 1');
 		});
 	});
+
+	describe('Edge Case: onError with IF composite', () => {
+		it('should roundtrip onError connected to IF with true/false branches', () => {
+			const originalJson: WorkflowJSON = {
+				id: 'onerror-if-test',
+				name: 'OnError IF Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'http-1',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [200, 0],
+						parameters: { url: 'https://api.example.com' },
+						onError: 'continueErrorOutput',
+					},
+					{
+						id: 'if-1',
+						name: 'Error IF',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 2,
+						position: [400, 100],
+						parameters: {},
+					},
+					{
+						id: 'true-1',
+						name: 'Retry',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						position: [600, 0],
+						parameters: {},
+					},
+					{
+						id: 'false-1',
+						name: 'Log Error',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						position: [600, 200],
+						parameters: {},
+					},
+				],
+				connections: {
+					Start: {
+						main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+					},
+					'HTTP Request': {
+						main: [
+							[], // Output 0 - success (empty)
+							[{ node: 'Error IF', type: 'main', index: 0 }], // Output 1 - error
+						],
+					},
+					'Error IF': {
+						main: [
+							[{ node: 'Retry', type: 'main', index: 0 }],
+							[{ node: 'Log Error', type: 'main', index: 0 }],
+						],
+					},
+				},
+			};
+
+			const code = generateWorkflowCode(originalJson);
+			const parsedJson = parseWorkflowCode(code);
+
+			expect(parsedJson.nodes).toHaveLength(5);
+			expect(parsedJson.connections['HTTP Request']?.main[1]?.[0]?.node).toBe('Error IF');
+			expect(parsedJson.connections['Error IF']?.main[0]?.[0]?.node).toBe('Retry');
+			expect(parsedJson.connections['Error IF']?.main[1]?.[0]?.node).toBe('Log Error');
+		});
+	});
+
+	describe('Edge Case: onError with Switch composite', () => {
+		it('should roundtrip onError connected to Switch with case branches', () => {
+			const originalJson: WorkflowJSON = {
+				id: 'onerror-switch-test',
+				name: 'OnError Switch Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'http-1',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [200, 0],
+						parameters: { url: 'https://api.example.com' },
+						onError: 'continueErrorOutput',
+					},
+					{
+						id: 'switch-1',
+						name: 'Error Router',
+						type: 'n8n-nodes-base.switch',
+						typeVersion: 3,
+						position: [400, 100],
+						parameters: { mode: 'rules' },
+					},
+					{
+						id: 'case-0',
+						name: 'Handle 404',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						position: [600, 0],
+						parameters: {},
+					},
+					{
+						id: 'case-1',
+						name: 'Handle 500',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						position: [600, 200],
+						parameters: {},
+					},
+				],
+				connections: {
+					Start: {
+						main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+					},
+					'HTTP Request': {
+						main: [
+							[], // Output 0 - success (empty)
+							[{ node: 'Error Router', type: 'main', index: 0 }], // Output 1 - error
+						],
+					},
+					'Error Router': {
+						main: [
+							[{ node: 'Handle 404', type: 'main', index: 0 }],
+							[{ node: 'Handle 500', type: 'main', index: 0 }],
+						],
+					},
+				},
+			};
+
+			const code = generateWorkflowCode(originalJson);
+			const parsedJson = parseWorkflowCode(code);
+
+			expect(parsedJson.nodes).toHaveLength(5);
+			expect(parsedJson.connections['HTTP Request']?.main[1]?.[0]?.node).toBe('Error Router');
+			expect(parsedJson.connections['Error Router']?.main[0]?.[0]?.node).toBe('Handle 404');
+			expect(parsedJson.connections['Error Router']?.main[1]?.[0]?.node).toBe('Handle 500');
+		});
+	});
+
+	describe('Edge Case: onError with SplitInBatches composite', () => {
+		it('should roundtrip onError connected to SplitInBatches with done/each branches', () => {
+			const originalJson: WorkflowJSON = {
+				id: 'onerror-sib-test',
+				name: 'OnError SIB Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'http-1',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [200, 0],
+						parameters: { url: 'https://api.example.com' },
+						onError: 'continueErrorOutput',
+					},
+					{
+						id: 'sib-1',
+						name: 'Error Batcher',
+						type: 'n8n-nodes-base.splitInBatches',
+						typeVersion: 3,
+						position: [400, 100],
+						parameters: { batchSize: 10 },
+					},
+					{
+						id: 'done-1',
+						name: 'All Done',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						position: [600, 0],
+						parameters: {},
+					},
+					{
+						id: 'each-1',
+						name: 'Process Each',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						position: [600, 200],
+						parameters: {},
+					},
+				],
+				connections: {
+					Start: {
+						main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+					},
+					'HTTP Request': {
+						main: [
+							[], // Output 0 - success (empty)
+							[{ node: 'Error Batcher', type: 'main', index: 0 }], // Output 1 - error
+						],
+					},
+					'Error Batcher': {
+						main: [
+							[{ node: 'All Done', type: 'main', index: 0 }], // Output 0 - done
+							[{ node: 'Process Each', type: 'main', index: 0 }], // Output 1 - each
+						],
+					},
+				},
+			};
+
+			const code = generateWorkflowCode(originalJson);
+			const parsedJson = parseWorkflowCode(code);
+
+			expect(parsedJson.nodes).toHaveLength(5);
+			expect(parsedJson.connections['HTTP Request']?.main[1]?.[0]?.node).toBe('Error Batcher');
+			expect(parsedJson.connections['Error Batcher']?.main[0]?.[0]?.node).toBe('All Done');
+			expect(parsedJson.connections['Error Batcher']?.main[1]?.[0]?.node).toBe('Process Each');
+		});
+	});
 });
