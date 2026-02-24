@@ -642,7 +642,18 @@ async function onOpenRenameNodeModal(id: string) {
 		nameInput?.focus();
 		nameInput?.select();
 
+		// Stop propagation for space key to prevent VueFlow from intercepting it
+		// when modifier keys (like Shift) are pressed. See: https://github.com/bcakmakoglu/vue-flow/issues/1999
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === ' ') {
+				e.stopPropagation();
+			}
+		};
+		nameInput?.addEventListener('keydown', handleKeyDown);
+
 		const promptResponse = await promptResponsePromise;
+
+		nameInput?.removeEventListener('keydown', handleKeyDown);
 
 		if (promptResponse.action === MODAL_CONFIRM) {
 			await renameNode(currentName, promptResponse.value, { trackHistory: true });
