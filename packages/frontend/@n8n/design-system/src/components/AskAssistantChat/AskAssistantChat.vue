@@ -472,6 +472,7 @@ defineExpose({
 				icon="x"
 				variant="ghost"
 				size="large"
+				:aria-label="t('askAssistantChat.close')"
 				data-test-id="close-chat-button"
 				@click="onClose"
 			/>

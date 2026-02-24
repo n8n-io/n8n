@@ -4,6 +4,7 @@ import type { IUser } from 'n8n-workflow';
 import { useTemplateRef } from 'vue';
 
 import { N8nActionToggle, N8nIconButton } from '@n8n/design-system';
+
 defineProps<{
 	actions: Array<UserAction<IUser>>;
 	disabled?: boolean;
