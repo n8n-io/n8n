@@ -30,6 +30,7 @@ const measureSpan = useTemplateRef('measureSpan');
 
 // Internal editing value
 const editingValue = ref(props.modelValue);
+const isComposing = ref(false);
 
 // Content for width calculation
 const displayContent = computed(() => editingValue.value || props.placeholder);
@@ -77,6 +78,28 @@ function onSubmit() {
 
 function onInput(value: string) {
 	editingValue.value = value;
+}
+
+function onCompositionStart() {
+	isComposing.value = true;
+}
+
+function onCompositionEnd() {
+	isComposing.value = false;
+}
+
+function onKeyDown(event: KeyboardEvent) {
+	const isComposingEnter = event.key === 'Enter' && (event.isComposing || isComposing.value);
+	const isLegacyComposingEnter = event.key === 'Enter' && event.keyCode === 229;
+
+	if (!isComposingEnter && !isLegacyComposingEnter) {
+		return;
+	}
+
+	// Prevent EditableRoot submit while the IME is confirming composition.
+	event.preventDefault();
+	event.stopPropagation();
+	event.stopImmediatePropagation();
 }
 
 function onStateChange(state: string) {
@@ -127,7 +150,10 @@ defineExpose({ forceFocus, forceCancel });
 				data-test-id="inline-edit-input"
 				:style="computedInlineStyles"
 				@input="onInput($event.target.value)"
+				@keydown.capture="onKeyDown"
 				@keydown.space.stop
+				@compositionstart="onCompositionStart"
+				@compositionend="onCompositionEnd"
 			/>
 		</EditableArea>
 	</EditableRoot>
