@@ -76,7 +76,7 @@ function handleReadAloud() {
 			<N8nIconButton
 				variant="ghost"
 				:icon="isSpeaking ? 'volume-x' : 'volume-2'"
-				size="medium"
+				size="small"
 				@click="handleReadAloud"
 			/>
 			<template #content>{{
@@ -89,7 +89,7 @@ function handleReadAloud() {
 			<N8nIconButton
 				variant="ghost"
 				icon="pen"
-				size="medium"
+				size="small"
 				data-test-id="chat-message-edit"
 				:disabled="hasSessionStreaming"
 				@click="handleEdit"
@@ -100,7 +100,7 @@ function handleReadAloud() {
 			<N8nIconButton
 				variant="ghost"
 				icon="refresh-cw"
-				size="medium"
+				size="small"
 				data-test-id="chat-message-regenerate"
 				:disabled="hasSessionStreaming"
 				@click="handleRegenerate"
@@ -108,7 +108,7 @@ function handleReadAloud() {
 			<template #content>{{ i18n.baseText('chatHub.message.actions.regenerate') }}</template>
 		</N8nTooltip>
 		<N8nTooltip v-if="executionUrl" placement="bottom" :show-after="300">
-			<N8nIconButton variant="ghost" icon="info" size="medium" data-test-id="chat-message-info" />
+			<N8nIconButton variant="ghost" icon="info" size="small" data-test-id="chat-message-info" />
 			<template #content>
 				{{ i18n.baseText('chatHub.message.actions.executionId') }}:
 				<N8nLink :to="executionUrl" :new-window="true">
@@ -120,18 +120,18 @@ function handleReadAloud() {
 			<N8nIconButton
 				variant="ghost"
 				icon="chevron-left"
-				size="medium"
+				size="small"
 				:disabled="hasSessionStreaming || currentAlternativeIndex === 0"
 				data-test-id="chat-message-prev-alternative"
 				@click="$emit('switchAlternative', message.alternatives[currentAlternativeIndex - 1])"
 			/>
-			<N8nText size="medium" color="text-base">
+			<N8nText size="small" color="text-base">
 				{{ `${currentAlternativeIndex + 1}/${message.alternatives.length}` }}
 			</N8nText>
 			<N8nIconButton
 				variant="ghost"
 				icon="chevron-right"
-				size="medium"
+				size="small"
 				:disabled="
 					hasSessionStreaming || currentAlternativeIndex === message.alternatives.length - 1
 				"
@@ -146,6 +146,10 @@ function handleReadAloud() {
 .actions {
 	display: flex;
 	align-items: center;
+
+	button {
+		border-radius: 999999px !important;
+	}
 
 	& g,
 	& path {

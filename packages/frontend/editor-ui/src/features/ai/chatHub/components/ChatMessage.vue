@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import type {
 	AgentIconOrEmoji,
@@ -7,7 +6,7 @@ import type {
 	ChatMessageId,
 	ChatModelDto,
 } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nIconButton, N8nInput } from '@n8n/design-system';
+import { N8nButton, N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
 import {
 	computed,
@@ -320,10 +319,6 @@ onBeforeMount(() => {
 		:data-message-id="message.id"
 		:data-test-id="`chat-message-${message.id}`"
 	>
-		<div v-if="isGroupStart" :class="$style.avatar">
-			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
-			<ChatAgentAvatar v-else :agent="agent" size="md" tooltip />
-		</div>
 		<div :class="$style.content">
 			<input
 				v-if="message.type === 'human'"
@@ -455,26 +450,6 @@ onBeforeMount(() => {
 	margin-top: -2px;
 }
 
-.avatar {
-	position: absolute;
-	right: 100%;
-	margin-right: var(--spacing--xs);
-	top: 0;
-	display: grid;
-	place-items: center;
-	width: 28px;
-	height: 28px;
-	border-radius: 50%;
-	background: var(--color--background);
-	color: var(--color--text--tint-1);
-
-	.compact & {
-		margin-left: calc(-1 * var(--spacing--2xs));
-		position: static;
-		margin-bottom: var(--spacing--xs);
-	}
-}
-
 .content {
 	display: flex;
 	flex-direction: column;
@@ -520,7 +495,13 @@ onBeforeMount(() => {
 		max-width: 100%;
 		font-size: var(--font-size--md);
 		line-height: var(--line-height--xl);
+		align-self: flex-end;
+		text-align: left;
 	}
+}
+
+.user .content {
+	align-items: flex-end;
 }
 
 .errorMessage {
@@ -541,10 +522,9 @@ onBeforeMount(() => {
 	top: 0;
 	right: 0;
 	transform: translateY(-50%);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background: var(--color--background);
-	/* border: var(--border); */
-	border-radius: 999px;
+	padding: var(--spacing--4xs);
+	background: light-dark(var(--color--neutral-white), var(--color--neutral-800));
+	border-radius: var(--radius--md);
 	box-shadow:
 		0 1px 2px rgba(0, 0, 0, 0.08),
 		0 4px 4px rgba(0, 0, 0, 0.02),
