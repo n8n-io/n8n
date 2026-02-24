@@ -207,7 +207,7 @@ watch(
 	padding: var(--spacing--2xs);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-2);
+	color: var(--color--text);
 	line-height: 1;
 }
 
@@ -222,7 +222,7 @@ watch(
 	user-select: none;
 	font-size: var(--font-size--2xs);
 	line-height: 1;
-	color: var(--color--text--shade-1);
+	color: var(--color--text);
 	outline: none;
 
 	&[data-highlighted] {
