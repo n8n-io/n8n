@@ -1,22 +1,17 @@
 <script setup lang="ts">
-import { computed, ref, onBeforeUnmount, onMounted, watch, provide } from 'vue';
+import { computed, ref, watch, provide } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nCallout, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nText, N8nTooltip } from '@n8n/design-system';
 import type { INodeProperties } from 'n8n-workflow';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
-import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
-import WebhookUrlPreview from '@/features/setupPanel/components/WebhookUrlPreview.vue';
-
 import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
-import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
-import { useWebhookUrls } from '@/features/setupPanel/composables/useWebhookUrls';
+import { useCardNodeHighlight } from '@/features/setupPanel/composables/useCardNodeHighlight';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
@@ -38,7 +33,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const credentialsStore = useCredentialsStore();
-const setupPanelStore = useSetupPanelStore();
 const nodeHelpers = useNodeHelpers();
 const workflowState = injectWorkflowState();
 
@@ -59,19 +53,6 @@ const triggerNode = computed(() => {
 	if (!props.firstTriggerName || !props.state.isTrigger) return null;
 	return props.state.node.name === props.firstTriggerName ? props.state.node : null;
 });
-
-const {
-	isExecuting,
-	isButtonDisabled,
-	label,
-	buttonIcon,
-	tooltipItems,
-	execute,
-	isInListeningState,
-	listeningHint,
-} = useTriggerExecution(triggerNode);
-
-const { webhookUrls } = useWebhookUrls(triggerNode);
 
 const isTestingCredential = computed(() => {
 	const id = props.state.selectedCredentialId;
@@ -177,49 +158,10 @@ const onValueChanged = (parameterData: IUpdateInformation) => {
 	nodeHelpers.updateNodesParameterIssues();
 };
 
-const onExecuteClick = async () => {
-	await execute();
-	setupCard.value?.markInteracted();
-};
-
-const onCardMouseEnter = () => {
-	setupPanelStore.setHighlightedNodes([props.state.node.id]);
-};
-
-const onCardMouseLeave = () => {
-	setupPanelStore.clearHighlightedNodes();
-};
-
-const onSharedNodesHintEnter = () => {
-	const ids = (props.state.allNodesUsingCredential ?? []).map((n) => n.id);
-	setupPanelStore.setHighlightedNodes(ids);
-};
-
-const onSharedNodesHintLeave = () => {
-	setupPanelStore.setHighlightedNodes([props.state.node.id]);
-};
-
-onMounted(() => {
-	if (!props.state.credentialType || props.state.selectedCredentialId) return;
-
-	const available = credentialsStore.getCredentialsByType(props.state.credentialType);
-	if (available.length === 0) return;
-
-	const mostRecent = available.reduce(
-		(best, current) => (best.updatedAt > current.updatedAt ? best : current),
-		available[0],
-	);
-
-	emit('credentialSelected', {
-		credentialType: props.state.credentialType,
-		credentialId: mostRecent.id,
-		nodeName: props.state.node.name,
-	});
-});
-
-onBeforeUnmount(() => {
-	setupPanelStore.clearHighlightedNodes();
-});
+const { onSharedNodesHintEnter, onSharedNodesHintLeave } = useCardNodeHighlight(
+	computed(() => props.state.node.id),
+	computed(() => (props.state.allNodesUsingCredential ?? []).map((n) => n.id)),
+);
 
 const allParametersAddressed = ref(false);
 
@@ -239,31 +181,14 @@ watch(expanded, (value, oldValue) => {
 		:loading="isTestingCredential"
 		:title="state.node.name"
 		:show-footer="showFooter"
-		:show-callout="!!triggerNode && isInListeningState"
+		:trigger-node="triggerNode"
+		:is-testing-credential="isTestingCredential"
 		:telemetry-payload="telemetryPayload"
+		:highlight-node-ids="[state.node.id]"
 		card-test-id="node-setup-card"
-		@mouseenter="onCardMouseEnter"
-		@mouseleave="onCardMouseLeave"
 	>
 		<template #icon>
 			<NodeIcon :node-type="nodeType" :size="16" />
-		</template>
-
-		<template #callout>
-			<N8nCallout
-				data-test-id="trigger-listening-callout"
-				theme="secondary"
-				:class="$style.callout"
-			>
-				{{ listeningHint }}
-			</N8nCallout>
-		</template>
-
-		<template #webhook-urls>
-			<WebhookUrlPreview
-				v-if="triggerNode && isInListeningState && webhookUrls.length > 0"
-				:urls="webhookUrls"
-			/>
 		</template>
 
 		<template #card-description>
@@ -322,26 +247,10 @@ watch(expanded, (value, oldValue) => {
 				@value-changed="onValueChanged"
 			/>
 		</div>
-
-		<template #footer-actions>
-			<TriggerExecuteButton
-				v-if="triggerNode"
-				:label="label"
-				:icon="buttonIcon"
-				:disabled="isButtonDisabled || isTestingCredential"
-				:loading="isExecuting"
-				:tooltip-items="tooltipItems"
-				@click="onExecuteClick"
-			/>
-		</template>
 	</SetupCard>
 </template>
 
 <style module lang="scss">
-.callout {
-	margin: 0 var(--spacing--xs);
-}
-
 .content {
 	display: flex;
 	flex-direction: column;

@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nIcon, N8nText } from '@n8n/design-system';
 
+import type { INodeUi } from '@/Interface';
+import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
+import WebhookUrlPreview from '@/features/setupPanel/components/WebhookUrlPreview.vue';
+import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
+import { useWebhookUrls } from '@/features/setupPanel/composables/useWebhookUrls';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -13,13 +19,17 @@ const props = withDefaults(
 		cardTestId: string;
 		title: string;
 		showFooter?: boolean;
-		showCallout?: boolean;
+		triggerNode?: INodeUi | null;
+		isTestingCredential?: boolean;
+		highlightNodeIds?: string[];
 		telemetryPayload?: Record<string, unknown>;
 	}>(),
 	{
 		loading: false,
 		showFooter: true,
-		showCallout: false,
+		triggerNode: null,
+		isTestingCredential: false,
+		highlightNodeIds: () => [],
 		telemetryPayload: () => ({}),
 	},
 );
@@ -29,6 +39,7 @@ const expanded = defineModel<boolean>('expanded', { default: false });
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
+const setupPanelStore = useSetupPanelStore();
 
 const hadManualInteraction = ref(false);
 
@@ -39,6 +50,44 @@ const markInteracted = () => {
 const onHeaderClick = () => {
 	expanded.value = !expanded.value;
 };
+
+const onCardMouseEnter = () => {
+	if (props.highlightNodeIds.length > 0) {
+		setupPanelStore.setHighlightedNodes(props.highlightNodeIds);
+	}
+};
+
+const onCardMouseLeave = () => {
+	if (props.highlightNodeIds.length > 0) {
+		setupPanelStore.clearHighlightedNodes();
+	}
+};
+
+const triggerNodeRef = computed(() => props.triggerNode ?? null);
+
+const {
+	isExecuting,
+	isButtonDisabled,
+	label: triggerLabel,
+	buttonIcon: triggerButtonIcon,
+	tooltipItems: triggerTooltipItems,
+	execute,
+	isInListeningState,
+	listeningHint,
+} = useTriggerExecution(triggerNodeRef);
+
+const { webhookUrls } = useWebhookUrls(triggerNodeRef);
+
+const showTriggerCallout = computed(() => !!props.triggerNode && isInListeningState.value);
+
+const onExecuteClick = async () => {
+	await execute();
+	markInteracted();
+};
+
+onBeforeUnmount(() => {
+	setupPanelStore.clearHighlightedNodes();
+});
 
 watch(
 	() => props.isComplete,
@@ -68,6 +117,8 @@ defineExpose({ markInteracted });
 				[$style['no-footer']]: !showFooter && expanded,
 			},
 		]"
+		@mouseenter="onCardMouseEnter"
+		@mouseleave="onCardMouseLeave"
 	>
 		<header :data-test-id="`${cardTestId}-header`" :class="$style.header" @click="onHeaderClick">
 			<N8nIcon
@@ -103,13 +154,22 @@ defineExpose({ markInteracted });
 		<template v-if="expanded">
 			<slot name="card-description" />
 			<Transition name="callout-fade">
-				<div v-if="showCallout" :class="$style['callout-grid']">
+				<div v-if="showTriggerCallout" :class="$style['callout-grid']">
 					<div :class="$style['callout-inner']">
-						<slot name="callout" />
+						<N8nCallout
+							data-test-id="trigger-listening-callout"
+							theme="secondary"
+							:class="$style.callout"
+						>
+							{{ listeningHint }}
+						</N8nCallout>
 					</div>
 				</div>
 			</Transition>
-			<slot name="webhook-urls" />
+			<WebhookUrlPreview
+				v-if="triggerNode && isInListeningState && webhookUrls.length > 0"
+				:urls="webhookUrls"
+			/>
 			<slot />
 
 			<footer v-if="showFooter" :class="$style.footer">
@@ -120,6 +180,15 @@ defineExpose({ markInteracted });
 					</N8nText>
 				</div>
 				<slot name="footer-actions" />
+				<TriggerExecuteButton
+					v-if="triggerNode"
+					:label="triggerLabel"
+					:icon="triggerButtonIcon"
+					:disabled="isButtonDisabled || isTestingCredential"
+					:loading="isExecuting"
+					:tooltip-items="triggerTooltipItems"
+					@click="onExecuteClick"
+				/>
 			</footer>
 		</template>
 	</div>
@@ -216,6 +285,10 @@ defineExpose({ markInteracted });
 	.footer {
 		justify-content: space-between;
 	}
+}
+
+.callout {
+	margin: 0 var(--spacing--xs);
 }
 
 .callout-grid {
