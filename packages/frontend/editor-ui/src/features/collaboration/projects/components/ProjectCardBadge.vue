@@ -37,7 +37,8 @@ const props = withDefaults(defineProps<Props>(), {
 const homeProject = computed(() => {
 	if (props.resource.resourceType === 'dataTable') {
 		return props.resource.project;
-	} else return props.resource.homeProject;
+	}
+	return props.resource.homeProject;
 });
 
 const i18n = useI18n();
