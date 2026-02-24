@@ -69,7 +69,7 @@ async function preloadImage(container: StartedK3sContainer, imageName: string): 
 	log(`Pulling ${imageName} inside K3s...`);
 	const pullResult = await container.exec(['crictl', 'pull', imageName]);
 	if (pullResult.exitCode !== 0) {
-		log(`Registry pull failed, importing from local Docker...`);
+		log('Registry pull failed, importing from local Docker...');
 		const tarPath = `/tmp/n8n-helm-${Date.now()}.tar`;
 		try {
 			execSync(`docker save ${imageName} -o ${tarPath}`, { stdio: 'pipe' });
