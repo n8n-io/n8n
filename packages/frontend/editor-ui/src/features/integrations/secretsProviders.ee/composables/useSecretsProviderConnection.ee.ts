@@ -6,6 +6,10 @@ import {
 	createSecretProviderConnection,
 	updateSecretProviderConnection,
 	testSecretProviderConnection,
+	getProjectSecretProviderConnectionByKey,
+	createProjectSecretProviderConnection,
+	updateProjectSecretProviderConnection,
+	testProjectSecretProviderConnection,
 } from '@n8n/rest-api-client';
 
 /**
@@ -14,7 +18,7 @@ import {
  * UI feedback (toasts, errors) should be handled by the caller.
  */
 
-export function useSecretsProviderConnection() {
+export function useSecretsProviderConnection(projectId?: string) {
 	const rootStore = useRootStore();
 
 	const connectionState = ref<SecretProviderConnection['state']>('initializing');
@@ -24,13 +28,15 @@ export function useSecretsProviderConnection() {
 
 	// API operations
 	async function testConnection(providerKey: string): Promise<SecretProviderConnection['state']> {
-		// POST /rest/secret-providers/connections/:connectionId/test
 		isTesting.value = true;
 		try {
-			const { testState, error } = await testSecretProviderConnection(
-				rootStore.restApiContext,
-				providerKey,
-			);
+			const { testState, error } = projectId
+				? await testProjectSecretProviderConnection(
+						rootStore.restApiContext,
+						projectId,
+						providerKey,
+					)
+				: await testSecretProviderConnection(rootStore.restApiContext, providerKey);
 
 			connectionState.value = testState === 'tested' ? 'connected' : testState;
 			connectionError.value = error;
@@ -45,13 +51,15 @@ export function useSecretsProviderConnection() {
 	}
 
 	async function getConnection(providerKey: string): Promise<SecretProviderConnection> {
-		// GET /rest/secret-providers/connections/:providerKey
 		isLoading.value = true;
 		try {
-			const connection = await getSecretProviderConnectionByKey(
-				rootStore.restApiContext,
-				providerKey,
-			);
+			const connection = projectId
+				? await getProjectSecretProviderConnectionByKey(
+						rootStore.restApiContext,
+						projectId,
+						providerKey,
+					)
+				: await getSecretProviderConnectionByKey(rootStore.restApiContext, providerKey);
 
 			return connection;
 		} finally {
@@ -65,11 +73,17 @@ export function useSecretsProviderConnection() {
 		settings: Record<string, unknown>;
 		projectIds: string[];
 	}): Promise<SecretProviderConnection> {
-		// PUT /rest/secret-providers/connections/:providerKey
-		const connection = await createSecretProviderConnection(rootStore.restApiContext, {
-			...connectionData,
-			isGlobal: true,
-		});
+		const connection = projectId
+			? await createProjectSecretProviderConnection(rootStore.restApiContext, projectId, {
+					providerKey: connectionData.providerKey,
+					type: connectionData.type,
+					projectIds: [projectId],
+					settings: connectionData.settings,
+				})
+			: await createSecretProviderConnection(rootStore.restApiContext, {
+					...connectionData,
+					isGlobal: true,
+				});
 
 		return connection;
 	}
@@ -82,12 +96,14 @@ export function useSecretsProviderConnection() {
 			settings: Record<string, unknown>;
 		},
 	): Promise<SecretProviderConnection> {
-		// PATCH /rest/secret-providers/connections/:providerKey
-		const connection = await updateSecretProviderConnection(
-			rootStore.restApiContext,
-			providerKey,
-			connectionData,
-		);
+		const connection = projectId
+			? await updateProjectSecretProviderConnection(
+					rootStore.restApiContext,
+					projectId,
+					providerKey,
+					{ settings: connectionData.settings },
+				)
+			: await updateSecretProviderConnection(rootStore.restApiContext, providerKey, connectionData);
 
 		return connection;
 	}
