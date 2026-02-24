@@ -2,7 +2,7 @@ import { computed, watch, type Ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
 import { type ICredentialDataDecryptedObject } from 'n8n-workflow';
-import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
+import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -130,7 +130,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 	/**
 	 * Tracks credential types that have ever had nodes with parameter issues.
-	 * Once a credential type is tracked here, it's handled by nodeCredentialStates instead of credentialTypeStates.
+	 * Once a credential type is tracked here, it's handled by nodeStates instead of credentialTypeStates.
 	 * This prevents duplicate cards when parameters are filled but ensures the card persists.
 	 */
 	const seenCredentialTypesWithParameters = new Set<string>();
@@ -223,54 +223,36 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	});
 
 	/**
-	 * Parameter states for nodes with missing required parameters.
-	 * Each state indicates:
-	 * - Whether this is the first node of the given type in the workflow
-	 * - Whether the node requires credentials
-	 * Ordered by execution order (inherited from nodesWithMissingParameters).
+	 * Per-node setup states — handles both parameter-only nodes and credential+parameter nodes.
 	 *
-	 * NOTE: This now only includes nodes that have parameter issues but NO credentials.
-	 * Nodes with both are handled by nodeCredentialStates instead.
-	 */
-	const parameterStates = computed(() => {
-		const seenNodeTypes = new Set<string>();
-
-		// Only include nodes with parameters but NO credentials
-		return nodesWithMissingParameters.value
-			.filter(({ credentialTypes }) => credentialTypes.length === 0)
-			.map((state) => {
-				const { node, parameterIssues, credentialTypes, isTrigger } = state;
-				const isFirstOfType = !seenNodeTypes.has(node.type);
-				seenNodeTypes.add(node.type);
-
-				// A parameter card is complete when there are no parameter issues
-				const isComplete = Object.keys(parameterIssues).length === 0;
-
-				return {
-					node,
-					parameterIssues,
-					credentialTypes,
-					isTrigger,
-					isFirstOfType,
-					isComplete,
-				};
-			});
-	});
-
-	/**
-	 * Node credential states — combines credentials and parameters for nodes that have both.
-	 * When ANY node using a credential type has parameter issues, we split into separate cards per node.
-	 * Only nodes that actually have parameters are shown (nodes without parameters will get credentials automatically).
+	 * Parameter-only entries: nodes with parameter issues but NO credentials.
+	 * Credential entries: nodes with credentials that have parameter issues (split per node).
 	 * Only the first node with each credential type shows the credential picker.
 	 */
-	const nodeCredentialStates = computed(() => {
+	const nodeStates = computed<NodeSetupState[]>(() => {
+		const result: NodeSetupState[] = [];
+
+		// --- Parameter-only nodes (no credentials) ---
+		for (const entry of nodesWithMissingParameters.value) {
+			if (entry.credentialTypes.length > 0) continue;
+			const { node, parameterIssues, isTrigger } = entry;
+
+			result.push({
+				node,
+				parameterIssues,
+				isTrigger,
+				isComplete: Object.keys(parameterIssues).length === 0,
+			});
+		}
+
+		// --- Credential+parameter nodes ---
 		// Identify which credential types have ANY nodes with parameter issues (or had in the past)
 		const credentialTypesWithParameters = new Set<string>();
 		for (const { credentialTypes, parameterIssues } of nodesRequiringSetup.value) {
 			if (Object.keys(parameterIssues).length > 0) {
 				for (const credType of credentialTypes) {
 					credentialTypesWithParameters.add(credType);
-					seenCredentialTypesWithParameters.add(credType); // Remember this credential type
+					seenCredentialTypesWithParameters.add(credType);
 				}
 			}
 		}
@@ -294,14 +276,12 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			if (credentialTypes.length === 0) continue;
 
 			for (const credType of credentialTypes) {
-				// Include if currently has parameters OR was previously tracked
 				if (
 					!credentialTypesWithParameters.has(credType) &&
 					!seenCredentialTypesWithParameters.has(credType)
 				)
 					continue;
 
-				// Track all nodes using this credential type
 				if (!credTypeToAllNodes.has(credType)) {
 					credTypeToAllNodes.set(credType, []);
 				}
@@ -309,7 +289,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 					credTypeToAllNodes.get(credType)!.push(node);
 				}
 
-				// Track nodes with parameters OR nodes we've already shown (to prevent disappearing)
 				const combinationKey = `${credType}:${node.id}`;
 				const hasParameters = Object.keys(parameterIssues).length > 0;
 				const alreadySeen = seenNodeCredentials.has(combinationKey);
@@ -323,7 +302,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			}
 		}
 
-		const result = [];
 		const seenCombinations = new Set<string>();
 
 		for (const [credType, entries] of credTypeToNodesWithParams) {
@@ -334,44 +312,31 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				const { node, parameterIssues, isTrigger } = entry;
 				const combinationKey = `${credType}:${node.id}`;
 
-				// Skip duplicates (same node might appear if it has multiple credential types)
 				if (seenCombinations.has(combinationKey)) continue;
 				seenCombinations.add(combinationKey);
 
-				// Mark this combination as seen so it persists even after parameters are filled
 				seenNodeCredentials.add(combinationKey);
 
-				// Get the selected credential ID for this node
 				const credValue = node.credentials?.[credType];
 				const selectedCredentialId =
 					typeof credValue === 'string' ? undefined : (credValue?.id ?? undefined);
 
-				// Get credential issues for this node
 				const credentialIssues = node.issues?.credentials ?? {};
 				const issues = credentialIssues[credType];
 				const issueMessages = [issues ?? []].flat();
 
-				// Determine if this should show the credential picker:
-				// - Only the first node with this credential type shows the picker
-				// - Other nodes with parameters don't show it (credential is shared)
 				const showCredentialPicker = isFirstNode;
 
-				// Check if credential is complete
 				const credentialComplete = !!selectedCredentialId && issueMessages.length === 0;
 				const testPassed =
 					!selectedCredentialId || credentialsStore.isCredentialTestedOk(selectedCredentialId);
 
-				// Check if trigger has executed (if applicable)
 				const isTriggerNodeType = (nodeType: string) => nodeTypesStore.isTriggerNode(nodeType);
 				const triggerComplete =
 					!isTriggerNodeType(node.type) ||
 					node.name !== firstTriggerName.value ||
 					hasTriggerExecutedSuccessfully(node.name);
 
-				// Card is complete when:
-				// - Credential is set and tested (if applicable)
-				// - No parameter issues
-				// - Trigger has executed (if applicable)
 				const isComplete =
 					credentialComplete &&
 					testPassed &&
@@ -386,7 +351,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 					issues: issueMessages,
 					parameterIssues,
 					isTrigger,
-					isFirstNodeWithCredential: isFirstNode,
 					showCredentialPicker,
 					isComplete,
 					allNodesUsingCredential,
@@ -447,24 +411,20 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			type: 'trigger' as const,
 			state,
 		}));
-		const parameters: SetupCardItem[] = parameterStates.value.map((state) => ({
-			type: 'parameter' as const,
-			state,
-		}));
-		const nodeCredentials: SetupCardItem[] = nodeCredentialStates.value.map((state) => ({
-			type: 'nodeCredential' as const,
+		const nodes: SetupCardItem[] = nodeStates.value.map((state) => ({
+			type: 'node' as const,
 			state,
 		}));
 
 		const executionOrder = nodesRequiringSetup.value.map(({ node }) => node.name);
 		const primaryNodeName = (card: SetupCardItem): string => {
-			if (card.type === 'trigger' || card.type === 'parameter' || card.type === 'nodeCredential') {
+			if (card.type === 'trigger' || card.type === 'node') {
 				return card.state.node.name;
 			}
 			return card.state.nodes[0]?.name ?? '';
 		};
 
-		return [...credentials, ...triggers, ...parameters, ...nodeCredentials].sort(
+		return [...credentials, ...triggers, ...nodes].sort(
 			(a, b) =>
 				executionOrder.indexOf(primaryNodeName(a)) - executionOrder.indexOf(primaryNodeName(b)),
 		);
@@ -686,8 +646,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		setupCards,
 		credentialTypeStates,
 		triggerStates,
-		parameterStates,
-		nodeCredentialStates,
+		nodeStates,
 		firstTriggerName,
 		totalCredentialsMissing,
 		totalCardsRequiringSetup,

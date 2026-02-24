@@ -1476,7 +1476,7 @@ describe('useWorkflowSetupState', () => {
 		});
 	});
 
-	describe('nodeCredentialStates', () => {
+	describe('nodeStates (credential+parameter)', () => {
 		it('should create node credential cards when nodes have both credentials and parameters', () => {
 			const node1 = createNode({
 				name: 'HTTP Request 1',
@@ -1494,12 +1494,11 @@ describe('useWorkflowSetupState', () => {
 
 			const state = useWorkflowSetupState();
 
-			expect(state.nodeCredentialStates.value).toHaveLength(1);
-			expect(state.nodeCredentialStates.value[0]).toMatchObject({
+			expect(state.nodeStates.value).toHaveLength(1);
+			expect(state.nodeStates.value[0]).toMatchObject({
 				node: node1,
 				credentialType: 'httpHeaderAuth',
 				showCredentialPicker: true,
-				isFirstNodeWithCredential: true,
 			});
 		});
 
@@ -1526,11 +1525,9 @@ describe('useWorkflowSetupState', () => {
 
 			const state = useWorkflowSetupState();
 
-			expect(state.nodeCredentialStates.value).toHaveLength(2);
-			expect(state.nodeCredentialStates.value[0].showCredentialPicker).toBe(true);
-			expect(state.nodeCredentialStates.value[0].isFirstNodeWithCredential).toBe(true);
-			expect(state.nodeCredentialStates.value[1].showCredentialPicker).toBe(false);
-			expect(state.nodeCredentialStates.value[1].isFirstNodeWithCredential).toBe(false);
+			expect(state.nodeStates.value).toHaveLength(2);
+			expect(state.nodeStates.value[0].showCredentialPicker).toBe(true);
+			expect(state.nodeStates.value[1].showCredentialPicker).toBe(false);
 		});
 
 		it('should track all nodes using credential in allNodesUsingCredential', () => {
@@ -1560,10 +1557,10 @@ describe('useWorkflowSetupState', () => {
 
 			const state = useWorkflowSetupState();
 
-			expect(state.nodeCredentialStates.value).toHaveLength(1);
-			expect(state.nodeCredentialStates.value[0].allNodesUsingCredential).toHaveLength(2);
-			expect(state.nodeCredentialStates.value[0].allNodesUsingCredential).toContain(node1);
-			expect(state.nodeCredentialStates.value[0].allNodesUsingCredential).toContain(node2);
+			expect(state.nodeStates.value).toHaveLength(1);
+			expect(state.nodeStates.value[0].allNodesUsingCredential).toHaveLength(2);
+			expect(state.nodeStates.value[0].allNodesUsingCredential).toContain(node1);
+			expect(state.nodeStates.value[0].allNodesUsingCredential).toContain(node2);
 		});
 
 		it('should persist cards even after parameters are filled', async () => {
@@ -1584,7 +1581,7 @@ describe('useWorkflowSetupState', () => {
 			const state = useWorkflowSetupState();
 
 			// Initial state - has parameter issues
-			expect(state.nodeCredentialStates.value).toHaveLength(1);
+			expect(state.nodeStates.value).toHaveLength(1);
 
 			// Simulate parameter being filled (remove parameter issues)
 			node1.issues = { credentials: { httpHeaderAuth: ['Credential is required'] } };
@@ -1594,7 +1591,7 @@ describe('useWorkflowSetupState', () => {
 			await nextTick();
 
 			// Card should still exist due to persistence
-			expect(state.nodeCredentialStates.value).toHaveLength(1);
+			expect(state.nodeStates.value).toHaveLength(1);
 		});
 
 		it('should not create duplicate cards with credentialTypeStates', () => {
@@ -1614,8 +1611,8 @@ describe('useWorkflowSetupState', () => {
 
 			const state = useWorkflowSetupState();
 
-			// Should only be in nodeCredentialStates, not credentialTypeStates
-			expect(state.nodeCredentialStates.value).toHaveLength(1);
+			// Should only be in nodeStates, not credentialTypeStates
+			expect(state.nodeStates.value).toHaveLength(1);
 			expect(state.credentialTypeStates.value).toHaveLength(0);
 		});
 
@@ -1646,8 +1643,8 @@ describe('useWorkflowSetupState', () => {
 			const state = useWorkflowSetupState();
 
 			// Only node1 has parameter issues, so only it should get a card
-			expect(state.nodeCredentialStates.value).toHaveLength(1);
-			expect(state.nodeCredentialStates.value[0].node).toBe(node1);
+			expect(state.nodeStates.value).toHaveLength(1);
+			expect(state.nodeStates.value[0].node).toBe(node1);
 		});
 
 		it('should support node-specific credential assignment via setCredential', () => {
@@ -1739,8 +1736,8 @@ describe('useWorkflowSetupState', () => {
 			const state = useWorkflowSetupState();
 
 			// Card exists but is incomplete due to parameter issues
-			expect(state.nodeCredentialStates.value).toHaveLength(1);
-			expect(state.nodeCredentialStates.value[0].isComplete).toBe(false);
+			expect(state.nodeStates.value).toHaveLength(1);
+			expect(state.nodeStates.value[0].isComplete).toBe(false);
 		});
 
 		it('should mark as incomplete when credential is not tested', () => {
@@ -1763,8 +1760,8 @@ describe('useWorkflowSetupState', () => {
 			const state = useWorkflowSetupState();
 
 			// Card exists but is incomplete due to credential not tested
-			expect(state.nodeCredentialStates.value).toHaveLength(1);
-			expect(state.nodeCredentialStates.value[0].isComplete).toBe(false);
+			expect(state.nodeStates.value).toHaveLength(1);
+			expect(state.nodeStates.value[0].isComplete).toBe(false);
 		});
 
 		it('should include in setupCards in execution order', () => {
@@ -1796,7 +1793,7 @@ describe('useWorkflowSetupState', () => {
 			const state = useWorkflowSetupState();
 
 			expect(state.setupCards.value).toHaveLength(2);
-			const nodeCredCard = state.setupCards.value.find((c) => c.type === 'nodeCredential');
+			const nodeCredCard = state.setupCards.value.find((c) => c.type === 'node');
 			expect(nodeCredCard).toBeDefined();
 			expect(nodeCredCard?.state.node).toBe(node1);
 		});

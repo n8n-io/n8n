@@ -217,7 +217,7 @@ describe('SetupPanelCards', () => {
 
 			await userEvent.click(getByTestId('select-credential-btn'));
 
-			expect(mockSetCredential).toHaveBeenCalledWith('openAiApi', 'cred-123', undefined);
+			expect(mockSetCredential).toHaveBeenCalledWith('openAiApi', 'cred-123');
 		});
 
 		it('should call unsetCredential with credentialType when credential is deselected', async () => {
@@ -227,7 +227,7 @@ describe('SetupPanelCards', () => {
 
 			await userEvent.click(getByTestId('deselect-credential-btn'));
 
-			expect(mockUnsetCredential).toHaveBeenCalledWith('openAiApi', undefined);
+			expect(mockUnsetCredential).toHaveBeenCalledWith('openAiApi');
 		});
 	});
 });

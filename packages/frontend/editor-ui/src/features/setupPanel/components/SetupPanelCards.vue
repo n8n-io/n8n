@@ -3,8 +3,7 @@ import { computed, reactive, watch } from 'vue';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import TriggerSetupCard from '@/features/setupPanel/components/cards/TriggerSetupCard.vue';
 import CredentialTypeSetupCard from '@/features/setupPanel/components/cards/CredentialTypeSetupCard.vue';
-import NodeParameterSetupCard from '@/features/setupPanel/components/cards/NodeParameterSetupCard.vue';
-import NodeCredentialSetupCard from '@/features/setupPanel/components/cards/NodeCredentialSetupCard.vue';
+import NodeSetupCard from '@/features/setupPanel/components/cards/NodeSetupCard.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -44,7 +43,7 @@ const onCredentialDeselected = (credentialType: string) => {
 	unsetCredential(credentialType);
 };
 
-// For NodeCredentialSetupCard (new format with nodeName)
+// For NodeSetupCard (format with nodeName)
 const onNodeCredentialSelected = (payload: {
 	credentialType: string;
 	credentialId: string;
@@ -66,11 +65,10 @@ const cardKey = (card: SetupCardItem): string => {
 	if (card.type === 'trigger') {
 		return `trigger-${card.state.node.id}`;
 	}
-	if (card.type === 'parameter') {
-		return `parameter-${card.state.node.id}`;
-	}
-	if (card.type === 'nodeCredential') {
-		return `nodeCredential-${card.state.credentialType}-${card.state.node.id}`;
+	if (card.type === 'node') {
+		return card.state.credentialType
+			? `node-${card.state.credentialType}-${card.state.node.id}`
+			: `node-${card.state.node.id}`;
 	}
 	// card.type === 'credential'
 	return `credential-${card.state.credentialType}-${card.state.nodes[0]?.name ?? ''}`;
@@ -154,14 +152,8 @@ watch(
 					:expanded="isCardExpanded(cardKey(card))"
 					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
 				/>
-				<NodeParameterSetupCard
-					v-else-if="card.type === 'parameter'"
-					:state="card.state"
-					:expanded="isCardExpanded(cardKey(card))"
-					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
-				/>
-				<NodeCredentialSetupCard
-					v-else-if="card.type === 'nodeCredential'"
+				<NodeSetupCard
+					v-else-if="card.type === 'node'"
 					:state="card.state"
 					:first-trigger-name="firstTriggerName"
 					:expanded="isCardExpanded(cardKey(card))"

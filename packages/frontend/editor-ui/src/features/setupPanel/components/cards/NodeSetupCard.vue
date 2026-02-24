@@ -10,7 +10,7 @@ import ParameterInputList from '@/features/ndv/parameters/components/ParameterIn
 import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
 import WebhookUrlPreview from '@/features/setupPanel/components/WebhookUrlPreview.vue';
 
-import type { NodeCredentialSetupState } from '@/features/setupPanel/setupPanel.types';
+import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -24,7 +24,7 @@ import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
 
 const props = defineProps<{
-	state: NodeCredentialSetupState;
+	state: NodeSetupState;
 	firstTriggerName?: string | null;
 }>();
 
@@ -52,6 +52,8 @@ const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),
 );
 
+const hasCredential = computed(() => !!props.state.credentialType);
+
 // Only the workflow's first trigger (by execution order) can be executed from setup cards.
 const triggerNode = computed(() => {
 	if (!props.firstTriggerName || !props.state.isTrigger) return null;
@@ -76,21 +78,32 @@ const isTestingCredential = computed(() => {
 	return !!id && credentialsStore.isCredentialTestPending(id);
 });
 
-const showFooter = computed(() => triggerNode.value !== null || props.state.isComplete);
+const showFooter = computed(
+	() => !hasCredential.value || triggerNode.value !== null || props.state.isComplete,
+);
 
 const hasParameters = computed(() => Object.keys(props.state.parameterIssues).length > 0);
 
-const nodeNames = computed(() => props.state.allNodesUsingCredential.map((node) => node.name));
+const nodeNames = computed(() => (props.state.allNodesUsingCredential ?? []).map((n) => n.name));
 
 const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 
-const telemetryPayload = computed(() => ({
-	type: 'nodeCredential',
-	credential_type: props.state.credentialType,
-	node_type: props.state.node.type,
-	has_parameters: hasParameters.value,
-	missing_parameters_count: Object.keys(props.state.parameterIssues).length,
-}));
+const telemetryPayload = computed(() => {
+	if (hasCredential.value) {
+		return {
+			type: 'nodeCredential',
+			credential_type: props.state.credentialType,
+			node_type: props.state.node.type,
+			has_parameters: hasParameters.value,
+			missing_parameters_count: Object.keys(props.state.parameterIssues).length,
+		};
+	}
+	return {
+		type: 'parameter',
+		node_type: props.state.node.type,
+		missing_parameters_count: Object.keys(props.state.parameterIssues).length,
+	};
+});
 
 /**
  * Tracks which parameters have been shown to the user at least once.
@@ -129,6 +142,7 @@ const parameters = computed<INodeProperties[]>(() => {
 const hasShownParameters = computed(() => shownParameters.value.length > 0);
 
 const onCredentialSelected = (credentialId: string) => {
+	if (!props.state.credentialType) return;
 	setupCard.value?.markInteracted();
 	emit('credentialSelected', {
 		credentialType: props.state.credentialType,
@@ -138,6 +152,7 @@ const onCredentialSelected = (credentialId: string) => {
 };
 
 const onCredentialDeselected = () => {
+	if (!props.state.credentialType) return;
 	setupCard.value?.markInteracted();
 	emit('credentialDeselected', {
 		credentialType: props.state.credentialType,
@@ -176,7 +191,7 @@ const onCardMouseLeave = () => {
 };
 
 const onSharedNodesHintEnter = () => {
-	const ids = props.state.allNodesUsingCredential.map((node) => node.id);
+	const ids = (props.state.allNodesUsingCredential ?? []).map((n) => n.id);
 	setupPanelStore.setHighlightedNodes(ids);
 };
 
@@ -185,7 +200,7 @@ const onSharedNodesHintLeave = () => {
 };
 
 onMounted(() => {
-	if (props.state.selectedCredentialId) return;
+	if (!props.state.credentialType || props.state.selectedCredentialId) return;
 
 	const available = credentialsStore.getCredentialsByType(props.state.credentialType);
 	if (available.length === 0) return;
@@ -226,7 +241,7 @@ watch(expanded, (value, oldValue) => {
 		:show-footer="showFooter"
 		:show-callout="!!triggerNode && isInListeningState"
 		:telemetry-payload="telemetryPayload"
-		card-test-id="node-credential-setup-card"
+		card-test-id="node-setup-card"
 		@mouseenter="onCardMouseEnter"
 		@mouseleave="onCardMouseLeave"
 	>
@@ -263,7 +278,7 @@ watch(expanded, (value, oldValue) => {
 			<div v-if="state.showCredentialPicker" :class="$style['credential-container']">
 				<div :class="$style['credential-label-row']">
 					<label
-						data-test-id="node-credential-setup-card-label"
+						data-test-id="node-setup-card-label"
 						:for="`credential-picker-${state.credentialType}`"
 						:class="$style['credential-label']"
 					>
@@ -274,7 +289,7 @@ watch(expanded, (value, oldValue) => {
 							{{ nodeNamesTooltip }}
 						</template>
 						<span
-							data-test-id="node-credential-setup-card-nodes-hint"
+							data-test-id="node-setup-card-nodes-hint"
 							:class="$style['nodes-hint']"
 							@mouseenter="onSharedNodesHintEnter"
 							@mouseleave="onSharedNodesHintLeave"
@@ -290,8 +305,8 @@ watch(expanded, (value, oldValue) => {
 				<CredentialPicker
 					create-button-variant="subtle"
 					:class="$style['credential-picker']"
-					:app-name="state.credentialDisplayName"
-					:credential-type="state.credentialType"
+					:app-name="state.credentialDisplayName ?? ''"
+					:credential-type="state.credentialType ?? ''"
 					:selected-credential-id="state.selectedCredentialId ?? null"
 					@credential-selected="onCredentialSelected"
 					@credential-deselected="onCredentialDeselected"
