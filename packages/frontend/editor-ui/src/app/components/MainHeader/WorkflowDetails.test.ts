@@ -606,6 +606,7 @@ describe('WorkflowDetails', () => {
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOWS,
 			});
+			expect(workflowDocumentStoreRef.value?.active).toBe(false);
 		});
 
 		it("should call onWorkflowMenuSelect on 'Unarchive' option click", async () => {

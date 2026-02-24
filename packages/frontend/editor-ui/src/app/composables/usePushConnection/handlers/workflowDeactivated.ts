@@ -1,6 +1,7 @@
 import type { WorkflowDeactivated } from '@n8n/api-types/push/workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
@@ -8,6 +9,7 @@ export async function workflowDeactivated({ data }: WorkflowDeactivated) {
 	const { initializeWorkspace } = useCanvasOperations();
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
+	const documentStore = injectWorkflowDocumentStore();
 	const uiStore = useUIStore();
 
 	if (workflowsStore.workflowId === data.workflowId) {
@@ -19,6 +21,8 @@ export async function workflowDeactivated({ data }: WorkflowDeactivated) {
 			}
 			// initializeWorkspace calls initState which sets the document store
 			await initializeWorkspace(updatedWorkflow);
+		} else {
+			documentStore?.setActiveState({ activeVersionId: null, activeVersion: null });
 		}
 	}
 }
