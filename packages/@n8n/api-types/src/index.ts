@@ -52,7 +52,6 @@ export {
 	type AgentIconOrEmoji,
 	agentIconOrEmojiSchema,
 	type MessageChunk,
-	type ChatHubAgentTool,
 	UpdateChatSettingsRequest,
 	type ChatProviderSettingsDto,
 	type ChatSendMessageResponse,
@@ -65,6 +64,11 @@ export {
 	type ChatHubMessageButton,
 	chatHubMessageWithButtonsSchema,
 	type ChatHubMessageWithButtons,
+	type ChatHubToolDto,
+	ChatHubCreateToolRequest,
+	ChatHubUpdateToolRequest,
+	ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES,
+	CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES,
 } from './chat-hub';
 
 export type {

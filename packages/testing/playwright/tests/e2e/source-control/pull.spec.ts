@@ -13,7 +13,11 @@ async function expectPullSuccess(n8n: n8nPage) {
 
 // Skipped: These tests are flaky. Re-enable when PAY-4365 is resolved.
 // https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
-test.describe('Pull resources from Git @capability:source-control @fixme', () => {
+test.describe('Pull resources from Git @capability:source-control @fixme', {
+	annotation: [
+		{ type: 'owner', description: 'Lifecycle & Governance' },
+	],
+}, () => {
 	test.fixme();
 
 	let gitRepo: GitRepoHelper;

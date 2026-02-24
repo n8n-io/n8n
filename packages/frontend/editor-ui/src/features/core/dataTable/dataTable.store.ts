@@ -351,11 +351,16 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		}
 	};
 
-	const downloadDataTableCsv = async (dataTableId: string, projectId: string) => {
+	const downloadDataTableCsv = async (
+		dataTableId: string,
+		projectId: string,
+		includeSystemColumns = true,
+	) => {
 		const { csvContent, filename } = await downloadDataTableCsvApi(
 			rootStore.restApiContext,
 			dataTableId,
 			projectId,
+			includeSystemColumns,
 		);
 
 		const csvBlob = createCsvBlob(csvContent);

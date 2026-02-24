@@ -43,17 +43,22 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { getAllKeyPaths } from '@/utils';
 
 import { CredentialsFinderService } from './credentials-finder.service';
-import { validateExternalSecretsPermissions } from './validation';
+import {
+	validateAccessToReferencedSecretProviders,
+	validateExternalSecretsPermissions,
+} from './validation';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -80,6 +85,8 @@ export class CredentialsService {
 		private readonly userRepository: UserRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsHelper: CredentialsHelper,
+		private readonly externalSecretsConfig: ExternalSecretsConfig,
+		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 	) {}
 
 	private async addGlobalCredentials(
@@ -139,8 +146,6 @@ export class CredentialsService {
 		const returnAll = hasGlobalScope(user, 'credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
 
-		this.applyOnlySharedWithMeFilter(listQueryOptions, onlySharedWithMe, user);
-
 		// Auto-enable includeScopes when includeData is requested
 		if (includeData) {
 			includeScopes = true;
@@ -150,13 +155,20 @@ export class CredentialsService {
 		let credentials: CredentialsEntity[];
 
 		if (returnAll) {
-			credentials = await this.getManyForAdminUser(listQueryOptions, includeGlobal, includeData);
+			credentials = await this.getManyForAdminUser(
+				user,
+				listQueryOptions,
+				includeGlobal,
+				includeData,
+				onlySharedWithMe,
+			);
 		} else {
 			credentials = await this.getManyForMemberUser(
 				user,
 				listQueryOptions,
 				includeGlobal,
 				includeData,
+				onlySharedWithMe,
 			);
 		}
 
@@ -204,25 +216,31 @@ export class CredentialsService {
 		return credentials;
 	}
 
-	private applyOnlySharedWithMeFilter(
-		listQueryOptions: ListQuery.Options & { includeData?: boolean },
-		onlySharedWithMe: boolean,
-		user: User,
-	): void {
-		if (onlySharedWithMe) {
-			listQueryOptions.filter = {
-				...listQueryOptions.filter,
-				withRole: 'credential:user',
-				user,
-			};
-		}
-	}
-
 	private async getManyForAdminUser(
+		user: User,
 		listQueryOptions: ListQuery.Options & { includeData?: boolean },
 		includeGlobal: boolean,
 		includeData: boolean,
+		onlySharedWithMe: boolean,
 	): Promise<CredentialsEntity[]> {
+		// If onlySharedWithMe is requested, use the subquery approach even for admin users
+		if (onlySharedWithMe) {
+			const sharingOptions = {
+				onlySharedWithMe: true,
+			};
+			const { credentials } = await this.credentialsRepository.getManyAndCountWithSharingSubquery(
+				user,
+				sharingOptions,
+				listQueryOptions,
+			);
+
+			if (includeGlobal) {
+				return await this.addGlobalCredentials(credentials, includeData);
+			}
+
+			return credentials;
+		}
+
 		await this.applyPersonalProjectFilter(listQueryOptions);
 
 		let credentials = await this.credentialsRepository.findMany(listQueryOptions);
@@ -239,15 +257,62 @@ export class CredentialsService {
 		listQueryOptions: ListQuery.Options & { includeData?: boolean },
 		includeGlobal: boolean,
 		includeData: boolean,
+		onlySharedWithMe: boolean,
 	): Promise<CredentialsEntity[]> {
-		const ids = await this.credentialsFinderService.getCredentialIdsByUserAndRole([user.id], {
-			scopes: ['credential:read'],
-		});
+		let isPersonalProject = false;
+		let personalProjectOwnerId: string | null = null;
 
-		let credentials = await this.credentialsRepository.findMany(listQueryOptions, ids);
+		// Check if filtering by personal project
+		if (listQueryOptions.filter?.projectId) {
+			const project = await this.projectRepository.findOneBy({
+				id: listQueryOptions.filter.projectId as string,
+			});
+			if (!project) {
+				return [];
+			}
+			isPersonalProject = project.type === 'personal';
+			personalProjectOwnerId = project.creatorId;
+		}
+
+		// Prepare sharing options for the subquery
+		const sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			credentialRoles?: string[];
+			isPersonalProject?: boolean;
+			personalProjectOwnerId?: string;
+			onlySharedWithMe?: boolean;
+		} = {};
+
+		if (isPersonalProject && personalProjectOwnerId) {
+			// Prevent users from accessing another user's personal project credentials
+			if (personalProjectOwnerId !== user.id && !hasGlobalScope(user, 'credential:read')) {
+				return [];
+			}
+			sharingOptions.isPersonalProject = true;
+			sharingOptions.personalProjectOwnerId = personalProjectOwnerId;
+		} else if (onlySharedWithMe) {
+			sharingOptions.onlySharedWithMe = true;
+		} else {
+			// Get roles from scopes
+			const projectRoles = await this.roleService.rolesWithScope('project', ['credential:read']);
+			const credentialRoles = await this.roleService.rolesWithScope('credential', [
+				'credential:read',
+			]);
+			sharingOptions.scopes = ['credential:read'];
+			sharingOptions.projectRoles = projectRoles;
+			sharingOptions.credentialRoles = credentialRoles;
+		}
+
+		// Use the new subquery-based repository method
+		const { credentials } = await this.credentialsRepository.getManyAndCountWithSharingSubquery(
+			user,
+			sharingOptions,
+			listQueryOptions,
+		);
 
 		if (includeGlobal) {
-			credentials = await this.addGlobalCredentials(credentials, includeData);
+			return await this.addGlobalCredentials(credentials, includeData);
 		}
 
 		return credentials;
@@ -493,9 +558,24 @@ export class CredentialsService {
 	async prepareUpdateData(
 		user: User,
 		data: CredentialRequest.CredentialProperties,
-		decryptedData: ICredentialDataDecryptedObject,
+		existingCredential: CredentialsEntity,
 	): Promise<CredentialsEntity> {
+		const decryptedData = this.decrypt(existingCredential, true);
 		validateExternalSecretsPermissions(user, data.data, decryptedData);
+
+		// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
+		const projectOwningCredential = existingCredential.shared?.find(
+			(shared) => shared.role === 'credential:owner',
+		)!;
+
+		if (this.externalSecretsConfig.externalSecretsForProjects && data.data) {
+			await validateAccessToReferencedSecretProviders(
+				projectOwningCredential.projectId,
+				data.data,
+				this.externalSecretsProviderAccessCheckService,
+				'update',
+			);
+		}
 
 		const mergedData = deepCopy(data);
 		if (mergedData.data) {
@@ -927,7 +1007,16 @@ export class CredentialsService {
 		// check mandatory fields are present
 		const credentialProperties = this.credentialsHelper.getCredentialsProperties(type);
 		for (const property of credentialProperties) {
-			if (property.required && displayParameter(data, property, null, null)) {
+			/*
+			 * displayOpyions is possibly undefined, which causes displayParameter to default `true`, which is expected behavior for UI
+			 * however, missing `displayOptions` should not default to true for validation purposes as credentials can be overridden
+			 * without displayOptions being explicitly set on every credential definition
+			 */
+			if (
+				property.required &&
+				property.displayOptions !== undefined &&
+				displayParameter(data, property, null, null)
+			) {
 				// Check if value is present in data, if not, check if default value exists
 				const value = data[property.name];
 				const hasDefault =
@@ -939,7 +1028,6 @@ export class CredentialsService {
 				}
 			}
 		}
-
 		validateExternalSecretsPermissions(user, data);
 		this.validateOAuthCredentialUrls(type, data);
 	}
@@ -982,6 +1070,14 @@ export class CredentialsService {
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
 		this.checkCredentialData(opts.type, opts.data as ICredentialDataDecryptedObject, user);
+		if (this.externalSecretsConfig.externalSecretsForProjects && opts.projectId) {
+			await validateAccessToReferencedSecretProviders(
+				opts.projectId,
+				opts.data as ICredentialDataDecryptedObject,
+				this.externalSecretsProviderAccessCheckService,
+				'create',
+			);
+		}
 		const encryptedCredential = this.createEncryptedData({
 			id: null,
 			name: opts.name,

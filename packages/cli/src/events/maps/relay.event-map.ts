@@ -7,6 +7,7 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	JsonValue,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
@@ -21,6 +22,11 @@ export type UserLike = {
 	role?: {
 		slug: string;
 	};
+};
+
+export type ProjectSummary = {
+	id: string;
+	name: string;
 };
 
 export type RelayEventMap = {
@@ -118,6 +124,7 @@ export type RelayEventMap = {
 	'workflow-pre-execute': {
 		executionId: string;
 		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
+		mode: WorkflowExecuteMode;
 	};
 
 	'workflow-post-execute': {
@@ -578,6 +585,43 @@ export type RelayEventMap = {
 
 	'external-secrets-provider-reloaded': {
 		vaultType: string;
+	};
+
+	'external-secrets-connection-created': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-connection-updated': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-connection-deleted': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-connection-tested': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+		isValid: boolean;
+		errorMessage?: string;
+	};
+
+	'external-secrets-connection-reloaded': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
 	};
 
 	// #endregion

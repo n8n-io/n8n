@@ -4,7 +4,7 @@ import { SecretsProviderConnectionRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Cipher, type IExternalSecretsManager } from 'n8n-core';
-import { jsonParse, UnexpectedError, type IDataObject } from 'n8n-workflow';
+import { jsonParse, UnexpectedError, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -94,6 +94,14 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		return this.providerRegistry.get(provider);
 	}
 
+	getProviderProperties(providerType: string): INodeProperties[] {
+		const ProviderClass = this.providersFactory.getProvider(providerType);
+		if (!ProviderClass) {
+			throw new NotFoundError(`Provider type "${providerType}" not found`);
+		}
+		return new ProviderClass().properties;
+	}
+
 	hasProvider(provider: string): boolean {
 		return this.providerRegistry.has(provider);
 	}
@@ -128,23 +136,48 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		};
 	}
 
-	async updateProvider(provider: string): Promise<void> {
-		const providerInstance = this.providerRegistry.get(provider);
+	async syncProviderConnection(providerKey: string): Promise<void> {
+		await this.tearDownProviderConnection(providerKey);
+
+		const connection = await this.secretsProviderConnectionRepository.findOne({
+			where: { providerKey },
+		});
+
+		// Note: connection can be undefined if called after a delete operation
+		if (connection) {
+			const settings = this.decryptSettings(connection.encryptedSettings);
+			await this.setupProvider(
+				connection.type,
+				{ connected: true, connectedAt: null, settings },
+				providerKey,
+			);
+
+			const provider = this.providerRegistry.get(providerKey);
+			if (provider) {
+				await this.secretsCache.refreshProvider(providerKey, provider);
+			}
+		}
+
+		this.broadcastReload();
+	}
+
+	async updateProvider(providerKey: string): Promise<void> {
+		const providerInstance = this.providerRegistry.get(providerKey);
 
 		if (!providerInstance) {
-			throw new NotFoundError(`Provider "${provider}" not found`);
+			throw new NotFoundError(`Provider "${providerKey}" not found`);
 		}
 
 		if (providerInstance.state !== 'connected') {
-			throw new UnexpectedError(`Provider "${provider}" is not connected`);
+			throw new UnexpectedError(`Provider "${providerKey}" is not connected`);
 		}
 
 		await providerInstance.update();
 		this.broadcastReload();
-		this.logger.debug(`Updated provider ${provider}`);
+		this.logger.debug(`Updated provider ${providerKey}`);
 
 		this.eventService.emit('external-secrets-provider-reloaded', {
-			vaultType: provider,
+			vaultType: providerKey,
 		});
 	}
 
@@ -256,7 +289,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 	@OnPubSubEvent('reload-external-secrets-providers')
 	async reloadAllProviders(): Promise<void> {
-		if (this.config.externalSecretsForProjects) {
+		if (this.config.externalSecretsForProjects || this.config.externalSecretsMultipleConnections) {
 			await this.reloadProvidersFromConnectionsRepo();
 			return;
 		}
@@ -284,7 +317,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			);
 
 			const connectionSettings: SecretsProviderSettings = {
-				connected: connection.isEnabled,
+				connected: true,
 				connectedAt: null,
 				settings,
 			};

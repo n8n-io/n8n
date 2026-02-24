@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { ExecutionRepository, SettingsRepository } from '@n8n/db';
+import { AuthRolesService, ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
@@ -224,6 +224,17 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (isMultiMainEnabled && !this.license.isMultiMainLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		}
+
+		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
+		// Only run on main instance - workers should not modify auth roles/scopes as they may have
+		// different code versions, and scope sync would incorrectly delete scopes they don't know about.
+		// In multi-main setups, only sync on the leader instance to avoid race conditions.
+		if (
+			this.instanceSettings.instanceType === 'main' &&
+			(!this.instanceSettings.isMultiMain || this.instanceSettings.isLeader)
+		) {
+			await Container.get(AuthRolesService).init();
 		}
 
 		Container.get(WaitTracker).init();

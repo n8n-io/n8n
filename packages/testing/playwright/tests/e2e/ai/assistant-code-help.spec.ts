@@ -7,7 +7,11 @@ import {
 } from '../../../config/ai-assistant-fixtures';
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('AI Assistant::enabled', () => {
+test.describe('AI Assistant::enabled', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
 	test.describe('Code Node Error Help', () => {
 		test('should apply code diff to code node', async ({ n8n, setupRequirements }) => {
 			await setupRequirements(aiEnabledWithCodeDiffRequirements);

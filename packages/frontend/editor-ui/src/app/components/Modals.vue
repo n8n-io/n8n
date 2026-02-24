@@ -6,6 +6,7 @@ import {
 	DUPLICATE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+	DELETE_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
@@ -35,6 +36,7 @@ import {
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+	AI_BUILDER_DIFF_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -86,6 +88,7 @@ import DeleteUserModal from '@/features/settings/users/components/DeleteUserModa
 import DuplicateWorkflowDialog from '@/app/components/DuplicateWorkflowDialog.vue';
 import ExternalSecretsProviderModal from '@/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderModal.ee.vue';
 import SecretsProviderConnectionModal from '@/features/integrations/secretsProviders.ee/components/SecretsProviderConnectionModal.ee.vue';
+import DeleteSecretsProviderModal from '@/features/integrations/secretsProviders.ee/components/DeleteSecretsProviderModal.ee.vue';
 import FromAiParametersModal from '@/app/components/FromAiParametersModal.vue';
 import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModal.vue';
 import BinaryDataViewModal from '@/features/ndv/runData/components/BinaryDataViewModal.vue';
@@ -125,6 +128,7 @@ import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
 import CredentialResolverEditModal from '@/app/components/CredentialResolverEditModal.vue';
+import AIBuilderDiffModal from '@/features/ai/assistant/components/Agent/AIBuilderDiffModal.vue';
 </script>
 
 <template>
@@ -296,6 +300,12 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="AI_BUILDER_DIFF_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<AIBuilderDiffModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="EXTERNAL_SECRETS_PROVIDER_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<ExternalSecretsProviderModal :modal-name="modalName" :data="data" />
@@ -305,6 +315,12 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 		<ModalRoot :name="SECRETS_PROVIDER_CONNECTION_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<SecretsProviderConnectionModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="DELETE_SECRETS_PROVIDER_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<DeleteSecretsProviderModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

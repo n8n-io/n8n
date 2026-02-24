@@ -8,6 +8,7 @@ import { EnterpriseEditionFeature } from '@/app/constants/enterprise';
 // Hoisted mocks for API functions
 const {
 	getExternalSecrets,
+	getGlobalExternalSecrets,
 	getProjectExternalSecrets,
 	getExternalSecretsProviders,
 	getExternalSecretsProvider,
@@ -17,6 +18,7 @@ const {
 	updateProvider,
 } = vi.hoisted(() => ({
 	getExternalSecrets: vi.fn(),
+	getGlobalExternalSecrets: vi.fn(),
 	getProjectExternalSecrets: vi.fn(),
 	getExternalSecretsProviders: vi.fn(),
 	getExternalSecretsProvider: vi.fn(),
@@ -34,6 +36,7 @@ const { useEnvFeatureFlag } = vi.hoisted(() => ({
 // Mock API client module
 vi.mock('@n8n/rest-api-client', () => ({
 	getExternalSecrets,
+	getGlobalExternalSecrets,
 	getProjectExternalSecrets,
 	getExternalSecretsProviders,
 	getExternalSecretsProvider,
@@ -248,7 +251,8 @@ describe('externalSecretsStore', () => {
 	});
 
 	describe('fetchGlobalSecrets()', () => {
-		it('should fetch and set global secrets when user has permission', async () => {
+		it('should fetch and set global secrets when user has permission (feature flag disabled)', async () => {
+			mockFeatureFlag('EXTERNAL_SECRETS_FOR_PROJECTS', false);
 			setHasPermission(true);
 			getExternalSecrets.mockResolvedValue(mockGlobalSecrets);
 			const store = useExternalSecretsStore();
@@ -257,6 +261,21 @@ describe('externalSecretsStore', () => {
 
 			expect(mockRBACStore.hasScope).toHaveBeenCalledWith('externalSecret:list');
 			expect(getExternalSecrets).toHaveBeenCalledWith(expect.anything());
+			expect(getGlobalExternalSecrets).not.toHaveBeenCalled();
+			expect(store.state.secrets).toEqual(mockGlobalSecrets);
+		});
+
+		it('should use new completions endpoint when feature flag is enabled', async () => {
+			mockFeatureFlag('EXTERNAL_SECRETS_FOR_PROJECTS', true);
+			setHasPermission(true);
+			getGlobalExternalSecrets.mockResolvedValue(mockGlobalSecrets);
+			const store = useExternalSecretsStore();
+
+			await store.fetchGlobalSecrets();
+
+			expect(mockRBACStore.hasScope).toHaveBeenCalledWith('externalSecret:list');
+			expect(getGlobalExternalSecrets).toHaveBeenCalledWith(expect.anything());
+			expect(getExternalSecrets).not.toHaveBeenCalled();
 			expect(store.state.secrets).toEqual(mockGlobalSecrets);
 		});
 
@@ -268,12 +287,25 @@ describe('externalSecretsStore', () => {
 
 			expect(mockRBACStore.hasScope).toHaveBeenCalledWith('externalSecret:list');
 			expect(getExternalSecrets).not.toHaveBeenCalled();
+			expect(getGlobalExternalSecrets).not.toHaveBeenCalled();
 			expect(store.state.secrets).toEqual({});
 		});
 
-		it('should set secrets to empty object on API error', async () => {
+		it('should set secrets to empty object on API error (feature flag disabled)', async () => {
+			mockFeatureFlag('EXTERNAL_SECRETS_FOR_PROJECTS', false);
 			setHasPermission(true);
 			getExternalSecrets.mockRejectedValue(new Error('API Error'));
+			const store = useExternalSecretsStore();
+
+			await store.fetchGlobalSecrets();
+
+			expect(store.state.secrets).toEqual({});
+		});
+
+		it('should set secrets to empty object on API error (feature flag enabled)', async () => {
+			mockFeatureFlag('EXTERNAL_SECRETS_FOR_PROJECTS', true);
+			setHasPermission(true);
+			getGlobalExternalSecrets.mockRejectedValue(new Error('API Error'));
 			const store = useExternalSecretsStore();
 
 			await store.fetchGlobalSecrets();

@@ -2,7 +2,11 @@ import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Data Table list view', () => {
+test.describe('Data Table list view', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n, api }) => {
 		await api.enableFeature('sharing');
 		await api.enableFeature('folders');

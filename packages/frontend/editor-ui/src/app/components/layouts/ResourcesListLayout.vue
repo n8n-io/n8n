@@ -643,6 +643,7 @@ defineExpose({
 								<N8nSelect
 									v-model="sortBy"
 									size="small"
+									:class="$style.resourceList"
 									data-test-id="resources-list-sort"
 									@change="setSorting(sortBy)"
 								>
@@ -878,6 +879,15 @@ defineExpose({
 
 .datatable {
 	padding-bottom: var(--spacing--sm);
+}
+
+/** NOTE (@heymynameisrob): Style override to match button and text input height **/
+.resourceList {
+	height: var(--spacing--xl);
+
+	input[role='combobox'] {
+		height: var(--spacing--xl);
+	}
 }
 </style>
 

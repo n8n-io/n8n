@@ -54,6 +54,7 @@ import {
 	isCredentialsModalOpen,
 	isPseudoParam,
 	isSplitInBatchesAbsent,
+	isValidJavascriptIdentifier,
 	longestCommonPrefix,
 	prefixMatch,
 	resolveAutocompleteExpression,
@@ -1245,7 +1246,6 @@ export const secretOptions = (base: string) => {
 			return [];
 		}
 		return Object.entries(resolved).map(([secret, value]) => {
-			const needsBracketAccess = /\//.test(secret);
 			const option = createCompletionOption({
 				name: secret,
 				doc: {
@@ -1257,7 +1257,7 @@ export const secretOptions = (base: string) => {
 			});
 
 			// Override the apply handler for keys that need bracket access
-			if (needsBracketAccess) {
+			if (!isValidJavascriptIdentifier(secret)) {
 				option.apply = applyBracketAccessCompletion;
 			}
 

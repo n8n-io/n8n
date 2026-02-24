@@ -2,6 +2,7 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { evaluate } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
 import { traceable } from 'langsmith/traceable';
+import type { IPinData } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
 import { runWithOptionalLimiter, withTimeout } from './evaluation-helpers';
@@ -31,6 +32,7 @@ import {
 	selectScoringItems,
 	calculateFiniteAverage,
 } from './score-calculator';
+import type { IntrospectionEvent } from '../../src/tools/introspect.tool.js';
 import type { SimpleWorkflow } from '../../src/types/workflow';
 import { extractMessageContent } from '../langsmith/types';
 
@@ -54,11 +56,18 @@ export type SubgraphMetricsCollector = (metrics: {
 }) => void;
 
 /**
+ * Callback to collect introspection events from generation.
+ * Called after each workflow generation with the events array.
+ */
+export type IntrospectionEventsCollector = (events: IntrospectionEvent[]) => void;
+
+/**
  * Combined collectors for workflow generation metrics.
  */
 export interface GenerationCollectors {
 	tokenUsage?: TokenUsageCollector;
 	subgraphMetrics?: SubgraphMetricsCollector;
+	introspectionEvents?: IntrospectionEventsCollector;
 }
 
 /**
@@ -191,8 +200,10 @@ function buildContext(args: {
 	testCaseContext?: TestCaseContext;
 	referenceWorkflows?: SimpleWorkflow[];
 	generatedCode?: string;
+	pinData?: IPinData;
 }): EvaluationContext {
-	const { prompt, globalContext, testCaseContext, referenceWorkflows, generatedCode } = args;
+	const { prompt, globalContext, testCaseContext, referenceWorkflows, generatedCode, pinData } =
+		args;
 
 	return {
 		prompt,
@@ -200,6 +211,7 @@ function buildContext(args: {
 		...(testCaseContext ?? {}),
 		...(referenceWorkflows?.length ? { referenceWorkflows } : {}),
 		...(generatedCode ? { generatedCode } : {}),
+		...(pinData ? { pinData } : {}),
 	};
 }
 
@@ -449,6 +461,7 @@ interface CollectedMetrics {
 	builderDurationMs?: number;
 	responderDurationMs?: number;
 	nodeCount?: number;
+	introspectionEvents?: IntrospectionEvent[];
 }
 
 /**
@@ -471,6 +484,9 @@ function createMetricsCollectors(): {
 			metrics.builderDurationMs = m.builderDurationMs;
 			metrics.responderDurationMs = m.responderDurationMs;
 			metrics.nodeCount = m.nodeCount;
+		},
+		introspectionEvents: (events) => {
+			metrics.introspectionEvents = events;
 		},
 	};
 
@@ -525,6 +541,7 @@ async function runLocalExampleSuccess(args: {
 	passThreshold: number;
 	timeoutMs: number | undefined;
 	lifecycle?: Partial<EvaluationLifecycle>;
+	pinDataGenerator?: (workflow: SimpleWorkflow) => Promise<IPinData>;
 }): Promise<ExampleResult> {
 	const {
 		index,
@@ -536,6 +553,7 @@ async function runLocalExampleSuccess(args: {
 		passThreshold,
 		timeoutMs,
 		lifecycle,
+		pinDataGenerator,
 	} = args;
 
 	// Generate workflow with metrics collection
@@ -557,6 +575,16 @@ async function runLocalExampleSuccess(args: {
 
 	lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
+	// Generate pin data for service nodes (best-effort)
+	let pinData: IPinData | undefined;
+	if (pinDataGenerator) {
+		try {
+			pinData = await pinDataGenerator(workflow);
+		} catch {
+			// Pin data generation is best-effort — don't fail the evaluation
+		}
+	}
+
 	const context = buildContext({
 		prompt: testCase.prompt,
 		globalContext: {
@@ -566,6 +594,7 @@ async function runLocalExampleSuccess(args: {
 		testCaseContext: testCase.context,
 		referenceWorkflows: testCase.referenceWorkflows,
 		generatedCode,
+		pinData,
 	});
 
 	// Run evaluators in parallel
@@ -591,6 +620,7 @@ async function runLocalExampleSuccess(args: {
 		generationInputTokens: metrics.genInputTokens,
 		generationOutputTokens: metrics.genOutputTokens,
 		subgraphMetrics: buildSubgraphMetrics(metrics),
+		introspectionEvents: metrics.introspectionEvents,
 		workflow,
 		generatedCode,
 	};
@@ -610,6 +640,7 @@ async function runLocalExample(args: {
 	timeoutMs: number | undefined;
 	lifecycle?: Partial<EvaluationLifecycle>;
 	artifactSaver?: ArtifactSaver | null;
+	pinDataGenerator?: (workflow: SimpleWorkflow) => Promise<IPinData>;
 }): Promise<ExampleResult> {
 	const {
 		index,
@@ -622,6 +653,7 @@ async function runLocalExample(args: {
 		timeoutMs,
 		lifecycle,
 		artifactSaver,
+		pinDataGenerator,
 	} = args;
 
 	const startTime = Date.now();
@@ -638,6 +670,7 @@ async function runLocalExample(args: {
 			passThreshold,
 			timeoutMs,
 			lifecycle,
+			pinDataGenerator,
 		});
 
 		artifactSaver?.saveExample(result);
@@ -686,6 +719,8 @@ async function runLocalDataset(params: {
 	timeoutMs: number | undefined;
 	lifecycle?: Partial<EvaluationLifecycle>;
 	artifactSaver: ArtifactSaver | null;
+	concurrency?: number;
+	pinDataGenerator?: (workflow: SimpleWorkflow) => Promise<IPinData>;
 }): Promise<ExampleResult[]> {
 	const {
 		testCases,
@@ -696,27 +731,34 @@ async function runLocalDataset(params: {
 		timeoutMs,
 		lifecycle,
 		artifactSaver,
+		concurrency = 1,
+		pinDataGenerator,
 	} = params;
 
-	const results: ExampleResult[] = [];
-	for (let i = 0; i < testCases.length; i++) {
-		const testCase = testCases[i];
+	// Use pLimit to control concurrency of example execution
+	const exampleLimiter = pLimit(concurrency);
+
+	const resultPromises = testCases.map(async (testCase, i) => {
 		const index = i + 1;
-		const result = await runLocalExample({
-			index,
-			total: testCases.length,
-			testCase,
-			generateWorkflow,
-			evaluators,
-			globalContext,
-			passThreshold,
-			timeoutMs,
-			lifecycle,
-			artifactSaver,
-		});
-		results.push(result);
-	}
-	return results;
+		return await exampleLimiter(
+			async () =>
+				await runLocalExample({
+					index,
+					total: testCases.length,
+					testCase,
+					generateWorkflow,
+					evaluators,
+					globalContext,
+					passThreshold,
+					timeoutMs,
+					lifecycle,
+					artifactSaver,
+					pinDataGenerator,
+				}),
+		);
+	});
+
+	return await Promise.all(resultPromises);
 }
 
 function buildRunSummary(results: ExampleResult[]): RunSummary {
@@ -832,6 +874,8 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		outputCsv,
 		suite,
 		logger,
+		concurrency = 1,
+		pinDataGenerator,
 	} = config;
 
 	const testCases: TestCase[] = dataset;
@@ -859,6 +903,8 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		timeoutMs,
 		lifecycle,
 		artifactSaver,
+		concurrency,
+		pinDataGenerator,
 	});
 	const summary = buildRunSummary(results);
 
@@ -874,7 +920,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		logger.info(`Results written to: ${outputCsv}`);
 	}
 
-	lifecycle?.onEnd?.(summary);
+	await lifecycle?.onEnd?.(summary);
 
 	return summary;
 }
@@ -1131,6 +1177,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		langsmithClient: lsClient,
 		lifecycle,
 		logger,
+		pinDataGenerator,
 	} = config;
 
 	// Enable tracing (required in langsmith 0.4.x)
@@ -1217,6 +1264,16 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 
 			lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
+			// Generate pin data for service nodes (best-effort)
+			let pinData: IPinData | undefined;
+			if (pinDataGenerator) {
+				try {
+					pinData = await pinDataGenerator(workflow);
+				} catch {
+					// Pin data generation is best-effort — don't fail the evaluation
+				}
+			}
+
 			const extracted = extractContextFromLangsmithInputs({
 				...asRecord(datasetContext),
 				...asRecord(rest),
@@ -1226,6 +1283,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				globalContext: effectiveGlobalContext,
 				testCaseContext: extracted,
 				generatedCode,
+				pinData,
 			});
 
 			// Run all evaluators in parallel
@@ -1260,6 +1318,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				generationInputTokens: metrics.genInputTokens,
 				generationOutputTokens: metrics.genOutputTokens,
 				subgraphMetrics: buildSubgraphMetrics(metrics),
+				introspectionEvents: metrics.introspectionEvents,
 				workflow,
 				generatedCode,
 			};
@@ -1366,7 +1425,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		logger.info(`Results written to: ${outputCsv}`);
 	}
 
-	lifecycle?.onEnd?.(summary);
+	await lifecycle?.onEnd?.(summary);
 
 	return summary;
 }

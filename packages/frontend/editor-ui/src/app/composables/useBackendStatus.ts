@@ -1,23 +1,29 @@
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useHeartbeat } from '@/app/push-connection/useHeartbeat';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const HEALTH_CHECK_INTERVAL = 10000;
 const HEALTH_CHECK_TIMEOUT = 5000;
 
 export function useBackendStatus() {
 	const backendConnectionStore = useBackendConnectionStore();
+	const settingsStore = useSettingsStore();
 	const checking = ref(false);
 
 	/**
 	 * Check backend connectivity by pinging the health endpoint.
 	 */
 	async function checkBackendConnection(): Promise<boolean> {
+		if (!settingsStore.endpointHealth) {
+			return true;
+		}
+
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
 
 		try {
-			const response = await fetch('/healthz', {
+			const response = await fetch(settingsStore.endpointHealth, {
 				cache: 'no-store',
 				signal: controller.signal,
 			});

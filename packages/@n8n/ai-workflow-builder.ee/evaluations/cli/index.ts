@@ -30,6 +30,7 @@ import {
 	getDefaultDatasetName,
 	getDefaultExperimentName,
 	parseEvaluationArgs,
+	type EvaluationArgs,
 } from './argument-parser';
 import { buildCIMetadata } from './ci-metadata';
 import {
@@ -37,6 +38,7 @@ import {
 	loadDefaultTestCases,
 	getDefaultTestCaseIds,
 } from './csv-prompt-loader';
+import { loadSubgraphDatasetFile } from './dataset-file-loader';
 import { sendWebhookNotification } from './webhook';
 import { WorkflowGenerationError } from '../errors';
 import {
@@ -45,24 +47,39 @@ import {
 	getChatPayload,
 } from '../harness/evaluation-helpers';
 import { createLogger } from '../harness/logger';
-import type { GenerationCollectors } from '../harness/runner';
+import type { GenerationCollectors, SubgraphMetricsCollector } from '../harness/runner';
 import { TokenUsageTrackingHandler } from '../harness/token-tracking-handler';
 import {
 	runEvaluation,
 	createConsoleLifecycle,
+	mergeLifecycles,
 	createLLMJudgeEvaluator,
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
+	createExecutionEvaluator,
 	type RunConfig,
 	type TestCase,
 	type Evaluator,
 	type EvaluationContext,
 	type GenerationResult,
+	createSubgraphRunner,
+	createResponderEvaluator,
+	type EvaluationLifecycle,
+	runLocalSubgraphEvaluation,
+	runSubgraphEvaluation,
 } from '../index';
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
+import { createIntrospectionAnalysisLifecycle } from '../lifecycles/introspection-analysis';
 import { AGENT_TYPES, EVAL_TYPES, EVAL_USERS } from '../support/constants';
-import { setupTestEnvironment, createAgent, type ResolvedStageLLMs } from '../support/environment';
+import {
+	setupTestEnvironment,
+	createAgent,
+	resolveNodesBasePath,
+	type ResolvedStageLLMs,
+	type TestEnvironment,
+} from '../support/environment';
+import { generateEvalPinData } from '../support/pin-data-generator';
 
 /**
  * Type guard for workflow update chunks from streaming output.
@@ -80,6 +97,28 @@ function hasCoordinationLog(
 	if (!values || typeof values !== 'object') return false;
 	const obj = values as Record<string, unknown>;
 	return Array.isArray(obj.coordinationLog);
+}
+
+/**
+ * Report subgraph metrics from coordination log and workflow.
+ */
+function reportSubgraphMetrics(
+	collector: SubgraphMetricsCollector,
+	stateValues: unknown,
+	workflow: SimpleWorkflow,
+): void {
+	const coordinationLog = hasCoordinationLog(stateValues) ? stateValues.coordinationLog : undefined;
+	const nodeCount = workflow.nodes?.length;
+	const metrics = extractSubgraphMetrics(coordinationLog, nodeCount);
+
+	if (
+		metrics.discoveryDurationMs !== undefined ||
+		metrics.builderDurationMs !== undefined ||
+		metrics.responderDurationMs !== undefined ||
+		metrics.nodeCount !== undefined
+	) {
+		collector(metrics);
+	}
 }
 
 /**
@@ -138,24 +177,46 @@ function createWorkflowGenerator(
 
 		// Extract and report subgraph metrics from coordination log
 		if (collectors?.subgraphMetrics) {
-			const coordinationLog = hasCoordinationLog(state.values)
-				? state.values.coordinationLog
-				: undefined;
-			const nodeCount = workflow.nodes?.length;
-			const metrics = extractSubgraphMetrics(coordinationLog, nodeCount);
-
-			if (
-				metrics.discoveryDurationMs !== undefined ||
-				metrics.builderDurationMs !== undefined ||
-				metrics.responderDurationMs !== undefined ||
-				metrics.nodeCount !== undefined
-			) {
-				collectors.subgraphMetrics(metrics);
-			}
+			reportSubgraphMetrics(collectors.subgraphMetrics, state.values, workflow);
 		}
+
+		// Report introspection events
+		collectors?.introspectionEvents?.(state.values.introspectionEvents ?? []);
 
 		return workflow;
 	};
+}
+
+/**
+ * Create evaluators based on suite type.
+ */
+function createEvaluators(params: {
+	suite: string;
+	judgeLlm: ResolvedStageLLMs['judge'];
+	parsedNodeTypes: Parameters<typeof createProgrammaticEvaluator>[0];
+	numJudges: number;
+}): Array<Evaluator<EvaluationContext>> {
+	const { suite, judgeLlm, parsedNodeTypes, numJudges } = params;
+	const evaluators: Array<Evaluator<EvaluationContext>> = [];
+
+	switch (suite) {
+		case 'llm-judge':
+			evaluators.push(createLLMJudgeEvaluator(judgeLlm, parsedNodeTypes));
+			evaluators.push(createProgrammaticEvaluator(parsedNodeTypes));
+			break;
+		case 'pairwise':
+			evaluators.push(createPairwiseEvaluator(judgeLlm, { numJudges }));
+			evaluators.push(createProgrammaticEvaluator(parsedNodeTypes));
+			break;
+		case 'programmatic':
+			evaluators.push(createProgrammaticEvaluator(parsedNodeTypes));
+			break;
+		case 'similarity':
+			evaluators.push(createSimilarityEvaluator());
+			break;
+	}
+
+	return evaluators;
 }
 
 /**
@@ -301,6 +362,102 @@ function loadTestCases(args: ReturnType<typeof parseEvaluationArgs>): TestCase[]
 }
 
 /**
+ * Handle subgraph evaluation mode (--subgraph flag).
+ * Supports both local dataset files and LangSmith datasets.
+ */
+async function handleSubgraphMode(
+	args: EvaluationArgs,
+	env: TestEnvironment,
+	lifecycle: EvaluationLifecycle,
+	logger: ReturnType<typeof createLogger>,
+): Promise<void> {
+	const { subgraph } = args;
+	if (!subgraph) throw new Error('subgraph is required');
+
+	const subgraphRunner = createSubgraphRunner({
+		subgraph,
+		llms: env.llms,
+	});
+
+	const evaluators: Array<Evaluator<EvaluationContext>> = [];
+	if (subgraph === 'responder') {
+		evaluators.push(createResponderEvaluator(env.llms.judge, { numJudges: args.numJudges }));
+	} else {
+		logger.warn(`Subgraph evaluation not supported for ${subgraph}`);
+	}
+
+	let summary: Awaited<ReturnType<typeof runSubgraphEvaluation>>;
+
+	if (args.datasetFile) {
+		const examples = loadSubgraphDatasetFile(args.datasetFile);
+		const slicedExamples = args.maxExamples ? examples.slice(0, args.maxExamples) : examples;
+
+		summary = await runLocalSubgraphEvaluation({
+			subgraph,
+			subgraphRunner,
+			evaluators,
+			examples: slicedExamples,
+			concurrency: args.concurrency,
+			lifecycle,
+			logger,
+			outputDir: args.outputDir,
+			timeoutMs: args.timeoutMs,
+			regenerate: args.regenerate,
+			writeBack: args.writeBack,
+			datasetFilePath: args.datasetFile,
+			llms: args.regenerate ? env.llms : undefined,
+			parsedNodeTypes: args.regenerate ? env.parsedNodeTypes : undefined,
+		});
+	} else {
+		if (!args.datasetName) {
+			throw new Error('`--subgraph` requires `--dataset` or `--dataset-file`');
+		}
+		if (!env.lsClient) {
+			throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
+		}
+
+		summary = await runSubgraphEvaluation({
+			subgraph,
+			subgraphRunner,
+			evaluators,
+			datasetName: args.datasetName,
+			langsmithClient: env.lsClient,
+			langsmithOptions: {
+				experimentName: args.experimentName ?? `${subgraph}-eval`,
+				repetitions: args.repetitions,
+				concurrency: args.concurrency,
+				maxExamples: args.maxExamples,
+				filters: args.filters,
+				experimentMetadata: {
+					...buildCIMetadata(),
+					subgraph,
+				},
+			},
+			lifecycle,
+			logger,
+			outputDir: args.outputDir,
+			timeoutMs: args.timeoutMs,
+			regenerate: args.regenerate,
+			writeBack: args.writeBack,
+			llms: args.regenerate ? env.llms : undefined,
+			parsedNodeTypes: args.regenerate ? env.parsedNodeTypes : undefined,
+		});
+	}
+
+	if (args.webhookUrl) {
+		await sendWebhookNotification({
+			webhookUrl: args.webhookUrl,
+			webhookSecret: args.webhookSecret,
+			summary,
+			dataset: args.datasetFile ?? args.datasetName ?? 'local-dataset',
+			suite: args.suite,
+			metadata: { ...buildCIMetadata(), subgraph },
+			logger,
+		});
+	}
+}
+
+/**
  * Main entry point for v2 evaluation CLI.
  */
 export async function runV2Evaluation(): Promise<void> {
@@ -323,8 +480,13 @@ export async function runV2Evaluation(): Promise<void> {
 		throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
 	}
 
+	// Subgraph evaluation mode
+	if (args.subgraph) {
+		await handleSubgraphMode(args, env, lifecycle, logger);
+		process.exit(0);
+	}
+
 	// Create workflow generator based on agent type
-	// CODE_BUILDER uses CodeWorkflowBuilder
 	const generateWorkflow =
 		args.agent === AGENT_TYPES.CODE_BUILDER
 			? createCodeWorkflowBuilderGenerator(
@@ -335,43 +497,52 @@ export async function runV2Evaluation(): Promise<void> {
 				)
 			: createWorkflowGenerator(env.parsedNodeTypes, env.llms, args.featureFlags);
 
-	// Create evaluators based on suite (using judge LLM for evaluation)
-	// The --suite flag is always respected, regardless of agent type
-	const evaluators: Array<Evaluator<EvaluationContext>> = [];
+	// Create evaluators based on suite type
+	const evaluators = createEvaluators({
+		suite: args.suite,
+		judgeLlm: env.llms.judge,
+		parsedNodeTypes: env.parsedNodeTypes,
+		numJudges: args.numJudges,
+	});
 
-	switch (args.suite) {
-		case 'llm-judge':
-			evaluators.push(createLLMJudgeEvaluator(env.llms.judge, env.parsedNodeTypes));
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'pairwise':
-			evaluators.push(
-				createPairwiseEvaluator(env.llms.judge, {
-					numJudges: args.numJudges,
-				}),
-			);
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'programmatic':
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'similarity':
-			evaluators.push(createSimilarityEvaluator());
-			break;
-	}
+	// Execution evaluator runs for all suites — validates workflows execute with pin data
+	evaluators.push(createExecutionEvaluator());
 
 	const llmCallLimiter = pLimit(args.concurrency);
+
+	// Merge console lifecycle with optional introspection analysis lifecycle
+	const mergedLifecycle = mergeLifecycles(
+		createConsoleLifecycle({ verbose: args.verbose, logger }),
+		args.suite === 'introspection'
+			? createIntrospectionAnalysisLifecycle({
+					judgeLlm: env.llms.judge,
+					outputDir: args.outputDir,
+					logger,
+				})
+			: undefined,
+	);
+	// Create pin data generator for mocking service node outputs in evaluations
+	const nodesBasePath = resolveNodesBasePath();
+	const pinDataGenerator = async (workflow: SimpleWorkflow) =>
+		await generateEvalPinData(workflow, {
+			llm: env.llms.judge,
+			nodeTypes: env.parsedNodeTypes,
+			nodesBasePath,
+			logger,
+		});
 
 	const baseConfig = {
 		generateWorkflow,
 		evaluators,
-		lifecycle,
+		lifecycle: mergedLifecycle,
 		logger,
 		outputDir: args.outputDir,
 		outputCsv: args.outputCsv,
 		suite: args.suite,
 		timeoutMs: args.timeoutMs,
 		context: { llmCallLimiter },
+		passThreshold: args.suite === 'introspection' ? 0 : undefined,
+		pinDataGenerator,
 	};
 
 	const config: RunConfig =
@@ -400,6 +571,7 @@ export async function runV2Evaluation(): Promise<void> {
 					...baseConfig,
 					mode: 'local',
 					dataset: loadTestCases(args),
+					concurrency: args.concurrency,
 				};
 
 	// Run evaluation

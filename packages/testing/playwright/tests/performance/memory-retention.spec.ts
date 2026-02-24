@@ -9,7 +9,11 @@ test.use({
 	},
 });
 
-test.describe('Memory Leak Detection @capability:observability', () => {
+test.describe('Memory Leak Detection @capability:observability', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	async function performMemoryAction(n8n: n8nPage) {
 		await n8n.start.fromBlankCanvas();
 		await n8n.navigate.toWorkflows();

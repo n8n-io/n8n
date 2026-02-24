@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import SecuritySettings from './SecuritySettings.vue';
-import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
@@ -20,11 +20,6 @@ const showToast = vi.fn();
 const showError = vi.fn();
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showToast, showError }),
-}));
-
-const confirmMessage = vi.fn();
-vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: () => ({ confirm: confirmMessage }),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -62,13 +57,8 @@ describe('SecuritySettings', () => {
 
 		settingsStore.isMFAEnforced = false;
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA] = true;
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy] = true;
 		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
-
-		// Enable PERSONAL_SECURITY_SETTINGS env feature flag for Personal Space section
-		settingsStore.settings.envFeatureFlags = {
-			...settingsStore.settings.envFeatureFlags,
-			N8N_ENV_FEAT_PERSONAL_SECURITY_SETTINGS: 'true',
-		};
 	});
 
 	it('should render security heading and personal space section', async () => {
@@ -78,7 +68,7 @@ describe('SecuritySettings', () => {
 			expect(getSecuritySettings).toHaveBeenCalled();
 		});
 
-		expect(getByText('Security')).toBeInTheDocument();
+		expect(getByText('Security & policies')).toBeInTheDocument();
 		expect(getByText('Personal Space')).toBeInTheDocument();
 	});
 
@@ -147,18 +137,17 @@ describe('SecuritySettings', () => {
 		);
 	});
 
-	it('should show confirm dialog when disabling personal space publishing', async () => {
+	it('should show alert dialog and proceed when confirming disable publishing', async () => {
 		getSecuritySettings.mockResolvedValue({
 			...defaultSettings,
 			personalSpacePublishing: true,
 		});
-		confirmMessage.mockResolvedValue(MODAL_CONFIRM);
 		updateSecuritySettings.mockResolvedValue({
 			...defaultSettings,
 			personalSpacePublishing: false,
 		});
 
-		const { getByTestId } = renderView();
+		const { getByTestId, getByRole } = renderView();
 
 		await waitFor(() => {
 			expect(getByTestId('security-personal-space-publishing-toggle')).toBeInTheDocument();
@@ -167,9 +156,14 @@ describe('SecuritySettings', () => {
 		const publishingToggle = getByTestId('security-personal-space-publishing-toggle');
 		await userEvent.click(publishingToggle);
 
+		// N8nAlertDialog should appear (uses role="dialog" via reka-ui DialogContent)
 		await waitFor(() => {
-			expect(confirmMessage).toHaveBeenCalled();
+			expect(getByRole('dialog')).toBeInTheDocument();
 		});
+
+		// Click Confirm button in the dialog
+		await userEvent.click(getByRole('button', { name: 'Confirm' }));
+
 		await waitFor(() => {
 			expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
 				personalSpacePublishing: false,
@@ -177,18 +171,17 @@ describe('SecuritySettings', () => {
 		});
 	});
 
-	it('should show confirm dialog when disabling personal space sharing', async () => {
+	it('should show alert dialog and proceed when confirming disable sharing', async () => {
 		getSecuritySettings.mockResolvedValue({
 			...defaultSettings,
 			personalSpaceSharing: true,
 		});
-		confirmMessage.mockResolvedValue(MODAL_CONFIRM);
 		updateSecuritySettings.mockResolvedValue({
 			...defaultSettings,
 			personalSpaceSharing: false,
 		});
 
-		const { getByTestId } = renderView();
+		const { getByTestId, getByRole } = renderView();
 
 		await waitFor(() => {
 			expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
@@ -197,9 +190,14 @@ describe('SecuritySettings', () => {
 		const sharingToggle = getByTestId('security-personal-space-sharing-toggle');
 		await userEvent.click(sharingToggle);
 
+		// N8nAlertDialog should appear (uses role="dialog" via reka-ui DialogContent)
 		await waitFor(() => {
-			expect(confirmMessage).toHaveBeenCalled();
+			expect(getByRole('dialog')).toBeInTheDocument();
 		});
+
+		// Click Confirm button in the dialog
+		await userEvent.click(getByRole('button', { name: 'Confirm' }));
+
 		await waitFor(() => {
 			expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
 				personalSpaceSharing: false,
@@ -212,9 +210,8 @@ describe('SecuritySettings', () => {
 			...defaultSettings,
 			personalSpacePublishing: true,
 		});
-		confirmMessage.mockResolvedValue('cancel');
 
-		const { getByTestId } = renderView();
+		const { getByTestId, getByRole } = renderView();
 
 		await waitFor(() => {
 			expect(getByTestId('security-personal-space-publishing-toggle')).toBeInTheDocument();
@@ -223,9 +220,14 @@ describe('SecuritySettings', () => {
 		const publishingToggle = getByTestId('security-personal-space-publishing-toggle');
 		await userEvent.click(publishingToggle);
 
+		// N8nAlertDialog should appear (uses role="dialog" via reka-ui DialogContent)
 		await waitFor(() => {
-			expect(confirmMessage).toHaveBeenCalled();
+			expect(getByRole('dialog')).toBeInTheDocument();
 		});
+
+		// Click Cancel button in the dialog
+		await userEvent.click(getByRole('button', { name: 'Cancel' }));
+
 		expect(updateSecuritySettings).not.toHaveBeenCalled();
 	});
 
@@ -234,9 +236,8 @@ describe('SecuritySettings', () => {
 			...defaultSettings,
 			personalSpaceSharing: true,
 		});
-		confirmMessage.mockResolvedValue('cancel');
 
-		const { getByTestId } = renderView();
+		const { getByTestId, getByRole } = renderView();
 
 		await waitFor(() => {
 			expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
@@ -245,9 +246,14 @@ describe('SecuritySettings', () => {
 		const sharingToggle = getByTestId('security-personal-space-sharing-toggle');
 		await userEvent.click(sharingToggle);
 
+		// N8nAlertDialog should appear (uses role="dialog" via reka-ui DialogContent)
 		await waitFor(() => {
-			expect(confirmMessage).toHaveBeenCalled();
+			expect(getByRole('dialog')).toBeInTheDocument();
 		});
+
+		// Click Cancel button in the dialog
+		await userEvent.click(getByRole('button', { name: 'Cancel' }));
+
 		expect(updateSecuritySettings).not.toHaveBeenCalled();
 	});
 
@@ -273,22 +279,6 @@ describe('SecuritySettings', () => {
 		});
 
 		expect(getByTestId('security-sharing-count')).toHaveTextContent('Existing shares');
-	});
-
-	it('should hide personal space section when PERSONAL_SECURITY_SETTINGS flag is disabled', async () => {
-		settingsStore.settings.envFeatureFlags = {
-			...settingsStore.settings.envFeatureFlags,
-			N8N_ENV_FEAT_PERSONAL_SECURITY_SETTINGS: 'false',
-		};
-
-		const { getByText, queryByText, getByTestId } = renderView();
-
-		await waitFor(() => {
-			expect(getByTestId('enable-force-mfa')).toBeInTheDocument();
-		});
-
-		expect(getByText('Security')).toBeInTheDocument();
-		expect(queryByText('Personal Space')).not.toBeInTheDocument();
 	});
 
 	it('should render the enforce MFA toggle', async () => {
@@ -359,6 +349,60 @@ describe('SecuritySettings', () => {
 
 		await waitFor(() => {
 			expect(showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+		});
+	});
+
+	describe('when personalSpacePolicy feature is not licensed', () => {
+		beforeEach(() => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy] =
+				false;
+		});
+
+		it('should show upgrade badges on sharing and publishing titles', async () => {
+			const { getAllByText, getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			// Two upgrade badges for sharing + publishing (plus one for MFA if unlicensed)
+			const upgradeBadges = getAllByText('Upgrade');
+			expect(upgradeBadges.length).toBeGreaterThanOrEqual(2);
+		});
+
+		it('should render disabled sharing toggle when unlicensed', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			const sharingToggle = getByTestId('security-personal-space-sharing-toggle');
+			expect(sharingToggle).toHaveClass('is-disabled');
+		});
+
+		it('should render disabled publishing toggle when unlicensed', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-personal-space-publishing-toggle')).toBeInTheDocument();
+			});
+
+			const publishingToggle = getByTestId('security-personal-space-publishing-toggle');
+			expect(publishingToggle).toHaveClass('is-disabled');
+		});
+
+		it('should not call updateSecuritySettings when clicking disabled toggle', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			const sharingToggle = getByTestId('security-personal-space-sharing-toggle');
+			await userEvent.click(sharingToggle);
+
+			expect(updateSecuritySettings).not.toHaveBeenCalled();
 		});
 	});
 });
