@@ -35,11 +35,6 @@ export class ChatHubToolsModal {
 		return this.getParameterInput(parameterName).getByTestId('from-ai-override-button');
 	}
 
-	/** Inline editable tool name in the settings view header */
-	getToolNameInput(): Locator {
-		return this.root.getByTestId('inline-editable-area');
-	}
-
 	/** Close button (X) shown in list view */
 	getCloseButton(): Locator {
 		return this.root.locator('.el-dialog__close').first();

@@ -28,8 +28,8 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "janitor": "playwright-janitor",
-    "janitor:fix": "playwright-janitor --fix --write"
+    "janitor": "tsx ../janitor/src/cli.ts",
+    "janitor:fix": "tsx ../janitor/src/cli.ts --fix --write"
   },
   "devDependencies": {
     "@currents/playwright": "catalog:e2e",
