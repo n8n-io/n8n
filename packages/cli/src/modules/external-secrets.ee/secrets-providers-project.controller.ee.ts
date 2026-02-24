@@ -53,17 +53,6 @@ export class SecretProvidersProjectController {
 		next();
 	}
 
-	@Get('/:projectId/types')
-	@ProjectScope('externalSecretsProvider:list')
-	listSecretProviderTypes(): SecretProviderTypeResponse[] {
-		this.logger.debug('List provider connection types for project');
-		const allProviders = this.secretsProviders.getAllProviders();
-		return Object.values(allProviders).map((providerClass) => {
-			const provider = new providerClass();
-			return this.secretsProviders.toProviderTypeResponse(provider);
-		});
-	}
-
 	@Post('/:projectId/connections')
 	@ProjectScope('externalSecretsProvider:create')
 	async createConnection(
