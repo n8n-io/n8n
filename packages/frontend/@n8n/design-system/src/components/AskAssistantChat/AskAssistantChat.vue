@@ -11,7 +11,7 @@ import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
-import N8nIcon from '../N8nIcon';
+import N8nIconButton from '../N8nIconButton';
 import N8nPromptInput from '../N8nPromptInput';
 import N8nPromptInputSuggestions from '../N8nPromptInputSuggestions';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
@@ -107,7 +107,12 @@ function getToolIdsWithWorkflowUpdate(
 		if (msg.type === 'tool') {
 			currentGroupToolIds.push(msg.id);
 		} else if (msg.type === 'workflow-updated') {
-			hasWorkflowUpdate = true;
+			// Only count as a workflow update if tools already exist in this region.
+			// This prevents naming-only updates (which arrive before tools) from
+			// causing discovery tool groups to show "Workflow generated".
+			if (currentGroupToolIds.length > 0) {
+				hasWorkflowUpdate = true;
+			}
 		} else {
 			// Group boundary — flush
 			if (hasWorkflowUpdate) {
@@ -311,14 +316,12 @@ const showSuggestions = computed(() => {
 	return showPlaceholder.value && props.suggestions && props.suggestions.length > 0;
 });
 
-// Check if we have any thinking group (tool messages grouped into thinking blocks)
-const hasAnyThinkingGroup = computed(() => {
-	return normalizedMessages.value.some((msg) => msg.type === 'thinking-group');
-});
-
-// Show placeholder when streaming with loading message but no tool messages have arrived yet
+// Show placeholder when streaming with loading message but no active tool group for the current turn.
+// Check the last message — if it's not a thinking-group, the current turn has no tools yet.
 const showThinkingPlaceholder = computed(() => {
-	return props.streaming && props.loadingMessage && !hasAnyThinkingGroup.value;
+	if (!props.streaming || !props.loadingMessage) return false;
+	const lastMsg = normalizedMessages.value[normalizedMessages.value.length - 1];
+	return !lastMsg || lastMsg.type !== 'thinking-group';
 });
 
 const showBottomInput = computed(() => {
@@ -462,13 +465,17 @@ defineExpose({
 						<AssistantIcon size="large" />
 						<AssistantText size="large" :text="t('assistantChat.aiAssistantLabel')" />
 					</div>
-					<span :class="$style.betaTag">{{ t('assistantChat.aiAssistantBetaLabel') }}</span>
 				</div>
 				<slot name="header" />
 			</div>
-			<div :class="$style.back" data-test-id="close-chat-button" @click="onClose">
-				<N8nIcon icon="arrow-right" color="text-base" />
-			</div>
+			<N8nIconButton
+				icon="x"
+				variant="ghost"
+				size="large"
+				:aria-label="t('askAssistantChat.close')"
+				data-test-id="close-chat-button"
+				@click="onClose"
+			/>
 		</div>
 		<div :class="$style.body">
 			<div v-if="normalizedMessages?.length || loadingMessage" :class="$style.messages">
@@ -491,7 +498,7 @@ defineExpose({
 								<ThinkingMessage
 									v-if="isThinkingGroupMessage(message)"
 									:items="message.items"
-									:default-expanded="true"
+									:default-expanded="streaming"
 									:latest-status-text="message.latestStatusText"
 									:is-streaming="streaming"
 									:class="getMessageStyles(message, i)"
@@ -542,8 +549,8 @@ defineExpose({
 									>
 										<N8nButton
 											v-if="opt.text"
-											type="secondary"
-											size="mini"
+											variant="subtle"
+											size="xsmall"
 											@click="() => onQuickReply(opt)"
 										>
 											{{ opt.text }}
@@ -617,8 +624,8 @@ defineExpose({
 								@submit="onSendMessage"
 								@stop="emit('stop')"
 							>
-								<template v-if="$slots['before-actions']" #beforeActions>
-									<slot name="before-actions" />
+								<template v-if="$slots['extra-actions']" #extra-actions>
+									<slot name="extra-actions" />
 								</template>
 							</N8nPromptInput>
 						</template>
@@ -686,8 +693,8 @@ defineExpose({
 				@submit="onSendMessage"
 				@stop="emit('stop')"
 			>
-				<template v-if="$slots['before-actions']" #beforeActions>
-					<slot name="before-actions" />
+				<template v-if="$slots['extra-actions']" #extra-actions>
+					<slot name="extra-actions" />
 				</template>
 			</N8nPromptInput>
 		</div>
@@ -705,11 +712,12 @@ defineExpose({
 
 .header {
 	height: 65px; // same as header height in editor
-	padding: 0 var(--spacing--lg);
+	padding: 0 var(--spacing--sm) 0 var(--spacing--lg);
 	background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-top: 0;
 	display: flex;
+	align-items: center;
 
 	div {
 		display: flex;
@@ -719,12 +727,6 @@ defineExpose({
 	> div:first-of-type {
 		width: 100%;
 	}
-}
-
-.betaTag {
-	color: var(--color--text);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
 }
 
 .body {
@@ -825,10 +827,6 @@ defineExpose({
 	button {
 		display: inline-flex;
 	}
-}
-
-.back:hover {
-	cursor: pointer;
 }
 
 .quickReplies {

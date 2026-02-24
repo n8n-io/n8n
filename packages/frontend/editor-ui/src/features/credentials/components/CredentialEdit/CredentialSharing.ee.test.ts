@@ -136,6 +136,7 @@ describe('CredentialSharing.ee', () => {
 					},
 				},
 				customRoles: false,
+				personalSpacePolicy: false,
 			});
 	});
 
@@ -279,6 +280,7 @@ describe('CredentialSharing.ee', () => {
 					},
 				},
 				customRoles: false,
+				personalSpacePolicy: false,
 			});
 
 			const credential = createCredential();
@@ -318,9 +320,9 @@ describe('CredentialSharing.ee', () => {
 	});
 
 	describe('personal space restriction message', () => {
-		it('should show personal space restriction message when in personal space and lacking share permission', () => {
-			// Set current project as personal project
-			projectsStore.currentProject = createTestProject({
+		it('should show owner message and disabled tooltip when in personal space and lacking share permission', () => {
+			// Set personal project
+			projectsStore.personalProject = createTestProject({
 				id: 'personal-project-id',
 				type: ProjectTypes.Personal,
 			});
@@ -336,7 +338,7 @@ describe('CredentialSharing.ee', () => {
 				},
 			});
 
-			const { getByText } = renderComponent({
+			const { getByText, getByTestId } = renderComponent({
 				props: {
 					credentialId: credential.id,
 					credentialData: {},
@@ -346,9 +348,10 @@ describe('CredentialSharing.ee', () => {
 				},
 			});
 
-			expect(
-				getByText("You don't have permission to share personal credentials"),
-			).toBeInTheDocument();
+			// Should show owner info tip instead of restriction message
+			expect(getByText(/can change who this credential is shared with/)).toBeInTheDocument();
+			// Should show disabled select with tooltip
+			expect(getByTestId('project-sharing-select')).toBeInTheDocument();
 		});
 
 		it('should show sharee message when not in personal space and lacking share permission', () => {

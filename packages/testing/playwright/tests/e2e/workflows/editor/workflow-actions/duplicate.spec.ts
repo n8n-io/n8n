@@ -3,7 +3,11 @@ import { nanoid } from 'nanoid';
 import { MANUAL_TRIGGER_NODE_NAME } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 
-test.describe('Workflow Duplicate @fixme', () => {
+test.describe('Workflow Duplicate @fixme', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.fixme();
 
 	const DUPLICATE_WORKFLOW_NAME = 'Duplicated workflow';

@@ -668,7 +668,7 @@ describe('useWorkflowUpdate', () => {
 		});
 
 		describe('tidyUp behavior', () => {
-			it('should emit tidyUp event with new node IDs', async () => {
+			it('should emit tidyUp without nodeIdsFilter when nodes are added', async () => {
 				const newNode = createTestNode({
 					id: 'new-node-1',
 					name: 'New Node',
@@ -685,45 +685,67 @@ describe('useWorkflowUpdate', () => {
 
 				expect(canvasEventBusEmitMock).toHaveBeenCalledWith('tidyUp', {
 					source: 'builder-update',
-					nodeIdsFilter: ['new-node-1'],
+					nodeIdsFilter: undefined,
 					trackEvents: false,
 					trackHistory: true,
 					trackBulk: false,
 				});
 			});
 
-			it('should combine new node IDs with passed nodeIdsToTidyUp', async () => {
-				const newNode = createTestNode({
-					id: 'new-node-2',
-					name: 'New Node',
-				});
+			it('should emit tidyUp without nodeIdsFilter when nodes are removed', async () => {
+				const existingNode = createTestNode({
+					id: 'existing-node',
+					name: 'Existing Node',
+				}) as INodeUi;
 
-				mockCanvasOperations.addNodes.mockResolvedValue([newNode as INodeUi]);
+				workflowsStore.allNodes = [existingNode];
 
-				const { updateWorkflow } = useWorkflowUpdate();
-
-				await updateWorkflow(
-					{
-						nodes: [newNode],
-						connections: {},
-					},
-					{ nodeIdsToTidyUp: ['previous-node-1'] },
-				);
-
-				expect(canvasEventBusEmitMock).toHaveBeenCalledWith('tidyUp', {
-					source: 'builder-update',
-					nodeIdsFilter: ['new-node-2', 'previous-node-1'],
-					trackEvents: false,
-					trackHistory: true,
-					trackBulk: false,
-				});
-			});
-
-			it('should not emit tidyUp event when there are no node IDs to tidy up', async () => {
 				const { updateWorkflow } = useWorkflowUpdate();
 
 				await updateWorkflow({
-					nodes: [],
+					nodes: [], // Empty - existing node should be removed
+					connections: {},
+				});
+
+				expect(canvasEventBusEmitMock).toHaveBeenCalledWith('tidyUp', {
+					source: 'builder-update',
+					nodeIdsFilter: undefined,
+					trackEvents: false,
+					trackHistory: true,
+					trackBulk: false,
+				});
+			});
+
+			it('should not emit tidyUp event when there are no structural changes', async () => {
+				const existingNode = createTestNode({
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: { url: 'http://example.com' },
+				}) as INodeUi;
+
+				workflowsStore.allNodes = [existingNode];
+
+				const mockWorkflowObject = {
+					nodes: { 'HTTP Request': { ...existingNode } },
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				};
+				workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(mockWorkflowObject);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: { url: 'http://updated.com' },
+						},
+					],
 					connections: {},
 				});
 

@@ -7,7 +7,11 @@ const generateValidId = customAlphabet(
 	8,
 );
 
-test.describe('Variables', () => {
+test.describe('Variables', {
+	annotation: [
+		{ type: 'owner', description: 'Lifecycle & Governance' },
+	],
+}, () => {
 	// These tests are serial since it's at an instance level and they interact with the same variables
 	test.describe.configure({ mode: 'serial' });
 	test.describe('unlicensed', () => {
@@ -147,7 +151,7 @@ test.describe('Variables', () => {
 			await expect(n8n.variables.getVariablesRows()).toBeHidden();
 			await expect(n8n.page).toHaveURL(/search=NonExistent_/);
 
-			await expect(n8n.page.getByText('No variables found')).toBeVisible();
+			await expect(n8n.variables.getNoVariablesFoundMessage()).toBeVisible();
 		});
 	});
 });

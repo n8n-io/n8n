@@ -217,6 +217,7 @@ describe('GlobalConfig', () => {
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
+			health: '/healthz',
 		},
 		cache: {
 			backend: 'auto',
@@ -331,6 +332,7 @@ describe('GlobalConfig', () => {
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
+			crossOriginOpenerPolicy: 'same-origin',
 			disableWebhookHtmlSandboxing: false,
 			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
@@ -416,6 +418,7 @@ describe('GlobalConfig', () => {
 		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
+			persistBuilderSessions: false,
 			timeout: 3600000,
 			allowSendingParameterValues: true,
 		},
@@ -565,6 +568,53 @@ describe('GlobalConfig', () => {
 
 			expect(globalConfig.taskRunners.enabled).toEqual(true);
 			expect(globalConfig.database.type).toEqual('postgresdb');
+		});
+
+		it('should validate crossOriginOpenerPolicy enum values', () => {
+			process.env = {
+				N8N_CROSS_ORIGIN_OPENER_POLICY: 'same-origin-allow-popups',
+			};
+
+			const globalConfig = Container.get(GlobalConfig);
+			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin-allow-popups');
+		});
+
+		it('should warn and fall back to default for invalid crossOriginOpenerPolicy', () => {
+			process.env = {
+				N8N_CROSS_ORIGIN_OPENER_POLICY: 'invalid-policy',
+			};
+
+			const globalConfig = Container.get(GlobalConfig);
+			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin');
+		});
+	});
+
+	describe('health endpoint transformation', () => {
+		it('should add leading slash if not present', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: 'healthz',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/healthz');
+		});
+
+		it('should keep leading slash if already present', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: '/custom-health',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/custom-health');
+		});
+
+		it('should add leading slash to paths with multiple segments', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: 'api/v1/health',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/api/v1/health');
 		});
 	});
 });

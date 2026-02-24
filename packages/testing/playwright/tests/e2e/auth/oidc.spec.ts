@@ -5,7 +5,11 @@ test.use({
 	ignoreHTTPSErrors: true, // Keycloak uses self-signed certs
 });
 
-test.describe('OIDC Authentication @capability:oidc', () => {
+test.describe('OIDC Authentication @capability:oidc', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test('should configure OIDC and login with Keycloak @auth:owner', async ({
 		n8n,
 		api,

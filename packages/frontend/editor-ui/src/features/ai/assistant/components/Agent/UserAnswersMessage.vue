@@ -6,8 +6,6 @@
  * Used as a custom user message type for better visual presentation
  * compared to raw JSON text.
  */
-import { computed } from 'vue';
-
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -17,11 +15,8 @@ interface Props {
 	answers: PlanMode.QuestionResponse[];
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 const i18n = useI18n();
-
-// Filter out skipped questions
-const displayedAnswers = computed(() => props.answers.filter((answer) => !answer.skipped));
 
 function formatAnswer(answer: PlanMode.QuestionResponse): string {
 	const parts: string[] = [];
@@ -39,16 +34,15 @@ function formatAnswer(answer: PlanMode.QuestionResponse): string {
 </script>
 
 <template>
-	<div
-		v-if="displayedAnswers.length > 0"
-		:class="$style.container"
-		data-test-id="plan-mode-user-answers"
-	>
-		<div v-for="answer in displayedAnswers" :key="answer.questionId" :class="$style.answerItem">
+	<div v-if="answers.length > 0" :class="$style.container" data-test-id="plan-mode-user-answers">
+		<div v-for="answer in answers" :key="answer.questionId" :class="$style.answerItem">
 			<N8nText :bold="true" :class="$style.question">
 				{{ answer.question }}
 			</N8nText>
-			<N8nText color="text-light">{{ formatAnswer(answer) }}</N8nText>
+			<N8nText v-if="answer.skipped">
+				{{ i18n.baseText('aiAssistant.builder.planMode.answers.skipped') }}
+			</N8nText>
+			<N8nText v-else>{{ formatAnswer(answer) }}</N8nText>
 		</div>
 	</div>
 </template>
@@ -58,6 +52,7 @@ function formatAnswer(answer: PlanMode.QuestionResponse): string {
 	background-color: var(--assistant--color--background--user-bubble);
 	border-radius: var(--radius--lg);
 	padding: var(--spacing--sm);
+	margin-top: var(--spacing--sm);
 }
 
 .answerItem {

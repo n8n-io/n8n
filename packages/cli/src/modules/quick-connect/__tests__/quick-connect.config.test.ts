@@ -24,7 +24,6 @@ describe('QuickConnectConfig', () => {
 				credentialType: 'agentApi',
 				text: 'Superagent for everyone',
 				quickConnectType: 'oauth',
-				serviceName: 'Superagent',
 			},
 		];
 		process.env.N8N_QUICK_CONNECT_OPTIONS = JSON.stringify(testConfig);
@@ -40,8 +39,7 @@ describe('QuickConnectConfig', () => {
 				packageName: '@n8n/superagent',
 				credentialType: 'agentApi',
 				text: 'Superagent for everyone',
-				quickConnectType: 'backend',
-				serviceName: 'Superagent',
+				quickConnectType: 'firecrawl',
 				consentText: 'Allow access to your account?',
 				backendFlowConfig: {
 					secret: 'my-secret-key',
@@ -72,14 +70,13 @@ describe('QuickConnectConfig', () => {
 				credentialType: 'agentApi',
 				text: 'Superagent for everyone',
 				quickConnectType: 'oauth',
-				serviceName: 'Superagent',
 			},
 			{
 				packageName: '@n8n/another-service',
 				credentialType: 'anotherApi',
 				text: 'Another service integration',
-				quickConnectType: 'backend',
-				serviceName: 'Another Service',
+				quickConnectType: 'firecrawl',
+				consentText: 'Send data to external service?',
 				backendFlowConfig: {
 					secret: 'another-secret',
 				},
@@ -102,7 +99,6 @@ describe('QuickConnectConfig', () => {
 					credentialType: 'agentApi',
 					text: 'Superagent for everyone',
 					quickConnectType: 'oauth',
-					serviceName: 'Superagent',
 				},
 			]),
 		],
@@ -113,7 +109,6 @@ describe('QuickConnectConfig', () => {
 					packageName: '@n8n/superagent',
 					text: 'Superagent for everyone',
 					quickConnectType: 'oauth',
-					serviceName: 'Superagent',
 				},
 			]),
 		],
@@ -124,7 +119,6 @@ describe('QuickConnectConfig', () => {
 					packageName: '@n8n/superagent',
 					credentialType: 'agentApi',
 					quickConnectType: 'oauth',
-					serviceName: 'Superagent',
 				},
 			]),
 		],
@@ -135,18 +129,6 @@ describe('QuickConnectConfig', () => {
 					packageName: '@n8n/superagent',
 					credentialType: 'agentApi',
 					text: 'Superagent for everyone',
-					serviceName: 'Superagent',
-				},
-			]),
-		],
-		[
-			'missing serviceName',
-			JSON.stringify([
-				{
-					packageName: '@n8n/superagent',
-					credentialType: 'agentApi',
-					text: 'Superagent for everyone',
-					quickConnectType: 'oauth',
 				},
 			]),
 		],
@@ -158,9 +140,22 @@ describe('QuickConnectConfig', () => {
 					credentialType: 'agentApi',
 					text: 'Superagent for everyone',
 					quickConnectType: 'backend',
-					serviceName: 'Superagent',
 					consentText: 'Allow access?',
 					backendFlowConfig: {},
+				},
+			]),
+		],
+		[
+			'backendFlowConfig missing consent text',
+			JSON.stringify([
+				{
+					packageName: '@n8n/superagent',
+					credentialType: 'agentApi',
+					text: 'Superagent for everyone',
+					quickConnectType: 'backend',
+					backendFlowConfig: {
+						secret: 'test',
+					},
 				},
 			]),
 		],

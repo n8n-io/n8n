@@ -18,11 +18,18 @@ import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
 import { generateVersionName } from '@/features/workflows/workflowHistory/utils';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
 
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id)),
+);
 const credentialsStore = useCredentialsStore();
 const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
@@ -42,7 +49,9 @@ const containsTrigger = computed((): boolean => {
 });
 
 const wfHasAnyChanges = computed(() => {
-	return workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId;
+	return (
+		workflowsStore.workflow.versionId !== workflowDocumentStore.value?.activeVersion?.versionId
+	);
 });
 
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
@@ -265,8 +274,8 @@ async function handlePublish() {
 				/>
 				<div :class="$style.actions">
 					<N8nButton
+						variant="subtle"
 						:disabled="publishing"
-						type="secondary"
 						:label="i18n.baseText('generic.cancel')"
 						data-test-id="workflow-publish-cancel-button"
 						@click="modalBus.emit('close')"

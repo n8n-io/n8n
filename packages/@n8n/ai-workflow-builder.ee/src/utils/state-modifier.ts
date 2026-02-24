@@ -15,7 +15,6 @@ import type { SimpleWorkflow } from '../types/workflow';
 export type StateModificationAction =
 	| 'compact_messages'
 	| 'delete_messages'
-	| 'create_workflow_name'
 	| 'auto_compact_messages'
 	| 'cleanup_dangling'
 	| 'clear_error_state'
@@ -74,7 +73,7 @@ export function determineStateAction(
 	input: StateModifierInput,
 	autoCompactThresholdTokens: number,
 ): StateModificationAction {
-	const { messages, workflowJSON, coordinationLog } = input;
+	const { messages, coordinationLog } = input;
 
 	// First check for dangling tool calls (from interrupted sessions)
 	const danglingMessages = cleanupDanglingToolCallMessages(messages);
@@ -101,14 +100,6 @@ export function determineStateAction(
 	// Manual /clear command
 	if (lastHumanMessage.content === '/clear') {
 		return 'delete_messages';
-	}
-
-	// Auto-generate workflow name on first message with empty workflow
-	const workflowName = workflowJSON?.name;
-	const nodesLength = workflowJSON?.nodes?.length ?? 0;
-	const isDefaultName = !workflowName || /^My workflow( \d+)?$/.test(workflowName);
-	if (isDefaultName && nodesLength === 0 && messages.length === 1) {
-		return 'create_workflow_name';
 	}
 
 	// Auto-compact when token threshold exceeded
@@ -274,19 +265,22 @@ export async function handleCreateWorkflowName(
 	logger?: Logger,
 	config?: RunnableConfig,
 ): Promise<{ workflowJSON: SimpleWorkflow }> {
-	if (messages.length === 1 && messages[0] instanceof HumanMessage) {
-		const initialMessage = messages[0];
-		if (typeof initialMessage.content !== 'string') {
-			logger?.debug('Initial message content is not a string, skipping workflow name generation');
-			return { workflowJSON };
-		}
-
-		logger?.debug('Generating workflow name');
-		const { name } = await workflowNameChain(llm, initialMessage.content, config);
-
-		return {
-			workflowJSON: { ...workflowJSON, name },
-		};
+	const workflowName = workflowJSON?.name;
+	const isDefaultName = !workflowName || /^My workflow( \d+)?$/.test(workflowName);
+	if (!isDefaultName || (workflowJSON?.nodes?.length ?? 0) > 0) {
+		return { workflowJSON };
 	}
-	return { workflowJSON };
+
+	const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage);
+	if (!lastHumanMessage || typeof lastHumanMessage.content !== 'string') {
+		logger?.debug('No suitable human message found, skipping workflow name generation');
+		return { workflowJSON };
+	}
+
+	logger?.debug('Generating workflow name');
+	const { name } = await workflowNameChain(llm, lastHumanMessage.content, config);
+
+	return {
+		workflowJSON: { ...workflowJSON, name },
+	};
 }

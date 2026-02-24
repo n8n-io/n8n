@@ -29,11 +29,6 @@ export type {
 	DocumentLoaderInstance,
 	TextSplitterInstance,
 	// Expression types
-	Expression,
-	ExpressionContext,
-	BinaryContext,
-	BinaryField,
-	InputContext,
 	ExecutionContext,
 	WorkflowContext,
 	// IF else types
@@ -138,7 +133,6 @@ export { nextBatch } from './workflow-builder/control-flow-builders/next-batch';
 
 // Expression utilities
 export {
-	serializeExpression,
 	parseExpression,
 	isExpression,
 	expr,

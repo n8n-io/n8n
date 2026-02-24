@@ -1,10 +1,18 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { Logger, isContainedWithin, safeJoinPath } from '@n8n/backend-common';
+import { isContainedWithin, Logger, safeJoinPath } from '@n8n/backend-common';
 import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { generateKeyPairSync } from 'crypto';
-import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
-import { jsonParse, UserError, type DataTableColumnType } from 'n8n-workflow';
+import { accessSync, constants as fsConstants, mkdirSync } from 'fs';
+import isEqual from 'lodash/isEqual';
+import {
+	deepCopy,
+	jsonParse,
+	UserError,
+	type CredentialInformation,
+	type DataTableColumnType,
+	type ICredentialDataDecryptedObject,
+} from 'n8n-workflow';
 import { ok } from 'node:assert/strict';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
@@ -17,20 +25,124 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 } from './constants';
-import type { ExportedFolders } from './types/exportable-folders';
-import type { KeyPair } from './types/key-pair';
-import type { KeyPairType } from './types/key-pair-type';
-import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner';
+import type { StatusExportableCredential } from './types/exportable-credential';
 import type {
 	ExportableDataTable,
 	ExportableDataTableColumn,
 	StatusExportableDataTable,
 } from './types/exportable-data-table';
-import type { StatusExportableCredential } from './types/exportable-credential';
+import type { ExportedFolders } from './types/exportable-folders';
+import type { KeyPair } from './types/key-pair';
+import type { KeyPairType } from './types/key-pair-type';
+import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner';
+import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 
-export function stringContainsExpression(testString: string): boolean {
-	return /^=.*\{\{.*\}\}/.test(testString);
+function stringContainsExpression(testString: string): boolean {
+	return /^=.*\{\{.+\}\}/.test(testString);
+}
+
+export function sanitizeCredentialData(
+	data: ICredentialDataDecryptedObject,
+): ICredentialDataDecryptedObject {
+	const result: ICredentialDataDecryptedObject = deepCopy(data);
+
+	for (const [key, value] of Object.entries(data)) {
+		if (value === null || key === 'oauthTokenData') {
+			// `oauthTokenData` is not synchable to force the pulling instance to reconnect
+			delete result[key];
+		} else if (typeof value === 'object') {
+			result[key] = sanitizeCredentialData(value as ICredentialDataDecryptedObject);
+		} else if (typeof value === 'string') {
+			result[key] = stringContainsExpression(value) ? value : '';
+		}
+
+		// NOTE: number and boolean values are synchable for backward compatibility
+		// Typically numbers represent PORT numbers or other numeric values that aren't sensitives
+		// Boolean are usually represent non sensitive flags
+		// This could be revisited in the future
+	}
+
+	return result;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Recursively merges a single value based on its type.
+ * Handles strings, numbers, booleans, arrays, and plain objects.
+ */
+function mergeSingleValue(sanitizedRemoteValue: unknown, localValue: unknown): unknown {
+	if (typeof sanitizedRemoteValue === 'string') {
+		if (stringContainsExpression(sanitizedRemoteValue)) {
+			return sanitizedRemoteValue;
+		} else if (localValue !== undefined && localValue !== null) {
+			// Local value is preserved if it exists (secret handling)
+			return localValue;
+		}
+
+		return undefined;
+	}
+
+	if (typeof sanitizedRemoteValue === 'number' || typeof sanitizedRemoteValue === 'boolean') {
+		return sanitizedRemoteValue;
+	}
+
+	if (Array.isArray(sanitizedRemoteValue)) {
+		// Only merge by index if lengths match, otherwise array structure has changed
+		// and we can't reliably match items (could be additions/removals/reordering)
+		if (Array.isArray(localValue) && localValue.length === sanitizedRemoteValue.length) {
+			return sanitizedRemoteValue.map((sanitizedItem, index) => {
+				const localItem = localValue[index];
+				return mergeSingleValue(sanitizedItem, localItem);
+			});
+		}
+
+		return sanitizedRemoteValue;
+	}
+
+	if (isPlainObject(sanitizedRemoteValue)) {
+		if (isPlainObject(localValue)) {
+			return mergeRemoteCrendetialDataIntoLocalCredentialData({
+				local: localValue as ICredentialDataDecryptedObject,
+				remote: sanitizedRemoteValue as ICredentialDataDecryptedObject,
+			});
+		}
+
+		return sanitizedRemoteValue;
+	}
+
+	return undefined;
+}
+
+/**
+ * Merges remote credential data into local data.
+ * Remote expressions, numbers and boolean values overwrite local values.
+ */
+export function mergeRemoteCrendetialDataIntoLocalCredentialData({
+	local,
+	remote,
+}: {
+	local: ICredentialDataDecryptedObject;
+	remote: ICredentialDataDecryptedObject;
+}): ICredentialDataDecryptedObject {
+	const merged: ICredentialDataDecryptedObject = {};
+
+	// This is a safe guard, in principle remote data should already be sanitized
+	// This prevents importing invalid data that should have not been synched in the first place
+	const sanitizedRemote = sanitizeCredentialData(remote);
+
+	for (const [key, sanitizedRemoteValue] of Object.entries(sanitizedRemote)) {
+		const localValue = local[key];
+		const mergedValue = mergeSingleValue(sanitizedRemoteValue, localValue);
+
+		if (mergedValue !== undefined) {
+			merged[key] = mergedValue as CredentialInformation;
+		}
+	}
+
+	return merged;
 }
 
 export function getWorkflowExportPath(workflowId: string, workflowExportFolder: string): string {
@@ -392,6 +504,19 @@ export function areSameCredentials(
 		credA.name === credB.name &&
 		credA.type === credB.type &&
 		!hasOwnerChanged(credA.ownedBy, credB.ownedBy) &&
-		Boolean(credA.isGlobal) === Boolean(credB.isGlobal)
+		Boolean(credA.isGlobal) === Boolean(credB.isGlobal) &&
+		!hasSynchableCredentialDataChanged(credA.data, credB.data)
 	);
+}
+
+function hasSynchableCredentialDataChanged(
+	data1: ICredentialDataDecryptedObject | undefined,
+	data2: ICredentialDataDecryptedObject | undefined,
+): boolean {
+	if (!data1 && !data2) return false;
+	if (!data1 || !data2) return true;
+
+	const sanitizedData1 = sanitizeCredentialData(data1);
+	const sanitizedData2 = sanitizeCredentialData(data2);
+	return !isEqual(sanitizedData1, sanitizedData2);
 }

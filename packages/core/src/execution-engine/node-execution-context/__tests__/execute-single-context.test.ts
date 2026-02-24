@@ -9,12 +9,11 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	ICredentialsHelper,
-	Expression,
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes, type WorkflowExpression } from 'n8n-workflow';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteSingleContext } from '../execute-single-context';
@@ -38,7 +37,7 @@ describe('ExecuteSingleContext', () => {
 		},
 	});
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
 	const node = mock<INode>({
 		name: 'Test Node',

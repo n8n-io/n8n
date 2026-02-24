@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { Config, Env, Nested } from '../decorators';
 
 @Config
@@ -135,4 +137,11 @@ export class EndpointsConfig {
 	/** Colon-delimited list of additional endpoints to not open the UI on. */
 	@Env('N8N_ADDITIONAL_NON_UI_ROUTES')
 	additionalNonUIRoutes: string = '';
+
+	/** Path for the health check endpoint. */
+	@Env(
+		'N8N_ENDPOINT_HEALTH',
+		z.string().transform((val) => (val.startsWith('/') ? val : `/${val}`)),
+	)
+	health: string = '/healthz';
 }
