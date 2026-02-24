@@ -30,6 +30,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	// Maps expression code -> compiled ivm.Script
 	private scriptCache = new Map<string, ivm.Script>();
 
+	// Active ivm.Reference callbacks — released before each re-registration
+	// to prevent reference accumulation across execute() calls
+	private valueAtPathRef?: ivm.Reference;
+	private arrayElementRef?: ivm.Reference;
+	private callFunctionRef?: ivm.Reference;
+
 	constructor(config: BridgeConfig = {}) {
 		this.config = {
 			memoryLimit: config.memoryLimit ?? 128,
@@ -360,6 +366,16 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			return (fn as Function)(...args);
 		});
 
+		// Release previous references before replacing to avoid accumulation
+		this.valueAtPathRef?.release();
+		this.arrayElementRef?.release();
+		this.callFunctionRef?.release();
+
+		// Store references so they can be released on the next call or on dispose()
+		this.valueAtPathRef = getValueAtPath;
+		this.arrayElementRef = getArrayElement;
+		this.callFunctionRef = callFunctionAtPath;
+
 		// Register all callbacks in isolate global context
 		this.context.global.setSync('__getValueAtPath', getValueAtPath);
 		this.context.global.setSync('__getArrayElement', getArrayElement);
@@ -444,6 +460,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		if (!this.isolate.isDisposed) {
 			this.isolate.dispose();
 		}
+
+		// Release callback references
+		this.valueAtPathRef?.release();
+		this.arrayElementRef?.release();
+		this.callFunctionRef?.release();
 
 		this.disposed = true;
 		this.initialized = false;
