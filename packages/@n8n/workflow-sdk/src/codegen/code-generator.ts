@@ -142,8 +142,8 @@ function generateSubnodesConfigForNode(node: SemanticNode, ctx: GenerationContex
 		return null;
 	}
 
-	// Group subnodes by connection type
-	const grouped = new Map<AiConnectionType, SemanticNode[]>();
+	// Group subnodes by connection type, tracking indices
+	const grouped = new Map<AiConnectionType, Array<{ node: SemanticNode; index: number }>>();
 
 	for (const sub of node.subnodes) {
 		// Skip self-referencing subnodes (circular reference in source data)
@@ -153,29 +153,36 @@ function generateSubnodesConfigForNode(node: SemanticNode, ctx: GenerationContex
 		if (!subnodeNode) continue;
 
 		const existing = grouped.get(sub.connectionType) ?? [];
-		existing.push(subnodeNode);
+		existing.push({ node: subnodeNode, index: sub.index });
 		grouped.set(sub.connectionType, existing);
 	}
 
 	// Generate config entries
 	const entries: string[] = [];
 
-	for (const [connType, subnodeNodes] of grouped) {
+	for (const [connType, subnodeEntries] of grouped) {
 		const configKey = AI_CONNECTION_TO_CONFIG_KEY[connType];
 		const builderName = AI_CONNECTION_TO_BUILDER[connType];
 
-		if (subnodeNodes.length === 0) continue;
+		if (subnodeEntries.length === 0) continue;
 
-		const calls = subnodeNodes.map((n) => generateSubnodeCall(n, builderName, ctx));
+		const calls = subnodeEntries.map((e) => generateSubnodeCall(e.node, builderName, ctx));
 
 		if (AI_ALWAYS_ARRAY_TYPES.has(connType)) {
 			// Always array type (tools) - generate as array even for single item
 			entries.push(`${configKey}: [${calls.join(', ')}]`);
 		} else if (AI_OPTIONAL_ARRAY_TYPES.has(connType)) {
-			// Optional array type (model) - single if one, array if multiple
-			if (subnodeNodes.length === 1) {
+			// Optional array type (model, documentLoader, etc.) - single if one, array if multiple
+			if (subnodeEntries.length === 1) {
 				entries.push(`${configKey}: ${calls[0]}`);
+			} else if (
+				connType === 'ai_languageModel' &&
+				subnodeEntries.every((e) => e.index === subnodeEntries[0].index)
+			) {
+				// Nested array: [[m1, m2]] — all at same input slot (ai_languageModel only)
+				entries.push(`${configKey}: [[${calls.join(', ')}]]`);
 			} else {
+				// Flat array: [m1, m2] — sequential indices (primary=0, fallback=1)
 				entries.push(`${configKey}: [${calls.join(', ')}]`);
 			}
 		} else {
@@ -291,8 +298,8 @@ function generateSubnodesConfigWithVarRefs(
 		return null;
 	}
 
-	// Group subnodes by connection type, using variable names
-	const grouped = new Map<AiConnectionType, string[]>();
+	// Group subnodes by connection type, using variable names and tracking indices
+	const grouped = new Map<AiConnectionType, Array<{ varName: string; index: number }>>();
 
 	for (const sub of node.subnodes) {
 		// Skip self-referencing subnodes (circular reference in source data)
@@ -300,26 +307,35 @@ function generateSubnodesConfigWithVarRefs(
 
 		const varName = getVarName(sub.subnodeName, ctx);
 		const existing = grouped.get(sub.connectionType) ?? [];
-		existing.push(varName);
+		existing.push({ varName, index: sub.index });
 		grouped.set(sub.connectionType, existing);
 	}
 
 	// Generate config entries using variable names
 	const entries: string[] = [];
 
-	for (const [connType, varNames] of grouped) {
+	for (const [connType, varEntries] of grouped) {
 		const configKey = AI_CONNECTION_TO_CONFIG_KEY[connType];
 
-		if (varNames.length === 0) continue;
+		if (varEntries.length === 0) continue;
+
+		const varNames = varEntries.map((e) => e.varName);
 
 		if (AI_ALWAYS_ARRAY_TYPES.has(connType)) {
 			// Always array type (tools) - generate as array even for single item
 			entries.push(`${configKey}: [${varNames.join(', ')}]`);
 		} else if (AI_OPTIONAL_ARRAY_TYPES.has(connType)) {
-			// Optional array type (model) - single if one, array if multiple
-			if (varNames.length === 1) {
+			// Optional array type (model, documentLoader, etc.) - single if one, array if multiple
+			if (varEntries.length === 1) {
 				entries.push(`${configKey}: ${varNames[0]}`);
+			} else if (
+				connType === 'ai_languageModel' &&
+				varEntries.every((e) => e.index === varEntries[0].index)
+			) {
+				// Nested array: [[m1, m2]] — all at same input slot (ai_languageModel only)
+				entries.push(`${configKey}: [[${varNames.join(', ')}]]`);
 			} else {
+				// Flat array: [m1, m2] — sequential indices (primary=0, fallback=1)
 				entries.push(`${configKey}: [${varNames.join(', ')}]`);
 			}
 		} else {
@@ -724,6 +740,12 @@ function generateIfElse(ifElse: IfElseCompositeNode, ctx: GenerationContext): st
 	if (ifElse.falseBranch !== null) {
 		const falseBranchCode = generateBranchCode(ifElse.falseBranch, innerCtx);
 		code += `.onFalse(${falseBranchCode})`;
+	}
+
+	// Add onError if error handler exists
+	if (ifElse.errorHandler) {
+		const errorHandlerCode = generateComposite(ifElse.errorHandler, innerCtx);
+		code += `.onError(${errorHandlerCode})`;
 	}
 
 	return code;

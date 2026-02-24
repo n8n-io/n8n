@@ -52,6 +52,7 @@ export interface IfElseCompositeNode extends CompositeNodeBase {
 	ifNode: SemanticNode;
 	trueBranch: CompositeNode | CompositeNode[] | null;
 	falseBranch: CompositeNode | CompositeNode[] | null;
+	errorHandler?: CompositeNode;
 }
 
 /**

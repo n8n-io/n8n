@@ -387,7 +387,7 @@ export interface StickyNoteConfig {
  * Subnode configuration for AI nodes
  */
 export interface SubnodeConfig {
-	model?: LanguageModelInstance | LanguageModelInstance[];
+	model?: LanguageModelInstance | LanguageModelInstance[] | LanguageModelInstance[][];
 	memory?: MemoryInstance;
 	tools?: ToolInstance[];
 	outputParser?: OutputParserInstance;
@@ -743,6 +743,8 @@ export interface IfElseBuilder<TOutput = unknown> {
 	readonly trueBranch: IfElseTarget;
 	/** The false branch target (set via .onFalse()) */
 	readonly falseBranch: IfElseTarget;
+	/** The error branch target (set via .onError()) */
+	readonly errorBranch?: IfElseTarget;
 
 	/**
 	 * Set the target for the true branch (output 0).
@@ -759,6 +761,14 @@ export interface IfElseBuilder<TOutput = unknown> {
 	 * @param target - The node, chain, or array (fan-out) to execute when condition is false
 	 */
 	onFalse(target: IfElseTarget): IfElseBuilder<TOutput>;
+
+	/**
+	 * Set the target for the error branch (output 2).
+	 * Only applicable when the IF node has onError: 'continueErrorOutput'.
+	 *
+	 * @param target - The node or chain to execute on error
+	 */
+	onError(target: IfElseTarget): IfElseBuilder<TOutput>;
 
 	/**
 	 * Chain a target node after the IF branches.

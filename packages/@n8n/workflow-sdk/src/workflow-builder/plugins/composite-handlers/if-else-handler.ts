@@ -58,6 +58,9 @@ export const ifElseHandler: CompositeHandlerPlugin<IfElseInput> = {
 			collector(input.ifNode);
 			collectFromTarget(input.trueBranch, collector);
 			collectFromTarget(input.falseBranch, collector);
+			if (input.errorBranch) {
+				collectFromTarget(input.errorBranch, collector);
+			}
 		} else {
 			const composite = input;
 			collector(composite.ifNode);
@@ -85,6 +88,11 @@ export const ifElseHandler: CompositeHandlerPlugin<IfElseInput> = {
 
 			// Connect IF to false branch (output 1)
 			processBranchForBuilder(builder.falseBranch, 1, ifMainConns, targetNodeIds);
+
+			// Connect IF to error branch (output 2) if present
+			if (builder.errorBranch) {
+				processBranchForBuilder(builder.errorBranch, 2, ifMainConns, targetNodeIds);
+			}
 
 			// Add the IF node with connections to branches
 			// If the node already exists (e.g., added by merge handler via addBranchToGraph),
@@ -122,6 +130,9 @@ export const ifElseHandler: CompositeHandlerPlugin<IfElseInput> = {
 			// so that merge handlers can detect existing IF→Merge connections and skip duplicates
 			addBranchTargetNodes(builder.trueBranch, ctx);
 			addBranchTargetNodes(builder.falseBranch, ctx);
+			if (builder.errorBranch) {
+				addBranchTargetNodes(builder.errorBranch, ctx);
+			}
 
 			// Fix stale connection targets after dedup renames
 			if (ctx.nameMapping) {

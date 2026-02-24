@@ -84,17 +84,32 @@ function processSubnodesRecursively(
 	};
 
 	// For ai_languageModel, array index matters (primary=0, fallback=1)
+	// Nested array [[m1, m2]] means all at same slot (index = outer array position)
+	// Flat array [m1, m2] means sequential indices (0, 1, ...)
 	const addNestedSubnodeOrArray = (
 		subnodeOrArray:
 			| NodeInstance<string, string, unknown>
 			| Array<NodeInstance<string, string, unknown>>
+			| Array<Array<NodeInstance<string, string, unknown>>>
 			| undefined,
 		connectionType: string,
 	) => {
 		if (!subnodeOrArray) return;
 		if (Array.isArray(subnodeOrArray)) {
-			for (let i = 0; i < subnodeOrArray.length; i++) {
-				addNestedSubnode(subnodeOrArray[i], connectionType, i);
+			// Detect nested array: [[m1, m2]] — all items at same slot
+			if (subnodeOrArray.length > 0 && Array.isArray(subnodeOrArray[0])) {
+				const slots = subnodeOrArray as Array<Array<NodeInstance<string, string, unknown>>>;
+				for (let slotIdx = 0; slotIdx < slots.length; slotIdx++) {
+					for (const sub of slots[slotIdx]) {
+						addNestedSubnode(sub, connectionType, slotIdx);
+					}
+				}
+			} else {
+				// Flat array: [m1, m2] — sequential indices
+				const items = subnodeOrArray as Array<NodeInstance<string, string, unknown>>;
+				for (let i = 0; i < items.length; i++) {
+					addNestedSubnode(items[i], connectionType, i);
+				}
 			}
 		} else {
 			addNestedSubnode(subnodeOrArray, connectionType, 0);
@@ -229,17 +244,32 @@ export function addNodeWithSubnodes(
 	};
 
 	// For ai_languageModel, array index matters (primary=0, fallback=1)
+	// Nested array [[m1, m2]] means all at same slot (index = outer array position)
+	// Flat array [m1, m2] means sequential indices (0, 1, ...)
 	const addSubnodeOrArray = (
 		subnodeOrArray:
 			| NodeInstance<string, string, unknown>
 			| Array<NodeInstance<string, string, unknown>>
+			| Array<Array<NodeInstance<string, string, unknown>>>
 			| undefined,
 		connectionType: string,
 	) => {
 		if (!subnodeOrArray) return;
 		if (Array.isArray(subnodeOrArray)) {
-			for (let i = 0; i < subnodeOrArray.length; i++) {
-				addSubnode(subnodeOrArray[i], connectionType, i);
+			// Detect nested array: [[m1, m2]] — all items at same slot
+			if (subnodeOrArray.length > 0 && Array.isArray(subnodeOrArray[0])) {
+				const slots = subnodeOrArray as Array<Array<NodeInstance<string, string, unknown>>>;
+				for (let slotIdx = 0; slotIdx < slots.length; slotIdx++) {
+					for (const sub of slots[slotIdx]) {
+						addSubnode(sub, connectionType, slotIdx);
+					}
+				}
+			} else {
+				// Flat array: [m1, m2] — sequential indices
+				const items = subnodeOrArray as Array<NodeInstance<string, string, unknown>>;
+				for (let i = 0; i < items.length; i++) {
+					addSubnode(items[i], connectionType, i);
+				}
 			}
 		} else {
 			addSubnode(subnodeOrArray, connectionType, 0);

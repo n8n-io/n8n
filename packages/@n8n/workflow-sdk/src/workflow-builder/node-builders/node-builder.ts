@@ -651,6 +651,7 @@ class IfElseBuilderImpl<TOutput = unknown> implements IfElseBuilder<TOutput> {
 	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, TOutput>;
 	trueBranch: IfElseTarget = null;
 	falseBranch: IfElseTarget = null;
+	errorBranch?: IfElseTarget;
 	/** All nodes from both branches (for workflow-builder) */
 	_allBranchNodes: Array<NodeInstance<string, string, unknown>> = [];
 
@@ -666,6 +667,12 @@ class IfElseBuilderImpl<TOutput = unknown> implements IfElseBuilder<TOutput> {
 
 	onFalse(target: IfElseTarget): IfElseBuilder<TOutput> {
 		this.falseBranch = target;
+		this._updateAllBranchNodes();
+		return this;
+	}
+
+	onError(target: IfElseTarget): IfElseBuilder<TOutput> {
+		this.errorBranch = target;
 		this._updateAllBranchNodes();
 		return this;
 	}
@@ -688,6 +695,13 @@ class IfElseBuilderImpl<TOutput = unknown> implements IfElseBuilder<TOutput> {
 		for (const node of extractNodesFromTarget(this.falseBranch)) {
 			if (!allNodes.some((n) => n.name === node.name)) {
 				allNodes.push(node);
+			}
+		}
+		if (this.errorBranch) {
+			for (const node of extractNodesFromTarget(this.errorBranch)) {
+				if (!allNodes.some((n) => n.name === node.name)) {
+					allNodes.push(node);
+				}
 			}
 		}
 		this._allBranchNodes = allNodes;

@@ -92,17 +92,38 @@ export function extractInputIndex(slotName: string): number {
 }
 
 /**
- * Extract output index from semantic output name (e.g., 'output0' → 0, 'output1' → 1)
- * The 'error' output maps to index 1 (for nodes with continueErrorOutput).
+ * Extract output index from semantic output name.
+ * Maps known semantic names to their corresponding output indices:
+ * - 'output{N}' → N
+ * - 'trueBranch' → 0, 'falseBranch' → 1 (IF node)
+ * - 'case{N}' → N (Switch node)
+ * - 'done' → 0, 'loop' → 1 (SplitInBatches node)
+ * - 'error' → 1 (for nodes with continueErrorOutput)
  */
 export function getOutputIndex(outputName: string): number {
-	if (outputName === 'error') {
-		return 1;
+	// IF node outputs
+	if (outputName === 'trueBranch') return 0;
+	if (outputName === 'falseBranch') return 1;
+
+	// SplitInBatches outputs
+	if (outputName === 'done') return 0;
+	if (outputName === 'loop') return 1;
+
+	// Error output (for nodes with continueErrorOutput)
+	if (outputName === 'error') return 1;
+
+	// output{N} pattern
+	const outputMatch = outputName.match(/^output(\d+)$/);
+	if (outputMatch) {
+		return parseInt(outputMatch[1], 10);
 	}
-	const match = outputName.match(/^output(\d+)$/);
-	if (match) {
-		return parseInt(match[1], 10);
+
+	// case{N} pattern (Switch node)
+	const caseMatch = outputName.match(/^case(\d+)$/);
+	if (caseMatch) {
+		return parseInt(caseMatch[1], 10);
 	}
+
 	return 0;
 }
 

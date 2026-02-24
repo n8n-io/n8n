@@ -172,8 +172,8 @@ describe('buildSwitchCaseComposite', () => {
 
 		expect(result.kind).toBe('switchCase');
 		expect(result.cases).toHaveLength(2);
-		// Fallback index should be calculated correctly
-		expect(result.caseIndices).toEqual([0, 1]);
+		// Fallback index = numCases (default 4 when no rules defined)
+		expect(result.caseIndices).toEqual([0, 4]);
 	});
 
 	it('handles Switch with no cases', () => {

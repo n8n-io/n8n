@@ -339,11 +339,43 @@ function buildIfElse(node: SemanticNode, ctx: BuildContext): IfElseCompositeNode
 	const trueBranch = buildBranchTargets(trueBranchTargets, branchCtx, node.name, 0);
 	const falseBranch = buildBranchTargets(falseBranchTargets, branchCtx, node.name, 1);
 
+	// Build error handler if node has error output
+	let errorHandler: CompositeNode | undefined;
+	if (hasErrorOutput(node)) {
+		const errorTargets = getErrorOutputTargets(node);
+		if (errorTargets.length > 0) {
+			const firstErrorTarget = errorTargets[0];
+			const errorTargetNode = ctx.graph.nodes.get(firstErrorTarget);
+
+			if (errorTargetNode && isMergeType(errorTargetNode.type)) {
+				ctx.variables.set(node.name, node);
+				ctx.variables.set(firstErrorTarget, errorTargetNode);
+				const errorConns = node.outputs.get('error') ?? [];
+				const errorConn = errorConns.find((c) => c.target === firstErrorTarget);
+				const targetInputIndex = errorConn ? extractInputIndex(errorConn.targetInputSlot) : 0;
+				ctx.deferredConnections.push({
+					sourceNodeName: node.name,
+					sourceOutputIndex: 2, // IF error output is after true(0) and false(1)
+					targetNode: errorTargetNode,
+					targetInputIndex,
+				});
+			} else if (ctx.visited.has(firstErrorTarget)) {
+				if (errorTargetNode) {
+					ctx.variables.set(firstErrorTarget, errorTargetNode);
+					errorHandler = createVarRef(firstErrorTarget);
+				}
+			} else {
+				errorHandler = buildFromNode(firstErrorTarget, ctx);
+			}
+		}
+	}
+
 	return {
 		kind: 'ifElse',
 		ifNode: node,
 		trueBranch,
 		falseBranch,
+		errorHandler,
 	};
 }
 
@@ -372,13 +404,13 @@ function buildSwitchCase(node: SemanticNode, ctx: BuildContext): SwitchCaseCompo
 			caseIndices.push(caseIndex);
 			outputIndex = caseIndex;
 		} else if (outputName === 'fallback') {
-			// Fallback is at the end - we need to determine its index
-			// It's after all the case outputs, so we use the current count as the index
-			// But we need the actual index from the switch node definition
-			// For now, we'll infer it from the position in the Map
-			// Since Maps preserve insertion order and outputs are added in index order,
-			// the fallback index is the count of outputs we've seen so far
-			const fallbackIndex = caseIndices.length > 0 ? Math.max(...caseIndices) + 1 : 0;
+			// Mirror semantic-registry.ts — fallback index = numCases
+			const params = node.json.parameters;
+			const rules = params?.rules as Record<string, unknown> | undefined;
+			// Switch v3+ uses rules.values, older versions use rules.rules
+			const rulesArray = (rules?.rules ?? rules?.values) as unknown[] | undefined;
+			const numCases = rulesArray?.length ?? 4;
+			const fallbackIndex = numCases;
 			caseIndices.push(fallbackIndex);
 			outputIndex = fallbackIndex;
 		} else {
@@ -1116,6 +1148,35 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 	return compositeNode;
 }
 
+/** Extract the root node name from a downstream chain for dedup purposes */
+function getDownstreamTargetName(chain: CompositeNode | null): string {
+	if (!chain) return '';
+	switch (chain.kind) {
+		case 'varRef':
+			return chain.nodeName;
+		case 'leaf':
+			return chain.node.name;
+		case 'chain':
+			return chain.nodes.length > 0 ? getDownstreamTargetName(chain.nodes[0]) : '';
+		case 'ifElse':
+			return chain.ifNode.name;
+		case 'switchCase':
+			return chain.switchNode.name;
+		case 'merge':
+			return chain.mergeNode.name;
+		case 'splitInBatches':
+			return chain.sibNode.name;
+		case 'fanOut':
+			return getDownstreamTargetName(chain.sourceNode);
+		case 'explicitConnections':
+			return chain.nodes.length > 0 ? chain.nodes[0].name : '';
+		case 'multiOutput':
+			return chain.sourceNode.name;
+		default:
+			return '';
+	}
+}
+
 /**
  * Build a composite tree from an annotated semantic graph
  *
@@ -1208,10 +1269,20 @@ export function buildCompositeTree(graph: SemanticGraph): CompositeTree {
 		return true;
 	});
 
+	// Deduplicate deferred merge downstreams (same merge → same target)
+	const seenMergeDownstreams = new Set<string>();
+	const uniqueMergeDownstreams = ctx.deferredMergeDownstreams.filter((d) => {
+		const targetName = getDownstreamTargetName(d.downstreamChain);
+		const key = `${d.mergeNode.name}->${targetName}`;
+		if (seenMergeDownstreams.has(key)) return false;
+		seenMergeDownstreams.add(key);
+		return true;
+	});
+
 	return {
 		roots,
 		variables: ctx.variables,
 		deferredConnections: uniqueConnections,
-		deferredMergeDownstreams: ctx.deferredMergeDownstreams,
+		deferredMergeDownstreams: uniqueMergeDownstreams,
 	};
 }

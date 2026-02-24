@@ -94,7 +94,13 @@ export function buildSwitchCaseComposite(
 			outputIndex = parseInt(caseMatch[1], 10);
 			caseIndices.push(outputIndex);
 		} else if (outputName === 'fallback') {
-			const fallbackIndex = caseIndices.length > 0 ? Math.max(...caseIndices) + 1 : 0;
+			// Mirror semantic-registry.ts — fallback index = numCases
+			const params = node.json.parameters;
+			const rules = params?.rules as Record<string, unknown> | undefined;
+			// Switch v3+ uses rules.values, older versions use rules.rules
+			const rulesArray = (rules?.rules ?? rules?.values) as unknown[] | undefined;
+			const numCases = rulesArray?.length ?? 4;
+			const fallbackIndex = numCases;
 			caseIndices.push(fallbackIndex);
 			outputIndex = fallbackIndex;
 		} else {
