@@ -1,0 +1,7 @@
+{
+	"src/decorators.ts": {
+		"n8n-local-rules/no-plain-errors": {
+			"count": 2
+		}
+	}
+}
