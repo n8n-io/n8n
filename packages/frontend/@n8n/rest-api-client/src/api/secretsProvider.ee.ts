@@ -8,6 +8,12 @@ import type {
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
 
+export const getSecretProviderTypes = async (
+	context: IRestApiContext,
+): Promise<SecretProviderTypeResponse[]> => {
+	return await makeRestApiRequest(context, 'GET', '/secret-providers/types');
+};
+
 export const getSecretProviderConnections = async (
 	context: IRestApiContext,
 ): Promise<SecretProviderConnection[]> => {
@@ -93,13 +99,6 @@ export const getProjectSecretProviderConnectionsByProjectId = async (
 		'GET',
 		`/secret-providers/projects/${projectId}/connections`,
 	);
-};
-
-export const getProjectSecretProviderTypes = async (
-	context: IRestApiContext,
-	projectId: string,
-): Promise<SecretProviderTypeResponse[]> => {
-	return await makeRestApiRequest(context, 'GET', `/secret-providers/projects/${projectId}/types`);
 };
 
 export const getProjectSecretProviderConnectionByKey = async (
