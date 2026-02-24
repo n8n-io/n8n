@@ -200,7 +200,7 @@ describe('WorkflowDetails', () => {
 		};
 		workflowsStore.isWorkflowSaved = { '1': true, '123': true };
 		workflowsStore.workflowId = workflow.id;
-		workflowsStore.workflowChecksum = 'test-checksum';
+		workflowDocumentStoreRef.value?.setChecksum('test-checksum');
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = { id: 'personal', name: 'Personal' } as Project;
 		collaborationStore.shouldBeReadOnly = false;

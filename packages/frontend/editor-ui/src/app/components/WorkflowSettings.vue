@@ -47,6 +47,12 @@ import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { injectStrict } from '@/app/utils/injectStrict';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -67,6 +73,7 @@ const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowState = injectWorkflowState();
+const workflowId = injectStrict(WorkflowIdKey);
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const posthogStore = usePostHog();
@@ -501,7 +508,10 @@ const saveSettings = async () => {
 
 	isLoading.value = true;
 	data.versionId = workflowsStore.workflowVersionId;
-	data.expectedChecksum = workflowsStore.workflowChecksum;
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowId.value),
+	);
+	data.expectedChecksum = workflowDocumentStore.checksum;
 
 	try {
 		await workflowsStore.updateWorkflow(String(route.params.name), data);

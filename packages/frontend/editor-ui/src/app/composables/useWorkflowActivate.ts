@@ -104,8 +104,7 @@ export function useWorkflowActivate() {
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 		try {
-			const expectedChecksum =
-				workflowId === workflowsStore.workflowId ? workflowsStore.workflowChecksum : undefined;
+			const expectedChecksum = workflowDocumentStore.checksum || undefined;
 
 			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
 				versionId,
@@ -122,16 +121,14 @@ export function useWorkflowActivate() {
 				activeVersionId: updatedWorkflow.activeVersion.versionId,
 				activeVersion: updatedWorkflow.activeVersion,
 			});
+			workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
 
 			if (workflowId === workflowsStore.workflowId) {
-				workflowsStore.setWorkflowVersionData(
-					{
-						versionId: updatedWorkflow.versionId,
-						name: workflowsStore.versionData?.name ?? null,
-						description: workflowsStore.versionData?.description ?? null,
-					},
-					updatedWorkflow.checksum,
-				);
+				workflowsStore.setWorkflowVersionData({
+					versionId: updatedWorkflow.versionId,
+					name: workflowsStore.versionData?.name ?? null,
+					description: workflowsStore.versionData?.description ?? null,
+				});
 			}
 
 			void useExternalHooks().run('workflow.published', {
@@ -189,8 +186,7 @@ export function useWorkflowActivate() {
 		void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		try {
-			const expectedChecksum =
-				workflowId === workflowsStore.workflowId ? workflowsStore.workflowChecksum : undefined;
+			const expectedChecksum = workflowDocumentStore.checksum || undefined;
 
 			await workflowsStore.deactivateWorkflow(workflowId, expectedChecksum);
 			workflowDocumentStore.setActiveState({

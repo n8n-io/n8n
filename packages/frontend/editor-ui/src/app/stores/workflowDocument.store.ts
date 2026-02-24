@@ -17,6 +17,11 @@ import {
 	isTagAction,
 	type TagAction,
 } from './workflowDocument/useWorkflowDocumentTags';
+import {
+	useWorkflowDocumentChecksum,
+	isChecksumAction,
+	type ChecksumAction,
+} from './workflowDocument/useWorkflowDocumentChecksum';
 
 export {
 	getPinDataSize,
@@ -37,7 +42,7 @@ export function createWorkflowDocumentId(
 	return `${workflowId}@${version}`;
 }
 
-type WorkflowDocumentAction = ActiveAction | TagAction | PinDataAction;
+type WorkflowDocumentAction = ActiveAction | TagAction | PinDataAction | ChecksumAction;
 
 /**
  * Gets the store ID for a workflow document store.
@@ -71,6 +76,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				handleTagAction(action);
 			} else if (isPinDataAction(action)) {
 				handlePinDataAction(action);
+			} else if (isChecksumAction(action)) {
+				handleChecksumAction(action);
 			}
 		}
 
@@ -101,6 +108,12 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			handleAction: handlePinDataAction,
 		} = useWorkflowDocumentPinData(onChange);
 
+		const {
+			checksum,
+			setChecksum,
+			handleAction: handleChecksumAction,
+		} = useWorkflowDocumentChecksum(onChange);
+
 		return {
 			workflowId,
 			workflowVersion,
@@ -119,6 +132,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			renamePinDataNode,
 			getPinDataSnapshot,
 			getNodePinData,
+			checksum,
+			setChecksum,
 		};
 	})();
 }
