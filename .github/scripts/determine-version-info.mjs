@@ -6,7 +6,9 @@ import semver from 'semver';
  * @param {any} packageVersion
  */
 export function determineTrack(packageVersion) {
-	/** { @type import('./github-helpers.mjs').ReleaseTrack | null } */
+	if (!semver.valid(packageVersion)) {
+		throw new Error(`Package semver not valid. Got ${packageVersion}`);
+	}
 
 	/** @type { Partial<Record<import('./github-helpers.mjs').ReleaseTrack, import('./github-helpers.mjs').TagVersionInfo>> } */
 	const trackToReleaseMap = {};
@@ -17,6 +19,9 @@ export function determineTrack(packageVersion) {
 	console.log('Current Tracks: ', JSON.stringify(trackToReleaseMap, null, 4));
 
 	let track = null;
+	let newStable = null;
+	let bump = determineBump(packageVersion);
+	const releaseType = determineReleaseType(packageVersion);
 
 	// Check through our current release versions, if semver matches,
 	// we inherit the track pointer from them
@@ -32,6 +37,7 @@ export function determineTrack(packageVersion) {
 		// new beta version and the input is not invalid.
 		if (isNewBetaRelease(trackToReleaseMap.beta.version, packageVersion)) {
 			track = 'beta';
+			newStable = trackToReleaseMap.beta.version;
 		}
 	}
 
@@ -42,10 +48,15 @@ export function determineTrack(packageVersion) {
 	const output = {
 		version: packageVersion,
 		track,
+		bump,
+		new_stable_version: newStable,
+		release_type: releaseType,
 	};
 
 	writeGithubOutput(output);
-	console.log(`Determined track & version: track=${track}, version=${packageVersion}`);
+	console.log(
+		`Determined track info: track=${track}, version=${packageVersion}, new_stable_version=${newStable}, release_type=${releaseType}`,
+	);
 
 	return output;
 }
@@ -85,6 +96,20 @@ function isNewBetaRelease(currentBetaVersion, currentVersion) {
 	}
 
 	return true;
+}
+
+function determineReleaseType(currentVersion) {
+	if (currentVersion.includes('-rc.')) {
+		return 'rc';
+	}
+	return 'stable';
+}
+
+function determineBump(currentVersion) {
+	if (semver.patch(currentVersion) === 0) {
+		return 'minor';
+	}
+	return 'patch';
 }
 
 // only run when executed directly, not when imported by tests

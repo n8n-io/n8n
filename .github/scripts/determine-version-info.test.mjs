@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 /**
  * Run these tests by running
  *
- * node --test --experimental-test-module-mocks ./.github/scripts/determine-tracks.test.mjs
+ * node --test --experimental-test-module-mocks ./.github/scripts/determine-version-info.test.mjs
  * */
 
 // mock.module must be called before the module under test is imported,
@@ -24,7 +24,7 @@ mock.module('./github-helpers.mjs', {
 
 let determineTrack;
 before(async () => {
-	({ determineTrack } = await import('./determine-track.mjs'));
+	({ determineTrack } = await import('./determine-version-info.mjs'));
 });
 
 describe('determine-tracks', () => {
@@ -33,6 +33,9 @@ describe('determine-tracks', () => {
 
 		assert.equal(output.track, 'stable');
 		assert.equal(output.version, '2.9.3');
+		assert.equal(output.bump, 'patch');
+		assert.equal(output.new_stable_version, null);
+		assert.equal(output.release_type, 'stable');
 	});
 
 	it('Allow patch releases on beta', () => {
@@ -40,6 +43,9 @@ describe('determine-tracks', () => {
 
 		assert.equal(output.track, 'beta');
 		assert.equal(output.version, '2.10.1');
+		assert.equal(output.bump, 'patch');
+		assert.equal(output.new_stable_version, null);
+		assert.equal(output.release_type, 'stable');
 	});
 
 	// This use case might happen if a patch release fails and we proceed with rolling over to next release
@@ -48,6 +54,9 @@ describe('determine-tracks', () => {
 
 		assert.equal(output.track, 'stable');
 		assert.equal(output.version, '2.9.4');
+		assert.equal(output.bump, 'patch');
+		assert.equal(output.new_stable_version, null);
+		assert.equal(output.release_type, 'stable');
 	});
 
 	it('Disallow skipping versions in minors', () => {
@@ -65,5 +74,18 @@ describe('determine-tracks', () => {
 
 		assert.equal(output.track, 'beta');
 		assert.equal(output.version, '2.11.0');
+		assert.equal(output.bump, 'minor');
+		assert.equal(output.new_stable_version, '2.10.0');
+		assert.equal(output.release_type, 'stable');
+	});
+
+	it('Set release_type accordingly on rc releases', () => {
+		const output = determineTrack('2.10.1-rc.1');
+
+		assert.equal(output.track, 'beta');
+		assert.equal(output.version, '2.10.1-rc.1');
+		assert.equal(output.bump, 'patch');
+		assert.equal(output.new_stable_version, null);
+		assert.equal(output.release_type, 'rc');
 	});
 });
