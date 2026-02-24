@@ -139,3 +139,7 @@ export function setMicrosoftObservabilityDefaults(): void {
 		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
 	}
 }
+
+export function containsExpression(testString: string): boolean {
+	return /^=.*\{\{.+\}\}/.test(testString);
+}
