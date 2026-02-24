@@ -1072,7 +1072,7 @@ async function onCopyTestUrl(id: string) {
 }
 
 async function onCopyProductionUrl(id: string) {
-	const isWorkflowActive = workflowsStore.workflow.active;
+	const isWorkflowActive = workflowDocumentStore?.value?.active ?? false;
 	if (!isWorkflowActive) {
 		toast.showMessage({
 			title: i18n.baseText('nodeWebhooks.showMessage.not.active'),
@@ -1193,7 +1193,7 @@ const isOnlyChatTriggerNodeActive = computed(() => {
 const chatTriggerNodePinnedData = computed(() => {
 	if (!chatTriggerNode.value) return null;
 
-	return workflowDocumentStore?.pinData?.[chatTriggerNode.value.name];
+	return workflowDocumentStore?.value?.pinData?.[chatTriggerNode.value.name];
 });
 
 function onOpenChat() {

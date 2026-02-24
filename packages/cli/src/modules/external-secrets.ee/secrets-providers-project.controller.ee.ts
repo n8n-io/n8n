@@ -1,6 +1,8 @@
 import {
 	CreateSecretsProviderConnectionDto,
 	UpdateSecretsProviderConnectionDto,
+	type SecretProviderConnection,
+	type SecretProviderConnectionListItem,
 	type ReloadSecretProviderConnectionResponse,
 	type TestSecretProviderConnectionResponse,
 } from '@n8n/api-types';
@@ -19,12 +21,11 @@ import {
 } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
-import { ExternalSecretsConfig } from './external-secrets.config';
-import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee';
-import type { SecretsProvidersResponses } from './secrets-providers.responses.ee';
-
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { sendErrorResponse } from '@/response-helper';
+
+import { ExternalSecretsConfig } from './external-secrets.config';
+import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee';
 
 @RestController('/secret-providers/projects')
 export class SecretProvidersProjectController {
@@ -56,7 +57,7 @@ export class SecretProvidersProjectController {
 		_res: Response,
 		@Param('projectId') projectId: string,
 		@Body body: CreateSecretsProviderConnectionDto,
-	): Promise<SecretsProvidersResponses.PublicConnection> {
+	): Promise<SecretProviderConnection> {
 		this.logger.debug('Creating connection for project', {
 			projectId,
 			providerKey: body.providerKey,
@@ -77,7 +78,7 @@ export class SecretProvidersProjectController {
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
-	): Promise<SecretsProvidersResponses.ConnectionListItem[]> {
+	): Promise<SecretProviderConnectionListItem[]> {
 		this.logger.debug('List all connections within a project', { projectId });
 		const connections = await this.connectionsService.listConnectionsForProject(projectId);
 		return connections.map((c) => this.connectionsService.toPublicConnectionListItem(c));
@@ -90,7 +91,7 @@ export class SecretProvidersProjectController {
 		_res: Response,
 		@Param('projectId') projectId: string,
 		@Param('providerKey') providerKey: string,
-	): Promise<SecretsProvidersResponses.PublicConnection> {
+	): Promise<SecretProviderConnection> {
 		this.logger.debug('Getting connection for project', { projectId, providerKey });
 		const connection = await this.connectionsService.getConnectionForProject(
 			providerKey,
@@ -107,7 +108,7 @@ export class SecretProvidersProjectController {
 		@Param('projectId') projectId: string,
 		@Param('providerKey') providerKey: string,
 		@Body body: UpdateSecretsProviderConnectionDto,
-	): Promise<SecretsProvidersResponses.PublicConnection> {
+	): Promise<SecretProviderConnection> {
 		this.logger.debug('Updating connection for project', { projectId, providerKey });
 		await this.connectionsService.getConnectionForProject(providerKey, projectId);
 		const { projectIds: _, ...updates } = body;

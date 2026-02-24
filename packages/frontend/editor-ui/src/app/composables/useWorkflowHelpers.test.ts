@@ -246,7 +246,6 @@ describe('useWorkflowHelpers', () => {
 				tags: [],
 			});
 			const addWorkflowSpy = vi.spyOn(workflowsListStore, 'addWorkflow');
-			const setActiveSpy = vi.spyOn(workflowState, 'setActive');
 			const setWorkflowIdSpy = vi.spyOn(workflowState, 'setWorkflowId');
 			const setWorkflowNameSpy = vi.spyOn(workflowState, 'setWorkflowName');
 			const setWorkflowSettingsSpy = vi.spyOn(workflowState, 'setWorkflowSettings');
@@ -260,7 +259,6 @@ describe('useWorkflowHelpers', () => {
 			await initState(workflowData);
 
 			expect(addWorkflowSpy).toHaveBeenCalledWith(workflowData);
-			expect(setActiveSpy).toHaveBeenCalledWith('v1');
 			expect(setWorkflowIdSpy).toHaveBeenCalledWith('1');
 			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
 				newName: 'Test Workflow',

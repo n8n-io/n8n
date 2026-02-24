@@ -336,6 +336,7 @@ function createNewCredential(
 	credentialType: string,
 	listenForAuthChange: boolean = false,
 	showAuthOptions = false,
+	forceManualMode = false,
 ) {
 	if (listenForAuthChange) {
 		// If new credential dialog is open, start listening for auth type change which should happen in the modal
@@ -344,7 +345,7 @@ function createNewCredential(
 		subscribedToCredentialType.value = credentialType;
 	}
 
-	uiStore.openNewCredential(credentialType, showAuthOptions);
+	uiStore.openNewCredential(credentialType, showAuthOptions, forceManualMode);
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
 		source: 'node',
@@ -563,7 +564,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		const credential = await connect({
 			credentialTypeName,
 			nodeType: props.node.type,
-			source: 'node',
+			source: 'node_type',
 			serviceName,
 		});
 
@@ -625,7 +626,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							underline
 							size="small"
 							data-test-id="setup-manually-link"
-							@click="createNewCredential(type.name, true, showMixedCredentials(type))"
+							@click="createNewCredential(type.name, true, showMixedCredentials(type), true)"
 						>
 							{{ i18n.baseText('nodeCredentials.quickConnect.setupManually') }}
 						</N8nLink>

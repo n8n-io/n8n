@@ -18,7 +18,7 @@ const UI_OPERATIONS = {
 	project: ['read', 'update', 'delete'],
 	folder: ['read', 'update', 'create', 'move', 'delete'],
 	workflow: ['read', 'update', 'create', 'publish', 'unpublish', 'move', 'delete'],
-	credential: ['read', 'update', 'create', 'share', 'move', 'delete'],
+	credential: ['read', 'update', 'create', 'share', 'unshare', 'move', 'delete'],
 	sourceControl: ['push'],
 	dataTable: ['read', 'readRow', 'update', 'writeRow', 'create', 'delete'],
 	projectVariable: ['read', 'update', 'create', 'delete'],
