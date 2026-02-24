@@ -51,6 +51,9 @@ import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { ExecutionPersistence } from './execution-persistence';
 import type { ExecutionRequest, StopResult } from './execution.types';
+import { ExecutionRedactionServiceProxy } from './execution-redaction-proxy.service';
+import { stringify } from 'flatted';
+import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -114,6 +117,7 @@ export class ExecutionService {
 		private readonly license: License,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly eventService: EventService,
+		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 	) {}
 
 	async findOne(
@@ -123,7 +127,11 @@ export class ExecutionService {
 		if (!sharedWorkflowIds.length) return undefined;
 
 		const { id: executionId } = req.params;
-		const execution = await this.executionRepository.findIfShared(executionId, sharedWorkflowIds);
+
+		const execution = await this.executionRepository.findIfSharedUnflatten(
+			executionId,
+			sharedWorkflowIds,
+		);
 
 		if (!execution) {
 			this.logger.info('Attempt to read execution was blocked due to insufficient permissions', {
@@ -133,7 +141,24 @@ export class ExecutionService {
 			return undefined;
 		}
 
-		return execution;
+		let redactExecutionData: boolean | undefined = undefined;
+		const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
+		if (redactQuery.success) {
+			redactExecutionData = redactQuery.data.redactExecutionData;
+		}
+
+		const processedExecution = await this.executionRedactionServiceProxy.processExecution(
+			execution,
+			{
+				user: req.user,
+				redactExecutionData,
+			},
+		);
+
+		return {
+			...execution,
+			data: stringify(processedExecution.data),
+		};
 	}
 
 	async getLastSuccessfulExecution(workflowId: string): Promise<IExecutionResponse | undefined> {

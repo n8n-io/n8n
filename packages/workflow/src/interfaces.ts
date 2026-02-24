@@ -1397,6 +1397,10 @@ export interface INodeExecutionData {
 	 * packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/Chat.node.ts
 	 */
 	sendMessage?: ChatNodeMessage;
+	redaction?: {
+		redacted: boolean;
+		redactionReason?: string;
+	};
 
 	/**
 	 * @deprecated This key was added by accident and should not be used as it

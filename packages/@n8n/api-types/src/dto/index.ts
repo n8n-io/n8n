@@ -24,6 +24,11 @@ export { ResourceLocatorRequestDto } from './dynamic-node-parameters/resource-lo
 export { ResourceMapperFieldsRequestDto } from './dynamic-node-parameters/resource-mapper-fields-request.dto';
 export { ActionResultRequestDto } from './dynamic-node-parameters/action-result-request.dto';
 
+export {
+	ExecutionRedactionQueryDtoSchema,
+	type ExecutionRedactionQueryDto,
+} from './executions/execution-redaction-query.dto';
+
 export { InviteUsersRequestDto } from './invitation/invite-users-request.dto';
 export { AcceptInvitationRequestDto } from './invitation/accept-invitation-request.dto';
 

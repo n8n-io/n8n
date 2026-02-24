@@ -9,7 +9,7 @@ import { RedactionModule } from '../redaction.module';
 describe('RedactionModule', () => {
 	let module: RedactionModule;
 	let executionRedactionService: jest.Mocked<ExecutionRedactionService>;
-	const originalEnv = process.env.N8N_ENABLE_EXECUTION_REDACTION;
+	const originalEnv = process.env.N8N_ENV_FEAT_EXECUTION_REDACTION;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -27,9 +27,9 @@ describe('RedactionModule', () => {
 	afterEach(() => {
 		// Restore original environment variable
 		if (originalEnv !== undefined) {
-			process.env.N8N_ENABLE_EXECUTION_REDACTION = originalEnv;
+			process.env.N8N_ENV_FEAT_EXECUTION_REDACTION = originalEnv;
 		} else {
-			delete process.env.N8N_ENABLE_EXECUTION_REDACTION;
+			delete process.env.N8N_ENV_FEAT_EXECUTION_REDACTION;
 		}
 	});
 
@@ -39,11 +39,11 @@ describe('RedactionModule', () => {
 			['"false"', 'false'],
 			['empty string', ''],
 			['"1"', '1'],
-		])('should not initialize when N8N_ENABLE_EXECUTION_REDACTION is %s', async (_, value) => {
+		])('should not initialize when N8N_ENV_FEAT_EXECUTION_REDACTION is %s', async (_, value) => {
 			if (value === undefined) {
-				delete process.env.N8N_ENABLE_EXECUTION_REDACTION;
+				delete process.env.N8N_ENV_FEAT_EXECUTION_REDACTION;
 			} else {
-				process.env.N8N_ENABLE_EXECUTION_REDACTION = value;
+				process.env.N8N_ENV_FEAT_EXECUTION_REDACTION = value;
 			}
 
 			await module.init();
@@ -51,8 +51,8 @@ describe('RedactionModule', () => {
 			expect(executionRedactionService.init).not.toHaveBeenCalled();
 		});
 
-		it('should initialize and call ExecutionRedactionService.init() when N8N_ENABLE_EXECUTION_REDACTION is "true"', async () => {
-			process.env.N8N_ENABLE_EXECUTION_REDACTION = 'true';
+		it('should initialize and call ExecutionRedactionService.init() when N8N_ENV_FEAT_EXECUTION_REDACTION is "true"', async () => {
+			process.env.N8N_ENV_FEAT_EXECUTION_REDACTION = 'true';
 
 			await module.init();
 
