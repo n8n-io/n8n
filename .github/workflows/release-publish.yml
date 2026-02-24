@@ -129,6 +129,28 @@ jobs:
           makeLatest: false
           body: ${{github.event.pull_request.body}}
 
+  move-track-tag:
+    name: Move track tag
+    needs: [determine-version-info, create-github-release]
+    if: github.event.pull_request.merged == true
+    uses: ./.github/workflows/release-update-pointer-tag.yml
+    with:
+      track: ${{ needs.determine-version-info.outputs.track }}
+      version-tag: 'n8n@${{ needs.determine-version-info.outputs.version }}'
+    secrets: inherit
+
+  promote-stable-tag:
+    name: Promote stable tag (minor bump)
+    needs: [determine-version-info, create-github-release]
+    if: |
+      github.event.pull_request.merged == true &&
+      needs.determine-version-info.outputs.new_stable_version != ''
+    uses: ./.github/workflows/release-update-pointer-tag.yml
+    with:
+      track: stable
+      version-tag: 'n8n@${{ needs.determine-version-info.outputs.new_stable_version }}'
+    secrets: inherit
+
   generate-and-attach-sbom:
     name: Generate and Attach SBOM to Release
     needs: [determine-version-info, create-github-release]
