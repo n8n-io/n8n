@@ -13,6 +13,15 @@ const mockShowMessage = vi.fn();
 const mockPush = vi.fn();
 const mockReplace = vi.fn();
 const mockBack = vi.fn();
+const mockFeatureFlagCheck = vi.fn().mockReturnValue(false);
+
+vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
+	useEnvFeatureFlag: vi.fn(() => ({
+		check: {
+			value: mockFeatureFlagCheck,
+		},
+	})),
+}));
 
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
@@ -488,6 +497,38 @@ describe('ProjectRoleView', () => {
 
 			await userEvent.click(scopeCheckbox);
 			await waitForEditButtonsToBe(getByRole, 'enabled');
+		});
+	});
+
+	describe('External Secrets Scopes', () => {
+		it('should not render externalSecretsProvider scope type when feature flag is off', () => {
+			mockFeatureFlagCheck.mockReturnValue(false);
+			const { queryByText } = renderComponent();
+
+			expect(queryByText('Secret stores')).not.toBeInTheDocument();
+			expect(queryByText('Secrets')).not.toBeInTheDocument();
+		});
+
+		it('should render externalSecretsProvider scope type when feature flag is on', () => {
+			mockFeatureFlagCheck.mockReturnValue(true);
+			const { getByText } = renderComponent();
+
+			expect(getByText('Secret stores')).toBeInTheDocument();
+			expect(getByText('Secrets')).toBeInTheDocument();
+		});
+
+		it('should show secrets checkboxes when feature flag is on', async () => {
+			mockFeatureFlagCheck.mockReturnValue(true);
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-checkbox-externalSecretsProvider:read')).toBeInTheDocument(),
+			);
+			expect(getByTestId('scope-checkbox-externalSecretsProvider:create')).toBeInTheDocument();
+			expect(getByTestId('scope-checkbox-externalSecretsProvider:update')).toBeInTheDocument();
+			expect(getByTestId('scope-checkbox-externalSecretsProvider:delete')).toBeInTheDocument();
+			expect(getByTestId('scope-checkbox-externalSecretsProvider:sync')).toBeInTheDocument();
+			expect(getByTestId('scope-checkbox-externalSecret:list')).toBeInTheDocument();
 		});
 	});
 
