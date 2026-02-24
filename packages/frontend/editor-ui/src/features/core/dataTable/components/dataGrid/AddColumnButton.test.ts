@@ -352,7 +352,6 @@ describe('AddColumnButton', () => {
 
 	it('should clear error state when reopening popover after failed submission', async () => {
 		const {
-			getByTestId,
 			getByText,
 			queryByText,
 			openPopover,
