@@ -1,0 +1,94 @@
+import { readFileSync } from 'node:fs';
+import { RELEASE_TRACKS, resolveReleaseTagForTrack, writeGithubOutput } from './github-helpers.mjs';
+import semver from 'semver';
+
+/**
+ * @param {any} packageVersion
+ */
+export function determineTrack(packageVersion) {
+	/** { @type import('./github-helpers.mjs').ReleaseTrack | null } */
+
+	/** @type { Partial<Record<import('./github-helpers.mjs').ReleaseTrack, import('./github-helpers.mjs').TagVersionInfo>> } */
+	const trackToReleaseMap = {};
+	for (const t of RELEASE_TRACKS) {
+		trackToReleaseMap[t] = resolveReleaseTagForTrack(t);
+	}
+
+	console.log('Current Tracks: ', JSON.stringify(trackToReleaseMap, null, 4));
+
+	let track = null;
+
+	// Check through our current release versions, if semver matches,
+	// we inherit the track pointer from them
+	for (const [releaseTrack, tagVersionInfo] of Object.entries(trackToReleaseMap)) {
+		if (matchesTrack(tagVersionInfo, packageVersion)) {
+			track = releaseTrack;
+			break;
+		}
+	}
+
+	if (!track) {
+		// If not track was found in current versions, we verify we're building a
+		// new beta version and the input is not invalid.
+		if (isNewBetaRelease(trackToReleaseMap.beta.version, packageVersion)) {
+			track = 'beta';
+		}
+	}
+
+	if (!track) {
+		throw new Error('Could not determine track for release. Exiting...');
+	}
+
+	const output = {
+		version: packageVersion,
+		track,
+	};
+
+	writeGithubOutput(output);
+	console.log(`Determined track & version: track=${track}, version=${packageVersion}`);
+
+	return output;
+}
+
+/**
+ * The current version matches the track, if their Major and Minor semvers match.
+ *
+ * This means that we are working with a patch release
+ *
+ * @param {import("./github-helpers.mjs").TagVersionInfo} tagVersionInfo
+ * @param {any} currentVersion
+ */
+function matchesTrack(tagVersionInfo, currentVersion) {
+	if (semver.major(tagVersionInfo.version) !== semver.major(currentVersion)) {
+		return false;
+	}
+	if (semver.minor(tagVersionInfo.version) !== semver.minor(currentVersion)) {
+		return false;
+	}
+	return true;
+}
+
+/**
+ * @param {string} currentBetaVersion
+ * @param {any} currentVersion
+ */
+function isNewBetaRelease(currentBetaVersion, currentVersion) {
+	if (semver.major(currentBetaVersion) !== semver.major(currentVersion)) {
+		throw new Error('Major version bumps are not allowed by this pipeline');
+	}
+
+	const bumpedCurrentBeta = semver.inc(currentBetaVersion, 'minor');
+	if (semver.minor(bumpedCurrentBeta) !== semver.minor(currentVersion)) {
+		throw new Error(
+			`Trying to upgrade minor version by more than one increment. Previous: ${bumpedCurrentBeta}, Requested: ${currentVersion}`,
+		);
+	}
+
+	return true;
+}
+
+// only run when executed directly, not when imported by tests
+if (import.meta.url === new URL(process.argv[1], 'file:').href) {
+	const packageJson = JSON.parse(readFileSync('./package.json', 'utf8'));
+	determineTrack(packageJson.version);
+}
