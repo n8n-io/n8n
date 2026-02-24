@@ -490,6 +490,43 @@ export class ChatTrigger extends Node {
 				},
 			},
 			{
+				displayName: 'Suggested Prompts',
+				name: 'suggestedPrompts',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true },
+				default: {},
+				noDataExpression: true,
+				placeholder: 'Add Prompt',
+				description: 'Suggested prompts shown to users in n8n Chat Hub',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+				options: [
+					{
+						name: 'prompts',
+						displayName: 'Prompts',
+						values: [
+							{
+								displayName: 'Icon',
+								name: 'icon',
+								type: 'icon',
+								default: '',
+							},
+							{
+								displayName: 'Prompt Text',
+								name: 'text',
+								type: 'string',
+								default: '',
+								required: true,
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
