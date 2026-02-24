@@ -124,14 +124,6 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: vi.fn(() => mockProjectsStore),
 }));
 
-vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
-	useEnvFeatureFlag: vi.fn(() => ({
-		check: {
-			value: vi.fn((flag: string) => flag === 'EXTERNAL_SECRETS_FOR_PROJECTS'),
-		},
-	})),
-}));
-
 const initialState = {
 	[STORES.UI]: {
 		modalsById: {
@@ -140,6 +132,14 @@ const initialState = {
 			},
 		},
 		modalStack: [SECRETS_PROVIDER_CONNECTION_MODAL_KEY],
+	},
+	[STORES.SETTINGS]: {
+		moduleSettings: {
+			'external-secrets': {
+				multipleConnections: true,
+				forProjects: true,
+			},
+		},
 	},
 };
 
