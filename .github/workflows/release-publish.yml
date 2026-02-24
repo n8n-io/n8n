@@ -59,6 +59,9 @@ jobs:
           N8N_FAIL_ON_POPULARITY_FETCH_ERROR: true
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
+      - name: Check for new unpublished packages
+        run: node .github/scripts/detect-new-packages.mjs
+
       - name: Dry-run publishing
         run: |
           pnpm --filter n8n publish --no-git-checks --dry-run
