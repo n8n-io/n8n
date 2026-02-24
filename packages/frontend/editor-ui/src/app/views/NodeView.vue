@@ -89,6 +89,7 @@ import type {
 import { useToast } from '@/app/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { historyBus } from '@/app/models/history';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useCanvasStore } from '@/app/stores/canvas.store';
@@ -194,6 +195,7 @@ const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
+const settingsStore = useSettingsStore();
 const focusPanelStore = useFocusPanelStore();
 const builderStore = useBuilderStore();
 const agentRequestStore = useAgentRequestStore();
@@ -1196,8 +1198,46 @@ const chatTriggerNodePinnedData = computed(() => {
 	return workflowDocumentStore?.pinData?.[chatTriggerNode.value.name];
 });
 
+const isChatHubAvailable = computed(() => {
+	return (
+		settingsStore.isChatFeatureEnabled &&
+		chatTriggerNode.value?.parameters?.availableInChat === true
+	);
+});
+
+const isChatHubPanelOpen = computed(
+	() => chatPanelStore.isOpen && chatPanelStore.isChatHubModeActive,
+);
+
+// Close chat hub panel when availableInChat is toggled off
+watch(isChatHubAvailable, (available) => {
+	if (!available && isChatHubPanelOpen.value) {
+		chatPanelStore.close();
+	}
+});
+
 function onOpenChat() {
-	startChat('main');
+	if (isChatHubAvailable.value) {
+		void chatPanelStore.open({ mode: 'chatHub' });
+	} else {
+		startChat('main');
+	}
+}
+
+function onToggleChat() {
+	if (isChatHubAvailable.value) {
+		if (isChatHubPanelOpen.value) {
+			chatPanelStore.close();
+		} else {
+			void chatPanelStore.open({ mode: 'chatHub' });
+		}
+	} else {
+		if (isLogsPanelOpen.value) {
+			logsStore.toggleOpen(false);
+		} else {
+			startChat('main');
+		}
+	}
 }
 
 /**
@@ -1782,7 +1822,7 @@ onBeforeUnmount(() => {
 			@tidy-up="onTidyUp"
 			@toggle:focus-panel="onToggleFocusPanel"
 			@extract-workflow="onExtractWorkflow"
-			@start-chat="startChat()"
+			@start-chat="onToggleChat"
 		>
 			<Suspense v-if="!isCanvasReadOnly">
 				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
@@ -1803,11 +1843,11 @@ onBeforeUnmount(() => {
 				/>
 				<template v-if="containsChatTriggerNodes">
 					<CanvasChatButton
-						v-if="isLogsPanelOpen"
+						v-if="isChatHubAvailable ? isChatHubPanelOpen : isLogsPanelOpen"
 						variant="subtle"
 						:label="i18n.baseText('chat.hide')"
 						:class="$style.chatButton"
-						@click="logsStore.toggleOpen(false)"
+						@click="onToggleChat"
 					/>
 					<KeyboardShortcutTooltip
 						v-else

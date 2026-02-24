@@ -148,6 +148,7 @@ function handleKeydownTextarea(e: KeyboardEvent) {
 
 	if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && trimmed) {
 		e.preventDefault();
+		e.stopPropagation();
 		speechInput.stop();
 		emit('submit', trimmed, attachments.value);
 	}

@@ -104,6 +104,59 @@ export class ChatHubService {
 		return previousMessage;
 	}
 
+	/**
+	 * If the previous message is in 'waiting' state (e.g. Chat node waiting for user input),
+	 * resume the waiting execution instead of starting a new one. Returns true if resumed.
+	 */
+	private async tryResumeWaitingExecution(opts: {
+		workflow: PreparedChatWorkflow;
+		previousMessage: ChatHubMessage | undefined;
+		message: string;
+		sessionId: ChatSessionId;
+		user: User;
+		messageId: ChatMessageId;
+		model: ChatHubConversationModel;
+	}): Promise<boolean> {
+		const { workflow, previousMessage, message, sessionId, user, messageId, model } = opts;
+
+		if (
+			workflow.responseMode !== 'responseNodes' ||
+			previousMessage?.status !== 'waiting' ||
+			!previousMessage?.executionId
+		) {
+			return false;
+		}
+
+		const execution = await this.executionRepository.findSingleExecution(
+			previousMessage.executionId.toString(),
+			{
+				includeData: true,
+				unflattenData: true,
+			},
+		);
+		if (!execution) {
+			throw new OperationalError('Chat session has expired.');
+		}
+		this.logger.debug(
+			`Resuming execution ${execution.id} from waiting state for session ${sessionId}`,
+		);
+
+		await this.messageRepository.updateChatMessage(previousMessage.id, {
+			status: 'success',
+		});
+
+		void this.chatHubExecutionService.resumeChatExecution(
+			execution,
+			message,
+			sessionId,
+			user,
+			messageId,
+			model,
+			workflow.responseMode,
+		);
+		return true;
+	}
+
 	async stopGeneration(user: User, sessionId: ChatSessionId, messageId: ChatMessageId) {
 		await this.ensureConversation(user.id, sessionId);
 
@@ -144,10 +197,11 @@ export class ChatHubService {
 		sessionId: ChatSessionId,
 		model: ChatHubConversationModel,
 		credentialId: string | null,
+		manual: boolean,
 		agentName?: string,
 		trx?: EntityManager,
 	) {
-		await this.ensureValidModel(user, model, trx);
+		await this.ensureValidModel(user, model, manual, trx);
 
 		const session = await this.sessionRepository.createChatSession(
 			{
@@ -282,7 +336,7 @@ export class ChatHubService {
 		if (updates.agent) {
 			const model = updates.agent.model;
 
-			await this.ensureValidModel(user, model);
+			await this.ensureValidModel(user, model, false);
 
 			sessionUpdates.agentName = updates.agent.name;
 			sessionUpdates.provider = model.provider;
@@ -321,7 +375,12 @@ export class ChatHubService {
 		});
 	}
 
-	private async ensureValidModel(user: User, model: ChatHubConversationModel, trx?: EntityManager) {
+	private async ensureValidModel(
+		user: User,
+		model: ChatHubConversationModel,
+		manual: boolean,
+		trx?: EntityManager,
+	) {
 		if (model.provider === 'custom-agent') {
 			// Find the agent to get its name
 			const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id, trx);
@@ -336,16 +395,26 @@ export class ChatHubService {
 				model.workflowId,
 				user,
 				['workflow:execute-chat'],
-				{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, em: trx },
+				{
+					includeTags: false,
+					includeParentFolder: false,
+					includeActiveVersion: manual ? false : true,
+					em: trx,
+				},
 			);
 
-			if (!workflowEntity?.activeVersion) {
+			if (!workflowEntity) {
 				throw new BadRequestError('Workflow not found for chat session initialization');
 			}
 
-			const chatTrigger = workflowEntity.activeVersion.nodes?.find(
-				(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
-			);
+			// In manual mode, validate against draft nodes; otherwise use activeVersion
+			const nodes = manual ? workflowEntity.nodes : workflowEntity.activeVersion?.nodes;
+
+			if (!nodes) {
+				throw new BadRequestError('Workflow not found for chat session initialization');
+			}
+
+			const chatTrigger = nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
 
 			if (!chatTrigger) {
 				throw new BadRequestError(
@@ -390,6 +459,7 @@ export class ChatHubService {
 					sessionId,
 					model,
 					credentialId,
+					false,
 					payload.agentName,
 					trx,
 				);
@@ -468,44 +538,16 @@ export class ChatHubService {
 			})),
 		});
 
-		// Check if we should resume a waiting execution instead of starting a new one
-		// This happens when the previous message is in 'waiting' state (Chat node waiting for user input)
-		if (
-			model.provider === 'n8n' &&
-			workflow.responseMode === 'responseNodes' &&
-			previousMessage?.status === 'waiting' &&
-			previousMessage?.executionId
-		) {
-			const execution = await this.executionRepository.findSingleExecution(
-				previousMessage.executionId.toString(),
-				{
-					includeData: true,
-					unflattenData: true,
-				},
-			);
-			if (!execution) {
-				throw new OperationalError('Chat session has expired.');
-			}
-			this.logger.debug(
-				`Resuming execution ${execution.id} from waiting state for session ${sessionId}`,
-			);
-
-			// Mark the waiting AI message as successful before resuming
-			await this.messageRepository.updateChatMessage(previousMessage.id, {
-				status: 'success',
-			});
-
-			void this.chatHubExecutionService.resumeChatExecution(
-				execution,
-				message,
-				sessionId,
-				user,
-				messageId,
-				model,
-				workflow.responseMode,
-			);
-			return;
-		}
+		const resumed = await this.tryResumeWaitingExecution({
+			workflow,
+			previousMessage,
+			message,
+			sessionId,
+			user,
+			messageId,
+			model,
+		});
+		if (resumed) return;
 
 		// Start the workflow execution with streaming
 		void this.executeChatWorkflowWithCleanup(
@@ -519,6 +561,148 @@ export class ChatHubService {
 			credentials,
 			message,
 			processedAttachments,
+		);
+	}
+
+	/**
+	 * Send a human message using the draft (unpublished) version of a workflow.
+	 * Requires workflow:execute permission. Passes pushRef for canvas execution events.
+	 */
+	async sendHumanMessageManual(
+		user: User,
+		payload: HumanMessagePayload,
+		executionMetadata: ChatHubAuthenticationMetadata,
+		pushRef: string,
+	): Promise<void> {
+		const {
+			sessionId,
+			messageId,
+			message,
+			model,
+			credentials,
+			previousMessageId,
+			attachments,
+			timeZone,
+		} = payload;
+		const tz = timeZone ?? this.globalConfig.generic.timezone;
+
+		if (model.provider !== 'n8n') {
+			throw new BadRequestError('Manual execution is only supported for n8n workflow agents');
+		}
+
+		const credentialId = this.getModelCredential(model, credentials);
+
+		let processedAttachments: IBinaryData[] = [];
+		let workflow: PreparedChatWorkflow;
+		let previousMessage: ChatHubMessage | undefined;
+		try {
+			const result = await this.messageRepository.manager.transaction(async (trx) => {
+				let session = await this.getChatSession(user, sessionId, trx);
+				session ??= await this.createChatSession(
+					user,
+					sessionId,
+					model,
+					credentialId,
+					true,
+					payload.agentName,
+					trx,
+				);
+
+				const previousMessage = await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
+				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+				const history = this.buildMessageHistory(messages, previousMessageId);
+
+				processedAttachments = await this.chatHubAttachmentService.store(
+					sessionId,
+					messageId,
+					attachments,
+				);
+
+				await this.messageRepository.createHumanMessage(
+					payload,
+					processedAttachments,
+					user,
+					previousMessageId,
+					model,
+					undefined,
+					trx,
+				);
+
+				const tools = await this.chatHubToolService.getToolDefinitionsForSession(sessionId, trx);
+
+				const replyWorkflow = await this.chatHubWorkflowService.prepareReplyWorkflow(
+					user,
+					sessionId,
+					credentials,
+					model,
+					history,
+					message,
+					tools,
+					processedAttachments,
+					tz,
+					trx,
+					executionMetadata,
+					true, // manual
+				);
+
+				return { workflow: replyWorkflow, previousMessage };
+			});
+			workflow = result.workflow;
+			previousMessage = result.previousMessage;
+		} catch (error) {
+			if (processedAttachments.length > 0) {
+				try {
+					await this.chatHubAttachmentService.deleteAttachments(processedAttachments);
+				} catch {
+					this.errorReporter.warn(`Could not clean up ${processedAttachments.length} files`);
+				}
+			}
+
+			throw error;
+		}
+
+		if (!workflow) {
+			throw new UnexpectedError('Failed to prepare chat workflow.');
+		}
+
+		// Broadcast human message to all user connections for cross-client sync
+		await this.chatStreamService.sendHumanMessage({
+			userId: user.id,
+			sessionId,
+			messageId,
+			previousMessageId,
+			content: message,
+			attachments: processedAttachments.map((a) => ({
+				id: a.id!,
+				fileName: a.fileName ?? 'file',
+				mimeType: a.mimeType,
+			})),
+		});
+
+		const resumed = await this.tryResumeWaitingExecution({
+			workflow,
+			previousMessage,
+			message,
+			sessionId,
+			user,
+			messageId,
+			model,
+		});
+		if (resumed) return;
+
+		// Start the workflow execution with pushRef for canvas events
+		void this.executeChatWorkflowWithCleanup(
+			user,
+			model,
+			workflow,
+			sessionId,
+			messageId,
+			null,
+			previousMessageId,
+			credentials,
+			message,
+			processedAttachments,
+			pushRef,
 		);
 	}
 
@@ -777,6 +961,7 @@ export class ChatHubService {
 		credentials: INodeCredentials,
 		humanMessage: string,
 		processedAttachments: IBinaryData[],
+		pushRef?: string,
 	) {
 		await this.chatHubExecutionService.executeChatWorkflowWithCleanup(
 			user,
@@ -787,6 +972,7 @@ export class ChatHubService {
 			previousMessageId,
 			retryOfMessageId,
 			workflow.responseMode,
+			pushRef,
 		);
 
 		// Generate title for the session on receiving the first human message

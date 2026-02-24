@@ -1,5 +1,6 @@
 import {
 	ChatHubSendMessageRequest,
+	ChatHubManualSendMessageRequest,
 	ChatModelsResponse,
 	ChatHubConversationsResponse,
 	ChatHubConversationResponse,
@@ -146,6 +147,38 @@ export class ChatHubController {
 				userId: req.user.id,
 			},
 			extractAuthenticationMetadata(req),
+		);
+
+		return {
+			status: 'streaming',
+		};
+	}
+
+	/**
+	 * Send a message using the draft (unpublished) workflow version.
+	 * Requires workflow:execute — not available to chat-only users.
+	 * Passes pushRef header so the execution sends canvas events.
+	 */
+	@GlobalScope('workflow:execute')
+	@Post('/conversations/send/manual')
+	async sendMessageManual(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: ChatHubManualSendMessageRequest,
+	): Promise<ChatSendMessageResponse> {
+		const pushRef = req.headers['push-ref'] as string | undefined;
+		if (!pushRef) {
+			throw new BadRequestError('push-ref header is required for manual execution');
+		}
+
+		await this.chatService.sendHumanMessageManual(
+			req.user,
+			{
+				...payload,
+				userId: req.user.id,
+			},
+			extractAuthenticationMetadata(req),
+			pushRef,
 		);
 
 		return {
