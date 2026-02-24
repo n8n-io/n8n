@@ -557,8 +557,6 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 
 		currentCredential.value = currentCredentials;
 
-		console.log(currentCredentials);
-
 		credentialData.value = removePropertiesWithEmptyStrings(
 			(currentCredentials.data as ICredentialDataDecryptedObject) || {},
 		);
