@@ -196,7 +196,7 @@ describe('Start - AuthRolesService initialization', () => {
 			expect(authRolesService.init).not.toHaveBeenCalled();
 		});
 
-		it('should NOT initialize AuthRolesService when instanceType is main, multi-main enabled, but NOT leader', async () => {
+		it('should initialize AuthRolesService when instanceType is main, multi-main enabled, but NOT leader (advisory lock serializes)', async () => {
 			setupInstanceSettings('main', true, false);
 			// @ts-expect-error - Accessing protected property for testing
 			start.globalConfig = {
@@ -218,7 +218,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 			await start.init();
 
-			expect(authRolesService.init).not.toHaveBeenCalled();
+			expect(authRolesService.init).toHaveBeenCalledTimes(1);
 		});
 	});
 });
