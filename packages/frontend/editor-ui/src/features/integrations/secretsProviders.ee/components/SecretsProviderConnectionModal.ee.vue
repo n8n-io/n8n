@@ -36,7 +36,7 @@ import ProjectSharing from '@/features/collaboration/projects/components/Project
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import Banner from '@/app/components/Banner.vue';
 
 // Props
@@ -65,23 +65,11 @@ const { confirm } = useMessage();
 const eventBus = createEventBus();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
-const { check: checkDevFeatureFlag } = useEnvFeatureFlag();
-const isProjectScopedSecretsEnabled = checkDevFeatureFlag.value('EXTERNAL_SECRETS_FOR_PROJECTS');
+const settingsStore = useSettingsStore();
 
 // Constants
 const LABEL_SIZE: IParameterLabel = { size: 'medium' };
 const internalActiveTab = ref(props.data?.activeTab ?? 'connection');
-const ACTIVE_TAB = computed({
-	get: () => (isProjectScopedSecretsEnabled ? internalActiveTab.value : 'connection'),
-	set: (value) => {
-		if (isProjectScopedSecretsEnabled) {
-			// Additional frontend validation to ensure that other
-			// tabs than 'connection' are only accessible when project-scoped secrets
-			// are enabled.
-			internalActiveTab.value = value;
-		}
-	},
-});
 
 // Modal state
 const providerTypes = computed(() => props.data.providerTypes ?? []);
@@ -94,6 +82,22 @@ const modal = useConnectionModal({
 	providerKey,
 	existingProviderNames,
 	projectId: projectId.value,
+});
+
+const tabNavigationEnabled =
+	(settingsStore.moduleSettings['external-secrets']?.forProjects ?? false) &&
+	modal.canShareGlobally.value;
+
+const ACTIVE_TAB = computed({
+	get: () => (tabNavigationEnabled ? internalActiveTab.value : 'connection'),
+	set: (value) => {
+		if (tabNavigationEnabled) {
+			// Additional frontend validation to ensure that other
+			// tabs than 'connection' are only accessible when project-scoped secrets
+			// are enabled and the user has global update permission.
+			internalActiveTab.value = value;
+		}
+	},
 });
 
 const sidebarItems = computed(() => {
