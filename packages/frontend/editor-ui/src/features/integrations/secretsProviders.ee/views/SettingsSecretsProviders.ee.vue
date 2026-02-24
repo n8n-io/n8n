@@ -39,6 +39,10 @@ const uiStore = useUIStore();
 
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
 
+const sortedProviders = computed(() => {
+	return [...secretsProviders.activeProviders.value].sort((a, b) => a.name.localeCompare(b.name));
+});
+
 function getProjectForProvider(provider: SecretProviderConnection): ProjectListItem | null {
 	if (!provider || provider.projects.length === 0) return null;
 
@@ -196,7 +200,7 @@ function goToUpgrade() {
 			/>
 			<div v-else>
 				<SecretsProviderConnectionCard
-					v-for="provider in secretsProviders.activeProviders.value"
+					v-for="provider in sortedProviders"
 					:key="provider.name"
 					class="mb-2xs"
 					:provider="provider"

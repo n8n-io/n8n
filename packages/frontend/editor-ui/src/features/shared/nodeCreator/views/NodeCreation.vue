@@ -153,6 +153,7 @@ function openCommandBar(event: MouseEvent) {
 				variant="subtle"
 				size="large"
 				icon="plus"
+				:aria-label="i18n.baseText('nodeView.openNodesPanel')"
 				data-test-id="node-creator-plus-button"
 				@click="openNodeCreator"
 			/>
@@ -166,6 +167,7 @@ function openCommandBar(event: MouseEvent) {
 				variant="subtle"
 				size="large"
 				icon="search"
+				:aria-label="i18n.baseText('nodeView.openCommandBar')"
 				data-test-id="command-bar-button"
 				@click="openCommandBar"
 			/>
@@ -179,6 +181,7 @@ function openCommandBar(event: MouseEvent) {
 				variant="subtle"
 				size="large"
 				icon="sticky-note"
+				:aria-label="i18n.baseText('nodeView.addStickyHint')"
 				data-test-id="add-sticky-button"
 				@click="addStickyNote"
 			/>
@@ -192,7 +195,7 @@ function openCommandBar(event: MouseEvent) {
 				variant="subtle"
 				size="large"
 				icon="panel-right"
-				:class="focusPanelActive ? $style.activeButton : ''"
+				:aria-label="sidePanelTooltip"
 				:active="focusPanelActive"
 				data-test-id="toggle-focus-panel-button"
 				@click="toggleFocusPanel"
@@ -204,6 +207,7 @@ function openCommandBar(event: MouseEvent) {
 				variant="subtle"
 				iconOnly
 				size="large"
+				:aria-label="i18n.baseText('aiAssistant.tooltip')"
 				:class="$style.icon"
 				data-test-id="ask-assistant-canvas-action-button"
 				@click="onAskAssistantButtonClick"
@@ -245,9 +249,5 @@ function openCommandBar(event: MouseEvent) {
 	svg {
 		display: block;
 	}
-}
-
-.activeButton {
-	background-color: var(--button--color--background--hover) !important;
 }
 </style>

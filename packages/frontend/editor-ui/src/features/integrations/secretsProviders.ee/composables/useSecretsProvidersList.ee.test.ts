@@ -74,9 +74,7 @@ describe('useSecretsProvidersList', () => {
 				},
 			];
 
-			vi.mocked(secretsProviderApi.getSecretProviderTypes).mockResolvedValue(
-				mockProviderTypes as SecretProviderTypeResponse[],
-			);
+			vi.mocked(secretsProviderApi.getSecretProviderTypes).mockResolvedValue(mockProviderTypes);
 
 			const { fetchProviderTypes, providerTypes, isLoading } = useSecretsProvidersList();
 
@@ -116,7 +114,6 @@ describe('useSecretsProvidersList', () => {
 				name: 'aws-prod',
 				type: 'awsSecretsManager',
 				state: 'connected',
-				isEnabled: true,
 				projects: [],
 				settings: {},
 				secretsCount: 5,
@@ -129,7 +126,6 @@ describe('useSecretsProvidersList', () => {
 				name: 'gcp-staging',
 				type: 'gcpSecretsManager',
 				state: 'connected',
-				isEnabled: true,
 				projects: [],
 				settings: {},
 				secretsCount: 3,
@@ -176,7 +172,6 @@ describe('useSecretsProvidersList', () => {
 				name: 'aws-prod',
 				type: 'awsSecretsManager',
 				state: 'connected',
-				isEnabled: true,
 				projects: [],
 				settings: {},
 				secretsCount: 5,
@@ -189,7 +184,6 @@ describe('useSecretsProvidersList', () => {
 				name: 'gcp-staging',
 				type: 'gcpSecretsManager',
 				state: 'connected',
-				isEnabled: true,
 				projects: [],
 				settings: {},
 				secretsCount: 3,
@@ -232,7 +226,6 @@ describe('useSecretsProvidersList', () => {
 				name: 'unknown-provider',
 				type: 'vault',
 				state: 'connected',
-				isEnabled: true,
 				projects: [],
 				settings: {},
 				secretsCount: 1,
@@ -267,7 +260,6 @@ describe('useSecretsProvidersList', () => {
 					name: 'alpha',
 					type: 'awsSecretsManager',
 					state: 'connected',
-					isEnabled: true,
 					projects: [],
 					settings: {},
 					secretsCount: 5,
@@ -280,7 +272,6 @@ describe('useSecretsProvidersList', () => {
 					name: 'zulu',
 					type: 'gcpSecretsManager',
 					state: 'connected',
-					isEnabled: true,
 					projects: [],
 					settings: {},
 					secretsCount: 3,
@@ -293,7 +284,6 @@ describe('useSecretsProvidersList', () => {
 					name: 'bravo',
 					type: 'azureKeyVault',
 					state: 'connected',
-					isEnabled: true,
 					projects: [],
 					settings: {},
 					secretsCount: 2,

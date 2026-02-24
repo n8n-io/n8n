@@ -7,10 +7,21 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import { faker } from '@faker-js/faker';
+import { shallowRef } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
+	...(await importOriginal()),
+	injectWorkflowDocumentStore: vi.fn(),
+}));
 import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	NodeConnectionTypes,
@@ -33,8 +44,10 @@ describe('useContextMenu', () => {
 	let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let documentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	const nodes = [nodeFactory(), nodeFactory(), nodeFactory()];
 	const selectedNodes = nodes.slice(0, 2);
+	const testWorkflowId = 'test-workflow-id';
 
 	beforeAll(() => {
 		setActivePinia(createPinia());
@@ -47,8 +60,11 @@ describe('useContextMenu', () => {
 		vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(false);
 
 		workflowsStore = useWorkflowsStore();
+		workflowsStore.workflow.id = testWorkflowId;
 		workflowsStore.workflow.nodes = nodes;
 		workflowsStore.workflow.scopes = ['workflow:update'];
+		documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(documentStore));
 		workflowsStore.workflowObject = {
 			nodes,
 			getNode: (_: string) => {
@@ -219,7 +235,7 @@ describe('useContextMenu', () => {
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 			const webhookNode = nodeFactory({ type: WEBHOOK_NODE_TYPE, webhookId: 'test-webhook' });
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(webhookNode);
-			workflowsStore.workflow.active = false;
+			documentStore.setActiveState({ activeVersionId: null, activeVersion: null });
 
 			open(mockEvent, { source: 'node-right-click', nodeId: webhookNode.id });
 
@@ -239,7 +255,7 @@ describe('useContextMenu', () => {
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 			const webhookNode = nodeFactory({ type: WEBHOOK_NODE_TYPE, webhookId: 'test-webhook' });
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(webhookNode);
-			workflowsStore.workflow.active = true;
+			documentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
 
 			open(mockEvent, { source: 'node-right-click', nodeId: webhookNode.id });
 
@@ -264,7 +280,7 @@ describe('useContextMenu', () => {
 				webhookId: 'chat-webhook',
 			});
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(chatTriggerNode);
-			workflowsStore.workflow.active = false;
+			documentStore.setActiveState({ activeVersionId: null, activeVersion: null });
 
 			open(mockEvent, { source: 'node-right-click', nodeId: chatTriggerNode.id });
 
@@ -285,7 +301,7 @@ describe('useContextMenu', () => {
 				webhookId: 'chat-webhook',
 			});
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(chatTriggerNode);
-			workflowsStore.workflow.active = true;
+			documentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
 
 			open(mockEvent, { source: 'node-right-click', nodeId: chatTriggerNode.id });
 
@@ -305,7 +321,7 @@ describe('useContextMenu', () => {
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 			const regularNode = nodeFactory({ type: NO_OP_NODE_TYPE });
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(regularNode);
-			workflowsStore.workflow.active = true;
+			documentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
 
 			open(mockEvent, { source: 'node-right-click', nodeId: regularNode.id });
 
