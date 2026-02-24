@@ -115,19 +115,28 @@ function cloneChartToHost(repo: string, ref: string): string {
 	return dir;
 }
 
+// -- Example values file selection --------------------------------------------
+
+const EXAMPLE_VALUES_FILES: Record<HelmStackMode, string> = {
+	standalone: 'standalone.yaml',
+	queue: 'minimal.yaml',
+};
+
+function getExampleValuesFile(chartDir: string, mode: HelmStackMode): string {
+	return join(chartDir, 'examples', EXAMPLE_VALUES_FILES[mode]);
+}
+
 // -- Helm install flags -------------------------------------------------------
 
 function buildHelmSetFlags(imageName: string, mode: HelmStackMode, baseUrl: string): string[] {
 	const [repository, tag = 'latest'] = imageName.split(':');
 
-	// Only override what differs from the chart's values.yaml defaults
+	// Dynamic overrides on top of the example values file (-f).
+	// Mode-specific config (database type, queue settings, etc.) comes from the example file.
 	const flags = [
 		// Image
 		`--set image.repository=${repository}`,
 		`--set image.tag=${tag}`,
-		// Secrets (chart defaults are placeholder values)
-		'--set secretRefs.env.N8N_ENCRYPTION_KEY=test-encryption-key-for-e2e-testing',
-		'--set secretRefs.env.N8N_HOST=localhost',
 		// E2E-specific env vars (--set-string because K8s env values must be strings)
 		'--set config.extraEnv[0].name=E2E_TESTS --set-string config.extraEnv[0].value=true',
 		'--set config.extraEnv[1].name=NODE_ENV --set-string config.extraEnv[1].value=development',
@@ -161,21 +170,30 @@ function buildHelmSetFlags(imageName: string, mode: HelmStackMode, baseUrl: stri
 	}
 
 	if (mode === 'standalone') {
-		// Chart defaults to queue mode — override for standalone
-		flags.push(
-			'--set queueMode.enabled=false',
-			'--set database.type=sqlite',
-			'--set database.useExternal=false',
-			'--set redis.enabled=false',
-			'--set persistence.enabled=true',
-			'--set persistence.size=1Gi',
-		);
+		// Override persistence size (example uses 5Gi, we need less for tests)
+		flags.push('--set persistence.size=1Gi');
 	} else {
-		// Queue mode: only override the hosts to point at our Bitnami services
-		flags.push('--set database.host=postgresql', '--set redis.host=redis-master');
+		// Override placeholder hosts to point at our Bitnami services
+		flags.push(
+			'--set database.host=postgresql',
+			'--set redis.host=redis-master',
+			// Example file references n8n-core-secrets, we use n8n-secrets
+			'--set secretRefs.existingSecret=n8n-secrets',
+		);
 	}
 
 	return flags;
+}
+
+// -- K8s secrets --------------------------------------------------------------
+
+function createN8nSecret(env: NodeJS.ProcessEnv): void {
+	log('Creating n8n core secrets...');
+	run(
+		'kubectl create secret generic n8n-secrets --from-literal=N8N_ENCRYPTION_KEY=test-encryption-key-for-e2e-testing --from-literal=N8N_HOST=localhost --from-literal=N8N_PORT=5678 --from-literal=N8N_PROTOCOL=http',
+		env,
+		'Create n8n core secrets',
+	);
 }
 
 // -- Queue mode infrastructure ------------------------------------------------
@@ -205,7 +223,7 @@ function deployQueueInfrastructure(env: NodeJS.ProcessEnv): void {
 	log('Redis deployed');
 
 	run(
-		'kubectl create secret generic n8n-db-password --from-literal=password=n8n-test-password',
+		'kubectl create secret generic n8n-db-secret --from-literal=password=n8n-test-password',
 		env,
 		'Create DB password secret',
 	);
@@ -285,22 +303,27 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		// Step 5: Download chart to host
 		chartDir = cloneChartToHost(helmChartRepo, helmChartRef);
 
-		// Step 6: Deploy queue infrastructure if needed
+		// Step 6: Create n8n core secrets (encryption key, host config)
+		createN8nSecret(env);
+
+		// Step 7: Deploy queue infrastructure if needed
 		if (mode === 'queue') {
 			deployQueueInfrastructure(env);
 		}
 
-		// Step 7: Install n8n chart with WEBHOOK_URL baked in (no post-install rollout needed)
+		// Step 8: Install n8n chart using published example values file + dynamic overrides
 		log('Installing Helm chart (this may take a few minutes)...');
+		const valuesFile = getExampleValuesFile(chartDir, mode);
 		const setFlags = buildHelmSetFlags(n8nImage, mode, baseUrl).join(' ');
+		log(`Using values file: ${valuesFile}`);
 		const helmOutput = run(
-			`helm install n8n "${chartDir}/charts/n8n" ${setFlags} --wait --timeout 5m`,
+			`helm install n8n "${chartDir}/charts/n8n" -f "${valuesFile}" ${setFlags} --wait --timeout 5m`,
 			env,
 			'Helm install',
 		);
 		log(`Helm install complete:\n${helmOutput.trim()}`);
 
-		// Step 8: Patch service to NodePort so traffic goes through K3s's exposed port
+		// Step 9: Patch service to NodePort so traffic goes through K3s's exposed port
 		// (bypasses kubectl port-forward which silently breaks after many connections)
 		log(`Patching n8n service to NodePort ${N8N_NODE_PORT}...`);
 		run(
@@ -309,7 +332,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 			'Patch service to NodePort',
 		);
 
-		// Step 9: Poll health endpoint
+		// Step 10: Poll health endpoint
 		log(`Polling ${baseUrl}/healthz/readiness...`);
 		await pollHealthEndpoint(baseUrl, Math.min(startupTimeoutMs, 120_000));
 		log(`n8n is ready at ${baseUrl}`);
