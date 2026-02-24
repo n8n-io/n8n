@@ -1,6 +1,8 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { RedactionService } from '../redaction.service.ee';
+
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+
+import { RedactionService } from '../redaction.service.ee';
 
 function createProperty(name: string, isPassword = false): INodeProperties {
 	return {
@@ -45,7 +47,23 @@ describe('RedactionService', () => {
 			});
 		});
 
-		it('should NOT redact expressions starting with =', () => {
+		it('should NOT redact text starting with ={{', () => {
+			const data = {
+				apiKey: '={{ someExpression }}',
+				password: 'plainValue',
+			};
+
+			const properties = [createProperty('apiKey', true), createProperty('password', true)];
+
+			const result = service.redact(data, properties);
+
+			expect(result).toEqual({
+				apiKey: '={{ someExpression }}',
+				password: CREDENTIAL_BLANKING_VALUE,
+			});
+		});
+
+		it('should redact text starting with =', () => {
 			const data = {
 				apiKey: '=someExpression',
 				password: 'plainValue',
@@ -56,7 +74,7 @@ describe('RedactionService', () => {
 			const result = service.redact(data, properties);
 
 			expect(result).toEqual({
-				apiKey: '=someExpression',
+				apiKey: CREDENTIAL_BLANKING_VALUE,
 				password: CREDENTIAL_BLANKING_VALUE,
 			});
 		});
