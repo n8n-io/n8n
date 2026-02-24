@@ -188,6 +188,31 @@ const getDataTableSize = computed(() => {
 	}
 }
 
+.cardActions,
+.card-actions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	flex-direction: row;
+	justify-content: center;
+	align-items: center;
+	align-self: stretch;
+	padding: 0 var(--spacing--sm) 0 0;
+	cursor: default;
+}
+
+.cardBadge {
+	background-color: var(--color--background--light-3);
+}
+
+.cardBadge.with-breadcrumbs {
+	:global(.n8n-badge) {
+		padding-right: 0;
+	}
+	:global(.n8n-breadcrumbs) {
+		padding-left: var(--spacing--5xs);
+	}
+}
+
 @include mixins.breakpoint('sm-and-down') {
 	.card {
 		flex-wrap: wrap;
