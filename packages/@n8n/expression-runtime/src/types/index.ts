@@ -21,7 +21,6 @@ export type {
 	TracesAPI,
 	Span,
 	LogsAPI,
-	TournamentHooks,
 } from './evaluator';
 
 export {
