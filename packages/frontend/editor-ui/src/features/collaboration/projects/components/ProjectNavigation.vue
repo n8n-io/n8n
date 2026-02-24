@@ -4,7 +4,7 @@ import { VIEWS } from '@/app/constants';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { type IconName, N8nIcon, N8nMenuItem, N8nText } from '@n8n/design-system';
+import { N8nMenuItem, N8nText } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeMount, onBeforeUnmount } from 'vue';
@@ -13,6 +13,7 @@ import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
+import FavoritesSidebarCompact from './FavoritesSidebarCompact.vue';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -127,7 +128,6 @@ const favoriteDataTableItems = computed<IMenuItem[]>(() =>
 
 type FavoriteGroup = {
 	type: string;
-	icon: IconName;
 	items: IMenuItem[];
 	showIndividualIcons: boolean;
 };
@@ -138,7 +138,6 @@ const favoriteGroups = computed<FavoriteGroup[]>(() => {
 	if (favoriteProjectItems.value.length > 0) {
 		groups.push({
 			type: 'project',
-			icon: 'layers' as IconName,
 			items: favoriteProjectItems.value,
 			showIndividualIcons: true,
 		});
@@ -146,7 +145,6 @@ const favoriteGroups = computed<FavoriteGroup[]>(() => {
 	if (favoriteWorkflowItems.value.length > 0) {
 		groups.push({
 			type: 'workflow',
-			icon: 'log-in' as IconName,
 			items: favoriteWorkflowItems.value,
 			showIndividualIcons: false,
 		});
@@ -154,7 +152,6 @@ const favoriteGroups = computed<FavoriteGroup[]>(() => {
 	if (favoriteDataTableItems.value.length > 0) {
 		groups.push({
 			type: 'dataTable',
-			icon: 'table' as IconName,
 			items: favoriteDataTableItems.value,
 			showIndividualIcons: false,
 		});
@@ -162,13 +159,7 @@ const favoriteGroups = computed<FavoriteGroup[]>(() => {
 	return groups;
 });
 
-const allFavoriteItems = computed<IMenuItem[]>(() => [
-	...favoriteProjectItems.value,
-	...favoriteWorkflowItems.value,
-	...favoriteDataTableItems.value,
-]);
-
-const hasFavorites = computed(() => allFavoriteItems.value.length > 0);
+const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 
 const activeTabId = computed(() => {
 	return (
@@ -249,47 +240,26 @@ onBeforeUnmount(() => {
 				{{ locale.baseText('favorites.menu.title') }}
 			</N8nText>
 			<div :class="$style.projectItems">
-				<!-- Expanded: grouped layout -->
+				<!-- Expanded: flat list, icon hidden (but space preserved) on non-first items per group -->
 				<template v-if="!props.collapsed">
 					<template v-for="(group, groupIndex) in favoriteGroups" :key="group.type">
 						<div v-if="groupIndex > 0" :class="$style.groupSpacer" />
-						<!-- Projects: each item keeps its own icon -->
-						<template v-if="group.showIndividualIcons">
-							<N8nMenuItem
-								v-for="item in group.items"
-								:key="item.id"
-								:item="item"
-								:compact="false"
-								:active="activeTabId === item.id"
-							/>
-						</template>
-						<!-- Workflows / data tables: standalone group icon + icon-less items -->
-						<div v-else :class="$style.favoriteGroup">
-							<div :class="$style.groupIcon">
-								<N8nIcon :icon="group.icon" size="medium" />
-							</div>
-							<div :class="$style.groupItems">
-								<N8nMenuItem
-									v-for="item in group.items"
-									:key="item.id"
-									:item="{ ...item, icon: undefined }"
-									:compact="false"
-									:active="activeTabId === item.id"
-								/>
-							</div>
-						</div>
+						<N8nMenuItem
+							v-for="(item, itemIndex) in group.items"
+							:key="item.id"
+							:item="
+								!group.showIndividualIcons && itemIndex > 0
+									? { ...item, icon: { type: 'icon', value: '' } as IMenuItem['icon'] }
+									: item
+							"
+							:compact="false"
+							:active="activeTabId === item.id"
+						/>
 					</template>
 				</template>
-				<!-- Collapsed: flat list, icons on all items -->
+				<!-- Collapsed: single star trigger with hover popover -->
 				<template v-else>
-					<N8nMenuItem
-						v-for="item in allFavoriteItems"
-						:key="item.id"
-						:class="$style.collapsed"
-						:item="item"
-						:compact="true"
-						:active="activeTabId === item.id"
-					/>
+					<FavoritesSidebarCompact />
 				</template>
 			</div>
 		</template>
@@ -388,28 +358,5 @@ onBeforeUnmount(() => {
 
 .groupSpacer {
 	height: var(--spacing--4xs);
-}
-
-.favoriteGroup {
-	display: flex;
-	align-items: flex-start;
-}
-
-.groupIcon {
-	// Same width as N8nMenuItem's icon slot; same height as one menu item row
-	// (icon height: --spacing--lg=24px + top/bottom padding: 2×--spacing--4xs=8px)
-	width: var(--spacing--lg);
-	height: calc(var(--spacing--lg) + 2 * var(--spacing--4xs));
-	flex-shrink: 0;
-	margin-right: var(--spacing--4xs);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--color--text--tint-1);
-}
-
-.groupItems {
-	flex: 1;
-	min-width: 0;
 }
 </style>
