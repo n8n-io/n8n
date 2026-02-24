@@ -123,7 +123,7 @@ const EXAMPLE_VALUES_FILES: Record<HelmStackMode, string> = {
 };
 
 function getExampleValuesFile(chartDir: string, mode: HelmStackMode): string {
-	return join(chartDir, 'examples', EXAMPLE_VALUES_FILES[mode]);
+	return join(chartDir, 'charts', 'n8n', 'examples', EXAMPLE_VALUES_FILES[mode]);
 }
 
 // -- Helm install flags -------------------------------------------------------
