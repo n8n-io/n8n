@@ -1,4 +1,4 @@
-import { nextTick, reactive } from 'vue';
+import { computed, nextTick, reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import type { MockInstance } from 'vitest';
 import { waitFor, within } from '@testing-library/vue';
@@ -8,6 +8,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import WorkflowSettingsVue from '@/app/components/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -58,6 +59,9 @@ let searchWorkflowsSpy: MockInstance<(typeof workflowsListStore)['searchWorkflow
 
 const createComponent = createComponentRenderer(WorkflowSettingsVue, {
 	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => '1'),
+		},
 		stubs: {
 			Modal: {
 				template:
