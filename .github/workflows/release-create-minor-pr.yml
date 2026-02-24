@@ -1,0 +1,17 @@
+name: 'Release: Create Minor Release PR'
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 13 * * 1
+
+jobs:
+  create-release-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create a Release PR for Minor Release
+        uses: ./.github/workflows/release-create-pr.yml
+        with:
+          base-branch: master
+          release-type: minor
