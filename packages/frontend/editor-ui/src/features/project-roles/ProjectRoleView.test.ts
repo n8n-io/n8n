@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor, type RenderResult } from '@testing-library/vue';
 import { VIEWS } from '@/app/constants';
 import { useRolesStore } from '@/app/stores/roles.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import ProjectRoleView from './ProjectRoleView.vue';
 
@@ -13,16 +14,6 @@ const mockShowMessage = vi.fn();
 const mockPush = vi.fn();
 const mockReplace = vi.fn();
 const mockBack = vi.fn();
-const mockFeatureFlagCheck = vi.fn().mockReturnValue(false);
-
-vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
-	useEnvFeatureFlag: vi.fn(() => ({
-		check: {
-			value: mockFeatureFlagCheck,
-		},
-	})),
-}));
-
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showError: mockShowError,
@@ -102,6 +93,7 @@ const mockSystemRoles = [
 ];
 
 let rolesStore: MockedStore<typeof useRolesStore>;
+let settingsStore: MockedStore<typeof useSettingsStore>;
 
 // Test utilities
 const getFormElements = (container: Element) => ({
@@ -162,6 +154,7 @@ describe('ProjectRoleView', () => {
 
 		createTestingPinia();
 		rolesStore = mockedStore(useRolesStore);
+		settingsStore = mockedStore(useSettingsStore);
 
 		rolesStore.fetchRoles.mockResolvedValue();
 
@@ -501,24 +494,23 @@ describe('ProjectRoleView', () => {
 	});
 
 	describe('External Secrets Scopes', () => {
-		it('should not render externalSecretsProvider scope type when feature flag is off', () => {
-			mockFeatureFlagCheck.mockReturnValue(false);
+		it('should not render externalSecretsProvider scope type when forProjects is off', () => {
 			const { queryByText } = renderComponent();
 
 			expect(queryByText('Secret stores')).not.toBeInTheDocument();
 			expect(queryByText('Secrets')).not.toBeInTheDocument();
 		});
 
-		it('should render externalSecretsProvider scope type when feature flag is on', () => {
-			mockFeatureFlagCheck.mockReturnValue(true);
+		it('should render externalSecretsProvider scope type when forProjects is on', () => {
+			settingsStore.moduleSettings = { 'external-secrets': { forProjects: true } };
 			const { getByText } = renderComponent();
 
 			expect(getByText('Secret stores')).toBeInTheDocument();
 			expect(getByText('Secrets')).toBeInTheDocument();
 		});
 
-		it('should show secrets checkboxes when feature flag is on', async () => {
-			mockFeatureFlagCheck.mockReturnValue(true);
+		it('should show secrets checkboxes when forProjects is on', async () => {
+			settingsStore.moduleSettings = { 'external-secrets': { forProjects: true } };
 			const { getByTestId } = renderComponent();
 
 			await waitFor(() =>

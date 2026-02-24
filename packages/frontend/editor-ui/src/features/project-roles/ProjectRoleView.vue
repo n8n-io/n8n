@@ -14,7 +14,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useAsyncState } from '@vueuse/core';
 import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
@@ -29,7 +29,7 @@ const { showError, showMessage } = useToast();
 const i18n = useI18n();
 const message = useMessage();
 const telemetry = useTelemetry();
-const envFeatureFlag = useEnvFeatureFlag();
+const settingsStore = useSettingsStore();
 
 const props = defineProps<{ roleSlug?: string }>();
 
@@ -113,7 +113,7 @@ function resetForm(payload: Role | undefined) {
 }
 
 const scopeTypes = computed(() => {
-	if (!envFeatureFlag.check.value('EXTERNAL_SECRETS_FOR_PROJECTS')) {
+	if (!settingsStore.moduleSettings['external-secrets']?.forProjects) {
 		return SCOPE_TYPES.filter(
 			(type) => type !== 'externalSecretsProvider' && type !== 'externalSecret',
 		);
