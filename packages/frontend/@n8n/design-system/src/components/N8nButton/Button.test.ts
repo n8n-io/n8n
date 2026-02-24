@@ -82,7 +82,7 @@ describe('components', () => {
 
 		describe('props', () => {
 			describe('variant', () => {
-				it.each(['solid', 'subtle', 'ghost', 'outline', 'destructive'] as const)(
+				it.each(['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'] as const)(
 					'should render %s variant',
 					(variant) => {
 						const wrapper = render(N8nButton, {
