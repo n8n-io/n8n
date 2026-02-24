@@ -8,12 +8,6 @@ import type {
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
 
-export const getSecretProviderTypes = async (
-	context: IRestApiContext,
-): Promise<SecretProviderTypeResponse[]> => {
-	return await makeRestApiRequest(context, 'GET', '/secret-providers/types');
-};
-
 export const getSecretProviderConnections = async (
 	context: IRestApiContext,
 ): Promise<SecretProviderConnection[]> => {
