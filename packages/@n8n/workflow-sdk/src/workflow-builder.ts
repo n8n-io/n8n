@@ -1086,6 +1086,13 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 										this.addSingleNodeConnectionTargets(nodes, targetChainNode);
 									}
 								}
+							} else if (registry.isCompositeType(target)) {
+								// Only dispatch if the composite's head node isn't already in the graph
+								// (avoids re-dispatching composites already handled by the allNodes loop above)
+								const compositeHeadName = this.resolveTargetNodeName(target, effectiveNameMapping);
+								if (!compositeHeadName || !nodes.has(compositeHeadName)) {
+									this.tryPluginDispatch(nodes, target, effectiveNameMapping);
+								}
 							} else if (
 								typeof (target as NodeInstance<string, string, unknown>).name === 'string' &&
 								!nodes.has((target as NodeInstance<string, string, unknown>).name)
