@@ -190,7 +190,7 @@ defineExpose({ markInteracted });
 	color: var(--color--text--tint-1);
 	display: flex;
 	justify-content: center;
-	width: 16px;
+	width: var(--spacing--sm);
 }
 
 .footer {
