@@ -10,8 +10,9 @@ import {
 } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
-import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { useScroll } from '@vueuse/core';
+import { N8nButton, N8nIconButton, N8nScrollArea, N8nText, N8nTooltip } from '@n8n/design-system';
+import { useClipboard, useScroll } from '@vueuse/core';
+import { useToast } from '@/app/composables/useToast';
 import type { ChatHubSendMessageRequest, ChatModelDto, ChatSessionId } from '@n8n/api-types';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useChatStore } from '../chat.store';
@@ -23,6 +24,7 @@ import ChatMessage from './ChatMessage.vue';
 import ChatPrompt from './ChatPrompt.vue';
 import ChatGreetings from './ChatGreetings.vue';
 import ChatAgentAvatar from './ChatAgentAvatar.vue';
+import CanvasChatSessionDropdown from './CanvasChatSessionDropdown.vue';
 import type { ChatMessage as ChatMessageType, MessagingState } from '../chat.types';
 
 const emit = defineEmits<{
@@ -33,6 +35,8 @@ const i18n = useI18n();
 const chatStore = useChatStore();
 const workflowsStore = useWorkflowsStore();
 const chatPanelStore = useChatPanelStore();
+const clipboard = useClipboard();
+const toast = useToast();
 
 // Session management - one session per panel instance, keyed to the workflow
 const sessionId = ref<ChatSessionId>(uuidv4());
@@ -77,6 +81,51 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
 const isResponding = computed(() => chatStore.isResponding(sessionId.value));
 const isNewSession = computed(() => chatMessages.value.length === 0);
+
+const sessionTitle = computed(() => {
+	const session = chatStore.sessions.byId[sessionId.value];
+	return session?.title && session.title !== 'New Chat'
+		? session.title
+		: i18n.baseText('chatHub.canvas.session.newChat');
+});
+
+const sessionIdText = computed(() =>
+	i18n.baseText('chat.window.session.id', {
+		interpolate: { id: `${sessionId.value.slice(0, 5)}...` },
+	}),
+);
+
+async function copySessionId() {
+	await clipboard.copy(sessionId.value);
+	toast.showMessage({
+		title: i18n.baseText('generic.copiedToClipboard'),
+		message: '',
+		type: 'success',
+	});
+}
+
+function handleNewSession() {
+	sessionId.value = uuidv4();
+}
+
+async function handleSelectSession(selectedSessionId: ChatSessionId) {
+	sessionId.value = selectedSessionId;
+	if (!chatStore.getConversation(selectedSessionId)) {
+		try {
+			await chatStore.fetchMessages(selectedSessionId);
+			const result = await chatStore.reconnectToStream(selectedSessionId, 0);
+			if (result?.hasActiveStream && result.currentMessageId) {
+				chatPushHandler.initializeStreamState(
+					selectedSessionId,
+					result.currentMessageId,
+					result.lastSequenceNumber,
+				);
+			}
+		} catch {
+			sessionId.value = uuidv4();
+		}
+	}
+}
 
 const messagingState = computed<MessagingState>(() => {
 	if (chatStore.streaming?.sessionId === sessionId.value) {
@@ -181,8 +230,41 @@ defineExpose({ focusInput });
 				<span :class="$style.previewBadge">
 					{{ i18n.baseText('chatHub.canvas.previewBadge') }}
 				</span>
+				<CanvasChatSessionDropdown
+					:session-id="sessionId"
+					:session-title="sessionTitle"
+					:workflow-id="workflowsStore.workflowId"
+					@select-session="handleSelectSession"
+				/>
 			</div>
 			<div :class="$style.headerActions">
+				<N8nTooltip placement="bottom">
+					<template #content>
+						{{ sessionId }}
+						<br />
+						{{ i18n.baseText('chat.window.session.id.copy') }}
+					</template>
+					<N8nButton
+						variant="ghost"
+						size="xsmall"
+						data-test-id="canvas-chat-session-id"
+						@click="copySessionId"
+					>
+						{{ sessionIdText }}
+					</N8nButton>
+				</N8nTooltip>
+				<N8nTooltip placement="bottom">
+					<template #content>
+						{{ i18n.baseText('chat.window.session.resetSession') }}
+					</template>
+					<N8nIconButton
+						icon="undo-2"
+						variant="ghost"
+						size="small"
+						data-test-id="canvas-chat-hub-new-session"
+						@click="handleNewSession"
+					/>
+				</N8nTooltip>
 				<N8nIconButton
 					:icon="chatPanelStore.isFullscreen ? 'minimize-2' : 'expand'"
 					variant="ghost"
@@ -267,10 +349,10 @@ defineExpose({ focusInput });
 }
 
 .header {
+	height: 65px; // same as header height in editor
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	height: 65px;
 	padding: 0 var(--spacing--sm);
 	background-color: var(--color--background--light-3);
 	border-bottom: var(--border);
