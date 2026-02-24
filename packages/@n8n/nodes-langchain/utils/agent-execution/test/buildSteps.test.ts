@@ -715,6 +715,130 @@ describe('buildSteps', () => {
 		});
 	});
 
+	describe('Agent configuration toggles (saveAIAnnouncements & saveToolCallingInformation)', () => {
+		it('should include both announcement and tool calling info by default if options are missing', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								announcement: 'Calculating 2+2 now.',
+							},
+						},
+						data: {
+							data: { ai_tool: [] },
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+			const messageLog = result[0].action.messageLog;
+			expect(messageLog).toBeDefined();
+			expect(messageLog![0].content).toContain('[Announcement] Calculating 2+2 now.');
+			expect(messageLog![0].content).toContain('Calling Calculator with input:');
+		});
+
+		it('should respect saveAnnouncements and saveCalling toggles when streaming is on', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								announcement: 'Calculating 2+2 now.',
+								options: {
+									enableStreaming: true,
+									saveAnnouncements: false,
+									saveCalling: false,
+								},
+							},
+						},
+						data: {
+							data: { ai_tool: [] },
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+			const messageLog = result[0].action.messageLog;
+			expect(messageLog).toBeDefined();
+			// Since both are false, content should be empty
+			expect(messageLog![0].content).toBe('');
+		});
+
+		it('should ignore toggles if streaming is off', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								announcement: 'Calculating 2+2 now.',
+								options: {
+									enableStreaming: false,
+									saveAnnouncements: false,
+									saveCalling: false,
+								},
+							},
+						},
+						data: {
+							data: { ai_tool: [] },
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+			const messageLog = result[0].action.messageLog;
+			expect(messageLog).toBeDefined();
+			// Features are fallback to true
+			expect(messageLog![0].content).toContain('[Announcement] Calculating 2+2 now.');
+			expect(messageLog![0].content).toContain('Calling Calculator with input:');
+		});
+	});
+
 	describe('Anthropic thinking blocks reconstruction', () => {
 		it('should reconstruct AIMessage with thinking content blocks', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {

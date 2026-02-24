@@ -35,4 +35,30 @@ export const commonOptions: INodeProperties[] = [
 		description:
 			'Whether or not binary images should be automatically passed through to the agent as image type messages',
 	},
+	{
+		displayName: 'Save AI Announcements',
+		name: 'saveAnnouncements',
+		type: 'boolean',
+		default: true,
+		description:
+			'Whether or not to save AI tool announcements (e.g., "[Announcement] Let me pull up...") into the agent context',
+		displayOptions: {
+			show: {
+				enableStreaming: [true],
+			},
+		},
+	},
+	{
+		displayName: 'Save Tool Calling Information',
+		name: 'saveCalling',
+		type: 'boolean',
+		default: true,
+		description:
+			'Whether or not to save the raw generic tool calling string (e.g., "Calling getBeneficiaries...") into the agent context',
+		displayOptions: {
+			show: {
+				enableStreaming: [true],
+			},
+		},
+	},
 ];

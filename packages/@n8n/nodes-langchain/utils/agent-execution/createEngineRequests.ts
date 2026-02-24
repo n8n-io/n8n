@@ -230,6 +230,7 @@ export function createEngineRequests(
 	toolCalls: ToolCallRequest[],
 	itemIndex: number,
 	tools: Array<DynamicStructuredTool | Tool>,
+	options?: Record<string, unknown>,
 ): EngineRequest<RequestResponseMetadata>['actions'] {
 	// For parallel tool calls, LangChain may only populate messageLog on the first action.
 	// Find a shared messageLog to use for all tool calls in this batch.
@@ -279,7 +280,8 @@ export function createEngineRequests(
 				metadata: {
 					itemIndex,
 					hitl: hitlMetadata,
-					realLlmContent: extractAnnouncementText(toolCall, sharedMessageLog),
+					announcement: extractAnnouncementText(toolCall, sharedMessageLog),
+					options,
 					...extractThinkingMetadata(toolCall, sharedMessageLog, sharedAdditionalKwargs),
 				},
 			};

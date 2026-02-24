@@ -15,7 +15,6 @@ export { processEventStream } from './processEventStream';
 export {
 	loadMemory,
 	saveToMemory,
-	saveIntermediateMemory,
 	buildToolContext,
 } from './memoryManagement';
 export { processHitlResponses, type HitlProcessingResult } from './processHitlResponses';

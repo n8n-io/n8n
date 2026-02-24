@@ -107,14 +107,6 @@ export class MemoryRedisChat implements INodeType {
 				...contextWindowLengthProperty,
 				displayOptions: { hide: { '@version': [{ _cnd: { lt: 1.3 } }] } },
 			},
-			{
-				displayName: 'Store AI Announcements',
-				name: 'storeAnnouncements',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to store AI announcements (streamed text before tool calls) in the Redis history',
-			},
 		],
 	};
 
@@ -173,12 +165,6 @@ export class MemoryRedisChat implements INodeType {
 				? {}
 				: { k: this.getNodeParameter('contextWindowLength', itemIndex) };
 
-		const storeAnnouncements = this.getNodeParameter(
-			'storeAnnouncements',
-			itemIndex,
-			false,
-		) as boolean;
-
 		const memory = new memClass({
 			memoryKey: 'chat_history',
 			chatHistory: redisChatHistory,
@@ -187,9 +173,6 @@ export class MemoryRedisChat implements INodeType {
 			outputKey: 'output',
 			...kOptions,
 		});
-
-		// Attach the storeAnnouncements flag for the memory layer to read
-		(memory as any).storeAnnouncements = storeAnnouncements;
 
 		async function closeFunction() {
 			void client.disconnect();

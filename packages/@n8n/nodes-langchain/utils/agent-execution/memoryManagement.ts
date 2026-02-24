@@ -74,24 +74,11 @@ export function extractToolCallId(
  * // Returns: [AIMessage with tool_calls, ToolMessage with result]
  * ```
  */
-export function buildMessagesFromSteps(
-	steps: ToolCallData[],
-	storeAnnouncements: boolean = true,
-): BaseMessage[] {
+export function buildMessagesFromSteps(steps: ToolCallData[]): BaseMessage[] {
 	const messages: BaseMessage[] = [];
 
 	for (let i = 0; i < steps.length; i++) {
 		const step = steps[i];
-
-		// Push announcement AIMessage if enabled and available
-		if (storeAnnouncements && step.action.realLlmContent) {
-			messages.push(
-				new AIMessage({
-					content: `[Announcement] ${step.action.realLlmContent}`,
-					additional_kwargs: { _n8n_memory_role: 'stream_announcement' },
-				}),
-			);
-		}
 
 		// Try to extract existing AIMessage and its tool_call ID
 		const existingAIMessage = step.action.messageLog?.[0];
@@ -291,59 +278,19 @@ export async function saveToMemory(
 		return;
 	}
 
-	// Read the storeAnnouncements flag from the memory instance
-	const storeAnnouncements = (memory as any).storeAnnouncements !== false;
-
 	// Build full conversation sequence using LangChain-native message types
 	const messages: BaseMessage[] = [];
 
-	// 1. User input — skip if intermediate saves already wrote it (previousStepsCount > 0)
-	if (previousStepsCount === 0 || previousStepsCount === undefined) {
-		messages.push(new HumanMessage(input));
-	}
+	// 1. User input
+	messages.push(new HumanMessage(input));
 
 	// 2. Tool call sequence (AIMessage with tool_calls → ToolMessage for each)
-	const toolMessages = buildMessagesFromSteps(newSteps, storeAnnouncements);
+	const toolMessages = buildMessagesFromSteps(newSteps);
 	messages.push.apply(messages, toolMessages);
 
 	// 3. Final AI response (no tool_calls)
 	messages.push(new AIMessage(output));
 
 	// 4. Save all messages in bulk
-	await memory.chatHistory.addMessages(messages);
-}
-
-/**
- * Saves intermediate memory (HumanMessage + optional Announcement) to Redis
- * BEFORE a tool executes, so the tool workflow can read the conversation context.
- *
- * @param input - The user input/prompt
- * @param memory - The memory instance to save to
- * @param announcement - Optional clean announcement text from the LLM
- */
-export async function saveIntermediateMemory(
-	input: string,
-	memory: BaseChatMemory,
-	announcement: string | undefined,
-): Promise<void> {
-	if (
-		!('addMessages' in memory.chatHistory) ||
-		typeof memory.chatHistory.addMessages !== 'function'
-	) {
-		return;
-	}
-
-	const messages: BaseMessage[] = [new HumanMessage(input)];
-
-	const storeAnnouncements = (memory as any).storeAnnouncements !== false;
-	if (storeAnnouncements && announcement) {
-		messages.push(
-			new AIMessage({
-				content: `[Announcement] ${announcement}`,
-				additional_kwargs: { _n8n_memory_role: 'stream_announcement' },
-			}),
-		);
-	}
-
 	await memory.chatHistory.addMessages(messages);
 }

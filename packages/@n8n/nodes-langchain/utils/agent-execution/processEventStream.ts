@@ -9,7 +9,7 @@ import type { AgentResult, ToolCallRequest } from './types';
  * Safely extracts text content from Gemini's array-format content blocks.
  * Returns only the joined text from blocks with type === 'text'.
  */
-function extractTextContent(content: unknown): string {
+function extractAnnouncementText(content: unknown): string {
 	if (typeof content === 'string') return content.trim();
 	if (!Array.isArray(content)) return '';
 	return content
@@ -92,7 +92,7 @@ export async function processEventStream(
 								type: toolCall.type || 'tool_call',
 								log:
 									agentResult.output?.trim() ||
-									extractTextContent(output.content) ||
+									extractAnnouncementText(output.content) ||
 									`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
 								messageLog: [output],
 								// Pass additional_kwargs to ALL tool calls so signature is available
