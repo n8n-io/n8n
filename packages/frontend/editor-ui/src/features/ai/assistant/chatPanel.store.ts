@@ -43,6 +43,8 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	const posthogStore = usePostHog();
 	const locale = useI18n();
 
+	let openTimerId: ReturnType<typeof setTimeout> | null = null;
+
 	const isMergeAskBuildEnabled = computed(
 		() =>
 			posthogStore.isFeatureEnabled(MERGE_ASK_BUILD_EXPERIMENT.name) &&
@@ -104,7 +106,9 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			}));
 		}
 		// Wait for slide animation to finish before updating grid width
-		setTimeout(() => {
+		if (openTimerId) clearTimeout(openTimerId);
+		openTimerId = setTimeout(() => {
+			openTimerId = null;
 			uiStore.appGridDimensions = {
 				...uiStore.appGridDimensions,
 				width: window.innerWidth - chatPanelStateStore.width,
@@ -113,6 +117,10 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	}
 
 	function close() {
+		if (openTimerId) {
+			clearTimeout(openTimerId);
+			openTimerId = null;
+		}
 		chatPanelStateStore.isOpen = false;
 		chatPanelStateStore.showCoachmark = false;
 		// Wait for slide animation to finish before updating grid width and resetting
