@@ -1,22 +1,39 @@
 import { GlobalConfig } from '@n8n/config';
 import { testDb } from '@n8n/backend-test-utils';
-import { DbLock, DbLockService } from '@n8n/db';
+import { DbConnectionOptions, DbLock, DbLockService } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { OperationalError, sleep } from 'n8n-workflow';
 
 let dbLockService: DbLockService;
-let dataSource: DataSource;
 let isPostgres: boolean;
+
+// Separate DataSource with its own connection for holding locks during
+// contention tests. The main DataSource may have poolSize=1 in CI
+// (set by setup-testcontainers.js), so we need an independent connection
+// to hold a lock while the service tries to acquire it on the main pool.
+let holdLockDs: DataSource;
 
 beforeAll(async () => {
 	await testDb.init();
 	dbLockService = Container.get(DbLockService);
-	dataSource = Container.get(DataSource);
-	isPostgres = Container.get(GlobalConfig).database.type === 'postgresdb';
+	const globalConfig = Container.get(GlobalConfig);
+	isPostgres = globalConfig.database.type === 'postgresdb';
+
+	if (isPostgres) {
+		holdLockDs = new DataSource({
+			type: 'postgres',
+			...Container.get(DbConnectionOptions).getPostgresOverrides(),
+			schema: globalConfig.database.postgresdb.schema,
+		});
+		await holdLockDs.initialize();
+	}
 });
 
 afterAll(async () => {
+	if (holdLockDs?.isInitialized) {
+		await holdLockDs.destroy();
+	}
 	await testDb.terminate();
 });
 
@@ -63,18 +80,24 @@ describe('DbLockService', () => {
 
 			const executionOrder: string[] = [];
 
-			// First call: acquires lock, holds it for 200ms
-			const first = dbLockService.withLock(DbLock.TEST, async () => {
+			let lockAcquired!: () => void;
+			const lockAcquiredPromise = new Promise<void>((resolve) => {
+				lockAcquired = resolve;
+			});
+
+			// First call: hold lock on the separate connection
+			const first = holdLockDs.manager.transaction(async (tx) => {
+				await tx.query('SELECT pg_advisory_xact_lock($1)', [DbLock.TEST]);
 				executionOrder.push('first:start');
-				await sleep(200);
+				lockAcquired();
+				await sleep(300);
 				executionOrder.push('first:end');
 				return 'first';
 			});
 
-			// Small delay to ensure the first call starts first
-			await sleep(50);
+			await lockAcquiredPromise;
 
-			// Second call: should block until first releases the lock
+			// Second call via the service: should block until first releases the lock
 			const second = dbLockService.withLock(DbLock.TEST, async () => {
 				executionOrder.push('second:start');
 				return 'second';
@@ -90,14 +113,13 @@ describe('DbLockService', () => {
 		it('should throw OperationalError when withLock times out', async () => {
 			if (!isPostgres) return;
 
-			// Use a promise to signal when the lock is actually held,
-			// instead of a fixed sleep which is racy on CI.
 			let lockAcquired!: () => void;
 			const lockAcquiredPromise = new Promise<void>((resolve) => {
 				lockAcquired = resolve;
 			});
 
-			const holdLockPromise = dataSource.manager.transaction(async (tx) => {
+			// Hold the lock on the separate connection
+			const holdLockPromise = holdLockDs.manager.transaction(async (tx) => {
 				await tx.query('SELECT pg_advisory_xact_lock($1)', [DbLock.TEST]);
 				lockAcquired();
 				await sleep(2000);
@@ -105,29 +127,26 @@ describe('DbLockService', () => {
 
 			await lockAcquiredPromise;
 
-			// Try to acquire with a short timeout — should fail
+			// Try to acquire on the main connection with a short timeout — should fail
 			await expect(
 				dbLockService.withLock(DbLock.TEST, async () => 'should not reach', {
 					timeoutMs: 200,
 				}),
 			).rejects.toThrow(OperationalError);
 
-			// Clean up: wait for the lock holder to finish
 			await holdLockPromise;
 		});
 
 		it('should throw OperationalError when tryWithLock cannot acquire', async () => {
 			if (!isPostgres) return;
 
-			// Hold the lock in a background transaction and signal when acquired.
-			// tryWithLock opens its own transaction (separate connection), so we
-			// must not nest it inside the holding transaction.
 			let lockAcquired!: () => void;
 			const lockAcquiredPromise = new Promise<void>((resolve) => {
 				lockAcquired = resolve;
 			});
 
-			const holdLockPromise = dataSource.manager.transaction(async (tx) => {
+			// Hold the lock on the separate connection
+			const holdLockPromise = holdLockDs.manager.transaction(async (tx) => {
 				await tx.query('SELECT pg_advisory_xact_lock($1)', [DbLock.TEST]);
 				lockAcquired();
 				await sleep(2000);
@@ -135,6 +154,7 @@ describe('DbLockService', () => {
 
 			await lockAcquiredPromise;
 
+			// tryWithLock on the main connection should fail immediately
 			const error = await dbLockService
 				.tryWithLock(DbLock.TEST, async () => 'should not reach')
 				.catch((e: unknown) => e);
