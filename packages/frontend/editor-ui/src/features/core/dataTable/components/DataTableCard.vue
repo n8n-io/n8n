@@ -188,17 +188,7 @@ const getDataTableSize = computed(() => {
 	}
 }
 
-.cardActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-	flex-direction: row;
-	justify-content: center;
-	align-items: center;
-	align-self: stretch;
-	padding: 0 var(--spacing--sm) 0 0;
-	cursor: default;
-}
-
+.cardActions,
 .card-actions {
 	display: flex;
 	gap: var(--spacing--2xs);
