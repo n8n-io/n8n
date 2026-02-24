@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
-import { defineAsyncComponent, nextTick } from 'vue';
+import { computed, defineAsyncComponent, nextTick } from 'vue';
 import { getMidCanvasPosition } from '@/app/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
@@ -24,6 +24,7 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 type Props = {
 	nodeViewScale: number;
@@ -48,6 +49,7 @@ const emit = defineEmits<{
 
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
+const setupPanelStore = useSetupPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
@@ -55,6 +57,13 @@ const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
 
 const { getAddedNodesAndConnections } = useActions();
+
+const sidePanelTooltip = computed(() => {
+	if (setupPanelStore.isFeatureEnabled) {
+		return i18n.baseText('nodeView.openSidePanel');
+	}
+	return i18n.baseText('nodeView.openFocusPanel');
+});
 
 function openNodeCreator() {
 	emit('toggleNodeCreator', {
@@ -144,6 +153,7 @@ function openCommandBar(event: MouseEvent) {
 				variant="subtle"
 				size="large"
 				icon="plus"
+				:aria-label="i18n.baseText('nodeView.openNodesPanel')"
 				data-test-id="node-creator-plus-button"
 				@click="openNodeCreator"
 			/>
@@ -157,6 +167,7 @@ function openCommandBar(event: MouseEvent) {
 				variant="subtle"
 				size="large"
 				icon="search"
+				:aria-label="i18n.baseText('nodeView.openCommandBar')"
 				data-test-id="command-bar-button"
 				@click="openCommandBar"
 			/>
@@ -170,12 +181,13 @@ function openCommandBar(event: MouseEvent) {
 				variant="subtle"
 				size="large"
 				icon="sticky-note"
+				:aria-label="i18n.baseText('nodeView.addStickyHint')"
 				data-test-id="add-sticky-button"
 				@click="addStickyNote"
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
-			:label="i18n.baseText('nodeView.openFocusPanel')"
+			:label="sidePanelTooltip"
 			:shortcut="{ keys: ['f'], shiftKey: true }"
 			placement="left"
 		>
@@ -183,7 +195,7 @@ function openCommandBar(event: MouseEvent) {
 				variant="subtle"
 				size="large"
 				icon="panel-right"
-				:class="focusPanelActive ? $style.activeButton : ''"
+				:aria-label="sidePanelTooltip"
 				:active="focusPanelActive"
 				data-test-id="toggle-focus-panel-button"
 				@click="toggleFocusPanel"
@@ -195,6 +207,7 @@ function openCommandBar(event: MouseEvent) {
 				variant="subtle"
 				iconOnly
 				size="large"
+				:aria-label="i18n.baseText('aiAssistant.tooltip')"
 				:class="$style.icon"
 				data-test-id="ask-assistant-canvas-action-button"
 				@click="onAskAssistantButtonClick"
@@ -236,9 +249,5 @@ function openCommandBar(event: MouseEvent) {
 	svg {
 		display: block;
 	}
-}
-
-.activeButton {
-	background-color: var(--button--color--background--hover) !important;
 }
 </style>

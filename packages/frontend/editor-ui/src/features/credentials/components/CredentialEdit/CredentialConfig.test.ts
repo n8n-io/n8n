@@ -326,4 +326,118 @@ describe('CredentialConfig', () => {
 			expect(screen.getByTestId('dynamic-credentials-toggle')).toBeInTheDocument();
 		});
 	});
+
+	describe('OAuth Redirect URL', () => {
+		const writePermissions = {
+			create: true,
+			update: true,
+			read: true,
+			delete: true,
+			share: true,
+			list: true,
+			move: true,
+		};
+
+		it('should show redirect URL for OAuth credentials without managed OAuth', () => {
+			renderComponent({
+				pinia: createTestingPinia({
+					initialState: {
+						[STORES.SETTINGS]: {
+							settings: { enterprise: { sharing: false, externalSecrets: false } },
+						},
+						[STORES.ROOT]: {
+							oauthCallbackUrls: { oauth2: 'https://example.com/callback' },
+						},
+					},
+				}),
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isOAuthType: true,
+					managedOauthAvailable: false,
+					useCustomOauth: false,
+					credentialPermissions: writePermissions,
+				},
+			});
+
+			expect(screen.getByTestId('copy-input')).toBeInTheDocument();
+		});
+
+		it('should show redirect URL when managed OAuth is available but user chose custom', () => {
+			renderComponent({
+				pinia: createTestingPinia({
+					initialState: {
+						[STORES.SETTINGS]: {
+							settings: { enterprise: { sharing: false, externalSecrets: false } },
+						},
+						[STORES.ROOT]: {
+							oauthCallbackUrls: { oauth2: 'https://example.com/callback' },
+						},
+					},
+				}),
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isOAuthType: true,
+					managedOauthAvailable: true,
+					useCustomOauth: true,
+					credentialPermissions: writePermissions,
+				},
+			});
+
+			expect(screen.getByTestId('copy-input')).toBeInTheDocument();
+		});
+
+		it('should not show redirect URL when using managed OAuth', () => {
+			renderComponent({
+				pinia: createTestingPinia({
+					initialState: {
+						[STORES.SETTINGS]: {
+							settings: { enterprise: { sharing: false, externalSecrets: false } },
+						},
+						[STORES.ROOT]: {
+							oauthCallbackUrls: { oauth2: 'https://example.com/callback' },
+						},
+					},
+				}),
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isOAuthType: true,
+					managedOauthAvailable: true,
+					useCustomOauth: false,
+					credentialPermissions: writePermissions,
+				},
+			});
+
+			expect(screen.queryByTestId('copy-input')).not.toBeInTheDocument();
+		});
+
+		it('should not show redirect URL for non-OAuth credentials', () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isOAuthType: false,
+					managedOauthAvailable: false,
+					useCustomOauth: false,
+					credentialPermissions: writePermissions,
+				},
+			});
+
+			expect(screen.queryByTestId('copy-input')).not.toBeInTheDocument();
+		});
+	});
 });

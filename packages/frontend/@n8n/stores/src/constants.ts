@@ -48,6 +48,7 @@ export const STORES = {
 	CONSENT: 'consent',
 	CHAT_HUB: 'chatHub',
 	EXPERIMENT_EMPTY_STATE_BUILDER_PROMPT: 'emptyStateBuilderPrompt',
+	EXPERIMENT_CREDENTIALS_APP_SELECTION: 'credentialsAppSelection',
 	SETUP_PANEL: 'setupPanel',
 	FOCUSED_NODES: 'focusedNodes',
 } as const;

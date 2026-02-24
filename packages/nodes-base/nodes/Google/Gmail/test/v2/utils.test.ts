@@ -5,7 +5,7 @@ import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import type { IEmail } from '@utils/sendAndWait/interfaces';
 
 import * as GenericFunctions from '../../GenericFunctions';
-import { parseRawEmail, prepareTimestamp } from '../../GenericFunctions';
+import { parseRawEmail, prepareQuery, prepareTimestamp } from '../../GenericFunctions';
 import { addThreadHeadersToEmail } from '../../v2/utils/draft';
 
 const node: INode = {
@@ -130,6 +130,77 @@ describe('parseRawEmail', () => {
 
 		// ASSERT
 		expect(typeof json.date).toBe('string');
+	});
+});
+
+describe('prepareQuery', () => {
+	const executionFunctions = mock<IExecuteFunctions>({
+		getNode: jest.fn(() => node),
+	});
+
+	it('should convert sender filter to q parameter', () => {
+		const result = prepareQuery.call(executionFunctions, { sender: 'alice@example.com' }, 0);
+
+		expect(result.q).toBe('from:alice@example.com');
+		expect(result).not.toHaveProperty('sender');
+	});
+
+	it('should append sender to existing q parameter', () => {
+		const result = prepareQuery.call(
+			executionFunctions,
+			{ q: 'subject:hello', sender: 'alice@example.com' },
+			0,
+		);
+
+		expect(result.q).toBe('subject:hello from:alice@example.com');
+		expect(result).not.toHaveProperty('sender');
+	});
+
+	it('should convert readStatus to q parameter when not "both"', () => {
+		const result = prepareQuery.call(executionFunctions, { readStatus: 'unread' }, 0);
+
+		expect(result.q).toBe('is:unread');
+		expect(result).not.toHaveProperty('readStatus');
+	});
+
+	it('should not modify q when readStatus is "both"', () => {
+		const result = prepareQuery.call(executionFunctions, { readStatus: 'both' }, 0);
+
+		expect(result).not.toHaveProperty('q');
+	});
+
+	it('should keep empty labelIds as-is when falsy', () => {
+		const result = prepareQuery.call(executionFunctions, { labelIds: '' }, 0);
+
+		expect(result.labelIds).toBe('');
+	});
+
+	it('should preserve non-empty labelIds', () => {
+		const result = prepareQuery.call(executionFunctions, { labelIds: ['INBOX', 'CHAT'] }, 0);
+
+		expect(result.labelIds).toEqual(['INBOX', 'CHAT']);
+	});
+
+	it('should pass through includeSpamTrash unchanged', () => {
+		const result = prepareQuery.call(executionFunctions, { includeSpamTrash: true }, 0);
+
+		expect(result.includeSpamTrash).toBe(true);
+	});
+
+	it('should combine multiple filters into a single q parameter', () => {
+		const result = prepareQuery.call(
+			executionFunctions,
+			{
+				q: 'test',
+				sender: 'bob@example.com',
+				readStatus: 'read',
+			},
+			0,
+		);
+
+		expect(result.q).toBe('test from:bob@example.com is:read');
+		expect(result).not.toHaveProperty('sender');
+		expect(result).not.toHaveProperty('readStatus');
 	});
 });
 

@@ -65,6 +65,25 @@ export interface SessionMessagesChunk {
 	messages: unknown[];
 }
 
+export interface CodeDiffChunk {
+	role: 'assistant';
+	type: 'code-diff';
+	suggestionId: string;
+	sdkSessionId: string;
+	codeDiff?: string;
+	description?: string;
+	nodeName?: string;
+	quickReplies?: unknown[];
+}
+
+/**
+ * Signals that message history was compacted (e.g. via /compact).
+ * Frontend should clear old messages when this is received.
+ */
+export interface MessagesCompactedChunk {
+	type: 'messages-compacted';
+}
+
 /**
  * Union type for all stream chunks
  */
@@ -75,7 +94,9 @@ export type StreamChunk =
 	| ExecutionRequestChunk
 	| SessionMessagesChunk
 	| QuestionsChunk
-	| PlanChunk;
+	| PlanChunk
+	| CodeDiffChunk
+	| MessagesCompactedChunk;
 
 /**
  * Stream output containing messages

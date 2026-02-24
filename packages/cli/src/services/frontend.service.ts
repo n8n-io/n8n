@@ -24,6 +24,7 @@ import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
 import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
+import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
@@ -185,7 +186,7 @@ export class FrontendService {
 			endpointWebhook: this.globalConfig.endpoints.webhook,
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
-			endpointHealth: this.globalConfig.endpoints.health,
+			endpointHealth: resolveHealthEndpointPath(this.globalConfig),
 			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
 			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
 			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,
@@ -376,28 +377,17 @@ export class FrontendService {
 	}
 
 	async generateTypes() {
-		/*
-		 * If there are no types and credentials, they have been released from memory
-		 * we trigger a re-initialization of the types to ensure they are loaded in memory, post processing triggers type regeneration
-		 */
-		const { types } = this.loadNodesAndCredentials;
-		if (types.nodes.length === 0 && types.credentials.length === 0) {
-			return await this.loadNodesAndCredentials.postProcessLoaders();
-		}
-
 		this.overwriteCredentialsProperties();
+
+		const { credentials, nodes } = await this.loadNodesAndCredentials.collectTypes();
 
 		const { staticCacheDir } = this.instanceSettings;
 		// pre-render all the node and credential types as static json files
 		await mkdir(path.join(staticCacheDir, 'types'), { recursive: true });
-		const { credentials, nodes } = this.loadNodesAndCredentials.types;
 		await this.writeStaticJSON('nodes', nodes);
 		const nodeVersionIdentifiers = this.getNodeVersionIdentifiers(nodes);
 		await this.writeStaticJSON('node-versions', nodeVersionIdentifiers);
 		await this.writeStaticJSON('credentials', credentials);
-
-		// release types to free memory
-		this.loadNodesAndCredentials.releaseTypes();
 	}
 
 	async getSettings(): Promise<FrontendSettings> {

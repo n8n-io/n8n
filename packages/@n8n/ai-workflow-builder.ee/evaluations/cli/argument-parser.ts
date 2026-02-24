@@ -17,6 +17,8 @@ export type EvaluationSuite =
 export type EvaluationBackend = 'local' | 'langsmith';
 export type AgentType = 'multi-agent' | 'code-builder';
 
+export type SubgraphName = 'responder' | 'discovery' | 'builder' | 'configurator';
+
 export interface EvaluationArgs {
 	suite: EvaluationSuite;
 	backend: EvaluationBackend;
@@ -42,6 +44,18 @@ export interface EvaluationArgs {
 	numJudges: number;
 
 	featureFlags?: BuilderFeatureFlags;
+
+	/** Target a specific subgraph for evaluation (requires --dataset or --dataset-file) */
+	subgraph?: SubgraphName;
+
+	/** Path to a local JSON dataset file (alternative to --dataset for subgraph evals) */
+	datasetFile?: string;
+
+	/** Run full workflow generation from prompt instead of using pre-computed state */
+	regenerate?: boolean;
+
+	/** Write regenerated state back to the dataset source */
+	writeBack?: boolean;
 
 	/** URL to POST evaluation results to when complete */
 	webhookUrl?: string;
@@ -103,6 +117,11 @@ const cliSchema = z
 		notionId: z.string().min(1).optional(),
 		technique: z.string().min(1).optional(),
 
+		subgraph: z.enum(['responder', 'discovery', 'builder', 'configurator']).optional(),
+		datasetFile: z.string().min(1).optional(),
+		regenerate: z.boolean().default(false),
+		writeBack: z.boolean().default(false),
+
 		testCase: z.string().min(1).optional(),
 		promptsCsv: z.string().min(1).optional(),
 
@@ -152,6 +171,31 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		kind: 'string',
 		group: 'input',
 		desc: 'LangSmith dataset name',
+	},
+
+	'--subgraph': {
+		key: 'subgraph',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Target subgraph (responder|discovery|builder|configurator). Requires --dataset or --dataset-file',
+	},
+	'--dataset-file': {
+		key: 'datasetFile',
+		kind: 'string',
+		group: 'input',
+		desc: 'Path to local JSON dataset file (for subgraph evals)',
+	},
+	'--regenerate': {
+		key: 'regenerate',
+		kind: 'boolean',
+		group: 'eval',
+		desc: 'Run full workflow generation from prompt instead of using pre-computed state',
+	},
+	'--write-back': {
+		key: 'writeBack',
+		kind: 'boolean',
+		group: 'eval',
+		desc: 'Write regenerated state back to dataset source (requires --regenerate)',
 	},
 
 	// Evaluation options
@@ -386,6 +430,9 @@ function formatHelp(): string {
 	lines.push('  pnpm eval --prompt "Create a Slack notification workflow"');
 	lines.push('  pnpm eval --prompts-csv my-prompts.csv --max-examples 5');
 	lines.push('  pnpm eval:langsmith --dataset "workflow-builder-canvas-prompts" --name "test-run"');
+	lines.push(
+		'  pnpm eval:langsmith --subgraph responder --dataset "responder-eval-dataset" --verbose',
+	);
 
 	return lines.join('\n');
 }
@@ -512,6 +559,37 @@ function parseFilters(args: {
 	return hasAny ? filters : undefined;
 }
 
+function validateSubgraphArgs(parsed: {
+	subgraph?: string;
+	datasetName?: string;
+	datasetFile?: string;
+	prompt?: string;
+	promptsCsv?: string;
+	testCase?: string;
+	writeBack: boolean;
+	regenerate: boolean;
+}): void {
+	if (parsed.subgraph && !parsed.datasetName && !parsed.datasetFile) {
+		throw new Error(
+			'`--subgraph` requires `--dataset` or `--dataset-file`. Subgraph evaluation needs pre-computed state from a dataset.',
+		);
+	}
+
+	if (parsed.subgraph && (parsed.prompt || parsed.promptsCsv || parsed.testCase)) {
+		throw new Error(
+			'`--subgraph` cannot be combined with `--prompt`, `--prompts-csv`, or `--test-case`. Use `--dataset` instead.',
+		);
+	}
+
+	if (parsed.writeBack && !parsed.regenerate) {
+		throw new Error('`--write-back` requires `--regenerate`');
+	}
+
+	if (parsed.regenerate && !parsed.subgraph) {
+		throw new Error('`--regenerate` requires `--subgraph`');
+	}
+}
+
 export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): EvaluationArgs {
 	// Check for help flag before parsing
 	if (argv.includes('--help') || argv.includes('-h')) {
@@ -542,6 +620,8 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		technique: parsed.technique,
 	});
 
+	validateSubgraphArgs(parsed);
+
 	if (parsed.suite !== 'pairwise' && (filters?.doSearch || filters?.dontSearch)) {
 		throw new Error(
 			'`--filter do:` and `--filter dont:` are only supported for `--suite pairwise`',
@@ -569,6 +649,10 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		donts: parsed.donts,
 		numJudges: parsed.numJudges,
 		featureFlags,
+		subgraph: parsed.subgraph,
+		datasetFile: parsed.datasetFile,
+		regenerate: parsed.regenerate,
+		writeBack: parsed.writeBack,
 		webhookUrl: parsed.webhookUrl,
 		webhookSecret: parsed.webhookSecret,
 		// Model configuration
