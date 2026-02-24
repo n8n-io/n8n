@@ -145,3 +145,8 @@ minimumReleaseAgeExclude:
   - vm2
   - tar
   - qs
+  - ajv
+  - bn.js
+  - fast-xml-parser
+  - hono
+  - minimatch

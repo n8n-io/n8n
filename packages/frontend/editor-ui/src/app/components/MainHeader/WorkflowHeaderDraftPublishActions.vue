@@ -561,6 +561,7 @@ defineExpose({
 							:class="$style.groupButtonRight"
 							variant="subtle"
 							icon="chevron-down"
+							:aria-label="i18n.baseText('node.moreActions')"
 							data-test-id="version-menu-button"
 						/>
 					</template>

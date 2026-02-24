@@ -33,6 +33,7 @@ vi.mock('vue-router', async () => {
 		useRoute: () => ({
 			name: VIEWS.PROJECT_ROLE_SETTINGS,
 			params: {},
+			query: {},
 		}),
 	};
 });
@@ -170,13 +171,13 @@ describe('ProjectRoleView', () => {
 			expect(getByPlaceholderText('Optional')).toBeInTheDocument();
 		});
 
-		it('should render back button that calls router.back', async () => {
+		it('should render back button that navigates to project roles list', async () => {
 			const { getByText } = renderComponent();
-			const backButton = getByText('Back to role list');
+			const backButton = getByText('Back to project roles');
 
 			await userEvent.click(backButton);
 
-			expect(mockBack).toHaveBeenCalled();
+			expect(mockPush).toHaveBeenCalledWith({ name: VIEWS.PROJECT_ROLES_SETTINGS });
 		});
 
 		it('should render permissions section with scope types', () => {
