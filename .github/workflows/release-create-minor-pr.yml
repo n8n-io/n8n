@@ -2,8 +2,8 @@ name: 'Release: Create Minor Release PR'
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: 0 13 * * 1
+  # schedule:
+  #   - cron: 0 13 * * 1
 
 jobs:
   create-release-pr:
