@@ -2,7 +2,7 @@ import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { Service, ServiceResult } from './types';
+import { EXTERNAL_HOST, type Service, type ServiceResult } from './types';
 
 export interface TaskRunnerConfig {
 	taskBrokerUri: string;
@@ -19,6 +19,9 @@ export const taskRunner: Service<TaskRunnerResult> = {
 	shouldStart: (ctx) => ctx.mains > 0 || ctx.workers > 0,
 
 	getOptions(ctx) {
+		if (ctx.external) {
+			return { taskBrokerUri: `http://${EXTERNAL_HOST}:5679` } as TaskRunnerConfig;
+		}
 		const { workers, mains, projectName } = ctx;
 		const taskBrokerHost =
 			workers > 0

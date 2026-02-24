@@ -89,6 +89,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const i18n = useI18n();
 
 	const agents = ref<ChatModelsResponse | null>(null);
+	let pendingAgentsFetch: Promise<ChatModelsResponse> | null = null;
+
 	const customAgents = ref<Partial<Record<string, ChatHubAgentDto>>>({});
 	const sessions = ref<{
 		byId: Partial<Record<string, ChatHubSessionDto>>;
@@ -338,10 +340,14 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	}
 
 	async function fetchAgents(credentialMap: CredentialsMap, options: FetchOptions = {}) {
+		pendingAgentsFetch ??= fetchChatModelsApi(rootStore.restApiContext, {
+			credentials: credentialMap,
+		}).finally(() => {
+			pendingAgentsFetch = null;
+		});
+
 		[agents.value] = await Promise.all([
-			fetchChatModelsApi(rootStore.restApiContext, {
-				credentials: credentialMap,
-			}),
+			pendingAgentsFetch,
 			new Promise((r) => setTimeout(r, options.minLoadingTime ?? 0)),
 		]);
 		return agents.value;
