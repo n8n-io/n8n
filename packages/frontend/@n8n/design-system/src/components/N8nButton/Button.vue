@@ -160,7 +160,9 @@ const handleClick = (event: MouseEvent) => {
 
 	background-color: var(--button--color--background);
 	color: var(--button--color);
-	box-shadow: var(--button--shadow), var(--button--border--shadow);
+	box-shadow:
+		inset var(--button--border--shadow),
+		var(--button--shadow);
 	border: none;
 
 	> * {
@@ -169,12 +171,16 @@ const handleClick = (event: MouseEvent) => {
 
 	&:hover {
 		background-color: var(--button--color--background-hover);
-		box-shadow: var(--button--shadow--hover), var(--button--border--shadow--hover);
+		box-shadow:
+			inset var(--button--border--shadow--hover),
+			var(--button--shadow--hover);
 	}
 
 	&:active {
 		background-color: var(--button--color--background-active);
-		box-shadow: var(--button--shadow--active), var(--button--border--shadow--active);
+		box-shadow:
+			inset var(--button--border--shadow--active),
+			var(--button--shadow--active);
 	}
 
 	&:focus {
