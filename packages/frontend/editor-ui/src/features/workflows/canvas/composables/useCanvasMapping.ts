@@ -6,6 +6,10 @@
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { Ref } from 'vue';
 import { ref, computed } from 'vue';
 import type {
@@ -75,6 +79,11 @@ export function useCanvasMapping({
 }) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const workflowState = injectWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
@@ -279,7 +288,7 @@ export function useCanvasMapping({
 
 	const nodePinnedDataById = computed(() =>
 		nodes.value.reduce<Record<string, INodeExecutionData[] | undefined>>((acc, node) => {
-			acc[node.id] = workflowsStore.pinDataByNodeName(node.name);
+			acc[node.id] = workflowDocumentStore.value?.getNodePinData(node.name);
 			return acc;
 		}, {}),
 	);

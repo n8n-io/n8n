@@ -5,6 +5,7 @@ export const CREDENTIALS_SHARING_OWNER_SCOPES: Scope[] = [
 	'credential:update',
 	'credential:delete',
 	'credential:share',
+	'credential:unshare',
 	'credential:move',
 ];
 

@@ -57,12 +57,22 @@ export class CredentialModal extends BaseModal {
 		return this.root.getByTestId('credential-save-button');
 	}
 
-	async save(): Promise<void> {
-		const saveBtn = this.getSaveButton();
-		await saveBtn.click();
-		await saveBtn.waitFor({ state: 'visible' });
+	/**
+	 * Wait for save to fully complete.
+	 * After saving (and optional credential testing), the button becomes
+	 * disabled (no unsaved changes) and is no longer loading
+	 */
+	async waitForSaveComplete(): Promise<void> {
+		const btn = this.getSaveButton().locator('button');
+		await expect(async () => {
+			await expect(btn).toBeDisabled();
+			await expect(btn).not.toHaveAttribute('aria-busy', 'true');
+		}).toPass({ timeout: 10000 });
+	}
 
-		await saveBtn.getByText('Saved', { exact: true }).waitFor({ state: 'visible', timeout: 3000 });
+	async save(): Promise<void> {
+		await this.getSaveButton().click();
+		await this.waitForSaveComplete();
 	}
 
 	async close(): Promise<void> {
@@ -81,14 +91,18 @@ export class CredentialModal extends BaseModal {
 	 */
 	async addCredential(
 		fields: Record<string, string>,
-		options?: { closeDialog?: boolean; name?: string },
+		options?: { closeDialog?: boolean; skipSave?: boolean; name?: string },
 	): Promise<void> {
 		await this.fillAllFields(fields);
 		if (options?.name) {
 			await this.getCredentialName().click();
 			await this.getNameInput().fill(options.name);
 		}
-		await this.save();
+
+		if (!options?.skipSave) {
+			await this.save();
+		}
+
 		const shouldClose = options?.closeDialog ?? true;
 		if (shouldClose) {
 			await this.close();
@@ -122,7 +136,7 @@ export class CredentialModal extends BaseModal {
 	}
 
 	getAuthMethodSelector() {
-		return this.root.page().getByText('Select Authentication Method');
+		return this.root.getByTestId('credential-mode-selector');
 	}
 
 	getOAuthRedirectUrl() {
@@ -131,6 +145,23 @@ export class CredentialModal extends BaseModal {
 
 	getAuthTypeRadioButtons() {
 		return this.root.page().locator('label.el-radio');
+	}
+
+	getModeSelector() {
+		return this.root.getByTestId('credential-mode-selector');
+	}
+
+	getModeSwitchLink() {
+		return this.root.getByTestId('credential-mode-switch-link');
+	}
+
+	getModeDropdownTrigger() {
+		return this.root.getByTestId('credential-mode-dropdown-trigger');
+	}
+
+	async selectAuthTypeFromDropdown(optionName: string | RegExp): Promise<void> {
+		await this.getModeDropdownTrigger().click();
+		await this.root.page().getByRole('menuitem', { name: optionName }).click();
 	}
 
 	async changeTab(tabName: 'Sharing'): Promise<void> {
@@ -196,9 +227,6 @@ export class CredentialModal extends BaseModal {
 					response.request().method() === 'PUT',
 			);
 
-		await saveBtn.getByText('Saved', { exact: true }).waitFor({
-			state: 'visible',
-			timeout: 3000,
-		});
+		await this.waitForSaveComplete();
 	}
 }

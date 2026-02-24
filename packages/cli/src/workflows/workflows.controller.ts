@@ -441,8 +441,9 @@ export class WorkflowsController {
 		@Body body: UpdateWorkflowDto,
 	) {
 		const forceSave = req.query.forceSave === 'true';
+		const clientId = req.headers['push-ref'];
 
-		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'update');
+		await this.collaborationService.validateWriteLock(req.user.id, clientId, workflowId, 'update');
 
 		let updateData = new WorkflowEntity();
 		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, autosaved, ...rest } = body;
@@ -493,14 +494,16 @@ export class WorkflowsController {
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 	) {
-		const writeLockUserId = await this.collaborationService.getWriteLock(req.user.id, workflowId);
-		return { userId: writeLockUserId };
+		const writeLock = await this.collaborationService.getWriteLock(req.user.id, workflowId);
+		return writeLock;
 	}
 
 	@Delete('/:workflowId')
 	@ProjectScope('workflow:delete')
 	async delete(req: AuthenticatedRequest, _res: Response, @Param('workflowId') workflowId: string) {
-		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'delete');
+		const clientId = req.headers['push-ref'];
+
+		await this.collaborationService.validateWriteLock(req.user.id, clientId, workflowId, 'delete');
 
 		const workflow = await this.workflowService.delete(req.user, workflowId);
 		if (!workflow) {
@@ -524,7 +527,9 @@ export class WorkflowsController {
 		@Param('workflowId') workflowId: string,
 		@Body body: ArchiveWorkflowDto,
 	) {
-		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'archive');
+		const clientId = req.headers['push-ref'];
+
+		await this.collaborationService.validateWriteLock(req.user.id, clientId, workflowId, 'archive');
 
 		const { expectedChecksum } = body;
 
@@ -555,7 +560,14 @@ export class WorkflowsController {
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 	) {
-		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'unarchive');
+		const clientId = req.headers['push-ref'];
+
+		await this.collaborationService.validateWriteLock(
+			req.user.id,
+			clientId,
+			workflowId,
+			'unarchive',
+		);
 
 		const workflow = await this.workflowService.unarchive(req.user, workflowId);
 		if (!workflow) {
@@ -583,7 +595,14 @@ export class WorkflowsController {
 		@Param('workflowId') workflowId: string,
 		@Body body: ActivateWorkflowDto,
 	) {
-		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'activate');
+		const clientId = req.headers['push-ref'];
+
+		await this.collaborationService.validateWriteLock(
+			req.user.id,
+			clientId,
+			workflowId,
+			'activate',
+		);
 
 		const { versionId, name, description, expectedChecksum } = body;
 
@@ -610,7 +629,14 @@ export class WorkflowsController {
 		@Param('workflowId') workflowId: string,
 		@Body body: DeactivateWorkflowDto,
 	) {
-		await this.collaborationService.validateWriteLock(req.user.id, workflowId, 'deactivate');
+		const clientId = req.headers['push-ref'] as string | undefined;
+
+		await this.collaborationService.validateWriteLock(
+			req.user.id,
+			clientId,
+			workflowId,
+			'deactivate',
+		);
 
 		const { expectedChecksum } = body;
 
@@ -675,7 +701,6 @@ export class WorkflowsController {
 
 	@Licensed('feat:sharing')
 	@Put('/:workflowId/share')
-	@ProjectScope('workflow:share')
 	async share(req: WorkflowRequest.Share) {
 		const { workflowId } = req.params;
 		const { shareWithIds } = req.body;
@@ -688,31 +713,47 @@ export class WorkflowsController {
 		}
 
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
-			'workflow:share',
+			'workflow:read',
 		]);
 
 		if (!workflow) {
 			throw new ForbiddenError();
 		}
 
+		const currentPersonalProjectIDs = workflow.shared
+			.filter((sw) => sw.role === 'workflow:editor')
+			.map((sw) => sw.projectId);
+		const newPersonalProjectIDs = shareWithIds;
+
+		const toShare = utils.rightDiff(
+			[currentPersonalProjectIDs, (id) => id],
+			[newPersonalProjectIDs, (id) => id],
+		);
+
+		const toUnshare = utils.rightDiff(
+			[newPersonalProjectIDs, (id) => id],
+			[currentPersonalProjectIDs, (id) => id],
+		);
+
+		if (toShare.length > 0) {
+			const canShare = await userHasScopes(req.user, ['workflow:share'], false, { workflowId });
+			if (!canShare) {
+				throw new ForbiddenError();
+			}
+		}
+
+		if (toUnshare.length > 0) {
+			const canUnshare = await userHasScopes(req.user, ['workflow:unshare'], false, {
+				workflowId,
+			});
+			if (!canUnshare) {
+				throw new ForbiddenError();
+			}
+		}
+
 		let newShareeIds: string[] = [];
 		const { manager: dbManager } = this.projectRepository;
 		await dbManager.transaction(async (trx) => {
-			const currentPersonalProjectIDs = workflow.shared
-				.filter((sw) => sw.role === 'workflow:editor')
-				.map((sw) => sw.projectId);
-			const newPersonalProjectIDs = shareWithIds;
-
-			const toShare = utils.rightDiff(
-				[currentPersonalProjectIDs, (id) => id],
-				[newPersonalProjectIDs, (id) => id],
-			);
-
-			const toUnshare = utils.rightDiff(
-				[newPersonalProjectIDs, (id) => id],
-				[currentPersonalProjectIDs, (id) => id],
-			);
-
 			await trx.delete(SharedWorkflow, {
 				workflowId,
 				projectId: In(toUnshare),
