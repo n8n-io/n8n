@@ -94,6 +94,18 @@ describe('components', () => {
 						expect(button?.className).toContain(variant);
 					},
 				);
+
+				it('should render success variant with white text color', () => {
+					const wrapper = render(N8nButton, {
+						props: { variant: 'success' },
+						slots: { default: 'Subscribe' },
+						global: { stubs },
+					});
+					const button = wrapper.container.querySelector('button');
+					expect(button?.className).toContain('success');
+					expect(button?.className).not.toContain('destructive');
+					expect(wrapper.getByText('Subscribe')).toBeInTheDocument();
+				});
 			});
 
 			describe('size', () => {
