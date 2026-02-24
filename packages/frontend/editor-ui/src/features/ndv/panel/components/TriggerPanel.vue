@@ -191,7 +191,7 @@ const isActivelyPolling = computed(() => {
 	return workflowRunning.value && isPollingNode.value && props.nodeName === triggeredNode;
 });
 
-const isWorkflowActive = computed(() => workflowDocumentStore?.active ?? false);
+const isWorkflowActive = computed(() => workflowDocumentStore?.value?.active ?? false);
 
 const listeningTitle = computed(() => {
 	return nodeType.value?.name === FORM_TRIGGER_NODE_TYPE

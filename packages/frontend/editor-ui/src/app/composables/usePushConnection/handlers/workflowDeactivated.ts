@@ -22,7 +22,7 @@ export async function workflowDeactivated({ data }: WorkflowDeactivated) {
 			// initializeWorkspace calls initState which sets the document store
 			await initializeWorkspace(updatedWorkflow);
 		} else {
-			documentStore?.setActiveState({ activeVersionId: null, activeVersion: null });
+			documentStore?.value?.setActiveState({ activeVersionId: null, activeVersion: null });
 		}
 	}
 }

@@ -26,7 +26,7 @@ export async function workflowAutoDeactivated({ data }: WorkflowAutoDeactivated)
 			// initializeWorkspace calls initState which sets the document store
 			await initializeWorkspace(updatedWorkflow);
 		} else {
-			documentStore?.setActiveState({ activeVersionId: null, activeVersion: null });
+			documentStore?.value?.setActiveState({ activeVersionId: null, activeVersion: null });
 		}
 
 		bannersStore.pushBannerToStack('WORKFLOW_AUTO_DEACTIVATED');

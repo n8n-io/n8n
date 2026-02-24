@@ -156,6 +156,5 @@ export function disposeWorkflowDocumentStore(id: string) {
  * document store but may be called outside of the NodeView tree.
  */
 export function injectWorkflowDocumentStore() {
-	const storeRef = inject(WorkflowDocumentStoreKey, null);
-	return storeRef?.value ?? null;
+	return inject(WorkflowDocumentStoreKey, null);
 }

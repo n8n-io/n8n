@@ -252,7 +252,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 
 				if (isWebhookNode(nodes[0])) {
 					const isProductionOnly = PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(nodes[0].type);
-					const isWorkflowActive = documentStore?.active ?? false;
+					const isWorkflowActive = documentStore?.value?.active ?? false;
 					if (!isProductionOnly) {
 						copyWebhookActions.push({
 							divided: true,

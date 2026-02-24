@@ -7,6 +7,7 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import { faker } from '@faker-js/faker';
+import { shallowRef } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -63,7 +64,7 @@ describe('useContextMenu', () => {
 		workflowsStore.workflow.nodes = nodes;
 		workflowsStore.workflow.scopes = ['workflow:update'];
 		documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
-		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(documentStore);
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(documentStore));
 		workflowsStore.workflowObject = {
 			nodes,
 			getNode: (_: string) => {
