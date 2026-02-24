@@ -1,6 +1,11 @@
 import { LicenseState } from '@n8n/backend-common';
-import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
-import type { Project } from '@n8n/db';
+import {
+	createTeamProject,
+	linkUserToProject,
+	mockInstance,
+	testDb,
+} from '@n8n/backend-test-utils';
+import type { Project, User } from '@n8n/db';
 import {
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnectionRepository,
@@ -9,6 +14,8 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import type { Response } from 'superagent';
+
+import type { SecretProviderTypeResponse } from '@n8n/api-types';
 
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
@@ -19,6 +26,7 @@ import {
 	createDummyProvider,
 } from '../../shared/external-secrets/utils';
 import { createAdmin, createMember, createOwner } from '../shared/db/users';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
 
@@ -793,6 +801,85 @@ describe('Secret Providers Project API', () => {
 					}
 				},
 			);
+		});
+	});
+
+	describe('GET /secret-providers/projects/:projectId/types', () => {
+		const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';
+
+		describe('Authorization', () => {
+			let memberWithListScope: User;
+			let memberWithoutListScope: User;
+			let memberWithListScopeAgent: SuperAgentTest;
+			let memberWithoutListScopeAgent: SuperAgentTest;
+
+			beforeAll(async () => {
+				memberWithListScope = await createMember();
+				memberWithoutListScope = await createMember();
+
+				const roleWithList = await createCustomRoleWithScopeSlugs(
+					['externalSecretsProvider:list'],
+					{ roleType: 'project', displayName: 'External Secrets Lister' },
+				);
+
+				const roleWithoutList = await createCustomRoleWithScopeSlugs(
+					['externalSecretsProvider:read'],
+					{ roleType: 'project', displayName: 'External Secrets Reader Only' },
+				);
+
+				await linkUserToProject(memberWithListScope, teamProject1, roleWithList.slug);
+				await linkUserToProject(memberWithoutListScope, teamProject1, roleWithoutList.slug);
+
+				memberWithListScopeAgent = testServer.authAgentFor(memberWithListScope);
+				memberWithoutListScopeAgent = testServer.authAgentFor(memberWithoutListScope);
+			});
+
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])(
+				'should allow=$allowed for global $role to list provider types',
+				async ({ role, allowed }) => {
+					const agents = { owner: ownerAgent, admin: adminAgent, member: memberAgent };
+					const response = await agents[role]
+						.get(`/secret-providers/projects/${teamProject1.id}/types`)
+						.expect(allowed ? 200 : 403);
+
+					if (!allowed) {
+						expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+					}
+				},
+			);
+
+			it('should allow project member with externalSecretsProvider:list scope', async () => {
+				await memberWithListScopeAgent
+					.get(`/secret-providers/projects/${teamProject1.id}/types`)
+					.expect(200);
+			});
+
+			it('should forbid project member without externalSecretsProvider:list scope', async () => {
+				const response = await memberWithoutListScopeAgent
+					.get(`/secret-providers/projects/${teamProject1.id}/types`)
+					.expect(403);
+
+				expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+			});
+		});
+
+		describe('response', () => {
+			it('should return all registered provider types', async () => {
+				const response = await ownerAgent
+					.get(`/secret-providers/projects/${teamProject1.id}/types`)
+					.expect(200);
+
+				const { data } = response.body as { data: SecretProviderTypeResponse[] };
+				expect(data).toBeInstanceOf(Array);
+				expect(data).toHaveLength(3);
+				expect(data.map((p) => p.type)).toEqual(
+					expect.arrayContaining(['dummy', 'awsSecretsManager', 'gcpSecretsManager']),
+				);
+			});
 		});
 	});
 });
