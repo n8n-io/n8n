@@ -19,6 +19,7 @@ export const MODULE_NAMES = [
 	'ldap',
 	'quick-connect',
 	'workflow-builder',
+	'favorites',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

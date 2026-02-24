@@ -44,6 +44,7 @@ import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
 
+import { FavoritesService } from '@/modules/favorites/favorites.service';
 import { RoleService } from '@/services/role.service';
 
 @Service()
@@ -58,6 +59,7 @@ export class DataTableService {
 		private readonly roleService: RoleService,
 		private readonly csvParserService: CsvParserService,
 		private readonly fileCleanupService: DataTableFileCleanupService,
+		private readonly favoritesService: FavoritesService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -169,9 +171,13 @@ export class DataTableService {
 	}
 
 	async deleteDataTableByProjectId(projectId: string) {
+		const tables = await this.dataTableRepository.findBy({ projectId });
+		const tableIds = tables.map((t) => t.id);
+
 		const result = await this.dataTableRepository.deleteDataTableByProjectId(projectId);
 
 		if (result) {
+			await this.favoritesService.deleteByResourceIds(tableIds);
 			this.dataTableSizeValidator.reset();
 		}
 
@@ -192,6 +198,7 @@ export class DataTableService {
 		await this.validateDataTableExists(dataTableId, projectId);
 
 		await this.dataTableRepository.deleteDataTable(dataTableId);
+		await this.favoritesService.deleteByResource(dataTableId);
 
 		this.dataTableSizeValidator.reset();
 

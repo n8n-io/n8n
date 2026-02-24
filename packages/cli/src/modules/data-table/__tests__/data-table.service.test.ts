@@ -14,6 +14,7 @@ import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
+import { FavoritesService } from '@/modules/favorites/favorites.service';
 import { RoleService } from '@/services/role.service';
 
 describe('DataTableService', () => {
@@ -27,6 +28,7 @@ describe('DataTableService', () => {
 	let mockRoleService: jest.Mocked<RoleService>;
 	let mockCsvParserService: jest.Mocked<CsvParserService>;
 	let mockFileCleanupService: jest.Mocked<DataTableFileCleanupService>;
+	let mockFavoritesService: jest.Mocked<FavoritesService>;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
@@ -42,6 +44,7 @@ describe('DataTableService', () => {
 		mockRoleService = mockInstance(RoleService);
 		mockCsvParserService = mockInstance(CsvParserService);
 		mockFileCleanupService = mockInstance(DataTableFileCleanupService);
+		mockFavoritesService = mockInstance(FavoritesService);
 
 		// Mock the logger.scoped method to return the logger itself
 		mockLogger.scoped = jest.fn().mockReturnValue(mockLogger);
@@ -56,6 +59,7 @@ describe('DataTableService', () => {
 			mockRoleService,
 			mockCsvParserService,
 			mockFileCleanupService,
+			mockFavoritesService,
 		);
 
 		jest.clearAllMocks();

@@ -1,0 +1,24 @@
+import type { MigrationContext, ReversibleMigration } from '../migration-types';
+
+export class CreateFavoritesTable1771500000002 implements ReversibleMigration {
+	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
+		await createTable('user_favorites')
+			.withColumns(
+				column('id').int.primary.autoGenerate2.notNull,
+				column('userId').uuid.notNull,
+				column('resourceId').varchar(36).notNull,
+				column('resourceType').varchar(64).notNull,
+			)
+			.withForeignKey('userId', {
+				tableName: 'user',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withIndexOn(['userId', 'resourceType'])
+			.withUniqueConstraintOn(['userId', 'resourceId', 'resourceType']);
+	}
+
+	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
+		await dropTable('user_favorites');
+	}
+}
