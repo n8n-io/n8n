@@ -501,16 +501,17 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			// Only process if the node instance has getConnections() (nodes from builder, not fromJSON)
 			if (typeof graphNode.instance.getConnections === 'function') {
 				const nodeConns = graphNode.instance.getConnections();
-				for (const { target, outputIndex, targetInputIndex } of nodeConns) {
+				for (const { target, outputIndex, targetInputIndex, connectionType } of nodeConns) {
+					const connType = connectionType ?? 'main';
 					// Resolve target node name - handles both NodeInstance and composites.
 					// Pass _staleIdToKeyMap so stale target references (from pre-clone
 					// instances after regenerateNodeIds) resolve to the correct map key.
 					const targetName = this.resolveTargetNodeName(target, this._staleIdToKeyMap);
 					if (!targetName) continue;
 
-					const mainConns =
-						graphNode.connections.get('main') ?? new Map<number, ConnectionTarget[]>();
-					const outputConns: ConnectionTarget[] = mainConns.get(outputIndex) ?? [];
+					const typeConns =
+						graphNode.connections.get(connType) ?? new Map<number, ConnectionTarget[]>();
+					const outputConns: ConnectionTarget[] = typeConns.get(outputIndex) ?? [];
 					// Avoid duplicates - check both target node AND input index
 					const targetIndex = targetInputIndex ?? 0;
 					const alreadyExists = outputConns.some(
@@ -518,8 +519,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					);
 					if (!alreadyExists) {
 						outputConns.push({ node: targetName, type: 'main', index: targetIndex });
-						mainConns.set(outputIndex, outputConns);
-						graphNode.connections.set('main', mainConns);
+						typeConns.set(outputIndex, outputConns);
+						graphNode.connections.set(connType, typeConns);
 					}
 				}
 			}
@@ -1037,7 +1038,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 			// Process connections declared on the chain (from .to() calls)
 			const connections = branch.getConnections();
-			for (const { target, outputIndex, targetInputIndex } of connections) {
+			for (const { target, outputIndex, targetInputIndex, connectionType } of connections) {
+				const connType = connectionType ?? 'main';
 				// Find the source node in the chain that declared this connection
 				// by looking for the node whose .to() was called
 				for (const chainNode of branch.allNodes) {
@@ -1061,7 +1063,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 								(c) =>
 									c.target === target &&
 									c.outputIndex === outputIndex &&
-									c.targetInputIndex === targetInputIndex,
+									c.targetInputIndex === targetInputIndex &&
+									(c.connectionType ?? 'main') === connType,
 							)
 						) {
 							// This chain node declared this connection
@@ -1104,10 +1107,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 							if (sourceGraphNode) {
 								const targetName = this.resolveTargetNodeName(target, effectiveNameMapping);
 								if (targetName) {
-									const mainConns =
-										sourceGraphNode.connections.get('main') ??
+									const typeConns =
+										sourceGraphNode.connections.get(connType) ??
 										new Map<number, ConnectionTarget[]>();
-									const outputConns: ConnectionTarget[] = mainConns.get(outputIndex) ?? [];
+									const outputConns: ConnectionTarget[] = typeConns.get(outputIndex) ?? [];
 									if (
 										!outputConns.some(
 											(c) => c.node === targetName && c.index === (targetInputIndex ?? 0),
@@ -1118,11 +1121,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 											type: 'main',
 											index: targetInputIndex ?? 0,
 										});
-										mainConns.set(outputIndex, outputConns);
-										sourceGraphNode.connections.set('main', mainConns);
+										typeConns.set(outputIndex, outputConns);
+										sourceGraphNode.connections.set(connType, typeConns);
 									}
 								}
 							}
+							break; // Connection attributed to this node; stop searching chain
 						}
 					}
 				}

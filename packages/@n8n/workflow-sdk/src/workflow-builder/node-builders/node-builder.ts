@@ -274,41 +274,18 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		return builder.onCase(index, target);
 	}
 
-	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
-		const errorOutputIndex = this.calculateErrorOutputIndex();
-		this._connections.push({ target: handler, outputIndex: errorOutputIndex });
+	onError<T extends NodeInstance<string, string, unknown>>(handler: T | InputTarget): this {
+		if (isInputTarget(handler)) {
+			this._connections.push({
+				target: handler.node,
+				outputIndex: 0,
+				targetInputIndex: handler.inputIndex,
+				connectionType: 'error',
+			});
+		} else {
+			this._connections.push({ target: handler, outputIndex: 0, connectionType: 'error' });
+		}
 		return this;
-	}
-
-	/**
-	 * Calculate the error output index based on node type.
-	 * Error outputs are always the last output after regular outputs:
-	 * - Regular nodes: index 1 (after main output 0)
-	 * - IF nodes: index 2 (after true=0, false=1)
-	 * - Switch nodes: index = numberOfOutputs (determined from parameters)
-	 */
-	private calculateErrorOutputIndex(): number {
-		// IF nodes have true (0) and false (1) branches, error at index 2
-		if (isIfNodeType(this.type)) {
-			return 2;
-		}
-
-		// Switch nodes have variable outputs based on parameters
-		if (isSwitchNodeType(this.type)) {
-			const params = this.config.parameters as Record<string, unknown> | undefined;
-			if (params?.numberOutputs !== undefined && typeof params.numberOutputs === 'number') {
-				return params.numberOutputs;
-			}
-			const rules = params?.rules as Record<string, unknown> | undefined;
-			const innerRules = rules?.rules as unknown[] | undefined;
-			if (innerRules?.length !== undefined) {
-				return innerRules.length;
-			}
-			return 4;
-		}
-
-		// Regular nodes: error at index 1 (after main output 0)
-		return 1;
 	}
 
 	getConnections(): DeclaredConnection[] {
@@ -499,8 +476,8 @@ class NodeChainImpl<
 		return builder;
 	}
 
-	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
-		this.tail.onError(handler);
+	onError<T extends NodeInstance<string, string, unknown>>(handler: T | InputTarget): this {
+		this.tail.onError(handler as T);
 		return this;
 	}
 

@@ -232,6 +232,7 @@ function buildBranchTargets(
 				ctx.deferredConnections.push({
 					sourceNodeName: source.from,
 					sourceOutputIndex: getOutputIndex(source.outputSlot),
+					isErrorOutput: source.outputSlot === 'error' || undefined,
 					targetNode: mergeNode,
 					targetInputIndex: inputIndex,
 				});
@@ -355,9 +356,10 @@ function buildIfElse(node: SemanticNode, ctx: BuildContext): IfElseCompositeNode
 				const targetInputIndex = errorConn ? extractInputIndex(errorConn.targetInputSlot) : 0;
 				ctx.deferredConnections.push({
 					sourceNodeName: node.name,
-					sourceOutputIndex: 2, // IF error output is after true(0) and false(1)
+					sourceOutputIndex: 0,
 					targetNode: errorTargetNode,
 					targetInputIndex,
+					isErrorOutput: true,
 				});
 			} else if (ctx.visited.has(firstErrorTarget)) {
 				if (errorTargetNode) {
@@ -470,6 +472,7 @@ function buildMerge(node: SemanticNode, ctx: BuildContext): VariableReference {
 			ctx.deferredConnections.push({
 				sourceNodeName: source.from,
 				sourceOutputIndex: getOutputIndex(source.outputSlot),
+				isErrorOutput: source.outputSlot === 'error' || undefined,
 				targetNode: node,
 				targetInputIndex: inputIndex,
 			});
@@ -584,9 +587,10 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 						const targetInputIndex = errorConn ? extractInputIndex(errorConn.targetInputSlot) : 0;
 						ctx.deferredConnections.push({
 							sourceNodeName: node.name,
-							sourceOutputIndex: 1, // Error output is output index 1
+							sourceOutputIndex: 0,
 							targetNode: errorTargetNode,
 							targetInputIndex,
+							isErrorOutput: true,
 						});
 						// Don't set errorHandler - handled via deferred connection
 					} else if (ctx.visited.has(firstErrorTarget)) {
@@ -743,6 +747,7 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 						ctx.deferredConnections.push({
 							sourceNodeName: source.from,
 							sourceOutputIndex: getOutputIndex(source.outputSlot),
+							isErrorOutput: source.outputSlot === 'error' || undefined,
 							targetNode: mergePattern.mergeNode,
 							targetInputIndex: inputIndex,
 						});
@@ -784,6 +789,7 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 									ctx.deferredConnections.push({
 										sourceNodeName: source.from,
 										sourceOutputIndex: getOutputIndex(source.outputSlot),
+										isErrorOutput: source.outputSlot === 'error' || undefined,
 										targetNode: branchNode,
 										targetInputIndex: idx,
 									});
@@ -873,6 +879,7 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 						ctx.deferredConnections.push({
 							sourceNodeName: source.from,
 							sourceOutputIndex: getOutputIndex(source.outputSlot),
+							isErrorOutput: source.outputSlot === 'error' || undefined,
 							targetNode: mergeNode,
 							targetInputIndex: inputIndex,
 						});
@@ -957,6 +964,7 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 						sourceOutputIndex,
 						targetNode,
 						targetInputIndex: inputIndex,
+						isErrorOutput: conn.outputSlot === 'error' || undefined,
 					});
 				} else if (!nonMergeTargets.some((t) => t.target === conn.target)) {
 					// Only add non-merge targets once (for deduplication), preserving connection info
@@ -982,6 +990,7 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 							targetInputIndex,
 							sourceNodeName: node.name,
 							sourceOutputIndex: getOutputIndex(targetInfo.outputSlot),
+							isErrorOutput: targetInfo.outputSlot === 'error' || undefined,
 						});
 					} else if (ctx.visited.has(targetInfo.target)) {
 						// Target already visited - use variable reference to preserve connection
@@ -1103,6 +1112,7 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 						targetInputIndex,
 						sourceNodeName: node.name,
 						sourceOutputIndex: getOutputIndex(sourceOutputSlot),
+						isErrorOutput: sourceOutputSlot === 'error' || undefined,
 					});
 					// Don't chain - this connection is expressed via .input(n) syntax
 					return compositeNode;

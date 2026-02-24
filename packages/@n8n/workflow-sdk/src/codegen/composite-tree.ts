@@ -177,6 +177,8 @@ export interface DeferredInputConnection {
 	sourceNodeName: string;
 	/** Which output slot of source (default 0) */
 	sourceOutputIndex: number;
+	/** Whether this connection comes from an error output */
+	isErrorOutput?: boolean;
 }
 
 /**

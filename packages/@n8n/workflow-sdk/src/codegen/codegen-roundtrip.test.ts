@@ -2472,50 +2472,64 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				}
 			};
 
-			// Normalize error-type connections into main connections.
-			// Some original workflows use `error[0]` connections; the builder generates
-			// `main[errorIndex]` instead. Only 2 workflows use this pattern.
-			const normalizeErrorToMainConnections = (
+			// Normalize main[errorIndex] connections into error[0] connections.
+			// Many original workflows store error outputs under main at the error index;
+			// the builder now natively produces error[0]. Convert the original to match.
+			// Uses the same error output index logic as the semantic registry.
+			const getErrorOutputIndex = (type: string, params?: Record<string, unknown>): number => {
+				// Must match the logic in semantic-registry.ts getErrorOutputIndex
+				switch (type) {
+					case 'n8n-nodes-base.if':
+						return 2; // outputs: ['trueBranch', 'falseBranch']
+					case 'n8n-nodes-base.switch': {
+						const rules = params?.rules as Record<string, unknown> | undefined;
+						const rulesArray = (rules?.rules ?? rules?.values) as unknown[] | undefined;
+						const numCases = Array.isArray(rulesArray) ? rulesArray.length : 4;
+						return numCases + 1; // cases + fallback
+					}
+					case 'n8n-nodes-base.merge':
+						return 1; // outputs: ['output']
+					case 'n8n-nodes-base.splitInBatches':
+						return 2; // outputs: ['done', 'loop']
+					default:
+						return 1; // regular nodes: error at index 1
+				}
+			};
+
+			const normalizeMainErrorToErrorConnections = (
 				connections: Record<string, Record<string, unknown[][]>>,
-				nodes: Array<{ name?: string; type: string; parameters?: Record<string, unknown> }>,
+				nodes: Array<{
+					name?: string;
+					type: string;
+					parameters?: Record<string, unknown>;
+					onError?: string;
+				}>,
 			): void => {
-				const nodeTypeMap = new Map<string, string>();
-				const nodeParamsMap = new Map<string, Record<string, unknown>>();
+				const nodeMap = new Map<
+					string,
+					{ type: string; parameters?: Record<string, unknown>; onError?: string }
+				>();
 				for (const n of nodes) {
-					if (!n.name) continue;
-					nodeTypeMap.set(n.name, n.type);
-					if (n.parameters) nodeParamsMap.set(n.name, n.parameters);
+					if (n.name) nodeMap.set(n.name, n);
 				}
 
 				for (const [nodeName, nodeConns] of Object.entries(connections)) {
-					const errorSlots = nodeConns.error;
-					if (!errorSlots || !Array.isArray(errorSlots)) continue;
+					const node = nodeMap.get(nodeName);
+					if (!node || node.onError !== 'continueErrorOutput') continue;
+					if (!nodeConns.main || !Array.isArray(nodeConns.main)) continue;
+					// Already has error connections — skip
+					if (nodeConns.error) continue;
 
-					// Calculate error output index based on node type
-					const nodeType = nodeTypeMap.get(nodeName) ?? '';
-					let errorOutputIndex: number;
-					if (nodeType === 'n8n-nodes-base.if') {
-						errorOutputIndex = 2;
-					} else if (nodeType === 'n8n-nodes-base.switch') {
-						const params = nodeParamsMap.get(nodeName);
-						const rules = (params?.rules as Record<string, unknown> | undefined)?.rules;
-						errorOutputIndex = Array.isArray(rules) ? rules.length : 4;
-					} else {
-						errorOutputIndex = 1;
-					}
+					const errorOutputIndex = getErrorOutputIndex(node.type, node.parameters);
 
-					// Merge error[0] targets into main[errorOutputIndex]
-					const errorTargets = errorSlots[0];
-					if (Array.isArray(errorTargets) && errorTargets.length > 0) {
-						if (!nodeConns.main) nodeConns.main = [];
-						while (nodeConns.main.length <= errorOutputIndex) {
-							nodeConns.main.push([]);
+					// Extract main[errorOutputIndex] → error[0]
+					if (errorOutputIndex < nodeConns.main.length) {
+						const errorTargets = nodeConns.main[errorOutputIndex];
+						if (Array.isArray(errorTargets) && errorTargets.length > 0) {
+							nodeConns.error = [errorTargets];
+							nodeConns.main[errorOutputIndex] = [];
 						}
-						const existingTargets = nodeConns.main[errorOutputIndex] ?? [];
-						nodeConns.main[errorOutputIndex] = [...existingTargets, ...errorTargets];
 					}
-
-					delete nodeConns.error;
 				}
 			};
 
@@ -2594,7 +2608,7 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					// since the original JSON may have flat tuple connections
 					const normalizedOriginalConns = deepCopy(json.connections);
 					normalizeConnections(normalizedOriginalConns);
-					normalizeErrorToMainConnections(
+					normalizeMainErrorToErrorConnections(
 						normalizedOriginalConns as Record<string, Record<string, unknown[][]>>,
 						json.nodes,
 					);

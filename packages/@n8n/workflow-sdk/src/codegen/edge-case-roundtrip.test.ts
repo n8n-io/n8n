@@ -697,9 +697,11 @@ describe('Edge Case Roundtrip Tests', () => {
 			const code = generateWorkflowCode(originalJson);
 			const parsedJson = parseWorkflowCode(code);
 
-			const httpConns = parsedJson.connections['HTTP Request']?.main;
-			expect(httpConns?.[0]?.[0]?.node).toBe('Success Handler');
-			expect(httpConns?.[1]?.[0]?.node).toBe('Error Handler');
+			const httpMainConns = parsedJson.connections['HTTP Request']?.main;
+			expect(httpMainConns?.[0]?.[0]?.node).toBe('Success Handler');
+			// Error output is now under 'error' connection type
+			const httpErrorConns = parsedJson.connections['HTTP Request']?.error;
+			expect(httpErrorConns?.[0]?.[0]?.node).toBe('Error Handler');
 
 			// Verify onError setting is preserved
 			const httpNode = parsedJson.nodes.find((n) => n.name === 'HTTP Request');

@@ -286,6 +286,7 @@ export interface DeclaredConnection {
 	target: NodeInstance<string, string, unknown> | InputTarget;
 	outputIndex: number;
 	targetInputIndex?: number;
+	connectionType?: string;
 }
 
 /**

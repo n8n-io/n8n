@@ -98,7 +98,7 @@ export function extractInputIndex(slotName: string): number {
  * - 'trueBranch' → 0, 'falseBranch' → 1 (IF node)
  * - 'case{N}' → N (Switch node)
  * - 'done' → 0, 'loop' → 1 (SplitInBatches node)
- * - 'error' → 1 (for nodes with continueErrorOutput)
+ * - 'error' → 0 (for nodes with continueErrorOutput, stored under error connection type)
  */
 export function getOutputIndex(outputName: string): number {
 	// IF node outputs
@@ -109,8 +109,8 @@ export function getOutputIndex(outputName: string): number {
 	if (outputName === 'done') return 0;
 	if (outputName === 'loop') return 1;
 
-	// Error output (for nodes with continueErrorOutput)
-	if (outputName === 'error') return 1;
+	// Error output (stored under 'error' connection type at index 0)
+	if (outputName === 'error') return 0;
 
 	// output{N} pattern
 	const outputMatch = outputName.match(/^output(\d+)$/);

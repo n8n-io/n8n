@@ -1374,14 +1374,25 @@ export function generateCode(
 		const sourceVarName = getVarName(conn.sourceNodeName, ctx);
 		const targetVarName = getVarName(conn.targetNode.name, ctx);
 
-		// Handle output index if not default (0)
-		const sourceRef =
-			conn.sourceOutputIndex > 0
-				? `${sourceVarName}.output(${conn.sourceOutputIndex})`
-				: sourceVarName;
+		if (conn.isErrorOutput) {
+			// Error outputs use .onError() with target.input(n) for specific input indices
+			const targetRef =
+				conn.targetInputIndex > 0
+					? `${targetVarName}.input(${conn.targetInputIndex})`
+					: targetVarName;
+			workflowCalls.push(`  .add(${sourceVarName}.onError(${targetRef}))`);
+		} else {
+			// Handle output index if not default (0)
+			const sourceRef =
+				conn.sourceOutputIndex > 0
+					? `${sourceVarName}.output(${conn.sourceOutputIndex})`
+					: sourceVarName;
 
-		// Generate: .add(source.to(target.input(n)))
-		workflowCalls.push(`  .add(${sourceRef}.to(${targetVarName}.input(${conn.targetInputIndex})))`);
+			// Generate: .add(source.to(target.input(n)))
+			workflowCalls.push(
+				`  .add(${sourceRef}.to(${targetVarName}.input(${conn.targetInputIndex})))`,
+			);
+		}
 	}
 
 	// Generate deferred merge downstream chains
