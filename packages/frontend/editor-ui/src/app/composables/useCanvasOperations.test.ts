@@ -4855,10 +4855,8 @@ describe('useCanvasOperations', () => {
 
 			const { importTemplate } = useCanvasOperations();
 
-			const templateId = 'template-id';
 			const templateName = 'template name';
 			await importTemplate({
-				id: templateId,
 				name: templateName,
 				workflow,
 			});
