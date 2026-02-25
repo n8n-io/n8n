@@ -30,21 +30,21 @@ describe('MessageWithButtons', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('fetches when the link is on the same origin', async () => {
+	it('renders and fetches when the link is on the same origin', async () => {
 		vi.mocked(fetch).mockResolvedValue({ ok: true } as Response);
 
 		const wrapper = mount(MessageWithButtons, {
 			props: { text: 'Please confirm', buttons },
 		});
 
+		expect(wrapper.findAll('button')).toHaveLength(2);
+
 		await wrapper.findAll('button')[0].trigger('click');
 
 		await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/confirm'));
 	});
 
-	it('does not fetch when the link points to a different origin', async () => {
-		vi.mocked(fetch).mockResolvedValue({ ok: true } as Response);
-
+	it('does not render a button when the link points to a different origin', () => {
 		const externalButtons = [
 			{ text: 'Go', link: 'https://other-domain/approve', type: 'primary' as const },
 		];
@@ -53,15 +53,11 @@ describe('MessageWithButtons', () => {
 			props: { text: 'Click me', buttons: externalButtons },
 		});
 
-		await wrapper.find('button').trigger('click');
-		await new Promise((r) => setTimeout(r, 0));
-
+		expect(wrapper.find('button').exists()).toBe(false);
 		expect(fetch).not.toHaveBeenCalled();
 	});
 
-	it('does not fetch for an absolute URL on a different domain even with same path', async () => {
-		vi.mocked(fetch).mockResolvedValue({ ok: true } as Response);
-
+	it('does not render a button for an absolute URL on a different host with the same port', () => {
 		const externalButtons = [
 			{ text: 'Go', link: 'http://other-host:5678/api/confirm', type: 'primary' as const },
 		];
@@ -70,9 +66,22 @@ describe('MessageWithButtons', () => {
 			props: { text: 'Click me', buttons: externalButtons },
 		});
 
-		await wrapper.find('button').trigger('click');
-		await new Promise((r) => setTimeout(r, 0));
-
+		expect(wrapper.find('button').exists()).toBe(false);
 		expect(fetch).not.toHaveBeenCalled();
+	});
+
+	it('renders only same-origin buttons when the list contains mixed URLs', () => {
+		const mixedButtons = [
+			{ text: 'Safe', link: '/api/confirm', type: 'primary' as const },
+			{ text: 'Unsafe', link: 'https://evil.example.com/steal', type: 'secondary' as const },
+		];
+
+		const wrapper = mount(MessageWithButtons, {
+			props: { text: 'Choose', buttons: mixedButtons },
+		});
+
+		const rendered = wrapper.findAll('button');
+		expect(rendered).toHaveLength(1);
+		expect(rendered[0].text()).toBe('Safe');
 	});
 });

@@ -29,10 +29,6 @@ const onClick = async (link: string, index: number) => {
 		return;
 	}
 
-	if (!isSameDomain(link)) {
-		return;
-	}
-
 	const response = await fetch(link);
 	if (response.ok) {
 		clickedButtonIndex.value = index;
@@ -46,7 +42,10 @@ const onClick = async (link: string, index: number) => {
 		<div :class="$style.buttons">
 			<template v-for="(button, index) in buttons" :key="button.text">
 				<Button
-					v-if="clickedButtonIndex === null || index === clickedButtonIndex"
+					v-if="
+						isSameDomain(button.link) &&
+						(clickedButtonIndex === null || index === clickedButtonIndex)
+					"
 					element="button"
 					:type="button.type"
 					:disabled="index === clickedButtonIndex"
