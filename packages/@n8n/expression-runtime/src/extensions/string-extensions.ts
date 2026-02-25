@@ -1,10 +1,3 @@
-// NOTE: This file is intentionally mirrored in @n8n/expression-runtime/src/extensions/
-// for use inside the isolated VM. Changes here must be reflected there and vice versa.
-// TODO: Eliminate the duplication. The blocker is that @n8n/expression-runtime is
-// Vite-stubbed for browser builds (to exclude isolated-vm), which prevents n8n-workflow
-// from importing these extension utilities directly from the runtime package. Fix by
-// splitting @n8n/expression-runtime into a browser-safe extensions subpath (not stubbed)
-// and a node-only VM entry (stubbed).
 import { toBase64, fromBase64 } from 'js-base64';
 import SHA from 'jssha';
 import { DateTime } from 'luxon';
@@ -13,9 +6,8 @@ import { titleCase } from 'title-case';
 import { transliterate } from 'transliteration';
 
 import type { Extension, ExtensionMap } from './extensions';
+import { ExpressionExtensionError } from './expression-extension-error';
 import { toDateTime as numberToDateTime } from './number-extensions';
-import { ExpressionExtensionError } from '../errors/expression-extension.error';
-import { tryToParseDateTime } from '../type-validation';
 
 export const SupportedHashAlgorithms = [
 	'md5',
@@ -29,99 +21,68 @@ export const SupportedHashAlgorithms = [
 
 // All symbols from https://www.xe.com/symbols/ as for 2022/11/09
 const CURRENCY_REGEXP =
-	/(\u004c\u0065\u006b|\u060b|\u0024|\u0192|\u20bc|\u0042\u0072|\u0042\u005a\u0024|\u0024\u0062|\u004b\u004d|\u0050|\u043b\u0432|\u0052\u0024|\u17db|\u00a5|\u20a1|\u006b\u006e|\u20b1|\u004b\u010d|\u006b\u0072|\u0052\u0044\u0024|\u00a3|\u20ac|\u00a2|\u0051|\u004c|\u0046\u0074|\u20b9|\u0052\u0070|\ufdfc|\u20aa|\u004a\u0024|\u20a9|\u20ad|\u0434\u0435\u043d|\u0052\u004d|\u20a8|\u20ae|\u004d\u0054|\u0043\u0024|\u20a6|\u0042\u002f\u002e|\u0047\u0073|\u0053\u002f\u002e|\u007a\u0142|\u006c\u0065\u0069|\u20bd|\u0414\u0438\u043d\u002e|\u0053|\u0052|\u0043\u0048\u0046|\u004e\u0054\u0024|\u0e3f|\u0054\u0054\u0024|\u20ba|\u20b4|\u0024\u0055|\u0042\u0073|\u20ab|\u005a\u0024)/gu;
+	/(\u004c\u0065\u006b|\u060b|\u0024|\u0192|\u20bc|\u0042\u0072|\u0042\u005a\u0024|\u0024\u0062|\u004b\u004d|\u0050|\u043b\u0432|\u0052\u0062|\u17db|\u00a5|\u20a1|\u006b\u006e|\u20b1|\u004b\u010d|\u006b\u0072|\u0052\u0044\u0024|\u00a3|\u20ac|\u00a2|\u0051|\u004c|\u0046\u0074|\u20b9|\u0052\u0070|\ufdfc|\u20aa|\u004a\u0024|\u20a9|\u20ad|\u0434\u0435\u043d|\u0052\u004d|\u20a8|\u20ae|\u004d\u0054|\u0043\u0024|\u20a6|\u0042\u002f\u002e|\u0047\u0073|\u0053\u002f\u002e|\u007a\u0142|\u006c\u0065\u0069|\u20bd|\u0414\u0438\u043d\u002e|\u0053|\u0052|\u0043\u0048\u0046|\u004e\u0054\u0024|\u0e3f|\u0054\u0054\u0024|\u20ba|\u20b4|\u0024\u0055|\u0042\u0073|\u20ab|\u005a\u0024)/gu;
 
-/*
-	Extract the domain part from various inputs, including URLs, email addresses, and plain domains.
-
-	/^(?:(?:https?|ftp):\/\/)? 								// Match optional http, https, or ftp protocols
-  (?:mailto:)?               								// Match optional mailto:
-  (?:\/\/)?                  								// Match optional double slashes
-  (?:www\.)?                 								// Match optional www prefix
-  (?:[-\w]*\.)?              								// Match any optional subdomain
-  (                           							// Capture the domain part
-    (?:(?:[-\w]+\.)+          							// Match one or more subdomains
-      (?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+) 		// Match top-level domain or Punycode encoded IDN(xn--80aswg.xn--p1ai)
-      |localhost              							// Match localhost
-      |\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} 	// Match IPv4 addresses
-    )
-  )
-  (?::\d+)?                   							// Match optional port number
-  (?:\/[^\s?]*)?              							// Match optional path
-  (?:\?[^\s#]*)?              							// Match optional query string
-  (?:#[^\s]*)?$/i;            							// Match optional hash fragment
-*/
 const DOMAIN_EXTRACT_REGEXP =
 	/^(?:(?:https?|ftp):\/\/)?(?:mailto:)?(?:\/\/)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
 
-/*
-	Matches domain names without the protocol or optional subdomains
-
-	/^(?:www\.)? 															// Match optional www prefix
-  (                         								// Capture the domain part
-    (?:(?:[-\w]+\.)+        								// Match one or more subdomains
-      (?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+) 		// Match top-level domain or Punycode encoded IDN
-      |localhost            								// Match localhost
-      |\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} 	// Match IPv4 addresses
-    )
-  )
-  (?::\d+)?                 								// Match optional port number
-  (?:\/[^\s?]*)?            								// Match optional path
-  (?:\?[^\s#]*)?            								// Match optional query string
-  (?:#[^\s]*)?$/i;          								// Match optional fragment at the end of the string
-*/
 const DOMAIN_REGEXP =
 	/^(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
 
-/*
-	Matches email addresses
-
-	/(
-    ( 																											// Capture local part of the email address
-      ([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*) 	// One or more characters not in the set, followed by
-																														a	period, followed by one or more characters not in the set
-      |(".+") 																							// Or one or more characters inside quotes
-    )
-  )
-  @                             														// Match @ symbol
-  (?<domain>(                   														// Capture the domain part of the email address
-    \[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\] 			// Match IPv4 address inside brackets
-    |(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}) 											// Or match domain with at least two subdomains and TLD
-  ))/;
-*/
 const EMAIL_REGEXP =
 	/(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@(?<domain>(\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))/;
 
-/*
-	Matches URLs with strict beginning and end of the string checks
-
-	/^(?:(?:https?|ftp):\/\/) 							// Match http, https, or ftp protocols at the start of the string
-  (?:www\.)?               								// Match optional www prefix
-  (                        								// Capture the domain part
-    (?:(?:[-\w]+\.)+       								// Match one or more subdomains
-      (?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+) 	// Match top-level domain or Punycode encoded IDN
-      |localhost           								// Match localhost
-      |\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} // Match IPv4 addresses
-    )
-  )
-  (?::\d+)?                								// Match optional port number
-  (?:\/[^\s?#]*)?          								// Match optional path
-  (?:\?[^\s#]*)?           								// Match optional query string
-  (?=([^\s]+#.*)?)         								// Positive lookahead for the fragment identifier
-  #?[^\s]*$/i;              							// Match optional fragment at the end of the string
-*/
 const URL_REGEXP_EXACT =
 	/^(?:(?:https?|ftp):\/\/)(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?=([^\s]+#.*)?)#?[^\s]*$/i;
 
-/*
-	Same as URL_REGEXP_EXACT but without the strict beginning and end of the string checks to allow for
-	matching URLs in the middle of a string
-*/
 const URL_REGEXP =
 	/(?:(?:https?|ftp):\/\/)(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?=([^\s]+#.*)?)#?[^\s]*/i;
 
 const CHAR_TEST_REGEXP = /\p{L}/u;
 const PUNC_TEST_REGEXP = /[!?.]/;
+
+/**
+ * Inline version of tryToParseDateTime from n8n-workflow/type-validation.ts
+ * Avoids circular dependency.
+ */
+function tryToParseDateTime(value: unknown, defaultZone?: string): DateTime {
+	if (DateTime.isDateTime(value) && value.isValid) {
+		return value;
+	}
+
+	if (value instanceof Date) {
+		const fromJSDate = DateTime.fromJSDate(value, { zone: defaultZone });
+		if (fromJSDate.isValid) {
+			return fromJSDate;
+		}
+	}
+
+	const dateString = String(value).trim();
+
+	const isoDate = DateTime.fromISO(dateString, { zone: defaultZone, setZone: true });
+	if (isoDate.isValid) {
+		return isoDate;
+	}
+	const httpDate = DateTime.fromHTTP(dateString, { zone: defaultZone, setZone: true });
+	if (httpDate.isValid) {
+		return httpDate;
+	}
+	const rfc2822Date = DateTime.fromRFC2822(dateString, { zone: defaultZone, setZone: true });
+	if (rfc2822Date.isValid) {
+		return rfc2822Date;
+	}
+	const sqlDate = DateTime.fromSQL(dateString, { zone: defaultZone, setZone: true });
+	if (sqlDate.isValid) {
+		return sqlDate;
+	}
+
+	const parsedDateTime = DateTime.fromMillis(Date.parse(dateString), { zone: defaultZone });
+	if (parsedDateTime.isValid) {
+		return parsedDateTime;
+	}
+
+	throw new ExpressionExtensionError('Value is not a valid date');
+}
 
 function hash(value: string, extraArgs: string[]): string {
 	const algorithm = extraArgs[0]?.toLowerCase() ?? 'md5';
@@ -472,7 +433,7 @@ toDate.doc = {
 toDateTime.doc = {
 	name: 'toDateTime',
 	description:
-		'Converts the string to a <a target="_blank" href="https://moment.github.io/luxon/api-docs/">Luxon</a> DateTime. Useful for further transformation. Supported formats for the string are ISO 8601, HTTP, RFC2822, SQL and Unix timestamp in milliseconds. To parse other formats, use <a target="_blank" href=”https://moment.github.io/luxon/api-docs/index.html#datetimefromformat”> <code>DateTime.fromFormat()</code></a>.',
+		'Converts the string to a <a target="_blank" href="https://moment.github.io/luxon/api-docs/">Luxon</a> DateTime. Useful for further transformation. Supported formats for the string are ISO 8601, HTTP, RFC2822, SQL and Unix timestamp in milliseconds. To parse other formats, use <a target="_blank" href="https://moment.github.io/luxon/api-docs/index.html#datetimefromformat"> <code>DateTime.fromFormat()</code></a>.',
 	section: 'cast',
 	returnType: 'DateTime',
 	docURL:
@@ -714,7 +675,7 @@ isNotEmpty.doc = {
 toJsonString.doc = {
 	name: 'toJsonString',
 	description:
-		'Prepares the string to be inserted into a JSON object. Escapes any quotes and special characters (e.g. new lines), and wraps the string in quotes.The same as JavaScript’s JSON.stringify().',
+		"Prepares the string to be inserted into a JSON object. Escapes any quotes and special characters (e.g. new lines), and wraps the string in quotes.The same as JavaScript's JSON.stringify().",
 	section: 'edit',
 	returnType: 'string',
 	docURL:

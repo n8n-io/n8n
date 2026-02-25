@@ -1,18 +1,13 @@
-// NOTE: This file is intentionally mirrored in @n8n/expression-runtime/src/extensions/
-// for use inside the isolated VM. Changes here must be reflected there and vice versa.
-// TODO: Eliminate the duplication. The blocker is that @n8n/expression-runtime is
-// Vite-stubbed for browser builds (to exclude isolated-vm), which prevents n8n-workflow
-// from importing these extension utilities directly from the runtime package. Fix by
-// splitting @n8n/expression-runtime into a browser-safe extensions subpath (not stubbed)
-// and a node-only VM entry (stubbed).
 import isEqual from 'lodash/isEqual';
 import uniqWith from 'lodash/uniqWith';
 
 import type { Extension, ExtensionMap } from './extensions';
+import { ExpressionExtensionError } from './expression-extension-error';
 import { compact as oCompact } from './object-extensions';
-import { ExpressionExtensionError } from '../errors/expression-extension.error';
-import { ExpressionError } from '../errors/expression.error';
-import { randomInt } from '../utils';
+
+function randomInt(max: number): number {
+	return crypto.getRandomValues(new Uint32Array(1))[0] % max;
+}
 
 function first(value: unknown[]): unknown {
 	return value[0];
@@ -32,7 +27,7 @@ function last(value: unknown[]): unknown {
 
 function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 	if (!Array.isArray(extraArgs)) {
-		throw new ExpressionError('arguments must be passed to pluck');
+		throw new ExpressionExtensionError('arguments must be passed to pluck');
 	}
 	if (!extraArgs || extraArgs.length === 0) {
 		return value;
@@ -177,8 +172,6 @@ function chunk(value: unknown[], extraArgs: number[]) {
 	}
 	const chunks: unknown[][] = [];
 	for (let i = 0; i < value.length; i += chunkSize) {
-		// I have no clue why eslint thinks 2 numbers could be anything but that but here we are
-
 		chunks.push(value.slice(i, i + chunkSize));
 	}
 	return chunks;
@@ -514,7 +507,7 @@ merge.doc = {
 pluck.doc = {
 	name: 'pluck',
 	description:
-		'Returns an array containing the values of the given field(s) in each Object of the array. Ignores any array elements that aren’t Objects or don’t have a key matching the field name(s) provided.',
+		"Returns an array containing the values of the given field(s) in each Object of the array. Ignores any array elements that aren't Objects or don't have a key matching the field name(s) provided.",
 	examples: [
 		{
 			example: "[{ name: 'Nathan', age: 42 },{ name: 'Jan', city: 'Berlin' }].pluck('name')",
