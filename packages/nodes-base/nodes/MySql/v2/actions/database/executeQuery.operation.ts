@@ -98,11 +98,15 @@ export async function execute(
 			queries.push(preparedQuery);
 			queryToItemIndex.push(i);
 		} catch (error) {
+			const nodeError =
+				error instanceof NodeOperationError
+					? error
+					: new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
 			if (!this.continueOnFail()) {
-				throw new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
+				throw nodeError;
 			}
 			errorItems.push({
-				json: { message: (error as Error).message, error: { ...(error as Error) } },
+				json: { message: nodeError.message, error: { ...nodeError } },
 				pairedItem: { item: i },
 			});
 		}
@@ -114,23 +118,39 @@ export async function execute(
 
 	const queryResults = await runQueries(queries);
 
-	// runQueries assigns pairedItem using the query array index (0..n-1). When
-	// some items failed during preparation and were excluded from `queries`,
-	// those indices no longer match the original input item indices. Remap
-	// single-object pairedItem references back to the correct original index.
+	// runQueries assigns pairedItem using query array indices (0..n-1). When
+	// some items fail during preparation and are excluded from `queries`, those
+	// indices no longer match original input item indices. Remap both object and
+	// array pairedItem references back to original indices.
 	const remappedResults = queryResults.map((result) => {
 		const pairedItem = result.pairedItem;
+		if (pairedItem === undefined) {
+			return result;
+		}
+
+		if (Array.isArray(pairedItem)) {
+			const remappedPairedItems = pairedItem.map((entry) => {
+				const originalIndex = queryToItemIndex[entry.item];
+				if (originalIndex === undefined) {
+					return entry;
+				}
+
+				return { ...entry, item: originalIndex };
+			});
+
+			return { ...result, pairedItem: remappedPairedItems };
+		}
+
 		if (
-			pairedItem !== undefined &&
 			typeof pairedItem === 'object' &&
-			!Array.isArray(pairedItem) &&
 			pairedItem.item !== undefined
 		) {
 			const originalIndex = queryToItemIndex[pairedItem.item];
 			if (originalIndex !== undefined) {
-				return { ...result, pairedItem: { item: originalIndex } };
+				return { ...result, pairedItem: { ...pairedItem, item: originalIndex } };
 			}
 		}
+
 		return result;
 	});
 
