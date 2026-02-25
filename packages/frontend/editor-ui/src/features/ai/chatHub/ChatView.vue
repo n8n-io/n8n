@@ -680,7 +680,7 @@ function handleSelectPrompt(prompt: string) {
 		});
 	}
 
-	inputRef.value?.appendText(prompt);
+	inputRef.value?.setText(prompt);
 	inputRef.value?.focus();
 }
 

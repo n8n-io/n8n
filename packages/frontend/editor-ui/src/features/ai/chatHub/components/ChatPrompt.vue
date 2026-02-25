@@ -19,6 +19,7 @@ import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 import type { MessagingState } from '@/features/ai/chatHub/chat.types';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { replace } from 'lodash';
 
 const props = defineProps<{
 	messagingState: MessagingState;
@@ -211,6 +212,9 @@ defineExpose({
 		message.value = '';
 		committedSpokenMessage.value = '';
 		attachments.value = [];
+	},
+	setText: (text: string) => {
+		message.value = text;
 	},
 	appendText: (text: string) => {
 		message.value += text;
