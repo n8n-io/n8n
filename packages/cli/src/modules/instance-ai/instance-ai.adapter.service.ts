@@ -14,9 +14,16 @@ import type {
 	NodeDescription,
 } from '@n8n/instance-ai';
 import type { User, WorkflowEntity } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { INode, IConnections, IWorkflowSettings } from 'n8n-workflow';
+import {
+	type INode,
+	type IConnections,
+	type IWorkflowSettings,
+	type IPinData,
+	type IWorkflowExecutionDataProcess,
+	createRunExecutionData,
+} from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -31,6 +38,7 @@ export class InstanceAiAdapterService {
 		private readonly workflowService: WorkflowService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly executionRepository: ExecutionRepository,
 		private readonly credentialsService: CredentialsService,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
@@ -125,10 +133,10 @@ export class InstanceAiAdapterService {
 	}
 
 	private createExecutionAdapter(user: User): InstanceAiExecutionService {
-		const { workflowFinderService, workflowRunner, activeExecutions } = this;
+		const { workflowFinderService, workflowRunner, activeExecutions, executionRepository } = this;
 
 		return {
-			async run(workflowId: string, _inputData) {
+			async run(workflowId: string, inputData) {
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:execute',
 				]);
@@ -137,29 +145,71 @@ export class InstanceAiAdapterService {
 					throw new Error(`Workflow ${workflowId} not found or not accessible`);
 				}
 
-				const executionId = await workflowRunner.run({
+				const nodes = workflow.nodes ?? [];
+
+				// Find the first trigger node to inject input data
+				const triggerNode = nodes.find(
+					(n) =>
+						n.type.includes('Trigger') || n.type.includes('trigger') || n.type.includes('webhook'),
+				);
+
+				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: 'manual',
 					workflowData: workflow,
 					userId: user.id,
-				});
+				};
 
+				// If we have input data and a trigger node, set up pin data
+				// so the trigger node outputs the provided data
+				if (inputData && triggerNode) {
+					const pinData: IPinData = {
+						[triggerNode.name]: [{ json: inputData as never }],
+					};
+
+					runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
+					runData.pinData = pinData;
+					runData.executionData = createRunExecutionData({
+						startData: {},
+						resultData: { pinData, runData: {} },
+						executionData: {
+							contextData: {},
+							metadata: {},
+							nodeExecutionStack: [
+								{
+									node: triggerNode,
+									data: { main: [pinData[triggerNode.name]] },
+									source: null,
+								},
+							],
+							waitingExecution: {},
+							waitingExecutionSource: {},
+						},
+					});
+				}
+
+				const executionId = await workflowRunner.run(runData);
+
+				// Wait for completion and return results directly
+				if (activeExecutions.has(executionId)) {
+					await activeExecutions.getPostExecutePromise(executionId);
+				}
 				return { executionId };
 			},
 
 			async getStatus(executionId: string) {
 				const isRunning = activeExecutions.has(executionId);
-				return {
-					executionId,
-					status: isRunning ? 'running' : 'success',
-				} satisfies ExecutionResult;
-			},
-
-			async getResult(executionId: string) {
-				const isRunning = activeExecutions.has(executionId);
 				if (isRunning) {
 					return { executionId, status: 'running' } satisfies ExecutionResult;
 				}
-				return { executionId, status: 'success' } satisfies ExecutionResult;
+				return extractExecutionResult(executionRepository, executionId);
+			},
+
+			async getResult(executionId: string) {
+				// If still running, wait for it to complete
+				if (activeExecutions.has(executionId)) {
+					await activeExecutions.getPostExecutePromise(executionId);
+				}
+				return extractExecutionResult(executionRepository, executionId);
 			},
 		};
 	}
@@ -325,6 +375,59 @@ export class InstanceAiAdapterService {
 			},
 		};
 	}
+}
+
+async function extractExecutionResult(
+	executionRepository: ExecutionRepository,
+	executionId: string,
+): Promise<ExecutionResult> {
+	const execution = await executionRepository.findSingleExecution(executionId, {
+		includeData: true,
+		unflattenData: true,
+	});
+
+	if (!execution) {
+		return { executionId, status: 'success' };
+	}
+
+	const status =
+		execution.status === 'error' || execution.status === 'crashed'
+			? 'error'
+			: execution.status === 'running' || execution.status === 'new'
+				? 'running'
+				: execution.status === 'waiting'
+					? 'waiting'
+					: 'success';
+
+	// Extract output data from the last node's execution
+	const resultData: Record<string, unknown> = {};
+	const runData = execution.data?.resultData?.runData;
+	if (runData) {
+		for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+			const lastRun = nodeRuns[nodeRuns.length - 1];
+			if (lastRun?.data?.main) {
+				const outputItems = lastRun.data.main
+					.flat()
+					.filter((item): item is NonNullable<typeof item> => item != null)
+					.map((item) => item.json);
+				if (outputItems.length > 0) {
+					resultData[nodeName] = outputItems;
+				}
+			}
+		}
+	}
+
+	// Extract error if present
+	const errorMessage = execution.data?.resultData?.error?.message;
+
+	return {
+		executionId,
+		status,
+		data: Object.keys(resultData).length > 0 ? resultData : undefined,
+		error: errorMessage,
+		startedAt: execution.startedAt?.toISOString(),
+		finishedAt: execution.stoppedAt?.toISOString(),
+	};
 }
 
 function toWorkflowDetail(workflow: WorkflowEntity): WorkflowDetail {

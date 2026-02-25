@@ -6,6 +6,8 @@ import { ErrorReporter } from 'n8n-core';
 
 import { InstanceAiService } from './instance-ai.service';
 
+type FlushableResponse = Response & { flush?: () => void };
+
 @RestController('/instance-ai')
 export class InstanceAiController {
 	constructor(
@@ -15,7 +17,11 @@ export class InstanceAiController {
 	) {}
 
 	@Post('/chat/:threadId')
-	async chat(req: AuthenticatedRequest, res: Response, @Param('threadId') threadId: string) {
+	async chat(
+		req: AuthenticatedRequest,
+		res: FlushableResponse,
+		@Param('threadId') threadId: string,
+	) {
 		const { message } = req.body as { message: string };
 
 		if (!message?.trim()) {
@@ -23,28 +29,24 @@ export class InstanceAiController {
 			return;
 		}
 
-		// Set up SSE headers
-		res.setHeader('Content-Type', 'text/event-stream');
+		// Stream response as newline-separated JSON chunks
+		// Disable compression buffering for real-time streaming
+		res.setHeader('Content-Type', 'application/octet-stream');
 		res.setHeader('Cache-Control', 'no-cache');
 		res.setHeader('Connection', 'keep-alive');
+		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
 
 		try {
-			const textStream = await this.instanceAiService.sendMessage(req.user, threadId, message);
+			const fullStream = await this.instanceAiService.sendMessage(req.user, threadId, message);
 
-			const reader = textStream.getReader();
-			let done = false;
-
-			while (!done) {
-				const result = await reader.read();
-				done = result.done;
-
-				if (!done && result.value) {
-					res.write(`data: ${JSON.stringify({ type: 'chunk', content: result.value })}\n\n`);
-				}
+			for await (const chunk of fullStream) {
+				res.write(JSON.stringify(chunk) + '\n');
+				res.flush?.();
 			}
 
-			res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+			res.write(JSON.stringify({ type: 'done' }) + '\n');
+			res.flush?.();
 			res.end();
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -56,7 +58,8 @@ export class InstanceAiController {
 			if (!res.headersSent) {
 				res.status(500).json({ error: 'Internal server error' });
 			} else {
-				res.write(`data: ${JSON.stringify({ type: 'error', content: 'An error occurred' })}\n\n`);
+				res.write(JSON.stringify({ type: 'error', content: 'An error occurred' }) + '\n');
+				res.flush?.();
 				res.end();
 			}
 		}

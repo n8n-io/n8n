@@ -42,7 +42,7 @@ export class InstanceAiService {
 		user: User,
 		threadId: string,
 		message: string,
-	): Promise<ReadableStream<string>> {
+	): Promise<AsyncIterable<unknown>> {
 		const context = this.adapterService.createContext(user);
 
 		const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
@@ -68,7 +68,7 @@ export class InstanceAiService {
 			},
 		});
 
-		return result.textStream as ReadableStream<string>;
+		return result.fullStream as AsyncIterable<unknown>;
 	}
 
 	async shutdown(): Promise<void> {
