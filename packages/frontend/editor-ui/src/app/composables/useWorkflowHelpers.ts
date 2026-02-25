@@ -591,22 +591,20 @@ export function useWorkflowHelpers() {
 			nodes.push(nodeData);
 		}
 
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
-
-		const tags = workflowDocumentStore?.tags ? [...workflowDocumentStore.tags] : [];
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
 
 		const data: WorkflowData = {
 			name: workflowsStore.workflowName,
 			nodes,
-			pinData: workflowDocumentStore?.getPinDataSnapshot() ?? {},
+			pinData: workflowDocumentStore.getPinDataSnapshot(),
 			connections: workflowConnections,
-			active: useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)).active,
+			active: workflowDocumentStore.active,
 			settings: workflowsStore.workflow.settings,
-			tags,
+			tags: [...workflowDocumentStore.tags],
 			versionId: workflowsStore.workflow.versionId,
-			meta: workflowsStore.workflow.meta,
+			meta: workflowDocumentStore.meta,
 		};
 
 		const workflowId = workflowsStore.workflowId;
@@ -980,12 +978,14 @@ export function useWorkflowHelpers() {
 			setStateDirty: uiStore.stateIsDirty,
 		});
 		ws.setWorkflowSettings(workflowData.settings ?? {});
-		workflowsStore.setWorkflowVersionData({
-			versionId: workflowData.versionId,
-			name: null,
-			description: null,
-		});
-		ws.setWorkflowMetadata(workflowData.meta);
+		workflowsStore.setWorkflowVersionData(
+			{
+				versionId: workflowData.versionId,
+				name: null,
+				description: null,
+			},
+			workflowData.checksum,
+		);
 		ws.setWorkflowScopes(workflowData.scopes);
 
 		if ('activeVersion' in workflowData) {
@@ -1039,6 +1039,7 @@ export function useWorkflowHelpers() {
 		if (workflowData.checksum) {
 			workflowDocumentStore.setChecksum(workflowData.checksum);
 		}
+		workflowDocumentStore.setMeta(workflowData.meta);
 		tagsStore.upsertTags(tags);
 
 		return { workflowDocumentStore };

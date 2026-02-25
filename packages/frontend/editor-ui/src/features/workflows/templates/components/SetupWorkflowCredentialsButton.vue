@@ -10,14 +10,20 @@ import { doesNodeHaveAllCredentialsFilled } from '@/app/utils/nodes/nodeTransfor
 
 import { N8nButton } from '@n8n/design-system';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
+
 import { useRoute } from 'vue-router';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 const workflowsStore = useWorkflowsStore();
 const readyToRunStore = useReadyToRunStore();
-const workflowState = injectWorkflowState();
+const workflowDocumentStore = useWorkflowDocumentStore(
+	createWorkflowDocumentId(workflowsStore.workflowId),
+);
 const nodeTypesStore = useNodeTypesStore();
 const posthogStore = usePostHog();
 const uiStore = useUIStore();
@@ -31,7 +37,7 @@ const isTemplateImportRoute = computed(() => {
 });
 
 const isTemplateSetupCompleted = computed(() => {
-	return !!workflowsStore.workflow?.meta?.templateCredsSetupCompleted;
+	return !!workflowDocumentStore.meta?.templateCredsSetupCompleted;
 });
 
 const allCredentialsFilled = computed(() => {
@@ -58,7 +64,7 @@ const isSetupPanelFeatureEnabled = computed(() => {
 });
 
 const showButton = computed(() => {
-	const isCreatedFromTemplate = !!workflowsStore.workflow?.meta?.templateId;
+	const isCreatedFromTemplate = !!workflowDocumentStore.meta?.templateId;
 	if (!isCreatedFromTemplate) {
 		return false;
 	}
@@ -84,7 +90,7 @@ const isButtonDisabled = computed(() => {
 
 const unsubscribe = watch(allCredentialsFilled, (newValue) => {
 	if (newValue) {
-		workflowState.addToWorkflowMetadata({
+		workflowDocumentStore.addToMeta({
 			templateCredsSetupCompleted: true,
 		});
 
@@ -115,10 +121,10 @@ onBeforeUnmount(() => {
 
 onMounted(async () => {
 	// Wait for all reactive updates to settle before checking conditions
-	// This ensures workflow.meta.templateId is available after initialization
+	// This ensures meta.templateId is available after initialization
 	await nextTick();
 
-	const templateId = workflowsStore.workflow?.meta?.templateId;
+	const templateId = workflowDocumentStore.meta?.templateId;
 	const isReadyToRunWorkflow = readyToRunStore.isReadyToRunTemplateId(templateId);
 
 	if (

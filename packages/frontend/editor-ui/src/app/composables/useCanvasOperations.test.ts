@@ -4853,8 +4853,6 @@ describe('useCanvasOperations', () => {
 				'getNewWorkflowDataAndMakeShareable',
 			);
 
-			const addToWorkflowMetadataSpy = vi.spyOn(workflowState, 'addToWorkflowMetadata');
-
 			const { importTemplate } = useCanvasOperations();
 
 			const templateId = 'template-id';
@@ -4882,9 +4880,6 @@ describe('useCanvasOperations', () => {
 				templateName,
 				projectsStore.currentProjectId,
 			);
-			expect(addToWorkflowMetadataSpy).toHaveBeenCalledWith({
-				templateId,
-			});
 		});
 	});
 	describe('replaceNodeParameters', () => {
@@ -5551,6 +5546,13 @@ describe('useCanvasOperations', () => {
 				name: VIEWS.NEW_WORKFLOW,
 				query: { templateId: 'template-id' },
 			});
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			);
+			expect(workflowDocumentStore.addToMeta).toHaveBeenCalledWith({
+				templateId: 'template-id',
+			});
 		});
 
 		it('should not mark UI state as dirty on template import', async () => {
@@ -5609,6 +5611,13 @@ describe('useCanvasOperations', () => {
 					projectId: 'test-project-id',
 					parentFolderId: undefined,
 				},
+			});
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			);
+			expect(workflowDocumentStore.addToMeta).toHaveBeenCalledWith({
+				templateId: 'template-id',
 			});
 		});
 

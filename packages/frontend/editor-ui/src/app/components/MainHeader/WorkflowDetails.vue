@@ -56,7 +56,6 @@ const props = defineProps<{
 	id: IWorkflowDb['id'];
 	tags: readonly string[];
 	name: IWorkflowDb['name'];
-	meta: IWorkflowDb['meta'];
 	scopes: IWorkflowDb['scopes'];
 	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
@@ -457,7 +456,6 @@ onBeforeUnmount(() => {
 				ref="workflowHeaderActions"
 				:tags="tags"
 				:name="name"
-				:meta="meta"
 				:is-archived="isArchived"
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"

@@ -2868,9 +2868,11 @@ export function useCanvasOperations() {
 	async function copyNodes(ids: string[]) {
 		const workflowData = deepCopy(getNodesToSave(workflowsStore.getNodesByIds(ids)));
 
+		const workflowDocumentId = createWorkflowDocumentId(workflowsStore.workflowId);
+		const documentStore = useWorkflowDocumentStore(workflowDocumentId);
 		workflowData.meta = {
 			...workflowData.meta,
-			...workflowsStore.workflow.meta,
+			...documentStore.meta,
 			instanceId: rootStore.instanceId,
 		};
 
@@ -2976,7 +2978,6 @@ export function useCanvasOperations() {
 		}
 		await addNodes(convertedNodes ?? [], { keepPristine: true });
 		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
-		workflowState.addToWorkflowMetadata({ templateId: `${id}` });
 	}
 
 	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {
@@ -3143,6 +3144,9 @@ export function useCanvasOperations() {
 			workflowState.setWorkflowId(route.params.name);
 		}
 
+		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
+		docStore.addToMeta({ templateId: `${templateId}` });
+
 		canvasStore.stopLoading();
 
 		void externalHooks.run('template.open', {
@@ -3188,6 +3192,9 @@ export function useCanvasOperations() {
 			name: workflow.name,
 			workflow,
 		});
+
+		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
+		docStore.addToMeta({ templateId: `${templateId}` });
 
 		canvasStore.stopLoading();
 
