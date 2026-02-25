@@ -78,7 +78,7 @@ export const EMPTY_STATE_EXPERIMENT = createExperiment('070_empty_screen_layout'
 	variantTemplates: 'variant-templates',
 });
 
-export const SETUP_PANEL = createExperiment('069_setup_panel', {
+export const SETUP_PANEL = createExperiment('077_setup_panel', {
 	control: 'control',
 	variant: 'variant',
 });
