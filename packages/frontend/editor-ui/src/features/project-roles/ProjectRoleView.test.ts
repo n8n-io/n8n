@@ -502,7 +502,9 @@ describe('ProjectRoleView', () => {
 		});
 
 		it('should render externalSecretsProvider scope type when forProjects is on', () => {
-			settingsStore.moduleSettings = { 'external-secrets': { forProjects: true } };
+			settingsStore.moduleSettings = {
+				'external-secrets': { forProjects: true, multipleConnections: true },
+			};
 			const { getByText } = renderComponent();
 
 			expect(getByText('Secrets vaults')).toBeInTheDocument();
@@ -510,7 +512,9 @@ describe('ProjectRoleView', () => {
 		});
 
 		it('should show secrets checkboxes when forProjects is on', async () => {
-			settingsStore.moduleSettings = { 'external-secrets': { forProjects: true } };
+			settingsStore.moduleSettings = {
+				'external-secrets': { forProjects: true, multipleConnections: true },
+			};
 			const { getByTestId } = renderComponent();
 
 			await waitFor(() =>
