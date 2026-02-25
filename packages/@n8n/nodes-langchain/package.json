@@ -245,7 +245,6 @@
     "jsdom": "23.0.1",
     "langchain": "catalog:",
     "@langchain/classic": "1.0.5",
-    "@lancedb/lancedb": "^0.23.0",
     "lodash": "catalog:",
     "nanoid": "^5.0.9",
     "mammoth": "1.11.0",

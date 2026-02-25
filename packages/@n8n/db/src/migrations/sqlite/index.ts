@@ -135,6 +135,7 @@ import { AddFilesAndEmbeddingFieldsToChatHubAgentTable1768998116560 } from '../c
 import { CreateSecretsProviderConnectionTables1769433700000 } from '../common/1769433700000-CreateSecretsProvidersConnectionTables';
 import { CreateWorkflowPublishedVersionTable1769698710000 } from '../common/1769698710000-CreateWorkflowPublishedVersionTable';
 import { ExpandSubjectIDColumnLength1769784356000 } from '../common/1769784356000-ExpandSubjectIDColumnLength';
+import { AddVectorStoreDataTable1768906222000 } from './1768906222000-AddVectorStoreDataTable';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -275,6 +276,7 @@ const sqliteMigrations: Migration[] = [
 	CreateWorkflowPublishedVersionTable1769698710000,
 	ExpandSubjectIDColumnLength1769784356000,
 	AddFilesAndEmbeddingFieldsToChatHubAgentTable1768998116560,
+	AddVectorStoreDataTable1768906222000,
 ];
 
 export { sqliteMigrations };

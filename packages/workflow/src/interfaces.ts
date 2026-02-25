@@ -1007,6 +1007,46 @@ export type DataTableProxyFunctions = {
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
+export interface VectorDocument {
+	content: string;
+	metadata: Record<string, unknown>;
+}
+
+export interface VectorSearchResult {
+	document: VectorDocument;
+	score: number;
+}
+
+export interface IVectorStoreDataService {
+	addVectors(
+		memoryKey: string,
+		workflowId: string,
+		documents: VectorDocument[],
+		embeddings: number[][],
+		clearStore?: boolean,
+	): Promise<void>;
+
+	similaritySearch(
+		memoryKey: string,
+		workflowId: string,
+		queryEmbedding: number[],
+		k: number,
+		filter?: Record<string, unknown>,
+	): Promise<VectorSearchResult[]>;
+
+	getVectorCount(memoryKey: string, workflowId: string): Promise<number>;
+
+	clearStore(memoryKey: string, workflowId: string): Promise<void>;
+
+	deleteStore(memoryKey: string, workflowId: string): Promise<void>;
+
+	listStores(workflowId: string, filter?: string): Promise<string[]>;
+}
+
+export type VectorStoreHelperFunctions = {
+	getVectorStoreService?(): IVectorStoreDataService;
+};
+
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
 	setMetadata(metadata: ITaskMetadata): void;
@@ -1073,7 +1113,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			DeduplicationHelperFunctions &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
-			DataTableProxyFunctions & {
+			DataTableProxyFunctions &
+			VectorStoreHelperFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
 					inputData: INodeExecutionData[],
@@ -1165,7 +1206,10 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
-	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataTableProxyFunctions;
+	helpers: RequestHelperFunctions &
+		SSHTunnelFunctions &
+		DataTableProxyFunctions &
+		VectorStoreHelperFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };

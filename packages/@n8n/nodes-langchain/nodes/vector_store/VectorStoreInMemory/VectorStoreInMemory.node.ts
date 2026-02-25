@@ -13,10 +13,7 @@ import {
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
-import {
-	InternalLanceDBVectorStore,
-	type BinaryDataCredentials,
-} from './InternalLanceDBVectorStore';
+import { DatabaseVectorStore } from './DatabaseVectorStore';
 
 const warningBanner: INodeProperties = {
 	displayName:
@@ -74,7 +71,7 @@ function getMemoryKey(context: IExecuteFunctions | ISupplyDataFunctions, itemInd
 }
 
 export class VectorStoreInMemory extends createVectorStoreNode<
-	MemoryVectorStore | InternalLanceDBVectorStore
+	MemoryVectorStore | DatabaseVectorStore
 >({
 	meta: {
 		displayName: 'Simple Vector Store',
@@ -90,17 +87,6 @@ export class VectorStoreInMemory extends createVectorStoreNode<
 			'Vector Stores': ['For Beginners'],
 			Tools: ['Other Tools'],
 		},
-		credentials: [
-			{
-				name: 'instanceBinaryDataApi',
-				required: false,
-				displayOptions: {
-					show: {
-						'@version': [-1], // Never show this credential (version -1 doesn't exist)
-					},
-				},
-			},
-		],
 	},
 	sharedFields: [
 		{
@@ -229,15 +215,25 @@ export class VectorStoreInMemory extends createVectorStoreNode<
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				// Get credentials
-				const credentials =
-					await this.getCredentials<BinaryDataCredentials>('instanceBinaryDataApi');
+				// Access vector store service from helpers (similar to DataTable pattern)
+				const service = this.helpers.getVectorStoreService?.();
 
-				// Use DatabaseVectorStore to list stores
-				const tableNames = await InternalLanceDBVectorStore.listStores(credentials, filter);
+				if (!service) {
+					// Service not available (module might be disabled)
+					return { results: [] };
+				}
+
+				const workflowId = this.getWorkflow().id;
+
+				if (!workflowId) {
+					return { results: [] };
+				}
+
+				// Query the database for persisted vector store keys
+				const memoryKeys = await service.listStores(workflowId, filter);
 
 				return {
-					results: tableNames.map((key: string) => ({ name: key, value: key })),
+					results: memoryKeys.map((key: string) => ({ name: key, value: key })),
 				};
 			},
 		},
@@ -276,11 +272,23 @@ export class VectorStoreInMemory extends createVectorStoreNode<
 		) as boolean;
 
 		if (enablePersistence) {
-			// Use LanceDB-backed vector store
-			const credentials =
-				await context.getCredentials<BinaryDataCredentials>('instanceBinaryDataApi');
+			// Use database-backed vector store
+			const service = context.helpers.getVectorStoreService?.();
 
-			return new InternalLanceDBVectorStore(credentials, embeddings, memoryKey, context.logger);
+			if (!service) {
+				throw new ApplicationError(
+					'Vector store persistence is not available. The vector-store module may not be loaded.',
+				);
+			}
+
+			const workflowId = context.getWorkflow().id;
+			if (!workflowId) {
+				throw new ApplicationError(
+					'Workflow ID is required for vector store persistence. This execution may not be associated with a workflow.',
+				);
+			}
+
+			return new DatabaseVectorStore(embeddings, service, memoryKey, workflowId);
 		} else {
 			// Use in-memory vector store (existing behavior)
 			const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
@@ -297,15 +305,27 @@ export class VectorStoreInMemory extends createVectorStoreNode<
 		) as boolean;
 
 		if (enablePersistence) {
-			// Use LanceDB-backed vector store
-			const credentials =
-				await context.getCredentials<BinaryDataCredentials>('instanceBinaryDataApi');
+			// Use database-backed vector store
+			const vectorStoreService = context.helpers.getVectorStoreService?.();
 
-			const vectorStore = new InternalLanceDBVectorStore(
-				credentials,
+			if (!vectorStoreService) {
+				throw new ApplicationError(
+					'Vector store persistence is not available. The vector-store module may not be loaded.',
+				);
+			}
+
+			const workflowId = context.getWorkflow().id;
+			if (!workflowId) {
+				throw new ApplicationError(
+					'Workflow ID is required for vector store persistence. This execution may not be associated with a workflow.',
+				);
+			}
+
+			const vectorStore = new DatabaseVectorStore(
 				embeddings,
+				vectorStoreService,
 				memoryKey,
-				context.logger,
+				workflowId,
 			);
 
 			if (clearStore) {
