@@ -657,6 +657,16 @@ describe('SamlService', () => {
 	});
 
 	describe('getIdentityProviderInstance', () => {
+		test('does throw `InvalidSamlMetadataError` when metadata is empty', async () => {
+			await samlService.loadPreferencesWithoutValidation({
+				metadata: '',
+			});
+			await samlService.loadSamlify();
+			expect(() => samlService.getIdentityProviderInstance(true)).toThrowError(
+				InvalidSamlMetadataError,
+			);
+		});
+
 		test('does throw `InvalidSamlMetadataError` when a metadata does not contain redirect binding', async () => {
 			await samlService.loadPreferencesWithoutValidation({
 				metadata: SamlMetadataWithoutRedirectBinding,

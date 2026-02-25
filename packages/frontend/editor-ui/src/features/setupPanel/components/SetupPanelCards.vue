@@ -162,7 +162,7 @@ watch(
 	flex: 1;
 	flex-direction: column;
 	width: 100%;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--2xs);
 }
 
 .empty-state {

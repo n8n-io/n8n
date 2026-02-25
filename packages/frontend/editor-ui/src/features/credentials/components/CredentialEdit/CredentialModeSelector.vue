@@ -12,19 +12,27 @@ import {
 import { getNodeAuthOptions, getAuthTypeForNodeCredential } from '@/app/utils/nodeTypesUtils';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 
+export interface CredentialModeOption {
+	type: string;
+	customOauth?: boolean;
+	quickConnectEnabled?: boolean;
+}
+
 interface Option {
 	name: string;
-	value: { oauthMode: 'managed' | 'custom' } | { type: string };
+	value: CredentialModeOption;
 }
 
 const props = defineProps<{
 	credentialType: ICredentialType;
 	useCustomOauth?: boolean;
 	showManagedOauthOptions?: boolean;
+	quickConnectAvailable?: boolean;
+	isQuickConnectMode?: boolean;
 }>();
 
 const emit = defineEmits<{
-	'update:authType': [value: { type: string; useCustomOauth?: boolean }];
+	'update:authType': [value: CredentialModeOption];
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
@@ -52,15 +60,26 @@ const hasManagedOAuth = computed(() => isOAuthCredential.value && props.showMana
 const managedOAuthOptions = computed<Option[]>(() => [
 	{
 		name: i18n.baseText('credentialEdit.credentialConfig.oauthModeManaged'),
-		value: { oauthMode: 'managed' },
+		value: { type: 'oAuth2', customOauth: false },
 	},
 	{
 		name: i18n.baseText('credentialEdit.credentialConfig.oauthModeCustom'),
-		value: { oauthMode: 'custom' },
+		value: { type: 'oAuth2', customOauth: true },
 	},
 ]);
 
-const options = computed<Option[]>(() => {
+const quickConnectOption = computed<Option | null>(() => {
+	if (!props.quickConnectAvailable) return null;
+	return {
+		name: i18n.baseText('credentialEdit.credentialConfig.quickConnect'),
+		value: {
+			type: selectedAuthType.value?.value ?? '',
+			quickConnectEnabled: true,
+		},
+	};
+});
+
+const manualOptions = computed<Option[]>(() => {
 	// If this credential type is not linked to any auth option of the node, don't show the selector
 	if (activeNodeType.value && !selectedAuthType.value && !hasManagedOAuth.value) {
 		return [];
@@ -84,6 +103,49 @@ const options = computed<Option[]>(() => {
 	});
 });
 
+const options = computed<Option[]>(() => {
+	const manual = manualOptions.value;
+	const qc = quickConnectOption.value;
+
+	if (!qc) return manual;
+
+	// When QC is available but no manual auth options exist (single-credential nodes),
+	// add a generic "Enter manually" option so the user can switch between QC and manual
+	const manualOrFallback =
+		manual.length > 0
+			? manual
+			: [
+					{
+						name: i18n.baseText('credentialEdit.credentialConfig.setupManually'),
+						value: { type: '' },
+					},
+				];
+
+	return [qc, ...manualOrFallback];
+});
+
+function isSelected(option: CredentialModeOption): boolean {
+	if (option.quickConnectEnabled) {
+		return !!props.isQuickConnectMode;
+	}
+
+	// When in quick connect mode, no manual option is selected
+	if (props.isQuickConnectMode) {
+		return false;
+	}
+
+	// Fallback manual option for single-cred nodes
+	if (option.type === '' && option.customOauth === undefined) {
+		return true;
+	}
+
+	if (option.customOauth !== undefined) {
+		return isOAuthCredential.value && !!props.useCustomOauth === option.customOauth;
+	}
+
+	return option.type === selectedAuthType.value?.value;
+}
+
 const showSelector = computed(() => options.value.length >= 2);
 const showDropdown = computed(() => options.value.length > 2);
 const selectedOption = computed(() => {
@@ -97,6 +159,10 @@ const otherOption = computed(() => {
 });
 
 const headingText = computed(() => {
+	if (props.isQuickConnectMode) {
+		return i18n.baseText('credentialEdit.credentialConfig.quickConnectTitle');
+	}
+
 	if (options.value.length > 2) {
 		return i18n.baseText('credentialEdit.credentialConfig.setupCredential');
 	}
@@ -108,12 +174,17 @@ const headingText = computed(() => {
 		return i18n.baseText('credentialEdit.credentialConfig.oauthModeManagedTitle');
 	}
 
+	const authName = selectedAuthType.value?.name;
+	if (!authName) {
+		return i18n.baseText('credentialEdit.credentialConfig.setupCredential');
+	}
+
 	return i18n.baseText('credentialEdit.credentialConfig.genericTitle', {
-		interpolate: { credential: selectedAuthType.value?.name ?? '' },
+		interpolate: { credential: authName },
 	});
 });
 
-const menuItems = computed<Array<DropdownMenuItemProps<Option['value']>>>(() => {
+const menuItems = computed<Array<DropdownMenuItemProps<CredentialModeOption>>>(() => {
 	return options.value.map((opt) => ({
 		id: opt.value,
 		label: opt.name,
@@ -121,37 +192,15 @@ const menuItems = computed<Array<DropdownMenuItemProps<Option['value']>>>(() => 
 	}));
 });
 
-function onOptionChange(value: Option['value']): void {
+function onOptionChange(value: CredentialModeOption): void {
 	if (isSelected(value)) return;
-
-	if ('oauthMode' in value) {
-		emit('update:authType', {
-			type: 'oAuth2',
-			useCustomOauth: value.oauthMode === 'custom',
-		});
-		return;
-	}
-
-	emit('update:authType', { type: value.type });
+	emit('update:authType', value);
 }
 
 function switchToOther(): void {
 	if (otherOption.value) {
 		onOptionChange(otherOption.value.value);
 	}
-}
-
-function isSelected(option: Option['value']): boolean {
-	if ('oauthMode' in option) {
-		const selectedOAuthMode = props.useCustomOauth ? 'custom' : 'managed';
-		return isOAuthCredential.value && selectedOAuthMode === option.oauthMode;
-	}
-
-	if ('type' in option) {
-		return option.type === selectedAuthType.value?.value;
-	}
-
-	return false;
 }
 </script>
 
@@ -171,11 +220,7 @@ function isSelected(option: Option['value']): boolean {
 				data-test-id="credential-mode-switch-link"
 				@click="switchToOther"
 			>
-				{{
-					i18n.baseText('credentialEdit.credentialConfig.switchTo', {
-						interpolate: { name: otherOption?.name ?? '' },
-					})
-				}}
+				{{ otherOption?.name }}
 			</N8nLink>
 
 			<N8nDropdownMenu

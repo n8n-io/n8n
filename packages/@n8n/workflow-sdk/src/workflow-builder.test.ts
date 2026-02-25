@@ -1,5 +1,6 @@
 import type { NodeInstance, WorkflowJSON } from './types/base';
 import { workflow } from './workflow-builder';
+import { splitInBatches } from './workflow-builder/control-flow-builders/split-in-batches';
 import { node, trigger, sticky } from './workflow-builder/node-builders/node-builder';
 import {
 	languageModel,
@@ -413,6 +414,188 @@ describe('Workflow Builder', () => {
 
 			// Slack's error output (index 1) should connect to Telegram
 			expect(json.connections['Send Slack']?.main[1]?.[0]?.node).toBe('Error Alert');
+		});
+
+		it('should handle IfElse composite as onError target on standalone node', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', onError: 'continueErrorOutput' },
+			});
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'IF' },
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
+			const trueHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'True Handler' },
+			});
+			const falseHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'False Handler' },
+			});
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			httpNode.onError(ifNode.onTrue!(trueHandler).onFalse(falseHandler) as any);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const wf = workflow('test-id', 'Test').add(httpNode as any);
+			const json = wf.toJSON();
+
+			expect(json.nodes).toHaveLength(4);
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('IF');
+			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True Handler');
+			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False Handler');
+		});
+
+		it('should handle SwitchCase composite as onError target on standalone node', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', onError: 'continueErrorOutput' },
+			});
+			const switchNode = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.2,
+				config: { name: 'Switch', parameters: { mode: 'rules' } },
+			}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
+			const case0 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Case 0' },
+			});
+			const case1 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Case 1' },
+			});
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			httpNode.onError(switchNode.onCase!(0, case0).onCase(1, case1) as any);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const wf = workflow('test-id', 'Test').add(httpNode as any);
+			const json = wf.toJSON();
+
+			expect(json.nodes).toHaveLength(4);
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Switch');
+			expect(json.connections['Switch']?.main[0]?.[0]?.node).toBe('Case 0');
+			expect(json.connections['Switch']?.main[1]?.[0]?.node).toBe('Case 1');
+		});
+
+		it('should handle SplitInBatches composite as onError target on standalone node', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', onError: 'continueErrorOutput' },
+			});
+			const sibNode = node({
+				type: 'n8n-nodes-base.splitInBatches',
+				version: 3,
+				config: { name: 'SIB', parameters: { batchSize: 10 } },
+			});
+			const doneNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Done' },
+			});
+			const eachNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Each' },
+			});
+
+			const sibBuilder = splitInBatches(sibNode).onDone(doneNode).onEachBatch(eachNode);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			httpNode.onError(sibBuilder as any);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const wf = workflow('test-id', 'Test').add(httpNode as any);
+			const json = wf.toJSON();
+
+			expect(json.nodes).toHaveLength(4);
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('SIB');
+			expect(json.connections['SIB']?.main[0]?.[0]?.node).toBe('Done');
+			expect(json.connections['SIB']?.main[1]?.[0]?.node).toBe('Each');
+		});
+
+		it('should handle IfElse composite as onError target in chain', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', onError: 'continueErrorOutput' },
+			});
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'IF' },
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
+			const trueHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'True Handler' },
+			});
+			const falseHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'False Handler' },
+			});
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			httpNode.onError(ifNode.onTrue!(trueHandler).onFalse(falseHandler) as any);
+			const wf = workflow('test-id', 'Test').add(t).to(httpNode);
+			const json = wf.toJSON();
+
+			expect(json.nodes).toHaveLength(5);
+			expect(json.connections['Start']?.main[0]?.[0]?.node).toBe('HTTP');
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('IF');
+			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True Handler');
+			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False Handler');
+		});
+
+		it('should handle chain leading to composite via onError', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', onError: 'continueErrorOutput' },
+			});
+			const logNode = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Log' },
+			});
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'IF' },
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
+			const trueHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'True Handler' },
+			});
+			const falseHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'False Handler' },
+			});
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			httpNode.onError(logNode.to(ifNode.onTrue!(trueHandler).onFalse(falseHandler) as any));
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const wf = workflow('test-id', 'Test').add(httpNode as any);
+			const json = wf.toJSON();
+
+			expect(json.nodes).toHaveLength(5);
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Log');
+			expect(json.connections['Log']?.main[0]?.[0]?.node).toBe('IF');
+			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True Handler');
+			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False Handler');
 		});
 	});
 

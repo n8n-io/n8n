@@ -1,11 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import {
-	isWebhookHtmlSandboxingDisabled,
-	getWebhookSandboxCSP,
-	isHtmlRenderedContentType,
-} from 'n8n-core';
+import { isWebhookHtmlSandboxingDisabled, getWebhookSandboxCSP } from 'n8n-core';
 import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
 import { Readable } from 'stream';
 import { finished } from 'stream/promises';
@@ -23,11 +19,11 @@ import {
 	isWebhookResponse,
 	isWebhookStreamResponse,
 } from '@/webhooks/webhook-response';
+import { WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
 import type {
 	IWebhookManager,
 	WebhookOptionsRequest,
 	WebhookRequest,
-	WebhookResponseHeaders,
 } from '@/webhooks/webhook.types';
 
 const WEBHOOK_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
@@ -140,16 +136,9 @@ class WebhookRequestHandler {
 	}
 
 	private setResponseHeaders(res: express.Response, headers?: WebhookResponseHeaders) {
-		if (headers) {
-			for (const [name, value] of headers.entries()) {
-				res.setHeader(name, value);
-			}
-		}
+		headers?.applyToResponse(res);
 
-		const contentType = res.getHeader('content-type') as string | undefined;
-		const needsSandbox = !contentType || isHtmlRenderedContentType(contentType);
-
-		if (needsSandbox && !isWebhookHtmlSandboxingDisabled()) {
+		if (!isWebhookHtmlSandboxingDisabled()) {
 			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 		}
 	}
@@ -167,7 +156,7 @@ class WebhookRequestHandler {
 	) {
 		this.setResponseStatus(res, responseCode);
 		if (responseHeader) {
-			this.setResponseHeaders(res, new Map(Object.entries(responseHeader)));
+			this.setResponseHeaders(res, WebhookResponseHeaders.fromObject(responseHeader));
 		}
 
 		if (data instanceof Readable) {
