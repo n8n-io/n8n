@@ -23,7 +23,7 @@ vi.mock('@n8n/chat/composables', () => ({
 const editorOrigin = 'http://localhost:5678';
 const webhookOrigin = 'https://webhook.example.com';
 
-const sameDomainButtons = [
+const relativeUrlButtons = [
 	{ text: 'Confirm', link: '/api/confirm', type: 'primary' as const },
 	{ text: 'Cancel', link: '/api/cancel', type: 'secondary' as const },
 ];
@@ -41,18 +41,13 @@ describe('MessageWithButtons', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('renders and fetches when the link is on the same origin as the editor', async () => {
-		vi.mocked(fetch).mockResolvedValue({ ok: true } as Response);
-
+	it('does not render buttons whose links do not match the configured webhook origin', () => {
 		const wrapper = mount(MessageWithButtons, {
-			props: { text: 'Please confirm', buttons: sameDomainButtons },
+			props: { text: 'Please confirm', buttons: relativeUrlButtons },
 		});
 
-		expect(wrapper.findAll('button')).toHaveLength(2);
-
-		await wrapper.findAll('button')[0].trigger('click');
-
-		await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/confirm'));
+		expect(wrapper.findAll('button')).toHaveLength(0);
+		expect(fetch).not.toHaveBeenCalled();
 	});
 
 	it('renders and fetches when the link is on the configured webhook origin', async () => {
@@ -119,8 +114,7 @@ describe('MessageWithButtons', () => {
 		});
 
 		const rendered = wrapper.findAll('button');
-		expect(rendered).toHaveLength(2);
-		expect(rendered[0].text()).toBe('Editor');
-		expect(rendered[1].text()).toBe('Webhook');
+		expect(rendered).toHaveLength(1);
+		expect(rendered[0].text()).toBe('Webhook');
 	});
 });

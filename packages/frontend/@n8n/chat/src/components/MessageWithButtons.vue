@@ -20,9 +20,9 @@ const clickedButtonIndex = ref<number | null>(null);
 
 const isValidOrigin = (link: string): boolean => {
 	try {
-		const validOrigins = [window.location.origin, new URL(chatOptions.options.webhookUrl).origin];
+		const validOrigin = new URL(chatOptions.options.webhookUrl).origin;
 		const url = new URL(link, window.location.href);
-		return validOrigins.includes(url.origin);
+		return url.origin === validOrigin;
 	} catch {
 		return false;
 	}
