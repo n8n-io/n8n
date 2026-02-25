@@ -141,25 +141,22 @@ export class ChatExecutionManager {
 			throw new UnexpectedError("Can't handle actions inside the chat trigger.");
 		}
 
-		const executionStackEntry = runExecutionData.executionData!.nodeExecutionStack[0];
-		executionStackEntry.data.main = result ?? [[{ json: message }]];
+		runExecutionData.executionData!.nodeExecutionStack[0].data.main = result ?? [
+			[{ json: message }],
+		];
 
-		const isChatToolNode = executionStackEntry.node.type === CHAT_TOOL_NODE_TYPE;
-
-		if (runExecutionData.waitTill || isChatToolNode) {
+		if (runExecutionData.executionData!.nodeExecutionStack[0].node.type === CHAT_TOOL_NODE_TYPE) {
 			runExecutionData.waitTill = undefined;
-			executionStackEntry.node.disabled = true;
-
-			if (isChatToolNode) {
-				executionStackEntry.node.rewireOutputLogTo = NodeConnectionTypes.AiTool;
-			}
+			runExecutionData.executionData!.nodeExecutionStack[0].node.disabled = true;
+			runExecutionData.executionData!.nodeExecutionStack[0].node.rewireOutputLogTo =
+				NodeConnectionTypes.AiTool;
 
 			const lastNodeExecuted = runExecutionData.resultData.lastNodeExecuted as string;
 			const runDataArray = runExecutionData.resultData.runData[lastNodeExecuted];
 			if (runDataArray?.length > 0) {
 				const entryToPop = runDataArray[runDataArray.length - 1];
-				// Preserve inputOverride for tool nodes so the LLM's input stays visible in logs after resume.
-				const preservedInputOverride = isChatToolNode ? entryToPop?.inputOverride : undefined;
+				// Preserve inputOverride so the LLM's input stays visible in logs after resume.
+				const preservedInputOverride = entryToPop?.inputOverride;
 				runDataArray.pop();
 				if (preservedInputOverride) {
 					runDataArray.push({
