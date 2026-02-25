@@ -804,6 +804,21 @@ export class RoutingNode {
 		) {
 			return undefined;
 		}
+
+		const evaluatedParameters =
+			(additionalKeys?.$parameter as Record<string, unknown> | undefined) ??
+			(() => {
+				const params: Record<string, unknown> = {};
+				for (const paramName of Object.keys(node.parameters)) {
+					try {
+						params[paramName] = executeSingleFunctions.getNodeParameter(paramName);
+					} catch {
+						params[paramName] = node.parameters[paramName];
+					}
+				}
+				return params;
+			})();
+
 		if (nodeProperties.routing) {
 			let parameterValue: string | undefined;
 			if (basePath + nodeProperties.name && 'type' in nodeProperties) {
@@ -832,7 +847,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
-						{ ...additionalKeys, $value: parameterValue },
+						{ ...additionalKeys, $value: parameterValue, $parameter: evaluatedParameters },
 						false,
 					) as string;
 
@@ -850,7 +865,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
-						additionalKeys,
+						{ ...additionalKeys, $value: parameterValue, $parameter: evaluatedParameters },
 						true,
 					) as string;
 
@@ -865,7 +880,7 @@ export class RoutingNode {
 							itemIndex,
 							runIndex,
 							executeSingleFunctions.getExecuteData(),
-							{ ...additionalKeys, $value: value },
+							{ ...additionalKeys, $value: value, $parameter: evaluatedParameters },
 							false,
 						) as string;
 					}
@@ -899,7 +914,7 @@ export class RoutingNode {
 							itemIndex,
 							runIndex,
 							executeSingleFunctions.getExecuteData(),
-							{ ...additionalKeys, $value: parameterValue },
+							{ ...additionalKeys, $value: parameterValue, $parameter: evaluatedParameters },
 							true,
 						) as string;
 					}
@@ -921,7 +936,7 @@ export class RoutingNode {
 							itemIndex,
 							runIndex,
 							executeSingleFunctions.getExecuteData(),
-							{ ...additionalKeys, $value: parameterValue },
+							{ ...additionalKeys, $value: parameterValue, $parameter: evaluatedParameters },
 							true,
 						) as string;
 					}
@@ -942,7 +957,7 @@ export class RoutingNode {
 								itemIndex,
 								runIndex,
 								executeSingleFunctions.getExecuteData(),
-								{ ...additionalKeys, $value: parameterValue },
+								{ ...additionalKeys, $value: parameterValue, $parameter: evaluatedParameters },
 								true,
 							) as boolean;
 						}
@@ -993,7 +1008,7 @@ export class RoutingNode {
 					itemIndex,
 					runIndex,
 					`${basePath}${nodeProperties.name}`,
-					{ $value: optionValue, $version: node.typeVersion },
+					{ $value: optionValue, $version: node.typeVersion, $parameter: evaluatedParameters },
 				);
 
 				this.mergeOptions(returnData, tempOptions);
@@ -1061,7 +1076,12 @@ export class RoutingNode {
 							itemIndex,
 							runIndex,
 							nodeProperties.typeOptions?.multipleValues ? `${loopBasePath}[${i}]` : loopBasePath,
-							{ ...(additionalKeys || {}), $index: i, $parent: value[i] },
+							{
+								...(additionalKeys || {}),
+								$index: i,
+								$parent: value[i],
+								$parameter: evaluatedParameters,
+							},
 						);
 
 						this.mergeOptions(returnData, tempOptions);

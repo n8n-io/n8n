@@ -704,6 +704,196 @@ describe('RoutingNode', () => {
 					},
 				},
 			},
+			{
+				description: '$parameter, routing.request.url accesses parameter value via $parameter',
+				input: {
+					nodeParameters: {
+						endpoint: 'users',
+					},
+					nodeTypeProperties: {
+						displayName: 'Endpoint',
+						name: 'endpoint',
+						type: 'string',
+						routing: {
+							request: {
+								method: 'GET',
+								url: '=/{{$parameter["endpoint"]}}',
+							},
+						},
+						default: '',
+					},
+				},
+				output: {
+					options: {
+						method: 'GET',
+						url: '/users',
+						qs: {},
+						body: {},
+						headers: {},
+					},
+					preSend: [],
+					postReceive: [],
+					requestOperations: {},
+				},
+			},
+			{
+				description:
+					'$parameter, routing.output.maxResults accesses parameter value via $parameter',
+				input: {
+					nodeParameters: {
+						limit: 50,
+					},
+					nodeTypeProperties: {
+						displayName: 'Limit',
+						name: 'limit',
+						type: 'number',
+						routing: {
+							send: {
+								property: 'limit',
+								type: 'query',
+							},
+							output: {
+								maxResults: '={{$parameter["limit"]}}',
+							},
+						},
+						default: 10,
+					},
+				},
+				output: {
+					maxResults: 50,
+					options: {
+						qs: {
+							limit: 50,
+						},
+						body: {},
+						headers: {},
+					},
+					preSend: [],
+					postReceive: [],
+					requestOperations: {},
+				},
+			},
+			{
+				description: '$parameter, routing.send.paginate accesses parameter value via $parameter',
+				input: {
+					nodeParameters: {
+						returnAll: true,
+					},
+					nodeTypeProperties: {
+						displayName: 'Return All',
+						name: 'returnAll',
+						type: 'boolean',
+						routing: {
+							send: {
+								paginate: '={{$parameter["returnAll"]}}',
+							},
+						},
+						default: false,
+					},
+				},
+				output: {
+					paginate: true,
+					options: {
+						qs: {},
+						body: {},
+						headers: {},
+					},
+					preSend: [],
+					postReceive: [],
+					requestOperations: {},
+				},
+			},
+			{
+				description:
+					'$parameter, routing.output.postReceive enabled expression via $parameter includes action when truthy',
+				input: {
+					nodeParameters: {
+						query: 'active',
+					},
+					nodeTypeProperties: {
+						displayName: 'Query',
+						name: 'query',
+						type: 'string',
+						routing: {
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										enabled: '={{!!$parameter["query"]}}',
+										properties: {
+											property: 'data',
+										},
+									},
+								],
+							},
+						},
+						default: '',
+					},
+				},
+				output: {
+					options: {
+						qs: {},
+						body: {},
+						headers: {},
+					},
+					preSend: [],
+					postReceive: [
+						{
+							actions: [
+								{
+									type: 'rootProperty',
+									enabled: '={{!!$parameter["query"]}}',
+									properties: {
+										property: 'data',
+									},
+								},
+							],
+							data: {
+								parameterValue: 'active',
+							},
+						},
+					],
+					requestOperations: {},
+				},
+			},
+			{
+				description:
+					'$parameter, routing.output.postReceive enabled expression via $parameter excludes action when falsy',
+				input: {
+					nodeParameters: {
+						query: '',
+					},
+					nodeTypeProperties: {
+						displayName: 'Query',
+						name: 'query',
+						type: 'string',
+						routing: {
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										enabled: '={{!!$parameter["query"]}}',
+										properties: {
+											property: 'data',
+										},
+									},
+								],
+							},
+						},
+						default: '',
+					},
+				},
+				output: {
+					options: {
+						qs: {},
+						body: {},
+						headers: {},
+					},
+					preSend: [],
+					postReceive: [],
+					requestOperations: {},
+				},
+			},
 		];
 
 		const nodeTypes = NodeTypes();
@@ -787,7 +977,7 @@ describe('RoutingNode', () => {
 				nodeType: {
 					properties?: INodeProperties[];
 					credentials?: INodeCredentialDescription[];
-					requestDefaults?: IHttpRequestOptions;
+					requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
 					requestOperations?: IN8nRequestOperations;
 				};
 				node: {
@@ -2049,6 +2239,63 @@ describe('RoutingNode', () => {
 							json: {
 								display1: 'Jim (34)',
 								display2: 'Jim is 34',
+							},
+						},
+					],
+				],
+			},
+			{
+				description:
+					'single parameter, routing.request.url uses $parameter to reference value of another parameter',
+				input: {
+					node: {
+						parameters: {
+							resource: 'contacts',
+							id: '456',
+						},
+					},
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+						},
+						properties: [
+							{
+								displayName: 'Resource',
+								name: 'resource',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'ID',
+								name: 'id',
+								type: 'string',
+								routing: {
+									request: {
+										method: 'GET',
+										url: '=/{{$parameter["resource"]}}/{{$value}}',
+									},
+								},
+								default: '',
+							},
+						],
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									url: '/contacts/456',
+									method: 'GET',
+									headers: {},
+									qs: {},
+									body: {},
+									baseURL: 'http://127.0.0.1:5678',
+									returnFullResponse: true,
+									timeout: 300000,
+								},
 							},
 						},
 					],
