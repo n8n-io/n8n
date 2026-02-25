@@ -141,6 +141,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		chatPanelStateStore.isOpen = false;
 		chatPanelStateStore.showCoachmark = false;
 		chatPanelStateStore.isFullscreen = false;
+		chatPanelStateStore.isPoppedOut = false;
 		// Wait for slide animation to finish before updating grid width and resetting
 		setTimeout(() => {
 			uiStore.appGridDimensions = {
@@ -176,6 +177,11 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			// Mode is not enabled in current view, close the panel
 			close();
 			return;
+		}
+
+		// If switching away from chatHub while popped out, reset pop-out
+		if (chatPanelStateStore.activeMode === 'chatHub' && resolved !== 'chatHub') {
+			chatPanelStateStore.isPoppedOut = false;
 		}
 
 		// Switch the mode without re-initialization
@@ -274,7 +280,32 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		},
 	);
 
+	function popOut() {
+		chatPanelStateStore.isPoppedOut = true;
+		chatPanelStateStore.isFullscreen = false;
+		uiStore.appGridDimensions = {
+			...uiStore.appGridDimensions,
+			width: window.innerWidth,
+		};
+	}
+
+	function setPreferPoppedOut(value: boolean) {
+		chatPanelStateStore.isPoppedOut = value;
+		if (!value) {
+			// Restore grid dimensions when going back to attached
+			uiStore.appGridDimensions = {
+				...uiStore.appGridDimensions,
+				width: window.innerWidth - chatPanelStateStore.width,
+			};
+		}
+	}
+
 	function toggleFullscreen() {
+		// Fullscreen and pop-out are mutually exclusive
+		if (chatPanelStateStore.isPoppedOut) {
+			return;
+		}
+
 		chatPanelStateStore.isFullscreen = !chatPanelStateStore.isFullscreen;
 
 		if (chatPanelStateStore.isFullscreen) {
@@ -297,6 +328,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		activeMode: computed(() => chatPanelStateStore.activeMode),
 		showCoachmark: computed(() => chatPanelStateStore.showCoachmark),
 		isFullscreen: computed(() => chatPanelStateStore.isFullscreen),
+		isPoppedOut: computed(() => chatPanelStateStore.isPoppedOut),
 		// Computed
 		isAssistantModeActive,
 		isBuilderModeActive,
@@ -309,6 +341,8 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		switchMode,
 		updateWidth,
 		toggleFullscreen,
+		popOut,
+		setPreferPoppedOut,
 		openWithCredHelp,
 		openWithErrorHelper,
 		// Mode-aware width bounds

@@ -4,13 +4,15 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useDebounce } from '@/app/composables/useDebounce';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import SlideTransition from '@/app/components/transitions/SlideTransition.vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
 import AskModeCoachmark from './AskModeCoachmark.vue';
 import CanvasChatHubPanel from '@/features/ai/chatHub/components/CanvasChatHubPanel.vue';
 import { useAskModeCoachmark } from '../composables/useAskModeCoachmark';
+import { usePopOutWindow } from '@/features/execution/logs/composables/usePopOutWindow';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
 import HubSwitcher from '@/features/ai/assistant/components/HubSwitcher.vue';
@@ -19,6 +21,7 @@ const builderStore = useBuilderStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const settingsStore = useSettingsStore();
+const workflowsStore = useWorkflowsStore();
 
 const {
 	isBuildMode,
@@ -46,10 +49,29 @@ const askAssistantBuildRef = ref<InstanceType<typeof AskAssistantBuild>>();
 const askAssistantChatRef = ref<InstanceType<typeof AskAssistantChat>>();
 const canvasChatHubRef = ref<InstanceType<typeof CanvasChatHubPanel>>();
 
+const popOutContainer = useTemplateRef<HTMLElement>('popOutContainer');
+const popOutContent = useTemplateRef<HTMLElement>('popOutContent');
+
 const isChatHubMode = computed(() => chatPanelStore.isChatHubModeActive);
 const isFullscreen = computed(() => chatPanelStore.isFullscreen);
+const isPoppedOut = computed(() => chatPanelStore.isPoppedOut);
 
 const chatWidth = computed(() => chatPanelStore.width);
+
+const popOutWindowTitle = computed(() => `Chat - ${workflowsStore.workflowName || 'Workflow'}`);
+const shouldPopOut = computed(() => isPoppedOut.value && isChatHubMode.value);
+
+const { popOutWindow } = usePopOutWindow({
+	title: popOutWindowTitle,
+	initialWidth: 560,
+	initialHeight: 700,
+	container: popOutContainer,
+	content: popOutContent,
+	shouldPopOut,
+	onRequestClose: () => {
+		chatPanelStore.setPreferPoppedOut(false);
+	},
+});
 
 function onResize(data: { direction: string; x: number; width: number }) {
 	chatPanelStore.updateWidth(data.width);
@@ -87,6 +109,10 @@ async function toggleAssistantMode() {
 
 function onClose() {
 	chatPanelStore.close();
+}
+
+function onPopOut() {
+	chatPanelStore.popOut();
 }
 
 function onSlideEnterComplete() {
@@ -135,40 +161,66 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<SlideTransition @after-enter="onSlideEnterComplete">
-		<N8nResizeWrapper
-			v-show="chatPanelStore.isOpen"
-			:supported-directions="isFullscreen ? [] : ['left']"
-			:width="chatWidth"
-			:min-width="isFullscreen ? chatWidth : chatPanelStore.activeMinWidth"
-			:max-width="isFullscreen ? chatWidth : chatPanelStore.activeMaxWidth"
-			:class="[$style.resizeWrapper, { [$style.fullscreen]: isFullscreen }]"
-			data-test-id="ask-assistant-sidebar"
-			@resize="onResizeDebounced"
-		>
-			<div :style="isFullscreen ? {} : { width: `${chatWidth}px` }" :class="$style.wrapper">
-				<div :class="$style.assistantContent">
-					<CanvasChatHubPanel v-if="isChatHubMode" ref="canvasChatHubRef" @close="onClose" />
-					<AskAssistantBuild v-else-if="isBuildMode" ref="askAssistantBuildRef" @close="onClose">
-						<template v-if="canToggleModes" #header>
-							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
-						</template>
-					</AskAssistantBuild>
-					<AskAssistantChat v-else ref="askAssistantChatRef" @close="onClose">
-						<!-- Header switcher is only visible when both modes are available in current view -->
-						<template v-if="canToggleModes" #header>
-							<AskModeCoachmark :visible="canShowCoachmark" @dismiss="onDismissCoachmark">
-								<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
-							</AskModeCoachmark>
-						</template>
-					</AskAssistantChat>
-				</div>
-			</div>
-		</N8nResizeWrapper>
-	</SlideTransition>
+	<div ref="popOutContainer" :class="$style.popOutContainer">
+		<div ref="popOutContent" :class="[$style.popOutContent, { [$style.poppedOut]: isPoppedOut }]">
+			<SlideTransition @after-enter="onSlideEnterComplete">
+				<N8nResizeWrapper
+					v-show="chatPanelStore.isOpen"
+					:supported-directions="isFullscreen || isPoppedOut ? [] : ['left']"
+					:width="chatWidth"
+					:min-width="isFullscreen ? chatWidth : chatPanelStore.activeMinWidth"
+					:max-width="isFullscreen ? chatWidth : chatPanelStore.activeMaxWidth"
+					:class="[$style.resizeWrapper, { [$style.fullscreen]: isFullscreen }]"
+					:window="popOutWindow"
+					data-test-id="ask-assistant-sidebar"
+					@resize="onResizeDebounced"
+				>
+					<div :style="isFullscreen ? {} : { width: `${chatWidth}px` }" :class="$style.wrapper">
+						<div :class="$style.assistantContent">
+							<CanvasChatHubPanel
+								v-if="isChatHubMode"
+								ref="canvasChatHubRef"
+								@close="onClose"
+								@pop-out="onPopOut"
+							/>
+							<AskAssistantBuild
+								v-else-if="isBuildMode"
+								ref="askAssistantBuildRef"
+								@close="onClose"
+							>
+								<template v-if="canToggleModes" #header>
+									<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
+								</template>
+							</AskAssistantBuild>
+							<AskAssistantChat v-else ref="askAssistantChatRef" @close="onClose">
+								<!-- Header switcher is only visible when both modes are available in current view -->
+								<template v-if="canToggleModes" #header>
+									<AskModeCoachmark :visible="canShowCoachmark" @dismiss="onDismissCoachmark">
+										<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
+									</AskModeCoachmark>
+								</template>
+							</AskAssistantChat>
+						</div>
+					</div>
+				</N8nResizeWrapper>
+			</SlideTransition>
+		</div>
+	</div>
 </template>
 
 <style lang="scss" module>
+.popOutContainer {
+	height: 100%;
+}
+
+.popOutContent {
+	height: 100%;
+
+	&.poppedOut {
+		height: 100vh;
+	}
+}
+
 .resizeWrapper {
 	z-index: var(--ask-assistant-chat--z);
 

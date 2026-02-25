@@ -29,6 +29,7 @@ import type { ChatMessage as ChatMessageType, MessagingState } from '../chat.typ
 
 const emit = defineEmits<{
 	close: [];
+	'pop-out': [];
 }>();
 
 const i18n = useI18n();
@@ -37,6 +38,9 @@ const workflowsStore = useWorkflowsStore();
 const chatPanelStore = useChatPanelStore();
 const clipboard = useClipboard();
 const toast = useToast();
+
+const canPopOut = computed(() => window.parent === window);
+const isPoppedOut = computed(() => chatPanelStore.isPoppedOut);
 
 // Session management - one session per panel instance, keyed to the workflow
 const sessionId = ref<ChatSessionId>(uuidv4());
@@ -213,7 +217,12 @@ defineExpose({ focusInput });
 </script>
 
 <template>
-	<div :class="[$style.panel, { [$style.fullscreen]: chatPanelStore.isFullscreen }]">
+	<div
+		:class="[
+			$style.panel,
+			{ [$style.fullscreen]: chatPanelStore.isFullscreen, [$style.poppedOut]: isPoppedOut },
+		]"
+	>
 		<div :class="$style.header">
 			<div :class="$style.headerTitle">
 				<ChatAgentAvatar :agent="selectedModel" size="sm" />
@@ -257,7 +266,20 @@ defineExpose({ focusInput });
 						@click="handleNewSession"
 					/>
 				</N8nTooltip>
+				<N8nTooltip v-if="canPopOut && !isPoppedOut" placement="bottom">
+					<template #content>
+						{{ i18n.baseText('runData.panel.actions.popOut') }}
+					</template>
+					<N8nIconButton
+						icon="external-link"
+						variant="ghost"
+						size="small"
+						data-test-id="canvas-chat-hub-pop-out"
+						@click="emit('pop-out')"
+					/>
+				</N8nTooltip>
 				<N8nIconButton
+					v-if="!isPoppedOut"
 					:icon="chatPanelStore.isFullscreen ? 'minimize-2' : 'expand'"
 					variant="ghost"
 					size="small"
@@ -338,6 +360,10 @@ defineExpose({ focusInput });
 	height: 100%;
 	background-color: var(--color--background--light-2);
 	border-left: var(--border);
+
+	&.poppedOut {
+		border-left: none;
+	}
 }
 
 .header {
