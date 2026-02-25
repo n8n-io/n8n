@@ -24,6 +24,7 @@ import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
 
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -571,11 +572,24 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				assignCredentialToNode(stateNode.name);
 			}
 		} else if (sourceNodeName) {
-			// Node is handled by nodeStates (has parameter issues), update it directly
-			assignCredentialToNode(sourceNodeName);
+			// Node is handled by nodeStates (has parameter issues).
+			// Propagate the credential to all nodes sharing this credential type
+			// so that resource locators on other nodes can access the credential.
+			const allNStates = nodeStates.value;
+			const sourceEntry = allNStates.find(
+				(s) => s.credentialType === credentialType && s.node.name === sourceNodeName,
+			);
+			if (sourceEntry?.allNodesUsingCredential) {
+				for (const node of sourceEntry.allNodesUsingCredential) {
+					assignCredentialToNode(node.name);
+				}
+			} else {
+				assignCredentialToNode(sourceNodeName);
+			}
 		}
 
 		nodeHelpers.updateNodesCredentialsIssues();
+		useUIStore().markStateDirty();
 	};
 
 	/**
@@ -612,8 +626,19 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				removeCredentialFromNode(stateNode.name);
 			}
 		} else if (sourceNodeName) {
-			// Node is handled by nodeStates (has parameter issues), update it directly
-			removeCredentialFromNode(sourceNodeName);
+			// Node is handled by nodeStates (has parameter issues).
+			// Propagate removal to all nodes sharing this credential type.
+			const allNStates = nodeStates.value;
+			const sourceEntry = allNStates.find(
+				(s) => s.credentialType === credentialType && s.node.name === sourceNodeName,
+			);
+			if (sourceEntry?.allNodesUsingCredential) {
+				for (const node of sourceEntry.allNodesUsingCredential) {
+					removeCredentialFromNode(node.name);
+				}
+			} else {
+				removeCredentialFromNode(sourceNodeName);
+			}
 		}
 
 		nodeHelpers.updateNodesCredentialsIssues();
