@@ -14,6 +14,7 @@ import { DateTime } from 'luxon';
 import { isDateObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@/app/stores/rbac.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
@@ -22,6 +23,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 
 const i18n = useI18n();
 const rbacStore = useRBACStore();
+const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
 const isProjectScopedSecretsEnabled =
 	settingsStore.moduleSettings['external-secrets']?.forProjects ?? false;
@@ -55,7 +57,16 @@ const showDisconnectedBadge = computed(() => {
 	return provider.value.state === 'error';
 });
 
-const canDelete = computed(() => rbacStore.hasScope('externalSecretsProvider:delete'));
+const canDelete = computed(() => {
+	if (rbacStore.hasScope('externalSecretsProvider:delete')) return true;
+	if (provider.value.projects.length > 0) {
+		return provider.value.projects.every((p) => {
+			const project = projectsStore.myProjects.find((mp) => mp.id === p.id);
+			return project?.scopes?.includes('externalSecretsProvider:delete') ?? false;
+		});
+	}
+	return false;
+});
 
 const isGlobal = computed(() => provider.value.projects.length === 0);
 

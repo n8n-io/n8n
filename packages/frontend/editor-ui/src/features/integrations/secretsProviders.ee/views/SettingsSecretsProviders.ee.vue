@@ -118,6 +118,7 @@ function handleDelete(providerKey: string) {
 			providerKey: provider.name,
 			providerName: provider.name,
 			secretsCount: provider.secretsCount ?? 0,
+			projectId: provider.projects.length > 0 ? provider.projects[0].id : undefined,
 			onConfirm: async () => {
 				await secretsProviders.fetchActiveConnections();
 			},

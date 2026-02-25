@@ -139,8 +139,15 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		return rbacStore.hasScope('externalSecretsProvider:update') || canUpdateProjectScoped.value;
 	});
 
+	const canDeleteProjectScoped = computed(() => {
+		if (originalProjectIds.value.length === 0) return false;
+		return originalProjectIds.value.every((id) =>
+			hasProjectScope(id, 'externalSecretsProvider:delete'),
+		);
+	});
+
 	const canDelete = computed(() => {
-		return rbacStore.hasScope('externalSecretsProvider:delete');
+		return rbacStore.hasScope('externalSecretsProvider:delete') || canDeleteProjectScoped.value;
 	});
 
 	const canShareGlobally = computed(() => {
