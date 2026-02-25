@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor, type RenderResult } from '@testing-library/vue';
 import { VIEWS } from '@/app/constants';
 import { useRolesStore } from '@/app/stores/roles.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import ProjectRoleView from './ProjectRoleView.vue';
 
@@ -13,7 +14,6 @@ const mockShowMessage = vi.fn();
 const mockPush = vi.fn();
 const mockReplace = vi.fn();
 const mockBack = vi.fn();
-
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showError: mockShowError,
@@ -93,6 +93,7 @@ const mockSystemRoles = [
 ];
 
 let rolesStore: MockedStore<typeof useRolesStore>;
+let settingsStore: MockedStore<typeof useSettingsStore>;
 
 // Test utilities
 const getFormElements = (container: Element) => ({
@@ -153,6 +154,7 @@ describe('ProjectRoleView', () => {
 
 		createTestingPinia();
 		rolesStore = mockedStore(useRolesStore);
+		settingsStore = mockedStore(useSettingsStore);
 
 		rolesStore.fetchRoles.mockResolvedValue();
 
@@ -488,6 +490,41 @@ describe('ProjectRoleView', () => {
 
 			await userEvent.click(scopeCheckbox);
 			await waitForEditButtonsToBe(getByRole, 'enabled');
+		});
+	});
+
+	describe('External Secrets Scopes', () => {
+		it('should not render externalSecretsProvider scope type when forProjects is off', () => {
+			const { queryByText } = renderComponent();
+
+			expect(queryByText('Secret stores')).not.toBeInTheDocument();
+			expect(queryByText('Secrets')).not.toBeInTheDocument();
+		});
+
+		it('should render externalSecretsProvider scope type when forProjects is on', () => {
+			settingsStore.moduleSettings = {
+				'external-secrets': { forProjects: true, multipleConnections: true },
+			};
+			const { getByText } = renderComponent();
+
+			expect(getByText('Secrets vaults')).toBeInTheDocument();
+			expect(getByText('Secrets')).toBeInTheDocument();
+		});
+
+		it('should show secrets checkboxes when forProjects is on', async () => {
+			settingsStore.moduleSettings = {
+				'external-secrets': { forProjects: true, multipleConnections: true },
+			};
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-checkbox-externalSecretsProvider:read')).toBeInTheDocument(),
+			);
+			expect(getByTestId('scope-checkbox-externalSecretsProvider:create')).toBeInTheDocument();
+			expect(getByTestId('scope-checkbox-externalSecretsProvider:update')).toBeInTheDocument();
+			expect(getByTestId('scope-checkbox-externalSecretsProvider:delete')).toBeInTheDocument();
+			expect(getByTestId('scope-checkbox-externalSecretsProvider:sync')).toBeInTheDocument();
+			expect(getByTestId('scope-checkbox-externalSecret:list')).toBeInTheDocument();
 		});
 	});
 
