@@ -490,14 +490,15 @@ export class ChatTrigger extends Node {
 				},
 			},
 			{
-				displayName: 'Suggested Prompts',
+				displayName: 'Suggestions',
 				name: 'suggestedPrompts',
 				type: 'fixedCollection',
 				typeOptions: { multipleValues: true },
 				default: {},
 				noDataExpression: true,
 				placeholder: 'Add Prompt',
-				description: 'Suggested prompts shown to users in n8n Chat Hub',
+				description:
+					'Suggested prompts shown to users in n8n Chat Hub to start a conversation with the agent',
 				displayOptions: {
 					show: {
 						availableInChat: [true],
