@@ -7,7 +7,7 @@ import { useSecretsProvidersList } from '@/features/integrations/secretsProvider
 import type { SecretProviderConnection } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY, VIEWS } from '@/app/constants';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRouter } from 'vue-router';
 
 import {
@@ -30,9 +30,9 @@ const router = useRouter();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 const rbacStore = useRBACStore();
+const settingsStore = useSettingsStore();
 const secretsProviders = useSecretsProvidersList();
 const secretsProviderConnection = useSecretsProviderConnection();
-const envFeatureFlag = useEnvFeatureFlag();
 
 interface ConnectionRow {
 	id: string;
@@ -50,8 +50,8 @@ const expandedConnections = ref<Set<string>>(new Set());
 const currentPage = ref(0);
 const itemsPerPage = ref(5);
 
-const isFeatureEnabled = computed(() =>
-	envFeatureFlag.check.value('EXTERNAL_SECRETS_FOR_PROJECTS'),
+const isFeatureEnabled = computed(
+	() => settingsStore.moduleSettings['external-secrets']?.forProjects ?? false,
 );
 
 // Permissions

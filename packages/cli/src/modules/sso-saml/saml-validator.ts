@@ -29,7 +29,7 @@ export class SamlValidator {
 		this.xmllint = await import('xmllint-wasm');
 	}
 
-	validateIdentiyProvider(idp: IdentityProviderInstance) {
+	validateIdentityProvider(idp: IdentityProviderInstance) {
 		const binding = idp.entityMeta.getSingleSignOnService(
 			this.samlify.Constants.wording.binding.redirect,
 		);
@@ -45,7 +45,7 @@ export class SamlValidator {
 			const idp = this.samlify.IdentityProvider({
 				metadata,
 			});
-			this.validateIdentiyProvider(idp);
+			this.validateIdentityProvider(idp);
 		}
 
 		return validXML;

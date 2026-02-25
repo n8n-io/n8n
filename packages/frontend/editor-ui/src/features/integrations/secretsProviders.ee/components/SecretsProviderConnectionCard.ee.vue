@@ -18,12 +18,13 @@ import ProjectIcon from '@/features/collaboration/projects/components/ProjectIco
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const i18n = useI18n();
 const rbacStore = useRBACStore();
-const { check: checkDevFeatureFlag } = useEnvFeatureFlag();
-const isProjectScopedSecretsEnabled = checkDevFeatureFlag.value('EXTERNAL_SECRETS_FOR_PROJECTS');
+const settingsStore = useSettingsStore();
+const isProjectScopedSecretsEnabled =
+	settingsStore.moduleSettings['external-secrets']?.forProjects ?? false;
 
 const props = defineProps<{
 	provider: SecretProviderConnection;

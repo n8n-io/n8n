@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && pnpm build:runtime",
+    "build:runtime": "node esbuild.config.js",
     "test": "vitest run",
     "test:dev": "vitest --watch --silent false",
     "typecheck": "tsc --noEmit"
