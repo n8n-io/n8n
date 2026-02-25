@@ -156,6 +156,7 @@ BLOCKED_ATTRIBUTES = {
     "obj",
     "__thisclass__",
     "__self_class__",
+    "__objclass__",
     # introspection attributes
     "__base__",
     "__class__",

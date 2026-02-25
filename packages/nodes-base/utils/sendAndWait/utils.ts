@@ -1,20 +1,24 @@
 import isbot from 'isbot';
 import { getWebhookSandboxCSP } from 'n8n-core';
-import {
-	NodeOperationError,
-	SEND_AND_WAIT_OPERATION,
-	tryToParseJsonToFormFields,
-	updateDisplayOptions,
-} from 'n8n-workflow';
 import type {
-	INodeProperties,
-	IExecuteFunctions,
-	IWebhookFunctions,
-	IDataObject,
 	FormFieldsParameter,
+	IDataObject,
+	IExecuteFunctions,
+	INodeProperties,
+	IWebhookFunctions,
 } from 'n8n-workflow';
+import { NodeOperationError, SEND_AND_WAIT_OPERATION, updateDisplayOptions } from 'n8n-workflow';
 
 import { limitWaitTimeProperties } from './descriptions';
+import { cssVariables } from '../../nodes/Form/cssVariables';
+import { formFieldsProperties } from '../../nodes/Form/Form.node';
+import {
+	parseFormFields,
+	prepareFormData,
+	prepareFormFields,
+	prepareFormReturnItem,
+} from '../../nodes/Form/utils/utils';
+import { escapeHtml } from '../utilities';
 import {
 	ACTION_RECORDED_PAGE,
 	BUTTON_STYLE_PRIMARY,
@@ -23,14 +27,6 @@ import {
 	createEmailBodyWithoutN8nAttribution,
 } from './email-templates';
 import type { IEmail } from './interfaces';
-import { cssVariables } from '../../nodes/Form/cssVariables';
-import { formFieldsProperties } from '../../nodes/Form/Form.node';
-import {
-	prepareFormData,
-	prepareFormReturnItem,
-	resolveRawData,
-} from '../../nodes/Form/utils/utils';
-import { escapeHtml } from '../utilities';
 
 export type SendAndWaitConfig = {
 	title: string;
@@ -413,24 +409,22 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		let fields: FormFieldsParameter = [];
 
 		if (defineForm === 'json') {
-			try {
-				const jsonOutput = this.getNodeParameter('jsonOutput', '', {
-					rawExpressions: true,
-				}) as string;
-
-				fields = tryToParseJsonToFormFields(resolveRawData(this, jsonOutput));
-			} catch (error) {
-				throw new NodeOperationError(this.getNode(), error.message, {
-					description: error.message,
-				});
-			}
+			fields = parseFormFields(this, {
+				defineForm: 'json',
+				fieldsParameterName: 'jsonOutput',
+			});
 		} else {
-			fields = this.getNodeParameter('formFields.values', []) as FormFieldsParameter;
+			fields = parseFormFields(this, {
+				defineForm: 'fields',
+				fieldsParameterName: 'formFields.values',
+			});
 		}
 
 		if (method === 'GET') {
 			const { formTitle, formDescription, buttonLabel, customCss } =
 				getFormResponseCustomizations(this);
+
+			fields = prepareFormFields(fields);
 
 			const data = prepareFormData({
 				formTitle,

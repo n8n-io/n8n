@@ -19,6 +19,7 @@ import {
 	WorkflowConfigurationError,
 	jsonParse,
 	tryToParseUrl,
+	tryToParseJsonToFormFields,
 } from 'n8n-workflow';
 import sanitize from 'sanitize-html';
 
@@ -100,20 +101,21 @@ export function sanitizeHtml(text: string) {
 	});
 }
 
-export const prepareFormFields = (context: IWebhookFunctions, fields: FormFieldsParameter) => {
+/**
+ *  Replaces `\n` strings with actual newline characters.
+ *  Also replaces `\\n` strings with `\n` string
+ * @param text - The text to replace newlines in
+ * @returns Updated text
+ */
+export const handleNewlines = (text: string) => {
+	return text.replace(/\\n|\\\\n/g, (match) => (match === '\\\\n' ? '\\n' : '\n'));
+};
+
+export const prepareFormFields = (fields: FormFieldsParameter) => {
 	return fields.map((field) => {
-		if (field.fieldType === 'html') {
-			let { html } = field;
-
-			if (!html) return field;
-
-			for (const resolvable of getResolvables(html)) {
-				html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
-			}
-
-			field.html = sanitizeHtml(html);
+		if (field.fieldType === 'html' && field.html) {
+			field.html = sanitizeHtml(field.html);
 		}
-
 		if (field.fieldType === 'hiddenField') {
 			field.fieldLabel = field.fieldName as string;
 		}
@@ -499,7 +501,7 @@ export function renderForm({
 		} catch (error) {}
 	}
 
-	formFields = prepareFormFields(context, formFields);
+	formFields = prepareFormFields(formFields);
 
 	const data = prepareFormData({
 		formTitle,
@@ -678,4 +680,39 @@ export function resolveRawData(context: IWebhookFunctions, rawData: string) {
 		}
 	}
 	return returnData;
+}
+
+type ParseFormFieldsOptions = {
+	defineForm: 'json' | 'fields';
+	fieldsParameterName: string;
+	mode?: 'test' | 'production';
+};
+export function parseFormFields(context: IWebhookFunctions, options: ParseFormFieldsOptions) {
+	let fields: FormFieldsParameter = [];
+	if (options.defineForm === 'json') {
+		try {
+			const jsonOutput = context.getNodeParameter(options.fieldsParameterName, '', {
+				rawExpressions: true,
+			}) as string;
+
+			fields = tryToParseJsonToFormFields(resolveRawData(context, jsonOutput));
+		} catch (error) {
+			throw new NodeOperationError(context.getNode(), error.message, {
+				description: error.message,
+				type: options.mode === 'test' ? 'manual-form-test' : undefined,
+			});
+		}
+	} else {
+		fields = context.getNodeParameter(options.fieldsParameterName, []) as FormFieldsParameter;
+		for (const field of fields) {
+			if (field.fieldType === 'html') {
+				let html = field.html ?? '';
+				for (const resolvable of getResolvables(html)) {
+					html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
+				}
+				field.html = html;
+			}
+		}
+	}
+	return fields;
 }
