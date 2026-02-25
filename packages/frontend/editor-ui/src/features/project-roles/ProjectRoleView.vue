@@ -324,13 +324,8 @@ const displayNameValidationRules = [
 			<N8nHeading tag="h1" size="2xlarge">
 				{{ roleSlug ? `Role "${form.displayName}"` : i18n.baseText('projectRoles.newRole') }}
 			</N8nHeading>
-			<div v-if="initialState && !isReadOnly">
-				<N8nButton
-					variant="subtle"
-					:disabled="!hasUnsavedChanges"
-					class="mr-xs"
-					@click="resetForm(initialState)"
-				>
+			<div v-if="initialState && !isReadOnly" :class="$style.buttonsContainer">
+				<N8nButton variant="subtle" :disabled="!hasUnsavedChanges" @click="resetForm(initialState)">
 					{{ i18n.baseText('projectRoles.discardChanges') }}
 				</N8nButton>
 				<N8nButton :disabled="!hasUnsavedChanges" @click="handleSubmit">
@@ -370,9 +365,6 @@ const displayNameValidationRules = [
 		</div>
 
 		<div v-show="!roleSlug || activeTab === 'permissions'">
-			<N8nHeading tag="h2" size="xlarge" class="mb-s">
-				{{ i18n.baseText('projectRoles.permissions') }}
-			</N8nHeading>
 			<template v-if="!isReadOnly">
 				<N8nText color="text-light" class="mb-2xs" tag="p">
 					{{ i18n.baseText('projectRoles.preset') }}
@@ -501,6 +493,12 @@ const displayNameValidationRules = [
 	align-items: center;
 }
 
+.buttonsContainer {
+	display: flex;
+	gap: var(--spacing--xs);
+	flex-shrink: 0;
+}
+
 .formContainer {
 	max-width: 415px;
 }
@@ -519,8 +517,12 @@ const displayNameValidationRules = [
 }
 
 .assignmentsLink {
-	color: var(--color--primary);
+	color: var(--color--text);
 	cursor: pointer;
 	text-decoration: underline;
+}
+
+.assignmentsLink:hover {
+	color: var(--color--primary);
 }
 </style>

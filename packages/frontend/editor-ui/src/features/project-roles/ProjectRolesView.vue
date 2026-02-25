@@ -340,4 +340,8 @@ function addRole() {
 	text-decoration: underline;
 	font-weight: var(--font-weight--bold);
 }
+
+.projectCountLink:hover {
+	color: var(--color--primary);
+}
 </style>

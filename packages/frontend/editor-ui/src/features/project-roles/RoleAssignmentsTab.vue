@@ -76,9 +76,7 @@ function formatDate(dateStr: string | null): string {
 						</button>
 					</td>
 					<td>
-						<N8nText color="text-light" size="small">
-							{{ formatDate(project.lastAssigned) }}
-						</N8nText>
+						{{ formatDate(project.lastAssigned) }}
 					</td>
 				</tr>
 			</tbody>
@@ -106,13 +104,16 @@ function formatDate(dateStr: string | null): string {
 }
 
 .alignRight {
-	text-align: right;
+	text-align: right !important;
 }
 
 .projectLink {
 	color: var(--color--text);
 	text-decoration: underline;
-	font-weight: var(--font-weight--bold);
+}
+
+.projectLink:hover {
+	color: var(--color--primary);
 }
 
 .memberCountButton {
@@ -122,7 +123,10 @@ function formatDate(dateStr: string | null): string {
 	text-decoration: underline;
 	cursor: pointer;
 	font-size: inherit;
-	font-weight: var(--font-weight--bold);
 	padding: 0;
+}
+
+.memberCountButton:hover {
+	color: var(--color--primary);
 }
 </style>
