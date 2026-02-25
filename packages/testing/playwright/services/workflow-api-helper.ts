@@ -110,14 +110,6 @@ export class WorkflowApiHelper {
 		}
 	}
 
-	async archive(workflowId: string) {
-		const response = await this.api.request.post(`/rest/workflows/${workflowId}/archive`);
-
-		if (!response.ok()) {
-			throw new TestError(`Failed to archive workflow: ${await response.text()}`);
-		}
-	}
-
 	async delete(workflowId: string) {
 		const response = await this.api.request.delete(`/rest/workflows/${workflowId}`);
 

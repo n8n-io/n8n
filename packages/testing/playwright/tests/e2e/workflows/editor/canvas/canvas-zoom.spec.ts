@@ -163,7 +163,7 @@ test.describe(
 			await n8n.page.keyboard.press('Shift+Space');
 			await n8n.page.keyboard.type('Y');
 
-			const renameInput = n8n.canvas.getRenamePrompt().locator('input');
+			const renameInput = n8n.canvas.getRenamePromptInput();
 			await expect(renameInput).toHaveValue('X: Y');
 
 			await n8n.page.keyboard.press('Enter');
