@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useOptions } from '@n8n/chat/composables';
 import { ref } from 'vue';
 
 import Button from './Button.vue';
@@ -13,12 +14,14 @@ defineProps<{
 	}>;
 }>();
 
+const chatOptions = useOptions();
 const clickedButtonIndex = ref<number | null>(null);
 
-const isSameDomain = (link: string): boolean => {
+const isValidOrigin = (link: string): boolean => {
 	try {
+		const validOrigins = [window.location.origin, new URL(chatOptions.options.webhookUrl).origin];
 		const url = new URL(link, window.location.href);
-		return url.origin === window.location.origin;
+		return validOrigins.includes(url.origin);
 	} catch {
 		return false;
 	}
@@ -43,7 +46,7 @@ const onClick = async (link: string, index: number) => {
 			<template v-for="(button, index) in buttons" :key="button.text">
 				<Button
 					v-if="
-						isSameDomain(button.link) &&
+						isValidOrigin(button.link) &&
 						(clickedButtonIndex === null || index === clickedButtonIndex)
 					"
 					element="button"

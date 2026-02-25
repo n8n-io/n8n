@@ -1,8 +1,8 @@
+import { waitFor } from '@testing-library/vue';
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import MessageWithButtons from '../components/MessageWithButtons.vue';
-import { waitFor } from '@testing-library/vue';
 
 vi.mock('../components/MarkdownRenderer.vue', () => ({
 	default: {
@@ -12,7 +12,18 @@ vi.mock('../components/MarkdownRenderer.vue', () => ({
 	},
 }));
 
-const buttons = [
+vi.mock('@n8n/chat/composables', () => ({
+	useOptions: () => ({
+		options: {
+			webhookUrl: 'https://webhook.example.com/webhook/123/chat',
+		},
+	}),
+}));
+
+const editorOrigin = 'http://localhost:5678';
+const webhookOrigin = 'https://webhook.example.com';
+
+const sameDomainButtons = [
 	{ text: 'Confirm', link: '/api/confirm', type: 'primary' as const },
 	{ text: 'Cancel', link: '/api/cancel', type: 'secondary' as const },
 ];
@@ -21,7 +32,7 @@ describe('MessageWithButtons', () => {
 	beforeEach(() => {
 		vi.stubGlobal('fetch', vi.fn());
 		Object.defineProperty(window, 'location', {
-			value: new URL('http://localhost:5678/chat'),
+			value: new URL(`${editorOrigin}/chat`),
 			writable: true,
 		});
 	});
@@ -30,11 +41,11 @@ describe('MessageWithButtons', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('renders and fetches when the link is on the same origin', async () => {
+	it('renders and fetches when the link is on the same origin as the editor', async () => {
 		vi.mocked(fetch).mockResolvedValue({ ok: true } as Response);
 
 		const wrapper = mount(MessageWithButtons, {
-			props: { text: 'Please confirm', buttons },
+			props: { text: 'Please confirm', buttons: sameDomainButtons },
 		});
 
 		expect(wrapper.findAll('button')).toHaveLength(2);
@@ -44,9 +55,31 @@ describe('MessageWithButtons', () => {
 		await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/confirm'));
 	});
 
-	it('does not render a button when the link points to a different origin', () => {
+	it('renders and fetches when the link is on the configured webhook origin', async () => {
+		vi.mocked(fetch).mockResolvedValue({ ok: true } as Response);
+
+		const webhookButtons = [
+			{
+				text: 'Approve',
+				link: `${webhookOrigin}/webhook/123/approve`,
+				type: 'primary' as const,
+			},
+		];
+
+		const wrapper = mount(MessageWithButtons, {
+			props: { text: 'Please approve', buttons: webhookButtons },
+		});
+
+		expect(wrapper.find('button').exists()).toBe(true);
+
+		await wrapper.find('button').trigger('click');
+
+		await waitFor(() => expect(fetch).toHaveBeenCalledWith(`${webhookOrigin}/webhook/123/approve`));
+	});
+
+	it('does not render a button when the link points to an unrecognized origin', () => {
 		const externalButtons = [
-			{ text: 'Go', link: 'https://other-domain/approve', type: 'primary' as const },
+			{ text: 'Go', link: 'https://broken-link.com/approve', type: 'primary' as const },
 		];
 
 		const wrapper = mount(MessageWithButtons, {
@@ -70,10 +103,15 @@ describe('MessageWithButtons', () => {
 		expect(fetch).not.toHaveBeenCalled();
 	});
 
-	it('renders only same-origin buttons when the list contains mixed URLs', () => {
+	it('renders only valid-origin buttons when the list contains mixed URLs', () => {
 		const mixedButtons = [
-			{ text: 'Safe', link: '/api/confirm', type: 'primary' as const },
-			{ text: 'Unsafe', link: 'https://evil.example.com/steal', type: 'secondary' as const },
+			{ text: 'Editor', link: '/api/confirm', type: 'primary' as const },
+			{
+				text: 'Webhook',
+				link: `${webhookOrigin}/webhook/123/approve`,
+				type: 'secondary' as const,
+			},
+			{ text: 'Other', link: 'http://broken-url/approve', type: 'secondary' as const },
 		];
 
 		const wrapper = mount(MessageWithButtons, {
@@ -81,7 +119,8 @@ describe('MessageWithButtons', () => {
 		});
 
 		const rendered = wrapper.findAll('button');
-		expect(rendered).toHaveLength(1);
-		expect(rendered[0].text()).toBe('Safe');
+		expect(rendered).toHaveLength(2);
+		expect(rendered[0].text()).toBe('Editor');
+		expect(rendered[1].text()).toBe('Webhook');
 	});
 });
