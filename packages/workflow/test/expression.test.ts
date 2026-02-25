@@ -366,9 +366,8 @@ describe('Expression', () => {
 					return new Error().stack;
 				})()}}`;
 
-				// Attack is blocked - calling undefined() throws, result is undefined
-				const result = evaluate(payload);
-				expect(result).toBeUndefined();
+				// Attack is blocked - make sure it throws
+				expect(() => evaluate(payload)).toThrowError(/due to security concerns/);
 			});
 
 			it('should block __defineGetter__ bypass attack', () => {
@@ -507,30 +506,248 @@ describe('Expression', () => {
 				expect(() => evaluate(payload)).toThrow();
 			});
 
-			it('should block `___n8n_data` shadowing attempt', () => {
-				const payload = `={{(() => {
-					const ___n8n_data = {__sanitize: a => a};
-					return ({})['const'+'ructor']['const'+'ructor']('return 1')();
-				})()}}`;
+			const reservedVariablePayloads: Array<[string, string]> = [
+				[
+					'`___n8n_data` declaration',
+					`={{(() => {
+						const ___n8n_data = {__sanitize: a => a};
+						return 1;
+					})()}}`,
+				],
+				[
+					'`__sanitize` declaration',
+					`={{(() => {
+						const __sanitize = a => a;
+						return 1;
+					})()}}`,
+				],
+				[
+					'array destructuring declaration',
+					`={{(() => {
+						const [___n8n_data] = [{ __sanitize: (v) => v }];
+						return 1;
+					})()}}`,
+				],
+				[
+					'object destructuring declaration',
+					`={{(() => {
+						const {a: ___n8n_data} = { a: { __sanitize: (v) => v } };
+						return 1;
+					})()}}`,
+				],
+				[
+					'function parameter identifier',
+					`={{((___n8n_data) => {
+						return ___n8n_data;
+					})({})}}`,
+				],
+				[
+					'function parameter object pattern',
+					`={{(({a: ___n8n_data}) => {
+						return ___n8n_data;
+					})({ a: { __sanitize: (v) => v } })}}`,
+				],
+				[
+					'function parameter array pattern',
+					`={{(([___n8n_data]) => {
+						return ___n8n_data;
+					})([{ __sanitize: (v) => v }])}}`,
+				],
+				[
+					'function parameter default value',
+					`={{((___n8n_data = { __sanitize: (v) => v }) => {
+						return ___n8n_data;
+					})()}}`,
+				],
+				[
+					'function parameter rest element',
+					`={{((...___n8n_data) => {
+						return ___n8n_data;
+					})(1)}}`,
+				],
+				[
+					'function declaration name',
+					`={{(() => {
+						function ___n8n_data() {}
+						return 1;
+					})()}}`,
+				],
+				[
+					'class declaration name',
+					`={{(() => {
+						class ___n8n_data {}
+						return 1;
+					})()}}`,
+				],
+				[
+					'catch object pattern parameter',
+					`={{(() => {
+						try {
+							throw { a: { __sanitize: (v) => v } };
+						} catch ({ a: ___n8n_data }) {
+							return ___n8n_data;
+						}
+					})()}}`,
+				],
+				[
+					'catch array pattern parameter',
+					`={{(() => {
+						try {
+							throw [{ __sanitize: (v) => v }];
+						} catch ([___n8n_data]) {
+							return ___n8n_data;
+						}
+					})()}}`,
+				],
+				[
+					'for-of object pattern declaration',
+					`={{(() => {
+						for (const { a: ___n8n_data } of [{ a: { __sanitize: (v) => v } }]) {
+							return ___n8n_data;
+						}
+					})()}}`,
+				],
+				[
+					'for-of assignment pattern target',
+					`={{(() => {
+						for ([___n8n_data] of [[{ __sanitize: (v) => v }]]) {
+							return ___n8n_data;
+						}
+					})()}}`,
+				],
+				[
+					'destructuring assignment target',
+					`={{(() => {
+						[___n8n_data] = [{ __sanitize: (v) => v }];
+						return ___n8n_data;
+					})()}}`,
+				],
+			];
 
-				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+			for (const [name, payload] of reservedVariablePayloads) {
+				it(`should block reserved variable shadowing via ${name}`, () => {
+					expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+				});
+			}
+
+			it('should block extend() constructor access on arrow functions', () => {
+				expect(() => evaluate('={{ extend((() => {}), "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
 			});
 
-			it('should block `__sanitize` variable declaration', () => {
-				const payload = `={{(() => {
-					const __sanitize = a => a;
-					return 1;
-				})()}}`;
-
-				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+			it('should block extendOptional() constructor access on arrow functions', () => {
+				expect(() =>
+					evaluate('={{ extendOptional((() => {}), "constructor")("return 1")() }}'),
+				).toThrow(/due to security concerns/);
 			});
 
-			it('should block `___n8n_data` as function parameter', () => {
-				const payload = `={{((___n8n_data) => {
-					return 1;
-				})({})}}`;
+			it('should block extend() constructor access on extend itself', () => {
+				expect(() => evaluate('={{ extend(extend, "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
 
-				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+			it('should block extend() constructor access on extendOptional', () => {
+				expect(() =>
+					evaluate('={{ extend(extendOptional, "constructor", ["return 1"])() }}'),
+				).toThrow(/due to security concerns/);
+			});
+
+			it('should block extend() constructor access on isNaN', () => {
+				expect(() => evaluate('={{ extend(isNaN, "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() constructor access on parseFloat', () => {
+				expect(() => evaluate('={{ extend(parseFloat, "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() __proto__ access', () => {
+				expect(() => evaluate('={{ extend({}, "__proto__", []) }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() prototype access', () => {
+				expect(() => evaluate('={{ extend({}, "prototype", []) }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() with custom toString() returning constructor', () => {
+				expect(() =>
+					evaluate('={{ extend((() => {}), {toString: () => "constructor"}, ["return 1"])() }}'),
+				).toThrow(/due to security concerns/);
+			});
+
+			it('should block extend() with custom toString() returning __proto__', () => {
+				expect(() => evaluate('={{ extend({}, {toString: () => "__proto__"}, []) }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() constructor access on arrow functions', () => {
+				expect(() => evaluate('={{ extend((() => {}), "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extendOptional() constructor access on arrow functions', () => {
+				expect(() =>
+					evaluate('={{ extendOptional((() => {}), "constructor")("return 1")() }}'),
+				).toThrow(/due to security concerns/);
+			});
+
+			it('should block extend() constructor access on extend itself', () => {
+				expect(() => evaluate('={{ extend(extend, "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() constructor access on extendOptional', () => {
+				expect(() =>
+					evaluate('={{ extend(extendOptional, "constructor", ["return 1"])() }}'),
+				).toThrow(/due to security concerns/);
+			});
+
+			it('should block extend() constructor access on isNaN', () => {
+				expect(() => evaluate('={{ extend(isNaN, "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() constructor access on parseFloat', () => {
+				expect(() => evaluate('={{ extend(parseFloat, "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() __proto__ access', () => {
+				expect(() => evaluate('={{ extend({}, "__proto__", []) }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() prototype access', () => {
+				expect(() => evaluate('={{ extend({}, "prototype", []) }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() with custom toString() returning constructor', () => {
+				expect(() =>
+					evaluate('={{ extend((() => {}), {toString: () => "constructor"}, ["return 1"])() }}'),
+				).toThrow(/due to security concerns/);
+			});
+
+			it('should block extend() with custom toString() returning __proto__', () => {
+				expect(() => evaluate('={{ extend({}, {toString: () => "__proto__"}, []) }}')).toThrow(
+					/due to security concerns/,
+				);
 			});
 		});
 	});
