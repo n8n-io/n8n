@@ -150,6 +150,13 @@ export class FrontendService {
 		return envFeatureFlags;
 	}
 
+	private async getShowSetupOnFirstLoad() {
+		const previewMode = process.env.N8N_PREVIEW_MODE === 'true';
+		const hasInstanceOwner = await this.ownershipService.hasInstanceOwner();
+		// In preview mode, skip the setup redirect to allow accessing demo routes
+		return previewMode ? false : !hasInstanceOwner;
+	}
+
 	private async initSettings() {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const restEndpoint = this.globalConfig.endpoints.rest;
@@ -173,7 +180,6 @@ export class FrontendService {
 		}
 
 		const previewMode = process.env.N8N_PREVIEW_MODE === 'true';
-		const hasInstanceOwner = await this.ownershipService.hasInstanceOwner();
 
 		this.settings = {
 			settingsMode: 'authenticated',
@@ -240,8 +246,7 @@ export class FrontendService {
 			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
 				quota: this.license.getUsersLimit(),
-				// In preview mode, skip the setup redirect to allow accessing demo routes
-				showSetupOnFirstLoad: !previewMode && !hasInstanceOwner,
+				showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
@@ -395,7 +400,6 @@ export class FrontendService {
 	}
 
 	async getSettings(): Promise<FrontendSettings> {
-		console.log('getSettings');
 		if (!this.settings) {
 			await this.initSettings();
 		}
@@ -413,7 +417,7 @@ export class FrontendService {
 		Object.assign(this.settings.userManagement, {
 			quota: this.license.getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
-			showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
+			showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 		});
 
 		let dismissedBanners: string[] = [];
@@ -560,7 +564,6 @@ export class FrontendService {
 			mfa,
 			communityNodesEnabled,
 		} = await this.getSettings();
-
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
 			defaultLocale,
