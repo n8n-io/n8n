@@ -66,7 +66,7 @@ describe('WorkflowHistoryListItem', () => {
 				item,
 				index: 2,
 				actions,
-				canCompare: true,
+				isSelected: false,
 			},
 		});
 

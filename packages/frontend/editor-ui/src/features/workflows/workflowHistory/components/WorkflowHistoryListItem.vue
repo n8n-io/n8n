@@ -26,13 +26,11 @@ const props = withDefaults(
 		isSelected?: boolean;
 		isVersionActive?: boolean;
 		isGrouped?: boolean;
-		canCompare?: boolean;
 	}>(),
 	{
 		isSelected: false,
 		isVersionActive: false,
 		isGrouped: false,
-		canCompare: false,
 	},
 );
 const emit = defineEmits<{
@@ -273,7 +271,7 @@ onMounted(() => {
 					</div>
 				</div>
 				<N8nTooltip
-					v-if="props.canCompare"
+					v-if="!props.isSelected"
 					:content="i18n.baseText('workflowDiff.compare')"
 					placement="top"
 				>
