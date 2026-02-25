@@ -68,6 +68,17 @@ const canDelete = computed(() => {
 	return false;
 });
 
+const canSync = computed(() => {
+	if (rbacStore.hasScope('externalSecretsProvider:sync')) return true;
+	if (provider.value.projects.length > 0) {
+		return provider.value.projects.every((p) => {
+			const project = projectsStore.myProjects.find((mp) => mp.id === p.id);
+			return project?.scopes?.includes('externalSecretsProvider:sync') ?? false;
+		});
+	}
+	return false;
+});
+
 const isGlobal = computed(() => provider.value.projects.length === 0);
 
 const projectName = computed(() => {
@@ -114,7 +125,7 @@ const actionDropdownOptions = computed(() => {
 		});
 	}
 
-	if (provider.value.state === 'connected') {
+	if (provider.value.state === 'connected' && canSync.value) {
 		options.push({
 			label: i18n.baseText('settings.externalSecrets.card.actionDropdown.reload'),
 			value: 'reload',

@@ -1,11 +1,15 @@
 import { ref } from 'vue';
-import type { SecretProviderConnection } from '@n8n/api-types';
+import type {
+	SecretProviderConnection,
+	ReloadSecretProviderConnectionResponse,
+} from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	getSecretProviderConnectionByKey,
 	createSecretProviderConnection,
 	updateSecretProviderConnection,
 	testSecretProviderConnection,
+	reloadSecretProviderConnection,
 	getProjectSecretProviderConnectionByKey,
 	createProjectSecretProviderConnection,
 	updateProjectSecretProviderConnection,
@@ -108,6 +112,12 @@ export function useSecretsProviderConnection(projectId?: string) {
 		return connection;
 	}
 
+	async function reloadConnection(
+		providerKey: string,
+	): Promise<ReloadSecretProviderConnectionResponse> {
+		return await reloadSecretProviderConnection(rootStore.restApiContext, providerKey);
+	}
+
 	return {
 		// State
 		connectionState,
@@ -120,5 +130,6 @@ export function useSecretsProviderConnection(projectId?: string) {
 		createConnection,
 		updateConnection,
 		testConnection,
+		reloadConnection,
 	};
 }
