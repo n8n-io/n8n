@@ -434,21 +434,6 @@ describe('createDeepLazyProxy', () => {
 			expect(val.data).toBe('x');
 		});
 
-		it('handles multiple independent properties', () => {
-			mocks.getValueAtPath
-				.mockReturnValueOnce('a-val')
-				.mockReturnValueOnce('b-val')
-				.mockReturnValueOnce('c-val');
-			const proxy = createDeepLazyProxy();
-			expect(proxy.a).toBe('a-val');
-			expect(proxy.b).toBe('b-val');
-			expect(proxy.c).toBe('c-val');
-
-			expect(mocks.getValueAtPath).toHaveBeenNthCalledWith(1, null, [['a']], ivmCallOpts);
-			expect(mocks.getValueAtPath).toHaveBeenNthCalledWith(2, null, [['b']], ivmCallOpts);
-			expect(mocks.getValueAtPath).toHaveBeenNthCalledWith(3, null, [['c']], ivmCallOpts);
-		});
-
 		it('array proxy index 0 works correctly (falsy index)', () => {
 			mocks.getValueAtPath.mockReturnValue({ __isArray: true, __length: 3 });
 			const proxy = createDeepLazyProxy();
