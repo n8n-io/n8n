@@ -27,7 +27,7 @@ async function handleCopy() {
 		<N8nIconButton
 			variant="ghost"
 			:icon="justCopied ? 'check' : 'copy'"
-			size="small"
+			size="medium"
 			:class="$style.button"
 			tabindex="0"
 			:aria-label="copyTooltip"

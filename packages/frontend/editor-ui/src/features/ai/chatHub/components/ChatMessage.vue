@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
-import type {
-	AgentIconOrEmoji,
-	ChatMessageContentChunk,
-	ChatMessageId,
-	ChatModelDto,
-} from '@n8n/api-types';
+import type { ChatMessageContentChunk, ChatMessageId } from '@n8n/api-types';
 import { N8nButton, N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
 import {
@@ -18,8 +13,7 @@ import {
 } from 'vue';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
-import { unflattenModel, splitMarkdownIntoChunks } from '@/features/ai/chatHub/chat.utils';
-import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { splitMarkdownIntoChunks } from '@/features/ai/chatHub/chat.utils';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -42,8 +36,6 @@ const {
 	isEditSubmitting,
 	hasSessionStreaming,
 	minHeight,
-	cachedAgentDisplayName,
-	cachedAgentIcon,
 	isGroupStart,
 } = defineProps<{
 	message: ChatMessage;
@@ -51,8 +43,6 @@ const {
 	isEditing: boolean;
 	isEditSubmitting: boolean;
 	hasSessionStreaming: boolean;
-	cachedAgentDisplayName: string | null;
-	cachedAgentIcon: AgentIconOrEmoji | null;
 	isGroupStart: boolean;
 	/**
 	 * minHeight allows scrolling agent's response to the top while it is being generated
@@ -69,7 +59,6 @@ const emit = defineEmits<{
 	openArtifact: [title: string];
 }>();
 
-const chatStore = useChatStore();
 const rootStore = useRootStore();
 const { isCtrlKeyPressed } = useDeviceSupport();
 const i18n = useI18n();
@@ -508,21 +497,8 @@ onBeforeMount(() => {
 }
 
 .actions {
-	position: absolute;
-	top: 0;
-	right: 0;
-	transform: translateY(-50%);
-	padding: var(--spacing--4xs);
-	background: light-dark(var(--color--neutral-white), var(--color--neutral-800));
-	border-radius: var(--radius--md);
-	box-shadow:
-		0 1px 2px rgba(0, 0, 0, 0.08),
-		0 4px 4px rgba(0, 0, 0, 0.02),
-		0 0px 0px 1px rgba(0, 0, 0, 0.08);
-	transition:
-		opacity 0.15s,
-		transform 0.15s;
-	z-index: 1;
+	margin-top: 0;
+	margin-left: calc(var(--spacing--3xs) * -1);
 
 	@media (hover: none) {
 		position: static;
