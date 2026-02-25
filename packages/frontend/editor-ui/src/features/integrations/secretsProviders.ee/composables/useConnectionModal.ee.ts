@@ -55,7 +55,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const parameterValidationStates = ref<Record<string, boolean>>({});
 
 	// Connection composable (low-level API operations)
-	const connection = useSecretsProviderConnection();
+	const connection = useSecretsProviderConnection(options.projectId);
 
 	// Display logic - determines which properties should be shown
 	function shouldDisplayProperty(property: INodeProperties): boolean {
@@ -139,8 +139,15 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		return rbacStore.hasScope('externalSecretsProvider:update') || canUpdateProjectScoped.value;
 	});
 
+	const canDeleteProjectScoped = computed(() => {
+		if (originalProjectIds.value.length === 0) return false;
+		return originalProjectIds.value.every((id) =>
+			hasProjectScope(id, 'externalSecretsProvider:delete'),
+		);
+	});
+
 	const canDelete = computed(() => {
-		return rbacStore.hasScope('externalSecretsProvider:delete');
+		return rbacStore.hasScope('externalSecretsProvider:delete') || canDeleteProjectScoped.value;
 	});
 
 	const canShareGlobally = computed(() => {

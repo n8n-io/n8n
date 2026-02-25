@@ -4,6 +4,7 @@ import SecretsProviderConnectionCard from './SecretsProviderConnectionCard.ee.vu
 import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
 import { DateTime } from 'luxon';
 import { createTestingPinia } from '@pinia/testing';
+import { useRBACStore } from '@/app/stores/rbac.store';
 
 export const MOCK_PROVIDER_TYPES: SecretProviderTypeResponse[] = [
 	{
@@ -38,7 +39,7 @@ describe('SecretsProviderConnectionCard', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
 
 	beforeEach(() => {
-		pinia = createTestingPinia();
+		pinia = createTestingPinia({ stubActions: false });
 	});
 	const mockProvider: SecretProviderConnection = {
 		id: 'test-id-123',
@@ -196,7 +197,10 @@ describe('SecretsProviderConnectionCard', () => {
 		expect(screen.queryAllByTestId('action-edit').length).toBe(0);
 	});
 
-	it('should show reload action when provider is connected', () => {
+	it('should show reload action when provider is connected and user has sync scope', () => {
+		const rbacStore = useRBACStore();
+		rbacStore.globalScopes = ['externalSecretsProvider:sync'];
+
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		renderComponent({
@@ -207,7 +211,21 @@ describe('SecretsProviderConnectionCard', () => {
 		expect(screen.getByTestId('action-reload')).toBeInTheDocument();
 	});
 
+	it('should not show reload action when user lacks sync scope', () => {
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.queryByTestId('action-reload')).not.toBeInTheDocument();
+	});
+
 	it('should not show reload action when provider is in error state', () => {
+		const rbacStore = useRBACStore();
+		rbacStore.globalScopes = ['externalSecretsProvider:sync'];
+
 		const errorProvider: SecretProviderConnection = {
 			...mockProvider,
 			state: 'error',
