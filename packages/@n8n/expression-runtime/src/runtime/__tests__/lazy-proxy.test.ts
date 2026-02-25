@@ -111,12 +111,6 @@ describe('createDeepLazyProxy', () => {
 			const proxy = createDeepLazyProxy();
 			expect(proxy.missing).toBeUndefined();
 		});
-
-		it('fetches and returns zero', () => {
-			mocks.getValueAtPath.mockReturnValue(0);
-			const proxy = createDeepLazyProxy();
-			expect(proxy.zero).toBe(0);
-		});
 	});
 
 	// -----------------------------------------------------------------------
