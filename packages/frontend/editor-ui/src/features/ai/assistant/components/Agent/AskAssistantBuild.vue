@@ -425,11 +425,12 @@ watch(
 
 		// Tidy up all nodes and zoom to fit after generation completes
 		if (accumulatedNodeIdsToTidyUp.value.length > 0) {
+			accumulatedNodeIdsToTidyUp.value = [];
 			await nextTick();
 			canvasEventBus.emit('tidyUp', {
 				source: 'builder-update',
 				trackEvents: false,
-				trackHistory: true,
+				trackHistory: false,
 				trackBulk: false,
 			});
 			await nextTick();
