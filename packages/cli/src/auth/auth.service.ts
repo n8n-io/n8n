@@ -201,6 +201,48 @@ export class AuthService {
 		});
 	}
 
+	/**
+	 * Validate a cookie auth token: checks revocation, JWT signature/expiry,
+	 * user existence, and hash consistency. Skips browser-id and MFA checks
+	 * since those are not applicable to webhook cookie validation.
+	 */
+	async validateCookieToken(token: string): Promise<void> {
+		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+		if (isInvalid) throw new AuthError('Unauthorized');
+		await this.validateToken(token);
+	}
+
+	private async validateToken(token: string): Promise<{
+		user: User;
+		jwtPayload: IssuedJWT;
+	}> {
+		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
+			algorithms: ['HS256'],
+		});
+
+		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
+		const user = await this.userRepository.findOne({
+			where: { id: jwtPayload.id },
+			relations: ['role'],
+		});
+
+		if (
+			// If not user is found
+			!user ||
+			// or, If the user has been deactivated (i.e. LDAP users)
+			user.disabled ||
+			// or, If the email or password has been updated
+			jwtPayload.hash !== this.createJWTHash(user)
+		) {
+			throw new AuthError('Unauthorized');
+		}
+
+		return {
+			user,
+			jwtPayload,
+		};
+	}
+
 	async resolveJwt(
 		token: string,
 		req: AuthenticatedRequest,
