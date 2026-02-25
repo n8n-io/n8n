@@ -4,7 +4,6 @@ import {
 	type ReloadSecretProviderConnectionResponse,
 	type SecretProviderConnection,
 	type SecretProviderConnectionListItem,
-	type SecretProviderTypeResponse,
 	type TestSecretProviderConnectionResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
