@@ -322,13 +322,8 @@ const displayNameValidationRules = [
 			<N8nHeading tag="h1" size="2xlarge">
 				{{ roleSlug ? `Role "${form.displayName}"` : i18n.baseText('projectRoles.newRole') }}
 			</N8nHeading>
-			<div v-if="initialState && !isReadOnly">
-				<N8nButton
-					variant="subtle"
-					:disabled="!hasUnsavedChanges"
-					class="mr-xs"
-					@click="resetForm(initialState)"
-				>
+			<div v-if="initialState && !isReadOnly" :class="$style.headerActions">
+				<N8nButton variant="subtle" :disabled="!hasUnsavedChanges" @click="resetForm(initialState)">
 					{{ i18n.baseText('projectRoles.discardChanges') }}
 				</N8nButton>
 				<N8nButton :disabled="!hasUnsavedChanges" @click="handleSubmit">
@@ -483,7 +478,14 @@ const displayNameValidationRules = [
 .headerContainer {
 	display: flex;
 	justify-content: space-between;
-	align-items: center;
+	align-items: flex-start;
+	gap: var(--spacing--sm);
+}
+
+.headerActions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
 }
 
 .formContainer {
