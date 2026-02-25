@@ -55,7 +55,8 @@
   "files": [
     "bin",
     "templates",
-    "dist"
+    "dist",
+    "!dist/**/e2e.*"
   ],
   "devDependencies": {
     "@n8n/backend-test-utils": "workspace:*",
