@@ -2,33 +2,23 @@ import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 import type { VectorDocument, VectorSearchResult } from 'n8n-workflow';
 
-import { VectorStoreDataPostgresRepository } from './vector-store-data-postgres.repository';
-import { VectorStoreDataSqliteRepository } from './vector-store-data-sqlite.repository';
+import { VectorWorkerPool } from './vector-worker-pool';
 import { VectorStoreData } from '../../entities';
-import { dbType } from '../../entities/abstract-entity';
+import { generateNanoId } from '@n8n/utils';
 
-/**
- * Concrete vector store data repository that delegates to database-specific implementations.
- * This follows the pattern used by other n8n repositories.
- */
 @Service()
 export class VectorStoreDataRepository extends Repository<VectorStoreData> {
-	constructor(
-		dataSource: DataSource,
-		private readonly postgresRepository: VectorStoreDataPostgresRepository,
-		private readonly sqliteRepository: VectorStoreDataSqliteRepository,
-	) {
+	private workerPool: VectorWorkerPool | null = null;
+
+	constructor(dataSource: DataSource) {
 		super(VectorStoreData, dataSource.manager);
 	}
 
-	private getImpl(): VectorStoreDataPostgresRepository | VectorStoreDataSqliteRepository {
-		if (dbType === 'postgresdb') {
-			return this.postgresRepository;
-		} else if (dbType === 'sqlite') {
-			return this.sqliteRepository;
-		} else {
-			throw new Error(`Unsupported database type for vector store: ${dbType}`);
+	private getWorkerPool(): VectorWorkerPool {
+		if (!this.workerPool) {
+			this.workerPool = new VectorWorkerPool();
 		}
+		return this.workerPool;
 	}
 
 	async addVectors(
@@ -36,9 +26,24 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		projectId: string,
 		documents: VectorDocument[],
 		embeddings: number[][],
-		clearStore?: boolean,
+		clearStore: boolean = false,
 	): Promise<void> {
-		return await this.getImpl().addVectors(memoryKey, projectId, documents, embeddings, clearStore);
+		if (clearStore) {
+			await this.clearStore(memoryKey, projectId);
+		}
+
+		const entities = documents.map((document, i) => {
+			const entity = new VectorStoreData();
+			entity.id = generateNanoId();
+			entity.memoryKey = memoryKey;
+			entity.projectId = projectId;
+			entity.content = document.content;
+			entity.metadata = document.metadata;
+			entity.vector = this.serializeVector(embeddings[i]);
+			return entity;
+		});
+
+		await this.save(entities);
 	}
 
 	async similaritySearch(
@@ -48,19 +53,57 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		k: number,
 		filter?: Record<string, unknown>,
 	): Promise<VectorSearchResult[]> {
-		return await this.getImpl().similaritySearch(memoryKey, projectId, queryEmbedding, k, filter);
+		const qb = this.createQueryBuilder('v').where(
+			'v.memoryKey = :memoryKey AND v.projectId = :projectId',
+			{ memoryKey, projectId },
+		);
+
+		if (filter) {
+			const isPostgres = this.manager.connection.options.type === 'postgres';
+			for (const [key, value] of Object.entries(filter)) {
+				const paramName = `filter_${key}`;
+				if (isPostgres) {
+					qb.andWhere(`v.metadata->>'${key}' = :${paramName}`, { [paramName]: String(value) });
+				} else {
+					qb.andWhere(`json_extract(v.metadata, '$.${key}') = :${paramName}`, {
+						[paramName]: value,
+					});
+				}
+			}
+		}
+
+		const rows = await qb.getMany();
+		if (rows.length === 0) {
+			return [];
+		}
+
+		const queryVector = new Float32Array(queryEmbedding);
+		const vectors = rows.map((row) => this.deserializeVector(row.vector));
+		const { indices, scores } = await this.getWorkerPool().calculateSimilarity(
+			queryVector,
+			vectors,
+			k,
+		);
+
+		return indices.map((rowIndex, i) => ({
+			document: {
+				content: rows[rowIndex].content,
+				metadata: rows[rowIndex].metadata,
+			},
+			score: scores[i],
+		}));
 	}
 
 	async getVectorCount(memoryKey: string, projectId: string): Promise<number> {
-		return await this.getImpl().getVectorCount(memoryKey, projectId);
+		return await this.countBy({ memoryKey, projectId });
 	}
 
 	async clearStore(memoryKey: string, projectId: string): Promise<void> {
-		return await this.getImpl().clearStore(memoryKey, projectId);
+		await this.delete({ memoryKey, projectId });
 	}
 
 	async deleteStore(memoryKey: string, projectId: string): Promise<void> {
-		return await this.getImpl().deleteStore(memoryKey, projectId);
+		await this.clearStore(memoryKey, projectId);
 	}
 
 	async deleteByFileNames(
@@ -68,22 +111,69 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		projectId: string,
 		fileNames: string[],
 	): Promise<number> {
-		return await this.getImpl().deleteByFileNames(memoryKey, projectId, fileNames);
+		if (fileNames.length === 0) {
+			return 0;
+		}
+
+		const isPostgres = this.manager.connection.options.type === 'postgres';
+		const qb = this.createQueryBuilder('vectorStore')
+			.delete()
+			.where('memoryKey = :memoryKey AND projectId = :projectId', { memoryKey, projectId });
+
+		const orConditions = fileNames.map((_, index) => {
+			const paramName = `fileName${index}`;
+			return isPostgres
+				? `metadata->>'fileName' = :${paramName}`
+				: `json_extract(metadata, '$.fileName') = :${paramName}`;
+		});
+
+		qb.andWhere(`(${orConditions.join(' OR ')})`, {
+			...Object.fromEntries(fileNames.map((name, index) => [`fileName${index}`, name])),
+		});
+
+		const result = await qb.execute();
+		return result.affected ?? 0;
 	}
 
 	async listStores(projectId: string, filter?: string): Promise<string[]> {
-		return await this.getImpl().listStores(projectId, filter);
-	}
+		const qb = this.createQueryBuilder('vectorStore')
+			.select('DISTINCT vectorStore.memoryKey', 'memoryKey')
+			.where('vectorStore.projectId = :projectId', { projectId });
 
-	async getTotalSize(): Promise<number> {
-		return await this.getImpl().getTotalSize();
-	}
+		if (filter) {
+			const isPostgres = this.manager.connection.options.type === 'postgres';
+			if (isPostgres) {
+				qb.andWhere('vectorStore.memoryKey ILIKE :filter', { filter: `%${filter}%` });
+			} else {
+				qb.andWhere('vectorStore.memoryKey LIKE :filter', { filter: `%${filter}%` });
+			}
+		}
 
-	async init(): Promise<void> {
-		return await this.getImpl().init?.();
+		const result = await qb.getRawMany<{ memoryKey: string }>();
+		return result.map((row) => row.memoryKey);
 	}
 
 	async shutdown(): Promise<void> {
-		return await this.getImpl().shutdown?.();
+		if (this.workerPool) {
+			await this.workerPool.shutdown();
+			this.workerPool = null;
+		}
+	}
+
+	private serializeVector(vector: number[]): Buffer {
+		const buffer = Buffer.allocUnsafe(vector.length * 4);
+		for (let i = 0; i < vector.length; i++) {
+			buffer.writeFloatLE(vector[i], i * 4);
+		}
+		return buffer;
+	}
+
+	private deserializeVector(buffer: Buffer): Float32Array {
+		const length = buffer.length / 4;
+		const vector = new Float32Array(length);
+		for (let i = 0; i < length; i++) {
+			vector[i] = buffer.readFloatLE(i * 4);
+		}
+		return vector;
 	}
 }

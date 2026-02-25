@@ -4,7 +4,7 @@ const TABLE_NAME = 'vector_store_data';
 
 /**
  * Adds a vector_store_data table for persisting vector embeddings and associated data.
- * Uses BLOB storage for vector data with sqlite-vec extension for similarity search.
+ * Vectors are stored as binary (BLOB/BYTEA) and similarity is computed in JavaScript.
  */
 export class AddVectorStoreDataTable1768906222000 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
