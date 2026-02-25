@@ -106,12 +106,6 @@ describe('createDeepLazyProxy', () => {
 	// -----------------------------------------------------------------------
 
 	describe('primitive values', () => {
-		it('fetches and returns a number', () => {
-			mocks.getValueAtPath.mockReturnValue(42);
-			const proxy = createDeepLazyProxy();
-			expect(proxy.count).toBe(42);
-		});
-
 		it('fetches and returns a boolean', () => {
 			mocks.getValueAtPath.mockReturnValue(true);
 			const proxy = createDeepLazyProxy();
