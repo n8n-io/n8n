@@ -19,7 +19,6 @@ const UI_OPERATIONS = {
 	folder: ['read', 'update', 'create', 'move', 'delete'],
 	workflow: ['read', 'update', 'create', 'publish', 'unpublish', 'move', 'delete'],
 	credential: ['read', 'update', 'create', 'share', 'unshare', 'move', 'delete'],
-	externalSecretsProvider: ['read', 'create', 'update', 'delete', 'sync'],
 	sourceControl: ['push'],
 	dataTable: ['read', 'readRow', 'update', 'writeRow', 'create', 'delete'],
 	projectVariable: ['read', 'update', 'create', 'delete'],
