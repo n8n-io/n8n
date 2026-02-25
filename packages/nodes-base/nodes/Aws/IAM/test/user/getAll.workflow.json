@@ -1,0 +1,81 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-40, -220],
+			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"additionalFields": {},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.awsIam",
+			"typeVersion": 1,
+			"position": [160, -220],
+			"id": "23fd4c79-516d-49dc-81c8-e68052a294d1",
+			"name": "getAllUsers",
+			"credentials": {
+				"aws": {
+					"id": "exampleId",
+					"name": "AWS US EAST"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"getAllUsers": [
+			{
+				"json": {
+					"Arn": "arn:aws:iam::130450532146:user/Johnnn",
+					"CreateDate": 1739198010,
+					"PasswordLastUsed": null,
+					"Path": "/",
+					"PermissionsBoundary": null,
+					"Tags": null,
+					"UserId": "AIDAR4X3VE4ZAJGXLCVOP",
+					"UserName": "Johnnn"
+				}
+			},
+			{
+				"json": {
+					"Arn": "arn:aws:iam::130450532146:user/rhis/path/Jonas",
+					"CreateDate": 1739198295,
+					"PasswordLastUsed": null,
+					"Path": "/rhis/path/",
+					"PermissionsBoundary": null,
+					"Tags": null,
+					"UserId": "AIDAR4X3VE4ZDJJFKI6OU",
+					"UserName": "Jonas"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "getAllUsers",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "c23e7348-6add-4711-b567-53922f951cbe",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "0qqycx08fTBpfbC9",
+	"tags": []
+}

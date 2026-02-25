@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { TextSplitter } from '@langchain/textsplitters';
 import {
 	NodeConnectionTypes,
@@ -8,8 +7,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import { logWrapper, N8nJsonLoader } from '@n8n/ai-utilities';
+
 import { getConnectionHintNoticeField, metadataFilterField } from '@utils/sharedFields';
 
 export class DocumentJsonInputLoader implements INodeType {
@@ -39,7 +38,7 @@ export class DocumentJsonInputLoader implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
 			{
 				displayName: 'Text Splitter',
@@ -48,9 +47,14 @@ export class DocumentJsonInputLoader implements INodeType {
 			},
 		],
 		inputNames: ['Text Splitter'],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
+		builderHint: {
+			inputs: {
+				ai_textSplitter: { required: false },
+			},
+		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{

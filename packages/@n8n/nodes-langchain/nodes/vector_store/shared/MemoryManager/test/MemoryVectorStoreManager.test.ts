@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/dot-notation */
 import { Document } from '@langchain/core/documents';
 import type { OpenAIEmbeddings } from '@langchain/openai';
 import { mock } from 'jest-mock-extended';
-import type { MemoryVectorStore } from 'langchain/vectorstores/memory';
+import type { MemoryVectorStore } from '@langchain/classic/vectorstores/memory';
 import type { Logger } from 'n8n-workflow';
 
 import * as configModule from '../config';
@@ -12,7 +11,7 @@ function createTestEmbedding(dimensions = 1536, initialValue = 0.1, multiplier =
 	return new Array(dimensions).fill(initialValue).map((value) => value * multiplier);
 }
 
-jest.mock('langchain/vectorstores/memory', () => {
+jest.mock('@langchain/classic/vectorstores/memory', () => {
 	return {
 		MemoryVectorStore: {
 			fromExistingIndex: jest.fn().mockImplementation(() => {
@@ -245,5 +244,35 @@ describe('MemoryVectorStoreManager', () => {
 		expect(Object.keys(stats.stores)).toContain('store2');
 		expect(stats.stores.store1.vectors).toBe(50);
 		expect(stats.stores.store2.vectors).toBe(30);
+	});
+
+	it('should list all vector stores', async () => {
+		const embeddings = mock<OpenAIEmbeddings>();
+		const instance = MemoryVectorStoreManager.getInstance(embeddings, logger);
+
+		const mockVectorStore1 = mock<MemoryVectorStore>();
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		mockVectorStore1.memoryVectors = new Array(50).fill({
+			embedding: createTestEmbedding(),
+			content: 'test1',
+			metadata: {},
+		});
+
+		const mockVectorStore2 = mock<MemoryVectorStore>();
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		mockVectorStore2.memoryVectors = new Array(30).fill({
+			embedding: createTestEmbedding(),
+			content: 'test2',
+			metadata: {},
+		});
+
+		// Mock internal state
+		instance['vectorStoreBuffer'].set('store1', mockVectorStore1);
+		instance['vectorStoreBuffer'].set('store2', mockVectorStore2);
+
+		const list = instance.getMemoryKeysList();
+		expect(list).toHaveLength(2);
+		expect(list[0]).toBe('store1');
+		expect(list[1]).toBe('store2');
 	});
 });

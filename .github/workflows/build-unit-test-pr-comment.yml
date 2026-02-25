@@ -1,0 +1,100 @@
+name: 'Build: Unit Test PR Comment'
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  pull-requests: read
+  contents: read
+  actions: write
+  issues: write
+
+jobs:
+  validate_and_dispatch:
+    name: Validate user and dispatch CI workflow
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/build-unit-test')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate user permissions and collect PR data
+        id: check_permissions
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const commenter = context.actor;
+            const body = (context.payload.comment.body || '').trim();
+            const isCommand = body.startsWith('/build-unit-test');
+            const allowedPermissions = ['admin', 'write', 'maintain'];
+            const commentId = context.payload.comment.id;
+            const { owner, repo } = context.repo;
+
+            async function react(content) {
+              try {
+                await github.rest.reactions.createForIssueComment({
+                  owner,
+                  repo,
+                  comment_id: commentId,
+                  content,
+                });
+              } catch (error) {
+                console.log(`Failed to add reaction '${content}': ${error.message}`);
+              }
+            }
+
+            core.setOutput('proceed', 'false');
+            core.setOutput('headSha', '');
+            core.setOutput('prNumber', '');
+
+            if (!context.payload.issue.pull_request || !isCommand) {
+              console.log('Comment is not /build-unit-test on a pull request. Skipping.');
+              return;
+            }
+
+            let permission;
+            try {
+              const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner,
+                repo,
+                username: commenter,
+              });
+              permission = data.permission;
+            } catch (error) {
+              console.log(`Could not verify permissions for @${commenter}: ${error.message}`);
+              await react('confused');
+              return;
+            }
+
+            if (!allowedPermissions.includes(permission)) {
+              console.log(`User @${commenter} has '${permission}' permission; requires admin/write/maintain.`);
+              await react('-1');
+              return;
+            }
+
+            try {
+              const prNumber = context.issue.number;
+              const { data: pr } = await github.rest.pulls.get({
+                owner,
+                repo,
+                pull_number: prNumber,
+              });
+              await react('+1');
+              core.setOutput('proceed', 'true');
+              core.setOutput('headSha', pr.head.sha);
+              core.setOutput('prNumber', String(prNumber));
+            } catch (error) {
+              console.log(`Failed to fetch PR details for PR #${context.issue.number}: ${error.message}`);
+              await react('confused');
+            }
+
+      - name: Dispatch build/unit test workflow
+        if: ${{ steps.check_permissions.outputs.proceed == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ steps.check_permissions.outputs.headSha }}
+          PR_NUMBER: ${{ steps.check_permissions.outputs.prNumber }}
+        run: |
+          gh workflow run ci-manual-unit-tests.yml \
+            --repo "${{ github.repository }}" \
+            -f ref="${HEAD_SHA}" \
+            -f pr_number="${PR_NUMBER}"

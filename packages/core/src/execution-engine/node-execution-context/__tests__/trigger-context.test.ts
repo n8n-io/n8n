@@ -1,6 +1,5 @@
 import { mock } from 'jest-mock-extended';
 import type {
-	Expression,
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	INode,
@@ -10,6 +9,7 @@ import type {
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	WorkflowExpression,
 } from 'n8n-workflow';
 
 import { TriggerContext } from '../trigger-context';
@@ -33,7 +33,7 @@ describe('TriggerContext', () => {
 		},
 	});
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
 	const node = mock<INode>({
 		credentials: {
@@ -91,6 +91,12 @@ describe('TriggerContext', () => {
 			const parameter = triggerContext.getNodeParameter('otherParameter', 'fallback');
 
 			expect(parameter).toBe('fallback');
+		});
+	});
+
+	describe('getExecutionContext', () => {
+		it('should return undefined', () => {
+			expect(triggerContext.getExecutionContext()).toBeUndefined();
 		});
 	});
 });

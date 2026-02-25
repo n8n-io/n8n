@@ -21,7 +21,7 @@ yarn-error.log*
 *.sw*
 
 .editorconfig
-.eslintrc.js
+eslint.config.js
 tsconfig.json
 
 .turbo

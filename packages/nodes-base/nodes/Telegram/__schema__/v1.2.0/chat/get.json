@@ -10,6 +10,23 @@
                 "accent_color_id": {
                     "type": "integer"
                 },
+                "accepted_gift_types": {
+                    "type": "object",
+                    "properties": {
+                        "limited_gifts": {
+                            "type": "boolean"
+                        },
+                        "premium_subscription": {
+                            "type": "boolean"
+                        },
+                        "unique_gifts": {
+                            "type": "boolean"
+                        },
+                        "unlimited_gifts": {
+                            "type": "boolean"
+                        }
+                    }
+                },
                 "active_usernames": {
                     "type": "array",
                     "items": {
@@ -37,5 +54,5 @@
             }
         }
     },
-    "version": 1
+    "version": 5
 }

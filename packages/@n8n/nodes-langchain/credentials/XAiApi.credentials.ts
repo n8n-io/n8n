@@ -10,7 +10,7 @@ export class XAiApi implements ICredentialType {
 
 	displayName = 'xAi';
 
-	documentationUrl = 'xAi';
+	documentationUrl = 'xai';
 
 	properties: INodeProperties[] = [
 		{

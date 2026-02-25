@@ -12,6 +12,12 @@ export const workflowFactory = Factory.extend<IWorkflowDb>({
 	active() {
 		return faker.datatype.boolean();
 	},
+	activeVersionId(i: number) {
+		return this.active ? i.toString() : null;
+	},
+	isArchived() {
+		return faker.datatype.boolean();
+	},
 	nodes() {
 		return [];
 	},

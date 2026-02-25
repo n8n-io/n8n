@@ -5,7 +5,7 @@ export class TravisCiApi implements ICredentialType {
 
 	displayName = 'Travis API';
 
-	documentationUrl = 'travisCi';
+	documentationUrl = 'travisci';
 
 	properties: INodeProperties[] = [
 		{

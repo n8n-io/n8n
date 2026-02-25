@@ -1,9 +1,9 @@
+import { inTest, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
-import { Logger } from 'n8n-core';
 import * as a from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { ServerResponse, type Server, createServer as createHttpServer } from 'node:http';
@@ -11,7 +11,6 @@ import type { AddressInfo, Socket } from 'node:net';
 import { parse as parseUrl } from 'node:url';
 import { Server as WSServer } from 'ws';
 
-import { inTest } from '@/constants';
 import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
 import { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller';
@@ -171,6 +170,13 @@ export class TaskBrokerServer {
 			send(async (req) => await this.authController.createGrantToken(req)),
 		);
 
+		// The task broker is an internal server (not publicly accessible) used
+		// exclusively by the task-runner-launcher. Its health endpoint must always
+		// be /healthz, independent of N8N_ENDPOINT_HEALTH, which is intended for
+		// external-facing servers. Platforms such as Cloud Run reserve /healthz at
+		// the ingress level, so users set N8N_ENDPOINT_HEALTH=health to avoid
+		// conflicts on the public URL — but that restriction does not apply to
+		// internal container-to-container traffic on the broker port.
 		this.app.get('/healthz', (_, res) => {
 			res.send({ status: 'ok' });
 		});

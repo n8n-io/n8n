@@ -7,6 +7,11 @@ export type FreshworksConfigResponse<T> = {
 	[key: string]: T[];
 };
 
+export type LoadedResource = {
+	id: string;
+	name: string;
+};
+
 export type LoadOption = {
 	name: string;
 	value: string;

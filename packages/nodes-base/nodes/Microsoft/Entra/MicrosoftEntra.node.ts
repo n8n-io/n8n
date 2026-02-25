@@ -20,9 +20,10 @@ export class MicrosoftEntra implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Interact with Micosoft Entra ID API',
+		description: 'Interact with Microsoft Entra ID API',
+		schemaPath: 'Microsoft/Entra',
 		defaults: {
-			name: 'Micosoft Entra ID',
+			name: 'Microsoft Entra ID',
 		},
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
@@ -34,10 +35,11 @@ export class MicrosoftEntra implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: 'https://graph.microsoft.com/v1.0',
 			headers: {
 				'Content-Type': 'application/json',
 			},
+			baseURL:
+				'={{ ($credentials.graphApiBaseUrl || "https://graph.microsoft.com").replace(/\\/+$/, "") }}/v1.0',
 		},
 		properties: [
 			{

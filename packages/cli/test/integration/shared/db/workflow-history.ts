@@ -1,8 +1,7 @@
+import type { WorkflowHistory } from '@n8n/db';
+import { WorkflowHistoryRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
-
-import type { WorkflowHistory } from '@/databases/entities/workflow-history';
-import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 
 export async function createWorkflowHistoryItem(
 	workflowId: string,
@@ -17,11 +16,13 @@ export async function createWorkflowHistoryItem(
 				name: 'Start',
 				parameters: {},
 				position: [-20, 260],
-				type: 'n8n-nodes-base.start',
+				type: 'n8n-nodes-base.manualTrigger',
 				typeVersion: 1,
 			},
 		],
 		versionId: uuid(),
+		workflowPublishHistory: [],
+		autosaved: false,
 		...(data ?? {}),
 		workflowId,
 	});

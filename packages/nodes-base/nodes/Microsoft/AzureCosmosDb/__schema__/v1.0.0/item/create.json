@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "_attachments": {
+            "type": "string"
+        },
+        "_etag": {
+            "type": "string"
+        },
+        "_rid": {
+            "type": "string"
+        },
+        "_self": {
+            "type": "string"
+        },
+        "_ts": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,11 +1,14 @@
-import type { User } from '@/databases/entities/user';
-import { Telemetry } from '@/telemetry';
-import { mockInstance } from '@test/mocking';
+import {
+	createTeamProject,
+	testDb,
+	mockInstance,
+	createActiveWorkflow,
+} from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
 
-import { createTeamProject } from '../shared/db/projects';
+import { Telemetry } from '@/telemetry';
+
 import { createUser } from '../shared/db/users';
-import { createWorkflowWithTrigger } from '../shared/db/workflows';
-import * as testDb from '../shared/test-db';
 import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
@@ -18,13 +21,18 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	member = await createUser({ role: 'global:member' });
+	member = await createUser({ role: { slug: 'global:member' } });
 
 	await utils.initNodeTypes();
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Workflow', 'SharedWorkflow']);
+	await testDb.truncate([
+		'WorkflowEntity',
+		'SharedWorkflow',
+		'WorkflowHistory',
+		'WorkflowPublishHistory',
+	]);
 });
 
 describe('PUT /:workflowId/transfer', () => {
@@ -36,7 +44,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const destinationProject = await createTeamProject('Team Project', member);
 
-		const workflow = await createWorkflowWithTrigger({ active: true }, member);
+		const workflow = await createActiveWorkflow({}, member);
 
 		//
 		// ACT

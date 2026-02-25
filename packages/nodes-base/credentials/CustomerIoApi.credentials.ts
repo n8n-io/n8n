@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from '@n8n/errors';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -11,7 +11,7 @@ export class CustomerIoApi implements ICredentialType {
 
 	displayName = 'Customer.io API';
 
-	documentationUrl = 'customerIo';
+	documentationUrl = 'customerio';
 
 	properties: INodeProperties[] = [
 		{
@@ -65,13 +65,21 @@ export class CustomerIoApi implements ICredentialType {
 	): Promise<IHttpRequestOptions> {
 		// @ts-ignore
 		const url = new URL(requestOptions.url ? requestOptions.url : requestOptions.uri);
-		if (url.hostname === 'track.customer.io' || url.hostname === 'api.customer.io') {
+		if (
+			url.hostname === 'track.customer.io' ||
+			url.hostname === 'track-eu.customer.io' ||
+			url.hostname === 'api.customer.io' ||
+			url.hostname === 'api-eu.customer.io'
+		) {
 			const basicAuthKey = Buffer.from(
 				`${credentials.trackingSiteId}:${credentials.trackingApiKey}`,
 			).toString('base64');
 			// @ts-ignore
 			Object.assign(requestOptions.headers, { Authorization: `Basic ${basicAuthKey}` });
-		} else if (url.hostname === 'beta-api.customer.io') {
+		} else if (
+			url.hostname === 'beta-api.customer.io' ||
+			url.hostname === 'beta-api-eu.customer.io'
+		) {
 			// @ts-ignore
 			Object.assign(requestOptions.headers, {
 				Authorization: `Bearer ${credentials.appApiKey as string}`,

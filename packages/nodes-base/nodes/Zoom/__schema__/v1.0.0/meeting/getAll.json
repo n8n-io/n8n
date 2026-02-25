@@ -19,9 +19,6 @@
         "start_time": {
             "type": "string"
         },
-        "supportGoLive": {
-            "type": "boolean"
-        },
         "timezone": {
             "type": "string"
         },
@@ -35,5 +32,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

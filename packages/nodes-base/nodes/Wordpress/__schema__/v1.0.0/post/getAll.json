@@ -225,6 +225,14 @@
         "link": {
             "type": "string"
         },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "footnotes": {
+                    "type": "string"
+                }
+            }
+        },
         "modified": {
             "type": "string"
         },
@@ -264,5 +272,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 4
 }

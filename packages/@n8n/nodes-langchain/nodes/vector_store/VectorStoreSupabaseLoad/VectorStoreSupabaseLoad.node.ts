@@ -10,8 +10,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { getMetadataFiltersValues } from '@utils/helpers';
-import { logWrapper } from '@utils/logWrapper';
+import { logWrapper, getMetadataFiltersValues } from '@n8n/ai-utilities';
 import { metadataFilterField } from '@utils/sharedFields';
 
 import { supabaseTableNameSearch } from '../shared/createVectorStoreNode/methods/listSearch';
@@ -97,7 +96,6 @@ export class VectorStoreSupabaseLoad implements INodeType {
 			0,
 		)) as Embeddings;
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);
 		const config: SupabaseLibArgs = {
 			client,

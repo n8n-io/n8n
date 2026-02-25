@@ -1,0 +1,69 @@
+{
+	"_comment": "VEX - CVE false positive triage. To add entries, see Quality Corner or .github/WORKFLOWS.md#vex",
+	"@context": "https://openvex.dev/ns/v0.2.0",
+	"@id": "https://github.com/n8n-io/n8n/vex",
+	"author": "n8n Security Team <security@n8n.io>",
+	"timestamp": "2026-02-13T00:00:00Z",
+	"version": 3,
+	"statements": [
+		{
+			"vulnerability": {
+				"@id": "https://nvd.nist.gov/vuln/detail/CVE-2025-32460",
+				"name": "CVE-2025-32460",
+				"description": "Heap-based buffer over-read in ReadJXLImage in coders/jxl.c in GraphicsMagick before 8e56520"
+			},
+			"products": [
+				{
+					"@id": "pkg:docker/n8nio/n8n",
+					"subcomponents": [
+						{
+							"@id": "pkg:apk/alpine/graphicsmagick@1.3.45-r0"
+						}
+					]
+				}
+			],
+			"status": "not_affected",
+			"justification": "vulnerable_code_not_in_execute_path",
+			"impact_statement": "The JXL (JPEG XL) coder requires libjxl delegate to be compiled into GraphicsMagick. Alpine's graphicsmagick package (1.3.45-r0) does not include libjxl support. Verified via `gm convert -list format` which shows no JXL entry. The vulnerable ReadJXLImage code path is unreachable."
+		},
+		{
+			"vulnerability": {
+				"@id": "https://nvd.nist.gov/vuln/detail/CVE-2025-27795",
+				"name": "CVE-2025-27795",
+				"description": "ReadJXLImage in JXL in GraphicsMagick before 1.3.46 lacks image dimension resource limits"
+			},
+			"products": [
+				{
+					"@id": "pkg:docker/n8nio/n8n",
+					"subcomponents": [
+						{
+							"@id": "pkg:apk/alpine/graphicsmagick@1.3.45-r0"
+						}
+					]
+				}
+			],
+			"status": "not_affected",
+			"justification": "vulnerable_code_not_in_execute_path",
+			"impact_statement": "The JXL (JPEG XL) coder requires libjxl delegate to be compiled into GraphicsMagick. Alpine's graphicsmagick package (1.3.45-r0) does not include libjxl support. Verified via `gm convert -list format` which shows no JXL entry. The vulnerable ReadJXLImage code path is unreachable."
+		},
+		{
+			"vulnerability": {
+				"@id": "https://nvd.nist.gov/vuln/detail/CVE-2025-27796",
+				"name": "CVE-2025-27796",
+				"description": "ReadWPGImage in WPG in GraphicsMagick before 1.3.46 mishandles palette buffer allocation"
+			},
+			"products": [
+				{
+					"@id": "pkg:docker/n8nio/n8n",
+					"subcomponents": [
+						{
+							"@id": "pkg:apk/alpine/graphicsmagick@1.3.45-r0"
+						}
+					]
+				}
+			],
+			"status": "affected",
+			"action_statement": "WPG (WordPerfect Graphics) coder is compiled into Alpine's graphicsmagick package. However, WPG is an obsolete format from the 1980s with no legitimate use case in n8n workflows. Exploitation requires a workflow author to deliberately fetch and process a crafted WPG file via the Edit Image node."
+		}
+	]
+}

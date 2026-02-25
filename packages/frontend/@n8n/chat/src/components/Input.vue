@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import { useFileDialog } from '@vueuse/core';
+import { v4 as uuidv4 } from 'uuid';
 import IconPaperclip from 'virtual:icons/mdi/paperclip';
 import IconSend from 'virtual:icons/mdi/send';
 import { computed, onMounted, onUnmounted, ref, unref } from 'vue';
 
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
+import {
+	constructChatWebsocketUrl,
+	parseBotChatMessageContent,
+	shouldBlockUserInput,
+} from '@n8n/chat/utils';
 
 import ChatFile from './ChatFile.vue';
+import type { ChatMessage } from '../types';
 
 export interface ChatInputProps {
 	placeholder?: string;
@@ -36,8 +43,11 @@ const chatTextArea = ref<HTMLTextAreaElement | null>(null);
 const input = ref('');
 const isSubmitting = ref(false);
 const resizeObserver = ref<ResizeObserver | null>(null);
+const waitingForChatResponse = ref(false);
 
 const isSubmitDisabled = computed(() => {
+	if (chatStore.blockUserInput.value) return true;
+	if (waitingForChatResponse.value) return false;
 	return input.value === '' || unref(waitingForResponse) || options.disabled?.value === true;
 });
 
@@ -89,7 +99,7 @@ onMounted(() => {
 		resizeObserver.value = new ResizeObserver((entries) => {
 			for (const entry of entries) {
 				if (entry.target === chatTextArea.value) {
-					adjustHeight({ target: chatTextArea.value } as unknown as Event);
+					adjustTextAreaHeight();
 				}
 			}
 		});
@@ -127,6 +137,108 @@ function setInputValue(value: string) {
 	focusChatInput();
 }
 
+function attachFiles() {
+	if (files.value) {
+		const filesToAttach = Array.from(files.value);
+		resetFileDialog();
+		files.value = null;
+		return filesToAttach;
+	}
+
+	return [];
+}
+
+function setupWebsocketConnection(executionId: string) {
+	// if webhookUrl is not defined onSubmit is called from integrated chat
+	// do not setup websocket as it would be handled by the integrated chat
+	if (options.webhookUrl && chatStore.currentSessionId.value) {
+		try {
+			const wsUrl = constructChatWebsocketUrl(
+				options.webhookUrl,
+				executionId,
+				chatStore.currentSessionId.value,
+				true,
+			);
+			chatStore.ws = new WebSocket(wsUrl);
+			chatStore.ws.onmessage = (e) => {
+				if (e.data === 'n8n|heartbeat') {
+					chatStore.ws?.send('n8n|heartbeat-ack');
+					return;
+				}
+
+				if (e.data === 'n8n|continue') {
+					waitingForChatResponse.value = false;
+					chatStore.waitingForResponse.value = true;
+					return;
+				}
+
+				const newMessage = parseBotChatMessageContent(e.data as string);
+				chatStore.messages.value.push(newMessage);
+				waitingForChatResponse.value = true;
+				chatStore.waitingForResponse.value = false;
+				chatStore.blockUserInput.value = shouldBlockUserInput(newMessage);
+			};
+
+			chatStore.ws.onclose = () => {
+				chatStore.ws = null;
+				waitingForChatResponse.value = false;
+				chatStore.waitingForResponse.value = false;
+				chatStore.blockUserInput.value = false;
+			};
+		} catch (error) {
+			// do not throw error here as it should work with n8n versions that do not support websockets
+			console.error('Error setting up websocket connection', error);
+		}
+	}
+}
+
+async function processFiles(data: File[] | undefined) {
+	if (!data || data.length === 0) return [];
+
+	const filePromises = data.map(async (file) => {
+		// We do not need to await here as it will be awaited on the return by Promise.all
+		// eslint-disable-next-line @typescript-eslint/return-await
+		return new Promise<{ name: string; type: string; data: string }>((resolve, reject) => {
+			const reader = new FileReader();
+
+			reader.onload = () =>
+				resolve({
+					name: file.name,
+					type: file.type,
+					data: reader.result as string,
+				});
+
+			reader.onerror = () =>
+				reject(new Error(`Error reading file: ${reader.error?.message ?? 'Unknown error'}`));
+
+			reader.readAsDataURL(file);
+		});
+	});
+
+	return await Promise.all(filePromises);
+}
+
+async function respondToChatNode(ws: WebSocket, messageText: string) {
+	const sentMessage: ChatMessage = {
+		id: uuidv4(),
+		text: messageText,
+		sender: 'user',
+		files: files.value ? attachFiles() : undefined,
+	};
+
+	chatStore.messages.value.push(sentMessage);
+	ws.send(
+		JSON.stringify({
+			sessionId: chatStore.currentSessionId.value,
+			action: 'sendMessage',
+			chatInput: messageText,
+			files: await processFiles(sentMessage.files),
+		}),
+	);
+	chatStore.waitingForResponse.value = true;
+	waitingForChatResponse.value = false;
+}
+
 async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	event.preventDefault();
 
@@ -137,19 +249,33 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	const messageText = input.value;
 	input.value = '';
 	isSubmitting.value = true;
-	await chatStore.sendMessage(messageText, Array.from(files.value ?? []));
+
+	if (chatStore.ws && waitingForChatResponse.value) {
+		await respondToChatNode(chatStore.ws, messageText);
+		// Emit event to reset message history navigation
+		chatEventBus.emit('messageSent');
+		return;
+	}
+
+	const response = await chatStore.sendMessage(messageText, attachFiles());
+
+	if (response?.executionId) {
+		setupWebsocketConnection(response.executionId);
+	}
+
+	// Emit event to reset message history navigation
+	chatEventBus.emit('messageSent');
+
 	isSubmitting.value = false;
-	resetFileDialog();
-	files.value = null;
 }
 
 async function onSubmitKeydown(event: KeyboardEvent) {
-	if (event.shiftKey) {
+	if (event.shiftKey || event.isComposing) {
 		return;
 	}
 
 	await onSubmit(event);
-	adjustHeight({ target: chatTextArea.value } as unknown as Event);
+	adjustTextAreaHeight();
 }
 
 function onFileRemove(file: File) {
@@ -181,8 +307,9 @@ function onOpenFileDialog() {
 	openFileDialog({ accept: unref(allowedFileTypes) });
 }
 
-function adjustHeight(event: Event) {
-	const textarea = event.target as HTMLTextAreaElement;
+function adjustTextAreaHeight() {
+	const textarea = chatTextArea.value;
+	if (!textarea) return;
 	// Set to content minimum to get the right scrollHeight
 	textarea.style.height = 'var(--chat--textarea--height)';
 	// Get the new height, with a small buffer for padding
@@ -192,7 +319,7 @@ function adjustHeight(event: Event) {
 </script>
 
 <template>
-	<div class="chat-input" :style="styleVars" @keydown.stop="onKeyDown">
+	<div class="chat-input" :style="styleVars">
 		<div class="chat-inputs">
 			<div v-if="$slots.leftPanel" class="chat-input-left-panel">
 				<slot name="leftPanel" />
@@ -204,9 +331,10 @@ function adjustHeight(event: Event) {
 				:disabled="isInputDisabled"
 				:placeholder="t(props.placeholder)"
 				@keydown.enter="onSubmitKeydown"
-				@input="adjustHeight"
-				@mousedown="adjustHeight"
-				@focus="adjustHeight"
+				@keydown="onKeyDown"
+				@input="adjustTextAreaHeight"
+				@mousedown="adjustTextAreaHeight"
+				@focus="adjustTextAreaHeight"
 			/>
 
 			<div class="chat-inputs-controls">
@@ -224,7 +352,7 @@ function adjustHeight(event: Event) {
 				</button>
 			</div>
 		</div>
-		<div v-if="files?.length && !isSubmitting" class="chat-files">
+		<div v-if="files?.length && (!isSubmitting || waitingForChatResponse)" class="chat-files">
 			<ChatFile
 				v-for="file in files"
 				:key="file.name"
@@ -251,21 +379,25 @@ function adjustHeight(event: Event) {
 	}
 }
 .chat-inputs {
-	width: 100%;
+	width: var(--chat--input--width, 100%);
 	display: flex;
 	justify-content: center;
 	align-items: flex-end;
+	background: var(--chat--input--container--background, var(--color--background--light-2));
+	border: var(--chat--input--container--border, 1px solid var(--color--foreground--tint-1));
+	border-radius: var(--chat--input--container--border-radius, 24px);
+	padding: var(--chat--input--container--padding, 12px);
 
 	textarea {
 		font-family: inherit;
 		font-size: var(--chat--input--font-size);
 		width: 100%;
-		border: var(--chat--input--border, 0);
+		border: none;
 		border-radius: var(--chat--input--border-radius);
 		padding: var(--chat--input--padding);
-		min-height: var(--chat--textarea--height, 2.5rem); // Set a smaller initial height
+		min-height: var(--chat--textarea--height);
 		max-height: var(--chat--textarea--max-height);
-		height: var(--chat--textarea--height, 2.5rem); // Set initial height same as min-height
+		height: var(--chat--textarea--height);
 		resize: none;
 		overflow-y: auto;
 		background: var(--chat--input--background, white);
@@ -276,10 +408,6 @@ function adjustHeight(event: Event) {
 		&::placeholder {
 			font-size: var(--chat--input--placeholder--font-size, var(--chat--input--font-size));
 		}
-		&:focus,
-		&:hover {
-			border-color: var(--chat--input--border-active, 0);
-		}
 	}
 }
 .chat-inputs-controls {
@@ -289,15 +417,17 @@ function adjustHeight(event: Event) {
 .chat-input-file-button {
 	height: var(--chat--textarea--height);
 	width: var(--chat--textarea--height);
-	background: var(--chat--input--send--button--background, white);
+	background: var(--chat--input--send--button--background, transparent);
 	cursor: pointer;
-	color: var(--chat--input--send--button--color, var(--chat--color-secondary));
-	border: 0;
+	color: var(--chat--input--send--button--color, var(--chat--color--secondary));
+	border: none;
+	border-radius: var(--chat--input--button--border-radius, 16px);
 	font-size: 24px;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	transition: color var(--chat--transition-duration) ease;
+	transition: all var(--chat--transition-duration, 0.15s) ease;
+	margin: 8px;
 
 	svg {
 		min-width: fit-content;
@@ -308,24 +438,18 @@ function adjustHeight(event: Event) {
 		color: var(--chat--color-disabled);
 	}
 
-	.chat-input-send-button {
-		&:hover,
-		&:focus {
-			background: var(
-				--chat--input--send--button--background-hover,
-				var(--chat--input--send--button--background)
-			);
-			color: var(--chat--input--send--button--color-hover);
-		}
+	&:hover:not([disabled]) {
+		background: var(--chat--input--send--button--background-hover, rgba(0, 0, 0, 0.05));
+		color: var(--chat--input--send--button--color-hover, var(--chat--color--secondary));
 	}
 }
 .chat-input-file-button {
-	background: var(--chat--input--file--button--background, white);
-	color: var(--chat--input--file--button--color);
+	background: var(--chat--input--file--button--background, transparent);
+	color: var(--chat--input--file--button--color, var(--chat--color--secondary));
 
-	&:hover {
-		background: var(--chat--input--file--button--background-hover);
-		color: var(--chat--input--file--button--color-hover);
+	&:hover:not([disabled]) {
+		background: var(--chat--input--file--button--background-hover, rgba(0, 0, 0, 0.05));
+		color: var(--chat--input--file--button--color-hover, var(--chat--color--secondary));
 	}
 }
 

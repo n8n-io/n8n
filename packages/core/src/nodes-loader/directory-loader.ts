@@ -1,3 +1,4 @@
+import { isContainedWithin, Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import uniqBy from 'lodash/uniqBy';
 import type {
@@ -15,14 +16,20 @@ import type {
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import { ApplicationError, applyDeclarativeNodeOptionParameters } from 'n8n-workflow';
+import { ApplicationError, isExpression, isSubNodeType, UnexpectedError } from 'n8n-workflow';
+import { realpathSync } from 'node:fs';
 import * as path from 'path';
 
 import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credential-type.error';
 import { UnrecognizedNodeTypeError } from '@/errors/unrecognized-node-type.error';
-import { Logger } from '@/logging/logger';
 
-import { commonCORSParameters, commonPollingParameters, CUSTOM_NODES_CATEGORY } from './constants';
+import {
+	commonCORSParameters,
+	commonDeclarativeNodeOptionParameters,
+	commonPollingParameters,
+	CUSTOM_NODES_CATEGORY,
+	CUSTOM_NODES_PACKAGE_NAME,
+} from './constants';
 import { loadClassInIsolation } from './load-class-in-isolation';
 
 function toJSON(this: ICredentialType) {
@@ -43,7 +50,7 @@ type Codex = {
 };
 
 export type Types = {
-	nodes: INodeTypeBaseDescription[];
+	nodes: INodeTypeDescription[];
 	credentials: ICredentialType[];
 };
 
@@ -70,21 +77,37 @@ export abstract class DirectoryLoader {
 	// Stores the different versions with their individual descriptions
 	types: Types = { nodes: [], credentials: [] };
 
+	/** Whether node types are no longer in memory. */
+	private typesReleased = false;
+
 	readonly nodesByCredential: Record<string, string[]> = {};
 
 	protected readonly logger = Container.get(Logger);
+
+	protected removeNonIncludedNodes = false;
 
 	constructor(
 		readonly directory: string,
 		protected excludeNodes: string[] = [],
 		protected includeNodes: string[] = [],
-	) {}
+	) {
+		// If `directory` is a symlink, we try to resolve it to its real path
+		try {
+			this.directory = realpathSync(directory);
+		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			if (error.code !== 'ENOENT') throw error;
+		}
+
+		this.removeNonIncludedNodes = this.includeNodes.length > 0;
+	}
 
 	abstract packageName: string;
 
 	abstract loadAll(): Promise<void>;
 
 	reset() {
+		this.unloadAll();
 		this.loadedNodes = [];
 		this.nodeTypes = {};
 		this.credentialTypes = {};
@@ -92,8 +115,33 @@ export abstract class DirectoryLoader {
 		this.types = { nodes: [], credentials: [] };
 	}
 
+	releaseTypes() {
+		this.typesReleased = true;
+		this.types = { nodes: [], credentials: [] };
+	}
+
+	/** Reload types from source if they were released from memory */
+	async ensureTypesLoaded() {
+		if (this.typesReleased) {
+			this.typesReleased = false;
+			try {
+				await this.loadAll();
+			} catch (error) {
+				this.typesReleased = true;
+				throw error;
+			}
+		}
+	}
+
 	protected resolvePath(file: string) {
 		return path.resolve(this.directory, file);
+	}
+
+	protected extractNodeTypes(fullNodeTypes: string[], packageName: string): string[] {
+		return fullNodeTypes
+			.map((fullNodeType) => fullNodeType.split('.'))
+			.filter(([pkg]) => pkg === packageName)
+			.map(([_, nodeType]) => nodeType);
 	}
 
 	private loadClass<T>(sourcePath: string) {
@@ -112,13 +160,13 @@ export abstract class DirectoryLoader {
 	}
 
 	/** Loads a nodes class from a file, fixes icons, and augments the codex */
-	loadNodeFromFile(filePath: string) {
+	loadNodeFromFile(filePath: string, packageVersion?: string) {
 		const tempNode = this.loadClass<INodeType | IVersionedNodeType>(filePath);
 		this.addCodex(tempNode, filePath);
 
 		const nodeType = tempNode.description.name;
 
-		if (this.includeNodes.length && !this.includeNodes.includes(nodeType)) {
+		if (this.removeNonIncludedNodes && !this.includeNodes.includes(nodeType)) {
 			return;
 		}
 
@@ -135,6 +183,7 @@ export abstract class DirectoryLoader {
 			}
 
 			for (const version of Object.values(tempNode.nodeVersions)) {
+				version.description.communityNodePackageVersion = packageVersion;
 				this.addLoadOptionsMethods(version);
 				this.applySpecialNodeParameters(version);
 			}
@@ -150,6 +199,7 @@ export abstract class DirectoryLoader {
 				);
 			}
 		} else {
+			tempNode.description.communityNodePackageVersion = packageVersion;
 			this.addLoadOptionsMethods(tempNode);
 			this.applySpecialNodeParameters(tempNode);
 
@@ -227,6 +277,7 @@ export abstract class DirectoryLoader {
 			sourcePath: filePath,
 		};
 
+		if (this.isLazyLoaded) return;
 		this.types.credentials.push(tempCredential);
 	}
 
@@ -311,7 +362,7 @@ export abstract class DirectoryLoader {
 	 * to a node description `codex` property.
 	 */
 	private addCodex(node: INodeType | IVersionedNodeType, filePath: string) {
-		const isCustom = this.packageName === 'CUSTOM';
+		const isCustom = this.packageName === CUSTOM_NODES_PACKAGE_NAME;
 		try {
 			let codex;
 
@@ -362,11 +413,18 @@ export abstract class DirectoryLoader {
 			else properties.push(...commonCORSParameters);
 		}
 
-		applyDeclarativeNodeOptionParameters(nodeType);
+		DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
 	}
 
 	private getIconPath(icon: string, filePath: string) {
 		const iconPath = path.join(path.dirname(filePath), icon.replace('file:', ''));
+
+		if (!isContainedWithin(this.directory, path.join(this.directory, iconPath))) {
+			throw new UnexpectedError(
+				`Icon path "${iconPath}" is not contained within the package directory "${this.directory}"`,
+			);
+		}
+
 		return `icons/${this.packageName}/${iconPath}`;
 	}
 
@@ -377,17 +435,95 @@ export abstract class DirectoryLoader {
 		const { icon } = obj;
 		if (!icon) return;
 
+		const hasExpression =
+			typeof icon === 'string'
+				? isExpression(icon)
+				: isExpression(icon.light) || isExpression(icon.dark);
+
+		if (hasExpression) {
+			obj.iconBasePath = `icons/${this.packageName}/${path.dirname(filePath)}`;
+			return;
+		}
+
+		const processIconPath = (iconValue: string) =>
+			iconValue.startsWith('file:') ? this.getIconPath(iconValue, filePath) : null;
+
+		let iconUrl;
 		if (typeof icon === 'string') {
-			if (icon.startsWith('file:')) {
-				obj.iconUrl = this.getIconPath(icon, filePath);
-				obj.icon = undefined;
-			}
-		} else if (icon.light.startsWith('file:') && icon.dark.startsWith('file:')) {
-			obj.iconUrl = {
-				light: this.getIconPath(icon.light, filePath),
-				dark: this.getIconPath(icon.dark, filePath),
-			};
+			iconUrl = processIconPath(icon);
+		} else {
+			const light = processIconPath(icon.light);
+			const dark = processIconPath(icon.dark);
+			iconUrl = light && dark ? { light, dark } : null;
+		}
+
+		if (iconUrl) {
+			obj.iconUrl = iconUrl;
 			obj.icon = undefined;
 		}
+	}
+
+	/** Augments additional `Request Options` property on declarative node-type */
+	static applyDeclarativeNodeOptionParameters(nodeType: INodeType): void {
+		if (
+			!!nodeType.execute ||
+			!!nodeType.trigger ||
+			!!nodeType.webhook ||
+			!!nodeType.description.polling ||
+			isSubNodeType(nodeType.description)
+		) {
+			return;
+		}
+
+		const parameters = nodeType.description.properties;
+		if (!parameters) {
+			return;
+		}
+
+		// Was originally under "options" instead of "requestOptions" so the chance
+		// that that existed was quite high. With this name the chance is actually
+		// very low that it already exists but lets leave it in anyway to be sure.
+		const existingRequestOptionsIndex = parameters.findIndex(
+			(parameter) => parameter.name === 'requestOptions',
+		);
+		if (existingRequestOptionsIndex !== -1) {
+			parameters[existingRequestOptionsIndex] = {
+				...commonDeclarativeNodeOptionParameters,
+				options: [
+					...(commonDeclarativeNodeOptionParameters.options ?? []),
+					...(parameters[existingRequestOptionsIndex]?.options ?? []),
+				],
+			};
+
+			const options = parameters[existingRequestOptionsIndex]?.options;
+
+			if (options) {
+				options.sort((a, b) => {
+					if ('displayName' in a && 'displayName' in b) {
+						if (a.displayName < b.displayName) {
+							return -1;
+						}
+						if (a.displayName > b.displayName) {
+							return 1;
+						}
+					}
+
+					return 0;
+				});
+			}
+		} else {
+			parameters.push(commonDeclarativeNodeOptionParameters);
+		}
+
+		return;
+	}
+
+	private unloadAll() {
+		const filesToUnload = Object.keys(require.cache).filter((filePath) =>
+			filePath.startsWith(this.directory),
+		);
+		filesToUnload.forEach((filePath) => {
+			delete require.cache[filePath];
+		});
 	}
 }

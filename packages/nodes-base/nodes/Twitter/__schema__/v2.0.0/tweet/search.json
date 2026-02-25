@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "author_id": {
-            "type": "string"
-        },
         "edit_history_tweet_ids": {
             "type": "array",
             "items": {
@@ -17,5 +14,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 6
 }

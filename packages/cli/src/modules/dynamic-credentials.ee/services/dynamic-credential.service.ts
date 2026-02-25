@@ -1,0 +1,282 @@
+import { Logger } from '@n8n/backend-common';
+import { CredentialResolverDataNotFoundError } from '@n8n/decorators';
+import { Service } from '@n8n/di';
+import { NextFunction, Response } from 'express';
+import { Cipher } from 'n8n-core';
+import type {
+	ICredentialDataDecryptedObject,
+	IExecutionContext,
+	IWorkflowSettings,
+} from 'n8n-workflow';
+import { jsonParse, toCredentialContext } from 'n8n-workflow';
+
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { StaticAuthService } from '@/services/static-auth-service';
+
+import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
+import { ResolverConfigExpressionService } from './resolver-config-expression.service';
+import { extractSharedFields } from './shared-fields';
+import type {
+	CredentialResolveMetadata,
+	ICredentialResolutionProvider,
+} from '../../../credentials/credential-resolution-provider.interface';
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
+import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
+import { CredentialResolutionError } from '../errors/credential-resolution.error';
+import { AuthenticatedRequest } from '@n8n/db';
+
+/**
+ * Service for resolving credentials dynamically via configured resolvers.
+ * Acts as a proxy between CredentialsHelper and the dynamic credentials module.
+ */
+@Service()
+export class DynamicCredentialService implements ICredentialResolutionProvider {
+	constructor(
+		private readonly dynamicCredentialConfig: DynamicCredentialsConfig,
+		private readonly resolverRegistry: DynamicCredentialResolverRegistry,
+		private readonly resolverRepository: DynamicCredentialResolverRepository,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly cipher: Cipher,
+		private readonly logger: Logger,
+		private readonly expressionService: ResolverConfigExpressionService,
+	) {}
+
+	/**
+	 * Resolves credentials dynamically if configured, otherwise returns static data.
+	 * Handles fallback logic based on credential configuration.
+	 *
+	 * @param credentialsResolveMetadata The credential resolve metadata
+	 * @param staticData The decrypted static credential data
+	 * @param additionalData Additional workflow execution data for context and settings
+	 * @param canUseExternalSecrets Whether the credential can use external secrets for expression resolution
+	 * @returns Resolved credential data (either dynamic or static)
+	 * @throws {CredentialResolutionError} If resolution fails and fallback is not allowed
+	 */
+	async resolveIfNeeded(
+		credentialsResolveMetadata: CredentialResolveMetadata,
+		staticData: ICredentialDataDecryptedObject,
+		executionContext?: IExecutionContext,
+		workflowSettings?: IWorkflowSettings,
+		canUseExternalSecrets?: boolean,
+	): Promise<ICredentialDataDecryptedObject> {
+		// Determine which resolver ID to use: credential's own resolver or workflow's fallback
+		const resolverId =
+			credentialsResolveMetadata.resolverId ?? workflowSettings?.credentialResolverId;
+
+		// Not resolvable - return static credentials
+		if (!credentialsResolveMetadata.isResolvable) {
+			return staticData;
+		}
+
+		if (!resolverId) {
+			return this.handleMissingResolver(credentialsResolveMetadata, staticData, resolverId);
+		}
+
+		// Load resolver configuration
+		const resolverEntity = await this.resolverRepository.findOneBy({
+			id: resolverId,
+		});
+
+		if (!resolverEntity) {
+			return this.handleMissingResolver(credentialsResolveMetadata, staticData, resolverId);
+		}
+
+		// Get resolver instance from registry
+		const resolver = this.resolverRegistry.getResolverByTypename(resolverEntity.type);
+
+		if (!resolver) {
+			return this.handleMissingResolver(credentialsResolveMetadata, staticData, resolverId);
+		}
+
+		// Build credential context from execution context
+		const credentialContext = this.buildCredentialContext(executionContext);
+
+		if (!credentialContext) {
+			return this.handleMissingContext(credentialsResolveMetadata, staticData);
+		}
+
+		try {
+			const credentialType = this.loadNodesAndCredentials.getCredential(
+				credentialsResolveMetadata.type,
+			);
+
+			const sharedFields = extractSharedFields(credentialType.type);
+
+			// Decrypt and parse resolver configuration
+			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
+			const parsedConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
+
+			// Resolve expressions in resolver configuration using global data only
+			const resolverConfig = await this.expressionService.resolve(
+				parsedConfig,
+				canUseExternalSecrets ?? false,
+			);
+
+			// Attempt dynamic resolution
+			const dynamicData = await resolver.getSecret(
+				credentialsResolveMetadata.id,
+				credentialContext,
+				{
+					resolverId: resolverEntity.id,
+					resolverName: resolverEntity.type,
+					configuration: resolverConfig,
+				},
+			);
+
+			this.logger.debug('Successfully resolved dynamic credentials', {
+				credentialId: credentialsResolveMetadata.id,
+				resolverId,
+				resolverSource: credentialsResolveMetadata.resolverId ? 'credential' : 'workflow',
+				identity: credentialContext.identity,
+			});
+
+			// Remove shared fields from dynamic data to avoid conflicts
+			for (const field of sharedFields) {
+				if (field in dynamicData) {
+					delete dynamicData[field];
+				}
+			}
+
+			// Adds and override static data with dynamically resolved data
+			return { ...staticData, ...dynamicData };
+		} catch (error) {
+			return this.handleResolutionError(credentialsResolveMetadata, staticData, error, resolverId);
+		}
+	}
+
+	/**
+	 * Builds credential context from execution context by decrypting the credentials field
+	 */
+	private buildCredentialContext(executionContext: IExecutionContext | undefined) {
+		if (!executionContext?.credentials) {
+			return undefined;
+		}
+
+		try {
+			// Decrypt credential context from execution context
+			const decrypted = this.cipher.decrypt(executionContext.credentials);
+			return toCredentialContext(decrypted);
+		} catch (error) {
+			this.logger.error('Failed to decrypt credential context from execution context', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
+	}
+
+	/**
+	 * Handles resolution errors with fallback logic
+	 */
+	private handleResolutionError(
+		credentialsResolveMetadata: CredentialResolveMetadata,
+		staticData: ICredentialDataDecryptedObject,
+		error: unknown,
+		resolverId: string,
+	): ICredentialDataDecryptedObject {
+		const isDataNotFound = error instanceof CredentialResolverDataNotFoundError;
+
+		if (credentialsResolveMetadata.resolvableAllowFallback) {
+			this.logger.debug('Dynamic credential resolution failed, falling back to static', {
+				credentialId: credentialsResolveMetadata.id,
+				credentialName: credentialsResolveMetadata.name,
+				resolverId,
+				resolverSource: credentialsResolveMetadata.resolverId ? 'credential' : 'workflow',
+				error: error instanceof Error ? error.message : String(error),
+				isDataNotFound,
+			});
+			return staticData;
+		}
+
+		this.logger.debug('Dynamic credential resolution failed without fallback', {
+			credentialId: credentialsResolveMetadata.id,
+			credentialName: credentialsResolveMetadata.name,
+			resolverId,
+			resolverSource: credentialsResolveMetadata.resolverId ? 'credential' : 'workflow',
+			error,
+		});
+
+		throw new CredentialResolutionError(
+			`Failed to resolve dynamic credentials for "${credentialsResolveMetadata.name}"`,
+			{ cause: error },
+		);
+	}
+
+	/**
+	 * Handles missing resolver with fallback logic
+	 */
+	private handleMissingResolver(
+		credentialsResolveMetadata: CredentialResolveMetadata,
+		staticData: ICredentialDataDecryptedObject,
+		resolverId?: string,
+	): ICredentialDataDecryptedObject {
+		if (credentialsResolveMetadata.resolvableAllowFallback) {
+			this.logger.debug('Resolver not found, falling back to static credentials', {
+				credentialId: credentialsResolveMetadata.id,
+				credentialName: credentialsResolveMetadata.name,
+				resolverId,
+				resolverSource: credentialsResolveMetadata.resolverId ? 'credential' : 'workflow',
+			});
+			return staticData;
+		}
+
+		throw new CredentialResolutionError(
+			`Resolver "${resolverId ?? 'unknown'}" not found for credential "${credentialsResolveMetadata.name}"`,
+		);
+	}
+
+	/**
+	 * Handles missing execution context with fallback logic
+	 */
+	private handleMissingContext(
+		credentialsResolveMetadata: CredentialResolveMetadata,
+		staticData: ICredentialDataDecryptedObject,
+	): ICredentialDataDecryptedObject {
+		if (credentialsResolveMetadata.resolvableAllowFallback) {
+			this.logger.debug('No execution context available, falling back to static credentials', {
+				credentialId: credentialsResolveMetadata.id,
+				credentialName: credentialsResolveMetadata.name,
+			});
+			return staticData;
+		}
+
+		throw new CredentialResolutionError(
+			`Cannot resolve dynamic credentials without execution context for "${credentialsResolveMetadata.name}"`,
+		);
+	}
+
+	/**
+	 * Returns middleware for authenticating dynamic credentials endpoints.
+	 * Uses static token from configuration.
+	 */
+	getDynamicCredentialsEndpointsMiddleware() {
+		const { endpointAuthToken } = this.dynamicCredentialConfig;
+		if (!endpointAuthToken?.trim()) {
+			return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+				// If a user was authenticated for this request, we allow access irrelevant of the static authentication
+				if (req.user) {
+					return next();
+				}
+				this.logger.error(
+					'Dynamic credentials external endpoints require an endpoint auth token. Please set the N8N_DYNAMIC_CREDENTIALS_ENDPOINT_AUTH_TOKEN environment variable to enable access.',
+				);
+				res.status(500).json({
+					message: 'Dynamic credentials configuration is invalid. Check server logs for details.',
+				});
+				return;
+			};
+		}
+
+		const staticAuthMiddlware = StaticAuthService.getStaticAuthMiddleware(
+			endpointAuthToken,
+			'x-authorization',
+		)!;
+
+		return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+			// If a user was authenticated for this request, we allow access irrelevant of the static authentication
+			if (req.user) {
+				return next();
+			}
+			return staticAuthMiddlware(req, res, next);
+		};
+	}
+}

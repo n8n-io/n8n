@@ -4,14 +4,18 @@ interface RadioButtonProps {
 	value: string;
 	active?: boolean;
 	disabled?: boolean;
-	size?: 'small' | 'medium';
+	size?: 'small' | 'small-medium' | 'medium';
+	square?: boolean;
 }
 
 withDefaults(defineProps<RadioButtonProps>(), {
 	active: false,
 	disabled: false,
 	size: 'medium',
+	square: false,
 });
+
+defineSlots<{ default?: {} }>();
 </script>
 
 <template>
@@ -22,6 +26,7 @@ withDefaults(defineProps<RadioButtonProps>(), {
 			'n8n-radio-button': true,
 			[$style.container]: true,
 			[$style.hoverable]: !disabled,
+			[$style.square]: square,
 		}"
 		:aria-checked="active"
 	>
@@ -34,7 +39,9 @@ withDefaults(defineProps<RadioButtonProps>(), {
 			}"
 			:data-test-id="`radio-button-${value}`"
 		>
-			{{ label }}
+			<slot>
+				{{ label }}
+			</slot>
 		</div>
 	</label>
 </template>
@@ -48,7 +55,7 @@ withDefaults(defineProps<RadioButtonProps>(), {
 
 .hoverable:hover {
 	.button:not(.active) {
-		color: var(--color-primary);
+		color: var(--color--primary);
 	}
 }
 
@@ -62,12 +69,18 @@ withDefaults(defineProps<RadioButtonProps>(), {
 .button {
 	display: flex;
 	align-items: center;
-	border-radius: var(--border-radius-base);
-	font-weight: var(--font-weight-medium);
-	color: var(--color-text-base);
+	border-radius: var(--radius);
+	font-weight: var(--font-weight--medium);
+	color: var(--color--text);
 	transition: background-color 0.2s ease;
 	cursor: pointer;
 	user-select: none;
+
+	.square & {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
 }
 
 .disabled {
@@ -76,18 +89,39 @@ withDefaults(defineProps<RadioButtonProps>(), {
 
 .medium {
 	height: 26px;
-	font-size: var(--font-size-2xs);
-	padding: 0 var(--spacing-xs);
+	font-size: var(--font-size--2xs);
+	padding: 0 var(--spacing--xs);
+
+	.square & {
+		width: 26px;
+		padding: 0;
+	}
+}
+
+.small-medium {
+	height: 22px;
+	font-size: var(--font-size--3xs);
+	padding: 0 var(--spacing--2xs);
+
+	.square & {
+		width: 22px;
+		padding: 0;
+	}
 }
 
 .small {
-	font-size: var(--font-size-3xs);
+	font-size: var(--font-size--3xs);
 	height: 15px;
-	padding: 0 var(--spacing-4xs);
+	padding: 0 var(--spacing--4xs);
+
+	.square & {
+		width: 15px;
+		padding: 0;
+	}
 }
 
 .active {
-	background-color: var(--color-foreground-xlight);
-	color: var(--color-text-dark);
+	background-color: var(--color--foreground--tint-2);
+	color: var(--color--text--shade-1);
 }
 </style>

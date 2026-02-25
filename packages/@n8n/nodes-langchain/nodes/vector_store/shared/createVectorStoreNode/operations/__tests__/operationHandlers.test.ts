@@ -30,6 +30,14 @@ describe('Vector Store Operation Handlers', () => {
 		};
 
 		mockContext = mock<IExecuteFunctions & ISupplyDataFunctions>();
+		mockContext.getNode.mockReturnValue({
+			id: 'testNode',
+			typeVersion: 1.3,
+			name: 'Test Tool',
+			type: 'testVectorStore',
+			parameters: nodeParameters,
+			position: [0, 0],
+		});
 		mockContext.getNodeParameter.mockImplementation((parameterName, _itemIndex, fallbackValue) => {
 			if (typeof parameterName !== 'string') return fallbackValue;
 			return nodeParameters[parameterName] ?? fallbackValue;
@@ -103,11 +111,28 @@ describe('Vector Store Operation Handlers', () => {
 	});
 
 	describe('handleRetrieveAsToolOperation', () => {
-		it('should return a tool with the correct name and description', async () => {
+		it('should return a tool with the correct name and description on version <= 1.2', async () => {
+			mockContext.getNode.mockReturnValueOnce({
+				id: 'testNode',
+				typeVersion: 1.2,
+				name: 'Test Tool',
+				type: 'testVectorStore',
+				parameters: nodeParameters,
+				position: [0, 0],
+			});
+
 			const result = await handleRetrieveAsToolOperation(mockContext, mockArgs, mockEmbeddings, 0);
 
 			expect(result).toHaveProperty('response');
 			expect(result.response).toHaveProperty('name', 'test_tool');
+			expect(result.response).toHaveProperty('description', 'Test tool description');
+		});
+
+		it('should return a tool with the correct name and description on version > 1.2', async () => {
+			const result = await handleRetrieveAsToolOperation(mockContext, mockArgs, mockEmbeddings, 0);
+
+			expect(result).toHaveProperty('response');
+			expect(result.response).toHaveProperty('name', 'Test_Tool');
 			expect(result.response).toHaveProperty('description', 'Test tool description');
 		});
 	});

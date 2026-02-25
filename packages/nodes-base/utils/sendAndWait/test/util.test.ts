@@ -1,5 +1,10 @@
 import { type MockProxy, mock } from 'jest-mock-extended';
-import type { IExecuteFunctions, INodeProperties, IWebhookFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeProperties,
+	IWebhookFunctions,
+	IWorkflowSettings,
+} from 'n8n-workflow';
 import { NodeOperationError, WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import { configureWaitTillDate } from '../configureWaitTillDate.util';
@@ -17,6 +22,7 @@ describe('Send and Wait utils tests', () => {
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
+		mockWebhookFunctions.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
 	});
 
 	describe('getSendAndWaitProperties', () => {
@@ -29,9 +35,53 @@ describe('Send and Wait utils tests', () => {
 					default: '',
 				},
 			];
+			const extraOptions: INodeProperties[] = [
+				{
+					displayName: 'Extra Property',
+					name: 'extraProperty',
+					type: 'string',
+					default: '',
+				},
+			];
 
-			const result = getSendAndWaitProperties(targetProperties);
+			const result = getSendAndWaitProperties(targetProperties, undefined, undefined, {
+				extraOptions,
+			});
 
+			expect(result).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						name: 'options',
+						options: expect.arrayContaining([
+							expect.objectContaining({
+								name: 'extraProperty',
+							}),
+						]),
+					}),
+				]),
+			);
+		});
+
+		it('should include extra options when provided', () => {
+			const targetProperties: INodeProperties[] = [
+				{
+					displayName: 'Test Property',
+					name: 'testProperty',
+					type: 'string',
+					default: '',
+				},
+			];
+			const extraOptions: INodeProperties[] = [
+				{
+					displayName: 'Extra Property',
+					name: 'extraProperty',
+					type: 'string',
+					default: '',
+				},
+			];
+			const result = getSendAndWaitProperties(targetProperties, undefined, undefined, {
+				extraOptions,
+			});
 			expect(result).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
@@ -62,25 +112,20 @@ describe('Send and Wait utils tests', () => {
 				return params[parameterName];
 			});
 
-			mockExecuteFunctions.evaluateExpression.mockImplementation((expression: string) => {
-				const expressions: { [key: string]: string } = {
-					'{{ $execution?.resumeUrl }}': 'http://localhost',
-					'{{ $nodeId }}': 'testNodeId',
-				};
-				return expressions[expression];
-			});
-
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+				'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+			);
 			const config = getSendAndWaitConfig(mockExecuteFunctions);
 
 			expect(config).toEqual({
+				appendAttribution: undefined,
 				title: 'Test subject',
 				message: 'Test message',
-				url: 'http://localhost/testNodeId',
 				options: [
 					{
 						label: 'Approve',
-						value: 'true',
 						style: 'primary',
+						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 					},
 				],
 			});
@@ -102,13 +147,12 @@ describe('Send and Wait utils tests', () => {
 				return params[parameterName];
 			});
 
-			mockExecuteFunctions.evaluateExpression.mockImplementation((expression: string) => {
-				const expressions: { [key: string]: string } = {
-					'{{ $execution?.resumeUrl }}': 'http://localhost',
-					'{{ $nodeId }}': 'testNodeId',
-				};
-				return expressions[expression];
-			});
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
+				'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+			);
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
+				'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+			);
 
 			const config = getSendAndWaitConfig(mockExecuteFunctions);
 
@@ -117,13 +161,13 @@ describe('Send and Wait utils tests', () => {
 				expect.arrayContaining([
 					{
 						label: 'Reject',
-						value: 'false',
 						style: 'secondary',
+						url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
 					},
 					{
 						label: 'Approve',
-						value: 'true',
 						style: 'primary',
+						url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 					},
 				]),
 			);
@@ -146,13 +190,7 @@ describe('Send and Wait utils tests', () => {
 				return params[parameterName];
 			});
 
-			mockExecuteFunctions.evaluateExpression.mockImplementation((expression: string) => {
-				const expressions: { [key: string]: string } = {
-					'{{ $execution?.resumeUrl }}': 'http://localhost',
-					'{{ $nodeId }}': 'testNodeId',
-				};
-				return expressions[expression];
-			});
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue('http://localhost/testNodeId');
 		});
 
 		it('should create a valid email object', () => {
@@ -212,6 +250,7 @@ describe('Send and Wait utils tests', () => {
 
 		it('should handle freeText GET webhook', async () => {
 			const mockRender = jest.fn();
+			const mockSetHeader = jest.fn();
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'GET',
@@ -219,6 +258,7 @@ describe('Send and Wait utils tests', () => {
 
 			mockWebhookFunctions.getResponseObject.mockReturnValue({
 				render: mockRender,
+				setHeader: mockSetHeader,
 			} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
@@ -235,6 +275,11 @@ describe('Send and Wait utils tests', () => {
 			expect(result).toEqual({
 				noWebhookResponse: true,
 			});
+
+			expect(mockSetHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+			);
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
@@ -284,6 +329,7 @@ describe('Send and Wait utils tests', () => {
 
 		it('should handle customForm GET webhook', async () => {
 			const mockRender = jest.fn();
+			const mockSetHeader = jest.fn();
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'GET',
@@ -291,6 +337,7 @@ describe('Send and Wait utils tests', () => {
 
 			mockWebhookFunctions.getResponseObject.mockReturnValue({
 				render: mockRender,
+				setHeader: mockSetHeader,
 			} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
@@ -303,6 +350,7 @@ describe('Send and Wait utils tests', () => {
 						responseFormTitle: 'Test title',
 						responseFormDescription: 'Test description',
 						responseFormButtonLabel: 'Test button',
+						responseFormCustomCss: 'body { background-color: red; }',
 					},
 				};
 				return params[parameterName];
@@ -313,6 +361,11 @@ describe('Send and Wait utils tests', () => {
 			expect(result).toEqual({
 				noWebhookResponse: true,
 			});
+
+			expect(mockSetHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+			);
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 				testRun: false,
@@ -334,13 +387,69 @@ describe('Send and Wait utils tests', () => {
 				],
 				appendAttribution: true,
 				buttonLabel: 'Test button',
+				dangerousCustomCss: 'body { background-color: red; }',
 			});
+		});
+
+		it('should resolve expressions in HTML fields for customForm GET webhook', async () => {
+			const mockRender = jest.fn();
+			const mockSetHeader = jest.fn();
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+			} as any);
+
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				render: mockRender,
+				setHeader: mockSetHeader,
+			} as any);
+
+			// Mock evaluateExpression to resolve the expression
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression) => {
+				if (expression === '{{ $json.videoUrl }}') {
+					return 'https://example.com/video.mp4';
+				}
+				return expression;
+			});
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'customForm',
+					message: 'Test message',
+					defineForm: 'fields',
+					'formFields.values': [
+						{
+							fieldLabel: 'Custom HTML',
+							fieldType: 'html',
+							// Use <source> tag inside <video> since sanitizeHtml allows src on source, not video
+							html: '<video controls><source src="{{ $json.videoUrl }}" type="video/mp4" /></video>',
+						},
+					],
+					options: {},
+				};
+				return params[parameterName];
+			});
+
+			await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			expect(mockRender).toHaveBeenCalledWith(
+				'form-trigger',
+				expect.objectContaining({
+					formFields: expect.arrayContaining([
+						expect.objectContaining({
+							html: '<video controls><source src="https://example.com/video.mp4" type="video/mp4"></source></video>',
+						}),
+					]),
+				}),
+			);
 		});
 
 		it('should handle customForm POST webhook', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'POST',
+				contentType: 'multipart/form-data',
 			} as any);
+			mockWebhookFunctions.getNode.mockReturnValue({} as any);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
 				const params: { [key: string]: any } = {
@@ -374,6 +483,34 @@ describe('Send and Wait utils tests', () => {
 					'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
 				},
 				query: { approved: 'false' },
+			} as any);
+
+			const send = jest.fn();
+
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				send,
+			} as any);
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'approval',
+				};
+				return params[parameterName];
+			});
+
+			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			expect(send).toHaveBeenCalledWith('');
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should return noWebhookResponse if user-agent is Microsoft Teams link preview service (SkypeSpaces)', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+				headers: {
+					'user-agent': 'SkypeSpaces/1.0a$*+',
+				},
+				query: { approved: 'true' },
 			} as any);
 
 			const send = jest.fn();

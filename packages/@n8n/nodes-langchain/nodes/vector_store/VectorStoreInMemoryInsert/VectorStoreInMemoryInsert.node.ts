@@ -1,6 +1,5 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { Embeddings } from '@langchain/core/embeddings';
-import type { Document } from 'langchain/document';
+import type { Document } from '@langchain/classic/document';
 import {
 	NodeConnectionTypes,
 	type INodeExecutionData,
@@ -9,7 +8,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import type { N8nJsonLoader } from '@n8n/ai-utilities';
 
 import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
 import { processDocuments } from '../shared/processDocuments';
@@ -40,7 +39,7 @@ export class VectorStoreInMemoryInsert implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
 			NodeConnectionTypes.Main,
 			{

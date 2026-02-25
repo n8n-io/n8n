@@ -1,3 +1,4 @@
+import { DateTimeColumn } from '@n8n/db';
 import {
 	BaseEntity,
 	Column,
@@ -18,7 +19,6 @@ import {
 	PeriodUnitToNumber,
 	TypeToNumber,
 } from './insights-shared';
-import { datetimeColumnType } from '../../../../databases/entities/abstract-entity';
 
 @Entity()
 export class InsightsByPeriod extends BaseEntity {
@@ -49,6 +49,11 @@ export class InsightsByPeriod extends BaseEntity {
 		this.type_ = TypeToNumber[value];
 	}
 
+	/**
+	 * Stored as BIGINT in database (see migration 1759399811000).
+	 * JavaScript number type has precision limits at ±2^53-1 (9,007,199,254,740,991).
+	 * Values exceeding Number.MAX_SAFE_INTEGER will lose precision.
+	 */
 	@Column()
 	value: number;
 
@@ -69,6 +74,6 @@ export class InsightsByPeriod extends BaseEntity {
 		this.periodUnit_ = PeriodUnitToNumber[value];
 	}
 
-	@Column({ type: datetimeColumnType })
+	@DateTimeColumn()
 	periodStart: Date;
 }

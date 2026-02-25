@@ -19,7 +19,7 @@ export async function asanaApiRequest(
 	endpoint: `/${string}`,
 	body: object,
 	query?: IDataObject,
-	uri?: string | undefined,
+	uri?: string,
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 

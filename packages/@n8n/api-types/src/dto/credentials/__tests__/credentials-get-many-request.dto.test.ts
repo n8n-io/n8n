@@ -15,6 +15,7 @@ describe('CredentialsGetManyRequestQuery', () => {
 			{ field: 'includeScopes', value: 'false' },
 			{ field: 'includeData', value: 'true' },
 			{ field: 'includeData', value: 'false' },
+			{ field: 'externalSecretsStore', value: 'testProviderKey' },
 		])('with $field set to $value', ({ field, value }) => {
 			const data = { [field]: value };
 
@@ -43,6 +44,9 @@ describe('CredentialsGetManyRequestQuery', () => {
 			{ field: 'includeData', value: true },
 			{ field: 'includeData', value: false },
 			{ field: 'includeData', value: 'invalid' },
+			{ field: 'externalSecretsStore', value: true },
+			{ field: 'externalSecretsStore', value: false },
+			{ field: 'externalSecretsStore', value: 123 },
 		])('with invalid value $value for $field', ({ field, value }) => {
 			const data = { [field]: value };
 

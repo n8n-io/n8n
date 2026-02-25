@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
+import { createTakeValidator, paginationSchema } from '../pagination/pagination.dto';
+
+export const MAX_ITEMS_PER_PAGE = 100;
 
 const VALID_SORT_OPTIONS = [
 	'total:asc',
@@ -16,37 +20,23 @@ const VALID_SORT_OPTIONS = [
 	'runTime:desc',
 	'averageRunTime:asc',
 	'averageRunTime:desc',
+	'workflowName:asc',
+	'workflowName:desc',
 ] as const;
 
 // ---------------------
 // Parameter Validators
 // ---------------------
 
-// Skip parameter validation
-const skipValidator = z
-	.string()
-	.optional()
-	.transform((val) => (val ? parseInt(val, 10) : 0))
-	.refine((val) => !isNaN(val), {
-		message: 'Skip must be a valid number',
-	});
-
-// Take parameter validation
-const takeValidator = z
-	.string()
-	.optional()
-	.transform((val) => (val ? parseInt(val, 10) : 10))
-	.refine((val) => !isNaN(val), {
-		message: 'Take must be a valid number',
-	});
-
-// SortBy parameter validation
 const sortByValidator = z
 	.enum(VALID_SORT_OPTIONS, { message: `sortBy must be one of: ${VALID_SORT_OPTIONS.join(', ')}` })
 	.optional();
 
 export class ListInsightsWorkflowQueryDto extends Z.class({
-	skip: skipValidator,
-	take: takeValidator,
+	...paginationSchema,
+	take: createTakeValidator(MAX_ITEMS_PER_PAGE),
+	startDate: z.coerce.date().optional(),
+	endDate: z.coerce.date().optional(),
 	sortBy: sortByValidator,
+	projectId: z.string().optional(),
 }) {}

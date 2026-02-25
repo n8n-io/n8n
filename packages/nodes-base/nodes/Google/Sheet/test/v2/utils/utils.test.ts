@@ -335,6 +335,7 @@ describe('Test Google Sheets, lookupValues', () => {
 			],
 			returnAllMatches: true,
 			combineFilters: 'OR',
+			nodeVersion: 4.5,
 		});
 
 		expect(result).toBeDefined();
@@ -397,6 +398,7 @@ describe('Test Google Sheets, lookupValues', () => {
 			],
 			returnAllMatches: true,
 			combineFilters: 'AND',
+			nodeVersion: 4.5,
 		});
 
 		expect(result).toBeDefined();

@@ -1,5 +1,5 @@
 import { mockDeep } from 'jest-mock-extended';
-import { get } from 'lodash';
+import get from 'lodash/get';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import * as getSchema from '../../../../v2/actions/base/getSchema.operation';

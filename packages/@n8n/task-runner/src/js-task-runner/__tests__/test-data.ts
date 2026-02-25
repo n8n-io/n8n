@@ -1,5 +1,5 @@
 import type { IDataObject, INode, INodeExecutionData, ITaskData } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
@@ -40,6 +40,7 @@ export const newNode = (opts: Partial<INode> = {}): INode => ({
 export const newTaskData = (opts: Partial<ITaskData> & Pick<ITaskData, 'source'>): ITaskData => ({
 	startTime: Date.now(),
 	executionTime: 0,
+	executionIndex: 0,
 	executionStatus: 'success',
 	...opts,
 });
@@ -88,8 +89,7 @@ export const newDataRequestResponse = (
 			main: [inputData],
 		},
 		node: codeNode,
-		runExecutionData: {
-			startData: {},
+		runExecutionData: createRunExecutionData({
 			resultData: {
 				runData: {
 					[manualTriggerNode.name]: [
@@ -104,14 +104,7 @@ export const newDataRequestResponse = (
 				pinData: {},
 				lastNodeExecuted: manualTriggerNode.name,
 			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack: [],
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		},
+		}),
 		runIndex: 0,
 		itemIndex: 0,
 		activeNodeName: codeNode.name,

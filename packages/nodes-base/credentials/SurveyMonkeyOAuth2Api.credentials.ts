@@ -16,7 +16,7 @@ export class SurveyMonkeyOAuth2Api implements ICredentialType {
 
 	displayName = 'SurveyMonkey OAuth2 API';
 
-	documentationUrl = 'surveyMonkey';
+	documentationUrl = 'surveymonkey';
 
 	properties: INodeProperties[] = [
 		{

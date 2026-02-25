@@ -16,7 +16,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
+import { ApplicationError, createDeferredPromise, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -24,7 +24,6 @@ import { getInputConnectionData } from './utils/get-input-connection-data';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getNodeWebhookUrl } from './utils/webhook-helper-functions';
-
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
 	readonly helpers: IWebhookFunctions['helpers'];
 
@@ -133,6 +132,13 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
+	async validateCookieAuth(cookieValue: string): Promise<void> {
+		if (!this.additionalData.validateCookieAuth) {
+			throw new ApplicationError('Cookie auth validation is not available');
+		}
+		await this.additionalData.validateCookieAuth(cookieValue);
+	}
+
 	async getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
@@ -144,11 +150,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			{ json: this.additionalData.httpRequest?.body || {} },
 		];
-		const runExecutionData: IRunExecutionData = {
-			resultData: {
-				runData: {},
-			},
-		};
+		const runExecutionData = this.runExecutionData ?? createEmptyRunExecutionData();
 		const executeData: IExecuteData = {
 			data: {
 				main: [connectionInputData],

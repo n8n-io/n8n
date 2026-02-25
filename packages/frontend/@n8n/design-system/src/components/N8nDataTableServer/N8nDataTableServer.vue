@@ -7,6 +7,7 @@ export type TableHeader<T> = {
 	minWidth?: number;
 	width?: number;
 	align?: 'end' | 'start' | 'center';
+	resize?: boolean;
 } & (
 	| { title: string; key?: never; value?: never } // Ensures an object with only `title` is valid
 	| { key: DeepKeys<T> }
@@ -14,6 +15,11 @@ export type TableHeader<T> = {
 	| { key: string; value: AccessorFn<T> }
 );
 export type TableSortBy = SortingState;
+export type TableOptions = {
+	page: number;
+	itemsPerPage: number;
+	sortBy: Array<{ id: string; desc: boolean }>;
+};
 </script>
 
 <script setup lang="ts" generic="T extends Record<string, any>">
@@ -32,11 +38,16 @@ import type {
 	Updater,
 } from '@tanstack/vue-table';
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
-import { ElCheckbox } from 'element-plus';
-import { get } from 'lodash-es';
+import { useThrottleFn } from '@vueuse/core';
+import { ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
+import get from 'lodash/get';
 import { computed, h, ref, shallowRef, useSlots, watch } from 'vue';
 
+import N8nCheckbox from '@n8n/design-system/v2/components/Checkbox/Checkbox.vue';
+
 import N8nPagination from '../N8nPagination';
+
+type VueClass = string | string[] | Record<string, boolean> | undefined;
 
 const props = withDefaults(
 	defineProps<{
@@ -55,10 +66,14 @@ const props = withDefaults(
 		returnObject?: boolean;
 
 		itemSelectable?: boolean | DeepKeys<T> | ((row: T) => boolean);
+		pageSizes?: number[];
+		rowProps?: { class?: VueClass } | ((row: T, index: number) => { class?: VueClass });
 	}>(),
 	{
 		itemSelectable: undefined,
 		itemValue: 'id',
+		pageSizes: () => [10, 25, 50, 100],
+		rowProps: undefined,
 	},
 );
 
@@ -66,17 +81,12 @@ const slots = useSlots();
 defineSlots<{
 	[key: `item.${string}`]: (props: { value: unknown; item: T }) => void;
 	item: (props: { item: T; cells: Array<Cell<T, unknown>> }) => void;
+	cover?: () => void;
 }>();
 
 const emit = defineEmits<{
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	'update:options': [
-		payload: {
-			page: number;
-			itemsPerPage: number;
-			sortBy: Array<{ id: string; desc: boolean }>;
-		},
-	];
+	'update:options': [payload: TableOptions];
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'click:row': [event: MouseEvent, payload: { item: T }];
 }>();
@@ -121,8 +131,15 @@ type ColumnMeta = {
 };
 
 const getColumnMeta = (column: CoreColumn<T, unknown>) => {
-	return (column.columnDef.meta ?? {}) as ColumnMeta;
+	return (column.columnDef.meta ?? { cellProps: { align: 'start' } }) as ColumnMeta;
 };
+
+function getRowProps(row: T, index: number) {
+	if (typeof props.rowProps === 'function') {
+		return props.rowProps(row, index);
+	}
+	return props.rowProps;
+}
 
 const MIN_COLUMN_WIDTH = 75;
 
@@ -133,11 +150,12 @@ function getValueAccessor(column: Required<TableHeader<T>>) {
 			cell: itemKeySlot,
 			header: () => getHeaderTitle(column),
 			enableSorting: !column.disableSort,
+			enableResizing: column.resize ?? true,
 			minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
 			size: column.width,
 			meta: {
 				cellProps: {
-					align: column.align,
+					align: column.align ?? 'start',
 				},
 			},
 		});
@@ -147,11 +165,12 @@ function getValueAccessor(column: Required<TableHeader<T>>) {
 			cell: itemKeySlot,
 			header: () => getHeaderTitle(column),
 			enableSorting: !column.disableSort,
+			enableResizing: column.resize ?? true,
 			minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
 			size: column.width,
 			meta: {
 				cellProps: {
-					align: column.align,
+					align: column.align ?? 'start',
 				},
 			},
 		});
@@ -172,11 +191,12 @@ function mapHeaders(columns: Array<TableHeader<T>>) {
 				cell: itemKeySlot,
 				header: () => getHeaderTitle(column),
 				enableSorting: !column.disableSort,
+				enableResizing: column.resize ?? true,
 				minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
 				size: column.width,
 				meta: {
 					cellProps: {
-						align: column.align,
+						align: column.align ?? 'start',
 					},
 				},
 			});
@@ -188,7 +208,7 @@ function mapHeaders(columns: Array<TableHeader<T>>) {
 			size: column.width,
 			meta: {
 				cellProps: {
-					align: column.align,
+					align: column.align ?? 'start',
 				},
 			},
 		});
@@ -218,16 +238,21 @@ const pagination = computed<PaginationState>({
 	},
 });
 
+const showPagination = computed(() => props.itemsLength > Math.min(...props.pageSizes));
+
 const sortBy = defineModel<SortingState>('sort-by', { default: [], required: false });
 
 function handleSortingChange(updaterOrValue: Updater<SortingState>) {
-	sortBy.value =
+	const newValue =
 		typeof updaterOrValue === 'function' ? updaterOrValue(sortBy.value) : updaterOrValue;
+	sortBy.value = newValue;
 
+	// Use newValue instead of sortBy.value to ensure the latest value is used
+	// This is because of the async nature of the Vue reactivity system
 	emit('update:options', {
 		page: page.value,
 		itemsPerPage: itemsPerPage.value,
-		sortBy: sortBy.value,
+		sortBy: newValue,
 	});
 }
 
@@ -238,36 +263,26 @@ const selectColumn: ColumnDef<T> = {
 	size: 38,
 	enablePinning: true,
 	header: ({ table }) => {
-		const checkboxRef = ref<typeof ElCheckbox>();
-		return h(ElCheckbox, {
-			ref: checkboxRef,
+		return h(N8nCheckbox, {
 			modelValue: table.getIsAllRowsSelected(),
 			indeterminate: table.getIsSomeRowsSelected(),
-			onChange: () => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				const input = checkboxRef.value?.$el.getElementsByTagName('input')[0];
-				if (!input) return;
-				table.getToggleAllRowsSelectedHandler()?.({ target: input });
+			'onUpdate:modelValue': (value: boolean) => {
+				table.toggleAllRowsSelected(value);
 			},
 		});
 	},
 	cell: ({ row }) => {
-		const checkboxRef = ref<typeof ElCheckbox>();
-		return h(ElCheckbox, {
-			ref: checkboxRef,
+		return h(N8nCheckbox, {
 			modelValue: row.getIsSelected(),
 			disabled: !row.getCanSelect(),
-			onChange: () => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				const input = checkboxRef.value?.$el.getElementsByTagName('input')[0];
-				if (!input) return;
-				row.getToggleSelectedHandler()?.({ target: input });
+			'onUpdate:modelValue': (value: boolean) => {
+				row.toggleSelected(value);
 			},
 		});
 	},
 	meta: {
 		cellProps: {
-			align: undefined,
+			align: 'start',
 		},
 	},
 };
@@ -304,6 +319,20 @@ const rowSelection = ref(
 	}, {}),
 );
 
+const emitUpdateOptions = useThrottleFn(
+	(payload: TableOptions) => emit('update:options', payload),
+	100,
+);
+
+function handlePageSizeChange(newPageSize: number) {
+	// Calculate the maximum available page (0-based indexing)
+	const maxPage = Math.max(0, Math.ceil(props.itemsLength / newPageSize) - 1);
+	const newPage = Math.min(page.value, maxPage);
+
+	page.value = newPage;
+	itemsPerPage.value = newPageSize;
+}
+
 const columnHelper = createColumnHelper<T>();
 const table = useVueTable({
 	data,
@@ -325,12 +354,13 @@ const table = useVueTable({
 	getCoreRowModel: getCoreRowModel(),
 	onSortingChange: handleSortingChange,
 	onPaginationChange(updaterOrValue) {
-		pagination.value =
+		const newValue =
 			typeof updaterOrValue === 'function' ? updaterOrValue(pagination.value) : updaterOrValue;
 
-		emit('update:options', {
-			page: page.value,
-			itemsPerPage: itemsPerPage.value,
+		// prevent duplicate events from being fired
+		void emitUpdateOptions({
+			page: newValue.pageIndex,
+			itemsPerPage: newValue.pageSize,
 			sortBy: sortBy.value,
 		});
 	},
@@ -380,6 +410,9 @@ const table = useVueTable({
 										cursor: header.column.getCanSort() ? 'pointer' : undefined,
 										width: `${header.getSize()}px`,
 									}"
+									:class="{
+										[`cell-align--${getColumnMeta(header.column).cellProps.align}`]: true,
+									}"
 									@mousedown="header.column.getToggleSortingHandler()?.($event)"
 								>
 									<FlexRender
@@ -411,6 +444,13 @@ const table = useVueTable({
 						</tr>
 					</thead>
 					<tbody>
+						<template v-if="slots.cover">
+							<tr>
+								<td class="cover" :colspan="table.getVisibleFlatColumns().length">
+									<slot name="cover" />
+								</td>
+							</tr>
+						</template>
 						<template v-if="loading && !table.getRowModel().rows.length">
 							<tr v-for="item in itemsPerPage" :key="item">
 								<td
@@ -418,14 +458,17 @@ const table = useVueTable({
 									:key="coll.id"
 									class="el-skeleton is-animated"
 								>
-									<el-skeleton-item />
+									<ElSkeletonItem />
 								</td>
 							</tr>
 						</template>
 						<template v-else-if="table.getRowModel().rows.length">
 							<template v-for="row in table.getRowModel().rows" :key="row.id">
 								<slot name="item" v-bind="{ item: row.original, cells: row.getVisibleCells() }">
-									<tr @click="emit('click:row', $event, { item: row.original })">
+									<tr
+										v-bind="getRowProps(row.original, row.index)"
+										@click="emit('click:row', $event, { item: row.original })"
+									>
 										<template v-for="cell in row.getVisibleCells()" :key="cell.id">
 											<td
 												:class="{
@@ -448,11 +491,11 @@ const table = useVueTable({
 				</table>
 			</div>
 		</div>
-		<div class="table-pagination" data-test-id="pagination">
+		<div v-if="showPagination" class="table-pagination" data-test-id="pagination">
 			<N8nPagination
 				:current-page="page + 1"
 				:page-size="itemsPerPage"
-				:page-sizes="[10, 20, 30, 40]"
+				:page-sizes="pageSizes"
 				layout="prev, pager, next"
 				:total="itemsLength"
 				@update:current-page="page = $event - 1"
@@ -460,14 +503,15 @@ const table = useVueTable({
 			</N8nPagination>
 			<div class="table-pagination__sizes">
 				<div class="table-pagination__sizes__label">Page size</div>
-				<el-select
+				<ElSelect
 					v-model.number="itemsPerPage"
 					class="table-pagination__sizes__select"
 					size="small"
 					:teleported="false"
+					@update:model-value="handlePageSizeChange"
 				>
-					<el-option v-for="item in [10, 20, 30, 40]" :key="item" :label="item" :value="item" />
-				</el-select>
+					<ElOption v-for="item in pageSizes" :key="item" :label="item" :value="item" />
+				</ElSelect>
 			</div>
 		</div>
 	</div>
@@ -476,7 +520,7 @@ const table = useVueTable({
 <style lang="scss" scoped>
 .n8n-data-table-server {
 	height: 100%;
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 
 	table {
 		width: 100%;
@@ -493,34 +537,30 @@ const table = useVueTable({
 
 	th {
 		position: relative;
-		text-align: left;
-	}
-
-	thead {
-		background-color: var(--color-background-light-base);
-		border-bottom: 1px solid var(--color-foreground-base);
-	}
-
-	th {
-		color: var(--color-text-base);
+		color: var(--color--text);
 		font-weight: 600;
 		font-size: 12px;
 		padding: 0 8px;
-		text-transform: capitalize;
 		height: 36px;
 		white-space: nowrap;
 
 		&:first-child {
 			padding-left: 16px;
 		}
+
 		&:last-child {
 			padding-right: 16px;
 		}
 	}
 
+	thead {
+		background-color: var(--color--background--light-1);
+		border-bottom: 1px solid var(--color--foreground);
+	}
+
 	tbody > tr {
 		&:hover {
-			background-color: var(--color-background-light);
+			background-color: var(--color--background--light-2);
 		}
 
 		&:last-child > td {
@@ -529,12 +569,15 @@ const table = useVueTable({
 	}
 
 	tbody tr {
-		background-color: var(--color-background-xlight);
-		border-bottom: 1px solid var(--color-foreground-base);
+		background-color: var(--color--background--light-3);
+		border-bottom: 1px solid var(--color--foreground);
+		&:last-child {
+			border-color: transparent;
+		}
 	}
 
 	td {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		padding: 0 8px;
 		height: 48px;
 
@@ -544,12 +587,20 @@ const table = useVueTable({
 		&:last-child {
 			padding-right: 16px;
 		}
+
+		&.cover {
+			width: 0;
+			height: 0;
+			padding: 0;
+			border: 0;
+			overflow: visible;
+		}
 	}
 }
 
 .n8n-data-table-server-wrapper {
 	border-radius: 8px;
-	border: 1px solid var(--color-foreground-base);
+	border: 1px solid var(--color--foreground);
 	overflow: hidden;
 }
 
@@ -563,7 +614,7 @@ th.loading-row {
 	background-color: transparent;
 	padding: 0 !important;
 	border: 0 !important;
-	height: 0px;
+	height: 0;
 	position: relative;
 }
 
@@ -577,7 +628,7 @@ th.loading-row {
 .progress-bar-value {
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-primary);
+	background-color: var(--color--primary);
 	animation: indeterminateAnimation 1s infinite linear;
 	transform-origin: 0% 50%;
 	position: absolute;
@@ -611,21 +662,21 @@ th.loading-row {
 		display: flex;
 
 		&__label {
-			color: var(--color-text-base);
-			background-color: var(--color-background-light);
-			border: 1px solid var(--color-foreground-base);
+			color: var(--color--text);
+			background-color: var(--color--background--light-2);
+			border: 1px solid var(--color--foreground);
 			border-right: 0;
 			font-size: 12px;
 			display: flex;
 			align-items: center;
 			padding: 0 8px;
-			border-top-left-radius: var(--border-radius-base);
-			border-bottom-left-radius: var(--border-radius-base);
+			border-top-left-radius: var(--radius);
+			border-bottom-left-radius: var(--radius);
 		}
 
 		&__select {
-			--input-border-top-left-radius: 0;
-			--input-border-bottom-left-radius: 0;
+			--input--radius--top-left: 0;
+			--input--radius--bottom-left: 0;
 			width: 70px;
 		}
 	}
@@ -636,7 +687,7 @@ th.loading-row {
 	top: 0;
 	height: 100%;
 	width: 3px;
-	background: var(--color-primary);
+	background: var(--color--primary);
 	cursor: col-resize;
 	user-select: none;
 	touch-action: none;
@@ -657,6 +708,10 @@ th:hover:not(:last-child) > .resizer {
 }
 
 .cell-align {
+	&--start {
+		text-align: start;
+	}
+
 	&--end {
 		text-align: end;
 	}

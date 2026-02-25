@@ -5,10 +5,10 @@ import { STARTING_NODES } from '@/constants';
 
 /**
  * Returns if the given id is a valid workflow id
+ * id should be 16 characters but we allow <=21 to support longer IDs from December 2025
  */
 export function isWorkflowIdValid(id: string | null | undefined): boolean {
-	// TODO: could also check if id only contains nanoId characters
-	return typeof id === 'string' && id?.length <= 16;
+	return typeof id === 'string' && id.length > 0 && id.length <= 21;
 }
 
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {
@@ -39,22 +39,9 @@ export const findSubworkflowStart = findWorkflowStart('integrated');
 
 export const findCliWorkflowStart = findWorkflowStart('cli');
 
-export const separate = <T>(array: T[], test: (element: T) => boolean) => {
-	const pass: T[] = [];
-	const fail: T[] = [];
-
-	array.forEach((i) => (test(i) ? pass : fail).push(i));
-
-	return [pass, fail];
-};
-
 export const toError = (maybeError: unknown) =>
 	// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 	maybeError instanceof Error ? maybeError : new Error(`${maybeError}`);
-
-export function isStringArray(value: unknown): value is string[] {
-	return Array.isArray(value) && value.every((item) => typeof item === 'string');
-}
 
 export const isIntegerString = (value: string) => /^\d+$/.test(value);
 
@@ -99,9 +86,60 @@ export const shouldAssignExecuteMethod = (nodeType: INodeType) => {
 
 	return (
 		!nodeType.execute &&
+		!nodeType.supplyData &&
 		!nodeType.poll &&
 		!nodeType.trigger &&
 		(!nodeType.webhook || isDeclarativeNode) &&
-		!nodeType.methods
+		(!nodeType.methods || isDeclarativeNode)
 	);
 };
+
+/**
+ * Recursively gets all key paths of an object or array, filtered by the provided value filter.
+ * @param obj - The object or array to search.
+ * @param keys - The array to store matching keys.
+ * @param valueFilter - A function to filter values.
+ * @returns The array of matching key paths.
+ */
+export const getAllKeyPaths = (
+	obj: unknown,
+	currentPath = '',
+	paths: string[] = [],
+	valueFilter: (value: string) => boolean,
+): string[] => {
+	if (Array.isArray(obj)) {
+		obj.forEach((item, index) =>
+			getAllKeyPaths(item, `${currentPath}[${index}]`, paths, valueFilter),
+		);
+	} else if (obj && typeof obj === 'object') {
+		for (const [key, value] of Object.entries(obj)) {
+			const newPath = currentPath ? `${currentPath}.${key}` : key;
+			if (typeof value === 'string' && valueFilter(value)) {
+				paths.push(newPath);
+			} else {
+				getAllKeyPaths(value, newPath, paths, valueFilter);
+			}
+		}
+	}
+	return paths;
+};
+
+/**
+ * Sets Microsoft 365 observability environment variables to their default values if not already set.
+ * Sets ENABLE_OBSERVABILITY and ENABLE_A365_OBSERVABILITY_EXPORTER to 'true' if they are undefined or empty.
+ */
+export function setMicrosoftObservabilityDefaults(): void {
+	if (process.env.ENABLE_OBSERVABILITY === undefined || process.env.ENABLE_OBSERVABILITY === '') {
+		process.env.ENABLE_OBSERVABILITY = 'true';
+	}
+	if (
+		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === undefined ||
+		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === ''
+	) {
+		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
+	}
+}
+
+export function containsExpression(testString: string): boolean {
+	return /^=.*\{\{.+\}\}/.test(testString);
+}

@@ -21,7 +21,7 @@ export class PostBin implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [],
 		requestDefaults: {
-			baseURL: 'https://www.toptal.com',
+			baseURL: 'https://www.postb.in',
 		},
 		properties: [
 			{

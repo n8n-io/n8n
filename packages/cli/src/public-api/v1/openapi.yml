@@ -3,7 +3,7 @@ openapi: 3.0.0
 info:
   title: n8n Public API
   description: n8n Public API
-  termsOfService: https://n8n.io/legal/terms
+  termsOfService: https://n8n.io/legal/#terms
   contact:
     email: hello@n8n.io
   license:
@@ -32,6 +32,8 @@ tags:
     description: Operations about source control
   - name: Variables
     description: Operations about variables
+  - name: DataTable
+    description: Operations about data tables and their rows
   - name: Projects
     description: Operations about projects
 
@@ -44,10 +46,20 @@ paths:
     $ref: './handlers/credentials/spec/paths/credentials.id.yml'
   /credentials/schema/{credentialTypeName}:
     $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
+  /credentials/{id}/transfer:
+    $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
   /executions:
     $ref: './handlers/executions/spec/paths/executions.yml'
   /executions/{id}:
     $ref: './handlers/executions/spec/paths/executions.id.yml'
+  /executions/{id}/retry:
+    $ref: './handlers/executions/spec/paths/executions.id.retry.yml'
+  /executions/{id}/stop:
+    $ref: './handlers/executions/spec/paths/executions.id.stop.yml'
+  /executions/stop:
+    $ref: './handlers/executions/spec/paths/executions.stop.yml'
+  /executions/{id}/tags:
+    $ref: './handlers/executions/spec/paths/executions.id.tags.yml'
   /tags:
     $ref: './handlers/tags/spec/paths/tags.yml'
   /tags/{id}:
@@ -56,14 +68,14 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.yml'
   /workflows/{id}:
     $ref: './handlers/workflows/spec/paths/workflows.id.yml'
+  /workflows/{id}/{versionId}:
+    $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
   /workflows/{id}/activate:
     $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
   /workflows/{id}/deactivate:
     $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
   /workflows/{id}/transfer:
     $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
-  /credentials/{id}/transfer:
-    $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
   /workflows/{id}/tags:
     $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
   /users:
@@ -78,10 +90,26 @@ paths:
     $ref: './handlers/variables/spec/paths/variables.yml'
   /variables/{id}:
     $ref: './handlers/variables/spec/paths/variables.id.yml'
+  /data-tables:
+    $ref: './handlers/data-tables/spec/paths/data-tables.yml'
+  /data-tables/{dataTableId}:
+    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.yml'
+  /data-tables/{dataTableId}/rows:
+    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.yml'
+  /data-tables/{dataTableId}/rows/update:
+    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.update.yml'
+  /data-tables/{dataTableId}/rows/upsert:
+    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.upsert.yml'
+  /data-tables/{dataTableId}/rows/delete:
+    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.delete.yml'
   /projects:
     $ref: './handlers/projects/spec/paths/projects.yml'
   /projects/{projectId}:
     $ref: './handlers/projects/spec/paths/projects.projectId.yml'
+  /projects/{projectId}/users:
+    $ref: './handlers/projects/spec/paths/projects.projectId.users.yml'
+  /projects/{projectId}/users/{userId}:
+    $ref: './handlers/projects/spec/paths/projects.projectId.users.userId.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

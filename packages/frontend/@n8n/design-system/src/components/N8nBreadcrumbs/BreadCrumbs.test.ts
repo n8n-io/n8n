@@ -198,7 +198,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					'n8n-action-toggle': N8nActionToggleMock,
+					N8nActionToggle: N8nActionToggleMock,
 				},
 				plugins: [router],
 			},
@@ -242,7 +242,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					'n8n-action-toggle': N8nActionToggleMock,
+					N8nActionToggle: N8nActionToggleMock,
 				},
 				plugins: [router],
 			},
@@ -285,7 +285,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					'n8n-action-toggle': N8nActionToggleMock,
+					N8nActionToggle: N8nActionToggleMock,
 				},
 				plugins: [router],
 			},
@@ -318,7 +318,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					'n8n-action-toggle': N8nActionToggleMock,
+					N8nActionToggle: N8nActionToggleMock,
 				},
 				plugins: [router],
 			},

@@ -11,7 +11,13 @@
                     "type": "string"
                 }
             }
+        },
+        "Id": {
+            "type": "string"
+        },
+        "Name": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 8
 }

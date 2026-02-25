@@ -1,6 +1,7 @@
 import {
 	insightsByTimeSchema,
 	insightsByWorkflowSchema,
+	insightsDateRangeSchema,
 	insightsSummarySchema,
 } from '../insights.schema';
 
@@ -12,8 +13,8 @@ describe('insightsSummarySchema', () => {
 				total: { value: 525, deviation: 85, unit: 'count' },
 				failed: { value: 14, deviation: 3, unit: 'count' },
 				failureRate: { value: 1.9, deviation: -5, unit: 'ratio' },
-				timeSaved: { value: 54, deviation: -5, unit: 'time' },
-				averageRunTime: { value: 2.5, deviation: -5, unit: 'time' },
+				timeSaved: { value: 54, deviation: -5, unit: 'minute' },
+				averageRunTime: { value: 2.5, deviation: -5, unit: 'millisecond' },
 			},
 			expected: true,
 		},
@@ -23,8 +24,8 @@ describe('insightsSummarySchema', () => {
 				total: { value: 525, deviation: 85, unit: 'count' },
 				failed: { value: 14, deviation: 3, unit: 'count' },
 				failureRate: { value: 1.9, deviation: -5, unit: 'time' }, // Wrong unit
-				timeSaved: { value: 54, deviation: -5, unit: 'time' },
-				averageRunTime: { value: 2.5, deviation: -5, unit: 'time' },
+				timeSaved: { value: 54, deviation: -5, unit: 'minute' },
+				averageRunTime: { value: 2.5, deviation: -5, unit: 'millisecond' },
 			},
 			expected: false,
 		},
@@ -33,8 +34,8 @@ describe('insightsSummarySchema', () => {
 			value: {
 				failed: { value: 14, deviation: 3, unit: 'count' },
 				failureRate: { value: 1.9, deviation: -5, unit: 'ratio' },
-				timeSaved: { value: 54, deviation: -5, unit: 'time' },
-				averageRunTime: { value: 2.5, deviation: -5, unit: 'time' },
+				timeSaved: { value: 54, deviation: -5, unit: 'minute' },
+				averageRunTime: { value: 2.5, deviation: -5, unit: 'millisecond' },
 			},
 			expected: false,
 		},
@@ -44,8 +45,8 @@ describe('insightsSummarySchema', () => {
 				total: { value: '525', deviation: 85, unit: 'count' }, // Value should be a number
 				failed: { value: 14, deviation: 3, unit: 'count' },
 				failureRate: { value: 1.9, deviation: -5, unit: 'ratio' },
-				timeSaved: { value: 54, deviation: -5, unit: 'time' },
-				averageRunTime: { value: 2.5, deviation: -5, unit: 'time' },
+				timeSaved: { value: 54, deviation: -5, unit: 'minute' },
+				averageRunTime: { value: 2.5, deviation: -5, unit: 'millisecond' },
 			},
 			expected: false,
 		},
@@ -55,8 +56,8 @@ describe('insightsSummarySchema', () => {
 				total: { value: 525, deviation: 85, unit: 'count' },
 				failed: { value: 14, deviation: 3, unit: 'count' },
 				failureRate: { value: 1.9, deviation: -5, unit: 'ratio' },
-				timeSaved: { value: 54, deviation: -5, unit: 'time' },
-				averageRunTime: { value: 2.5, deviation: -5, unit: 'time' },
+				timeSaved: { value: 54, deviation: -5, unit: 'minute' },
+				averageRunTime: { value: 2.5, deviation: -5, unit: 'millisecond' },
 				extraKey: { value: 100, deviation: 10, unit: 'count' }, // Invalid key
 			},
 			expected: false,
@@ -68,24 +69,40 @@ describe('insightsSummarySchema', () => {
 });
 
 describe('insightsByWorkflowSchema', () => {
+	const validInsightsByWorkflow = {
+		count: 2,
+		data: [
+			{
+				workflowId: 'w1',
+				workflowName: 'Test Workflow',
+				projectId: 'p1',
+				projectName: 'Test Project',
+				total: 100,
+				succeeded: 90,
+				failed: 10,
+				failureRate: 0.56,
+				runTime: 300,
+				averageRunTime: 30.5,
+				timeSaved: 50,
+			},
+		],
+	};
+
 	test.each([
 		{
 			name: 'valid workflow insights',
+			value: validInsightsByWorkflow,
+			expected: true,
+		},
+		{
+			name: 'workflow insights with nullable workflow id and project id',
 			value: {
-				count: 2,
+				...validInsightsByWorkflow,
 				data: [
 					{
-						workflowId: 'w1',
-						workflowName: 'Test Workflow',
-						projectId: 'p1',
-						projectName: 'Test Project',
-						total: 100,
-						succeeded: 90,
-						failed: 10,
-						failureRate: 0.56,
-						runTime: 300,
-						averageRunTime: 30.5,
-						timeSaved: 50,
+						...validInsightsByWorkflow.data[0],
+						workflowId: null,
+						projectId: null,
 					},
 				],
 			},
@@ -230,6 +247,76 @@ describe('insightsByTimeSchema', () => {
 		},
 	])('should validate $name', ({ value, expected }) => {
 		const result = insightsByTimeSchema.safeParse(value);
+		expect(result.success).toBe(expected);
+	});
+});
+
+describe('insightsDateRangeSchema', () => {
+	test.each([
+		{
+			name: 'valid date range',
+			value: {
+				key: 'day',
+				licensed: true,
+				granularity: 'hour',
+			},
+			expected: true,
+		},
+		{
+			name: 'missing required key',
+			value: {
+				licensed: true,
+				granularity: 'hour',
+			},
+			expected: false,
+		},
+		{
+			name: 'invalid key value',
+			value: {
+				key: 'invalid',
+				licensed: true,
+				granularity: 'hour',
+			},
+			expected: false,
+		},
+		{
+			name: 'missing licensed field',
+			value: {
+				key: 'day',
+				granularity: 'hour',
+			},
+			expected: false,
+		},
+		{
+			name: 'invalid licensed type',
+			value: {
+				key: 'day',
+				licensed: 'true', // Should be a boolean
+				granularity: 'hour',
+			},
+			expected: false,
+		},
+		{
+			name: 'invalid granularity value',
+			value: {
+				key: 'day',
+				licensed: true,
+				granularity: 'invalid',
+			},
+			expected: false,
+		},
+		{
+			name: 'unexpected additional key',
+			value: {
+				key: 'day',
+				licensed: true,
+				granularity: 'hour',
+				extraKey: 'value', // Extra key not allowed
+			},
+			expected: false,
+		},
+	])('should validate $name', ({ value, expected }) => {
+		const result = insightsDateRangeSchema.safeParse(value);
 		expect(result.success).toBe(expected);
 	});
 });

@@ -1,0 +1,104 @@
+{
+	"createdAt": "2024-03-04T20:33:10.367Z",
+	"updatedAt": "2024-03-13T13:40:25.000Z",
+	"id": "251",
+	"name": "Agent:Conversational",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {
+				"options": {
+					"temperature": 0
+				}
+			},
+			"id": "b8fb087e-fb91-4b67-b1fe-7c8f94db59bc",
+			"name": "OpenAI Chat Model1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1,
+			"position": [1000, 580],
+			"credentials": {
+				"openAiApi": {
+					"id": "Zak03cqeLUOsgkFI",
+					"name": "OpenAi account"
+				}
+			},
+			"notes": "IGNORED_PROPERTIES=messages"
+		},
+		{
+			"parameters": {},
+			"id": "0ccb184e-0fd7-4da4-a25c-2b95e0793e8b",
+			"name": "Calculator1",
+			"type": "@n8n/n8n-nodes-langchain.toolCalculator",
+			"typeVersion": 1,
+			"position": [1160, 580]
+		},
+		{
+			"parameters": {},
+			"id": "e0db9899-2439-4662-a212-738d48cd08d8",
+			"name": "When clicking \"Test workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [800, 420]
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "What is the result of 30 + (10002200 / 100)? Only respond with a number.",
+				"options": {
+					"returnIntermediateSteps": true
+				}
+			},
+			"id": "5f23aaf0-0649-4e26-926d-9bdf59e89aa7",
+			"name": "AI Agent1",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 1.4,
+			"position": [980, 420]
+		}
+	],
+	"connections": {
+		"OpenAI Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calculator1": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking \"Test workflow\"": {
+			"main": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": {
+		"templateCredsSetupCompleted": true
+	},
+	"pinData": {},
+	"versionId": "da23ae8e-c1e2-4f3c-a585-8e89696633b2",
+	"triggerCount": 0,
+	"tags": []
+}

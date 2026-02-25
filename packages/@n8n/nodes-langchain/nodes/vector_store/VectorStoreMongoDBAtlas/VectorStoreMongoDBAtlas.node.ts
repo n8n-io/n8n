@@ -1,14 +1,34 @@
-import { MongoDBAtlasVectorSearch } from '@langchain/mongodb';
+import type { EmbeddingsInterface } from '@langchain/core/embeddings';
+import { MongoDBAtlasVectorSearch, type MongoDBAtlasVectorSearchLibArgs } from '@langchain/mongodb';
 import { MongoClient } from 'mongodb';
-import { type ILoadOptionsFunctions, NodeOperationError, type INodeProperties } from 'n8n-workflow';
-
+import {
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	NodeOperationError,
+	type INodeProperties,
+	type IExecuteFunctions,
+	type ISupplyDataFunctions,
+} from 'n8n-workflow';
 import { metadataFilterField } from '@utils/sharedFields';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 
+import { validateAndResolveMongoCredentials } from 'n8n-nodes-base/dist/nodes/MongoDb/GenericFunctions';
+
+/**
+ * Constants for the name of the credentials and Node parameters.
+ */
+export const MONGODB_CREDENTIALS = 'mongoDb';
+export const MONGODB_COLLECTION_NAME = 'mongoCollection';
+export const VECTOR_INDEX_NAME = 'vectorIndexName';
+export const EMBEDDING_NAME = 'embedding';
+export const METADATA_FIELD_NAME = 'metadata_field';
+export const PRE_FILTER_NAME = 'preFilter';
+export const POST_FILTER_NAME = 'postFilterPipeline';
+
 const mongoCollectionRLC: INodeProperties = {
 	displayName: 'MongoDB Collection',
-	name: 'mongoCollection',
+	name: MONGODB_COLLECTION_NAME,
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
@@ -32,7 +52,7 @@ const mongoCollectionRLC: INodeProperties = {
 
 const vectorIndexName: INodeProperties = {
 	displayName: 'Vector Index Name',
-	name: 'vectorIndexName',
+	name: VECTOR_INDEX_NAME,
 	type: 'string',
 	default: '',
 	description: 'The name of the vector index',
@@ -41,7 +61,7 @@ const vectorIndexName: INodeProperties = {
 
 const embeddingField: INodeProperties = {
 	displayName: 'Embedding',
-	name: 'embedding',
+	name: EMBEDDING_NAME,
 	type: 'string',
 	default: 'embedding',
 	description: 'The field with the embedding array',
@@ -50,7 +70,7 @@ const embeddingField: INodeProperties = {
 
 const metadataField: INodeProperties = {
 	displayName: 'Metadata Field',
-	name: 'metadata_field',
+	name: METADATA_FIELD_NAME,
 	type: 'string',
 	default: 'text',
 	description: 'The text field of the raw data',
@@ -72,6 +92,34 @@ const mongoNamespaceField: INodeProperties = {
 	default: '',
 };
 
+const preFilterField: INodeProperties = {
+	displayName: 'Pre Filter',
+	name: PRE_FILTER_NAME,
+	type: 'json',
+	typeOptions: {
+		alwaysOpenEditWindow: true,
+	},
+	default: '',
+	placeholder: '{ "key": "value" }',
+	hint: 'This is a filter applied in the $vectorSearch stage <a href="https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-stage/#atlas-vector-search-pre-filter">here</a>',
+	required: true,
+	description: 'MongoDB Atlas Vector Search pre-filter',
+};
+
+const postFilterField: INodeProperties = {
+	displayName: 'Post Filter Pipeline',
+	name: POST_FILTER_NAME,
+	type: 'json',
+	typeOptions: {
+		alwaysOpenEditWindow: true,
+	},
+	default: '',
+	placeholder: '[{ "$match": { "$gt": "1950-01-01" }, ... }]',
+	hint: 'Learn more about aggregation pipeline <a href="https://docs.mongodb.com/manual/core/aggregation-pipeline/">here</a>',
+	required: true,
+	description: 'MongoDB aggregation pipeline in JSON format',
+};
+
 const retrieveFields: INodeProperties[] = [
 	{
 		displayName: 'Options',
@@ -79,7 +127,7 @@ const retrieveFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [mongoNamespaceField, metadataFilterField],
+		options: [mongoNamespaceField, metadataFilterField, preFilterField, postFilterField],
 	},
 ];
 
@@ -103,29 +151,71 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
-let mongoClient: MongoClient | null = null;
+export const mongoConfig = {
+	client: null as MongoClient | null,
+	connectionString: '',
+	nodeVersion: 0,
+};
 
-async function getMongoClient(context: any) {
-	if (!mongoClient) {
-		const credentials = await context.getCredentials('mongoDb');
-		mongoClient = new MongoClient(credentials.connectionString as string, {
+/**
+ * Type used for cleaner, more intentional typing.
+ */
+type IFunctionsContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions;
+
+/**
+ * Get the mongo client.
+ * @param context - The context.
+ * @returns the MongoClient for the node.
+ */
+export async function getMongoClient(
+	context: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
+	version: number,
+) {
+	const credentials = await context.getCredentials(MONGODB_CREDENTIALS);
+	const node = context.getNode();
+	const { connectionString } = validateAndResolveMongoCredentials(node, credentials);
+	if (
+		!mongoConfig.client ||
+		mongoConfig.connectionString !== connectionString ||
+		mongoConfig.nodeVersion !== version
+	) {
+		if (mongoConfig.client) {
+			await mongoConfig.client.close();
+		}
+
+		mongoConfig.connectionString = connectionString;
+		mongoConfig.nodeVersion = version;
+		mongoConfig.client = new MongoClient(connectionString, {
 			appName: 'devrel.integration.n8n_vector_integ',
+			driverInfo: {
+				name: 'n8n_vector',
+				version: version.toString(),
+			},
 		});
-		await mongoClient.connect();
+		await mongoConfig.client.connect();
 	}
-	return mongoClient;
+	return mongoConfig.client;
 }
 
-async function mongoClientAndDatabase(context: any) {
-	const client = await getMongoClient(context);
-	const credentials = await context.getCredentials('mongoDb');
-	const db = client.db(credentials.database as string);
-	return { client, db };
+/**
+ * Get the database object from the MongoClient by the configured name.
+ * @param context - The context.
+ * @returns the Db object.
+ */
+export async function getDatabase(context: IFunctionsContext, client: MongoClient) {
+	const credentials = await context.getCredentials(MONGODB_CREDENTIALS);
+	return client.db(credentials.database as string);
 }
 
-async function mongoCollectionSearch(this: ILoadOptionsFunctions) {
-	const { db } = await mongoClientAndDatabase(this);
+/**
+ * Get all the collection in the database.
+ * @param this The load options context.
+ * @returns The list of collections.
+ */
+export async function getCollections(this: ILoadOptionsFunctions) {
 	try {
+		const client = await getMongoClient(this, this.getNode().typeVersion);
+		const db = await getDatabase(this, client);
 		const collections = await db.listCollections().toArray();
 		const results = collections.map((collection) => ({
 			name: collection.name,
@@ -137,6 +227,80 @@ async function mongoCollectionSearch(this: ILoadOptionsFunctions) {
 		throw new NodeOperationError(this.getNode(), `Error: ${error.message}`);
 	}
 }
+
+/**
+ * Get a parameter from the context.
+ * @param key - The key of the parameter.
+ * @param context - The context.
+ * @param itemIndex - The index.
+ * @returns The value.
+ */
+export function getParameter(key: string, context: IFunctionsContext, itemIndex: number): string {
+	const value = context.getNodeParameter(key, itemIndex, '', {
+		extractValue: true,
+	}) as string;
+	if (typeof value !== 'string') {
+		throw new NodeOperationError(context.getNode(), `Parameter ${key} must be a string`);
+	}
+	return value;
+}
+
+export const getCollectionName = getParameter.bind(null, MONGODB_COLLECTION_NAME);
+export const getVectorIndexName = getParameter.bind(null, VECTOR_INDEX_NAME);
+export const getEmbeddingFieldName = getParameter.bind(null, EMBEDDING_NAME);
+export const getMetadataFieldName = getParameter.bind(null, METADATA_FIELD_NAME);
+
+export function getFilterValue<T>(
+	name: string,
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	itemIndex: number,
+): T | undefined {
+	const options: IDataObject = context.getNodeParameter('options', itemIndex, {});
+
+	if (options[name]) {
+		if (typeof options[name] === 'string') {
+			try {
+				return JSON.parse(options[name]);
+			} catch (error) {
+				throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
+					itemIndex,
+					description: `Could not parse JSON for ${name}`,
+				});
+			}
+		}
+		throw new NodeOperationError(context.getNode(), 'Error: No JSON string provided.', {
+			itemIndex,
+			description: `Could not parse JSON for ${name}`,
+		});
+	}
+
+	return undefined;
+}
+
+class ExtendedMongoDBAtlasVectorSearch extends MongoDBAtlasVectorSearch {
+	preFilter: IDataObject;
+	postFilterPipeline?: IDataObject[];
+
+	constructor(
+		embeddings: EmbeddingsInterface,
+		options: MongoDBAtlasVectorSearchLibArgs,
+		preFilter: IDataObject,
+		postFilterPipeline?: IDataObject[],
+	) {
+		super(embeddings, options);
+		this.preFilter = preFilter;
+		this.postFilterPipeline = postFilterPipeline;
+	}
+
+	async similaritySearchVectorWithScore(query: number[], k: number) {
+		const mergedFilter: MongoDBAtlasVectorSearch['FilterType'] = {
+			preFilter: this.preFilter,
+			postFilterPipeline: this.postFilterPipeline,
+		};
+		return await super.similaritySearchVectorWithScore(query, k, mergedFilter);
+	}
+}
+
 export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 	meta: {
 		displayName: 'MongoDB Atlas Vector Store',
@@ -153,64 +317,55 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 		],
 		operationModes: ['load', 'insert', 'retrieve', 'update', 'retrieve-as-tool'],
 	},
-	methods: { listSearch: { mongoCollectionSearch } },
+	methods: { listSearch: { mongoCollectionSearch: getCollections } },
 	retrieveFields,
 	loadFields: retrieveFields,
 	insertFields,
 	sharedFields,
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		try {
-			const { db } = await mongoClientAndDatabase(context);
-			try {
-				const collectionName = context.getNodeParameter('mongoCollection', itemIndex, '', {
-					extractValue: true,
-				}) as string;
+			const client = await getMongoClient(context, context.getNode().typeVersion);
+			const db = await getDatabase(context, client);
+			const collectionName = getCollectionName(context, itemIndex);
+			const mongoVectorIndexName = getVectorIndexName(context, itemIndex);
+			const embeddingFieldName = getEmbeddingFieldName(context, itemIndex);
+			const metadataFieldName = getMetadataFieldName(context, itemIndex);
 
-				const mongoVectorIndexName = context.getNodeParameter('vectorIndexName', itemIndex, '', {
-					extractValue: true,
-				}) as string;
+			const collection = db.collection(collectionName);
 
-				const embeddingFieldName = context.getNodeParameter('embedding', itemIndex, '', {
-					extractValue: true,
-				}) as string;
+			// test index exists
+			const indexes = await collection.listSearchIndexes().toArray();
 
-				const metadataFieldName = context.getNodeParameter('metadata_field', itemIndex, '', {
-					extractValue: true,
-				}) as string;
+			const indexExists = indexes.some((index) => index.name === mongoVectorIndexName);
 
-				const collection = db.collection(collectionName);
+			if (!indexExists) {
+				throw new NodeOperationError(context.getNode(), `Index ${mongoVectorIndexName} not found`, {
+					itemIndex,
+					description: 'Please check that the index exists in your collection',
+				});
+			}
+			const preFilter = getFilterValue<IDataObject>(PRE_FILTER_NAME, context, itemIndex);
+			const postFilterPipeline = getFilterValue<IDataObject[]>(
+				POST_FILTER_NAME,
+				context,
+				itemIndex,
+			);
 
-				// test index exists
-				const indexes = await collection.listSearchIndexes().toArray();
-
-				const indexExists = indexes.some((index) => index.name === mongoVectorIndexName);
-
-				if (!indexExists) {
-					throw new NodeOperationError(
-						context.getNode(),
-						`Index ${mongoVectorIndexName} not found`,
-						{
-							itemIndex,
-							description: 'Please check that the index exists in your collection',
-						},
-					);
-				}
-
-				return new MongoDBAtlasVectorSearch(embeddings, {
+			return new ExtendedMongoDBAtlasVectorSearch(
+				embeddings,
+				{
 					collection,
 					indexName: mongoVectorIndexName, // Default index name
 					textKey: metadataFieldName, // Field containing raw text
 					embeddingKey: embeddingFieldName, // Field containing embeddings
-				});
-			} catch (error) {
-				throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
-					itemIndex,
-					description: 'Please check your MongoDB Atlas connection details',
-				});
-			} finally {
-				// Don't close the client here to maintain connection pooling
-			}
+				},
+				preFilter ?? {},
+				postFilterPipeline,
+			);
 		} catch (error) {
+			if (error instanceof NodeOperationError) {
+				throw error;
+			}
 			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
 				itemIndex,
 				description: 'Please check your MongoDB Atlas connection details',
@@ -219,43 +374,25 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		try {
-			const { db } = await mongoClientAndDatabase(context);
-			try {
-				const mongoCollectionName = context.getNodeParameter('mongoCollection', itemIndex, '', {
-					extractValue: true,
-				}) as string;
-				const embeddingFieldName = context.getNodeParameter('embedding', itemIndex, '', {
-					extractValue: true,
-				}) as string;
+			const client = await getMongoClient(context, context.getNode().typeVersion);
+			const db = await getDatabase(context, client);
+			const collectionName = getCollectionName(context, itemIndex);
+			const mongoVectorIndexName = getVectorIndexName(context, itemIndex);
+			const embeddingFieldName = getEmbeddingFieldName(context, itemIndex);
+			const metadataFieldName = getMetadataFieldName(context, itemIndex);
 
-				const metadataFieldName = context.getNodeParameter('metadata_field', itemIndex, '', {
-					extractValue: true,
-				}) as string;
-
-				const mongoDBAtlasVectorIndex = context.getNodeParameter('vectorIndexName', itemIndex, '', {
-					extractValue: true,
-				}) as string;
-
-				// Check if collection exists
-				const collections = await db.listCollections({ name: mongoCollectionName }).toArray();
-				if (collections.length === 0) {
-					await db.createCollection(mongoCollectionName);
-				}
-				const collection = db.collection(mongoCollectionName);
-				await MongoDBAtlasVectorSearch.fromDocuments(documents, embeddings, {
-					collection,
-					indexName: mongoDBAtlasVectorIndex, // Default index name
-					textKey: metadataFieldName, // Field containing raw text
-					embeddingKey: embeddingFieldName, // Field containing embeddings
-				});
-			} catch (error) {
-				throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
-					itemIndex,
-					description: 'Please check your MongoDB Atlas connection details',
-				});
-			} finally {
-				// Don't close the client here to maintain connection pooling
+			// Check if collection exists
+			const collections = await db.listCollections({ name: collectionName }).toArray();
+			if (collections.length === 0) {
+				await db.createCollection(collectionName);
 			}
+			const collection = db.collection(collectionName);
+			await ExtendedMongoDBAtlasVectorSearch.fromDocuments(documents, embeddings, {
+				collection,
+				indexName: mongoVectorIndexName, // Default index name
+				textKey: metadataFieldName, // Field containing raw text
+				embeddingKey: embeddingFieldName, // Field containing embeddings
+			});
 		} catch (error) {
 			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
 				itemIndex,

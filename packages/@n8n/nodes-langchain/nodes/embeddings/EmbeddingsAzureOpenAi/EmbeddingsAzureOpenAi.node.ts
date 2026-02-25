@@ -1,5 +1,5 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { OpenAIEmbeddings } from '@langchain/openai';
+import { AzureOpenAIEmbeddings } from '@langchain/openai';
+import { getProxyAgent, logWrapper } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -8,7 +8,6 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class EmbeddingsAzureOpenAi implements INodeType {
@@ -42,9 +41,9 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		properties: [
@@ -90,7 +89,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 					{
 						displayName: 'Dimensions',
 						name: 'dimensions',
-						default: undefined,
+						default: 1536,
 						description:
 							'The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.',
 						type: 'options',
@@ -143,7 +142,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			options.timeout = undefined;
 		}
 
-		const embeddings = new OpenAIEmbeddings({
+		const embeddings = new AzureOpenAIEmbeddings({
 			azureOpenAIApiDeploymentName: modelName,
 			// instance name only needed to set base url
 			azureOpenAIApiInstanceName: !credentials.endpoint ? credentials.resourceName : undefined,
@@ -154,6 +153,14 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			azureOpenAIBasePath: credentials.endpoint
 				? `${credentials.endpoint}/openai/deployments`
 				: undefined,
+			configuration: {
+				fetchOptions: {
+					dispatcher: getProxyAgent(
+						credentials.endpoint ?? `https://${credentials.resourceName}.openai.azure.com`,
+						{},
+					),
+				},
+			},
 			...options,
 		});
 

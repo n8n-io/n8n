@@ -1,5 +1,8 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { SqliteConfig } from '@n8n/config/src/configs/database.config';
+import type { SqliteConfig } from '@n8n/config';
+import type { IExecutionResponse } from '@n8n/db';
+import { ExecutionEntity, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { Not, LessThanOrEqual } from '@n8n/typeorm';
@@ -8,10 +11,7 @@ import { BinaryDataService } from 'n8n-core';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { ExecutionEntity } from '@/databases/entities/execution-entity';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IExecutionResponse } from '@/interfaces';
-import { mockInstance, mockEntityManager } from '@test/mocking';
+import { mockEntityManager } from '@test/mocking';
 
 describe('ExecutionRepository', () => {
 	const entityManager = mockEntityManager(ExecutionEntity);
@@ -66,14 +66,20 @@ describe('ExecutionRepository', () => {
 				}),
 			);
 
-			await executionRepository.deleteExecutionsByFilter({ id: '1' }, ['1'], { ids: ['1'] });
+			await executionRepository.deleteExecutionsByFilter({
+				filters: { id: '1' },
+				accessibleWorkflowIds: ['1'],
+				deleteConditions: { ids: ['1'] },
+			});
 
-			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([{ executionId: '1', workflowId }]);
+			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([
+				{ type: 'execution', executionId: '1', workflowId },
+			]);
 		});
 	});
 
 	describe('updateExistingExecution', () => {
-		test.each(['sqlite', 'postgresdb', 'mysqldb'] as const)(
+		test.each(['sqlite', 'postgresdb'] as const)(
 			'should update execution and data in transaction on %s',
 			async (dbType) => {
 				globalConfig.database.type = dbType;
@@ -93,6 +99,8 @@ describe('ExecutionRepository', () => {
 					await cb(entityManager);
 					txCallback();
 				});
+				// Mock update to return affected count
+				entityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 
 				await executionRepository.updateExistingExecution(executionId, execution);
 

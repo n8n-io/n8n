@@ -1,0 +1,89 @@
+{
+	"name": "Google Contacts Update Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "update",
+				"contactId": "c123456789",
+				"fields": ["names", "emailAddresses"],
+				"updateFields": {
+					"givenName": "John Updated",
+					"emailsUi": {
+						"emailsValues": [
+							{
+								"value": "john.updated@example.com",
+								"type": "work"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.googleContacts",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "contact-update",
+			"name": "Update Contact",
+			"credentials": {
+				"googleContactsOAuth2Api": {
+					"id": "test-credential-id",
+					"name": "Test Google Contacts OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Update Contact": [
+			{
+				"json": {
+					"resourceName": "people/c123456789",
+					"etag": "%EgYBAgMEBQYHCCESBCAFIAI=.",
+					"names": [
+						{
+							"metadata": {
+								"primary": true,
+								"source": { "type": "CONTACT", "id": "c123456789" }
+							},
+							"displayName": "John Updated Doe",
+							"familyName": "Doe",
+							"givenName": "John Updated"
+						}
+					],
+					"emailAddresses": [
+						{
+							"metadata": { "primary": true, "source": { "type": "CONTACT", "id": "c123456789" } },
+							"value": "john.updated@example.com",
+							"type": "work"
+						}
+					],
+					"contactId": "c123456789"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Update Contact",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

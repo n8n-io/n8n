@@ -1,16 +1,19 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { OpenAIEmbeddings } from '@langchain/openai';
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import {
 	NodeConnectionTypes,
+	type INodeProperties,
 	type INodeType,
 	type INodeTypeDescription,
-	type SupplyData,
 	type ISupplyDataFunctions,
-	type INodeProperties,
+	type SupplyData,
 } from 'n8n-workflow';
 import type { ClientOptions } from 'openai';
 
-import { logWrapper } from '@utils/logWrapper';
+import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
+import { mergeCustomHeaders } from '@utils/helpers';
+import { getProxyAgent, logWrapper } from '@n8n/ai-utilities';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 const modelParameter: INodeProperties = {
@@ -37,7 +40,12 @@ const modelParameter: INodeProperties = {
 						{
 							type: 'filter',
 							properties: {
-								pass: "={{ $responseItem.id.includes('embed') }}",
+								// If the baseURL is not set or is set to api.openai.com, include only embedding models
+								pass: `={{
+									($parameter.options?.baseURL && !$parameter.options?.baseURL?.startsWith('https://api.openai.com/')) ||
+									($credentials?.url && !$credentials.url.startsWith('https://api.openai.com/')) ||
+									$responseItem.id.includes('embed')
+								}}`,
 							},
 						},
 						{
@@ -98,9 +106,9 @@ export class EmbeddingsOpenAi implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		requestDefaults: {
@@ -138,7 +146,7 @@ export class EmbeddingsOpenAi implements INodeType {
 					{
 						displayName: 'Dimensions',
 						name: 'dimensions',
-						default: undefined,
+						default: 1536,
 						description:
 							'The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3 and later models.',
 						type: 'options',
@@ -200,6 +208,23 @@ export class EmbeddingsOpenAi implements INodeType {
 							'Maximum amount of time a request is allowed to take in seconds. Set to -1 for no timeout.',
 						type: 'number',
 					},
+					{
+						displayName: 'Encoding Format',
+						name: 'encodingFormat',
+						type: 'options',
+						description: 'The format to return the embeddings in',
+						default: 'float',
+						options: [
+							{
+								name: 'Float',
+								value: 'float',
+							},
+							{
+								name: 'Base64',
+								value: 'base64',
+							},
+						],
+					},
 				],
 			},
 		],
@@ -215,27 +240,40 @@ export class EmbeddingsOpenAi implements INodeType {
 			stripNewLines?: boolean;
 			timeout?: number;
 			dimensions?: number | undefined;
+			encodingFormat?: 'float' | 'base64' | undefined;
 		};
 
 		if (options.timeout === -1) {
 			options.timeout = undefined;
 		}
 
-		const configuration: ClientOptions = {};
+		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
+
+		const configuration: ClientOptions = {
+			defaultHeaders,
+		};
 		if (options.baseURL) {
+			checkDomainRestrictions(this, credentials, options.baseURL);
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
 		}
 
-		const embeddings = new OpenAIEmbeddings(
-			{
-				modelName: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
-				openAIApiKey: credentials.apiKey as string,
-				...options,
-			},
-			configuration,
+		configuration.fetchOptions = {
+			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {}),
+		};
+
+		configuration.defaultHeaders = mergeCustomHeaders(
+			credentials,
+			(configuration.defaultHeaders ?? {}) as Record<string, string>,
 		);
+
+		const embeddings = new OpenAIEmbeddings({
+			model: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
+			apiKey: credentials.apiKey as string,
+			...options,
+			configuration,
+		});
 
 		return {
 			response: logWrapper(embeddings, this),

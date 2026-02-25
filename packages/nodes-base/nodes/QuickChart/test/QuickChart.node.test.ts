@@ -1,26 +1,21 @@
-/* eslint-disable @typescript-eslint/no-loop-func */
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import type { WorkflowTestData } from 'n8n-workflow';
 import nock from 'nock';
 
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import * as Helpers from '@test/nodes/Helpers';
-
 describe('Test QuickChart Node', () => {
 	beforeEach(async () => {
-		await Helpers.initBinaryDataService();
 		nock('https://quickchart.io')
 			.persist()
 			.get(/chart.*/)
 			.reply(200, { success: true });
 	});
 
-	const workflow = Helpers.readJsonFileSync('nodes/QuickChart/test/QuickChart.workflow.json');
-
+	const testHarness = new NodeTestHarness();
 	const tests: WorkflowTestData[] = [
 		{
 			description: 'nodes/QuickChart/test/QuickChart.workflow.json',
 			input: {
-				workflowData: workflow,
+				workflowData: testHarness.readWorkflowJSON('QuickChart.workflow.json'),
 			},
 			output: {
 				nodeData: {
@@ -90,15 +85,6 @@ describe('Test QuickChart Node', () => {
 	];
 
 	for (const testData of tests) {
-		test(testData.description, async () => {
-			const { result } = await executeWorkflow(testData);
-
-			const resultNodeData = Helpers.getResultNodeData(result, testData);
-			resultNodeData.forEach(({ nodeName, resultData }) => {
-				delete resultData[0]![0].binary;
-				expect(resultData).toEqual(testData.output.nodeData[nodeName]);
-			});
-			expect(result.finished).toEqual(true);
-		});
+		testHarness.setupTest(testData);
 	}
 });

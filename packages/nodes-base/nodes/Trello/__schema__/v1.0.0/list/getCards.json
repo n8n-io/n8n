@@ -29,6 +29,9 @@
                 "checkItemsChecked": {
                     "type": "integer"
                 },
+                "checkItemsEarliestDue": {
+                    "type": "null"
+                },
                 "comments": {
                     "type": "integer"
                 },
@@ -46,6 +49,9 @@
                 },
                 "location": {
                     "type": "boolean"
+                },
+                "maliciousAttachments": {
+                    "type": "integer"
                 },
                 "subscribed": {
                     "type": "boolean"
@@ -83,9 +89,6 @@
             "properties": {
                 "brightness": {
                     "type": "string"
-                },
-                "idPlugin": {
-                    "type": "null"
                 },
                 "idUploadedBackground": {
                     "type": "null"
@@ -129,6 +132,12 @@
             "type": "string"
         },
         "idMembers": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "idMembersVoted": {
             "type": "array",
             "items": {
                 "type": "string"
@@ -194,5 +203,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 8
 }

@@ -78,33 +78,33 @@ exports[`FormBox > should render the component 1`] = `
                 class=""
               >
                 <div
-                  class="el-input el-input--small n8n-input"
+                  class="n8n-input inputContainer small"
                 >
-                  <!-- input -->
-                  
-                  <!-- prepend slot -->
+                  <!-- Prepend slot (outside input container, before) -->
                   <!--v-if-->
+                  <!-- Input wrapper (holds border, contains prefix/input/suffix) -->
                   <div
-                    class="el-input__wrapper"
+                    class="inputWrapper"
                   >
-                    <!-- prefix slot -->
+                    <!-- Prefix slot -->
                     <!--v-if-->
+                    <!-- Input element -->
                     <input
                       autocomplete="email"
-                      class="el-input__inner"
+                      class="input"
+                      id="name"
                       name="name"
                       placeholder=""
-                      rows="2"
-                      tabindex="0"
-                      title=""
                       type="text"
+                      value=""
                     />
-                    <!-- suffix slot -->
+                    <!-- Suffix slot -->
+                    <!--v-if-->
+                    <!-- Clear button -->
                     <!--v-if-->
                   </div>
-                  <!-- append slot -->
+                  <!-- Append slot (outside input container, after) -->
                   <!--v-if-->
-                  
                 </div>
               </div>
               <!--v-if-->
@@ -164,33 +164,33 @@ exports[`FormBox > should render the component 1`] = `
                 class=""
               >
                 <div
-                  class="el-input el-input--default n8n-input"
+                  class="n8n-input inputContainer medium"
                 >
-                  <!-- input -->
-                  
-                  <!-- prepend slot -->
+                  <!-- Prepend slot (outside input container, before) -->
                   <!--v-if-->
+                  <!-- Input wrapper (holds border, contains prefix/input/suffix) -->
                   <div
-                    class="el-input__wrapper"
+                    class="inputWrapper"
                   >
-                    <!-- prefix slot -->
+                    <!-- Prefix slot -->
                     <!--v-if-->
+                    <!-- Input element -->
                     <input
                       autocomplete="email"
-                      class="el-input__inner"
+                      class="input"
+                      id="email"
                       name="email"
                       placeholder=""
-                      rows="2"
-                      tabindex="0"
-                      title=""
                       type="email"
+                      value=""
                     />
-                    <!-- suffix slot -->
+                    <!-- Suffix slot -->
+                    <!--v-if-->
+                    <!-- Clear button -->
                     <!--v-if-->
                   </div>
-                  <!-- append slot -->
+                  <!-- Append slot (outside input container, after) -->
                   <!--v-if-->
-                  
                 </div>
               </div>
               <!--v-if-->
@@ -250,33 +250,33 @@ exports[`FormBox > should render the component 1`] = `
                 class=""
               >
                 <div
-                  class="el-input el-input--large n8n-input ph-no-capture"
+                  class="n8n-input inputContainer large ph-no-capture"
                 >
-                  <!-- input -->
-                  
-                  <!-- prepend slot -->
+                  <!-- Prepend slot (outside input container, before) -->
                   <!--v-if-->
+                  <!-- Input wrapper (holds border, contains prefix/input/suffix) -->
                   <div
-                    class="el-input__wrapper"
+                    class="inputWrapper"
                   >
-                    <!-- prefix slot -->
+                    <!-- Prefix slot -->
                     <!--v-if-->
+                    <!-- Input element -->
                     <input
                       autocomplete="current-password"
-                      class="el-input__inner"
+                      class="input"
+                      id="password"
                       name="password"
                       placeholder=""
-                      rows="2"
-                      tabindex="0"
-                      title=""
                       type="password"
+                      value=""
                     />
-                    <!-- suffix slot -->
+                    <!-- Suffix slot -->
+                    <!--v-if-->
+                    <!-- Clear button -->
                     <!--v-if-->
                   </div>
-                  <!-- append slot -->
+                  <!-- Append slot (outside input container, after) -->
                   <!--v-if-->
-                  
                 </div>
               </div>
               <!--v-if-->

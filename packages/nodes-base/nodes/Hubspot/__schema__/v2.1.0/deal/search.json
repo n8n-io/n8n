@@ -16,7 +16,7 @@
                 "createdate": {
                     "type": "string"
                 },
-                "dealname": {
+                "dealstage": {
                     "type": "string"
                 },
                 "hs_lastmodifieddate": {
@@ -31,5 +31,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 6
 }

@@ -1,17 +1,53 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import { VectorDBQAChain } from 'langchain/chains';
-import { VectorStoreQATool } from 'langchain/tools';
+import { VectorDBQAChain } from '@langchain/classic/chains';
+import { VectorStoreQATool } from '@langchain/classic/tools';
 import type {
+	IExecuteFunctions,
+	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	ISupplyDataFunctions,
 	SupplyData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, nodeNameToToolName } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
+import { logWrapper } from '@n8n/ai-utilities';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+async function getTool(
+	ctx: ISupplyDataFunctions | IExecuteFunctions,
+	itemIndex: number,
+): Promise<VectorStoreQATool> {
+	const node = ctx.getNode();
+	const { typeVersion } = node;
+	const name =
+		typeVersion <= 1
+			? (ctx.getNodeParameter('name', itemIndex) as string)
+			: nodeNameToToolName(node);
+	const toolDescription = ctx.getNodeParameter('description', itemIndex) as string;
+	const topK = ctx.getNodeParameter('topK', itemIndex, 4) as number;
+	const description = VectorStoreQATool.getDescription(name, toolDescription);
+	const vectorStore = (await ctx.getInputConnectionData(
+		NodeConnectionTypes.AiVectorStore,
+		itemIndex,
+	)) as VectorStore;
+	const llm = (await ctx.getInputConnectionData(
+		NodeConnectionTypes.AiLanguageModel,
+		itemIndex,
+	)) as BaseLanguageModel;
+
+	const vectorStoreTool = new VectorStoreQATool(name, description, {
+		llm,
+		vectorStore,
+	});
+
+	vectorStoreTool.chain = VectorDBQAChain.fromLLM(llm, vectorStore, {
+		k: topK,
+	});
+
+	return vectorStoreTool;
+}
 
 export class ToolVectorStore implements INodeType {
 	description: INodeTypeDescription = {
@@ -20,7 +56,7 @@ export class ToolVectorStore implements INodeType {
 		icon: 'fa:database',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1],
+		version: [1, 1.1],
 		description: 'Answer questions with a vector store',
 		defaults: {
 			name: 'Answer questions with a vector store',
@@ -39,7 +75,7 @@ export class ToolVectorStore implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
 			{
 				displayName: 'Vector Store',
@@ -54,9 +90,15 @@ export class ToolVectorStore implements INodeType {
 				required: true,
 			},
 		],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
+		builderHint: {
+			inputs: {
+				ai_vectorStore: { required: true },
+				ai_languageModel: { required: true },
+			},
+		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
@@ -68,6 +110,11 @@ export class ToolVectorStore implements INodeType {
 				validateType: 'string-alphanumeric',
 				description:
 					'Name of the data in vector store. This will be used to fill this tool description: Useful for when you need to answer questions about [name]. Whenever you need information about [data description], you should ALWAYS use this. Input should be a fully formed question.',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
 			},
 			{
 				displayName: 'Description of Data',
@@ -92,32 +139,29 @@ export class ToolVectorStore implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const name = this.getNodeParameter('name', itemIndex) as string;
-		const toolDescription = this.getNodeParameter('description', itemIndex) as string;
-		const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
-
-		const vectorStore = (await this.getInputConnectionData(
-			NodeConnectionTypes.AiVectorStore,
-			itemIndex,
-		)) as VectorStore;
-
-		const llm = (await this.getInputConnectionData(
-			NodeConnectionTypes.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
-
-		const description = VectorStoreQATool.getDescription(name, toolDescription);
-		const vectorStoreTool = new VectorStoreQATool(name, description, {
-			llm,
-			vectorStore,
-		});
-
-		vectorStoreTool.chain = VectorDBQAChain.fromLLM(llm, vectorStore, {
-			k: topK,
-		});
+		const vectorStoreTool = await getTool(this, itemIndex);
 
 		return {
 			response: logWrapper(vectorStoreTool, this),
 		};
+	}
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const inputData = this.getInputData();
+		const result: INodeExecutionData[] = [];
+		for (let itemIndex = 0; itemIndex < inputData.length; itemIndex++) {
+			const tool = await getTool(this, itemIndex);
+			const outputData = await tool.invoke(inputData[itemIndex].json);
+			result.push({
+				json: {
+					response: outputData,
+				},
+				pairedItem: {
+					item: itemIndex,
+				},
+			});
+		}
+
+		return [result];
 	}
 }

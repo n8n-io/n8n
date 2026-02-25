@@ -2,7 +2,7 @@ import { render } from '@testing-library/vue';
 
 import CodeDiff from './CodeDiff.vue';
 
-const stubs = ['n8n-button', 'n8n-icon'];
+const stubs = ['N8nButton', 'N8nIcon'];
 
 describe('CodeDiff', () => {
 	it('renders code diff correctly', () => {

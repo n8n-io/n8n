@@ -39,10 +39,7 @@
         "linkedin": {
             "type": "string"
         },
-        "naf5_code": {
-            "type": "string"
-        },
-        "naf5_des": {
+        "location": {
             "type": "string"
         },
         "nb_employees": {
@@ -51,15 +48,9 @@
         "phone": {
             "type": "string"
         },
-        "siren": {
-            "type": "string"
-        },
-        "vat": {
-            "type": "string"
-        },
         "website": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 6
 }

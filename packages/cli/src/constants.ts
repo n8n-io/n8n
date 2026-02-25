@@ -1,13 +1,16 @@
+import { Time } from '@n8n/constants';
 import { readFileSync, statSync } from 'fs';
 import type { n8n } from 'n8n-core';
 import type { ITaskDataConnections } from 'n8n-workflow';
-import { jsonParse, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
+import {
+	ERROR_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	jsonParse,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+} from 'n8n-workflow';
 import { resolve, join, dirname } from 'path';
 
-const { NODE_ENV, E2E_TESTS } = process.env;
-export const inProduction = NODE_ENV === 'production';
-export const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
-export const inTest = NODE_ENV === 'test';
+const { E2E_TESTS } = process.env;
 export const inE2ETests = E2E_TESTS === 'true';
 
 export const CUSTOM_API_CALL_NAME = 'Custom API Call';
@@ -25,9 +28,15 @@ export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
 
 export const STARTING_NODES = [
 	'@n8n/n8n-nodes-langchain.manualChatTrigger',
-	'n8n-nodes-base.start',
 	'n8n-nodes-base.manualTrigger',
 ];
+
+export const TRIGGER_COUNT_EXCLUDED_NODES = [
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	ERROR_TRIGGER_NODE_TYPE,
+];
+
+export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
 
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
@@ -52,6 +61,8 @@ export const RESPONSE_ERROR_MESSAGES = {
 } as const;
 
 export const AUTH_COOKIE_NAME = 'n8n-auth';
+export const OIDC_STATE_COOKIE_NAME = 'n8n-oidc-state';
+export const OIDC_NONCE_COOKIE_NAME = 'n8n-oidc-nonce';
 
 export const NPM_COMMAND_TOKENS = {
 	NPM_PACKAGE_NOT_FOUND_ERROR: '404 Not Found',
@@ -59,7 +70,7 @@ export const NPM_COMMAND_TOKENS = {
 	NPM_NO_VERSION_AVAILABLE: 'No valid versions available',
 	NPM_DISK_NO_SPACE: 'ENOSPC',
 	NPM_DISK_INSUFFICIENT_SPACE: 'insufficient space',
-};
+} as const;
 
 export const NPM_PACKAGE_STATUS_GOOD = 'OK';
 
@@ -70,81 +81,10 @@ export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 24 * 60 * 60 * 1000; // 1 day
 
 export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 
-export const LICENSE_FEATURES = {
-	SHARING: 'feat:sharing',
-	LDAP: 'feat:ldap',
-	SAML: 'feat:saml',
-	LOG_STREAMING: 'feat:logStreaming',
-	ADVANCED_EXECUTION_FILTERS: 'feat:advancedExecutionFilters',
-	VARIABLES: 'feat:variables',
-	SOURCE_CONTROL: 'feat:sourceControl',
-	API_DISABLED: 'feat:apiDisabled',
-	EXTERNAL_SECRETS: 'feat:externalSecrets',
-	SHOW_NON_PROD_BANNER: 'feat:showNonProdBanner',
-	WORKFLOW_HISTORY: 'feat:workflowHistory',
-	DEBUG_IN_EDITOR: 'feat:debugInEditor',
-	BINARY_DATA_S3: 'feat:binaryDataS3',
-	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',
-	WORKER_VIEW: 'feat:workerView',
-	ADVANCED_PERMISSIONS: 'feat:advancedPermissions',
-	PROJECT_ROLE_ADMIN: 'feat:projectRole:admin',
-	PROJECT_ROLE_EDITOR: 'feat:projectRole:editor',
-	PROJECT_ROLE_VIEWER: 'feat:projectRole:viewer',
-	AI_ASSISTANT: 'feat:aiAssistant',
-	ASK_AI: 'feat:askAi',
-	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
-	AI_CREDITS: 'feat:aiCredits',
-	FOLDERS: 'feat:folders',
-	INSIGHTS_VIEW_SUMMARY: 'feat:insights:viewSummary',
-	INSIGHTS_VIEW_DASHBOARD: 'feat:insights:viewDashboard',
-	INSIGHTS_VIEW_HOURLY_DATA: 'feat:insights:viewHourlyData',
-} as const;
-
-export const LICENSE_QUOTAS = {
-	TRIGGER_LIMIT: 'quota:activeWorkflows',
-	VARIABLES_LIMIT: 'quota:maxVariables',
-	USERS_LIMIT: 'quota:users',
-	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
-	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
-	AI_CREDITS: 'quota:aiCredits',
-	INSIGHTS_MAX_HISTORY_DAYS: 'quota:insights:maxHistoryDays',
-	INSIGHTS_RETENTION_MAX_AGE_DAYS: 'quota:insights:retention:maxAgeDays',
-	INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS: 'quota:insights:retention:pruneIntervalDays',
-} as const;
-export const UNLIMITED_LICENSE_QUOTA = -1;
-
 export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';
 
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
-
-/**
- * Convert time from any time unit to any other unit
- */
-export const Time = {
-	milliseconds: {
-		toMinutes: 1 / (60 * 1000),
-		toSeconds: 1 / 1000,
-	},
-	seconds: {
-		toMilliseconds: 1000,
-	},
-	minutes: {
-		toMilliseconds: 60 * 1000,
-	},
-	hours: {
-		toMilliseconds: 60 * 60 * 1000,
-		toSeconds: 60 * 60,
-	},
-	days: {
-		toSeconds: 24 * 60 * 60,
-		toMilliseconds: 24 * 60 * 60 * 1000,
-	},
-};
-
-export const MIN_PASSWORD_CHAR_LENGTH = 8;
-
-export const MAX_PASSWORD_CHAR_LENGTH = 64;
 
 export const TEST_WEBHOOK_TIMEOUT = 2 * Time.minutes.toMilliseconds;
 
@@ -155,6 +95,7 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'googleOAuth2Api',
 	'microsoftOAuth2Api',
 	'highLevelOAuth2Api',
+	'mcpOAuth2Api',
 ];
 
 export const ARTIFICIAL_TASK_DATA = {
@@ -195,11 +136,10 @@ export const WsStatusCodes = {
 	CloseGoingAway: 1001,
 	CloseProtocolError: 1002,
 	CloseUnsupportedData: 1003,
-	CloseNoStatus: 1005,
 	CloseAbnormal: 1006,
 	CloseInvalidData: 1007,
 } as const;
 
 export const FREE_AI_CREDITS_CREDENTIAL_NAME = 'n8n free OpenAI API credits';
 
-export const EVALUATION_METRICS_NODE = `${NODE_PACKAGE_PREFIX}base.evaluationMetrics`;
+export const STREAM_SEPARATOR = '⧉⇋⇋➽⌑⧉§§\n';

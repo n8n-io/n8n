@@ -1,0 +1,70 @@
+{
+	"name": "TheHive Task Get Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "manual-trigger",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "get",
+				"taskId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "~654321"
+				}
+			},
+			"type": "n8n-nodes-base.theHiveProject",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "thehive-node",
+			"name": "TheHive Task Get",
+			"credentials": {
+				"theHiveProjectApi": {
+					"id": "thehive-creds",
+					"name": "TheHive API Credentials"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"TheHive Task Get": [
+			{
+				"json": {
+					"_id": "~654321",
+					"_type": "Task",
+					"title": "Test Task",
+					"description": "Test task description",
+					"group": "Investigation",
+					"status": "Waiting",
+					"flag": false,
+					"mandatory": true,
+					"createdAt": 1698753600000,
+					"updatedAt": 1698753600000
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "TheHive Task Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -1,0 +1,336 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`InputPanel > should render 1`] = `
+<div>
+  <div
+    class="run-data container ndv-v2 runData runDataV2"
+    data-test-id="ndv-input-panel"
+    data-v-5b5900d0=""
+  >
+    <!--v-if-->
+    <div
+      class="header"
+      data-v-5b5900d0=""
+    >
+      <div
+        class="title"
+        data-v-5b5900d0=""
+      >
+        
+        <div
+          class="titleSection titleSectionV2"
+        >
+          <span
+            class="n8n-text text-light size-medium bold title titleV2 title titleV2"
+          >
+            
+            Input
+            
+          </span>
+          <div
+            class="n8n-radio-buttons radioGroup"
+            data-test-id="input-panel-mode"
+            role="radiogroup"
+          >
+            
+            <label
+              aria-checked="true"
+              class="n8n-radio-button container hoverable"
+              role="radio"
+              tabindex="-1"
+            >
+              <div
+                class="button active medium"
+                data-test-id="radio-button-mapping"
+              >
+                
+                Mapping
+                
+              </div>
+            </label>
+            <label
+              aria-checked="false"
+              class="n8n-radio-button container hoverable"
+              role="radio"
+              tabindex="-1"
+            >
+              <div
+                class="button medium"
+                data-test-id="radio-button-debugging"
+              >
+                
+                From AI
+                
+              </div>
+            </label>
+            
+          </div>
+        </div>
+        
+      </div>
+      <div
+        class="displayModes"
+        data-test-id="run-data-pane-header"
+        data-v-5b5900d0=""
+      >
+        <!--v-if-->
+        <!--v-if-->
+        <div
+          class="n8n-radio-buttons radioGroup"
+          data-test-id="ndv-run-data-display-mode"
+          data-v-5b5900d0=""
+          role="radiogroup"
+          style="display: none;"
+        >
+          
+          <label
+            aria-checked="true"
+            class="n8n-radio-button container hoverable"
+            role="radio"
+            tabindex="-1"
+          >
+            <div
+              class="button active medium"
+              data-test-id="radio-button-schema"
+            >
+              
+              Schema
+              
+            </div>
+          </label>
+          <label
+            aria-checked="false"
+            class="n8n-radio-button container hoverable"
+            role="radio"
+            tabindex="-1"
+          >
+            <div
+              class="button medium"
+              data-test-id="radio-button-table"
+            >
+              
+              Table
+              
+            </div>
+          </label>
+          <label
+            aria-checked="false"
+            class="n8n-radio-button container hoverable"
+            role="radio"
+            tabindex="-1"
+          >
+            <div
+              class="button medium"
+              data-test-id="radio-button-json"
+            >
+              
+              JSON
+              
+            </div>
+          </label>
+          
+        </div>
+        <!--v-if-->
+        <!--v-if-->
+        <div
+          class="editModeActions"
+          data-v-5b5900d0=""
+          style="display: none;"
+        >
+          <button
+            aria-live="polite"
+            class="button button subtle medium"
+            data-v-5b5900d0=""
+            type="button"
+          >
+            <transition-stub
+              appear="false"
+              css="true"
+              name="n8n-button-fade"
+              persisted="false"
+            >
+              <!--v-if-->
+            </transition-stub>
+            <div
+              class="button-inner"
+            >
+              
+              <!--v-if-->
+              
+              <span>
+                Cancel
+              </span>
+            </div>
+          </button>
+          <button
+            aria-live="polite"
+            class="button button solid medium ml-2xs"
+            data-v-5b5900d0=""
+            type="button"
+          >
+            <transition-stub
+              appear="false"
+              css="true"
+              name="n8n-button-fade"
+              persisted="false"
+            >
+              <!--v-if-->
+            </transition-stub>
+            <div
+              class="button-inner"
+            >
+              
+              <!--v-if-->
+              
+              <span>
+                Save
+              </span>
+            </div>
+          </button>
+        </div>
+      </div>
+      
+      
+    </div>
+    <div
+      data-v-5b5900d0=""
+    >
+      <!--v-if-->
+      <!--v-if-->
+      <!--v-if-->
+      <!--v-if-->
+      <!--v-if-->
+      
+      
+      <!--v-if-->
+    </div>
+    <div
+      class="dataContainer"
+      data-test-id="ndv-data-container"
+      data-v-5b5900d0=""
+    >
+      <!--v-if-->
+      <div
+        class="center"
+        data-v-5b5900d0=""
+      >
+        
+        <div
+          class="noOutputData"
+        >
+          
+          <article
+            class="empty"
+          >
+            
+            <svg
+              aria-hidden="true"
+              class="n8n-icon"
+              data-icon="arrow-right-to-line"
+              focusable="false"
+              height="20px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="20px"
+            >
+              <path
+                d="M17 12H3m8 6l6-6l-6-6m10-1v14"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
+            
+            <h1
+              class="title"
+            >
+              No input data
+            </h1>
+            <p
+              class="description"
+            >
+              
+              <span>
+                
+                
+                
+                
+                <span
+                  class=""
+                  data-grace-area-trigger=""
+                  data-state="closed"
+                >
+                  
+                  
+                  <button
+                    aria-live="polite"
+                    class="button button solid medium"
+                    data-test-id="execute-previous-node"
+                    square="false"
+                    title=""
+                    transparent-background="true"
+                    type="submit"
+                  >
+                    <transition-stub
+                      appear="false"
+                      css="true"
+                      name="n8n-button-fade"
+                      persisted="false"
+                    >
+                      <!--v-if-->
+                    </transition-stub>
+                    <div
+                      class="button-inner"
+                    >
+                      
+                      <!--v-if-->
+                      
+                      <span>
+                        Execute previous nodes
+                      </span>
+                    </div>
+                  </button>
+                  
+                  
+                </span>
+                <!--teleport start-->
+                <!--teleport end-->
+                
+                
+                
+                <br />
+                
+                 to view input data
+              </span>
+              
+            </p>
+          </article>
+          
+        </div>
+        
+      </div>
+    </div>
+    <!--v-if-->
+    <transition-stub
+      appear="false"
+      class="uiBlocker uiBlockerNdvV2"
+      css="true"
+      data-v-1a77a378=""
+      data-v-5b5900d0=""
+      mode="out-in"
+      name="fade"
+      persisted="true"
+    >
+      <div
+        aria-hidden="true"
+        class="n8n-block-ui uiBlocker"
+        data-v-1a77a378=""
+        role="dialog"
+        style="display: none;"
+      />
+    </transition-stub>
+  </div>
+</div>
+`;

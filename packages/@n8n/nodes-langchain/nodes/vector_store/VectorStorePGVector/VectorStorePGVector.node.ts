@@ -254,7 +254,7 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 			{},
 		) as CollectionOptions;
 
-		if (collectionOptions && collectionOptions.useCollection) {
+		if (collectionOptions?.useCollection) {
 			config.collectionName = collectionOptions.collectionName;
 			config.collectionTableName = collectionOptions.collectionTableName;
 		}
@@ -296,7 +296,7 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 			{},
 		) as CollectionOptions;
 
-		if (collectionOptions && collectionOptions.useCollection) {
+		if (collectionOptions?.useCollection) {
 			config.collectionName = collectionOptions.collectionName;
 			config.collectionTableName = collectionOptions.collectionTableName;
 		}

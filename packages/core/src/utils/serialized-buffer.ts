@@ -1,4 +1,4 @@
-import { isObjectLiteral } from './is-object-literal';
+import { isObjectLiteral } from '@n8n/backend-common';
 
 /** A nodejs Buffer gone through JSON.stringify */
 export type SerializedBuffer = {

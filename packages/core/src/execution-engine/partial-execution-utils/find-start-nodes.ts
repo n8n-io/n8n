@@ -83,7 +83,11 @@ function findStartNodesRecursive(
 			// last run
 			-1,
 			NodeConnectionTypes.Main,
-			0,
+			// Although this is a Loop node, the graph may not actually have a loop here e.g.,
+			// while the workflow is under development. If there's not a loop, we treat the loop
+			// node as a normal node and take the data from the first output at index 1.
+			// If there *is* a loop, we take the data from the `done` output at index 0.
+			isALoop(graph, current) ? 0 : 1,
 		);
 
 		if (nodeRunData === null || nodeRunData.length === 0) {
@@ -128,6 +132,10 @@ function findStartNodesRecursive(
 	}
 
 	return startNodes;
+}
+
+function isALoop(graph: DirectedGraph, node: INode): boolean {
+	return graph.getChildren(node).has(node);
 }
 
 /**

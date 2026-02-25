@@ -1,6 +1,7 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 const VALID_SELECT_FIELDS = [
 	'id',
@@ -12,6 +13,7 @@ const VALID_SELECT_FIELDS = [
 	'parentFolder',
 	'workflowCount',
 	'subFolderCount',
+	'path',
 ] as const;
 
 const VALID_SORT_OPTIONS = [

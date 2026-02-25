@@ -45,6 +45,9 @@
         "$layout_id": {
             "type": "object",
             "properties": {
+                "display_label": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -77,6 +80,23 @@
             }
         },
         "$state": {
+            "type": "string"
+        },
+        "Created_By": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "Created_Time": {
             "type": "string"
         },
         "Email_Opt_Out": {
@@ -138,13 +158,7 @@
                     }
                 }
             }
-        },
-        "Unsubscribed_Mode": {
-            "type": "null"
-        },
-        "Unsubscribed_Time": {
-            "type": "null"
         }
     },
-    "version": 1
+    "version": 7
 }

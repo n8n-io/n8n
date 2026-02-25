@@ -164,7 +164,7 @@ export class Onfleet implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 		const items = this.getInputData();
 
-		// eslint-disable-next-line @typescript-eslint/ban-types
+		// eslint-disable-next-line @typescript-eslint/no-restricted-types
 		const operations: { [key: string]: Function } = {
 			task: OnfleetMethods.executeTaskOperations,
 			destination: OnfleetMethods.executeDestinationOperations,

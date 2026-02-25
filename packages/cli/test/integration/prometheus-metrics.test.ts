@@ -1,15 +1,15 @@
+import { createActiveWorkflow } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DateTime } from 'luxon';
 import { parse as semverParse } from 'semver';
 import request, { type Response } from 'supertest';
 
-import config from '@/config';
 import { N8N_VERSION } from '@/constants';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { CacheService } from '@/services/cache/cache.service';
-import { createWorkflow, newWorkflow } from '@test-integration/db/workflows';
 
 import { setupTestServer } from './shared/utils';
 
@@ -30,12 +30,15 @@ globalConfig.endpoints.metrics = {
 	includeCredentialTypeLabel: false,
 	includeNodeTypeLabel: false,
 	includeWorkflowIdLabel: false,
+	includeWorkflowNameLabel: false,
 	includeApiPathLabel: true,
 	includeApiMethodLabel: true,
 	includeApiStatusCodeLabel: true,
 	includeQueueMetrics: true,
 	queueMetricsInterval: 20,
 	activeWorkflowCountInterval: 60,
+	includeWorkflowStatistics: false,
+	workflowStatisticsInterval: 300,
 };
 
 const server = setupTestServer({ endpointGroups: ['metrics'] });
@@ -51,6 +54,11 @@ describe('PrometheusMetricsService', () => {
 	beforeEach(() => {
 		prometheusService.disableAllMetrics();
 		prometheusService.disableAllLabels();
+	});
+
+	afterEach(() => {
+		// Make sure fake timers aren't in effect after a test
+		jest.useRealTimers();
 	});
 
 	it('should return n8n version', async () => {
@@ -211,9 +219,11 @@ describe('PrometheusMetricsService', () => {
 		/**
 		 * Arrange
 		 */
+		const startTime = DateTime.now().toUnixInteger();
+		jest.useFakeTimers().setSystemTime(startTime * 1000);
+
 		prometheusService.enableMetric('routes');
 		await prometheusService.init(server.app);
-		await agent.get('/api/v1/workflows');
 
 		/**
 		 * Act
@@ -230,26 +240,30 @@ describe('PrometheusMetricsService', () => {
 
 		expect(lines).toContainEqual(expect.stringContaining('n8n_test_last_activity'));
 
-		const lastActivityLine = lines.find((line) =>
-			line.startsWith('n8n_test_last_activity{timestamp='),
-		);
+		const lastActivityLine = lines.find((line) => line.startsWith('n8n_test_last_activity'));
 
 		expect(lastActivityLine).toBeDefined();
-		expect(lastActivityLine?.endsWith('1')).toBe(true);
+
+		const value = lastActivityLine!.split(' ')[1];
+
+		expect(parseInt(value, 10)).toBe(startTime);
 
 		// Update last activity
+		jest.advanceTimersByTime(1000);
 		await agent.get('/api/v1/workflows');
 
 		response = await agent.get('/metrics');
 		const updatedLines = toLines(response);
 
 		const newLastActivityLine = updatedLines.find((line) =>
-			line.startsWith('n8n_test_last_activity{timestamp='),
+			line.startsWith('n8n_test_last_activity'),
 		);
 
 		expect(newLastActivityLine).toBeDefined();
-		// Timestamp label should be different
-		expect(newLastActivityLine).not.toBe(lastActivityLine);
+
+		const newValue = newLastActivityLine!.split(' ')[1];
+
+		expect(parseInt(newValue, 10)).toBe(startTime + 1);
 	});
 
 	it('should return labels in route metrics if enabled', async () => {
@@ -284,7 +298,7 @@ describe('PrometheusMetricsService', () => {
 		 * Arrange
 		 */
 		prometheusService.enableMetric('queue');
-		config.set('executions.mode', 'queue');
+		globalConfig.executions.mode = 'queue';
 		await prometheusService.init(server.app);
 
 		/**
@@ -311,7 +325,7 @@ describe('PrometheusMetricsService', () => {
 		 * Arrange
 		 */
 		prometheusService.enableMetric('queue');
-		config.set('executions.mode', 'queue');
+		globalConfig.executions.mode = 'queue';
 		await prometheusService.init(server.app);
 
 		/**
@@ -347,8 +361,7 @@ describe('PrometheusMetricsService', () => {
 
 		expect(lines).toContain('n8n_test_active_workflow_count 0');
 
-		const workflow = newWorkflow({ active: true });
-		await createWorkflow(workflow);
+		await createActiveWorkflow({});
 
 		const workflowRepository = Container.get(WorkflowRepository);
 		const activeWorkflowCount = await workflowRepository.getActiveCount();
@@ -370,5 +383,65 @@ describe('PrometheusMetricsService', () => {
 		lines = toLines(response);
 
 		expect(lines).toContain('n8n_test_active_workflow_count 1');
+	});
+
+	it('should return workflow statistics metrics if enabled', async () => {
+		/**
+		 * Arrange
+		 */
+		prometheusService.enableMetric('workflowStatistics');
+		await prometheusService.init(server.app);
+
+		/**
+		 * Act
+		 */
+		const response = await agent.get('/metrics');
+
+		/**
+		 * Assert
+		 */
+		expect(response.status).toEqual(200);
+		expect(response.type).toEqual('text/plain');
+
+		const lines = toLines(response);
+
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_production_executions'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_production_root_executions'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_manual_executions'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_enabled_users'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_users'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_workflows'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_credentials'));
+	});
+
+	it('should not return workflow statistics metrics if disabled', async () => {
+		/**
+		 * Arrange
+		 */
+		prometheusService.disableMetric('workflowStatistics');
+		await prometheusService.init(server.app);
+
+		/**
+		 * Act
+		 */
+		const response = await agent.get('/metrics');
+
+		/**
+		 * Assert
+		 */
+		expect(response.status).toEqual(200);
+		expect(response.type).toEqual('text/plain');
+
+		const lines = toLines(response);
+
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_production_executions'));
+		expect(lines).not.toContainEqual(
+			expect.stringContaining('n8n_test_production_root_executions'),
+		);
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_manual_executions'));
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_enabled_users'));
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_users'));
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_workflows'));
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_credentials'));
 	});
 });

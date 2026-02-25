@@ -1,6 +1,12 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import { generateZodSchema, NodeOperationError, traverseNodeParameters } from 'n8n-workflow';
 import type { IDataObject, INode, INodeType, FromAIArgument } from 'n8n-workflow';
+import {
+	generateZodSchema,
+	NodeOperationError,
+	traverseNodeParameters,
+	NodeHelpers,
+	nodeNameToToolName,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 export type CreateNodeAsToolOptions = {
@@ -21,7 +27,7 @@ export type CreateNodeAsToolOptions = {
  * @throws {NodeOperationError} When parameter keys are invalid or when duplicate keys have inconsistent definitions
  * @returns {z.ZodObject} A Zod schema object representing the structure and validation rules for the node parameters
  */
-function getSchema(node: INode) {
+export function getSchema(node: INode) {
 	const collectedArguments: FromAIArgument[] = [];
 	try {
 		traverseNodeParameters(node.parameters, collectedArguments);
@@ -84,42 +90,15 @@ function getSchema(node: INode) {
 }
 
 /**
- * Generates a description for a node based on the provided parameters.
- * @param node The node type.
- * @param nodeParameters The parameters of the node.
- * @returns A string description for the node.
- */
-function makeDescription(node: INode, nodeType: INodeType): string {
-	const manualDescription = node.parameters.toolDescription as string;
-
-	if (node.parameters.descriptionType === 'auto') {
-		const resource = node.parameters.resource as string;
-		const operation = node.parameters.operation as string;
-		let description = nodeType.description.description;
-		if (resource) {
-			description += `\n Resource: ${resource}`;
-		}
-		if (operation) {
-			description += `\n Operation: ${operation}`;
-		}
-		return description.trim();
-	}
-	if (node.parameters.descriptionType === 'manual') {
-		return manualDescription ?? nodeType.description.description;
-	}
-
-	return nodeType.description.description;
-}
-
-/**
  * Creates a DynamicStructuredTool from a node.
  * @returns A DynamicStructuredTool instance.
  */
 function createTool(options: CreateNodeAsToolOptions) {
 	const { node, nodeType, handleToolInvocation } = options;
+
 	const schema = getSchema(node);
-	const description = makeDescription(node, nodeType);
-	const nodeName = node.name.replace(/ /g, '_');
+	const description = NodeHelpers.getToolDescriptionForNode(node, nodeType);
+	const nodeName = nodeNameToToolName(node);
 	const name = nodeName || nodeType.description.name;
 
 	return new DynamicStructuredTool({
@@ -127,6 +106,11 @@ function createTool(options: CreateNodeAsToolOptions) {
 		description,
 		schema,
 		func: async (toolArgs: z.infer<typeof schema>) => await handleToolInvocation(toolArgs),
+		// Include sourceNodeName in metadata for engine request routing
+		// This is required for HITL tools to know which node to execute after approval
+		metadata: {
+			sourceNodeName: node.name,
+		},
 	});
 }
 

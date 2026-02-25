@@ -235,6 +235,9 @@ export abstract class TaskRunner extends EventEmitter {
 			case 'broker:nodetypes':
 				this.processNodeTypesResponse(message.requestId, message.nodeTypes);
 				break;
+			case 'broker:drain':
+				this.stopTaskOffers();
+				break;
 		}
 	}
 
@@ -258,17 +261,20 @@ export abstract class TaskRunner extends EventEmitter {
 		request.resolve(nodeTypes);
 	}
 
-	hasOpenTasks() {
+	/**
+	 * Whether the task runner has capacity to accept more tasks.
+	 */
+	hasOpenTaskSlots() {
 		return this.runningTasks.size < this.maxConcurrency;
 	}
 
 	offerAccepted(offerId: string, taskId: string) {
-		if (!this.hasOpenTasks()) {
+		if (!this.hasOpenTaskSlots()) {
 			this.openOffers.delete(offerId);
 			this.send({
 				type: 'runner:taskrejected',
 				taskId,
-				reason: 'No open task slots',
+				reason: 'No open task slots - runner already at capacity',
 			});
 			return;
 		}
@@ -278,7 +284,7 @@ export abstract class TaskRunner extends EventEmitter {
 			this.send({
 				type: 'runner:taskrejected',
 				taskId,
-				reason: 'Offer expired and no open task slots',
+				reason: 'Offer expired - not accepted within validity window',
 			});
 			return;
 		} else {
@@ -391,7 +397,6 @@ export abstract class TaskRunner extends EventEmitter {
 		});
 	}
 
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	async executeTask(_taskParams: TaskParams, _signal: AbortSignal): Promise<TaskResultData> {
 		throw new ApplicationError('Unimplemented');
 	}

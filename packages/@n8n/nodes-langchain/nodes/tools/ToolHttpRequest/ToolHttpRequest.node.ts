@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { DynamicTool } from '@langchain/core/tools';
 import type {
 	INodeType,
@@ -11,6 +10,7 @@ import type {
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
+	nodeNameToToolName,
 	tryToParseAlphanumericString,
 } from 'n8n-workflow';
 
@@ -63,9 +63,11 @@ export class ToolHttpRequest implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+		// Replaced by a `usableAsTool` version of the standalone HttpRequest node
+		hidden: true,
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
 		properties: [
@@ -253,7 +255,7 @@ export class ToolHttpRequest implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const name = this.getNode().name.replace(/ /g, '_');
+		const name = nodeNameToToolName(this.getNode());
 		try {
 			tryToParseAlphanumericString(name);
 		} catch (error) {

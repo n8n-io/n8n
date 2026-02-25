@@ -1,7 +1,10 @@
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import FormData from 'form-data';
-import type { Agent } from 'https';
-import { mock } from 'jest-mock-extended';
+import type { Agent as HttpsAgent } from 'https';
+import { mock, mockDeep } from 'jest-mock-extended';
 import type {
+	IAllExecuteFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	INode,
@@ -23,12 +26,13 @@ import {
 	invokeAxios,
 	parseRequestObject,
 	proxyRequestToAxios,
+	refreshOAuth2Token,
 	removeEmptyBody,
 } from '../request-helper-functions';
 
 describe('Request Helper Functions', () => {
 	describe('proxyRequestToAxios', () => {
-		const baseUrl = 'http://example.de';
+		const baseUrl = 'https://example.de';
 		const workflow = mock<Workflow>();
 		const hooks = mock<ExecutionLifecycleHooks>();
 		const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
@@ -66,7 +70,7 @@ describe('Request Helper Functions', () => {
 				expect(error.options).toMatchObject({
 					headers: { Accept: '*/*' },
 					method: 'get',
-					url: 'http://example.de/test',
+					url: 'https://example.de/test',
 				});
 				expect(error.config).toBeUndefined();
 				expect(error.message).toEqual('403 - "Forbidden"');
@@ -103,7 +107,39 @@ describe('Request Helper Functions', () => {
 		});
 
 		describe('redirects', () => {
-			test('should forward authorization header', async () => {
+			test.each([[undefined], [true]])(
+				'should forward authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
+				async (sendCredentialsOnCrossOriginRedirect) => {
+					nock(baseUrl)
+						.get('/redirect')
+						.reply(301, '', { Location: 'https://otherdomain.com/test' });
+					nock('https://otherdomain.com')
+						.get('/test')
+						.reply(200, function () {
+							return this.req.headers;
+						});
+
+					const response = await proxyRequestToAxios(workflow, additionalData, node, {
+						url: `${baseUrl}/redirect`,
+						auth: {
+							username: 'testuser',
+							password: 'testpassword',
+						},
+						headers: {
+							'X-Other-Header': 'otherHeaderContent',
+						},
+						resolveWithFullResponse: true,
+						sendCredentialsOnCrossOriginRedirect,
+					});
+
+					expect(response.statusCode).toBe(200);
+					const forwardedHeaders = JSON.parse(response.body);
+					expect(forwardedHeaders.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+					expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
+				},
+			);
+
+			test('should not forward authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is false', async () => {
 				nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://otherdomain.com/test' });
 				nock('https://otherdomain.com')
 					.get('/test')
@@ -121,13 +157,46 @@ describe('Request Helper Functions', () => {
 						'X-Other-Header': 'otherHeaderContent',
 					},
 					resolveWithFullResponse: true,
+					sendCredentialsOnCrossOriginRedirect: false,
 				});
 
 				expect(response.statusCode).toBe(200);
 				const forwardedHeaders = JSON.parse(response.body);
-				expect(forwardedHeaders.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+				expect(forwardedHeaders.authorization).toBeUndefined();
 				expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
 			});
+
+			test.each([[undefined], [true], [false]])(
+				'should forward authorization header on same-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
+				async (sendCredentialsOnCrossOriginRedirect) => {
+					nock(baseUrl)
+						.get('/redirect')
+						.reply(301, '', { Location: `${baseUrl}/test` });
+					nock(baseUrl)
+						.get('/test')
+						.reply(200, function () {
+							return this.req.headers;
+						});
+
+					const response = await proxyRequestToAxios(workflow, additionalData, node, {
+						url: `${baseUrl}/redirect`,
+						auth: {
+							username: 'testuser',
+							password: 'testpassword',
+						},
+						headers: {
+							'X-Other-Header': 'otherHeaderContent',
+						},
+						resolveWithFullResponse: true,
+						sendCredentialsOnCrossOriginRedirect,
+					});
+
+					expect(response.statusCode).toBe(200);
+					const forwardedHeaders = JSON.parse(response.body);
+					expect(forwardedHeaders.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+					expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
+				},
+			);
 
 			test('should follow redirects by default', async () => {
 				nock(baseUrl)
@@ -165,7 +234,7 @@ describe('Request Helper Functions', () => {
 	});
 
 	describe('invokeAxios', () => {
-		const baseUrl = 'http://example.de';
+		const baseUrl = 'https://example.de';
 
 		beforeEach(() => {
 			nock.cleanAll();
@@ -229,6 +298,22 @@ describe('Request Helper Functions', () => {
 				},
 				{ sendImmediately: false },
 			);
+
+			expect(response.status).toBe(200);
+			expect(response.data).toEqual({ success: true });
+		});
+
+		it('should include vendor headers in requests to OpenAi', async () => {
+			const { openAiDefaultHeaders } = Container.get(AiConfig);
+			nock('https://api.openai.com', {
+				reqheaders: openAiDefaultHeaders,
+			})
+				.get('/chat')
+				.reply(200, { success: true });
+
+			const response = await invokeAxios({
+				url: 'https://api.openai.com/chat',
+			});
 
 			expect(response.status).toBe(200);
 			expect(response.data).toEqual({ success: true });
@@ -319,7 +404,7 @@ describe('Request Helper Functions', () => {
 				url: 'https://example.de/foo/bar',
 				headers: { Host: 'other.host.com' },
 			});
-			expect((axiosOptions.httpsAgent as Agent).options.servername).toEqual('example.de');
+			expect((axiosOptions.httpsAgent as HttpsAgent).options.servername).toEqual('example.de');
 		});
 
 		describe('should set SSL certificates', () => {
@@ -334,7 +419,7 @@ describe('Request Helper Functions', () => {
 
 			test('on regular requests', async () => {
 				const axiosOptions = await parseRequestObject(requestObject);
-				expect((axiosOptions.httpsAgent as Agent).options).toEqual({
+				expect((axiosOptions.httpsAgent as HttpsAgent).options).toMatchObject({
 					servername: 'example.de',
 					...agentOptions,
 					noDelay: true,
@@ -346,10 +431,14 @@ describe('Request Helper Functions', () => {
 				const axiosOptions = await parseRequestObject(requestObject);
 				expect(axiosOptions.beforeRedirect).toBeDefined;
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const redirectOptions: Record<string, any> = { agents: {}, hostname: 'example.de' };
+				const redirectOptions: Record<string, any> = {
+					agents: {},
+					hostname: 'example.de',
+					href: requestObject.uri,
+				};
 				axiosOptions.beforeRedirect!(redirectOptions, mock());
 				expect(redirectOptions.agent).toEqual(redirectOptions.agents.https);
-				expect((redirectOptions.agent as Agent).options).toEqual({
+				expect((redirectOptions.agent as HttpsAgent).options).toMatchObject({
 					servername: 'example.de',
 					...agentOptions,
 					noDelay: true,
@@ -529,6 +618,32 @@ describe('Request Helper Functions', () => {
 			const axiosConfig = convertN8nRequestToAxios(requestOptions);
 
 			expect(axiosConfig.httpsAgent?.options.rejectUnauthorized).toBe(false);
+		});
+
+		test('should ignore HTTP error except for the specified status codes', () => {
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://example.com',
+				ignoreHttpStatusErrors: { ignore: true, except: [401] },
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+			expect(axiosConfig.validateStatus).toBeDefined();
+			expect(axiosConfig.validateStatus!(401)).toBe(false);
+			expect(axiosConfig.validateStatus!(500)).toBe(true);
+		});
+
+		test('should ignore all HTTP errors', () => {
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://example.com',
+				ignoreHttpStatusErrors: true,
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+			expect(axiosConfig.validateStatus).toBeDefined();
+			expect(axiosConfig.validateStatus!(401)).toBe(true);
+			expect(axiosConfig.validateStatus!(500)).toBe(true);
 		});
 	});
 
@@ -860,6 +975,295 @@ describe('Request Helper Functions', () => {
 
 			expect(response).toEqual({ success: true });
 			scope.done();
+		});
+
+		it('should include vendor headers in requests to OpenAi', async () => {
+			const { openAiDefaultHeaders } = Container.get(AiConfig);
+			const scope = nock('https://api.openai.com', {
+				reqheaders: openAiDefaultHeaders,
+			})
+				.get('/chat')
+				.reply(200, { success: true });
+
+			const response = await httpRequest({
+				method: 'GET',
+				url: 'https://api.openai.com/chat',
+				headers: { 'X-Custom-Header': 'custom-value' },
+			});
+			expect(response).toEqual({ success: true });
+			scope.done();
+		});
+
+		describe('redirects', () => {
+			test.each([[undefined], [true]])(
+				'should forward authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
+				async (sendCredentialsOnCrossOriginRedirect) => {
+					nock(baseUrl)
+						.get('/redirect')
+						.reply(301, '', { Location: 'https://otherdomain.com/test' });
+					nock('https://otherdomain.com')
+						.get('/test')
+						.reply(200, function () {
+							return this.req.headers;
+						});
+
+					const response = (await httpRequest({
+						url: `${baseUrl}/redirect`,
+						auth: {
+							username: 'testuser',
+							password: 'testpassword',
+						},
+						headers: {
+							'X-Other-Header': 'otherHeaderContent',
+						},
+						sendCredentialsOnCrossOriginRedirect,
+					})) as { authorization: string; 'x-other-header': string };
+
+					expect(response.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+					expect(response['x-other-header']).toBe('otherHeaderContent');
+				},
+			);
+
+			test('should not forward authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is false', async () => {
+				nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://otherdomain.com/test' });
+				nock('https://otherdomain.com')
+					.get('/test')
+					.reply(200, function () {
+						return this.req.headers;
+					});
+
+				const response = (await httpRequest({
+					url: `${baseUrl}/redirect`,
+					auth: {
+						username: 'testuser',
+						password: 'testpassword',
+					},
+					headers: {
+						'X-Other-Header': 'otherHeaderContent',
+					},
+					sendCredentialsOnCrossOriginRedirect: false,
+				})) as { authorization: undefined; 'x-other-header': string };
+
+				expect(response.authorization).toBeUndefined();
+				expect(response['x-other-header']).toBe('otherHeaderContent');
+			});
+
+			test.each([[undefined], [true], [false]])(
+				'should forward authorization header on same-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
+				async (sendCredentialsOnCrossOriginRedirect) => {
+					nock(baseUrl)
+						.get('/redirect')
+						.reply(301, '', { Location: `${baseUrl}/test` });
+					nock(baseUrl)
+						.get('/test')
+						.reply(200, function () {
+							return this.req.headers;
+						});
+
+					const response = (await httpRequest({
+						url: `${baseUrl}/redirect`,
+						auth: {
+							username: 'testuser',
+							password: 'testpassword',
+						},
+						headers: {
+							'X-Other-Header': 'otherHeaderContent',
+						},
+						sendCredentialsOnCrossOriginRedirect,
+					})) as { authorization: string; 'x-other-header': string };
+
+					expect(response.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+					expect(response['x-other-header']).toBe('otherHeaderContent');
+				},
+			);
+		});
+	});
+
+	describe('refreshOAuth2Token', () => {
+		const baseUrl = 'https://example.com';
+		const mockThis = mockDeep<IAllExecuteFunctions>();
+		const mockNode = mockDeep<INode>();
+		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+		const mockCredentialData = {
+			clientId: 'test-client-id',
+			clientSecret: 'test-client-secret',
+			grantType: 'authorizationCode',
+			authUrl: 'https://example.com/auth',
+			accessTokenUrl: 'https://example.com/token',
+			authentication: 'body',
+			scope: 'openid',
+			oauthTokenData: {
+				access_token: 'old-token',
+				refresh_token: 'old-refresh-token',
+			},
+		};
+
+		beforeEach(() => {
+			nock.cleanAll();
+			jest.resetAllMocks();
+			mockNode.name = 'test-node-name';
+			mockNode.credentials = {
+				'test-credentials-type': {
+					id: 'test-credentials-id',
+					name: 'test-credentials-name',
+				},
+			};
+		});
+
+		test('should refresh the OAuth2 token with pkce grant type', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				clientSecret: undefined,
+				grantType: 'pkce',
+			});
+			nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					grant_type: 'refresh_token',
+					refresh_token: 'old-refresh-token',
+				})
+				.reply(200, {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+				});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual({
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'new-refresh-token',
+					}),
+				}),
+				mockAdditionalData,
+			);
+		});
+
+		test('should refresh the OAuth2 token with client credentials grant type', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				grantType: 'clientCredentials',
+			});
+			nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					client_secret: 'test-client-secret',
+					grant_type: 'client_credentials',
+					scope: 'openid',
+				})
+				.reply(200, {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+				});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual({
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'new-refresh-token',
+					}),
+				}),
+				mockAdditionalData,
+			);
+		});
+
+		test('should refresh the OAuth2 token with authorization code grant type', async () => {
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					client_secret: 'test-client-secret',
+					grant_type: 'refresh_token',
+					refresh_token: 'old-refresh-token',
+				})
+				.reply(200, {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+				});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual({
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({
+						access_token: 'new-token',
+						refresh_token: 'new-refresh-token',
+					}),
+				}),
+				mockAdditionalData,
+			);
+		});
+
+		test('should throw an error if the OAuth2 token is not connected', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				oauthTokenData: undefined,
+			});
+
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.toThrow('OAuth credentials not connected');
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
+		});
+
+		test('should throw an error if node does not have credentials', async () => {
+			mockNode.credentials!['test-credentials-type'] = undefined!;
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.toThrow('Node does not have credential type');
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
 		});
 	});
 });

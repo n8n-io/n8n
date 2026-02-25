@@ -1,10 +1,10 @@
+import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { capitalize } from 'lodash';
-import { Logger } from 'n8n-core';
-import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
+import capitalize from 'lodash/capitalize';
+import type { WorkflowExecuteMode } from 'n8n-workflow';
 
-import config from '@/config';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { EventService } from '@/events/event.service';
@@ -16,6 +16,11 @@ export const CLOUD_TEMP_PRODUCTION_LIMIT = 999;
 export const CLOUD_TEMP_REPORTABLE_THRESHOLDS = [5, 10, 20, 50, 100, 200];
 
 export type ConcurrencyQueueType = 'production' | 'evaluation';
+
+export interface CapacityTarget {
+	executionId: string;
+	mode: WorkflowExecuteMode;
+}
 
 @Service()
 export class ConcurrencyControlService {
@@ -34,12 +39,15 @@ export class ConcurrencyControlService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly telemetry: Telemetry,
 		private readonly eventService: EventService,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('concurrency');
 
+		const { productionLimit, evaluationLimit } = this.globalConfig.executions.concurrency;
+
 		this.limits = new Map([
-			['production', config.getEnv('executions.concurrency.productionLimit')],
-			['evaluation', config.getEnv('executions.concurrency.evaluationLimit')],
+			['production', productionLimit],
+			['evaluation', evaluationLimit],
 		]);
 
 		this.limits.forEach((limit, type) => {
@@ -54,7 +62,7 @@ export class ConcurrencyControlService {
 
 		if (
 			Array.from(this.limits.values()).every((limit) => limit === -1) ||
-			config.getEnv('executions.mode') === 'queue'
+			this.globalConfig.executions.mode === 'queue'
 		) {
 			this.isEnabled = false;
 			return;
@@ -110,7 +118,7 @@ export class ConcurrencyControlService {
 	/**
 	 * Block or let through an execution based on concurrency capacity.
 	 */
-	async throttle({ mode, executionId }: { mode: ExecutionMode; executionId: string }) {
+	async throttle({ mode, executionId }: CapacityTarget) {
 		if (!this.isEnabled || this.isUnlimited(mode)) return;
 
 		await this.getQueue(mode)?.enqueue(executionId);
@@ -119,7 +127,7 @@ export class ConcurrencyControlService {
 	/**
 	 * Release capacity back so the next execution in the queue can proceed.
 	 */
-	release({ mode }: { mode: ExecutionMode }) {
+	release({ mode }: { mode: WorkflowExecuteMode }) {
 		if (!this.isEnabled || this.isUnlimited(mode)) return;
 
 		this.getQueue(mode)?.dequeue();
@@ -128,7 +136,7 @@ export class ConcurrencyControlService {
 	/**
 	 * Remove an execution from the production queue, releasing capacity back.
 	 */
-	remove({ mode, executionId }: { mode: ExecutionMode; executionId: string }) {
+	remove({ mode, executionId }: CapacityTarget) {
 		if (!this.isEnabled || this.isUnlimited(mode)) return;
 
 		this.getQueue(mode)?.remove(executionId);
@@ -180,18 +188,18 @@ export class ConcurrencyControlService {
 		});
 	}
 
-	private isUnlimited(mode: ExecutionMode) {
+	private isUnlimited(mode: WorkflowExecuteMode) {
 		return this.getQueue(mode) === undefined;
 	}
 
 	private shouldReport(capacity: number) {
-		return config.getEnv('deployment.type') === 'cloud' && this.limitsToReport.includes(capacity);
+		return this.globalConfig.deployment.type === 'cloud' && this.limitsToReport.includes(capacity);
 	}
 
 	/**
 	 * Get the concurrency queue based on the execution mode.
 	 */
-	private getQueue(mode: ExecutionMode) {
+	private getQueue(mode: WorkflowExecuteMode) {
 		if (
 			mode === 'error' ||
 			mode === 'integrated' ||
@@ -203,7 +211,9 @@ export class ConcurrencyControlService {
 			return undefined;
 		}
 
-		if (mode === 'webhook' || mode === 'trigger') return this.queues.get('production');
+		if (mode === 'webhook' || mode === 'trigger' || mode === 'chat') {
+			return this.queues.get('production');
+		}
 
 		if (mode === 'evaluation') return this.queues.get('evaluation');
 

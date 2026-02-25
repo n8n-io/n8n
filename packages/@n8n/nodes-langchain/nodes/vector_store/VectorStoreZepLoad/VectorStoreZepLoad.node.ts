@@ -9,8 +9,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getMetadataFiltersValues } from '@utils/helpers';
-import { logWrapper } from '@utils/logWrapper';
+import { logWrapper, getMetadataFiltersValues } from '@n8n/ai-utilities';
 import { metadataFilterField } from '@utils/sharedFields';
 
 // This node is deprecated. Use VectorStoreZep instead.
@@ -57,6 +56,12 @@ export class VectorStoreZepLoad implements INodeType {
 		outputs: [NodeConnectionTypes.AiVectorStore],
 		outputNames: ['Vector Store'],
 		properties: [
+			{
+				displayName: 'This Zep integration is deprecated and will be removed in a future version.',
+				name: 'deprecationNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Collection Name',
 				name: 'collectionName',

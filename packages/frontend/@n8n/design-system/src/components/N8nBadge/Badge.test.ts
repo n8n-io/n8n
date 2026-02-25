@@ -16,7 +16,7 @@ describe('components', () => {
 						default: '<n8n-text>Default badge</n8n-text>',
 					},
 					global: {
-						stubs: ['n8n-text'],
+						stubs: ['N8nText'],
 					},
 				});
 				expect(wrapper.html()).toMatchSnapshot();
@@ -32,7 +32,7 @@ describe('components', () => {
 						default: '<n8n-text>Secondary badge</n8n-text>',
 					},
 					global: {
-						stubs: ['n8n-text'],
+						stubs: ['N8nText'],
 					},
 				});
 				expect(wrapper.html()).toMatchSnapshot();
@@ -43,7 +43,7 @@ describe('components', () => {
 						default: '<n8n-text>A Badge</n8n-text>',
 					},
 					global: {
-						stubs: ['n8n-text'],
+						stubs: ['N8nText'],
 					},
 				});
 				expect(wrapper.html()).toMatchSnapshot();

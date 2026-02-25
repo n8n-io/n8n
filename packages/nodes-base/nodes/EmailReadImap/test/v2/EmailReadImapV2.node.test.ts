@@ -1,8 +1,8 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { mock } from 'jest-mock-extended';
-import { type INodeTypeBaseDescription, type ITriggerFunctions } from 'n8n-workflow';
+import type { INode, INodeTypeBaseDescription, ITriggerFunctions } from 'n8n-workflow';
 
-import { type ICredentialsDataImap } from '../../../../credentials/Imap.credentials';
+import { type ICredentialsDataImap } from '@credentials/Imap.credentials';
+
 import { EmailReadImapV2 } from '../../v2/EmailReadImapV2.node';
 
 jest.mock('@n8n/imap', () => {
@@ -42,6 +42,7 @@ describe('Test IMap V2', () => {
 	};
 
 	triggerFunctions.getCredentials.calledWith('imap').mockResolvedValue(credentials);
+	triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
 	triggerFunctions.logger.debug = jest.fn();
 	triggerFunctions.getNodeParameter.calledWith('options').mockReturnValue({
 		name: 'Mark as Read',

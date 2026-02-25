@@ -9,7 +9,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import type { N8nJsonLoader } from '@n8n/ai-utilities';
 
 import { processDocuments } from '../shared/processDocuments';
 
@@ -63,6 +63,12 @@ export class VectorStoreZepInsert implements INodeType {
 		],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
+			{
+				displayName: 'This Zep integration is deprecated and will be removed in a future version.',
+				name: 'deprecationNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Collection Name',
 				name: 'collectionName',

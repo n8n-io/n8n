@@ -1,20 +1,19 @@
+import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { nanoid } from 'nanoid';
 
+import '@/zod-alias-support';
 import { ImportCredentialsCommand } from '@/commands/import/credentials';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { mockInstance } from '../../shared/mocking';
 import { getAllCredentials, getAllSharedCredentials } from '../shared/db/credentials';
-import { getPersonalProject } from '../shared/db/projects';
 import { createMember, createOwner } from '../shared/db/users';
-import * as testDb from '../shared/test-db';
 
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(ImportCredentialsCommand);
 
 beforeEach(async () => {
-	await testDb.truncate(['Credentials', 'SharedCredentials', 'User']);
+	await testDb.truncate(['CredentialsEntity', 'SharedCredentials', 'User']);
 });
 
 test('import:credentials should import a credential', async () => {

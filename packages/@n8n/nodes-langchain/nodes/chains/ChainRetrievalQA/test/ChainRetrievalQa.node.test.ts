@@ -71,7 +71,7 @@ describe('ChainRetrievalQa', () => {
 		node = new ChainRetrievalQa();
 	});
 
-	it.each([1.3, 1.4, 1.5])(
+	it.each([1.3, 1.4, 1.5, 1.6])(
 		'should process a query using a chat model (version %s)',
 		async (version) => {
 			// Mock a chat model that returns a predefined answer
@@ -103,7 +103,7 @@ describe('ChainRetrievalQa', () => {
 		},
 	);
 
-	it.each([1.3, 1.4, 1.5])(
+	it.each([1.3, 1.4, 1.5, 1.6])(
 		'should process a query using a text completion model (version %s)',
 		async (version) => {
 			// Mock a text completion model that returns a predefined answer
@@ -143,7 +143,7 @@ describe('ChainRetrievalQa', () => {
 		},
 	);
 
-	it.each([1.3, 1.4, 1.5])(
+	it.each([1.3, 1.4, 1.5, 1.6])(
 		'should use a custom system prompt if provided (version %s)',
 		async (version) => {
 			const customSystemPrompt = `You are a geography expert. Use the following context to answer the question.
@@ -177,7 +177,7 @@ describe('ChainRetrievalQa', () => {
 		},
 	);
 
-	it.each([1.3, 1.4, 1.5])(
+	it.each([1.3, 1.4, 1.5, 1.6])(
 		'should throw an error if the query is undefined (version %s)',
 		async (version) => {
 			const mockChatModel = new FakeChatModel({});
@@ -196,7 +196,7 @@ describe('ChainRetrievalQa', () => {
 		},
 	);
 
-	it.each([1.3, 1.4, 1.5])(
+	it.each([1.3, 1.4, 1.5, 1.6])(
 		'should add error to json if continueOnFail is true (version %s)',
 		async (version) => {
 			// Create a model that will throw an error
@@ -226,4 +226,118 @@ describe('ChainRetrievalQa', () => {
 			expect(result[0][0].json.error).toContain('Model error');
 		},
 	);
+
+	it('should process items in batches', async () => {
+		const mockChatModel = new FakeLLM({ response: 'Paris is the capital of France.' });
+		const items = [
+			{ json: { input: 'What is the capital of France?' } },
+			{ json: { input: 'What is the capital of France?' } },
+			{ json: { input: 'What is the capital of France?' } },
+		];
+
+		const execMock = createExecuteFunctionsMock(
+			{
+				promptType: 'define',
+				text: '={{ $json.input }}',
+				options: {
+					batching: {
+						batchSize: 2,
+						delayBetweenBatches: 0,
+					},
+				},
+			},
+			mockChatModel,
+			fakeRetriever,
+			1.6,
+		);
+
+		execMock.getInputData = () => items;
+
+		const result = await node.execute.call(execMock);
+
+		expect(result).toHaveLength(1);
+		expect(result[0]).toHaveLength(3);
+		result[0].forEach((item) => {
+			expect(item.json.response).toBeDefined();
+		});
+
+		expect(result[0][0].json.response).toContain('Paris is the capital of France.');
+		expect(result[0][1].json.response).toContain('Paris is the capital of France.');
+		expect(result[0][2].json.response).toContain('Paris is the capital of France.');
+	});
+
+	it('should handle errors in batches with continueOnFail', async () => {
+		class ErrorLLM extends FakeLLM {
+			async _call(): Promise<string> {
+				throw new UnexpectedError('Model error');
+			}
+		}
+
+		const errorModel = new ErrorLLM({});
+		const items = [
+			{ json: { input: 'What is the capital of France?' } },
+			{ json: { input: 'What is the population of Paris?' } },
+		];
+
+		const execMock = createExecuteFunctionsMock(
+			{
+				promptType: 'define',
+				text: '={{ $json.input }}',
+				options: {
+					batching: {
+						batchSize: 2,
+						delayBetweenBatches: 0,
+					},
+				},
+			},
+			errorModel,
+			fakeRetriever,
+			1.6,
+		);
+
+		execMock.getInputData = () => items;
+		execMock.continueOnFail = () => true;
+
+		const result = await node.execute.call(execMock);
+
+		expect(result).toHaveLength(1);
+		expect(result[0]).toHaveLength(2);
+		result[0].forEach((item) => {
+			expect(item.json.error).toContain('Model error');
+		});
+	});
+
+	it('should respect delay between batches', async () => {
+		const mockChatModel = new FakeChatModel({});
+		const items = [
+			{ json: { input: 'What is the capital of France?' } },
+			{ json: { input: 'What is the population of Paris?' } },
+			{ json: { input: 'What is France known for?' } },
+		];
+
+		const execMock = createExecuteFunctionsMock(
+			{
+				promptType: 'define',
+				text: '={{ $json.input }}',
+				options: {
+					batching: {
+						batchSize: 2,
+						delayBetweenBatches: 100,
+					},
+				},
+			},
+			mockChatModel,
+			fakeRetriever,
+			1.6,
+		);
+
+		execMock.getInputData = () => items;
+
+		const startTime = Date.now();
+		await node.execute.call(execMock);
+		const endTime = Date.now();
+
+		// Should take at least 100ms due to delay between batches
+		expect(endTime - startTime).toBeGreaterThanOrEqual(100);
+	});
 });

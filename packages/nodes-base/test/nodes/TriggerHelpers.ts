@@ -1,4 +1,5 @@
 import type * as express from 'express';
+import { type IncomingHttpHeaders } from 'http';
 import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
@@ -21,7 +22,20 @@ import {
 	type NodeTypeAndVersion,
 	type VersionedNodeType,
 	type Workflow,
+	type CronContext,
+	type Cron,
 } from 'n8n-workflow';
+
+const logger = mock({
+	scoped: jest.fn().mockReturnValue(
+		mock({
+			debug: jest.fn(),
+			info: jest.fn(),
+			warn: jest.fn(),
+			error: jest.fn(),
+		}),
+	),
+});
 
 type MockDeepPartial<T> = Parameters<typeof mock<T>>[0];
 
@@ -31,6 +45,7 @@ type TestTriggerNodeOptions = {
 	timezone?: string;
 	workflowStaticData?: IDataObject;
 	credential?: ICredentialDataDecryptedObject;
+	helpers?: Partial<ITriggerFunctions['helpers']>;
 };
 
 type TestWebhookTriggerNodeOptions = TestTriggerNodeOptions & {
@@ -38,6 +53,8 @@ type TestWebhookTriggerNodeOptions = TestTriggerNodeOptions & {
 	request?: MockDeepPartial<express.Request>;
 	bodyData?: IDataObject;
 	childNodes?: NodeTypeAndVersion[];
+	workflow?: Workflow;
+	headerData?: IncomingHttpHeaders;
 };
 
 type TestPollingTriggerNodeOptions = TestTriggerNodeOptions & {};
@@ -66,23 +83,43 @@ export async function testTriggerNode(
 	) as INode;
 	const workflow = mock<Workflow>({ timezone: options.timezone ?? 'Europe/Berlin' });
 
-	const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>());
+	const scheduledTaskManager = new ScheduledTaskManager(
+		mock<InstanceSettings>(),
+		logger as any,
+		mock(),
+		mock(),
+	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		createDeferredPromise,
 		returnJsonArray,
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
+		registerCron: (cron: Cron, onTick) => {
+			const ctx: CronContext = {
+				expression: cron.expression,
+				recurrence: cron.recurrence,
+				nodeId: node.id,
+				workflowId: workflow.id,
+				timezone: workflow.timezone,
+			};
+			scheduledTaskManager.registerCron(ctx, onTick);
+		},
 	});
 
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers,
 		emit,
+		logger: mock({
+			debug: jest.fn(),
+			info: jest.fn(),
+			warn: jest.fn(),
+			error: jest.fn(),
+		}),
 		getTimezone: () => timezone,
 		getNode: () => node,
 		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 			(options.credential ?? {}) as T,
 		getMode: () => options.mode ?? 'trigger',
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
+		getWorkflowSettings: () => ({}),
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
 	});
 
@@ -90,11 +127,11 @@ export async function testTriggerNode(
 
 	if (options.mode === 'manual') {
 		expect(response?.manualTriggerFunction).toBeInstanceOf(Function);
-		await response?.manualTriggerFunction?.();
 	}
 
 	return {
 		close: jest.fn(response?.closeFunction),
+		manualTriggerFunction: options.mode === 'manual' ? response?.manualTriggerFunction : undefined,
 		emit,
 	};
 }
@@ -117,6 +154,7 @@ export async function testWebhookTriggerNode(
 	const version = trigger.description.version;
 	const node = merge(
 		{
+			id: options.node?.id ?? '1',
 			type: trigger.description.name,
 			name: trigger.description.defaults.name ?? `Test Node (${trigger.description.name})`,
 			typeVersion: typeof version === 'number' ? version : version.at(-1),
@@ -125,11 +163,25 @@ export async function testWebhookTriggerNode(
 	) as INode;
 	const workflow = mock<Workflow>({ timezone: options.timezone ?? 'Europe/Berlin' });
 
-	const scheduledTaskManager = new ScheduledTaskManager(mock<InstanceSettings>());
+	const scheduledTaskManager = new ScheduledTaskManager(
+		mock<InstanceSettings>(),
+		logger as any,
+		mock(),
+		mock(),
+	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		returnJsonArray,
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
+		registerCron: (cron: Cron, onTick) => {
+			const ctx: CronContext = {
+				expression: cron.expression,
+				recurrence: cron.recurrence,
+				nodeId: node.id,
+				workflowId: workflow.id,
+				timezone: workflow.timezone,
+			};
+			scheduledTaskManager.registerCron(ctx, onTick);
+		},
+		prepareBinaryData: options.helpers?.prepareBinaryData ?? jest.fn(),
 	});
 
 	const request = mock<express.Request>({
@@ -147,15 +199,17 @@ export async function testWebhookTriggerNode(
 		getMode: () => options.mode ?? 'trigger',
 		getInstanceId: () => 'instanceId',
 		getBodyData: () => options.bodyData ?? {},
-		getHeaderData: () => ({}),
+		getHeaderData: () => options.headerData ?? request.headers ?? {},
 		getInputConnectionData: async () => ({}),
 		getNodeWebhookUrl: (name) => `/test-webhook-url/${name}`,
 		getParamsData: () => ({}),
 		getQueryData: () => ({}),
 		getRequestObject: () => request,
 		getResponseObject: () => response,
+		getWorkflow: () => options.workflow ?? mock<Workflow>(),
 		getWebhookName: () => options.webhookName ?? 'default',
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
+		getWorkflowSettings: () => ({}),
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
 		getChildNodes: () => options.childNodes ?? [],
 		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>

@@ -1,0 +1,160 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"documentId": {
+					"__rl": true,
+					"value": "1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs",
+					"mode": "list",
+					"cachedResultName": "Evaluation test - mutasem",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs/edit?usp=drivesdk"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": 1911651598,
+					"mode": "list",
+					"cachedResultName": "Sheet2",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs/edit#gid=1911651598"
+				}
+			},
+			"type": "n8n-nodes-base.evaluationTrigger",
+			"typeVersion": 4.6,
+			"position": [0, 0],
+			"id": "2353d300-628d-4e9f-86ad-89b3b78bf02f",
+			"name": "When fetching a dataset row",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "DQuAchCa7lPMNsOG",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"documentId": {
+					"__rl": true,
+					"value": "1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs",
+					"mode": "list",
+					"cachedResultName": "Evaluation test - mutasem",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs/edit?usp=drivesdk"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": 1911651598,
+					"mode": "list",
+					"cachedResultName": "Sheet2",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs/edit#gid=1911651598"
+				},
+				"outputs": {
+					"values": [
+						{
+							"outputName": "actual",
+							"outputValue": "={{ parseInt($json.actual) + 1 }}"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.evaluation",
+			"typeVersion": 4.7,
+			"position": [640, 0],
+			"id": "47bf60d4-1c60-4dcc-a9d7-af0c02c84db3",
+			"name": "Set outputs",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "DQuAchCa7lPMNsOG",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"amount": 1
+			},
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [208, 0],
+			"id": "2b5f3437-19bc-4d2e-ac60-52bfbb0fec1b",
+			"name": "Wait",
+			"webhookId": "26826666-e8e8-492e-9619-49e604fc90ee"
+		},
+		{
+			"parameters": {
+				"operation": "setInputs",
+				"inputs": {
+					"values": [
+						{
+							"inputName": "input",
+							"inputValue": "test"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.evaluation",
+			"typeVersion": 4.7,
+			"position": [864, 0],
+			"id": "e027893e-4150-42dc-8b1e-8c24f5060cd1",
+			"name": "set inptus"
+		},
+		{
+			"parameters": {
+				"operation": "checkIfEvaluating"
+			},
+			"type": "n8n-nodes-base.evaluation",
+			"typeVersion": 4.7,
+			"position": [416, 0],
+			"id": "7cc3b2fb-985b-437d-a0c7-0375f3717ee1",
+			"name": "Evaluation"
+		}
+	],
+	"connections": {
+		"When fetching a dataset row": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set outputs": {
+			"main": [
+				[
+					{
+						"node": "set inptus",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Evaluation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Evaluation": {
+			"main": [
+				[
+					{
+						"node": "Set outputs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "f0e9801eba0feea6a9ddf9beeabe34b0843eae42a1dbc62eaadd68e8f576be64"
+	}
+}

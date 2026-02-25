@@ -1,5 +1,5 @@
-import { BaseError } from '@/errors/base/base.error';
-import { UserError } from '@/errors/base/user.error';
+import { BaseError } from '../../../src/errors/base/base.error';
+import { UserError } from '../../../src/errors/base/user.error';
 
 describe('UserError', () => {
 	it('should be an instance of UserError', () => {

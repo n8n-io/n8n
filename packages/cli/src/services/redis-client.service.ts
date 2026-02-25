@@ -1,10 +1,10 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Debounce } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import ioRedis from 'ioredis';
-import type { Cluster, RedisOptions } from 'ioredis';
-import { Logger } from 'n8n-core';
+import type { Cluster, ClusterOptions, RedisOptions } from 'ioredis';
 
-import { Debounce } from '@/decorators/debounce';
 import { TypedEmitter } from '@/typed-emitter';
 
 import type { RedisClientType } from '../scaling/redis/redis.types';
@@ -13,6 +13,9 @@ type RedisEventMap = {
 	'connection-lost': number;
 	'connection-recovered': never;
 };
+
+const RECONNECT_AND_RETRY = 2;
+const DO_NOT_RECONNECT = false;
 
 @Service()
 export class RedisClientService extends TypedEmitter<RedisEventMap> {
@@ -55,7 +58,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 				? this.createSentinelClient(arg)
 				: this.createRegularClient(arg);
 
-		client.on('error', (error) => {
+		client.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by retryStrategy
 
 			this.logger.error(`[Redis client] ${error.message}`, { error });
@@ -122,10 +125,9 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		const clusterNodes = this.clusterNodes();
 
-		const clusterClient = new ioRedis.Cluster(clusterNodes, {
-			redisOptions: options,
-			clusterRetryStrategy: this.retryStrategy(),
-		});
+		const clusterOptions = this.getClusterOptions(options, this.retryStrategy());
+
+		const clusterClient = new ioRedis.Cluster(clusterNodes, clusterOptions);
 
 		this.logger.debug(`Started Redis cluster client ${type}`, { type, clusterNodes });
 
@@ -154,7 +156,18 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	}
 
 	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
-		const { username, password, db, tls, dualStack, name } = this.globalConfig.queue.bull.redis;
+		const {
+			username,
+			password,
+			db,
+			tls,
+			dualStack,
+			keepAlive,
+			keepAliveDelay,
+			keepAliveInterval,
+			reconnectOnFailover,
+			name
+		} = this.globalConfig.queue.bull.redis;
 
 		/**
 		 * Disabling ready check allows quick reconnection to Redis if Redis becomes
@@ -181,7 +194,47 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		if (tls) options.tls = {}; // enable TLS with default Node.js settings
 
+		// Add keep-alive configuration
+		if (keepAlive) {
+			options.keepAlive = keepAliveDelay;
+			// @ts-expect-error: keepAliveInterval is missing in ioRedis types but supported in node js socket since v18.4.0
+			options.keepAliveInterval = keepAliveInterval;
+		}
+
+		if (reconnectOnFailover) {
+			options.reconnectOnError = (redisErr: Error) => {
+				const targetError = 'READONLY';
+				if (redisErr.message.includes(targetError)) {
+					this.logger.warn('Reconnecting to Redis due to READONLY error (possible failover event)');
+					return RECONNECT_AND_RETRY;
+				}
+				return DO_NOT_RECONNECT;
+			};
+		}
+
 		return options;
+	}
+
+	private getClusterOptions(
+		options: RedisOptions,
+		retryStrategy: () => number | null,
+	): ClusterOptions {
+		const { slotsRefreshTimeout, slotsRefreshInterval, dnsResolveStrategy } =
+			this.globalConfig.queue.bull.redis;
+		const clusterOptions: ClusterOptions = {
+			redisOptions: options,
+			clusterRetryStrategy: retryStrategy,
+			slotsRefreshTimeout,
+			slotsRefreshInterval,
+		};
+
+		// NOTE: this is necessary to use AWS Elasticache Clusters with TLS.
+		// See https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls.
+		if (dnsResolveStrategy === 'NONE') {
+			clusterOptions.dnsLookup = (address, lookupFn) => lookupFn(null, address);
+		}
+
+		return clusterOptions;
 	}
 
 	/**

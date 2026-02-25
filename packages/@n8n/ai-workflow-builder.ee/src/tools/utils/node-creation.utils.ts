@@ -1,0 +1,130 @@
+import {
+	assert,
+	type INode,
+	type INodeTypeDescription,
+	type NodeParameterValueType,
+	type OnError,
+} from 'n8n-workflow';
+
+/**
+ * Node execution settings that can be set when creating a node
+ */
+export interface NodeSettings {
+	executeOnce?: boolean;
+	onError?: OnError;
+}
+
+/**
+ * Generate a unique node name by appending numbers if necessary
+ * @param baseName - The base name to start with
+ * @param existingNodes - Array of existing nodes to check against
+ * @returns A unique node name
+ */
+export function generateUniqueName(baseName: string, existingNodes: INode[]): string {
+	let uniqueName = baseName;
+	let counter = 1;
+
+	while (existingNodes.some((n) => n.name === uniqueName)) {
+		uniqueName = `${baseName}${counter}`;
+		counter++;
+	}
+
+	return uniqueName;
+}
+
+/**
+ * Get the latest version number for a node type
+ * @param nodeType - The node type description
+ * @returns The latest version number
+ */
+export function getLatestVersion(nodeType: INodeTypeDescription): number {
+	return (
+		nodeType.defaultVersion ??
+		(typeof nodeType.version === 'number'
+			? nodeType.version
+			: nodeType.version[nodeType.version.length - 1])
+	);
+}
+
+/**
+ * Generate a unique node ID
+ * @returns A unique node identifier
+ */
+export function generateNodeId(): string {
+	return crypto.randomUUID();
+}
+
+/**
+ * Generate a webhook ID for nodes that require it
+ * @returns A unique webhook identifier
+ */
+export function generateWebhookId(): string {
+	return crypto.randomUUID();
+}
+
+/**
+ * Check if a node type requires a webhook
+ * @param nodeType - The node type description
+ * @returns True if the node requires a webhook
+ */
+export function requiresWebhook(nodeType: INodeTypeDescription): boolean {
+	return !!(nodeType.webhooks && nodeType.webhooks.length > 0);
+}
+
+/**
+ * Create a new node instance with all required properties
+ * @param nodeType - The node type description
+ * @param typeVersion - The node type version - nodeType can have multiple versions
+ * @param name - The name for the node
+ * @param position - The position of the node
+ * @param parameters - Optional parameters for the node
+ * @param id - Optional specific ID to use for the node (for testing purposes)
+ * @param nodeSettings - Optional node execution settings (executeOnce, onError)
+ * @returns A complete node instance
+ */
+export function createNodeInstance(
+	nodeType: INodeTypeDescription,
+	typeVersion: number,
+	name: string,
+	position: [number, number],
+	parameters: Record<string, NodeParameterValueType> = {},
+	id?: string,
+	nodeSettings?: NodeSettings,
+): INode {
+	assert(
+		Array.isArray(nodeType.version)
+			? nodeType.version.includes(typeVersion)
+			: typeVersion === nodeType.version,
+	);
+	const node: INode = {
+		id: id ?? generateNodeId(),
+		name,
+		type: nodeType.name,
+		typeVersion,
+		position,
+		parameters,
+		// Spread node settings (only defined properties will be included)
+		...nodeSettings,
+	};
+
+	// Add webhook ID if required
+	if (requiresWebhook(nodeType)) {
+		node.webhookId = generateWebhookId();
+	}
+
+	return node;
+}
+
+/**
+ * Merge provided parameters with node defaults
+ * @param parameters - User-provided parameters
+ * @param nodeType - The node type description
+ * @returns Merged parameters
+ */
+export function mergeWithDefaults(
+	parameters: Record<string, NodeParameterValueType>,
+	nodeType: INodeTypeDescription,
+): Record<string, NodeParameterValueType> {
+	const defaults = nodeType.defaults || {};
+	return { ...defaults, ...parameters };
+}

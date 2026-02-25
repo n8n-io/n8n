@@ -1,10 +1,11 @@
+import { Logger } from '@n8n/backend-common';
+import type { IExecutionDb } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import pick from 'lodash/pick';
-import { Logger } from 'n8n-core';
 import { ensureError, type ExecutionStatus, type IRun, type IWorkflowBase } from 'n8n-workflow';
 
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IExecutionDb, UpdateExecutionPayload } from '@/interfaces';
+import type { UpdateExecutionPayload } from '@/interfaces';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
 import { isWorkflowIdValid } from '@/utils';
 
@@ -37,6 +38,8 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 		'id',
 		'name',
 		'active',
+		'activeVersionId',
+		'isArchived',
 		'createdAt',
 		'updatedAt',
 		'nodes',
@@ -70,6 +73,22 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 	return fullExecutionData;
 }
 
+export async function updateExistingExecutionMetadata(
+	executionId: string,
+	metadata?: Record<string, string>,
+) {
+	const logger = Container.get(Logger);
+
+	try {
+		if (metadata && Object.keys(metadata).length > 0) {
+			await Container.get(ExecutionMetadataService).save(executionId, metadata);
+		}
+	} catch (e) {
+		const error = ensureError(e);
+		logger.error(`Failed to save metadata for execution ID ${executionId}`, { error });
+	}
+}
+
 export async function updateExistingExecution(parameters: {
 	executionId: string;
 	workflowId: string;
@@ -86,18 +105,6 @@ export async function updateExistingExecution(parameters: {
 	});
 
 	await Container.get(ExecutionRepository).updateExistingExecution(executionId, executionData);
-
-	try {
-		if (executionData.data?.resultData.metadata) {
-			await Container.get(ExecutionMetadataService).save(
-				executionId,
-				executionData.data.resultData.metadata,
-			);
-		}
-	} catch (e) {
-		const error = ensureError(e);
-		logger.error(`Failed to save metadata for execution ID ${executionId}`, { error });
-	}
 
 	if (executionData.finished === true && executionData.retryOf !== undefined) {
 		await Container.get(ExecutionRepository).updateExistingExecution(executionData.retryOf, {

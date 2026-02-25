@@ -39,3 +39,5 @@ export interface Message {
 	parts: MessageBodyPart[];
 	seqNo?: number;
 }
+
+export type SearchCriteria = string | [string, string];

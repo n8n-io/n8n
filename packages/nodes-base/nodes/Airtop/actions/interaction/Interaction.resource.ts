@@ -1,10 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as click from './click.operation';
+import * as fill from './fill.operation';
 import * as hover from './hover.operation';
+import * as scroll from './scroll.operation';
 import * as type from './type.operation';
 import { sessionIdField, windowIdField } from '../common/fields';
-export { click, hover, type };
+export { click, fill, hover, scroll, type };
 
 export const description: INodeProperties[] = [
 	{
@@ -25,10 +27,22 @@ export const description: INodeProperties[] = [
 				action: 'Click an element',
 			},
 			{
+				name: 'Fill Form',
+				value: 'fill',
+				description: 'Fill a form with the provided information',
+				action: 'Fill form',
+			},
+			{
 				name: 'Hover on an Element',
 				value: 'hover',
 				description: 'Execute a hover action on an element given a description',
 				action: 'Hover on an element',
+			},
+			{
+				name: 'Scroll',
+				value: 'scroll',
+				description: 'Execute a scroll action on the page',
+				action: 'Scroll on page',
 			},
 			{
 				name: 'Type',
@@ -56,7 +70,9 @@ export const description: INodeProperties[] = [
 		},
 	},
 	...click.description,
+	...fill.description,
 	...hover.description,
+	...scroll.description,
 	...type.description,
 	{
 		displayName: 'Additional Fields',
@@ -67,6 +83,7 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['interaction'],
+				operation: ['click', 'hover', 'type', 'scroll'],
 			},
 		},
 		options: [

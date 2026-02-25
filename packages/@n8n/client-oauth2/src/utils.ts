@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ClientOAuth2Options, ClientOAuth2RequestObject } from './ClientOAuth2';
+import type { ClientOAuth2Options, ClientOAuth2RequestObject } from './client-oauth2';
 import { ERROR_RESPONSES } from './constants';
 
 /**

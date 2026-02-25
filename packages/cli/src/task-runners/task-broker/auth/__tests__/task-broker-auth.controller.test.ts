@@ -1,9 +1,9 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import { CacheService } from '@/services/cache/cache.service';
-import { mockInstance } from '@test/mocking';
 
 import { BadRequestError } from '../../../../errors/response-errors/bad-request.error';
 import { ForbiddenError } from '../../../../errors/response-errors/forbidden.error';

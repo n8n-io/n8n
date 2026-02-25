@@ -23,6 +23,9 @@
                     "items": {
                         "type": "object",
                         "properties": {
+                            "description": {
+                                "type": "string"
+                            },
                             "id": {
                                 "type": "string"
                             },
@@ -81,6 +84,15 @@
                         }
                     }
                 },
+                "customfield_10001": {
+                    "type": "null"
+                },
+                "customfield_10019": {
+                    "type": "string"
+                },
+                "customfield_10021": {
+                    "type": "null"
+                },
                 "fixVersions": {
                     "type": "array",
                     "items": {
@@ -100,6 +112,9 @@
                             },
                             "released": {
                                 "type": "boolean"
+                            },
+                            "releaseDate": {
+                                "type": "string"
                             },
                             "self": {
                                 "type": "string"
@@ -130,112 +145,7 @@
                                                     "description": {
                                                         "type": "string"
                                                     },
-                                                    "hierarchyLevel": {
-                                                        "type": "integer"
-                                                    },
-                                                    "iconUrl": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "self": {
-                                                        "type": "string"
-                                                    },
-                                                    "subtask": {
-                                                        "type": "boolean"
-                                                    }
-                                                }
-                                            },
-                                            "priority": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "iconUrl": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "self": {
-                                                        "type": "string"
-                                                    }
-                                                }
-                                            },
-                                            "status": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "description": {
-                                                        "type": "string"
-                                                    },
-                                                    "iconUrl": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "self": {
-                                                        "type": "string"
-                                                    },
-                                                    "statusCategory": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "colorName": {
-                                                                "type": "string"
-                                                            },
-                                                            "id": {
-                                                                "type": "integer"
-                                                            },
-                                                            "key": {
-                                                                "type": "string"
-                                                            },
-                                                            "name": {
-                                                                "type": "string"
-                                                            },
-                                                            "self": {
-                                                                "type": "string"
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            },
-                                            "summary": {
-                                                "type": "string"
-                                            }
-                                        }
-                                    },
-                                    "id": {
-                                        "type": "string"
-                                    },
-                                    "key": {
-                                        "type": "string"
-                                    },
-                                    "self": {
-                                        "type": "string"
-                                    }
-                                }
-                            },
-                            "outwardIssue": {
-                                "type": "object",
-                                "properties": {
-                                    "fields": {
-                                        "type": "object",
-                                        "properties": {
-                                            "issuetype": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "avatarId": {
-                                                        "type": "integer"
-                                                    },
-                                                    "description": {
+                                                    "entityId": {
                                                         "type": "string"
                                                     },
                                                     "hierarchyLevel": {
@@ -549,6 +459,26 @@
                         }
                     }
                 },
+                "statusCategory": {
+                    "type": "object",
+                    "properties": {
+                        "colorName": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "key": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        }
+                    }
+                },
                 "statuscategorychangedate": {
                     "type": "string"
                 },
@@ -567,6 +497,9 @@
                                                 "type": "integer"
                                             },
                                             "description": {
+                                                "type": "string"
+                                            },
+                                            "entityId": {
                                                 "type": "string"
                                             },
                                             "hierarchyLevel": {
@@ -712,5 +645,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 9
 }

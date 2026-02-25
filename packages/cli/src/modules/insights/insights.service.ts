@@ -1,355 +1,87 @@
-import type { InsightsSummary } from '@n8n/api-types';
+import { type InsightsSummary } from '@n8n/api-types';
+import { LicenseState, Logger } from '@n8n/backend-common';
+import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
-import { Logger } from 'n8n-core';
-import type { ExecutionLifecycleHooks } from 'n8n-core';
-import {
-	UnexpectedError,
-	type ExecutionStatus,
-	type IRun,
-	type WorkflowExecuteMode,
-} from 'n8n-workflow';
-
-import { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { OnShutdown } from '@/decorators/on-shutdown';
-import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
-import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
+import { InstanceSettings } from 'n8n-core';
+import { UserError } from 'n8n-workflow';
 
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
-import { NumberToType } from './database/entities/insights-shared';
+import { NumberToType, TypeToNumber } from './database/entities/insights-shared';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
-import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
-import { InsightsConfig } from './insights.config';
-
-const config = Container.get(InsightsConfig);
-
-const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
-	success: false,
-	crashed: false,
-	error: false,
-
-	canceled: true,
-	new: true,
-	running: true,
-	unknown: true,
-	waiting: true,
-};
-
-const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
-	cli: false,
-	error: false,
-	retry: false,
-	trigger: false,
-	webhook: false,
-	evaluation: false,
-
-	// sub workflows
-	integrated: true,
-
-	// error workflows
-	internal: true,
-
-	manual: true,
-};
-
-type BufferedInsight = Pick<InsightsRaw, 'type' | 'value' | 'timestamp'> & {
-	workflowId: string;
-	workflowName: string;
-};
+import { InsightsCompactionService } from './insights-compaction.service';
+import { InsightsPruningService } from './insights-pruning.service';
 
 @Service()
 export class InsightsService {
-	private readonly cachedMetadata: Map<string, InsightsMetadata> = new Map();
-
-	private compactInsightsTimer: NodeJS.Timer | undefined;
-
-	private bufferedInsights: Set<BufferedInsight> = new Set();
-
-	private flushInsightsRawBufferTimer: NodeJS.Timer | undefined;
-
-	private isAsynchronouslySavingInsights = true;
-
-	private flushesInProgress: Set<Promise<void>> = new Set();
-
 	constructor(
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
-		private readonly insightsRawRepository: InsightsRawRepository,
+		private readonly compactionService: InsightsCompactionService,
+		private readonly pruningService: InsightsPruningService,
+		private readonly licenseState: LicenseState,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('insights');
-		this.initializeCompaction();
-		this.scheduleFlushing();
 	}
 
-	initializeCompaction() {
-		if (this.compactInsightsTimer !== undefined) {
-			clearInterval(this.compactInsightsTimer);
+	private async toggleCollectionService(enable: boolean) {
+		if (
+			this.instanceSettings.instanceType !== 'main' &&
+			this.instanceSettings.instanceType !== 'webhook'
+		) {
+			this.logger.debug('Instance is not main or webhook, skipping collection');
+			return;
 		}
-		const intervalMilliseconds = config.compactionIntervalMinutes * 60 * 1000;
-		this.compactInsightsTimer = setInterval(
-			async () => await this.compactInsights(),
-			intervalMilliseconds,
-		);
-	}
 
-	scheduleFlushing() {
-		this.isAsynchronouslySavingInsights = true;
-		this.disposeFlushing();
-		this.flushInsightsRawBufferTimer = setTimeout(
-			async () => await this.flushEvents(),
-			config.flushIntervalSeconds * 1000,
-		);
-	}
-
-	disposeFlushing() {
-		if (this.flushInsightsRawBufferTimer !== undefined) {
-			clearInterval(this.flushInsightsRawBufferTimer);
-			this.flushInsightsRawBufferTimer = undefined;
+		const { InsightsCollectionService } = await import('./insights-collection.service');
+		const collectionService = Container.get(InsightsCollectionService);
+		if (enable) {
+			collectionService.init();
+		} else {
+			await collectionService.shutdown();
 		}
 	}
 
-	@OnShutdown()
+	async init() {
+		await this.toggleCollectionService(true);
+
+		if (this.instanceSettings.isLeader) this.startCompactionAndPruningTimers();
+	}
+
+	@OnLeaderTakeover()
+	startCompactionAndPruningTimers() {
+		this.compactionService.startCompactionTimer();
+		if (this.pruningService.isPruningEnabled) {
+			this.pruningService.startPruningTimer();
+		}
+	}
+
+	@OnLeaderStepdown()
+	stopCompactionAndPruningTimers() {
+		this.compactionService.stopCompactionTimer();
+		this.pruningService.stopPruningTimer();
+	}
+
 	async shutdown() {
-		if (this.compactInsightsTimer !== undefined) {
-			clearInterval(this.compactInsightsTimer);
-			this.compactInsightsTimer = undefined;
-		}
-
-		if (this.flushInsightsRawBufferTimer !== undefined) {
-			clearInterval(this.flushInsightsRawBufferTimer);
-			this.flushInsightsRawBufferTimer = undefined;
-		}
-
-		// Prevent new insights from being added to the buffer (and never flushed)
-		// when remaining workflows are handled during shutdown
-		this.isAsynchronouslySavingInsights = false;
-
-		// Wait for all in-progress asynchronous flushes
-		// Flush any remaining events
-		await Promise.all([...this.flushesInProgress, this.flushEvents()]);
+		await this.toggleCollectionService(false);
+		this.stopCompactionAndPruningTimers();
 	}
 
-	async workflowExecuteAfterHandler(ctx: ExecutionLifecycleHooks, fullRunData: IRun) {
-		if (shouldSkipStatus[fullRunData.status] || shouldSkipMode[fullRunData.mode]) {
-			return;
-		}
-
-		const status = fullRunData.status === 'success' ? 'success' : 'failure';
-
-		const commonWorkflowData = {
-			workflowId: ctx.workflowData.id,
-			workflowName: ctx.workflowData.name,
-			timestamp: DateTime.utc().toJSDate(),
-		};
-
-		// success or failure event
-		this.bufferedInsights.add({
-			...commonWorkflowData,
-			type: status,
-			value: 1,
+	async getInsightsSummary({
+		startDate,
+		endDate,
+		projectId,
+	}: {
+		projectId?: string;
+		startDate: Date;
+		endDate: Date;
+	}): Promise<InsightsSummary> {
+		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates({
+			startDate,
+			endDate,
+			projectId,
 		});
-
-		// run time event
-		if (fullRunData.stoppedAt) {
-			const value = fullRunData.stoppedAt.getTime() - fullRunData.startedAt.getTime();
-			this.bufferedInsights.add({
-				...commonWorkflowData,
-				type: 'runtime_ms',
-				value,
-			});
-		}
-
-		// time saved event
-		if (status === 'success' && ctx.workflowData.settings?.timeSavedPerExecution) {
-			this.bufferedInsights.add({
-				...commonWorkflowData,
-				type: 'time_saved_min',
-				value: ctx.workflowData.settings.timeSavedPerExecution,
-			});
-		}
-
-		if (!this.isAsynchronouslySavingInsights) {
-			// If we are not asynchronously saving insights, we need to flush the events
-			await this.flushEvents();
-		}
-
-		// If the buffer is full, flush the events asynchronously
-		if (this.bufferedInsights.size >= config.flushBatchSize) {
-			// Fire and forget flush to avoid blocking the workflow execute after handler
-			void this.flushEvents();
-		}
-	}
-
-	async saveInsightsMetadataAndRaw(insightsRawToInsertBuffer: Set<BufferedInsight>) {
-		const workflowIdNames: Map<string, string> = new Map();
-
-		for (const event of insightsRawToInsertBuffer) {
-			workflowIdNames.set(event.workflowId, event.workflowName);
-		}
-
-		await this.sharedWorkflowRepository.manager.transaction(async (trx) => {
-			const sharedWorkflows = await trx.find(SharedWorkflow, {
-				where: { workflowId: In([...workflowIdNames.keys()]), role: 'workflow:owner' },
-				relations: { project: true },
-			});
-
-			// Upsert metadata for the workflows that are not already in the cache or have
-			// different project or workflow names
-			const metadataToUpsert = sharedWorkflows.reduce((acc, workflow) => {
-				const cachedMetadata = this.cachedMetadata.get(workflow.workflowId);
-				if (
-					!cachedMetadata ||
-					cachedMetadata.projectId !== workflow.projectId ||
-					cachedMetadata.projectName !== workflow.project.name ||
-					cachedMetadata.workflowName !== workflowIdNames.get(workflow.workflowId)
-				) {
-					const metadata = new InsightsMetadata();
-					metadata.projectId = workflow.projectId;
-					metadata.projectName = workflow.project.name;
-					metadata.workflowId = workflow.workflowId;
-					metadata.workflowName = workflowIdNames.get(workflow.workflowId)!;
-
-					acc.push(metadata);
-				}
-				return acc;
-			}, [] as InsightsMetadata[]);
-
-			await trx.upsert(InsightsMetadata, metadataToUpsert, ['workflowId']);
-
-			const upsertMetadata = await trx.findBy(InsightsMetadata, {
-				workflowId: In(metadataToUpsert.map((m) => m.workflowId)),
-			});
-			for (const metadata of upsertMetadata) {
-				this.cachedMetadata.set(metadata.workflowId, metadata);
-			}
-
-			const events: InsightsRaw[] = [];
-			for (const event of insightsRawToInsertBuffer) {
-				const insight = new InsightsRaw();
-				const metadata = this.cachedMetadata.get(event.workflowId);
-				if (!metadata) {
-					// could not find shared workflow for this insight (not supposed to happen)
-					throw new UnexpectedError(
-						`Could not find shared workflow for insight with workflowId ${event.workflowId}`,
-					);
-				}
-				insight.metaId = metadata.metaId;
-				insight.type = event.type;
-				insight.value = event.value;
-				insight.timestamp = event.timestamp;
-
-				events.push(insight);
-			}
-
-			await trx.insert(InsightsRaw, events);
-		});
-	}
-
-	async flushEvents() {
-		// Prevent flushing if there are no events to flush
-		if (this.bufferedInsights.size === 0) {
-			return;
-		}
-
-		// Stop timer to prevent concurrent flush from timer
-		this.disposeFlushing();
-
-		// Copy the buffer to a new set to avoid concurrent modification
-		// while we are flushing the events
-		const bufferedInsightsToFlush = new Set(this.bufferedInsights);
-		this.bufferedInsights.clear();
-
-		let flushPromise: Promise<void> | undefined = undefined;
-		flushPromise = (async () => {
-			try {
-				await this.saveInsightsMetadataAndRaw(bufferedInsightsToFlush);
-			} catch (e) {
-				this.logger.error('Error while saving insights metadata and raw data', { error: e });
-				for (const event of bufferedInsightsToFlush) {
-					this.bufferedInsights.add(event);
-				}
-			} finally {
-				this.scheduleFlushing();
-				this.flushesInProgress.delete(flushPromise!);
-			}
-		})();
-
-		// Add the flush promise to the set of flushes in progress for shutdown await
-		this.flushesInProgress.add(flushPromise);
-		await flushPromise;
-	}
-
-	async compactInsights() {
-		let numberOfCompactedRawData: number;
-
-		// Compact raw data to hourly aggregates
-		do {
-			numberOfCompactedRawData = await this.compactRawToHour();
-		} while (numberOfCompactedRawData > 0);
-
-		let numberOfCompactedHourData: number;
-
-		// Compact hourly data to daily aggregates
-		do {
-			numberOfCompactedHourData = await this.compactHourToDay();
-		} while (numberOfCompactedHourData > 0);
-
-		let numberOfCompactedDayData: number;
-		// Compact daily data to weekly aggregates
-		do {
-			numberOfCompactedDayData = await this.compactDayToWeek();
-		} while (numberOfCompactedDayData > 0);
-	}
-
-	// Compacts raw data to hourly aggregates
-	async compactRawToHour() {
-		// Build the query to gather raw insights data for the batch
-		const batchQuery = this.insightsRawRepository.getRawInsightsBatchQuery(
-			config.compactionBatchSize,
-		);
-
-		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
-			sourceBatchQuery: batchQuery,
-			sourceTableName: this.insightsRawRepository.metadata.tableName,
-			periodUnitToCompactInto: 'hour',
-		});
-	}
-
-	// Compacts hourly data to daily aggregates
-	async compactHourToDay() {
-		// get hour data query for batching
-		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
-			periodUnitToCompactFrom: 'hour',
-			compactionBatchSize: config.compactionBatchSize,
-			maxAgeInDays: config.compactionHourlyToDailyThresholdDays,
-		});
-
-		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
-			sourceBatchQuery: batchQuery,
-			periodUnitToCompactInto: 'day',
-		});
-	}
-
-	// Compacts daily data to weekly aggregates
-	async compactDayToWeek() {
-		// get daily data query for batching
-		const batchQuery = this.insightsByPeriodRepository.getPeriodInsightsBatchQuery({
-			periodUnitToCompactFrom: 'day',
-			compactionBatchSize: config.compactionBatchSize,
-			maxAgeInDays: config.compactionDailyToWeeklyThresholdDays,
-		});
-
-		return await this.insightsByPeriodRepository.compactSourceDataIntoInsightPeriod({
-			sourceBatchQuery: batchQuery,
-			periodUnitToCompactInto: 'week',
-		});
-	}
-
-	async getInsightsSummary(): Promise<InsightsSummary> {
-		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates();
 
 		// Initialize data structures for both periods
 		const data = {
@@ -402,7 +134,7 @@ export class InsightsService {
 		const result: InsightsSummary = {
 			averageRunTime: {
 				value: currentAvgRuntime,
-				unit: 'time',
+				unit: 'millisecond',
 				deviation: getDeviation(currentAvgRuntime, previousAvgRuntime),
 			},
 			failed: {
@@ -417,7 +149,7 @@ export class InsightsService {
 			},
 			timeSaved: {
 				value: currentTimeSaved,
-				unit: 'time',
+				unit: 'minute',
 				deviation: getDeviation(currentTimeSaved, previousTimeSaved),
 			},
 			total: {
@@ -431,21 +163,27 @@ export class InsightsService {
 	}
 
 	async getInsightsByWorkflow({
-		maxAgeInDays,
 		skip = 0,
 		take = 10,
 		sortBy = 'total:desc',
+		projectId,
+		startDate,
+		endDate,
 	}: {
-		maxAgeInDays: number;
 		skip?: number;
 		take?: number;
 		sortBy?: string;
+		projectId?: string;
+		startDate: Date;
+		endDate: Date;
 	}) {
 		const { count, rows } = await this.insightsByPeriodRepository.getInsightsByWorkflow({
-			maxAgeInDays,
+			startDate,
+			endDate,
 			skip,
 			take,
 			sortBy,
+			projectId,
 		});
 
 		return {
@@ -455,27 +193,100 @@ export class InsightsService {
 	}
 
 	async getInsightsByTime({
-		maxAgeInDays,
-		periodUnit,
-	}: { maxAgeInDays: number; periodUnit: PeriodUnit }) {
+		// Default to all insight types
+		insightTypes = Object.keys(TypeToNumber) as TypeUnit[],
+		projectId,
+		startDate,
+		endDate,
+	}: {
+		insightTypes?: TypeUnit[];
+		projectId?: string;
+		startDate: Date;
+		endDate: Date;
+	}) {
+		const periodUnit = this.getDateFiltersGranularity({ startDate, endDate });
 		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
-			maxAgeInDays,
 			periodUnit,
+			insightTypes,
+			projectId,
+			startDate,
+			endDate,
 		});
 
 		return rows.map((r) => {
-			const total = r.succeeded + r.failed;
+			const { periodStart, runTime, ...rest } = r;
+			const values: typeof rest & {
+				total?: number;
+				successRate?: number;
+				failureRate?: number;
+				averageRunTime?: number;
+			} = rest;
+
+			// Compute ratio if total has been computed
+			if (typeof r.succeeded === 'number' && typeof r.failed === 'number') {
+				const total = r.succeeded + r.failed;
+				values.total = total;
+				values.failureRate = total ? r.failed / total : 0;
+				if (typeof runTime === 'number') {
+					values.averageRunTime = total ? runTime / total : 0;
+				}
+			}
 			return {
 				date: r.periodStart,
-				values: {
-					total,
-					succeeded: r.succeeded,
-					failed: r.failed,
-					failureRate: r.failed / total,
-					averageRunTime: r.runTime / total,
-					timeSaved: r.timeSaved,
-				},
+				values,
 			};
 		});
+	}
+
+	/**
+	 * Checks if the selected date range is compliant with the license
+	 *
+	 * - If the granularity is 'hour', checks if the license allows hourly data access
+	 * - Checks if the start date is within the allowed history range
+	 *
+	 * @throws {UserError} if the license does not allow the selected date range
+	 */
+	validateDateFiltersLicense({ startDate, endDate }: { startDate: Date; endDate: Date }) {
+		// we use `startOf('day')` because the license limits are based on full days
+		const today = DateTime.now().startOf('day');
+		const startDateStartOfDay = DateTime.fromJSDate(startDate).startOf('day');
+		const daysToStartDate = today.diff(startDateStartOfDay, 'days').days;
+
+		const granularity = this.getDateFiltersGranularity({ startDate, endDate });
+
+		const maxHistoryInDays =
+			this.licenseState.getInsightsMaxHistory() === -1
+				? Number.MAX_SAFE_INTEGER
+				: this.licenseState.getInsightsMaxHistory();
+		const isHourlyDateLicensed = this.licenseState.isInsightsHourlyDataLicensed();
+
+		if (granularity === 'hour' && !isHourlyDateLicensed) {
+			throw new UserError('Hourly data is not available with your current license');
+		}
+
+		if (maxHistoryInDays < daysToStartDate) {
+			throw new UserError(
+				'The selected date range exceeds the maximum history allowed by your license',
+			);
+		}
+	}
+
+	private getDateFiltersGranularity({
+		startDate,
+		endDate,
+	}: { startDate: Date; endDate: Date }): PeriodUnit {
+		const startDateTime = DateTime.fromJSDate(startDate);
+		const endDateTime = DateTime.fromJSDate(endDate);
+		const differenceInDays = endDateTime.diff(startDateTime, 'days').days;
+
+		if (differenceInDays < 1) {
+			return 'hour';
+		}
+
+		if (differenceInDays <= 30) {
+			return 'day';
+		}
+
+		return 'week';
 	}
 }

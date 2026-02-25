@@ -1,6 +1,12 @@
 {
     "type": "object",
     "properties": {
+        "ChecksumAlgorithm": {
+            "type": "string"
+        },
+        "ChecksumType": {
+            "type": "string"
+        },
         "ETag": {
             "type": "string"
         },
@@ -17,5 +23,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

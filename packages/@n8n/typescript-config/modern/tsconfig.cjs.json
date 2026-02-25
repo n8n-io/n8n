@@ -1,0 +1,9 @@
+{
+	"compilerOptions": {
+		"composite": true,
+		"module": "umd",
+		"moduleResolution": "node",
+		"verbatimModuleSyntax": false,
+		"resolveJsonModule": false
+	}
+}

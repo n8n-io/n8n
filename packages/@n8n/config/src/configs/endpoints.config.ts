@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { Config, Env, Nested } from '../decorators';
 
 @Config
@@ -61,6 +63,18 @@ class PrometheusMetricsConfig {
 	/** How often (in seconds) to update active workflow metric */
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;
+
+	/** Whether to include a label for workflow name on workflow metrics. */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_NAME_LABEL')
+	includeWorkflowNameLabel: boolean = false;
+
+	/** Whether to include workflow execution statistics as metrics. */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_STATISTICS')
+	includeWorkflowStatistics: boolean = false;
+
+	/** How often (in seconds) to update workflow statistics metrics. */
+	@Env('N8N_METRICS_WORKFLOW_STATISTICS_INTERVAL')
+	workflowStatisticsInterval: number = 300;
 }
 
 @Config
@@ -104,6 +118,14 @@ export class EndpointsConfig {
 	@Env('N8N_ENDPOINT_WEBHOOK_WAIT')
 	webhookWaiting: string = 'webhook-waiting';
 
+	/** Path segment for MCP endpoints. */
+	@Env('N8N_ENDPOINT_MCP')
+	mcp: string = 'mcp';
+
+	/** Path segment for test MCP endpoints. */
+	@Env('N8N_ENDPOINT_MCP_TEST')
+	mcpTest: string = 'mcp-test';
+
 	/** Whether to disable n8n's UI (frontend). */
 	@Env('N8N_DISABLE_UI')
 	disableUi: boolean = false;
@@ -115,4 +137,11 @@ export class EndpointsConfig {
 	/** Colon-delimited list of additional endpoints to not open the UI on. */
 	@Env('N8N_ADDITIONAL_NON_UI_ROUTES')
 	additionalNonUIRoutes: string = '';
+
+	/** Path for the health check endpoint. */
+	@Env(
+		'N8N_ENDPOINT_HEALTH',
+		z.string().transform((val) => (val.startsWith('/') ? val : `/${val}`)),
+	)
+	health: string = '/healthz';
 }

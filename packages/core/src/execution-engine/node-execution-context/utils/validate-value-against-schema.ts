@@ -40,7 +40,7 @@ const validateResourceMapperValue = (
 	for (let i = 0; i < paramValueNames.length; i++) {
 		const key = paramValueNames[i];
 		const resolvedValue = paramValues[key];
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+
 		const schemaEntry = schema.find((s) => s.id === key);
 
 		if (
