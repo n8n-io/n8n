@@ -7,7 +7,7 @@ import { useSecretsProvidersList } from '@/features/integrations/secretsProvider
 import type { SecretProviderConnection } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY, VIEWS } from '@/app/constants';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRouter } from 'vue-router';
 
 import {
@@ -30,9 +30,9 @@ const router = useRouter();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 const rbacStore = useRBACStore();
+const settingsStore = useSettingsStore();
 const secretsProviders = useSecretsProvidersList();
 const secretsProviderConnection = useSecretsProviderConnection();
-const envFeatureFlag = useEnvFeatureFlag();
 
 interface ConnectionRow {
 	id: string;
@@ -50,8 +50,8 @@ const expandedConnections = ref<Set<string>>(new Set());
 const currentPage = ref(0);
 const itemsPerPage = ref(5);
 
-const isFeatureEnabled = computed(() =>
-	envFeatureFlag.check.value('EXTERNAL_SECRETS_FOR_PROJECTS'),
+const isFeatureEnabled = computed(
+	() => settingsStore.moduleSettings['external-secrets']?.forProjects ?? false,
 );
 
 // Permissions
@@ -98,7 +98,6 @@ const emptyStateConfig = computed(() => {
 				'projects.settings.externalSecrets.emptyState.instanceAdmin.noProjectProviders.description',
 			),
 			buttonText: i18n.baseText('projects.settings.externalSecrets.button.shareSecretsStore'),
-			buttonType: 'secondary' as const,
 			buttonAction: onShareSecretsStore,
 			testId: 'external-secrets-empty-state-no-project-providers',
 		},
@@ -108,12 +107,10 @@ const emptyStateConfig = computed(() => {
 				'projects.settings.externalSecrets.emptyState.projectAdmin.description',
 			),
 			buttonText: i18n.baseText('projects.settings.externalSecrets.button.addSecretsStore'),
-			buttonType: 'secondary' as const,
 			buttonAction: onAddSecretsStore,
 			testId: 'external-secrets-empty-state-project-admin',
 		},
 	};
-
 	return configs[type];
 });
 
@@ -298,12 +295,7 @@ defineExpose({
 		</h3>
 
 		<!-- Empty State: Consolidated view based on user role and current state -->
-		<N8nActionBox
-			v-if="emptyStateConfig"
-			:class="$style.externalSecretsEmpty"
-			:data-test-id="emptyStateConfig.testId"
-			description="yes"
-		>
+		<N8nActionBox v-if="emptyStateConfig" :data-test-id="emptyStateConfig.testId" description="yes">
 			<template #description>
 				<N8nHeading tag="h3" size="small" class="mb-2xs">
 					{{ emptyStateConfig.heading }}
@@ -314,7 +306,8 @@ defineExpose({
 			</template>
 			<template #additionalContent>
 				<N8nButton
-					type="highlight"
+					variant="ghost"
+					size="xsmall"
 					class="mr-2xs"
 					element="a"
 					:href="i18n.baseText('settings.externalSecrets.docs')"
@@ -324,7 +317,8 @@ defineExpose({
 					{{ i18n.baseText('generic.learnMore') }} <N8nIcon icon="arrow-up-right" />
 				</N8nButton>
 				<N8nButton
-					:type="emptyStateConfig.buttonType"
+					variant="subtle"
+					size="xsmall"
 					:data-test-id="`${emptyStateType}-button`"
 					@click="emptyStateConfig.buttonAction"
 				>
@@ -425,10 +419,6 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
-.externalSecretsEmpty {
-	margin-bottom: var(--spacing--lg);
-}
-
 .description {
 	max-width: 40rem;
 	display: block;
