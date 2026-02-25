@@ -1,0 +1,25 @@
+import { createTool } from '@mastra/core/tools';
+import { z } from 'zod';
+
+import type { InstanceAiContext } from '../../types';
+
+export function createGetExecutionTool(context: InstanceAiContext) {
+	return createTool({
+		id: 'get-execution',
+		description: 'Get the status and result of a workflow execution.',
+		inputSchema: z.object({
+			executionId: z.string().describe('ID of the execution to check'),
+		}),
+		outputSchema: z.object({
+			executionId: z.string(),
+			status: z.enum(['running', 'success', 'error', 'waiting']),
+			data: z.record(z.unknown()).optional(),
+			error: z.string().optional(),
+			startedAt: z.string().optional(),
+			finishedAt: z.string().optional(),
+		}),
+		execute: async (inputData) => {
+			return await context.executionService.getResult(inputData.executionId);
+		},
+	});
+}

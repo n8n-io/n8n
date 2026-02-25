@@ -7,6 +7,7 @@ import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
 import { CredentialsConfig } from './configs/credentials.config';
+import { InstanceAiConfig } from './configs/instance-ai.config';
 import { DataTableConfig } from './configs/data-table.config';
 import { DatabaseConfig } from './configs/database.config';
 import { DeploymentConfig } from './configs/deployment.config';
@@ -61,6 +62,7 @@ export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
+export { InstanceAiConfig } from './configs/instance-ai.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -229,4 +231,7 @@ export class GlobalConfig {
 
 	@Nested
 	chatHub: ChatHubConfig;
+
+	@Nested
+	instanceAi: InstanceAiConfig;
 }
