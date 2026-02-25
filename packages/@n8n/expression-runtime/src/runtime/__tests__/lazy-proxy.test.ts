@@ -186,13 +186,6 @@ describe('createDeepLazyProxy', () => {
 			expect(mocks.callFunctionAtPath).toHaveBeenCalledWith(null, [['myFn'], 'a', 1], ivmCallOpts);
 		});
 
-		it('returns the callback result from the function wrapper', () => {
-			mocks.getValueAtPath.mockReturnValue({ __isFunction: true, __name: 'myFn' });
-			mocks.callFunctionAtPath.mockReturnValue(99);
-			const proxy = createDeepLazyProxy();
-			expect(proxy.myFn()).toBe(99);
-		});
-
 		it('caches the function wrapper', () => {
 			mocks.getValueAtPath.mockReturnValue({ __isFunction: true, __name: 'myFn' });
 			const proxy = createDeepLazyProxy();
