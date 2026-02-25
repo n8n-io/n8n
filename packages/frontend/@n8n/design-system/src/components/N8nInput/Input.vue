@@ -104,6 +104,7 @@ const containerClasses = computed(() => [
 ]);
 
 const inputWrapperClasses = computed(() => [
+	'n8n-input__wrapper',
 	$style.inputWrapper,
 	{
 		[$style.disabled]: props.disabled,
