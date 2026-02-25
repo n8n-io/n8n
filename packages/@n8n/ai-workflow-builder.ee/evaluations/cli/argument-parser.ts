@@ -6,14 +6,23 @@ import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import type { LangsmithExampleFilters } from '../harness/harness-types';
 import { DEFAULTS } from '../support/constants';
-import type { StageModels } from '../support/environment.js';
+import type { StageModels } from '../support/environment';
 
-export type EvaluationSuite = 'llm-judge' | 'pairwise' | 'programmatic' | 'similarity';
+export type EvaluationSuite =
+	| 'llm-judge'
+	| 'pairwise'
+	| 'programmatic'
+	| 'similarity'
+	| 'introspection';
 export type EvaluationBackend = 'local' | 'langsmith';
+export type AgentType = 'multi-agent' | 'code-builder';
+
+export type SubgraphName = 'responder' | 'discovery' | 'builder' | 'configurator';
 
 export interface EvaluationArgs {
 	suite: EvaluationSuite;
 	backend: EvaluationBackend;
+	agent: AgentType;
 
 	verbose: boolean;
 	repetitions: number;
@@ -35,6 +44,18 @@ export interface EvaluationArgs {
 	numJudges: number;
 
 	featureFlags?: BuilderFeatureFlags;
+
+	/** Target a specific subgraph for evaluation (requires --dataset or --dataset-file) */
+	subgraph?: SubgraphName;
+
+	/** Path to a local JSON dataset file (alternative to --dataset for subgraph evals) */
+	datasetFile?: string;
+
+	/** Run full workflow generation from prompt instead of using pre-computed state */
+	regenerate?: boolean;
+
+	/** Write regenerated state back to the dataset source */
+	writeBack?: boolean;
 
 	/** URL to POST evaluation results to when complete */
 	webhookUrl?: string;
@@ -77,8 +98,11 @@ const modelIdSchema = z.enum(AVAILABLE_MODELS as [ModelId, ...ModelId[]]);
 
 const cliSchema = z
 	.object({
-		suite: z.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity']).default('llm-judge'),
+		suite: z
+			.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity', 'introspection'])
+			.default('llm-judge'),
 		backend: z.enum(['local', 'langsmith']).default('local'),
+		agent: z.enum(['code-builder', 'multi-agent']).default('code-builder'),
 
 		verbose: z.boolean().default(false),
 		repetitions: z.coerce.number().int().positive().default(DEFAULTS.REPETITIONS),
@@ -92,6 +116,11 @@ const cliSchema = z
 		filter: z.array(z.string().min(1)).default([]),
 		notionId: z.string().min(1).optional(),
 		technique: z.string().min(1).optional(),
+
+		subgraph: z.enum(['responder', 'discovery', 'builder', 'configurator']).optional(),
+		datasetFile: z.string().min(1).optional(),
+		regenerate: z.boolean().default(false),
+		writeBack: z.boolean().default(false),
 
 		testCase: z.string().min(1).optional(),
 		promptsCsv: z.string().min(1).optional(),
@@ -144,14 +173,45 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		desc: 'LangSmith dataset name',
 	},
 
+	'--subgraph': {
+		key: 'subgraph',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Target subgraph (responder|discovery|builder|configurator). Requires --dataset or --dataset-file',
+	},
+	'--dataset-file': {
+		key: 'datasetFile',
+		kind: 'string',
+		group: 'input',
+		desc: 'Path to local JSON dataset file (for subgraph evals)',
+	},
+	'--regenerate': {
+		key: 'regenerate',
+		kind: 'boolean',
+		group: 'eval',
+		desc: 'Run full workflow generation from prompt instead of using pre-computed state',
+	},
+	'--write-back': {
+		key: 'writeBack',
+		kind: 'boolean',
+		group: 'eval',
+		desc: 'Write regenerated state back to dataset source (requires --regenerate)',
+	},
+
 	// Evaluation options
 	'--suite': {
 		key: 'suite',
 		kind: 'string',
 		group: 'eval',
-		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity)',
+		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity|introspection)',
 	},
 	'--backend': { key: 'backend', kind: 'string', group: 'eval', desc: 'Backend (local|langsmith)' },
+	'--agent': {
+		key: 'agent',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Agent type (code-builder|multi-agent)',
+	},
 	'--max-examples': {
 		key: 'maxExamples',
 		kind: 'string',
@@ -370,6 +430,9 @@ function formatHelp(): string {
 	lines.push('  pnpm eval --prompt "Create a Slack notification workflow"');
 	lines.push('  pnpm eval --prompts-csv my-prompts.csv --max-examples 5');
 	lines.push('  pnpm eval:langsmith --dataset "workflow-builder-canvas-prompts" --name "test-run"');
+	lines.push(
+		'  pnpm eval:langsmith --subgraph responder --dataset "responder-eval-dataset" --verbose',
+	);
 
 	return lines.join('\n');
 }
@@ -437,14 +500,19 @@ function parseCli(argv: string[]): {
 
 function parseFeatureFlags(args: {
 	templateExamples: boolean;
+	suite: EvaluationSuite;
 }): BuilderFeatureFlags | undefined {
 	const templateExamplesFromEnv = process.env.EVAL_FEATURE_TEMPLATE_EXAMPLES === 'true';
 	const templateExamples = templateExamplesFromEnv || args.templateExamples;
 
-	if (!templateExamples) return undefined;
+	// Auto-enable introspection for introspection suite
+	const enableIntrospection = args.suite === 'introspection';
+
+	if (!templateExamples && !enableIntrospection) return undefined;
 
 	return {
 		templateExamples: templateExamples || undefined,
+		enableIntrospection: enableIntrospection || undefined,
 	};
 }
 
@@ -491,6 +559,37 @@ function parseFilters(args: {
 	return hasAny ? filters : undefined;
 }
 
+function validateSubgraphArgs(parsed: {
+	subgraph?: string;
+	datasetName?: string;
+	datasetFile?: string;
+	prompt?: string;
+	promptsCsv?: string;
+	testCase?: string;
+	writeBack: boolean;
+	regenerate: boolean;
+}): void {
+	if (parsed.subgraph && !parsed.datasetName && !parsed.datasetFile) {
+		throw new Error(
+			'`--subgraph` requires `--dataset` or `--dataset-file`. Subgraph evaluation needs pre-computed state from a dataset.',
+		);
+	}
+
+	if (parsed.subgraph && (parsed.prompt || parsed.promptsCsv || parsed.testCase)) {
+		throw new Error(
+			'`--subgraph` cannot be combined with `--prompt`, `--prompts-csv`, or `--test-case`. Use `--dataset` instead.',
+		);
+	}
+
+	if (parsed.writeBack && !parsed.regenerate) {
+		throw new Error('`--write-back` requires `--regenerate`');
+	}
+
+	if (parsed.regenerate && !parsed.subgraph) {
+		throw new Error('`--regenerate` requires `--subgraph`');
+	}
+}
+
 export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): EvaluationArgs {
 	// Check for help flag before parsing
 	if (argv.includes('--help') || argv.includes('-h')) {
@@ -512,6 +611,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 
 	const featureFlags = parseFeatureFlags({
 		templateExamples: parsed.templateExamples,
+		suite: parsed.suite,
 	});
 
 	const filters = parseFilters({
@@ -519,6 +619,8 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		notionId: parsed.notionId,
 		technique: parsed.technique,
 	});
+
+	validateSubgraphArgs(parsed);
 
 	if (parsed.suite !== 'pairwise' && (filters?.doSearch || filters?.dontSearch)) {
 		throw new Error(
@@ -529,6 +631,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 	return {
 		suite: parsed.suite,
 		backend: parsed.backend,
+		agent: parsed.agent,
 		verbose: parsed.verbose,
 		repetitions: parsed.repetitions,
 		concurrency: parsed.concurrency,
@@ -546,6 +649,10 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		donts: parsed.donts,
 		numJudges: parsed.numJudges,
 		featureFlags,
+		subgraph: parsed.subgraph,
+		datasetFile: parsed.datasetFile,
+		regenerate: parsed.regenerate,
+		writeBack: parsed.writeBack,
 		webhookUrl: parsed.webhookUrl,
 		webhookSecret: parsed.webhookSecret,
 		// Model configuration

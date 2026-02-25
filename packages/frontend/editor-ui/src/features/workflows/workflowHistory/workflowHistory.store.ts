@@ -8,6 +8,7 @@ import type {
 	WorkflowVersion,
 	WorkflowHistoryRequestParams,
 	WorkflowVersionId,
+	UpdateWorkflowHistoryVersion,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import * as whApi from '@n8n/rest-api-client/api/workflowHistory';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -105,12 +106,21 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			});
 	};
 
+	const updateWorkflowHistoryVersion = async (
+		workflowId: string,
+		versionId: string,
+		data: UpdateWorkflowHistoryVersion,
+	): Promise<void> => {
+		await whApi.updateWorkflowHistoryVersion(rootStore.restApiContext, workflowId, versionId, data);
+	};
+
 	return {
 		getWorkflowHistory,
 		getWorkflowVersion,
 		downloadVersion,
 		cloneIntoNewWorkflow,
 		restoreWorkflow,
+		updateWorkflowHistoryVersion,
 		evaluatedPruneTime,
 		shouldUpgrade,
 	};

@@ -5,7 +5,8 @@ import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { logAiEvent, unwrapNestedOutput } from '../helpers';
+import { logAiEvent } from '@n8n/ai-utilities';
+import { unwrapNestedOutput } from '../helpers';
 
 const STRUCTURED_OUTPUT_KEY = '__structured__output';
 const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';

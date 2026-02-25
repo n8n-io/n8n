@@ -44,6 +44,7 @@ type EndpointGroup =
 	| 'folder'
 	| 'insights'
 	| 'module-settings'
+	| 'security-settings'
 	| 'data-table'
 	| 'third-party-licenses'
 	| 'mcp';
@@ -56,7 +57,8 @@ type ModuleName =
 	| 'mcp'
 	| 'dynamic-credentials'
 	| 'log-streaming'
-	| 'ldap';
+	| 'ldap'
+	| 'source-control';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

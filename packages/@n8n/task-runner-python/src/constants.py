@@ -14,6 +14,7 @@ BROKER_TASK_OFFER_ACCEPT = "broker:taskofferaccept"
 BROKER_TASK_SETTINGS = "broker:tasksettings"
 BROKER_TASK_CANCEL = "broker:taskcancel"
 BROKER_RPC_RESPONSE = "broker:rpcresponse"
+BROKER_DRAIN = "broker:drain"
 RUNNER_INFO = "runner:info"
 RUNNER_TASK_OFFER = "runner:taskoffer"
 RUNNER_TASK_ACCEPTED = "runner:taskaccepted"
@@ -148,6 +149,7 @@ BLOCKED_ATTRIBUTES = {
     "obj",
     "__thisclass__",
     "__self_class__",
+    "__objclass__",
     # introspection attributes
     "__base__",
     "__class__",

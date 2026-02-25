@@ -2,7 +2,7 @@ import type { TSESTree } from '@typescript-eslint/utils';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 import type { ReportSuggestionArray } from '@typescript-eslint/utils/ts-eslint';
 
-import { createRule } from '../utils/index.js';
+import { createRule, findJsonProperty } from '../utils/index.js';
 
 export const PackageNameConventionRule = createRule({
 	name: 'package-name-convention',
@@ -31,14 +31,9 @@ export const PackageNameConventionRule = createRule({
 					return;
 				}
 
-				const nameProperty = node.properties.find(
-					(property) =>
-						property.type === AST_NODE_TYPES.Property &&
-						property.key.type === AST_NODE_TYPES.Literal &&
-						property.key.value === 'name',
-				);
+				const nameProperty = findJsonProperty(node, 'name');
 
-				if (!nameProperty || nameProperty.type !== AST_NODE_TYPES.Property) {
+				if (!nameProperty) {
 					return;
 				}
 

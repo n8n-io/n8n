@@ -34,11 +34,19 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
-		// Initialize DB connection without running migrations
+		// Initialize DB connection
 		const dbConnection = Container.get(DbConnection);
 		await dbConnection.init();
 
 		dataSource = Container.get(DataSource);
+	});
+
+	beforeEach(async () => {
+		// Clear database before each test to ensure isolation
+		// Note: Migration tests must run sequentially (maxWorkers: 1) to avoid conflicts
+		const context = createTestMigrationContext(dataSource);
+		await context.queryRunner.clearDatabase();
+		await context.queryRunner.release();
 
 		// Run migrations up to (but not including) target migration
 		await initDbUpToMigration(MIGRATION_NAME);
@@ -69,10 +77,19 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 		const versionIdColumn = context.escape.columnName('versionId');
 
 		const versionId = nanoid();
-		const placeholders = getParamPlaceholders(context, 9);
-		await context.queryRunner.query(
-			`INSERT INTO ${tableName} (${idColumn}, ${nameColumn}, ${activeColumn}, ${nodesColumn}, ${connectionsColumn}, ${createdAtColumn}, ${updatedAtColumn}, ${triggerCountColumn}, ${versionIdColumn}) VALUES (${placeholders})`,
-			[workflowId, workflowName, false, '[]', '{}', new Date(), new Date(), 0, versionId],
+		await context.runQuery(
+			`INSERT INTO ${tableName} (${idColumn}, ${nameColumn}, ${activeColumn}, ${nodesColumn}, ${connectionsColumn}, ${createdAtColumn}, ${updatedAtColumn}, ${triggerCountColumn}, ${versionIdColumn}) VALUES (:id, :name, :active, :nodes, :connections, :createdAt, :updatedAt, :triggerCount, :versionId)`,
+			{
+				id: workflowId,
+				name: workflowName,
+				active: false,
+				nodes: '[]',
+				connections: '{}',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				triggerCount: 0,
+				versionId,
+			},
 		);
 	}
 
@@ -92,10 +109,9 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 		const latestEventColumn = context.escape.columnName('latestEvent');
 		const rootCountColumn = context.escape.columnName('rootCount');
 
-		const placeholders = getParamPlaceholders(context, 5);
-		await context.queryRunner.query(
-			`INSERT INTO ${tableName} (${workflowIdColumn}, ${nameColumn}, ${countColumn}, ${latestEventColumn}, ${rootCountColumn}) VALUES (${placeholders})`,
-			[workflowId, name, count, new Date(), 0],
+		await context.runQuery(
+			`INSERT INTO ${tableName} (${workflowIdColumn}, ${nameColumn}, ${countColumn}, ${latestEventColumn}, ${rootCountColumn}) VALUES (:workflowId, :name, :count, :latestEvent, :rootCount)`,
+			{ workflowId, name, count, latestEvent: new Date(), rootCount: 0 },
 		);
 	}
 
@@ -117,10 +133,9 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 		const rootCountColumn = context.escape.columnName('rootCount');
 		const workflowNameColumn = context.escape.columnName('workflowName');
 
-		const placeholders = getParamPlaceholders(context, 6);
-		await context.queryRunner.query(
-			`INSERT INTO ${tableName} (${workflowIdColumn}, ${nameColumn}, ${countColumn}, ${latestEventColumn}, ${rootCountColumn}, ${workflowNameColumn}) VALUES (${placeholders})`,
-			[workflowId, name, count, new Date(), 0, workflowName],
+		await context.runQuery(
+			`INSERT INTO ${tableName} (${workflowIdColumn}, ${nameColumn}, ${countColumn}, ${latestEventColumn}, ${rootCountColumn}, ${workflowNameColumn}) VALUES (:workflowId, :name, :count, :latestEvent, :rootCount, :workflowName)`,
+			{ workflowId, name, count, latestEvent: new Date(), rootCount: 0, workflowName },
 		);
 	}
 
@@ -138,10 +153,12 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 		const nameColumn = context.escape.columnName('name');
 		const countColumn = context.escape.columnName('count');
 
-		const placeholder = getParamPlaceholder(context);
-		return await context.queryRunner.query(
-			`SELECT ${workflowIdColumn} as "workflowId", ${nameColumn} as "name", ${countColumn} as "count" FROM ${tableName} WHERE ${workflowIdColumn} = ${placeholder}`,
-			[workflowId],
+		// Cast count to integer for consistent return type
+		const countSelect = context.isPostgres ? `${countColumn}::int` : countColumn;
+
+		return await context.runQuery(
+			`SELECT ${workflowIdColumn}, ${nameColumn}, ${countSelect} as ${countColumn} FROM ${tableName} WHERE ${workflowIdColumn} = :workflowId`,
+			{ workflowId },
 		);
 	}
 
@@ -160,10 +177,12 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 		const countColumn = context.escape.columnName('count');
 		const workflowNameColumn = context.escape.columnName('workflowName');
 
-		const placeholder = getParamPlaceholder(context);
-		return await context.queryRunner.query(
-			`SELECT ${workflowIdColumn} as "workflowId", ${nameColumn} as "name", ${countColumn} as "count", ${workflowNameColumn} as "workflowName" FROM ${tableName} WHERE ${workflowIdColumn} = ${placeholder}`,
-			[workflowId],
+		// Cast count to integer for consistent return type
+		const countSelect = context.isPostgres ? `${countColumn}::int` : countColumn;
+
+		return await context.runQuery(
+			`SELECT ${workflowIdColumn}, ${nameColumn}, ${countSelect} as ${countColumn}, ${workflowNameColumn} FROM ${tableName} WHERE ${workflowIdColumn} = :workflowId`,
+			{ workflowId },
 		);
 	}
 
@@ -182,10 +201,12 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 		const countColumn = context.escape.columnName('count');
 		const workflowNameColumn = context.escape.columnName('workflowName');
 
-		const placeholder = getParamPlaceholder(context);
-		return await context.queryRunner.query(
-			`SELECT ${workflowIdColumn} as "workflowId", ${nameColumn} as "name", ${countColumn} as "count", ${workflowNameColumn} as "workflowName" FROM ${tableName} WHERE ${nameColumn} = ${placeholder}`,
-			[name],
+		// Cast count to integer for consistent return type
+		const countSelect = context.isPostgres ? `${countColumn}::int` : countColumn;
+
+		return await context.runQuery(
+			`SELECT ${workflowIdColumn}, ${nameColumn}, ${countSelect} as ${countColumn}, ${workflowNameColumn} FROM ${tableName} WHERE ${nameColumn} = :name`,
+			{ name },
 		);
 	}
 
@@ -421,9 +442,7 @@ describe('ChangeWorkflowStatisticsFKToNoAction Migration', () => {
 	});
 
 	it('should delete orphaned statistics during rollback before restoring FK constraint', async () => {
-		// The database is already in post-migration state from the previous test
-		// We need to rollback first, then run the migration again
-		await undoLastSingleMigration();
+		// Run the migration first (beforeEach only runs up to, not including, the target migration)
 		await runSingleMigration(MIGRATION_NAME);
 
 		// Create context AFTER migration runs

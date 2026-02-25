@@ -13,10 +13,11 @@ import { useI18n } from '@n8n/i18n';
 import { computed, useTemplateRef, watch, ref } from 'vue';
 import { useChatStore } from '../chat.store';
 
-const { selectedModel, credentials, readyToShowModelSelector } = defineProps<{
+const { selectedModel, credentials, readyToShowModelSelector, showArtifactIcon } = defineProps<{
 	selectedModel: ChatModelDto | null;
 	credentials: CredentialsMap | null;
 	readyToShowModelSelector: boolean;
+	showArtifactIcon: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -26,6 +27,7 @@ const emit = defineEmits<{
 	createCustomAgent: [];
 	selectCredential: [provider: ChatHubProvider, credentialId: string | null];
 	openWorkflow: [workflowId: string];
+	reopenArtifact: [];
 }>();
 
 const modelSelectorRef = useTemplateRef('modelSelectorRef');
@@ -93,18 +95,25 @@ defineExpose({
 			/>
 		</div>
 		<N8nButton
+			v-if="showArtifactIcon"
+			variant="subtle"
+			size="medium"
+			icon="notebook-pen"
+			@click="emit('reopenArtifact')"
+		/>
+		<N8nButton
+			variant="subtle"
 			v-if="selectedModel?.model.provider === 'custom-agent'"
 			:class="$style.editAgent"
-			type="secondary"
 			size="small"
 			icon="settings"
 			:label="i18n.baseText('chatHub.chat.header.button.editAgent')"
 			@click="emit('editCustomAgent', selectedModel.model.agentId)"
 		/>
 		<N8nButton
+			variant="subtle"
 			v-if="showOpenWorkflow"
 			:class="$style.editAgent"
-			type="secondary"
 			size="small"
 			icon="settings"
 			:label="i18n.baseText('chatHub.chat.header.button.openWorkflow')"

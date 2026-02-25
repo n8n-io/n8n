@@ -93,7 +93,7 @@ export type CanvasNodeStickyNoteRender = {
 	options: Partial<{
 		width: number;
 		height: number;
-		color: number;
+		color: number | string; // 1-7 for presets, hex string for custom colors
 		content: string;
 	}>;
 };
@@ -194,6 +194,7 @@ export type CanvasEventBusEvents = {
 		trackBulk?: boolean;
 	};
 	'create:sticky': never;
+	'deprecated:tab-shortcut': never;
 };
 
 export interface CanvasNodeInjectionData {

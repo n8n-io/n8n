@@ -109,9 +109,9 @@ const handleCancel = () => {
 				<slot />
 
 				<N8nDialogFooter>
-					<N8nButton type="secondary" :label="cancelLabel" @click="handleCancel" />
+					<N8nButton variant="subtle" :label="cancelLabel" @click="handleCancel" />
 					<N8nButton
-						:type="actionVariant === 'destructive' ? 'danger' : 'primary'"
+						:variant="actionVariant === 'destructive' ? 'destructive' : 'solid'"
 						:label="actionLabel"
 						:loading="loading"
 						@click="handleAction"

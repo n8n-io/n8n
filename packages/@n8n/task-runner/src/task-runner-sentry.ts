@@ -59,6 +59,13 @@ export class TaskRunnerSentry {
 	 * that end up in the sentry error reporting.
 	 */
 	private isUserCodeError(error: Exception) {
+		if (
+			error.type === 'EvalError' &&
+			error.value === 'Code generation from strings disallowed for this context' // from --disallow-code-generation-from-strings
+		) {
+			return true;
+		}
+
 		const frames = error.stacktrace?.frames;
 		if (!frames) return false;
 

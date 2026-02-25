@@ -24,32 +24,38 @@ const VALID_NAMES = [
 	['Милорад', 'Филиповић'],
 ];
 
-test.describe('Personal Settings', () => {
-	test('should allow to change first and last name', async ({ n8n }) => {
-		await n8n.settingsPersonal.goToPersonalSettings();
+test.describe(
+	'Personal Settings',
+	{
+		annotation: [{ type: 'owner', description: 'Identity & Access' }],
+	},
+	() => {
+		test('should allow to change first and last name', async ({ n8n }) => {
+			await n8n.settingsPersonal.goto();
 
-		for (const name of VALID_NAMES) {
-			await n8n.settingsPersonal.fillPersonalData(name[0], name[1]);
-			await n8n.settingsPersonal.saveSettings();
+			for (const name of VALID_NAMES) {
+				await n8n.settingsPersonal.fillPersonalData(name[0], name[1]);
+				await n8n.settingsPersonal.saveSettings();
 
-			await expect(
-				n8n.notifications.getNotificationByTitleOrContent('Personal details updated'),
-			).toBeVisible();
-			await n8n.notifications.closeNotificationByText('Personal details updated');
-		}
-	});
+				await expect(
+					n8n.notifications.getNotificationByTitleOrContent('Personal details updated'),
+				).toBeVisible();
+				await n8n.notifications.closeNotificationByText('Personal details updated');
+			}
+		});
 
-	test('should not allow malicious values for personal data', async ({ n8n }) => {
-		await n8n.settingsPersonal.goToPersonalSettings();
+		test('should not allow malicious values for personal data', async ({ n8n }) => {
+			await n8n.settingsPersonal.goto();
 
-		for (const name of INVALID_NAMES) {
-			await n8n.settingsPersonal.fillPersonalData(name, name);
-			await n8n.settingsPersonal.saveSettings();
+			for (const name of INVALID_NAMES) {
+				await n8n.settingsPersonal.fillPersonalData(name, name);
+				await n8n.settingsPersonal.saveSettings();
 
-			await expect(
-				n8n.notifications.getNotificationByTitleOrContent('Problem updating your details'),
-			).toBeVisible();
-			await n8n.notifications.closeNotificationByText('Problem updating your details');
-		}
-	});
-});
+				await expect(
+					n8n.notifications.getNotificationByTitleOrContent('Problem updating your details'),
+				).toBeVisible();
+				await n8n.notifications.closeNotificationByText('Problem updating your details');
+			}
+		});
+	},
+);
