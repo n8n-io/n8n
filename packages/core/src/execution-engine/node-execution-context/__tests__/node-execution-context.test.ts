@@ -43,7 +43,6 @@ describe('NodeExecutionContext', () => {
 		credentialsHelper: mock(),
 		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
 		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
-		hmacSignatureSecret: undefined,
 	});
 
 	const mode: WorkflowExecuteMode = 'manual';
@@ -233,7 +232,6 @@ describe('NodeExecutionContext', () => {
 				credentialsHelper: mockCredentialsHelper,
 				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
 				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
-				hmacSignatureSecret: undefined,
 			});
 
 			const contextWithCredentials = new TestContext(
@@ -445,7 +443,6 @@ describe('NodeExecutionContext', () => {
 					executionId: '123',
 					webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
 					formWaitingBaseUrl: 'http://localhost/form-waiting',
-					hmacSignatureSecret: 'test-secret',
 				}),
 				mode,
 				createRunExecutionData({

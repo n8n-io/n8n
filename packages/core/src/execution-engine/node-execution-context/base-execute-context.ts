@@ -106,9 +106,6 @@ export class BaseExecuteContext extends NodeExecutionContext {
 
 	async putExecutionToWait(waitTill: Date): Promise<void> {
 		this.runExecutionData.waitTill = waitTill;
-		// Enable signature validation for all new waiting executions
-		// This flag is checked when resuming via webhook to validate the HMAC signature
-		this.runExecutionData.validateSignature = true;
 		if (this.additionalData.setExecutionStatus) {
 			this.additionalData.setExecutionStatus('waiting');
 		}

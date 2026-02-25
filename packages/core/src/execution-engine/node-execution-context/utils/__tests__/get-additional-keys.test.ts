@@ -1,5 +1,4 @@
 import { mock } from 'jest-mock-extended';
-import { LoggerProxy } from 'n8n-workflow';
 import type { IDataObject, IRunExecutionData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
@@ -13,7 +12,6 @@ describe('getAdditionalKeys', () => {
 		executionId: '123',
 		webhookWaitingBaseUrl: 'https://webhook.test',
 		formWaitingBaseUrl: 'https://form.test',
-		hmacSignatureSecret: undefined,
 		variables: { testVar: 'value' },
 		externalSecretsProxy,
 	});
@@ -26,7 +24,6 @@ describe('getAdditionalKeys', () => {
 	});
 
 	beforeAll(() => {
-		LoggerProxy.init(mock());
 		externalSecretsProxy.hasProvider.mockReturnValue(true);
 		externalSecretsProxy.hasSecret.mockReturnValue(true);
 		externalSecretsProxy.getSecret.mockReturnValue('secret-value');
@@ -94,35 +91,40 @@ describe('getAdditionalKeys', () => {
 		}).toThrow();
 	});
 
-	it('should set plain resume URLs when hmacSignatureSecret is not provided', () => {
-		const result = getAdditionalKeys(additionalData, 'manual', null);
+	it('should set plain resume URLs when runExecutionData has no resumeToken', () => {
+		const dataWithoutToken = mock<IRunExecutionData>({
+			resumeToken: undefined,
+			resultData: { runData: {}, metadata: {} },
+		});
+		const result = getAdditionalKeys(additionalData, 'manual', dataWithoutToken);
 
 		expect(result.$execution?.resumeUrl).toBe('https://webhook.test/123');
 		expect(result.$execution?.resumeFormUrl).toBe('https://form.test/123');
-		expect(result.$resumeWebhookUrl).toBe('https://webhook.test/123'); // Test deprecated property
+		expect(result.$resumeWebhookUrl).toBe('https://webhook.test/123');
 	});
 
-	it('should add HMAC signature to resume URLs when additionalData has hmacSignatureSecret', () => {
-		const additionalDataWithSecret = mock<IWorkflowExecuteAdditionalData>({
-			executionId: '123',
-			webhookWaitingBaseUrl: 'https://webhook.test',
-			formWaitingBaseUrl: 'https://form.test',
-			variables: { testVar: 'value' },
-			externalSecretsProxy,
-			hmacSignatureSecret: 'test-secret-key',
+	it('should append resumeToken to resume URLs when runExecutionData has a token', () => {
+		const dataWithToken = mock<IRunExecutionData>({
+			resumeToken: 'a'.repeat(64),
+			resultData: { runData: {}, metadata: {} },
 		});
 
-		const result = getAdditionalKeys(additionalDataWithSecret, 'manual', null);
+		const result = getAdditionalKeys(additionalData, 'manual', dataWithToken);
 
-		// URLs should contain signature parameter with HMAC signature (64-character hex string)
 		const resumeUrl = new URL(result.$execution?.resumeUrl ?? '');
 		const resumeFormUrl = new URL(result.$execution?.resumeFormUrl ?? '');
 		const deprecatedUrl = new URL(result.$resumeWebhookUrl ?? '');
 
-		// Check that signature parameter exists and is a valid 64-char hex string
-		expect(resumeUrl.searchParams.get('signature')).toMatch(/^[a-f0-9]{64}$/);
-		expect(resumeFormUrl.searchParams.get('signature')).toMatch(/^[a-f0-9]{64}$/);
-		expect(deprecatedUrl.searchParams.get('signature')).toMatch(/^[a-f0-9]{64}$/);
+		expect(resumeUrl.searchParams.get('signature')).toBe('a'.repeat(64));
+		expect(resumeFormUrl.searchParams.get('signature')).toBe('a'.repeat(64));
+		expect(deprecatedUrl.searchParams.get('signature')).toBe('a'.repeat(64));
+	});
+
+	it('should set plain resume URLs when runExecutionData is null', () => {
+		const result = getAdditionalKeys(additionalData, 'manual', null);
+
+		expect(result.$execution?.resumeUrl).toBe('https://webhook.test/123');
+		expect(result.$execution?.resumeFormUrl).toBe('https://form.test/123');
 	});
 
 	it('should return test mode when manual', () => {
@@ -162,21 +164,5 @@ describe('getAdditionalKeys', () => {
 
 		const allData = customData?.getAll() ?? {};
 		expect(Object.keys(allData)).toHaveLength(10);
-	});
-
-	it('should handle invalid URLs gracefully and return original URL when signing fails', () => {
-		const additionalDataWithInvalidUrl = mock<IWorkflowExecuteAdditionalData>({
-			executionId: '123',
-			webhookWaitingBaseUrl: 'not-a-valid-url',
-			formWaitingBaseUrl: 'also-invalid',
-			variables: {},
-			externalSecretsProxy,
-			hmacSignatureSecret: 'test-secret',
-		});
-
-		// Should not throw - should return original URLs without signature
-		const result = getAdditionalKeys(additionalDataWithInvalidUrl, 'manual', null);
-		expect(result.$execution?.resumeUrl).toBe('not-a-valid-url/123');
-		expect(result.$execution?.resumeFormUrl).toBe('also-invalid/123');
 	});
 });

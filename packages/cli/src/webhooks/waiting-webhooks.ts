@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { timingSafeEqual } from 'crypto';
 import type express from 'express';
 import { InstanceSettings, WAITING_TOKEN_QUERY_PARAM, validateUrlSignature } from 'n8n-core';
 import {
@@ -95,55 +96,68 @@ export class WaitingWebhooks implements IWebhookManager {
 	}
 
 	/**
-	 * Validates the HMAC signature in the request URL.
-	 * Uses timing-safe comparison to prevent timing attacks.
-	 *
-	 * Backwards compatibility note:
-	 * Before signatures were added, $execution.resumeUrl was just the base URL without query params.
-	 * Workflows could append a webhook suffix like: `$execution.resumeUrl + '/my-suffix'`
-	 *
-	 * Now that $execution.resumeUrl includes `?signature=token`, appending a suffix produces:
-	 *   `http://host/wait/123?signature=token/my-suffix` (malformed)
-	 * instead of the correct:
-	 *   `http://host/wait/123/my-suffix?signature=token`
-	 *
-	 * To maintain backwards compatibility, we detect when the signature contains a '/' and
-	 * extract the webhook path from it, allowing both URL formats to work.
-	 *
-	 * Additionally, when a suffix is provided in the URL path (e.g., /n8n-execution-status),
-	 * we strip it before validation since signatures are generated for the base URL only.
-	 *
-	 * @param req - The Express request object
-	 * @param suffix - Optional URL path suffix to strip before validation (e.g., 'n8n-execution-status')
-	 * @returns Object with validation result, optionally the webhook path, and the signature value
+	 * Extracts the `signature` query param and an optional webhook path
+	 * appended after it (backwards compat: `?signature=token/my-suffix`).
 	 */
-	protected validateSignature(
-		req: express.Request,
-		suffix?: string,
-	): { valid: boolean; webhookPath?: string } {
+	private parseSignatureParam(req: express.Request): {
+		token: string | undefined;
+		webhookPath: string | undefined;
+	} {
 		const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
-		let providedSignature = url.searchParams.get(WAITING_TOKEN_QUERY_PARAM);
+		let token = url.searchParams.get(WAITING_TOKEN_QUERY_PARAM) ?? undefined;
 		let webhookPath: string | undefined;
+
+		// Handle backwards compat: extract webhook path if appended after the token
+		// e.g., ?signature=abc123/my-suffix -> token is "abc123", webhookPath is "my-suffix"
+		if (token?.includes('/')) {
+			const slashIndex = token.indexOf('/');
+			webhookPath = token.slice(slashIndex + 1);
+			token = token.slice(0, slashIndex);
+		}
+
+		return { token, webhookPath };
+	}
+
+	/**
+	 * Validates the request by comparing the provided token against the stored
+	 * `resumeToken` using timing-safe comparison.
+	 *
+	 * Used for form and webhook waiting URLs, where the token is an opaque
+	 * random value (no query params to tamper-proof).
+	 */
+	protected validateToken(
+		req: express.Request,
+		execution: IExecutionResponse,
+	): { valid: boolean; webhookPath?: string } {
+		const { token, webhookPath } = this.parseSignatureParam(req);
+		const storedToken = execution.data.resumeToken;
+
+		if (!token || !storedToken || token.length !== storedToken.length) {
+			return { valid: false };
+		}
+
+		const valid = timingSafeEqual(Buffer.from(token), Buffer.from(storedToken));
+		return { valid, webhookPath };
+	}
+
+	/**
+	 * Validates the HMAC signature in the request URL.
+	 *
+	 * Used exclusively for send-and-wait URLs, where query params like
+	 * `approved=true` must be tamper-proof.
+	 */
+	protected validateSignature(req: express.Request): { valid: boolean; webhookPath?: string } {
+		const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+		const { token: providedSignature, webhookPath } = this.parseSignatureParam(req);
 
 		if (!providedSignature) {
 			return { valid: false };
 		}
 
-		// Handle backwards compat: extract webhook path if it was appended after the signature
-		// e.g., ?signature=abc123/my-suffix -> signature is "abc123", webhookPath is "my-suffix"
-		if (providedSignature.includes('/')) {
-			const slashIndex = providedSignature.indexOf('/');
-			webhookPath = providedSignature.slice(slashIndex + 1);
-			providedSignature = providedSignature.slice(0, slashIndex);
-			// Update URL for validation (remove the path suffix from signature param)
-			url.searchParams.set(WAITING_TOKEN_QUERY_PARAM, providedSignature);
-		}
-
-		// Strip suffix from pathname if provided, since signatures are generated for the base URL only
-		// e.g., /form-waiting/123/n8n-execution-status -> /form-waiting/123
-		if (suffix && url.pathname.endsWith(`/${suffix}`)) {
-			url.pathname = url.pathname.slice(0, -(suffix.length + 1));
-		}
+		// Restore the cleaned signature on the URL (without any appended webhook path)
+		// so that `validateUrlSignature` can re-derive the expected HMAC from the full
+		// URL including the node-id suffix and action params (e.g. approved=true).
+		url.searchParams.set(WAITING_TOKEN_QUERY_PARAM, providedSignature);
 
 		const valid = validateUrlSignature(
 			providedSignature,
@@ -169,21 +183,28 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const execution = await this.getExecution(executionId);
 
-		// Only validate signature for executions that have validateSignature flag set
-		// This provides backwards compatibility for old executions created before signature validation
-		if (execution?.data.validateSignature) {
-			const { valid, webhookPath } = this.validateSignature(req);
+		// Only validate for executions that have a resumeToken.
+		// Old executions created before token validation are skipped (backwards compat).
+		if (execution?.data.resumeToken) {
+			const { workflowData } = execution;
+			const { nodes } = this.createWorkflow(workflowData);
+			const isSendAndWait = this.isSendAndWaitRequest(nodes, suffix);
+
+			// Send-and-wait uses HMAC to protect tamper-sensitive query params (e.g. approved=true).
+			// All other waiting URLs use a simple random token comparison.
+			const { valid, webhookPath } = isSendAndWait
+				? this.validateSignature(req)
+				: this.validateToken(req, execution);
+
 			if (!valid) {
-				const { workflowData } = execution;
-				const { nodes } = this.createWorkflow(workflowData);
-				if (this.isSendAndWaitRequest(nodes, suffix)) {
+				if (isSendAndWait) {
 					res.status(401).render('form-invalid-token');
 				} else {
-					res.status(401).json({ error: 'Invalid signature' });
+					res.status(401).json({ error: 'Invalid token' });
 				}
 				return { noWebhookResponse: true };
 			}
-			// Use webhook path parsed from signature if not in route (backwards compat for old URL format)
+			// Use webhook path parsed from token if not in route (backwards compat for old URL format)
 			if (!suffix && webhookPath) {
 				suffix = webhookPath;
 			}

@@ -2911,8 +2911,6 @@ export interface IWorkflowExecuteAdditionalData {
 	executionTimeoutTimestamp?: number;
 	userId?: string;
 	variables: IDataObject;
-	/** HMAC secret used for signing webhook resume URLs */
-	hmacSignatureSecret?: string;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
 	startRunnerTask<T, E = unknown>(

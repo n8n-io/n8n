@@ -19,11 +19,15 @@ class TestWaitingWebhooks extends WaitingWebhooks {
 		return this.createWorkflow(workflowData);
 	}
 
-	exposeValidateSignature(
+	exposeValidateSignature(req: express.Request): { valid: boolean; webhookPath?: string } {
+		return this.validateSignature(req);
+	}
+
+	exposeValidateToken(
 		req: express.Request,
-		suffix?: string,
+		execution: IExecutionResponse,
 	): { valid: boolean; webhookPath?: string } {
-		return this.validateSignature(req, suffix);
+		return this.validateToken(req, execution);
 	}
 }
 
@@ -212,37 +216,6 @@ describe('WaitingWebhooks', () => {
 			expect(result).toEqual({ valid: true, webhookPath: 'path/to/suffix' });
 		});
 
-		it('should strip suffix from pathname when provided as second argument', () => {
-			/* Arrange - Signature was generated for base path, but request includes suffix in pathname */
-			const basePath = '/form-waiting/123';
-			const suffix = 'n8n-execution-status';
-			const pathWithSuffix = `${basePath}/${suffix}`;
-			const validSignature = generateTestSignature(basePath);
-			const mockReq = createMockRequest({ signature: validSignature, path: pathWithSuffix });
-
-			/* Act */
-			const result = waitingWebhooks.exposeValidateSignature(mockReq, suffix);
-
-			/* Assert */
-			expect(result).toEqual({ valid: true, webhookPath: undefined });
-		});
-
-		it('should fail validation when suffix is in pathname but not stripped', () => {
-			/* Arrange - Signature was generated for base path, but request includes suffix in pathname
-			 * Without passing suffix, validation should fail because paths don't match */
-			const basePath = '/form-waiting/123';
-			const suffix = 'n8n-execution-status';
-			const pathWithSuffix = `${basePath}/${suffix}`;
-			const validSignature = generateTestSignature(basePath);
-			const mockReq = createMockRequest({ signature: validSignature, path: pathWithSuffix });
-
-			/* Act - Note: not passing suffix parameter */
-			const result = waitingWebhooks.exposeValidateSignature(mockReq);
-
-			/* Assert - Should fail because signature was for /form-waiting/123 but URL is /form-waiting/123/n8n-execution-status */
-			expect(result).toEqual({ valid: false, webhookPath: undefined });
-		});
-
 		it('should validate signature correctly when nodeId suffix is part of signed URL (send-and-wait)', () => {
 			/* Arrange - Send-and-wait URLs include nodeId in the signed path along with query params.
 			 * The signature is computed from pathname + query params (excluding signature itself). */
@@ -279,7 +252,7 @@ describe('WaitingWebhooks', () => {
 						runData: {},
 						error: undefined,
 					},
-					validateSignature: true, // New executions have this flag
+					resumeToken: 'a'.repeat(64),
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -328,7 +301,7 @@ describe('WaitingWebhooks', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
-		it('should return 401 with JSON for non-send-and-wait requests with invalid signature', async () => {
+		it('should return 401 with JSON for non-send-and-wait requests with invalid token', async () => {
 			/* Arrange */
 			const execution = mock<IExecutionResponse>({
 				finished: false,
@@ -339,7 +312,7 @@ describe('WaitingWebhooks', () => {
 						runData: {},
 						error: undefined,
 					},
-					validateSignature: true, // New executions have this flag
+					resumeToken: 'a'.repeat(64),
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -383,7 +356,7 @@ describe('WaitingWebhooks', () => {
 
 			/* Assert */
 			expect(mockStatus).toHaveBeenCalledWith(401);
-			expect(mockJson).toHaveBeenCalledWith({ error: 'Invalid signature' });
+			expect(mockJson).toHaveBeenCalledWith({ error: 'Invalid token' });
 			expect(mockRender).not.toHaveBeenCalled();
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
@@ -543,7 +516,7 @@ describe('WaitingWebhooks', () => {
 
 			// Explicitly set error to undefined to avoid mock function
 			mockExecution.data.resultData.error = undefined;
-			mockExecution.data.validateSignature = undefined;
+			mockExecution.data.resumeToken = undefined;
 
 			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
 
@@ -673,7 +646,7 @@ describe('WaitingWebhooks', () => {
 
 			// Explicitly set error to undefined to avoid mock function
 			mockExecution.data.resultData.error = undefined;
-			mockExecution.data.validateSignature = undefined;
+			mockExecution.data.resumeToken = undefined;
 
 			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
 
@@ -810,7 +783,7 @@ describe('WaitingWebhooks', () => {
 
 			// Explicitly set error to undefined to avoid mock function
 			mockExecution.data.resultData.error = undefined;
-			mockExecution.data.validateSignature = undefined;
+			mockExecution.data.resumeToken = undefined;
 
 			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
 
@@ -947,7 +920,7 @@ describe('WaitingWebhooks', () => {
 
 			// Explicitly set error to undefined to avoid mock function
 			mockExecution.data.resultData.error = undefined;
-			mockExecution.data.validateSignature = undefined;
+			mockExecution.data.resumeToken = undefined;
 
 			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
 
@@ -1079,7 +1052,7 @@ describe('WaitingWebhooks', () => {
 
 			// Explicitly set error to undefined to avoid mock function
 			mockExecution.data.resultData.error = undefined;
-			mockExecution.data.validateSignature = undefined;
+			mockExecution.data.resumeToken = undefined;
 
 			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
 

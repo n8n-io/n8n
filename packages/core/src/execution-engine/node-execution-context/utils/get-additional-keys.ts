@@ -7,7 +7,6 @@ import type {
 import { LoggerProxy } from 'n8n-workflow';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
-import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
 
 import {
 	setWorkflowExecutionMetadata,
@@ -17,19 +16,12 @@ import {
 } from './execution-metadata';
 import { getSecretsProxy } from './get-secrets-proxy';
 
-/**
- * Sign the URL using HMAC with the instance secret as the key.
- * This ensures the URL cannot be tampered with.
- */
-function appendResumeSignature(url: string, secret: string): string {
+function appendResumeToken(url: string, token: string): string {
 	try {
 		const urlObj = new URL(url);
-		const urlForSigning = prepareUrlForSigning(urlObj);
-		const signature = generateUrlSignature(urlForSigning, secret);
-		urlObj.searchParams.set(WAITING_TOKEN_QUERY_PARAM, signature);
+		urlObj.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
 		return urlObj.toString();
 	} catch {
-		LoggerProxy.warn(`Failed to sign resume URL: invalid URL "${url}"`);
 		return url;
 	}
 }
@@ -43,12 +35,11 @@ export function getAdditionalKeys(
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId ?? PLACEHOLDER_EMPTY_EXECUTION_ID;
 
-	// Sign the resumeUrl and resumeFormUrl with HMAC using instance secret
 	let resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
 	let resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
-	if (additionalData.hmacSignatureSecret) {
-		resumeUrl = appendResumeSignature(resumeUrl, additionalData.hmacSignatureSecret);
-		resumeFormUrl = appendResumeSignature(resumeFormUrl, additionalData.hmacSignatureSecret);
+	if (runExecutionData?.resumeToken) {
+		resumeUrl = appendResumeToken(resumeUrl, runExecutionData.resumeToken);
+		resumeFormUrl = appendResumeToken(resumeFormUrl, runExecutionData.resumeToken);
 	}
 	return {
 		$execution: {

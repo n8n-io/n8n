@@ -86,18 +86,13 @@ export class WaitingForms extends WaitingWebhooks {
 
 		const execution = await this.getExecution(executionId);
 
-		// Validate signature for forms if required (backwards compat: skip for old executions)
-		if (execution?.data.validateSignature) {
-			// Only strip n8n-execution-status suffix since it's added client-side for polling.
-			// Other suffixes like nodeId (for send-and-wait) are part of the signed URL.
-			const suffixToStrip = suffix === WAITING_FORMS_EXECUTION_STATUS ? suffix : undefined;
-			const { valid, webhookPath } = this.validateSignature(req, suffixToStrip);
+		// Validate token for forms (backwards compat: skip for old executions without resumeToken)
+		if (execution?.data.resumeToken) {
+			const { valid, webhookPath } = this.validateToken(req, execution);
 			if (!valid) {
 				res.status(401).render('form-invalid-token');
 				return { noWebhookResponse: true };
 			}
-
-			// Use webhook path parsed from signature if not in route (backwards compat for old URL format)
 			if (!suffix && webhookPath) {
 				suffix = webhookPath;
 			}
