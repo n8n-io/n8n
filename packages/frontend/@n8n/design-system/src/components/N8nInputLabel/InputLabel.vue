@@ -135,6 +135,7 @@ const addTargetBlank = (html: string) =>
 		left: 0;
 		right: 0;
 		top: 0;
+		transform: translateY(calc(-100% - var(--spacing--5xs)));
 	}
 }
 
