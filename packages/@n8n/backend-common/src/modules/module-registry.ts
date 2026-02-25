@@ -34,6 +34,7 @@ export class ModuleRegistry {
 		'external-secrets',
 		'community-packages',
 		'data-table',
+		'vector-store',
 		'mcp',
 		'provisioning',
 		'breaking-changes',
@@ -45,6 +46,7 @@ export class ModuleRegistry {
 		'log-streaming',
 		'ldap',
 		'quick-connect',
+		'workflow-builder',
 	];
 
 	private readonly activeModules: string[] = [];

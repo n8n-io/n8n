@@ -10,11 +10,15 @@ import {
 	ChatMessageId,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
+	ChatHubCreateToolRequest,
+	ChatHubUpdateToolRequest,
 	ChatHubConversationsRequest,
 	ViewableMimeTypes,
 	type ChatSendMessageResponse,
 	type ChatReconnectResponse,
 	ChatReconnectRequest,
+	ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES,
+	CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -33,6 +37,7 @@ import type { Response } from 'express';
 import type Stream from 'node:stream';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubToolService } from './chat-hub-tool.service';
 import { extractAuthenticationMetadata } from './chat-hub-extractor';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubModelsService } from './chat-hub.models.service';
@@ -47,6 +52,7 @@ export class ChatHubController {
 		private readonly chatService: ChatHubService,
 		private readonly chatModelsService: ChatHubModelsService,
 		private readonly chatAgentService: ChatHubAgentService,
+		private readonly chatToolService: ChatHubToolService,
 		private readonly chatAttachmentService: ChatHubAttachmentService,
 	) {}
 
@@ -234,16 +240,61 @@ export class ChatHubController {
 		res.status(204).send();
 	}
 
+	@Get('/tools')
+	@GlobalScope('chatHub:message')
+	async getTools(req: AuthenticatedRequest) {
+		const tools = await this.chatToolService.getToolsByUserId(req.user.id);
+		return tools.map((tool) => ChatHubToolService.toDto(tool));
+	}
+
+	@Post('/tools')
+	@GlobalScope('chatHub:message')
+	async createTool(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: ChatHubCreateToolRequest,
+	) {
+		this.assertToolTypeAllowed(payload.definition.type, req.user);
+		const tool = await this.chatToolService.createTool(req.user, payload);
+		return ChatHubToolService.toDto(tool);
+	}
+
+	@Patch('/tools/:toolId')
+	@GlobalScope('chatHub:message')
+	async updateTool(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('toolId') toolId: string,
+		@Body payload: ChatHubUpdateToolRequest,
+	) {
+		if (payload.definition?.type) {
+			this.assertToolTypeAllowed(payload.definition.type, req.user);
+		}
+		const tool = await this.chatToolService.updateTool(toolId, req.user, payload);
+		return ChatHubToolService.toDto(tool);
+	}
+
+	@Delete('/tools/:toolId')
+	@GlobalScope('chatHub:message')
+	async deleteTool(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('toolId') toolId: string,
+	): Promise<void> {
+		await this.chatToolService.deleteTool(toolId, req.user.id);
+		res.status(204).send();
+	}
+
 	@Get('/agents')
 	@GlobalScope('chatHubAgent:list')
 	async getAgents(req: AuthenticatedRequest) {
-		return await this.chatAgentService.getAgentsByUserId(req.user.id);
+		return await this.chatAgentService.getAgentsByUserIdAsDtos(req.user.id);
 	}
 
 	@Get('/agents/:agentId')
 	@GlobalScope('chatHubAgent:read')
 	async getAgent(req: AuthenticatedRequest, _res: Response, @Param('agentId') agentId: string) {
-		return await this.chatAgentService.getAgentById(req.user.id, agentId);
+		return await this.chatAgentService.getAgentByIdAsDto(agentId, req.user.id);
 	}
 
 	@Post('/agents')
@@ -338,5 +389,17 @@ export class ChatHubController {
 			attachmentAsStreamOrBuffer.stream.on('error', reject);
 			attachmentAsStreamOrBuffer.stream.pipe(res);
 		});
+	}
+
+	private assertToolTypeAllowed(type: string, user: AuthenticatedRequest['user']) {
+		if (ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES.includes(type)) {
+			throw new BadRequestError(`Tool type "${type}" is not supported in the Chat Hub`);
+		}
+		if (
+			user.role.slug === 'global:chatUser' &&
+			CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES.includes(type)
+		) {
+			throw new BadRequestError(`Tool type "${type}" is not available for your role`);
+		}
 	}
 }

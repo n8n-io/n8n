@@ -6,13 +6,7 @@ import type {
 	ChatAttachment,
 	ChatHubLLMProvider,
 } from '@n8n/api-types';
-import type {
-	IBinaryData,
-	INode,
-	INodeCredentials,
-	IRunExecutionData,
-	IWorkflowBase,
-} from 'n8n-workflow';
+import type { IBinaryData, INodeCredentials, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { IconOrEmojiSchema } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -38,7 +32,6 @@ export interface HumanMessagePayload extends BaseMessagePayload {
 	message: string;
 	previousMessageId: ChatMessageId | null;
 	attachments: ChatAttachment[];
-	tools: INode[];
 	agentName?: string;
 }
 export interface RegenerateMessagePayload extends BaseMessagePayload {

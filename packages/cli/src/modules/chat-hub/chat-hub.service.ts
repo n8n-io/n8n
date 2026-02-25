@@ -22,7 +22,7 @@ import { ErrorReporter } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	OperationalError,
-	INode,
+	type INode,
 	type INodeCredentials,
 	type IBinaryData,
 	UnexpectedError,
@@ -38,6 +38,7 @@ import { ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 import type { ChatHubMessage } from './chat-hub-message.entity';
 import type { ChatHubSession, IChatHubSession } from './chat-hub-session.entity';
 import { ChatHubTitleService } from './chat-hub-title.service';
+import { ChatHubToolService } from './chat-hub-tool.service';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubModelsService } from './chat-hub.models.service';
@@ -73,6 +74,7 @@ export class ChatHubService {
 		private readonly chatStreamService: ChatStreamService,
 		private readonly chatHubExecutionService: ChatHubExecutionService,
 		private readonly chatHubTitleService: ChatHubTitleService,
+		private readonly chatHubToolService: ChatHubToolService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly globalConfig: GlobalConfig,
 	) {
@@ -152,25 +154,32 @@ export class ChatHubService {
 		sessionId: ChatSessionId,
 		model: ChatHubConversationModel,
 		credentialId: string | null,
-		tools: INode[],
 		agentName?: string,
 		trx?: EntityManager,
 	) {
 		await this.ensureValidModel(user, model, trx);
 
-		return await this.sessionRepository.createChatSession(
+		const session = await this.sessionRepository.createChatSession(
 			{
 				id: sessionId,
 				ownerId: user.id,
 				title: 'New Chat',
 				lastMessageAt: new Date(),
 				agentName,
-				tools,
 				credentialId,
 				...model,
 			},
 			trx,
 		);
+
+		// Populate session tools from enabled configured tools
+		const enabledTools = await this.chatHubToolService.getEnabledTools(user.id, trx);
+		const toolIds = enabledTools.map((t) => t.id);
+		if (toolIds.length > 0) {
+			await this.chatHubToolService.setSessionTools(sessionId, toolIds, trx);
+		}
+
+		return session;
 	}
 
 	private async getChatMessage(
@@ -227,9 +236,10 @@ export class ChatHubService {
 		}
 
 		const messages = session.messages ?? [];
+		const toolIds = await this.chatHubToolService.getToolIdsForSession(sessionId);
 
 		return {
-			session: this.convertSessionEntityToDto(session),
+			session: this.convertSessionEntityToDto(session, toolIds),
 			conversation: {
 				messages: Object.fromEntries(messages.map((m) => [m.id, this.convertMessageToDto(m)])),
 			},
@@ -302,9 +312,12 @@ export class ChatHubService {
 
 		if (updates.title !== undefined) sessionUpdates.title = updates.title;
 		if (updates.credentialId !== undefined) sessionUpdates.credentialId = updates.credentialId;
-		if (updates.tools !== undefined) sessionUpdates.tools = updates.tools;
 
-		return await this.sessionRepository.updateChatSession(sessionId, sessionUpdates);
+		await this.sessionRepository.updateChatSession(sessionId, sessionUpdates);
+
+		if (updates.toolIds !== undefined) {
+			await this.chatHubToolService.setSessionTools(sessionId, updates.toolIds);
+		}
 	}
 
 	/**
@@ -321,7 +334,7 @@ export class ChatHubService {
 	private async ensureValidModel(user: User, model: ChatHubConversationModel, trx?: EntityManager) {
 		if (model.provider === 'custom-agent') {
 			// Find the agent to get its name
-			const agent = await this.chatHubAgentService.getAgentById(user.id, model.agentId, trx);
+			const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id, trx);
 			if (!agent) {
 				throw new BadRequestError('Agent not found for chat session initialization');
 			}
@@ -368,7 +381,6 @@ export class ChatHubService {
 			model,
 			credentials,
 			previousMessageId,
-			tools,
 			attachments,
 			timeZone,
 		} = payload;
@@ -387,12 +399,12 @@ export class ChatHubService {
 					: undefined;
 			const result = await this.messageRepository.manager.transaction(async (trx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
+				const isNewSession = !session;
 				session ??= await this.createChatSession(
 					user,
 					sessionId,
 					model,
 					credentialId,
-					tools,
 					payload.agentName,
 					trx,
 				);
@@ -417,6 +429,11 @@ export class ChatHubService {
 					undefined,
 					trx,
 				);
+
+				// Resolve tool definitions from the session's join table
+				const tools = isNewSession
+					? (await this.chatHubToolService.getEnabledTools(user.id, trx)).map((t) => t.definition)
+					: await this.chatHubToolService.getToolDefinitionsForSession(sessionId, trx);
 
 				const replyWorkflow = await this.prepareReplyWorkflow(
 					user,
@@ -553,15 +570,7 @@ export class ChatHubService {
 				const messageToEdit = await this.getChatMessage(session.id, editId, [], trx);
 
 				if (messageToEdit.type === 'ai') {
-					if (model.provider === 'n8n') {
-						throw new BadRequestError(
-							'Editing AI messages with n8n workflow agents is not supported',
-						);
-					}
-
-					// AI edits just change the original message without revisioning or response generation
-					await this.messageRepository.updateChatMessage(editId, { content: payload.message }, trx);
-					return { workflow: null, combinedAttachments: [] };
+					throw new BadRequestError('Editing AI messages is not supported');
 				}
 
 				if (messageToEdit.type === 'human') {
@@ -597,6 +606,8 @@ export class ChatHubService {
 						trx,
 					);
 
+					const tools = await this.chatHubToolService.getToolDefinitionsForSession(sessionId, trx);
+
 					const workflow = await this.prepareReplyWorkflow(
 						user,
 						sessionId,
@@ -604,7 +615,7 @@ export class ChatHubService {
 						model,
 						history,
 						{ message, attachments },
-						session.tools,
+						tools,
 						tz,
 						trx,
 						executionMetadata,
@@ -711,6 +722,8 @@ export class ChatHubService {
 				const message = lastHumanMessage ? lastHumanMessage.content : '';
 				const attachments = lastHumanMessage.attachments ?? [];
 
+				const tools = await this.chatHubToolService.getToolDefinitionsForSession(sessionId, trx);
+
 				const workflow = await this.prepareReplyWorkflow(
 					user,
 					sessionId,
@@ -718,7 +731,7 @@ export class ChatHubService {
 					model,
 					history,
 					{ message, attachments },
-					session.tools,
+					tools,
 					tz,
 					trx,
 					executionMetadata,
@@ -775,7 +788,7 @@ export class ChatHubService {
 			const [agent, memoryKey] =
 				model.provider === 'custom-agent'
 					? [
-							await this.chatHubAgentService.getAgentById(user.id, model.agentId),
+							await this.chatHubAgentService.getAgentById(model.agentId, user.id),
 							this.chatHubAgentService.getAgentMemoryKey(model.agentId),
 						]
 					: [null, null];
@@ -930,7 +943,10 @@ export class ChatHubService {
 		};
 	}
 
-	private convertSessionEntityToDto(session: ChatHubSession): ChatHubSessionDto {
+	private convertSessionEntityToDto(
+		session: ChatHubSession,
+		toolIds: string[] = [],
+	): ChatHubSessionDto {
 		const agent = session.workflow
 			? this.chatHubModelsService.extractModelFromWorkflow(session.workflow, [])
 			: session.agent
@@ -951,7 +967,7 @@ export class ChatHubService {
 			agentIcon: agent?.icon ?? null,
 			createdAt: session.createdAt.toISOString(),
 			updatedAt: session.updatedAt.toISOString(),
-			tools: session.tools,
+			toolIds,
 		};
 	}
 

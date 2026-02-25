@@ -7,6 +7,9 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import type { ChatHubCredentialsService } from '../chat-hub-credentials.service';
 import type { ChatHubAuthenticationMetadata } from '../chat-hub-extractor';
+import type { ChatHubToolService } from '../chat-hub-tool.service';
+import { ChatHubMessage } from '../chat-hub-message.entity';
+import { ChatHubSession } from '../chat-hub-session.entity';
 import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
 import type { ChatHubSettingsService } from '../chat-hub.settings.service';
 
@@ -14,6 +17,12 @@ describe('ChatHubWorkflowService', () => {
 	const logger = mock<Logger>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const binaryDataService = mock<BinaryDataService>();
+	const messageRepository = mock<ChatHubMessageRepository>();
+	const chatHubAgentService = mock<ChatHubAgentService>();
+	const chatHubSettingsService = mock<ChatHubSettingsService>();
+	const chatHubCredentialsService = mock<ChatHubCredentialsService>();
+	const chatHubToolService = mock<ChatHubToolService>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 
 	const mockCipher = mock<Cipher>();
@@ -44,6 +53,11 @@ describe('ChatHubWorkflowService', () => {
 			sharedWorkflowRepository,
 			settingsService,
 			credentialsService,
+			chatHubAttachmentService,
+			chatHubAgentService,
+			chatHubSettingsService,
+			chatHubCredentialsService,
+			chatHubToolService,
 			workflowFinderService,
 			mockCipher,
 		);

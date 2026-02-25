@@ -4,8 +4,17 @@ import type {
 	ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
 import { User, CredentialsEntity, JsonColumn, WithTimestamps } from '@n8n/db';
-import { Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from '@n8n/typeorm';
-import type { INode } from 'n8n-workflow';
+import {
+	Column,
+	Entity,
+	ManyToOne,
+	JoinColumn,
+	PrimaryGeneratedColumn,
+	type Relation,
+	JoinTable,
+	ManyToMany,
+} from '@n8n/typeorm';
+import type { ChatHubTool } from './chat-hub-tool.entity';
 
 export interface IChatHubAgent {
 	id: string;
@@ -19,7 +28,6 @@ export interface IChatHubAgent {
 	credentialId: string | null;
 	provider: ChatHubLLMProvider;
 	model: string;
-	tools: INode[];
 	files: ChatHubAgentKnowledgeItem[];
 }
 
@@ -89,12 +97,13 @@ export class ChatHubAgent extends WithTimestamps {
 	 */
 	@Column({ type: 'varchar', length: 64, nullable: true })
 	model: string;
-
-	/**
-	 * The tools available to the agent as JSON `INode` definitions.
-	 */
-	@JsonColumn({ default: '[]' })
-	tools: INode[];
+	@ManyToMany('ChatHubTool')
+	@JoinTable({
+		name: 'chat_hub_agent_tools',
+		joinColumn: { name: 'agentId', referencedColumnName: 'id' },
+		inverseJoinColumn: { name: 'toolId', referencedColumnName: 'id' },
+	})
+	tools?: Relation<ChatHubTool[]>;
 
 	/**
 	 * The files attached to the agent.
