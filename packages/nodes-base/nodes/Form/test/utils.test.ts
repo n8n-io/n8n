@@ -27,6 +27,7 @@ import {
 	addFormResponseDataToReturnItem,
 	validateSafeRedirectUrl,
 	handleNewlines,
+	parseFormFields,
 } from '../utils/utils';
 import { isIpAllowed } from '../../Webhook/utils';
 
@@ -2498,26 +2499,8 @@ describe('validateResponseModeConfiguration', () => {
 	});
 
 	describe('prepareFormFields', () => {
-		it('should resolve expressions in html fields', async () => {
-			webhookFunctions.evaluateExpression.mockImplementation((expression) => {
-				if (expression === '{{ $json.formMode }}') {
-					return 'Title';
-				}
-			});
-
-			const result = prepareFormFields(webhookFunctions, [
-				{
-					fieldLabel: 'Custom HTML',
-					fieldType: 'html',
-					elementName: 'test',
-					html: '<h1>{{ $json.formMode }}</h1>',
-				},
-			]);
-
-			expect(result[0].html).toBe('<h1>Title</h1>');
-		});
 		it('should prepare hiddenField', async () => {
-			const result = prepareFormFields(webhookFunctions, [
+			const result = prepareFormFields([
 				{
 					fieldLabel: '',
 					fieldName: 'test',
@@ -2529,6 +2512,58 @@ describe('validateResponseModeConfiguration', () => {
 				fieldLabel: 'test',
 				fieldName: 'test',
 				fieldType: 'hiddenField',
+			});
+		});
+
+		it('should sanitize html fields', async () => {
+			const result = prepareFormFields([
+				{
+					fieldLabel: 'Custom HTML',
+					fieldType: 'html',
+					elementName: 'test',
+					html: '<div>Safe content</div><script>alert("XSS")</script>',
+				},
+			]);
+
+			expect(result[0].html).toBe('<div>Safe content</div>');
+		});
+
+		it('should not modify html fields when html is empty', async () => {
+			const result = prepareFormFields([
+				{
+					fieldLabel: 'Custom HTML',
+					fieldType: 'html',
+					elementName: 'test',
+					html: '',
+				},
+			]);
+
+			expect(result[0].html).toBe('');
+		});
+
+		it('should not modify html fields when html is undefined', async () => {
+			const result = prepareFormFields([
+				{
+					fieldLabel: 'Custom HTML',
+					fieldType: 'html',
+					elementName: 'test',
+				},
+			]);
+
+			expect(result[0].html).toBeUndefined();
+		});
+
+		it('should not process non-html fields', async () => {
+			const result = prepareFormFields([
+				{
+					fieldLabel: 'Text Field',
+					fieldType: 'text',
+				},
+			]);
+
+			expect(result[0]).toEqual({
+				fieldLabel: 'Text Field',
+				fieldType: 'text',
 			});
 		});
 	});
@@ -2873,5 +2908,139 @@ describe('handleNewlines', () => {
 		const result = handleNewlines(text);
 
 		expect(result).toBe(expected);
+	});
+});
+
+describe('parseFormFields - HTML field expression resolution', () => {
+	let mockWebhookFunctions: ReturnType<typeof mock<IWebhookFunctions>>;
+
+	beforeEach(() => {
+		mockWebhookFunctions = mock<IWebhookFunctions>();
+	});
+
+	it('should resolve expressions in html fields', () => {
+		mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			if (paramName === 'formFields.values') {
+				return [
+					{
+						fieldLabel: 'Custom HTML',
+						fieldType: 'html',
+						elementName: 'test',
+						html: '<h1>{{ $json.formMode }}</h1>',
+					},
+				];
+			}
+			return undefined;
+		});
+
+		mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+			if (expression === '{{ $json.formMode }}') {
+				return 'Title';
+			}
+			if (expression.includes('formMode')) {
+				return 'test';
+			}
+			return expression;
+		});
+
+		const result = parseFormFields(mockWebhookFunctions, {
+			defineForm: 'fields',
+			fieldsParameterName: 'formFields.values',
+		});
+
+		expect(mockWebhookFunctions.evaluateExpression).toHaveBeenCalledWith('{{ $json.formMode }}');
+		expect(result[0].html).toBe('<h1>Title</h1>');
+	});
+
+	it('should handle multiple expressions in html fields', () => {
+		mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			if (paramName === 'formFields.values') {
+				return [
+					{
+						fieldLabel: 'Custom HTML',
+						fieldType: 'html',
+						elementName: 'test',
+						html: '<h1>{{ $json.title }}</h1><p>{{ $json.description }}</p>',
+					},
+				];
+			}
+			return undefined;
+		});
+
+		mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+			if (expression === '{{ $json.title }}') return 'Welcome';
+			if (expression === '{{ $json.description }}') return 'Please fill out the form';
+			if (expression.includes('formMode')) {
+				return 'test';
+			}
+			return expression;
+		});
+
+		const result = parseFormFields(mockWebhookFunctions, {
+			defineForm: 'fields',
+			fieldsParameterName: 'formFields.values',
+		});
+
+		expect(result[0].html).toBe('<h1>Welcome</h1><p>Please fill out the form</p>');
+	});
+
+	it('should not modify html fields without expressions', () => {
+		mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			if (paramName === 'formFields.values') {
+				return [
+					{
+						fieldLabel: 'Custom HTML',
+						fieldType: 'html',
+						elementName: 'test',
+						html: '<h1>Static Title</h1>',
+					},
+				];
+			}
+			return undefined;
+		});
+
+		mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+			if (expression.includes('formMode')) {
+				return 'test';
+			}
+			return expression;
+		});
+
+		const result = parseFormFields(mockWebhookFunctions, {
+			defineForm: 'fields',
+			fieldsParameterName: 'formFields.values',
+		});
+
+		expect(result[0].html).toBe('<h1>Static Title</h1>');
+	});
+
+	it('should handle empty html fields', () => {
+		mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			if (paramName === 'formFields.values') {
+				return [
+					{
+						fieldLabel: 'Custom HTML',
+						fieldType: 'html',
+						elementName: 'test',
+						html: '',
+					},
+				];
+			}
+			return undefined;
+		});
+
+		mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+			if (expression.includes('formMode')) {
+				return 'test';
+			}
+			return expression;
+		});
+
+		const result = parseFormFields(mockWebhookFunctions, {
+			defineForm: 'fields',
+			fieldsParameterName: 'formFields.values',
+		});
+
+		expect(result[0].html).toBe('');
 	});
 });
