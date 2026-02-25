@@ -14,7 +14,7 @@ export class FloatingUiHelper {
 	getVisiblePopper() {
 		// Match both Element+ poppers (.el-popper:visible) and Reka UI poppers ([data-state="open"])
 		return this.page.locator(
-			'.el-popper:visible, [data-state="open"][role="dialog"], [data-state="open"][role="menu"]',
+			'.el-popper:visible, [data-state="open"][role="dialog"], [data-state="open"][role="menu"], [data-state="open"][role="listbox"]',
 		);
 	}
 

@@ -8,7 +8,7 @@ import type { IDataObject } from 'n8n-workflow';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
 
-import { getCredentials, toJsonSchema } from './credentials.service';
+import { getCredential, toJsonSchema } from './credentials.service';
 import type { CredentialRequest } from '../../../types';
 
 /**
@@ -99,7 +99,7 @@ export const validCredentialsPropertiesForUpdate = async (
 	if (data !== undefined) {
 		// Fetch existing credential to get type if not provided
 		if (type === undefined) {
-			const existingCredential = await getCredentials(credentialId);
+			const existingCredential = await getCredential(credentialId);
 			if (!existingCredential) {
 				return res.status(404).json({ message: 'Credential not found' });
 			}
@@ -115,7 +115,7 @@ export const validCredentialsPropertiesForUpdate = async (
 
 	// If type is provided but data is not, check if type is changing
 	if (type !== undefined && data === undefined) {
-		const existingCredential = await getCredentials(credentialId);
+		const existingCredential = await getCredential(credentialId);
 		if (!existingCredential) {
 			return res.status(404).json({ message: 'Credential not found' });
 		}

@@ -1,0 +1,64 @@
+{
+	"name": "MCP Available Basic Test",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "hours"
+						}
+					]
+				}
+			},
+			"id": "schedule-trigger",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [300, 300]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "set-data-1",
+							"name": "message",
+							"value": "Hello from MCP workflow",
+							"type": "string"
+						}
+					]
+				}
+			},
+			"id": "set-node",
+			"name": "Set Data",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [500, 300]
+		}
+	],
+	"connections": {
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Set Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1",
+		"availableInMCP": true
+	},
+	"staticData": null,
+	"meta": null,
+	"pinData": {},
+	"versionId": null,
+	"triggerCount": 1,
+	"tags": []
+}

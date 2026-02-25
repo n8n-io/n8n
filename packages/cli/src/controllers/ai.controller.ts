@@ -9,6 +9,7 @@ import {
 	AiSessionRetrievalRequestDto,
 	AiUsageSettingsRequestDto,
 	AiTruncateMessagesRequestDto,
+	AiClearSessionRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Post, RestController, GlobalScope } from '@n8n/decorators';
@@ -68,9 +69,14 @@ export class AiController {
 						executionData: workflowContext.executionData,
 						executionSchema: workflowContext.executionSchema,
 						expressionValues: workflowContext.expressionValues,
+						valuesExcluded: workflowContext.valuesExcluded,
+						pinnedNodes: workflowContext.pinnedNodes,
+						selectedNodes: workflowContext.selectedNodes,
 					},
 					featureFlags,
 					versionId,
+					mode: payload.payload.mode,
+					resumeData: payload.payload.resumeData,
 				},
 				req.user,
 				signal,
@@ -125,20 +131,34 @@ export class AiController {
 	@Post('/chat', { ipRateLimit: { limit: 100 } })
 	async chat(req: AuthenticatedRequest, res: FlushableResponse, @Body payload: AiChatRequestDto) {
 		try {
+			const abortController = new AbortController();
+			const { signal } = abortController;
+
+			const handleClose = () => abortController.abort();
+			res.on('close', handleClose);
+
 			const aiResponse = await this.aiService.chat(payload, req.user);
 			if (aiResponse.body) {
 				res.header('Content-type', 'application/json-lines').flush();
-				await aiResponse.body.pipeTo(
-					new WritableStream({
-						write(chunk) {
-							res.write(chunk);
-							res.flush();
-						},
-					}),
-				);
+				try {
+					await aiResponse.body.pipeTo(
+						new WritableStream({
+							write(chunk) {
+								res.write(chunk);
+								res.flush();
+							},
+						}),
+						{ signal },
+					);
+				} finally {
+					res.off('close', handleClose);
+				}
 				res.end();
 			}
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError') {
+				return;
+			}
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
 		}
@@ -224,7 +244,11 @@ export class AiController {
 		@Body payload: AiSessionRetrievalRequestDto,
 	) {
 		try {
-			const sessions = await this.workflowBuilderService.getSessions(payload.workflowId, req.user);
+			const sessions = await this.workflowBuilderService.getSessions(
+				payload.workflowId,
+				req.user,
+				payload.codeBuilder,
+			);
 			return sessions;
 		} catch (e) {
 			assert(e instanceof Error);
@@ -258,8 +282,25 @@ export class AiController {
 				payload.workflowId,
 				req.user,
 				payload.messageId,
+				payload.codeBuilder,
 			);
 			return { success };
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Licensed('feat:aiBuilder')
+	@Post('/build/clear-session', { ipRateLimit: { limit: 100 } })
+	async clearSession(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: AiClearSessionRequestDto,
+	): Promise<{ success: boolean }> {
+		try {
+			await this.workflowBuilderService.clearSession(payload.workflowId, req.user);
+			return { success: true };
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);

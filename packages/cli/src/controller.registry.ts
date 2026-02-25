@@ -15,7 +15,7 @@ import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 import assert from 'node:assert';
-import type { ZodClass } from 'zod-class';
+import type { ZodClass } from '@n8n/api-types';
 
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { LastActiveAtService } from './services/last-active-at.service';

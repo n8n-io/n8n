@@ -7,7 +7,7 @@ import Input from './Input.vue';
 import './Input.stories.css';
 
 const meta = {
-	title: 'Components/Input',
+	title: 'Atoms/Input',
 	component: Input,
 	parameters: {
 		docs: {

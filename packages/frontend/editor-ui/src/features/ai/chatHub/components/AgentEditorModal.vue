@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { fetchChatModelsApi, buildAgentAttachmentUrl } from '@/features/ai/chatHub/chat.api';
+import Modal from '@/app/components/Modal.vue';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import {
 	emptyChatModelsResponse,
@@ -30,8 +31,7 @@ import {
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
-import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
 import { type IBinaryData, type INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
@@ -41,7 +41,6 @@ import {
 	createMimeTypes,
 } from '@/features/ai/chatHub/chat.utils';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
-import { useUIStore } from '@/app/stores/ui.store';
 import { TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
@@ -62,7 +61,6 @@ const toast = useToast();
 const message = useMessage();
 const uiStore = useUIStore();
 
-const modalBus = ref(createEventBus());
 const { customAgent, isLoading: isLoadingCustomAgent } = useCustomAgent(props.data.agentId);
 
 const name = ref('');
@@ -71,8 +69,7 @@ const systemPrompt = ref('');
 const selectedModel = ref<ChatHubBaseLLMModel | null>(null);
 const isSaving = ref(false);
 const isDeleting = ref(false);
-const isOpened = ref(false);
-const tools = ref<INode[]>([]);
+const toolIds = ref<string[]>([]);
 const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
 const isLoadingAgents = ref(false);
 const nameInputRef = useTemplateRef('nameInput');
@@ -145,16 +142,16 @@ const shouldShowReindexWarning = computed(() => {
 	return isEditMode.value && hasPdfFiles.value && isProviderChanging.value;
 });
 
-modalBus.value.once('opened', () => {
-	isOpened.value = true;
-});
+function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
 
-// If the agent doesn't support tools anymore, reset tools
+// If the agent doesn't support tools anymore, reset toolIds
 watch(
 	selectedAgent,
 	(agent) => {
 		if (agent && !agent.metadata.capabilities.functionCalling) {
-			tools.value = [];
+			toolIds.value = [];
 		}
 	},
 	{ immediate: true },
@@ -170,8 +167,8 @@ watch(
 		description.value = agent.description ?? '';
 		systemPrompt.value = agent.systemPrompt;
 		selectedModel.value = { provider: agent.provider, model: agent.model };
-		tools.value = agent.tools || [];
 		savedFiles.value = agent.files;
+		toolIds.value = agent.toolIds ?? [];
 
 		if (agent.credentialId) {
 			agentSelectedCredentials.value[agent.provider] = agent.credentialId;
@@ -180,17 +177,18 @@ watch(
 	{ immediate: true },
 );
 
-watch(
-	[isOpened, isLoadingAgent, nameInputRef],
-	([opened, isLoading, nameInput]) => {
-		if (opened && !isLoading) {
-			// autofocus attribute doesn't work in modal
-			// https://github.com/element-plus/element-plus/issues/15250
-			nameInput?.focus();
-		}
-	},
-	{ immediate: true, flush: 'post' },
-);
+// Auto-focus name input when mounted and not loading
+onMounted(() => {
+	watch(
+		[isLoadingAgent, nameInputRef],
+		([isLoading, nameInput]) => {
+			if (!isLoading) {
+				nameInput?.focus();
+			}
+		},
+		{ immediate: true, flush: 'post' },
+	);
+});
 
 // Update agents when credentials are updated
 watch(
@@ -215,6 +213,14 @@ function onCredentialSelected(provider: ChatHubProvider, credentialId: string | 
 	};
 }
 
+function handleToggleAgentTool(toolId: string) {
+	if (toolIds.value.includes(toolId)) {
+		toolIds.value = toolIds.value.filter((id) => id !== toolId);
+	} else {
+		toolIds.value = [...toolIds.value, toolId];
+	}
+}
+
 function onModelChange(model: ChatHubConversationModel) {
 	assert(isLlmProviderModel(model));
 	selectedModel.value = model;
@@ -234,7 +240,7 @@ async function onSave() {
 			systemPrompt: systemPrompt.value.trim(),
 			...selectedModel.value,
 			credentialId: credentialIdForSelectedModelProvider.value,
-			tools: tools.value,
+			toolIds: toolIds.value,
 			icon: icon.value,
 		};
 
@@ -270,7 +276,7 @@ async function onSave() {
 			});
 		}
 
-		modalBus.value.emit('close');
+		closeDialog();
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : '';
 		toast.showError(error, i18n.baseText('chatHub.agent.editor.error.save'), errorMessage);
@@ -302,25 +308,13 @@ async function onDelete() {
 			type: 'success',
 		});
 		props.data.onClose?.();
-		modalBus.value.emit('close');
+		closeDialog();
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : '';
 		toast.showError(error, i18n.baseText('chatHub.agent.editor.error.delete'), errorMessage);
 	} finally {
 		isDeleting.value = false;
 	}
-}
-
-function onSelectTools() {
-	uiStore.openModalWithData({
-		name: TOOLS_SELECTOR_MODAL_KEY,
-		data: {
-			selected: tools.value,
-			onConfirm: (newTools: INode[]) => {
-				tools.value = newTools;
-			},
-		},
-	});
 }
 
 function isFileTypeAccepted(file: File): boolean {
@@ -407,22 +401,15 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		:event-bus="modalBus"
-		width="600px"
-		:center="true"
-		:loading="isLoadingAgent"
-		max-width="90%"
-		min-height="400px"
-	>
+	<Modal :name="modalName" width="640px" :loading="isLoadingAgent">
 		<template #header>
 			<div :class="$style.header">
 				<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
 				<N8nButton
 					v-if="isEditMode"
-					type="secondary"
+					variant="subtle"
 					icon="trash-2"
+					:class="$style.deleteButton"
 					:disabled="isDeleting"
 					:loading="isDeleting"
 					@click="onDelete"
@@ -523,10 +510,12 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 								:disabled-tooltip="
 									canSelectTools
 										? undefined
-										: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+										: selectedModel
+											? i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+											: i18n.baseText('chatHub.tools.selector.disabled.noModel.tooltip')
 								"
-								:selected="tools"
-								@click="onSelectTools"
+								:checked-tool-ids="toolIds"
+								@toggle="handleToggleAgentTool"
 							/>
 						</div>
 					</N8nInputLabel>
@@ -599,12 +588,13 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 				</N8nInputLabel>
 			</div>
 		</template>
+
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="secondary" @click="modalBus.emit('close')">{{
-					i18n.baseText('chatHub.tools.editor.cancel')
-				}}</N8nButton>
-				<N8nButton type="primary" :disabled="!isValid || isSaving" @click="onSave">
+				<N8nButton variant="subtle" @click="closeDialog">
+					{{ i18n.baseText('chatHub.tools.editor.cancel') }}
+				</N8nButton>
+				<N8nButton variant="solid" :disabled="!isValid || isSaving" @click="onSave">
 					{{ saveButtonLabel }}
 				</N8nButton>
 			</div>
@@ -619,6 +609,10 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 	justify-content: space-between;
 	gap: var(--spacing--s);
 	padding-right: var(--spacing--xl);
+}
+
+.deleteButton {
+	margin-top: calc(-1 * var(--spacing--xs));
 }
 
 .content {
@@ -674,7 +668,6 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 .footer {
 	display: flex;
 	justify-content: flex-end;
-	align-items: center;
 	gap: var(--spacing--2xs);
 }
 

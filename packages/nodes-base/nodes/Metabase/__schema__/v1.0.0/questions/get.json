@@ -185,7 +185,7 @@
 						"type": "string"
 					},
 					"text": {
-						"type": ["null", "string"]
+						"type": "null"
 					},
 					"updated_at": {
 						"type": "string"
@@ -255,5 +255,5 @@
 			}
 		}
 	},
-	"version": 3
+	"version": 4
 }

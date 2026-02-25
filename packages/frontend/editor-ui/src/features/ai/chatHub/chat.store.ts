@@ -24,6 +24,10 @@ import {
 	fetchChatProviderSettingsApi,
 	updateChatSettingsApi,
 	fetchVectorStoreUsageApi,
+	fetchToolsApi,
+	createToolApi,
+	updateToolApi,
+	deleteToolApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -50,6 +54,7 @@ import {
 	type ChatHubStreamChunk,
 	type ChatHubStreamEnd,
 	type ChatHubStreamError,
+	type ChatHubToolDto,
 	type ChatHubExecutionBegin,
 	type ChatHubExecutionEnd,
 	type ChatMessageContentChunk,
@@ -87,6 +92,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const i18n = useI18n();
 
 	const agents = ref<ChatModelsResponse | null>(null);
+	let pendingAgentsFetch: Promise<ChatModelsResponse> | null = null;
+
 	const customAgents = ref<Partial<Record<string, ChatHubAgentDto>>>({});
 	const sessions = ref<{
 		byId: Partial<Record<string, ChatHubSessionDto>>;
@@ -99,6 +106,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const streaming = ref<ChatStreamingState>();
 	const settingsLoading = ref(false);
 	const settings = ref<Record<ChatHubLLMProvider, ChatProviderSettingsDto> | null>(null);
+	const configuredTools = ref<ChatHubToolDto[]>([]);
+	const configuredToolsLoaded = ref(false);
+
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
 	const vectorStoreUsage = ref<VectorStoreUsageDto | null>(null);
 
@@ -299,11 +309,49 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		message.updatedAt = new Date().toISOString();
 	}
 
+	async function fetchConfiguredTools() {
+		const tools = await fetchToolsApi(rootStore.restApiContext);
+		configuredTools.value = tools;
+		configuredToolsLoaded.value = true;
+		return tools;
+	}
+
+	async function addConfiguredTool(tool: INode): Promise<ChatHubToolDto> {
+		const created = await createToolApi(rootStore.restApiContext, tool);
+		configuredTools.value = [...configuredTools.value, created];
+		return created;
+	}
+
+	async function updateConfiguredTool(toolId: string, definition: INode): Promise<ChatHubToolDto> {
+		const updated = await updateToolApi(rootStore.restApiContext, toolId, { definition });
+		configuredTools.value = configuredTools.value.map((t) =>
+			t.definition.id === toolId ? updated : t,
+		);
+		return updated;
+	}
+
+	async function toggleToolEnabled(toolId: string, enabled: boolean): Promise<ChatHubToolDto> {
+		const updated = await updateToolApi(rootStore.restApiContext, toolId, { enabled });
+		configuredTools.value = configuredTools.value.map((t) =>
+			t.definition.id === toolId ? updated : t,
+		);
+		return updated;
+	}
+
+	async function removeConfiguredTool(toolId: string): Promise<void> {
+		await deleteToolApi(rootStore.restApiContext, toolId);
+		configuredTools.value = configuredTools.value.filter((t) => t.definition.id !== toolId);
+	}
+
 	async function fetchAgents(credentialMap: CredentialsMap, options: FetchOptions = {}) {
+		pendingAgentsFetch ??= fetchChatModelsApi(rootStore.restApiContext, {
+			credentials: credentialMap,
+		}).finally(() => {
+			pendingAgentsFetch = null;
+		});
+
 		[agents.value] = await Promise.all([
-			fetchChatModelsApi(rootStore.restApiContext, {
-				credentials: credentialMap,
-			}),
+			pendingAgentsFetch,
 			new Promise((r) => setTimeout(r, options.minLoadingTime ?? 0)),
 		]);
 		return agents.value;
@@ -343,7 +391,11 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 			for (const session of response.data) {
 				sessions.value.ids.push(session.id);
-				sessions.value.byId[session.id] = session;
+				const existing = sessions.value.byId[session.id];
+				sessions.value.byId[session.id] = {
+					...session,
+					toolIds: existing?.toolIds ?? session.toolIds,
+				};
 			}
 		} finally {
 			sessionsLoadingMore.value = false;
@@ -453,7 +505,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		message: string,
 		agent: ChatModelDto,
 		credentials: ChatHubSendMessageRequest['credentials'],
-		tools: INode[],
 		files: File[] = [],
 	) {
 		const messageId = uuidv4();
@@ -476,7 +527,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			sessionId,
 			retryOfMessageId: null,
 			revisionOfMessageId: null,
-			tools,
 			attachments,
 			agent,
 		};
@@ -494,7 +544,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			message,
 			credentials,
 			previousMessageId,
-			tools,
 			attachments,
 			agentName: agent.name,
 			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -503,7 +552,10 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		try {
 			// Create session entry if new
 			if (!sessions.value.byId[sessionId]) {
-				sessions.value.byId[sessionId] = createSessionFromStreamingState(streaming.value);
+				sessions.value.byId[sessionId] = createSessionFromStreamingState(
+					streaming.value,
+					configuredTools.value.filter((t) => t.enabled).map((t) => t.definition.id),
+				);
 				sessions.value.ids ??= [];
 				sessions.value.ids.unshift(sessionId);
 			}
@@ -573,7 +625,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			agent,
 			retryOfMessageId: null,
 			revisionOfMessageId: editId,
-			tools: [],
 			attachments: [...keptExistingAttachments, ...binaryData],
 		};
 
@@ -624,7 +675,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			agent,
 			retryOfMessageId: retryId,
 			revisionOfMessageId: null,
-			tools: [],
 			attachments: [],
 		};
 
@@ -675,14 +725,32 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		}
 	}
 
-	async function updateToolsInSession(sessionId: ChatSessionId, tools: INode[]) {
+	async function toggleCustomAgentTool(agentId: string, toolId: string) {
+		const agent = customAgents.value[agentId];
+		if (!agent) throw new Error(`Custom agent with ID ${agentId} not found`);
+
+		const currentIds = agent.toolIds ?? [];
+		const newIds = currentIds.includes(toolId)
+			? currentIds.filter((id) => id !== toolId)
+			: [...currentIds, toolId];
+
+		customAgents.value[agentId] = { ...agent, toolIds: newIds };
+		await updateAgentApi(rootStore.restApiContext, agentId, { toolIds: newIds });
+	}
+
+	async function toggleSessionTool(sessionId: ChatSessionId, toolId: string) {
 		const session = sessions.value?.byId[sessionId];
 		if (!session) {
 			throw new Error(`Session with ID ${sessionId} not found`);
 		}
 
+		const currentIds = session.toolIds ?? [];
+		const newIds = currentIds.includes(toolId)
+			? currentIds.filter((id) => id !== toolId)
+			: [...currentIds, toolId];
+
 		const updated = await updateConversationApi(rootStore.restApiContext, sessionId, {
-			tools,
+			toolIds: newIds,
 		});
 
 		updateSession(sessionId, updated.session);
@@ -889,6 +957,11 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			return;
 		}
 
+		// If the previous message was 'waiting', mark it as 'success' now that execution is resuming
+		if (previousMessageId && conversation?.messages[previousMessageId]?.status === 'waiting') {
+			updateMessage(sessionId, previousMessageId, 'success');
+		}
+
 		// Create the AI message placeholder - use streaming state if available for this session
 		const streamingStateForSession =
 			streaming.value?.sessionId === sessionId ? streaming.value : undefined;
@@ -999,7 +1072,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			sessionId,
 			retryOfMessageId: null,
 			revisionOfMessageId: null,
-			tools: session.tools ?? [],
 			attachments: [],
 			agent,
 		};
@@ -1188,6 +1260,17 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		deleteCustomAgent,
 
 		/**
+		 * configured tools (tool library)
+		 */
+		configuredTools,
+		configuredToolsLoaded,
+		fetchConfiguredTools,
+		addConfiguredTool,
+		updateConfiguredTool,
+		toggleToolEnabled,
+		removeConfiguredTool,
+
+		/**
 		 * conversations
 		 */
 		sessions,
@@ -1198,7 +1281,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		renameSession,
 		updateSessionModel,
 		deleteSession,
-		updateToolsInSession,
+		toggleSessionTool,
+		toggleCustomAgentTool,
 		conversationsBySession,
 
 		/**

@@ -152,20 +152,29 @@ export function buildToolContext(steps: ToolCallData[]): string {
  * @returns Cleaned array with orphaned messages removed from the start
  */
 function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage[] {
-	// Remove orphaned ToolMessages at the start
-	while (chatHistory.length > 0 && chatHistory[0] instanceof ToolMessage) {
-		chatHistory.shift();
-	}
+	let changed = true;
+	while (changed && chatHistory.length > 0) {
+		changed = false;
 
-	// Remove AIMessages with tool_calls if they don't have following ToolMessages
-	const firstMessage = chatHistory[0];
-	const hasOrphanedAIMessage =
-		firstMessage instanceof AIMessage &&
-		(firstMessage.tool_calls?.length ?? 0) > 0 &&
-		!(chatHistory[1] instanceof ToolMessage);
+		// Remove orphaned ToolMessages at the start
+		while (chatHistory.length > 0 && chatHistory[0] instanceof ToolMessage) {
+			chatHistory.shift();
+			changed = true;
+		}
 
-	if (hasOrphanedAIMessage) {
-		chatHistory.shift();
+		// Remove AIMessages with tool_calls if they don't have following ToolMessages
+		if (chatHistory.length > 0) {
+			const firstMessage = chatHistory[0];
+			const hasOrphanedAIMessage =
+				firstMessage instanceof AIMessage &&
+				(firstMessage.tool_calls?.length ?? 0) > 0 &&
+				!(chatHistory[1] instanceof ToolMessage);
+
+			if (hasOrphanedAIMessage) {
+				chatHistory.shift();
+				changed = true;
+			}
+		}
 	}
 
 	return chatHistory;

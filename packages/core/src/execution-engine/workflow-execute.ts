@@ -140,13 +140,17 @@ export class WorkflowExecute {
 		// If a destination node is given we only run the direct parent nodes and no others
 		let runNodeFilter: string[] | undefined;
 		if (destinationNode) {
-			runNodeFilter = workflow.getParentNodes(destinationNode.nodeName);
+			runNodeFilter = [
+				...workflow.getParentNodes(destinationNode.nodeName),
+				...workflow.getParentNodes(destinationNode.nodeName, 'ALL_NON_MAIN'),
+			];
 			if (destinationNode.mode === 'inclusive') {
 				runNodeFilter.push(destinationNode.nodeName);
 			}
 			if (additionalRunFilterNodes) {
 				runNodeFilter.push.apply(runNodeFilter, additionalRunFilterNodes);
 			}
+			runNodeFilter = Array.from(new Set(runNodeFilter));
 		}
 
 		// Initialize the data of the start nodes
@@ -1244,6 +1248,12 @@ export class WorkflowExecute {
 				mode,
 				inputData,
 				abortSignal,
+			);
+		}
+
+		if (nodeType.supplyData) {
+			throw new ApplicationError(
+				`The node "${node.type}" has a "supplyData" method but no "execute" method.`,
 			);
 		}
 
@@ -2590,6 +2600,13 @@ export class WorkflowExecute {
 				executionData.data.main.length === 1 &&
 				executionData.data.main[0]?.length === nodeSuccessData[0].length;
 
+			// Multiple inputs → single output (e.g., aggregating items into one)
+			const isSingleOutput =
+				nodeSuccessData.length === 1 &&
+				nodeSuccessData[0]?.length === 1 &&
+				executionData.data.main.length === 1 &&
+				(executionData.data.main[0]?.length ?? 0) > 1;
+
 			checkOutputData: for (const outputData of nodeSuccessData) {
 				if (outputData === null) {
 					continue;
@@ -2609,6 +2626,11 @@ export class WorkflowExecute {
 							// is the origin of the corresponding output items
 							item.pairedItem = {
 								item: index,
+							};
+						} else if (isSingleOutput) {
+							// Multiple inputs were aggregated into a single output, pair to first input
+							item.pairedItem = {
+								item: 0,
 							};
 						} else {
 							// In all other cases autofixing is not possible

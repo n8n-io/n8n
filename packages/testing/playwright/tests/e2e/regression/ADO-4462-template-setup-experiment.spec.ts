@@ -17,7 +17,10 @@ const testTemplate = JSON.parse(
 function createTemplateRequirements(): TestRequirements {
 	return {
 		storage: {
-			N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '055_template_setup_experience': 'variant' }),
+			N8N_EXPERIMENT_OVERRIDES: JSON.stringify({
+				'055_template_setup_experience': 'variant',
+				'069_setup_panel': 'control',
+			}),
 		},
 		config: {
 			settings: {
@@ -52,41 +55,44 @@ function createTemplateRequirements(): TestRequirements {
 	};
 }
 
-test.describe('Template credentials setup @db:reset', () => {
-	test.beforeEach(async ({ setupRequirements, n8n }) => {
-		await setupRequirements(createTemplateRequirements());
-		await n8n.goHome();
-	});
+test.describe(
+	'Template credentials setup @db:reset',
+	{
+		annotation: [{ type: 'owner', description: 'Adore' }],
+	},
+	() => {
+		test.beforeEach(async ({ setupRequirements, n8n }) => {
+			await setupRequirements(createTemplateRequirements());
+			await n8n.goHome();
+		});
 
-	test('Should take users to canvas when importing template', async ({ n8n }) => {
-		await n8n.navigate.toTemplateCredentialSetup(TEMPLATE_ID);
-		await expect(n8n.canvas.getLoadingMask()).toBeHidden({ timeout: 30000 });
+		test('Should take users to canvas when importing template', async ({ n8n }) => {
+			await n8n.navigate.toTemplateCredentialSetup(TEMPLATE_ID);
+			await expect(n8n.canvas.getLoadingMask()).toBeHidden({ timeout: 30000 });
 
-		await expect(n8n.page).toHaveURL(/\/workflow\/.+\?templateId=.+&new=true/);
-		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
-		await expect(n8n.templateCredentialSetup.getCanvasSetupButton()).toBeVisible();
-	});
+			await expect(n8n.page).toHaveURL(/\/workflow\/.+\?templateId=.+&new=true/);
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
+			await expect(n8n.templateCredentialSetup.getCanvasSetupButton()).toBeVisible();
+		});
 
-	test('Loads template setup modal correctly', async ({ n8n }) => {
-		await n8n.navigate.toTemplateCredentialSetup(TEMPLATE_ID);
-		await expect(n8n.canvas.getLoadingMask()).toBeHidden({ timeout: 30000 });
+		test('Loads template setup modal correctly', async ({ n8n }) => {
+			await n8n.navigate.toTemplateCredentialSetup(TEMPLATE_ID);
+			await expect(n8n.canvas.getLoadingMask()).toBeHidden({ timeout: 30000 });
 
-		await expect(n8n.page).toHaveURL(/\/workflow\/.+\?templateId=.+&new=true/);
-		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
+			await expect(n8n.page).toHaveURL(/\/workflow\/.+\?templateId=.+&new=true/);
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
 
-		await expect(n8n.templateCredentialSetup.getCanvasSetupButton()).toBeVisible();
-		// Modal should open automatically
-		await expect(n8n.templateCredentialSetup.getCanvasCredentialModal()).toBeVisible();
+			await expect(n8n.templateCredentialSetup.getCanvasSetupButton()).toBeVisible();
 
-		// Close the modal and re-open it
-		await n8n.templateCredentialSetup.closeSetupCredentialModal();
-		await n8n.templateCredentialSetup.getCanvasSetupButton().click();
-		await expect(n8n.templateCredentialSetup.getCanvasCredentialModal()).toBeVisible();
+			// Open modal via button click
+			await n8n.templateCredentialSetup.getCanvasSetupButton().click();
+			await expect(n8n.templateCredentialSetup.getCanvasCredentialModal()).toBeVisible();
 
-		const modalSteps = n8n.templateCredentialSetup.getSetupCredentialModalSteps();
-		await expect(modalSteps).toHaveCount(3);
-		await expect(modalSteps.nth(0)).toContainText('Shopify');
-		await expect(modalSteps.nth(1)).toContainText('X (Formerly Twitter)');
-		await expect(modalSteps.nth(2)).toContainText('Telegram');
-	});
-});
+			const modalSteps = n8n.templateCredentialSetup.getSetupCredentialModalSteps();
+			await expect(modalSteps).toHaveCount(3);
+			await expect(modalSteps.nth(0)).toContainText('Shopify');
+			await expect(modalSteps.nth(1)).toContainText('X (Formerly Twitter)');
+			await expect(modalSteps.nth(2)).toContainText('Telegram');
+		});
+	},
+);

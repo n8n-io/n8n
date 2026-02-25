@@ -260,6 +260,7 @@ describe('useToolParameters', () => {
 				currentNodeParameters: {},
 				credentials: undefined,
 				projectId: 'test-project',
+				workflowId: 'test-workflow',
 			});
 
 			expect(parameters.value).toHaveLength(1);

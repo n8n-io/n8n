@@ -24,6 +24,7 @@ import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
 import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
+import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
@@ -91,6 +92,8 @@ export type PublicFrontendSettings = {
 			loginUrl: FrontendSettings['sso']['oidc']['loginUrl'];
 		};
 	};
+	/** Used to fetch community nodes on preview instance */
+	communityNodesEnabled: FrontendSettings['communityNodesEnabled'];
 
 	mfa?: {
 		enabled: boolean;
@@ -183,6 +186,7 @@ export class FrontendService {
 			endpointWebhook: this.globalConfig.endpoints.webhook,
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
+			endpointHealth: resolveHealthEndpointPath(this.globalConfig),
 			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
 			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
 			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,
@@ -308,6 +312,7 @@ export class FrontendService {
 				advancedPermissions: false,
 				apiKeyScopes: false,
 				workflowDiffs: false,
+				namedVersions: false,
 				provisioning: false,
 				projects: {
 					team: {
@@ -315,6 +320,7 @@ export class FrontendService {
 					},
 				},
 				customRoles: false,
+				personalSpacePolicy: false,
 			},
 			mfa: {
 				enabled: false,
@@ -373,14 +379,15 @@ export class FrontendService {
 	async generateTypes() {
 		this.overwriteCredentialsProperties();
 
+		const { credentials, nodes } = await this.loadNodesAndCredentials.collectTypes();
+
 		const { staticCacheDir } = this.instanceSettings;
 		// pre-render all the node and credential types as static json files
 		await mkdir(path.join(staticCacheDir, 'types'), { recursive: true });
-		const { credentials, nodes } = this.loadNodesAndCredentials.types;
-		this.writeStaticJSON('nodes', nodes);
+		await this.writeStaticJSON('nodes', nodes);
 		const nodeVersionIdentifiers = this.getNodeVersionIdentifiers(nodes);
-		this.writeStaticJSON('node-versions', nodeVersionIdentifiers);
-		this.writeStaticJSON('credentials', credentials);
+		await this.writeStaticJSON('node-versions', nodeVersionIdentifiers);
+		await this.writeStaticJSON('credentials', credentials);
 	}
 
 	async getSettings(): Promise<FrontendSettings> {
@@ -455,7 +462,9 @@ export class FrontendService {
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
 			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
+			namedVersions: this.license.isLicensed(LICENSE_FEATURES.NAMED_VERSIONS),
 			customRoles: this.licenseState.isCustomRolesLicensed(),
+			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
@@ -544,6 +553,7 @@ export class FrontendService {
 			previewMode,
 			enterprise: { saml, ldap, oidc },
 			mfa,
+			communityNodesEnabled,
 		} = await this.getSettings();
 
 		const publicSettings: PublicFrontendSettings = {
@@ -568,6 +578,7 @@ export class FrontendService {
 			authCookie,
 			previewMode,
 			enterprise: { saml, ldap, oidc },
+			communityNodesEnabled,
 		};
 		if (includeMfaSettings) {
 			publicSettings.mfa = mfa;
@@ -595,27 +606,36 @@ export class FrontendService {
 		return Array.from(identifiers);
 	}
 
-	private writeStaticJSON(
+	private async writeStaticJSON(
 		name: string,
 		data: Array<INodeTypeBaseDescription | ICredentialType | string>,
-	) {
+	): Promise<void> {
 		const { staticCacheDir } = this.instanceSettings;
 		const filePath = path.join(staticCacheDir, `types/${name}.json`);
 		const stream = createWriteStream(filePath, 'utf-8');
-		stream.write('[\n');
-		data.forEach((entry, index) => {
-			stream.write(JSON.stringify(entry));
-			if (index !== data.length - 1) stream.write(',');
-			stream.write('\n');
+
+		return await new Promise<void>((resolve, reject) => {
+			stream.on('error', reject);
+			stream.on('finish', resolve);
+
+			stream.write('[\n');
+			data.forEach((entry, index) => {
+				stream.write(JSON.stringify(entry));
+				if (index !== data.length - 1) stream.write(',');
+				stream.write('\n');
+			});
+			stream.write(']\n');
+			stream.end();
 		});
-		stream.write(']\n');
-		stream.end();
 	}
 
 	private overwriteCredentialsProperties() {
 		const { credentials } = this.loadNodesAndCredentials.types;
 		const credentialsOverwrites = this.credentialsOverwrites.getAll();
 		for (const credential of credentials) {
+			// Clear any existing overwritten properties to prevent stale data
+			delete credential.__overwrittenProperties;
+
 			const overwrittenProperties = [];
 			this.credentialTypes
 				.getParentTypes(credential.name)
