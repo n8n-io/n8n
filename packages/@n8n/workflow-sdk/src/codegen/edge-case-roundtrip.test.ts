@@ -961,7 +961,7 @@ export default workflow('test', 'Test').add(t.to(n));`;
 			const parsedJson = parseWorkflowCode(code);
 
 			expect(parsedJson.nodes).toHaveLength(5);
-			expect(parsedJson.connections['HTTP Request']?.main[1]?.[0]?.node).toBe('Error IF');
+			expect(parsedJson.connections['HTTP Request']?.error?.[0]?.[0]?.node).toBe('Error IF');
 			expect(parsedJson.connections['Error IF']?.main[0]?.[0]?.node).toBe('Retry');
 			expect(parsedJson.connections['Error IF']?.main[1]?.[0]?.node).toBe('Log Error');
 		});
@@ -1038,7 +1038,7 @@ export default workflow('test', 'Test').add(t.to(n));`;
 			const parsedJson = parseWorkflowCode(code);
 
 			expect(parsedJson.nodes).toHaveLength(5);
-			expect(parsedJson.connections['HTTP Request']?.main[1]?.[0]?.node).toBe('Error Router');
+			expect(parsedJson.connections['HTTP Request']?.error?.[0]?.[0]?.node).toBe('Error Router');
 			expect(parsedJson.connections['Error Router']?.main[0]?.[0]?.node).toBe('Handle 404');
 			expect(parsedJson.connections['Error Router']?.main[1]?.[0]?.node).toBe('Handle 500');
 		});
@@ -1115,7 +1115,7 @@ export default workflow('test', 'Test').add(t.to(n));`;
 			const parsedJson = parseWorkflowCode(code);
 
 			expect(parsedJson.nodes).toHaveLength(5);
-			expect(parsedJson.connections['HTTP Request']?.main[1]?.[0]?.node).toBe('Error Batcher');
+			expect(parsedJson.connections['HTTP Request']?.error?.[0]?.[0]?.node).toBe('Error Batcher');
 			expect(parsedJson.connections['Error Batcher']?.main[0]?.[0]?.node).toBe('All Done');
 			expect(parsedJson.connections['Error Batcher']?.main[1]?.[0]?.node).toBe('Process Each');
 		});
