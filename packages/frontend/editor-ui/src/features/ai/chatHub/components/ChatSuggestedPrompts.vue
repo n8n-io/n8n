@@ -42,7 +42,7 @@ function getIconName(icon?: AgentIconOrEmoji): IconName | undefined {
 .container {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--spacing--3xs);
+	gap: var(--spacing--xs);
 	justify-content: center;
 }
 
