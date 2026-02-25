@@ -1,3 +1,12 @@
+# [1.124.0](https://github.com/n8n-io/n8n/compare/n8n@1.123.22...n8n@1.124.0) (2026-02-25)
+
+
+### Bug Fixes
+
+* Backport transitive dependency bumps to 1.x ([#26260](https://github.com/n8n-io/n8n/issues/26260)) ([aef8c80](https://github.com/n8n-io/n8n/commit/aef8c80491dc74ac8cef13b6bfdab375ba0a69dd))
+
+
+
 ## [1.123.22](https://github.com/n8n-io/n8n/compare/n8n@1.123.21...n8n@1.123.22) (2026-02-25)
 
 
