@@ -20,6 +20,21 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 
+function setDocumentStoreActive(workflowId: string) {
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).setActiveState({
+		activeVersionId: 'v1',
+		activeVersion: {
+			versionId: 'v1',
+			authors: '',
+			createdAt: '',
+			updatedAt: '',
+			workflowPublishHistory: [],
+			name: null,
+			description: null,
+		},
+	});
+}
+
 const modalConfirmSpy = vi.fn();
 
 vi.mock('@/app/composables/useMessage', () => {
@@ -459,8 +474,8 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
-			// Populate workflowsById to mark workflow as existing (not new)
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			setDocumentStoreActive(workflow.id);
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w0' });
@@ -507,6 +522,7 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.setWorkflow(workflow);
 			workflowsListStore.workflowsById = { w2: workflow };
 			workflowsStore.isWorkflowSaved = { w2: true };
+			setDocumentStoreActive(workflow.id);
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w2' }, true, false, true);
@@ -530,6 +546,7 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.setWorkflow(workflow);
 			workflowsListStore.workflowsById = { w3: workflow };
 			workflowsStore.isWorkflowSaved = { w3: true };
+			setDocumentStoreActive(workflow.id);
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w3' }, true, false, false);

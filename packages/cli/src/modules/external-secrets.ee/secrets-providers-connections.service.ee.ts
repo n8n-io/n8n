@@ -1,10 +1,13 @@
-import type { SecretCompletionsResponse, SecretsProviderType } from '@n8n/api-types';
 import {
-	CreateSecretsProviderConnectionDto,
-	TestSecretProviderConnectionResponse,
+	type CreateSecretsProviderConnectionDto,
+	type ReloadSecretProviderConnectionResponse,
+	type TestSecretProviderConnectionResponse,
+	type SecretCompletionsResponse,
+	type SecretProviderConnection,
+	type SecretProviderConnectionListItem,
+	type SecretsProviderType,
 	testSecretProviderConnectionResponseSchema,
 	reloadSecretProviderConnectionResponseSchema,
-	ReloadSecretProviderConnectionResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { SecretsProviderConnection } from '@n8n/db';
@@ -23,7 +26,6 @@ import { EventService } from '@/events/event.service';
 import type { ProjectSummary } from '@/events/maps/relay.event-map';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
-import { SecretsProvidersResponses } from '@/modules/external-secrets.ee/secrets-providers.responses.ee';
 
 import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 
@@ -212,7 +214,7 @@ export class SecretsProvidersConnectionsService {
 
 	toPublicConnectionListItem(
 		connection: SecretsProviderConnection,
-	): SecretsProvidersResponses.ConnectionListItem {
+	): SecretProviderConnectionListItem {
 		const secretNames = this.externalSecretsManager.getSecretNames(connection.providerKey);
 		const connectionInstance = this.externalSecretsManager.getProvider(connection.providerKey);
 
@@ -233,7 +235,7 @@ export class SecretsProvidersConnectionsService {
 		};
 	}
 
-	toPublicConnection(connection: SecretsProviderConnection): SecretsProvidersResponses.Connection {
+	toPublicConnection(connection: SecretsProviderConnection): SecretProviderConnection {
 		const decryptedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
 		const properties = this.externalSecretsManager.getProviderProperties(connection.type);
 		const redactedSettings = this.redactionService.redact(decryptedSettings, properties);

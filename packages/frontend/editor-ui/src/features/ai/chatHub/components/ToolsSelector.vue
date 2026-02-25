@@ -99,10 +99,12 @@ type ToolMenuItem = DropdownMenuItemProps<
 	{ nodeType: INodeTypeDescription | null; tool: INode }
 >;
 
+const CREATE_NEW_TOOL_ID = 'action::create-new';
+
 const menuItems = computed<ToolMenuItem[]>(() => {
 	const query = searchQuery.value.toLowerCase();
 
-	return chatStore.configuredTools
+	const toolItems: ToolMenuItem[] = chatStore.configuredTools
 		.filter((tool) => {
 			if (!query) return true;
 			const def = tool.definition;
@@ -120,9 +122,23 @@ const menuItems = computed<ToolMenuItem[]>(() => {
 				tool: tool.definition,
 			},
 		}));
+
+	toolItems.push({
+		id: CREATE_NEW_TOOL_ID,
+		label: i18n.baseText('chatHub.tools.selector.createNew'),
+		icon: { type: 'icon', value: 'plus' },
+		divided: true,
+	});
+
+	return toolItems;
 });
 
 function handleSelect(id: string) {
+	if (id === CREATE_NEW_TOOL_ID) {
+		openToolsManager();
+		return;
+	}
+
 	const [command, toolId] = id.split('::');
 
 	if (command === 'tool') {
@@ -224,18 +240,21 @@ onMounted(async () => {
 
 				<template #item-leading="{ item }">
 					<NodeIcon v-if="item.data?.nodeType" :node-type="item.data.nodeType" :size="16" />
+					<N8nIcon v-else-if="item.icon?.type === 'icon'" :icon="item.icon.value" size="large" />
 				</template>
 
 				<template #item-trailing="{ item }">
-					<N8nIconButton
-						icon="settings"
-						variant="ghost"
-						size="medium"
-						text
-						:class="$style.itemSettingsButton"
-						@click.stop="openToolSettings(item)"
-					/>
-					<span v-if="!item.checked" :class="$style.checkPlaceholder" />
+					<template v-if="item.id !== CREATE_NEW_TOOL_ID">
+						<N8nIconButton
+							icon="settings"
+							variant="ghost"
+							size="medium"
+							text
+							:class="$style.itemSettingsButton"
+							@click.stop="openToolSettings(item)"
+						/>
+						<span v-if="!item.checked" :class="$style.checkPlaceholder" />
+					</template>
 				</template>
 			</N8nDropdownMenu>
 		</N8nTooltip>

@@ -9,7 +9,7 @@ const meta = {
 	argTypes: {
 		variant: {
 			control: 'select',
-			options: ['solid', 'subtle', 'ghost', 'outline', 'destructive'],
+			options: ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'],
 		},
 		size: {
 			control: 'select',
@@ -75,6 +75,7 @@ export const Variant: Story = {
 				<N8nButton variant="outline" size="medium">Outline</N8nButton>
 				<N8nButton variant="ghost" size="medium">Ghost</N8nButton>
 				<N8nButton variant="destructive" size="medium">Destructive</N8nButton>
+				<N8nButton variant="success" size="medium">Success</N8nButton>
 			</div>
 		</div>
 		`,
@@ -137,6 +138,7 @@ export const Loading: Story = {
 				<N8nButton variant="outline" size="medium" loading>Outline</N8nButton>
 				<N8nButton variant="ghost" size="medium" loading>Ghost</N8nButton>
 				<N8nButton variant="destructive" size="medium" loading>Destructive</N8nButton>
+				<N8nButton variant="success" size="medium" loading>Success</N8nButton>
 			</div>
 		</div>
 		`,
@@ -155,6 +157,7 @@ export const Link: Story = {
 				<N8nButton variant="outline" size="medium" href="https://n8n.io">Link</N8nButton>
 				<N8nButton variant="ghost" size="medium" href="https://n8n.io">Link</N8nButton>
 				<N8nButton variant="destructive" size="medium" href="https://n8n.io">Link</N8nButton>
+				<N8nButton variant="success" size="medium" href="https://n8n.io">Link</N8nButton>
 			</div>
 		</div>
 		`,
@@ -195,6 +198,7 @@ export const Disabled: Story = {
 				<N8nButton variant="outline" size="medium" disabled>Outline</N8nButton>
 				<N8nButton variant="ghost" size="medium" disabled>Ghost</N8nButton>
 				<N8nButton variant="destructive" size="medium" disabled>Destructive</N8nButton>
+				<N8nButton variant="success" size="medium" disabled>Success</N8nButton>
 			</div>
 		</div>
 		`,
@@ -213,6 +217,7 @@ export const Disabled: Story = {
  * | `secondary`   | `subtle`          |
  * | `tertiary`    | `ghost`           |
  * | `danger`      | `destructive`     |
+ * | `success`     | `success`         |
  *
  * Additionally:
  * - `outline` prop → `variant="outline"`
@@ -243,6 +248,10 @@ export const TypeToVariantMapping: Story = {
 				<code>type="danger"</code>
 				<code>variant="destructive"</code>
 				<N8nButton variant="destructive">Destructive</N8nButton>
+
+				<code>type="success"</code>
+				<code>variant="success"</code>
+				<N8nButton variant="success">Success</N8nButton>
 
 				<code>outline</code>
 				<code>variant="outline"</code>
