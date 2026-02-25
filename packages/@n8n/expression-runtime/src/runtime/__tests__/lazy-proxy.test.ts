@@ -106,12 +106,6 @@ describe('createDeepLazyProxy', () => {
 	// -----------------------------------------------------------------------
 
 	describe('primitive values', () => {
-		it('fetches and returns null', () => {
-			mocks.getValueAtPath.mockReturnValue(null);
-			const proxy = createDeepLazyProxy();
-			expect(proxy.field).toBeNull();
-		});
-
 		it('fetches and returns undefined', () => {
 			mocks.getValueAtPath.mockReturnValue(undefined);
 			const proxy = createDeepLazyProxy();
