@@ -28,6 +28,37 @@ export class GooglePalmApi implements ICredentialType {
 			required: true,
 			default: '',
 		},
+		{
+			displayName: 'Add Custom Header',
+			name: 'header',
+			type: 'boolean',
+			default: false,
+		},
+		{
+			displayName: 'Header Name',
+			name: 'headerName',
+			type: 'string',
+			displayOptions: {
+				show: {
+					header: [true],
+				},
+			},
+			default: '',
+		},
+		{
+			displayName: 'Header Value',
+			name: 'headerValue',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					header: [true],
+				},
+			},
+			default: '',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {

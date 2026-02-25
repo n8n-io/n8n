@@ -3,6 +3,34 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import { harmCategories, harmThresholds } from './safety-options';
 
+export function getBuiltInToolsProperty(): INodeProperties {
+	return {
+		displayName: 'Built-in Tools',
+		name: 'builtInTools',
+		placeholder: 'Add Built-in Tool',
+		type: 'collection',
+		default: {},
+		options: [
+			{
+				displayName: 'Google Search',
+				name: 'googleSearch',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to allow the model to search the web using Google Search to get real-time information',
+			},
+			{
+				displayName: 'Code Execution',
+				name: 'codeExecution',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to allow the model to execute code it generates to produce a response. Supported only by certain models.',
+			},
+		],
+	};
+}
+
 export function getAdditionalOptions({
 	supportsThinkingBudget,
 }: { supportsThinkingBudget: boolean }) {

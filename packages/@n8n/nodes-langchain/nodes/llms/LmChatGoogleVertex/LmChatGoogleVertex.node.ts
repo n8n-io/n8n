@@ -1,9 +1,10 @@
 import { ProjectsClient } from '@google-cloud/resource-manager';
-import type { GoogleAISafetySetting } from '@langchain/google-common';
+import type { GoogleAISafetySetting, GoogleAIToolType } from '@langchain/google-common';
 import { ChatVertexAI, type ChatVertexAIInput } from '@langchain/google-vertexai';
 import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
 import {
 	NodeConnectionTypes,
+	type IDataObject,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -17,7 +18,7 @@ import {
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeErrorFromStatus } from './error-handling';
-import { getAdditionalOptions } from '../gemini-common/additional-options';
+import { getAdditionalOptions, getBuiltInToolsProperty } from '../gemini-common/additional-options';
 import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
 
 export class LmChatGoogleVertex implements INodeType {
@@ -90,6 +91,7 @@ export class LmChatGoogleVertex implements INodeType {
 					'The model which will generate the completion. <a href="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models">Learn more</a>.',
 				default: 'gemini-2.5-flash',
 			},
+			getBuiltInToolsProperty(),
 			getAdditionalOptions({ supportsThinkingBudget: true }),
 		],
 	};
@@ -182,9 +184,9 @@ export class LmChatGoogleVertex implements INodeType {
 				safetySettings,
 				callbacks: [new N8nLlmTracing(this)],
 				// Handle ChatVertexAI invocation errors to provide better error messages
-				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, (error: any) => {
+				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, (error: unknown) => {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					const customError = makeErrorFromStatus(Number(error?.response?.status), {
+					const customError = makeErrorFromStatus(Number((error as JsonObject)?.response?.status), {
 						modelName,
 					});
 
@@ -202,6 +204,21 @@ export class LmChatGoogleVertex implements INodeType {
 			}
 
 			const model = new ChatVertexAI(modelConfig);
+
+			const builtInTools = (this.getNodeParameter('builtInTools', itemIndex, {}) as IDataObject) ?? {};
+			const googleTools: GoogleAIToolType[] = [];
+
+			if (builtInTools?.googleSearch) {
+				googleTools.push({ googleSearch: {} });
+			}
+			if (builtInTools?.codeExecution) {
+				googleTools.push({ codeExecution: {} } as GoogleAIToolType);
+			}
+
+			if (googleTools.length > 0) {
+				const modelWithTools = model.bindTools(googleTools);
+				return { response: modelWithTools };
+			}
 
 			return {
 				response: model,

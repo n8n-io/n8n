@@ -1,8 +1,10 @@
 import type { SafetySetting } from '@google/generative-ai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import type { GoogleGenerativeAIToolType } from '@langchain/google-genai';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	NodeError,
+	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	ISupplyDataFunctions,
@@ -10,8 +12,9 @@ import type {
 } from 'n8n-workflow';
 
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { mergeCustomHeaders } from '@utils/helpers';
 
-import { getAdditionalOptions } from '../gemini-common/additional-options';
+import { getAdditionalOptions, getBuiltInToolsProperty } from '../gemini-common/additional-options';
 import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
 
 function errorDescriptionMapper(error: NodeError) {
@@ -118,6 +121,7 @@ export class LmChatGoogleGemini implements INodeType {
 				},
 				default: 'models/gemini-2.5-flash',
 			},
+			getBuiltInToolsProperty(),
 			// thinking budget not supported in @langchain/google-genai
 			// as it utilises the old google generative ai SDK
 			getAdditionalOptions({ supportsThinkingBudget: false }),
@@ -146,6 +150,8 @@ export class LmChatGoogleGemini implements INodeType {
 			null,
 		) as SafetySetting[];
 
+		const customHeaders = mergeCustomHeaders(credentials, {});
+
 		const model = new ChatGoogleGenerativeAI({
 			apiKey: credentials.apiKey as string,
 			baseUrl: credentials.host as string,
@@ -157,7 +163,25 @@ export class LmChatGoogleGemini implements INodeType {
 			safetySettings,
 			callbacks: [new N8nLlmTracing(this, { errorDescriptionMapper })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+			...(Object.keys(customHeaders).length > 0 && {
+				customHeaders,
+			}),
 		});
+
+		const builtInTools = (this.getNodeParameter('builtInTools', itemIndex, {}) as IDataObject) ?? {};
+		const googleTools: GoogleGenerativeAIToolType[] = [];
+
+		if (builtInTools?.googleSearch) {
+			googleTools.push({ googleSearchRetrieval: {} });
+		}
+		if (builtInTools?.codeExecution) {
+			googleTools.push({ codeExecution: {} });
+		}
+
+		if (googleTools.length > 0) {
+			const modelWithTools = model.bindTools(googleTools);
+			return { response: modelWithTools };
+		}
 
 		return {
 			response: model,
