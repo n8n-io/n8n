@@ -47,7 +47,7 @@ export = {
 
 			const data = folders.map(({ workflows, ...folder }) => ({
 				...folder,
-				items: (workflows ?? []).map((w) => ({ id: w.id })),
+				items: workflows,
 			}));
 
 			return res.json({

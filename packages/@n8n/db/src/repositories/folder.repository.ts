@@ -134,8 +134,7 @@ export class FolderRepository extends Repository<Folder> {
 		}
 
 		if (select?.workflowIds) {
-			query.leftJoinAndSelect('folder.workflows', 'workflows');
-			selections.push('workflows.id');
+			query.loadAllRelationIds({ relations: ['workflows'] });
 		}
 	}
 

@@ -94,7 +94,6 @@ describe('Folders in Public API', () => {
 						parentFolderId: null,
 						createdAt: expect.any(String),
 						updatedAt: expect.any(String),
-						items: expect.arrayContaining([{ id: workflow1.id }, { id: workflow2.id }]),
 					}),
 					expect.objectContaining({
 						id: folderB.id,
@@ -102,10 +101,18 @@ describe('Folders in Public API', () => {
 						parentFolderId: null,
 						createdAt: expect.any(String),
 						updatedAt: expect.any(String),
-						items: [],
 					}),
 				]),
 			});
+
+			const folderAData = response.body.data.find((f: { id: string }) => f.id === folderA.id);
+			const folderBData = response.body.data.find((f: { id: string }) => f.id === folderB.id);
+
+			expect(folderAData.items).toHaveLength(2);
+			expect(folderAData.items).toEqual(
+				expect.arrayContaining([{ id: workflow1.id }, { id: workflow2.id }]),
+			);
+			expect(folderBData.items).toStrictEqual([]);
 		});
 
 		it('should only include workflows directly inside each folder, not from sub-folders', async () => {
@@ -125,18 +132,12 @@ describe('Folders in Public API', () => {
 				.query({ projectId: project.id });
 
 			expect(response.status).toBe(200);
-			expect(response.body).toMatchObject({
-				data: expect.arrayContaining([
-					expect.objectContaining({
-						id: parent.id,
-						items: [{ id: workflowInParent.id }],
-					}),
-					expect.objectContaining({
-						id: child.id,
-						items: [{ id: workflowInChild.id }],
-					}),
-				]),
-			});
+
+			const parentData = response.body.data.find((f: { id: string }) => f.id === parent.id);
+			const childData = response.body.data.find((f: { id: string }) => f.id === child.id);
+
+			expect(parentData.items).toStrictEqual([{ id: workflowInParent.id }]);
+			expect(childData.items).toStrictEqual([{ id: workflowInChild.id }]);
 		});
 
 		it('should respect limit and cursor for pagination', async () => {
