@@ -662,19 +662,11 @@ function getItemKey(_item: INodeParameters, index: number) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--3xs) 0;
+	margin-bottom: var(--spacing--xs);
 
 	> :first-child {
 		flex: 1;
 		min-width: 0;
-	}
-
-	> :last-child {
-		margin-top: 22px;
-	}
-
-	&:last-child {
-		margin-bottom: var(--spacing--xs);
 	}
 }
 
