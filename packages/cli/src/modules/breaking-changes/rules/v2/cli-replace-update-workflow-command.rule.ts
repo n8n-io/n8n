@@ -1,5 +1,4 @@
-import { Service } from '@n8n/di';
-
+import { BreakingChangeRule } from '../../breaking-change-rule.decorator';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -7,7 +6,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class CliActivateAllWorkflowsRule implements IBreakingChangeInstanceRule {
 	id: string = 'cli-activate-all-workflows-v2';
 

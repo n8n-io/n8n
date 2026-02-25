@@ -1,7 +1,7 @@
 import { ExecutionsConfig } from '@n8n/config';
-import { Service } from '@n8n/di';
 import { BinaryDataConfig } from 'n8n-core';
 
+import { BreakingChangeRule } from '../../breaking-change-rule.decorator';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -9,7 +9,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class BinaryDataStorageRule implements IBreakingChangeInstanceRule {
 	constructor(
 		private readonly config: BinaryDataConfig,

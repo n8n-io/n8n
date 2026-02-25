@@ -15,11 +15,12 @@ import type { INode } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
+import { BreakingChangeRuleMetadata } from './breaking-changes.rule-metadata.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
-import { allRules, RuleInstances } from './rules';
 import type {
 	IBreakingChangeBatchWorkflowRule,
 	IBreakingChangeInstanceRule,
+	IBreakingChangeRule,
 	IBreakingChangeWorkflowRule,
 } from './types';
 import { N8N_VERSION } from '../../constants';
@@ -55,10 +56,11 @@ export class BreakingChangeService {
 	}
 
 	registerRules() {
-		const rulesServices: RuleInstances[] = allRules.map((rule) =>
-			Container.get<RuleInstances>(rule),
-		);
-		this.ruleRegistry.registerAll(rulesServices);
+		const ruleMetadata = Container.get(BreakingChangeRuleMetadata);
+		const ruleInstances = ruleMetadata
+			.getClasses()
+			.map((ruleClass) => Container.get<IBreakingChangeRule>(ruleClass));
+		this.ruleRegistry.registerAll(ruleInstances);
 	}
 
 	async getAllInstanceRulesResults(
