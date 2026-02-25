@@ -217,6 +217,7 @@ onMounted(() => {
 				[$style.selected]: props.isSelected,
 				[$style.actionsVisible]: actionsVisible,
 				[$style.grouped]: props.isGrouped,
+				[$style.firstItem]: props.index === 0,
 			}"
 			@click="onItemClick"
 		>
@@ -302,12 +303,12 @@ $authorMaxWidth: 130px;
 
 	margin-top: var(--spacing--lg);
 
-	&:first-child {
+	&.firstItem {
 		margin-top: 0;
 	}
 
 	// Line segment in the gap above this item (not for first item)
-	&:not(:first-child):not(.grouped)::before {
+	&:not(.firstItem):not(.grouped)::before {
 		@include timeline-gap-line;
 	}
 
