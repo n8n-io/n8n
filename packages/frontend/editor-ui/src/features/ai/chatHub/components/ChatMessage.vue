@@ -141,16 +141,6 @@ const speech = useSpeechSynthesis(text, {
 	volume: 1,
 });
 
-const agent = computed<ChatModelDto | null>(() => {
-	const model = unflattenModel(message);
-
-	if (!model) {
-		return null;
-	}
-
-	return chatStore.getAgent(model, { name: cachedAgentDisplayName, icon: cachedAgentIcon });
-});
-
 const attachments = computed(() =>
 	message.attachments.map(({ fileName, mimeType }, index) => ({
 		file: new File([], fileName ?? 'file', { type: mimeType }), // Placeholder file for display
