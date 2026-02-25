@@ -447,16 +447,22 @@ defineExpose({ focus, blur, select });
 	padding: 0 var(--spacing--xs);
 	border-radius: var(--input--radius);
 	background-color: var(--input--color--background);
-	box-shadow: var(--input--shadow), var(--input--border--shadow);
+	box-shadow:
+		var(--input--shadow),
+		inset var(--input--border--shadow);
 
 	@include focus.focus-within-ring;
 
 	&:hover:not(.disabled):not(:focus-within) {
-		box-shadow: var(--input--shadow--hover), var(--input--border--shadow--hover);
+		box-shadow:
+			var(--input--shadow--hover),
+			inset var(--input--border--shadow--hover);
 	}
 
 	&:focus-within {
-		box-shadow: var(--input--shadow--focus), var(--input--border--shadow--focus);
+		box-shadow:
+			var(--input--shadow--focus),
+			inset var(--input--border--shadow--focus);
 	}
 
 	&.disabled {
