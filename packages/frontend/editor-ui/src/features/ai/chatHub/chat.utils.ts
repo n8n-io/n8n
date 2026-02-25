@@ -418,12 +418,12 @@ export function createFakeAgent(
 		icon: fallback?.icon ?? null,
 		createdAt: null,
 		updatedAt: null,
-		// Assume tools are supported
+		// Assume tools are supported (except n8n provider which never supports function calling)
 		metadata: {
 			allowFileUploads: false,
 			allowedFilesMimeTypes: '',
 			capabilities: {
-				functionCalling: true,
+				functionCalling: model.provider !== 'n8n',
 			},
 			available: true,
 		},

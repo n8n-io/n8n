@@ -37,6 +37,7 @@ import {
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+	AI_BUILDER_DIFF_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -162,6 +163,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 				WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+				AI_BUILDER_DIFF_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -519,9 +521,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
 
-	const openNewCredential = (type: string, showAuthOptions = false) => {
+	const openNewCredential = (type: string, showAuthOptions = false, forceManualMode = false) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
+		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
+			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
+			forceManualMode,
+		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
@@ -583,6 +589,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const toggleSidebarMenuCollapse = () => {
 		sidebarMenuCollapsed.value = !sidebarMenuCollapsed.value;
+		telemetry.track('User toggled sidebar', {
+			expanded: !sidebarMenuCollapsed.value,
+		});
 	};
 
 	const setNotificationsForView = (view: VIEWS, notifications: NotificationOptions[]) => {

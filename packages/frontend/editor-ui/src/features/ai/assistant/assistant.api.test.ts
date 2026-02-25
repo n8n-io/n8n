@@ -1,4 +1,9 @@
-import { chatWithBuilder, getBuilderCredits, truncateBuilderMessages } from './assistant.api';
+import {
+	chatWithAssistant,
+	chatWithBuilder,
+	getBuilderCredits,
+	truncateBuilderMessages,
+} from './assistant.api';
 import * as apiUtils from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
@@ -289,6 +294,116 @@ describe('API: ai', () => {
 			expect(streamRequestSpy).toHaveBeenCalledWith(
 				mockContext,
 				'/ai/build',
+				payload,
+				mockOnMessageUpdated,
+				mockOnDone,
+				mockOnError,
+				undefined,
+				undefined,
+			);
+		});
+	});
+
+	describe('chatWithAssistant', () => {
+		let mockContext: IRestApiContext;
+		let mockOnMessageUpdated: ReturnType<typeof vi.fn>;
+		let mockOnDone: ReturnType<typeof vi.fn>;
+		let mockOnError: ReturnType<typeof vi.fn>;
+		let streamRequestSpy: MockInstance;
+
+		beforeEach(() => {
+			mockContext = {
+				baseUrl: 'http://test-base-url',
+				sessionId: 'test-session',
+				pushRef: 'test-ref',
+			} as IRestApiContext;
+
+			mockOnMessageUpdated = vi.fn();
+			mockOnDone = vi.fn();
+			mockOnError = vi.fn();
+
+			streamRequestSpy = vi
+				.spyOn(apiUtils, 'streamRequest')
+				.mockImplementation(async () => await Promise.resolve());
+		});
+
+		afterEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('should call streamRequest with the correct parameters', () => {
+			const payload: ChatRequest.RequestPayload = {
+				payload: {
+					role: 'user',
+					type: 'init-support-chat',
+					user: { firstName: 'John' },
+					question: 'How do I fix this?',
+				},
+			};
+
+			chatWithAssistant(mockContext, payload, mockOnMessageUpdated, mockOnDone, mockOnError);
+
+			expect(streamRequestSpy).toHaveBeenCalledWith(
+				mockContext,
+				'/ai/chat',
+				payload,
+				mockOnMessageUpdated,
+				mockOnDone,
+				mockOnError,
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should pass abort signal when provided', () => {
+			const payload: ChatRequest.RequestPayload = {
+				payload: {
+					role: 'user',
+					type: 'init-support-chat',
+					user: { firstName: 'John' },
+					question: 'Help me',
+				},
+			};
+
+			const abortController = new AbortController();
+			const abortSignal = abortController.signal;
+
+			chatWithAssistant(
+				mockContext,
+				payload,
+				mockOnMessageUpdated,
+				mockOnDone,
+				mockOnError,
+				abortSignal,
+			);
+
+			expect(streamRequestSpy).toHaveBeenCalledWith(
+				mockContext,
+				'/ai/chat',
+				payload,
+				mockOnMessageUpdated,
+				mockOnDone,
+				mockOnError,
+				undefined,
+				abortSignal,
+			);
+		});
+
+		it('should not pass abort signal when not provided', () => {
+			const payload: ChatRequest.RequestPayload = {
+				payload: {
+					role: 'user',
+					type: 'init-support-chat',
+					user: { firstName: 'John' },
+					question: 'Help me',
+				},
+			};
+
+			chatWithAssistant(mockContext, payload, mockOnMessageUpdated, mockOnDone, mockOnError);
+
+			expect(streamRequestSpy).toHaveBeenCalledWith(
+				mockContext,
+				'/ai/chat',
 				payload,
 				mockOnMessageUpdated,
 				mockOnDone,

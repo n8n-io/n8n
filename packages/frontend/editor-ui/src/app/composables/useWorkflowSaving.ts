@@ -30,6 +30,10 @@ import { isDebouncedFunction } from '@/app/utils/typeGuards';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -463,7 +467,13 @@ export function useWorkflowSaving({
 				}
 			}
 
-			workflowState.setActive(workflowData.activeVersionId);
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.setActiveState({
+				activeVersionId: workflowData.activeVersionId,
+				activeVersion: workflowData.activeVersion ?? null,
+			});
 			workflowState.setWorkflowId(workflowData.id);
 			workflowsStore.setWorkflowVersionData(
 				{

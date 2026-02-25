@@ -24,6 +24,7 @@ import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
 import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
+import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
@@ -185,7 +186,7 @@ export class FrontendService {
 			endpointWebhook: this.globalConfig.endpoints.webhook,
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
-			endpointHealth: this.globalConfig.endpoints.health,
+			endpointHealth: resolveHealthEndpointPath(this.globalConfig),
 			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
 			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
 			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,

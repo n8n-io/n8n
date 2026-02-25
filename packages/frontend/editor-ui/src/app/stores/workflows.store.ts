@@ -71,7 +71,6 @@ import {
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/app/utils/credentialOnlyNodes';
-import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { i18n } from '@n8n/i18n';
 
 import { computed, ref, watch } from 'vue';
@@ -165,8 +164,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const workflowSettings = computed(() => workflow.value.settings ?? { ...defaults.settings });
 
-	const workflowTags = computed(() => workflow.value.tags as string[]);
-
 	// A workflow is new if it hasn't been saved to the backend yet
 	const isNewWorkflow = computed(() => {
 		if (!workflow.value.id) return true;
@@ -187,8 +184,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			{},
 		);
 	});
-
-	const isWorkflowActive = computed(() => workflow.value.activeVersionId !== null);
 
 	const workflowTriggerNodes = computed(() =>
 		workflow.value.nodes.filter((node: INodeUi) => {
@@ -790,24 +785,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	) {
 		workflowsListStore.setWorkflowActiveInCache(targetWorkflowId, activeVersion);
 
-		if (targetWorkflowId === workflow.value.id) {
-			if (clearDirtyState) {
-				uiStore.markStateClean();
-			}
-			workflow.value.active = true;
-			workflow.value.activeVersionId = activeVersion.versionId;
-			workflow.value.activeVersion = activeVersion;
+		if (targetWorkflowId === workflow.value.id && clearDirtyState) {
+			uiStore.markStateClean();
 		}
 	}
 
 	function setWorkflowInactive(targetWorkflowId: string) {
 		workflowsListStore.setWorkflowInactiveInCache(targetWorkflowId);
-
-		if (targetWorkflowId === workflow.value.id) {
-			workflow.value.active = false;
-			workflow.value.activeVersionId = null;
-			workflow.value.activeVersion = null;
-		}
 	}
 
 	function setIsArchived(isArchived: boolean) {
@@ -853,10 +837,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflow(value: IWorkflowDb): void {
-		const tags = convertWorkflowTagsToIds(value.tags);
 		workflow.value = {
 			...value,
-			...(tags.length > 0 ? { tags } : {}),
 			...(!value.hasOwnProperty('active') ? { active: false } : {}),
 			...(!value.hasOwnProperty('connections') ? { connections: {} } : {}),
 			...(!value.hasOwnProperty('createdAt') ? { createdAt: -1 } : {}),
@@ -1732,10 +1714,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowVersionId,
 		workflowChecksum,
 		workflowSettings,
-		workflowTags,
 		isNewWorkflow,
 		isWorkflowSaved,
-		isWorkflowActive,
 		workflowTriggerNodes,
 		currentWorkflowHasWebhookNode,
 		getWorkflowRunData,

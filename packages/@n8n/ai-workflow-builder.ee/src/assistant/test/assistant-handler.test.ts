@@ -1,5 +1,10 @@
 import { STREAM_SEPARATOR } from '../../constants';
-import type { AgentMessageChunk, StreamChunk, ToolProgressChunk } from '../../types/streaming';
+import type {
+	AgentMessageChunk,
+	CodeDiffChunk,
+	StreamChunk,
+	ToolProgressChunk,
+} from '../../types/streaming';
 import { AssistantHandler } from '../assistant-handler';
 import type { AssistantContext, AssistantSdkClient, SdkStreamChunk, StreamWriter } from '../types';
 
@@ -82,7 +87,7 @@ describe('AssistantHandler', () => {
 		expect(progressChunk.type).toBe('tool');
 		expect(progressChunk.status).toBe('running');
 		expect(progressChunk.toolCallId).toMatch(/^assistant-/);
-		expect(progressChunk.customDisplayTitle).toBe('Connecting to assistant...');
+		expect(progressChunk.displayTitle).toBe('Asking assistant');
 
 		const chunk = writtenChunks[1] as AgentMessageChunk;
 		expect(chunk.role).toBe('assistant');
@@ -139,7 +144,7 @@ describe('AssistantHandler', () => {
 		expect((writtenChunks[2] as AgentMessageChunk).text).toBe('Second');
 	});
 
-	it('should degrade code-diff to AgentMessageChunk with fenced code block', async () => {
+	it('should emit CodeDiffChunk for code-diff messages', async () => {
 		const response = createMockSdkResponse([
 			{
 				sessionId: 'sess-1',
@@ -157,15 +162,20 @@ describe('AssistantHandler', () => {
 		const client = createMockClient(response);
 		const handler = new AssistantHandler(client);
 
-		const result = await handler.execute({ query: 'fix it' }, 'user-1', writer);
+		const context: AssistantContext = {
+			query: 'fix it',
+			errorContext: { nodeName: 'Code1', errorMessage: 'bad code' },
+		};
+		const result = await handler.execute(context, 'user-1', writer);
 
-		// Chunks: connecting, code-diff message, done
 		expect(writtenChunks).toHaveLength(3);
-		const chunk = writtenChunks[1] as AgentMessageChunk;
-		expect(chunk.type).toBe('message');
-		expect(chunk.text).toContain('Here is the fix');
-		expect(chunk.text).toContain('```diff');
-		expect(chunk.text).toContain('- old\n+ new');
+		const chunk = writtenChunks[1] as CodeDiffChunk;
+		expect(chunk.type).toBe('code-diff');
+		expect(chunk.suggestionId).toBe('sug-1');
+		expect(chunk.sdkSessionId).toBe('sess-1');
+		expect(chunk.codeDiff).toBe('- old\n+ new');
+		expect(chunk.description).toBe('Here is the fix');
+		expect(chunk.nodeName).toBe('Code1');
 		expect(result.hasCodeDiff).toBe(true);
 		expect(result.suggestionIds).toContain('sug-1');
 	});
@@ -244,16 +254,15 @@ describe('AssistantHandler', () => {
 		// Chunks: connecting, intermediate step, done
 		expect(writtenChunks).toHaveLength(3);
 		expect((writtenChunks[0] as ToolProgressChunk).status).toBe('running');
-		expect((writtenChunks[0] as ToolProgressChunk).customDisplayTitle).toBe(
-			'Connecting to assistant...',
-		);
+		expect((writtenChunks[0] as ToolProgressChunk).displayTitle).toBe('Asking assistant');
 
 		const connectingChunk = writtenChunks[0] as ToolProgressChunk;
 		const stepChunk = writtenChunks[1] as ToolProgressChunk;
 		expect(stepChunk.type).toBe('tool');
 		expect(stepChunk.toolName).toBe('assistant');
 		expect(stepChunk.status).toBe('running');
-		expect(stepChunk.customDisplayTitle).toBe('Searching documentation...');
+		// Intermediate steps no longer carry dynamic customDisplayTitle
+		expect(stepChunk.customDisplayTitle).toBeUndefined();
 		// Same toolCallId as the initial connecting chunk (same turn)
 		expect(stepChunk.toolCallId).toBe(connectingChunk.toolCallId);
 
@@ -274,9 +283,7 @@ describe('AssistantHandler', () => {
 
 		// Chunks: connecting, done (event message is consumed silently)
 		expect(writtenChunks).toHaveLength(2);
-		expect((writtenChunks[0] as ToolProgressChunk).customDisplayTitle).toBe(
-			'Connecting to assistant...',
-		);
+		expect((writtenChunks[0] as ToolProgressChunk).displayTitle).toBe('Asking assistant');
 		expect((writtenChunks[1] as ToolProgressChunk).status).toBe('completed');
 	});
 
@@ -356,7 +363,7 @@ describe('AssistantHandler', () => {
 			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
 		);
 		expect(doneChunk).toBeDefined();
-		expect(doneChunk!.customDisplayTitle).toBe('Done');
+		expect(doneChunk!.status).toBe('completed');
 	});
 
 	it('should throw when response body is null and still emit Done', async () => {
@@ -373,7 +380,7 @@ describe('AssistantHandler', () => {
 			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
 		);
 		expect(doneChunk).toBeDefined();
-		expect(doneChunk!.customDisplayTitle).toBe('Done');
+		expect(doneChunk!.status).toBe('completed');
 	});
 
 	it('should return immediately without error when signal is pre-aborted', async () => {
@@ -547,7 +554,7 @@ describe('AssistantHandler', () => {
 			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
 		);
 		expect(doneChunk).toBeDefined();
-		expect(doneChunk!.customDisplayTitle).toBe('Done');
+		expect(doneChunk!.status).toBe('completed');
 
 		// The text message should also have been written before the error
 		const textChunk = writtenChunks.find(
@@ -589,6 +596,6 @@ describe('AssistantHandler', () => {
 			(c): c is ToolProgressChunk => c.type === 'tool' && c.status === 'completed',
 		);
 		expect(doneChunk).toBeDefined();
-		expect(doneChunk!.customDisplayTitle).toBe('Done');
+		expect(doneChunk!.status).toBe('completed');
 	});
 });

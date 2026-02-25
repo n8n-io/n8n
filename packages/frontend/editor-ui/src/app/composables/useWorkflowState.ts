@@ -121,11 +121,6 @@ export function useWorkflowState() {
 		return true;
 	}
 
-	function setActive(activeVersionId: string | null) {
-		ws.workflow.active = activeVersionId !== null;
-		ws.workflow.activeVersionId = activeVersionId;
-	}
-
 	function setWorkflowId(id?: string) {
 		// Set the workflow ID directly, or empty string if not provided
 		ws.workflow.id = id || '';
@@ -134,14 +129,6 @@ export function useWorkflowState() {
 
 	function setWorkflowSettings(workflowSettings: IWorkflowSettings) {
 		ws.private.setWorkflowSettings(workflowSettings);
-	}
-
-	function setWorkflowTagIds(tags: string[]) {
-		ws.workflow.tags = tags;
-
-		if (ws.workflow.id && workflowsListStore.workflowsById[ws.workflow.id]) {
-			workflowsListStore.workflowsById[ws.workflow.id].tags = tags;
-		}
 	}
 
 	function setWorkflowProperty<K extends keyof IWorkflowDb>(key: K, value: IWorkflowDb[K]) {
@@ -201,16 +188,6 @@ export function useWorkflowState() {
 		return workflowData;
 	}
 
-	function addWorkflowTagIds(tags: string[]) {
-		ws.workflow.tags = [...new Set([...(ws.workflow.tags ?? []), ...tags])] as IWorkflowDb['tags'];
-	}
-
-	function removeWorkflowTagId(tagId: string) {
-		const tags = ws.workflow.tags as string[];
-		const updated = tags.filter((id: string) => id !== tagId);
-		ws.workflow.tags = updated as IWorkflowDb['tags'];
-	}
-
 	function setWorkflowScopes(scopes: IWorkflowDb['scopes']): void {
 		ws.workflow.scopes = scopes;
 	}
@@ -268,11 +245,10 @@ export function useWorkflowState() {
 		setWorkflowExecutionData(null);
 		resetAllNodesIssues();
 
-		setActive(ws.defaults.activeVersionId);
 		setWorkflowId('');
 		setWorkflowName({ newName: '', setStateDirty: false });
 		setWorkflowSettings({ ...ws.defaults.settings });
-		setWorkflowTagIds([]);
+		// Note: Tags are now managed by workflowDocumentStore, which is disposed during reset
 
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.executingNode.length = 0;
@@ -474,16 +450,12 @@ export function useWorkflowState() {
 		removeAllNodes,
 		setWorkflowExecutionData,
 		resetAllNodesIssues,
-		setActive,
 		setWorkflowId,
 		setWorkflowName,
 		setWorkflowSettings,
-		setWorkflowTagIds,
 		setWorkflowProperty,
 		setActiveExecutionId,
 		getNewWorkflowDataAndMakeShareable,
-		addWorkflowTagIds,
-		removeWorkflowTagId,
 		setWorkflowScopes,
 		setWorkflowMetadata,
 		addToWorkflowMetadata,

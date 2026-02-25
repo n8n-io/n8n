@@ -297,7 +297,7 @@ const isCanvasReadOnly = computed(() => {
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
 		editableWorkflow.value.isArchived ||
-		builderStore.streaming
+		(builderStore.streaming && !builderStore.isHelpStreaming)
 	);
 });
 
@@ -1072,7 +1072,7 @@ async function onCopyTestUrl(id: string) {
 }
 
 async function onCopyProductionUrl(id: string) {
-	const isWorkflowActive = workflowsStore.workflow.active;
+	const isWorkflowActive = workflowDocumentStore?.value?.active ?? false;
 	if (!isWorkflowActive) {
 		toast.showMessage({
 			title: i18n.baseText('nodeWebhooks.showMessage.not.active'),
@@ -1193,7 +1193,7 @@ const isOnlyChatTriggerNodeActive = computed(() => {
 const chatTriggerNodePinnedData = computed(() => {
 	if (!chatTriggerNode.value) return null;
 
-	return workflowDocumentStore?.pinData?.[chatTriggerNode.value.name];
+	return workflowDocumentStore?.value?.pinData?.[chatTriggerNode.value.name];
 });
 
 function onOpenChat() {
@@ -1439,7 +1439,7 @@ function registerCustomActions() {
 			ndvStore.unsetActiveNodeName();
 
 			void nextTick(() => {
-				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TAB);
+				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.NODE_SHORTCUT);
 			});
 		},
 	});
@@ -1852,7 +1852,7 @@ onBeforeUnmount(() => {
 			/>
 
 			<N8nCanvasThinkingPill
-				v-if="builderStore.streaming"
+				v-if="builderStore.streaming && !builderStore.isHelpStreaming"
 				:class="$style.canvasCenterPill"
 				show-stop
 				@stop="builderStore.abortStreaming"

@@ -142,28 +142,83 @@ describe('useTriggerExecution', () => {
 		});
 	});
 
-	describe('tooltipText', () => {
-		it('should return empty string when no issues and no disabled reason', () => {
+	describe('tooltipItems', () => {
+		it('should return empty array when no issues and no disabled reason', () => {
 			const node = ref<INodeUi | null>(createNode());
-			const { tooltipText } = useTriggerExecution(node);
+			const { tooltipItems } = useTriggerExecution(node);
 
-			expect(tooltipText.value).toBe('');
+			expect(tooltipItems.value).toEqual([]);
 		});
 
-		it('should return required fields message when node has issues', () => {
+		it('should return generic message when node has issues but no issue details', () => {
 			mockExecutionState.hasIssues = true;
 			const node = ref<INodeUi | null>(createNode());
-			const { tooltipText } = useTriggerExecution(node);
+			const { tooltipItems } = useTriggerExecution(node);
 
-			expect(tooltipText.value).toBeTruthy();
+			expect(tooltipItems.value).toHaveLength(1);
+			expect(tooltipItems.value[0]).toBeTruthy();
 		});
 
-		it('should return disabled reason when provided', () => {
+		it('should return credential issue messages when node has credential issues', () => {
+			mockExecutionState.hasIssues = true;
+			const node = ref<INodeUi | null>(
+				createNode({
+					issues: {
+						credentials: {
+							slackApi: ['Credentials for Slack are not set.'],
+						},
+					},
+				}),
+			);
+			const { tooltipItems } = useTriggerExecution(node);
+
+			expect(tooltipItems.value).toEqual(['Credentials for Slack are not set.']);
+		});
+
+		it('should return parameter issue messages when node has parameter issues', () => {
+			mockExecutionState.hasIssues = true;
+			const node = ref<INodeUi | null>(
+				createNode({
+					issues: {
+						parameters: {
+							channel: ['Parameter "Channel" is required.'],
+						},
+					},
+				}),
+			);
+			const { tooltipItems } = useTriggerExecution(node);
+
+			expect(tooltipItems.value).toEqual(['Parameter "Channel" is required.']);
+		});
+
+		it('should return both credential and parameter issues', () => {
+			mockExecutionState.hasIssues = true;
+			const node = ref<INodeUi | null>(
+				createNode({
+					issues: {
+						credentials: {
+							slackApi: ['Credentials for Slack are not set.'],
+						},
+						parameters: {
+							channel: ['Parameter "Channel" is required.'],
+						},
+					},
+				}),
+			);
+			const { tooltipItems } = useTriggerExecution(node);
+
+			expect(tooltipItems.value).toEqual([
+				'Credentials for Slack are not set.',
+				'Parameter "Channel" is required.',
+			]);
+		});
+
+		it('should return disabled reason as single-item array when provided', () => {
 			mockExecutionState.disabledReason = 'Workflow not saved';
 			const node = ref<INodeUi | null>(createNode());
-			const { tooltipText } = useTriggerExecution(node);
+			const { tooltipItems } = useTriggerExecution(node);
 
-			expect(tooltipText.value).toBe('Workflow not saved');
+			expect(tooltipItems.value).toEqual(['Workflow not saved']);
 		});
 	});
 

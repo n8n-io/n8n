@@ -246,7 +246,6 @@ describe('useWorkflowHelpers', () => {
 				tags: [],
 			});
 			const addWorkflowSpy = vi.spyOn(workflowsListStore, 'addWorkflow');
-			const setActiveSpy = vi.spyOn(workflowState, 'setActive');
 			const setWorkflowIdSpy = vi.spyOn(workflowState, 'setWorkflowId');
 			const setWorkflowNameSpy = vi.spyOn(workflowState, 'setWorkflowName');
 			const setWorkflowSettingsSpy = vi.spyOn(workflowState, 'setWorkflowSettings');
@@ -260,7 +259,6 @@ describe('useWorkflowHelpers', () => {
 			await initState(workflowData);
 
 			expect(addWorkflowSpy).toHaveBeenCalledWith(workflowData);
-			expect(setActiveSpy).toHaveBeenCalledWith('v1');
 			expect(setWorkflowIdSpy).toHaveBeenCalledWith('1');
 			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
 				newName: 'Test Workflow',
@@ -323,6 +321,37 @@ describe('useWorkflowHelpers', () => {
 
 			// Tags are now managed by workflowDocumentStore
 			expect(upsertTagsSpy).toHaveBeenCalledWith([]);
+		});
+	});
+
+	describe('getWorkflowDataToSave', () => {
+		it('should read tags from workflowDocumentStore', async () => {
+			const workflowId = 'test-workflow-id';
+			const tagIds = ['tag1', 'tag2'];
+
+			workflowsStore.workflowId = workflowId;
+			workflowsStore.workflowName = 'Test Workflow';
+			workflowsStore.allNodes = [];
+			workflowsStore.allConnections = {};
+			workflowsStore.isWorkflowActive = false;
+			workflowsStore.workflow.settings = { executionOrder: 'v1' };
+			workflowsStore.workflow.versionId = 'v1';
+			workflowsStore.workflow.meta = {};
+			workflowsStore.pinnedWorkflowData = {};
+
+			const documentId = createWorkflowDocumentId(workflowId);
+			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+
+			// Note: createTestingPinia() stubs actions by default, so setTags() won't work
+			Object.defineProperty(workflowDocumentStore, 'tags', {
+				value: tagIds,
+			});
+
+			const { getWorkflowDataToSave } = useWorkflowHelpers();
+			const workflowData = await getWorkflowDataToSave();
+
+			expect(workflowData.tags).toEqual(tagIds);
+			expect(workflowData.id).toBe(workflowId);
 		});
 	});
 

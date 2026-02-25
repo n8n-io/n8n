@@ -192,6 +192,7 @@ export type {
 	SecretsProviderType,
 	SecretsProviderState,
 	SecretsProviderConnectionTestState,
+	SecretProviderConnectionListItem,
 	SecretProviderConnection,
 	SecretProviderTypeResponse,
 	SecretCompletionsResponse,

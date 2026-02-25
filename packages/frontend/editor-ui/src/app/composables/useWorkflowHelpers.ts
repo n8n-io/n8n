@@ -595,14 +595,16 @@ export function useWorkflowHelpers() {
 			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
 			: undefined;
 
+		const tags = workflowDocumentStore?.tags ? [...workflowDocumentStore.tags] : [];
+
 		const data: WorkflowData = {
 			name: workflowsStore.workflowName,
 			nodes,
 			pinData: workflowDocumentStore?.getPinDataSnapshot() ?? {},
 			connections: workflowConnections,
-			active: workflowsStore.isWorkflowActive,
+			active: useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)).active,
 			settings: workflowsStore.workflow.settings,
-			tags: workflowsStore.workflowTags,
+			tags,
 			versionId: workflowsStore.workflow.versionId,
 			meta: workflowsStore.workflow.meta,
 		};
@@ -872,14 +874,23 @@ export function useWorkflowHelpers() {
 		}
 
 		if (isCurrentWorkflow) {
-			workflowState.setActive(workflow.activeVersionId);
 			uiStore.markStateClean();
 		}
 
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+
 		if (workflow.activeVersion) {
 			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
+			workflowDocumentStore.setActiveState({
+				activeVersionId: workflow.activeVersion.versionId,
+				activeVersion: workflow.activeVersion,
+			});
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
+			workflowDocumentStore.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
 		}
 	}
 
@@ -961,7 +972,6 @@ export function useWorkflowHelpers() {
 	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
 		const ws = overrideWorkflowState ?? workflowState;
 		workflowsListStore.addWorkflow(workflowData);
-		ws.setActive(workflowData.activeVersionId);
 		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowsStore.setDescription(workflowData.description);
 		ws.setWorkflowId(workflowData.id);
@@ -1017,10 +1027,14 @@ export function useWorkflowHelpers() {
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = convertWorkflowTagsToIds(tags);
 
-		// Initialize workflowDocumentStore with tags (single source of truth)
-		const workflowDocumentId = createWorkflowDocumentId(workflowData.id);
-		const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowData.id),
+		);
 		workflowDocumentStore.setTags(tagIds);
+		workflowDocumentStore.setActiveState({
+			activeVersionId: workflowData.activeVersionId,
+			activeVersion: workflowData.activeVersion ?? null,
+		});
 		workflowDocumentStore.setPinData(workflowData.pinData ?? {});
 		tagsStore.upsertTags(tags);
 

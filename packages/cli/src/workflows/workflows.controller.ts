@@ -701,7 +701,6 @@ export class WorkflowsController {
 
 	@Licensed('feat:sharing')
 	@Put('/:workflowId/share')
-	@ProjectScope('workflow:share')
 	async share(req: WorkflowRequest.Share) {
 		const { workflowId } = req.params;
 		const { shareWithIds } = req.body;
@@ -714,31 +713,47 @@ export class WorkflowsController {
 		}
 
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
-			'workflow:share',
+			'workflow:read',
 		]);
 
 		if (!workflow) {
 			throw new ForbiddenError();
 		}
 
+		const currentPersonalProjectIDs = workflow.shared
+			.filter((sw) => sw.role === 'workflow:editor')
+			.map((sw) => sw.projectId);
+		const newPersonalProjectIDs = shareWithIds;
+
+		const toShare = utils.rightDiff(
+			[currentPersonalProjectIDs, (id) => id],
+			[newPersonalProjectIDs, (id) => id],
+		);
+
+		const toUnshare = utils.rightDiff(
+			[newPersonalProjectIDs, (id) => id],
+			[currentPersonalProjectIDs, (id) => id],
+		);
+
+		if (toShare.length > 0) {
+			const canShare = await userHasScopes(req.user, ['workflow:share'], false, { workflowId });
+			if (!canShare) {
+				throw new ForbiddenError();
+			}
+		}
+
+		if (toUnshare.length > 0) {
+			const canUnshare = await userHasScopes(req.user, ['workflow:unshare'], false, {
+				workflowId,
+			});
+			if (!canUnshare) {
+				throw new ForbiddenError();
+			}
+		}
+
 		let newShareeIds: string[] = [];
 		const { manager: dbManager } = this.projectRepository;
 		await dbManager.transaction(async (trx) => {
-			const currentPersonalProjectIDs = workflow.shared
-				.filter((sw) => sw.role === 'workflow:editor')
-				.map((sw) => sw.projectId);
-			const newPersonalProjectIDs = shareWithIds;
-
-			const toShare = utils.rightDiff(
-				[currentPersonalProjectIDs, (id) => id],
-				[newPersonalProjectIDs, (id) => id],
-			);
-
-			const toUnshare = utils.rightDiff(
-				[newPersonalProjectIDs, (id) => id],
-				[currentPersonalProjectIDs, (id) => id],
-			);
-
 			await trx.delete(SharedWorkflow, {
 				workflowId,
 				projectId: In(toUnshare),
