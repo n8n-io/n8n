@@ -618,8 +618,8 @@ watchEffect(async () => {
 				<WorkflowHistoryDiff
 					:key="`${versionId}:${diffWithVersionId}`"
 					:workflow-id="workflowId"
-					:source-workflow-version-id="versionId"
-					:target-workflow-version-id="diffWithVersionId"
+					:source-workflow-version-id="diffWithVersionId"
+					:target-workflow-version-id="versionId"
 					@close="closeCompareView"
 				/>
 			</template>
