@@ -1,11 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, Variables } from '@n8n/db';
-import type { IWorkflowSettings } from 'n8n-workflow';
+import type { ITaskData, IWorkflowSettings } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import {
 	getVariables,
+	preserveInputOverride,
 	removeDefaultValues,
 	shouldRestartParentExecution,
 } from '@/workflow-helpers';
@@ -99,6 +100,79 @@ describe('shouldRestartParentExecution', () => {
 			shouldResume: true,
 		};
 		expect(shouldRestartParentExecution(parentExecution)).toBe(true);
+	});
+});
+
+describe('preserveInputOverride', () => {
+	const makeEntry = (overrides: Partial<ITaskData> = {}): ITaskData => ({
+		startTime: 100,
+		executionTime: 50,
+		executionIndex: 1,
+		source: [],
+		...overrides,
+	});
+
+	it('should throw when the array is empty', () => {
+		expect(() => preserveInputOverride([])).toThrow();
+	});
+
+	it('should pop the entry and leave the array empty when there is no inputOverride', () => {
+		const runDataArray: ITaskData[] = [makeEntry()];
+		preserveInputOverride(runDataArray);
+		expect(runDataArray).toHaveLength(0);
+	});
+
+	it('should replace the entry with a zeroed placeholder when inputOverride is present', () => {
+		const inputOverride = { main: [[{ json: { key: 'value' } }]] };
+		const runDataArray: ITaskData[] = [makeEntry({ inputOverride })];
+		preserveInputOverride(runDataArray);
+		expect(runDataArray).toHaveLength(1);
+		expect(runDataArray[0]).toEqual({
+			startTime: 0,
+			executionTime: 0,
+			executionIndex: 0,
+			source: [],
+			inputOverride,
+		});
+	});
+
+	it('should carry source from the original entry over to the placeholder', () => {
+		const source = [{ previousNode: 'NodeA', previousNodeOutput: 0 }];
+		const inputOverride = { main: [[{ json: {} }]] };
+		const runDataArray: ITaskData[] = [makeEntry({ source, inputOverride })];
+		preserveInputOverride(runDataArray);
+		expect(runDataArray[0].source).toBe(source);
+	});
+
+	it('should not include data or other original fields in the placeholder', () => {
+		const inputOverride = { main: [[{ json: {} }]] };
+		const data = { main: [[{ json: { result: 'something' } }]] };
+		const runDataArray: ITaskData[] = [makeEntry({ inputOverride, data, executionTime: 999 })];
+		preserveInputOverride(runDataArray);
+		expect(runDataArray[0]).not.toHaveProperty('data');
+		expect(runDataArray[0].executionTime).toBe(0);
+	});
+
+	it('should only affect the last entry when inputOverride is present', () => {
+		const inputOverride = { main: [[{ json: {} }]] };
+		const first = makeEntry({ executionIndex: 0 });
+		const second = makeEntry({ executionIndex: 1 });
+		const last = makeEntry({ executionIndex: 2, inputOverride });
+		const runDataArray: ITaskData[] = [first, second, last];
+		preserveInputOverride(runDataArray);
+		expect(runDataArray).toHaveLength(3);
+		expect(runDataArray[0]).toBe(first);
+		expect(runDataArray[1]).toBe(second);
+		expect(runDataArray[2].inputOverride).toBe(inputOverride);
+		expect(runDataArray[2].startTime).toBe(0);
+	});
+
+	it('should remove only the last entry when no inputOverride and earlier entries remain', () => {
+		const first = makeEntry({ executionIndex: 0 });
+		const runDataArray: ITaskData[] = [first, makeEntry({ executionIndex: 1 })];
+		preserveInputOverride(runDataArray);
+		expect(runDataArray).toHaveLength(1);
+		expect(runDataArray[0]).toBe(first);
 	});
 });
 
