@@ -114,6 +114,16 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		expect(result).toBe('');
 	});
 
+	it('should evaluate array index 0 (falsy index)', async () => {
+		const data = {
+			$json: { items: ['first', 'second'] },
+		};
+
+		const result = evaluator.evaluate('{{ $json.items[0] }}', data);
+
+		expect(result).toBe('first');
+	});
+
 	it('should evaluate primitive array elements', async () => {
 		const data = {
 			$json: { numbers: [42, 99] },

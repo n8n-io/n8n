@@ -397,14 +397,6 @@ describe('createDeepLazyProxy', () => {
 			expect(val.data).toBe('x');
 		});
 
-		it('array proxy index 0 works correctly (falsy index)', () => {
-			mocks.getValueAtPath.mockReturnValue({ __isArray: true, __length: 3 });
-			const proxy = createDeepLazyProxy();
-			mocks.getArrayElement.mockReturnValue('first');
-			expect(proxy.arr[0]).toBe('first');
-			expect(mocks.getArrayElement).toHaveBeenCalledWith(null, [['arr'], 0], ivmCallOpts);
-		});
-
 		it('array proxy does not intercept negative indices', () => {
 			mocks.getValueAtPath.mockReturnValue({ __isArray: true, __length: 3 });
 			const proxy = createDeepLazyProxy();
