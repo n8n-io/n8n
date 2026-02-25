@@ -515,6 +515,10 @@ defineExpose({
 	font-size: var(--font-size--2xs);
 	background-color: var(--color--neutral-125);
 	padding: var(--spacing--4xs);
+
+	body[data-theme='dark'] & {
+		background-color: var(--color--background--light-1);
+	}
 }
 
 .connectionLink {
