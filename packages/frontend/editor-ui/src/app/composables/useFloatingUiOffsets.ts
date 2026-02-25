@@ -26,7 +26,9 @@ export function useFloatingUiOffsets() {
 			return `${logsPanelOffset + assistantOffset}px`;
 		}),
 		toastRightOffset: computed(() =>
-			chatPanelStore.isOpen && !chatPanelStore.isFullscreen ? `${chatPanelStore.width}px` : '0px',
+			chatPanelStore.isOpen && !chatPanelStore.isFullscreen && !chatPanelStore.isChatHubModeActive
+				? `${chatPanelStore.width}px`
+				: '0px',
 		),
 	};
 }

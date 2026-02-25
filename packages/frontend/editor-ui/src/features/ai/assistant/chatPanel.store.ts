@@ -130,18 +130,31 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 				read: true,
 			}));
 		}
-		// Update UI grid dimensions when opening
-		uiStore.appGridDimensions = {
-			...uiStore.appGridDimensions,
-			width: window.innerWidth - chatPanelStateStore.width,
-		};
+		// Update UI grid dimensions when opening (skip for chatHub — it floats over the canvas)
+		if (chatPanelStateStore.activeMode !== 'chatHub') {
+			uiStore.appGridDimensions = {
+				...uiStore.appGridDimensions,
+				width: window.innerWidth - chatPanelStateStore.width,
+			};
+		}
 	}
 
 	function close() {
+		const wasChatHub = chatPanelStateStore.activeMode === 'chatHub';
 		chatPanelStateStore.isOpen = false;
 		chatPanelStateStore.showCoachmark = false;
 		chatPanelStateStore.isFullscreen = false;
 		chatPanelStateStore.isPoppedOut = false;
+
+		if (wasChatHub) {
+			// ChatHub floats — no grid animation needed, just reset assistant if needed
+			const assistantStore = useAssistantStore();
+			if (assistantStore.isSessionEnded) {
+				assistantStore.resetAssistantChat();
+			}
+			return;
+		}
+
 		// Wait for slide animation to finish before updating grid width and resetting
 		setTimeout(() => {
 			uiStore.appGridDimensions = {
@@ -193,7 +206,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	function updateWidth(newWidth: number) {
 		const clampedWidth = Math.min(Math.max(newWidth, activeMinWidth.value), activeMaxWidth.value);
 		chatPanelStateStore.width = clampedWidth;
-		if (chatPanelStateStore.isOpen) {
+		if (chatPanelStateStore.isOpen && chatPanelStateStore.activeMode !== 'chatHub') {
 			uiStore.appGridDimensions = {
 				...uiStore.appGridDimensions,
 				width: window.innerWidth - clampedWidth,
@@ -291,8 +304,8 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 	function setPreferPoppedOut(value: boolean) {
 		chatPanelStateStore.isPoppedOut = value;
-		if (!value) {
-			// Restore grid dimensions when going back to attached
+		if (!value && chatPanelStateStore.activeMode !== 'chatHub') {
+			// Restore grid dimensions when going back to attached (skip for chatHub — it floats)
 			uiStore.appGridDimensions = {
 				...uiStore.appGridDimensions,
 				width: window.innerWidth - chatPanelStateStore.width,

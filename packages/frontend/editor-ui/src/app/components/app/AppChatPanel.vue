@@ -31,7 +31,9 @@ onBeforeUnmount(() => {
 });
 
 // As chat panel width changes, recalculate the total width regularly
+// Skip for chatHub mode since it floats over the canvas
 watch(chatPanelWidth, async () => {
+	if (chatPanelStore.isChatHubModeActive) return;
 	await updateGridWidth();
 });
 </script>

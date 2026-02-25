@@ -4,7 +4,7 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useDebounce } from '@/app/composables/useDebounce';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import SlideTransition from '@/app/components/transitions/SlideTransition.vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
@@ -14,9 +14,20 @@ import { useAskModeCoachmark } from '../composables/useAskModeCoachmark';
 import { usePopOutWindow } from '@/features/execution/logs/composables/usePopOutWindow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
-import { N8nResizeWrapper } from '@n8n/design-system';
+import {
+	N8nFloatingWindow,
+	N8nIconButton,
+	N8nResizeWrapper,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import HubSwitcher from '@/features/ai/assistant/components/HubSwitcher.vue';
+import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
+import CanvasChatSessionDropdown from '@/features/ai/chatHub/components/CanvasChatSessionDropdown.vue';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 
+const i18n = useI18n();
 const builderStore = useBuilderStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
@@ -57,6 +68,17 @@ const isFullscreen = computed(() => chatPanelStore.isFullscreen);
 const isPoppedOut = computed(() => chatPanelStore.isPoppedOut);
 
 const chatWidth = computed(() => chatPanelStore.width);
+const canPopOut = computed(() => window.parent === window);
+
+const chatTriggerNode = computed(() =>
+	workflowsStore.allNodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE),
+);
+
+const agentDisplayName = computed(() => {
+	const triggerName = chatTriggerNode.value?.parameters?.agentName;
+	if (typeof triggerName === 'string' && triggerName.trim()) return triggerName.trim();
+	return workflowsStore.workflowName || 'Workflow';
+});
 
 const popOutWindowTitle = computed(() => `Chat - ${workflowsStore.workflowName || 'Workflow'}`);
 const shouldPopOut = computed(() => isPoppedOut.value && isChatHubMode.value);
@@ -126,6 +148,17 @@ function onSlideEnterComplete() {
 	}
 }
 
+// Focus input when chatHub opens as floating window (no slide transition to trigger @after-enter)
+watch(
+	() => isChatHubMode.value && chatPanelStore.isOpen && !isPoppedOut.value,
+	async (isFloatingOpen) => {
+		if (isFloatingOpen) {
+			await nextTick();
+			canvasChatHubRef.value?.focusInput();
+		}
+	},
+);
+
 const unsubscribeAssistantStore = assistantStore.$onAction(({ name }) => {
 	// When assistant is opened from error or credentials help
 	// switch from build mode to chat mode (unless merge is enabled, which keeps builder mode)
@@ -163,7 +196,92 @@ onBeforeUnmount(() => {
 <template>
 	<div ref="popOutContainer" :class="$style.popOutContainer">
 		<div ref="popOutContent" :class="[$style.popOutContent, { [$style.poppedOut]: isPoppedOut }]">
-			<SlideTransition @after-enter="onSlideEnterComplete">
+			<!-- ChatHub mode: floating window (or pop-out) -->
+			<N8nFloatingWindow
+				v-if="isChatHubMode && chatPanelStore.isOpen && !isPoppedOut"
+				:width="chatWidth"
+				:height="700"
+				:min-width="chatPanelStore.activeMinWidth"
+				:min-height="300"
+				data-test-id="canvas-chat-floating-window"
+				@close="onClose"
+			>
+				<template #header-icon>
+					<ChatAgentAvatar :agent="null" size="sm" />
+				</template>
+				<template #header>
+					<N8nText size="medium" :bold="true" :class="$style.floatingHeaderTitle">
+						{{ agentDisplayName }}
+					</N8nText>
+					<span :class="$style.previewBadge">
+						{{ i18n.baseText('chatHub.canvas.previewBadge') }}
+					</span>
+				</template>
+				<template #header-actions>
+					<CanvasChatSessionDropdown
+						v-if="canvasChatHubRef?.sessionId"
+						:session-id="canvasChatHubRef.sessionId"
+						:session-title="canvasChatHubRef.sessionIdText"
+						:workflow-id="workflowsStore.workflowId"
+						@select-session="canvasChatHubRef.handleSelectSession"
+					/>
+					<N8nTooltip v-if="canvasChatHubRef?.sessionId" placement="bottom">
+						<template #content>
+							{{ canvasChatHubRef.sessionId }}
+							<br />
+							{{ i18n.baseText('chat.window.session.id.copy') }}
+						</template>
+						<N8nIconButton
+							icon="copy"
+							variant="ghost"
+							size="small"
+							data-test-id="canvas-chat-session-id"
+							@click="canvasChatHubRef.copySessionId()"
+						/>
+					</N8nTooltip>
+					<N8nTooltip v-if="canvasChatHubRef" placement="bottom">
+						<template #content>
+							{{ i18n.baseText('chat.window.session.resetSession') }}
+						</template>
+						<N8nIconButton
+							icon="undo-2"
+							variant="ghost"
+							size="small"
+							data-test-id="canvas-chat-hub-new-session"
+							@click="canvasChatHubRef.handleNewSession()"
+						/>
+					</N8nTooltip>
+					<N8nTooltip v-if="canPopOut" placement="bottom">
+						<template #content>
+							{{ i18n.baseText('runData.panel.actions.popOut') }}
+						</template>
+						<N8nIconButton
+							icon="external-link"
+							variant="ghost"
+							size="small"
+							data-test-id="canvas-chat-hub-pop-out"
+							@click="onPopOut"
+						/>
+					</N8nTooltip>
+				</template>
+				<CanvasChatHubPanel
+					ref="canvasChatHubRef"
+					:floating="true"
+					@close="onClose"
+					@pop-out="onPopOut"
+				/>
+			</N8nFloatingWindow>
+
+			<!-- ChatHub pop-out: rendered in pop-out container without floating window -->
+			<CanvasChatHubPanel
+				v-else-if="isChatHubMode && chatPanelStore.isOpen && isPoppedOut"
+				ref="canvasChatHubRef"
+				@close="onClose"
+				@pop-out="onPopOut"
+			/>
+
+			<!-- Assistant/Builder mode: sidebar -->
+			<SlideTransition v-if="!isChatHubMode" @after-enter="onSlideEnterComplete">
 				<N8nResizeWrapper
 					v-show="chatPanelStore.isOpen"
 					:supported-directions="isFullscreen || isPoppedOut ? [] : ['left']"
@@ -177,17 +295,7 @@ onBeforeUnmount(() => {
 				>
 					<div :style="isFullscreen ? {} : { width: `${chatWidth}px` }" :class="$style.wrapper">
 						<div :class="$style.assistantContent">
-							<CanvasChatHubPanel
-								v-if="isChatHubMode"
-								ref="canvasChatHubRef"
-								@close="onClose"
-								@pop-out="onPopOut"
-							/>
-							<AskAssistantBuild
-								v-else-if="isBuildMode"
-								ref="askAssistantBuildRef"
-								@close="onClose"
-							>
+							<AskAssistantBuild v-if="isBuildMode" ref="askAssistantBuildRef" @close="onClose">
 								<template v-if="canToggleModes" #header>
 									<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
 								</template>
@@ -239,5 +347,22 @@ onBeforeUnmount(() => {
 .assistantContent {
 	flex: 1;
 	overflow: hidden;
+}
+
+.floatingHeaderTitle {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.previewBadge {
+	flex-shrink: 0;
+	display: inline-block;
+	color: var(--color--secondary);
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
+	background-color: var(--color--secondary--tint-2);
+	padding: var(--spacing--5xs) var(--spacing--4xs);
+	border-radius: 16px;
 }
 </style>

@@ -27,6 +27,13 @@ import ChatAgentAvatar from './ChatAgentAvatar.vue';
 import CanvasChatSessionDropdown from './CanvasChatSessionDropdown.vue';
 import type { ChatMessage as ChatMessageType, MessagingState } from '../chat.types';
 
+const props = withDefaults(
+	defineProps<{
+		floating?: boolean;
+	}>(),
+	{ floating: false },
+);
+
 const emit = defineEmits<{
 	close: [];
 	'pop-out': [];
@@ -213,17 +220,28 @@ function focusInput() {
 	inputRef.value?.focus();
 }
 
-defineExpose({ focusInput });
+defineExpose({
+	focusInput,
+	sessionId,
+	sessionIdText,
+	handleNewSession,
+	handleSelectSession,
+	copySessionId,
+});
 </script>
 
 <template>
 	<div
 		:class="[
 			$style.panel,
-			{ [$style.fullscreen]: chatPanelStore.isFullscreen, [$style.poppedOut]: isPoppedOut },
+			{
+				[$style.fullscreen]: chatPanelStore.isFullscreen,
+				[$style.poppedOut]: isPoppedOut,
+				[$style.floating]: props.floating,
+			},
 		]"
 	>
-		<div :class="$style.header">
+		<div v-if="!props.floating" :class="$style.header">
 			<div :class="$style.headerTitle">
 				<ChatAgentAvatar :agent="selectedModel" size="sm" />
 				<N8nText size="medium" :bold="true" :class="$style.headerTitleText">
@@ -362,6 +380,10 @@ defineExpose({ focusInput });
 	border-left: var(--border);
 
 	&.poppedOut {
+		border-left: none;
+	}
+
+	&.floating {
 		border-left: none;
 	}
 }
