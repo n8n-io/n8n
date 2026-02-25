@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@n8n/design-system",
-  "version": "2.9.2",
+  "version": "2.9.3",
   "main": "src/index.ts",
   "import": "src/index.ts",
   "scripts": {
