@@ -782,10 +782,8 @@ export class ChatHubModelsService {
 			return null;
 		}
 
-		const allowFileUploads = chatTriggerParams.options?.allowFileUploads ?? false;
-		const allowedFilesMimeTypes = this.chatHubWorkflowService.resolveAllowedMimeTypes(
-			chatTriggerParams.options,
-		);
+		const { allowFileUploads, allowedFilesMimeTypes } =
+			this.chatHubWorkflowService.resolveWorkflowAttachmentPolicy(activeVersion.nodes ?? []);
 
 		const agentName =
 			chatTriggerParams.agentName && chatTriggerParams.agentName.trim().length > 0

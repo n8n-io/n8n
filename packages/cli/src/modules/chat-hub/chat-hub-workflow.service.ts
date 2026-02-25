@@ -271,6 +271,21 @@ export class ChatHubWorkflowService {
 	}
 
 	/**
+	 * Resolves the attachment policy from a workflow's nodes by finding the
+	 * chat trigger and extracting file upload settings.
+	 */
+	resolveWorkflowAttachmentPolicy(nodes: INode[]) {
+		const chatTrigger = nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+		const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger?.parameters).data;
+		const allowFileUploads = chatTriggerParams?.options?.allowFileUploads ?? false;
+
+		return {
+			allowFileUploads,
+			allowedFilesMimeTypes: this.resolveAllowedMimeTypes(chatTriggerParams?.options),
+		};
+	}
+
+	/**
 	 * Resolves the attachment upload policy for the given model.
 	 * Used to validate attachments before storage.
 	 */
@@ -291,17 +306,7 @@ export class ChatHubWorkflowService {
 				throw new BadRequestError('Workflow not found');
 			}
 
-			const chatTrigger = workflow.activeVersion.nodes.find(
-				(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
-			);
-
-			const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger?.parameters).data;
-			const allowFileUploads = chatTriggerParams?.options?.allowFileUploads ?? false;
-
-			return {
-				allowFileUploads,
-				allowedFilesMimeTypes: this.resolveAllowedMimeTypes(chatTriggerParams?.options),
-			};
+			return this.resolveWorkflowAttachmentPolicy(workflow.activeVersion.nodes);
 		}
 
 		if (model.provider === 'custom-agent') {
