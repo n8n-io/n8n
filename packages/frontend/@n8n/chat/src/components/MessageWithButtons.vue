@@ -15,8 +15,21 @@ defineProps<{
 
 const clickedButtonIndex = ref<number | null>(null);
 
+const isSameDomain = (link: string): boolean => {
+	try {
+		const url = new URL(link, window.location.href);
+		return url.origin === window.location.origin;
+	} catch {
+		return false;
+	}
+};
+
 const onClick = async (link: string, index: number) => {
 	if (clickedButtonIndex.value !== null) {
+		return;
+	}
+
+	if (!isSameDomain(link)) {
 		return;
 	}
 
