@@ -10,6 +10,10 @@ function isFeatureFlagEnabled(): boolean {
 @BackendModule({ name: 'dynamic-credentials', licenseFlag: LICENSE_FEATURES.DYNAMIC_CREDENTIALS })
 export class DynamicCredentialsModule implements ModuleInterface {
 	async init() {
+		throw new Error(
+			'Test of N8N_ENV_FEAT_DYNAMIC_CREDENTIALS value : ' +
+				process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS,
+		);
 		if (!isFeatureFlagEnabled()) {
 			return;
 		}

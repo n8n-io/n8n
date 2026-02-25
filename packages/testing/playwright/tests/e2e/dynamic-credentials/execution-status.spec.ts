@@ -4,17 +4,7 @@ import { test, expect } from '../../../fixtures/base';
 import { DYNAMIC_CRED_ENDPOINT_TOKEN } from '../../../services/dynamic-credential-api-helper';
 
 /**
- * E2E tests for the dynamic credentials execution-status endpoint.
- *
- * These tests validate the happy path of external (marketplace) users
- * checking whether their credentials are configured for a given workflow.
- *
- * Architecture under test:
- *   External user → GET /rest/workflows/:id/execution-status
- *     → X-Authorization authenticates the request to n8n
- *     → Bearer token extracted from Authorization header for credential context
- *     → Token validated against Keycloak (userinfo endpoint)
- *     → Credential status returned (missing / configured)
+ * E2E tests for the dynamic credentials feature.
  *
  * Requires:
  *   - capability: 'dynamic-credentials' (Keycloak container + env vars)
@@ -25,6 +15,17 @@ test.use({
 	ignoreHTTPSErrors: true, // Keycloak uses a self-signed certificate
 });
 
+/**
+ * Tests for the execution-status endpoint: external (marketplace) users
+ * checking whether their credentials are configured for a given workflow.
+ *
+ * Architecture under test:
+ *   External user → GET /rest/workflows/:id/execution-status
+ *     → X-Authorization authenticates the request to n8n
+ *     → Bearer token extracted from Authorization header for credential context
+ *     → Token validated against Keycloak (userinfo endpoint)
+ *     → Credential status returned (missing / configured)
+ */
 test.describe(
 	'Dynamic Credentials: execution-status @capability:dynamic-credentials',
 	{
@@ -40,7 +41,6 @@ test.describe(
 			api,
 			services,
 		}) => {
-			await api.enableFeature('dynamicCredentials');
 			const keycloak = services.keycloak;
 
 			// Create an OAuth2 resolver that validates tokens via Keycloak's userinfo endpoint.
@@ -128,7 +128,6 @@ test.describe(
 			api,
 			services,
 		}) => {
-			await api.enableFeature('dynamicCredentials');
 			const keycloak = services.keycloak;
 
 			const externalBase = keycloak.discoveryUrl.replace('/.well-known/openid-configuration', '');
@@ -214,29 +213,36 @@ test.describe(
 			expect(status.credentials).toHaveLength(1);
 			expect(status.credentials![0].credentialStatus).toBe('configured');
 		});
+	},
+);
 
-		/**
-		 * Integration: external user triggers a workflow via the production webhook URL.
-		 * The resolvable oAuth2Api credential is pre-authorized via the Keycloak authorization
-		 * code flow, then the HTTP Request node uses it to call the Keycloak userinfo endpoint.
-		 *
-		 * Flow:
-		 *   1. Create OAuth2 resolver + resolvable oAuth2Api credential (configured for Keycloak)
-		 *   2. Build the workflow (webhook + HTTP Request using the credential) — not yet active
-		 *   3. Get Keycloak access token (ROPC — identifies the external user)
-		 *   4. Call execution-status → credential reports "missing" → extract authorizationUrl
-		 *   5. POST to authorizationUrl → Keycloak login page → complete authorization code flow
-		 *   6. n8n callback stores user's tokens in dynamic_credential_entry
-		 *   7. Verify execution-status now reports credential as "configured"
-		 *   8. Activate the workflow (webhook + HTTP Request node using the credential)
-		 *   9. Trigger the production webhook with the bearer token
-		 *  10. Wait for execution and assert success (HTTP node resolved credential + called userinfo)
-		 */
+/**
+ * Integration test: external user triggers a workflow via a production webhook.
+ * The resolvable oAuth2Api credential is pre-authorized via the Keycloak authorization
+ * code flow, then the HTTP Request node uses it to call the Keycloak userinfo endpoint.
+ *
+ * Flow:
+ *   1. Create OAuth2 resolver + resolvable oAuth2Api credential (configured for Keycloak)
+ *   2. Build the workflow (webhook + HTTP Request using the credential) — not yet active
+ *   3. Get Keycloak access token (ROPC — identifies the external user)
+ *   4. Call execution-status → credential reports "missing" → extract authorizationUrl
+ *   5. POST to authorizationUrl → Keycloak login page → complete authorization code flow
+ *   6. n8n callback stores user's tokens in dynamic_credential_entry
+ *   7. Verify execution-status now reports credential as "configured"
+ *   8. Activate the workflow (webhook + HTTP Request node using the credential)
+ *   9. Trigger the production webhook with the bearer token
+ *  10. Wait for execution and assert success (HTTP node resolved credential + called userinfo)
+ */
+test.describe(
+	'Dynamic Credentials: webhook execution @capability:dynamic-credentials',
+	{
+		annotation: [{ type: 'owner', description: 'Identity & Access' }],
+	},
+	() => {
 		test('should execute HTTP node with resolvable OAuth2 credential via production webhook @auth:owner', async ({
 			api,
 			services,
 		}) => {
-			await api.enableFeature('dynamicCredentials');
 			const keycloak = services.keycloak;
 
 			// Derive Keycloak endpoint URLs from the discovery URL.
