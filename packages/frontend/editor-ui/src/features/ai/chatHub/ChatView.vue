@@ -921,7 +921,7 @@ function onFilesDropped(files: File[]) {
 		left: 0;
 		width: 100%;
 		padding-block: var(--spacing--md);
-		background: linear-gradient(transparent 0%, var(--color--background--light-2) 30%);
+		background: var(--color--background--light-2);
 	}
 }
 
