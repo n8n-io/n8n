@@ -150,6 +150,13 @@ export class FrontendService {
 		return envFeatureFlags;
 	}
 
+	private async getShowSetupOnFirstLoad() {
+		const previewMode = process.env.N8N_PREVIEW_MODE === 'true';
+		const hasInstanceOwner = await this.ownershipService.hasInstanceOwner();
+		// In preview mode, skip the setup redirect to allow accessing demo routes
+		return previewMode ? false : !hasInstanceOwner;
+	}
+
 	private async initSettings() {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const restEndpoint = this.globalConfig.endpoints.rest;
@@ -172,12 +179,14 @@ export class FrontendService {
 			telemetrySettings.config = { key, url, proxy, sourceConfig };
 		}
 
+		const previewMode = process.env.N8N_PREVIEW_MODE === 'true';
+
 		this.settings = {
 			settingsMode: 'authenticated',
 			inE2ETests,
 			isDocker: this.instanceSettings.isDocker,
 			databaseType: this.globalConfig.database.type,
-			previewMode: process.env.N8N_PREVIEW_MODE === 'true',
+			previewMode,
 			endpointForm: this.globalConfig.endpoints.form,
 			endpointFormTest: this.globalConfig.endpoints.formTest,
 			endpointFormWaiting: this.globalConfig.endpoints.formWaiting,
@@ -237,7 +246,7 @@ export class FrontendService {
 			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
 				quota: this.license.getUsersLimit(),
-				showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
+				showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
@@ -408,7 +417,7 @@ export class FrontendService {
 		Object.assign(this.settings.userManagement, {
 			quota: this.license.getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
-			showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
+			showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 		});
 
 		let dismissedBanners: string[] = [];
@@ -555,14 +564,12 @@ export class FrontendService {
 			mfa,
 			communityNodesEnabled,
 		} = await this.getSettings();
-
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
 			defaultLocale,
 			userManagement: {
 				authenticationMethod,
-				// In preview mode, skip the setup redirect to allow accessing demo routes
-				showSetupOnFirstLoad: previewMode ? false : showSetupOnFirstLoad,
+				showSetupOnFirstLoad,
 				smtpSetup,
 			},
 			sso: {
