@@ -112,12 +112,6 @@ describe('createDeepLazyProxy', () => {
 			expect(proxy.missing).toBeUndefined();
 		});
 
-		it('fetches and returns an empty string', () => {
-			mocks.getValueAtPath.mockReturnValue('');
-			const proxy = createDeepLazyProxy();
-			expect(proxy.empty).toBe('');
-		});
-
 		it('fetches and returns zero', () => {
 			mocks.getValueAtPath.mockReturnValue(0);
 			const proxy = createDeepLazyProxy();
