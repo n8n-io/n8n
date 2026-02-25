@@ -1,3 +1,12 @@
+## [2.10.2](https://github.com/n8n-io/n8n/compare/n8n@2.10.1...n8n@2.10.2) (2026-02-25)
+
+
+### Bug Fixes
+
+* Enable external secrets multi-connection to vault  ([#26189](https://github.com/n8n-io/n8n/issues/26189)) ([4935e10](https://github.com/n8n-io/n8n/commit/4935e108f613cc9fdca9a78bcd4643de82e01eaa))
+
+
+
 ## [2.10.1](https://github.com/n8n-io/n8n/compare/n8n@2.10.0...n8n@2.10.1) (2026-02-25)
 
 
