@@ -74,4 +74,5 @@ runs:
       run: |
         ${{ inputs.build-command }} --summarize
         node .github/scripts/send-build-stats.mjs || true
+        node .github/scripts/send-docker-stats.mjs || true
       shell: bash

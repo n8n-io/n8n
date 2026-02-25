@@ -1439,7 +1439,7 @@ function registerCustomActions() {
 			ndvStore.unsetActiveNodeName();
 
 			void nextTick(() => {
-				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TAB);
+				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.NODE_SHORTCUT);
 			});
 		},
 	});

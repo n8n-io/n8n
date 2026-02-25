@@ -190,7 +190,17 @@ export class Expression {
 		data.uneval = {};
 		data.setTimeout = {};
 		data.setInterval = {};
+		data.setImmediate = {};
+		data.clearImmediate = {};
+		data.queueMicrotask = {};
 		data.Function = {};
+
+		// Prevent Node.js module access
+		data.require = {};
+		data.module = {};
+		data.Buffer = {};
+		data.__dirname = {};
+		data.__filename = {};
 
 		// Prevent requests
 		data.fetch = {};
