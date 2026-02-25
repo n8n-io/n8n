@@ -114,6 +114,16 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		expect(result).toBe('');
 	});
 
+	it('should evaluate array .length', async () => {
+		const data = {
+			$json: { items: [1, 2, 3] },
+		};
+
+		const result = evaluator.evaluate('{{ $json.items.length }}', data);
+
+		expect(result).toBe(3);
+	});
+
 	it('should evaluate null values', async () => {
 		const data = {
 			$json: { field: null },

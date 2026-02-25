@@ -183,12 +183,6 @@ describe('createDeepLazyProxy', () => {
 			expect(proxy.items).toBeDefined();
 		});
 
-		it('array proxy .length returns __length', () => {
-			mocks.getValueAtPath.mockReturnValue({ __isArray: true, __length: 100 });
-			const proxy = createDeepLazyProxy();
-			expect(proxy.items.length).toBe(100);
-		});
-
 		it('caches the array proxy', () => {
 			mocks.getValueAtPath.mockReturnValue({ __isArray: true, __length: 3 });
 			const proxy = createDeepLazyProxy();
