@@ -32,6 +32,12 @@ describe('UpdateWorkflowDto', () => {
 				},
 			},
 			{
+				name: 'update redactionPolicy setting',
+				request: {
+					settings: { redactionPolicy: 'all' },
+				},
+			},
+			{
 				name: 'update multiple fields',
 				request: {
 					name: 'Updated Workflow',
