@@ -189,6 +189,8 @@ export type {
 	BreakingChangeVersion,
 } from './schemas/breaking-changes.schema';
 
+export { MIGRATION_REPORT_TARGET_VERSION } from './schemas/breaking-changes.schema';
+
 export type {
 	SecretsProviderType,
 	SecretsProviderState,
