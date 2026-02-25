@@ -59,6 +59,7 @@ const metadata = {
 };
 
 const runExecutionData = mock<IRunExecutionData>({
+	resumeToken: 'test-resume-token-preserved',
 	executionData: {
 		contextData,
 		metadata,
@@ -140,7 +141,7 @@ describe('DataRequestResponseBuilder', () => {
 					waitingExecutionSource: null,
 				},
 			}),
-			resumeToken: expect.any(String),
+			resumeToken: 'test-resume-token-preserved',
 		});
 	});
 });
