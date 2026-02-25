@@ -32,7 +32,7 @@ const uiStore = useUIStore();
 const rbacStore = useRBACStore();
 const settingsStore = useSettingsStore();
 const secretsProviders = useSecretsProvidersList();
-const secretsProviderConnection = useSecretsProviderConnection();
+const secretsProviderConnection = useSecretsProviderConnection(projectsStore.currentProjectId);
 
 interface ConnectionRow {
 	id: string;
