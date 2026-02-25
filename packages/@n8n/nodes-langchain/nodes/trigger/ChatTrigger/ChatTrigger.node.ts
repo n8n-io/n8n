@@ -513,7 +513,7 @@ export class ChatTrigger extends Node {
 								displayName: 'Icon',
 								name: 'icon',
 								type: 'icon',
-								default: '',
+								default: { type: 'icon', value: 'comment' },
 							},
 							{
 								displayName: 'Prompt Text',

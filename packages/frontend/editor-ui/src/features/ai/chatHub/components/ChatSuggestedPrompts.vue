@@ -10,8 +10,11 @@ const emit = defineEmits<{
 	select: [prompt: string];
 }>();
 
+const DEFAULT_PROMPT_ICON: IconName = 'message-circle';
+
 function getIconName(icon?: AgentIconOrEmoji): IconName | undefined {
-	return icon?.type === 'icon' ? (icon.value as IconName) : undefined;
+	if (icon?.type === 'emoji') return undefined;
+	return (icon?.value as IconName) ?? DEFAULT_PROMPT_ICON;
 }
 </script>
 
@@ -23,6 +26,7 @@ function getIconName(icon?: AgentIconOrEmoji): IconName | undefined {
 			variant="outline"
 			size="small"
 			:icon="getIconName(prompt.icon)"
+			icon-size="large"
 			:class="$style.chip"
 			@click="emit('select', prompt.text)"
 		>

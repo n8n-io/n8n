@@ -86,7 +86,7 @@ const isAgentModel = computed(
 
 .agentName {
 	margin-top: var(--spacing--2xs);
-	color: var(--color--neutral-900);
+	color: var(--color--text--shade-1);
 	font-size: 24px;
 	font-weight: 600;
 	line-height: 32px;
@@ -98,7 +98,7 @@ const isAgentModel = computed(
 	-webkit-line-clamp: 8;
 	-webkit-box-orient: vertical;
 	overflow: hidden;
-	color: var(--color--neutral-700);
+	color: var(--color--text--tint-1);
 	font-size: var(--font-size--sm);
 }
 
