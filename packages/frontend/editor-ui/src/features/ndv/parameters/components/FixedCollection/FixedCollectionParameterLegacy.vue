@@ -662,7 +662,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--3xs) 0;
+	padding: var(--spacing--5xs) 0;
 
 	> :first-child {
 		flex: 1;

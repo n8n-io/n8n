@@ -179,7 +179,7 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--4xs) 0;
+	padding: var(--spacing--5xs) 0;
 
 	> :first-child {
 		flex: 1;

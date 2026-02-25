@@ -486,6 +486,7 @@ function removeOverride(clearField = false) {
 						:label="label"
 						:event-bus="eventBus"
 						:can-be-overridden="canBeContentOverride"
+						:hide-label="hideLabel"
 						input-size="small"
 						@update="valueChanged"
 						@text-input="onTextInput"
