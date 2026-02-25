@@ -95,7 +95,7 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 		<ParameterInputList
 			hide-delete
 			is-nested
-			hide-labels
+			layout="inline"
 			:parameters="visiblePropertyValues"
 			:node-values="nodeValues"
 			:path="propertyPath"

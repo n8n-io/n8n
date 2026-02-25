@@ -415,9 +415,7 @@ function removeOverride(clearField = false) {
 		ref="inputLabel"
 		:class="[$style.wrapper]"
 		:label="hideLabel ? '' : i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
-		:tooltip-text="
-			hideLabel ? '' : i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)
-		"
+		:tooltip-text="i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)"
 		:show-tooltip="focused"
 		:show-options="menuExpanded || focused || forceShowExpression"
 		:options-position="optionsPosition"
