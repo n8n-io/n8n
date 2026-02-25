@@ -36,6 +36,11 @@ const outputSchema = {
 			z.object({
 				id: z.string().describe('The unique identifier of the workflow'),
 				name: z.string().nullable().describe('The name of the workflow'),
+				versionId: z.string().describe('The current workflow version ID'),
+				activeVersionId: z
+					.string()
+					.nullable()
+					.describe('The active workflow version ID, if available'),
 				description: z.string().nullable().optional().describe('The description of the workflow'),
 				active: z.boolean().nullable().describe('Whether the workflow is active'),
 				createdAt: z
@@ -51,6 +56,10 @@ const outputSchema = {
 					.nullable()
 					.describe('The number of triggers associated with the workflow'),
 				nodes: z.array(nodeSchema).describe('List of nodes in the workflow'),
+				activeNodes: z
+					.array(nodeSchema)
+					.nullable()
+					.describe('List of nodes in the active workflow version, if available'),
 				scopes: z.array(z.string()).describe('User permissions for this workflow'),
 				canExecute: z
 					.boolean()
@@ -152,7 +161,6 @@ export async function searchWorkflows(
 		filter: {
 			isArchived: false,
 			availableInMCP: true,
-			active: true,
 			...(query ? { query } : {}),
 			...(projectId ? { projectId } : {}),
 		},
@@ -162,6 +170,7 @@ export async function searchWorkflows(
 			name: true,
 			description: true,
 			active: true,
+			nodes: true,
 			createdAt: true,
 			updatedAt: true,
 			triggerCount: true,
@@ -182,27 +191,37 @@ export async function searchWorkflows(
 		const {
 			id,
 			name,
+			versionId,
 			description,
 			activeVersionId,
 			createdAt,
 			updatedAt,
 			triggerCount,
 			activeVersion,
+			nodes,
 		} = workflow as WorkflowEntity;
 		const scopes = ('scopes' in workflow ? (workflow.scopes as string[]) : undefined) ?? [];
 
 		return {
 			id,
 			name,
+			versionId,
+			activeVersionId,
 			description,
 			active: activeVersionId !== null,
 			createdAt: createdAt.toISOString(),
 			updatedAt: updatedAt.toISOString(),
 			triggerCount,
-			nodes: (activeVersion?.nodes ?? []).map((node: INode) => ({
+			nodes: (nodes ?? []).map((node: INode) => ({
 				name: node.name,
 				type: node.type,
 			})),
+			activeNodes: activeVersion?.nodes
+				? activeVersion.nodes.map((node: INode) => ({
+						name: node.name,
+						type: node.type,
+					}))
+				: null,
 			scopes,
 			canExecute: scopes.includes('workflow:execute'),
 		};

@@ -270,6 +270,58 @@ describe('execute-workflow MCP tool', () => {
 				});
 			});
 
+			test('throws when production mode is requested for unpublished workflow', async () => {
+				const workflow = createWorkflow({
+					activeVersionId: null,
+					settings: { availableInMCP: true },
+				});
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+
+				await expect(
+					executeWorkflow(
+						user,
+						workflowFinderService,
+						workflowRepository,
+						activeExecutions,
+						workflowRunner,
+						mcpService,
+						'unpublished-workflow',
+						undefined,
+						'production',
+					),
+				).rejects.toMatchObject({
+					reason: 'workflow_not_active',
+				});
+			});
+
+			test('allows manual mode for unpublished workflow', async () => {
+				const workflow = createWorkflow({
+					activeVersionId: null,
+					settings: { availableInMCP: true },
+				});
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as jest.Mock).mockResolvedValue('execution-id');
+				(activeExecutions.getPostExecutePromise as jest.Mock).mockResolvedValue({
+					status: 'success',
+					data: { resultData: { runData: {} } },
+				});
+
+				const result = await executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRepository,
+					activeExecutions,
+					workflowRunner,
+					mcpService,
+					'unpublished-workflow',
+					undefined,
+					'manual',
+				);
+
+				expect(result.success).toBe(true);
+				expect(result.executionId).toBe('execution-id');
+			});
+
 			test('throws error when workflow has unsupported trigger nodes', async () => {
 				const workflow = createWorkflow({
 					activeVersionId: uuid(),
@@ -925,7 +977,11 @@ describe('execute-workflow MCP tool', () => {
 
 				// Call through the tool handler to test telemetry
 				await tool.handler(
-					{ workflowId: 'telemetry-workflow', inputs: { type: 'chat', chatInput: 'test' } },
+					{
+						workflowId: 'telemetry-workflow',
+						mode: 'production',
+						inputs: { type: 'chat', chatInput: 'test' },
+					},
 					{} as any,
 				);
 
@@ -936,6 +992,7 @@ describe('execute-workflow MCP tool', () => {
 						tool_name: 'execute_workflow',
 						parameters: {
 							workflowId: 'telemetry-workflow',
+							mode: 'production',
 							inputs: { type: 'chat', parameter_count: 1 },
 						},
 						results: {
@@ -963,7 +1020,10 @@ describe('execute-workflow MCP tool', () => {
 				);
 
 				// Call through the tool handler to test telemetry
-				await tool.handler({ workflowId: 'error-tracking', inputs: undefined }, {} as any);
+				await tool.handler(
+					{ workflowId: 'error-tracking', mode: 'production', inputs: undefined },
+					{} as any,
+				);
 
 				expect(telemetry.track).toHaveBeenCalledWith(
 					'User called mcp tool',
@@ -972,6 +1032,7 @@ describe('execute-workflow MCP tool', () => {
 						tool_name: 'execute_workflow',
 						parameters: {
 							workflowId: 'error-tracking',
+							mode: 'production',
 							inputs: undefined,
 						},
 						results: {
@@ -1000,7 +1061,10 @@ describe('execute-workflow MCP tool', () => {
 				);
 
 				// Call through the tool handler to test telemetry
-				await tool.handler({ workflowId: 'no-perm-workflow', inputs: undefined }, {} as any);
+				await tool.handler(
+					{ workflowId: 'no-perm-workflow', mode: 'production', inputs: undefined },
+					{} as any,
+				);
 
 				expect(telemetry.track).toHaveBeenCalledWith(
 					'User called mcp tool',
@@ -1009,6 +1073,7 @@ describe('execute-workflow MCP tool', () => {
 						tool_name: 'execute_workflow',
 						parameters: {
 							workflowId: 'no-perm-workflow',
+							mode: 'production',
 							inputs: undefined,
 						},
 						results: {

@@ -2,12 +2,17 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
-import { createWorkflow } from './mock.utils';
+import {
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+} from 'n8n-workflow';
+
+import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';
 import { searchWorkflows, createSearchWorkflowsTool } from '../tools/search-workflows.tool';
 
 import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 
@@ -53,9 +58,15 @@ describe('search-workflows MCP tool', () => {
 				{
 					...createWorkflow({
 						id: 'a',
-						activeVersionId: uuid(),
+						activeVersionId: 'version-a',
 						name: 'Alpha',
 						nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE } as INode],
+						activeVersion: createWorkflowHistoryVersion({
+							workflowId: 'a',
+							versionId: 'version-a',
+							authors: JSON.stringify([{ id: user.id, firstName: 'Test', lastName: 'User' }]),
+							nodes: [{ name: 'Schedule Trigger', type: SCHEDULE_TRIGGER_NODE_TYPE } as INode],
+						}),
 					}),
 					scopes: ['workflow:read', 'workflow:execute'],
 				},
@@ -67,6 +78,12 @@ describe('search-workflows MCP tool', () => {
 						nodes: [
 							{ name: 'Execute subworkflow', type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } as INode,
 						],
+						activeVersion: createWorkflowHistoryVersion({
+							workflowId: 'b',
+							versionId: 'version-b',
+							authors: JSON.stringify([{ id: user.id, firstName: 'Test', lastName: 'User' }]),
+							nodes: [{ name: 'Schedule Trigger', type: SCHEDULE_TRIGGER_NODE_TYPE } as INode],
+						}),
 					}),
 					scopes: ['workflow:read'],
 				},
@@ -82,24 +99,30 @@ describe('search-workflows MCP tool', () => {
 				{
 					id: 'a',
 					name: 'Alpha',
+					versionId: 'some-version-id',
+					activeVersionId: expect.any(String),
 					description: null,
 					active: true,
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
 					nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE }],
+					activeNodes: [{ name: 'Schedule Trigger', type: SCHEDULE_TRIGGER_NODE_TYPE }],
 					scopes: ['workflow:read', 'workflow:execute'],
 					canExecute: true,
 				},
 				{
 					id: 'b',
 					name: 'Beta',
+					versionId: 'some-version-id',
+					activeVersionId: 'version-b',
 					description: null,
 					active: true,
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
 					nodes: [{ name: 'Execute subworkflow', type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE }],
+					activeNodes: [{ name: 'Schedule Trigger', type: SCHEDULE_TRIGGER_NODE_TYPE }],
 					scopes: ['workflow:read'],
 					canExecute: false,
 				},
@@ -149,6 +172,7 @@ describe('search-workflows MCP tool', () => {
 			expect(result.data[0]).toMatchObject({
 				id: 'no-nodes',
 				nodes: [],
+				activeNodes: [],
 				scopes: [],
 				canExecute: false,
 			});
