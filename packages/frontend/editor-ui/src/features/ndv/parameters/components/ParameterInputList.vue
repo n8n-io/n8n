@@ -82,7 +82,7 @@ type Props = {
 	removeFirstParameterMargin?: boolean;
 	removeLastParameterMargin?: boolean;
 	newlyAddedParameters?: Set<string>;
-	hideLabels?: boolean;
+	inlineLayout?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -565,7 +565,7 @@ watch(
 </script>
 
 <template>
-	<div :class="['parameter-input-list-wrapper', { [$style.inlineLayout]: hideLabels }]">
+	<div :class="['parameter-input-list-wrapper', { [$style.inlineLayout]: inlineLayout }]">
 		<div
 			v-for="(item, index) in parameterItems"
 			:key="item.parameter.name"
@@ -832,7 +832,7 @@ watch(
 					:display-options="item.showOptions"
 					:path="item.path"
 					:is-read-only="isReadOnly || item.isDisabled"
-					:hide-label="!!hideLabels"
+					:inline-layout="inlineLayout"
 					:node-values="nodeValues"
 					:show-delete="
 						!isReadOnly &&

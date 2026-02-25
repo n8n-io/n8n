@@ -36,6 +36,8 @@ type Props = {
 	hint?: string;
 	hideHint?: boolean;
 	inputSize?: InputSize;
+	hideLabel?: boolean;
+	inlineLayout?: boolean;
 	hideIssues?: boolean;
 	documentationUrl?: string;
 	errorHighlight?: boolean;
@@ -180,6 +182,8 @@ defineExpose({
 				:path="path"
 				:is-read-only="isReadOnly"
 				:is-assignment="isAssignment"
+				:hide-label="hideLabel"
+				:inline-layout="inlineLayout"
 				:droppable="droppable"
 				:active-drop="activeDrop"
 				:force-show-expression="forceShowExpression"

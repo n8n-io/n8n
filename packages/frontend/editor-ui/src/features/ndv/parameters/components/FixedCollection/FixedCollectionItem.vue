@@ -95,7 +95,7 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 		<ParameterInputList
 			hide-delete
 			is-nested
-			hide-labels
+			inline-layout
 			:parameters="visiblePropertyValues"
 			:node-values="nodeValues"
 			:path="propertyPath"
@@ -179,15 +179,15 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--4xs) 0;
+	margin-top: var(--spacing--xs);
+
+	&:first-child {
+		margin-top: 0;
+	}
 
 	> :first-child {
 		flex: 1;
 		min-width: 0;
-	}
-
-	> :last-child {
-		margin-top: 22px;
 	}
 }
 

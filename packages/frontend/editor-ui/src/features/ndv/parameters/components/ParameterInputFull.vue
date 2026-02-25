@@ -49,6 +49,7 @@ type Props = {
 	rows?: number;
 	isAssignment?: boolean;
 	hideLabel?: boolean;
+	inlineLayout?: boolean;
 	hideIssues?: boolean;
 	entryIndex?: number;
 	showDelete?: boolean;
@@ -61,6 +62,7 @@ const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
 	rows: 5,
 	hideLabel: false,
+	inlineLayout: false,
 	hideIssues: false,
 	label: () => ({ size: 'small' }),
 	showDelete: false,
@@ -109,6 +111,8 @@ const canBeContentOverride = computed(() => {
 const isContentOverride = computed(
 	() => canBeContentOverride.value && !!isFromAIOverrideValue(props.value?.toString() ?? ''),
 );
+
+const shouldHideLabel = computed(() => props.hideLabel || props.inlineLayout);
 
 const hint = computed(() =>
 	i18n.nodeText(activeNode.value?.type).hint(props.parameter, props.path),
@@ -372,6 +376,8 @@ function removeOverride(clearField = false) {
 					:hide-issues="hideIssues"
 					:label="label"
 					:event-bus="eventBus"
+					:hide-label="shouldHideLabel"
+					:inline-layout="inlineLayout"
 					input-size="small"
 					@update="valueChanged"
 					@text-input="onTextInput"
@@ -383,8 +389,13 @@ function removeOverride(clearField = false) {
 		</DraggableTarget>
 		<N8nInputLabel
 			:class="$style.inlineSwitchLabel"
-			:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
-			:tooltip-text="parameterTooltipText"
+			:overlay-label-row="inlineLayout"
+			:label="
+				shouldHideLabel
+					? ''
+					: i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)
+			"
+			:tooltip-text="shouldHideLabel ? '' : parameterTooltipText"
 			:show-tooltip="focused"
 			:show-options="menuExpanded || focused || wrapperHovered"
 			:bold="false"
@@ -414,9 +425,12 @@ function removeOverride(clearField = false) {
 		v-else
 		ref="inputLabel"
 		:class="[$style.wrapper]"
-		:label="hideLabel ? '' : i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+		:overlay-label-row="inlineLayout"
+		:label="
+			shouldHideLabel ? '' : i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)
+		"
 		:tooltip-text="
-			hideLabel ? '' : i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)
+			shouldHideLabel ? '' : i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)
 		"
 		:show-tooltip="focused"
 		:show-options="menuExpanded || focused || forceShowExpression"
@@ -488,6 +502,8 @@ function removeOverride(clearField = false) {
 						:label="label"
 						:event-bus="eventBus"
 						:can-be-overridden="canBeContentOverride"
+						:hide-label="shouldHideLabel"
+						:inline-layout="inlineLayout"
 						input-size="small"
 						@update="valueChanged"
 						@text-input="onTextInput"

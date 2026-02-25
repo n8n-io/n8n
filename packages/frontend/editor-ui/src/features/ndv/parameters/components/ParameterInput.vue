@@ -132,6 +132,7 @@ type Props = {
 	isAssignment?: boolean;
 	isReadOnly?: boolean;
 	hideLabel?: boolean;
+	inlineLayout?: boolean;
 	droppable?: boolean;
 	activeDrop?: boolean;
 	forceShowExpression?: boolean;
@@ -149,10 +150,13 @@ const props = withDefaults(defineProps<Props>(), {
 	documentationUrl: undefined,
 	isReadOnly: false,
 	isAssignment: false,
+	inlineLayout: false,
 	eventBus: () => createEventBus(),
 	additionalExpressionData: () => ({}),
 	label: () => ({ size: 'small' }),
 });
+
+const iconPickerButtonSize = computed(() => (props.inlineLayout ? 'small' : 'large'));
 
 const emit = defineEmits<{
 	focus: [];
@@ -1438,7 +1442,7 @@ onUpdated(async () => {
 				:button-tooltip="
 					parameter.placeholder || i18n.baseText('parameterInput.iconPicker.tooltip')
 				"
-				button-size="large"
+				:button-size="iconPickerButtonSize"
 				:is-read-only="isReadOnly"
 				@update:model-value="valueChanged"
 				@focus="setFocus"

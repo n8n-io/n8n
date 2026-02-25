@@ -19,6 +19,7 @@ interface InputLabelProps {
 	underline?: boolean;
 	showTooltip?: boolean;
 	showOptions?: boolean;
+	overlayLabelRow?: boolean;
 }
 
 defineOptions({ name: 'N8nInputLabel' });
@@ -37,6 +38,7 @@ const addTargetBlank = (html: string) =>
 		:class="{
 			[$style.container]: true,
 			[$style.withOptions]: $slots.options,
+			[$style.overlayLabelRow]: overlayLabelRow,
 		}"
 		v-bind="$attrs"
 		data-test-id="input-label"
@@ -122,6 +124,17 @@ const addTargetBlank = (html: string) =>
 	label {
 		display: flex;
 		justify-content: space-between;
+	}
+}
+
+.overlayLabelRow {
+	position: relative;
+
+	.labelRow {
+		position: absolute;
+		left: 0;
+		right: 0;
+		top: 0;
 	}
 }
 

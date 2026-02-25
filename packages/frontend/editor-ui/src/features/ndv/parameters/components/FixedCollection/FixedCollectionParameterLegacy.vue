@@ -472,7 +472,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 								:is-read-only="isReadOnly"
 								:is-nested="isNested"
 								:hide-delete="true"
-								hide-labels
+								inline-layout
 								:hidden-issues-inputs="hiddenIssuesInputs"
 								@value-changed="valueChanged"
 							/>
@@ -564,7 +564,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 					:is-read-only="isReadOnly"
 					:is-nested="isNested"
 					:hide-delete="true"
-					hide-labels
+					inline-layout
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					@value-changed="valueChanged"
 				/>
