@@ -47,8 +47,7 @@ defineExpose({
 .buttonGroup {
 	display: inline-flex;
 
-	:global(> .button) {		
-
+	:global(> .button) {
 		&:not(:first-child) {
 			border-radius: 0;
 		}
