@@ -24,7 +24,6 @@ import type { NextFunction, Request, Response } from 'express';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { sendErrorResponse } from '@/response-helper';
 
-import { ExternalSecretsProviders } from './external-secrets-providers.ee';
 import { ExternalSecretsConfig } from './external-secrets.config';
 import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee';
 
@@ -34,7 +33,6 @@ export class SecretProvidersProjectController {
 		private readonly config: ExternalSecretsConfig,
 		private readonly logger: Logger,
 		private readonly connectionsService: SecretsProvidersConnectionsService,
-		private readonly secretsProviders: ExternalSecretsProviders,
 	) {
 		this.logger = this.logger.scoped('external-secrets');
 	}
