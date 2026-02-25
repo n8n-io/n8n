@@ -10,11 +10,13 @@ import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
 import type {
 	DisplayCondition,
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeProperties,
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
+import { validateExternalSecretsPermissions } from '@/credentials/validation';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { CredentialRequest } from '@/requests';
@@ -49,10 +51,16 @@ export async function createCredential(
 }
 
 export async function saveCredential(
-	credential: CredentialsEntity,
+	payload: { type: string; name: string; data: ICredentialDataDecryptedObject },
 	user: User,
-	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
+	const credential = await createCredential(payload);
+
+	validateExternalSecretsPermissions(user, payload.data);
+
+	const encryptedData = await encryptCredential(credential);
+	Object.assign(credential, encryptedData);
+
 	const projectRepository = Container.get(ProjectRepository);
 	const { manager: dbManager } = projectRepository;
 	const result = await dbManager.transaction(async (transactionManager) => {

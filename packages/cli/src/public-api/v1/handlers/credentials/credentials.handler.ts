@@ -10,8 +10,6 @@ import { CredentialsHelper } from '@/credentials-helper';
 
 import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
 import {
-	createCredential,
-	encryptCredential,
 	getCredentials,
 	getSharedCredentials,
 	removeCredential,
@@ -32,13 +30,7 @@ export = {
 			res: express.Response,
 		): Promise<express.Response<Partial<CredentialsEntity>>> => {
 			try {
-				const newCredential = await createCredential(req.body);
-
-				const encryptedData = await encryptCredential(newCredential);
-
-				Object.assign(newCredential, encryptedData);
-
-				const savedCredential = await saveCredential(newCredential, req.user, encryptedData);
+				const savedCredential = await saveCredential(req.body, req.user);
 
 				return res.json(sanitizeCredentials(savedCredential));
 			} catch ({ message, httpStatusCode }) {

@@ -37,7 +37,6 @@ exports[`Scope Information ensure scopes are defined correctly 1`] = `
   "externalSecretsProvider:list",
   "externalSecretsProvider:*",
   "externalSecret:list",
-  "externalSecret:use",
   "externalSecret:*",
   "eventBusDestination:test",
   "eventBusDestination:create",

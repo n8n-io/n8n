@@ -8,7 +8,7 @@ export const RESOURCES = {
 	communityPackage: ['install', 'uninstall', 'update', 'list', 'manage'] as const,
 	credential: ['share', 'shareGlobally', 'move', ...DEFAULT_OPERATIONS] as const,
 	externalSecretsProvider: ['sync', ...DEFAULT_OPERATIONS] as const,
-	externalSecret: ['list', 'use'] as const,
+	externalSecret: ['list'] as const,
 	eventBusDestination: ['test', ...DEFAULT_OPERATIONS] as const,
 	ldap: ['sync', 'manage'] as const,
 	license: ['manage'] as const,
