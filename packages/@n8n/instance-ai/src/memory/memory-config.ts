@@ -1,5 +1,5 @@
-import { Memory } from '@mastra/memory';
 import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
+import { Memory } from '@mastra/memory';
 import { PostgresStore, PgVector } from '@mastra/pg';
 
 import type { InstanceAiMemoryConfig } from '../types';

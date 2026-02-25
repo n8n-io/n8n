@@ -8,6 +8,8 @@ import { InstanceAiService } from './instance-ai.service';
 
 type FlushableResponse = Response & { flush?: () => void };
 
+const KEEP_ALIVE_INTERVAL_MS = 15_000;
+
 @RestController('/instance-ai')
 export class InstanceAiController {
 	constructor(
@@ -29,24 +31,41 @@ export class InstanceAiController {
 			return;
 		}
 
-		// Stream response as newline-separated JSON chunks
-		// Disable compression buffering for real-time streaming
-		res.setHeader('Content-Type', 'application/octet-stream');
+		// Stream response as Server-Sent Events
+		res.setHeader('Content-Type', 'text/event-stream');
 		res.setHeader('Cache-Control', 'no-cache');
 		res.setHeader('Connection', 'keep-alive');
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
 
+		// Keep-alive comment to prevent proxy/client timeouts during long tool calls
+		const keepAlive = setInterval(() => {
+			res.write(': ping\n\n');
+			res.flush?.();
+		}, KEEP_ALIVE_INTERVAL_MS);
+
+		// Abort iteration if client disconnects
+		let clientDisconnected = false;
+		res.on('close', () => {
+			clientDisconnected = true;
+		});
+
 		try {
 			const fullStream = await this.instanceAiService.sendMessage(req.user, threadId, message);
 
 			for await (const chunk of fullStream) {
-				res.write(JSON.stringify(chunk) + '\n');
+				if (clientDisconnected) break;
+
+				const typedChunk = chunk as { type?: string };
+				const eventType = typedChunk.type ?? 'message';
+				res.write(`event: ${eventType}\ndata: ${JSON.stringify(chunk)}\n\n`);
 				res.flush?.();
 			}
 
-			res.write(JSON.stringify({ type: 'done' }) + '\n');
-			res.flush?.();
+			if (!clientDisconnected) {
+				res.write('data: [DONE]\n\n');
+				res.flush?.();
+			}
 			res.end();
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -57,11 +76,15 @@ export class InstanceAiController {
 
 			if (!res.headersSent) {
 				res.status(500).json({ error: 'Internal server error' });
-			} else {
-				res.write(JSON.stringify({ type: 'error', content: 'An error occurred' }) + '\n');
+			} else if (!clientDisconnected) {
+				res.write(
+					`event: error\ndata: ${JSON.stringify({ type: 'error', content: 'An error occurred' })}\n\n`,
+				);
 				res.flush?.();
 				res.end();
 			}
+		} finally {
+			clearInterval(keepAlive);
 		}
 	}
 }

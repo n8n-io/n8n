@@ -1,25 +1,21 @@
 import type { InstanceAiContext } from '../types';
-
-import { createListWorkflowsTool } from './workflows/list-workflows.tool';
-import { createGetWorkflowTool } from './workflows/get-workflow.tool';
-import { createCreateWorkflowTool } from './workflows/create-workflow.tool';
-import { createUpdateWorkflowTool } from './workflows/update-workflow.tool';
-import { createDeleteWorkflowTool } from './workflows/delete-workflow.tool';
-import { createActivateWorkflowTool } from './workflows/activate-workflow.tool';
-
-import { createRunWorkflowTool } from './executions/run-workflow.tool';
-import { createGetExecutionTool } from './executions/get-execution.tool';
-import { createDebugExecutionTool } from './executions/debug-execution.tool';
-
-import { createListCredentialsTool } from './credentials/list-credentials.tool';
-import { createGetCredentialTool } from './credentials/get-credential.tool';
 import { createCreateCredentialTool } from './credentials/create-credential.tool';
-import { createUpdateCredentialTool } from './credentials/update-credential.tool';
 import { createDeleteCredentialTool } from './credentials/delete-credential.tool';
+import { createGetCredentialTool } from './credentials/get-credential.tool';
+import { createListCredentialsTool } from './credentials/list-credentials.tool';
 import { createTestCredentialTool } from './credentials/test-credential.tool';
-
-import { createListNodesTool } from './nodes/list-nodes.tool';
+import { createUpdateCredentialTool } from './credentials/update-credential.tool';
+import { createDebugExecutionTool } from './executions/debug-execution.tool';
+import { createGetExecutionTool } from './executions/get-execution.tool';
+import { createRunWorkflowTool } from './executions/run-workflow.tool';
 import { createGetNodeDescriptionTool } from './nodes/get-node-description.tool';
+import { createListNodesTool } from './nodes/list-nodes.tool';
+import { createActivateWorkflowTool } from './workflows/activate-workflow.tool';
+import { createCreateWorkflowTool } from './workflows/create-workflow.tool';
+import { createDeleteWorkflowTool } from './workflows/delete-workflow.tool';
+import { createGetWorkflowTool } from './workflows/get-workflow.tool';
+import { createListWorkflowsTool } from './workflows/list-workflows.tool';
+import { createUpdateWorkflowTool } from './workflows/update-workflow.tool';
 
 /**
  * Creates all native n8n tools for the instance agent.

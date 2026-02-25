@@ -99,10 +99,10 @@ sequenceDiagram
         Agent->>Tools: execute tool
         Tools-->>Agent: result
         Agent-->>Ctrl: fullStream chunks
-        Ctrl-->>API: JSON line + newline
+        Ctrl-->>API: SSE event (event: type, data: JSON)
         API-->>Store: onChunk()
     end
-    Ctrl-->>API: { type: "done" }
+    Ctrl-->>API: data: [DONE]
     Store-->>User: rendered response
 ```
 

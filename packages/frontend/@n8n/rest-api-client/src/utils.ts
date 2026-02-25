@@ -233,6 +233,119 @@ export async function patch(
 	return await request({ method: 'PATCH', baseURL, endpoint, headers, data: params });
 }
 
+export async function sseStreamRequest<T extends object>(
+	context: IRestApiContext,
+	apiEndpoint: string,
+	payload: object,
+	onChunk?: (chunk: T) => void,
+	onDone?: () => void,
+	onError?: (e: Error) => void,
+	abortSignal?: AbortSignal,
+): Promise<void> {
+	let onErrorOnce: ((e: Error) => void) | undefined = (e: Error) => {
+		onErrorOnce = undefined;
+		onError?.(e);
+	};
+	const headers: Record<string, string> = {
+		'browser-id': getBrowserId(),
+		'Content-Type': 'application/json',
+	};
+	const requestInit: RequestInit = {
+		headers,
+		method: 'POST',
+		credentials: 'include',
+		body: JSON.stringify(payload),
+		signal: abortSignal,
+	};
+	try {
+		const response = await fetch(`${context.baseUrl}${apiEndpoint}`, requestInit);
+
+		if (!response.ok) {
+			onErrorOnce?.(
+				new ResponseError(response.statusText, {
+					httpStatusCode: response.status,
+				}),
+			);
+			return;
+		}
+
+		if (response.body) {
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder('utf-8');
+
+			let buffer = '';
+
+			async function readStream() {
+				const { done, value } = await reader.read();
+				if (done) {
+					onDone?.();
+					return;
+				}
+
+				buffer += decoder.decode(value, { stream: true });
+
+				// SSE frames are separated by double newlines
+				const frames = buffer.split('\n\n');
+				// Last element may be an incomplete frame — keep it in the buffer
+				buffer = frames.pop() ?? '';
+
+				for (const frame of frames) {
+					const trimmed = frame.trim();
+					if (!trimmed || trimmed.startsWith(':')) {
+						// Empty frame or comment (e.g. keep-alive ping) — skip
+						continue;
+					}
+
+					let eventType = '';
+					let data = '';
+
+					for (const line of trimmed.split('\n')) {
+						if (line.startsWith('event:')) {
+							eventType = line.slice(6).trim();
+						} else if (line.startsWith('data:')) {
+							data = line.slice(5).trimStart();
+						}
+					}
+
+					if (data === '[DONE]') {
+						onDone?.();
+						return;
+					}
+
+					if (!data) continue;
+
+					try {
+						const parsed = jsonParse<T>(data, { errorMessage: 'Invalid json' });
+
+						if (eventType === 'error') {
+							const message = 'content' in parsed ? String(parsed.content) : 'Stream error';
+							onErrorOnce?.(
+								new ResponseError(message, {
+									httpStatusCode: 500,
+								}),
+							);
+							return;
+						}
+
+						onChunk?.(parsed);
+					} catch {
+						// Malformed JSON in an SSE data field — skip the frame
+					}
+				}
+
+				await readStream();
+			}
+
+			await readStream();
+		} else if (onErrorOnce) {
+			onErrorOnce(new Error(response.statusText));
+		}
+	} catch (e: unknown) {
+		assert(e instanceof Error);
+		onErrorOnce?.(e);
+	}
+}
+
 export async function streamRequest<T extends object>(
 	context: IRestApiContext,
 	apiEndpoint: string,

@@ -94,32 +94,73 @@ parameters. No risk of cross-user data leakage.
 
 ---
 
-## 4. Newline-Delimited JSON Streaming
+## 4. Server-Sent Events (SSE) Streaming
 
-**Status**: Accepted
+**Status**: Accepted (supersedes NDJSON streaming)
 
 **Context**: The frontend needs real-time updates as the agent generates text,
-calls tools, and produces results. What streaming protocol to use?
+calls tools, and produces results. The original implementation used
+newline-delimited JSON (NDJSON) over `application/octet-stream`. In 2026 every
+major AI provider (OpenAI, Anthropic, Google) and framework (Vercel AI SDK,
+Mastra) uses SSE as the standard streaming wire format. The NDJSON approach was
+an accidental protocol choice — it reused the existing `streamRequest()` utility
+with `'\n'` as the separator.
 
-**Decision**: Stream responses as newline-delimited JSON (`\n`-separated lines),
-each containing a typed chunk object with a `type` field.
+**Decision**: Stream responses as **Server-Sent Events** (`text/event-stream`).
+Each chunk is written as:
 
-**Rationale**: Simple to implement on both sides. The backend writes
-`JSON.stringify(chunk) + '\n'` and flushes. The frontend splits on `\n` and
-parses each line. No special protocol libraries needed. The `type` field
-enables clean dispatch in the store's `handleChunk()` method.
+```
+event: <chunk.type>
+data: <JSON>
+
+```
+
+The stream terminates with `data: [DONE]\n\n` (matching the OpenAI/Vercel
+convention). Keep-alive comments (`: ping`) are sent every 15 seconds to prevent
+proxy timeouts during long tool calls.
+
+The frontend uses a new `sseStreamRequest()` utility — separate from the
+existing `streamRequest()` used by the AI Assistant.
+
+**Rationale**:
+- **Industry alignment** — SSE is the 2026 standard for AI streaming. OpenAI,
+  Anthropic, Google Gemini, Vercel AI SDK 6, and Mastra all use it. Using the
+  same protocol means n8n speaks the same language as the ecosystem.
+- **Free protocol features** — typed `event:` names enable selective listening,
+  comment lines (`: ping`) serve as keep-alive, and the `[DONE]` sentinel is a
+  well-understood termination signal.
+- **DevTools debuggability** — Chrome and Firefox DevTools have built-in SSE
+  viewers in the Network tab. With NDJSON, streams appeared as opaque binary
+  data under `application/octet-stream`. With SSE, each event is parsed and
+  displayed with its type and data, making development and debugging much easier.
+- **Keep-alive for long tool calls** — NDJSON had no mechanism for signaling
+  liveness during silent periods (e.g., when the agent is waiting for a tool to
+  return). SSE comments solve this natively.
+- **Client disconnect detection** — the controller now listens for `res.on('close')`
+  to detect when the client disconnects, avoiding wasted computation on
+  abandoned requests.
+
+**Benefits over the previous NDJSON approach**:
+1. SSE events are self-describing (typed via `event:` field) vs opaque JSON lines
+2. Built-in keep-alive via SSE comments prevents proxy/CDN timeouts
+3. DevTools render SSE as structured events, not raw binary
+4. `[DONE]` sentinel is an ecosystem convention — no custom `{ type: 'done' }` needed
+5. Error events use `event: error` — a standard SSE pattern
+6. Client disconnect handling prevents the backend from streaming into the void
 
 **Trade-offs**:
-- (+) Zero dependencies — works with standard HTTP and `fetch`
-- (+) Easy to debug — chunks are human-readable in network tools
-- (+) Clean mapping to frontend state mutations via chunk type dispatch
-- (-) No built-in reconnection (unlike SSE with `EventSource`)
-- (-) No standardized error recovery for partial chunks
+- (+) Matches every major AI provider's streaming format
+- (+) DevTools show structured SSE events instead of opaque binary
+- (+) Keep-alive comments prevent proxy timeouts
+- (+) Clean separation — `sseStreamRequest()` doesn't touch the AI Assistant's `streamRequest()`
+- (-) No `EventSource` reconnection (we use `fetch` + manual parsing for POST support)
+- (-) Slightly more bytes per chunk (`event: ...\ndata: ...\n\n` vs `json\n`)
 
 **Alternatives considered**:
-- **Server-Sent Events (SSE)**: Built-in reconnection but more complex setup, harder to send structured data
+- **Keep NDJSON**: Works but non-standard, no keep-alive, poor DevTools support
 - **WebSocket**: Bidirectional but overkill for request-response streaming
 - **Vercel AI SDK streaming format**: Would add a dependency for the protocol layer
+- **Native `EventSource` API**: Only supports GET requests — we need POST with a body
 
 ---
 

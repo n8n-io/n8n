@@ -201,7 +201,7 @@ export class InstanceAiAdapterService {
 				if (isRunning) {
 					return { executionId, status: 'running' } satisfies ExecutionResult;
 				}
-				return extractExecutionResult(executionRepository, executionId);
+				return await extractExecutionResult(executionRepository, executionId);
 			},
 
 			async getResult(executionId: string) {
@@ -209,7 +209,7 @@ export class InstanceAiAdapterService {
 				if (activeExecutions.has(executionId)) {
 					await activeExecutions.getPostExecutePromise(executionId);
 				}
-				return extractExecutionResult(executionRepository, executionId);
+				return await extractExecutionResult(executionRepository, executionId);
 			},
 		};
 	}
@@ -362,7 +362,7 @@ export class InstanceAiAdapterService {
 							)
 							.map((o) => ({
 								name: String(o.name),
-								value: o.value as string | number | boolean,
+								value: o.value,
 							})),
 					})),
 					credentials: desc.credentials?.map((c) => ({
@@ -408,7 +408,7 @@ async function extractExecutionResult(
 			if (lastRun?.data?.main) {
 				const outputItems = lastRun.data.main
 					.flat()
-					.filter((item): item is NonNullable<typeof item> => item != null)
+					.filter((item): item is NonNullable<typeof item> => item !== null && item !== undefined)
 					.map((item) => item.json);
 				if (outputItems.length > 0) {
 					resultData[nodeName] = outputItems;
