@@ -608,7 +608,7 @@ defineExpose({
 }
 
 .groupButtonLeft:hover {
-	border-right-color: inherit;
+	border-right-color: transparent;
 }
 
 .groupButtonRight {
