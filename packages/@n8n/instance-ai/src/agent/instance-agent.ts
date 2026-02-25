@@ -5,6 +5,8 @@ import { createMemory } from '../memory/memory-config';
 import { createAllTools } from '../tools';
 import type { CreateInstanceAgentOptions } from '../types';
 import { getSystemPrompt } from './system-prompt';
+import { withLangsmithMetadata } from '@mastra/langsmith';
+import { buildTracingOptions } from '@mastra/observability';
 
 export async function createInstanceAgent(options: CreateInstanceAgentOptions): Promise<Agent> {
 	const { modelId, context, mcpServers = [], memoryConfig } = options;
@@ -39,6 +41,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		instructions: getSystemPrompt(),
 		model: modelId,
 		tools: { ...tools, ...mcpTools },
+		defaultOptions: {
+			tracingOptions: buildTracingOptions(withLangsmithMetadata({ projectName: 'instance-ai' })),
+		},
 		memory,
 	});
 }

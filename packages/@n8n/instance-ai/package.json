@@ -26,9 +26,11 @@
   },
   "dependencies": {
     "@mastra/core": "1.7.0",
+    "@mastra/langsmith": "^1.1.1",
     "@mastra/libsql": "1.6.1",
     "@mastra/mcp": "1.0.1",
     "@mastra/memory": "1.5.1",
+    "@mastra/observability": "^1.2.1",
     "@mastra/pg": "1.6.1",
     "zod": "catalog:"
   },
