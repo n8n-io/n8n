@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { truncate } from '@n8n/utils/string/truncate';
-import { N8nHeading } from '@n8n/design-system';
+import { N8nHeading, N8nLoading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { type ChatModelDto } from '@n8n/api-types';
 import { computed } from 'vue';
@@ -10,6 +10,7 @@ import ChatSuggestedPrompts from './ChatSuggestedPrompts.vue';
 
 const props = defineProps<{
 	selectedAgent: ChatModelDto | null;
+	loading?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -31,15 +32,29 @@ const isAgentModel = computed(
 				<N8nHeading tag="h2" size="xlarge" :class="$style.agentName">
 					{{ truncate(selectedAgent.name, 40) }}
 				</N8nHeading>
-				<p v-if="selectedAgent.description" :class="$style.agentDescription">
-					{{ selectedAgent.description }}
-				</p>
-				<ChatSuggestedPrompts
-					v-if="selectedAgent.suggestedPrompts?.length"
-					:class="$style.suggestions"
-					:prompts="selectedAgent.suggestedPrompts"
-					@select="emit('select-prompt', $event)"
-				/>
+				<template v-if="loading">
+					<N8nLoading
+						:rows="3"
+						variant="p"
+						:shrink-last="false"
+						:class="$style.skeletonDescription"
+					/>
+					<div :class="[$style.suggestions, $style.skeletonPrompts]">
+						<N8nLoading :rows="1" variant="p" :class="$style.skeletonChip" />
+						<N8nLoading :rows="1" variant="p" :class="$style.skeletonChip" />
+					</div>
+				</template>
+				<template v-else>
+					<p v-if="selectedAgent.description" :class="$style.agentDescription">
+						{{ selectedAgent.description }}
+					</p>
+					<ChatSuggestedPrompts
+						v-if="selectedAgent.suggestedPrompts?.length"
+						:class="$style.suggestions"
+						:prompts="selectedAgent.suggestedPrompts"
+						@select="emit('select-prompt', $event)"
+					/>
+				</template>
 			</div>
 		</template>
 		<template v-else>
@@ -104,6 +119,21 @@ const isAgentModel = computed(
 
 .suggestions {
 	margin-top: var(--spacing--md);
+}
+
+.skeletonDescription {
+	width: 300px;
+	margin-top: var(--spacing--2xs);
+}
+
+.skeletonPrompts {
+	display: flex;
+	gap: var(--spacing--3xs);
+	justify-content: center;
+}
+
+.skeletonChip {
+	width: 140px;
 }
 
 .header {

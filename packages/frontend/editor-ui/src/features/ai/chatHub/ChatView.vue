@@ -759,6 +759,7 @@ function onFilesDropped(files: File[]) {
 						<ChatGreetings
 							v-if="isNewSession"
 							:selected-agent="selectedModel"
+							:loading="!chatStore.agentsReady"
 							@select-prompt="handleSelectPrompt"
 						/>
 
