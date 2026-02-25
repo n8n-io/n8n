@@ -94,6 +94,16 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		expect(result).toBe('items-result');
 	});
 
+	it('should evaluate boolean values', async () => {
+		const data = {
+			$json: { active: true },
+		};
+
+		const result = evaluator.evaluate('{{ $json.active }}', data);
+
+		expect(result).toBe(true);
+	});
+
 	it('should handle large arrays with lazy loading', async () => {
 		const data = {
 			$json: {
