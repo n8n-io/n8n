@@ -36,6 +36,8 @@ tags:
     description: Operations about data tables and their rows
   - name: Projects
     description: Operations about projects
+  - name: Folder
+    description: Operations about folders
 
 paths:
   /audit:
@@ -102,6 +104,8 @@ paths:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.upsert.yml'
   /data-tables/{dataTableId}/rows/delete:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.delete.yml'
+  /folders:
+    $ref: './handlers/folders/spec/paths/folders.yml'
   /projects:
     $ref: './handlers/projects/spec/paths/projects.yml'
   /projects/{projectId}:

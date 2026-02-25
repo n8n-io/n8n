@@ -1,0 +1,32 @@
+type: object
+properties:
+  id:
+    type: string
+    readOnly: true
+    example: abc123def456
+  name:
+    type: string
+    example: Finance
+  parentFolderId:
+    type: string
+    nullable: true
+    readOnly: true
+    example: parentFolder123
+  createdAt:
+    type: string
+    format: date-time
+    readOnly: true
+  updatedAt:
+    type: string
+    format: date-time
+    readOnly: true
+  items:
+    type: array
+    readOnly: true
+    description: IDs of workflows directly inside this folder (not recursive).
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 2tUt1wbLX592XDdX

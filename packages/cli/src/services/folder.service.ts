@@ -302,7 +302,10 @@ export class FolderService {
 		};
 	}
 
-	async getManyAndCount(projectId: string, options: ListQuery.Options) {
+	async getManyAndCount(
+		projectId: string,
+		options: ListQuery.Options,
+	): Promise<[FolderWithWorkflowAndSubFolderCount[], number]> {
 		options.filter = { ...options.filter, projectId, isArchived: false };
 		// eslint-disable-next-line prefer-const
 		let [folders, count] = await this.folderRepository.getManyAndCount(options);

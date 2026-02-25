@@ -99,6 +99,7 @@ export class FolderRepository extends Repository<Folder> {
 		if (select?.name) selections.push('folder.name');
 		if (select?.createdAt) selections.push('folder.createdAt');
 		if (select?.updatedAt) selections.push('folder.updatedAt');
+		if (select?.parentFolderId) selections.push('folder.parentFolderId');
 	}
 
 	private addRelationFields(
@@ -130,6 +131,11 @@ export class FolderRepository extends Repository<Folder> {
 			if (!query.hasRelation(Folder, 'folder.parentFolder')) {
 				query.loadRelationCountAndMap('folder.subFolderCount', 'folder.subFolders');
 			}
+		}
+
+		if (select?.workflowIds) {
+			query.leftJoinAndSelect('folder.workflows', 'workflows');
+			selections.push('workflows.id');
 		}
 	}
 

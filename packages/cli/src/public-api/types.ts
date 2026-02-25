@@ -1,5 +1,3 @@
-import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
-import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type {
 	AddDataTableRowsDto,
 	CreateDataTableDto,
@@ -7,6 +5,8 @@ import type {
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
 } from '@n8n/api-types';
+import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
+import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import type { AuthlessRequest } from '@/requests';
 import type { Risk } from '@/security-audit/types';
@@ -288,4 +288,12 @@ export declare namespace AuditRequest {
 		{},
 		{ additionalOptions?: { categories?: Risk.Category[]; daysAbandonedWorkflow?: number } }
 	>;
+}
+
+// ----------------------------------
+//           /folders
+// ----------------------------------
+
+export declare namespace FolderRequest {
+	type List = PaginatedRequest & AuthenticatedRequest<{}, {}, {}, { projectId?: string }>;
 }
