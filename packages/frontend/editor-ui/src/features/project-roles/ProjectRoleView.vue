@@ -19,7 +19,7 @@ import type { Role } from '@n8n/permissions';
 import { useAsyncState } from '@vueuse/core';
 import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
-import { computed, ref, toRaw } from 'vue';
+import { computed, ref, toRaw, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { SCOPE_TYPES, SCOPES } from './projectRoleScopes';
 
@@ -36,6 +36,10 @@ const telemetry = useTelemetry();
 const props = defineProps<{ roleSlug?: string }>();
 
 const activeTab = ref<string>((route.query?.tab as string) ?? 'permissions');
+
+watch(activeTab, (newTab) => {
+	void router.replace({ query: { ...route.query, tab: newTab } });
+});
 
 const tabOptions = computed<Array<TabOptions<string>>>(() => [
 	{ label: i18n.baseText('projectRoles.tab.permissions'), value: 'permissions' },
@@ -324,7 +328,7 @@ const displayNameValidationRules = [
 			<N8nHeading tag="h1" size="2xlarge">
 				{{ roleSlug ? `Role "${form.displayName}"` : i18n.baseText('projectRoles.newRole') }}
 			</N8nHeading>
-			<div v-if="initialState && !isReadOnly" :class="$style.buttonsContainer">
+			<div v-if="initialState && !isReadOnly && !isLoading" :class="$style.buttonsContainer">
 				<N8nButton variant="subtle" :disabled="!hasUnsavedChanges" @click="resetForm(initialState)">
 					{{ i18n.baseText('projectRoles.discardChanges') }}
 				</N8nButton>
@@ -338,26 +342,38 @@ const displayNameValidationRules = [
 		</div>
 
 		<div class="mb-l" :class="$style.formContainer">
-			<N8nFormInput
-				v-model="form.displayName"
-				:label="i18n.baseText('projectRoles.roleName')"
-				validate-on-blur
-				:validation-rules="displayNameValidationRules"
-				class="mb-s"
-				show-required-asterisk
-				required
-				:maxlength="100"
-				:disabled="isReadOnly"
-			></N8nFormInput>
-			<N8nFormInput
-				v-model="form.description"
-				:label="i18n.baseText('projectRoles.description')"
-				:placeholder="i18n.baseText('projectRoles.optional')"
-				type="textarea"
-				:maxlength="500"
-				:autosize="{ minRows: 2, maxRows: 4 }"
-				:disabled="isReadOnly"
-			></N8nFormInput>
+			<N8nTooltip
+				:content="i18n.baseText('projectRoles.systemRoleNotEditable')"
+				:disabled="!isReadOnly"
+				placement="top"
+			>
+				<N8nFormInput
+					v-model="form.displayName"
+					:label="i18n.baseText('projectRoles.roleName')"
+					validate-on-blur
+					:validation-rules="displayNameValidationRules"
+					class="mb-s"
+					show-required-asterisk
+					required
+					:maxlength="100"
+					:disabled="isReadOnly"
+				></N8nFormInput>
+			</N8nTooltip>
+			<N8nTooltip
+				:content="i18n.baseText('projectRoles.systemRoleNotEditable')"
+				:disabled="!isReadOnly"
+				placement="top"
+			>
+				<N8nFormInput
+					v-model="form.description"
+					:label="i18n.baseText('projectRoles.description')"
+					:placeholder="i18n.baseText('projectRoles.optional')"
+					type="textarea"
+					:maxlength="500"
+					:autosize="{ minRows: 2, maxRows: 4 }"
+					:disabled="isReadOnly"
+				></N8nFormInput>
+			</N8nTooltip>
 		</div>
 
 		<div v-if="roleSlug" class="mb-l">

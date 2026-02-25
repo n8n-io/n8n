@@ -6,7 +6,7 @@ import type { RoleProjectAssignment } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useAsyncState } from '@vueuse/core';
 import dateformat from 'dateformat';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import RoleProjectMembersModal from './RoleProjectMembersModal.vue';
@@ -23,6 +23,39 @@ const { state: assignments, isLoading } = useAsyncState(
 
 const membersModalOpen = ref(false);
 const selectedProject = ref<RoleProjectAssignment | null>(null);
+
+type SortColumn = 'projectName' | 'memberCount' | 'lastAssigned';
+const sortColumn = ref<SortColumn>('memberCount');
+const sortDirection = ref<'asc' | 'desc'>('desc');
+
+const sortedProjects = computed(() => {
+	const projects = [...assignments.value.projects];
+	return projects.sort((a, b) => {
+		let cmp = 0;
+		if (sortColumn.value === 'projectName') {
+			cmp = a.projectName.localeCompare(b.projectName);
+		} else if (sortColumn.value === 'memberCount') {
+			cmp = a.memberCount - b.memberCount;
+		} else {
+			cmp = (a.lastAssigned ?? '').localeCompare(b.lastAssigned ?? '');
+		}
+		return sortDirection.value === 'desc' ? -cmp : cmp;
+	});
+});
+
+function toggleSort(column: SortColumn) {
+	if (sortColumn.value === column) {
+		sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
+	} else {
+		sortColumn.value = column;
+		sortDirection.value = column === 'memberCount' ? 'desc' : 'asc';
+	}
+}
+
+function sortIndicator(column: SortColumn): string {
+	if (sortColumn.value !== column) return '';
+	return sortDirection.value === 'asc' ? ' ↑' : ' ↓';
+}
 
 function openMembersModal(project: RoleProjectAssignment) {
 	selectedProject.value = project;
@@ -46,19 +79,25 @@ function formatDate(dateStr: string | null): string {
 		<N8nTableBase v-else>
 			<thead>
 				<tr>
-					<th>
-						{{ i18n.baseText('projectRoles.assignments.projectColumn') }}
+					<th :class="$style.sortableHeader" @click="toggleSort('projectName')">
+						{{ i18n.baseText('projectRoles.assignments.projectColumn')
+						}}{{ sortIndicator('projectName') }}
 					</th>
-					<th :class="$style.alignRight">
-						{{ i18n.baseText('projectRoles.assignments.membersColumn') }}
+					<th
+						:class="[$style.alignRight, $style.sortableHeader]"
+						@click="toggleSort('memberCount')"
+					>
+						{{ i18n.baseText('projectRoles.assignments.membersColumn')
+						}}{{ sortIndicator('memberCount') }}
 					</th>
-					<th>
-						{{ i18n.baseText('projectRoles.assignments.lastAssignedColumn') }}
+					<th :class="$style.sortableHeader" @click="toggleSort('lastAssigned')">
+						{{ i18n.baseText('projectRoles.assignments.lastAssignedColumn')
+						}}{{ sortIndicator('lastAssigned') }}
 					</th>
 				</tr>
 			</thead>
 			<tbody>
-				<tr v-for="project in assignments.projects" :key="project.projectId">
+				<tr v-for="project in sortedProjects" :key="project.projectId">
 					<td>
 						<RouterLink
 							:to="{
@@ -105,6 +144,11 @@ function formatDate(dateStr: string | null): string {
 
 .alignRight {
 	text-align: right !important;
+}
+
+.sortableHeader {
+	cursor: pointer;
+	user-select: none;
 }
 
 .projectLink {

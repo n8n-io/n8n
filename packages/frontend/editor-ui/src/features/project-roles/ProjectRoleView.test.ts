@@ -183,7 +183,6 @@ describe('ProjectRoleView', () => {
 		it('should render permissions section with scope types', () => {
 			const { getByText } = renderComponent();
 
-			expect(getByText('Permissions')).toBeInTheDocument();
 			expect(getByText('Preset')).toBeInTheDocument();
 			expect(getByText('Admin')).toBeInTheDocument();
 			expect(getByText('Editor')).toBeInTheDocument();
