@@ -28,10 +28,16 @@ const isAgentModel = computed(
 	<div key="greetings" :class="$style.greetings">
 		<template v-if="isAgentModel && selectedAgent">
 			<div :class="$style.agentCard">
-				<ChatAgentAvatar :agent="selectedAgent" size="lg" :class="$style.agentIcon" />
-				<N8nHeading tag="h2" size="xlarge" :class="$style.agentName">
-					{{ truncate(selectedAgent.name, 40) }}
-				</N8nHeading>
+				<template v-if="loading">
+					<N8nLoading variant="circle" />
+					<N8nLoading :rows="1" variant="p" :class="$style.skeletonName" />
+				</template>
+				<template v-else>
+					<ChatAgentAvatar :agent="selectedAgent" size="lg" :class="$style.agentIcon" />
+					<N8nHeading tag="h2" size="xlarge" :class="$style.agentName">
+						{{ truncate(selectedAgent.name, 40) }}
+					</N8nHeading>
+				</template>
 				<template v-if="loading">
 					<N8nLoading
 						:rows="3"
@@ -119,6 +125,11 @@ const isAgentModel = computed(
 
 .suggestions {
 	margin-top: var(--spacing--md);
+}
+
+.skeletonName {
+	width: 160px;
+	margin-top: var(--spacing--2xs);
 }
 
 .skeletonDescription {
