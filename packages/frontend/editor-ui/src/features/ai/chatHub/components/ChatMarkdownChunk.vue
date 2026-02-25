@@ -296,7 +296,7 @@ defineExpose({
 	ol {
 		padding-left: calc(var(--markdown--spacing) * 2);
 		list-style-type: decimal;
-		list-style-position: inside;
+		list-style-position: outside;
 		margin: calc(var(--markdown--spacing) * 2) 0;
 
 		li + li {
@@ -313,7 +313,7 @@ defineExpose({
 	ul {
 		padding-left: calc(var(--markdown--spacing) * 2);
 		list-style-type: disc;
-		list-style-position: inside;
+		list-style-position: outside;
 		margin: calc(var(--markdown--spacing) * 2) 0;
 
 		li + li {
