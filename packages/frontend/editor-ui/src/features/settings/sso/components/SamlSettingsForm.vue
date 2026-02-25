@@ -241,7 +241,11 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 
 const onTest = async () => {
 	try {
-		const url = await ssoStore.testSamlConfig();
+		const metaDataConfig: Partial<SamlPreferences> =
+			ipsType.value === IdentityProviderSettingsType.URL
+				? { metadataUrl: metadataUrl.value }
+				: { metadata: metadata.value };
+		const url = await ssoStore.testSamlConfig(metaDataConfig);
 
 		if (typeof window !== 'undefined') {
 			window.open(url, '_blank');
@@ -269,6 +273,10 @@ const validateSamlInput = () => {
 		}
 	}
 };
+
+const hasUnsavedChanges = computed(() => isSaveEnabled.value);
+
+defineExpose({ hasUnsavedChanges, onSave });
 
 onMounted(async () => {
 	await loadSamlConfig();

@@ -138,13 +138,18 @@ export class SamlService {
 		if (this.samlify === undefined) {
 			throw new UnexpectedError('Samlify is not initialized');
 		}
+		if (!this._samlPreferences.metadata) {
+			throw new InvalidSamlMetadataError(
+				'No IdP metadata configured. Please provide valid identity provider metadata.',
+			);
+		}
 		if (this.identityProviderInstance === undefined || forceRecreate) {
 			this.identityProviderInstance = this.samlify.IdentityProvider({
 				metadata: this._samlPreferences.metadata,
 			});
 		}
 
-		this.validator.validateIdentiyProvider(this.identityProviderInstance);
+		this.validator.validateIdentityProvider(this.identityProviderInstance);
 
 		return this.identityProviderInstance;
 	}
@@ -156,43 +161,44 @@ export class SamlService {
 		return getServiceProviderInstance(this._samlPreferences, this.samlify);
 	}
 
+	/**
+	 * Generate a login request URL.
+	 * When `metadata` is provided, creates a temporary IdP from it (for testing without saving).
+	 * Otherwise uses the cached IdP from persisted preferences.
+	 */
 	async getLoginRequestUrl(
 		relayState?: string,
 		binding?: SamlLoginBinding,
+		metadata?: string,
 	): Promise<{
 		binding: SamlLoginBinding;
 		context: BindingContext | PostBindingContext;
 	}> {
 		await this.loadSamlify();
-		if (binding === undefined) binding = this._samlPreferences.loginBinding ?? 'redirect';
-		if (binding === 'post') {
-			return {
-				binding,
-				context: this.getPostLoginRequestUrl(relayState),
-			};
-		} else {
-			return {
-				binding,
-				context: this.getRedirectLoginRequestUrl(relayState),
-			};
+		if (this.samlify === undefined) {
+			throw new UnexpectedError('Samlify is not initialized');
 		}
-	}
 
-	private getRedirectLoginRequestUrl(relayState?: string): BindingContext {
+		let idp: IdentityProviderInstance;
+		if (metadata) {
+			const validationResult = await this.validator.validateMetadata(metadata);
+			if (!validationResult) {
+				throw new InvalidSamlMetadataError();
+			}
+			idp = this.samlify.IdentityProvider({ metadata });
+			this.validator.validateIdentityProvider(idp);
+		} else {
+			idp = this.getIdentityProviderInstance();
+		}
+
+		binding ??= this._samlPreferences.loginBinding ?? 'redirect';
 		const sp = this.getServiceProviderInstance();
 		sp.entitySetting.relayState = relayState ?? this.urlService.getInstanceBaseUrl();
-		const loginRequest = sp.createLoginRequest(this.getIdentityProviderInstance(), 'redirect');
-		return loginRequest;
-	}
-
-	private getPostLoginRequestUrl(relayState?: string): PostBindingContext {
-		const sp = this.getServiceProviderInstance();
-		sp.entitySetting.relayState = relayState ?? this.urlService.getInstanceBaseUrl();
-		const loginRequest = sp.createLoginRequest(
-			this.getIdentityProviderInstance(),
-			'post',
-		) as PostBindingContext;
-		return loginRequest;
+		const loginRequest = sp.createLoginRequest(idp, binding);
+		return {
+			binding,
+			context: binding === 'post' ? (loginRequest as PostBindingContext) : loginRequest,
+		};
 	}
 
 	async handleSamlLogin(
@@ -446,23 +452,27 @@ export class SamlService {
 		return;
 	}
 
-	async fetchMetadataFromUrl(): Promise<string | undefined> {
+	async fetchMetadataFromUrl(
+		metadataUrl?: string,
+		ignoreSSL?: boolean,
+	): Promise<string | undefined> {
 		await this.loadSamlify();
-		if (!this._samlPreferences.metadataUrl)
-			throw new BadRequestError('Error fetching SAML Metadata, no Metadata URL set');
+		const url = metadataUrl ?? this._samlPreferences.metadataUrl;
+		const shouldIgnoreSSL = ignoreSSL ?? this._samlPreferences.ignoreSSL;
+		if (!url) throw new BadRequestError('Error fetching SAML Metadata, no Metadata URL set');
 		try {
 			// Create a proxy-aware HTTPS agent that respects HTTP_PROXY, HTTPS_PROXY, and NO_PROXY
 			// environment variables while also supporting SSL certificate validation options
 			const httpsAgent = createHttpsProxyAgent(
 				null, // Uses proxy from environment variables
-				this._samlPreferences.metadataUrl,
+				url,
 				{
-					rejectUnauthorized: !this._samlPreferences.ignoreSSL,
+					rejectUnauthorized: !shouldIgnoreSSL,
 				},
 			);
-			const httpAgent = createHttpProxyAgent(null, this._samlPreferences.metadataUrl);
+			const httpAgent = createHttpProxyAgent(null, url);
 
-			const response = await axios.get(this._samlPreferences.metadataUrl, {
+			const response = await axios.get(url, {
 				httpsAgent,
 				httpAgent,
 			});
@@ -470,16 +480,13 @@ export class SamlService {
 				const xml = (await response.data) as string;
 				const validationResult = await this.validator.validateMetadata(xml);
 				if (!validationResult) {
-					throw new BadRequestError(
-						`Data received from ${this._samlPreferences.metadataUrl} is not valid SAML metadata.`,
-					);
+					throw new BadRequestError(`Data received from ${url} is not valid SAML metadata.`);
 				}
 				return xml;
 			}
 		} catch (error) {
-			throw new BadRequestError(
-				`Error fetching SAML Metadata from ${this._samlPreferences.metadataUrl}: ${error}`,
-			);
+			if (error instanceof BadRequestError) throw error;
+			throw new BadRequestError(`Error fetching SAML Metadata from ${url}: ${error}`);
 		}
 		return;
 	}

@@ -383,7 +383,13 @@ onMounted(async () => {
 			<div :class="$style.header">
 				<div :class="$style.resolverInfo">
 					<div :class="$style.resolverIcon">
-						<N8nIconButton variant="subtle" icon="database" size="large" :disabled="true" />
+						<N8nIconButton
+							variant="subtle"
+							icon="database"
+							size="large"
+							:disabled="true"
+							:aria-label="i18n.baseText('credentialResolverEdit.icon')"
+						/>
 					</div>
 					<div :class="$style.resolverName">
 						<N8nInlineTextEdit

@@ -8,7 +8,6 @@ import { z } from 'zod';
 
 import {
 	buildDataTableCreationGuidance,
-	buildGeneralErrorGuidance,
 	buildRecursionErrorNoWorkflowGuidance,
 	buildRecursionErrorWithWorkflowGuidance,
 	buildResponderPrompt,
@@ -109,23 +108,24 @@ function buildContextContent(context: ResponderContext): string | null {
 			errorMessage.includes('maximum number of steps') ||
 			errorMessage.includes('iteration limit');
 
-		contextParts.push(
-			`**Error:** An error occurred in the ${errorEntry.phase} phase: ${errorEntry.summary}`,
-		);
+		if (isRecursionError) {
+			contextParts.push(
+				`**Error:** An error occurred in the ${errorEntry.phase} phase: ${errorEntry.summary}`,
+			);
 
-		// AI-1812: Provide better guidance based on workflow state and error type
-		if (isRecursionError && hasWorkflow) {
-			// Recursion error but workflow was created
-			const guidance = buildRecursionErrorWithWorkflowGuidance(context.workflowJSON.nodes.length);
-			contextParts.push(...guidance);
-		} else if (isRecursionError && !hasWorkflow) {
-			// Recursion error and no workflow created
-			const guidance = buildRecursionErrorNoWorkflowGuidance();
-			contextParts.push(...guidance);
-		} else {
-			// Other errors (not recursion-related)
-			contextParts.push(buildGeneralErrorGuidance());
+			// AI-1812: Provide better guidance based on workflow state and error type
+			if (hasWorkflow) {
+				// Recursion error but workflow was created
+				const guidance = buildRecursionErrorWithWorkflowGuidance(context.workflowJSON.nodes.length);
+				contextParts.push(...guidance);
+			} else {
+				// Recursion error and no workflow created
+				const guidance = buildRecursionErrorNoWorkflowGuidance();
+				contextParts.push(...guidance);
+			}
 		}
+		// For non-recursion errors, don't inject any error context.
+		// The responder will respond naturally to the user's message.
 	}
 
 	// Discovery context

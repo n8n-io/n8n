@@ -25,6 +25,11 @@ on:
         required: false
         type: string
         default: 'claude-sonnet-4-5-20250929'
+      use_raw_prompt:
+        description: 'Pass the task input directly as the prompt without wrapping it with guidelines and instructions'
+        required: false
+        type: boolean
+        default: false
       ref:
         description: 'Git ref (branch/tag/SHA) to check out and work on'
         required: false
@@ -85,30 +90,39 @@ jobs:
         env:
           INPUT_TASK: ${{ inputs.task }}
         run: |
-          # Build the prompt with task and pointer to templates
-          {
-            echo 'CLAUDE_PROMPT<<EOF'
-            echo "# Task"
-            echo "$INPUT_TASK"
-            echo ""
-            echo "# Guidelines"
-            echo "Check .github/claude-templates/ for relevant guides before starting."
-            echo "Read any templates that match your task type (e.g., security-fix.md for CVE fixes)."
-            echo ""
-            echo "# Instructions"
-            echo "1. Read relevant templates from .github/claude-templates/ first"
-            echo "2. Complete the task described above"
-            echo "3. Follow the guidelines from the templates"
-            echo "4. Make commits as you work - the last commit message will be used as the PR title"
-            echo "5. IMPORTANT: End every commit message with: Co-authored-by: Claude <noreply@anthropic.com>"
-            echo "6. Ensure code passes linting and type checks before finishing"
-            echo ""
-            echo "# Token Optimization"
-            echo "When running lint/typecheck, suppress verbose output:"
-            echo "  pnpm lint 2>&1 | tail -30"
-            echo "  pnpm typecheck 2>&1 | tail -30"
-            echo 'EOF'
-          } >> "$GITHUB_ENV"
+          if [ "${{ inputs.use_raw_prompt }}" = "true" ]; then
+            # Pass the task input directly without wrapping
+            {
+              echo 'CLAUDE_PROMPT<<EOF'
+              echo "$INPUT_TASK"
+              echo 'EOF'
+            } >> "$GITHUB_ENV"
+          else
+            # Build the prompt with task and pointer to templates
+            {
+              echo 'CLAUDE_PROMPT<<EOF'
+              echo "# Task"
+              echo "$INPUT_TASK"
+              echo ""
+              echo "# Guidelines"
+              echo "Check .github/claude-templates/ for relevant guides before starting."
+              echo "Read any templates that match your task type (e.g., security-fix.md for CVE fixes)."
+              echo ""
+              echo "# Instructions"
+              echo "1. Read relevant templates from .github/claude-templates/ first"
+              echo "2. Complete the task described above"
+              echo "3. Follow the guidelines from the templates"
+              echo "4. Make commits as you work - the last commit message will be used as the PR title"
+              echo "5. IMPORTANT: End every commit message with: Co-authored-by: Claude <noreply@anthropic.com>"
+              echo "6. Ensure code passes linting and type checks before finishing"
+              echo ""
+              echo "# Token Optimization"
+              echo "When running lint/typecheck, suppress verbose output:"
+              echo "  pnpm lint 2>&1 | tail -30"
+              echo "  pnpm typecheck 2>&1 | tail -30"
+              echo 'EOF'
+            } >> "$GITHUB_ENV"
+          fi
 
       - name: Create MCP config
         run: |

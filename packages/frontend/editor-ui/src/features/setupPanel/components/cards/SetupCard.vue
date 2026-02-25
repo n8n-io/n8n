@@ -131,7 +131,7 @@ defineExpose({ markInteracted });
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	background-color: var(--color--background--light-2);
+	background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius);
 
@@ -178,10 +178,19 @@ defineExpose({ markInteracted });
 
 .complete-icon {
 	color: var(--color--success);
+
+	.header & {
+		display: flex;
+		justify-content: center;
+		width: var(--spacing--sm);
+	}
 }
 
 .loading-icon {
 	color: var(--color--text--tint-1);
+	display: flex;
+	justify-content: center;
+	width: var(--spacing--sm);
 }
 
 .footer {
@@ -203,10 +212,15 @@ defineExpose({ markInteracted });
 	}
 
 	.card-title {
-		color: var(--color--text--tint-1);
+		color: var(--color--text);
 		overflow: hidden;
 		white-space: nowrap;
 		text-overflow: ellipsis;
+		transition: color 100ms ease;
+	}
+
+	&:hover .card-title {
+		color: var(--color--text--shade-1);
 	}
 }
 
