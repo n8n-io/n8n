@@ -135,16 +135,8 @@ export class CredentialModal extends BaseModal {
 		await this.getNameInput().press('Enter');
 	}
 
-	getAuthMethodSelector() {
-		return this.root.getByTestId('credential-mode-selector');
-	}
-
 	getOAuthRedirectUrl() {
 		return this.root.page().getByTestId('oauth-redirect-url');
-	}
-
-	getAuthTypeRadioButtons() {
-		return this.root.page().locator('label.el-radio');
 	}
 
 	getModeSelector() {
