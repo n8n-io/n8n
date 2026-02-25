@@ -17,6 +17,7 @@ import {
 
 import { NotFoundError } from '../errors/response-errors/not-found.error';
 import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
+import { preserveInputOverride } from '../workflow-helpers';
 import { WorkflowRunner } from '../workflow-runner';
 import type { ChatMessage } from './chat-service.types';
 import { NodeTypes } from '../node-types';
@@ -153,21 +154,7 @@ export class ChatExecutionManager {
 
 			const lastNodeExecuted = runExecutionData.resultData.lastNodeExecuted as string;
 			const runDataArray = runExecutionData.resultData.runData[lastNodeExecuted];
-			if (runDataArray?.length > 0) {
-				const entryToPop = runDataArray[runDataArray.length - 1];
-				// Preserve inputOverride so the LLM's input stays visible in logs after resume.
-				const preservedInputOverride = entryToPop?.inputOverride;
-				runDataArray.pop();
-				if (preservedInputOverride) {
-					runDataArray.push({
-						startTime: 0,
-						executionTime: 0,
-						executionIndex: 0,
-						source: entryToPop?.source ?? [],
-						inputOverride: preservedInputOverride,
-					});
-				}
-			}
+			if (runDataArray?.length) preserveInputOverride(runDataArray);
 		}
 
 		let project: Project | undefined = undefined;
