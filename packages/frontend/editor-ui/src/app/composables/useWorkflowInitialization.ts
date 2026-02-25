@@ -271,9 +271,10 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		workflowState.setWorkflowId(workflowId.value);
 
-		// Create document store for new workflow (empty tags)
+		// Create document store for new workflow (empty tags, homeProject from makeNewWorkflowShareable)
 		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
 		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+		currentWorkflowDocumentStore.value.setHomeProject(workflowsStore.workflow.homeProject ?? null);
 
 		await projectsStore.refreshCurrentProject();
 		await fetchAndSetParentFolder(parentFolderId);

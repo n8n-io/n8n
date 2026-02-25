@@ -1036,6 +1036,7 @@ export function useWorkflowHelpers() {
 			activeVersion: workflowData.activeVersion ?? null,
 		});
 		workflowDocumentStore.setPinData(workflowData.pinData ?? {});
+		workflowDocumentStore.setHomeProject(workflowData.homeProject ?? null);
 		tagsStore.upsertTags(tags);
 
 		return { workflowDocumentStore };
