@@ -2,9 +2,9 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class InstanceAiConfig {
-	/** LLM model in provider/model format (e.g. "anthropic/claude-4-6-sonnet"). */
+	/** LLM model in provider/model format (e.g. "anthropic/claude-sonnet-4-5"). */
 	@Env('N8N_INSTANCE_AI_MODEL')
-	model: string = 'anthropic/claude-4-6-sonnet';
+	model: string = 'anthropic/claude-sonnet-4-5';
 
 	/** Comma-separated name=url pairs for MCP servers (e.g. "github=https://mcp.github.com/sse"). */
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')

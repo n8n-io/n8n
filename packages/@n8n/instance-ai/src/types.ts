@@ -22,7 +22,7 @@ export interface WorkflowNode {
 	name: string;
 	type: string;
 	parameters?: Record<string, unknown>;
-	position: [number, number];
+	position: number[];
 }
 
 export interface ExecutionResult {

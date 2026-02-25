@@ -25,10 +25,11 @@
     }
   },
   "dependencies": {
-    "@mastra/core": "1.5.0",
-    "@mastra/mcp": "1.0.0",
-    "@mastra/memory": "1.4.0",
-    "@mastra/pg": "1.5.0",
+    "@mastra/core": "1.7.0",
+    "@mastra/libsql": "1.6.1",
+    "@mastra/mcp": "1.0.1",
+    "@mastra/memory": "1.5.1",
+    "@mastra/pg": "1.6.1",
     "zod": "catalog:"
   },
   "devDependencies": {

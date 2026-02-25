@@ -20,7 +20,7 @@ export function createGetWorkflowTool(context: InstanceAiContext) {
 					name: z.string(),
 					type: z.string(),
 					parameters: z.record(z.unknown()).optional(),
-					position: z.tuple([z.number(), z.number()]),
+					position: z.array(z.number()).length(2),
 				}),
 			),
 			connections: z.record(z.unknown()),

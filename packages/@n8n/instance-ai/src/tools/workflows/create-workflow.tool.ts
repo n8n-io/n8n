@@ -7,7 +7,7 @@ const nodeSchema = z.object({
 	name: z.string().describe('Unique display name for the node'),
 	type: z.string().describe('Node type identifier (e.g. "n8n-nodes-base.httpRequest")'),
 	parameters: z.record(z.unknown()).optional().describe('Node configuration parameters'),
-	position: z.tuple([z.number(), z.number()]).describe('Canvas position [x, y]'),
+	position: z.array(z.number()).length(2).describe('Canvas position [x, y]'),
 });
 
 export function createCreateWorkflowTool(context: InstanceAiContext) {
