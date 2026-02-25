@@ -96,4 +96,8 @@ minimumReleaseAgeExclude:
   - body-parser
   - node-forge
   - vm2
+  - ajv
+  - bn.js
+  - fast-xml-parser
+  - minimatch
   - tar
