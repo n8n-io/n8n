@@ -126,7 +126,7 @@ async function onActionDropdownClick(id: string) {
 								interpolate: {
 									count: externalSecretsStore.secrets[provider.name]?.length ?? 0,
 								},
-								adjustToNumber: externalSecretsStore.secrets[provider.name]?.length,
+								adjustToNumber: externalSecretsStore.secrets[provider.name]?.length ?? 0,
 							})
 						}}
 					</span>
