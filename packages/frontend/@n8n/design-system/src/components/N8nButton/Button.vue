@@ -134,6 +134,7 @@ const handleClick = (event: MouseEvent) => {
 	user-select: none;
 	width: fit-content;
 	display: grid;
+	align-items: center;
 	font-weight: var(--font-weight--medium);
 	line-height: 1;
 	cursor: pointer;
