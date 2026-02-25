@@ -505,7 +505,7 @@ describe('ProjectRoleView', () => {
 			settingsStore.moduleSettings = { 'external-secrets': { forProjects: true } };
 			const { getByText } = renderComponent();
 
-			expect(getByText('Secret stores')).toBeInTheDocument();
+			expect(getByText('Secrets vaults')).toBeInTheDocument();
 			expect(getByText('Secrets')).toBeInTheDocument();
 		});
 
