@@ -680,7 +680,8 @@ function handleSelectPrompt(prompt: string) {
 		});
 	}
 
-	void onSubmit(prompt, []);
+	inputRef.value?.appendText(prompt);
+	inputRef.value?.focus();
 }
 
 function onFilesDropped(files: File[]) {
