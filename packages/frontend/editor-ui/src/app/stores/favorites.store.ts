@@ -35,6 +35,15 @@ export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 		return favoriteIds.value.has(resourceId);
 	}
 
+	function renameFavorite(resourceId: string, resourceType: FavoriteResourceType, newName: string) {
+		const favorite = favorites.value.find(
+			(f) => f.resourceId === resourceId && f.resourceType === resourceType,
+		);
+		if (favorite) {
+			favorite.resourceName = newName;
+		}
+	}
+
 	async function toggleFavorite(resourceId: string, resourceType: FavoriteResourceType) {
 		if (isFavorite(resourceId)) {
 			await favoritesApi.removeFavorite(rootStore.restApiContext, resourceId, resourceType);
@@ -54,6 +63,7 @@ export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 		dataTableFavoriteIds,
 		fetchFavorites,
 		isFavorite,
+		renameFavorite,
 		toggleFavorite,
 	};
 });
