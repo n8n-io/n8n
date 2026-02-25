@@ -87,6 +87,7 @@ async function deleteRole(item: Role) {
 	if (item.usedByProjects && item.usedByProjects > 0) {
 		const goToAssignments = await message.confirm(
 			i18n.baseText('projectRoles.action.delete.inUse.text', {
+				adjustToNumber: item.usedByProjects,
 				interpolate: {
 					count: item.usedByProjects,
 				},
@@ -335,12 +336,8 @@ function addRole() {
 }
 
 .projectCountLink {
-	color: var(--color--primary);
-	text-decoration: none;
-	font-weight: var(--font-weight--bold);
-}
-
-.projectCountLink:hover {
+	color: var(--color--text);
 	text-decoration: underline;
+	font-weight: var(--font-weight--bold);
 }
 </style>

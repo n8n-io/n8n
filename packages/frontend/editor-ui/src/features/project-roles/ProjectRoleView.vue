@@ -429,17 +429,16 @@ const displayNameValidationRules = [
 				</N8nHeading>
 				<N8nText tag="p" class="mb-s">
 					<template v-if="initialState?.usedByProjects">
-						{{
-							i18n.baseText('projectRoles.action.delete.useWarning', {
-								interpolate: {
-									count: initialState.usedByProjects,
-								},
-							})
-						}}
-						{{ ' ' }}
+						{{ i18n.baseText('projectRoles.action.delete.useWarning.before') }}
 						<a :class="$style.assignmentsLink" @click="activeTab = 'assignments'">
-							{{ i18n.baseText('projectRoles.action.delete.inUse.goToAssignments') }}
-						</a>
+							{{
+								i18n.baseText('projectRoles.action.delete.useWarning.linkText', {
+									adjustToNumber: initialState.usedByProjects,
+									interpolate: { count: initialState.usedByProjects },
+								})
+							}} </a
+						>.
+						{{ i18n.baseText('projectRoles.action.delete.useWarning.after') }}
 					</template>
 					<template v-else>
 						{{ i18n.baseText('projectRoles.action.delete.warning') }}
