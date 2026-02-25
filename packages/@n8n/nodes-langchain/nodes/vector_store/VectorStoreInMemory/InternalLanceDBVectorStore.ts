@@ -3,7 +3,8 @@ import { Document } from '@langchain/core/documents';
 import { VectorStore } from '@langchain/core/vectorstores';
 import type { Connection, Table } from '@lancedb/lancedb';
 import { nanoid } from 'nanoid';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, type Logger } from 'n8n-workflow';
+import { readFileSync } from 'node:fs';
 
 interface LanceDBRecord extends Record<string, unknown> {
 	id: string;
@@ -24,6 +25,20 @@ export interface BinaryDataCredentials {
 	endpoint?: string;
 }
 
+function cgroupMemory(): string {
+	try {
+		const v2 = Number(readFileSync('/sys/fs/cgroup/memory.current', 'utf8').trim());
+		return ` cgroup=${(v2 / 1024 / 1024).toFixed(1)}MB`;
+	} catch {
+		try {
+			const v1 = Number(readFileSync('/sys/fs/cgroup/memory/memory.usage_in_bytes', 'utf8').trim());
+			return ` cgroup=${(v1 / 1024 / 1024).toFixed(1)}MB`;
+		} catch {
+			return '';
+		}
+	}
+}
+
 /**
  * A VectorStore implementation that persists vectors using LanceDB with instance's binary data persistence
  *
@@ -31,14 +46,26 @@ export interface BinaryDataCredentials {
  */
 export class InternalLanceDBVectorStore extends VectorStore {
 	private readonly storageConfig: BinaryDataCredentials;
+	private readonly logger: Logger;
 
 	constructor(
 		binaryDataCredentials: BinaryDataCredentials,
 		embeddings: Embeddings,
 		private readonly memoryKey: string,
+		logger: Logger,
 	) {
 		super(embeddings, {});
 		this.storageConfig = binaryDataCredentials;
+		this.logger = logger;
+		this.logMemory(`constructor memoryKey=${memoryKey}`);
+	}
+
+	private logMemory(label: string): void {
+		const { rss, heapUsed, heapTotal, external } = process.memoryUsage();
+		const mb = (b: number) => `${(b / 1024 / 1024).toFixed(1)}MB`;
+		this.logger.debug(
+			`[LanceDB] ${label} | rss=${mb(rss)} heap=${mb(heapUsed)}/${mb(heapTotal)} ext=${mb(external)}${cgroupMemory()}`,
+		);
 	}
 
 	/**
@@ -110,6 +137,7 @@ export class InternalLanceDBVectorStore extends VectorStore {
 
 		let conn: Connection | undefined = undefined;
 
+		this.logMemory(`withConnection open memoryKey=${this.memoryKey}`);
 		try {
 			conn = await getConn();
 			return await fn(conn);
@@ -117,6 +145,7 @@ export class InternalLanceDBVectorStore extends VectorStore {
 			if (conn) {
 				conn.close();
 			}
+			this.logMemory(`withConnection close memoryKey=${this.memoryKey}`);
 		}
 	}
 
@@ -137,11 +166,13 @@ export class InternalLanceDBVectorStore extends VectorStore {
 			const tableNames = await connection.tableNames();
 
 			if (!tableNames.includes(tableName)) {
+				this.logger.debug(`[LanceDB] withTable table=${tableName} not found, passing null`);
 				return await fn(null);
 			}
 
 			let table: Table | undefined = undefined;
 
+			this.logMemory(`withTable openTable=${tableName}`);
 			try {
 				table = await connection.openTable(tableName);
 				return await fn(table);
@@ -149,6 +180,7 @@ export class InternalLanceDBVectorStore extends VectorStore {
 				if (table) {
 					table.close();
 				}
+				this.logMemory(`withTable closeTable=${tableName}`);
 			}
 		});
 	}
@@ -180,20 +212,35 @@ export class InternalLanceDBVectorStore extends VectorStore {
 	 * Add documents to the vector store
 	 */
 	async addDocuments(documents: Document[]): Promise<string[]> {
-		const texts = documents.map((doc) => doc.pageContent);
-		const embeddings = await this.embeddings.embedDocuments(texts);
+		this.logger.debug(
+			`[LanceDB] addDocuments count=${documents.length} memoryKey=${this.memoryKey}`,
+		);
+		this.logMemory(`addDocuments start count=${documents.length}`);
 
-		return await this.addVectors(embeddings, documents);
+		const texts = documents.map((doc) => doc.pageContent);
+
+		this.logMemory('addDocuments before embedDocuments');
+		const embeddings = await this.embeddings.embedDocuments(texts);
+		this.logMemory(`addDocuments after embedDocuments dims=${embeddings[0]?.length ?? 0}`);
+
+		const result = await this.addVectors(embeddings, documents);
+		this.logMemory('addDocuments end');
+		return result;
 	}
 
 	/**
 	 * Add vectors to the store
 	 */
 	async addVectors(vectors: number[][], documents: Document[]): Promise<string[]> {
+		this.logger.debug(`[LanceDB] addVectors count=${vectors.length} memoryKey=${this.memoryKey}`);
+		this.logMemory(`addVectors start count=${vectors.length} dim=${vectors[0]?.length ?? 0}`);
+
 		return await this.withConnection(async (connection) => {
 			const tableName = this.sanitizeTableName(this.memoryKey);
 			const tableNames = await connection.tableNames();
 			const tableExists = tableNames.includes(tableName);
+
+			this.logger.debug(`[LanceDB] addVectors table=${tableName} exists=${tableExists}`);
 
 			const now = new Date().toISOString();
 			const records: LanceDBRecord[] = documents.map((doc, i) => ({
@@ -205,27 +252,39 @@ export class InternalLanceDBVectorStore extends VectorStore {
 				updatedAt: now,
 			}));
 
+			const recordsBytes = vectors.length * (vectors[0]?.length ?? 0) * 8;
+			this.logMemory(
+				`addVectors records built approxVectorBytes=${(recordsBytes / 1024 / 1024).toFixed(1)}MB`,
+			);
+
 			if (!tableExists) {
 				// Create table with the first batch of records
 				if (records.length === 0) {
 					throw new Error('Cannot create table with no records');
 				}
+				this.logMemory(`addVectors before createTable table=${tableName}`);
 				const table = await connection.createTable(tableName, records);
 				table.close();
+				this.logMemory(`addVectors after createTable table=${tableName}`);
 			} else {
 				let table: Table | undefined = undefined;
 				try {
+					this.logMemory(`addVectors before openTable table=${tableName}`);
 					table = await connection.openTable(tableName);
+					this.logMemory(`addVectors before add table=${tableName}`);
 					await table.add(records);
-					// Compact accumulated fragment files and clean up old versions to keep
-					// mmap pressure low. Each add() creates a new fragment; without compaction
-					// these pile up and consume memory-mapped address space.
-					await table.optimize({ cleanupOlderThan: new Date() });
+					this.logMemory(`addVectors after add table=${tableName}`);
+					// Do NOT call optimize() here: it triggers a full table rewrite
+					// (~2× peak memory) on every batch, causing OOM on large tables.
+					// withConnection() gives each call a fresh connection so fragment
+					// mmap pages are released when it closes, preventing accumulation.
 				} finally {
 					table?.close();
+					this.logMemory(`addVectors after closeTable table=${tableName}`);
 				}
 			}
 
+			this.logMemory('addVectors end');
 			return records.map(({ id }) => id);
 		});
 	}
@@ -238,9 +297,14 @@ export class InternalLanceDBVectorStore extends VectorStore {
 		k: number,
 		filter?: Record<string, unknown>,
 	): Promise<Array<[Document, number]>> {
+		this.logger.debug(
+			`[LanceDB] similaritySearch k=${k} hasFilter=${!!filter} memoryKey=${this.memoryKey}`,
+		);
+		this.logMemory('similaritySearch start');
+
 		return await this.withTable(async (table) => {
 			if (!table) {
-				// Table doesn't exist yet, return empty results
+				this.logger.debug('[LanceDB] similaritySearch table not found, returning empty');
 				return [];
 			}
 
@@ -251,7 +315,9 @@ export class InternalLanceDBVectorStore extends VectorStore {
 				lanceQuery = lanceQuery.where(whereClause);
 			}
 
+			this.logMemory('similaritySearch before toArray');
 			const results = await lanceQuery.toArray();
+			this.logMemory(`similaritySearch after toArray resultCount=${results.length}`);
 
 			return results.map((row: LanceDBRecord & { _distance: number }) => {
 				const doc = new Document({
@@ -286,8 +352,11 @@ export class InternalLanceDBVectorStore extends VectorStore {
 	 * Clear all vectors for this memory key
 	 */
 	async clearStore(): Promise<void> {
+		this.logger.debug(`[LanceDB] clearStore memoryKey=${this.memoryKey}`);
+		this.logMemory('clearStore start');
 		return await this.withTable(async (table) => {
 			await table?.delete('true'); // Delete all rows
+			this.logMemory('clearStore after delete');
 		});
 	}
 
@@ -295,8 +364,11 @@ export class InternalLanceDBVectorStore extends VectorStore {
 	 * Get count of vectors in the store
 	 */
 	async getVectorCount(): Promise<number> {
+		this.logMemory(`getVectorCount start memoryKey=${this.memoryKey}`);
 		return await this.withTable(async (table) => {
-			return (await table?.countRows()) ?? 0;
+			const count = (await table?.countRows()) ?? 0;
+			this.logger.debug(`[LanceDB] getVectorCount count=${count} memoryKey=${this.memoryKey}`);
+			return count;
 		});
 	}
 }

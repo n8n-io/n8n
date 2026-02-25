@@ -280,7 +280,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<
 			const credentials =
 				await context.getCredentials<BinaryDataCredentials>('instanceBinaryDataApi');
 
-			return new InternalLanceDBVectorStore(credentials, embeddings, memoryKey);
+			return new InternalLanceDBVectorStore(credentials, embeddings, memoryKey, context.logger);
 		} else {
 			// Use in-memory vector store (existing behavior)
 			const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
@@ -301,7 +301,12 @@ export class VectorStoreInMemory extends createVectorStoreNode<
 			const credentials =
 				await context.getCredentials<BinaryDataCredentials>('instanceBinaryDataApi');
 
-			const vectorStore = new InternalLanceDBVectorStore(credentials, embeddings, memoryKey);
+			const vectorStore = new InternalLanceDBVectorStore(
+				credentials,
+				embeddings,
+				memoryKey,
+				context.logger,
+			);
 
 			if (clearStore) {
 				await vectorStore.clearStore();
