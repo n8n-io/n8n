@@ -203,13 +203,6 @@ describe('createDeepLazyProxy', () => {
 			return createDeepLazyProxy();
 		}
 
-		it('fetches a primitive element via __getArrayElement', () => {
-			const proxy = proxyWithLargeArray();
-			mocks.getArrayElement.mockReturnValue(42);
-			expect(proxy.items[0]).toBe(42);
-			expect(mocks.getArrayElement).toHaveBeenCalledWith(null, [['items'], 0], ivmCallOpts);
-		});
-
 		it('creates a nested proxy for object elements', () => {
 			const proxy = proxyWithLargeArray();
 			mocks.getArrayElement.mockReturnValue({ __isObject: true, __keys: ['a'] });
