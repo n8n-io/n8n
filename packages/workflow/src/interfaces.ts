@@ -1279,6 +1279,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
+	validateCookieAuth(cookieValue: string): Promise<void>;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -2922,6 +2923,7 @@ export interface IWorkflowExecuteAdditionalData {
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
+	validateCookieAuth?: (cookieValue: string) => Promise<void>;
 }
 
 export type WorkflowActivateMode =
