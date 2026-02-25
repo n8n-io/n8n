@@ -1279,6 +1279,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
+	validateCookieAuth(cookieValue: string): Promise<void>;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -2922,6 +2923,7 @@ export interface IWorkflowExecuteAdditionalData {
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
+	validateCookieAuth?: (cookieValue: string) => Promise<void>;
 }
 
 export type WorkflowActivateMode =
@@ -2935,6 +2937,7 @@ export type WorkflowActivateMode =
 export namespace WorkflowSettings {
 	export type CallerPolicy = 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
 	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
+	export type RedactionPolicy = 'none' | 'all' | 'non-manual';
 }
 
 export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BINARY_MODE_COMBINED;
@@ -2955,6 +2958,7 @@ export interface IWorkflowSettings {
 	timeSavedMode?: 'fixed' | 'dynamic';
 	availableInMCP?: boolean;
 	credentialResolverId?: string;
+	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 }
 
 export interface WorkflowFEMeta {

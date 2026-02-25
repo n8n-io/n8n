@@ -18,8 +18,10 @@ import type {
 import { STREAM_SEPARATOR } from '../constants';
 import type {
 	AgentMessageChunk,
+	AgentSuggestionChunk,
 	CodeDiffChunk,
 	StreamChunk,
+	SummaryChunk,
 	ToolProgressChunk,
 } from '../types/streaming';
 
@@ -266,6 +268,10 @@ export class AssistantHandler {
 
 			if (mapped.type === 'message' && 'text' in mapped && mapped.text) {
 				state.collectedTexts.push(mapped.text);
+			} else if (mapped.type === 'summary' && 'content' in mapped) {
+				state.collectedTexts.push(`${mapped.title}\n${mapped.content}`);
+			} else if (mapped.type === 'agent-suggestion' && 'text' in mapped) {
+				state.collectedTexts.push(`${mapped.title}\n${mapped.text}`);
 			}
 
 			if (this.isSdkCodeDiff(msg)) {
@@ -291,11 +297,15 @@ export class AssistantHandler {
 	): StreamChunk | null {
 		if (this.isSdkText(msg)) {
 			if (!msg.text) return null;
-			return {
+			const chunk: AgentMessageChunk = {
 				role: 'assistant',
 				type: 'message',
 				text: msg.text,
-			} satisfies AgentMessageChunk;
+			};
+			if (msg.codeSnippet) {
+				chunk.codeSnippet = msg.codeSnippet;
+			}
+			return chunk;
 		}
 
 		if (this.isSdkCodeDiff(msg)) {
@@ -314,17 +324,23 @@ export class AssistantHandler {
 		if (this.isSdkSummary(msg)) {
 			return {
 				role: 'assistant',
-				type: 'message',
-				text: `**${msg.title}**\n\n${msg.content}`,
-			} satisfies AgentMessageChunk;
+				type: 'summary',
+				title: msg.title,
+				content: msg.content,
+			} satisfies SummaryChunk;
 		}
 
 		if (this.isSdkAgentSuggestion(msg)) {
-			return {
+			const chunk: AgentSuggestionChunk = {
 				role: 'assistant',
-				type: 'message',
-				text: `**${msg.title}**\n\n${msg.text}`,
-			} satisfies AgentMessageChunk;
+				type: 'agent-suggestion',
+				title: msg.title,
+				text: msg.text,
+			};
+			if (msg.suggestionId) {
+				chunk.suggestionId = msg.suggestionId;
+			}
+			return chunk;
 		}
 
 		if (this.isSdkIntermediateStep(msg)) {

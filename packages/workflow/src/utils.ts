@@ -372,12 +372,19 @@ const unsafeObjectProperties = new Set([
 	'getPrototypeOf',
 	'mainModule',
 	'binding',
+	'_linkedBinding',
 	'_load',
 	'prepareStackTrace',
 	'__lookupGetter__',
 	'__lookupSetter__',
 	'__defineGetter__',
 	'__defineSetter__',
+	'caller',
+	'arguments',
+	'getBuiltinModule',
+	'dlopen',
+	'execve',
+	'loadEnvFile',
 ]);
 
 /**
