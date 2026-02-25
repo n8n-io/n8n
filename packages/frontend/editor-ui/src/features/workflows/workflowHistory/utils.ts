@@ -11,8 +11,14 @@ export const getLastPublishedVersion = (
 	return workflowPublishHistory.findLast((history) => history.event === 'activated');
 };
 
-export const generateVersionName = (versionId: string) => {
+export const generateVersionNameFromId = (versionId: string) => {
 	return `Version ${versionId.substring(0, 8)}`;
+};
+
+export const getVersionLabel = (
+	workflowHistoryItem: Pick<WorkflowHistory, 'versionId' | 'name'>,
+) => {
+	return workflowHistoryItem.name ?? generateVersionNameFromId(workflowHistoryItem.versionId);
 };
 
 export const formatTimestamp = (value: string) => {

@@ -15,6 +15,7 @@ import { N8nLoading, N8nIcon, N8nText } from '@n8n/design-system';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 import {
 	computeTimelineEntries,
+	getVersionLabel,
 	type TimelineEntry,
 } from '@/features/workflows/workflowHistory/utils';
 
@@ -108,6 +109,41 @@ const onCompare = ({ id }: { id: WorkflowVersionId }) => {
 	emit('compare', { id });
 };
 
+const getHistoryVersionLabel = (workflowHistoryItem: WorkflowHistory): string => {
+	const isCurrentVersion = workflowHistoryItem.versionId === props.items[0]?.versionId;
+	return isCurrentVersion
+		? i18n.baseText('workflowHistory.item.currentChanges')
+		: getVersionLabel(workflowHistoryItem);
+};
+
+const getItemToCompareWith = (
+	item: WorkflowHistory,
+	index: number,
+): { name: string; versionId: WorkflowVersionId } | null => {
+	if (!props.selectedItem) {
+		return null;
+	}
+
+	const isSelected = props.items[index]?.versionId === props.selectedItem?.versionId;
+
+	if (isSelected) {
+		const previousVersion = props.items[index + 1];
+		if (!previousVersion) {
+			return null;
+		}
+
+		return {
+			name: getHistoryVersionLabel(previousVersion),
+			versionId: previousVersion.versionId,
+		};
+	}
+
+	return {
+		name: getHistoryVersionLabel(props.selectedItem),
+		versionId: item.versionId,
+	};
+};
+
 const onItemMounted = ({
 	offsetTop,
 	isSelected,
@@ -175,6 +211,7 @@ const pruneTimeDisplay = computed(() => {
 					:key="versionEntry.item.versionId"
 					:index="versionEntry.originalIndex"
 					:item="versionEntry.item"
+					:compare-with="getItemToCompareWith(versionEntry.item, versionEntry.originalIndex)"
 					:is-selected="versionEntry.item.versionId === props.selectedItem?.versionId"
 					:is-version-active="versionEntry.item.versionId === props.activeVersionId"
 					:actions="getActions(versionEntry.item, versionEntry.originalIndex)"
@@ -191,6 +228,7 @@ const pruneTimeDisplay = computed(() => {
 				v-if="entry.type === 'version'"
 				:index="entry.originalIndex"
 				:item="entry.item"
+				:compare-with="getItemToCompareWith(entry.item, entry.originalIndex)"
 				:is-selected="entry.item.versionId === props.selectedItem?.versionId"
 				:is-version-active="entry.item.versionId === props.activeVersionId"
 				:actions="getActions(entry.item, entry.originalIndex)"

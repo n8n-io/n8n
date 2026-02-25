@@ -35,6 +35,8 @@ const props = withDefaults(
 		showBackButton?: boolean;
 	}>(),
 	{
+		sourceWorkflow: undefined,
+		targetWorkflow: undefined,
 		sourceLabel: 'Before',
 		targetLabel: 'After',
 		showBackButton: false,

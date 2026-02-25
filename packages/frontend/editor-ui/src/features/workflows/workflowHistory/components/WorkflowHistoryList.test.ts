@@ -170,7 +170,7 @@ describe('WorkflowHistoryList', () => {
 	});
 
 	it('should delegate compare event from item', async () => {
-		const items = Array.from({ length: 2 }, namedWorkflowHistoryDataFactory);
+		const items = Array.from({ length: 3 }, namedWorkflowHistoryDataFactory);
 		const index = 1;
 		const activeVersionId = items[0].versionId;
 		const { getAllByTestId, emitted } = renderComponent({
@@ -178,7 +178,7 @@ describe('WorkflowHistoryList', () => {
 			props: {
 				items,
 				actions,
-				selectedItem: null,
+				selectedItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
 				evaluatedPruneTimeInHours: -1,
@@ -190,6 +190,52 @@ describe('WorkflowHistoryList', () => {
 		await userEvent.click(within(listItem).getByTestId('workflow-history-compare-item-button'));
 
 		expect(emitted().compare).toEqual([[{ id: items[index].versionId }]]);
+	});
+
+	it('should compare selected item with previous version', async () => {
+		const items = Array.from({ length: 3 }, namedWorkflowHistoryDataFactory);
+		const selectedIndex = 0;
+		const { getAllByTestId, emitted } = renderComponent({
+			pinia,
+			props: {
+				items,
+				actions,
+				selectedItem: items[selectedIndex],
+				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
+				evaluatedPruneTimeInHours: -1,
+			},
+		});
+
+		const selectedListItem = getAllByTestId('workflow-history-list-item')[selectedIndex];
+		await userEvent.click(
+			within(selectedListItem).getByTestId('workflow-history-compare-item-button'),
+		);
+
+		expect(emitted().compare).toEqual([[{ id: items[selectedIndex + 1].versionId }]]);
+	});
+
+	it('should disable compare for selected last item', async () => {
+		const items = Array.from({ length: 3 }, namedWorkflowHistoryDataFactory);
+		const selectedIndex = items.length - 1;
+		const { getAllByTestId, emitted } = renderComponent({
+			pinia,
+			props: {
+				items,
+				actions,
+				selectedItem: items[selectedIndex],
+				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
+				evaluatedPruneTimeInHours: -1,
+			},
+		});
+
+		const selectedListItem = getAllByTestId('workflow-history-list-item')[selectedIndex];
+		await userEvent.click(
+			within(selectedListItem).getByTestId('workflow-history-compare-item-button'),
+		);
+
+		expect(emitted().compare).toBeUndefined();
 	});
 
 	it('should show upgrade message when shouldUpgrade is true', async () => {

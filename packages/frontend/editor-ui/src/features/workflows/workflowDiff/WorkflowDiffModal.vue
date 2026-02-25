@@ -43,6 +43,28 @@ const manualAsyncConfiguration = {
 
 const isClosed = ref(false);
 
+const handleBeforeClose = () => {
+	if (isClosed.value) return;
+	isClosed.value = true;
+
+	if (window.history.length > 1) {
+		router.back();
+	} else {
+		const newQuery = { ...route.query };
+		delete newQuery.diff;
+		delete newQuery.direction;
+		void router.replace({ query: newQuery });
+	}
+};
+
+const handleEscapeKey = (event: KeyboardEvent) => {
+	if (event.key === 'Escape') {
+		event.preventDefault();
+		event.stopPropagation();
+		handleBeforeClose();
+	}
+};
+
 const remote = useAsyncState<{ workflow?: IWorkflowDb; remote: boolean } | undefined, [], false>(
 	async () => {
 		if (props.data.direction === 'push' && props.data.workflowStatus === 'created') {
@@ -99,28 +121,6 @@ const sourceLabel = computed(() =>
 const targetLabel = computed(() =>
 	getWorkflowLabel(targetWorkFlow.value.state.value?.remote ?? false),
 );
-
-function handleBeforeClose() {
-	if (isClosed.value) return;
-	isClosed.value = true;
-
-	if (window.history.length > 1) {
-		router.back();
-	} else {
-		const newQuery = { ...route.query };
-		delete newQuery.diff;
-		delete newQuery.direction;
-		void router.replace({ query: newQuery });
-	}
-}
-
-function handleEscapeKey(event: KeyboardEvent) {
-	if (event.key === 'Escape') {
-		event.preventDefault();
-		event.stopPropagation();
-		handleBeforeClose();
-	}
-}
 
 onMounted(async () => {
 	document.addEventListener('keydown', handleEscapeKey, true);

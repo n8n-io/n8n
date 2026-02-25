@@ -5,7 +5,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { N8nText } from '@n8n/design-system';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
-import { generateVersionName } from '../utils';
+import { getVersionLabel } from '../utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
 import omit from 'lodash/omit';
@@ -29,14 +29,6 @@ const sourceWorkflow = ref<IWorkflowDb>();
 const targetWorkflow = ref<IWorkflowDb>();
 const sourceLabel = ref('');
 const targetLabel = ref('');
-
-function getVersionLabel(versionId: string, name: string | null): string {
-	if (name?.trim()) {
-		return name;
-	}
-
-	return generateVersionName(versionId);
-}
 
 onMounted(async () => {
 	try {
@@ -69,14 +61,15 @@ onMounted(async () => {
 			connections: targetWorkflowVersion.connections,
 		};
 
-		sourceLabel.value = getVersionLabel(
-			sourceWorkflowVersion.versionId,
-			sourceWorkflowVersion.name,
-		);
-		targetLabel.value = getVersionLabel(
-			targetWorkflowVersion.versionId,
-			targetWorkflowVersion.name,
-		);
+		const isSourceVersionLatest = sourceWorkflowVersion.versionId === workflow.versionId;
+		const isTargetVersionLatest = targetWorkflowVersion.versionId === workflow.versionId;
+
+		sourceLabel.value = isSourceVersionLatest
+			? i18n.baseText('workflowHistory.item.currentChanges')
+			: getVersionLabel(sourceWorkflowVersion);
+		targetLabel.value = isTargetVersionLatest
+			? i18n.baseText('workflowHistory.item.currentChanges')
+			: getVersionLabel(targetWorkflowVersion);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowDiff.compareVersionsLoadError'));
 		emit('close');

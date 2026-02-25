@@ -60,7 +60,60 @@ describe('WorkflowHistoryListItem', () => {
 
 	it('should emit compare event when compare button is clicked', async () => {
 		const item = workflowHistoryDataFactory();
+		const itemToCompareWith = workflowHistoryDataFactory();
+		const compareName = itemToCompareWith.name ?? 'compare target';
 		const { getByTestId, emitted } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 2,
+				actions,
+				isSelected: false,
+				compareWith: { name: compareName, versionId: itemToCompareWith.versionId },
+			},
+		});
+
+		await userEvent.click(getByTestId('workflow-history-compare-item-button'));
+
+		expect(emitted().compare).toEqual([[{ id: itemToCompareWith.versionId }]]);
+	});
+
+	it('should not emit compare event when compareWith is missing', async () => {
+		const item = workflowHistoryDataFactory();
+		const { getByTestId, emitted } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 2,
+				actions,
+				isSelected: false,
+				compareWith: null,
+			},
+		});
+
+		await userEvent.click(getByTestId('workflow-history-compare-item-button'));
+
+		expect(emitted().compare).toBeUndefined();
+	});
+
+	it('should render current changes for first item', () => {
+		const item = workflowHistoryDataFactory();
+		const { getByText } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 0,
+				actions,
+				isSelected: true,
+			},
+		});
+
+		expect(getByText('Current changes')).toBeInTheDocument();
+	});
+
+	it('should render generated version label when name is missing', () => {
+		const item = { ...workflowHistoryDataFactory(), name: null };
+		const { getByText } = renderComponent({
 			pinia,
 			props: {
 				item,
@@ -70,8 +123,6 @@ describe('WorkflowHistoryListItem', () => {
 			},
 		});
 
-		await userEvent.click(getByTestId('workflow-history-compare-item-button'));
-
-		expect(emitted().compare).toEqual([[{ id: item.versionId }]]);
+		expect(getByText(`Version ${item.versionId.substring(0, 8)}`)).toBeInTheDocument();
 	});
 });
