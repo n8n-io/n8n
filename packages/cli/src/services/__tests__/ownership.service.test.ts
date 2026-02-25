@@ -7,6 +7,7 @@ import {
 	WorkflowEntity,
 	ProjectRelation,
 	ProjectRelationRepository,
+	ProjectRepository,
 	SharedWorkflowRepository,
 	UserRepository,
 	GLOBAL_OWNER_ROLE,
@@ -29,6 +30,7 @@ describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const projectRelationRepository = mockInstance(ProjectRelationRepository);
+	const projectRepository = mockInstance(ProjectRepository);
 	const cacheService = mockInstance(CacheService);
 	const passwordUtility = mockInstance(PasswordUtility);
 	const logger = mockInstance(Logger);
@@ -41,6 +43,7 @@ describe('OwnershipService', () => {
 		logger,
 		passwordUtility,
 		projectRelationRepository,
+		projectRepository,
 		sharedWorkflowRepository,
 		userRepository,
 		settingsRepository,
@@ -230,6 +233,28 @@ describe('OwnershipService', () => {
 			});
 
 			expect(sharedWithProjects).toHaveLength(0);
+		});
+	});
+
+	describe('invalidateProjectOwnerCacheByUserId()', () => {
+		test('should delete cache entry for personal project', async () => {
+			const project = new Project();
+			project.id = uuid();
+			projectRepository.getPersonalProjectForUser.mockResolvedValueOnce(project);
+
+			await ownershipService.invalidateProjectOwnerCacheByUserId('some-user-id');
+
+			expect(projectRepository.getPersonalProjectForUser).toHaveBeenCalledWith('some-user-id');
+			expect(cacheService.deleteFromHash).toHaveBeenCalledWith('project-owner', project.id);
+		});
+
+		test('should not delete cache if user has no personal project', async () => {
+			projectRepository.getPersonalProjectForUser.mockResolvedValueOnce(null);
+
+			await ownershipService.invalidateProjectOwnerCacheByUserId('some-user-id');
+
+			expect(projectRepository.getPersonalProjectForUser).toHaveBeenCalledWith('some-user-id');
+			expect(cacheService.deleteFromHash).not.toHaveBeenCalled();
 		});
 	});
 

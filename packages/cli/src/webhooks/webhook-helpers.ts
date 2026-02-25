@@ -5,7 +5,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -83,6 +83,42 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 import merge from 'lodash/merge';
+
+// Type guards for MCP queue mode data validation
+interface McpToolCallPayload {
+	toolName: string;
+	arguments: Record<string, unknown>;
+	sourceNodeName?: string;
+}
+
+function isMcpToolCall(value: unknown): value is McpToolCallPayload {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'toolName' in value &&
+		typeof (value as Record<string, unknown>).toolName === 'string' &&
+		'arguments' in value &&
+		typeof (value as Record<string, unknown>).arguments === 'object'
+	);
+}
+
+interface McpListToolsRelayPayload {
+	sessionId: string;
+	messageId: string;
+	marker: { _listToolsRequest: boolean };
+}
+
+function isMcpListToolsRelay(value: unknown): value is McpListToolsRelayPayload {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'sessionId' in value &&
+		typeof (value as Record<string, unknown>).sessionId === 'string' &&
+		'messageId' in value &&
+		typeof (value as Record<string, unknown>).messageId === 'string' &&
+		'marker' in value
+	);
+}
 
 export function handleHostedChatResponse(
 	res: express.Response,
@@ -584,14 +620,9 @@ export async function executeWebhook(
 			return;
 		}
 
-		// Now that we know that the workflow should run we can return the default response
-		// directly if responseMode it set to "onReceived" and a response should be sent
-		if (responseMode === 'onReceived' && !didSendResponse) {
-			const responseBody = extractWebhookOnReceivedResponse(responseData, webhookResultData);
-			const webhookResponse = createStaticResponse(responseBody, responseCode, responseHeaders);
-			responseCallback(null, webhookResponse);
-			didSendResponse = true;
-		}
+		// For "onReceived" mode, we need to defer response sending until after the execution
+		// is created, so that `$execution.id` is available in response data expressions.
+		const shouldDeferOnReceivedResponse = responseMode === 'onReceived' && !didSendResponse;
 
 		// Prepare execution data
 		const { runExecutionData: preparedRunExecutionData, pinData } = prepareExecutionData(
@@ -618,6 +649,51 @@ export async function executeWebhook(
 		// When resuming from a wait node, copy over the pushRef from the execution-data
 		if (!runData.pushRef) {
 			runData.pushRef = runExecutionData.pushRef;
+		}
+
+		const executionsConfig = Container.get(ExecutionsConfig);
+		if (workflowStartNode.type === MCP_TRIGGER_NODE_TYPE && executionsConfig.mode === 'queue') {
+			const querySessionId = req.query?.sessionId;
+			const headerSessionId = req.headers['mcp-session-id'];
+			const mcpSessionId =
+				typeof querySessionId === 'string'
+					? querySessionId
+					: typeof headerSessionId === 'string'
+						? headerSessionId
+						: '';
+
+			const firstItem = webhookResultData.workflowData?.[0]?.[0];
+			const mcpMessageId =
+				(firstItem && 'json' in firstItem && typeof firstItem.json?.mcpMessageId === 'string'
+					? firstItem.json.mcpMessageId
+					: null) ?? `mcp-trigger-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+			runData.isMcpExecution = true;
+			runData.mcpType = 'trigger';
+			runData.mcpSessionId = mcpSessionId;
+			runData.mcpMessageId = mcpMessageId;
+
+			const mcpToolCallValue =
+				firstItem && 'json' in firstItem ? firstItem.json?.mcpToolCall : null;
+			if (isMcpToolCall(mcpToolCallValue)) {
+				runData.mcpToolCall = mcpToolCallValue;
+			}
+
+			// Handle MCP list tools relay - forward to main with SSE transport via pub/sub
+			const mcpListToolsRelayValue =
+				firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
+			if (isMcpListToolsRelay(mcpListToolsRelayValue)) {
+				const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+				const publisher = Container.get(Publisher);
+				await publisher.publishMcpRelay({
+					sessionId: mcpListToolsRelayValue.sessionId,
+					messageId: mcpListToolsRelayValue.messageId,
+					response: mcpListToolsRelayValue.marker,
+				});
+				// Don't run workflow - the relay will be handled by the main with the transport
+				// Return undefined since no execution is started
+				return undefined;
+			}
 		}
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
@@ -648,7 +724,7 @@ export async function executeWebhook(
 		executionId = await Container.get(WorkflowRunner).run(
 			runData,
 			true,
-			!didSendResponse,
+			!didSendResponse && !shouldDeferOnReceivedResponse,
 			executionId,
 			responsePromise,
 		);
@@ -658,6 +734,32 @@ export async function executeWebhook(
 		 * needs to fetch full execution data from the DB when a job finishes in scaling mdoe.
 		 */
 		Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
+
+		if (shouldDeferOnReceivedResponse) {
+			additionalKeys.$executionId = executionId;
+			additionalKeys.$execution = {
+				id: executionId,
+				mode: executionMode === 'manual' ? 'test' : 'production',
+				resumeUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
+				resumeFormUrl: `${additionalData.formWaitingBaseUrl}/${executionId}`,
+			};
+			const evaluatedResponseData = workflow.expression.getComplexParameterValue(
+				workflowStartNode,
+				webhookData.webhookDescription.responseData,
+				executionMode,
+				additionalKeys,
+				undefined,
+				'firstEntryJson',
+			) as string | undefined;
+
+			const responseBody = extractWebhookOnReceivedResponse(
+				evaluatedResponseData,
+				webhookResultData,
+			);
+			const webhookResponse = createStaticResponse(responseBody, responseCode, responseHeaders);
+			responseCallback(null, webhookResponse);
+			didSendResponse = true;
+		}
 
 		Container.get(EventService).emit('workflow-executed', {
 			workflowId: workflowData.id,

@@ -115,7 +115,14 @@ export function useWorkflowActivate() {
 			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion, true);
 
 			if (workflowId === workflowsStore.workflowId) {
-				workflowsStore.setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
+				workflowsStore.setWorkflowVersionData(
+					{
+						versionId: updatedWorkflow.versionId,
+						name: workflowsStore.versionData?.name ?? null,
+						description: workflowsStore.versionData?.description ?? null,
+					},
+					updatedWorkflow.checksum,
+				);
 			}
 
 			void useExternalHooks().run('workflow.published', {
@@ -168,7 +175,10 @@ export function useWorkflowActivate() {
 		void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 
 		try {
-			await workflowsStore.deactivateWorkflow(workflowId);
+			const expectedChecksum =
+				workflowId === workflowsStore.workflowId ? workflowsStore.workflowChecksum : undefined;
+
+			await workflowsStore.deactivateWorkflow(workflowId, expectedChecksum);
 
 			void useExternalHooks().run('workflow.unpublished', {
 				workflowId,

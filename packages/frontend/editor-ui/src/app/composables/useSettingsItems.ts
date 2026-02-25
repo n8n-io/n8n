@@ -99,6 +99,14 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.SSO_SETTINGS } },
 			},
 			{
+				id: 'settings-security',
+				icon: 'shield',
+				label: i18n.baseText('settings.security'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.SECURITY_SETTINGS),
+				route: { to: { name: VIEWS.SECURITY_SETTINGS } },
+			},
+			{
 				id: 'settings-ldap',
 				icon: 'network',
 				label: i18n.baseText('settings.ldap'),

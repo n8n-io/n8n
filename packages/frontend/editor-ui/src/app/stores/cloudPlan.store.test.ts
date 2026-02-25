@@ -8,10 +8,12 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	})),
 }));
 
+const mockPermanentlyDismissedBanners: string[] = [];
 vi.mock('@/app/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
 		settings: { n8nMetadata: { userId: 'test-user-id' } },
 		isCloudDeployment: true,
+		permanentlyDismissedBanners: mockPermanentlyDismissedBanners,
 	})),
 }));
 
@@ -127,6 +129,250 @@ describe('cloudPlan.store', () => {
 			store.state.data = {} as never;
 
 			expect(store.trialTimeLeft).toEqual({ count: 0, unit: 'days' });
+		});
+	});
+
+	describe('shouldShowBanner', () => {
+		beforeEach(() => {
+			// Reset dismissed banners array before each test
+			mockPermanentlyDismissedBanners.length = 0;
+		});
+
+		it('should return false when bannerConfig is not set', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = {} as never;
+
+			expect(store.shouldShowBanner).toBe(false);
+		});
+
+		it('should return true when bannerConfig is set and banner not dismissed', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: { showExecutions: true } } as never;
+
+			expect(store.shouldShowBanner).toBe(true);
+		});
+
+		it('should return false when bannerConfig is set but banner was dismissed', () => {
+			mockPermanentlyDismissedBanners.push('TRIAL');
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: { showExecutions: true } } as never;
+
+			expect(store.shouldShowBanner).toBe(false);
+		});
+
+		it('should return false when TRIAL_OVER was dismissed', () => {
+			mockPermanentlyDismissedBanners.push('TRIAL_OVER');
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: { showExecutions: true } } as never;
+
+			expect(store.shouldShowBanner).toBe(false);
+		});
+
+		it('should return true when banner was dismissed but forceShow is true', () => {
+			mockPermanentlyDismissedBanners.push('TRIAL');
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: { showExecutions: true, forceShow: true } } as never;
+
+			expect(store.shouldShowBanner).toBe(true);
+		});
+
+		it('should return true when not dismissible, even if banner was previously dismissed', () => {
+			mockPermanentlyDismissedBanners.push('TRIAL');
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = {
+				bannerConfig: { showExecutions: true, dismissible: false },
+			} as never;
+
+			expect(store.shouldShowBanner).toBe(true);
+		});
+
+		it('should return true when not dismissible and banner was never dismissed', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = {
+				bannerConfig: { showExecutions: true, dismissible: false },
+			} as never;
+
+			expect(store.shouldShowBanner).toBe(true);
+		});
+	});
+
+	describe('bannerForceShow', () => {
+		it('should return false when forceShow is not set', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: {} } as never;
+
+			expect(store.bannerForceShow).toBe(false);
+		});
+
+		it('should return true when forceShow is true', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: { forceShow: true } } as never;
+
+			expect(store.bannerForceShow).toBe(true);
+		});
+
+		it('should return false when forceShow is false', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: { forceShow: false } } as never;
+
+			expect(store.bannerForceShow).toBe(false);
+		});
+	});
+
+	describe('isBannerDismissed', () => {
+		beforeEach(() => {
+			mockPermanentlyDismissedBanners.length = 0;
+		});
+
+		it('should return false when no banners are dismissed', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+
+			expect(store.isBannerDismissed).toBe(false);
+		});
+
+		it('should return true when TRIAL is dismissed', () => {
+			mockPermanentlyDismissedBanners.push('TRIAL');
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+
+			expect(store.isBannerDismissed).toBe(true);
+		});
+
+		it('should return true when TRIAL_OVER is dismissed', () => {
+			mockPermanentlyDismissedBanners.push('TRIAL_OVER');
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+
+			expect(store.isBannerDismissed).toBe(true);
+		});
+
+		it('should return false when other banners are dismissed', () => {
+			mockPermanentlyDismissedBanners.push('V1', 'EMAIL_CONFIRMATION');
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+
+			expect(store.isBannerDismissed).toBe(false);
+		});
+	});
+
+	describe('bannerTimeLeft', () => {
+		it('should return show: false when timeLeft is not set', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: {} } as never;
+
+			expect(store.bannerTimeLeft).toEqual({ show: false, text: undefined });
+		});
+
+		it('should return show: true with text when timeLeft is set', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: { timeLeft: { text: '5 days left' } } } as never;
+
+			expect(store.bannerTimeLeft).toEqual({ show: true, text: '5 days left' });
+		});
+
+		it('should return show: true with undefined text when timeLeft has no text', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: { timeLeft: {} } } as never;
+
+			expect(store.bannerTimeLeft).toEqual({ show: true, text: undefined });
+		});
+	});
+
+	describe('showExecutions', () => {
+		it('should return false when showExecutions is not set', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: {} } as never;
+
+			expect(store.showExecutions).toBe(false);
+		});
+
+		it('should return true when showExecutions is true', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: { showExecutions: true } } as never;
+
+			expect(store.showExecutions).toBe(true);
+		});
+
+		it('should return false when showExecutions is false', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: { showExecutions: false } } as never;
+
+			expect(store.showExecutions).toBe(false);
+		});
+	});
+
+	describe('bannerCta', () => {
+		it('should return defaults when cta is not set', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: {} } as never;
+
+			expect(store.bannerCta).toEqual({
+				text: 'Upgrade Now',
+				icon: 'zap',
+				size: 'small',
+				style: 'success',
+				href: undefined,
+			});
+		});
+
+		it('should return custom values when cta is set', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = {
+				bannerConfig: {
+					cta: {
+						text: 'Subscribe',
+						icon: 'star',
+						size: 'medium',
+						style: 'primary',
+						href: '/upgrade',
+					},
+				},
+			} as never;
+
+			expect(store.bannerCta).toEqual({
+				text: 'Subscribe',
+				icon: 'star',
+				size: 'medium',
+				style: 'primary',
+				href: '/upgrade',
+			});
+		});
+	});
+
+	describe('bannerDismissible', () => {
+		it('should return true by default', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: {} } as never;
+
+			expect(store.bannerDismissible).toBe(true);
+		});
+
+		it('should return false when dismissible is false', () => {
+			setActivePinia(createPinia());
+			const store = useCloudPlanStore();
+			store.state.data = { bannerConfig: { dismissible: false } } as never;
+
+			expect(store.bannerDismissible).toBe(false);
 		});
 	});
 });

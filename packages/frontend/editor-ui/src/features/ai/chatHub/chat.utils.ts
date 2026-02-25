@@ -235,7 +235,7 @@ export function createAiMessageFromStreamingState(
 		sessionId,
 		type: 'ai',
 		name: 'AI',
-		content: '',
+		content: [],
 		executionId: streaming?.executionId ?? null,
 		status: 'running',
 		createdAt: new Date().toISOString(),
@@ -263,7 +263,7 @@ export function createHumanMessageFromStreamingState(streaming: ChatStreamingSta
 		sessionId: streaming.sessionId,
 		type: 'human',
 		name: 'User',
-		content: streaming.promptText,
+		content: [{ type: 'text', content: streaming.promptText }],
 		executionId: null,
 		status: 'success',
 		createdAt: new Date().toISOString(),
@@ -306,7 +306,7 @@ export function buildUiMessages(
 			// in running state as an immediate feedback
 			messagesToShow.push({
 				...message,
-				content: '',
+				content: [],
 				status: 'running',
 				...flattenModel(streaming.agent.model),
 			});
@@ -379,7 +379,10 @@ export function findOneFromModelsResponse(
 	return undefined;
 }
 
-export function createSessionFromStreamingState(streaming: ChatStreamingState): ChatHubSessionDto {
+export function createSessionFromStreamingState(
+	streaming: ChatStreamingState,
+	toolIds: string[],
+): ChatHubSessionDto {
 	return {
 		id: streaming.sessionId,
 		title: 'New Chat',
@@ -390,7 +393,7 @@ export function createSessionFromStreamingState(streaming: ChatStreamingState): 
 		agentIcon: streaming.agent.icon,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
-		tools: streaming.tools,
+		toolIds,
 		...flattenModel(streaming.agent.model),
 	};
 }
@@ -439,11 +442,11 @@ export function createFakeAgent(
 		icon: fallback?.icon ?? null,
 		createdAt: null,
 		updatedAt: null,
-		// Assume file attachment and tools are supported
+		// Assume file attachment and tools are supported (except n8n provider which never supports function calling)
 		metadata: {
 			inputModalities: ['text', 'file'],
 			capabilities: {
-				functionCalling: true,
+				functionCalling: model.provider !== 'n8n',
 			},
 			available: true,
 		},
@@ -453,7 +456,7 @@ export function createFakeAgent(
 }
 
 export const isEditable = (message: ChatMessage): boolean => {
-	return message.status === 'success' && !(message.provider === 'n8n' && message.type === 'ai');
+	return message.status === 'success' && message.type !== 'ai';
 };
 
 export const isRegenerable = (message: ChatMessage): boolean => {
@@ -566,4 +569,17 @@ export function splitMarkdownIntoChunks(content: string): string[] {
 	endChunk();
 
 	return chunks;
+}
+
+/**
+ * Checks if a message represents a waiting-for-approval state.
+ * This occurs when the message has 'waiting' status and contains
+ * a with-buttons chunk that blocks user input.
+ */
+export function isWaitingForApproval(message: ChatMessage | null | undefined): boolean {
+	if (!message || message.status !== 'waiting') {
+		return false;
+	}
+
+	return message.content.some((c) => c.type === 'with-buttons' && c.blockUserInput);
 }

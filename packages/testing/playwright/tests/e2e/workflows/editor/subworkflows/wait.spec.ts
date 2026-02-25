@@ -22,7 +22,11 @@ async function getResumeUrl(
 	return nodeOutput[0].data.main[0][0].json[fieldName] as string;
 }
 
-test.describe('Parent that does not wait for sub-workflow', () => {
+test.describe('Parent that does not wait for sub-workflow', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test('should not wait for the sub-workflow', async ({ api }) => {
 		const childWorkflowId = (
 			await api.workflows.importWorkflowFromFile('subworkflow-wait-child.json')

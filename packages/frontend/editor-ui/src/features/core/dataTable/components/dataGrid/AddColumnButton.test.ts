@@ -98,11 +98,10 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input');
+		const nameInput = getByTestId<HTMLInputElement>('add-column-name-input');
 
 		// Properly trigger v-model binding by setting value and firing input event
-		(nameInput as HTMLInputElement).value = 'newColumn';
-		await fireEvent.input(nameInput);
+		await fireEvent.update(nameInput, 'newColumn');
 
 		await waitFor(() => {
 			const submitButton = getByTestId('data-table-add-column-submit-button');
@@ -142,11 +141,10 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input');
+		const nameInput = getByTestId<HTMLInputElement>('add-column-name-input');
 
 		// Test invalid name starting with hyphen
-		(nameInput as HTMLInputElement).value = '-invalid';
-		await fireEvent.input(nameInput);
+		await fireEvent.update(nameInput, '-invalid');
 
 		await waitFor(() => {
 			expect(getByText('Invalid column name')).toBeInTheDocument();
@@ -165,14 +163,13 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input');
+		const nameInput = getByTestId<HTMLInputElement>('add-column-name-input');
 
 		// Test valid names
 		const validNames = ['column1', 'my_column', 'Column123', 'a1b2c3'];
 
 		for (const name of validNames) {
-			(nameInput as HTMLInputElement).value = name;
-			await fireEvent.input(nameInput);
+			await fireEvent.update(nameInput, name);
 
 			await waitFor(() => {
 				expect(queryByText('Invalid column name')).not.toBeInTheDocument();
@@ -190,19 +187,17 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input');
+		const nameInput = getByTestId<HTMLInputElement>('add-column-name-input');
 
 		// Enter invalid name
-		(nameInput as HTMLInputElement).value = '-invalid';
-		await fireEvent.input(nameInput);
+		await fireEvent.update(nameInput, '-invalid');
 
 		await waitFor(() => {
 			expect(getByText('Invalid column name')).toBeInTheDocument();
 		});
 
 		// Correct the name
-		(nameInput as HTMLInputElement).value = 'valid';
-		await fireEvent.input(nameInput);
+		await fireEvent.update(nameInput, 'valid');
 
 		await waitFor(() => {
 			expect(queryByText('Invalid column name')).not.toBeInTheDocument();
@@ -219,7 +214,7 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input');
+		const nameInput = getByTestId<HTMLInputElement>('add-column-name-input');
 
 		expect(nameInput.getAttribute('maxlength')).toBe(MAX_COLUMN_NAME_LENGTH.toString());
 	});
@@ -234,9 +229,8 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input');
-		(nameInput as HTMLInputElement).value = 'numberColumn';
-		await fireEvent.input(nameInput);
+		const nameInput = getByTestId<HTMLInputElement>('add-column-name-input');
+		await fireEvent.update(nameInput, 'numberColumn');
 
 		// Click on the select to open dropdown
 		const selectElement = getByRole('combobox');
@@ -275,9 +269,8 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input');
-		(nameInput as HTMLInputElement).value = 'testColumn';
-		await fireEvent.input(nameInput);
+		const nameInput = getByTestId<HTMLInputElement>('add-column-name-input');
+		await fireEvent.update(nameInput, 'testColumn');
 
 		await waitFor(() => {
 			const submitButton = getByTestId('data-table-add-column-submit-button');
@@ -311,9 +304,8 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input');
-		(nameInput as HTMLInputElement).value = 'testColumn';
-		await fireEvent.input(nameInput);
+		const nameInput = getByTestId<HTMLInputElement>('add-column-name-input');
+		await fireEvent.update(nameInput, 'testColumn');
 
 		await waitFor(() => {
 			const submitButton = getByTestId('data-table-add-column-submit-button');
@@ -342,9 +334,8 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input');
-		(nameInput as HTMLInputElement).value = 'testColumn';
-		await fireEvent.input(nameInput);
+		const nameInput = getByTestId<HTMLInputElement>('add-column-name-input');
+		await fireEvent.update(nameInput, 'testColumn');
 
 		await waitFor(() => {
 			const submitButton = getByTestId('data-table-add-column-submit-button');
@@ -369,9 +360,8 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input');
-		(nameInput as HTMLInputElement).value = 'enterColumn';
-		await fireEvent.input(nameInput);
+		const nameInput = getByTestId<HTMLInputElement>('add-column-name-input');
+		await fireEvent.update(nameInput, 'enterColumn');
 		await fireEvent.keyUp(nameInput, { key: 'Enter' });
 
 		await waitFor(() => {
@@ -413,9 +403,8 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input');
-		(nameInput as HTMLInputElement).value = 'dateColumn';
-		await fireEvent.input(nameInput);
+		const nameInput = getByTestId<HTMLInputElement>('add-column-name-input');
+		await fireEvent.update(nameInput, 'dateColumn');
 
 		const selectElement = getByRole('combobox');
 		await fireEvent.click(selectElement);
@@ -453,15 +442,76 @@ describe('AddColumnButton', () => {
 			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
 		});
 
-		const nameInput = getByTestId('add-column-name-input');
-		(nameInput as HTMLInputElement).value = '-invalid';
-		await fireEvent.input(nameInput);
+		const nameInput = getByTestId<HTMLInputElement>('add-column-name-input');
+		await fireEvent.update(nameInput, '-invalid');
 
 		await waitFor(() => {
 			expect(getByText('Invalid column name')).toBeInTheDocument();
 			// Check for help icon that shows tooltip
 			const helpIcon = getByTestId('add-column-error-help-icon');
 			expect(helpIcon).toBeInTheDocument();
+		});
+	});
+
+	it('should clear error state when reopening popover after failed submission', async () => {
+		const { getByTestId, getByText, queryByText } = renderComponent();
+		addColumnHandler.mockResolvedValueOnce({
+			success: false,
+			errorMessage: 'Connection error',
+		});
+		const addButton = getByTestId('data-table-add-column-trigger-button');
+
+		// Open popover
+		await fireEvent.click(addButton);
+
+		await waitFor(() => {
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
+		});
+
+		const nameInput = getByTestId<HTMLInputElement>('add-column-name-input');
+		await fireEvent.update(nameInput, 'testColumn');
+
+		await waitFor(() => {
+			const submitButton = getByTestId('data-table-add-column-submit-button');
+			expect(submitButton).not.toBeDisabled();
+		});
+
+		// Submit and trigger error
+		const submitButton = getByTestId('data-table-add-column-submit-button');
+		await fireEvent.click(submitButton);
+
+		// Verify error is shown and button is disabled
+		await waitFor(() => {
+			expect(getByText('Error adding column')).toBeInTheDocument();
+			expect(submitButton).toBeDisabled();
+		});
+
+		// Close popover by clicking the trigger button again (toggle behavior)
+		await fireEvent.click(addButton);
+
+		await waitFor(() => {
+			expect(queryByText('add-column-popover-content')).not.toBeInTheDocument();
+		});
+
+		// Reopen popover
+		await fireEvent.click(addButton);
+
+		await waitFor(() => {
+			expect(getByTestId('add-column-popover-content')).toBeInTheDocument();
+		});
+
+		// Verify error is cleared
+		await waitFor(() => {
+			expect(queryByText('Error adding column')).not.toBeInTheDocument();
+		});
+
+		// Verify button is usable again after entering valid name
+		const reopenedNameInput = getByTestId<HTMLInputElement>('add-column-name-input');
+		await fireEvent.update(reopenedNameInput, 'newColumn');
+
+		await waitFor(() => {
+			const reopenedSubmitButton = getByTestId('data-table-add-column-submit-button');
+			expect(reopenedSubmitButton).not.toBeDisabled();
 		});
 	});
 });

@@ -118,4 +118,46 @@ describe('validateStructure tool', () => {
 		// Multiple triggers are valid
 		expectToolSuccess(content, 'valid');
 	});
+
+	it('should recognize connections from error output (output index 1)', async () => {
+		// This test verifies that nodes connected to error output (index 1) are recognized
+		// as having required input - reproduces issue where validation incorrectly reported
+		// "missing required input" for nodes connected to error branch
+		const workflow = createWorkflow([
+			createNode({ id: 'webhook1', name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
+			createNode({
+				id: 'http1',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				onError: 'continueErrorOutput',
+			}),
+			createNode({ id: 'code1', name: 'Success Handler', type: 'n8n-nodes-base.code' }),
+			createNode({ id: 'code2', name: 'Error Handler', type: 'n8n-nodes-base.code' }),
+		]);
+		workflow.connections = {
+			Webhook: {
+				main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+			},
+			// HTTP Request with continueErrorOutput has 2 outputs:
+			// output 0 = success, output 1 = error
+			'HTTP Request': {
+				main: [
+					[{ node: 'Success Handler', type: 'main', index: 0 }], // output 0 -> success
+					[{ node: 'Error Handler', type: 'main', index: 0 }], // output 1 -> error
+				],
+			},
+		};
+
+		setupWorkflowState(mockGetCurrentTaskInput, workflow);
+		const config = createToolConfig('validate_structure', 'call-6');
+
+		const result = await validateStructureTool.invoke({}, config);
+		const content = parseToolResult<ParsedToolContent>(result);
+
+		// Both Success Handler and Error Handler should be recognized as having connections
+		// Validation should pass - no "missing required input" errors
+		expectToolSuccess(content, 'valid');
+		expect(content.update.messages[0].kwargs.content).not.toContain('Error Handler');
+		expect(content.update.messages[0].kwargs.content).not.toContain('missing required input');
+	});
 });

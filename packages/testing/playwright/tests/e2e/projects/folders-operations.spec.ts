@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Folders - Operations', () => {
+test.describe('Folders - Operations', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test.describe('Rename and delete folders', () => {
 		test('should rename folder from breadcrumb dropdown', async ({ n8n }) => {
 			await n8n.start.fromNewProject();

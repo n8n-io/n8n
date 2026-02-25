@@ -1,7 +1,7 @@
 import {
 	passwordSchema,
 	PasswordUpdateRequestDto,
-	SettingsUpdateRequestDto,
+	UserSelfSettingsUpdateRequestDto,
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -272,12 +272,14 @@ export class MeController {
 
 	/**
 	 * Update the logged-in user's settings.
+	 * Note: This endpoint uses UserSelfSettingsUpdateRequestDto which excludes admin-only
+	 * fields like allowSSOManualLogin to prevent privilege escalation attacks (SSO bypass).
 	 */
 	@Patch('/settings')
 	async updateCurrentUserSettings(
 		req: AuthenticatedRequest,
 		_: Response,
-		@Body payload: SettingsUpdateRequestDto,
+		@Body payload: UserSelfSettingsUpdateRequestDto,
 	): Promise<User['settings']> {
 		const { id } = req.user;
 

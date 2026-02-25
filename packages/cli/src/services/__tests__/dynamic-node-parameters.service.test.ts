@@ -12,12 +12,19 @@ import { DynamicNodeParametersService } from '../dynamic-node-parameters.service
 import { WorkflowLoaderService } from '../workflow-loader.service';
 
 import { NodeTypes } from '@/node-types';
+import { SharedWorkflowRepository } from '@n8n/db';
 
 describe('DynamicNodeParametersService', () => {
 	const logger = mockInstance(Logger);
 	const nodeTypes = mockInstance(NodeTypes);
 	const workflowLoaderService = mockInstance(WorkflowLoaderService);
-	const service = new DynamicNodeParametersService(logger, nodeTypes, workflowLoaderService);
+	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
+	const service = new DynamicNodeParametersService(
+		logger,
+		nodeTypes,
+		workflowLoaderService,
+		sharedWorkflowRepository,
+	);
 
 	beforeEach(() => {
 		jest.resetAllMocks();

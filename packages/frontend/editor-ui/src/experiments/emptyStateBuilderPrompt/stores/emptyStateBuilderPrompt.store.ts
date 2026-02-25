@@ -1,9 +1,5 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import {
-	DEFAULT_NEW_WORKFLOW_NAME,
-	EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT,
-	VIEWS,
-} from '@/app/constants';
+import { DEFAULT_NEW_WORKFLOW_NAME, EMPTY_STATE_EXPERIMENT, VIEWS } from '@/app/constants';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -53,12 +49,10 @@ export const useEmptyStateBuilderPromptStore = defineStore(
 		const pendingPrompt = ref<string | null>(null);
 
 		// Experiment variant detection
-		const currentVariant = computed(() =>
-			posthogStore.getVariant(EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT.name),
-		);
+		const currentVariant = computed(() => posthogStore.getVariant(EMPTY_STATE_EXPERIMENT.name));
 
 		const isVariant = computed(
-			() => currentVariant.value === EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT.variant,
+			() => currentVariant.value === EMPTY_STATE_EXPERIMENT.variantBuilderPrompt,
 		);
 
 		const isFeatureEnabled = computed(() => cloudPlanStore.userIsTrialing && isVariant.value);

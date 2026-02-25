@@ -31,9 +31,23 @@ export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'workflow-similarity-evaluation-failed',
 	'http-request-hardcoded-credentials',
 	'set-node-credential-field',
+	// Graph validation violations (from workflow-sdk validate())
+	'graph-no-nodes',
+	'graph-disconnected-node',
+	'graph-merge-single-input',
+	'graph-from-ai-in-non-tool',
+	'graph-agent-static-prompt',
+	'graph-agent-no-system-message',
+	'graph-hardcoded-credentials',
+	'graph-set-credential-field',
+	'graph-tool-no-parameters',
+	'graph-missing-trigger',
+	'graph-parse-error',
 	'webhook-response-mode-missing-respond-node',
 	'webhook-response-mode-mismatch',
 	'data-table-missing-set-node',
+	'node-missing-required-parameter',
+	'node-invalid-options-value',
 ] as const;
 
 export type ProgrammaticViolationName = (typeof PROGRAMMATIC_VIOLATION_NAMES)[number];
@@ -62,6 +76,7 @@ export interface ProgrammaticChecksResult {
 	fromAi: ProgrammaticViolation[];
 	credentials: ProgrammaticViolation[];
 	nodeUsage: ProgrammaticViolation[];
+	parameters: ProgrammaticViolation[];
 }
 
 export interface ProgrammaticEvaluationResult {
@@ -74,7 +89,9 @@ export interface ProgrammaticEvaluationResult {
 	fromAi: SingleEvaluatorResult;
 	credentials: SingleEvaluatorResult;
 	nodeUsage: SingleEvaluatorResult;
+	parameters: SingleEvaluatorResult;
 	similarity: SingleEvaluatorResult | null;
+	graphValidation: SingleEvaluatorResult;
 }
 
 export interface ProgrammaticEvaluationInput {
@@ -82,6 +99,8 @@ export interface ProgrammaticEvaluationInput {
 	userPrompt?: string;
 	referenceWorkflows?: SimpleWorkflow[];
 	preset?: 'strict' | 'standard' | 'lenient';
+	/** Generated TypeScript SDK code for graph validation */
+	generatedCode?: string;
 }
 
 export interface NodeResolvedConnectionTypesInfo {

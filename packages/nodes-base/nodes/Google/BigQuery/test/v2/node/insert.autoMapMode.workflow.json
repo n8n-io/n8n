@@ -50,11 +50,24 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n{\n\"id\":\n1,\n\"test\":\n\"111\"\n},\n{\n\"id\":\n2,\n\"test\":\n\"222\"\n},\n{\n\"id\":\n3,\n\"test\":\n\"333\"\n},\n];"
+				"data": [
+					{
+						"id": 1,
+						"test": "111"
+					},
+					{
+						"id": 2,
+						"test": "222"
+					},
+					{
+						"id": 3,
+						"test": "333"
+					}
+				]
 			},
 			"id": "11d06660-cbd3-4bd2-9619-68e82438a0e3",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [240, 340]
 		}

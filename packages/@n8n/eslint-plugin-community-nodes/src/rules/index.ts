@@ -1,5 +1,6 @@
 import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
 
+import { AiNodePackageJsonRule } from './ai-node-package-json.js';
 import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
@@ -13,6 +14,7 @@ import { PackageNameConventionRule } from './package-name-convention.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
 
 export const rules = {
+	'ai-node-package-json': AiNodePackageJsonRule,
 	'no-restricted-globals': NoRestrictedGlobalsRule,
 	'no-restricted-imports': NoRestrictedImportsRule,
 	'credential-password-field': CredentialPasswordFieldRule,

@@ -3,11 +3,14 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { WorkflowDependencyRepository, WorkflowEntity, WorkflowRepository } from '@n8n/db';
-import { ErrorReporter } from 'n8n-core';
+import { mock } from 'jest-mock-extended';
+import type { Span } from 'n8n-core';
+import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 
-import { WorkflowIndexService } from '../workflow-index.service';
 import { EventService } from '@/events/event.service';
+
+import { WorkflowIndexService } from '../workflow-index.service';
 
 describe('WorkflowIndexService', () => {
 	let service: WorkflowIndexService;
@@ -16,9 +19,12 @@ describe('WorkflowIndexService', () => {
 	const mockLogger = mockInstance(Logger);
 	const mockErrorReporter = mockInstance(ErrorReporter);
 	const mockEventService = mockInstance(EventService);
+	const mockTracing = mockInstance(Tracing);
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+
+		mockTracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 
 		service = new WorkflowIndexService(
 			mockWorkflowDependencyRepository,
@@ -26,6 +32,7 @@ describe('WorkflowIndexService', () => {
 			mockEventService,
 			mockLogger,
 			mockErrorReporter,
+			mockTracing,
 		);
 	});
 
@@ -185,6 +192,31 @@ describe('WorkflowIndexService', () => {
 					id: 'node-3',
 					type: 'n8n-nodes-base.executeWorkflow',
 					parameters: { source: 'url' },
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.not.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'workflowCall',
+						}),
+					]),
+				}),
+			);
+		});
+
+		it('should not create workflowCall dependency when executeWorkflow node has no workflowId parameter', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.executeWorkflow',
+					parameters: {}, // No workflowId — node was just added to canvas
 				}),
 			]);
 
@@ -519,6 +551,7 @@ describe('WorkflowIndexService', () => {
 				mockEventService,
 				mockLogger,
 				mockErrorReporter,
+				mockTracing,
 				batchSize,
 			);
 

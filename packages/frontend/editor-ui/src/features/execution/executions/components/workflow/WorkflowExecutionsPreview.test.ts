@@ -6,6 +6,7 @@ import { randomInt, type ExecutionSummary, type AnnotationVote } from 'n8n-workf
 import { useSettingsStore } from '@/app/stores/settings.store';
 import WorkflowExecutionsPreview from './WorkflowExecutionsPreview.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IWorkflowDb } from '@/Interface';
 import type { ExecutionSummaryWithScopes } from '../../executions.types';
@@ -14,7 +15,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import type { FrontendSettings } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
-import { nextTick } from 'vue';
+import { nextTick, computed } from 'vue';
 
 const showMessage = vi.fn();
 const showError = vi.fn();
@@ -78,6 +79,9 @@ const renderComponent = createComponentRenderer(WorkflowExecutionsPreview, {
 			RouterLink,
 		},
 		plugins: [router],
+		provide: {
+			[WorkflowIdKey]: computed(() => 'test-workflow-id'),
+		},
 	},
 });
 

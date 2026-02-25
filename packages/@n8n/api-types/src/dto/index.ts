@@ -2,12 +2,13 @@ export { GetNodeTypesByIdentifierRequestDto } from './node-types/get-node-types-
 
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
-export { AiBuilderChatRequestDto } from './ai/ai-build-request.dto';
+export { AiBuilderChatRequestDto, type SelectedNodeContext } from './ai/ai-build-request.dto';
 export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dto';
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
 export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.dto';
 export { AiUsageSettingsRequestDto } from './ai/ai-usage-settings-request.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
+export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
@@ -47,6 +48,7 @@ export { SamlToggleDto } from './saml/saml-toggle.dto';
 export { PasswordUpdateRequestDto } from './user/password-update-request.dto';
 export { RoleChangeRequestDto } from './user/role-change-request.dto';
 export { SettingsUpdateRequestDto } from './user/settings-update-request.dto';
+export { UserSelfSettingsUpdateRequestDto } from './user/user-self-settings-update-request.dto';
 export { UserUpdateRequestDto } from './user/user-update-request.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
@@ -60,7 +62,10 @@ export { type GitCommitInfo } from './source-control/push-work-folder-response.d
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
-export { CreateVariableRequestDto } from './variables/create-variable-request.dto';
+export {
+	CreateVariableRequestDto,
+	NEW_VARIABLE_KEY_REGEX,
+} from './variables/create-variable-request.dto';
 export { UpdateVariableRequestDto } from './variables/update-variable-request.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
@@ -71,6 +76,8 @@ export { UpdateWorkflowDto } from './workflows/update-workflow.dto';
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
+export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
+export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
@@ -129,6 +136,7 @@ export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
 export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.dto';
+export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 
 export {
 	OAuthClientResponseDto,
@@ -137,9 +145,17 @@ export {
 } from './oauth/oauth-client.dto';
 export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';
 
+export {
+	SecuritySettingsDto,
+	UpdateSecuritySettingsDto,
+} from './security-settings/security-settings.dto';
+
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
+export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
 
 export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-secrets-provider-connection.dto';
 export { SetSecretsProviderConnectionIsEnabledDto } from './secrets-provider/set-secrets-provider-connection-is-enabled.dto';
 export { TestSecretsProviderConnectionDto } from './secrets-provider/test-secrets-provider-connection.dto';
 export { UpdateSecretsProviderConnectionDto } from './secrets-provider/update-secrets-provider-connection.dto';
+
+export { GetQuickConnectApiKeyDto } from './quick-connect/create-quick-connect-credential.dto';

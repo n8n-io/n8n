@@ -39,7 +39,10 @@ export class CredentialModal extends BaseModal {
 	}
 
 	async fillField(key: string, value: string): Promise<void> {
-		const input = this.root.getByTestId(`parameter-input-${key}`).locator('input, textarea');
+		const parameterInput = this.root.getByTestId(`parameter-input-${key}`);
+		const input = parameterInput.locator('input, textarea');
+		// Wait for input to be visible before filling
+		await input.waitFor({ state: 'visible', timeout: 10000 });
 		await input.fill(value);
 		await expect(input).toHaveValue(value);
 	}
@@ -54,12 +57,22 @@ export class CredentialModal extends BaseModal {
 		return this.root.getByTestId('credential-save-button');
 	}
 
-	async save(): Promise<void> {
-		const saveBtn = this.getSaveButton();
-		await saveBtn.click();
-		await saveBtn.waitFor({ state: 'visible' });
+	/**
+	 * Wait for save to fully complete.
+	 * After saving (and optional credential testing), the button becomes
+	 * disabled (no unsaved changes) and is no longer loading
+	 */
+	async waitForSaveComplete(): Promise<void> {
+		const btn = this.getSaveButton().locator('button');
+		await expect(async () => {
+			await expect(btn).toBeDisabled();
+			await expect(btn).not.toHaveAttribute('aria-busy', 'true');
+		}).toPass({ timeout: 10000 });
+	}
 
-		await saveBtn.getByText('Saved', { exact: true }).waitFor({ state: 'visible', timeout: 3000 });
+	async save(): Promise<void> {
+		await this.getSaveButton().click();
+		await this.waitForSaveComplete();
 	}
 
 	async close(): Promise<void> {
@@ -78,14 +91,18 @@ export class CredentialModal extends BaseModal {
 	 */
 	async addCredential(
 		fields: Record<string, string>,
-		options?: { closeDialog?: boolean; name?: string },
+		options?: { closeDialog?: boolean; skipSave?: boolean; name?: string },
 	): Promise<void> {
 		await this.fillAllFields(fields);
 		if (options?.name) {
 			await this.getCredentialName().click();
 			await this.getNameInput().fill(options.name);
 		}
-		await this.save();
+
+		if (!options?.skipSave) {
+			await this.save();
+		}
+
 		const shouldClose = options?.closeDialog ?? true;
 		if (shouldClose) {
 			await this.close();
@@ -98,10 +115,6 @@ export class CredentialModal extends BaseModal {
 
 	get oauthConnectSuccessBanner() {
 		return this.root.getByTestId('oauth-connect-success-banner');
-	}
-
-	getTestSuccessTag(): Locator {
-		return this.root.getByTestId('credentials-config-container-test-success');
 	}
 
 	async editCredential(): Promise<void> {
@@ -123,7 +136,7 @@ export class CredentialModal extends BaseModal {
 	}
 
 	getAuthMethodSelector() {
-		return this.root.page().getByText('Select Authentication Method');
+		return this.root.getByTestId('credential-mode-selector');
 	}
 
 	getOAuthRedirectUrl() {
@@ -132,6 +145,23 @@ export class CredentialModal extends BaseModal {
 
 	getAuthTypeRadioButtons() {
 		return this.root.page().locator('label.el-radio');
+	}
+
+	getModeSelector() {
+		return this.root.getByTestId('credential-mode-selector');
+	}
+
+	getModeSwitchLink() {
+		return this.root.getByTestId('credential-mode-switch-link');
+	}
+
+	getModeDropdownTrigger() {
+		return this.root.getByTestId('credential-mode-dropdown-trigger');
+	}
+
+	async selectAuthTypeFromDropdown(optionName: string | RegExp): Promise<void> {
+		await this.getModeDropdownTrigger().click();
+		await this.root.page().getByRole('menuitem', { name: optionName }).click();
 	}
 
 	async changeTab(tabName: 'Sharing'): Promise<void> {
@@ -161,11 +191,23 @@ export class CredentialModal extends BaseModal {
 
 	/**
 	 * Add a user to credential sharing
-	 * @param email - User email to share with
+	 * @param emailOrName - User email or name to share with
 	 */
-	async addUserToSharing(email: string): Promise<void> {
+	async addUserToSharing(emailOrName: string): Promise<void> {
 		await this.getUsersSelect().click();
-		await this.getVisibleDropdown().getByText(email.toLowerCase(), { exact: false }).click();
+		const dropdown = this.getVisibleDropdown();
+		// Wait for dropdown content to load
+		await dropdown.locator('.el-select-dropdown__item').first().waitFor({ state: 'visible' });
+
+		// Try to find by email or name (personal projects now show "Personal space" instead of email)
+		const byEmail = dropdown.getByText(emailOrName.toLowerCase(), { exact: false });
+		if ((await byEmail.count()) > 0) {
+			await byEmail.click();
+		} else {
+			// For personal projects, try matching by name part of email
+			const namePart = emailOrName.split('@')[0].replace(/[.-]/g, ' ');
+			await dropdown.getByText(new RegExp(namePart, 'i')).first().click();
+		}
 	}
 
 	/**
@@ -185,9 +227,6 @@ export class CredentialModal extends BaseModal {
 					response.request().method() === 'PUT',
 			);
 
-		await saveBtn.getByText('Saved', { exact: true }).waitFor({
-			state: 'visible',
-			timeout: 3000,
-		});
+		await this.waitForSaveComplete();
 	}
 }

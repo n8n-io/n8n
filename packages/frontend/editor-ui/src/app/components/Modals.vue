@@ -6,6 +6,7 @@ import {
 	DUPLICATE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+	DELETE_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
@@ -23,6 +24,7 @@ import {
 	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
@@ -34,6 +36,7 @@ import {
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+	AI_BUILDER_DIFF_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -85,6 +88,7 @@ import DeleteUserModal from '@/features/settings/users/components/DeleteUserModa
 import DuplicateWorkflowDialog from '@/app/components/DuplicateWorkflowDialog.vue';
 import ExternalSecretsProviderModal from '@/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderModal.ee.vue';
 import SecretsProviderConnectionModal from '@/features/integrations/secretsProviders.ee/components/SecretsProviderConnectionModal.ee.vue';
+import DeleteSecretsProviderModal from '@/features/integrations/secretsProviders.ee/components/DeleteSecretsProviderModal.ee.vue';
 import FromAiParametersModal from '@/app/components/FromAiParametersModal.vue';
 import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModal.vue';
 import BinaryDataViewModal from '@/features/ndv/runData/components/BinaryDataViewModal.vue';
@@ -107,6 +111,9 @@ import WorkflowActivationConflictingWebhookModal from '@/app/components/Workflow
 import WorkflowExtractionNameModal from '@/app/components/WorkflowExtractionNameModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionRestoreModal.vue';
 import WorkflowHistoryVersionUnpublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionUnpublishModal.vue';
+import WorkflowVersionFormModal, {
+	type WorkflowVersionFormModalData,
+} from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
 import WorkflowSettings from '@/app/components/WorkflowSettings.vue';
 import WorkflowShareModal from '@/app/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflows/workflowDiff/WorkflowDiffModal.vue';
@@ -119,9 +126,9 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
 import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
-import WorkflowHistoryPublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryPublishModal.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
 import CredentialResolverEditModal from '@/app/components/CredentialResolverEditModal.vue';
+import AIBuilderDiffModal from '@/features/ai/assistant/components/Agent/AIBuilderDiffModal.vue';
 </script>
 
 <template>
@@ -293,6 +300,12 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="AI_BUILDER_DIFF_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<AIBuilderDiffModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="EXTERNAL_SECRETS_PROVIDER_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<ExternalSecretsProviderModal :modal-name="modalName" :data="data" />
@@ -302,6 +315,12 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 		<ModalRoot :name="SECRETS_PROVIDER_CONNECTION_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<SecretsProviderConnectionModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="DELETE_SECRETS_PROVIDER_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<DeleteSecretsProviderModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 
@@ -331,6 +350,16 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 					data-test-id="workflow-history-version-unpublish-modal"
 					:modal-name="modalName"
 					:data="data"
+				/>
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<WorkflowVersionFormModal
+					data-test-id="workflow-history-name-version-modal"
+					:modal-name="modalName"
+					:data="data as WorkflowVersionFormModalData"
 				/>
 			</template>
 		</ModalRoot>
@@ -445,7 +474,10 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 
 		<ModalRoot :name="WORKFLOW_HISTORY_PUBLISH_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<WorkflowHistoryPublishModal :modal-name="modalName" :data="data" />
+				<WorkflowVersionFormModal
+					:modal-name="modalName"
+					:data="data as WorkflowVersionFormModalData"
+				/>
 			</template>
 		</ModalRoot>
 
