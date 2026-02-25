@@ -1,7 +1,7 @@
 {
   "name": "@n8n/i18n",
   "type": "module",
-  "version": "2.9.2",
+  "version": "2.9.3-exp.0",
   "files": [
     "dist"
   ],
