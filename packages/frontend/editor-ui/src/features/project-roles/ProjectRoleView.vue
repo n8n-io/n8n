@@ -345,7 +345,7 @@ const displayNameValidationRules = [
 					{{ i18n.baseText('projectRoles.save') }}
 				</N8nButton>
 			</div>
-			<template v-else-if="!initialState">
+			<template v-else-if="!roleSlug">
 				<N8nButton @click="handleSubmit">{{ i18n.baseText('projectRoles.create') }}</N8nButton>
 			</template>
 		</div>
