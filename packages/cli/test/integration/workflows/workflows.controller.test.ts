@@ -829,6 +829,23 @@ describe('POST /workflows', () => {
 			expect(createdWorkflow?.settings).toMatchObject({ saveExecutionProgress: true });
 			expect(createdWorkflow?.meta).toMatchObject({ testMeta: 'value' });
 		});
+
+		test('should persist redactionPolicy setting to the database on create', async () => {
+			const payload = {
+				name: 'Redaction Policy Workflow',
+				nodes: [],
+				connections: {},
+				settings: { redactionPolicy: 'non-manual' },
+			};
+
+			const response = await authMemberAgent.post('/workflows').send(payload).expect(200);
+
+			const dbWorkflow = await workflowRepository.findOneBy({
+				id: response.body.data.id,
+			});
+
+			expect(dbWorkflow?.settings).toMatchObject({ redactionPolicy: 'non-manual' });
+		});
 	});
 });
 
@@ -3510,6 +3527,29 @@ describe('PATCH /workflows/:workflowId', () => {
 			saveDataErrorExecution: 'all',
 		});
 		expect(updatedWorkflow?.name).toBe('Updated Name');
+	});
+
+	test('should persist updated redactionPolicy setting to the database', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				settings: {
+					redactionPolicy: 'none',
+				},
+			},
+			owner,
+		);
+
+		const payload = {
+			settings: { redactionPolicy: 'all' },
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const dbWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+
+		expect(dbWorkflow?.settings).toMatchObject({ redactionPolicy: 'all' });
 	});
 });
 

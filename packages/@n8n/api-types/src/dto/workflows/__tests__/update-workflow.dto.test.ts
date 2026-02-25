@@ -32,9 +32,21 @@ describe('UpdateWorkflowDto', () => {
 				},
 			},
 			{
-				name: 'update redactionPolicy setting',
+				name: 'update redactionPolicy to none',
+				request: {
+					settings: { redactionPolicy: 'none' },
+				},
+			},
+			{
+				name: 'update redactionPolicy to all',
 				request: {
 					settings: { redactionPolicy: 'all' },
+				},
+			},
+			{
+				name: 'update redactionPolicy to non-manual',
+				request: {
+					settings: { redactionPolicy: 'non-manual' },
 				},
 			},
 			{

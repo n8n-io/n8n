@@ -32,7 +32,25 @@ describe('CreateWorkflowDto', () => {
 				},
 			},
 			{
-				name: 'with redactionPolicy setting',
+				name: 'with redactionPolicy none',
+				request: {
+					name: 'Redacted Workflow',
+					nodes: [],
+					connections: {},
+					settings: { redactionPolicy: 'none' },
+				},
+			},
+			{
+				name: 'with redactionPolicy all',
+				request: {
+					name: 'Redacted Workflow',
+					nodes: [],
+					connections: {},
+					settings: { redactionPolicy: 'all' },
+				},
+			},
+			{
+				name: 'with redactionPolicy non-manual',
 				request: {
 					name: 'Redacted Workflow',
 					nodes: [],
