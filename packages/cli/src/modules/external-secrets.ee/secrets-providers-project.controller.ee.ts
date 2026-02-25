@@ -1,9 +1,9 @@
 import {
 	CreateSecretsProviderConnectionDto,
 	UpdateSecretsProviderConnectionDto,
+	type ReloadSecretProviderConnectionResponse,
 	type SecretProviderConnection,
 	type SecretProviderConnectionListItem,
-	type ReloadSecretProviderConnectionResponse,
 	type TestSecretProviderConnectionResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -93,7 +93,7 @@ export class SecretProvidersProjectController {
 		@Param('providerKey') providerKey: string,
 	): Promise<SecretProviderConnection> {
 		this.logger.debug('Getting connection for project', { projectId, providerKey });
-		const connection = await this.connectionsService.getConnectionForProject(
+		const connection = await this.connectionsService.getConnectionAccessibleFromProject(
 			providerKey,
 			projectId,
 		);
@@ -142,7 +142,7 @@ export class SecretProvidersProjectController {
 		@Param('providerKey') providerKey: string,
 	): Promise<TestSecretProviderConnectionResponse> {
 		this.logger.debug('Testing connection for project', { projectId, providerKey });
-		await this.connectionsService.getConnectionForProject(providerKey, projectId);
+		await this.connectionsService.getConnectionAccessibleFromProject(providerKey, projectId);
 		return await this.connectionsService.testConnection(providerKey, req.user.id);
 	}
 
