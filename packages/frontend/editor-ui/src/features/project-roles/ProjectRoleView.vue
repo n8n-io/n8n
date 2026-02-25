@@ -16,6 +16,7 @@ import {
 import type { TabOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useAsyncState } from '@vueuse/core';
 import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
@@ -32,6 +33,7 @@ const { showError, showMessage } = useToast();
 const i18n = useI18n();
 const message = useMessage();
 const telemetry = useTelemetry();
+const settingsStore = useSettingsStore();
 
 const props = defineProps<{ roleSlug?: string }>();
 
@@ -125,7 +127,14 @@ function resetForm(payload: Role | undefined) {
 		: defaultForm();
 }
 
-const scopeTypes = SCOPE_TYPES;
+const scopeTypes = computed(() => {
+	if (!settingsStore.moduleSettings['external-secrets']?.forProjects) {
+		return SCOPE_TYPES.filter(
+			(type) => type !== 'externalSecretsProvider' && type !== 'externalSecret',
+		);
+	}
+	return SCOPE_TYPES;
+});
 const scopes = SCOPES;
 
 function toggleScope(scope: string) {
@@ -328,7 +337,7 @@ const displayNameValidationRules = [
 			<N8nHeading tag="h1" size="2xlarge">
 				{{ roleSlug ? `Role "${form.displayName}"` : i18n.baseText('projectRoles.newRole') }}
 			</N8nHeading>
-			<div v-if="initialState && !isReadOnly && !isLoading" :class="$style.buttonsContainer">
+			<div v-if="initialState && !isReadOnly && !isLoading" :class="$style.headerActions">
 				<N8nButton variant="subtle" :disabled="!hasUnsavedChanges" @click="resetForm(initialState)">
 					{{ i18n.baseText('projectRoles.discardChanges') }}
 				</N8nButton>
@@ -506,12 +515,13 @@ const displayNameValidationRules = [
 .headerContainer {
 	display: flex;
 	justify-content: space-between;
-	align-items: center;
+	align-items: flex-start;
+	gap: var(--spacing--sm);
 }
 
-.buttonsContainer {
+.headerActions {
 	display: flex;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	flex-shrink: 0;
 }
 

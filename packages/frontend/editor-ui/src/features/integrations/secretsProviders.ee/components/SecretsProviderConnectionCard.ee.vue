@@ -166,17 +166,10 @@ function onAction(action: string) {
 				|
 				<span data-test-id="secrets-provider-secrets-count">
 					{{
-						provider.secretsCount === 1
-							? i18n.baseText('settings.externalSecrets.card.secretCount', {
-									interpolate: {
-										count: `${provider.secretsCount}`,
-									},
-								})
-							: i18n.baseText('settings.externalSecrets.card.secretsCount', {
-									interpolate: {
-										count: `${provider.secretsCount}`,
-									},
-								})
+						i18n.baseText('settings.externalSecrets.card.secretsCount', {
+							interpolate: { count: provider.secretsCount },
+							adjustToNumber: provider.secretsCount,
+						})
 					}}
 				</span>
 				|
