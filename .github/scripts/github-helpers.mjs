@@ -90,7 +90,7 @@ export function readPrLabels() {
  * @throws { Error } if no tag was found
  * */
 export function ensureTagExists(tag) {
-	sh('git', ['fetch', '--force', 'origin', `refs/tags/${tag}:refs/tags/${tag}`]);
+	sh('git', ['fetch', '--force', '--no-tags', 'origin', `refs/tags/${tag}:refs/tags/${tag}`]);
 }
 
 /**

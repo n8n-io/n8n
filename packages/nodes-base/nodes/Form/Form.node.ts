@@ -8,19 +8,14 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 import {
-	Node,
-	updateDisplayOptions,
-	NodeOperationError,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
-	tryToParseJsonToFormFields,
+	Node,
 	NodeConnectionTypes,
+	NodeOperationError,
+	updateDisplayOptions,
 } from 'n8n-workflow';
 
-import { cssVariables } from './cssVariables';
-import { renderFormCompletion } from './utils/formCompletionUtils';
-import { getFormTriggerNode, renderFormNode } from './utils/formNodeUtils';
-import { prepareFormReturnItem, resolveRawData } from './utils/utils';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { limitWaitTimeProperties } from '../../utils/sendAndWait/descriptions';
 import {
@@ -29,6 +24,10 @@ import {
 	formFieldsDynamic,
 	formTitle,
 } from '../Form/common.descriptions';
+import { cssVariables } from './cssVariables';
+import { renderFormCompletion } from './utils/formCompletionUtils';
+import { getFormTriggerNode, renderFormNode } from './utils/formNodeUtils';
+import { parseFormFields, prepareFormReturnItem } from './utils/utils';
 
 const waitTimeProperties: INodeProperties[] = [
 	{
@@ -366,20 +365,17 @@ export class Form extends Node {
 
 		let fields: FormFieldsParameter = [];
 		if (defineForm === 'json') {
-			try {
-				const jsonOutput = context.getNodeParameter('jsonOutput', '', {
-					rawExpressions: true,
-				}) as string;
-
-				fields = tryToParseJsonToFormFields(resolveRawData(context, jsonOutput));
-			} catch (error) {
-				throw new NodeOperationError(context.getNode(), error.message, {
-					description: error.message,
-					type: mode === 'test' ? 'manual-form-test' : undefined,
-				});
-			}
+			fields = parseFormFields(context, {
+				defineForm: 'json',
+				fieldsParameterName: 'jsonOutput',
+				mode,
+			});
 		} else {
-			fields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
+			fields = parseFormFields(context, {
+				defineForm: 'fields',
+				fieldsParameterName: 'formFields.values',
+				mode,
+			});
 		}
 
 		const method = context.getRequestObject().method;
