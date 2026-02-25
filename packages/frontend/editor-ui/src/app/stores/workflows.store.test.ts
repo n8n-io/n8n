@@ -1207,14 +1207,17 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...runWithExistingRunData,
-				data: createRunExecutionData({
-					resultData: {
-						lastNodeExecuted: 'When clicking ‘Execute workflow’',
-						runData: {
-							[successEvent.nodeName]: [successEvent.data],
+				data: {
+					...createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'When clicking ‘Execute workflow’',
+							runData: {
+								[successEvent.nodeName]: [successEvent.data],
+							},
 						},
-					},
-				}),
+					}),
+					resumeToken: expect.any(String),
+				},
 			});
 		});
 
@@ -1262,14 +1265,17 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
-				data: createRunExecutionData({
-					resultData: {
-						lastNodeExecuted: 'When clicking ‘Execute workflow’',
-						runData: {
-							[successEvent.nodeName]: [successEventWithExecutionIndex.data],
+				data: {
+					...createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'When clicking ‘Execute workflow’',
+							runData: {
+								[successEvent.nodeName]: [successEventWithExecutionIndex.data],
+							},
 						},
-					},
-				}),
+					}),
+					resumeToken: expect.any(String),
+				},
 			});
 		});
 	});

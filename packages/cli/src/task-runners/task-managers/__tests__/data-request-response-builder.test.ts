@@ -128,8 +128,8 @@ describe('DataRequestResponseBuilder', () => {
 	it('clears nodeExecutionStack, waitingExecution and waitingExecutionSource from runExecutionData', () => {
 		const result = builder.buildFromTaskData(taskData);
 
-		expect(result.runExecutionData).toStrictEqual(
-			createRunExecutionData({
+		expect(result.runExecutionData).toStrictEqual({
+			...createRunExecutionData({
 				startData: runExecutionData.startData,
 				resultData: runExecutionData.resultData,
 				executionData: {
@@ -140,6 +140,7 @@ describe('DataRequestResponseBuilder', () => {
 					waitingExecutionSource: null,
 				},
 			}),
-		);
+			resumeToken: expect.any(String),
+		});
 	});
 });

@@ -3,7 +3,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test as base, expect } from '../../../fixtures/base';
 import type { CredentialResponse } from '../../../services/credential-api-helper';
-import type { ProxyServer } from '../../../services/proxy-server';
+import type { ProxyServer } from 'n8n-containers/services/proxy';
 
 interface SlackBlock {
 	type: string;
@@ -17,9 +17,9 @@ type SendAndWaitFixtures = {
 
 const test = base.extend<SendAndWaitFixtures>({
 	slackProxySetup: [
-		async ({ proxyServer }, use) => {
-			await proxyServer.clearAllExpectations();
-			await proxyServer.createExpectation({
+		async ({ services }, use) => {
+			await services.proxy.clearAllExpectations();
+			await services.proxy.createExpectation({
 				httpRequest: { method: 'POST', path: '/api/chat.postMessage' },
 				httpResponse: {
 					statusCode: 200,
@@ -131,7 +131,7 @@ test.use({ capability: 'proxy' });
 test.describe('Send and Wait @capability:proxy', () => {
 	test('should complete approval flow when clicking approve URL', async ({
 		n8n,
-		proxyServer,
+		services,
 		slackCredential,
 	}) => {
 		const { workflowId } = await n8n.api.workflows.importWorkflowFromFile(
@@ -141,10 +141,10 @@ test.describe('Send and Wait @capability:proxy', () => {
 		await n8n.navigate.toWorkflow(workflowId);
 
 		await n8n.canvas.clickExecuteWorkflowButton('Manual Trigger');
-		await waitForSlackRequest(proxyServer);
+		await waitForSlackRequest(services.proxy);
 		await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
 
-		const { approveUrl } = await getApprovalUrlsFromSlack(proxyServer);
+		const { approveUrl } = await getApprovalUrlsFromSlack(services.proxy);
 		expect(approveUrl).toContain('signature=');
 
 		await clickApprovalLink(n8n.page, approveUrl!);
@@ -154,7 +154,7 @@ test.describe('Send and Wait @capability:proxy', () => {
 
 	test('should complete rejection flow when clicking reject URL', async ({
 		n8n,
-		proxyServer,
+		services,
 		slackCredential,
 	}) => {
 		const { workflowId } = await n8n.api.workflows.importWorkflowFromFile(
@@ -164,10 +164,10 @@ test.describe('Send and Wait @capability:proxy', () => {
 		await n8n.navigate.toWorkflow(workflowId);
 
 		await n8n.canvas.clickExecuteWorkflowButton('Manual Trigger');
-		await waitForSlackRequest(proxyServer);
+		await waitForSlackRequest(services.proxy);
 		await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
 
-		const { rejectUrl } = await getApprovalUrlsFromSlack(proxyServer);
+		const { rejectUrl } = await getApprovalUrlsFromSlack(services.proxy);
 		expect(rejectUrl).toContain('signature=');
 
 		await clickApprovalLink(n8n.page, rejectUrl!);
@@ -177,7 +177,7 @@ test.describe('Send and Wait @capability:proxy', () => {
 
 	test('should reject requests with invalid signatures', async ({
 		n8n,
-		proxyServer,
+		services,
 		slackCredential,
 	}) => {
 		const { workflowId } = await n8n.api.workflows.importWorkflowFromFile(
@@ -187,7 +187,7 @@ test.describe('Send and Wait @capability:proxy', () => {
 		await n8n.navigate.toWorkflow(workflowId);
 
 		await n8n.canvas.clickExecuteWorkflowButton('Manual Trigger');
-		await waitForSlackRequest(proxyServer);
+		await waitForSlackRequest(services.proxy);
 
 		const execution = await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
 
@@ -202,7 +202,7 @@ test.describe('Send and Wait @capability:proxy', () => {
 		expect(tamperedResponse.status()).toBe(401);
 	});
 
-	test('should complete form submission flow', async ({ n8n, proxyServer, slackCredential }) => {
+	test('should complete form submission flow', async ({ n8n, services, slackCredential }) => {
 		const { workflowId } = await n8n.api.workflows.importWorkflowFromFile(
 			'send-and-wait-form.json',
 			{ transform: withSlackCredential(slackCredential) },
@@ -210,10 +210,10 @@ test.describe('Send and Wait @capability:proxy', () => {
 		await n8n.navigate.toWorkflow(workflowId);
 
 		await n8n.canvas.clickExecuteWorkflowButton();
-		await waitForSlackRequest(proxyServer);
+		await waitForSlackRequest(services.proxy);
 		await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
 
-		const formUrl = await getFormUrlFromSlack(proxyServer);
+		const formUrl = await getFormUrlFromSlack(services.proxy);
 		expect(formUrl).toContain('signature=');
 
 		const formPage = await n8n.page.context().newPage();
@@ -242,7 +242,7 @@ test.describe('Send and Wait @capability:proxy', () => {
 
 	test('should complete approval flow in production mode (activated workflow)', async ({
 		n8n,
-		proxyServer,
+		services,
 		slackCredential,
 	}) => {
 		const { workflowId, webhookPath } = await n8n.api.workflows.importWorkflowFromFile(
@@ -256,10 +256,10 @@ test.describe('Send and Wait @capability:proxy', () => {
 		const triggerResponse = await n8n.api.webhooks.trigger(`/webhook/${webhookPath}`);
 		expect(triggerResponse.ok()).toBe(true);
 
-		await waitForSlackRequest(proxyServer);
+		await waitForSlackRequest(services.proxy);
 		await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
 
-		const { approveUrl } = await getApprovalUrlsFromSlack(proxyServer);
+		const { approveUrl } = await getApprovalUrlsFromSlack(services.proxy);
 		expect(approveUrl).toContain('signature=');
 
 		await clickApprovalLink(n8n.page, approveUrl!);
