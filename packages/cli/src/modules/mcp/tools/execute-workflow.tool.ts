@@ -3,6 +3,7 @@ import type { User, WorkflowRepository } from '@n8n/db';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	type INode,
 	type IPinData,
@@ -312,11 +313,11 @@ const buildRunData = async (
 	mcpService: McpService,
 ): Promise<IWorkflowExecutionDataProcess> => {
 	const { nodes, connections } = getVersionDataForExecution(workflow, workflowId, mode);
-	const triggerNode = findMcpSupportedTrigger(nodes);
+	const triggerNode = findMcpSupportedTrigger(nodes, mode);
 
 	if (!triggerNode) {
 		throw new WorkflowAccessError(
-			`Only workflows with the following trigger nodes can be executed: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
+			`Only workflows with the following trigger nodes can be executed: ${getSupportedTriggerNamesForMode(mode).join(', ')}.`,
 			'unsupported_trigger',
 		);
 	}
@@ -427,6 +428,8 @@ const getExecutionModeForTrigger = (node: INode): WorkflowExecuteMode => {
 			return 'webhook';
 		case CHAT_TRIGGER_NODE_TYPE:
 			return 'chat';
+		case MANUAL_TRIGGER_NODE_TYPE:
+			return 'manual';
 		case FORM_TRIGGER_NODE_TYPE:
 			return 'trigger';
 		default:
@@ -442,6 +445,10 @@ const getPinDataForTrigger = async (
 	inputs: z.infer<typeof inputSchema>['inputs'],
 ): Promise<IPinData> => {
 	switch (node.type) {
+		case MANUAL_TRIGGER_NODE_TYPE:
+			return {
+				[node.name]: [{ json: {} }],
+			};
 		case WEBHOOK_NODE_TYPE: {
 			// For webhook triggers, provide default empty values if no inputs or wrong type
 			const webhookData = inputs?.type === 'webhook' ? inputs.webhookData : undefined;
@@ -511,6 +518,14 @@ const getPinDataForTrigger = async (
 		default:
 			return {};
 	}
+};
+
+const getSupportedTriggerNamesForMode = (mode: z.infer<typeof inputSchema>['mode']): string[] => {
+	if (mode === 'manual') {
+		return ['Manual Trigger', ...Object.values(SUPPORTED_MCP_TRIGGERS)];
+	}
+
+	return Object.values(SUPPORTED_MCP_TRIGGERS);
 };
 
 /**

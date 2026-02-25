@@ -54,7 +54,7 @@ export const getTriggerDetails = async (
 	endpoints: WebhookEndpoints,
 ): Promise<string> => {
 	if (supportedTriggers.length === 0) {
-		return 'This workflow does not have a trigger node that can be executed via MCP.';
+		return 'No MCP input trigger node detected. This workflow can still be executed in manual mode.';
 	}
 
 	// Organize triggers by their node type

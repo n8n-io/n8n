@@ -322,6 +322,51 @@ describe('execute-workflow MCP tool', () => {
 				expect(result.executionId).toBe('execution-id');
 			});
 
+			test('allows manual mode for workflows with only manual trigger', async () => {
+				const workflow = createWorkflow({
+					activeVersionId: null,
+					settings: { availableInMCP: true },
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Manual',
+							type: MANUAL_TRIGGER_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
+				});
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as jest.Mock).mockResolvedValue('execution-id');
+				(activeExecutions.getPostExecutePromise as jest.Mock).mockResolvedValue({
+					status: 'success',
+					data: { resultData: { runData: {} } },
+				});
+
+				const result = await executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRepository,
+					activeExecutions,
+					workflowRunner,
+					mcpService,
+					'manual-trigger-workflow',
+					undefined,
+					'manual',
+				);
+
+				expect(result.success).toBe(true);
+				expect(result.executionId).toBe('execution-id');
+				expect(workflowRunner.run).toHaveBeenCalledWith(
+					expect.objectContaining({
+						executionMode: 'manual',
+						startNodes: [{ name: 'Manual', sourceData: null }],
+					}),
+				);
+			});
+
 			test('throws error when workflow has unsupported trigger nodes', async () => {
 				const workflow = createWorkflow({
 					activeVersionId: uuid(),

@@ -22,7 +22,6 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 
 import { N8nSuggestedActions } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -43,7 +42,6 @@ const message = useMessage();
 const telemetry = useTelemetry();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
-const { isEligibleForMcpAccess } = useMcp();
 const usersStore = useUsersStore();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
@@ -96,16 +94,13 @@ const isMcpAccessEnabled = computed(() => {
 	return settingsStore.moduleSettings.mcp?.mcpAccessEnabled ?? false;
 });
 
-const isWorkflowEligibleForMcpAccess = computed(() => {
-	return isEligibleForMcpAccess(props.workflow);
-});
-
 const canToggleInstanceMCPAccess = computed(() => isOwner.value || isAdmin.value);
 
 const availableActions = computed(() => {
-	if (!workflowDocumentStore?.value?.activeVersionId || workflowsCache.isCacheLoading.value) {
+	if (workflowsCache.isCacheLoading.value) {
 		return [];
 	}
+	const hasPublishedVersion = !!workflowDocumentStore?.value?.activeVersionId;
 
 	const actions: Array<{
 		id: ActionType;
@@ -117,7 +112,7 @@ const availableActions = computed(() => {
 	const suggestedActionSettings = cachedSettings.value?.suggestedActions ?? {};
 
 	// Error workflow action
-	if (!suggestedActionSettings.errorWorkflow?.ignored) {
+	if (hasPublishedVersion && !suggestedActionSettings.errorWorkflow?.ignored) {
 		actions.push({
 			id: 'errorWorkflow',
 			title: i18n.baseText('workflowProductionChecklist.errorWorkflow.title'),
@@ -129,6 +124,7 @@ const availableActions = computed(() => {
 
 	// Evaluations action
 	if (
+		hasPublishedVersion &&
 		hasAINode.value &&
 		evaluationStore.isEvaluationEnabled &&
 		!suggestedActionSettings.evaluations?.ignored
@@ -143,7 +139,7 @@ const availableActions = computed(() => {
 	}
 
 	// Time saved action
-	if (!suggestedActionSettings.timeSaved?.ignored) {
+	if (hasPublishedVersion && !suggestedActionSettings.timeSaved?.ignored) {
 		actions.push({
 			id: 'timeSaved',
 			title: i18n.baseText('workflowProductionChecklist.timeSaved.title'),
@@ -168,7 +164,7 @@ const availableActions = computed(() => {
 		moreInfoLink: string;
 		completed: boolean;
 	} | null {
-		if (!isMcpModuleEnabled.value || !isWorkflowEligibleForMcpAccess.value) return null;
+		if (!isMcpModuleEnabled.value) return null;
 
 		const baseAction = {
 			title: i18n.baseText('mcp.productionChecklist.title'),
