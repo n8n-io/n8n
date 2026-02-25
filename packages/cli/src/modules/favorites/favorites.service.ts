@@ -117,11 +117,11 @@ export class FavoritesService {
 		await this.userFavoriteRepository.remove(favorite);
 	}
 
-	async deleteByResource(resourceId: string): Promise<void> {
-		await this.userFavoriteRepository.deleteByResourceId(resourceId);
+	async deleteByResource(resourceId: string, resourceType: string): Promise<void> {
+		await this.userFavoriteRepository.deleteByResourceId(resourceId, resourceType);
 	}
 
-	async deleteByResourceIds(resourceIds: string[]): Promise<void> {
-		await this.userFavoriteRepository.deleteByResourceIds(resourceIds);
+	async deleteByResourceIds(resourceIds: string[], resourceType: string): Promise<void> {
+		await this.userFavoriteRepository.deleteByResourceIds(resourceIds, resourceType);
 	}
 }

@@ -86,17 +86,17 @@ describe('FavoritesService', () => {
 
 	describe('deleteByResource', () => {
 		it('should delete all favorites for a resource', async () => {
-			await service.deleteByResource('res1');
+			await service.deleteByResource('res1', 'workflow');
 
-			expect(repo.deleteByResourceId).toHaveBeenCalledWith('res1');
+			expect(repo.deleteByResourceId).toHaveBeenCalledWith('res1', 'workflow');
 		});
 	});
 
 	describe('deleteByResourceIds', () => {
 		it('should delete all favorites for multiple resources', async () => {
-			await service.deleteByResourceIds(['res1', 'res2']);
+			await service.deleteByResourceIds(['res1', 'res2'], 'dataTable');
 
-			expect(repo.deleteByResourceIds).toHaveBeenCalledWith(['res1', 'res2']);
+			expect(repo.deleteByResourceIds).toHaveBeenCalledWith(['res1', 'res2'], 'dataTable');
 		});
 	});
 });

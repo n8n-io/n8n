@@ -17,10 +17,12 @@ export class FavoritesEventRelay extends EventRelay {
 	init() {
 		this.setupListeners({
 			'workflow-deleted': async ({ workflowId }) =>
-				await this.favoritesService.deleteByResource(workflowId),
+				await this.favoritesService.deleteByResource(workflowId, 'workflow'),
+			'data-table-deleted': async ({ dataTableId }) =>
+				await this.favoritesService.deleteByResource(dataTableId, 'dataTable'),
 			'team-project-deleted': async ({ projectId, removalType }) => {
 				if (removalType === 'delete') {
-					await this.favoritesService.deleteByResource(projectId);
+					await this.favoritesService.deleteByResource(projectId, 'project');
 				}
 			},
 		});

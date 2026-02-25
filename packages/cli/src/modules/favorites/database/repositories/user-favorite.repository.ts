@@ -16,12 +16,12 @@ export class UserFavoriteRepository extends Repository<UserFavorite> {
 		});
 	}
 
-	async deleteByResourceId(resourceId: string): Promise<void> {
-		await this.delete({ resourceId });
+	async deleteByResourceId(resourceId: string, resourceType: string): Promise<void> {
+		await this.delete({ resourceId, resourceType });
 	}
 
-	async deleteByResourceIds(resourceIds: string[]): Promise<void> {
+	async deleteByResourceIds(resourceIds: string[], resourceType: string): Promise<void> {
 		if (resourceIds.length === 0) return;
-		await this.delete({ resourceId: In(resourceIds) });
+		await this.delete({ resourceId: In(resourceIds), resourceType });
 	}
 }

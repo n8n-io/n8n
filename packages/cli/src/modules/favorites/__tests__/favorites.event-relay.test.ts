@@ -25,7 +25,22 @@ describe('FavoritesEventRelay', () => {
 
 			await new Promise(setImmediate);
 
-			expect(favoritesService.deleteByResource).toHaveBeenCalledWith('wf1');
+			expect(favoritesService.deleteByResource).toHaveBeenCalledWith('wf1', 'workflow');
+		});
+	});
+
+	describe('data-table-deleted', () => {
+		it('should delete favorites for the deleted data table', async () => {
+			const event: RelayEventMap['data-table-deleted'] = {
+				dataTableId: 'dt1',
+				projectId: 'proj1',
+			};
+
+			eventService.emit('data-table-deleted', event);
+
+			await new Promise(setImmediate);
+
+			expect(favoritesService.deleteByResource).toHaveBeenCalledWith('dt1', 'dataTable');
 		});
 	});
 
@@ -42,7 +57,7 @@ describe('FavoritesEventRelay', () => {
 
 			await new Promise(setImmediate);
 
-			expect(favoritesService.deleteByResource).toHaveBeenCalledWith('proj1');
+			expect(favoritesService.deleteByResource).toHaveBeenCalledWith('proj1', 'project');
 		});
 
 		it('should not delete favorites when a project is transferred', async () => {
