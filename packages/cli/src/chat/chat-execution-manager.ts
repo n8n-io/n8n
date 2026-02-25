@@ -7,7 +7,13 @@ import type {
 	INodeExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { Workflow, BINARY_ENCODING, UnexpectedError } from 'n8n-workflow';
+import {
+	Workflow,
+	BINARY_ENCODING,
+	UnexpectedError,
+	CHAT_TOOL_NODE_TYPE,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 
 import { NotFoundError } from '../errors/response-errors/not-found.error';
 import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
@@ -135,9 +141,37 @@ export class ChatExecutionManager {
 			throw new UnexpectedError("Can't handle actions inside the chat trigger.");
 		}
 
-		runExecutionData.executionData!.nodeExecutionStack[0].data.main = result ?? [
-			[{ json: message }],
-		];
+		const executionStackEntry = runExecutionData.executionData!.nodeExecutionStack[0];
+		executionStackEntry.data.main = result ?? [[{ json: message }]];
+
+		const isChatToolNode = executionStackEntry.node.type === CHAT_TOOL_NODE_TYPE;
+
+		if (runExecutionData.waitTill || isChatToolNode) {
+			runExecutionData.waitTill = undefined;
+			executionStackEntry.node.disabled = true;
+
+			if (isChatToolNode) {
+				executionStackEntry.node.rewireOutputLogTo = NodeConnectionTypes.AiTool;
+			}
+
+			const lastNodeExecuted = runExecutionData.resultData.lastNodeExecuted as string;
+			const runDataArray = runExecutionData.resultData.runData[lastNodeExecuted];
+			if (runDataArray?.length > 0) {
+				const entryToPop = runDataArray[runDataArray.length - 1];
+				// Preserve inputOverride for tool nodes so the LLM's input stays visible in logs after resume.
+				const preservedInputOverride = isChatToolNode ? entryToPop?.inputOverride : undefined;
+				runDataArray.pop();
+				if (preservedInputOverride) {
+					runDataArray.push({
+						startTime: 0,
+						executionTime: 0,
+						executionIndex: 0,
+						source: entryToPop?.source ?? [],
+						inputOverride: preservedInputOverride,
+					});
+				}
+			}
+		}
 
 		let project: Project | undefined = undefined;
 		try {
