@@ -416,7 +416,6 @@ describe('Workflow Builder', () => {
 			expect(json.connections['Send Slack']?.error?.[0]?.[0]?.node).toBe('Error Alert');
 		});
 
-
 		it('should add nodes from nested .onError() chains', () => {
 			// Build: trigger → http1.onError(http2.onError(errorFinal.to(downstream)))
 			// All 5 nodes should appear in toJSON().nodes
