@@ -1273,7 +1273,7 @@ export function buildCompositeTree(graph: SemanticGraph): CompositeTree {
 	// Deduplicate deferred connections
 	const seenConnections = new Set<string>();
 	const uniqueConnections = ctx.deferredConnections.filter((conn) => {
-		const key = `${conn.sourceNodeName}:${conn.sourceOutputIndex}->${conn.targetNode.name}:${conn.targetInputIndex}`;
+		const key = `${conn.sourceNodeName}:${conn.sourceOutputIndex}->${conn.targetNode.name}:${conn.targetInputIndex}:${conn.isErrorOutput ?? false}`;
 		if (seenConnections.has(key)) return false;
 		seenConnections.add(key);
 		return true;

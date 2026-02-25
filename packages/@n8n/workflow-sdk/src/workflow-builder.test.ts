@@ -498,7 +498,7 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 
 			expect(json.nodes).toHaveLength(4);
-			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('IF');
+			expect(json.connections['HTTP']?.error?.[0]?.[0]?.node).toBe('IF');
 			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True Handler');
 			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False Handler');
 		});
@@ -532,7 +532,7 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 
 			expect(json.nodes).toHaveLength(4);
-			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Switch');
+			expect(json.connections['HTTP']?.error?.[0]?.[0]?.node).toBe('Switch');
 			expect(json.connections['Switch']?.main[0]?.[0]?.node).toBe('Case 0');
 			expect(json.connections['Switch']?.main[1]?.[0]?.node).toBe('Case 1');
 		});
@@ -567,7 +567,7 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 
 			expect(json.nodes).toHaveLength(4);
-			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('SIB');
+			expect(json.connections['HTTP']?.error?.[0]?.[0]?.node).toBe('SIB');
 			expect(json.connections['SIB']?.main[0]?.[0]?.node).toBe('Done');
 			expect(json.connections['SIB']?.main[1]?.[0]?.node).toBe('Each');
 		});
@@ -606,7 +606,7 @@ describe('Workflow Builder', () => {
 
 			expect(json.nodes).toHaveLength(5);
 			expect(json.connections['Start']?.main[0]?.[0]?.node).toBe('HTTP');
-			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('IF');
+			expect(json.connections['HTTP']?.error?.[0]?.[0]?.node).toBe('IF');
 			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True Handler');
 			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False Handler');
 		});
@@ -645,7 +645,7 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 
 			expect(json.nodes).toHaveLength(5);
-			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Log');
+			expect(json.connections['HTTP']?.error?.[0]?.[0]?.node).toBe('Log');
 			expect(json.connections['Log']?.main[0]?.[0]?.node).toBe('IF');
 			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True Handler');
 			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False Handler');
