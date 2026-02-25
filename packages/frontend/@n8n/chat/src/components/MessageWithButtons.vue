@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { useOptions } from '@n8n/chat/composables';
 import { ref } from 'vue';
+
+import { useOptions } from '@n8n/chat/composables';
 
 import Button from './Button.vue';
 import MarkdownRenderer from './MarkdownRenderer.vue';
