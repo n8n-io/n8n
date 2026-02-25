@@ -1,4 +1,19 @@
 import type { InstanceAiContext } from '../types';
+
+import { createListWorkflowsTool } from './workflows/list-workflows.tool';
+import { createGetWorkflowTool } from './workflows/get-workflow.tool';
+import { createCreateWorkflowTool } from './workflows/create-workflow.tool';
+import { createUpdateWorkflowTool } from './workflows/update-workflow.tool';
+import { createDeleteWorkflowTool } from './workflows/delete-workflow.tool';
+import { createActivateWorkflowTool } from './workflows/activate-workflow.tool';
+
+import { createListExecutionsTool } from './executions/list-executions.tool';
+import { createRunWorkflowTool } from './executions/run-workflow.tool';
+import { createGetExecutionTool } from './executions/get-execution.tool';
+import { createDebugExecutionTool } from './executions/debug-execution.tool';
+
+import { createListCredentialsTool } from './credentials/list-credentials.tool';
+import { createGetCredentialTool } from './credentials/get-credential.tool';
 import { createCreateCredentialTool } from './credentials/create-credential.tool';
 import { createDeleteCredentialTool } from './credentials/delete-credential.tool';
 import { createGetCredentialTool } from './credentials/get-credential.tool';
@@ -29,6 +44,7 @@ export function createAllTools(context: InstanceAiContext) {
 		'update-workflow': createUpdateWorkflowTool(context),
 		'delete-workflow': createDeleteWorkflowTool(context),
 		'activate-workflow': createActivateWorkflowTool(context),
+		'list-executions': createListExecutionsTool(context),
 		'run-workflow': createRunWorkflowTool(context),
 		'get-execution': createGetExecutionTool(context),
 		'debug-execution': createDebugExecutionTool(context),

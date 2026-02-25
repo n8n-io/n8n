@@ -15,6 +15,7 @@ export type {
 	WorkflowDetail,
 	WorkflowNode,
 	ExecutionResult,
+	ExecutionSummary,
 	CredentialSummary,
 	CredentialDetail,
 	NodeSummary,

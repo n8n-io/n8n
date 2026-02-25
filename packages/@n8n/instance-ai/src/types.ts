@@ -95,7 +95,22 @@ export interface InstanceAiWorkflowService {
 	deactivate(workflowId: string): Promise<void>;
 }
 
+export interface ExecutionSummary {
+	id: string;
+	workflowId: string;
+	workflowName: string;
+	status: string;
+	startedAt: string;
+	finishedAt?: string;
+	mode: string;
+}
+
 export interface InstanceAiExecutionService {
+	list(options?: {
+		workflowId?: string;
+		status?: string;
+		limit?: number;
+	}): Promise<ExecutionSummary[]>;
 	run(workflowId: string, inputData?: Record<string, unknown>): Promise<{ executionId: string }>;
 	getStatus(executionId: string): Promise<ExecutionResult>;
 	getResult(executionId: string): Promise<ExecutionResult>;

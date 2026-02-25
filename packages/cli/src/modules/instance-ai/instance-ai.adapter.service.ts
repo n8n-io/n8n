@@ -8,6 +8,7 @@ import type {
 	WorkflowDetail,
 	WorkflowNode,
 	ExecutionResult,
+	ExecutionSummary as InstanceAiExecutionSummary,
 	CredentialSummary,
 	CredentialDetail,
 	NodeSummary,
@@ -28,6 +29,7 @@ import {
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -37,6 +39,7 @@ export class InstanceAiAdapterService {
 	constructor(
 		private readonly workflowService: WorkflowService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly credentialsService: CredentialsService,
@@ -133,9 +136,59 @@ export class InstanceAiAdapterService {
 	}
 
 	private createExecutionAdapter(user: User): InstanceAiExecutionService {
-		const { workflowFinderService, workflowRunner, activeExecutions, executionRepository } = this;
+		const {
+			workflowFinderService,
+			workflowSharingService,
+			workflowRunner,
+			activeExecutions,
+			executionRepository,
+		} = this;
 
 		return {
+			async list(options) {
+				const accessibleWorkflowIds = await workflowSharingService.getSharedWorkflowIds(user, {
+					scopes: ['workflow:read'],
+				});
+
+				if (accessibleWorkflowIds.length === 0) return [];
+
+				const query = {
+					kind: 'range' as const,
+					range: { limit: options?.limit ?? 20, lastId: undefined, firstId: undefined },
+					order: { startedAt: 'DESC' as const },
+					accessibleWorkflowIds,
+					...(options?.workflowId ? { workflowId: options.workflowId } : {}),
+					...(options?.status
+						? {
+								status: [options.status] as Array<
+									| 'running'
+									| 'success'
+									| 'error'
+									| 'waiting'
+									| 'unknown'
+									| 'canceled'
+									| 'crashed'
+									| 'new'
+								>,
+							}
+						: {}),
+				};
+
+				const executions = await executionRepository.findManyByRangeQuery(query);
+
+				return executions.map(
+					(e): InstanceAiExecutionSummary => ({
+						id: e.id,
+						workflowId: e.workflowId,
+						workflowName: e.workflowName ?? '',
+						status: e.status,
+						startedAt: String(e.startedAt ?? ''),
+						finishedAt: e.stoppedAt ? String(e.stoppedAt) : undefined,
+						mode: e.mode,
+					}),
+				);
+			},
+
 			async run(workflowId: string, inputData) {
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:execute',
