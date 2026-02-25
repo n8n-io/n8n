@@ -503,7 +503,7 @@ const saveSettings = async () => {
 
 	isLoading.value = true;
 	data.versionId = workflowsStore.workflowVersionId;
-	data.expectedChecksum = workflowDocumentStore?.value?.checksum ?? '';
+	data.expectedChecksum = workflowDocumentStore?.value?.checksum;
 
 	try {
 		await workflowsStore.updateWorkflow(String(route.params.name), data);
