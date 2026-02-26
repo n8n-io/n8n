@@ -1,9 +1,11 @@
 name: 'Test: E2E Helm Chart'
 
 on:
-  push:
-    branches:
-      - test/helm-chart-e2e
+  pull_request:
+    paths:
+      - '.github/workflows/test-e2e-helm.yml'
+      - 'packages/testing/containers/helm-stack.ts'
+      - 'packages/testing/containers/helm-start-stack.ts'
   workflow_dispatch:
     inputs:
       branch:
@@ -21,7 +23,7 @@ on:
         options:
           - standalone
           - queue
-        default: 'standalone'
+        default: 'queue'
 
 env:
   DOCKER_IMAGE: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
@@ -60,7 +62,7 @@ jobs:
           RUNNERS_IMAGE_BASE_NAME: ghcr.io/${{ github.repository_owner }}/runners
 
   helm-e2e:
-    name: "Helm E2E (${{ inputs.mode || 'standalone' }})"
+    name: "Helm E2E (${{ inputs.mode || 'queue' }})"
     needs: build
     runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 30
@@ -91,7 +93,7 @@ jobs:
       - name: Start K3s + Helm stack
         run: |
           npx tsx packages/testing/containers/helm-start-stack.ts \
-            --mode "${{ inputs.mode || 'standalone' }}" \
+            --mode "${{ inputs.mode || 'queue' }}" \
             --image "${{ env.DOCKER_IMAGE }}" \
             --chart-ref "${{ env.HELM_CHART_REF }}" \
             --url-file /tmp/n8n-helm-url.txt \
@@ -151,7 +153,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: helm-e2e-report-${{ inputs.mode || 'standalone' }}
+          name: helm-e2e-report-${{ inputs.mode || 'queue' }}
           path: |
             packages/testing/playwright/test-results/
             packages/testing/playwright/playwright-report/
