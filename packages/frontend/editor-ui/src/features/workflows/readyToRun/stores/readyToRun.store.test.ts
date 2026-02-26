@@ -496,6 +496,7 @@ describe('useReadyToRunStore', () => {
 		it('should return false when user already claimed AI credits', () => {
 			mockCurrentUser.value = {
 				settings: { userClaimedAiCredits: true },
+				createdAt: new Date().toISOString(),
 			};
 			setActivePinia(createPinia());
 			const testStore = useReadyToRunStore();
@@ -517,6 +518,7 @@ describe('useReadyToRunStore', () => {
 			];
 			mockCurrentUser.value = {
 				settings: { userClaimedAiCredits: true },
+				createdAt: new Date().toISOString(),
 			};
 			setActivePinia(createPinia());
 			const testStore = useReadyToRunStore();
