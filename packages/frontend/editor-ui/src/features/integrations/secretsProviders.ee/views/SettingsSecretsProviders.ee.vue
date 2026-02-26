@@ -1,11 +1,15 @@
 <script lang="ts" setup>
-import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useSecretsProvidersList } from '../composables/useSecretsProvidersList.ee';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useToast } from '@/app/composables/useToast';
+import {
+	DELETE_SECRETS_PROVIDER_MODAL_KEY,
+	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+} from '@/app/constants/modals';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { computed, onMounted } from 'vue';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import type { SecretProviderConnection } from '@n8n/api-types';
 import {
 	N8nActionBox,
 	N8nButton,
@@ -15,28 +19,23 @@ import {
 	N8nLoading,
 	N8nText,
 } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { computed, onMounted } from 'vue';
+import { I18nT } from 'vue-i18n';
+
 import SecretsProviderConnectionCard from '../components/SecretsProviderConnectionCard.ee.vue';
 import SecretsProvidersEmptyState from '../components/SecretsProvidersEmptyState.ee.vue';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useUIStore } from '@/app/stores/ui.store';
-import {
-	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
-	DELETE_SECRETS_PROVIDER_MODAL_KEY,
-} from '@/app/constants/modals';
-import { I18nT } from 'vue-i18n';
-import type { SecretProviderConnection } from '@n8n/api-types';
-import { reloadSecretProviderConnection } from '@n8n/rest-api-client';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSecretsProviderConnection } from '../composables/useSecretsProviderConnection.ee';
+import { useSecretsProvidersList } from '../composables/useSecretsProvidersList.ee';
 
 const i18n = useI18n();
 const secretsProviders = useSecretsProvidersList();
 const projectsStore = useProjectsStore();
-const rootStore = useRootStore();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const uiStore = useUIStore();
-
+const secretsProviderConnection = useSecretsProviderConnection(projectsStore.currentProjectId);
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
 
 const sortedProviders = computed(() => {
@@ -89,7 +88,7 @@ function handleShare(providerKey: string) {
 
 async function handleReload(providerKey: string) {
 	try {
-		const result = await reloadSecretProviderConnection(rootStore.restApiContext, providerKey);
+		const result = await secretsProviderConnection.reloadConnection(providerKey);
 		if (!result.success) {
 			toast.showError(new Error('Reload failed'), i18n.baseText('error'));
 			return;
@@ -118,6 +117,7 @@ function handleDelete(providerKey: string) {
 			providerKey: provider.name,
 			providerName: provider.name,
 			secretsCount: provider.secretsCount ?? 0,
+			projectId: provider.projects.length > 0 ? provider.projects[0].id : undefined,
 			onConfirm: async () => {
 				await secretsProviders.fetchActiveConnections();
 			},

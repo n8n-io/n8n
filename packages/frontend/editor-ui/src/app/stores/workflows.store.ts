@@ -160,8 +160,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const workflowVersionId = computed(() => workflow.value.versionId);
 
-	const workflowChecksum = ref<string>('');
-
 	const workflowSettings = computed(() => workflow.value.settings ?? { ...defaults.settings });
 
 	// A workflow is new if it hasn't been saved to the backend yet
@@ -638,7 +636,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function resetWorkflow() {
 		workflow.value = createEmptyWorkflow();
-		workflowChecksum.value = '';
 	}
 
 	function setUsedCredentials(data: IUsedCredential[]) {
@@ -653,12 +650,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value.activeVersion = deepCopy(version);
 	}
 
-	function setWorkflowVersionData(version: WorkflowVersionData, newChecksum?: string) {
+	function setWorkflowVersionData(version: WorkflowVersionData) {
 		versionData.value = deepCopy(version);
 		workflow.value.versionId = version.versionId;
-		if (newChecksum) {
-			workflowChecksum.value = newChecksum;
-		}
 	}
 
 	// replace invalid credentials in workflow
@@ -751,14 +745,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (id === workflow.value.id) {
 			setIsArchived(true);
-			setWorkflowVersionData(
-				{
-					versionId: updatedWorkflow.versionId,
-					name: versionData.value?.name ?? null,
-					description: versionData.value?.description ?? null,
-				},
-				updatedWorkflow.checksum,
-			);
+			setWorkflowVersionData({
+				versionId: updatedWorkflow.versionId,
+				name: versionData.value?.name ?? null,
+				description: versionData.value?.description ?? null,
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setChecksum(updatedWorkflow.checksum!);
 		}
 	}
 
@@ -767,14 +760,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (id === workflow.value.id) {
 			setIsArchived(false);
-			setWorkflowVersionData(
-				{
-					versionId: updatedWorkflow.versionId,
-					name: versionData.value?.name ?? null,
-					description: versionData.value?.description ?? null,
-				},
-				updatedWorkflow.checksum,
-			);
+			setWorkflowVersionData({
+				versionId: updatedWorkflow.versionId,
+				name: versionData.value?.name ?? null,
+				description: versionData.value?.description ?? null,
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setChecksum(updatedWorkflow.checksum!);
 		}
 	}
 
@@ -1357,14 +1349,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		if (id === workflow.value.id) {
-			setWorkflowVersionData(
-				{
-					versionId: updatedWorkflow.versionId,
-					name: versionData.value?.name ?? null,
-					description: versionData.value?.description ?? null,
-				},
-				updatedWorkflow.checksum,
-			);
+			setWorkflowVersionData({
+				versionId: updatedWorkflow.versionId,
+				name: versionData.value?.name ?? null,
+				description: versionData.value?.description ?? null,
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
 		}
 
 		if (
@@ -1408,14 +1399,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowInactive(id);
 
 		if (id === workflow.value.id) {
-			setWorkflowVersionData(
-				{
-					versionId: updatedWorkflow.versionId,
-					name: versionData.value?.name ?? null,
-					description: versionData.value?.description ?? null,
-				},
-				updatedWorkflow.checksum,
-			);
+			setWorkflowVersionData({
+				versionId: updatedWorkflow.versionId,
+				name: versionData.value?.name ?? null,
+				description: versionData.value?.description ?? null,
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
 		}
 
 		return updatedWorkflow;
@@ -1436,7 +1426,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (isCurrentWorkflow) {
 			currentSettings = workflow.value.settings ?? ({} as IWorkflowSettings);
 			currentVersionId = workflow.value.versionId;
-			currentChecksum = workflowChecksum.value;
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			currentChecksum = workflowDocumentStore.checksum;
 		} else {
 			const cached = workflowsListStore.getWorkflowById(id);
 			if (cached && cached.versionId) {
@@ -1483,7 +1474,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (isCurrentWorkflow) {
 			currentVersionId = workflow.value.versionId;
-			currentChecksum = workflowChecksum.value;
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			currentChecksum = workflowDocumentStore.checksum;
 		} else {
 			const cached = workflowsListStore.getWorkflowById(id);
 			if (cached?.versionId) {
@@ -1712,7 +1704,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowName,
 		workflowId,
 		workflowVersionId,
-		workflowChecksum,
 		workflowSettings,
 		isNewWorkflow,
 		isWorkflowSaved,

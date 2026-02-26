@@ -1438,7 +1438,7 @@ onUpdated(async () => {
 				:button-tooltip="
 					parameter.placeholder || i18n.baseText('parameterInput.iconPicker.tooltip')
 				"
-				button-size="large"
+				:button-size="hideLabel ? 'small' : 'large'"
 				:is-read-only="isReadOnly"
 				@update:model-value="valueChanged"
 				@focus="setFocus"

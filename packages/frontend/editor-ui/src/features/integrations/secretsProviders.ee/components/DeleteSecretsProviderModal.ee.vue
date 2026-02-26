@@ -6,7 +6,10 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { getAllCredentials } from '@/features/credentials/credentials.api';
-import { deleteSecretProviderConnection } from '@n8n/rest-api-client';
+import {
+	deleteSecretProviderConnection,
+	deleteProjectSecretProviderConnection,
+} from '@n8n/rest-api-client';
 import Modal from '@/app/components/Modal.vue';
 import { N8nButton, N8nInput, N8nLink, N8nInputLabel, N8nText } from '@n8n/design-system';
 import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY, VIEWS } from '@/app/constants';
@@ -17,6 +20,7 @@ interface Props {
 		providerKey: string;
 		providerName: string;
 		secretsCount: number;
+		projectId?: string;
 		onConfirm?: () => Promise<void>;
 	};
 }
@@ -86,7 +90,15 @@ onMounted(async () => {
 async function onConfirmDelete() {
 	isDeleting.value = true;
 	try {
-		await deleteSecretProviderConnection(rootStore.restApiContext, props.data.providerKey);
+		if (props.data.projectId) {
+			await deleteProjectSecretProviderConnection(
+				rootStore.restApiContext,
+				props.data.projectId,
+				props.data.providerKey,
+			);
+		} else {
+			await deleteSecretProviderConnection(rootStore.restApiContext, props.data.providerKey);
+		}
 
 		toast.showMessage({
 			title: i18n.baseText('settings.secretsProviderConnections.delete.success', {

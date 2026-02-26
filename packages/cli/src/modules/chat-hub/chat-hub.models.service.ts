@@ -25,7 +25,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import { chatTriggerParamsShape } from './chat-hub.types';
+import { chatTriggerParamsShape, type ChatTriggerParams } from './chat-hub.types';
 
 @Service()
 export class ChatHubModelsService {
@@ -791,12 +791,8 @@ export class ChatHubModelsService {
 				? chatTriggerParams.agentName
 				: name;
 
-		// Find the owner's project (home project)
-		const ownerSharedWorkflow = shared?.find((sw) => sw.role === 'workflow:owner');
-		const ownerProject = ownerSharedWorkflow?.project;
-
-		// Use null for personal projects so the frontend can display a localized label
-		const groupName = ownerProject?.type === 'personal' ? null : (ownerProject?.name ?? null);
+		const suggestedPrompts = this.parseSuggestedPrompts(chatTriggerParams.suggestedPrompts);
+		const { groupName, groupIcon } = this.resolveOwnerProject(shared);
 
 		return {
 			name: agentName,
@@ -817,6 +813,27 @@ export class ChatHubModelsService {
 				scopes,
 			},
 			groupName,
+			groupIcon,
+			...(suggestedPrompts.length > 0 ? { suggestedPrompts } : {}),
+		};
+	}
+
+	private parseSuggestedPrompts(
+		raw: ChatTriggerParams['suggestedPrompts'],
+	): NonNullable<ChatModelDto['suggestedPrompts']> {
+		return (
+			raw?.prompts
+				?.filter((p) => p.text.trim().length > 0)
+				.map((p) => ({ text: p.text, ...(p.icon ? { icon: p.icon } : {}) })) ?? []
+		);
+	}
+
+	private resolveOwnerProject(shared: WorkflowEntity['shared']) {
+		const ownerProject = shared?.find((sw) => sw.role === 'workflow:owner')?.project;
+
+		return {
+			// Use null for personal projects so the frontend can display a localized label
+			groupName: ownerProject?.type === 'personal' ? null : (ownerProject?.name ?? null),
 			groupIcon: ownerProject?.icon ?? null,
 		};
 	}

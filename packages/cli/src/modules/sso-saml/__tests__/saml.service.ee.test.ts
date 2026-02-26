@@ -445,7 +445,7 @@ describe('SamlService', () => {
 			});
 		});
 
-		it('logs in the user if just-in-time provisioning is enabled', async () => {
+		it('requires onboarding for JIT-provisioned user when SAML does not provide name', async () => {
 			const samlAttributes = {
 				email: 'foo@bar.com',
 				firstName: '',
@@ -453,6 +453,8 @@ describe('SamlService', () => {
 				userPrincipalName: 'foo@bar.com',
 			};
 			const mockUser = mock<User>();
+			mockUser.firstName = '';
+			mockUser.lastName = '';
 
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
@@ -465,6 +467,31 @@ describe('SamlService', () => {
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
 				onboardingRequired: true,
+			});
+		});
+
+		it('skips onboarding for JIT-provisioned user when SAML provides name', async () => {
+			const samlAttributes = {
+				email: 'newuser@bar.com',
+				firstName: 'Jane',
+				lastName: 'Doe',
+				userPrincipalName: 'newuser@bar.com',
+			};
+			const mockUser = mock<User>();
+			mockUser.firstName = 'Jane';
+			mockUser.lastName = 'Doe';
+
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
+			jest.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
+			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
+
+			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(loginResult).toEqual({
+				authenticatedUser: mockUser,
+				attributes: samlAttributes,
+				onboardingRequired: false,
 			});
 		});
 
