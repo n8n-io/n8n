@@ -108,7 +108,7 @@ watch(
 		}
 		try {
 			const iconifyMod = await import('@iconify/json/json/lucide.json');
-			const icons = iconifyMod.default?.icons ?? iconifyMod.icons;
+			const icons: Record<string, { body: string }> = iconifyMod.default?.icons ?? iconifyMod.icons;
 			const rawBody = icons[iconName]?.body ?? null;
 			fallbackBody.value = rawBody
 				? DOMPurify.sanitize(rawBody, { USE_PROFILES: { svg: true } })

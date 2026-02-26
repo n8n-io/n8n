@@ -84,7 +84,8 @@ async function loadData() {
 		// Merge SVG bodies from @iconify/json with search metadata from our generated file.
 		// Sanitize SVG bodies to defend against supply-chain attacks on @iconify/json.
 		const meta = metaMod.lucideIcons;
-		const iconifyIcons = iconifyMod.default?.icons ?? iconifyMod.icons;
+		const iconifyIcons: Record<string, { body: string }> =
+			iconifyMod.default?.icons ?? iconifyMod.icons;
 		const merged: Record<string, LucideIcon> = {};
 		for (const [name, m] of Object.entries(meta)) {
 			const body = iconifyIcons[name]?.body;
