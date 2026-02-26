@@ -23,6 +23,7 @@ export const useAgentPanelStore = defineStore('agentPanel', () => {
 	const streamingSteps = ref<LiveStep[]>([]);
 	const streamingSummary = ref<string | null>(null);
 	const isStreaming = ref(false);
+	const rawSseEvents = ref<Array<{ type: string; data: StreamEvent }>>([]);
 	let abortController: AbortController | null = null;
 
 	// Active connection tracking for animated lines
@@ -94,6 +95,7 @@ export const useAgentPanelStore = defineStore('agentPanel', () => {
 		taskResult.value = null;
 		streamingSteps.value = [];
 		streamingSummary.value = null;
+		rawSseEvents.value = [];
 		isLoading.value = false;
 		isSubmitting.value = false;
 		isStreaming.value = false;
@@ -227,6 +229,7 @@ export const useAgentPanelStore = defineStore('agentPanel', () => {
 		taskResult.value = null;
 		streamingSteps.value = [];
 		streamingSummary.value = null;
+		rawSseEvents.value = [];
 
 		// Set dispatching agent active
 		agentsStore.setAgentStatus(panelAgentId.value, 'active');
@@ -285,6 +288,7 @@ export const useAgentPanelStore = defineStore('agentPanel', () => {
 				sseBuffer = remainder;
 
 				for (const event of events) {
+					rawSseEvents.value = [...rawSseEvents.value, { type: event.type, data: event }];
 					switch (event.type) {
 						case 'step':
 							handleStepEvent(event);
@@ -336,6 +340,7 @@ export const useAgentPanelStore = defineStore('agentPanel', () => {
 		streamingSteps,
 		streamingSummary,
 		isStreaming,
+		rawSseEvents,
 		activeConnections,
 		selectedAgent,
 		zoneName,

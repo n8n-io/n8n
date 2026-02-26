@@ -176,21 +176,23 @@ export const useAgentsStore = defineStore('agents', () => {
 			const project = teamProjects[i];
 			const detail = projectDetails[i];
 
-			zoneLayouts.push({
-				projectId: project.id,
-				name: project.name ?? 'Unnamed Project',
-				icon: project.icon,
-				memberCount: detail.relations.length,
-				rect: { x: 0, y: 0, width: 0, height: 0 },
-				colorIndex: i % ZONE_COLORS.length,
-			});
-
+			let agentMemberCount = 0;
 			for (const relation of detail.relations) {
 				const agent = agents.value.find((a) => a.id === relation.id);
 				if (agent) {
 					agent.zoneId = project.id;
+					agentMemberCount++;
 				}
 			}
+
+			zoneLayouts.push({
+				projectId: project.id,
+				name: project.name ?? 'Unnamed Project',
+				icon: project.icon,
+				memberCount: agentMemberCount,
+				rect: { x: 0, y: 0, width: 0, height: 0 },
+				colorIndex: i % ZONE_COLORS.length,
+			});
 		}
 
 		zones.value = zoneLayouts;

@@ -14,6 +14,7 @@ import AgentAvatarComp from './AgentAvatar.vue';
 
 const panelStore = useAgentPanelStore();
 const taskPrompt = ref('');
+const sseLogOpen = ref(false);
 
 const isEditingName = ref(false);
 const editName = ref('');
@@ -363,6 +364,30 @@ function stepStatusIcon(status: string) {
 					</div>
 				</div>
 			</section>
+			<!-- Raw SSE Events Log -->
+			<section v-if="panelStore.rawSseEvents.length" :class="$style.section">
+				<button :class="$style.collapseToggle" @click="sseLogOpen = !sseLogOpen">
+					<N8nIcon :icon="sseLogOpen ? 'chevron-down' : 'chevron-right'" size="xsmall" />
+					<N8nText tag="h4" size="small" bold :class="$style.sectionTitle">
+						Raw SSE Events
+					</N8nText>
+					<N8nBadge theme="default" size="small">{{ panelStore.rawSseEvents.length }}</N8nBadge>
+				</button>
+				<div v-if="sseLogOpen" :class="$style.sseLog">
+					<div v-for="(evt, i) in panelStore.rawSseEvents" :key="i" :class="$style.sseEvent">
+						<span
+							:class="[
+								$style.sseEventType,
+								evt.type === 'step' ? $style.sseStep : '',
+								evt.type === 'observation' ? $style.sseObservation : '',
+								evt.type === 'done' ? $style.sseDone : '',
+							]"
+							>{{ evt.type }}</span
+						>
+						<span :class="$style.sseEventData">{{ JSON.stringify(evt.data) }}</span>
+					</div>
+				</div>
+			</section>
 		</div>
 	</aside>
 </template>
@@ -371,8 +396,11 @@ function stepStatusIcon(status: string) {
 .panel {
 	width: 380px;
 	flex-shrink: 0;
-	border-left: var(--border);
-	background: var(--color--background);
+	margin: var(--spacing--sm);
+	margin-left: 0;
+	background: var(--color--background--light-3);
+	border: var(--border);
+	border-radius: var(--radius--xl);
 	display: flex;
 	flex-direction: column;
 	overflow-y: auto;
@@ -383,7 +411,7 @@ function stepStatusIcon(status: string) {
 	align-items: flex-start;
 	justify-content: space-between;
 	padding: var(--spacing--lg);
-	border-bottom: var(--border);
+	border-bottom: 1px solid var(--color--foreground--tint-2);
 }
 
 .headerInfo {
@@ -455,8 +483,7 @@ function stepStatusIcon(status: string) {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs) var(--spacing--lg);
-	border-bottom: var(--border);
-	background: var(--color--foreground--tint-2);
+	border-bottom: 1px solid var(--color--foreground--tint-2);
 }
 
 .zone {
@@ -498,7 +525,11 @@ function stepStatusIcon(status: string) {
 
 .section {
 	padding: var(--spacing--sm) var(--spacing--lg);
-	border-bottom: var(--border);
+	border-bottom: 1px solid var(--color--foreground--tint-2);
+
+	&:last-child {
+		border-bottom: none;
+	}
 }
 
 .sectionTitle {
@@ -673,7 +704,7 @@ function stepStatusIcon(status: string) {
 	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--2xs);
 	padding: var(--spacing--xs);
-	background: var(--color--success--tint-4);
+	background: color-mix(in srgb, var(--color--success) 10%, transparent);
 	border: 1px solid var(--color--success--tint-2);
 	border-radius: var(--radius);
 	font-size: var(--font-size--sm);
@@ -704,12 +735,12 @@ function stepStatusIcon(status: string) {
 }
 
 .resultSuccess {
-	background: var(--color--success--tint-4);
+	background: color-mix(in srgb, var(--color--success) 10%, transparent);
 	border: 1px solid var(--color--success--tint-2);
 }
 
 .resultError {
-	background: var(--color--danger--tint-4);
+	background: color-mix(in srgb, var(--color--danger) 10%, transparent);
 	border: 1px solid var(--color--danger--tint-3);
 }
 
@@ -755,5 +786,70 @@ function stepStatusIcon(status: string) {
 .stepResult {
 	color: var(--color--text--tint-2);
 	font-style: italic;
+}
+
+// Collapsible SSE log
+.collapseToggle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	background: none;
+	border: none;
+	color: var(--color--text--tint-2);
+	cursor: pointer;
+	padding: 0;
+	margin-bottom: var(--spacing--2xs);
+	width: 100%;
+
+	&:hover {
+		color: var(--color--text);
+	}
+
+	.sectionTitle {
+		margin: 0;
+	}
+}
+
+.sseLog {
+	max-height: 300px;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	background: var(--color--foreground--shade-1);
+	border-radius: var(--radius);
+	padding: var(--spacing--4xs);
+	font-family: monospace;
+}
+
+.sseEvent {
+	display: flex;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	font-size: var(--font-size--3xs);
+	line-height: var(--line-height--lg);
+}
+
+.sseEventType {
+	font-weight: var(--font-weight--bold);
+	flex-shrink: 0;
+	min-width: 76px;
+}
+
+.sseStep {
+	color: var(--color--primary);
+}
+
+.sseObservation {
+	color: var(--color--success);
+}
+
+.sseDone {
+	color: var(--color--warning);
+}
+
+.sseEventData {
+	color: var(--color--text--tint-1);
+	word-break: break-all;
 }
 </style>

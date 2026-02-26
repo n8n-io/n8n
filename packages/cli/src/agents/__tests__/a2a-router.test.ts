@@ -196,7 +196,7 @@ describe('A2A Router - resolveAgentFromApiKey', () => {
 	});
 });
 
-describe('A2A Router - POST /message:send', () => {
+describe('A2A Router - POST /message\\:send', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
@@ -214,7 +214,7 @@ describe('A2A Router - POST /message:send', () => {
 		const router = createA2ARouter();
 		const sendRoute = router.stack.find(
 			(layer: { route?: { path: string; methods?: { post?: boolean } } }) =>
-				layer.route?.path === '/message:send',
+				layer.route?.path === '/message\\:send',
 		);
 		// Skip express.json() middleware (index 0), get the handler (index 1)
 		const handler = sendRoute!.route!.stack[1].handle;
@@ -244,7 +244,7 @@ describe('A2A Router - POST /message:send', () => {
 		const router = createA2ARouter();
 		const sendRoute = router.stack.find(
 			(layer: { route?: { path: string; methods?: { post?: boolean } } }) =>
-				layer.route?.path === '/message:send',
+				layer.route?.path === '/message\\:send',
 		);
 		const handler = sendRoute!.route!.stack[1].handle;
 
@@ -292,7 +292,7 @@ describe('A2A Router - POST /message:send', () => {
 
 		const router = createA2ARouter();
 		const sendRoute = router.stack.find(
-			(layer: { route?: { path: string } }) => layer.route?.path === '/message:send',
+			(layer: { route?: { path: string } }) => layer.route?.path === '/message\\:send',
 		);
 		const handler = sendRoute!.route!.stack[1].handle;
 

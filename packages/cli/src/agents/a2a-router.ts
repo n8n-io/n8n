@@ -62,9 +62,9 @@ export function createA2ARouter(): express.Router {
 		res.json(card);
 	});
 
-	// A2A: POST /message:send — synchronous task dispatch
+	// A2A: POST /message\:send — synchronous task dispatch
 	router.post(
-		'/message:send',
+		'/message\\:send',
 		express.json(),
 		async (req: express.Request, res: express.Response) => {
 			const user = await resolveAgentFromApiKey(req, res, 'agent:execute');
@@ -98,9 +98,9 @@ export function createA2ARouter(): express.Router {
 		},
 	);
 
-	// A2A: POST /message:stream — streaming task dispatch (SSE)
+	// A2A: POST /message\:stream — streaming task dispatch (SSE)
 	router.post(
-		'/message:stream',
+		'/message\\:stream',
 		express.json(),
 		async (req: express.Request, res: express.Response) => {
 			const user = await resolveAgentFromApiKey(req, res, 'agent:execute');
