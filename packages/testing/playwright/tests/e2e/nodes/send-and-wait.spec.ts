@@ -1,9 +1,9 @@
 import type { Page } from '@playwright/test';
+import type { ProxyServer } from 'n8n-containers/services/proxy';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test as base, expect } from '../../../fixtures/base';
 import type { CredentialResponse } from '../../../services/credential-api-helper';
-import type { ProxyServer } from 'n8n-containers/services/proxy';
 
 interface SlackBlock {
 	type: string;
