@@ -40,7 +40,6 @@ import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
 import type {
 	WorkflowMetadata,
-	WorkflowData,
 	WorkflowDataCreate,
 	WorkflowDataUpdate,
 } from '@n8n/rest-api-client/api/workflows';
@@ -186,7 +185,7 @@ export interface IAiDataContent {
 }
 
 export interface IStartRunData {
-	workflowData: WorkflowData;
+	workflowId: string;
 	startNodes?: StartNodeData[];
 	destinationNode?: IDestinationNode;
 	runData?: IRunData;

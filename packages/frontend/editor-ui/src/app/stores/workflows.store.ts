@@ -1508,15 +1508,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
-		if (startRunData.workflowData.settings === null) {
-			startRunData.workflowData.settings = undefined;
-		}
-
 		try {
 			return await makeRestApiRequest(
 				rootStore.restApiContext,
 				'POST',
-				`/workflows/${startRunData.workflowData.id}/run`,
+				`/workflows/${startRunData.workflowId}/run`,
 				startRunData as unknown as IDataObject,
 			);
 		} catch (error) {
