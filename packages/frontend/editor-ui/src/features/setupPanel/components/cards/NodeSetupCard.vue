@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch, provide } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { INodeProperties } from 'n8n-workflow';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
@@ -65,27 +66,6 @@ const showFooter = computed(
 
 const hasParameters = computed(() => Object.keys(props.state.parameterIssues).length > 0);
 
-const nodeNames = computed(() => (props.state.allNodesUsingCredential ?? []).map((n) => n.name));
-
-const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
-
-const telemetryPayload = computed(() => {
-	if (hasCredential.value) {
-		return {
-			type: 'nodeCredential',
-			credential_type: props.state.credentialType,
-			node_type: props.state.node.type,
-			has_parameters: hasParameters.value,
-			missing_parameters_count: Object.keys(props.state.parameterIssues).length,
-		};
-	}
-	return {
-		type: 'parameter',
-		node_type: props.state.node.type,
-		missing_parameters_count: Object.keys(props.state.parameterIssues).length,
-	};
-});
-
 /**
  * Tracks which parameters have been shown to the user at least once.
  * This ref is used to persist parameters in the UI even after their issues are resolved,
@@ -121,6 +101,43 @@ const parameters = computed<INodeProperties[]>(() => {
  * Used to keep the parameter description visible even after all issues are resolved.
  */
 const hasShownParameters = computed(() => shownParameters.value.length > 0);
+
+/** Trigger-only: no credentials, no parameters — standalone trigger card */
+const isTriggerOnly = computed(
+	() => props.state.isTrigger && !hasCredential.value && !hasShownParameters.value,
+);
+
+/** Credential-only: has credential but no parameters shown — use credential icon */
+const useCredentialIcon = computed(
+	() => hasCredential.value && !hasShownParameters.value && !isTriggerOnly.value,
+);
+
+const nodeNames = computed(() => (props.state.allNodesUsingCredential ?? []).map((n) => n.name));
+
+const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
+
+const telemetryPayload = computed(() => {
+	if (isTriggerOnly.value) {
+		return {
+			type: 'trigger',
+			node_type: props.state.node.type,
+		};
+	}
+	if (hasCredential.value) {
+		return {
+			type: 'nodeCredential',
+			credential_type: props.state.credentialType,
+			node_type: props.state.node.type,
+			has_parameters: hasParameters.value,
+			missing_parameters_count: Object.keys(props.state.parameterIssues).length,
+		};
+	}
+	return {
+		type: 'parameter',
+		node_type: props.state.node.type,
+		missing_parameters_count: Object.keys(props.state.parameterIssues).length,
+	};
+});
 
 const onCredentialSelected = (credentialId: string) => {
 	if (!props.state.credentialType) return;
@@ -171,13 +188,25 @@ watch(expanded, (value, oldValue) => {
 		allParametersAddressed.value = true;
 	}
 });
+
+/**
+ * Card completion logic:
+ * - Trigger-only / credential-only cards: pass through state.isComplete directly
+ * - Cards with parameters: also require user to have collapsed the card after resolving all issues
+ */
+const cardComplete = computed(() => {
+	if (hasShownParameters.value) {
+		return props.state.isComplete && allParametersAddressed.value;
+	}
+	return props.state.isComplete;
+});
 </script>
 
 <template>
 	<SetupCard
 		ref="setupCard"
 		v-model:expanded="expanded"
-		:is-complete="state.isComplete && allParametersAddressed"
+		:is-complete="cardComplete"
 		:loading="isTestingCredential"
 		:title="state.node.name"
 		:show-footer="showFooter"
@@ -188,7 +217,21 @@ watch(expanded, (value, oldValue) => {
 		card-test-id="node-setup-card"
 	>
 		<template #icon>
-			<NodeIcon :node-type="nodeType" :size="16" />
+			<CredentialIcon
+				v-if="useCredentialIcon"
+				:credential-type-name="state.credentialType!"
+				:size="16"
+			/>
+			<NodeIcon v-else :node-type="nodeType" :size="16" />
+		</template>
+
+		<template v-if="isTriggerOnly" #header-extra>
+			<N8nTooltip>
+				<template #content>
+					{{ i18n.baseText('nodeCreator.nodeItem.triggerIconTitle') }}
+				</template>
+				<N8nIcon icon="zap" size="small" color="text-light" />
+			</N8nTooltip>
 		</template>
 
 		<template #card-description>
@@ -199,7 +242,7 @@ watch(expanded, (value, oldValue) => {
 				{{ i18n.baseText('setupPanel.parameter.description') }}
 			</N8nText>
 		</template>
-		<div :class="$style.content">
+		<div v-if="!isTriggerOnly" :class="$style.content">
 			<div v-if="state.showCredentialPicker" :class="$style['credential-container']">
 				<div :class="$style['credential-label-row']">
 					<label
@@ -278,7 +321,7 @@ watch(expanded, (value, oldValue) => {
 }
 
 .nodes-hint {
-	font-size: var(--font-size--sm);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 	cursor: default;
 	display: none;

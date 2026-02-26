@@ -133,6 +133,8 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useClipboard } from '@vueuse/core';
 import {
@@ -2960,7 +2962,11 @@ export function useCanvasOperations() {
 		name?: string;
 		workflow: IWorkflowTemplate['workflow'] | WorkflowDataWithTemplateId;
 	}) {
-		const convertedNodes = workflow.nodes?.map(workflowsStore.convertTemplateNodeToNodeUi);
+		let convertedNodes = workflow.nodes?.map(workflowsStore.convertTemplateNodeToNodeUi);
+
+		if (useSetupPanelStore().isFeatureEnabled && convertedNodes) {
+			convertedNodes = clearAllNodeResourceLocatorValues(convertedNodes);
+		}
 
 		if (workflow.connections) {
 			workflowsStore.setConnections(workflow.connections);

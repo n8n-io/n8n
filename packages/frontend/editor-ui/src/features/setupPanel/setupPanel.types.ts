@@ -34,8 +34,5 @@ export interface NodeSetupState {
 	allNodesUsingCredential?: INodeUi[];
 }
 
-/** Discriminated union for the setup card list */
-export type SetupCardItem =
-	| { type: 'trigger'; state: TriggerSetupState }
-	| { type: 'credential'; state: CredentialTypeSetupState }
-	| { type: 'node'; state: NodeSetupState };
+/** Unified setup card item — all cards use NodeSetupState */
+export type SetupCardItem = { state: NodeSetupState };

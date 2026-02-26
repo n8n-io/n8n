@@ -14,6 +14,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useCredentialSetupState } from './composables/useCredentialSetupState';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 export type NodeAndType = {
 	node: INodeUi;
@@ -188,6 +189,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 				rootStore,
 				workflowsStore,
 				nodeTypeProvider: nodeTypesStore,
+				clearResourceLocators: useSetupPanelStore().isFeatureEnabled,
 			});
 
 			telemetry.track('User closed cred setup', {

@@ -8,7 +8,10 @@ import type { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getNodesWithNormalizedPosition } from '@/app/utils/nodeViewUtils';
 import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
 import type { TemplateCredentialKey } from './templateTransforms';
-import { replaceAllTemplateNodeCredentials } from './templateTransforms';
+import {
+	clearAllNodeResourceLocatorValues,
+	replaceAllTemplateNodeCredentials,
+} from './templateTransforms';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
 import type { RouteLocationRaw, Router } from 'vue-router';
 import type { TemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -30,15 +33,19 @@ export async function createWorkflowFromTemplate(opts: {
 	rootStore: ReturnType<typeof useRootStore>;
 	workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	nodeTypeProvider: NodeTypeProvider;
+	clearResourceLocators?: boolean;
 }) {
 	const { credentialOverrides, nodeTypeProvider, rootStore, template, workflowsStore } = opts;
 
 	const workflowData = await getNewWorkflow(rootStore.restApiContext, { name: template.name });
-	const nodesWithCreds = replaceAllTemplateNodeCredentials(
+	let nodesWithCreds = replaceAllTemplateNodeCredentials(
 		nodeTypeProvider,
 		template.workflow.nodes,
 		credentialOverrides,
 	);
+	if (opts.clearResourceLocators) {
+		nodesWithCreds = clearAllNodeResourceLocatorValues(nodesWithCreds);
+	}
 	const nodes = getNodesWithNormalizedPosition(nodesWithCreds) as INodeUi[];
 	const connections = template.workflow.connections;
 

@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
-import TriggerSetupCard from '@/features/setupPanel/components/cards/TriggerSetupCard.vue';
-import CredentialTypeSetupCard from '@/features/setupPanel/components/cards/CredentialTypeSetupCard.vue';
 import NodeSetupCard from '@/features/setupPanel/components/cards/NodeSetupCard.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -52,16 +50,9 @@ const visibleCards = computed(() => {
 });
 
 const cardKey = (card: SetupCardItem): string => {
-	if (card.type === 'trigger') {
-		return `trigger-${card.state.node.id}`;
-	}
-	if (card.type === 'node') {
-		return card.state.credentialType
-			? `node-${card.state.credentialType}-${card.state.node.id}`
-			: `node-${card.state.node.id}`;
-	}
-	// card.type === 'credential'
-	return `credential-${card.state.credentialType}-${card.state.nodes[0]?.name ?? ''}`;
+	return card.state.credentialType
+		? `${card.state.credentialType}-${card.state.node.id}`
+		: `${card.state.node.id}`;
 };
 
 // --- Expanded state management ---
@@ -135,32 +126,16 @@ watch(
 			</div>
 		</div>
 		<div v-else :class="$style['card-list']" data-test-id="setup-cards-list">
-			<template v-for="card in visibleCards" :key="cardKey(card)">
-				<TriggerSetupCard
-					v-if="card.type === 'trigger'"
-					:state="card.state"
-					:expanded="isCardExpanded(cardKey(card))"
-					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
-				/>
-				<NodeSetupCard
-					v-else-if="card.type === 'node'"
-					:state="card.state"
-					:first-trigger-name="firstTriggerName"
-					:expanded="isCardExpanded(cardKey(card))"
-					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
-					@credential-selected="onCredentialSelected"
-					@credential-deselected="onCredentialDeselected"
-				/>
-				<CredentialTypeSetupCard
-					v-else
-					:state="card.state"
-					:first-trigger-name="firstTriggerName"
-					:expanded="isCardExpanded(cardKey(card))"
-					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
-					@credential-selected="onCredentialSelected"
-					@credential-deselected="onCredentialDeselected"
-				/>
-			</template>
+			<NodeSetupCard
+				v-for="card in visibleCards"
+				:key="cardKey(card)"
+				:state="card.state"
+				:first-trigger-name="firstTriggerName"
+				:expanded="isCardExpanded(cardKey(card))"
+				@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
+				@credential-selected="onCredentialSelected"
+				@credential-deselected="onCredentialDeselected"
+			/>
 			<div
 				v-if="isAllComplete"
 				:class="$style['complete-message']"

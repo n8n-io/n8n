@@ -226,6 +226,7 @@ watch(
 				<N8nIconButton
 					variant="subtle"
 					icon="pen"
+					size="small"
 					:class="{
 						[$style.edit]: true,
 					}"
@@ -283,5 +284,6 @@ watch(
 
 .createButton {
 	width: 100%;
+	overflow: hidden;
 }
 </style>

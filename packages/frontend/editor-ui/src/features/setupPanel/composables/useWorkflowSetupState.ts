@@ -423,33 +423,42 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 	/**
 	 * Ordered list of all setup cards, sorted by the position of each card's
-	 * primary node (first node / trigger node) in the execution order.
+	 * primary node in the execution order.
+	 * All card types are normalized to NodeSetupState.
 	 */
 	const setupCards = computed<SetupCardItem[]>(() => {
-		const credentials: SetupCardItem[] = credentialTypeStates.value.map((state) => ({
-			type: 'credential' as const,
-			state,
+		// Convert credential-type states to NodeSetupState (one card per credential type,
+		// primary node = first node in the group)
+		const credentialCards: NodeSetupState[] = credentialTypeStates.value.map((credState) => ({
+			node: credState.nodes[0],
+			credentialType: credState.credentialType,
+			credentialDisplayName: credState.credentialDisplayName,
+			selectedCredentialId: credState.selectedCredentialId,
+			issues: credState.issues,
+			parameterIssues: {},
+			isTrigger: isTriggerNode(credState.nodes[0]),
+			showCredentialPicker: true,
+			isComplete: credState.isComplete,
+			allNodesUsingCredential: credState.nodes,
 		}));
-		const triggers: SetupCardItem[] = triggerStates.value.map((state) => ({
-			type: 'trigger' as const,
-			state,
+
+		// Convert trigger states to NodeSetupState (trigger-only cards)
+		const triggerCards: NodeSetupState[] = triggerStates.value.map((trigState) => ({
+			node: trigState.node,
+			parameterIssues: {},
+			isTrigger: true,
+			isComplete: trigState.isComplete,
 		}));
-		const nodes: SetupCardItem[] = nodeStates.value.map((state) => ({
-			type: 'node' as const,
-			state,
-		}));
+
+		const all: SetupCardItem[] = [...credentialCards, ...triggerCards, ...nodeStates.value].map(
+			(state) => ({ state }),
+		);
 
 		const executionOrder = nodesRequiringSetup.value.map(({ node }) => node.name);
-		const primaryNodeName = (card: SetupCardItem): string => {
-			if (card.type === 'trigger' || card.type === 'node') {
-				return card.state.node.name;
-			}
-			return card.state.nodes[0]?.name ?? '';
-		};
 
-		return [...credentials, ...triggers, ...nodes].sort(
+		return all.sort(
 			(a, b) =>
-				executionOrder.indexOf(primaryNodeName(a)) - executionOrder.indexOf(primaryNodeName(b)),
+				executionOrder.indexOf(a.state.node.name) - executionOrder.indexOf(b.state.node.name),
 		);
 	});
 
