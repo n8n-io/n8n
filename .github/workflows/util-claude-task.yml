@@ -26,6 +26,11 @@ on:
         required: false
         type: number
         default: 50
+      suppress_output:
+        description: 'Suppress console output and job summary'
+        required: false
+        type: boolean
+        default: false
       ref:
         description: 'Git ref (branch/tag/SHA) to check out and work on'
         required: false
@@ -121,7 +126,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.generate_token.outputs.token }}
           prompt: ${{ env.CLAUDE_PROMPT }}
-          show_full_output: true
+          show_full_output: ${{ inputs.suppress_output != true }}
           settings: |
             {
               "permissions": {
@@ -161,11 +166,16 @@ jobs:
           INPUT_TASK: ${{ inputs.task }}
           CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
           CLAUDE_SESSION_ID: ${{ steps.claude.outputs.session_id }}
+          SUPPRESS_OUTPUT: ${{ inputs.suppress_output }}
         run: |
           {
             echo "## Claude Task Runner Summary"
             echo ""
-            echo "**Task:** $INPUT_TASK"
+            if [ "$SUPPRESS_OUTPUT" = "true" ]; then
+              echo "**Task:** _(output suppressed)_"
+            else
+              echo "**Task:** $INPUT_TASK"
+            fi
             echo "**Branch:** ${BRANCH_NAME:-N/A}"
             echo "**Claude outcome:** $CLAUDE_OUTCOME"
             if [ -n "$CLAUDE_SESSION_ID" ]; then
