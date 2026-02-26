@@ -3,13 +3,11 @@ import { Logger } from '@n8n/backend-common';
 import { FolderRepository, TagRepository, type User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import pick from 'lodash/pick';
 import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-
-import { SourceControlGitService } from './source-control-git.service.ee';
 import { SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER } from './constants';
+import { SourceControlGitService } from './source-control-git.service.ee';
 import {
 	hasOwnerChanged,
 	getDataTableExportPath,
@@ -30,7 +28,7 @@ import type {
 	ExportableDataTable,
 	StatusExportableDataTable,
 } from './types/exportable-data-table';
-import type { ExportableFolder } from './types/exportable-folders';
+import type { ExportableFolder, FolderPathNode } from './types/exportable-folders';
 import type { ExportableProjectWithFileName } from './types/exportable-project';
 import { ExportableVariable } from './types/exportable-variable';
 import type { StatusResourceOwner } from './types/resource-owner';
@@ -40,6 +38,9 @@ import type {
 	SourceControlGetStatusVerboseResult,
 } from './types/source-control-get-status';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import { ExportableTagEntity } from '@/modules/source-control.ee/types/exportable-tags';
 
 @Service()
@@ -91,6 +92,32 @@ export class SourceControlStatusService {
 		}
 
 		return;
+	}
+
+	private buildFolderPath(
+		parentFolderId: string | null | undefined,
+		foldersById: Map<string, FolderPathNode>,
+	): string[] {
+		if (!parentFolderId) {
+			return [];
+		}
+
+		const pathSegments: string[] = [];
+		const visited = new Set<string>();
+		let currentFolderId: string | null | undefined = parentFolderId;
+
+		while (currentFolderId && !visited.has(currentFolderId)) {
+			visited.add(currentFolderId);
+			const folder = foldersById.get(currentFolderId);
+			if (!folder) {
+				break;
+			}
+
+			pathSegments.unshift(folder.name);
+			currentFolderId = folder.parentFolderId;
+		}
+
+		return pathSegments;
 	}
 
 	/**
@@ -237,6 +264,42 @@ export class SourceControlStatusService {
 			await this.sourceControlImportService.getRemoteVersionIdsFromFiles(context);
 		const wfLocalVersionIds =
 			await this.sourceControlImportService.getLocalVersionIdsFromDb(context);
+		const foldersMappingsRemote =
+			await this.sourceControlImportService.getRemoteFoldersAndMappingsFromFile(context);
+		const foldersMappingsLocal =
+			await this.sourceControlImportService.getLocalFoldersAndMappingsFromDb(context);
+		const remoteFoldersById = new Map<string, FolderPathNode>(
+			foldersMappingsRemote.folders.map((folder) => [
+				folder.id,
+				pick(folder, ['name', 'parentFolderId']),
+			]),
+		);
+		const localFoldersById = new Map<string, FolderPathNode>(
+			foldersMappingsLocal.folders.map((folder) => [
+				folder.id,
+				pick(folder, ['name', 'parentFolderId']),
+			]),
+		);
+		const allLocalFolders = await this.folderRepository.find({
+			relations: ['parentFolder'],
+			select: {
+				id: true,
+				name: true,
+				parentFolder: {
+					id: true,
+				},
+				createdAt: true,
+				updatedAt: true,
+			},
+		});
+		allLocalFolders.forEach((folder) => {
+			if (!localFoldersById.has(folder.id)) {
+				localFoldersById.set(folder.id, {
+					name: folder.name,
+					parentFolderId: folder.parentFolder?.id ?? null,
+				});
+			}
+		});
 
 		const wfRemoteById = new Map(wfRemoteVersionIds.map((w) => [w.id, w]));
 		const wfRemoteIds = new Set(wfRemoteVersionIds.map((w) => w.id));
@@ -290,6 +353,8 @@ export class SourceControlStatusService {
 					updatedAt: remoteWorkflow.updatedAt ?? new Date().toISOString(),
 					isLocalPublished: false, // New workflow, not published locally
 					isRemoteArchived: archivedWorkflowIds.get(remoteWorkflow.id) ?? false,
+					parentFolderId: remoteWorkflow.parentFolderId,
+					folderPath: this.buildFolderPath(remoteWorkflow.parentFolderId, remoteFoldersById),
 					owner: remoteWorkflow.owner,
 				});
 			}
@@ -313,6 +378,8 @@ export class SourceControlStatusService {
 					updatedAt: localWorkflow.updatedAt ?? new Date().toISOString(),
 					isLocalPublished: publishedWorkflowIds.has(localWorkflow.id),
 					isRemoteArchived: false, // Workflow deleted from remote, no archived status
+					parentFolderId: localWorkflow.parentFolderId,
+					folderPath: this.buildFolderPath(localWorkflow.parentFolderId, localFoldersById),
 					owner: localWorkflow.owner,
 				});
 				continue;
@@ -336,9 +403,18 @@ export class SourceControlStatusService {
 					: (name = `${remoteWorkflowWithSameId.name} (Local: ${localWorkflow.name})`);
 			}
 
+			const preferredParentFolderId = options.preferLocalVersion
+				? localWorkflow.parentFolderId
+				: remoteWorkflowWithSameId.parentFolderId;
+			const preferredFolderPath = this.buildFolderPath(
+				preferredParentFolderId,
+				options.preferLocalVersion ? localFoldersById : remoteFoldersById,
+			);
+
 			const wfModified: SourceControlWorkflowVersionId = {
 				...localWorkflow,
 				name,
+				parentFolderId: preferredParentFolderId,
 				versionId: options.preferLocalVersion
 					? localWorkflow.versionId
 					: remoteWorkflowWithSameId.versionId,
@@ -361,6 +437,8 @@ export class SourceControlStatusService {
 				updatedAt: wfModified.updatedAt ?? new Date().toISOString(),
 				isLocalPublished: publishedWorkflowIds.has(wfModified.id),
 				isRemoteArchived: archivedWorkflowIds.get(wfModified.id) ?? false,
+				parentFolderId: preferredParentFolderId,
+				folderPath: preferredFolderPath,
 				owner: wfModified.owner,
 			});
 		}
