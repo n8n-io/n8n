@@ -34,7 +34,7 @@ import {
 	MERGE_NODE_TYPE,
 	NodeConnectionTypes,
 	OperationalError,
-	VECTOR_STORE_SIMPLE_NODE_TYPE,
+	VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE,
 	VECTOR_STORE_TOOL_NODE_TYPE,
 	type IBinaryData,
 	type NodeParameterValueType,
@@ -1089,7 +1089,7 @@ Respond the title only:`,
 
 	private buildVectorStoreNodes(options: VectorStoreSearchOptions): INode[] {
 		const embeddingsModelNode = this.buildEmbeddingsModelNode(options);
-		const vectorStoreNode = this.buildVectorStoreNode(options.memoryKey, options.credentialId);
+		const vectorStoreNode = this.buildVectorStoreNode(options.credentialId, options.agentId);
 		const vectorStoreQuestionToolNode = this.buildVectorStoreQuestionToolNode();
 
 		return [embeddingsModelNode, vectorStoreNode, vectorStoreQuestionToolNode];
@@ -1124,25 +1124,23 @@ Respond the title only:`,
 		};
 	}
 
-	private buildVectorStoreNode(memoryKey: string, credentialId: string): INode {
+	private buildVectorStoreNode(credentialId: string, agentId: string): INode {
 		return {
 			parameters: {
 				mode: 'retrieve',
-				memoryKey: {
-					__rl: true,
-					value: memoryKey,
-					cachedResultName: '',
+				options: {
+					metadata: {
+						metadataValues: [{ name: 'agentId', value: agentId }],
+					},
 				},
-				embeddingBatchSize: 20,
-				enablePersistence: true,
 			},
-			type: VECTOR_STORE_SIMPLE_NODE_TYPE,
-			typeVersion: 1.3,
+			type: VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE,
+			typeVersion: 1,
 			position: [800, 496],
 			id: uuidv4(),
 			name: 'Vector Store',
 			credentials: {
-				instanceBinaryDataApi: {
+				vectorStorePGVectorScopedApi: {
 					id: credentialId,
 					name: '',
 				},
@@ -1197,22 +1195,14 @@ Respond the title only:`,
 			{
 				parameters: {
 					mode: 'insert',
-					memoryKey: {
-						__rl: true,
-						value: vectorStoreSearch.memoryKey,
-						mode: 'list',
-						cachedResultName: '',
-					},
-					embeddingBatchSize: 20,
-					enablePersistence: true,
 				},
-				type: VECTOR_STORE_SIMPLE_NODE_TYPE,
-				typeVersion: 1.3,
+				type: VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE,
+				typeVersion: 1,
 				position: [208, 0],
 				id: uuidv4(),
 				name: 'Vector Store',
 				credentials: {
-					instanceBinaryDataApi: {
+					vectorStorePGVectorScopedApi: {
 						id: vectorStoreSearch.credentialId,
 						name: '',
 					},
@@ -1230,6 +1220,10 @@ Respond the title only:`,
 									name: 'fileName',
 									// Extract fileName from the binary data field
 									value: '={{ $binary.data.fileName }}',
+								},
+								{
+									name: 'agentId',
+									value: vectorStoreSearch.agentId,
 								},
 							],
 						},

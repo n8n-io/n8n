@@ -4,11 +4,14 @@ import { postgresConnectionTest } from 'n8n-nodes-base/dist/nodes/Postgres/v2/me
 import type {
 	ICredentialTestFunctions,
 	ICredentialsDecrypted,
+	IDataObject,
+	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeProperties,
+	NodeParameterValueType,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-import type pg from 'pg';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import pg from 'pg';
 
 import { metadataFilterField } from '@utils/sharedFields';
 
@@ -45,6 +48,66 @@ const retrieveFields: INodeProperties[] = [
 	},
 ];
 
+async function deleteDocuments(
+	this: ILoadOptionsFunctions,
+	payload: IDataObject | string | undefined,
+): Promise<NodeParameterValueType> {
+	const { filter, metadataColumnName = 'metadata' } = (
+		typeof payload === 'string' ? jsonParse(payload) : (payload ?? {})
+	) as { filter: Record<string, string | string[]>; metadataColumnName?: string };
+
+	if (!filter || Object.keys(filter).length === 0) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'deleteDocuments requires at least one filter field.',
+		);
+	}
+
+	const credentials = await this.getCredentials<VectorStorePGVectorScopedApiCredentials>(
+		'vectorStorePGVectorScopedApi',
+	);
+	const userId = this.getUserId();
+	if (!userId) {
+		throw new NodeOperationError(this.getNode(), 'User ID is not available.');
+	}
+
+	const sanitizedUserId = userId.replace(/-/g, '_');
+	const tableName = `${credentials.tableNamePrefix}_${sanitizedUserId}`;
+
+	const conditions: string[] = [];
+	const values: Array<string | string[]> = [];
+	let paramIndex = 1;
+	for (const [key, value] of Object.entries(filter)) {
+		if (Array.isArray(value)) {
+			conditions.push(`${metadataColumnName}->>'${key}' = ANY($${paramIndex}::text[])`);
+		} else {
+			conditions.push(`${metadataColumnName}->>'${key}' = $${paramIndex}`);
+		}
+		values.push(value);
+		paramIndex++;
+	}
+
+	// TODO: Use configurePostgres() here to support SSH tunneling.
+	// Currently this creates a direct pg.Pool without SSH tunnel support.
+	const sslEnabled = credentials.ssl !== 'disable' && credentials.ssl !== undefined;
+	const pool = new pg.Pool({
+		host: credentials.host as string,
+		port: credentials.port as number,
+		database: credentials.database as string,
+		user: credentials.user as string,
+		password: credentials.password as string,
+		ssl: sslEnabled ? { rejectUnauthorized: !credentials.allowUnauthorizedCerts } : false,
+	});
+
+	try {
+		await pool.query(`DELETE FROM "${tableName}" WHERE ${conditions.join(' AND ')}`, values);
+	} finally {
+		await pool.end();
+	}
+
+	return null;
+}
+
 async function vectorStorePGVectorScopedApiConnectionTest(
 	this: ICredentialTestFunctions,
 	credential: ICredentialsDecrypted,
@@ -60,6 +123,7 @@ export class VectorStorePGVectorScoped extends createVectorStoreNode(
 	createPGVectorNodeArgs({
 		methods: {
 			credentialTest: { vectorStorePGVectorScopedApiConnectionTest },
+			actionHandler: { deleteDocuments },
 		},
 		meta: {
 			description:

@@ -29,7 +29,9 @@ import { ChatHubToolService } from './chat-hub-tool.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ChatHubExecutionService } from './chat-hub-execution.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BinaryDataService, FileLocation } from 'n8n-core';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { getBase } from '@/workflow-execute-additional-data';
+import { VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE } from 'n8n-workflow';
 
 @Service()
 export class ChatHubAgentService {
@@ -43,7 +45,7 @@ export class ChatHubAgentService {
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly credentialsService: CredentialsService,
-		private readonly binaryDataService: BinaryDataService,
+		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly chatHubToolService: ChatHubToolService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
@@ -279,88 +281,20 @@ export class ChatHubAgentService {
 		return `chat-hub-agent-files-${agentId}`;
 	}
 
-	private getVectorStorePath(userId: string) {
-		return FileLocation.ofCustom({ pathSegments: ['chat-hub', 'users', userId, 'embeddings'] });
-	}
-
 	async ensureVectorStoreCredential(user: User) {
-		const credentialName = 'ChatHub vector store credential';
-
-		// Get storage config from binary data service
-		const storageConfig = this.binaryDataService.getStorageConfig();
-		const storagePath = await this.binaryDataService.ensureLocation(
-			this.getVectorStorePath(user.id),
-		);
-
-		const expectedData = { ...storageConfig, storagePath };
-
-		this.logger.debug(`Ensuring vector store credential for user ${user.id}`, {
-			expectedData,
-		});
-
-		// Check if credential already exists
-		const existingCredentials = await this.credentialsService.getMany(user, {
+		const credentials = await this.credentialsService.getMany(user, {
 			listQueryOptions: {
-				filter: {
-					type: 'instanceBinaryDataApi',
-					isManaged: true,
-					name: credentialName,
-				},
+				filter: { type: 'vectorStorePGVectorScopedApi' },
 			},
-			includeData: true,
 		});
 
-		this.logger.debug(
-			`Found ${existingCredentials.length} existing credentials with name "${credentialName}"`,
-		);
-
-		// Find credential with matching name
-		for (const cred of existingCredentials) {
-			this.logger.debug(`Checking credential ${cred.id}`, {
-				existingData: cred.data,
-			});
-
-			// Check if all fields in expectedData match the existing credential data
-			let allFieldsMatch = true;
-			for (const [key, value] of Object.entries(expectedData)) {
-				if (cred.data?.[key] !== value) {
-					this.logger.debug(`Field mismatch for credential ${cred.id}: ${key}`, {
-						expected: value,
-						actual: cred.data?.[key],
-					});
-					allFieldsMatch = false;
-					break;
-				}
-			}
-
-			if (allFieldsMatch) {
-				this.logger.debug(`Reusing existing credential ${cred.id}`);
-				return cred;
-			}
-
-			// Data doesn't match, delete the old credential and create a new one
-			this.logger.debug(`Deleting outdated credential ${cred.id} due to data mismatch`);
-			try {
-				await this.credentialsService.delete(user, cred.id);
-				this.logger.debug(`Successfully deleted outdated credential ${cred.id}`);
-			} catch (error) {
-				this.logger.warn(`Failed to delete outdated credential ${cred.id}: ${error}`);
-			}
+		if (credentials.length === 0) {
+			throw new BadRequestError(
+				'No PGVector credential found. Please create a "Postgres PGVector Store (User-Scoped) API" credential to use file knowledge with agents.',
+			);
 		}
 
-		// No matching credential found, create a new one
-		this.logger.debug(`Creating new credential with name "${credentialName}"`);
-		const newCred = await this.credentialsService.createManagedCredential(
-			{
-				type: 'instanceBinaryDataApi',
-				name: credentialName,
-				data: expectedData,
-			},
-			user,
-		);
-		this.logger.debug(`Created new credential ${newCred.id}`);
-
-		return newCred;
+		return credentials[0];
 	}
 
 	private async insertEmbeddings(
@@ -384,8 +318,8 @@ export class ChatHubAgentService {
 					project.id,
 					files,
 					{
+						agentId,
 						embeddingModel,
-						memoryKey: this.getAgentMemoryKey(agentId),
 						credentialId: cred.id,
 					},
 					trx,
@@ -408,15 +342,18 @@ export class ChatHubAgentService {
 	}
 
 	private async deleteEmbeddings(user: User, agentId: string): Promise<void> {
-		const memoryKey = this.getAgentMemoryKey(agentId);
-		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user);
-
-		// Delete all embeddings for this agent from the vector store
-		await this.binaryDataService.deleteMany([this.getVectorStorePath(user.id)]);
-
-		this.logger.debug(
-			`Deleted embeddings for agent ${agentId} from vector store (memoryKey: ${memoryKey}, projectId: ${projectId})`,
+		const cred = await this.ensureVectorStoreCredential(user);
+		const additionalData = await getBase({ userId: user.id });
+		await this.dynamicNodeParametersService.getActionResult(
+			'deleteDocuments',
+			'',
+			additionalData,
+			{ name: VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE, version: 1 },
+			{},
+			JSON.stringify({ filter: { agentId } }),
+			{ vectorStorePGVectorScopedApi: { id: cred.id, name: '' } },
 		);
+		this.logger.debug(`Deleted embeddings for agent ${agentId} from vector store`);
 	}
 
 	private async deleteEmbeddingsByFileNames(
@@ -428,19 +365,19 @@ export class ChatHubAgentService {
 			return;
 		}
 
-		const memoryKey = this.getAgentMemoryKey(agentId);
-		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user);
-
-		// Delete embeddings for specific files from the vector store
-		// TODO: Implement direct LanceDB access to delete embeddings by file names
-		// const deletedCount = await this.vectorStoreRepository.deleteByFileNames(
-		// 	memoryKey,
-		// 	projectId,
-		// 	fileNames,
-		// );
-
+		const cred = await this.ensureVectorStoreCredential(user);
+		const additionalData = await getBase({ userId: user.id });
+		await this.dynamicNodeParametersService.getActionResult(
+			'deleteDocuments',
+			'',
+			additionalData,
+			{ name: VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE, version: 1 },
+			{},
+			JSON.stringify({ filter: { agentId, fileName: fileNames } }),
+			{ vectorStorePGVectorScopedApi: { id: cred.id, name: '' } },
+		);
 		this.logger.debug(
-			`Deleted embeddings for ${fileNames.length} files from vector store (memoryKey: ${memoryKey}, projectId: ${projectId}, fileNames: ${fileNames.join(', ')})`,
+			`Deleted embeddings for ${fileNames.length} files from vector store (agentId: ${agentId}, fileNames: ${fileNames.join(', ')})`,
 		);
 	}
 

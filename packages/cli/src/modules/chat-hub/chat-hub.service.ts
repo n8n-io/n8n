@@ -785,13 +785,10 @@ export class ChatHubService {
 		}
 
 		if (model.provider === 'custom-agent') {
-			const [agent, memoryKey] =
+			const agent =
 				model.provider === 'custom-agent'
-					? [
-							await this.chatHubAgentService.getAgentById(model.agentId, user.id),
-							this.chatHubAgentService.getAgentMemoryKey(model.agentId),
-						]
-					: [null, null];
+					? await this.chatHubAgentService.getAgentById(model.agentId, user.id)
+					: null;
 
 			if (!agent) {
 				throw new BadRequestError('Agent not found');
@@ -825,7 +822,7 @@ export class ChatHubService {
 				agent.systemPrompt + '\n\n' + this.getSystemMessage(timeZone, history),
 				executionMetadata,
 				embeddingModel && vectorStoreCredentialId
-					? { memoryKey, embeddingModel, credentialId: vectorStoreCredentialId }
+					? { agentId: agent.id, embeddingModel, credentialId: vectorStoreCredentialId }
 					: null,
 			);
 		}

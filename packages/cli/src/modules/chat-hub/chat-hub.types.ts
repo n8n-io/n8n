@@ -93,7 +93,7 @@ export type PreparedChatWorkflow = {
 };
 
 export interface VectorStoreSearchOptions {
-	memoryKey: string;
+	agentId: string;
 	embeddingModel: ProviderAndCredentialId;
 	credentialId: string;
 }
