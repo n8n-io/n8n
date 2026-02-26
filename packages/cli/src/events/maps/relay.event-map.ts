@@ -738,6 +738,15 @@ export type RelayEventMap = {
 
 	// #endregion
 
+	// #region Folders
+
+	'folder-deleted': {
+		folderId: string;
+		projectId: string;
+	};
+
+	// #endregion
+
 	// #region Instance Policies
 
 	'instance-policies-updated': {

@@ -1,5 +1,10 @@
 import { mock } from 'jest-mock-extended';
-import type { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import type {
+	FolderRepository,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -14,12 +19,14 @@ describe('FavoritesService', () => {
 	const projectRepository = mock<ProjectRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const dataTableRepository = mock<DataTableRepository>();
+	const folderRepository = mock<FolderRepository>();
 	const service = new FavoritesService(
 		repo,
 		workflowRepository,
 		projectRepository,
 		sharedWorkflowRepository,
 		dataTableRepository,
+		folderRepository,
 	);
 
 	afterEach(() => jest.clearAllMocks());

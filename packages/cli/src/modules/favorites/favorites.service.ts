@@ -1,5 +1,10 @@
 import { Service } from '@n8n/di';
-import { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import {
+	FolderRepository,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { In } from '@n8n/typeorm';
 
 import { UserFavoriteRepository } from './database/repositories/user-favorite.repository';
@@ -15,6 +20,7 @@ export class FavoritesService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly dataTableRepository: DataTableRepository,
+		private readonly folderRepository: FolderRepository,
 	) {}
 
 	async getEnrichedFavorites(userId: string) {
@@ -27,6 +33,7 @@ export class FavoritesService {
 		const dataTableIds = favorites
 			.filter((f) => f.resourceType === 'dataTable')
 			.map((f) => f.resourceId);
+		const folderIds = favorites.filter((f) => f.resourceType === 'folder').map((f) => f.resourceId);
 
 		// Get accessible projects for user
 		const accessibleProjects = await this.projectRepository.getAccessibleProjects(userId);
@@ -69,6 +76,21 @@ export class FavoritesService {
 			}
 		}
 
+		// Folder enrichment with access control
+		const folderMetaMap = new Map<string, { name: string; projectId: string }>();
+		if (folderIds.length > 0) {
+			const folders = await this.folderRepository.find({
+				where: { id: In(folderIds) },
+				relations: { homeProject: true },
+			});
+			for (const folder of folders) {
+				const projectId = folder.homeProject?.id;
+				if (projectId && accessibleProjectIds.has(projectId)) {
+					folderMetaMap.set(folder.id, { name: folder.name, projectId });
+				}
+			}
+		}
+
 		// Build enriched result, filtering out inaccessible resources
 		const enriched: Array<
 			(typeof favorites)[0] & { resourceName: string; resourceProjectId?: string }
@@ -85,6 +107,11 @@ export class FavoritesService {
 				}
 			} else if (fav.resourceType === 'dataTable') {
 				const meta = dataTableMetaMap.get(fav.resourceId);
+				if (meta !== undefined) {
+					enriched.push({ ...fav, resourceName: meta.name, resourceProjectId: meta.projectId });
+				}
+			} else if (fav.resourceType === 'folder') {
+				const meta = folderMetaMap.get(fav.resourceId);
 				if (meta !== undefined) {
 					enriched.push({ ...fav, resourceName: meta.name, resourceProjectId: meta.projectId });
 				}

@@ -4,18 +4,21 @@ import { VIEWS } from '@/app/constants';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { N8nMenuItem, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nMenuItem, N8nText } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeMount, onBeforeUnmount } from 'vue';
+import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
 import { useProjectsStore } from '../projects.store';
-import type { ProjectListItem } from '../projects.types';
+import type { Project, ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 import FavoritesSidebarCompact from './FavoritesSidebarCompact.vue';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
+
+const FAVORITES_COLLAPSED_KEY = 'n8n:sidebar:favorites-collapsed';
+const PROJECTS_COLLAPSED_KEY = 'n8n:sidebar:projects-collapsed';
 
 type Props = {
 	collapsed: boolean;
@@ -42,6 +45,12 @@ const isChatLinkAvailable = computed(
 const hasMultipleVerifiedUsers = computed(
 	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
 );
+
+const favoritesCollapsed = ref(localStorage.getItem(FAVORITES_COLLAPSED_KEY) === 'true');
+const projectsCollapsed = ref(localStorage.getItem(PROJECTS_COLLAPSED_KEY) === 'true');
+
+watch(favoritesCollapsed, (val) => localStorage.setItem(FAVORITES_COLLAPSED_KEY, String(val)));
+watch(projectsCollapsed, (val) => localStorage.setItem(PROJECTS_COLLAPSED_KEY, String(val)));
 
 const home = computed<IMenuItem>(() => ({
 	id: 'home',
@@ -126,6 +135,22 @@ const favoriteDataTableItems = computed<IMenuItem[]>(() =>
 		})),
 );
 
+const favoriteFolderItems = computed<IMenuItem[]>(() =>
+	favoritesStore.favorites
+		.filter((f) => f.resourceType === 'folder' && f.resourceProjectId)
+		.map((f) => ({
+			id: `favorite-folder-${f.resourceId}`,
+			label: f.resourceName,
+			icon: 'folder' as IMenuItem['icon'],
+			route: {
+				to: {
+					name: VIEWS.PROJECTS_FOLDERS,
+					params: { projectId: f.resourceProjectId, folderId: f.resourceId },
+				},
+			},
+		})),
+);
+
 type FavoriteGroup = {
 	type: string;
 	items: IMenuItem[];
@@ -156,6 +181,13 @@ const favoriteGroups = computed<FavoriteGroup[]>(() => {
 			showIndividualIcons: false,
 		});
 	}
+	if (favoriteFolderItems.value.length > 0) {
+		groups.push({
+			type: 'folder',
+			items: favoriteFolderItems.value,
+			showIndividualIcons: false,
+		});
+	}
 	return groups;
 });
 
@@ -177,6 +209,14 @@ const chat = computed<IMenuItem>(() => ({
 	route: { to: { name: CHAT_VIEW } },
 	beta: true,
 }));
+
+function onFavoriteProjectClick(itemId: string) {
+	const projectId = itemId.replace('favorite-project-', '');
+	const project = projectsStore.myProjects.find((p) => p.id === projectId);
+	if (project) {
+		projectsStore.setCurrentProject(project as unknown as Project);
+	}
+}
 
 async function onSourceControlPull() {
 	// Update myProjects for the sidebar display
@@ -229,54 +269,73 @@ onBeforeUnmount(() => {
 			/>
 		</div>
 		<template v-if="hasFavorites">
-			<N8nText
+			<button
 				v-if="!props.collapsed"
-				:class="$style.projectsLabel"
-				size="small"
-				bold
-				role="heading"
-				color="text-light"
+				:class="$style.sectionHeader"
+				@click="favoritesCollapsed = !favoritesCollapsed"
 			>
-				{{ locale.baseText('favorites.menu.title') }}
-			</N8nText>
-			<div :class="$style.projectItems">
+				<N8nText size="small" bold color="text-light">
+					{{ locale.baseText('favorites.menu.title') }}
+				</N8nText>
+				<N8nIcon
+					icon="chevron-down"
+					size="xsmall"
+					:class="[$style.chevron, favoritesCollapsed ? $style.chevronCollapsed : '']"
+				/>
+			</button>
+			<div v-if="!favoritesCollapsed" :class="$style.projectItems">
 				<!-- Expanded: flat list, icon hidden (but space preserved) on non-first items per group -->
 				<template v-if="!props.collapsed">
 					<template v-for="(group, groupIndex) in favoriteGroups" :key="group.type">
 						<div v-if="groupIndex > 0" :class="$style.groupSpacer" />
-						<N8nMenuItem
-							v-for="(item, itemIndex) in group.items"
-							:key="item.id"
-							:item="
-								!group.showIndividualIcons && itemIndex > 0
-									? { ...item, icon: { type: 'icon', value: '' } as IMenuItem['icon'] }
-									: item
-							"
-							:compact="false"
-							:active="activeTabId === item.id"
-						/>
+						<template v-for="(item, itemIndex) in group.items" :key="item.id">
+							<div v-if="group.type === 'project'" @click="onFavoriteProjectClick(item.id)">
+								<N8nMenuItem :item="item" :compact="false" :active="activeTabId === item.id" />
+							</div>
+							<N8nMenuItem
+								v-else
+								:item="
+									!group.showIndividualIcons && itemIndex > 0
+										? { ...item, icon: { type: 'icon', value: '' } as unknown as IMenuItem['icon'] }
+										: item
+								"
+								:compact="false"
+								:active="activeTabId === item.id"
+							/>
+						</template>
 					</template>
 				</template>
-				<!-- Collapsed: single star trigger with hover popover -->
+				<!-- Collapsed sidebar: single star trigger with hover popover -->
 				<template v-else>
 					<FavoritesSidebarCompact />
 				</template>
 			</div>
+			<!-- Compact sidebar always shows the star icon regardless of favoritesCollapsed -->
+			<div v-else-if="props.collapsed" :class="$style.projectItems">
+				<FavoritesSidebarCompact />
+			</div>
 		</template>
-		<N8nText
-			v-if="
-				!props.collapsed && projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0
-			"
-			:class="[$style.projectsLabel]"
-			size="small"
-			bold
-			role="heading"
-			color="text-light"
-		>
-			{{ locale.baseText('projects.menu.title') }}
-		</N8nText>
+		<template v-if="projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0">
+			<button
+				v-if="!props.collapsed"
+				:class="$style.sectionHeader"
+				@click="projectsCollapsed = !projectsCollapsed"
+			>
+				<N8nText size="small" bold color="text-light">
+					{{ locale.baseText('projects.menu.title') }}
+				</N8nText>
+				<N8nIcon
+					icon="chevron-down"
+					size="xsmall"
+					:class="[$style.chevron, projectsCollapsed ? $style.chevronCollapsed : '']"
+				/>
+			</button>
+		</template>
 		<div
-			v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
+			v-if="
+				(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
+				(!projectsCollapsed || props.collapsed)
+			"
 			:class="$style.projectItems"
 		>
 			<N8nMenuItem
@@ -315,6 +374,35 @@ onBeforeUnmount(() => {
 	cursor: pointer;
 }
 
+.sectionHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 0 var(--spacing--xs);
+	margin-top: var(--spacing--2xs);
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: inherit;
+
+	&:hover .chevron {
+		color: var(--color--text);
+	}
+}
+
+.chevron {
+	color: var(--color--text--tint-2);
+	transition: transform 0.15s ease;
+	flex-shrink: 0;
+}
+
+.chevronCollapsed {
+	transform: rotate(-90deg);
+}
+
+/* Keep old .projectsLabel for any remaining usages */
 .projectsLabel {
 	display: flex;
 	justify-content: space-between;

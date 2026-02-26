@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useProjectsStore } from '../projects.store';
+import type { Project } from '../projects.types';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 
 const locale = useI18n();
@@ -76,6 +77,22 @@ const favoriteDataTableItems = computed<IMenuItem[]>(() =>
 		})),
 );
 
+const favoriteFolderItems = computed<IMenuItem[]>(() =>
+	favoritesStore.favorites
+		.filter((f) => f.resourceType === 'folder' && f.resourceProjectId)
+		.map((f) => ({
+			id: `favorite-folder-${f.resourceId}`,
+			label: f.resourceName,
+			icon: 'folder' as IMenuItem['icon'],
+			route: {
+				to: {
+					name: VIEWS.PROJECTS_FOLDERS,
+					params: { projectId: f.resourceProjectId, folderId: f.resourceId },
+				},
+			},
+		})),
+);
+
 type FavoriteGroup = {
 	type: string;
 	items: IMenuItem[];
@@ -105,6 +122,13 @@ const favoriteGroups = computed<FavoriteGroup[]>(() => {
 			showIndividualIcons: false,
 		});
 	}
+	if (favoriteFolderItems.value.length > 0) {
+		groups.push({
+			type: 'folder',
+			items: favoriteFolderItems.value,
+			showIndividualIcons: false,
+		});
+	}
 	return groups;
 });
 
@@ -114,6 +138,14 @@ const activeTabId = computed(() => {
 });
 
 const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
+
+function onFavoriteProjectClick(itemId: string) {
+	const projectId = itemId.replace('favorite-project-', '');
+	const project = projectsStore.myProjects.find((p) => p.id === projectId);
+	if (project) {
+		projectsStore.setCurrentProject(project as unknown as Project);
+	}
+}
 </script>
 
 <template>
@@ -139,17 +171,21 @@ const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 				</N8nText>
 				<template v-for="(group, groupIndex) in favoriteGroups" :key="group.type">
 					<div v-if="groupIndex > 0" :class="$style.groupSpacer" />
-					<N8nMenuItem
-						v-for="(item, itemIndex) in group.items"
-						:key="item.id"
-						:item="
-							!group.showIndividualIcons && itemIndex > 0
-								? { ...item, icon: { type: 'icon', value: '' } as IMenuItem['icon'] }
-								: item
-						"
-						:compact="false"
-						:active="activeTabId === item.id"
-					/>
+					<template v-for="(item, itemIndex) in group.items" :key="item.id">
+						<div v-if="group.type === 'project'" @click="onFavoriteProjectClick(item.id)">
+							<N8nMenuItem :item="item" :compact="false" :active="activeTabId === item.id" />
+						</div>
+						<N8nMenuItem
+							v-else
+							:item="
+								!group.showIndividualIcons && itemIndex > 0
+									? { ...item, icon: { type: 'icon', value: '' } as unknown as IMenuItem['icon'] }
+									: item
+							"
+							:compact="false"
+							:active="activeTabId === item.id"
+						/>
+					</template>
 				</template>
 			</div>
 		</template>

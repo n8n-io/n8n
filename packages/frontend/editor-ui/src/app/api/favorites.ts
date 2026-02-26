@@ -10,7 +10,7 @@ export type UserFavorite = {
 	resourceProjectId?: string;
 };
 
-export type FavoriteResourceType = 'workflow' | 'project' | 'dataTable';
+export type FavoriteResourceType = 'workflow' | 'project' | 'dataTable' | 'folder';
 
 export async function getFavorites(context: IRestApiContext): Promise<UserFavorite[]> {
 	return await makeRestApiRequest<UserFavorite[]>(context, 'GET', '/favorites');
