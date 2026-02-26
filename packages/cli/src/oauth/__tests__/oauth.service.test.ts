@@ -1581,13 +1581,13 @@ describe('OauthService', () => {
 		});
 	});
 
-	describe('generateAOauth2AuthUri with DCR and server URL with path', () => {
-		it('should preserve path in server URL when fetching metadata', async () => {
+	describe('generateAOauth2AuthUri with DCR and RFC 8414 compliance', () => {
+		it('should insert .well-known between host and path per RFC 8414', async () => {
 			const axios = require('axios');
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () =>
-					'https://example.domain/api/v1/oauth2/authorize?client_id=registered_client_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state&scope=openid profile',
+					'https://example.domain/authorize?client_id=registered_client_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state',
 			});
 			jest.mocked(ClientOAuth2).mockImplementation(
 				() =>
@@ -1600,16 +1600,16 @@ describe('OauthService', () => {
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			const oauthCredentials = {
-				serverUrl: 'https://example.domain/api/v1/oauth2',
+				serverUrl: 'https://example.domain/issuer1',
 				useDynamicClientRegistration: true,
 			} as OAuth2CredentialData;
 
 			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.mocked(axios.get).mockResolvedValue({
 				data: {
-					authorization_endpoint: 'https://example.domain/api/v1/oauth2/authorize',
-					token_endpoint: 'https://example.domain/api/v1/oauth2/token',
-					registration_endpoint: 'https://example.domain/api/v1/oauth2/register',
+					authorization_endpoint: 'https://example.domain/issuer1/authorize',
+					token_endpoint: 'https://example.domain/issuer1/token',
+					registration_endpoint: 'https://example.domain/issuer1/register',
 					grant_types_supported: ['authorization_code', 'refresh_token'],
 					token_endpoint_auth_methods_supported: ['client_secret_basic'],
 					code_challenge_methods_supported: ['S256'],
@@ -1632,18 +1632,18 @@ describe('OauthService', () => {
 				userId: 'user-id',
 			});
 
-			// Verify the metadata request preserves the path
+			// Verify RFC 8414: .well-known inserted between host and path
 			expect(axios.get).toHaveBeenCalledWith(
-				'https://example.domain/api/v1/oauth2/.well-known/oauth-authorization-server',
+				'https://example.domain/.well-known/oauth-authorization-server/issuer1',
 			);
 		});
 
-		it('should handle server URLs with trailing slashes', async () => {
+		it('should handle root-level issuer URLs (no path)', async () => {
 			const axios = require('axios');
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () =>
-					'https://example.domain/api/v1/oauth2/authorize?client_id=test_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state',
+					'https://example.domain/authorize?client_id=test_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state',
 			});
 			jest.mocked(ClientOAuth2).mockImplementation(
 				() =>
@@ -1656,16 +1656,16 @@ describe('OauthService', () => {
 
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			const oauthCredentials = {
-				serverUrl: 'https://example.domain/api/v1/oauth2/',
+				serverUrl: 'https://example.domain',
 				useDynamicClientRegistration: true,
 			} as OAuth2CredentialData;
 
 			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.mocked(axios.get).mockResolvedValue({
 				data: {
-					authorization_endpoint: 'https://example.domain/api/v1/oauth2/authorize',
-					token_endpoint: 'https://example.domain/api/v1/oauth2/token',
-					registration_endpoint: 'https://example.domain/api/v1/oauth2/register',
+					authorization_endpoint: 'https://example.domain/authorize',
+					token_endpoint: 'https://example.domain/token',
+					registration_endpoint: 'https://example.domain/register',
 					grant_types_supported: ['authorization_code', 'refresh_token'],
 					token_endpoint_auth_methods_supported: ['client_secret_basic'],
 					code_challenge_methods_supported: ['S256'],
@@ -1687,9 +1687,111 @@ describe('OauthService', () => {
 				userId: 'user-id',
 			});
 
-			// Should not have double slashes
+			// Root-level issuer: .well-known directly after origin
 			expect(axios.get).toHaveBeenCalledWith(
-				'https://example.domain/api/v1/oauth2/.well-known/oauth-authorization-server',
+				'https://example.domain/.well-known/oauth-authorization-server',
+			);
+		});
+
+		it('should handle issuer URLs with trailing slashes', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () => 'https://example.domain/authorize?client_id=test_id',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getUri: mockGetUri,
+						},
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://example.domain/issuer1/',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.mocked(axios.get).mockResolvedValue({
+				data: {
+					authorization_endpoint: 'https://example.domain/authorize',
+					token_endpoint: 'https://example.domain/token',
+					registration_endpoint: 'https://example.domain/register',
+					grant_types_supported: ['authorization_code', 'refresh_token'],
+					token_endpoint_auth_methods_supported: ['client_secret_basic'],
+					code_challenge_methods_supported: ['S256'],
+				},
+			} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: { client_id: 'test_id', client_secret: 'test_secret' },
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			// Should strip trailing slash: /issuer1/ becomes /issuer1
+			expect(axios.get).toHaveBeenCalledWith(
+				'https://example.domain/.well-known/oauth-authorization-server/issuer1',
+			);
+		});
+
+		it('should handle multi-segment paths correctly', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () => 'https://oauth.example.com/authorize?client_id=test_id',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getUri: mockGetUri,
+						},
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://oauth.example.com/tenant/auth/provider',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.mocked(axios.get).mockResolvedValue({
+				data: {
+					authorization_endpoint: 'https://oauth.example.com/tenant/auth/provider/authorize',
+					token_endpoint: 'https://oauth.example.com/tenant/auth/provider/token',
+					registration_endpoint: 'https://oauth.example.com/tenant/auth/provider/register',
+					grant_types_supported: ['authorization_code', 'refresh_token'],
+					token_endpoint_auth_methods_supported: ['client_secret_basic'],
+					code_challenge_methods_supported: ['S256'],
+				},
+			} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: { client_id: 'test_id', client_secret: 'test_secret' },
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			// Multi-segment path per RFC 8414
+			expect(axios.get).toHaveBeenCalledWith(
+				'https://oauth.example.com/.well-known/oauth-authorization-server/tenant/auth/provider',
 			);
 		});
 	});

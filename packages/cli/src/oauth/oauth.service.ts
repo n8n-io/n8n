@@ -332,10 +332,12 @@ export class OauthService {
 		const toUpdate: ICredentialDataDecryptedObject = {};
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
-			const serverUrl = oauthCredentials.serverUrl.replace(/\/$/, ''); // Remove trailing slash
-			const { data } = await axios.get<unknown>(
-				`${serverUrl}/.well-known/oauth-authorization-server`,
-			);
+			// RFC 8414 Section 3: Insert .well-known between host and path
+			const issuerUrl = new URL(oauthCredentials.serverUrl);
+			const pathComponent = issuerUrl.pathname.replace(/\/$/, ''); // Remove trailing slash
+			const metadataUrl = `${issuerUrl.origin}/.well-known/oauth-authorization-server${pathComponent}`;
+
+			const { data } = await axios.get<unknown>(metadataUrl);
 			const metadataValidation = oAuthAuthorizationServerMetadataSchema.safeParse(data);
 			if (!metadataValidation.success) {
 				throw new BadRequestError(
