@@ -423,12 +423,17 @@ describe('Secret Providers Project API', () => {
 			expect(response.body.message).toContain('not found');
 		});
 
-		test('should return 404 for a global connection (no project access)', async () => {
+		test('should return a global connection (no project access) accessible from any project', async () => {
 			await createProviderConnection('global-conn', []);
 
-			await ownerAgent
+			const response = await ownerAgent
 				.get(`/secret-providers/projects/${teamProject1.id}/connections/global-conn`)
-				.expect(404);
+				.expect(200);
+
+			expect(response.body.data).toMatchObject({
+				name: 'global-conn',
+				state: 'initializing',
+			});
 		});
 
 		test('should return 404 for a non-existent connection', async () => {
@@ -500,6 +505,15 @@ describe('Secret Providers Project API', () => {
 
 			await ownerAgent
 				.patch(`/secret-providers/projects/${teamProject1.id}/connections/other-update`)
+				.send({ settings: { region: 'eu-west-1' } })
+				.expect(404);
+		});
+
+		test('should return 404 for a global connection (cannot update global from project context)', async () => {
+			await createProviderConnection('global-update', []);
+
+			await ownerAgent
+				.patch(`/secret-providers/projects/${teamProject1.id}/connections/global-update`)
 				.send({ settings: { region: 'eu-west-1' } })
 				.expect(404);
 		});
@@ -576,6 +590,18 @@ describe('Secret Providers Project API', () => {
 			expect(found).not.toBeNull();
 		});
 
+		test('should return 404 for a global connection (cannot delete global from project context)', async () => {
+			await createProviderConnection('global-del', []);
+
+			await ownerAgent
+				.delete(`/secret-providers/projects/${teamProject1.id}/connections/global-del`)
+				.expect(404);
+
+			// Verify the connection was NOT deleted
+			const found = await connectionRepository.findOneBy({ providerKey: 'global-del' });
+			expect(found).not.toBeNull();
+		});
+
 		test('should return 404 for a non-existent connection', async () => {
 			await ownerAgent
 				.delete(`/secret-providers/projects/${teamProject1.id}/connections/missing`)
@@ -639,6 +665,21 @@ describe('Secret Providers Project API', () => {
 
 			const response = await ownerAgent
 				.post(`/secret-providers/projects/${teamProject1.id}/connections/test-conn/test`)
+				.expect(200);
+
+			expect(response.body.data).toMatchObject({ success: true });
+		});
+
+		test('should test a global connection accessible from the project', async () => {
+			await createProviderConnection('global-test-conn', []);
+
+			const { ExternalSecretsManager } = await import(
+				'@/modules/external-secrets.ee/external-secrets-manager.ee'
+			);
+			await Container.get(ExternalSecretsManager).reloadAllProviders();
+
+			const response = await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections/global-test-conn/test`)
 				.expect(200);
 
 			expect(response.body.data).toMatchObject({ success: true });

@@ -30,6 +30,10 @@ import { isDebouncedFunction } from '@/app/utils/typeGuards';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -207,7 +211,10 @@ export function useWorkflowSaving({
 				workflowDataRequest.versionId = workflowsStore.workflowVersionId;
 				// Check if AI Builder made edits since last save
 				workflowDataRequest.aiBuilderAssisted = builderStore.getAiBuilderMadeEdits();
-				workflowDataRequest.expectedChecksum = workflowsStore.workflowChecksum;
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(currentWorkflow),
+				);
+				workflowDataRequest.expectedChecksum = workflowDocumentStore.checksum;
 				workflowDataRequest.autosaved = autosaved;
 
 				const workflowData = await workflowsStore.updateWorkflow(
@@ -218,14 +225,11 @@ export function useWorkflowSaving({
 				if (!workflowData.checksum) {
 					throw new Error('Failed to update workflow');
 				}
-				workflowsStore.setWorkflowVersionData(
-					{
-						versionId: workflowData.versionId,
-						name: null,
-						description: null,
-					},
-					workflowData.checksum,
-				);
+				workflowsStore.setWorkflowVersionData({
+					versionId: workflowData.versionId,
+					name: null,
+					description: null,
+				});
 				workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
 
 				// Only mark state clean if no new changes were made during the save
@@ -463,16 +467,22 @@ export function useWorkflowSaving({
 				}
 			}
 
-			workflowState.setActive(workflowData.activeVersionId);
-			workflowState.setWorkflowId(workflowData.id);
-			workflowsStore.setWorkflowVersionData(
-				{
-					versionId: workflowData.versionId,
-					name: null,
-					description: null,
-				},
-				workflowData.checksum,
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
 			);
+			workflowDocumentStore.setActiveState({
+				activeVersionId: workflowData.activeVersionId,
+				activeVersion: workflowData.activeVersion ?? null,
+			});
+			if (workflowData.checksum) {
+				workflowDocumentStore.setChecksum(workflowData.checksum);
+			}
+			workflowState.setWorkflowId(workflowData.id);
+			workflowsStore.setWorkflowVersionData({
+				versionId: workflowData.versionId,
+				name: null,
+				description: null,
+			});
 			workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
 
 			// Only update webhook IDs if we explicitly reset them
