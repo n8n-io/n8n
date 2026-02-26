@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import DOMPurify from 'dompurify';
 import { computed, ref, watch, useCssModule } from 'vue';
 
 import type { IconName } from './icons';
@@ -108,7 +109,10 @@ watch(
 		try {
 			const iconifyMod = await import('@iconify/json/json/lucide.json');
 			const icons = iconifyMod.default?.icons ?? iconifyMod.icons;
-			fallbackBody.value = icons[iconName]?.body ?? null;
+			const rawBody = icons[iconName]?.body ?? null;
+			fallbackBody.value = rawBody
+				? DOMPurify.sanitize(rawBody, { USE_PROFILES: { svg: true } })
+				: null;
 		} catch {
 			fallbackBody.value = null;
 		}
@@ -131,7 +135,7 @@ watch(
 		:data-icon="props.icon"
 		:style="styles"
 	/>
-	<!-- eslint-disable vue/no-v-html -- SVG body from trusted generated data -->
+	<!-- eslint-disable vue/no-v-html -- SVG body sanitized via DOMPurify -->
 	<!-- Fallback: raw SVG from Lucide data (lazy-loaded) -->
 	<svg
 		v-else-if="fallbackBody"

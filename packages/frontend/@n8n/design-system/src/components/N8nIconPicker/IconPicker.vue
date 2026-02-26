@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 // vueuse is a peer dependency
 // eslint-disable import-x/no-extraneous-dependencies
+import DOMPurify from 'dompurify';
 import { onClickOutside } from '@vueuse/core';
 import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, computed, watch, nextTick } from 'vue';
@@ -78,14 +79,16 @@ async function loadData() {
 			import('./emojiData'),
 		]);
 
-		// Merge SVG bodies from @iconify/json with search metadata from our generated file
+		// Merge SVG bodies from @iconify/json with search metadata from our generated file.
+		// Sanitize SVG bodies to defend against supply-chain attacks on @iconify/json.
 		const meta = metaMod.lucideIcons;
 		const iconifyIcons = iconifyMod.default?.icons ?? iconifyMod.icons;
 		const merged: Record<string, LucideIcon> = {};
 		for (const [name, m] of Object.entries(meta)) {
 			const body = iconifyIcons[name]?.body;
 			if (body) {
-				merged[name] = { body, keywords: m.keywords, categories: m.categories };
+				const sanitizedBody = DOMPurify.sanitize(body, { USE_PROFILES: { svg: true } });
+				merged[name] = { body: sanitizedBody, keywords: m.keywords, categories: m.categories };
 			}
 		}
 
@@ -306,8 +309,8 @@ function humanizeIconName(name: string): string {
 				{{ t('iconPicker.loading') }}
 			</div>
 
-			<!-- Icons tab -->
-			<!-- eslint-disable vue/no-v-html -- SVG body from trusted generated data -->
+		<!-- Icons tab -->
+		<!-- eslint-disable vue/no-v-html -- SVG bodies sanitized via DOMPurify at load time -->
 			<div v-else-if="selectedTab === 'icons' && dataLoaded" :class="$style.content">
 				<!-- Search active: flat filtered grid (no section headers) -->
 				<template v-if="isSearching">
