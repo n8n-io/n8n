@@ -51,6 +51,14 @@ export const useReadyToRunStore = defineStore(STORES.READY_TO_RUN, () => {
 		() => !!usersStore.currentUser?.settings?.userClaimedAiCredits,
 	);
 
+	const BUTTON_MAX_ACCOUNT_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+
+	const isNewUser = computed(() => {
+		const createdAt = usersStore.currentUser?.createdAt;
+		if (!createdAt) return false;
+		return Date.now() - new Date(createdAt).getTime() < BUTTON_MAX_ACCOUNT_AGE_MS;
+	});
+
 	const userCanClaimOpenAiCredits = computed(() => {
 		return (
 			settingsStore.isAiCreditsEnabled &&
@@ -156,7 +164,9 @@ export const useReadyToRunStore = defineStore(STORES.READY_TO_RUN, () => {
 		canCreate: boolean | undefined,
 		readOnlyEnv: boolean,
 	) => {
-		return userCanClaimOpenAiCredits.value && !readOnlyEnv && canCreate && hasWorkflows;
+		return (
+			userCanClaimOpenAiCredits.value && !readOnlyEnv && canCreate && hasWorkflows && isNewUser.value
+		);
 	};
 
 	const { isTrulyEmpty } = useEmptyStateDetection();

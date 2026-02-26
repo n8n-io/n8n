@@ -63,6 +63,7 @@ vi.mock('@/app/stores/workflows.store', () => ({
 const mockCurrentUser = {
 	value: {
 		settings: {} as Record<string, unknown>,
+		createdAt: new Date().toISOString(),
 	},
 };
 
@@ -112,7 +113,7 @@ describe('useReadyToRunStore', () => {
 		vi.clearAllMocks();
 		// Reset dynamic mocks to default values
 		mockAllCredentials.value = [];
-		mockCurrentUser.value = { settings: {} };
+		mockCurrentUser.value = { settings: {}, createdAt: new Date().toISOString() };
 		mockIsAiCreditsEnabled.value = true;
 		mockLocalStorageValue.value = '';
 		mockIsTrulyEmpty.mockReturnValue(false);
@@ -284,6 +285,24 @@ describe('useReadyToRunStore', () => {
 
 		it('should return false when read-only', () => {
 			expect(store.getButtonVisibility(true, true, true)).toBe(false);
+		});
+
+		it('should return false when user account is older than 14 days', () => {
+			const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString();
+			mockCurrentUser.value = { settings: {}, createdAt: fifteenDaysAgo };
+			setActivePinia(createPinia());
+			const testStore = useReadyToRunStore();
+
+			expect(testStore.getButtonVisibility(true, true, false)).toBe(false);
+		});
+
+		it('should return true when user account is less than 14 days old', () => {
+			const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+			mockCurrentUser.value = { settings: {}, createdAt: fiveDaysAgo };
+			setActivePinia(createPinia());
+			const testStore = useReadyToRunStore();
+
+			expect(testStore.getButtonVisibility(true, true, false)).toBe(true);
 		});
 	});
 
@@ -508,7 +527,7 @@ describe('useReadyToRunStore', () => {
 		it('should return true when all conditions are met', () => {
 			mockIsAiCreditsEnabled.value = true;
 			mockAllCredentials.value = [];
-			mockCurrentUser.value = { settings: {} };
+			mockCurrentUser.value = { settings: {}, createdAt: new Date().toISOString() };
 			setActivePinia(createPinia());
 			const testStore = useReadyToRunStore();
 
