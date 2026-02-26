@@ -113,11 +113,11 @@ const getDataTableSize = computed(() => {
 					</div>
 				</template>
 				<template #append>
-					<div :class="$style.cardActions" @click.stop>
+					<div :class="$style['card-actions']" @click.stop>
 						<ProjectCardBadge
 							v-if="showOwnershipBadge"
 							:class="{
-								[$style.cardBadge]: true,
+								[$style['card-badge']]: true,
 							}"
 							:resource="dataTable"
 							:resource-type="ResourceType.DataTable"
@@ -177,7 +177,6 @@ const getDataTableSize = computed(() => {
 	}
 }
 
-.cardActions,
 .card-actions {
 	display: flex;
 	gap: var(--spacing--2xs);
@@ -189,11 +188,11 @@ const getDataTableSize = computed(() => {
 	cursor: default;
 }
 
-.cardBadge {
+.card-badge {
 	background-color: var(--color--background--light-3);
 }
 
-.cardBadge.with-breadcrumbs {
+.card-badge.with-breadcrumbs {
 	:global(.n8n-badge) {
 		padding-right: 0;
 	}
