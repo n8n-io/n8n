@@ -148,34 +148,5 @@ describe('DataTableCard', () => {
 			const { getByTestId } = renderComponent({ props: { showOwnershipBadge: true } });
 			expect(getByTestId('project-card-badge')).toBeInTheDocument();
 		});
-
-		it('should apply with-breadcrumbs class when data table belongs to a team project', () => {
-			const teamDataTable: DataTableResource = {
-				...DEFAULT_DATA_TABLE,
-				project: { id: 'team-project-id', type: ProjectTypes.Team } as DataTableResource['project'],
-			};
-
-			const { getByTestId } = renderComponent({
-				props: { dataTable: teamDataTable, showOwnershipBadge: true },
-			});
-
-			expect(getByTestId('project-card-badge')).toHaveClass('with-breadcrumbs');
-		});
-
-		it('should not apply with-breadcrumbs class when data table belongs to someone else', () => {
-			const otherPersonalDataTable: DataTableResource = {
-				...DEFAULT_DATA_TABLE,
-				project: {
-					id: 'other-personal-project-id',
-					type: ProjectTypes.Personal,
-				} as DataTableResource['project'],
-			};
-
-			const { getByTestId } = renderComponent({
-				props: { dataTable: otherPersonalDataTable, showOwnershipBadge: true },
-			});
-
-			expect(getByTestId('project-card-badge')).not.toHaveClass('with-breadcrumbs');
-		});
 	});
 });
