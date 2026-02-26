@@ -7,8 +7,7 @@ export class BreakingChangesModule implements ModuleInterface {
 	async init() {
 		if (!MIGRATION_REPORT_TARGET_VERSION) return;
 
-		const { loadAllRules } = await import('./rules');
-		await loadAllRules();
+		await import('./rules');
 		await import('./breaking-changes.controller');
 	}
 }

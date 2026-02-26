@@ -15,34 +15,31 @@ breaking-changes/
       detection.types.ts      # Report types
       index.ts
    rules/
-      v2/                     # V2-specific rules (auto-discovered)
+      v2/                     # V2-specific rules
          removed-nodes.rule.ts
          process-env-access.rule.ts
          file-access.rule.ts
          ...
-      index.ts                # Auto-discovery via fast-glob
+      index.ts                # Side-effect imports for all rules
    breaking-change-rule.decorator.ts        # @BreakingChangeRule decorator
-   breaking-changes.rule-metadata.service.ts # Auto-registration metadata
+   breaking-changes.rule-metadata.service.ts # Decorator-based registration metadata
    breaking-changes.service.ts              # Detection orchestration
    breaking-changes.rule-registry.service.ts # Rule management
    breaking-changes.controller.ts           # REST API
    breaking-changes.module.ts               # Module definition
 ```
 
-### Auto-Discovery
+### Registration
 
-Rules are auto-discovered at startup using two mechanisms:
-
-1. **`@BreakingChangeRule` decorator** — applied to each rule class, registers it
-   in `BreakingChangeRuleMetadata` (following the same pattern as `@BackendModule`
-   / `ModuleMetadata`).
-2. **`loadAllRules()`** — uses `fast-glob` to find all `*.rule.{js,ts}` files
-   under `rules/` and imports them, triggering the decorators.
+Rules are registered at startup using the `@BreakingChangeRule` decorator
+(following the same pattern as `@BackendModule` / `ModuleMetadata`).
+Each rule file is explicitly imported in `rules/index.ts` as a side-effect
+import, which triggers the decorator and registers the rule class.
 
 ```
 Module.init()
-  → loadAllRules()            glob **/*.rule.{js,ts}
-    → import each file        @BreakingChangeRule fires
+  → import './rules'          side-effect imports of all rule files
+    → @BreakingChangeRule fires on each class
       → BreakingChangeRuleMetadata.register()
   → import controller
     → BreakingChangeService constructor
@@ -161,8 +158,10 @@ The system supports three types of rules:
 
 ### Adding a Rule to an Existing Version
 
-Create a new `.rule.ts` file in the appropriate version directory. That's it — the
-file is auto-discovered and the `@BreakingChangeRule` decorator handles registration.
+1. Create a new `.rule.ts` file in the appropriate version directory.
+2. Add a side-effect import for it in `rules/index.ts`.
+
+The `@BreakingChangeRule` decorator handles registration automatically on import.
 
 #### Workflow Rule Example
 
@@ -287,7 +286,6 @@ export class MyInstanceRule implements IBreakingChangeInstanceRule {
 ```
 
 The rule will be automatically:
-- Discovered by `loadAllRules()` via `fast-glob`
 - Registered in `BreakingChangeRuleMetadata` by the `@BreakingChangeRule` decorator
 - Instantiated via DI and added to `RuleRegistry` when the service starts
 - Available for detection when calling the API with the matching version
@@ -303,5 +301,4 @@ To add breaking changes for a new version (e.g., v3):
 
 2. Add rule files with `@BreakingChangeRule({ version: 'v3' })`.
 
-That's it. The glob pattern `**/*.rule.{js,ts}` in `rules/index.ts` automatically
-picks up new version directories. No barrel files or manual registration needed.
+3. Add side-effect imports for the new rule files in `rules/index.ts`.
