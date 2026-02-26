@@ -1,16 +1,23 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { IExecutionDb } from '@n8n/db';
+import type { IExecutionDb, User } from '@n8n/db';
 import type { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
-import {
-	ExecutionRedactionService,
-	type ExecutionRedactionOptions,
-} from '../execution-redaction.service';
+import type { ExecutionRedactionOptions } from '@/executions/execution-redaction';
+
+import { ExecutionRedactionService } from '../execution-redaction.service';
 
 describe('ExecutionRedactionService', () => {
 	const logger = mockInstance(Logger);
 	let service: ExecutionRedactionService;
+
+	const mockUser = {
+		id: 'user-123',
+		email: 'test@example.com',
+		firstName: 'Test',
+		lastName: 'User',
+		role: 'global:owner',
+	} as unknown as User;
 
 	beforeEach(() => {
 		service = new ExecutionRedactionService(logger);
@@ -61,19 +68,21 @@ describe('ExecutionRedactionService', () => {
 			} as IExecutionDb;
 		};
 
-		it('should return unmodified execution when no options provided', async () => {
+		it('should return unmodified execution when redactExecutionData is undefined', async () => {
 			const execution = createMockExecution();
+			const options: ExecutionRedactionOptions = { user: mockUser };
 
-			const result = await service.processExecution(execution);
+			const result = await service.processExecution(execution, options);
 
 			expect(result).toBe(execution);
 			expect(result).toEqual(execution);
 		});
 
-		it('should return unmodified execution when applyRedaction is false', async () => {
+		it('should return unmodified execution when redactExecutionData is false', async () => {
 			const execution = createMockExecution();
 			const options: ExecutionRedactionOptions = {
-				applyRedaction: false,
+				user: mockUser,
+				redactExecutionData: false,
 			};
 
 			const result = await service.processExecution(execution, options);
@@ -82,10 +91,11 @@ describe('ExecutionRedactionService', () => {
 			expect(result).toEqual(execution);
 		});
 
-		it('should return unmodified execution when applyRedaction is true (stub behavior)', async () => {
+		it('should return unmodified execution when redactExecutionData is true (stub behavior)', async () => {
 			const execution = createMockExecution();
 			const options: ExecutionRedactionOptions = {
-				applyRedaction: true,
+				user: mockUser,
+				redactExecutionData: true,
 			};
 
 			const result = await service.processExecution(execution, options);
@@ -95,33 +105,18 @@ describe('ExecutionRedactionService', () => {
 			expect(result).toEqual(execution);
 		});
 
-		it('should return unmodified execution with context options', async () => {
-			const execution = createMockExecution();
-			const options: ExecutionRedactionOptions = {
-				applyRedaction: true,
-				context: {
-					userId: 'user-123',
-					projectId: 'project-123',
-				},
-			};
-
-			const result = await service.processExecution(execution, options);
-
-			expect(result).toBe(execution);
-			expect(result).toEqual(execution);
-		});
-
 		it('should log debug message when processing execution', async () => {
 			const execution = createMockExecution();
 			const options: ExecutionRedactionOptions = {
-				applyRedaction: true,
+				user: mockUser,
+				redactExecutionData: true,
 			};
 
 			await service.processExecution(execution, options);
 
 			expect(logger.debug).toHaveBeenCalledWith('Processing execution for redaction', {
 				executionId: execution.id,
-				options,
+				redactExecutionData: true,
 			});
 		});
 	});

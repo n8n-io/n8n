@@ -1,18 +1,18 @@
+import { Logger } from '@n8n/backend-common';
 import type { IExecutionDb } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Logger } from '@n8n/backend-common';
 
-export interface ExecutionRedactionOptions {
-	applyRedaction?: boolean;
-	context?: Record<string, unknown>;
-}
+import type {
+	ExecutionRedaction,
+	ExecutionRedactionOptions,
+} from '@/executions/execution-redaction';
 
 /**
  * Service responsible for redacting sensitive data from executions.
  * This service acts as a facade and delegates to the redaction module.
  */
 @Service()
-export class ExecutionRedactionService {
+export class ExecutionRedactionService implements ExecutionRedaction {
 	constructor(private readonly logger: Logger) {}
 
 	/**
@@ -21,8 +21,6 @@ export class ExecutionRedactionService {
 	 */
 	async init(): Promise<void> {
 		this.logger.debug('Initializing ExecutionRedactionService...');
-		// Stub implementation: no initialization needed yet
-		// TODO: Add actual initialization logic when redaction module is implemented, loading from env, etc
 	}
 
 	/**
@@ -32,26 +30,17 @@ export class ExecutionRedactionService {
 	 * @param execution - The execution to process
 	 * @param options - Options for redaction processing
 	 * @returns The processed execution (currently returns unmodified execution as stub)
-	 *
-	 * @example
-	 * ```typescript
-	 * const redactedExecution = await executionRedactionService.processExecution(
-	 *   execution,
-	 *   { applyRedaction: true }
-	 * );
-	 * ```
 	 */
 	async processExecution(
 		execution: IExecutionDb,
-		options: ExecutionRedactionOptions = {},
+		options: ExecutionRedactionOptions,
 	): Promise<IExecutionDb> {
 		this.logger.debug('Processing execution for redaction', {
 			executionId: execution.id,
-			options,
+			redactExecutionData: options.redactExecutionData,
 		});
 
 		// Stub implementation: return unmodified execution
-		// TODO: Delegate to redaction module when implemented
 		return execution;
 	}
 
@@ -62,17 +51,6 @@ export class ExecutionRedactionService {
 	 * @param executionId - The ID of the execution to check
 	 * @returns `true` if the user can reveal redacted data, `false` otherwise
 	 *          (currently returns `false` as stub)
-	 *
-	 * @example
-	 * ```typescript
-	 * const canReveal = await executionRedactionService.canUserReveal(
-	 *   userId,
-	 *   executionId
-	 * );
-	 * if (canReveal) {
-	 *   // Show full execution data
-	 * }
-	 * ```
 	 */
 	async canUserReveal(userId: string, executionId: string): Promise<boolean> {
 		this.logger.debug('Checking reveal permissions', {
@@ -81,7 +59,6 @@ export class ExecutionRedactionService {
 		});
 
 		// Stub implementation: return false (no reveal permission)
-		// TODO: Implement actual permission check when redaction module is available
 		return false;
 	}
 }
