@@ -11,8 +11,6 @@
 // PD denotes that the node has pinned data
 
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
-import * as Helpers from '@test/helpers';
-import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
 import { mock } from 'jest-mock-extended';
 import pick from 'lodash/pick';
 import type {
@@ -47,6 +45,9 @@ import {
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import assert from 'node:assert';
+
+import * as Helpers from '@test/helpers';
+import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
 
 import type { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
 import { DirectedGraph } from '../partial-execution-utils';
