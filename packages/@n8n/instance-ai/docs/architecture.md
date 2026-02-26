@@ -215,7 +215,9 @@ The event bus decouples agent execution from event delivery:
 
 - All agents (orchestrator + sub-agents) publish to a per-thread channel
 - Frontend subscribes via SSE with `Last-Event-ID` for reconnect/replay
+- All events carry `runId` (correlates to triggering message) and `agentId`
 - SSE events use monotonically increasing per-thread `id` values for replay
+- SSE supports both `Last-Event-ID` header and `?lastEventId` query parameter
 - Events are persisted to thread storage regardless of transport
 - No need to pipe sub-agent streams through orchestrator tool execution
 - One active run per thread (additional `POST /chat` is rejected while active)

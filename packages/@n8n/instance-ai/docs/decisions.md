@@ -96,8 +96,8 @@ Server-Sent Events (SSE), WebSocket, NDJSON over HTTP.
 - No automatic reconnection (unlike SSE) — acceptable for request-scoped streams
 
 > **Note**: This ADR is fully superseded by ADR-014. Streaming now uses SSE via
-> a pub/sub event bus. The POST endpoint returns a JSON acknowledgment
-> (`{ messageId }`) and does not stream NDJSON.
+> a pub/sub event bus. The POST endpoint returns `{ runId }` and does not
+> stream NDJSON.
 
 ---
 
@@ -292,7 +292,7 @@ complexity.
 `{"type":"error","content":"..."}`.
 
 **Consequences**:
-- All chunks follow the same schema: `{ type, agentId, payload? }`
+- All chunks follow the same schema: `{ type, runId, agentId, payload? }`
 - Frontend parsers can use a single code path for all chunk types
 - Existing frontend code should handle both formats during migration period
 - Backend controller needs to be updated to emit the new format
@@ -322,9 +322,11 @@ for replay on reconnect.
 - Frontend can connect/disconnect independently (SSE with `Last-Event-ID` replay)
 - Each SSE event has a monotonically increasing integer `id` per thread channel
 - Replay returns events where `event.id > Last-Event-ID` (no dedup needed)
-- Events carry `agentId` — frontend can render an agent activity tree
-- New lifecycle chunk types: `agent-spawned`, `agent-completed`
-- Existing POST endpoint still kicks off the orchestrator
+- SSE endpoint supports both `Last-Event-ID` header (auto-reconnect) and
+  `?lastEventId` query parameter (manual reconnect)
+- All events carry `runId` (correlates to the triggering message) and `agentId`
+- New lifecycle events: `run-start`, `run-finish`, `agent-spawned`, `agent-completed`
+- POST endpoint returns `{ runId }` (no longer streams)
 - New SSE endpoint: `GET /instance-ai/events/:threadId`
 - Only one active run is allowed per thread; additional `POST /chat` requests
   for the same thread are rejected while a run is in progress
