@@ -140,7 +140,7 @@ describe('ExecutionRedactionService', () => {
 			const item = result.data.resultData.runData.TestNode[0].data!.main[0]![0];
 			expect(item.json).toEqual({});
 			expect(item.binary).toBeUndefined();
-			expect(item.redaction).toEqual({ redacted: true });
+			expect(item.redaction).toEqual({ redacted: true, reason: 'user_requested' });
 		});
 	});
 
@@ -235,7 +235,7 @@ describe('ExecutionRedactionService', () => {
 			const item = result.data.resultData.runData.TestNode[0].data!.main[0]![0];
 			expect(item.json).toEqual({});
 			expect(item.binary).toBeUndefined();
-			expect(item.redaction).toEqual({ redacted: true });
+			expect(item.redaction).toEqual({ redacted: true, reason: 'workflow_redaction_policy' });
 		});
 
 		it('should redact when policy is non-manual and mode is webhook', async () => {
@@ -250,7 +250,7 @@ describe('ExecutionRedactionService', () => {
 
 			const item = result.data.resultData.runData.TestNode[0].data!.main[0]![0];
 			expect(item.json).toEqual({});
-			expect(item.redaction).toEqual({ redacted: true });
+			expect(item.redaction).toEqual({ redacted: true, reason: 'workflow_redaction_policy' });
 		});
 
 		it('should redact when policy is all and mode is manual', async () => {
@@ -265,7 +265,7 @@ describe('ExecutionRedactionService', () => {
 
 			const item = result.data.resultData.runData.TestNode[0].data!.main[0]![0];
 			expect(item.json).toEqual({});
-			expect(item.redaction).toEqual({ redacted: true });
+			expect(item.redaction).toEqual({ redacted: true, reason: 'workflow_redaction_policy' });
 		});
 
 		it('should redact when policy is all and mode is trigger', async () => {
@@ -280,7 +280,7 @@ describe('ExecutionRedactionService', () => {
 
 			const item = result.data.resultData.runData.TestNode[0].data!.main[0]![0];
 			expect(item.json).toEqual({});
-			expect(item.redaction).toEqual({ redacted: true });
+			expect(item.redaction).toEqual({ redacted: true, reason: 'workflow_redaction_policy' });
 		});
 
 		it('should default to none when runtimeData and workflow settings are missing', async () => {
@@ -311,7 +311,7 @@ describe('ExecutionRedactionService', () => {
 
 			const item = result.data.resultData.runData.TestNode[0].data!.main[0]![0];
 			expect(item.json).toEqual({});
-			expect(item.redaction).toEqual({ redacted: true });
+			expect(item.redaction).toEqual({ redacted: true, reason: 'workflow_redaction_policy' });
 		});
 	});
 
@@ -365,7 +365,51 @@ describe('ExecutionRedactionService', () => {
 			const overrideItem = result.data.resultData.runData.TestNode[0].inputOverride!.main[0]![0];
 			expect(overrideItem.json).toEqual({});
 			expect(overrideItem.binary).toBeUndefined();
-			expect(overrideItem.redaction).toEqual({ redacted: true });
+			expect(overrideItem.redaction).toEqual({
+				redacted: true,
+				reason: 'workflow_redaction_policy',
+			});
+		});
+
+		it('should handle large executions with 1000+ items efficiently', async () => {
+			const items = Array.from({ length: 1500 }, (_, i) => ({
+				json: { id: i, secret: `sensitive-data-${i}`, nested: { key: `value-${i}` } },
+				binary: { file: { mimeType: 'text/plain', data: `data-${i}` } },
+			}));
+
+			const execution = createMockExecution({
+				policy: 'all',
+				mode: 'trigger',
+				withRunData: false,
+			});
+			execution.data.resultData.runData = {
+				LargeNode: [
+					{
+						startTime: 0,
+						executionIndex: 0,
+						executionTime: 100,
+						executionStatus: 'success' as const,
+						data: { main: [items] },
+						source: [],
+					},
+				],
+			};
+			const options: ExecutionRedactionOptions = { user: mockUser };
+
+			const start = performance.now();
+			const result = await service.processExecution(execution, options);
+			const elapsed = performance.now() - start;
+
+			const redactedItems = result.data.resultData.runData.LargeNode[0].data!.main[0]!;
+			expect(redactedItems).toHaveLength(1500);
+			for (const item of redactedItems) {
+				expect(item.json).toEqual({});
+				expect(item.binary).toBeUndefined();
+				expect(item.redaction).toEqual({ redacted: true, reason: 'workflow_redaction_policy' });
+			}
+
+			// Redaction of 1500 items should complete well under 100ms
+			expect(elapsed).toBeLessThan(100);
 		});
 	});
 });
