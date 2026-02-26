@@ -909,7 +909,7 @@ describe('ParameterInput.vue', () => {
 			const activeNode = reactive({
 				id: faker.string.uuid(),
 				name: 'Test Node',
-				parameters: { model: 'gpt-4' },
+				parameters: { model: 'gpt-3.5-turbo' },
 				position: [0, 0] as [number, number],
 				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 				typeVersion: 1,
@@ -933,7 +933,7 @@ describe('ParameterInput.vue', () => {
 						default: 'gpt-4',
 						typeOptions: { loadOptionsMethod: 'getModels' },
 					}),
-					modelValue: 'gpt-4',
+					modelValue: 'gpt-3.5-turbo',
 				},
 			});
 
@@ -941,7 +941,7 @@ describe('ParameterInput.vue', () => {
 				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled();
 			});
 
-			// Change credentials
+			// Change credentials — the previously selected model should be reset to the default
 			activeNode.credentials = {
 				openAiApi: { id: '2', name: 'OpenAI Account 2' },
 			};
