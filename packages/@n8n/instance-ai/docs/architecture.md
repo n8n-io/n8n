@@ -35,7 +35,7 @@ graph TB
         Factory --> OrcAgent[Orchestrator]
         OrcAgent --> PlanTool[Plan Tool]
         OrcAgent --> DelegateTool[Delegate Tool]
-        OrcAgent --> DirectTools[Direct Tools x14]
+        OrcAgent --> DirectTools[Domain Tools x16]
         OrcAgent --> MCPTools[MCP Tools]
         OrcAgent --> Memory[Memory System]
     end

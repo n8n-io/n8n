@@ -228,7 +228,8 @@ the UI programmatically. The agent retains `list-credentials`, `get-credential`,
 - Agent cannot fully automate credential setup (current limitation)
 - Browser automation (DevTools MCP) becomes the future path for agent-driven
   credential creation — the agent fills in the UI form like a user would
-- Reduces tool count from 18 to 16
+- Reduces domain tool count from 18 to 16 (orchestration tools `plan` and
+  `delegate` were added later, bringing the total back to 18)
 
 ---
 

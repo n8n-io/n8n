@@ -214,6 +214,32 @@ A sub-agent has finished its work.
 
 The frontend marks the sub-agent node as completed.
 
+### `confirmation-request`
+
+A tool requires user approval before execution (HITL confirmation protocol,
+ADR-006). The tool's execution is paused until the user responds.
+
+```json
+{
+  "type": "confirmation-request",
+  "runId": "run_abc123",
+  "agentId": "agent-001",
+  "payload": {
+    "requestId": "cr_xyz",
+    "toolCallId": "tc_abc123",
+    "toolName": "delete-workflow",
+    "args": {"workflowId": "wf-123"},
+    "severity": "destructive",
+    "message": "Delete workflow 'My Workflow'?"
+  }
+}
+```
+
+The frontend renders an approval card on the matching tool call (matched by
+`toolCallId`). The user responds via `POST /instance-ai/confirm/:requestId`
+with `{ approved: boolean }`. On approval, normal `tool-result` follows. On
+denial, `tool-error` follows.
+
 ### `error`
 
 A system-level error occurred.

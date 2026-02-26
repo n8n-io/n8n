@@ -141,8 +141,8 @@ delivery. Users can navigate away and come back without losing context.
 - One active run per thread (conversation). A second message on the same thread
   is rejected while a run is in progress.
 - Cancellation is explicit via `POST /instance-ai/chat/:threadId/cancel`.
-- Cancel is idempotent and ends the run with a final `done` event marked as
-  cancelled.
+- Cancel is idempotent and ends the run with a `run-finish` event with
+  `status: "cancelled"`.
 
 ### Open Questions
 

@@ -364,12 +364,12 @@ stateDiagram-v2
 - **Disconnect** when switching threads (close old connection, open new one
   for the target thread)
 - **Disconnect** when the chat panel is closed
-- **Replay on open**: When opening a thread with past events, use a query
-  parameter for the initial connection:
-  `GET /instance-ai/events/:threadId?lastEventId=42`
-  (Native `EventSource` does not support setting `Last-Event-ID` header on
-  the initial connection — only on auto-reconnect. The query parameter is
-  the workaround for manual reconnection and fresh connections with replay.)
+- **Replay on open**: When opening a thread (including thread switch), omit
+  `lastEventId` to replay the full event history from the beginning. The
+  `?lastEventId` query parameter is only used for manual reconnection
+  within the same thread (e.g., page reload while chat was open), not for
+  thread switches. See `switchThread()` below which deletes the per-thread
+  cursor to force full replay.
 
 ### SSE client implementation
 
