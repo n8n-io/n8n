@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeMount, watch } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import type {
@@ -13,13 +13,11 @@ import type { IUpdateInformation } from '@/Interface';
 import CredentialModeSelector, { type CredentialModeOption } from './CredentialModeSelector.vue';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useI18n, addCredentialTranslation } from '@n8n/i18n';
-import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import {
 	BUILTIN_CREDENTIALS_DOCS_URL,
 	DOCS_DOMAIN,
 	EnterpriseEditionFeature,
-	MODAL_CONFIRM,
 	NEW_ASSISTANT_SESSION_MODAL,
 } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
@@ -101,30 +99,24 @@ const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 
 const i18n = useI18n();
-const message = useMessage();
 const telemetry = useTelemetry();
 const { isQuickConnectEnabled, getQuickConnectOption } = useQuickConnect();
 
-async function onDynamicCredentialsToggle(newValue: boolean) {
-	const titleKey = newValue
-		? 'credentialEdit.credentialConfig.dynamicCredentials.confirm.enableTitle'
-		: 'credentialEdit.credentialConfig.dynamicCredentials.confirm.disableTitle';
-	const messageKey = newValue
-		? 'credentialEdit.credentialConfig.dynamicCredentials.confirm.enableMessage'
-		: 'credentialEdit.credentialConfig.dynamicCredentials.confirm.disableMessage';
+const pendingDynamicToggle = ref<boolean | null>(null);
 
-	const confirmAction = await message.confirm(i18n.baseText(messageKey), i18n.baseText(titleKey), {
-		confirmButtonText: i18n.baseText(
-			'credentialEdit.credentialConfig.dynamicCredentials.confirm.confirm',
-		),
-		cancelButtonText: i18n.baseText(
-			'credentialEdit.credentialConfig.dynamicCredentials.confirm.cancel',
-		),
-	});
+function onDynamicCredentialsToggle(newValue: boolean) {
+	pendingDynamicToggle.value = newValue;
+}
 
-	if (confirmAction === MODAL_CONFIRM) {
-		emit('update:isResolvable', newValue);
+function confirmDynamicCredentialsToggle() {
+	if (pendingDynamicToggle.value !== null) {
+		emit('update:isResolvable', pendingDynamicToggle.value);
+		pendingDynamicToggle.value = null;
 	}
+}
+
+function cancelDynamicCredentialsToggle() {
+	pendingDynamicToggle.value = null;
 }
 
 onBeforeMount(async () => {
@@ -427,6 +419,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					<div :class="$style.dynamicCredentialsRow">
 						<ElSwitch
 							:model-value="isResolvable"
+							:disabled="pendingDynamicToggle !== null"
 							data-test-id="dynamic-credentials-toggle"
 							@update:model-value="(val) => onDynamicCredentialsToggle(Boolean(val))"
 						/>
@@ -442,8 +435,45 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							<N8nIcon icon="circle-help" size="small" color="text-light" />
 						</N8nTooltip>
 					</div>
+					<N8nCallout
+						v-if="pendingDynamicToggle !== null"
+						:theme="pendingDynamicToggle ? 'info' : 'warning'"
+						:class="$style.dynamicCredentialsNotice"
+						data-test-id="dynamic-credentials-confirm-callout"
+					>
+						{{
+							i18n.baseText(
+								pendingDynamicToggle
+									? 'credentialEdit.credentialConfig.dynamicCredentials.confirm.enableMessage'
+									: 'credentialEdit.credentialConfig.dynamicCredentials.confirm.disableMessage',
+							)
+						}}
+						<div :class="$style.dynamicCredentialsConfirmActions">
+							<N8nLink
+								size="small"
+								data-test-id="dynamic-credentials-confirm-cancel"
+								@click="cancelDynamicCredentialsToggle"
+							>
+								{{
+									i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.confirm.cancel')
+								}}
+							</N8nLink>
+							<N8nLink
+								size="small"
+								:bold="true"
+								data-test-id="dynamic-credentials-confirm-confirm"
+								@click="confirmDynamicCredentialsToggle"
+							>
+								{{
+									i18n.baseText(
+										'credentialEdit.credentialConfig.dynamicCredentials.confirm.confirm',
+									)
+								}}
+							</N8nLink>
+						</div>
+					</N8nCallout>
 					<N8nInfoTip
-						v-if="isResolvable"
+						v-else-if="isResolvable"
 						:bold="false"
 						:class="$style.dynamicCredentialsNotice"
 						data-test-id="dynamic-credentials-notice"
@@ -582,6 +612,12 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 .dynamicCredentialsNotice {
 	margin-top: var(--spacing--xs);
+}
+
+.dynamicCredentialsConfirmActions {
+	display: flex;
+	gap: var(--spacing--sm);
+	margin-top: var(--spacing--2xs);
 }
 
 .docsCallout {
