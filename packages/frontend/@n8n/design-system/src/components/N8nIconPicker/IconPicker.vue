@@ -114,10 +114,9 @@ const selectedSkinTone = ref<number>(
 );
 
 const container = ref<HTMLDivElement>();
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-const searchInputRef = ref<InstanceType<typeof N8nInput> | null>(null);
-const colorPickerRef = ref<InstanceType<typeof IconColorPicker> | null>(null);
-const skinTonePickerRef = ref<InstanceType<typeof SkinTonePicker> | null>(null);
+const searchInputRef = ref<InstanceType<typeof N8nInput>>();
+const colorPickerRef = ref<InstanceType<typeof IconColorPicker>>();
+const skinTonePickerRef = ref<InstanceType<typeof SkinTonePicker>>();
 
 onClickOutside(container, () => {
 	popupVisible.value = false;
@@ -204,7 +203,7 @@ function humanizeIconName(name: string): string {
 		aria-haspopup="true"
 	>
 		<div :class="$style['icon-picker-button']" @pointerenter="loadData">
-			<N8nTooltip placement="right" data-test-id="icon-picker-tooltip" :disabled="isReadOnly">
+			<N8nTooltip placement="top" data-test-id="icon-picker-tooltip" :disabled="isReadOnly">
 				<template #content>
 					{{ props.buttonTooltip ?? t('iconPicker.button.defaultToolTip') }}
 				</template>
@@ -288,17 +287,17 @@ function humanizeIconName(name: string): string {
 				<template #content>
 					{{ selectedTab === 'icons' ? t('iconPicker.random.icon') : t('iconPicker.random.emoji') }}
 				</template>
-				<N8nButton
-					:class="$style.shuffleButton"
-					type="tertiary"
-					size="medium"
-					:square="true"
-					:aria-label="selectedTab === 'icons' ? t('iconPicker.random.icon') : t('iconPicker.random.emoji')"
-					data-test-id="icon-picker-random"
-					@click="selectedTab === 'icons' ? selectRandomIcon() : selectRandomEmoji()"
-				>
-					<IconShuffle :class="$style.shuffleIcon" />
-				</N8nButton>
+			<N8nButton
+				:class="$style.shuffleButton"
+				variant="outline"
+				size="medium"
+				icon-only
+				:aria-label="selectedTab === 'icons' ? t('iconPicker.random.icon') : t('iconPicker.random.emoji')"
+				data-test-id="icon-picker-random"
+				@click="selectedTab === 'icons' ? selectRandomIcon() : selectRandomEmoji()"
+			>
+				<IconShuffle :class="$style.shuffleIcon" />
+			</N8nButton>
 			</N8nTooltip>
 			</div>
 
@@ -423,6 +422,7 @@ function humanizeIconName(name: string): string {
 <style module lang="scss">
 .container {
 	position: relative;
+	width: fit-content;
 }
 
 .icon-button,
@@ -435,14 +435,15 @@ function humanizeIconName(name: string): string {
 
 .icon-button {
 	svg {
-		width: 20px;
-		height: 20px;
+		width: var(--spacing--md);
+		height: var(--spacing--md);
+		stroke-width: 1.5;
 	}
 }
 
 .emoji-button {
 	padding: 0;
-	font-size: 20px;
+	font-size: var(--font-size--xl);
 }
 
 .popup {
@@ -501,8 +502,8 @@ function humanizeIconName(name: string): string {
 	}
 
 	.icon {
-		width: 20px;
-		height: 20px;
+		width: var(--spacing--md);
+		height: var(--spacing--md);
 		box-sizing: content-box;
 		color: var(--color--text--tint-1);
 		stroke-width: 1.5;
@@ -513,13 +514,13 @@ function humanizeIconName(name: string): string {
 	}
 
 	.emoji {
-		font-size: 20px;
+		font-size: var(--font-size--xl);
 		line-height: 1;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 28px;
-		height: 28px;
+		width: var(--icon-picker--emoji-cell-size, 28px);
+		height: var(--icon-picker--emoji-cell-size, 28px);
 		overflow: hidden;
 		font-family:
 			'Segoe UI Emoji', 'Segoe UI Symbol', 'Segoe UI', 'Apple Color Emoji', 'Twemoji Mozilla',
@@ -545,16 +546,12 @@ function humanizeIconName(name: string): string {
 	}
 
 	.shuffleButton {
-		display: inline-flex !important;
-		align-items: center;
-		justify-content: center;
 		flex-shrink: 0;
-		padding: 0 !important;
 	}
 
 	.shuffleIcon {
-		width: 16px;
-		height: 16px;
+		width: var(--spacing--sm);
+		height: var(--spacing--sm);
 		color: var(--color--text--tint-1);
 		stroke-width: 1.5;
 	}

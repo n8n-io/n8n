@@ -15,16 +15,16 @@ const isOpen = ref(false);
 const DEFAULT_COLOR_VARIABLE = '--node--icon--color--neutral';
 
 const colors = [
-	{ name: 'blue', variable: '--node--icon--color--blue', label: 'Blue' },
-	{ name: 'light-blue', variable: '--node--icon--color--light-blue', label: 'Light Blue' },
-	{ name: 'azure', variable: '--node--icon--color--azure', label: 'Azure' },
-	{ name: 'purple', variable: '--node--icon--color--purple', label: 'Purple' },
-	{ name: 'pink-red', variable: '--node--icon--color--pink-red', label: 'Pink' },
-	{ name: 'red', variable: '--node--icon--color--red', label: 'Red' },
-	{ name: 'orange', variable: '--node--icon--color--orange', label: 'Orange' },
-	{ name: 'green', variable: '--node--icon--color--green', label: 'Green' },
-	{ name: 'dark-green', variable: '--node--icon--color--dark-green', label: 'Dark Green' },
-	{ name: 'neutral', variable: '--node--icon--color--neutral', label: 'Gray' },
+	{ name: 'blue', variable: '--node--icon--color--blue', labelKey: 'iconPicker.colorPicker.blue' },
+	{ name: 'light-blue', variable: '--node--icon--color--light-blue', labelKey: 'iconPicker.colorPicker.lightBlue' },
+	{ name: 'azure', variable: '--node--icon--color--azure', labelKey: 'iconPicker.colorPicker.azure' },
+	{ name: 'purple', variable: '--node--icon--color--purple', labelKey: 'iconPicker.colorPicker.purple' },
+	{ name: 'pink-red', variable: '--node--icon--color--pink-red', labelKey: 'iconPicker.colorPicker.pink' },
+	{ name: 'red', variable: '--node--icon--color--red', labelKey: 'iconPicker.colorPicker.red' },
+	{ name: 'orange', variable: '--node--icon--color--orange', labelKey: 'iconPicker.colorPicker.orange' },
+	{ name: 'green', variable: '--node--icon--color--green', labelKey: 'iconPicker.colorPicker.green' },
+	{ name: 'dark-green', variable: '--node--icon--color--dark-green', labelKey: 'iconPicker.colorPicker.darkGreen' },
+	{ name: 'neutral', variable: '--node--icon--color--neutral', labelKey: 'iconPicker.colorPicker.gray' },
 ] as const;
 
 /** The effective color variable, treating undefined (no selection) as neutral/gray. */
@@ -42,7 +42,7 @@ function selectColor(variable: string) {
 }
 
 function getColorLabel(color: (typeof colors)[number]): string {
-	return color.label;
+	return t(color.labelKey);
 }
 
 defineExpose({ isOpen });
@@ -58,14 +58,14 @@ defineExpose({ isOpen });
 		:teleported="false"
 	>
 		<template #trigger>
-			<N8nButton
-				:class="$style.triggerButton"
-				type="tertiary"
-				size="medium"
-				:square="true"
-				:aria-label="t('iconPicker.colorPicker.selectColor')"
-				data-test-id="icon-color-picker-trigger"
-			>
+		<N8nButton
+			:class="$style.triggerButton"
+			variant="outline"
+			size="medium"
+			icon-only
+			:aria-label="t('iconPicker.colorPicker.selectColor')"
+			data-test-id="icon-color-picker-trigger"
+		>
 				<span
 					:class="$style.triggerCircle"
 					:style="{ backgroundColor: displayColor }"
@@ -106,24 +106,20 @@ defineExpose({ isOpen });
 
 <style module lang="scss">
 .triggerButton {
-	display: inline-flex !important;
-	align-items: center;
-	justify-content: center;
 	flex-shrink: 0;
-	padding: 0 !important;
 }
 
 .triggerCircle {
 	display: block;
-	width: 16px;
-	height: 16px;
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 	border-radius: 50%;
 	flex-shrink: 0;
 }
 
 .colorGrid {
 	display: grid;
-	grid-template-columns: repeat(5, 24px);
+	grid-template-columns: repeat(5, var(--spacing--lg));
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--2xs);
 	justify-content: center;
@@ -133,10 +129,10 @@ defineExpose({ isOpen });
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 24px;
-	height: 24px;
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
 	padding: 0;
-	border: 2px solid transparent;
+	border: var(--border-width) solid transparent;
 	border-radius: 50%;
 	cursor: pointer;
 	background: none;
@@ -153,8 +149,8 @@ defineExpose({ isOpen });
 
 .swatchInner {
 	display: block;
-	width: 16px;
-	height: 16px;
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 	border-radius: 50%;
 }
 </style>

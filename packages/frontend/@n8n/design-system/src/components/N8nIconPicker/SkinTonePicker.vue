@@ -48,14 +48,14 @@ defineExpose({ isOpen });
 		:teleported="false"
 	>
 		<template #trigger>
-			<N8nButton
-				:class="$style.triggerButton"
-				type="tertiary"
-				size="medium"
-				:square="true"
-				:aria-label="t('iconPicker.skinTone.selectSkinTone')"
-				data-test-id="emoji-skin-tone-trigger"
-			>
+		<N8nButton
+			:class="$style.triggerButton"
+			variant="outline"
+			size="medium"
+			icon-only
+			:aria-label="t('iconPicker.skinTone.selectSkinTone')"
+			data-test-id="emoji-skin-tone-trigger"
+		>
 				<span :class="$style.triggerEmoji">{{ displayEmoji }}</span>
 			</N8nButton>
 		</template>
@@ -87,15 +87,11 @@ defineExpose({ isOpen });
 
 <style module lang="scss">
 .triggerButton {
-	display: inline-flex !important;
-	align-items: center;
-	justify-content: center;
 	flex-shrink: 0;
-	padding: 0 !important;
 }
 
 .triggerEmoji {
-	font-size: 18px;
+	font-size: var(--font-size--lg);
 	line-height: 1;
 	font-family:
 		'Segoe UI Emoji', 'Segoe UI Symbol', 'Segoe UI', 'Apple Color Emoji', 'Twemoji Mozilla',
@@ -113,10 +109,10 @@ defineExpose({ isOpen });
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 34px;
-	height: 34px;
+	width: var(--icon-picker--skin-tone-swatch-size, 34px);
+	height: var(--icon-picker--skin-tone-swatch-size, 34px);
 	padding: 0;
-	border: 2px solid transparent;
+	border: var(--border-width) solid transparent;
 	border-radius: var(--radius--sm);
 	cursor: pointer;
 	background: none;
@@ -134,7 +130,7 @@ defineExpose({ isOpen });
 }
 
 .toneEmoji {
-	font-size: 20px;
+	font-size: var(--font-size--xl);
 	line-height: 1;
 	font-family:
 		'Segoe UI Emoji', 'Segoe UI Symbol', 'Segoe UI', 'Apple Color Emoji', 'Twemoji Mozilla',
