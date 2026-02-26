@@ -21,10 +21,16 @@ const PASSTHROUGH = 'passthrough';
 /**
  * Extract input schema from an Execute Workflow Trigger node's parameters.
  * Reads node.parameters directly — no UI context needed.
+ *
+ * For v1.1+ nodes, the default inputSource is 'workflowInputs' (not 'passthrough').
+ * n8n may omit default parameter values from storage, so we must infer the correct
+ * default based on the node's typeVersion.
  */
 export function extractTriggerInputSchema(node: INode): WorkflowInputField[] {
 	const params = node.parameters ?? {};
-	const inputSource = (params[INPUT_SOURCE] as string) ?? PASSTHROUGH;
+	// v1.1+ defaults to 'workflowInputs'; v1 has no inputSource param and is always passthrough
+	const defaultSource = node.typeVersion >= 1.1 ? WORKFLOW_INPUTS : PASSTHROUGH;
+	const inputSource = (params[INPUT_SOURCE] as string) ?? defaultSource;
 
 	if (inputSource === PASSTHROUGH) return [];
 
@@ -34,7 +40,8 @@ export function extractTriggerInputSchema(node: INode): WorkflowInputField[] {
 			| undefined;
 		const fields = container?.[VALUES];
 		if (!Array.isArray(fields)) return [];
-		return fields.filter((f) => f.name).map((f) => ({ name: f.name, type: f.type ?? 'any' }));
+		// n8n omits default values from storage; the node definition defaults type to 'string'
+		return fields.filter((f) => f.name).map((f) => ({ name: f.name, type: f.type ?? 'string' }));
 	}
 
 	if (inputSource === JSON_EXAMPLE) {

@@ -383,6 +383,169 @@
     text-align: center;
   }
 
+  /* ── Connect Button ── */
+  .btn-connect {
+    background: var(--surface-alt);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.15);
+    flex: 0 0 auto;
+    padding: 10px 16px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .btn-connect:hover:not(:disabled) { border-color: var(--primary); }
+
+  .btn-connect.connected {
+    border-color: var(--success);
+    color: var(--success);
+  }
+
+  /* ── Agent Card ── */
+  .agent-card {
+    background: linear-gradient(135deg, rgba(15,52,96,0.6), rgba(22,33,62,0.8));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--radius);
+    padding: 16px;
+    animation: slideIn 0.3s ease-out both;
+  }
+
+  .agent-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .agent-card-name {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .agent-card-id {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+
+  .agent-card-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+
+  .capability-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .cap-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .cap-badge.on { background: rgba(0,184,148,0.15); color: var(--success); }
+  .cap-badge.off { background: rgba(160,160,184,0.1); color: var(--text-dim); text-decoration: line-through; }
+
+  .skills-section {
+    margin-top: 4px;
+  }
+
+  .skills-header {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .skills-count {
+    font-size: 10px;
+    background: var(--primary);
+    color: white;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-weight: 600;
+  }
+
+  .skill-item {
+    background: rgba(0,0,0,0.2);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    border-left: 2px solid var(--primary);
+  }
+
+  .skill-name {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .skill-id {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-weight: 400;
+  }
+
+  .skill-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+
+  .skill-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .input-tag {
+    font-size: 11px;
+    font-family: var(--mono);
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(233,69,96,0.1);
+    border: 1px solid rgba(233,69,96,0.2);
+  }
+
+  .input-tag .input-name { color: var(--text); font-weight: 600; }
+  .input-tag .input-type { color: var(--text-dim); }
+
+  .no-skills {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+    padding: 8px 0;
+  }
+
+  .creds-section {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .creds-section span {
+    font-family: var(--mono);
+    color: var(--warning);
+  }
+
   /* ── Responsive ── */
   @media (max-width: 800px) {
     .container { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
@@ -405,16 +568,15 @@
       <input id="backendUrl" placeholder="http://localhost:5678 (leave empty for same-origin)">
     </div>
 
-    <div class="field-row">
-      <div class="field">
-        <label>Agent ID</label>
-        <input id="agentId" placeholder="uuid...">
+    <div style="display:flex;gap:8px;align-items:flex-end;">
+      <div class="field" style="flex:1;">
+        <label>Agent API Key</label>
+        <input id="apiKey" type="password" placeholder="Agent's API key (from agent creation)">
       </div>
-      <div class="field">
-        <label>API Key</label>
-        <input id="apiKey" type="password" placeholder="n8n API key">
-      </div>
+      <button class="btn-connect" id="connectBtn" onclick="connectAgent()">Connect</button>
     </div>
+
+    <div id="agentCardContainer"></div>
 
     <div class="field">
       <label>Prompt</label>
@@ -470,7 +632,7 @@
   <div class="stream-panel" id="streamPanel">
     <div class="empty-state" id="emptyState">
       <div class="icon">&#x1F916;</div>
-      <p>Configure an agent and click Run Task to start streaming</p>
+      <p>Enter an Agent ID and click Connect to discover skills, then Run Task to execute</p>
     </div>
   </div>
 </div>
@@ -479,17 +641,139 @@
 let abortController = null;
 let startTime = null;
 let timerInterval = null;
+let agentCard = null;
 
 function $(id) { return document.getElementById(id); }
 
+// ── Agent Connect (via A2A well-known) ────────────────────────────────────
+
+function getBackendUrl() {
+  return $('backendUrl').value.trim().replace(/\/$/, '') || window.location.origin;
+}
+
+function getApiHeaders() {
+  const headers = { 'Accept': 'application/json' };
+  const apiKey = $('apiKey').value.trim();
+  if (apiKey) headers['x-n8n-api-key'] = apiKey;
+  return headers;
+}
+
+async function connectAgent() {
+  const apiKey = $('apiKey').value.trim();
+  if (!apiKey) { alert('Enter the agent\'s API key'); return; }
+
+  const btn = $('connectBtn');
+  btn.disabled = true;
+  btn.textContent = '...';
+
+  try {
+    const res = await fetch(`${getBackendUrl()}/.well-known/agent.json`, { headers: getApiHeaders() });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status}: ${text}`);
+    }
+
+    agentCard = await res.json();
+    renderAgentCard(agentCard);
+
+    btn.textContent = 'Connected';
+    btn.classList.add('connected');
+  } catch (err) {
+    agentCard = null;
+    $('agentCardContainer').innerHTML = '';
+    alert(`Failed to connect: ${err.message}`);
+    btn.textContent = 'Connect';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderAgentCard(card) {
+  const container = $('agentCardContainer');
+
+  // Capabilities
+  const caps = card.capabilities || {};
+  const capBadges = Object.entries(caps)
+    .map(([key, val]) => `<span class="cap-badge ${val ? 'on' : 'off'}">${formatCapName(key)}</span>`)
+    .join('');
+
+  // Skills
+  let skillsHtml = '';
+  if (card.skills && card.skills.length > 0) {
+    const skillItems = card.skills.map(skill => {
+      const inputTags = skill.inputs.map(inp =>
+        `<span class="input-tag"><span class="input-name">${escapeHtml(inp.name)}</span>: <span class="input-type">${escapeHtml(inp.type)}</span></span>`
+      ).join('');
+
+      const descHtml = skill.description
+        ? `<div class="skill-desc">${escapeHtml(skill.description)}</div>`
+        : '';
+
+      return `<div class="skill-item">
+        <div class="skill-name">${escapeHtml(skill.name)} <span class="skill-id">${escapeHtml(skill.id)}</span></div>
+        ${descHtml}
+        <div class="skill-inputs">${inputTags || '<span class="no-skills">no typed inputs</span>'}</div>
+      </div>`;
+    }).join('');
+
+    skillsHtml = `
+      <div class="skills-section">
+        <div class="skills-header">Skills <span class="skills-count">${card.skills.length}</span></div>
+        ${skillItems}
+      </div>`;
+  } else {
+    skillsHtml = `
+      <div class="skills-section">
+        <div class="skills-header">Skills <span class="skills-count">0</span></div>
+        <div class="no-skills">No typed skills discovered. Workflows without Execute Workflow Trigger schemas appear as generic tools.</div>
+      </div>`;
+  }
+
+  // Required credentials
+  let credsHtml = '';
+  if (card.requiredCredentials && card.requiredCredentials.length > 0) {
+    const credList = card.requiredCredentials
+      .map(c => `<span>${escapeHtml(c.type)}</span>`)
+      .join(', ');
+    credsHtml = `<div class="creds-section">Credentials: ${credList}</div>`;
+  }
+
+  container.innerHTML = `
+    <div class="agent-card">
+      <div class="agent-card-header">
+        <div class="agent-card-name">${escapeHtml(card.name || 'Unnamed Agent')}</div>
+      </div>
+      <div class="agent-card-id">${escapeHtml(card.id)}</div>
+      ${card.provider?.description ? `<div class="agent-card-desc">${escapeHtml(card.provider.description)}</div>` : ''}
+      <div class="capability-badges">${capBadges}</div>
+      ${skillsHtml}
+      ${credsHtml}
+    </div>`;
+}
+
+function formatCapName(key) {
+  return key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).trim();
+}
+
+// Reset connection when API key changes
+$('apiKey').addEventListener('change', () => {
+  agentCard = null;
+  $('agentCardContainer').innerHTML = '';
+  $('connectBtn').textContent = 'Connect';
+  $('connectBtn').classList.remove('connected');
+});
+
+// ── Task Execution ────────────────────────────────────────────────────────
+
 function runTask() {
-  const backendUrl = $('backendUrl').value.trim().replace(/\/$/, '') || window.location.origin;
-  const agentId = $('agentId').value.trim();
+  const backendUrl = getBackendUrl();
   const apiKey = $('apiKey').value.trim();
   const prompt = $('prompt').value.trim();
+  const agentId = agentCard?.id;
 
   if (!agentId || !apiKey || !prompt) {
-    alert('Fill in Agent ID, API Key, and Prompt');
+    alert(agentId ? 'Fill in API Key and Prompt' : 'Connect to an agent first, then enter a Prompt');
     return;
   }
 

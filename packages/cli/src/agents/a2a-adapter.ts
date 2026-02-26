@@ -52,6 +52,9 @@ export interface A2ATask {
 
 export interface A2ASendMessageRequest {
 	message: A2AMessage;
+	// A2A spec: task_id at request root level to continue an existing task
+	task_id?: string;
+	context_id?: string;
 	configuration?: {
 		accepted_output_modes?: string[];
 		blocking?: boolean;
@@ -94,8 +97,9 @@ export function fromA2ARequest(req: A2ASendMessageRequest): {
 
 	return {
 		prompt,
-		taskId: req.message.task_id ?? crypto.randomUUID(),
-		contextId: req.message.context_id ?? crypto.randomUUID(),
+		// A2A spec puts task_id/context_id at request root; fall back to message level for compat
+		taskId: req.task_id ?? req.message.task_id ?? crypto.randomUUID(),
+		contextId: req.context_id ?? req.message.context_id ?? crypto.randomUUID(),
 	};
 }
 

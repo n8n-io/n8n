@@ -16,20 +16,54 @@ describe('fromA2ARequest', () => {
 		expect(result.prompt).toBe('Hello\nWorld');
 	});
 
-	it('should use task_id and context_id from message when provided', () => {
+	it('should use task_id and context_id from request root (A2A spec)', () => {
 		const req: A2ASendMessageRequest = {
 			message: {
 				message_id: 'msg-1',
 				role: 'user',
 				parts: [{ text: 'Test' }],
-				task_id: 'task-abc',
-				context_id: 'ctx-xyz',
+			},
+			task_id: 'task-root',
+			context_id: 'ctx-root',
+		};
+
+		const result = fromA2ARequest(req);
+		expect(result.taskId).toBe('task-root');
+		expect(result.contextId).toBe('ctx-root');
+	});
+
+	it('should fall back to message-level task_id/context_id for compat', () => {
+		const req: A2ASendMessageRequest = {
+			message: {
+				message_id: 'msg-1',
+				role: 'user',
+				parts: [{ text: 'Test' }],
+				task_id: 'task-msg',
+				context_id: 'ctx-msg',
 			},
 		};
 
 		const result = fromA2ARequest(req);
-		expect(result.taskId).toBe('task-abc');
-		expect(result.contextId).toBe('ctx-xyz');
+		expect(result.taskId).toBe('task-msg');
+		expect(result.contextId).toBe('ctx-msg');
+	});
+
+	it('should prefer request root over message-level task_id/context_id', () => {
+		const req: A2ASendMessageRequest = {
+			message: {
+				message_id: 'msg-1',
+				role: 'user',
+				parts: [{ text: 'Test' }],
+				task_id: 'task-msg',
+				context_id: 'ctx-msg',
+			},
+			task_id: 'task-root',
+			context_id: 'ctx-root',
+		};
+
+		const result = fromA2ARequest(req);
+		expect(result.taskId).toBe('task-root');
+		expect(result.contextId).toBe('ctx-root');
 	});
 
 	it('should generate UUIDs when task_id and context_id are missing', () => {

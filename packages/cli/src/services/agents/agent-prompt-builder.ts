@@ -2,7 +2,7 @@ import type { WorkflowSkill } from './agent-schema-discovery';
 
 export function buildSystemPrompt(
 	agentName: string,
-	workflows: Array<{ id: string; name: string; active: boolean }>,
+	workflows: Array<{ id: string; name: string; active: boolean; description?: string | null }>,
 	otherAgents: Array<{ id: string; firstName: string; description: string }>,
 	canDelegate: boolean,
 	skills?: WorkflowSkill[],
@@ -11,12 +11,17 @@ export function buildSystemPrompt(
 
 	const workflowList = workflows
 		.map((w) => {
+			const lines: string[] = [];
+			lines.push(`- ${w.name} (id: ${w.id}, active: ${w.active})`);
+			if (w.description) {
+				lines.push(`  Description: ${w.description}`);
+			}
 			const skill = skillMap.get(w.id);
 			if (skill) {
 				const inputDesc = skill.inputs.map((i) => `${i.name}: ${i.type}`).join(', ');
-				return `- ${w.name} (id: ${w.id}, active: ${w.active})\n  Typed inputs: { ${inputDesc} }`;
+				lines.push(`  Typed inputs: { ${inputDesc} }`);
 			}
-			return `- ${w.name} (id: ${w.id}, active: ${w.active})`;
+			return lines.join('\n');
 		})
 		.join('\n');
 

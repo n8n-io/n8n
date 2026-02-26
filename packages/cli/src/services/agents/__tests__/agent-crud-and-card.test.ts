@@ -379,4 +379,46 @@ describe('getAgentCard', () => {
 		expect(result.skills[0].name).toBe('Typed Workflow');
 		expect(result.skills[0].inputs).toEqual([{ name: 'query', type: 'string' }]);
 	});
+
+	it('should discover skills from activeVersion nodes when workflow is published', async () => {
+		const mocks = createMockedService();
+		mocks.mockUserRepository.findOne.mockResolvedValue(makeAgentUser());
+		mocks.mockCredentialsService.getMany.mockResolvedValue([]);
+		mocks.mockWorkflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-pub']);
+		mocks.mockWorkflowRepository.findByIds.mockResolvedValue([
+			{
+				id: 'wf-pub',
+				name: 'Published Workflow',
+				nodes: [], // draft nodes are empty after publishing
+				activeVersion: {
+					nodes: [
+						{
+							name: 'Execute Workflow Trigger',
+							type: 'n8n-nodes-base.executeWorkflowTrigger',
+							disabled: false,
+							typeVersion: 1.1,
+							parameters: {
+								inputSource: 'workflowInputs',
+								workflowInputs: {
+									values: [
+										{ name: 'projectId', type: 'string' },
+										{ name: 'limit', type: 'number' },
+									],
+								},
+							},
+						},
+					],
+				},
+			},
+		]);
+
+		const result = await mocks.service.getAgentCard('agent-1', 'https://example.com');
+
+		expect(result.skills).toHaveLength(1);
+		expect(result.skills[0].name).toBe('Published Workflow');
+		expect(result.skills[0].inputs).toEqual([
+			{ name: 'projectId', type: 'string' },
+			{ name: 'limit', type: 'number' },
+		]);
+	});
 });

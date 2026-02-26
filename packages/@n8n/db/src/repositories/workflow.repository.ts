@@ -132,7 +132,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
-	async findByIds(workflowIds: string[], { fields }: { fields?: string[] } = {}) {
+	async findByIds(
+		workflowIds: string[],
+		{ fields, includeActiveVersion }: { fields?: string[]; includeActiveVersion?: boolean } = {},
+	) {
 		if (workflowIds.length === 0) {
 			return [];
 		}
@@ -142,6 +145,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		};
 
 		if (fields?.length) options.select = fields as FindOptionsSelect<WorkflowEntity>;
+		if (includeActiveVersion) options.relations = { activeVersion: true };
 
 		return await this.find(options);
 	}

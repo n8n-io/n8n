@@ -24,9 +24,27 @@ describe('extractTriggerInputSchema', () => {
 		expect(extractTriggerInputSchema(node)).toEqual([]);
 	});
 
-	it('should return empty array when no parameters set', () => {
+	it('should return empty array when no parameters set (v1.1 defaults to workflowInputs but no fields)', () => {
 		const node = makeTriggerNode({ parameters: {} });
 		expect(extractTriggerInputSchema(node)).toEqual([]);
+	});
+
+	it('should return empty array for v1 node with no parameters (passthrough default)', () => {
+		const node = makeTriggerNode({ typeVersion: 1, parameters: {} });
+		expect(extractTriggerInputSchema(node)).toEqual([]);
+	});
+
+	it('should extract fields when inputSource is omitted (v1.1 default is workflowInputs)', () => {
+		// n8n omits default parameter values from storage — v1.1 defaults to 'workflowInputs'
+		const node = makeTriggerNode({
+			parameters: {
+				workflowInputs: {
+					values: [{ name: 'projectId', type: 'string' }],
+				},
+			},
+		});
+
+		expect(extractTriggerInputSchema(node)).toEqual([{ name: 'projectId', type: 'string' }]);
 	});
 
 	it('should extract fields from workflowInputs mode', () => {
@@ -64,7 +82,7 @@ describe('extractTriggerInputSchema', () => {
 		expect(extractTriggerInputSchema(node)).toEqual([{ name: 'valid', type: 'number' }]);
 	});
 
-	it('should default type to "any" when missing', () => {
+	it('should default type to "string" when missing (matches node definition default)', () => {
 		const node = makeTriggerNode({
 			parameters: {
 				inputSource: 'workflowInputs',
@@ -74,7 +92,7 @@ describe('extractTriggerInputSchema', () => {
 			},
 		});
 
-		expect(extractTriggerInputSchema(node)).toEqual([{ name: 'field1', type: 'any' }]);
+		expect(extractTriggerInputSchema(node)).toEqual([{ name: 'field1', type: 'string' }]);
 	});
 
 	it('should extract fields from jsonExample mode', () => {
@@ -185,6 +203,26 @@ describe('discoverWorkflowSkill', () => {
 				{ name: 'channel', type: 'string' },
 				{ name: 'message', type: 'string' },
 			],
+		});
+	});
+
+	it('should return skill when inputSource is omitted (v1.1 default)', () => {
+		// Real-world case: n8n omits default parameter values from storage
+		const nodes: INode[] = [
+			makeTriggerNode({
+				parameters: {
+					workflowInputs: {
+						values: [{ name: 'test', type: 'string' }],
+					},
+				},
+			}),
+		];
+
+		const result = discoverWorkflowSkill('wf-1', 'Sub Workflow', nodes);
+		expect(result).toEqual({
+			workflowId: 'wf-1',
+			workflowName: 'Sub Workflow',
+			inputs: [{ name: 'test', type: 'string' }],
 		});
 	});
 });

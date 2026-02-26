@@ -255,15 +255,23 @@ export class AgentsService {
 		const skills: Array<{
 			id: string;
 			name: string;
+			description?: string | null;
 			inputs: Array<{ name: string; type: string }>;
 		}> = [];
 		if (workflowIds.length) {
-			const workflows = await this.workflowRepository.findByIds(workflowIds);
+			const workflows = await this.workflowRepository.findByIds(workflowIds, {
+				includeActiveVersion: true,
+			});
 			for (const wf of workflows) {
-				const nodes = wf.nodes ?? [];
+				const nodes = wf.activeVersion?.nodes ?? wf.nodes ?? [];
 				const skill = discoverWorkflowSkill(wf.id, wf.name, nodes);
 				if (skill) {
-					skills.push({ id: skill.workflowId, name: skill.workflowName, inputs: skill.inputs });
+					skills.push({
+						id: skill.workflowId,
+						name: skill.workflowName,
+						description: wf.description,
+						inputs: skill.inputs,
+					});
 				}
 			}
 		}
@@ -509,18 +517,20 @@ export class AgentsService {
 			scopes: ['workflow:read'],
 		});
 		const workflows = workflowIds.length
-			? await this.workflowRepository.findByIds(workflowIds)
+			? await this.workflowRepository.findByIds(workflowIds, { includeActiveVersion: true })
 			: [];
 
 		const workflowList = workflows.map((w) => ({
 			id: w.id,
 			name: w.name,
 			active: w.active,
+			description: w.description,
 		}));
 
 		// Discover typed skills from Execute Workflow Trigger schemas
+		// Use activeVersion nodes (published) when available, falling back to draft nodes
 		const skills = workflows
-			.map((w) => discoverWorkflowSkill(w.id, w.name, w.nodes ?? []))
+			.map((w) => discoverWorkflowSkill(w.id, w.name, w.activeVersion?.nodes ?? w.nodes ?? []))
 			.filter((s): s is NonNullable<typeof s> => s !== null);
 
 		const otherAgents: Array<{ id: string; firstName: string; description: string }> = [];
