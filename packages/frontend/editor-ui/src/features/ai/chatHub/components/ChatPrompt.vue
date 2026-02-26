@@ -215,6 +215,9 @@ defineExpose({
 		committedSpokenMessage.value = '';
 		attachments.value = [];
 	},
+	setText: (text: string) => {
+		message.value = text;
+	},
 	appendText: (text: string) => {
 		message.value += text;
 	},

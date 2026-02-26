@@ -32,9 +32,10 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NodeTypes } from '@/node-types';
+import { applyCors } from '@/utils/cors.util';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { applyCors } from '@/utils/cors.util';
+import { preserveInputOverride } from '@/workflow-helpers';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
@@ -224,25 +225,8 @@ export class WaitingWebhooks implements IWebhookManager {
 			executionStackEntry.node.rewireOutputLogTo = NodeConnectionTypes.AiTool;
 		}
 
-		// Preserve inputOverride before popping (needed for tool nodes like HITL to show input in logs)
 		const runDataArray = execution.data.resultData.runData[lastNodeExecuted];
-		const entryToPop = runDataArray[runDataArray.length - 1];
-		const preservedInputOverride = entryToPop?.inputOverride;
-
-		// Remove the data of the node execution again else it will display the node as executed twice
-		runDataArray.pop();
-
-		// If we preserved inputOverride, create a placeholder entry so it can be retrieved
-		// when the node resumes and the taskData is created
-		if (preservedInputOverride) {
-			runDataArray.push({
-				startTime: 0,
-				executionTime: 0,
-				executionIndex: 0,
-				source: entryToPop?.source ?? [],
-				inputOverride: preservedInputOverride,
-			});
-		}
+		preserveInputOverride(runDataArray);
 
 		const { workflowData } = execution;
 		const workflow = this.createWorkflow(workflowData);

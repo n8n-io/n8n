@@ -689,6 +689,125 @@ describe('ChatView', () => {
 		});
 	});
 
+	describe('Suggested prompts', () => {
+		it('clicking a suggested prompt populates the input with the prompt text', async () => {
+			const user = userEvent.setup();
+
+			mockRoute.query = { workflowId: 'workflow-with-prompts' };
+
+			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValueOnce(
+				createMockModelsResponse({
+					n8n: {
+						models: [
+							createMockAgent({
+								name: 'Prompt Agent',
+								model: { provider: 'n8n', workflowId: 'workflow-with-prompts' },
+								suggestedPrompts: [
+									{ text: 'Summarize this document' },
+									{ text: 'Translate to Spanish' },
+								],
+							}),
+						],
+					},
+				}),
+			);
+
+			const rendered = renderComponent({ pinia });
+
+			// Wait for the suggested prompts to appear
+			const promptButton = await rendered.findByRole('button', {
+				name: /Summarize this document/,
+			});
+
+			await user.click(promptButton);
+
+			const textarea = rendered.getByRole('textbox');
+			expect(textarea).toHaveValue('Summarize this document');
+		});
+
+		it('renders all suggested prompts for the selected agent', async () => {
+			mockRoute.query = { workflowId: 'workflow-with-prompts' };
+
+			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValueOnce(
+				createMockModelsResponse({
+					n8n: {
+						models: [
+							createMockAgent({
+								name: 'Multi Prompt Agent',
+								model: { provider: 'n8n', workflowId: 'workflow-with-prompts' },
+								suggestedPrompts: [
+									{ text: 'Help me write an email' },
+									{ text: 'Explain this code' },
+									{ text: 'Create a summary' },
+								],
+							}),
+						],
+					},
+				}),
+			);
+
+			const rendered = renderComponent({ pinia });
+
+			expect(
+				await rendered.findByRole('button', { name: /Help me write an email/ }),
+			).toBeInTheDocument();
+			expect(rendered.getByRole('button', { name: /Explain this code/ })).toBeInTheDocument();
+			expect(rendered.getByRole('button', { name: /Create a summary/ })).toBeInTheDocument();
+		});
+
+		it('does not render suggested prompts for base LLM models', async () => {
+			mockRoute.query = {};
+
+			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValueOnce(
+				createMockModelsResponse({
+					openai: {
+						models: [
+							createMockAgent({
+								name: 'GPT-4',
+								model: { provider: 'openai', model: 'gpt-4' },
+								suggestedPrompts: [{ text: 'Should not appear' }], // Perhaps we'll implement this one day
+							}),
+						],
+					},
+				}),
+			);
+
+			const rendered = renderComponent({ pinia });
+
+			// Wait for the greeting to appear (LLM models show "Start a chat with")
+			await rendered.findByText('Start a chat with');
+
+			expect(rendered.queryByRole('button', { name: /Should not appear/ })).not.toBeInTheDocument();
+		});
+
+		it('does not render suggested prompts when agent has none', async () => {
+			mockRoute.query = { agentId: 'agent-no-prompts' };
+
+			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValueOnce(
+				createMockModelsResponse({
+					'custom-agent': {
+						models: [
+							createMockAgent({
+								name: 'No Prompt Agent',
+								model: { provider: 'custom-agent', agentId: 'agent-no-prompts' },
+							}),
+						],
+					},
+				}),
+			);
+
+			const rendered = renderComponent({ pinia });
+
+			// Wait for the agent card to render with the agent name
+			await rendered.findAllByText('No Prompt Agent');
+
+			// No suggested prompt buttons should exist (only non-prompt buttons like send, model selector)
+			expect(
+				rendered.queryByRole('button', { name: /Summarize|Translate|Help|Explain|Create/ }),
+			).not.toBeInTheDocument();
+		});
+	});
+
 	describe('Editing messages', () => {
 		beforeEach(() => {
 			mockRoute.params = { id: 'existing-session-123' };

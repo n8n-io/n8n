@@ -187,12 +187,16 @@ async function handleSave() {
 function handleDelete() {
 	if (!modal.providerKey.value) return;
 
+	const deleteProjectId =
+		modal.connectionProjects.value.length > 0 ? modal.connectionProjects.value[0].id : undefined;
+
 	uiStore.openModalWithData({
 		name: DELETE_SECRETS_PROVIDER_MODAL_KEY,
 		data: {
 			providerKey: modal.providerKey.value,
 			providerName: modal.connectionName.value,
 			secretsCount: modal.providerSecretsCount.value ?? 0,
+			projectId: deleteProjectId,
 			onConfirm: () => {
 				props.data.onClose?.();
 				eventBus.emit('close');
