@@ -715,7 +715,7 @@ describe('buildSteps', () => {
 		});
 	});
 
-	describe('Agent configuration toggles (saveAIAnnouncements & saveToolCallingInformation)', () => {
+	describe('Agent configuration toggles (saveAIAnnouncements & clearToolCallInputInformation)', () => {
 		it('should include announcement as separate AIMessage and tool calling info by default if options are missing', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
@@ -758,7 +758,7 @@ describe('buildSteps', () => {
 			expect(messageLog![1].tool_calls).toHaveLength(1);
 		});
 
-		it('should respect saveAnnouncements and saveCalling toggles when streaming is on', () => {
+		it('should respect saveAnnouncements and keep tool calling in scratchpad regardless of clearToolCallInputInformation', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -777,7 +777,7 @@ describe('buildSteps', () => {
 								options: {
 									enableStreaming: true,
 									saveAnnouncements: false,
-									saveCalling: false,
+									clearToolCallInputInformation: true,
 								},
 							},
 						},
@@ -798,8 +798,8 @@ describe('buildSteps', () => {
 			expect(messageLog).toBeDefined();
 			// No announcement AIMessage (saveAnnouncements is false), only tool-calling AIMessage
 			expect(messageLog).toHaveLength(1);
-			// Tool-calling content is empty (saveCalling is false)
-			expect(messageLog![0].content).toBe('');
+			// Tool-calling content is present in scratchpad even if clearToolCallInputInformation is true
+			expect(messageLog![0].content).toContain('Calling Calculator with input:');
 		});
 
 		it('should ignore toggles if streaming is off', () => {
@@ -821,7 +821,7 @@ describe('buildSteps', () => {
 								options: {
 									enableStreaming: false,
 									saveAnnouncements: false,
-									saveCalling: false,
+									clearToolCallInputInformation: true,
 								},
 							},
 						},

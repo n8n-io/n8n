@@ -357,6 +357,63 @@ describe('memoryManagement', () => {
 			expect(result[3]).toBeInstanceOf(ToolMessage);
 		});
 
+		it('should filter AIMessage with tool_calls when clearToolCallInputInformation is true', () => {
+			const aiMessage = new AIMessage({
+				content: 'Let me calculate that',
+				tool_calls: [
+					{
+						id: 'call-123',
+						name: 'calculator',
+						args: { expression: '2+2' },
+						type: 'tool_call',
+					},
+				],
+			});
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'calculator',
+						toolInput: { expression: '2+2' },
+						log: 'Using calculator',
+						messageLog: [aiMessage],
+						toolCallId: 'call-123',
+						type: 'tool_call',
+					},
+					observation: '4',
+				},
+			];
+
+			const result = buildMessagesFromSteps(steps, { clearToolCallInputInformation: true });
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toBeInstanceOf(ToolMessage);
+			expect(result[0].content).toBe('4');
+			expect((result[0] as ToolMessage).tool_call_id).toBe('call-123');
+			expect((result[0] as ToolMessage).name).toBe('calculator');
+		});
+
+		it('should not create synthetic AIMessage when clearToolCallInputInformation is true and messageLog is missing', () => {
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'search',
+						toolInput: { query: 'test' },
+						log: 'Searching',
+						toolCallId: 'call-456',
+						type: 'tool_call',
+					},
+					observation: 'Found results',
+				},
+			];
+
+			const result = buildMessagesFromSteps(steps, { clearToolCallInputInformation: true });
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toBeInstanceOf(ToolMessage);
+			expect((result[0] as ToolMessage).tool_call_id).toBe('call-456');
+		});
+
 		it('should return empty array for empty steps', () => {
 			const result = buildMessagesFromSteps([]);
 			expect(result).toHaveLength(0);

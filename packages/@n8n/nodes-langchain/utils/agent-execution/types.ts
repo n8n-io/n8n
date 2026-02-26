@@ -156,8 +156,8 @@ export type RequestResponseMetadata = {
 	hitl?: HitlMetadata;
 	/** Clean announcement text streamed by the LLM before a tool call */
 	announcement?: string;
-	/** Agent options like saveAnnouncements and saveCalling */
-	options?: Record<string, unknown>;
+	/** Agent options like saveAnnouncements and clearToolCallInputInformation */
+	options?: Record<string, unknown> & { clearToolCallInputInformation?: boolean };
 };
 
 /**

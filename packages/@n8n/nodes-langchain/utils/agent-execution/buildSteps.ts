@@ -134,7 +134,6 @@ function buildMessageContent(
 	toolInput: IDataObject,
 	toolId: string,
 	toolName: string,
-	options?: Record<string, unknown>,
 ): string | Array<ThinkingContentBlock | RedactedThinkingContentBlock | ToolUseContentBlock> {
 	const { thinkingContent, thinkingType, thinkingSignature } = providerMetadata;
 
@@ -151,10 +150,7 @@ function buildMessageContent(
 	}
 
 	// Default: tool-calling content only (announcements are separate AIMessages)
-	const isStreaming = options?.enableStreaming === true;
-	const saveCalling = isStreaming ? options?.saveCalling !== false : true;
-
-	return saveCalling ? `Calling ${toolName} with input: ${JSON.stringify(toolInput)}` : '';
+	return `Calling ${toolName} with input: ${JSON.stringify(toolInput)}`;
 }
 
 function resolveToolName(tool: EngineResult<RequestResponseMetadata>): string {
@@ -216,7 +212,6 @@ function buildIndividualAIMessage(
 	toolName: string,
 	toolInput: IDataObject,
 	providerMetadata: ProviderMetadata,
-	options?: Record<string, unknown>,
 ): AIMessage {
 	const toolCall = {
 		id: toolId,
@@ -225,7 +220,7 @@ function buildIndividualAIMessage(
 		type: 'tool_call' as const,
 	};
 
-	const content = buildMessageContent(providerMetadata, toolInput, toolId, toolName, options);
+	const content = buildMessageContent(providerMetadata, toolInput, toolId, toolName);
 
 	return new AIMessage({
 		content,
@@ -258,7 +253,6 @@ function buildIndividualAIMessage(
 function buildSharedGeminiAIMessage(
 	processedTools: ProcessedToolResponse[],
 	thoughtSignature: string,
-	options?: Record<string, unknown>,
 ): AIMessage {
 	const allToolCalls = processedTools.map((pt) => ({
 		id: pt.toolId,
@@ -269,10 +263,7 @@ function buildSharedGeminiAIMessage(
 
 	const toolNames = processedTools.map((pt) => pt.nodeName).join(', ');
 
-	const isStreaming = options?.enableStreaming === true;
-	const saveCalling = isStreaming ? options?.saveCalling !== false : true;
-
-	const content = saveCalling ? `Calling tools: ${toolNames}` : '';
+	const content = `Calling tools: ${toolNames}`;
 
 	return new AIMessage({
 		content,
@@ -367,13 +358,9 @@ export function buildSteps(
 	const sharedThoughtSignature = batchTools.find((bt) => bt.providerMetadata.thoughtSignature)
 		?.providerMetadata.thoughtSignature;
 
-	const firstToolOptions = batchTools[0]?.tool.action.metadata?.options as
-		| Record<string, unknown>
-		| undefined;
-
 	const sharedAIMessage =
 		sharedThoughtSignature && batchTools.length > 1
-			? buildSharedGeminiAIMessage(batchTools, sharedThoughtSignature, firstToolOptions)
+			? buildSharedGeminiAIMessage(batchTools, sharedThoughtSignature)
 			: undefined;
 
 	// Second pass: build steps
@@ -407,15 +394,7 @@ export function buildSteps(
 			? i === 0
 				? [sharedAIMessage]
 				: []
-			: [
-					buildIndividualAIMessage(
-						toolId,
-						toolName,
-						toolInput,
-						providerMetadata,
-						tool.action.metadata?.options as Record<string, unknown> | undefined,
-					),
-				];
+			: [buildIndividualAIMessage(toolId, toolName, toolInput, providerMetadata)];
 
 		const messageLog = [...announcementMessages, ...toolCallMessages];
 

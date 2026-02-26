@@ -49,12 +49,12 @@ export const commonOptions: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Save Tool Calling Information',
-		name: 'saveCalling',
+		displayName: 'Clear Tool Call Input Information',
+		name: 'clearToolCallInputInformation',
 		type: 'boolean',
-		default: true,
+		default: false,
 		description:
-			'Whether or not to save the raw generic tool calling string (e.g., "Calling <tool_name> with input: <tool_input>") into the agent context',
+			'Whether or not to clear the raw generic tool calling string (e.g., "Calling <tool_name> with input: <tool_input>") from the attached memory (it will still be visible in the agent run context)',
 		displayOptions: {
 			show: {
 				enableStreaming: [true],
