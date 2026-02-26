@@ -73,7 +73,12 @@ function getTargetNodeName(target: unknown): string | undefined {
 	}
 
 	// Handle SwitchCaseBuilder/Composite - use switchNode.name
-	if (isSwitchCaseComposite(target)) {
+	// isSwitchCaseComposite checks for 'cases' (array), but SwitchCaseBuilder uses 'caseMapping' (Map)
+	// So we also check for 'switchNode' + 'caseMapping' to handle the builder variant
+	if (
+		isSwitchCaseComposite(target) ||
+		(typeof target === 'object' && 'switchNode' in target && 'caseMapping' in target)
+	) {
 		const switchCase = target as { switchNode: { name: string } };
 		return switchCase.switchNode.name;
 	}
