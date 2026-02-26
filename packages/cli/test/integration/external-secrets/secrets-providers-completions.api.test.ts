@@ -1,6 +1,12 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { createTeamProject, mockInstance, mockLogger, testDb } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import {
+	createTeamProject,
+	linkUserToProject,
+	mockInstance,
+	mockLogger,
+	testDb,
+} from '@n8n/backend-test-utils';
+import type { Project, Role, User } from '@n8n/db';
 import {
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnectionRepository,
@@ -13,6 +19,7 @@ import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 
 import { createDummyProvider, MockProviders } from '../../shared/external-secrets/utils';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createAdmin, createMember, createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
@@ -42,14 +49,25 @@ describe('Secret Providers Completions API', () => {
 	let owner: User;
 	let member: User;
 	let admin: User;
+	let memberWithCustomRole: User;
+	let memberWithoutCustomRole: User;
 	let ownerAgent: SuperAgentTest;
 	let adminAgent: SuperAgentTest;
 	let memberAgent: SuperAgentTest;
+	let memberWithCustomRoleAgent: SuperAgentTest;
+	let memberWithoutCustomRoleAgent: SuperAgentTest;
+
+	let customSecretListRole: Role;
+	let customProjectA: Project;
+	let customProjectB: Project;
 
 	const testServer = setupTestServer({
 		endpointGroups: ['externalSecrets'],
-		enabledFeatures: ['feat:externalSecrets'],
+		enabledFeatures: ['feat:externalSecrets', 'feat:customRoles'],
 		modules: ['external-secrets'],
+		quotas: {
+			'quota:maxTeamProjects': -1,
+		},
 	});
 
 	let connectionRepository: SecretsProviderConnectionRepository;
@@ -64,16 +82,34 @@ describe('Secret Providers Completions API', () => {
 		owner = await createOwner();
 		member = await createMember();
 		admin = await createAdmin();
+		memberWithCustomRole = await createMember();
+		memberWithoutCustomRole = await createMember();
 
 		ownerAgent = testServer.authAgentFor(owner);
 		adminAgent = testServer.authAgentFor(admin);
 		memberAgent = testServer.authAgentFor(member);
+		memberWithCustomRoleAgent = testServer.authAgentFor(memberWithCustomRole);
+		memberWithoutCustomRoleAgent = testServer.authAgentFor(memberWithoutCustomRole);
 
 		connectionRepository = Container.get(SecretsProviderConnectionRepository);
 		projectAccessRepository = Container.get(ProjectSecretsProviderAccessRepository);
 
 		projectWithConnections = await createTeamProject('With Connections', owner);
 		projectWithoutConnections = await createTeamProject('Without Connections', owner);
+
+		// Create custom role with externalSecret:list scope
+		customSecretListRole = await createCustomRoleWithScopeSlugs(['externalSecret:list'], {
+			roleType: 'project',
+			displayName: 'Custom Secret Lister',
+			description: 'Can list external secrets',
+		});
+
+		// Create two projects for custom role testing
+		customProjectA = await createTeamProject('Custom Project A', owner);
+		customProjectB = await createTeamProject('Custom Project B', owner);
+
+		// Link memberWithCustomRole to customProjectA with the custom role
+		await linkUserToProject(memberWithCustomRole, customProjectA, customSecretListRole.slug);
 	});
 
 	beforeEach(async () => {
@@ -105,6 +141,20 @@ describe('Secret Providers Completions API', () => {
 				if (!allowed) {
 					expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
 				}
+			});
+
+			it('should allow member with custom externalSecret:list role in any project', async () => {
+				await memberWithCustomRoleAgent
+					.get('/secret-providers/completions/secrets/global')
+					.expect(200);
+			});
+
+			it('should deny member without custom externalSecret:list role in any project', async () => {
+				const response = await memberWithoutCustomRoleAgent
+					.get('/secret-providers/completions/secrets/global')
+					.expect(403);
+
+				expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
 			});
 		});
 
@@ -235,6 +285,20 @@ describe('Secret Providers Completions API', () => {
 				if (!allowed) {
 					expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
 				}
+			});
+
+			it('should allow member with custom externalSecret:list role in the target project', async () => {
+				await memberWithCustomRoleAgent
+					.get(`/secret-providers/completions/secrets/project/${customProjectA.id}`)
+					.expect(200);
+			});
+
+			it('should deny member with custom externalSecret:list role in a different project', async () => {
+				const response = await memberWithCustomRoleAgent
+					.get(`/secret-providers/completions/secrets/project/${customProjectB.id}`)
+					.expect(403);
+
+				expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
 			});
 		});
 

@@ -1,12 +1,14 @@
 import type { SecretCompletionsResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Get, GlobalScope, Middleware, Param, ProjectScope, RestController } from '@n8n/decorators';
+import { Get, Middleware, Param, ProjectScope, RestController } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
 import { ExternalSecretsConfig } from './external-secrets.config';
+import { SecretsProviderAccessCheckService } from './secret-provider-access-check.service.ee';
 import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee';
 
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { sendErrorResponse } from '@/response-helper';
 
@@ -16,6 +18,7 @@ export class SecretProvidersCompletionsController {
 		private readonly config: ExternalSecretsConfig,
 		private readonly logger: Logger,
 		private readonly connectionsService: SecretsProvidersConnectionsService,
+		private readonly accessCheckService: SecretsProviderAccessCheckService,
 	) {
 		this.logger = this.logger.scoped('external-secrets');
 	}
@@ -51,16 +54,26 @@ export class SecretProvidersCompletionsController {
 	}
 
 	@Get('/secrets/global')
-	@GlobalScope('externalSecret:list')
-	@ProjectScope('externalSecret:list')
-	async listGlobalSecrets(): Promise<SecretCompletionsResponse> {
+	async listGlobalSecrets(
+		req: AuthenticatedRequest,
+		res: Response,
+	): Promise<SecretCompletionsResponse | undefined> {
+		const hasAccess = await this.accessCheckService.userHasGlobalScopeOrAnyProjectScope(
+			req.user,
+			'externalSecret:list',
+		);
+
+		if (!hasAccess) {
+			sendErrorResponse(res, new ForbiddenError(RESPONSE_ERROR_MESSAGES.MISSING_SCOPE));
+			return;
+		}
+
 		this.logger.debug('Listing global secrets');
 		const connections = await this.connectionsService.getGlobalCompletions();
 		return this.connectionsService.toSecretCompletionsResponse(connections);
 	}
 
 	@Get('/secrets/project/:projectId')
-	@GlobalScope('externalSecret:list')
 	@ProjectScope('externalSecret:list')
 	async listProjectSecrets(
 		_req: AuthenticatedRequest,
