@@ -146,6 +146,10 @@ function onFavoriteProjectClick(itemId: string) {
 		projectsStore.setCurrentProject(project as unknown as Project);
 	}
 }
+
+function onFavoriteWorkflowClick() {
+	projectsStore.setCurrentProject(null);
+}
 </script>
 
 <template>
@@ -175,16 +179,17 @@ function onFavoriteProjectClick(itemId: string) {
 						<div v-if="group.type === 'project'" @click="onFavoriteProjectClick(item.id)">
 							<N8nMenuItem :item="item" :compact="false" :active="activeTabId === item.id" />
 						</div>
-						<N8nMenuItem
-							v-else
-							:item="
-								!group.showIndividualIcons && itemIndex > 0
-									? { ...item, icon: { type: 'icon', value: '' } as unknown as IMenuItem['icon'] }
-									: item
-							"
-							:compact="false"
-							:active="activeTabId === item.id"
-						/>
+						<div v-else @click="group.type === 'workflow' ? onFavoriteWorkflowClick() : undefined">
+							<N8nMenuItem
+								:item="
+									!group.showIndividualIcons && itemIndex > 0
+										? { ...item, icon: { type: 'icon', value: '' } as unknown as IMenuItem['icon'] }
+										: item
+								"
+								:compact="false"
+								:active="activeTabId === item.id"
+							/>
+						</div>
 					</template>
 				</template>
 			</div>

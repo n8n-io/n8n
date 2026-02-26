@@ -218,6 +218,10 @@ function onFavoriteProjectClick(itemId: string) {
 	}
 }
 
+function onFavoriteWorkflowClick() {
+	projectsStore.setCurrentProject(null);
+}
+
 async function onSourceControlPull() {
 	// Update myProjects for the sidebar display
 	await projectsStore.getMyProjects();
@@ -292,16 +296,23 @@ onBeforeUnmount(() => {
 							<div v-if="group.type === 'project'" @click="onFavoriteProjectClick(item.id)">
 								<N8nMenuItem :item="item" :compact="false" :active="activeTabId === item.id" />
 							</div>
-							<N8nMenuItem
+							<div
 								v-else
-								:item="
-									!group.showIndividualIcons && itemIndex > 0
-										? { ...item, icon: { type: 'icon', value: '' } as unknown as IMenuItem['icon'] }
-										: item
-								"
-								:compact="false"
-								:active="activeTabId === item.id"
-							/>
+								@click="group.type === 'workflow' ? onFavoriteWorkflowClick() : undefined"
+							>
+								<N8nMenuItem
+									:item="
+										!group.showIndividualIcons && itemIndex > 0
+											? {
+													...item,
+													icon: { type: 'icon', value: '' } as unknown as IMenuItem['icon'],
+												}
+											: item
+									"
+									:compact="false"
+									:active="activeTabId === item.id"
+								/>
+							</div>
 						</template>
 					</template>
 				</template>
