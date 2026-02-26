@@ -10,7 +10,7 @@ import {
 } from '@/agents/a2a-adapter';
 import type { A2ASendMessageRequest } from '@/agents/a2a-adapter';
 import { AgentsService } from '@/services/agents/agents.service';
-import { MAX_ITERATIONS, sseWrite } from '@/services/agents/agents.types';
+import { MAX_ITERATIONS, sseWrite, hardenSseConnection } from '@/services/agents/agents.types';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 type ApiKeyScope = 'agent:receive' | 'agent:execute';
@@ -129,6 +129,8 @@ export function createA2ARouter(): express.Router {
 				'A2A-Version': A2A_VERSION,
 			});
 
+			const cleanup = hardenSseConnection(req, res);
+
 			// Initial status: submitted
 			sseWrite(res, {
 				status_update: {
@@ -163,22 +165,26 @@ export function createA2ARouter(): express.Router {
 					),
 				);
 			} catch (error) {
-				const msg = error instanceof Error ? error.message : String(error);
-				sseWrite(res, {
-					task: {
-						id: taskId,
-						context_id: contextId,
-						status: {
-							state: 'failed',
-							timestamp: new Date().toISOString(),
-							message: {
-								message_id: `err-${Date.now()}`,
-								role: 'agent',
-								parts: [{ text: msg }],
+				if (!res.writableEnded) {
+					const msg = error instanceof Error ? error.message : String(error);
+					sseWrite(res, {
+						task: {
+							id: taskId,
+							context_id: contextId,
+							status: {
+								state: 'failed',
+								timestamp: new Date().toISOString(),
+								message: {
+									message_id: `err-${Date.now()}`,
+									role: 'agent',
+									parts: [{ text: msg }],
+								},
 							},
 						},
-					},
-				});
+					});
+				}
+			} finally {
+				cleanup();
 			}
 
 			res.end();

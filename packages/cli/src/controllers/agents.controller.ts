@@ -15,7 +15,7 @@ import type { Request, Response } from 'express';
 import { sendErrorResponse } from '@/response-helper';
 import { AgentsService } from '@/services/agents/agents.service';
 import type { ExternalAgentConfig } from '@/services/agents/agents.types';
-import { MAX_ITERATIONS, sseWrite } from '@/services/agents/agents.types';
+import { MAX_ITERATIONS, sseWrite, hardenSseConnection } from '@/services/agents/agents.types';
 
 @RestController('/agents')
 export class AgentsController {
@@ -117,6 +117,8 @@ export class AgentsController {
 			Connection: 'keep-alive',
 		});
 
+		const cleanup = hardenSseConnection(req, res);
+
 		try {
 			const result = await this.agentsService.executeAgentTask(
 				agentId,
@@ -138,8 +140,12 @@ export class AgentsController {
 				summary: result.summary ?? result.message,
 			});
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			sseWrite(res, { type: 'done', status: 'error', summary: message });
+			if (!res.writableEnded) {
+				const message = error instanceof Error ? error.message : String(error);
+				sseWrite(res, { type: 'done', status: 'error', summary: message });
+			}
+		} finally {
+			cleanup();
 		}
 
 		res.end();

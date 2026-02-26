@@ -49,7 +49,13 @@ import type {
 	StepCallback,
 	TaskStep,
 } from './agents.types';
-import { EXECUTION_TIMEOUT_MS, LLM_BASE_URL, LLM_MODEL, toAgentDto } from './agents.types';
+import {
+	EXECUTION_TIMEOUT_MS,
+	LLM_BASE_URL,
+	LLM_MODEL,
+	toAgentDto,
+	scrubSecrets,
+} from './agents.types';
 
 @Service()
 export class AgentsService {
@@ -381,9 +387,11 @@ export class AgentsService {
 			message: string;
 			extra?: Record<string, unknown>;
 		},
+		knownSecrets: string[] = [],
 	) {
+		const safeMessage = scrubSecrets(observation.message, knownSecrets);
 		steps[steps.length - 1].result = observation.result;
-		messages.push({ role: 'user', content: `Observation: ${observation.message}` });
+		messages.push({ role: 'user', content: `Observation: ${safeMessage}` });
 		onStep?.({
 			type: 'observation',
 			action: observation.action,
@@ -487,6 +495,15 @@ export class AgentsService {
 			};
 		}
 
+		// Collect all known secret values for scrubbing from observations.
+		// This prevents credential leakage when APIs echo auth headers in error responses.
+		const knownSecrets: string[] = [llmConfig.apiKey];
+		if (workflowCredentials) {
+			for (const creds of Object.values(workflowCredentials)) {
+				knownSecrets.push(...Object.values(creds));
+			}
+		}
+
 		const workflowIds = await this.workflowSharingService.getSharedWorkflowIds(agentUser, {
 			scopes: ['workflow:read'],
 		});
@@ -538,6 +555,13 @@ export class AgentsService {
 		const canDelegate = budget.remaining > 0 && otherAgents.length > 0;
 		const agentName = `${agentUser.firstName} ${agentUser.lastName}`.trim();
 		const steps: TaskStep[] = [];
+
+		const observe = (observation: {
+			action: string;
+			result: string;
+			message: string;
+			extra?: Record<string, unknown>;
+		}) => this.recordObservation(steps, messages, onStep, observation, knownSecrets);
 
 		const systemPromptText = buildSystemPrompt(
 			agentName,
@@ -623,7 +647,7 @@ export class AgentsService {
 						parsed.inputs,
 					);
 					const stepResult = result.success ? 'success' : 'failed';
-					this.recordObservation(steps, messages, onStep, {
+					observe({
 						action: 'execute_workflow',
 						result: stepResult,
 						message: `Workflow "${workflowName}" executed. Result: ${jsonStringify(result).slice(0, 2000)}`,
@@ -631,7 +655,7 @@ export class AgentsService {
 					});
 				} catch (error) {
 					const errorMsg = error instanceof Error ? error.message : String(error);
-					this.recordObservation(steps, messages, onStep, {
+					observe({
 						action: 'execute_workflow',
 						result: 'error',
 						message: `Workflow execution failed: ${errorMsg}`,
@@ -663,7 +687,7 @@ export class AgentsService {
 					try {
 						const result = await callExternalAgent(externalAgent, parsed.message);
 						const stepResult = result.status === 'completed' ? 'success' : 'failed';
-						this.recordObservation(steps, messages, onStep, {
+						observe({
 							action: 'send_message',
 							result: stepResult,
 							message: `Agent "${targetName}" responded: ${result.summary ?? 'No summary'}`,
@@ -671,7 +695,7 @@ export class AgentsService {
 						});
 					} catch (error) {
 						const errorMsg = error instanceof Error ? error.message : String(error);
-						this.recordObservation(steps, messages, onStep, {
+						observe({
 							action: 'send_message',
 							result: 'error',
 							message: `External agent delegation failed: ${errorMsg}`,
@@ -684,14 +708,14 @@ export class AgentsService {
 					});
 
 					if (!targetAgent) {
-						this.recordObservation(steps, messages, onStep, {
+						observe({
 							action: 'send_message',
 							result: 'error',
 							message: `Agent "${targetName}" not found. Available agents: ${otherAgents.map((a) => `${a.firstName} (id: ${a.id})`).join(', ')}`,
 							extra: { toAgent: targetName, error: 'Agent not found' },
 						});
 					} else if (targetAgent.agentAccessLevel === 'closed') {
-						this.recordObservation(steps, messages, onStep, {
+						observe({
 							action: 'send_message',
 							result: 'error',
 							message: `Agent "${targetName}" is not accessible.`,
@@ -709,7 +733,7 @@ export class AgentsService {
 							});
 							const stepResult = result.status === 'completed' ? 'success' : 'failed';
 							const responseText = result.summary ?? result.message ?? 'No summary';
-							this.recordObservation(steps, messages, onStep, {
+							observe({
 								action: 'send_message',
 								result: stepResult,
 								message: `Agent "${targetName}" responded: ${responseText}`,
@@ -717,7 +741,7 @@ export class AgentsService {
 							});
 						} catch (error) {
 							const errorMsg = error instanceof Error ? error.message : String(error);
-							this.recordObservation(steps, messages, onStep, {
+							observe({
 								action: 'send_message',
 								result: 'error',
 								message: `Agent delegation failed: ${errorMsg}`,

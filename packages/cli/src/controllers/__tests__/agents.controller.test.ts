@@ -12,7 +12,7 @@ import { callLlm } from '@/services/agents/agent-llm-client';
 import { buildSystemPrompt } from '@/services/agents/agent-prompt-builder';
 import { findSupportedTrigger, buildPinData } from '@/services/agents/agent-workflow-runner';
 import type { ExternalAgentConfig, AgentDto, LlmConfig } from '@/services/agents/agents.types';
-import { sseWrite } from '@/services/agents/agents.types';
+import { sseWrite, scrubSecrets } from '@/services/agents/agents.types';
 import { jsonStringify } from 'n8n-workflow';
 
 // Mock SSRF validation — unit tests don't resolve DNS
@@ -230,6 +230,19 @@ describe('AgentsController', () => {
 			req.user = { id: 'caller-1' } as AuthenticatedRequest['user'];
 			Object.defineProperty(req, 'headers', {
 				value: { accept, 'push-ref': 'test' },
+				writable: true,
+			});
+			// Mock socket for hardenSseConnection
+			Object.defineProperty(req, 'socket', {
+				value: {
+					setTimeout: jest.fn(),
+					setKeepAlive: jest.fn(),
+					setNoDelay: jest.fn(),
+				},
+				writable: true,
+			});
+			Object.defineProperty(req, 'once', {
+				value: jest.fn(),
 				writable: true,
 			});
 			return req;
@@ -844,6 +857,58 @@ describe('credential leak investigation', () => {
 		// CONCLUSION: The primary leak channel is the LLM context (messages array).
 		// The LLM sees the credential value and could potentially include it in
 		// its reasoning/summary, which WOULD then appear in the final result.
+	});
+});
+
+describe('credential leak mitigation via scrubSecrets', () => {
+	it('should scrub leaked credential from serialised workflow result', () => {
+		const secretKey = 'cur_SUPER_SECRET_CURRENTS_KEY';
+		const fakeResult = {
+			success: false,
+			data: {
+				error: {
+					context: { data: { received_authorization: `Bearer ${secretKey}` } },
+				},
+			},
+		};
+
+		const rawMessage = `Workflow "Test" executed. Result: ${jsonStringify(fakeResult).slice(0, 2000)}`;
+
+		// Before scrubbing — proves the leak exists
+		expect(rawMessage).toContain(secretKey);
+
+		// After scrubbing — proves the fix works
+		const scrubbed = scrubSecrets(rawMessage, [secretKey]);
+		expect(scrubbed).not.toContain(secretKey);
+		expect(scrubbed).toContain('*****KEY');
+	});
+
+	it('should scrub BYOK key from anthropic error in observation', () => {
+		const byokKey = 'sk-ant-BUYER_SECRET_KEY';
+		const rawMessage = `Workflow execution failed: Invalid API key provided: ${byokKey}`;
+
+		const scrubbed = scrubSecrets(rawMessage, [byokKey]);
+		expect(scrubbed).not.toContain(byokKey);
+	});
+
+	it('should scrub all workflow credentials from a single error message', () => {
+		const llmKey = 'sk-ant-llm-key-12345';
+		const currentsKey = 'cur_live_abcdef';
+		const notionKey = 'ntn_secret_xyz789';
+
+		const rawMessage = `Error: keys ${llmKey}, ${currentsKey}, ${notionKey} all invalid`;
+		const scrubbed = scrubSecrets(rawMessage, [llmKey, currentsKey, notionKey]);
+
+		expect(scrubbed).not.toContain(llmKey);
+		expect(scrubbed).not.toContain(currentsKey);
+		expect(scrubbed).not.toContain(notionKey);
+	});
+
+	it('should leave the observation intact when no secrets leak', () => {
+		const message = 'Workflow "Deploy" executed. Result: {"success":true}';
+		const scrubbed = scrubSecrets(message, ['sk-ant-secret-key']);
+
+		expect(scrubbed).toBe(message);
 	});
 });
 

@@ -55,12 +55,70 @@ export interface AgentTaskResult {
 	message?: string;
 }
 
-export function sseWrite(
-	res: { write: (chunk: string) => void; flush?: () => void },
-	event: Record<string, unknown>,
-) {
+export const SSE_HEARTBEAT_INTERVAL_MS = 60_000;
+
+export interface SseConnection {
+	write: (chunk: string) => void;
+	flush?: () => void;
+	writableEnded?: boolean;
+}
+
+export function sseWrite(res: SseConnection, event: Record<string, unknown>) {
 	res.write(`data: ${JSON.stringify(event)}\n\n`);
 	res.flush?.();
+}
+
+/**
+ * Harden an SSE connection for long-running agent tasks.
+ * - Disables socket timeout (default ~2m kills long workflows)
+ * - Enables TCP keepalive
+ * - Sends protocol-level heartbeat every 60s to prevent proxy timeouts
+ * - Cleans up on client disconnect
+ *
+ * Returns a cleanup function that MUST be called when the response ends.
+ */
+export function hardenSseConnection(
+	req: {
+		socket: {
+			setTimeout: (ms: number) => void;
+			setKeepAlive: (enable: boolean) => void;
+			setNoDelay: (enable: boolean) => void;
+		};
+		once: (event: string, cb: () => void) => void;
+	},
+	res: SseConnection & { once?: (event: string, cb: () => void) => void },
+): () => void {
+	req.socket.setTimeout(0);
+	req.socket.setKeepAlive(true);
+	req.socket.setNoDelay(true);
+
+	const heartbeat = setInterval(() => {
+		if (!res.writableEnded) {
+			res.write(':ping\n\n');
+			res.flush?.();
+		}
+	}, SSE_HEARTBEAT_INTERVAL_MS);
+
+	const cleanup = () => clearInterval(heartbeat);
+	req.once('close', cleanup);
+	req.once('end', cleanup);
+	res.once?.('finish', cleanup);
+
+	return cleanup;
+}
+
+/**
+ * Scrub known secret values from a message string.
+ * Uses the same pattern as CredentialsTester.redactSecrets —
+ * replaces full value with `*****` + last 3 chars for debugging.
+ */
+export function scrubSecrets(message: string, secrets: string[]): string {
+	for (const secret of secrets) {
+		if (secret && secret.length > 3 && message.includes(secret)) {
+			message = message.replaceAll(secret, `*****${secret.slice(-3)}`);
+		}
+	}
+	return message;
 }
 
 export function toAgentDto(user: User): AgentDto {

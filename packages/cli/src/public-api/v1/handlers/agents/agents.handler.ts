@@ -5,7 +5,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { sendErrorResponse } from '@/response-helper';
 import { AgentsService } from '@/services/agents/agents.service';
 import type { ExternalAgentConfig } from '@/services/agents/agents.types';
-import { MAX_ITERATIONS, sseWrite } from '@/services/agents/agents.types';
+import { MAX_ITERATIONS, sseWrite, hardenSseConnection } from '@/services/agents/agents.types';
 
 import { apiKeyHasScope } from '../../shared/middlewares/global.middleware';
 
@@ -65,6 +65,8 @@ export = {
 				Connection: 'keep-alive',
 			});
 
+			const cleanup = hardenSseConnection(req, res);
+
 			try {
 				const result = await agentsService.executeAgentTask(
 					agentId,
@@ -86,8 +88,12 @@ export = {
 					summary: result.summary ?? result.message,
 				});
 			} catch (error) {
-				const message = error instanceof Error ? error.message : String(error);
-				sseWrite(res, { type: 'done', status: 'error', summary: message });
+				if (!res.writableEnded) {
+					const message = error instanceof Error ? error.message : String(error);
+					sseWrite(res, { type: 'done', status: 'error', summary: message });
+				}
+			} finally {
+				cleanup();
 			}
 
 			res.end();
