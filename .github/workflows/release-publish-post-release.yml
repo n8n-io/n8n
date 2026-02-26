@@ -25,29 +25,18 @@ on:
         type: string
 
 jobs:
-  push-to-channels:
-    runs-on: ubuntu-latest
+  push-new-release-to-channel:
+    name: Push new release to channel
     if: inputs.release_type != 'rc'
+    uses: ./.github/workflows/release-push-to-channel.yml
+    with:
+      version: ${{ inputs.version }}
+      release-channel: ${{ inputs.track }}
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: ''
-          install-command: npm install --prefix=.github/scripts --no-package-lock
-
-      - name: Push new release to channel
-        uses: ./.github/workflows/release-push-to-channel.yml
-        with:
-          version: ${{ inputs.version }}
-          release-channel: ${{ inputs.track }}
-
-      - name: Promote previous beta to stable
-        uses: ./.github/workflows/release-push-to-channel.yml
-        if: inputs.bump == 'minor'
-        with:
-          version: ${{ inputs.new_stable_version }}
-          release-channel: stable
+  promote-previous-beta-to-stable:
+    name: Promote previous beta to stable
+    uses: ./.github/workflows/release-push-to-channel.yml
+    if: inputs.bump == 'minor'
+    with:
+      version: ${{ inputs.new_stable_version }}
+      release-channel: stable

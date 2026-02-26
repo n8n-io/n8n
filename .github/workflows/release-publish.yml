@@ -216,7 +216,7 @@ jobs:
             <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Release tag merge to master failed for n8n@${{ needs.determine-version-info.outputs.version }} >
   post-release:
     name: Run Post-release actions
-    needs: [determine-version-info, merge-release-tag-to-master]
+    needs: [determine-version-info, publish-to-npm, create-github-release]
     uses: ./.github/workflows/release-publish-post-release.yml
     with:
       track: ${{ needs.determine-version-info.outputs.track }}
