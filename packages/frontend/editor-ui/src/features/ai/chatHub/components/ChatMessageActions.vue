@@ -147,6 +147,10 @@ function handleReadAloud() {
 	display: flex;
 	align-items: center;
 
+	button {
+		border-radius: 999999px !important;
+	}
+
 	& g,
 	& path {
 		color: var(--color--text--tint-1);

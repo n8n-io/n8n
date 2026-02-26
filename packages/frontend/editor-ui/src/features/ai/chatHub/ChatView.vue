@@ -316,6 +316,14 @@ const editingMessageId = ref<string>();
 const messageElementsRef = useTemplateRef('messages');
 const didSubmitInCurrentSession = ref(false);
 
+function isGroupStart(index: number) {
+	if (index === 0) {
+		return true;
+	}
+
+	return chatMessages.value[index].type !== chatMessages.value[index - 1].type;
+}
+
 const canAcceptFiles = computed(() => {
 	const baseCondition =
 		!!createMimeTypes(selectedModel.value?.metadata.inputModalities ?? []) &&
@@ -750,6 +758,7 @@ function onFilesDropped(files: File[]) {
 								:key="message.id"
 								ref="messages"
 								:message="message"
+								:is-group-start="isGroupStart(index)"
 								:compact="isMainPanelNarrow"
 								:is-editing="editingMessageId === message.id"
 								:is-edit-submitting="chatStore.streaming?.revisionOfMessageId === message.id"

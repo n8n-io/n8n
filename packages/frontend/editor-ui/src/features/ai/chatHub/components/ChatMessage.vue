@@ -1,13 +1,7 @@
 <script setup lang="ts">
-import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
-import type {
-	AgentIconOrEmoji,
-	ChatMessageContentChunk,
-	ChatMessageId,
-	ChatModelDto,
-} from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nIconButton, N8nInput } from '@n8n/design-system';
+import type { ChatMessageContentChunk, ChatMessageId } from '@n8n/api-types';
+import { N8nButton, N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
 import {
 	computed,
@@ -19,8 +13,7 @@ import {
 } from 'vue';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
-import { unflattenModel, splitMarkdownIntoChunks } from '@/features/ai/chatHub/chat.utils';
-import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { splitMarkdownIntoChunks } from '@/features/ai/chatHub/chat.utils';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -43,16 +36,14 @@ const {
 	isEditSubmitting,
 	hasSessionStreaming,
 	minHeight,
-	cachedAgentDisplayName,
-	cachedAgentIcon,
+	isGroupStart,
 } = defineProps<{
 	message: ChatMessage;
 	compact: boolean;
 	isEditing: boolean;
 	isEditSubmitting: boolean;
 	hasSessionStreaming: boolean;
-	cachedAgentDisplayName: string | null;
-	cachedAgentIcon: AgentIconOrEmoji | null;
+	isGroupStart: boolean;
 	/**
 	 * minHeight allows scrolling agent's response to the top while it is being generated
 	 */
@@ -68,7 +59,6 @@ const emit = defineEmits<{
 	openArtifact: [title: string];
 }>();
 
-const chatStore = useChatStore();
 const rootStore = useRootStore();
 const { isCtrlKeyPressed } = useDeviceSupport();
 const i18n = useI18n();
@@ -138,16 +128,6 @@ const speech = useSpeechSynthesis(text, {
 	pitch: 1,
 	rate: 1,
 	volume: 1,
-});
-
-const agent = computed<ChatModelDto | null>(() => {
-	const model = unflattenModel(message);
-
-	if (!model) {
-		return null;
-	}
-
-	return chatStore.getAgent(model, { name: cachedAgentDisplayName, icon: cachedAgentIcon });
 });
 
 const attachments = computed(() =>
@@ -309,6 +289,7 @@ onBeforeMount(() => {
 			message.type === 'human' ? $style.user : $style.assistant,
 			{
 				[$style.compact]: compact,
+				[$style.grouped]: !isGroupStart,
 			},
 		]"
 		:style="{
@@ -317,10 +298,6 @@ onBeforeMount(() => {
 		:data-message-id="message.id"
 		:data-test-id="`chat-message-${message.id}`"
 	>
-		<div :class="$style.avatar">
-			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
-			<ChatAgentAvatar v-else :agent="agent" size="md" tooltip />
-		</div>
 		<div :class="$style.content">
 			<input
 				v-if="message.type === 'human'"
@@ -405,26 +382,38 @@ onBeforeMount(() => {
 					</div>
 				</div>
 				<ChatTypingIndicator v-if="shouldShowTypingIndicator" :class="$style.typingIndicator" />
-				<ChatMessageActions
-					v-else
-					:is-speech-synthesis-available="speech.isSupported.value"
-					:is-speaking="speech.isPlaying.value"
-					:class="$style.actions"
-					:message="message"
-					:has-session-streaming="hasSessionStreaming"
-					@edit="handleEdit"
-					@regenerate="handleRegenerate"
-					@read-aloud="handleReadAloud"
-					@switch-alternative="handleSwitchAlternative"
-				/>
 			</template>
 		</div>
+		<ChatMessageActions
+			v-if="!isEditing && !shouldShowTypingIndicator"
+			:is-speech-synthesis-available="speech.isSupported.value"
+			:is-speaking="speech.isPlaying.value"
+			:class="$style.actions"
+			:message="message"
+			:has-session-streaming="hasSessionStreaming"
+			@edit="handleEdit"
+			@regenerate="handleRegenerate"
+			@read-aloud="handleReadAloud"
+			@switch-alternative="handleSwitchAlternative"
+		/>
 	</div>
 </template>
 <style lang="scss" module>
 .message {
 	position: relative;
 	scroll-margin-block: var(--spacing--sm);
+
+	@media (hover: hover) {
+		&:hover .actions,
+		&:focus-within .actions {
+			opacity: 1;
+			pointer-events: auto;
+		}
+	}
+}
+
+.grouped {
+	margin-top: calc(var(--spacing--xs) - var(--spacing--xl));
 }
 
 .markdownContent {
@@ -440,38 +429,10 @@ onBeforeMount(() => {
 	margin-top: -2px;
 }
 
-.avatar {
-	position: absolute;
-	right: 100%;
-	margin-right: var(--spacing--xs);
-	top: 0;
-	display: grid;
-	place-items: center;
-	width: 28px;
-	height: 28px;
-	border-radius: 50%;
-	background: var(--color--background);
-	color: var(--color--text--tint-1);
-
-	.compact & {
-		margin-left: calc(-1 * var(--spacing--2xs));
-		position: static;
-		margin-bottom: var(--spacing--xs);
-	}
-}
-
 .content {
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
-
-	@media (hover: hover) {
-		&:hover .actions,
-		&:focus-within .actions {
-			opacity: 1;
-			pointer-events: auto;
-		}
-	}
 }
 
 .attachments {
@@ -492,6 +453,17 @@ onBeforeMount(() => {
 	overflow-wrap: break-word;
 	font-size: var(--font-size--sm);
 	line-height: 1.5;
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--2xs);
+	margin-inline: calc(var(--spacing--2xs) * -1);
+	transition: background-color 0.15s ease;
+
+	@media (hover: hover) {
+		.message:hover &,
+		.message:focus-within & {
+			background-color: light-dark(var(--color--neutral-100), var(--color--neutral-900));
+		}
+	}
 
 	.user & {
 		padding: var(--spacing--2xs) var(--spacing--sm);
@@ -502,7 +474,13 @@ onBeforeMount(() => {
 		max-width: 100%;
 		font-size: var(--font-size--md);
 		line-height: var(--line-height--xl);
+		align-self: flex-end;
+		text-align: left;
 	}
+}
+
+.user .content {
+	align-items: flex-end;
 }
 
 .errorMessage {
@@ -519,8 +497,19 @@ onBeforeMount(() => {
 }
 
 .actions {
-	margin-top: var(--spacing--2xs);
-	transition: opacity 0.15s;
+	margin-top: 0;
+	margin-left: calc(var(--spacing--3xs) * -1);
+
+	@media (hover: none) {
+		position: static;
+		transform: none;
+		margin-top: var(--spacing--2xs);
+		background: transparent;
+		box-shadow: none;
+		padding: 0;
+		opacity: 1;
+		pointer-events: auto;
+	}
 
 	@media (hover: hover) {
 		opacity: 0;
