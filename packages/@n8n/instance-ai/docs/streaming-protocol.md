@@ -342,20 +342,25 @@ simultaneously persisted to thread storage and delivered to connected SSE client
 Event persistence uses thread storage regardless of transport — this provides
 replay capability for reconnection.
 
-### Reconnection
+### Reconnection & Replay (Canonical Rule)
 
-When the frontend reconnects (page reload, network interruption), the server
-replays missed events before switching to live delivery. Two mechanisms:
+The SSE endpoint supports replay via `event.id > cursor`. The cursor is
+provided by the client through one of two mechanisms. The server behavior
+is identical for both — only the source of the cursor differs.
 
-- **Auto-reconnect**: Native `EventSource` sends `Last-Event-ID` header
-  automatically. Server replays `event.id > Last-Event-ID`.
-- **Page reload** (same thread): Frontend passes `?lastEventId=N` query
-  parameter from stored per-thread cursor. Server replays `event.id > N`.
-- **Thread switch**: Frontend connects without `lastEventId` — server
-  replays the full event history from the beginning (frontend cleared its
-  messages and needs the complete thread).
+Three scenarios:
 
-Because IDs are monotonically increasing integers per thread, replay does not
+| Scenario | Cursor source | Server behavior |
+|---|---|---|
+| **Auto-reconnect** (connection drop) | `Last-Event-ID` header, set by the browser automatically | Replay events after cursor, then switch to live |
+| **Page reload** (same thread) | `?lastEventId=N` query parameter, from the frontend's per-thread stored cursor | Replay events after cursor, then switch to live |
+| **Thread switch** (or first open) | No cursor (neither header nor query param) | Replay full event history from the beginning |
+
+The backend must accept the cursor from both `Last-Event-ID` header and
+`?lastEventId` query parameter. If neither is present, replay starts from
+event ID 0 (full history).
+
+IDs are monotonically increasing integers per thread. Replay does not
 require dedup.
 
 ## Abort Support

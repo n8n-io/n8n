@@ -358,25 +358,23 @@ stateDiagram-v2
   load if the chat was open)
 - **Stay connected** while the chat panel is open, even between runs (idle
   state is fine — no events flow, connection stays open)
-- **Reconnect** automatically on connection drop. Native `EventSource`
-  handles auto-reconnect and sends `Last-Event-ID` automatically on
-  reconnection. The server replays missed events before switching to live.
+- **Reconnect** automatically on connection drop (native `EventSource`
+  handles this)
 - **Disconnect** when switching threads (close old connection, open new one
   for the target thread)
 - **Disconnect** when the chat panel is closed
-- **Replay on open**: When opening a thread (including thread switch), omit
-  `lastEventId` to replay the full event history from the beginning. The
-  `?lastEventId` query parameter is only used for manual reconnection
-  within the same thread (e.g., page reload while chat was open), not for
-  thread switches. See `switchThread()` below which deletes the per-thread
-  cursor to force full replay.
+
+Replay behavior follows the canonical rule in
+[streaming-protocol.md — Reconnection & Replay](./streaming-protocol.md#reconnection--replay-canonical-rule):
+auto-reconnect uses the browser's `Last-Event-ID` header, page reload uses
+`?lastEventId` from the per-thread cursor, thread switch omits the cursor
+for full replay.
 
 ### SSE client implementation
 
-Use native `EventSource` for simplicity. It handles auto-reconnect and
-`Last-Event-ID` on reconnection natively. For page reloads (same thread),
-pass `lastEventId` as a query parameter to resume from where we left off.
-For thread switches, omit it to get full replay (see `switchThread()`):
+Use native `EventSource`. The `connectSSE()` function reads the per-thread
+cursor — present for page reloads, absent for thread switches (cleared by
+`switchThread()`):
 
 ```typescript
 function connectSSE(state: InstanceAiStoreState, threadId: string): EventSource {
@@ -405,9 +403,8 @@ function switchThread(state: InstanceAiStoreState, threadId: string): void {
 }
 ```
 
-The backend SSE endpoint must support both:
-- `Last-Event-ID` header (auto-reconnect, handled by browser)
-- `?lastEventId` query parameter (manual reconnect, handled by frontend)
+See [streaming-protocol.md](./streaming-protocol.md#reconnection--replay-canonical-rule)
+for the backend's cursor acceptance rules.
 
 ### Frontend state
 
