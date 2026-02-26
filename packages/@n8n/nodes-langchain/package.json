@@ -272,7 +272,7 @@
     "mongodb": "^6.17.0",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
-    "openai": "^6.19.0",
+    "openai": "^6.9.0",
     "pdf-parse": "1.1.1",
     "pg": "catalog:",
     "redis": "4.6.14",
