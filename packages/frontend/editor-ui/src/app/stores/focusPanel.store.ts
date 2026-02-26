@@ -204,11 +204,17 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		},
 	);
 
-	// Auto-switch to 'focus' tab when a parameter is focused
+	// Auto-switch to 'focus' tab when a different parameter is focused.
+	// Compare by identity (nodeId + parameterPath) rather than object reference,
+	// because _setOptions writes to localStorage causing JSON re-parse on every call
+	// (including resize), which creates new object references without actual changes.
 	watch(
-		() => resolvedParameter.value,
-		(newValue, oldValue) => {
-			if (newValue && newValue !== oldValue) {
+		() => {
+			const p = resolvedParameter.value;
+			return p ? `${p.nodeId}:${p.parameterPath}` : null;
+		},
+		(newKey, oldKey) => {
+			if (newKey && newKey !== oldKey) {
 				selectedTab.value = 'focus';
 			}
 		},

@@ -47,6 +47,7 @@ import ExperimentalFocusPanelHeader from '@/features/workflows/canvas/experiment
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { type CanvasNode, CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 import { N8nIcon, N8nInfoTip, N8nInput, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
@@ -319,8 +320,17 @@ function optionSelected(command: string) {
 }
 
 function closeFocusPanel() {
-	if (experimentalNdvStore.isNdvInFocusPanelEnabled && resolvedParameter.value) {
+	const setupPanelStore = useSetupPanelStore();
+
+	if (
+		(experimentalNdvStore.isNdvInFocusPanelEnabled || setupPanelStore.isFeatureEnabled) &&
+		resolvedParameter.value
+	) {
 		focusPanelStore.unsetParameters();
+
+		if (setupPanelStore.isFeatureEnabled) {
+			focusPanelStore.setSelectedTab('setup');
+		}
 
 		telemetry.track('User removed focused param', {
 			source: 'closeIcon',
