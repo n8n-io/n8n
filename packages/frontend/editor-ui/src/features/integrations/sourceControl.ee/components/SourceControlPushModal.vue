@@ -15,7 +15,13 @@ import type {
 	ProjectSharingData,
 } from '@/features/collaboration/projects/projects.types';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
-import { getPushPriorityByStatus, getStatusText, getStatusTheme } from '../sourceControl.utils';
+import {
+	buildWorkflowTreeRows,
+	getPushPriorityByStatus,
+	getStatusText,
+	getStatusTheme,
+} from '../sourceControl.utils';
+import type { SourceControlTreeRow } from '../sourceControl.types';
 import type { SourceControlledFile, SourceControlledFileStatus } from '@n8n/api-types';
 import {
 	ROLE,
@@ -137,8 +143,9 @@ const projectsForFilters = computed(() => {
 const concatenateWithAnd = (messages: string[]) =>
 	new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages);
 
-type SourceControlledFileWithProject = SourceControlledFile & { project?: ProjectListItem };
-
+type SourceControlledFileWithProject = SourceControlledFile & {
+	project?: ProjectListItem;
+};
 type Changes = {
 	tags: SourceControlledFileWithProject[];
 	variables: SourceControlledFileWithProject[];
@@ -271,14 +278,19 @@ const selectedWorkflows = reactive<Set<string>>(new Set());
 const maybeSelectCurrentWorkflow = (workflow?: SourceControlledFileWithProject) =>
 	workflow && selectedWorkflows.add(workflow.id);
 
-const filters = ref<{ status?: SourceControlledFileStatus; project: ProjectSharingData | null }>({
+const filters = ref<{
+	status?: SourceControlledFileStatus;
+	project: ProjectSharingData | null;
+	folder?: string;
+}>({
 	project: null,
+	folder: '',
 });
 const filtersApplied = computed(
 	() => Boolean(search.value) || Boolean(Object.values(filters.value).filter(Boolean).length),
 );
 const resetFilters = () => {
-	filters.value = { project: null };
+	filters.value = { project: null, folder: '' };
 	search.value = '';
 };
 
@@ -304,18 +316,60 @@ const filterCount = computed(() =>
 	Object.values(filters.value).reduce((acc, item) => (item ? acc + 1 : acc), 0),
 );
 
+const folderFilterOptions = computed(() => {
+	const folderPathSet = new Set<string>();
+
+	for (const workflow of changes.value.workflow) {
+		const pathSegments = workflow.folderPath ?? [];
+		let path = '';
+
+		for (const segment of pathSegments) {
+			path = path ? `${path}/${segment}` : segment;
+			folderPathSet.add(path);
+		}
+	}
+
+	return Array.from(folderPathSet)
+		.sort((a, b) => {
+			const depthDiff = a.split('/').length - b.split('/').length;
+			if (depthDiff !== 0) {
+				return depthDiff;
+			}
+			return a.localeCompare(b);
+		})
+		.map((path) => ({
+			label: path.replaceAll('/', ' / '),
+			value: path,
+		}));
+});
+
 const filteredWorkflows = computed(() => {
 	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
 
 	return changes.value.workflow.filter((workflow) => {
-		if (!workflow.name.toLocaleLowerCase().includes(searchQuery)) {
+		const nameMatches = workflow.name.toLocaleLowerCase().includes(searchQuery);
+		const folderPathMatches = (workflow.folderPath ?? []).some((segment) =>
+			segment.toLocaleLowerCase().includes(searchQuery),
+		);
+
+		if (searchQuery && !nameMatches && !folderPathMatches) {
 			return false;
 		}
 
 		// Project filter logic: if a project filter is set, only show items from that project
-		if (filters.value.project) {
-			// Item must have a project and it must match the filter
-			return workflow.project?.id === filters.value.project.id;
+		if (filters.value.project && workflow.project?.id !== filters.value.project.id) {
+			return false;
+		}
+
+		const folderFilter = filters.value.folder?.trim();
+		if (folderFilter) {
+			const workflowPath = (workflow.folderPath ?? []).join('/');
+			const matchesFolderFilter =
+				workflowPath === folderFilter || workflowPath.startsWith(`${folderFilter}/`);
+
+			if (!matchesFolderFilter) {
+				return false;
+			}
 		}
 
 		// Status filter (only applied when no project filter is active)
@@ -333,12 +387,45 @@ const sortedWorkflows = computed(() =>
 		[
 			// keep the current workflow at the top of the list
 			({ id }) => id === changes.value.currentWorkflow?.id,
+			({ folderPath }) => folderPath?.join('/') ?? '',
 			({ status }) => getPushPriorityByStatus(status),
 			'updatedAt',
 		],
-		['desc', 'asc', 'desc'],
+		['desc', 'asc', 'asc', 'desc'],
 	),
 );
+
+const workflowTreeRows = computed<SourceControlTreeRow<SourceControlledFileWithProject>[]>(() =>
+	buildWorkflowTreeRows(sortedWorkflows.value),
+);
+
+const folderChildrenMap = computed(() => {
+	const childrenByFolderId = new Map<string, string[]>();
+	const rows = workflowTreeRows.value;
+
+	for (const [index, row] of rows.entries()) {
+		if (row.type !== 'folder') {
+			continue;
+		}
+
+		const childWorkflowIds: string[] = [];
+		for (let next = index + 1; next < rows.length; next++) {
+			const candidate = rows[next];
+
+			if (candidate.depth <= row.depth) {
+				break;
+			}
+
+			if (candidate.type === 'file') {
+				childWorkflowIds.push(candidate.file.id);
+			}
+		}
+
+		childrenByFolderId.set(row.id, childWorkflowIds);
+	}
+
+	return childrenByFolderId;
+});
 
 const selectedCredentials = reactive<Set<string>>(new Set());
 
@@ -641,6 +728,42 @@ function toggleSelected(id: string) {
 	}
 }
 
+function isFolderSelected(folderId: string) {
+	const folderChildren = folderChildrenMap.value.get(folderId) ?? [];
+	if (!folderChildren.length) {
+		return false;
+	}
+
+	return folderChildren.every((childId) => selectedWorkflows.has(childId));
+}
+
+function isFolderSelectionIndeterminate(folderId: string) {
+	const folderChildren = folderChildrenMap.value.get(folderId) ?? [];
+	if (!folderChildren.length) {
+		return false;
+	}
+
+	const selectedChildrenCount = folderChildren.filter((childId) =>
+		selectedWorkflows.has(childId),
+	).length;
+
+	return selectedChildrenCount > 0 && selectedChildrenCount < folderChildren.length;
+}
+
+function toggleFolderSelection(folderId: string) {
+	const folderChildren = folderChildrenMap.value.get(folderId) ?? [];
+	if (!folderChildren.length) {
+		return;
+	}
+
+	if (isFolderSelected(folderId)) {
+		folderChildren.forEach((childId) => selectedWorkflows.delete(childId));
+		return;
+	}
+
+	folderChildren.forEach((childId) => selectedWorkflows.add(childId));
+}
+
 const activeDataSource = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
 		return changes.value.workflow;
@@ -665,6 +788,19 @@ const activeDataSourceFiltered = computed(() => {
 		return sortedDataTables.value;
 	}
 	return [];
+});
+
+const activeRows = computed<SourceControlTreeRow[]>(() => {
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
+		return workflowTreeRows.value;
+	}
+
+	return activeDataSourceFiltered.value.map((file) => ({
+		id: `file:${file.id}`,
+		type: 'file' as const,
+		file,
+		depth: 0,
+	}));
 });
 
 const activeEntityLocale = computed(() => {
@@ -868,6 +1004,26 @@ onMounted(async () => {
 								:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
 								:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 							/>
+							<N8nInputLabel
+								:label="i18n.baseText('generic.folder')"
+								:bold="false"
+								size="small"
+								color="text-base"
+								class="mb-3xs mt-3xs"
+							/>
+							<N8nSelect
+								v-model="filters.folder"
+								data-test-id="source-control-folder-filter"
+								clearable
+								:placeholder="i18n.baseText('generic.folder')"
+							>
+								<N8nOption
+									v-for="option in folderFilterOptions"
+									:key="option.value"
+									:label="option.label"
+									:value="option.value"
+								/>
+							</N8nSelect>
 							<div v-if="filterCount" class="mt-s">
 								<N8nLink @click="resetFilters">
 									{{ i18n.baseText('forms.resourceFiltersDropdown.reset') }}
@@ -958,96 +1114,135 @@ onMounted(async () => {
 								{{ filtersNoResultText }}
 							</N8nInfoTip>
 							<DynamicScroller
-								v-if="activeDataSourceFiltered.length"
+								v-if="activeRows.length"
 								:class="[$style.scroller]"
-								:items="activeDataSourceFiltered"
+								:items="activeRows"
 								:min-item-size="57"
 								item-class="scrollerItem"
 							>
-								<template #default="{ item: file, active, index }">
+								<template #default="{ item: row, active, index }">
 									<DynamicScrollerItem
-										:item="file"
+										:item="row"
 										:active="active"
-										:size-dependencies="[file.name, file.id]"
+										:size-dependencies="[
+											row.type,
+											row.type === 'file' ? row.file.name : row.name,
+											row.id,
+											row.depth,
+										]"
 										:data-index="index"
-										data-test-id="push-modal-item"
 									>
-										<N8nCheckbox
-											:class="[$style.listItem]"
-											data-test-id="source-control-push-modal-file-checkbox"
-											:model-value="activeSelection.has(file.id)"
-											@update:model-value="toggleSelected(file.id)"
+										<div
+											v-if="row.type === 'folder'"
+											:class="[$style.folderRow]"
+											:style="{ paddingLeft: `${16 + row.depth * 16}px` }"
 										>
-											<template #label>
-												<div :class="$style.listItemContent">
-													<span>
-														<N8nText
-															tag="div"
-															bold
-															color="text-dark"
-															:class="[$style.listItemName]"
-														>
-															{{ file.name || file.id }}
+											<N8nCheckbox
+												:class="$style.folderCheckbox"
+												data-test-id="source-control-push-modal-folder-checkbox"
+												:model-value="isFolderSelected(row.id)"
+												:indeterminate="isFolderSelectionIndeterminate(row.id)"
+												@update:model-value="toggleFolderSelection(row.id)"
+											>
+												<template #label>
+													<div :class="$style.folderLabel">
+														<N8nIcon icon="folder" color="text-light" size="small" />
+														<N8nText tag="span" color="text-light">
+															{{ row.name }}
 														</N8nText>
-														<N8nText
-															v-if="file.updatedAt"
-															tag="p"
-															class="mt-0"
-															color="text-light"
-															size="small"
-														>
-															{{ renderUpdatedAt(file) }}
-														</N8nText>
-													</span>
-													<span :class="[$style.badges]">
-														<N8nBadge
-															v-if="
-																changes.currentWorkflow && file.id === changes.currentWorkflow.id
-															"
-															class="mr-2xs"
-														>
-															Current workflow
-														</N8nBadge>
-														<template
-															v-if="
-																file.type === SOURCE_CONTROL_FILE_TYPE.workflow ||
-																file.type === SOURCE_CONTROL_FILE_TYPE.credential ||
-																file.type === SOURCE_CONTROL_FILE_TYPE.datatable
-															"
-														>
-															<ProjectCardBadge
-																v-if="file.project"
-																data-test-id="source-control-push-modal-project-badge"
-																:resource="castProject(file.project)"
-																:resource-type="castType(file.type)"
-																:resource-type-label="
-																	i18n.baseText(`generic.${file.type}`).toLowerCase()
-																"
-																:personal-project="projectsStore.personalProject"
-																:show-badge-border="false"
-															/>
-														</template>
-														<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
-															{{ getStatusText(file.status) }}
-														</N8nBadge>
-														<template v-if="isWorkflowDiffsEnabled">
-															<N8nTooltip
-																v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
-																:content="i18n.baseText('workflowDiff.compare')"
-																placement="top"
+													</div>
+												</template>
+											</N8nCheckbox>
+										</div>
+										<div
+											v-else
+											:class="$style.fileRow"
+											:style="{
+												marginLeft: `${row.depth * 16}px`,
+												width: `calc(100% - ${row.depth * 16}px)`,
+											}"
+										>
+											<N8nCheckbox
+												:class="[$style.listItem]"
+												data-test-id="source-control-push-modal-file-checkbox"
+												:model-value="activeSelection.has(row.file.id)"
+												@update:model-value="toggleSelected(row.file.id)"
+											>
+												<template #label>
+													<div :class="$style.listItemContent">
+														<span>
+															<N8nText
+																tag="div"
+																bold
+																color="text-dark"
+																:class="[$style.listItemName]"
 															>
-																<N8nIconButton
-																	variant="subtle"
-																	data-test-id="source-control-workflow-diff-button"
-																	icon="file-diff"
-																	@click="openDiffModal(file.id, file.status)"
+																{{ row.file.name || row.file.id }}
+															</N8nText>
+															<N8nText
+																v-if="row.file.updatedAt"
+																tag="p"
+																class="mt-0"
+																color="text-light"
+																size="small"
+															>
+																{{ renderUpdatedAt(row.file) }}
+															</N8nText>
+														</span>
+														<span :class="[$style.badges]">
+															<N8nBadge
+																v-if="
+																	changes.currentWorkflow &&
+																	row.file.id === changes.currentWorkflow.id
+																"
+																class="mr-2xs"
+															>
+																Current workflow
+															</N8nBadge>
+															<template
+																v-if="
+																	row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow ||
+																	row.file.type === SOURCE_CONTROL_FILE_TYPE.credential ||
+																	row.file.type === SOURCE_CONTROL_FILE_TYPE.datatable
+																"
+															>
+																<ProjectCardBadge
+																	v-if="row.file.project"
+																	data-test-id="source-control-push-modal-project-badge"
+																	:resource="castProject(row.file.project)"
+																	:resource-type="castType(row.file.type)"
+																	:resource-type-label="
+																		i18n.baseText(`generic.${row.file.type}`).toLowerCase()
+																	"
+																	:personal-project="projectsStore.personalProject"
+																	:show-badge-border="false"
 																/>
-															</N8nTooltip>
-														</template>
-													</span>
-												</div>
-											</template>
-										</N8nCheckbox>
+															</template>
+															<N8nBadge
+																:theme="getStatusTheme(row.file.status)"
+																style="height: 25px"
+															>
+																{{ getStatusText(row.file.status) }}
+															</N8nBadge>
+															<template v-if="isWorkflowDiffsEnabled">
+																<N8nTooltip
+																	v-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
+																	:content="i18n.baseText('workflowDiff.compare')"
+																	placement="top"
+																>
+																	<N8nIconButton
+																		variant="subtle"
+																		data-test-id="source-control-workflow-diff-button"
+																		icon="file-diff"
+																		@click="openDiffModal(row.file.id, row.file.status)"
+																	/>
+																</N8nTooltip>
+															</template>
+														</span>
+													</div>
+												</template>
+											</N8nCheckbox>
+										</div>
 									</DynamicScrollerItem>
 								</template>
 							</DynamicScroller>
@@ -1060,9 +1255,9 @@ onMounted(async () => {
 		<template #footer>
 			<N8nNotice
 				v-if="userNotices.length || hasModifiedCredentialsSelected"
+				id="source-control-push-modal-notice"
 				:compact="false"
 				class="mt-0"
-				id="source-control-push-modal-notice"
 			>
 				<template v-if="userNotices.length">
 					<N8nText bold size="medium">Changes to variables, tags, folders and projects </N8nText>
@@ -1143,10 +1338,10 @@ onMounted(async () => {
 	outline: var(--border);
 
 	:global(.scrollerItem) {
+		border-bottom: var(--border);
+
 		&:last-child {
-			.listItem {
-				border-bottom: 0;
-			}
+			border-bottom: 0;
 		}
 	}
 }
@@ -1155,7 +1350,7 @@ onMounted(async () => {
 	align-items: center;
 	padding: 10px 16px;
 	margin: 0;
-	border-bottom: var(--border);
+	border-bottom: 0;
 	width: 100%;
 
 	.listItemContent {
@@ -1174,6 +1369,30 @@ onMounted(async () => {
 		-webkit-box-orient: vertical;
 		word-wrap: break-word; /* Important for long words! */
 	}
+}
+
+.folderRow {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-bottom: 0;
+}
+
+.folderCheckbox {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	margin-bottom: 0;
+}
+
+.folderLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.fileRow {
+	box-sizing: border-box;
 }
 
 .badges {

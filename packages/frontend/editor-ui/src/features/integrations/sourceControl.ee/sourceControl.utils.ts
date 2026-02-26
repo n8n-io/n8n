@@ -7,6 +7,7 @@ import { VIEWS } from '@/app/constants';
 import groupBy from 'lodash/groupBy';
 import type { useToast } from '@/app/composables/useToast';
 import { telemetry } from '@/app/plugins/telemetry';
+import type { SourceControlTreeRow } from './sourceControl.types';
 
 type SourceControlledFileStatus = SourceControlledFile['status'];
 
@@ -172,6 +173,42 @@ const pullMessage = ({
 		}),
 	].join(' ');
 };
+
+export function buildWorkflowTreeRows<T extends SourceControlledFile>(
+	workflows: T[],
+): Array<SourceControlTreeRow<T>> {
+	const rows: Array<SourceControlTreeRow<T>> = [];
+	const seenFolders = new Set<string>();
+
+	for (const workflow of workflows) {
+		const path = workflow.folderPath ?? [];
+		let pathKey = '';
+
+		for (const [index, segment] of path.entries()) {
+			pathKey = pathKey ? `${pathKey}/${segment}` : segment;
+			if (seenFolders.has(pathKey)) {
+				continue;
+			}
+
+			rows.push({
+				id: `folder:${pathKey}`,
+				type: 'folder',
+				name: segment,
+				depth: index,
+			});
+			seenFolders.add(pathKey);
+		}
+
+		rows.push({
+			id: `file:${workflow.id}`,
+			type: 'file',
+			file: workflow,
+			depth: path.length,
+		});
+	}
+
+	return rows;
+}
 
 export const notifyUserAboutPullWorkFolderOutcome = async (
 	files: SourceControlledFile[],

@@ -13,11 +13,13 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '../sourceControl.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import {
+	buildWorkflowTreeRows,
 	getPullPriorityByStatus,
 	getStatusText,
 	getStatusTheme,
 	notifyUserAboutPullWorkFolderOutcome,
 } from '../sourceControl.utils';
+import type { SourceControlTreeRow } from '../sourceControl.types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-types';
 import { shouldAutoPublishWorkflow, type AutoPublishMode } from 'n8n-workflow';
@@ -50,7 +52,6 @@ type SourceControlledFileWithProject = SourceControlledFile & {
 	project?: ProjectListItem;
 	willBeAutoPublished?: boolean;
 };
-
 const props = defineProps<{
 	data: { eventBus: EventBus; status?: SourceControlledFile[] };
 }>();
@@ -184,8 +185,12 @@ const filteredWorkflows = computed(() => {
 const sortedWorkflows = computed(() => {
 	const sorted = orderBy(
 		filteredWorkflows.value,
-		[({ status }) => getPullPriorityByStatus(status), 'updatedAt'],
-		['asc', 'desc'],
+		[
+			({ folderPath }) => folderPath?.join('/') ?? '',
+			({ status }) => getPullPriorityByStatus(status),
+			'updatedAt',
+		],
+		['asc', 'asc', 'desc'],
 	);
 
 	// Add willBeAutoPublished property to each workflow
@@ -202,6 +207,10 @@ const sortedWorkflows = computed(() => {
 			}),
 	}));
 });
+
+const workflowTreeRows = computed<SourceControlTreeRow<SourceControlledFileWithProject>[]>(() =>
+	buildWorkflowTreeRows(sortedWorkflows.value),
+);
 
 // Filtered credentials
 const filteredCredentials = computed(() => {
@@ -262,6 +271,19 @@ const activeDataSourceFiltered = computed(() => {
 		return sortedDataTables.value;
 	}
 	return [];
+});
+
+const activeRows = computed<SourceControlTreeRow[]>(() => {
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
+		return workflowTreeRows.value;
+	}
+
+	return activeDataSourceFiltered.value.map((file) => ({
+		id: `file:${file.id}`,
+		type: 'file' as const,
+		file,
+		depth: 0,
+	}));
 });
 
 const filtersNoResultText = computed(() => {
@@ -518,46 +540,67 @@ onMounted(() => {
 									{{ filtersNoResultText }}
 								</N8nInfoTip>
 								<DynamicScroller
-									v-if="activeDataSourceFiltered.length"
+									v-if="activeRows.length"
 									:class="[$style.scroller]"
-									:items="activeDataSourceFiltered"
+									:items="activeRows"
 									:min-item-size="57"
 									item-class="scrollerItem"
 								>
-									<template #default="{ item: file, active, index }">
+									<template #default="{ item: row, active, index }">
 										<DynamicScrollerItem
-											:item="file"
+											:item="row"
 											:active="active"
-											:size-dependencies="[file.name, file.id]"
+											:size-dependencies="[
+												row.type,
+												row.type === 'file' ? row.file.name : row.name,
+												row.id,
+												row.depth,
+											]"
 											:data-index="index"
 										>
-											<div :class="[$style.listItem]" data-test-id="pull-modal-item">
-												<div :class="[$style.itemContent]">
+											<div
+												v-if="row.type === 'folder'"
+												:class="[$style.folderRow]"
+												:style="{ paddingLeft: `${16 + row.depth * 16}px` }"
+												data-test-id="source-control-pull-modal-folder-row"
+											>
+												<N8nText tag="span" color="text-light">
+													{{ row.name }}
+												</N8nText>
+											</div>
+											<div v-else :class="[$style.listItem]" data-test-id="pull-modal-item">
+												<div
+													:class="[$style.itemContent]"
+													:style="{ paddingLeft: `${row.depth * 16}px` }"
+												>
 													<N8nText tag="div" bold color="text-dark" :class="[$style.listItemName]">
 														<RouterLink
-															v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential"
+															v-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.credential"
 															target="_blank"
 															rel="noopener noreferrer"
-															:to="{ name: VIEWS.CREDENTIALS, params: { credentialId: file.id } }"
+															:to="{
+																name: VIEWS.CREDENTIALS,
+																params: { credentialId: row.file.id },
+															}"
 														>
-															{{ file.name }}
+															{{ row.file.name }}
 														</RouterLink>
 														<RouterLink
-															v-else-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
+															v-else-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
 															target="_blank"
 															rel="noopener noreferrer"
-															:to="{ name: VIEWS.WORKFLOW, params: { name: file.id } }"
+															:to="{ name: VIEWS.WORKFLOW, params: { name: row.file.id } }"
 														>
-															{{ file.name }}
+															{{ row.file.name }}
 														</RouterLink>
-														<span v-else>{{ file.name }}</span>
+														<span v-else>{{ row.file.name }}</span>
 													</N8nText>
 													<div :class="$style.statusLine">
-														<N8nText v-if="file.updatedAt" color="text-light" size="small">
-															{{ renderUpdatedAt(file) }}
+														<N8nText v-if="row.file.updatedAt" color="text-light" size="small">
+															{{ renderUpdatedAt(row.file) }}
 														</N8nText>
 														<N8nText
-															v-if="file.willBeAutoPublished"
+															v-if="row.file.willBeAutoPublished"
 															color="success"
 															size="small"
 															bold
@@ -566,7 +609,12 @@ onMounted(() => {
 																i18n.baseText('settings.sourceControl.modals.pull.autoPublishing')
 															}}
 														</N8nText>
-														<N8nText v-if="file.isRemoteArchived" color="warning" size="small" bold>
+														<N8nText
+															v-if="row.file.isRemoteArchived"
+															color="warning"
+															size="small"
+															bold
+														>
 															{{
 																i18n.baseText('settings.sourceControl.modals.pull.willBeArchived')
 															}}
@@ -574,14 +622,14 @@ onMounted(() => {
 													</div>
 												</div>
 												<span :class="[$style.badges]">
-													<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
-														{{ getStatusText(file.status) }}
+													<N8nBadge :theme="getStatusTheme(row.file.status)" style="height: 25px">
+														{{ getStatusText(row.file.status) }}
 													</N8nBadge>
 													<template v-if="isWorkflowDiffsEnabled">
 														<N8nTooltip
 															v-if="
-																file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
-																file.status === 'modified'
+																row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
+																row.file.status === 'modified'
 															"
 															:content="i18n.baseText('workflowDiff.compare')"
 															placement="top"
@@ -589,7 +637,7 @@ onMounted(() => {
 															<N8nIconButton
 																variant="subtle"
 																icon="file-diff"
-																@click="openDiffModal(file.id)"
+																@click="openDiffModal(row.file.id)"
 															/>
 														</N8nTooltip>
 													</template>
@@ -696,6 +744,13 @@ onMounted(() => {
 	margin: 0;
 	border-bottom: var(--border);
 	gap: 30px;
+}
+
+.folderRow {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-bottom: var(--border);
 }
 
 .itemContent {
