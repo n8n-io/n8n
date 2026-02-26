@@ -10,6 +10,7 @@ import {
 	N8nButton,
 	N8nCollapsiblePanel,
 	N8nHeaderAction,
+	N8nIconButton,
 } from '@n8n/design-system';
 import ParameterInputList from '../ParameterInputList.vue';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
@@ -36,6 +37,7 @@ export type Props = {
 	pickerPropertyValues: INodeProperties[];
 	isOptionalValueAdded: (valueName: string) => boolean;
 	addOptionalFieldButtonText: string;
+	layout?: 'inline';
 };
 
 const props = defineProps<Props>();
@@ -89,7 +91,30 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 </script>
 
 <template>
+	<div v-if="layout === 'inline'" :class="$style.inlineItem" :data-item-key="itemId">
+		<ParameterInputList
+			hide-delete
+			is-nested
+			layout="inline"
+			:parameters="visiblePropertyValues"
+			:node-values="nodeValues"
+			:path="propertyPath"
+			:is-read-only="isReadOnly"
+			:remove-first-parameter-margin="true"
+			:remove-last-parameter-margin="true"
+			@value-changed="handleValueChanged"
+		/>
+		<N8nIconButton
+			v-if="!isReadOnly"
+			icon="x"
+			variant="ghost"
+			size="small"
+			data-test-id="fixed-collection-item-delete-inline"
+			@click="emit('delete')"
+		/>
+	</div>
 	<N8nCollapsiblePanel
+		v-else
 		:key="itemId"
 		:model-value="isExpanded"
 		:title="itemTitle"
@@ -150,6 +175,22 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 </template>
 
 <style lang="scss" module>
+.inlineItem {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--5xs) 0;
+
+	> :first-child {
+		flex: 1;
+		min-width: 0;
+	}
+
+	> :last-child {
+		margin-top: 22px;
+	}
+}
+
 .dragHandle {
 	cursor: grab;
 }

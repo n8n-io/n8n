@@ -160,9 +160,11 @@ describe('WorkflowProductionChecklist', () => {
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
-		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(mockWorkflow.id));
-		docStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
-		workflowDocumentStoreRef.value = docStore;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(mockWorkflow.id),
+		);
+		workflowDocumentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
+		workflowDocumentStoreRef.value = workflowDocumentStore;
 
 		router = {
 			push: vi.fn(),

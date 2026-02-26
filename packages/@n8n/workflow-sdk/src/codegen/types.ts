@@ -33,6 +33,8 @@ export interface SubnodeConnection {
 	connectionType: AiConnectionType;
 	/** Name of the subnode */
 	subnodeName: string;
+	/** Connection slot index (0 = primary, 1 = fallback, etc.) */
+	index: number;
 }
 
 /**
