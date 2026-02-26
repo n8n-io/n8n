@@ -33,7 +33,7 @@ export function useSecretsProvidersList() {
 	}
 
 	async function fetchActiveConnections() {
-		if (!rbacStore.hasScope('externalSecretsProvider:list')) {
+		if (!rbacStore.hasScope('externalSecretsProvider:read')) {
 			return;
 		}
 
