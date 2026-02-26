@@ -122,10 +122,11 @@ describe('Test YouTube, video => upload', () => {
 		const buffer = Buffer.alloc(5, 'a');
 		mockExecuteFunctions.helpers.assertBinaryData = jest.fn(() => ({
 			id: 'binary-id',
+			data: '',
 			mimeType: 'video/mp4',
 		}));
-		mockExecuteFunctions.helpers.getBinaryStream = jest.fn(() => Readable.from([buffer]));
-		mockExecuteFunctions.helpers.getBinaryMetadata = jest.fn(() => ({
+		mockExecuteFunctions.helpers.getBinaryStream = jest.fn(async () => Readable.from([buffer]));
+		mockExecuteFunctions.helpers.getBinaryMetadata = jest.fn(async () => ({
 			fileSize: buffer.length,
 			mimeType: 'application/mp4',
 		}));
