@@ -45,7 +45,6 @@ import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
 
 import { EventService } from '@/events/event.service';
-import { FavoritesService } from '@/modules/favorites/favorites.service';
 import { RoleService } from '@/services/role.service';
 
 @Service()
@@ -61,7 +60,6 @@ export class DataTableService {
 		private readonly csvParserService: CsvParserService,
 		private readonly fileCleanupService: DataTableFileCleanupService,
 		private readonly eventService: EventService,
-		private readonly favoritesService: FavoritesService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -174,12 +172,13 @@ export class DataTableService {
 
 	async deleteDataTableByProjectId(projectId: string) {
 		const tables = await this.dataTableRepository.findBy({ projectId });
-		const tableIds = tables.map((t) => t.id);
 
 		const result = await this.dataTableRepository.deleteDataTableByProjectId(projectId);
 
 		if (result) {
-			await this.favoritesService.deleteByResourceIds(tableIds, 'dataTable');
+			for (const table of tables) {
+				this.eventService.emit('data-table-deleted', { dataTableId: table.id, projectId });
+			}
 			this.dataTableSizeValidator.reset();
 		}
 
