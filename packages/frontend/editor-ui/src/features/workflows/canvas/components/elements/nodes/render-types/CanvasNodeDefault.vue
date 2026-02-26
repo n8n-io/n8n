@@ -17,6 +17,7 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getNodeIconSize } from '@/app/utils/nodeIcon';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
+import type { NodeIconSource } from '@/app/utils/nodeIcon';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -24,6 +25,7 @@ const i18n = useI18n();
 const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
 	activate: [id: string, event: MouseEvent];
+	'replace:node': [id: string];
 }>();
 
 const { initialized, viewport, isExperimentalNdvActive } = useCanvas();
@@ -75,6 +77,7 @@ const classes = computed(() => {
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
+		[$style.placeholder]: renderOptions.value.placeholder,
 		waiting: executionWaiting.value || executionStatus.value === 'waiting',
 		running: executionRunning.value || executionWaitingForNext.value,
 	};
@@ -133,7 +136,15 @@ const isStrikethroughVisible = computed(() => {
 	return isDisabled.value && isSingleMainInputNode && isSingleMainOutputNode;
 });
 
-const iconSource = computed(() => renderOptions.value.icon);
+const iconSource = computed(() => {
+	if (renderOptions.value.placeholder) {
+		return {
+			type: 'icon',
+			name: 'plus',
+		} as NodeIconSource;
+	}
+	return renderOptions.value.icon;
+});
 
 const showTooltip = ref(false);
 
@@ -155,6 +166,11 @@ function openContextMenu(event: MouseEvent) {
 }
 
 function onActivate(event: MouseEvent) {
+	if (renderOptions.value.placeholder) {
+		emit('replace:node', id.value);
+		return;
+	}
+
 	emit('activate', id.value, event);
 }
 </script>
@@ -361,6 +377,18 @@ function onActivate(event: MouseEvent) {
 
 	&.waiting {
 		--canvas-node--border-color: transparent;
+	}
+
+	&.placeholder {
+		background: var(--color--foreground--tint-2);
+		border: 2px dashed var(--color--foreground--shade-2);
+		cursor: pointer;
+
+		&:hover {
+			.icon {
+				color: var(--color--primary);
+			}
+		}
 	}
 }
 

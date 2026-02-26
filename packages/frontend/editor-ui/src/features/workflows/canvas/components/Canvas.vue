@@ -551,6 +551,10 @@ function onFocusNode(id: string) {
 	}
 }
 
+function onReplaceNode(id: string) {
+	emit('replace:node', id);
+}
+
 function onAddToAi(id: string) {
 	focusedNodesStore.confirmNodes([id], 'context_menu');
 	void chatPanelStore.open({ mode: 'builder' });
@@ -1077,6 +1081,7 @@ defineExpose({
 					@move="onUpdateNodePosition"
 					@add="onClickNodeAdd"
 					@focus="onFocusNode"
+					@replace:node="onReplaceNode"
 					@add:ai="onAddToAi"
 				>
 					<template v-if="$slots.nodeToolbar" #toolbar="toolbarProps">
