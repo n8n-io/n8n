@@ -1,5 +1,5 @@
 import ivm from 'isolated-vm';
-import * as fs from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { RuntimeBridge, BridgeConfig } from '../types';
@@ -112,7 +112,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			// Load runtime bundle (includes vendor libraries + proxy system)
 			// Path: dist/bundle/runtime.iife.js
 			const runtimeBundlePath = path.join(__dirname, '../../dist/bundle/runtime.iife.js');
-			const runtimeBundle = fs.readFileSync(runtimeBundlePath, 'utf-8');
+			const runtimeBundle = await readFile(runtimeBundlePath, 'utf-8');
 
 			// Evaluate bundle in isolate context
 			// This makes all exported globals available (DateTime, extend, extendOptional, SafeObject, SafeError, createDeepLazyProxy, resetDataProxies, __data)
