@@ -55,21 +55,12 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 	});
 
 	describe('Owner permissions', () => {
-		it('should show install button when user is admin', async () => {
-			mockUseUsersStore.isAdmin = true;
-			const node = mockNode({ name: 'Test Node', type: 'n8n-nodes-test.testNode' });
-			const { getByTestId } = renderComponent(NodeSettingsInvalidNodeWarning, {
-				props: {
-					node,
-				},
-				pinia,
-			});
-
-			expect(getByTestId('install-community-node-button')).toBeInTheDocument();
-		});
-
-		it('should show install button when user is instance owner', async () => {
-			mockUseUsersStore.isInstanceOwner = true;
+		it.each([
+			{ isAdmin: true, isInstanceOwner: false, label: 'admin' },
+			{ isAdmin: false, isInstanceOwner: true, label: 'instance owner' },
+		])('should show install button when user is $label', ({ isAdmin, isInstanceOwner }) => {
+			mockUseUsersStore.isAdmin = isAdmin;
+			mockUseUsersStore.isInstanceOwner = isInstanceOwner;
 			const node = mockNode({ name: 'Test Node', type: 'n8n-nodes-test.testNode' });
 			const { getByTestId } = renderComponent(NodeSettingsInvalidNodeWarning, {
 				props: {
