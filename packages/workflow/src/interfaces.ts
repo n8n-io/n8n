@@ -240,6 +240,21 @@ export abstract class ICredentialsHelper {
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject>;
 
+	abstract getDecryptedWithResolutionInfo(
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+		mode: WorkflowExecuteMode,
+		executeData?: IExecuteData,
+		raw?: boolean,
+		expressionResolveValues?: ICredentialsExpressionResolveValues,
+	): Promise<{
+		data: ICredentialDataDecryptedObject;
+		resolvedDynamically: boolean;
+		credentialId: string;
+		credentialName: string;
+	}>;
+
 	abstract updateCredentials(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
@@ -2670,6 +2685,18 @@ export interface ITaskMetadata {
 		/** Time saved in minutes */
 		minutes: number;
 	};
+
+	/**
+	 * Tracks how credentials were resolved for this node execution.
+	 * Records whether each credential used dynamic resolution (via execution context)
+	 * or static test credentials.
+	 */
+	credentialResolutions?: Array<{
+		credentialId: string;
+		credentialName: string;
+		credentialType: string;
+		resolvedDynamically: boolean;
+	}>;
 }
 
 /** The data that gets returned when a node execution starts */

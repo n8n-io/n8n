@@ -403,17 +403,36 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		// }
 
 		additionalData.executionContext = this.getExecutionContext();
-		const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
-			additionalData,
-			nodeCredentials,
-			type,
-			mode,
-			executeData,
-			false,
-			expressionResolveValues,
-		);
+		const { data, resolvedDynamically, credentialId, credentialName } =
+			await additionalData.credentialsHelper.getDecryptedWithResolutionInfo(
+				additionalData,
+				nodeCredentials,
+				type,
+				mode,
+				executeData,
+				false,
+				expressionResolveValues,
+			);
 
-		return decryptedDataObject as T;
+		// Record credential resolution info in execution metadata
+		if (this.runExecutionData?.executionData) {
+			const execMetadata = this.runExecutionData.executionData;
+			if (!execMetadata.metadata) execMetadata.metadata = {};
+			if (!execMetadata.metadata[this.node.name]) execMetadata.metadata[this.node.name] = [];
+			if (!execMetadata.metadata[this.node.name][this.runIndex]) {
+				execMetadata.metadata[this.node.name][this.runIndex] = {};
+			}
+			const meta = execMetadata.metadata[this.node.name][this.runIndex];
+			if (!meta.credentialResolutions) meta.credentialResolutions = [];
+			meta.credentialResolutions.push({
+				credentialId,
+				credentialName,
+				credentialType: type,
+				resolvedDynamically,
+			});
+		}
+
+		return data as T;
 	}
 
 	@Memoized

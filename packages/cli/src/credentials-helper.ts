@@ -351,6 +351,32 @@ export class CredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
+		const result = await this.getDecryptedWithResolutionInfo(
+			additionalData,
+			nodeCredentials,
+			type,
+			mode,
+			executeData,
+			raw,
+			expressionResolveValues,
+		);
+		return result.data;
+	}
+
+	async getDecryptedWithResolutionInfo(
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+		mode: WorkflowExecuteMode,
+		executeData?: IExecuteData,
+		raw?: boolean,
+		expressionResolveValues?: ICredentialsExpressionResolveValues,
+	): Promise<{
+		data: ICredentialDataDecryptedObject;
+		resolvedDynamically: boolean;
+		credentialId: string;
+		credentialName: string;
+	}> {
 		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
 		const credentials = new Credentials(
 			{ id: credentialsEntity.id, name: credentialsEntity.name },
@@ -358,6 +384,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			credentialsEntity.data,
 		);
 		let decryptedDataOriginal = credentials.getData();
+		let resolvedDynamically = false;
 
 		// Check if credential can use external secrets for expression resolution
 		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(nodeCredentials);
@@ -380,19 +407,25 @@ export class CredentialsHelper extends ICredentialsHelper {
 			);
 		}
 
-		if (raw === true) {
-			return decryptedDataOriginal;
+		let data = decryptedDataOriginal;
+		if (raw !== true) {
+			data = await this.applyDefaultsAndOverwrites(
+				additionalData,
+				decryptedDataOriginal,
+				type,
+				mode,
+				canUseExternalSecrets,
+				executeData,
+				expressionResolveValues,
+			);
 		}
 
-		return await this.applyDefaultsAndOverwrites(
-			additionalData,
-			decryptedDataOriginal,
-			type,
-			mode,
-			canUseExternalSecrets,
-			executeData,
-			expressionResolveValues,
-		);
+		return {
+			data,
+			resolvedDynamically,
+			credentialId: credentialsEntity.id,
+			credentialName: credentialsEntity.name,
+		};
 	}
 
 	/**

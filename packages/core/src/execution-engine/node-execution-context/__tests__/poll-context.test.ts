@@ -66,7 +66,12 @@ describe('PollContext', () => {
 	describe('getCredentials', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
-			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.getDecryptedWithResolutionInfo.mockResolvedValue({
+				data: { secret: 'token' },
+				resolvedDynamically: false,
+				credentialId: 'test-cred-id',
+				credentialName: 'Test Credential',
+			});
 
 			const credentials =
 				await pollContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
