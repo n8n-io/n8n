@@ -4,13 +4,12 @@ import type { Request, Response } from 'express';
 
 import { AgentsController } from '../agents.controller';
 
-import type {
-	AgentsService,
-	ExternalAgentConfig,
-	AgentDto,
-	LlmConfig,
-} from '@/services/agents.service';
-import { buildSystemPrompt, callExternalAgent, callLlm, sseWrite } from '@/services/agents.service';
+import type { AgentsService } from '@/services/agents/agents.service';
+import { callExternalAgent } from '@/services/agents/agent-external-client';
+import { callLlm } from '@/services/agents/agent-llm-client';
+import { buildSystemPrompt } from '@/services/agents/agent-prompt-builder';
+import type { ExternalAgentConfig, AgentDto, LlmConfig } from '@/services/agents/agents.types';
+import { sseWrite } from '@/services/agents/agents.types';
 import { jsonStringify } from 'n8n-workflow';
 
 // Mock SSRF validation — unit tests don't resolve DNS

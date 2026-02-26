@@ -1,4 +1,4 @@
-import type { APIResponse } from '@playwright/test';
+import type { APIResponse, Page } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import { test, expect } from './fixtures';
@@ -664,7 +664,7 @@ test.describe('Agent Task via UI', () => {
 	 * Canvas uses absolute positioning — force-clicking at coordinates can hit overlapping cards.
 	 * dispatchEvent targets the DOM element directly, bypassing coordinate-based hit testing.
 	 */
-	async function openAgentPanel(page: import('@playwright/test').Page, agentName: string) {
+	async function openAgentPanel(page: Page, agentName: string) {
 		const card = page.getByRole('button', { name: `Agent ${agentName}` });
 		await expect(card).toBeVisible();
 		await card.dispatchEvent('pointerdown', { bubbles: true });

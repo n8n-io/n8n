@@ -3,8 +3,9 @@ import type express from 'express';
 
 import type { AuthenticatedRequest } from '@n8n/db';
 import { sendErrorResponse } from '@/response-helper';
-import type { ExternalAgentConfig } from '@/services/agents.service';
-import { AgentsService, MAX_ITERATIONS, sseWrite } from '@/services/agents.service';
+import { AgentsService } from '@/services/agents/agents.service';
+import type { ExternalAgentConfig } from '@/services/agents/agents.types';
+import { MAX_ITERATIONS, sseWrite } from '@/services/agents/agents.types';
 
 import { apiKeyHasScope } from '../../shared/middlewares/global.middleware';
 

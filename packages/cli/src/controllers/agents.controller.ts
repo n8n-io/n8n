@@ -13,8 +13,9 @@ import {
 import type { Request, Response } from 'express';
 
 import { sendErrorResponse } from '@/response-helper';
-import type { ExternalAgentConfig } from '@/services/agents.service';
-import { AgentsService, MAX_ITERATIONS, sseWrite } from '@/services/agents.service';
+import { AgentsService } from '@/services/agents/agents.service';
+import type { ExternalAgentConfig } from '@/services/agents/agents.types';
+import { MAX_ITERATIONS, sseWrite } from '@/services/agents/agents.types';
 
 @RestController('/agents')
 export class AgentsController {

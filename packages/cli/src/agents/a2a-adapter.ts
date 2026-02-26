@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 
-import type { AgentTaskResult } from '@/services/agents.service';
+import type { AgentTaskResult } from '@/services/agents/agents.types';
 
 // ─── A2A Protocol Types (v0.3) ───────────────────────────────────────────────
 

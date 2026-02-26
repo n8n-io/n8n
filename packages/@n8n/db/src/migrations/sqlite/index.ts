@@ -135,15 +135,15 @@ import { CreateSecretsProviderConnectionTables1769433700000 } from '../common/17
 import { CreateWorkflowPublishedVersionTable1769698710000 } from '../common/1769698710000-CreateWorkflowPublishedVersionTable';
 import { ExpandSubjectIDColumnLength1769784356000 } from '../common/1769784356000-ExpandSubjectIDColumnLength';
 import { AddWorkflowUnpublishScopeToCustomRoles1769900001000 } from '../common/1769900001000-AddWorkflowUnpublishScopeToCustomRoles';
-import { CreateChatHubToolsTable1770000000000 } from '../common/1770000000000-CreateChatHubToolsTable';
 import { AddTypeColumnToUser1770000000000 } from '../common/1770000000000-AddTypeColumnToUser';
+import { CreateChatHubToolsTable1770000000000 } from '../common/1770000000000-CreateChatHubToolsTable';
 import { ExpandProviderIdColumnLength1770000000000 } from '../common/1770000000000-ExpandProviderIdColumnLength';
+import { AddAvatarColumnToUser1770100000000 } from '../common/1770100000000-AddAvatarColumnToUser';
 import { CreateWorkflowBuilderSessionTable1770220686000 } from '../common/1770220686000-CreateWorkflowBuilderSessionTable';
+import { AddAgentFieldsToUser1771000000000 } from '../common/1771000000000-AddAgentFieldsToUser';
 import { AddScalingFieldsToTestRun1771417407753 } from '../common/1771417407753-AddScalingFieldsToTestRun';
 import { MigrateExternalSecretsToEntityStorage1771500000000 } from '../common/1771500000000-MigrateExternalSecretsToEntityStorage';
 import { AddUnshareScopeToCustomRoles1771500000001 } from '../common/1771500000001-AddUnshareScopeToCustomRoles';
-import { AddAvatarColumnToUser1770100000000 } from '../common/1770100000000-AddAvatarColumnToUser';
-import { AddAgentFieldsToUser1771000000000 } from '../common/1771000000000-AddAgentFieldsToUser';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [

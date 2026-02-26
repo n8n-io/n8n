@@ -9,7 +9,8 @@ import {
 	toA2AResponse,
 } from '@/agents/a2a-adapter';
 import type { A2ASendMessageRequest } from '@/agents/a2a-adapter';
-import { AgentsService, MAX_ITERATIONS, sseWrite } from '@/services/agents.service';
+import { AgentsService } from '@/services/agents/agents.service';
+import { MAX_ITERATIONS, sseWrite } from '@/services/agents/agents.types';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 type ApiKeyScope = 'agent:receive' | 'agent:execute';
