@@ -93,7 +93,7 @@ pnpm stack:helm --image ghcr.io/n8n-io/n8n:ci-12345
 ```
 --mode <mode>         standalone (SQLite, default) or queue (PostgreSQL + Redis + workers)
 --image <image>       n8n Docker image (default: n8nio/n8n:local)
---chart-ref <ref>     Git branch/tag for n8n-hosting (default: krider2010/helm-chart-update)
+--chart-ref <ref>     Git branch/tag for n8n-hosting (default: main)
 --chart-repo <url>    Git repo URL (default: https://github.com/n8n-io/n8n-hosting.git)
 --k3s-image <image>   K3s image (default: rancher/k3s:v1.32.2-k3s1)
 --url-file <path>     Write URL to file when ready (for CI automation)

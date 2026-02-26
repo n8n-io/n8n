@@ -13,7 +13,7 @@ on:
       helm-chart-ref:
         description: 'n8n-hosting branch/tag for Helm chart'
         required: false
-        default: 'krider2010/helm-chart-update'
+        default: 'main'
       mode:
         description: 'Deployment mode to test'
         required: true
@@ -25,7 +25,7 @@ on:
 
 env:
   DOCKER_IMAGE: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
-  HELM_CHART_REF: ${{ inputs.helm-chart-ref || 'krider2010/helm-chart-update' }}
+  HELM_CHART_REF: ${{ inputs.helm-chart-ref || 'main' }}
 
 jobs:
   build:

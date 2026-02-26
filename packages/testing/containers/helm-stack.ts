@@ -9,7 +9,7 @@ import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 const DEFAULT_K3S_IMAGE = 'rancher/k3s:v1.32.2-k3s1';
 const DEFAULT_CHART_REPO = 'https://github.com/n8n-io/n8n-hosting.git';
-const DEFAULT_CHART_REF = 'krider2010/helm-chart-update';
+const DEFAULT_CHART_REF = 'main';
 const N8N_NODE_PORT = 30080;
 const HEALTH_POLL_INTERVAL_MS = 2_000;
 const CONTAINERD_READY_TIMEOUT_MS = 30_000;
@@ -23,7 +23,7 @@ export interface HelmStackConfig {
 	n8nImage?: string;
 	/** K3s image (default: rancher/k3s:v1.32.2-k3s1) */
 	k3sImage?: string;
-	/** Git ref for the n8n-hosting repo (default: krider2010/helm-chart-update) */
+	/** Git ref for the n8n-hosting repo (default: main) */
 	helmChartRef?: string;
 	/** Git repo URL for the Helm chart (default: n8n-io/n8n-hosting) */
 	helmChartRepo?: string;
