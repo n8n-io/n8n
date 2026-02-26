@@ -2366,6 +2366,29 @@ describe('OauthService', () => {
 				expect((error as Error).message).toContain('OAuth url must use HTTP or HTTPS protocol');
 			}
 		});
+
+		it('should reject malicious serverUrl before making any requests (SSRF protection)', async () => {
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'mcpOAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'file:///etc/passwd',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			try {
+				await service.generateAOauth2AuthUri(credential, {
+					cid: credential.id,
+					origin: 'static-credential',
+					userId: 'user-id',
+				});
+				// Should not reach here
+				expect(true).toBe(false);
+			} catch (error) {
+				expect(error).toBeInstanceOf(BadRequestError);
+				expect((error as Error).message).toContain('OAuth url must use HTTP or HTTPS protocol');
+			}
+		});
 	});
 
 	describe('generateAOauth1AuthUri', () => {

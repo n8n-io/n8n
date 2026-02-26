@@ -332,6 +332,9 @@ export class OauthService {
 		const toUpdate: ICredentialDataDecryptedObject = {};
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
+			// Validate serverUrl to prevent SSRF attacks before any HTTP requests
+			this.validateOAuthUrlOrThrow(oauthCredentials.serverUrl);
+
 			// Step 1: Discover Protected Resource Metadata (RFC 9728 / MCP)
 			// Try to discover the authorization server URL from protected resource metadata
 			let authorizationServerUrl: string;
@@ -640,6 +643,9 @@ export class OauthService {
 	private async discoverProtectedResourceMetadata(
 		resourceUrl: string,
 	): Promise<{ authorization_servers: string[] }> {
+		// Validate input to prevent SSRF (defense-in-depth)
+		this.validateOAuthUrlOrThrow(resourceUrl);
+
 		const url = new URL(resourceUrl);
 		const pathComponent = url.pathname.replace(/\/$/, ''); // Remove trailing slash
 
