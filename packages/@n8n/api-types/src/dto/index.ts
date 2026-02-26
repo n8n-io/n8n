@@ -159,3 +159,8 @@ export { TestSecretsProviderConnectionDto } from './secrets-provider/test-secret
 export { UpdateSecretsProviderConnectionDto } from './secrets-provider/update-secrets-provider-connection.dto';
 
 export { GetQuickConnectApiKeyDto } from './quick-connect/create-quick-connect-credential.dto';
+
+export {
+	ExecutionRedactionQueryDtoSchema,
+	type ExecutionRedactionQueryDto,
+} from './executions/execution-redaction-query.dto';
