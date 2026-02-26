@@ -29,6 +29,7 @@ const props = defineProps<{
 	shouldUpgrade?: boolean;
 	isListLoading?: boolean;
 	activeVersionId?: string;
+	isWorkflowDiffsEnabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -120,6 +121,10 @@ const getItemToCompareWith = (
 	item: WorkflowHistory,
 	index: number,
 ): { name: string; versionId: WorkflowVersionId } | null => {
+	if (!props.isWorkflowDiffsEnabled) {
+		return null;
+	}
+
 	if (!props.selectedItem) {
 		return null;
 	}
@@ -215,6 +220,7 @@ const pruneTimeDisplay = computed(() => {
 					:is-selected="versionEntry.item.versionId === props.selectedItem?.versionId"
 					:is-version-active="versionEntry.item.versionId === props.activeVersionId"
 					:actions="getActions(versionEntry.item, versionEntry.originalIndex)"
+					:is-workflow-diffs-enabled="props.isWorkflowDiffsEnabled"
 					:is-grouped="true"
 					@action="onAction"
 					@preview="onPreview"
@@ -232,6 +238,7 @@ const pruneTimeDisplay = computed(() => {
 				:is-selected="entry.item.versionId === props.selectedItem?.versionId"
 				:is-version-active="entry.item.versionId === props.activeVersionId"
 				:actions="getActions(entry.item, entry.originalIndex)"
+				:is-workflow-diffs-enabled="props.isWorkflowDiffsEnabled"
 				@action="onAction"
 				@preview="onPreview"
 				@compare="onCompare"

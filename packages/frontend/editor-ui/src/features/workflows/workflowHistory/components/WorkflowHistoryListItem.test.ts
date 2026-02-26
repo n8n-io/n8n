@@ -70,6 +70,7 @@ describe('WorkflowHistoryListItem', () => {
 				actions,
 				isSelected: false,
 				compareWith: { name: compareName, versionId: itemToCompareWith.versionId },
+				isWorkflowDiffsEnabled: true,
 			},
 		});
 
@@ -88,12 +89,30 @@ describe('WorkflowHistoryListItem', () => {
 				actions,
 				isSelected: false,
 				compareWith: null,
+				isWorkflowDiffsEnabled: true,
 			},
 		});
 
 		await userEvent.click(getByTestId('workflow-history-compare-item-button'));
 
 		expect(emitted().compare).toBeUndefined();
+	});
+
+	it('should not render compare button when workflow diffs are disabled', () => {
+		const item = workflowHistoryDataFactory();
+		const { queryByTestId } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 2,
+				actions,
+				isSelected: false,
+				compareWith: null,
+				isWorkflowDiffsEnabled: false,
+			},
+		});
+
+		expect(queryByTestId('workflow-history-compare-item-button')).not.toBeInTheDocument();
 	});
 
 	it('should render current changes for first item', () => {

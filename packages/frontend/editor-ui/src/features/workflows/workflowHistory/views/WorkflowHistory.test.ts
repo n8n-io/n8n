@@ -12,6 +12,7 @@ import WorkflowHistoryPage from './WorkflowHistory.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { STORES } from '@n8n/stores';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { VIEWS } from '@/app/constants';
 import { workflowHistoryDataFactory, workflowVersionDataFactory } from '../__tests__/utils';
 import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
@@ -75,6 +76,7 @@ let router: ReturnType<typeof useRouter>;
 let route: ReturnType<typeof useRoute>;
 let workflowHistoryStore: ReturnType<typeof useWorkflowHistoryStore>;
 let workflowsListStore: ReturnType<typeof useWorkflowsListStore>;
+let settingsStore: ReturnType<typeof useSettingsStore>;
 let windowOpenSpy: MockInstance;
 
 describe('WorkflowHistory', () => {
@@ -86,6 +88,7 @@ describe('WorkflowHistory', () => {
 		});
 		workflowHistoryStore = useWorkflowHistoryStore();
 		workflowsListStore = useWorkflowsListStore();
+		settingsStore = useSettingsStore();
 		route = useRoute();
 		router = useRouter();
 
@@ -237,6 +240,7 @@ describe('WorkflowHistory', () => {
 		const activeVersionId = faker.string.nanoid();
 		const selectedVersionId = faker.string.nanoid();
 		const selectedVersion = { ...versionData, versionId: selectedVersionId };
+		settingsStore.settings.enterprise.workflowDiffs = true;
 
 		route.params.workflowId = workflowId;
 		route.params.versionId = selectedVersionId;
@@ -262,6 +266,22 @@ describe('WorkflowHistory', () => {
 				diffWith: versionId,
 			},
 		});
+	});
+
+	it('should not open compare view when workflow diffs are not licensed', async () => {
+		settingsStore.settings.enterprise.workflowDiffs = false;
+		route.params.workflowId = workflowId;
+		route.params.versionId = versionId;
+
+		const { getByTestId } = renderComponent({ pinia });
+		await flushPromises();
+		await userEvent.click(getByTestId('stub-compare-button'));
+
+		expect(router.push).not.toHaveBeenCalledWith(
+			expect.objectContaining({
+				query: expect.objectContaining({ diffWith: expect.anything() }),
+			}),
+		);
 	});
 
 	it('should display archived tag on header if workflow is archived', async () => {

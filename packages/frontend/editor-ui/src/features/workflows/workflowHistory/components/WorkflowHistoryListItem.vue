@@ -27,12 +27,14 @@ const props = withDefaults(
 		isSelected?: boolean;
 		isVersionActive?: boolean;
 		isGrouped?: boolean;
+		isWorkflowDiffsEnabled?: boolean;
 	}>(),
 	{
 		compareWith: null,
 		isSelected: false,
 		isVersionActive: false,
 		isGrouped: false,
+		isWorkflowDiffsEnabled: false,
 	},
 );
 const emit = defineEmits<{
@@ -222,7 +224,12 @@ onMounted(() => {
 						</N8nText>
 					</div>
 				</div>
-				<N8nTooltip :content="compareTooltipContent" :disabled="isCompareDisabled" placement="top">
+				<N8nTooltip
+					v-if="props.isWorkflowDiffsEnabled"
+					:content="compareTooltipContent"
+					:disabled="isCompareDisabled"
+					placement="top"
+				>
 					<N8nIconButton
 						variant="ghost"
 						icon="file-diff"

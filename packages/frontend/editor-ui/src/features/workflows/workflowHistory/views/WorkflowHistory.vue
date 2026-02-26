@@ -75,6 +75,7 @@ const workflowActivate = useWorkflowActivate();
 const isNamedVersionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.NamedVersions],
 );
+const isWorkflowDiffsEnabled = computed(() => settingsStore.settings.enterprise.workflowDiffs);
 
 const canRender = ref(true);
 const isListLoading = ref(true);
@@ -482,6 +483,10 @@ const onUpgrade = () => {
 };
 
 const openCompareView = async (compareVersionId: WorkflowVersionId) => {
+	if (!isWorkflowDiffsEnabled.value) {
+		return;
+	}
+
 	if (!versionId.value || versionId.value === compareVersionId) {
 		return;
 	}
@@ -507,7 +512,9 @@ const closeCompareView = async () => {
 };
 
 watchEffect(() => {
-	const shouldOpenDiffModal = Boolean(diffWithVersionId.value && versionId.value);
+	const shouldOpenDiffModal = Boolean(
+		isWorkflowDiffsEnabled.value && diffWithVersionId.value && versionId.value,
+	);
 	const isDiffModalOpen = uiStore.modalsById[WORKFLOW_HISTORY_DIFF_MODAL_KEY]?.open;
 
 	if (shouldOpenDiffModal && !isDiffModalOpen) {
@@ -583,6 +590,7 @@ watchEffect(async () => {
 				:evaluated-prune-time-in-hours="workflowHistoryStore.evaluatedPruneTime"
 				:is-list-loading="isListLoading"
 				:active-version-id="workflowActiveVersionId"
+				:is-workflow-diffs-enabled="isWorkflowDiffsEnabled"
 				@action="onAction"
 				@preview="onPreview"
 				@compare="({ id }) => openCompareView(id)"
@@ -603,7 +611,7 @@ watchEffect(async () => {
 			/>
 		</div>
 		<Modal
-			v-if="diffWithVersionId && versionId"
+			v-if="isWorkflowDiffsEnabled && diffWithVersionId && versionId"
 			:name="WORKFLOW_HISTORY_DIFF_MODAL_KEY"
 			:custom-class="$style.workflowHistoryDiffModal"
 			height="100%"
