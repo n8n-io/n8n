@@ -13,8 +13,6 @@ import { Container } from '@n8n/di';
  */
 @BackendModule({ name: 'instance-registry' })
 export class InstanceRegistryModule implements ModuleInterface {
-	constructor() {}
-
 	async init() {
 		const logger = Container.get(Logger);
 		logger.debug('Initializing instance-registry module.');
