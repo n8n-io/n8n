@@ -17,18 +17,40 @@ on:
           - beta
           - stable
 
+  workflow_call:
+    inputs:
+      version:
+        description: 'n8n Release version to push to a channel'
+        required: true
+        type: string
+      release-channel:
+        description: 'Release channel (beta or stable)'
+        required: true
+        type: string
+    secrets:
+      NPM_TOKEN:
+        required: true
+      DOCKER_USERNAME:
+        required: true
+      DOCKER_PASSWORD:
+        required: true
+      N8N_WEBHOOK_DOCS_PASSWORD:
+        required: true
+      SLACK_WEBHOOK_URL:
+        required: true
+
 jobs:
   validate-inputs:
     name: Validate Inputs
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.check_version.outputs.version }}
-      release_channel: ${{ github.event.inputs.release-channel }}
+      release_channel: ${{ inputs.release-channel }}
     steps:
       - name: Check Version Format
         id: check_version
         env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
           input_version="${{ env.INPUT_VERSION }}"
           version_regex='^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'
@@ -43,14 +65,22 @@ jobs:
 
       - name: Block RC promotion to stable/beta
         env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
-          CHANNEL: ${{ github.event.inputs.release-channel }}
+          INPUT_VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.release-channel }}
         run: |
           if [[ "$INPUT_VERSION" == *"-rc."* ]]; then
             echo "::error::RC versions cannot be promoted to '$CHANNEL' channel. Version '$INPUT_VERSION' contains '-rc.'"
             exit 1
           fi
           echo "✅ Version '$INPUT_VERSION' is allowed for '$CHANNEL' channel"
+
+      - name: Verify version exists on npm
+        run: |
+          if ! npm view "n8n@${{ inputs.version }}" version > /dev/null 2>&1; then
+            echo "::error::Version ${{ inputs.version }} not found on npm"
+            exit 1
+          fi
+          echo "✅ Version '${{ inputs.version }}' exists on npm"
 
   release-to-npm:
     name: Release to NPM
@@ -147,3 +177,18 @@ jobs:
     steps:
       - continue-on-error: true
         run: curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/update-latest-next'
+
+  notify-on-failure:
+    name: Notify Slack on failure
+    needs: [release-to-npm, release-to-docker-hub, release-to-github-container-registry]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+        with:
+          status: failure
+          channel: '#updates-and-product-releases'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: |
+            Channel push failed for n8n@${{ inputs.version }} → ${{ inputs.release-channel }}
+            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View workflow run>
