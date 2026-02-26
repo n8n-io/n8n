@@ -204,7 +204,7 @@ function onRemoveConnection(lineId: string) {
 <template>
 	<main :class="$style.container">
 		<div :class="$style.header">
-			<N8nHeading bold tag="h2" size="xlarge">Agent OS</N8nHeading>
+			<N8nHeading bold tag="h2" size="xlarge">Agents</N8nHeading>
 			<N8nText color="text-light" size="small"> {{ agentsStore.agents.length }} agents </N8nText>
 			<N8nButton
 				label="+ Add Agent"
@@ -337,11 +337,8 @@ function onRemoveConnection(lineId: string) {
 	align-items: baseline;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--lg) var(--spacing--2xl);
-	border-bottom: var(--border);
-	background: var(--color--background);
 	flex-shrink: 0;
 	z-index: 1;
-	min-height: var(--spacing--3xl);
 }
 
 .body {
@@ -354,9 +351,8 @@ function onRemoveConnection(lineId: string) {
 	flex: 1;
 	position: relative;
 	overflow: hidden;
-	background-color: var(--color--background--light-2);
 	background-image: radial-gradient(circle, var(--color--foreground--tint-1) 1px, transparent 1px);
-	background-size: 20px 20px;
+	background-size: 24px 24px;
 }
 
 .empty {

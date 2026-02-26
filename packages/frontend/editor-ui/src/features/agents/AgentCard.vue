@@ -14,13 +14,13 @@ const emit = defineEmits<{
 	dragStart: [id: string, event: PointerEvent];
 }>();
 
-const statusConfig: Record<string, { color: string; label: string }> = {
-	idle: { color: 'var(--color--foreground--tint-1)', label: 'Idle' },
-	active: { color: 'var(--color--success)', label: 'Active' },
-	busy: { color: 'var(--color--warning)', label: 'Busy' },
+const statusLabels: Record<string, string> = {
+	idle: 'Idle',
+	active: 'Active',
+	busy: 'Busy',
 };
 
-const status = computed(() => statusConfig[props.agent.status] ?? statusConfig.idle);
+const statusLabel = computed(() => statusLabels[props.agent.status] ?? 'Idle');
 
 const resourceBarColor = computed(() => {
 	const usage = props.agent.resourceUsage;
@@ -48,12 +48,13 @@ function onPointerDown(event: PointerEvent) {
 		:style="{
 			left: `${agent.position.x}px`,
 			top: `${agent.position.y}px`,
-			borderLeftColor: zoneColor ?? undefined,
-			borderLeftWidth: zoneColor ? '3px' : undefined,
 		}"
 		data-testid="agent-card"
 		@pointerdown="onPointerDown"
 	>
+		<!-- Zone accent -->
+		<span v-if="zoneColor" :class="$style.zoneAccent" :style="{ backgroundColor: zoneColor }" />
+
 		<!-- Top row: avatar + name + status -->
 		<div :class="$style.topRow">
 			<AgentAvatarComp :avatar="agent.avatar" size="medium" />
@@ -67,7 +68,7 @@ function onPointerDown(event: PointerEvent) {
 				"
 				size="small"
 			>
-				{{ status.label }}
+				{{ statusLabel }}
 			</N8nBadge>
 		</div>
 
@@ -112,51 +113,40 @@ function onPointerDown(event: PointerEvent) {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
-	background: var(--color--background);
+	background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius--lg);
-	box-shadow:
-		0 1px 3px color-mix(in srgb, var(--color--text) 6%, transparent),
-		0 1px 2px color-mix(in srgb, var(--color--text) 4%, transparent);
 	cursor: grab;
 	user-select: none;
 	z-index: 3;
 	transition:
-		box-shadow 0.15s ease,
-		transform 0.15s ease;
+		border-color 0.3s ease,
+		color 0.3s ease;
 	min-width: 220px;
 	max-width: 260px;
+	overflow: hidden;
 
 	&:hover {
-		box-shadow:
-			0 4px 12px color-mix(in srgb, var(--color--text) 10%, transparent),
-			0 2px 4px color-mix(in srgb, var(--color--text) 6%, transparent);
-		transform: translateY(-1px);
+		border-color: var(--color--primary);
 	}
 
 	&:active {
 		cursor: grabbing;
-		box-shadow:
-			0 8px 20px color-mix(in srgb, var(--color--text) 14%, transparent),
-			0 4px 8px color-mix(in srgb, var(--color--text) 8%, transparent);
-		transform: translateY(-2px);
 	}
+}
+
+.zoneAccent {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 3px;
+	height: 100%;
+	border-radius: var(--radius--lg) 0 0 var(--radius--lg);
 }
 
 .selected {
-	outline: 2px solid var(--color--primary);
-	outline-offset: 2px;
-	animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-	0%,
-	100% {
-		outline-color: var(--color--primary);
-	}
-	50% {
-		outline-color: var(--color--primary--tint-2);
-	}
+	border-color: var(--color--primary);
+	box-shadow: 0 0 0 1px var(--color--primary);
 }
 
 .topRow {
@@ -250,38 +240,10 @@ function onPointerDown(event: PointerEvent) {
 }
 
 .activeGlow {
-	animation: activeGlowPulse 2s ease-in-out infinite;
-}
-
-@keyframes activeGlowPulse {
-	0%,
-	100% {
-		box-shadow:
-			0 0 8px color-mix(in srgb, var(--color--success) 30%, transparent),
-			0 1px 3px color-mix(in srgb, var(--color--text) 6%, transparent);
-	}
-	50% {
-		box-shadow:
-			0 0 20px color-mix(in srgb, var(--color--success) 50%, transparent),
-			0 0 40px color-mix(in srgb, var(--color--success) 20%, transparent);
-	}
+	border-color: var(--color--success--tint-2);
 }
 
 .busyGlow {
-	animation: busyGlowPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes busyGlowPulse {
-	0%,
-	100% {
-		box-shadow:
-			0 0 8px color-mix(in srgb, var(--color--warning) 30%, transparent),
-			0 1px 3px color-mix(in srgb, var(--color--text) 6%, transparent);
-	}
-	50% {
-		box-shadow:
-			0 0 20px color-mix(in srgb, var(--color--warning) 50%, transparent),
-			0 0 40px color-mix(in srgb, var(--color--warning) 20%, transparent);
-	}
+	border-color: var(--color--warning--tint-1);
 }
 </style>

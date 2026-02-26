@@ -26,11 +26,12 @@ const iconProp = computed<IconOrEmoji | null>(() => {
 			width: `${zone.rect.width}px`,
 			height: `${zone.rect.height}px`,
 			borderColor: color,
-			backgroundColor: `color-mix(in srgb, ${color} 5%, transparent)`,
+			boxShadow: `0 0 20px color-mix(in srgb, ${color} 15%, transparent), inset 0 0 20px color-mix(in srgb, ${color} 5%, transparent)`,
 		}"
 		data-testid="permission-zone"
 	>
 		<div :class="$style.header">
+			<span :class="$style.accent" :style="{ backgroundColor: color }" />
 			<ProjectIcon v-if="iconProp" :icon="iconProp" size="mini" :border-less="true" />
 			<span :class="$style.name">{{ zone.name }}</span>
 			<span :class="$style.badge">{{ zone.memberCount }}</span>
@@ -42,7 +43,7 @@ const iconProp = computed<IconOrEmoji | null>(() => {
 .zone {
 	position: absolute;
 	border: 2px solid;
-	border-radius: var(--radius--lg);
+	border-radius: var(--radius--xl);
 	pointer-events: none;
 	z-index: 1;
 }
@@ -53,6 +54,13 @@ const iconProp = computed<IconOrEmoji | null>(() => {
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	pointer-events: auto;
+}
+
+.accent {
+	width: 3px;
+	height: 16px;
+	border-radius: 2px;
+	flex-shrink: 0;
 }
 
 .name {

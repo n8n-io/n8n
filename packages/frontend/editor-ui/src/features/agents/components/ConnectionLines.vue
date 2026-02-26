@@ -46,15 +46,6 @@ const paths = computed(() =>
 
 <template>
 	<svg :class="$style.overlay">
-		<defs>
-			<filter id="activeGlow">
-				<feGaussianBlur stdDeviation="3" result="blur" />
-				<feMerge>
-					<feMergeNode in="blur" />
-					<feMergeNode in="SourceGraphic" />
-				</feMerge>
-			</filter>
-		</defs>
 		<g v-for="path in paths" :key="path!.id">
 			<!-- Invisible wider stroke for easier click targeting -->
 			<path
@@ -70,10 +61,9 @@ const paths = computed(() =>
 				v-if="path!.active"
 				:d="path!.d"
 				fill="none"
-				stroke="var(--color--primary)"
-				stroke-width="3"
+				stroke="var(--color--primary--tint-1)"
+				stroke-width="2"
 				stroke-dasharray="8 6"
-				filter="url(#activeGlow)"
 				:class="$style.activeLine"
 				@click="emit('remove-connection', path!.id)"
 			/>
@@ -82,8 +72,8 @@ const paths = computed(() =>
 				v-else
 				:d="path!.d"
 				fill="none"
-				stroke="var(--color--text--tint-2)"
-				stroke-width="2"
+				stroke="var(--color--foreground)"
+				stroke-width="1"
 				stroke-dasharray="6 4"
 				:class="$style.line"
 				@click="emit('remove-connection', path!.id)"
