@@ -113,7 +113,7 @@ const i18n = useI18n();
 	width: 100%;
 	display: flex;
 	flex-direction: column;
-	background-color: var(--color--background);
+	background-color: var(--color--background--light-2);
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 	min-width: 0;
 }

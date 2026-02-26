@@ -31,7 +31,6 @@ const props = defineProps<{
 	customAgentId?: string;
 	showCreditsClaimedCallout: boolean;
 	showDynamicCredentialsMissingCallout: boolean;
-	showDynamicCredentialsConnectedCallout: boolean;
 	aiCreditsQuota: string;
 }>();
 
@@ -90,7 +89,6 @@ const calloutVisible = computed(() => {
 		showMisisngAgentCallout.value ||
 		showMissingCredentialsCallout.value ||
 		props.showDynamicCredentialsMissingCallout ||
-		props.showDynamicCredentialsConnectedCallout ||
 		props.showCreditsClaimedCallout
 	);
 });
@@ -311,27 +309,6 @@ defineExpose({
 					>
 						{{ i18n.baseText('chatHub.chat.prompt.callout.dynamicCredentials.missing.button') }}
 					</N8nButton>
-				</template>
-			</N8nCallout>
-
-			<N8nCallout
-				v-else-if="props.showDynamicCredentialsConnectedCallout"
-				icon="info"
-				theme="secondary"
-				:class="$style.callout"
-				data-testid="dynamic-credentials-connected-callout"
-			>
-				<N8nText>{{
-					i18n.baseText('chatHub.chat.prompt.callout.dynamicCredentials.connected')
-				}}</N8nText>
-				<template #trailingContent>
-					<a
-						href=""
-						data-testid="dynamic-credentials-manage-link"
-						@click.prevent="emit('openDynamicCredentials')"
-					>
-						{{ i18n.baseText('chatHub.chat.prompt.callout.dynamicCredentials.connected.link') }}
-					</a>
 				</template>
 			</N8nCallout>
 

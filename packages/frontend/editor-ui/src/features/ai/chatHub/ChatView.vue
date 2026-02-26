@@ -275,11 +275,15 @@ const isDynamicCredentialsDrawerOpen = ref(false);
 const showDynamicCredentialsMissingCallout = computed(
 	() => messagingState.value === 'missingDynamicCredentials',
 );
-const showDynamicCredentialsConnectedCallout = computed(
-	() =>
-		dynamicCreds.hasDynamicCredentials.value &&
-		dynamicCreds.allAuthenticated.value &&
-		messagingState.value === 'idle',
+
+// Auto-close drawer when all credentials become connected
+watch(
+	() => dynamicCreds.allAuthenticated.value,
+	(allConnected) => {
+		if (allConnected && isDynamicCredentialsDrawerOpen.value) {
+			isDynamicCredentialsDrawerOpen.value = false;
+		}
+	},
 );
 
 const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
@@ -831,7 +835,6 @@ function onFilesDropped(files: File[]) {
 								:is-new-session="isNewSession"
 								:show-credits-claimed-callout="showCreditsClaimedCallout"
 								:show-dynamic-credentials-missing-callout="showDynamicCredentialsMissingCallout"
-								:show-dynamic-credentials-connected-callout="showDynamicCredentialsConnectedCallout"
 								:ai-credits-quota="String(aiCreditsQuota)"
 								@submit="onSubmit"
 								@stop="onStop"

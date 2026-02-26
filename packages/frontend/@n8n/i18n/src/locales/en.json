@@ -500,8 +500,6 @@
 	"chatHub.chat.prompt.callout.setCredentials.existing.link": "set credentials",
 	"chatHub.chat.prompt.callout.dynamicCredentials.missing": "To run this workflow, connect the required accounts.",
 	"chatHub.chat.prompt.callout.dynamicCredentials.missing.button": "Connect",
-	"chatHub.chat.prompt.callout.dynamicCredentials.connected": "This workflow uses your connected accounts to complete your request.",
-	"chatHub.chat.prompt.callout.dynamicCredentials.connected.link": "Manage connections",
 	"chatHub.chat.prompt.callout.dynamicCredentials.expired": "Connection expired. Reconnect missing accounts to continue.",
 	"chatHub.chat.prompt.callout.dynamicCredentials.expired.button": "Connect",
 	"chatHub.dynamicCredentials.drawer.title": "Credentials",
