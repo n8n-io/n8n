@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { LicenseMetricsRepository, WorkflowRepository } from '@n8n/db';
@@ -60,6 +62,7 @@ export class PrometheusMetricsService {
 	async init(app: express.Application) {
 		promClient.register.clear(); // clear all metrics in case we call this a second time
 		this.initDefaultMetrics();
+		this.initPssMetric();
 		this.initN8nVersionMetric();
 		if (this.instanceSettings.instanceType === 'main') this.initInstanceRoleMetric();
 		this.initCacheMetrics();
@@ -143,6 +146,46 @@ export class PrometheusMetricsService {
 		if (!this.includes.metrics.default) return;
 
 		promClient.collectDefaultMetrics({ prefix: this.globalConfig.endpoints.metrics.prefix });
+	}
+
+	/**
+	 * Set up PSS (Proportional Set Size) metric: `n8n_process_pss_bytes`
+	 *
+	 * Unlike RSS which double-counts shared pages, PSS divides shared memory
+	 * proportionally among processes. This gives a fairer memory measurement
+	 * in containerized environments where shared libraries are common.
+	 * Only available on Linux with kernel 4.14+.
+	 */
+	private initPssMetric() {
+		if (!this.includes.metrics.default) return;
+
+		let pssAvailable = true;
+		try {
+			readFileSync('/proc/self/smaps_rollup', 'utf8');
+		} catch {
+			pssAvailable = false;
+		}
+
+		if (!pssAvailable) return;
+
+		const prefix = this.prefix;
+		new promClient.Gauge({
+			name: prefix + 'process_pss_bytes',
+			help: 'Proportional Set Size of the process in bytes.',
+			collect() {
+				try {
+					// Sync read is intentional: /proc is a kernel virtual filesystem (microseconds, no disk I/O).
+					// This matches prom-client's own built-in metrics which use process.memoryUsage() (also /proc).
+					const content = readFileSync('/proc/self/smaps_rollup', 'utf8');
+					const match = content.match(/^Pss:\s+(\d+)\s+kB$/m);
+					if (match) {
+						this.set(parseInt(match[1], 10) * 1024);
+					}
+				} catch {
+					// Failed to read smaps_rollup, skip this scrape
+				}
+			},
+		});
 	}
 
 	/**

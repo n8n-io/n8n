@@ -107,6 +107,13 @@ describe('WebSocketPush', () => {
 		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
 	});
 
+	it('skips sending when user has no connections', () => {
+		webSocketPush.add(pushRef1, userId, mockWebSocket1);
+		webSocketPush.sendToUsers(pushMessage, ['nonexistent-user']);
+
+		expect(mockWebSocket1.send).not.toHaveBeenCalled();
+	});
+
 	it('emits message event when connection receives data', async () => {
 		jest.useRealTimers();
 		const mockOnMessageReceived = jest.fn();

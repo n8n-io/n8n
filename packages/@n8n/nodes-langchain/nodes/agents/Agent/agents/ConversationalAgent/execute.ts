@@ -4,7 +4,8 @@ import { initializeAgentExecutorWithOptions } from '@langchain/classic/agents';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/helpers';
+import { isChatInstance } from '@n8n/ai-utilities';
+import { getPromptInputByType, getConnectedTools } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
 import { getTracingConfig } from '@utils/tracing';

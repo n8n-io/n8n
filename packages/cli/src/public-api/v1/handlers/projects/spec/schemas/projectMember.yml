@@ -1,0 +1,41 @@
+type: object
+description: A project member (user with their role in the project).
+properties:
+  id:
+    type: string
+    description: The user's unique identifier.
+    readOnly: true
+    example: 123e4567-e89b-12d3-a456-426614174000
+  email:
+    type: string
+    format: email
+    description: The user's email address.
+    readOnly: true
+    example: john.doe@company.com
+  firstName:
+    type: string
+    maxLength: 32
+    description: The user's first name.
+    readOnly: true
+    example: john
+  lastName:
+    type: string
+    maxLength: 32
+    description: The user's last name.
+    readOnly: true
+    example: Doe
+  createdAt:
+    type: string
+    format: date-time
+    description: When the user was created.
+    readOnly: true
+  updatedAt:
+    type: string
+    format: date-time
+    description: When the user was last updated.
+    readOnly: true
+  role:
+    type: string
+    description: The user's role in the project (e.g. project:admin, project:viewer).
+    readOnly: true
+    example: project:viewer

@@ -118,12 +118,13 @@ function addAssignment(): void {
 	});
 }
 
-function dropAssignment(expression: string): void {
+async function dropAssignment(expression: string): Promise<void> {
+	const type = props.defaultType ?? (await typeFromExpression(expression));
 	state.paramValue.assignments.push({
 		id: crypto.randomUUID(),
 		name: propertyNameFromExpression(expression),
 		value: `=${expression}`,
-		type: props.defaultType ?? typeFromExpression(expression),
+		type,
 	});
 }
 

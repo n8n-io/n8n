@@ -242,6 +242,14 @@ describe('chatPanel.store', () => {
 			expect(chatPanelStore.isBuilderModeActive).toBe(false);
 		});
 
+		it('should set showCoachmark to false when switching modes', () => {
+			expect(chatPanelStateStore.showCoachmark).toBe(true);
+
+			chatPanelStore.switchMode('assistant');
+
+			expect(chatPanelStateStore.showCoachmark).toBe(false);
+		});
+
 		it('should switch from assistant to builder mode', () => {
 			chatPanelStateStore.activeMode = 'assistant';
 
@@ -338,6 +346,42 @@ describe('chatPanel.store', () => {
 			expect(assistantStore.initErrorHelper).toHaveBeenCalledWith(errorContext);
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('assistant');
+		});
+	});
+
+	describe('showCoachmark tracking', () => {
+		it('should set showCoachmark to true by default when opening', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+
+			await chatPanelStore.open({ mode: 'builder' });
+
+			expect(chatPanelStateStore.showCoachmark).toBe(true);
+		});
+
+		it('should allow overriding showCoachmark when opening', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+
+			await chatPanelStore.open({ mode: 'builder', showCoachmark: false });
+
+			expect(chatPanelStateStore.showCoachmark).toBe(false);
+		});
+
+		it('should set showCoachmark to false when closing', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+			await chatPanelStore.open({ mode: 'builder' });
+			expect(chatPanelStateStore.showCoachmark).toBe(true);
+
+			chatPanelStore.close();
+
+			expect(chatPanelStateStore.showCoachmark).toBe(false);
+		});
+
+		it('should expose showCoachmark as computed property', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+
+			await chatPanelStore.open({ mode: 'builder' });
+
+			expect(chatPanelStore.showCoachmark).toBe(true);
 		});
 	});
 

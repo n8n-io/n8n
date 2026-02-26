@@ -31,8 +31,8 @@ function onDismissClick() {
 			{{ i18n.baseText('aiAssistant.builder.notificationBanner.text') }}
 		</span>
 		<N8nButton
-			type="primary"
-			size="mini"
+			variant="solid"
+			size="xsmall"
 			data-test-id="notification-banner-notify"
 			@click="onNotifyClick"
 		>
@@ -59,10 +59,10 @@ function onDismissClick() {
 	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
 	border-bottom: none;
 	margin: 0 var(--spacing--2xs);
+	line-height: var(--line-height--xl);
 }
 
 .icon {
-	align-self: flex-start;
 	flex-shrink: 0;
 }
 

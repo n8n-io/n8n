@@ -8,7 +8,7 @@ import type {
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
-import type { NodeCreatorTag, BinaryMetadata } from '@n8n/design-system';
+import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
 import type {
 	GenericValue,
 	IConnections,
@@ -34,6 +34,7 @@ import type {
 	ISourceData,
 	PublicInstalledPackage,
 	IDestinationNode,
+	AgentRequestQuery,
 } from 'n8n-workflow';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
@@ -52,12 +53,12 @@ import type {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
 	AI_EVALUATION,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
 import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type { BulkCommand, Undoable } from '@/app/models/history';
 
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
-import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 import type {
 	BaseFolderItem,
 	FolderListItem,
@@ -193,8 +194,9 @@ export interface IStartRunData {
 		name: string;
 		data?: ITaskData;
 	};
+	chatSessionId?: string;
 	agentRequest?: {
-		query: NodeParameterValueType;
+		query: AgentRequestQuery;
 		tool: {
 			name: NodeParameterValueType;
 		};
@@ -291,6 +293,7 @@ export type WorkflowResource = BaseResource & {
 	readOnly: boolean;
 	parentFolder?: ResourceParentFolder;
 	settings?: Partial<IWorkflowSettings>;
+	hasResolvableCredentials?: boolean;
 };
 
 export type VariableResource = BaseResource & {
@@ -311,6 +314,7 @@ export type CredentialsResource = BaseResource & {
 	readOnly: boolean;
 	needsSetup: boolean;
 	isGlobal?: boolean;
+	isResolvable?: boolean;
 };
 
 // Base resource types that are always available
@@ -345,6 +349,7 @@ export type WorkflowListItem = Omit<
 > & {
 	resource: 'workflow';
 	description?: string;
+	hasResolvableCredentials?: boolean;
 };
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
@@ -432,14 +437,6 @@ export interface ITimeoutHMS {
 	seconds: number;
 }
 
-export type WorkflowTitleStatus =
-	| 'EXECUTING'
-	| 'IDLE'
-	| 'ERROR'
-	| 'DEBUG'
-	| 'AI_BUILDING'
-	| 'AI_DONE';
-
 export type ExtractActionKeys<T> = T extends SimplifiedNodeType ? T['name'] : never;
 
 export type ActionsRecord<T extends SimplifiedNodeType[]> = {
@@ -475,6 +472,10 @@ export interface SubcategoryItemProps {
 	defaults?: INodeParameters;
 	forceIncludeNodes?: string[];
 	sections?: string[];
+	items?: INodeCreateElement[];
+	new?: boolean;
+	hideActions?: boolean;
+	actionsFilter?: (items: ActionTypeDescription[]) => ActionTypeDescription[];
 }
 export interface ViewItemProps {
 	title: string;
@@ -550,6 +551,10 @@ export interface SectionCreateElement extends CreateElementBase {
 	type: 'section';
 	title: string;
 	children: INodeCreateElement[];
+	/**
+	 * Whether to show a separator at the bottom of the expanded section
+	 */
+	showSeparator?: boolean;
 }
 
 export interface ViewCreateElement extends CreateElementBase {
@@ -637,6 +642,7 @@ export type ModalState = {
 
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
+	forceManualMode?: boolean;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
@@ -663,7 +669,8 @@ export type NodeFilterType =
 	| typeof AI_NODE_CREATOR_VIEW
 	| typeof AI_OTHERS_NODE_CREATOR_VIEW
 	| typeof AI_UNCATEGORIZED_CATEGORY
-	| typeof AI_EVALUATION;
+	| typeof AI_EVALUATION
+	| typeof HUMAN_IN_THE_LOOP_CATEGORY;
 
 export type NodeCreatorOpenSource =
 	| ''
@@ -672,7 +679,7 @@ export type NodeCreatorOpenSource =
 	| 'plus_endpoint'
 	| 'add_input_endpoint'
 	| 'trigger_placeholder_button'
-	| 'tab'
+	| 'node_shortcut'
 	| 'replace_node_action'
 	| 'node_connection_action'
 	| 'node_connection_drop'
@@ -865,7 +872,11 @@ export type CloudUpdateLinkSourceType =
 	| 'ai-builder-sidebar'
 	| 'ai-builder-canvas'
 	| 'custom-roles'
-	| 'main-sidebar';
+	| 'custom-roles-selector'
+	| 'custom-roles-list'
+	| 'main-sidebar'
+	| 'chat-hub'
+	| 'empty-state-builder-prompt';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -940,7 +951,10 @@ export type EnterpriseEditionFeatureKey =
 	| 'AdvancedPermissions'
 	| 'ApiKeyScopes'
 	| 'EnforceMFA'
-	| 'Provisioning';
+	| 'NamedVersions'
+	| 'Provisioning'
+	| 'PersonalSpacePolicy'
+	| 'CustomRoles';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 

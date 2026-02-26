@@ -2,7 +2,11 @@ import { test, expect } from '../../../../../fixtures/base';
 
 const WORKFLOW_FILE = 'Subworkflow-debugging-execute-workflow.json';
 
-test.describe('Subworkflow debugging', () => {
+test.describe('Subworkflow debugging', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow(WORKFLOW_FILE);
 

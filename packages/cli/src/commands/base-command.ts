@@ -9,17 +9,17 @@ import {
 } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { AuthRolesService, DbConnection } from '@n8n/db';
+import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	BinaryDataConfig,
 	BinaryDataService,
 	InstanceSettings,
-	ObjectStoreService,
 	DataDeduplicationService,
 	ErrorReporter,
 	ExecutionContextHookRegistry,
 } from 'n8n-core';
+import { ObjectStoreConfig } from 'n8n-core/dist/binary-data/object-store/object-store.config';
 import { ensureError, sleep, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
@@ -36,6 +36,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
+import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
@@ -84,7 +85,14 @@ export abstract class BaseCommand<F = never> {
 		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
 
-		const { backendDsn, environment, deploymentName } = this.globalConfig.sentry;
+		const {
+			backendDsn,
+			environment,
+			deploymentName,
+			profilesSampleRate,
+			tracesSampleRate,
+			eventLoopBlockThreshold,
+		} = this.globalConfig.sentry;
 		await this.errorReporter.init({
 			serverType: this.instanceSettings.instanceType,
 			dsn: backendDsn,
@@ -93,6 +101,18 @@ export abstract class BaseCommand<F = never> {
 			serverName: deploymentName,
 			releaseDate: N8N_RELEASE_DATE,
 			withEventLoopBlockDetection: true,
+			eventLoopBlockThreshold,
+			tracesSampleRate,
+			profilesSampleRate,
+			healthEndpoint: resolveHealthEndpointPath(this.globalConfig),
+			eligibleIntegrations: {
+				Express: true,
+				Http: true,
+				Postgres: this.globalConfig.database.type === 'postgresdb',
+				Redis:
+					this.globalConfig.executions.mode === 'queue' ||
+					this.globalConfig.cache.backend === 'redis',
+			},
 		});
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
@@ -123,9 +143,6 @@ export abstract class BaseCommand<F = never> {
 				async (error: Error) =>
 					await this.exitWithCrash('There was an error running database migrations', error),
 			);
-
-		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
-		await Container.get(AuthRolesService).init();
 
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 
@@ -216,20 +233,27 @@ export abstract class BaseCommand<F = never> {
 			}
 		}
 
-		// we always try to init S3 for reading - silently fail if not configured
-		try {
-			const objectStoreService = Container.get(ObjectStoreService);
-			await objectStoreService.init();
-			const { ObjectStoreManager } = await import('n8n-core/dist/binary-data/object-store.manager');
-			binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
-		} catch {
-			if (isS3WriteMode) {
-				this.logger.error(
-					'Failed to connect to S3 for binary data storage. Please check your S3 configuration.',
+		const isS3Configured = Container.get(ObjectStoreConfig).bucket.name !== '';
+
+		if (isS3Configured) {
+			try {
+				const { ObjectStoreService } = await import(
+					'n8n-core/dist/binary-data/object-store/object-store.service.ee'
 				);
-				process.exit(1);
+				const objectStoreService = Container.get(ObjectStoreService);
+				await objectStoreService.init();
+				const { ObjectStoreManager } = await import(
+					'n8n-core/dist/binary-data/object-store.manager'
+				);
+				binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
+			} catch {
+				if (isS3WriteMode) {
+					this.logger.error(
+						'Failed to connect to S3 for binary data storage. Please check your S3 configuration.',
+					);
+					process.exit(1);
+				}
 			}
-			// S3 not configured - users without S3 data are unaffected; users with S3 data will fail at runtime when reading
 		}
 
 		await binaryDataService.init();

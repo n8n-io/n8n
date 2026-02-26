@@ -9,7 +9,7 @@ import type {
 } from '@n8n/design-system';
 import { N8nButton, N8nDateRangePicker, N8nIcon } from '@n8n/design-system';
 import { computed, ref, shallowRef, watch } from 'vue';
-import { formatDateRange } from '../insights.utils';
+import { formatDateRange, getAdjustedDateRange } from '../insights.utils';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
 
 type Props = Pick<N8nDateRangePickerProps, 'maxValue' | 'minValue'>;
@@ -78,6 +78,8 @@ function syncWithParentValue() {
 	}
 }
 
+let lastSyncedRange: DateRange | null = null;
+
 function syncData(isOpen: boolean) {
 	if (isOpen) {
 		syncWithParentValue();
@@ -95,17 +97,30 @@ function syncData(isOpen: boolean) {
 		return;
 	}
 
+	// Check if this is the same range we just synced (prevent double sync)
+	if (
+		lastSyncedRange &&
+		isEqual(normalizedRange.start, lastSyncedRange.start) &&
+		isEqual(normalizedRange.end, lastSyncedRange.end)
+	) {
+		return;
+	}
+
 	if (
 		isEqual(normalizedRange.start, props.modelValue.start) &&
 		isEqual(normalizedRange.end, props.modelValue.end)
 	) {
 		return;
 	}
+
+	lastSyncedRange = normalizedRange;
 	emit('update:modelValue', normalizedRange);
 
+	const { startDate, endDate } = getAdjustedDateRange(normalizedRange);
+
 	const trackData = {
-		start_date: normalizedRange.start?.toDate(getLocalTimeZone()).toISOString(),
-		end_date: normalizedRange.end?.toDate(getLocalTimeZone()).toISOString(),
+		start_date: startDate.toISOString(),
+		end_date: endDate.toISOString(),
 		range_length_days: getDaysDiff(normalizedRange),
 		type: actionType.value,
 	};
@@ -114,8 +129,10 @@ function syncData(isOpen: boolean) {
 }
 const open = ref(false);
 watch(open, (opened) => {
+	if (opened) {
+		actionType.value = 'custom';
+	}
 	syncData(opened);
-	actionType.value = 'custom';
 });
 
 function setPresetRange(days: number) {
@@ -146,14 +163,14 @@ function isActiveRange(presetValue: number) {
 	<!-- eslint-disable vue/no-multiple-template-root -->
 	<N8nDateRangePicker v-model="range" v-model:open="open" :max-value :min-value>
 		<template #trigger>
-			<N8nButton icon="calendar" type="secondary">{{ formattedRange }}</N8nButton>
+			<N8nButton variant="subtle" icon="calendar">{{ formattedRange }}</N8nButton>
 		</template>
 		<template #presets>
 			<N8nButton
 				v-for="preset in presets"
 				:key="preset.value"
 				:class="$style.PresetButton"
-				:type="isActiveRange(preset.value) ? 'primary' : 'secondary'"
+				:variant="isActiveRange(preset.value) ? 'solid' : 'outline'"
 				size="small"
 				@click="preset.disabled ? showUpgradeModal() : setPresetRange(preset.value)"
 			>

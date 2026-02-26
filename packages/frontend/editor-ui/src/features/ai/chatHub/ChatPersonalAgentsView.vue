@@ -101,7 +101,7 @@ watch(
 						{{ i18n.baseText('chatHub.personalAgents.description') }}
 					</N8nText>
 				</div>
-				<N8nButton icon="plus" type="primary" size="medium" @click="handleCreateAgent">
+				<N8nButton variant="solid" icon="plus" size="medium" @click="handleCreateAgent">
 					{{ i18n.baseText('chatHub.agents.button.newAgent') }}
 				</N8nButton>
 			</div>

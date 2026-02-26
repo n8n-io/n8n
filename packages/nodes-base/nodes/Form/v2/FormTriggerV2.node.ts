@@ -17,6 +17,7 @@ import {
 	formRespondMode,
 	formTitle,
 	formTriggerPanel,
+	ipAllowlist,
 	respondWithOptions,
 	webhookPath,
 } from '../common.descriptions';
@@ -43,6 +44,14 @@ const descriptionV2: INodeTypeDescription = {
 	description: 'Generate webforms in n8n and pass their responses to the workflow',
 	defaults: {
 		name: 'On form submission',
+	},
+	builderHint: {
+		relatedNodes: [
+			{
+				nodeType: 'n8n-nodes-base.form',
+				relationHint: 'Add pages and final page to the form',
+			},
+		],
 	},
 
 	inputs: [],
@@ -138,6 +147,7 @@ const descriptionV2: INodeTypeDescription = {
 			default: {},
 			options: [
 				appendAttributionToForm,
+				ipAllowlist,
 				{
 					displayName: 'Button Label',
 					description: 'The label of the submit button in the form',

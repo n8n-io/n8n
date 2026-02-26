@@ -61,6 +61,12 @@ describe('TelemetryEventRelay', () => {
 			level: 'info',
 			outputs: ['console'],
 		},
+		workflowHistoryCompaction: {
+			batchDelayMs: 123,
+			batchSize: 234,
+			optimizingTimeWindowHours: 400,
+			trimmingTimeWindowDays: 600,
+		},
 	});
 	const binaryDataConfig = mock<BinaryDataConfig>({
 		mode: 'default',
@@ -489,6 +495,121 @@ describe('TelemetryEventRelay', () => {
 				vault_type: 'aws',
 			});
 		});
+
+		it('should track on `external-secrets-connection-created` event with global scope', () => {
+			const event: RelayEventMap['external-secrets-connection-created'] = {
+				userId: 'user123',
+				providerKey: 'provider-key-123',
+				vaultType: 'gcp',
+				projects: [],
+			};
+
+			eventService.emit('external-secrets-connection-created', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User created external secrets connection', {
+				user_id: 'user123',
+				vault_type: 'gcp',
+				scope: 'global',
+				project_ids: [],
+			});
+		});
+
+		it('should track on `external-secrets-connection-created` event with project scope', () => {
+			const event: RelayEventMap['external-secrets-connection-created'] = {
+				userId: 'user123',
+				providerKey: 'provider-key-123',
+				vaultType: 'gcp',
+				projects: [
+					{ id: 'project1', name: 'Project 1' },
+					{ id: 'project2', name: 'Project 2' },
+				],
+			};
+
+			eventService.emit('external-secrets-connection-created', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User created external secrets connection', {
+				user_id: 'user123',
+				vault_type: 'gcp',
+				scope: 'project',
+				project_ids: ['project1', 'project2'],
+			});
+		});
+
+		it('should track on `external-secrets-connection-updated` event with global scope', () => {
+			const event: RelayEventMap['external-secrets-connection-updated'] = {
+				userId: 'user123',
+				providerKey: 'provider-key-123',
+				vaultType: 'aws',
+				projects: [],
+			};
+
+			eventService.emit('external-secrets-connection-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated external secrets connection', {
+				user_id: 'user123',
+				vault_type: 'aws',
+				scope: 'global',
+				project_ids: [],
+			});
+		});
+
+		it('should track on `external-secrets-connection-updated` event with project scope', () => {
+			const event: RelayEventMap['external-secrets-connection-updated'] = {
+				userId: 'user123',
+				providerKey: 'provider-key-123',
+				vaultType: 'aws',
+				projects: [{ id: 'project1', name: 'Project 1' }],
+			};
+
+			eventService.emit('external-secrets-connection-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated external secrets connection', {
+				user_id: 'user123',
+				vault_type: 'aws',
+				scope: 'project',
+				project_ids: ['project1'],
+			});
+		});
+
+		it('should track on `external-secrets-connection-deleted` event with global scope', () => {
+			const event: RelayEventMap['external-secrets-connection-deleted'] = {
+				userId: 'user123',
+				providerKey: 'provider-key-123',
+				vaultType: 'vault',
+				projects: [],
+			};
+
+			eventService.emit('external-secrets-connection-deleted', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted external secrets connection', {
+				user_id: 'user123',
+				vault_type: 'vault',
+				scope: 'global',
+				project_ids: [],
+			});
+		});
+
+		it('should track on `external-secrets-connection-deleted` event with project scope', () => {
+			const event: RelayEventMap['external-secrets-connection-deleted'] = {
+				userId: 'user123',
+				providerKey: 'provider-key-123',
+				vaultType: 'vault',
+				projects: [
+					{ id: 'project1', name: 'Project 1' },
+					{ id: 'project2', name: 'Project 2' },
+					{ id: 'project3', name: 'Project 3' },
+				],
+			};
+
+			eventService.emit('external-secrets-connection-deleted', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted external secrets connection', {
+				user_id: 'user123',
+				vault_type: 'vault',
+				scope: 'project',
+				project_ids: ['project1', 'project2', 'project3'],
+			});
+		});
 	});
 
 	describe('public API events', () => {
@@ -659,6 +780,7 @@ describe('TelemetryEventRelay', () => {
 				publicApi: false,
 				projectId: 'project123',
 				projectType: 'personal',
+				isDynamic: false,
 			};
 
 			eventService.emit('credentials-created', event);
@@ -669,6 +791,7 @@ describe('TelemetryEventRelay', () => {
 				credential_id: 'cred123',
 				project_id: 'project123',
 				project_type: 'personal',
+				is_dynamic: false,
 			});
 		});
 
@@ -711,6 +834,7 @@ describe('TelemetryEventRelay', () => {
 				},
 				credentialId: 'cred123',
 				credentialType: 'github',
+				isDynamic: true,
 			};
 
 			eventService.emit('credentials-updated', event);
@@ -719,6 +843,7 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				credential_type: 'github',
 				credential_id: 'cred123',
+				is_dynamic: true,
 			});
 		});
 
@@ -1023,6 +1148,7 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				version_cli: N8N_VERSION,
 				workflow_id: 'workflow123',
+				used_dynamic_credentials: false,
 			});
 		});
 
@@ -1057,6 +1183,54 @@ describe('TelemetryEventRelay', () => {
 				workflow_edited_no_pos: false,
 				credential_edited: false,
 				ai_builder_assisted: false,
+				identity_extractor_changed: false,
+			});
+		});
+
+		it('should track resolver settings when credentialResolverId changes', async () => {
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					settings: { credentialResolverId: 'resolver-123' },
+				}),
+				publicApi: false,
+				settingsChanged: {
+					credentialResolverId: {
+						from: null,
+						to: 'resolver-123',
+					},
+				},
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith('User saved workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				node_graph_string: expect.any(String),
+				notes_count_overlapping: 0,
+				notes_count_non_overlapping: 0,
+				version_cli: expect.any(String),
+				num_tags: 0,
+				public_api: false,
+				sharing_role: undefined,
+				meta: undefined,
+				workflow_edited_no_pos: false,
+				credential_edited: false,
+				ai_builder_assisted: false,
+				credential_resolver_id: 'resolver-123',
+				identity_extractor_changed: false,
 			});
 		});
 
@@ -1973,6 +2147,86 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith('User ran out of free AI credits');
+		});
+	});
+	describe('workflow history compaction events', () => {
+		it('should call telemetry.track when compacting history finishes', async () => {
+			const payload = {
+				compactionStartTime: new Date('2026-01-23T09:44:49.792Z'),
+				durationMs: 3500,
+				windowStartIso: '2026-01-22T09:44:49.792Z',
+				windowEndIso: '2026-01-22T10:44:49.792Z',
+				errorCount: 3,
+				totalVersionsSeen: 25,
+				totalVersionsDeleted: 23,
+				workflowsProcessed: 3,
+			} satisfies RelayEventMap['history-compacted'];
+
+			eventService.emit('history-compacted', payload);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Instance compacted workflow history', {
+				workflows_processed: payload['workflowsProcessed'],
+				total_versions_seen: payload['totalVersionsSeen'],
+				total_versions_deleted: payload['totalVersionsDeleted'],
+				window_start_iso: new Date(payload['windowStartIso']),
+				window_end_iso: new Date(payload['windowEndIso']),
+				error_count: payload['errorCount'],
+				compaction_start_time_iso: payload['compactionStartTime'],
+				compaction_duration_ms: payload['durationMs'],
+				compaction_batch_delay_ms: globalConfig.workflowHistoryCompaction.batchDelayMs,
+				compaction_batch_size: globalConfig.workflowHistoryCompaction.batchSize,
+				compaction_trimming_optimizing_time_window_hours:
+					globalConfig.workflowHistoryCompaction.optimizingTimeWindowHours,
+				compaction_trimming_time_window_days:
+					globalConfig.workflowHistoryCompaction.trimmingTimeWindowDays,
+			});
+		});
+	});
+
+	describe('instance policies events', () => {
+		it('should track workflow_publishing update', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: { id: 'user123' },
+				settingName: 'workflow_publishing',
+				value: true,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated instance policies', {
+				user_id: 'user123',
+				workflow_publishing: true,
+			});
+		});
+
+		it('should track workflow_sharing update', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: { id: 'user789' },
+				settingName: 'workflow_sharing',
+				value: true,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated instance policies', {
+				user_id: 'user789',
+				workflow_sharing: true,
+			});
+		});
+
+		it('should track 2fa_enforcement update', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: { id: 'user456' },
+				settingName: '2fa_enforcement',
+				value: false,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated instance policies', {
+				user_id: 'user456',
+				'2fa_enforcement': false,
+			});
 		});
 	});
 });

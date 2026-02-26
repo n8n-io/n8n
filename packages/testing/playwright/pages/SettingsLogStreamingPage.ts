@@ -55,22 +55,6 @@ export class SettingsLogStreamingPage extends BasePage {
 		return this.page.getByTestId('destination-card');
 	}
 
-	getInlineEditPreview(): Locator {
-		return this.page.getByTestId('inline-edit-preview');
-	}
-
-	getInlineEditInput(): Locator {
-		return this.page.getByTestId('inline-edit-input');
-	}
-
-	getModalOverlay(): Locator {
-		return this.page.locator('.el-overlay');
-	}
-
-	getDropdownMenu(): Locator {
-		return this.page.locator('.el-dropdown-menu');
-	}
-
 	getDropdownMenuItem(index: number): Locator {
 		return this.page.locator('.el-dropdown-menu__item').nth(index);
 	}
@@ -211,11 +195,12 @@ export class SettingsLogStreamingPage extends BasePage {
 
 		await hostInput.clear();
 		await hostInput.fill(config.host);
-		await this.page.waitForTimeout(200);
+		await this.page.waitForTimeout(300);
 		await portInput.clear();
 		await portInput.fill(config.port.toString());
 
-		await this.page.waitForTimeout(150);
+		// Wait for debounced input update (200ms debounce in ParameterInput.vue)
+		await this.page.waitForTimeout(200);
 		await this.saveDestination();
 	}
 
@@ -231,6 +216,8 @@ export class SettingsLogStreamingPage extends BasePage {
 	 * Must be called while the destination modal is open and the destination has been saved.
 	 */
 	async sendTestEvent(): Promise<void> {
-		await this.getSendTestEventButton().click();
+		const testButton = this.getSendTestEventButton();
+		await testButton.waitFor({ state: 'visible' });
+		await testButton.click();
 	}
 }

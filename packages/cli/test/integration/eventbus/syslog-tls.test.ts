@@ -5,8 +5,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type TestAgent from 'supertest/lib/agent';
 
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 
 import { TlsSyslogServer } from './tls-server';

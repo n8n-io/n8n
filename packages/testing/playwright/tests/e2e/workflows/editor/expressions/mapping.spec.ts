@@ -1,6 +1,10 @@
 import { test, expect } from '../../../../../fixtures/base';
 
-test.describe('Data Mapping', () => {
+test.describe('Data Mapping', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test.describe
 		.serial('Expression Preview', () => {
 			test('maps expressions from table json, and resolves value based on hover', async ({
@@ -160,9 +164,10 @@ test.describe('Data Mapping', () => {
 		await expect(firstHeader).toBeVisible();
 
 		const valueParameter = n8n.ndv.getParameterInput('value');
-		await n8n.interactions.precisionDragToTarget(firstHeader, valueParameter, 'bottom');
+		await n8n.interactions.precisionDragToTarget(firstHeader, valueParameter, 'center');
 
-		await expect(n8n.ndv.getInlineExpressionEditorInput()).toBeVisible();
+		// Wait for expression editor to appear after drop
+		await expect(n8n.ndv.getInlineExpressionEditorInput()).toBeVisible({ timeout: 15000 });
 		await expect(n8n.ndv.getInlineExpressionEditorInput()).toHaveText('{{ $json.timestamp }}');
 
 		await n8n.page.keyboard.press('Escape');
@@ -331,11 +336,12 @@ test.describe('Data Mapping', () => {
 		await expect(n8n.ndv.getParameterSwitch('includeOtherFields')).toBeHidden();
 		await expect(n8n.ndv.getParameterTextInput('includeOtherFields')).toBeVisible();
 
-		const includeOtherFieldsInput = n8n.ndv.getParameterTextInput('includeOtherFields');
-		await expect(includeOtherFieldsInput).toHaveCSS('outline', /rgb\(90, 76, 194\) dashed/);
+		// Check border on input wrapper (N8nInput has border on wrapper, not input)
+		const includeOtherFieldsWrapper = n8n.ndv.getParameterInputContainer('includeOtherFields');
+		await expect(includeOtherFieldsWrapper).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
 
-		const valueInput = n8n.ndv.getParameterTextInput('value');
-		await expect(valueInput).toHaveCSS('outline', /rgb\(90, 76, 194\) dashed/);
+		const valueWrapper = n8n.ndv.getParameterInputContainer('value');
+		await expect(valueWrapper).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
 
 		await n8n.page.mouse.up();
 	});

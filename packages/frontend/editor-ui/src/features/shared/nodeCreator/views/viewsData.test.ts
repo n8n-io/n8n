@@ -4,9 +4,10 @@ import { AI_CATEGORY_AGENTS, AI_CATEGORY_CHAINS, AI_TRANSFORM_NODE_TYPE } from '
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { AIView } from './viewsData';
+import { AIView, HitlToolView } from './viewsData';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import type { SimplifiedNodeType } from '@/Interface';
 
 const getNodeType = vi.fn();
 
@@ -92,6 +93,74 @@ describe('viewsData', () => {
 			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
 
 			expect(AIView([])).toMatchSnapshot();
+		});
+	});
+
+	describe('HitlToolView', () => {
+		test('should filter and return only HITL tool nodes', () => {
+			const hitlToolNode = mockNodeTypeDescription({
+				name: 'slackHitlTool',
+				displayName: 'Slack',
+			});
+			const regularNode = mockNodeTypeDescription({
+				name: 'regularNode',
+				displayName: 'Regular Node',
+			});
+
+			const nodes: SimplifiedNodeType[] = [hitlToolNode, regularNode] as SimplifiedNodeType[];
+
+			const result = HitlToolView(nodes);
+
+			expect(result.items).toHaveLength(1);
+			expect(result.items[0].properties.name).toBe('slackHitlTool');
+			expect(result.items[0].properties.displayName).toBe('Slack');
+		});
+
+		test('should sort HITL tool nodes by displayName alphabetically', () => {
+			const emailNode = mockNodeTypeDescription({
+				name: 'emailSendHitlTool',
+				displayName: 'Email',
+			});
+			const slackNode = mockNodeTypeDescription({
+				name: 'slackHitlTool',
+				displayName: 'Slack',
+			});
+			const discordNode = mockNodeTypeDescription({
+				name: 'discordHitlTool',
+				displayName: 'Discord',
+			});
+
+			const nodes: SimplifiedNodeType[] = [
+				emailNode,
+				slackNode,
+				discordNode,
+			] as SimplifiedNodeType[];
+
+			const result = HitlToolView(nodes);
+
+			expect(result.items).toHaveLength(3);
+			expect(result.items[0].properties.displayName).toBe('Discord');
+			expect(result.items[1].properties.displayName).toBe('Email');
+			expect(result.items[2].properties.displayName).toBe('Slack');
+		});
+
+		test('should return correct view structure with title and nodeIcon', () => {
+			const hitlToolNode = mockNodeTypeDescription({
+				name: 'testHitlTool',
+				displayName: 'Test',
+			});
+
+			const nodes: SimplifiedNodeType[] = [hitlToolNode] as SimplifiedNodeType[];
+
+			const result = HitlToolView(nodes);
+
+			expect(result.value).toBe('HITL');
+			expect(result.title).toBeDefined();
+			expect(result.nodeIcon).toEqual({
+				type: 'icon',
+				name: 'badge-check',
+			});
+			expect(result.items).toHaveLength(1);
 		});
 	});
 });

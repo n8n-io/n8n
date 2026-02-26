@@ -8,10 +8,11 @@ import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
 import { CredentialsEntity } from '@n8n/db';
 import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
 import { DynamicCredentialResolverRegistry } from './services';
-import { getBearerToken } from './utils';
+import { getDynamicCredentialMiddlewares } from './utils';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service';
+import { DynamicCredentialWebService } from './services/dynamic-credential-web.service';
 
 @RestController('/credentials')
 export class DynamicCredentialsController {
@@ -22,6 +23,7 @@ export class DynamicCredentialsController {
 		private readonly resolverRegistry: DynamicCredentialResolverRegistry,
 		private readonly cipher: Cipher,
 		private readonly dynamicCredentialCorsService: DynamicCredentialCorsService,
+		private readonly dynamicCredentialWebService: DynamicCredentialWebService,
 	) {}
 
 	private async findCredentialToUse(credentialId: string): Promise<CredentialsEntity> {
@@ -31,7 +33,10 @@ export class DynamicCredentialsController {
 			throw new NotFoundError('Credential not found');
 		}
 
-		if (!credential.type.includes('OAuth2') && !credential.type.includes('OAuth1')) {
+		if (
+			!credential.type.toLowerCase().includes('oauth2') &&
+			!credential.type.toLowerCase().includes('oauth1')
+		) {
 			throw new BadRequestError('Credential type not supported');
 		}
 		return credential;
@@ -69,10 +74,13 @@ export class DynamicCredentialsController {
 		this.dynamicCredentialCorsService.preflightHandler(req, res, ['delete', 'options']);
 	}
 
-	@Delete('/:id/revoke', { skipAuth: true })
+	@Delete('/:id/revoke', {
+		allowUnauthenticated: true,
+		middlewares: getDynamicCredentialMiddlewares(),
+	})
 	async revokeCredential(req: Request, res: Response): Promise<void> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['delete', 'options']);
-		const token = getBearerToken(req);
+		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
 		const credential = await this.findCredentialToUse(req.params.id);
 
 		const resolverId = req.query.resolverId as string | undefined;
@@ -83,18 +91,11 @@ export class DynamicCredentialsController {
 			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
-			await resolver.deleteSecret(
-				credential.id,
-				{
-					identity: token,
-					version: 1,
-				},
-				{
-					configuration: resolverConfig,
-					resolverId: resolverEntity.id,
-					resolverName: resolverEntity.type,
-				},
-			);
+			await resolver.deleteSecret(credential.id, credentialContext, {
+				configuration: resolverConfig,
+				resolverId: resolverEntity.id,
+				resolverName: resolverEntity.type,
+			});
 		}
 
 		res.status(204).send(); // 204 No Content indicates successful deletion
@@ -110,10 +111,13 @@ export class DynamicCredentialsController {
 		this.dynamicCredentialCorsService.preflightHandler(req, res, ['post', 'options']);
 	}
 
-	@Post('/:id/authorize', { skipAuth: true })
+	@Post('/:id/authorize', {
+		allowUnauthenticated: true,
+		middlewares: getDynamicCredentialMiddlewares(),
+	})
 	async authorizeCredential(req: Request, res: Response): Promise<string> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['post', 'options']);
-		const token = getBearerToken(req);
+		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
 		const credential = await this.findCredentialToUse(req.params.id);
 
 		const resolverId = req.query.resolverId as string | undefined;
@@ -124,7 +128,7 @@ export class DynamicCredentialsController {
 			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
-			await resolver.validateIdentity(token, {
+			await resolver.validateIdentity(credentialContext, {
 				resolverId: resolverEntity.id,
 				resolverName: resolverEntity.type,
 				configuration: resolverConfig,
@@ -141,11 +145,11 @@ export class DynamicCredentialsController {
 			},
 		];
 
-		if (credential.type.includes('OAuth2')) {
+		if (credential.type.toLowerCase().includes('oauth2')) {
 			return await this.oauthService.generateAOauth2AuthUri(...callerData);
 		}
 
-		if (credential.type.includes('OAuth1')) {
+		if (credential.type.toLowerCase().includes('oauth1')) {
 			return await this.oauthService.generateAOauth1AuthUri(...callerData);
 		}
 

@@ -72,6 +72,7 @@ describe('WorkflowStatisticsService', () => {
 					data: createEmptyRunExecutionData(),
 					mode,
 					startedAt: new Date(),
+					storedAt: 'db',
 				};
 
 				// ACT
@@ -104,6 +105,7 @@ describe('WorkflowStatisticsService', () => {
 					data: createEmptyRunExecutionData(),
 					mode,
 					startedAt: new Date(),
+					storedAt: 'db',
 				};
 
 				// ACT
@@ -132,6 +134,7 @@ describe('WorkflowStatisticsService', () => {
 				data: createEmptyRunExecutionData(),
 				mode: 'chat',
 				startedAt: new Date(),
+				storedAt: 'db',
 			};
 
 			// ACT
@@ -153,6 +156,7 @@ describe('WorkflowStatisticsService', () => {
 					data: createEmptyRunExecutionData(),
 					mode: 'trigger',
 					startedAt: new Date(),
+					storedAt: 'db',
 				};
 
 				// ACT
@@ -185,6 +189,7 @@ describe('WorkflowStatisticsService', () => {
 					// status used
 					mode: 'trigger',
 					startedAt: new Date(),
+					storedAt: 'db',
 				};
 
 				// ACT
@@ -213,6 +218,7 @@ describe('WorkflowStatisticsService', () => {
 				data: createEmptyRunExecutionData(),
 				mode: 'internal',
 				startedAt: new Date(),
+				storedAt: 'db',
 			};
 			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
 			const updateSettingsSpy = jest.spyOn(userService, 'updateSettings');
@@ -243,6 +249,7 @@ describe('WorkflowStatisticsService', () => {
 				data: createEmptyRunExecutionData(),
 				mode: 'internal',
 				startedAt: new Date(),
+				storedAt: 'db',
 			};
 			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
 			const updateSettingsSpy = jest.spyOn(userService, 'updateSettings');
@@ -266,6 +273,7 @@ describe('WorkflowStatisticsService', () => {
 				data: createEmptyRunExecutionData(),
 				mode: 'internal',
 				startedAt: new Date(),
+				storedAt: 'db',
 			};
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
 			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
@@ -287,6 +295,7 @@ describe('WorkflowStatisticsService', () => {
 				data: createEmptyRunExecutionData(),
 				mode: 'trigger',
 				startedAt: new Date(),
+				storedAt: 'db',
 			};
 
 			// Create a fresh instance with workflowRepository returning false (no error workflows exist)
@@ -328,6 +337,7 @@ describe('WorkflowStatisticsService', () => {
 				data: createEmptyRunExecutionData(),
 				mode: 'trigger',
 				startedAt: new Date(),
+				storedAt: 'db',
 			};
 
 			// Create a fresh instance with workflowRepository returning false (no error workflows exist)
@@ -367,6 +377,7 @@ describe('WorkflowStatisticsService', () => {
 				data: createEmptyRunExecutionData(),
 				mode: 'trigger',
 				startedAt: new Date(),
+				storedAt: 'db',
 			};
 
 			// Create a fresh instance with workflowRepository returning true (error workflows exist)
@@ -406,6 +417,7 @@ describe('WorkflowStatisticsService', () => {
 				data: createEmptyRunExecutionData(),
 				mode: 'manual', // non-production mode
 				startedAt: new Date(),
+				storedAt: 'db',
 			};
 			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
 
@@ -428,6 +440,7 @@ describe('WorkflowStatisticsService', () => {
 				data: createEmptyRunExecutionData(),
 				mode: 'internal',
 				startedAt: new Date(),
+				storedAt: 'db',
 			};
 			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
 			const updateSettingsSpy = jest.spyOn(userService, 'updateSettings');
@@ -455,6 +468,7 @@ describe('WorkflowStatisticsService', () => {
 				data: createEmptyRunExecutionData(),
 				mode: 'trigger',
 				startedAt: new Date(),
+				storedAt: 'db',
 			};
 
 			// Create a fresh instance with workflowRepository returning false (no error workflows exist)

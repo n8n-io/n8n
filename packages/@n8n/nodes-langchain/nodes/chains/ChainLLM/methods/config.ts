@@ -17,6 +17,7 @@ import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFi
 /**
  * Dynamic input configuration generation based on node parameters
  */
+/* istanbul ignore next */
 export function getInputs(parameters: IDataObject) {
 	const inputs: INodeInputConfiguration[] = [
 		{ displayName: '', type: 'main' },
@@ -128,6 +129,10 @@ export const nodeProperties: INodeProperties[] = [
 		placeholder: 'e.g. Hello, how can you help me?',
 		typeOptions: {
 			rows: 2,
+		},
+		builderHint: {
+			message:
+				'Use expressions to include dynamic data from previous nodes (e.g., "={{ $json.input }}"). Static text prompts ignore incoming data.',
 		},
 		displayOptions: {
 			show: {

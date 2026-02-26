@@ -8,6 +8,11 @@ import {
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
@@ -18,15 +23,7 @@ import {
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
-import type {
-	IConnection,
-	IConnections,
-	INodeExecutionData,
-	INode,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-import { stringSizeInBytes } from '@/app/utils/typesUtils';
-import { dataPinningEventBus } from '@/app/event-bus';
+import type { IConnection, IConnections, INode, INodeTypeDescription } from 'n8n-workflow';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { PushPayload } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
@@ -64,9 +61,11 @@ const getNodeType = vi.fn((_nodeTypeName: string): Partial<INodeTypeDescription>
 	webhooks: [],
 	properties: [],
 }));
+const communityNodeType = vi.fn();
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
+		communityNodeType,
 	})),
 }));
 
@@ -102,11 +101,13 @@ vi.mock('@n8n/permissions', () => ({
 
 describe('useWorkflowsStore', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowsListStore: ReturnType<typeof useWorkflowsListStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		workflowsStore = useWorkflowsStore();
+		workflowsListStore = useWorkflowsListStore();
 		uiStore = useUIStore();
 		track.mockReset();
 	});
@@ -265,22 +266,24 @@ describe('useWorkflowsStore', () => {
 
 	describe('allWorkflows', () => {
 		it('should return sorted workflows by name', () => {
-			workflowsStore.setWorkflows([
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.setWorkflows([
 				{ id: '3', name: 'Zeta' },
 				{ id: '1', name: 'Alpha' },
 				{ id: '2', name: 'Beta' },
 			] as IWorkflowDb[]);
 
-			const allWorkflows = workflowsStore.allWorkflows;
+			const allWorkflows = workflowsListStore.allWorkflows;
 			expect(allWorkflows[0].name).toBe('Alpha');
 			expect(allWorkflows[1].name).toBe('Beta');
 			expect(allWorkflows[2].name).toBe('Zeta');
 		});
 
 		it('should return empty array when no workflows are set', () => {
-			workflowsStore.setWorkflows([]);
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.setWorkflows([]);
 
-			const allWorkflows = workflowsStore.allWorkflows;
+			const allWorkflows = workflowsListStore.allWorkflows;
 			expect(allWorkflows).toEqual([]);
 		});
 	});
@@ -293,7 +296,7 @@ describe('useWorkflowsStore', () => {
 		it('should return true for an existing workflow', () => {
 			useWorkflowState().setWorkflowId('123');
 			// Add the workflow to workflowsById to simulate it being loaded from backend
-			workflowsStore.addWorkflow(
+			workflowsListStore.addWorkflow(
 				createTestWorkflow({
 					id: '123',
 					name: 'Test Workflow',
@@ -662,53 +665,19 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('getPinDataSize()', () => {
-		it('returns zero when pinData is empty', () => {
-			const pinData = {};
-			const result = workflowsStore.getPinDataSize(pinData);
-			expect(result).toBe(0);
-		});
-
-		it('returns correct size when pinData contains string values', () => {
-			const pinData = {
-				key1: 'value1',
-				key2: 'value2',
-			} as Record<string, string | INodeExecutionData[]>;
-			const result = workflowsStore.getPinDataSize(pinData);
-			expect(result).toBe(stringSizeInBytes(pinData.key1) + stringSizeInBytes(pinData.key2));
-		});
-
-		it('returns correct size when pinData contains array values', () => {
-			const pinData = {
-				key1: [{ parameters: 'value1', data: null }],
-				key2: [{ parameters: 'value2', data: null }],
-			} as unknown as Record<string, string | INodeExecutionData[]>;
-			const result = workflowsStore.getPinDataSize(pinData);
-			expect(result).toBe(stringSizeInBytes(pinData.key1) + stringSizeInBytes(pinData.key2));
-		});
-
-		it('returns correct size when pinData contains mixed string and array values', () => {
-			const pinData = {
-				key1: 'value1',
-				key2: [{ parameters: 'value2', data: null }],
-			} as unknown as Record<string, string | INodeExecutionData[]>;
-			const result = workflowsStore.getPinDataSize(pinData);
-			expect(result).toBe(stringSizeInBytes(pinData.key1) + stringSizeInBytes(pinData.key2));
-		});
-	});
-
 	describe('fetchAllWorkflows()', () => {
 		it('should fetch workflows successfully', async () => {
+			const workflowsListStore = useWorkflowsListStore();
 			const mockWorkflows = [{ id: '1', name: 'Test Workflow' }] as IWorkflowDb[];
 			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
 				count: mockWorkflows.length,
 				data: mockWorkflows,
 			});
 
-			await workflowsStore.fetchAllWorkflows();
+			await workflowsListStore.fetchAllWorkflows();
 
 			expect(workflowsApi.getWorkflows).toHaveBeenCalled();
-			expect(Object.values(workflowsStore.workflowsById)).toEqual(mockWorkflows);
+			expect(Object.values(workflowsListStore.workflowsById)).toEqual(mockWorkflows);
 		});
 	});
 
@@ -727,7 +696,7 @@ describe('useWorkflowsStore', () => {
 				data: mockWorkflows,
 			});
 
-			const result = await workflowsStore.searchWorkflows({});
+			const result = await workflowsListStore.searchWorkflows({});
 
 			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
 				expect.any(Object),
@@ -745,7 +714,7 @@ describe('useWorkflowsStore', () => {
 				data: mockWorkflows,
 			});
 
-			const result = await workflowsStore.searchWorkflows({ query: 'test' });
+			const result = await workflowsListStore.searchWorkflows({ query: 'test' });
 
 			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
 				expect.any(Object),
@@ -766,7 +735,7 @@ describe('useWorkflowsStore', () => {
 				data: mockWorkflows,
 			});
 
-			const result = await workflowsStore.searchWorkflows({ isArchived: false });
+			const result = await workflowsListStore.searchWorkflows({ isArchived: false });
 
 			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
 				expect.any(Object),
@@ -787,7 +756,7 @@ describe('useWorkflowsStore', () => {
 				data: mockWorkflows,
 			});
 
-			const result = await workflowsStore.searchWorkflows({ isArchived: true });
+			const result = await workflowsListStore.searchWorkflows({ isArchived: true });
 
 			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
 				expect.any(Object),
@@ -807,7 +776,7 @@ describe('useWorkflowsStore', () => {
 				data: mockWorkflows,
 			});
 
-			const result = await workflowsStore.searchWorkflows({
+			const result = await workflowsListStore.searchWorkflows({
 				query: 'test',
 				isArchived: false,
 				projectId: 'project-123',
@@ -840,7 +809,7 @@ describe('useWorkflowsStore', () => {
 				data: mockWorkflows,
 			});
 
-			const result = await workflowsStore.searchWorkflows({
+			const result = await workflowsListStore.searchWorkflows({
 				select: ['id', 'name'],
 			});
 
@@ -860,7 +829,7 @@ describe('useWorkflowsStore', () => {
 				data: mockWorkflows,
 			});
 
-			const result = await workflowsStore.searchWorkflows({
+			const result = await workflowsListStore.searchWorkflows({
 				projectId: undefined,
 				query: undefined,
 				nodeTypes: undefined,
@@ -887,7 +856,7 @@ describe('useWorkflowsStore', () => {
 				data: mockWorkflows,
 			});
 
-			const result = await workflowsStore.searchWorkflows({ query: 'workflow' });
+			const result = await workflowsListStore.searchWorkflows({ query: 'workflow' });
 
 			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
 				expect.any(Object),
@@ -900,9 +869,10 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('setWorkflowActive()', () => {
-		it('should set workflow as active when it is not already active', async () => {
+		it('should set workflow as active in list cache and clear dirty state', async () => {
+			const workflowsListStore = useWorkflowsListStore();
 			uiStore.markStateDirty();
-			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
+			workflowsListStore.workflowsById = { '1': { active: false } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
 
 			const mockActiveVersion: WorkflowHistory = {
@@ -917,15 +887,15 @@ describe('useWorkflowsStore', () => {
 
 			workflowsStore.setWorkflowActive('1', mockActiveVersion, true);
 
-			expect(workflowsStore.activeWorkflows).toContain('1');
-			expect(workflowsStore.workflowsById['1'].active).toBe(true);
-			expect(workflowsStore.workflow.active).toBe(true);
+			expect(workflowsListStore.activeWorkflows).toContain('1');
+			expect(workflowsListStore.workflowsById['1'].active).toBe(true);
 			expect(uiStore.stateIsDirty).toBe(false);
 		});
 
 		it('should not modify active workflows when workflow is already active', () => {
-			workflowsStore.activeWorkflows = ['1'];
-			workflowsStore.workflowsById = { '1': { active: true } as IWorkflowDb };
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.activeWorkflows = ['1'];
+			workflowsListStore.workflowsById = { '1': { active: true } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
 
 			const mockActiveVersion: WorkflowHistory = {
@@ -940,15 +910,15 @@ describe('useWorkflowsStore', () => {
 
 			workflowsStore.setWorkflowActive('1', mockActiveVersion, true);
 
-			expect(workflowsStore.activeWorkflows).toEqual(['1']);
-			expect(workflowsStore.workflowsById['1'].active).toBe(true);
-			expect(workflowsStore.workflow.active).toBe(true);
+			expect(workflowsListStore.activeWorkflows).toEqual(['1']);
+			expect(workflowsListStore.workflowsById['1'].active).toBe(true);
 		});
 
-		it('should not set current workflow as active when it is not the target', () => {
+		it('should not clear dirty state when targeting a different workflow', () => {
+			const workflowsListStore = useWorkflowsListStore();
 			uiStore.markStateDirty();
 			workflowsStore.workflow.id = '1';
-			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
+			workflowsListStore.workflowsById = { '1': { active: false } as IWorkflowDb };
 
 			const mockActiveVersion: WorkflowHistory = {
 				versionId: 'test-version-id',
@@ -961,33 +931,38 @@ describe('useWorkflowsStore', () => {
 			};
 
 			workflowsStore.setWorkflowActive('2', mockActiveVersion, true);
-			expect(workflowsStore.workflowsById['1'].active).toBe(false);
+			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
 			expect(uiStore.stateIsDirty).toBe(true);
 		});
 	});
 
 	describe('setWorkflowInactive()', () => {
 		it('should set workflow as inactive when it exists', () => {
-			workflowsStore.activeWorkflows = ['1', '2'];
-			workflowsStore.workflowsById = { '1': { active: true } as IWorkflowDb };
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.activeWorkflows = ['1', '2'];
+			workflowsListStore.workflowsById = { '1': { active: true } as IWorkflowDb };
 			workflowsStore.setWorkflowInactive('1');
-			expect(workflowsStore.workflowsById['1'].active).toBe(false);
-			expect(workflowsStore.activeWorkflows).toEqual(['2']);
+			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
+			expect(workflowsListStore.activeWorkflows).toEqual(['2']);
 		});
 
 		it('should not modify active workflows when workflow is not active', () => {
-			workflowsStore.workflowsById = { '2': { active: true } as IWorkflowDb };
-			workflowsStore.activeWorkflows = ['2'];
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.workflowsById = { '2': { active: true } as IWorkflowDb };
+			workflowsListStore.activeWorkflows = ['2'];
 			workflowsStore.setWorkflowInactive('1');
-			expect(workflowsStore.activeWorkflows).toEqual(['2']);
-			expect(workflowsStore.workflowsById['2'].active).toBe(true);
+			expect(workflowsListStore.activeWorkflows).toEqual(['2']);
+			expect(workflowsListStore.workflowsById['2'].active).toBe(true);
 		});
 
-		it('should set current workflow as inactive when it is the target', () => {
+		it('should update list cache when targeting any workflow', () => {
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.activeWorkflows = ['1'];
+			workflowsListStore.workflowsById = { '1': { active: true } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
-			workflowsStore.workflow.active = true;
 			workflowsStore.setWorkflowInactive('1');
-			expect(workflowsStore.workflow.active).toBe(false);
+			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
+			expect(workflowsListStore.activeWorkflows).toEqual([]);
 		});
 	});
 
@@ -1015,107 +990,6 @@ describe('useWorkflowsStore', () => {
 			vi.mocked(workflowsApi).getNewWorkflow.mockRejectedValue(new Error('API Error'));
 			const newName = await workflowsStore.getDuplicateCurrentWorkflowName(name);
 			expect(newName).toBe(expectedName);
-		});
-	});
-
-	describe('pinData', () => {
-		it('should create pinData object if it does not exist', async () => {
-			workflowsStore.workflow.pinData = undefined;
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-			workflowsStore.pinData({ node, data });
-			expect(workflowsStore.workflow.pinData).toBeDefined();
-		});
-
-		it('should convert data to array if it is not', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = { json: 'testData' } as unknown as INodeExecutionData;
-			workflowsStore.pinData({ node, data: data as unknown as INodeExecutionData[] });
-			expect(Array.isArray(workflowsStore.workflow.pinData?.[node.name])).toBe(true);
-		});
-
-		it('should store pinData correctly', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-			workflowsStore.pinData({ node, data });
-			expect(workflowsStore.workflow.pinData?.[node.name]).toEqual(data);
-		});
-
-		it('should emit pin-data event', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-			const emitSpy = vi.spyOn(dataPinningEventBus, 'emit');
-			workflowsStore.pinData({ node, data });
-			expect(emitSpy).toHaveBeenCalledWith('pin-data', { [node.name]: data });
-		});
-
-		it('should set stateIsDirty to true', async () => {
-			uiStore.markStateClean();
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-			workflowsStore.pinData({ node, data });
-			expect(uiStore.stateIsDirty).toBe(true);
-		});
-
-		it('should preserve binary data when pinning', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [
-				{
-					json: { test: 'data' },
-					binary: {
-						data: {
-							fileName: 'test.txt',
-							mimeType: 'text/plain',
-							data: 'dGVzdCBkYXRh',
-						},
-					},
-				},
-			] as unknown as INodeExecutionData[];
-
-			workflowsStore.pinData({ node, data });
-
-			expect(workflowsStore.workflow.pinData?.[node.name]).toEqual([
-				{
-					json: { test: 'data' },
-					binary: {
-						data: {
-							fileName: 'test.txt',
-							mimeType: 'text/plain',
-							data: 'dGVzdCBkYXRh',
-						},
-					},
-				},
-			]);
-		});
-
-		it('should not update timestamp during restoration', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-
-			// Set up existing pinned data with metadata
-			workflowsStore.workflow.pinData = { [node.name]: data };
-			workflowsStore.nodeMetadata[node.name] = { pristine: false, pinnedDataLastUpdatedAt: 1000 };
-
-			workflowsStore.pinData({ node, data, isRestoration: true });
-
-			expect(workflowsStore.nodeMetadata[node.name].pinnedDataLastUpdatedAt).toBeUndefined();
-		});
-
-		it('should clear timestamps during restoration', async () => {
-			const node = { name: 'TestNode' } as INodeUi;
-			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
-
-			// Set up existing metadata with timestamps
-			workflowsStore.nodeMetadata[node.name] = {
-				pristine: false,
-				pinnedDataLastUpdatedAt: 1000,
-				pinnedDataLastRemovedAt: 2000,
-			};
-
-			workflowsStore.pinData({ node, data, isRestoration: true });
-
-			expect(workflowsStore.nodeMetadata[node.name].pinnedDataLastUpdatedAt).toBeUndefined();
-			expect(workflowsStore.nodeMetadata[node.name].pinnedDataLastRemovedAt).toBeUndefined();
 		});
 	});
 
@@ -1457,12 +1331,13 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('archiveWorkflow', () => {
-		it('should call the API to archive the workflow', async () => {
+		it('should call the API to archive the workflow without checksum', async () => {
+			const workflowsListStore = useWorkflowsListStore();
 			const workflowId = '1';
 			const versionId = '00000000-0000-0000-0000-000000000000';
 			const updatedVersionId = '11111111-1111-1111-1111-111111111111';
 
-			workflowsStore.workflowsById = {
+			workflowsListStore.workflowsById = {
 				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
 			};
 			workflowsStore.workflow.active = true;
@@ -1479,10 +1354,9 @@ describe('useWorkflowsStore', () => {
 
 			await workflowsStore.archiveWorkflow(workflowId);
 
-			expect(workflowsStore.workflowsById['1'].active).toBe(false);
-			expect(workflowsStore.workflowsById['1'].isArchived).toBe(true);
-			expect(workflowsStore.workflowsById['1'].versionId).toBe(updatedVersionId);
-			expect(workflowsStore.workflow.active).toBe(false);
+			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
+			expect(workflowsListStore.workflowsById['1'].isArchived).toBe(true);
+			expect(workflowsListStore.workflowsById['1'].versionId).toBe(updatedVersionId);
 			expect(workflowsStore.workflow.isArchived).toBe(true);
 			expect(workflowsStore.workflow.versionId).toBe(updatedVersionId);
 			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
@@ -1492,17 +1366,53 @@ describe('useWorkflowsStore', () => {
 				}),
 				'POST',
 				`/workflows/${workflowId}/archive`,
+				{ expectedChecksum: undefined },
+			);
+		});
+
+		it('should pass expectedChecksum to the API when provided', async () => {
+			const workflowsListStore = useWorkflowsListStore();
+			const workflowId = '1';
+			const versionId = '00000000-0000-0000-0000-000000000000';
+			const updatedVersionId = '11111111-1111-1111-1111-111111111111';
+			const expectedChecksum = 'test-checksum-123';
+
+			workflowsListStore.workflowsById = {
+				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
+			};
+			workflowsStore.workflow.isArchived = false;
+			workflowsStore.workflow.id = workflowId;
+			workflowsStore.workflow.versionId = versionId;
+
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockImplementation(async () => ({
+					versionId: updatedVersionId,
+					checksum: 'checksum',
+				}));
+
+			await workflowsStore.archiveWorkflow(workflowId, expectedChecksum);
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseUrl: '/rest',
+					pushRef: expect.any(String),
+				}),
+				'POST',
+				`/workflows/${workflowId}/archive`,
+				{ expectedChecksum },
 			);
 		});
 	});
 
 	describe('unarchiveWorkflow', () => {
 		it('should call the API to unarchive the workflow', async () => {
+			const workflowsListStore = useWorkflowsListStore();
 			const workflowId = '1';
 			const versionId = '00000000-0000-0000-0000-000000000000';
 			const updatedVersionId = '11111111-1111-1111-1111-111111111111';
 
-			workflowsStore.workflowsById = {
+			workflowsListStore.workflowsById = {
 				'1': { active: false, isArchived: true, versionId } as IWorkflowDb,
 			};
 			workflowsStore.workflow.active = false;
@@ -1519,10 +1429,9 @@ describe('useWorkflowsStore', () => {
 
 			await workflowsStore.unarchiveWorkflow(workflowId);
 
-			expect(workflowsStore.workflowsById['1'].active).toBe(false);
-			expect(workflowsStore.workflowsById['1'].isArchived).toBe(false);
-			expect(workflowsStore.workflowsById['1'].versionId).toBe(updatedVersionId);
-			expect(workflowsStore.workflow.active).toBe(false);
+			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
+			expect(workflowsListStore.workflowsById['1'].isArchived).toBe(false);
+			expect(workflowsListStore.workflowsById['1'].versionId).toBe(updatedVersionId);
 			expect(workflowsStore.workflow.isArchived).toBe(false);
 			expect(workflowsStore.workflow.versionId).toBe(updatedVersionId);
 			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
@@ -1588,7 +1497,8 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('updates cached workflow without fetching when present in store', async () => {
-			workflowsStore.workflowsById = {
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.workflowsById = {
 				w2: createTestWorkflow({
 					id: 'w2',
 					name: 'Cached',
@@ -1622,15 +1532,16 @@ describe('useWorkflowsStore', () => {
 
 			// Should not fetch since cached with versionId exists
 			expect(getWorkflowSpy).not.toHaveBeenCalled();
-			expect(workflowsStore.workflowsById['w2'].versionId).toBe('v3');
-			expect(workflowsStore.workflowsById['w2'].settings).toEqual({
+			expect(workflowsListStore.workflowsById['w2'].versionId).toBe('v3');
+			expect(workflowsListStore.workflowsById['w2'].settings).toEqual({
 				executionOrder: 'v1',
 				timezone: 'Europe/Berlin',
 			});
 		});
 
 		it('fetches workflow when not cached and updates store', async () => {
-			workflowsStore.workflowsById = {} as Record<string, IWorkflowDb>;
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.workflowsById = {} as Record<string, IWorkflowDb>;
 
 			vi.mocked(workflowsApi).getWorkflow.mockResolvedValue(
 				createTestWorkflow({
@@ -1666,8 +1577,8 @@ describe('useWorkflowsStore', () => {
 				{ baseUrl: '/rest', pushRef: expect.any(String) },
 				'w3',
 			);
-			expect(workflowsStore.workflowsById['w3'].versionId).toBe('v101');
-			expect(workflowsStore.workflowsById['w3'].settings).toEqual({
+			expect(workflowsListStore.workflowsById['w3'].versionId).toBe('v101');
+			expect(workflowsListStore.workflowsById['w3'].settings).toEqual({
 				executionOrder: 'v1',
 				timezone: 'Asia/Tokyo',
 			});
@@ -1760,6 +1671,8 @@ describe('useWorkflowsStore', () => {
 				},
 			} as unknown as IExecutionResponse;
 
+			workflowsStore.workflow.id = 'test-workflow-id';
+
 			workflowsStore.addNode({
 				parameters: {},
 				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
@@ -1769,7 +1682,10 @@ describe('useWorkflowsStore', () => {
 				typeVersion: 3.4,
 			});
 
-			workflowsStore.workflow.pinData = {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			workflowDocumentStore.setPinData({
 				[nodeName]: [
 					{
 						json: {
@@ -1798,7 +1714,7 @@ describe('useWorkflowsStore', () => {
 						],
 					},
 				],
-			};
+			});
 
 			workflowsStore.renameNodeSelectedAndExecution({ old: nodeName, new: newName });
 
@@ -1831,9 +1747,9 @@ describe('useWorkflowsStore', () => {
 				},
 			});
 
-			expect(workflowsStore.workflow.pinData?.[nodeName]).not.toBeDefined();
-			expect(workflowsStore.workflow.pinData?.[newName]).toBeDefined();
-			expect(workflowsStore.workflow.pinData?.['Edit Fields'][0].pairedItem).toEqual([
+			expect(workflowDocumentStore.pinData?.[nodeName]).not.toBeDefined();
+			expect(workflowDocumentStore.pinData?.[newName]).toBeDefined();
+			expect(workflowDocumentStore.pinData?.['Edit Fields'][0].pairedItem).toEqual([
 				{
 					item: 3,
 					sourceOverwrite: {
@@ -2070,6 +1986,71 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.workflow.nodes[1].credentials).toBeUndefined();
 		});
 
+		it('should not assign credential to nodes where displayOptions do not match current parameters', () => {
+			const credential = { id: 'cred-1', name: 'Header Auth Credential' };
+			const credentialType = 'httpHeaderAuth';
+
+			workflowsStore.setNodes([
+				createTestNode({
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+				}),
+				createTestNode({
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					parameters: { authentication: 'none' },
+				}),
+			]);
+
+			getNodeType.mockImplementation((nodeType: string) => {
+				if (nodeType === 'n8n-nodes-base.httpRequest') {
+					return {
+						credentials: [{ name: 'httpHeaderAuth', required: false }],
+						inputs: [],
+						group: [],
+						webhooks: [],
+						properties: [],
+					};
+				}
+				// Webhook supports httpHeaderAuth but only when authentication = 'headerAuth'
+				return {
+					credentials: [
+						{
+							name: 'httpHeaderAuth',
+							required: false,
+							displayOptions: { show: { authentication: ['headerAuth'] } },
+						},
+					],
+					inputs: [],
+					group: [],
+					webhooks: [],
+					properties: [
+						{
+							displayName: 'Authentication',
+							name: 'authentication',
+							type: 'options',
+							default: 'none',
+							options: [
+								{ name: 'None', value: 'none' },
+								{ name: 'Header Auth', value: 'headerAuth' },
+							],
+						},
+					],
+				};
+			});
+
+			const result = workflowsStore.assignCredentialToMatchingNodes({
+				credentials: credential,
+				type: credentialType,
+				currentNodeName: 'HTTP Request',
+			});
+
+			expect(result).toBe(0); // Webhook should NOT get the credential (authentication is 'none')
+			expect(workflowsStore.workflow.nodes[1].credentials).toBeUndefined();
+		});
+
 		it('should return 0 when there are no matching nodes', () => {
 			const credential = { id: 'cred-1', name: 'Test Credential' };
 			const credentialType = 'slackApi';
@@ -2102,25 +2083,25 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('getWebhookUrl', () => {
-		it('should return undefined when node does not exist', () => {
+		it('should return undefined when node does not exist', async () => {
 			workflowsStore.setNodes([]);
 
-			const result = workflowsStore.getWebhookUrl('non-existent-node', 'test');
+			const result = await workflowsStore.getWebhookUrl('non-existent-node', 'test');
 
 			expect(result).toBeUndefined();
 		});
 
-		it('should return undefined when node type does not exist', () => {
+		it('should return undefined when node type does not exist', async () => {
 			const testNode = createTestNode({ id: 'node-1', name: 'Webhook Node' });
 			workflowsStore.setNodes([testNode]);
 			getNodeType.mockReturnValue(null);
 
-			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
 
 			expect(result).toBeUndefined();
 		});
 
-		it('should return undefined when node type has no webhooks', () => {
+		it('should return undefined when node type has no webhooks', async () => {
 			const testNode = createTestNode({ id: 'node-1', name: 'Webhook Node' });
 			workflowsStore.setNodes([testNode]);
 			getNodeType.mockReturnValue({
@@ -2130,12 +2111,12 @@ describe('useWorkflowsStore', () => {
 				properties: [],
 			});
 
-			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
 
 			expect(result).toBeUndefined();
 		});
 
-		it('should return webhook URL for test type', () => {
+		it('should return webhook URL for test type', async () => {
 			const testNode = createTestNode({
 				id: 'node-1',
 				name: 'Webhook Node',
@@ -2149,14 +2130,14 @@ describe('useWorkflowsStore', () => {
 				properties: [],
 			});
 
-			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
 
 			expect(result).toBeDefined();
 			expect(typeof result).toBe('string');
 			expect(result).toContain('webhook');
 		});
 
-		it('should return webhook URL for production type', () => {
+		it('should return webhook URL for production type', async () => {
 			const testNode = createTestNode({
 				id: 'node-1',
 				name: 'Webhook Node',
@@ -2170,14 +2151,14 @@ describe('useWorkflowsStore', () => {
 				properties: [],
 			});
 
-			const result = workflowsStore.getWebhookUrl('node-1', 'production');
+			const result = await workflowsStore.getWebhookUrl('node-1', 'production');
 
 			expect(result).toBeDefined();
 			expect(typeof result).toBe('string');
 			expect(result).toContain('webhook');
 		});
 
-		it('should use the first webhook when node has multiple webhooks', () => {
+		it('should use the first webhook when node has multiple webhooks', async () => {
 			const testNode = createTestNode({
 				id: 'node-1',
 				name: 'Webhook Node',
@@ -2194,7 +2175,7 @@ describe('useWorkflowsStore', () => {
 				properties: [],
 			});
 
-			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
 
 			expect(result).toBeDefined();
 			expect(typeof result).toBe('string');
@@ -2231,7 +2212,7 @@ describe('useWorkflowsStore', () => {
 
 			workflowsStore.workflow = testWorkflow;
 			// Add workflow to workflowsById to simulate it being loaded from backend
-			workflowsStore.addWorkflow(testWorkflow);
+			workflowsListStore.addWorkflow(testWorkflow);
 
 			// Verify the mock is set up correctly
 			expect(workflowsStore.workflow.scopes).toContain('workflow:update');
@@ -2260,7 +2241,7 @@ describe('useWorkflowsStore', () => {
 
 			workflowsStore.workflow = testWorkflow;
 			// Add workflow to workflowsById to simulate it being loaded from backend
-			workflowsStore.addWorkflow(testWorkflow);
+			workflowsListStore.addWorkflow(testWorkflow);
 
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(null);
 
@@ -2284,7 +2265,7 @@ describe('useWorkflowsStore', () => {
 
 			workflowsStore.workflow = testWorkflow;
 			// Add workflow to workflowsById to simulate it being loaded from backend
-			workflowsStore.addWorkflow(testWorkflow);
+			workflowsListStore.addWorkflow(testWorkflow);
 
 			const error = new Error('API Error');
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockRejectedValue(error);
@@ -2368,6 +2349,108 @@ describe('useWorkflowsStore', () => {
 			await workflowsStore.fetchLastSuccessfulExecution();
 
 			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getNodeTypes() - getByNameAndVersion', () => {
+		beforeEach(() => {
+			setActivePinia(createPinia());
+			workflowsStore = useWorkflowsStore();
+		});
+
+		it('should return node type for core nodes', () => {
+			const mockNodeType = mockNodeTypeDescription({
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+			});
+
+			getNodeType.mockReturnValue(mockNodeType);
+
+			const nodeTypes = workflowsStore.getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.httpRequest', 1);
+
+			expect(result).toBeDefined();
+			expect(result?.description.name).toBe('n8n-nodes-base.httpRequest');
+		});
+
+		it('should fallback to community node type when core node not found', () => {
+			const mockCommunityNodeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-test.test',
+				displayName: 'Test Node',
+			});
+
+			getNodeType.mockReturnValue(null);
+
+			communityNodeType.mockReturnValue({
+				name: 'n8n-nodes-test.test',
+				packageName: 'n8n-nodes-test',
+				checksum: 'test-checksum',
+				npmVersion: '1.0.0',
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				numberOfStars: 0,
+				numberOfDownloads: 0,
+				authorGithubUrl: '',
+				authorName: '',
+				description: '',
+				displayName: 'Test Node',
+				isOfficialNode: false,
+				nodeDescription: mockCommunityNodeDescription,
+				isInstalled: false,
+			});
+
+			const nodeTypes = workflowsStore.getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-test.test');
+
+			expect(result).toBeDefined();
+			expect(result?.description.name).toBe('n8n-nodes-test.test');
+		});
+
+		it('should return undefined when node type is not found', () => {
+			getNodeType.mockReturnValue(null);
+
+			communityNodeType.mockReturnValue(undefined);
+
+			const nodeTypes = workflowsStore.getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('non-existent-node');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should use community node description when available and core node is null', () => {
+			const mockCommunityNodeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-community.customNode',
+				displayName: 'Custom Community Node',
+				inputs: ['main'],
+				outputs: ['main'],
+			});
+
+			getNodeType.mockReturnValue(null);
+
+			communityNodeType.mockReturnValue({
+				name: 'n8n-nodes-community.customNode',
+				packageName: 'n8n-nodes-community',
+				checksum: 'test-checksum',
+				npmVersion: '1.0.0',
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				numberOfStars: 10,
+				numberOfDownloads: 100,
+				authorGithubUrl: '',
+				authorName: '',
+				description: '',
+				displayName: 'Custom Community Node',
+				isOfficialNode: false,
+				nodeDescription: mockCommunityNodeDescription,
+				isInstalled: true,
+			});
+
+			const nodeTypes = workflowsStore.getNodeTypes();
+			const result = nodeTypes.getByNameAndVersion('n8n-nodes-community.customNode');
+
+			expect(result).toBeDefined();
+			expect(result?.description.name).toBe('n8n-nodes-community.customNode');
+			expect(result?.description.displayName).toBe('Custom Community Node');
 		});
 	});
 });

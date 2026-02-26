@@ -44,6 +44,7 @@ import type {
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
+	IgnoreStatusErrorConfig,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
@@ -94,6 +95,17 @@ function validateUrl(url?: string): boolean {
 	} catch {
 		return false;
 	}
+}
+
+function isIgnoreStatusErrorConfig(
+	ignoreHttpStatusErrors: unknown,
+): ignoreHttpStatusErrors is IgnoreStatusErrorConfig {
+	return (
+		typeof ignoreHttpStatusErrors === 'object' &&
+		ignoreHttpStatusErrors !== null &&
+		'ignore' in ignoreHttpStatusErrors &&
+		ignoreHttpStatusErrors.ignore === true
+	);
 }
 
 function getUrlFromProxyConfig(proxyConfig: IHttpRequestOptions['proxy'] | string): string | null {
@@ -197,6 +209,7 @@ const getBeforeRedirectFn =
 		agentOptions: AgentOptions,
 		axiosConfig: AxiosRequestConfig,
 		proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
+		sendCredentialsOnCrossOriginRedirect: boolean,
 	) =>
 	(redirectedRequest: Record<string, any>) => {
 		const redirectAgentOptions = {
@@ -215,12 +228,19 @@ const getBeforeRedirectFn =
 			: httpAgent;
 		redirectedRequest.agents = { http: httpAgent, https: httpsAgent };
 
+		const originalUrl = axiosConfig.baseURL
+			? new URL(axiosConfig.url ?? '', axiosConfig.baseURL)
+			: new URL(axiosConfig.url ?? '');
+		const originalOrigin = originalUrl.origin;
+		const targetOrigin = new URL(targetUrl).origin;
 		// Copy auth headers
-		if (axiosConfig.headers?.Authorization) {
-			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
-		}
-		if (axiosConfig.auth) {
-			redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
+		if (originalOrigin === targetOrigin || sendCredentialsOnCrossOriginRedirect) {
+			if (axiosConfig.headers?.Authorization) {
+				redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
+			}
+			if (axiosConfig.auth) {
+				redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
+			}
 		}
 	};
 
@@ -585,7 +605,12 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 
 	setAxiosAgents(axiosConfig, agentOptions, requestObject.proxy);
 
-	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig, requestObject.proxy);
+	axiosConfig.beforeRedirect = getBeforeRedirectFn(
+		agentOptions,
+		axiosConfig,
+		requestObject.proxy,
+		requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+	);
 
 	if (requestObject.useStream) {
 		axiosConfig.responseType = 'stream';
@@ -765,7 +790,12 @@ export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): Axios
 	}
 	setAxiosAgents(axiosRequest, agentOptions, proxy);
 
-	axiosRequest.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosRequest, n8nRequest.proxy);
+	axiosRequest.beforeRedirect = getBeforeRedirectFn(
+		agentOptions,
+		axiosRequest,
+		n8nRequest.proxy,
+		n8nRequest.sendCredentialsOnCrossOriginRedirect ?? true,
+	);
 
 	if (n8nRequest.arrayFormat !== undefined) {
 		axiosRequest.paramsSerializer = (params) => {
@@ -825,7 +855,14 @@ export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): Axios
 	}
 
 	if (n8nRequest.ignoreHttpStatusErrors) {
-		axiosRequest.validateStatus = () => true;
+		const ignoreHttpStatusErrors = n8nRequest.ignoreHttpStatusErrors;
+		if (isIgnoreStatusErrorConfig(ignoreHttpStatusErrors)) {
+			axiosRequest.validateStatus = (status) => {
+				return !ignoreHttpStatusErrors.except.includes(status);
+			};
+		} else {
+			axiosRequest.validateStatus = () => true;
+		}
 	}
 
 	return axiosRequest;

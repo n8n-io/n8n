@@ -33,7 +33,12 @@ describe('ChatMessage', () => {
 	it('should render syntax highlighting for code blocks', async () => {
 		const message: ChatMessageType = createMockMessage({
 			type: 'ai',
-			content: '```javascript\nconst foo = "bar";\nfunction test() {\n  return true;\n}\n```',
+			content: [
+				{
+					type: 'text',
+					content: '```javascript\nconst foo = "bar";\nfunction test() {\n  return true;\n}\n```',
+				},
+			],
 		});
 
 		const { container } = renderComponent({
@@ -44,7 +49,6 @@ describe('ChatMessage', () => {
 				hasSessionStreaming: false,
 				cachedAgentDisplayName: null,
 				cachedAgentIcon: null,
-				containerWidth: 100,
 			},
 			pinia,
 		});
@@ -57,11 +61,64 @@ describe('ChatMessage', () => {
 		});
 	});
 
+	it('should render KaTeX inline math expressions', async () => {
+		const message: ChatMessageType = createMockMessage({
+			type: 'ai',
+			content: [
+				{
+					type: 'text',
+					content: 'The quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$',
+				},
+			],
+		});
+
+		const { container } = renderComponent({
+			props: {
+				message,
+				compact: false,
+				isEditing: false,
+				hasSessionStreaming: false,
+				cachedAgentDisplayName: null,
+				cachedAgentIcon: null,
+			},
+			pinia,
+		});
+
+		await waitFor(() => {
+			const katexElements = container.querySelectorAll('.katex');
+			expect(katexElements.length).toBeGreaterThan(0);
+		});
+	});
+
+	it('should render KaTeX block math expressions', async () => {
+		const message: ChatMessageType = createMockMessage({
+			type: 'ai',
+			content: [{ type: 'text', content: '$$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$' }],
+		});
+
+		const { container } = renderComponent({
+			props: {
+				message,
+				compact: false,
+				isEditing: false,
+				hasSessionStreaming: false,
+				cachedAgentDisplayName: null,
+				cachedAgentIcon: null,
+			},
+			pinia,
+		});
+
+		await waitFor(() => {
+			const katexDisplayElements = container.querySelectorAll('.katex-display');
+			expect(katexDisplayElements.length).toBeGreaterThan(0);
+		});
+	});
+
 	it('should allow to copy code block contents', async () => {
 		const codeContent = 'const foo = "bar";\nfunction test() {\n  return true;\n}';
 		const message: ChatMessageType = createMockMessage({
 			type: 'ai',
-			content: `\`\`\`javascript\n${codeContent}\n\`\`\``,
+			content: [{ type: 'text', content: `\`\`\`javascript\n${codeContent}\n\`\`\`` }],
 		});
 
 		const rendered = renderComponent({
@@ -72,7 +129,6 @@ describe('ChatMessage', () => {
 				hasSessionStreaming: false,
 				cachedAgentDisplayName: null,
 				cachedAgentIcon: null,
-				containerWidth: 100,
 			},
 			pinia,
 		});
