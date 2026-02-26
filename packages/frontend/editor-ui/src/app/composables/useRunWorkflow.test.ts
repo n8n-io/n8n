@@ -798,6 +798,100 @@ describe('useRunWorkflow({ router })', () => {
 			expect(setWorkflowExecutionData).lastCalledWith(null);
 		});
 
+		describe('Chat trigger disabled state', () => {
+			const chatTriggerNode = {
+				name: 'When chat message received',
+				type: CHAT_TRIGGER_NODE_TYPE,
+				disabled: false,
+				parameters: {},
+				position: [0, 0] as [number, number],
+				id: 'chat-trigger-id',
+				typeVersion: 1,
+			};
+			const manualTriggerNode = {
+				name: 'Manual Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+				disabled: false,
+				parameters: {},
+				position: [0, 100] as [number, number],
+				id: 'manual-trigger-id',
+				typeVersion: 1,
+			};
+
+			beforeEach(() => {
+				vi.mocked(pushConnectionStore).isConnected = true;
+				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({ executionId: '123' });
+				vi.mocked(workflowsStore).nodesIssuesExist = false;
+				vi.mocked(workflowsStore).workflowObject = {
+					name: 'Test Workflow',
+				} as Workflow;
+				vi.mocked(workflowsStore).getWorkflowRunData = null;
+			});
+
+			it('should not disable the chat trigger when source is "RunData.ManualChatTrigger" and workflow has multiple triggers', async () => {
+				// ARRANGE
+				const { runWorkflow } = useRunWorkflow({ router });
+				const dataCaptor = captor<IStartRunData>();
+
+				vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+					id: 'workflowId',
+					nodes: [{ ...chatTriggerNode }, { ...manualTriggerNode }],
+				} as unknown as WorkflowData);
+
+				// ACT - simulate running from chat trigger (e.g. via "RunData.ManualChatTrigger" source)
+				await runWorkflow({ source: 'RunData.ManualChatTrigger' });
+
+				// ASSERT - chat trigger node must not be disabled when runWorkflowApi is called
+				expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(dataCaptor);
+				const chatNode = dataCaptor.value.workflowData.nodes.find(
+					(n: INode) => n.type === CHAT_TRIGGER_NODE_TYPE,
+				);
+				expect(chatNode?.disabled).not.toBe(true);
+			});
+
+			it('should disable the chat trigger when source is not "RunData.ManualChatTrigger" and workflow has multiple triggers', async () => {
+				// ARRANGE
+				const { runWorkflow } = useRunWorkflow({ router });
+				const dataCaptor = captor<IStartRunData>();
+
+				vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+					id: 'workflowId',
+					nodes: [{ ...chatTriggerNode }, { ...manualTriggerNode }],
+				} as unknown as WorkflowData);
+
+				// ACT - run without specifying a source (e.g. clicking "Execute workflow" button)
+				await runWorkflow({});
+
+				// ASSERT - chat trigger node must be disabled so it doesn't open the chat modal
+				expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(dataCaptor);
+				const chatNode = dataCaptor.value.workflowData.nodes.find(
+					(n: INode) => n.type === CHAT_TRIGGER_NODE_TYPE,
+				);
+				expect(chatNode?.disabled).toBe(true);
+			});
+
+			it('should not disable the chat trigger when it is the only trigger in the workflow', async () => {
+				// ARRANGE
+				const { runWorkflow } = useRunWorkflow({ router });
+				const dataCaptor = captor<IStartRunData>();
+
+				vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+					id: 'workflowId',
+					nodes: [{ ...chatTriggerNode }],
+				} as unknown as WorkflowData);
+
+				// ACT - run without a chat source; only chat trigger exists
+				await runWorkflow({});
+
+				// ASSERT - no other triggers, so the chat trigger should remain enabled
+				expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(dataCaptor);
+				const chatNode = dataCaptor.value.workflowData.nodes.find(
+					(n: INode) => n.type === CHAT_TRIGGER_NODE_TYPE,
+				);
+				expect(chatNode?.disabled).not.toBe(true);
+			});
+		});
+
 		describe('Chat trigger warnings', () => {
 			const mockExecutionResponse = { executionId: '123' };
 			const toast = useToast();

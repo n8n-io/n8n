@@ -270,7 +270,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			//disable chat trigger node to avoid modal opening and webhook creation
 			if (
 				!options.destinationNode &&
-				options.source !== 'RunData.ManualChatMessage' &&
+				options.source !== 'RunData.ManualChatTrigger' &&
 				chatTriggerNode
 			) {
 				const otherTriggers = triggers.filter((node) => node.type !== CHAT_TRIGGER_NODE_TYPE);
