@@ -23,7 +23,8 @@ export class VectorWorkerPool {
 	private availableWorkers: Worker[] = [];
 	private pendingTasks: Array<{
 		queryVector: Float32Array;
-		vectors: Float32Array[];
+		matrix: Float32Array;
+		vectorCount: number;
 		k: number;
 		task: PendingTask;
 	}> = [];
@@ -146,38 +147,49 @@ export class VectorWorkerPool {
 		const nextTask = this.pendingTasks.shift()!;
 		const worker = this.availableWorkers.pop()!;
 
-		this.executeTask(worker, nextTask.queryVector, nextTask.vectors, nextTask.k, nextTask.task);
+		this.executeTask(
+			worker,
+			nextTask.queryVector,
+			nextTask.matrix,
+			nextTask.vectorCount,
+			nextTask.k,
+			nextTask.task,
+		);
 	}
 
 	private executeTask(
 		worker: Worker,
 		queryVector: Float32Array,
-		vectors: Float32Array[],
+		matrix: Float32Array,
+		vectorCount: number,
 		k: number,
 		task: PendingTask,
 	): void {
 		const taskId = `task_${this.taskIdCounter++}`;
 		this.taskMap.set(taskId, task);
 
-		worker.postMessage({
-			queryVector,
-			vectors,
-			k,
-			taskId,
-		});
+		// Transfer ownership of both ArrayBuffers to the worker (zero-copy).
+		// The main thread's Float32Arrays are neutered after this call,
+		// immediately releasing the memory.
+		worker.postMessage({ queryVector, matrix, vectorCount, k, taskId }, [
+			queryVector.buffer as ArrayBuffer,
+			matrix.buffer as ArrayBuffer,
+		]);
 	}
 
 	/**
 	 * Calculate similarity in a worker thread (non-blocking).
 	 *
 	 * @param queryVector The query vector to compare against
-	 * @param vectors Array of vectors to search
+	 * @param matrix Flat row-major Float32Array of all vectors (N × dim)
+	 * @param vectorCount Number of vectors in the matrix
 	 * @param k Number of top results to return
 	 * @returns Promise resolving to top-K indices and scores
 	 */
 	async calculateSimilarity(
 		queryVector: Float32Array,
-		vectors: Float32Array[],
+		matrix: Float32Array,
+		vectorCount: number,
 		k: number,
 	): Promise<{ indices: number[]; scores: number[] }> {
 		return await new Promise((resolve, reject) => {
@@ -186,12 +198,13 @@ export class VectorWorkerPool {
 			if (this.availableWorkers.length > 0) {
 				// Worker available, execute immediately
 				const worker = this.availableWorkers.pop()!;
-				this.executeTask(worker, queryVector, vectors, k, task);
+				this.executeTask(worker, queryVector, matrix, vectorCount, k, task);
 			} else {
 				// No workers available, queue the task
 				this.pendingTasks.push({
 					queryVector,
-					vectors,
+					matrix,
+					vectorCount,
 					k,
 					task,
 				});

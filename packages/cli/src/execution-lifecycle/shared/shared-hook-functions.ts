@@ -50,7 +50,13 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 	]);
 
 	const fullExecutionData: UpdateExecutionPayload = {
-		data: runData.data,
+		data: {
+			...runData.data,
+			resultData: {
+				...runData.data.resultData,
+				runData: {},
+			},
+		},
 		mode: runData.mode,
 		finished: runData.finished ? runData.finished : false,
 		startedAt: runData.startedAt,

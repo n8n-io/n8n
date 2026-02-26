@@ -2,7 +2,8 @@ import { parentPort } from 'worker_threads';
 
 interface WorkerMessage {
 	queryVector: Float32Array;
-	vectors: Float32Array[];
+	matrix: Float32Array; // flat row-major: [v0_f0..v0_fn, v1_f0..v1_fn, ...]
+	vectorCount: number;
 	k: number;
 	taskId: string;
 }
@@ -40,19 +41,26 @@ function cosineSimilarity(a: Float32Array, b: Float32Array): number {
 
 /**
  * Finds top-K similar vectors using a min-heap approach.
- * More memory efficient than sorting all results.
+ * Accepts a flat row-major matrix to avoid allocating N individual Float32Arrays.
+ * Uses subarray() views — no copying.
  */
 function topKSimilar(
 	queryVector: Float32Array,
-	vectors: Float32Array[],
+	matrix: Float32Array,
+	vectorCount: number,
 	k: number,
 ): { indices: number[]; scores: number[] } {
+	const dim = matrix.length / vectorCount;
+
 	// For small datasets or when k is close to vector count, just sort everything
-	if (k >= vectors.length * 0.5) {
-		const results = vectors.map((vector, index) => ({
-			index,
-			score: cosineSimilarity(queryVector, vector),
-		}));
+	if (k >= vectorCount * 0.5) {
+		const results: Array<{ index: number; score: number }> = [];
+		for (let i = 0; i < vectorCount; i++) {
+			results.push({
+				index: i,
+				score: cosineSimilarity(queryVector, matrix.subarray(i * dim, (i + 1) * dim)),
+			});
+		}
 
 		results.sort((a, b) => b.score - a.score);
 
@@ -67,8 +75,8 @@ function topKSimilar(
 	// Store only top k results to save memory
 	const heap: Array<{ index: number; score: number }> = [];
 
-	for (let i = 0; i < vectors.length; i++) {
-		const score = cosineSimilarity(queryVector, vectors[i]);
+	for (let i = 0; i < vectorCount; i++) {
+		const score = cosineSimilarity(queryVector, matrix.subarray(i * dim, (i + 1) * dim));
 
 		if (heap.length < k) {
 			heap.push({ index: i, score });
@@ -115,10 +123,10 @@ function topKSimilar(
 if (parentPort) {
 	parentPort.on('message', (message: WorkerMessage) => {
 		try {
-			const { queryVector, vectors, k, taskId } = message;
+			const { queryVector, matrix, vectorCount, k, taskId } = message;
 
 			// Perform computation
-			const result = topKSimilar(queryVector, vectors, k);
+			const result = topKSimilar(queryVector, matrix, vectorCount, k);
 
 			// Send result back
 			const response: WorkerResult = {
