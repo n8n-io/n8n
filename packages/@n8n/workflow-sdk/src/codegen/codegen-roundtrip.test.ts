@@ -17,51 +17,6 @@ import {
 	isPlaceholderValue,
 } from '../workflow-builder/string-utils';
 
-/** Workflow IDs where deep connection comparison is skipped (known codegen/parser gaps).
- * Remaining patterns: merge VarRef leaks in SIB/composite downstream chains,
- * multi-trigger fan-out ordering, and missing connections in complex convergence. */
-// prettier-ignore
-const SKIP_DEEP_CONNECTION_CHECK = new Set<string>([
-	'1',
-	'2',
-	'2747',
-	'2749',
-	'3161',
-	'3585',
-	'3683',
-	'3762',
-	'3820',
-	'4223',
-	'4557',
-	'4589',
-	'4627',
-	'4637',
-	'5013',
-	'5081',
-	'5160',
-	'5370',
-	'5383',
-	'5400',
-	'5449',
-	'5611',
-	'5750',
-	'5887',
-	'5988',
-	'6278',
-	'6518',
-	'6783',
-	'7168',
-	'9192',
-	'9780',
-	'10132',
-	'10256',
-	'10406',
-	'10749',
-	'11605',
-	'12447',
-	'13080',
-]);
-
 interface ExpectedWarning {
 	code: string;
 	nodeName?: string;
@@ -2505,9 +2460,74 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 								slot.sort((a: unknown, b: unknown) => {
 									const aNode = (a as { node?: string }).node ?? '';
 									const bNode = (b as { node?: string }).node ?? '';
-									return aNode.localeCompare(bNode);
+									const cmp = aNode.localeCompare(bNode);
+									if (cmp !== 0) return cmp;
+									const aIndex = (a as { index?: number }).index ?? 0;
+									const bIndex = (b as { index?: number }).index ?? 0;
+									return aIndex - bIndex;
 								});
 							}
+						}
+					}
+				}
+			};
+
+			// Normalize main[errorIndex] connections into error[0] connections.
+			// Many original workflows store error outputs under main at the error index;
+			// the builder now natively produces error[0]. Convert the original to match.
+			// Uses the same error output index logic as the semantic registry.
+			const getErrorOutputIndex = (type: string, params?: Record<string, unknown>): number => {
+				// Must match the logic in semantic-registry.ts getErrorOutputIndex
+				switch (type) {
+					case 'n8n-nodes-base.if':
+						return 2; // outputs: ['trueBranch', 'falseBranch']
+					case 'n8n-nodes-base.switch': {
+						const rules = params?.rules as Record<string, unknown> | undefined;
+						const rulesArray = (rules?.rules ?? rules?.values) as unknown[] | undefined;
+						const numCases = Array.isArray(rulesArray) ? rulesArray.length : 4;
+						return numCases + 1; // cases + fallback
+					}
+					case 'n8n-nodes-base.merge':
+						return 1; // outputs: ['output']
+					case 'n8n-nodes-base.splitInBatches':
+						return 2; // outputs: ['done', 'loop']
+					default:
+						return 1; // regular nodes: error at index 1
+				}
+			};
+
+			const normalizeMainErrorToErrorConnections = (
+				connections: Record<string, Record<string, unknown[][]>>,
+				nodes: Array<{
+					name?: string;
+					type: string;
+					parameters?: Record<string, unknown>;
+					onError?: string;
+				}>,
+			): void => {
+				const nodeMap = new Map<
+					string,
+					{ type: string; parameters?: Record<string, unknown>; onError?: string }
+				>();
+				for (const n of nodes) {
+					if (n.name) nodeMap.set(n.name, n);
+				}
+
+				for (const [nodeName, nodeConns] of Object.entries(connections)) {
+					const node = nodeMap.get(nodeName);
+					if (!node || node.onError !== 'continueErrorOutput') continue;
+					if (!nodeConns.main || !Array.isArray(nodeConns.main)) continue;
+					// Already has error connections — skip
+					if (nodeConns.error) continue;
+
+					const errorOutputIndex = getErrorOutputIndex(node.type, node.parameters);
+
+					// Extract main[errorOutputIndex] → error[0]
+					if (errorOutputIndex < nodeConns.main.length) {
+						const errorTargets = nodeConns.main[errorOutputIndex];
+						if (Array.isArray(errorTargets) && errorTargets.length > 0) {
+							nodeConns.error = [errorTargets];
+							nodeConns.main[errorOutputIndex] = [];
 						}
 					}
 				}
@@ -2588,19 +2608,21 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					// since the original JSON may have flat tuple connections
 					const normalizedOriginalConns = deepCopy(json.connections);
 					normalizeConnections(normalizedOriginalConns);
+					normalizeMainErrorToErrorConnections(
+						normalizedOriginalConns as Record<string, Record<string, unknown[][]>>,
+						json.nodes,
+					);
 					const filteredOriginal = filterEmptyConnections(normalizedOriginalConns, validNodeNames);
 					const filteredParsed = filterEmptyConnections(parsedJson.connections);
 
 					// Verify all connection source keys match
 					expect(Object.keys(filteredParsed).sort()).toEqual(Object.keys(filteredOriginal).sort());
 
-					// Deep connection comparison (skip known-broken workflows)
-					if (!SKIP_DEEP_CONNECTION_CHECK.has(id)) {
-						sortSlotConnections(filteredOriginal);
-						sortSlotConnections(filteredParsed);
-						for (const nodeName of Object.keys(filteredOriginal)) {
-							expect(filteredParsed[nodeName]).toEqual(filteredOriginal[nodeName]);
-						}
+					// Deep connection comparison
+					sortSlotConnections(filteredOriginal);
+					sortSlotConnections(filteredParsed);
+					for (const nodeName of Object.keys(filteredOriginal)) {
+						expect(filteredParsed[nodeName]).toEqual(filteredOriginal[nodeName]);
 					}
 				});
 			});
