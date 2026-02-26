@@ -27,6 +27,7 @@ on:
 jobs:
   push-to-channels:
     runs-on: ubuntu-latest
+    if: inputs.release_type != 'rc'
 
     steps:
       - name: Checkout
