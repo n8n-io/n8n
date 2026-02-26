@@ -148,6 +148,16 @@ describe('Test HTTP Request Node', () => {
 			deletedOn: '2023-02-09T05:37:31.720Z',
 		});
 
+		//DELETE with body
+		nock(baseUrl)
+			.delete('/todos/delete', {
+				ids: [1, 2, 3],
+			})
+			.reply(200, {
+				deleted: [1, 2, 3],
+				count: 3,
+			});
+
 		// Pagination - GET
 		nock(baseUrl)
 			.persist()
