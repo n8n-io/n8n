@@ -75,6 +75,18 @@ export const chatTriggerParamsShape = z.object({
 	agentName: z.string().min(1).optional(),
 	agentDescription: z.string().min(1).optional(),
 	agentIcon: IconOrEmojiSchema.optional(),
+	suggestedPrompts: z
+		.object({
+			prompts: z
+				.array(
+					z.object({
+						text: z.string().min(1),
+						icon: IconOrEmojiSchema.optional(),
+					}),
+				)
+				.optional(),
+		})
+		.optional(),
 	options: z
 		.object({
 			allowFileUploads: z.boolean().optional(),
@@ -83,6 +95,8 @@ export const chatTriggerParamsShape = z.object({
 		})
 		.optional(),
 });
+
+export type ChatTriggerParams = z.infer<typeof chatTriggerParamsShape>;
 
 export type PreparedChatWorkflow = {
 	workflowData: IWorkflowBase;
