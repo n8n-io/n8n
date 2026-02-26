@@ -129,6 +129,31 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 	}
 
 	/**
+	 * Find a connection by its providerKey if it is accessible from a project.
+	 * A connection is accessible if it's either:
+	 * - A global connection (no project access restrictions), OR
+	 * - Explicitly granted access to the specified project
+	 * Returns null if not found or not accessible.
+	 */
+	async findAccessibleByProviderKeyAndProjectId(
+		providerKey: string,
+		projectId: string,
+	): Promise<SecretsProviderConnection | null> {
+		return await this.manager
+			.createQueryBuilder(SecretsProviderConnection, 'connection')
+			.leftJoinAndSelect('connection.projectAccess', 'access')
+			.leftJoinAndSelect('access.project', 'project')
+			.where('connection.providerKey = :providerKey', { providerKey })
+			.andWhere(
+				new Brackets((qb) => {
+					qb.where('access.secretsProviderConnectionId IS NULL') // Global
+						.orWhere('access.projectId = :projectId', { projectId }); // Project-specific
+				}),
+			)
+			.getOne();
+	}
+
+	/**
 	 * Find a connection by its providerKey, but only if it is assigned to the specified project.
 	 * Returns null if not found.
 	 */
