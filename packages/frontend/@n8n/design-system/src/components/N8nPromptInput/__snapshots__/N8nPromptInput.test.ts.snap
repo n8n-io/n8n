@@ -58,8 +58,6 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
             class="button-inner"
           >
             
-            
-            <!-- Primary: existing compiled icon component -->
             <svg
               aria-hidden="true"
               class="n8n-icon"
@@ -79,7 +77,6 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
                 stroke-width="2"
               />
             </svg>
-            
             
             
             
@@ -151,8 +148,6 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
             class="button-inner"
           >
             
-            
-            <!-- Primary: existing compiled icon component -->
             <svg
               aria-hidden="true"
               class="n8n-icon"
@@ -173,7 +168,6 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
                 width="10"
               />
             </svg>
-            
             
             
             

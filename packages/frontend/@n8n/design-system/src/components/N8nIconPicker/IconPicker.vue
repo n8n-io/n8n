@@ -2,13 +2,13 @@
 // vueuse is a peer dependency
 // eslint-disable import-x/no-extraneous-dependencies
 import { onClickOutside } from '@vueuse/core';
-import DOMPurify from 'dompurify';
 import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, computed, watch, nextTick } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
+import { vSvgContent } from '../N8nIcon/svgContentDirective';
 import N8nIconButton from '../N8nIconButton';
 import N8nInput from '../N8nInput';
 import N8nTabs from '../N8nTabs';
@@ -82,8 +82,6 @@ async function loadData() {
 			import('./emojiData'),
 		]);
 
-		// Merge SVG bodies from @iconify/json with search metadata from our generated file.
-		// Sanitize SVG bodies to defend against supply-chain attacks on @iconify/json.
 		const meta = metaMod.lucideIcons;
 		const iconifyIcons: Record<string, { body: string }> =
 			iconifyMod.default?.icons ?? iconifyMod.icons;
@@ -91,8 +89,7 @@ async function loadData() {
 		for (const [name, m] of Object.entries(meta)) {
 			const body = iconifyIcons[name]?.body;
 			if (body) {
-				const sanitizedBody = DOMPurify.sanitize(body, { USE_PROFILES: { svg: true } });
-				merged[name] = { body: sanitizedBody, keywords: m.keywords, categories: m.categories };
+				merged[name] = { body, keywords: m.keywords, categories: m.categories };
 			}
 		}
 
@@ -317,8 +314,7 @@ function humanizeIconName(name: string): string {
 				{{ t('iconPicker.loading') }}
 			</div>
 
-			<!-- Icons tab -->
-			<!-- eslint-disable vue/no-v-html -- SVG bodies sanitized via DOMPurify at load time -->
+		<!-- Icons tab -->
 			<div v-else-if="selectedTab === 'icons' && dataLoaded" :class="$style.content">
 				<!-- Search active: flat filtered grid (no section headers) -->
 				<template v-if="isSearching">
@@ -339,7 +335,7 @@ function humanizeIconName(name: string): string {
 							:aria-label="humanizeIconName(name)"
 							role="button"
 							@click="selectIcon({ type: 'icon', value: name, color: selectedColor })"
-							v-html="icon.body"
+							v-svg-content="icon.body"
 						/>
 					</div>
 					<div v-else :class="$style.emptyState" data-test-id="icon-picker-no-results">
@@ -376,7 +372,7 @@ function humanizeIconName(name: string): string {
 									:aria-label="humanizeIconName(name)"
 									role="button"
 									@click="selectIcon({ type: 'icon', value: name, color: selectedColor })"
-									v-html="icon.body"
+									v-svg-content="icon.body"
 								/>
 							</div>
 						</div>

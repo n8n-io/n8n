@@ -103,7 +103,7 @@ async function main() {
 // Icons: ${entries.length} | Categories: ${sortedCategories.length}
 
 export interface LucideIcon {
-\t/** SVG innerHTML (path data) for a 24x24 viewBox — populated at runtime from @iconify/json */
+\t/** SVG body (path data) for a 24x24 viewBox — populated at runtime from @iconify/json */
 \tbody: string;
 \t/** Searchable keywords: icon name parts + Lucide tags */
 \tkeywords: string[];

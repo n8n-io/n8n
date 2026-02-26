@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import DOMPurify from 'dompurify';
 import { computed, ref, watch, useCssModule } from 'vue';
 
 import type { IconName } from './icons';
 import { deprecatedIconSet, updatedIconSet } from './icons';
+import { vSvgContent } from './svgContentDirective';
 import type { IconSize, IconColor } from '../../types/icon';
 
 interface IconProps {
@@ -88,7 +88,6 @@ const styles = computed(() => {
 	return stylesToApply;
 });
 
-// Resolved component from the icon registries
 const resolvedComponent = computed(
 	() =>
 		updatedIconSet[props.icon as keyof typeof updatedIconSet] ??
@@ -96,7 +95,6 @@ const resolvedComponent = computed(
 		null,
 );
 
-// Fallback: dynamically load Lucide icon SVG body from @iconify/json for icons not in the registry
 const fallbackBody = ref<string | null>(null);
 
 watch(
@@ -109,10 +107,7 @@ watch(
 		try {
 			const iconifyMod = await import('@iconify/json/json/lucide.json');
 			const icons: Record<string, { body: string }> = iconifyMod.default?.icons ?? iconifyMod.icons;
-			const rawBody = icons[iconName]?.body ?? null;
-			fallbackBody.value = rawBody
-				? DOMPurify.sanitize(rawBody, { USE_PROFILES: { svg: true } })
-				: null;
+			fallbackBody.value = icons[iconName]?.body ?? null;
 		} catch {
 			fallbackBody.value = null;
 		}
@@ -122,7 +117,6 @@ watch(
 </script>
 
 <template>
-	<!-- Primary: existing compiled icon component -->
 	<Component
 		:is="resolvedComponent"
 		v-if="resolvedComponent"
@@ -134,10 +128,7 @@ watch(
 		:width="size.width"
 		:data-icon="props.icon"
 		:style="styles"
-	/>
-	<!-- eslint-disable vue/no-v-html -- SVG body sanitized via DOMPurify -->
-	<!-- Fallback: raw SVG from Lucide data (lazy-loaded) -->
-	<svg
+	/><svg
 		v-else-if="fallbackBody"
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 0 24 24"
@@ -153,7 +144,7 @@ watch(
 		role="img"
 		:data-icon="props.icon"
 		:style="styles"
-		v-html="fallbackBody"
+		v-svg-content="fallbackBody"
 	/>
 </template>
 

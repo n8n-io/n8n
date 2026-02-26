@@ -3,7 +3,7 @@
 // Icons: 1626 | Categories: 43
 
 export interface LucideIcon {
-	/** SVG innerHTML (path data) for a 24x24 viewBox — populated at runtime from @iconify/json */
+	/** SVG body (path data) for a 24x24 viewBox — populated at runtime from @iconify/json */
 	body: string;
 	/** Searchable keywords: icon name parts + Lucide tags */
 	keywords: string[];
