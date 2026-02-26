@@ -36,7 +36,9 @@ jobs:
   promote-previous-beta-to-stable:
     name: Promote previous beta to stable
     uses: ./.github/workflows/release-push-to-channel.yml
-    if: inputs.bump == 'minor'
+    if: |
+      inputs.release_type != 'rc' &&
+      inputs.bump == 'minor'
     with:
       version: ${{ inputs.new_stable_version }}
       release-channel: stable
