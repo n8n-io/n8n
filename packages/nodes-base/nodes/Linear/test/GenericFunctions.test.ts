@@ -86,6 +86,56 @@ describe('Linear -> GenericFunctions', () => {
 				}),
 			);
 		});
+
+		it('should provide clear error message mentioning Linear when permissions are insufficient', async () => {
+			const errorResponse = {
+				errors: [
+					{
+						message: 'Invalid role: admin required',
+						extensions: {
+							userPresentableMessage: 'You need to have the "Admin" scope to create webhooks.',
+						},
+					},
+				],
+			};
+
+			mockHttpRequestWithAuthentication.mockResolvedValue(errorResponse);
+
+			try {
+				await linearApiRequest.call(mockExecuteFunctions, { query: '{ viewer { id } }' });
+				fail('Expected error to be thrown');
+			} catch (error) {
+				expect(error).toBeInstanceOf(NodeApiError);
+				// The error message should mention Linear to avoid confusion with n8n access control
+				expect(error.message.toLowerCase()).toContain('linear');
+			}
+		});
+
+		it('should include userPresentableMessage in error when Linear API returns permission error', async () => {
+			const errorResponse = {
+				errors: [
+					{
+						message: 'Invalid role: admin required',
+						extensions: {
+							userPresentableMessage: 'You need to have the "Admin" scope to create webhooks.',
+						},
+					},
+				],
+			};
+
+			mockHttpRequestWithAuthentication.mockResolvedValue(errorResponse);
+
+			try {
+				await linearApiRequest.call(mockExecuteFunctions, { query: '{ viewer { id } }' });
+				fail('Expected error to be thrown');
+			} catch (error) {
+				expect(error).toBeInstanceOf(NodeApiError);
+				// The error should include the userPresentableMessage to provide helpful context
+				expect(error.description).toBe(
+					'You need to have the "Admin" scope to create webhooks.',
+				);
+			}
+		});
 	});
 
 	describe('capitalizeFirstLetter', () => {
