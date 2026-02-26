@@ -420,6 +420,7 @@ export class AgentsService {
 			byokApiKey?: string;
 			callerId?: string;
 			workflowCredentials?: Record<string, Record<string, string>>;
+			isExternalCall?: boolean;
 		},
 	): Promise<AgentTaskResult> {
 		const {
@@ -429,6 +430,7 @@ export class AgentsService {
 			byokApiKey,
 			callerId,
 			workflowCredentials,
+			isExternalCall,
 		} = options ?? {};
 
 		const onStep: StepCallback | undefined = (event) => {
@@ -460,6 +462,7 @@ export class AgentsService {
 				byokApiKey,
 				callerId,
 				workflowCredentials,
+				isExternalCall,
 			);
 		} catch (error) {
 			this.broadcastAgentDone(agentId, {
@@ -484,6 +487,7 @@ export class AgentsService {
 		byokApiKey: string | undefined,
 		callerId: string | undefined,
 		workflowCredentials: Record<string, Record<string, string>> | undefined,
+		isExternalCall: boolean | undefined,
 	): Promise<AgentTaskResult> {
 		const agentUser = await this.userRepository.findOne({
 			where: { id: agentId, type: 'agent' },
@@ -536,20 +540,32 @@ export class AgentsService {
 		const otherAgents: Array<{ id: string; firstName: string; description: string }> = [];
 		const externalAgentNames = new Set(externalAgents?.map((a) => a.name) ?? []);
 
-		if (budget.remaining > 0) {
+		// Delegation visibility depends on call origin and executing agent's access level:
+		//   A2A external call  → no delegation (skip agent discovery entirely)
+		//   external agent     → sees external targets only
+		//   internal agent     → sees external + internal targets
+		//   closed agent       → sees external + internal targets (closed always hidden)
+		const myAccessLevel = agentUser.agentAccessLevel ?? 'external';
+
+		if (budget.remaining > 0 && !isExternalCall) {
 			const allAgents = await this.userRepository.find({ where: { type: 'agent' } });
 			for (const a of allAgents) {
-				if (
-					a.id !== agentId &&
-					a.agentAccessLevel !== 'closed' &&
-					!externalAgentNames.has(a.firstName)
-				) {
-					otherAgents.push({
-						id: a.id,
-						firstName: a.firstName,
-						description: a.description ?? '',
-					});
-				}
+				if (a.id === agentId) continue;
+				if (externalAgentNames.has(a.firstName)) continue;
+
+				const targetLevel = a.agentAccessLevel ?? 'external';
+
+				// Closed agents are never visible for delegation
+				if (targetLevel === 'closed') continue;
+
+				// External agents can only see other external agents
+				if (myAccessLevel === 'external' && targetLevel !== 'external') continue;
+
+				otherAgents.push({
+					id: a.id,
+					firstName: a.firstName,
+					description: a.description ?? '',
+				});
 			}
 		}
 

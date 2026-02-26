@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { defineStore } from 'pinia';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -12,6 +12,7 @@ import {
 import type {
 	AgentAvatar,
 	AgentNode,
+	ExternalAgentNode,
 	UserResponse,
 	ZoneLayout,
 	ConnectionLine,
@@ -38,6 +39,8 @@ const ZONE_PAD = 16;
 const ZONE_HEADER_H = 48;
 
 export const UNASSIGNED_ZONE_ID = '__unassigned__';
+export const EXTERNAL_ZONE_ID = '__external__';
+export const EXTERNAL_ZONE_COLOR = '#8b5cf6';
 
 export const ZONE_COLORS = [
 	'var(--color--primary)',
@@ -50,10 +53,13 @@ export const ZONE_COLORS = [
 
 export const useAgentsStore = defineStore('agents', () => {
 	const agents = ref<AgentNode[]>([]);
+	const externalAgents = ref<ExternalAgentNode[]>([]);
 	const zones = ref<ZoneLayout[]>([]);
 	const connections = ref<ConnectionLine[]>([]);
 	const selectedAgentId = ref<string | null>(null);
 	const rootStore = useRootStore();
+
+	const allAgents = computed<AgentNode[]>(() => [...agents.value, ...externalAgents.value]);
 
 	const fetchAgents = async () => {
 		const response = await makeRestApiRequest<{ items: UserResponse[] }>(
@@ -88,7 +94,8 @@ export const useAgentsStore = defineStore('agents', () => {
 	};
 
 	const updatePosition = (id: string, position: { x: number; y: number }) => {
-		const agent = agents.value.find((a) => a.id === id);
+		const agent =
+			agents.value.find((a) => a.id === id) ?? externalAgents.value.find((a) => a.id === id);
 		if (agent) {
 			agent.position = position;
 		}
@@ -104,7 +111,8 @@ export const useAgentsStore = defineStore('agents', () => {
 	}
 
 	/**
-	 * Layout all zones: unassigned zone (full width, top), then project zones in a 2-col grid below.
+	 * Layout all zones: unassigned zone (full width, top), then project zones in a 2-col grid,
+	 * then external zone (full width, bottom — only when external agents exist).
 	 * Each zone's height is driven by the number of agents inside it.
 	 */
 	function computeAllZoneRects(canvasWidth: number, agentCountByZone: Map<string, number>): void {
@@ -125,7 +133,9 @@ export const useAgentsStore = defineStore('agents', () => {
 		}
 
 		// Project zones — 2-col grid
-		const projectZones = zones.value.filter((z) => z.projectId !== UNASSIGNED_ZONE_ID);
+		const projectZones = zones.value.filter(
+			(z) => z.projectId !== UNASSIGNED_ZONE_ID && z.projectId !== EXTERNAL_ZONE_ID,
+		);
 		const colWidth = (fullWidth - ZONE_GAP * (ZONE_COLS - 1)) / ZONE_COLS;
 
 		// Group into rows of ZONE_COLS
@@ -148,6 +158,21 @@ export const useAgentsStore = defineStore('agents', () => {
 				};
 			}
 			yOffset += rowHeight + ZONE_GAP;
+		}
+
+		// External zone — full width at bottom (only when external agents exist)
+		const externalCount = agentCountByZone.get(EXTERNAL_ZONE_ID) ?? 0;
+		const externalIdx = zones.value.findIndex((z) => z.projectId === EXTERNAL_ZONE_ID);
+		if (externalIdx >= 0 && externalCount > 0) {
+			zones.value[externalIdx].rect = {
+				x: CANVAS_PADDING,
+				y: yOffset,
+				width: fullWidth,
+				height: zoneHeightForAgents(externalCount, fullWidth),
+			};
+		} else if (externalIdx >= 0) {
+			// Hide the zone when empty (zero-size rect)
+			zones.value[externalIdx].rect = { x: 0, y: 0, width: 0, height: 0 };
 		}
 	}
 
@@ -195,6 +220,16 @@ export const useAgentsStore = defineStore('agents', () => {
 			});
 		}
 
+		// External zone — always present, hidden when empty (colorIndex -2 signals external)
+		zoneLayouts.push({
+			projectId: EXTERNAL_ZONE_ID,
+			name: 'External Agents',
+			icon: null,
+			memberCount: externalAgents.value.length,
+			rect: { x: 0, y: 0, width: 0, height: 0 },
+			colorIndex: -2,
+		});
+
 		zones.value = zoneLayouts;
 		layoutAndPosition(canvasWidth);
 	};
@@ -211,6 +246,8 @@ export const useAgentsStore = defineStore('agents', () => {
 			const key = agent.zoneId ?? UNASSIGNED_ZONE_ID;
 			countByZone.set(key, (countByZone.get(key) ?? 0) + 1);
 		}
+		// External agents always go to the external zone
+		countByZone.set(EXTERNAL_ZONE_ID, externalAgents.value.length);
 
 		// Update unassigned zone member count
 		const unassigned = zones.value.find((z) => z.projectId === UNASSIGNED_ZONE_ID);
@@ -218,10 +255,16 @@ export const useAgentsStore = defineStore('agents', () => {
 			unassigned.memberCount = countByZone.get(UNASSIGNED_ZONE_ID) ?? 0;
 		}
 
+		// Update external zone member count
+		const externalZone = zones.value.find((z) => z.projectId === EXTERNAL_ZONE_ID);
+		if (externalZone) {
+			externalZone.memberCount = externalAgents.value.length;
+		}
+
 		// Compute zone rects based on content
 		computeAllZoneRects(canvasWidth, countByZone);
 
-		// Position agents in a grid within their zone
+		// Position all agents (local + external) in a grid within their zone
 		const agentsByZone = new Map<string, AgentNode[]>();
 		for (const agent of agents.value) {
 			const key = agent.zoneId ?? UNASSIGNED_ZONE_ID;
@@ -229,9 +272,14 @@ export const useAgentsStore = defineStore('agents', () => {
 			list.push(agent);
 			agentsByZone.set(key, list);
 		}
+		// External agents in external zone
+		if (externalAgents.value.length > 0) {
+			agentsByZone.set(EXTERNAL_ZONE_ID, [...externalAgents.value]);
+		}
 
 		for (const zone of zones.value) {
 			const zoneAgents = agentsByZone.get(zone.projectId) ?? [];
+			if (zone.rect.width === 0) continue; // hidden zone
 			const innerWidth = zone.rect.width - ZONE_PAD * 2;
 			const cols = Math.max(1, Math.floor((innerWidth + CARD_GAP_X) / (CARD_W + CARD_GAP_X)));
 			const startX = zone.rect.x + ZONE_PAD;
@@ -383,16 +431,94 @@ export const useAgentsStore = defineStore('agents', () => {
 	};
 
 	const setAgentStatus = (id: string, status: 'idle' | 'active' | 'busy') => {
-		const agent = agents.value.find((a) => a.id === id);
+		const agent =
+			agents.value.find((a) => a.id === id) ?? externalAgents.value.find((a) => a.id === id);
 		if (agent) {
 			agent.status = status;
 		}
 	};
 
 	const setAgentStatusByName = (firstName: string, status: 'idle' | 'active' | 'busy') => {
-		const agent = agents.value.find((a) => a.firstName.toLowerCase() === firstName.toLowerCase());
+		const agent =
+			agents.value.find((a) => a.firstName.toLowerCase() === firstName.toLowerCase()) ??
+			externalAgents.value.find((a) => a.firstName.toLowerCase() === firstName.toLowerCase());
 		if (agent) {
 			agent.status = status;
+		}
+	};
+
+	interface RemoteAgentCard {
+		name?: string;
+		description?: string;
+		provider?: { name?: string; description?: string };
+		url?: string;
+		interfaces?: Array<{ url?: string }>;
+		skills?: Array<{ id: string; name: string; description?: string }>;
+		capabilities?: { streaming?: boolean; multiTurn?: boolean };
+		requiredCredentials?: Array<{ type: string; description: string }>;
+	}
+
+	const registerExternalAgent = async (url: string, apiKey: string) => {
+		const card = await makeRestApiRequest<RemoteAgentCard>(
+			rootStore.restApiContext,
+			'POST',
+			'/agents/discover',
+			{ url, apiKey },
+		);
+
+		// Extract agent ID from the card's interface URL (e.g. /agents/<id>/task)
+		const interfaceUrl = card.interfaces?.[0]?.url ?? '';
+		const remoteIdMatch = /\/agents\/([^/]+)/.exec(interfaceUrl);
+		const remoteAgentId = remoteIdMatch?.[1] ?? 'unknown';
+		const localId = `ext-${remoteAgentId}`;
+
+		// Don't add duplicates
+		if (externalAgents.value.some((a) => a.id === localId)) {
+			return externalAgents.value.find((a) => a.id === localId)!;
+		}
+
+		const name = card.name ?? 'Remote Agent';
+		const description = card.provider?.description ?? card.description ?? '';
+		const skills = (card.skills ?? []).map((s) => ({
+			name: s.name,
+			description: s.description,
+		}));
+
+		const initials = name.slice(0, 2).toUpperCase();
+		const newAgent: ExternalAgentNode = {
+			id: localId,
+			firstName: name,
+			lastName: '',
+			email: '',
+			role: description || 'External Agent',
+			avatar: { type: 'initials', value: initials },
+			status: 'idle',
+			position: { x: 0, y: 0 },
+			zoneId: EXTERNAL_ZONE_ID,
+			workflowCount: 0,
+			tasksCompleted: 0,
+			lastActive: 'never',
+			resourceUsage: 0,
+			external: true,
+			remoteUrl: url.replace(/\/+$/, ''),
+			remoteAgentId,
+			apiKey,
+			skills,
+			remoteCapabilities: {
+				streaming: card.capabilities?.streaming ?? false,
+				multiTurn: card.capabilities?.multiTurn ?? false,
+			},
+			requiredCredentials: card.requiredCredentials ?? [],
+		};
+
+		externalAgents.value.push(newAgent);
+		return newAgent;
+	};
+
+	const removeExternalAgent = (id: string) => {
+		const idx = externalAgents.value.findIndex((a) => a.id === id);
+		if (idx >= 0) {
+			externalAgents.value.splice(idx, 1);
 		}
 	};
 
@@ -421,6 +547,9 @@ export const useAgentsStore = defineStore('agents', () => {
 				for (const agent of agents.value) {
 					agent.status = 'idle';
 				}
+				for (const agent of externalAgents.value) {
+					agent.status = 'idle';
+				}
 			}
 		});
 	};
@@ -436,6 +565,8 @@ export const useAgentsStore = defineStore('agents', () => {
 
 	return {
 		agents,
+		externalAgents,
+		allAgents,
 		zones,
 		connections,
 		selectedAgentId,
@@ -451,6 +582,8 @@ export const useAgentsStore = defineStore('agents', () => {
 		removeConnection,
 		createAgent,
 		updateAgent,
+		registerExternalAgent,
+		removeExternalAgent,
 		setAgentStatus,
 		setAgentStatusByName,
 		initializePushListener,

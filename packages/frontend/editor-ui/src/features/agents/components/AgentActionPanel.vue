@@ -103,6 +103,7 @@ function stepStatusIcon(status: string) {
 				<div v-if="panelStore.selectedAgent" :class="$style.avatarWrapper">
 					<AgentAvatarComp :avatar="panelStore.selectedAgent.avatar" size="large" />
 					<button
+						v-if="!panelStore.isExternalPanel"
 						:class="$style.avatarEditBtn"
 						data-testid="agent-edit-avatar"
 						aria-label="Edit avatar"
@@ -146,6 +147,7 @@ function stepStatusIcon(status: string) {
 							{{ panelStore.selectedAgent?.firstName }}
 						</N8nHeading>
 						<button
+							v-if="!panelStore.isExternalPanel"
 							:class="$style.inlineEditBtn"
 							data-testid="agent-edit-name"
 							aria-label="Edit name"
@@ -191,7 +193,221 @@ function stepStatusIcon(status: string) {
 			<N8nText color="text-light" size="small">Loading capabilities...</N8nText>
 		</div>
 
-		<!-- Content -->
+		<!-- External Agent Content -->
+		<div
+			v-else-if="panelStore.isExternalPanel && panelStore.externalAgentData"
+			:class="$style.content"
+		>
+			<!-- Remote Instance -->
+			<section :class="$style.section">
+				<N8nText tag="h4" size="small" bold :class="$style.sectionTitle">Remote Instance</N8nText>
+				<div :class="$style.listItem">
+					<N8nIcon icon="globe" :class="$style.itemIcon" size="small" />
+					<span :class="$style.itemName">{{ panelStore.externalAgentData.remoteUrl }}</span>
+				</div>
+			</section>
+
+			<!-- Skills (workflows on the remote instance) -->
+			<section :class="$style.section">
+				<N8nText tag="h4" size="small" bold :class="$style.sectionTitle">Skills</N8nText>
+				<div v-if="panelStore.externalAgentData.skills.length" :class="$style.list">
+					<div
+						v-for="skill in panelStore.externalAgentData.skills"
+						:key="skill.name"
+						:class="$style.listItem"
+					>
+						<N8nIcon icon="workflow" :class="$style.itemIcon" size="small" />
+						<span :class="$style.itemName">{{ skill.name }}</span>
+						<N8nText v-if="skill.description" color="text-light" size="xsmall">
+							{{ skill.description }}
+						</N8nText>
+					</div>
+				</div>
+				<N8nText v-else color="text-light" size="small">No skills advertised</N8nText>
+			</section>
+
+			<!-- Required Credentials -->
+			<section :class="$style.section">
+				<N8nText tag="h4" size="small" bold :class="$style.sectionTitle"
+					>Required Credentials</N8nText
+				>
+				<div v-if="panelStore.externalAgentData.requiredCredentials.length" :class="$style.list">
+					<div
+						v-for="cred in panelStore.externalAgentData.requiredCredentials"
+						:key="cred.type"
+						:class="$style.listItem"
+					>
+						<N8nIcon icon="key-round" :class="$style.itemIcon" size="small" />
+						<span :class="$style.itemName">{{ cred.description }}</span>
+						<N8nText color="text-light" size="xsmall">{{ cred.type }}</N8nText>
+					</div>
+				</div>
+				<N8nText v-else color="text-light" size="small">No credentials required</N8nText>
+			</section>
+
+			<!-- Capabilities -->
+			<section :class="$style.section">
+				<N8nText tag="h4" size="small" bold :class="$style.sectionTitle">Capabilities</N8nText>
+				<div :class="$style.list">
+					<div :class="$style.listItem">
+						<N8nBadge
+							:theme="
+								panelStore.externalAgentData.remoteCapabilities.streaming ? 'success' : 'default'
+							"
+							size="small"
+						>
+							Streaming:
+							{{ panelStore.externalAgentData.remoteCapabilities.streaming ? 'Yes' : 'No' }}
+						</N8nBadge>
+					</div>
+					<div :class="$style.listItem">
+						<N8nBadge
+							:theme="
+								panelStore.externalAgentData.remoteCapabilities.multiTurn ? 'success' : 'default'
+							"
+							size="small"
+						>
+							Multi-turn:
+							{{ panelStore.externalAgentData.remoteCapabilities.multiTurn ? 'Yes' : 'No' }}
+						</N8nBadge>
+					</div>
+				</div>
+			</section>
+
+			<!-- Task Input -->
+			<section :class="$style.section">
+				<N8nText tag="h4" size="small" bold :class="$style.sectionTitle">Run a Task</N8nText>
+				<N8nInput
+					v-model="taskPrompt"
+					type="textarea"
+					:rows="3"
+					placeholder="Describe what this agent should do..."
+					data-testid="agent-task-input"
+					:disabled="panelStore.isSubmitting"
+				/>
+				<N8nButton
+					:label="panelStore.isSubmitting ? 'Running...' : 'Run Task'"
+					:disabled="!taskPrompt.trim() || panelStore.isSubmitting"
+					:loading="panelStore.isSubmitting"
+					size="medium"
+					data-testid="agent-run-task"
+					:class="$style.runBtn"
+					@click="onRunTask"
+				/>
+			</section>
+
+			<!-- Live Streaming Steps (reused for external) -->
+			<section
+				v-if="
+					panelStore.streamingSteps.length || panelStore.isStreaming || panelStore.streamingSummary
+				"
+				:class="$style.section"
+			>
+				<N8nText
+					v-if="panelStore.streamingSteps.length || panelStore.isStreaming"
+					tag="h4"
+					size="small"
+					bold
+					:class="$style.sectionTitle"
+					>Live Progress</N8nText
+				>
+				<div
+					v-if="panelStore.streamingSteps.length || panelStore.isStreaming"
+					:class="$style.streamSteps"
+				>
+					<div
+						v-for="(step, i) in panelStore.streamingSteps"
+						:key="i"
+						:class="$style.streamStep"
+						:style="{ animationDelay: `${i * 0.1}s` }"
+					>
+						<div :class="$style.streamStepHeader">
+							<N8nIcon :icon="stepIcon(step)" :class="$style.streamStepIcon" size="small" />
+							<span :class="$style.streamStepAction">{{ step.action }}</span>
+							<span v-if="step.workflowName" :class="$style.streamStepWorkflow">
+								{{ step.workflowName }}
+							</span>
+							<span v-if="step.toAgent" :class="$style.streamStepAgent">
+								&rarr; {{ step.toAgent }}
+							</span>
+							<span :class="$style.streamStepStatus">
+								<N8nIcon
+									:icon="stepStatusIcon(step.status)"
+									:spin="step.status === 'running'"
+									size="xsmall"
+									:class="{
+										[$style.statusSuccess]: step.status === 'success',
+										[$style.statusFailed]: step.status === 'failed' || step.status === 'error',
+										[$style.statusRunning]: step.status === 'running',
+									}"
+								/>
+							</span>
+						</div>
+						<div v-if="step.result" :class="$style.streamStepResult">{{ step.result }}</div>
+						<div v-if="step.error" :class="$style.streamStepError">{{ step.error }}</div>
+					</div>
+
+					<div v-if="panelStore.isStreaming" :class="$style.thinking">
+						<span :class="$style.thinkingDot" />
+						<span :class="[$style.thinkingDot, $style.thinkingDot2]" />
+						<span :class="[$style.thinkingDot, $style.thinkingDot3]" />
+					</div>
+				</div>
+
+				<div v-if="panelStore.streamingSummary" :class="$style.summaryCard">
+					<N8nIcon icon="check" :class="$style.summaryIcon" size="small" />
+					<span>{{ panelStore.streamingSummary }}</span>
+				</div>
+			</section>
+
+			<!-- Fallback: Static Task Result (non-streaming response) -->
+			<section
+				v-if="panelStore.taskResult && !panelStore.streamingSteps.length"
+				:class="$style.section"
+			>
+				<N8nText tag="h4" size="small" bold :class="$style.sectionTitle">Result</N8nText>
+				<div
+					:class="[
+						$style.resultBox,
+						panelStore.taskResult.status === 'error' ? $style.resultError : $style.resultSuccess,
+					]"
+				>
+					<div v-if="panelStore.taskResult.summary" :class="$style.resultSummary">
+						{{ panelStore.taskResult.summary }}
+					</div>
+					<div v-if="panelStore.taskResult.message" :class="$style.resultMessage">
+						{{ panelStore.taskResult.message }}
+					</div>
+				</div>
+			</section>
+
+			<!-- Raw SSE Events Log -->
+			<section v-if="panelStore.rawSseEvents.length" :class="$style.section">
+				<button :class="$style.collapseToggle" @click="sseLogOpen = !sseLogOpen">
+					<N8nIcon :icon="sseLogOpen ? 'chevron-down' : 'chevron-right'" size="xsmall" />
+					<N8nText tag="h4" size="small" bold :class="$style.sectionTitle">
+						Raw SSE Events
+					</N8nText>
+					<N8nBadge theme="default" size="small">{{ panelStore.rawSseEvents.length }}</N8nBadge>
+				</button>
+				<div v-if="sseLogOpen" :class="$style.sseLog">
+					<div v-for="(evt, i) in panelStore.rawSseEvents" :key="i" :class="$style.sseEvent">
+						<span
+							:class="[
+								$style.sseEventType,
+								evt.type === 'step' ? $style.sseStep : '',
+								evt.type === 'observation' ? $style.sseObservation : '',
+								evt.type === 'done' ? $style.sseDone : '',
+							]"
+							>{{ evt.type }}</span
+						>
+						<span :class="$style.sseEventData">{{ JSON.stringify(evt.data) }}</span>
+					</div>
+				</div>
+			</section>
+		</div>
+
+		<!-- Local Agent Content -->
 		<div v-else :class="$style.content">
 			<!-- Workflows -->
 			<section :class="$style.section">

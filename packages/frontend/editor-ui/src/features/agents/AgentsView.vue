@@ -11,7 +11,14 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import CopyInput from '@/app/components/CopyInput.vue';
-import { useAgentsStore, ZONE_COLORS, UNASSIGNED_ZONE_ID } from './agents.store';
+import { isExternalAgent } from './agents.types';
+import {
+	useAgentsStore,
+	ZONE_COLORS,
+	UNASSIGNED_ZONE_ID,
+	EXTERNAL_ZONE_ID,
+	EXTERNAL_ZONE_COLOR,
+} from './agents.store';
 import { useAgentPanelStore } from './agentPanel.store';
 import AgentCard from './AgentCard.vue';
 import PermissionZone from './components/PermissionZone.vue';
@@ -31,6 +38,13 @@ const newAgentName = ref('');
 const newAgentAvatar = ref('');
 const isCreating = ref(false);
 const createdApiKey = ref<string | null>(null);
+
+// External agent registration state
+const dialogTab = ref<'create' | 'external'>('create');
+const externalUrl = ref('');
+const externalApiKey = ref('');
+const isDiscovering = ref(false);
+const discoverError = ref<string | null>(null);
 
 async function onCreateAgent() {
 	const name = newAgentName.value.trim();
@@ -58,6 +72,32 @@ async function onCreateAgent() {
 	}
 }
 
+async function onRegisterExternal() {
+	const url = externalUrl.value.trim();
+	const apiKey = externalApiKey.value.trim();
+	if (!url || !apiKey) return;
+
+	isDiscovering.value = true;
+	discoverError.value = null;
+	try {
+		await agentsStore.registerExternalAgent(url, apiKey);
+
+		// Re-layout to position in external zone
+		if (canvasRef.value) {
+			agentsStore.layoutAndPosition(canvasRef.value.clientWidth);
+		}
+
+		externalUrl.value = '';
+		externalApiKey.value = '';
+		showAddDialog.value = false;
+	} catch (error) {
+		discoverError.value =
+			error instanceof Error ? error.message : 'Failed to discover remote agent';
+	} finally {
+		isDiscovering.value = false;
+	}
+}
+
 function onDismissApiKey() {
 	createdApiKey.value = null;
 	newAgentName.value = '';
@@ -70,6 +110,10 @@ watch(showAddDialog, (open) => {
 		createdApiKey.value = null;
 		newAgentName.value = '';
 		newAgentAvatar.value = '';
+		dialogTab.value = 'create';
+		externalUrl.value = '';
+		externalApiKey.value = '';
+		discoverError.value = null;
 	}
 });
 
@@ -108,15 +152,16 @@ onBeforeUnmount(() => {
 });
 
 function getZoneColor(agentId: string): string | null {
-	const agent = agentsStore.agents.find((a) => a.id === agentId);
+	const agent = agentsStore.allAgents.find((a) => a.id === agentId);
 	if (!agent?.zoneId) return null;
+	if (agent.zoneId === EXTERNAL_ZONE_ID) return EXTERNAL_ZONE_COLOR;
 	const zone = agentsStore.zones.find((z) => z.projectId === agent.zoneId);
 	if (!zone) return null;
 	return ZONE_COLORS[zone.colorIndex % ZONE_COLORS.length];
 }
 
 function onDragStart(agentId: string, event: PointerEvent) {
-	const agent = agentsStore.agents.find((a) => a.id === agentId);
+	const agent = agentsStore.allAgents.find((a) => a.id === agentId);
 	if (!agent || !canvasRef.value) return;
 
 	const canvasRect = canvasRef.value.getBoundingClientRect();
@@ -183,8 +228,16 @@ async function onPointerUp() {
 		return;
 	}
 
-	const agent = agentsStore.agents.find((a) => a.id === agentId);
+	const agent = agentsStore.allAgents.find((a) => a.id === agentId);
 	if (!agent) return;
+
+	// External agents can't be reassigned to zones
+	if (isExternalAgent(agent)) {
+		if (canvasRef.value) {
+			agentsStore.layoutAndPosition(canvasRef.value.clientWidth);
+		}
+		return;
+	}
 
 	const centerX = agent.position.x + CARD_WIDTH / 2;
 	const centerY = agent.position.y + CARD_HEIGHT / 2;
@@ -216,7 +269,7 @@ function onRemoveConnection(lineId: string) {
 	<main :class="$style.container">
 		<div :class="$style.header">
 			<N8nHeading bold tag="h2" size="xlarge">Agents</N8nHeading>
-			<N8nText color="text-light" size="small"> {{ agentsStore.agents.length }} agents </N8nText>
+			<N8nText color="text-light" size="small"> {{ agentsStore.allAgents.length }} agents </N8nText>
 			<N8nButton
 				label="+ Add Agent"
 				size="small"
@@ -258,41 +311,102 @@ function onRemoveConnection(lineId: string) {
 				</N8nDialogFooter>
 			</template>
 
-			<!-- Creation form -->
+			<!-- Tab toggle: Create Local / Register External -->
 			<template v-else>
-				<div :class="$style.dialogField">
-					<N8nText tag="label" size="small" bold>Name</N8nText>
-					<N8nInput
-						v-model="newAgentName"
-						placeholder="e.g. Docs Curator"
-						:maxlength="32"
-						data-testid="add-agent-name"
-						@keydown.enter="onCreateAgent"
-					/>
+				<div :class="$style.tabRow">
+					<button
+						:class="[$style.tab, { [$style.tabActive]: dialogTab === 'create' }]"
+						data-testid="add-agent-tab-create"
+						@click="dialogTab = 'create'"
+					>
+						Create Local
+					</button>
+					<button
+						:class="[$style.tab, { [$style.tabActive]: dialogTab === 'external' }]"
+						data-testid="add-agent-tab-external"
+						@click="dialogTab = 'external'"
+					>
+						Register External
+					</button>
 				</div>
-				<div :class="$style.dialogField">
-					<N8nText tag="label" size="small" bold>Avatar (emoji or URL, optional)</N8nText>
-					<N8nInput
-						v-model="newAgentAvatar"
-						placeholder="🤖 or https://..."
-						:maxlength="255"
-						data-testid="add-agent-avatar"
-						@keydown.enter="onCreateAgent"
-					/>
-				</div>
-				<N8nDialogFooter>
-					<N8nDialogClose as-child>
-						<N8nButton label="Cancel" type="tertiary" size="small" />
-					</N8nDialogClose>
-					<N8nButton
-						label="Create"
-						size="small"
-						:disabled="!newAgentName.trim() || isCreating"
-						:loading="isCreating"
-						data-testid="add-agent-submit"
-						@click="onCreateAgent"
-					/>
-				</N8nDialogFooter>
+
+				<!-- Local creation form -->
+				<template v-if="dialogTab === 'create'">
+					<div :class="$style.dialogField">
+						<N8nText tag="label" size="small" bold>Name</N8nText>
+						<N8nInput
+							v-model="newAgentName"
+							placeholder="e.g. Docs Curator"
+							:maxlength="32"
+							data-testid="add-agent-name"
+							@keydown.enter="onCreateAgent"
+						/>
+					</div>
+					<div :class="$style.dialogField">
+						<N8nText tag="label" size="small" bold>Avatar (emoji or URL, optional)</N8nText>
+						<N8nInput
+							v-model="newAgentAvatar"
+							placeholder="🤖 or https://..."
+							:maxlength="255"
+							data-testid="add-agent-avatar"
+							@keydown.enter="onCreateAgent"
+						/>
+					</div>
+					<N8nDialogFooter>
+						<N8nDialogClose as-child>
+							<N8nButton label="Cancel" type="tertiary" size="small" />
+						</N8nDialogClose>
+						<N8nButton
+							label="Create"
+							size="small"
+							:disabled="!newAgentName.trim() || isCreating"
+							:loading="isCreating"
+							data-testid="add-agent-submit"
+							@click="onCreateAgent"
+						/>
+					</N8nDialogFooter>
+				</template>
+
+				<!-- External registration form -->
+				<template v-else>
+					<div :class="$style.dialogField">
+						<N8nText tag="label" size="small" bold>Instance URL</N8nText>
+						<N8nInput
+							v-model="externalUrl"
+							placeholder="e.g. https://other.n8n.cloud"
+							:maxlength="2048"
+							data-testid="external-agent-url"
+							@keydown.enter="onRegisterExternal"
+						/>
+					</div>
+					<div :class="$style.dialogField">
+						<N8nText tag="label" size="small" bold>API Key</N8nText>
+						<N8nInput
+							v-model="externalApiKey"
+							placeholder="Remote agent API key"
+							type="password"
+							:maxlength="512"
+							data-testid="external-agent-apikey"
+							@keydown.enter="onRegisterExternal"
+						/>
+					</div>
+					<N8nText v-if="discoverError" color="danger" size="small" :class="$style.errorText">
+						{{ discoverError }}
+					</N8nText>
+					<N8nDialogFooter>
+						<N8nDialogClose as-child>
+							<N8nButton label="Cancel" type="tertiary" size="small" />
+						</N8nDialogClose>
+						<N8nButton
+							label="Discover & Register"
+							size="small"
+							:disabled="!externalUrl.trim() || !externalApiKey.trim() || isDiscovering"
+							:loading="isDiscovering"
+							data-testid="external-agent-submit"
+							@click="onRegisterExternal"
+						/>
+					</N8nDialogFooter>
+				</template>
 			</template>
 		</N8nDialog>
 		<div :class="$style.body">
@@ -303,14 +417,14 @@ function onRemoveConnection(lineId: string) {
 				<!-- Layer 2: Connection Lines -->
 				<ConnectionLines
 					:connections="agentsStore.connections"
-					:agents="agentsStore.agents"
+					:agents="agentsStore.allAgents"
 					:active-connection-ids="panelStore.activeConnections"
 					@remove-connection="onRemoveConnection"
 				/>
 
-				<!-- Layer 3: Agent Cards -->
+				<!-- Layer 3: Agent Cards (local + external) -->
 				<AgentCard
-					v-for="agent in agentsStore.agents"
+					v-for="agent in agentsStore.allAgents"
 					:key="agent.id"
 					:agent="agent"
 					:selected="agentsStore.selectedAgentId === agent.id"
@@ -318,7 +432,7 @@ function onRemoveConnection(lineId: string) {
 					@drag-start="onDragStart"
 				/>
 
-				<div v-if="agentsStore.agents.length === 0" :class="$style.empty">
+				<div v-if="agentsStore.allAgents.length === 0" :class="$style.empty">
 					No agents found. Click "+ Add Agent" to create one.
 				</div>
 			</div>
@@ -382,5 +496,40 @@ function onRemoveConnection(lineId: string) {
 
 .apiKeyCard {
 	margin-bottom: var(--spacing--xs);
+}
+
+.tabRow {
+	display: flex;
+	gap: 0;
+	margin-bottom: var(--spacing--sm);
+	border-bottom: 1px solid var(--color--foreground--tint-2);
+}
+
+.tab {
+	flex: 1;
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	background: none;
+	border: none;
+	border-bottom: 2px solid transparent;
+	font-size: var(--font-size--sm);
+	color: var(--color--text--tint-1);
+	cursor: pointer;
+	transition:
+		color 0.15s ease,
+		border-color 0.15s ease;
+
+	&:hover {
+		color: var(--color--text);
+	}
+}
+
+.tabActive {
+	color: var(--color--primary);
+	border-bottom-color: var(--color--primary);
+	font-weight: var(--font-weight--bold);
+}
+
+.errorText {
+	margin-top: var(--spacing--4xs);
 }
 </style>

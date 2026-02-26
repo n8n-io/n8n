@@ -2,6 +2,8 @@
 import { computed } from 'vue';
 import { N8nBadge } from '@n8n/design-system';
 import type { AgentNode } from './agents.types';
+import { isExternalAgent } from './agents.types';
+import { EXTERNAL_ZONE_COLOR } from './agents.store';
 import AgentAvatarComp from './components/AgentAvatar.vue';
 
 const props = defineProps<{
@@ -21,6 +23,17 @@ const statusLabels: Record<string, string> = {
 };
 
 const statusLabel = computed(() => statusLabels[props.agent.status] ?? 'Idle');
+
+const external = computed(() => isExternalAgent(props.agent));
+
+const truncatedHost = computed(() => {
+	if (!isExternalAgent(props.agent)) return '';
+	try {
+		return new URL(props.agent.remoteUrl).host;
+	} catch {
+		return props.agent.remoteUrl;
+	}
+});
 
 const resourceBarColor = computed(() => {
 	const usage = props.agent.resourceUsage;
@@ -42,6 +55,7 @@ function onPointerDown(event: PointerEvent) {
 		:class="[
 			$style.card,
 			{ [$style.selected]: selected },
+			{ [$style.externalCard]: external },
 			agent.status === 'active' ? $style.activeGlow : '',
 			agent.status === 'busy' ? $style.busyGlow : '',
 		]"
@@ -53,7 +67,11 @@ function onPointerDown(event: PointerEvent) {
 		@pointerdown="onPointerDown"
 	>
 		<!-- Zone accent -->
-		<span v-if="zoneColor" :class="$style.zoneAccent" :style="{ backgroundColor: zoneColor }" />
+		<span
+			v-if="zoneColor || external"
+			:class="$style.zoneAccent"
+			:style="{ backgroundColor: external ? EXTERNAL_ZONE_COLOR : (zoneColor ?? undefined) }"
+		/>
 
 		<!-- Top row: avatar + name + status -->
 		<div :class="$style.topRow">
@@ -61,19 +79,36 @@ function onPointerDown(event: PointerEvent) {
 			<div :class="$style.info">
 				<div :class="$style.name">{{ agent.firstName }}</div>
 				<div :class="$style.role">{{ agent.role }}</div>
+				<div v-if="external" :class="$style.hostname">{{ truncatedHost }}</div>
 			</div>
-			<N8nBadge
-				:theme="
-					agent.status === 'active' ? 'success' : agent.status === 'busy' ? 'warning' : 'default'
-				"
-				size="small"
-			>
-				{{ statusLabel }}
-			</N8nBadge>
+			<div :class="$style.badges">
+				<N8nBadge v-if="external" theme="custom" size="small" :class="$style.externalBadge">
+					EXTERNAL
+				</N8nBadge>
+				<N8nBadge
+					:theme="
+						agent.status === 'active' ? 'success' : agent.status === 'busy' ? 'warning' : 'default'
+					"
+					size="small"
+				>
+					{{ statusLabel }}
+				</N8nBadge>
+			</div>
 		</div>
 
-		<!-- Stats row -->
-		<div :class="$style.statsRow">
+		<!-- Stats row: different for external agents -->
+		<div v-if="external && isExternalAgent(agent)" :class="$style.statsRow">
+			<div :class="$style.stat">
+				<span :class="$style.statValue">{{ agent.skills.length }}</span>
+				<span :class="$style.statLabel">skills</span>
+			</div>
+			<div :class="$style.statDivider" />
+			<div :class="$style.stat">
+				<span :class="$style.statValue">{{ agent.status }}</span>
+				<span :class="$style.statLabel">status</span>
+			</div>
+		</div>
+		<div v-else :class="$style.statsRow">
 			<div :class="$style.stat">
 				<span :class="$style.statValue">{{ agent.workflowCount }}</span>
 				<span :class="$style.statLabel">workflows</span>
@@ -90,8 +125,8 @@ function onPointerDown(event: PointerEvent) {
 			</div>
 		</div>
 
-		<!-- Resource bar -->
-		<div :class="$style.resourceRow">
+		<!-- Resource bar (local agents only) -->
+		<div v-if="!external" :class="$style.resourceRow">
 			<div :class="$style.resourceTrack">
 				<div
 					:class="$style.resourceFill"
@@ -133,6 +168,33 @@ function onPointerDown(event: PointerEvent) {
 	&:active {
 		cursor: grabbing;
 	}
+}
+
+.externalCard {
+	border-style: dashed;
+}
+
+.badges {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 2px;
+}
+
+.externalBadge {
+	background-color: #8b5cf6;
+	color: white;
+	font-size: var(--font-size--3xs);
+	letter-spacing: 0.5px;
+}
+
+.hostname {
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-2);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-style: italic;
 }
 
 .zoneAccent {

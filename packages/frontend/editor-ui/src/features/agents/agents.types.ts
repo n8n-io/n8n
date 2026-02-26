@@ -19,6 +19,20 @@ export interface AgentNode {
 	resourceUsage: number;
 }
 
+export interface ExternalAgentNode extends AgentNode {
+	external: true;
+	remoteUrl: string;
+	remoteAgentId: string;
+	apiKey: string;
+	skills: Array<{ name: string; description?: string }>;
+	remoteCapabilities: { streaming?: boolean; multiTurn?: boolean };
+	requiredCredentials: Array<{ type: string; description: string }>;
+}
+
+export function isExternalAgent(agent: AgentNode): agent is ExternalAgentNode {
+	return 'external' in agent && (agent as ExternalAgentNode).external === true;
+}
+
 export interface UserResponse {
 	id: string;
 	firstName: string;

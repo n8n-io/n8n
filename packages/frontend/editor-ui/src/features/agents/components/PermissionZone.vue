@@ -2,17 +2,20 @@
 import { computed } from 'vue';
 import type { IconOrEmoji } from '@n8n/design-system';
 import type { ZoneLayout } from '../agents.types';
-import { ZONE_COLORS } from '../agents.store';
+import { ZONE_COLORS, EXTERNAL_ZONE_COLOR } from '../agents.store';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 const props = defineProps<{
 	zone: ZoneLayout;
 }>();
 
-const isNeutral = props.zone.colorIndex < 0;
-const color = isNeutral
-	? 'var(--color--foreground)'
-	: ZONE_COLORS[props.zone.colorIndex % ZONE_COLORS.length];
+const isNeutral = props.zone.colorIndex === -1;
+const isExternal = props.zone.colorIndex === -2;
+const color = isExternal
+	? EXTERNAL_ZONE_COLOR
+	: isNeutral
+		? 'var(--color--foreground)'
+		: ZONE_COLORS[props.zone.colorIndex % ZONE_COLORS.length];
 
 const iconProp = computed<IconOrEmoji | null>(() => {
 	if (!props.zone.icon) return null;
@@ -22,16 +25,18 @@ const iconProp = computed<IconOrEmoji | null>(() => {
 
 <template>
 	<div
-		:class="[$style.zone, { [$style.neutral]: isNeutral }]"
+		v-if="zone.rect.width > 0"
+		:class="[$style.zone, { [$style.neutral]: isNeutral, [$style.external]: isExternal }]"
 		:style="{
 			left: `${zone.rect.x}px`,
 			top: `${zone.rect.y}px`,
 			width: `${zone.rect.width}px`,
 			height: `${zone.rect.height}px`,
 			borderColor: color,
-			boxShadow: isNeutral
-				? undefined
-				: `0 0 20px color-mix(in srgb, ${color} 15%, transparent), inset 0 0 20px color-mix(in srgb, ${color} 5%, transparent)`,
+			boxShadow:
+				isNeutral || isExternal
+					? undefined
+					: `0 0 20px color-mix(in srgb, ${color} 15%, transparent), inset 0 0 20px color-mix(in srgb, ${color} 5%, transparent)`,
 		}"
 		data-testid="permission-zone"
 	>
@@ -55,6 +60,10 @@ const iconProp = computed<IconOrEmoji | null>(() => {
 
 .neutral {
 	border-style: dashed;
+}
+
+.external {
+	border-style: dotted;
 }
 
 .header {

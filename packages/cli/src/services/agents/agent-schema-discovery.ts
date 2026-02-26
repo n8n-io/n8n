@@ -83,7 +83,6 @@ export function discoverWorkflowSkill(
 	if (!triggerNode) return null;
 
 	const inputs = extractTriggerInputSchema(triggerNode);
-	if (inputs.length === 0) return null;
 
 	return { workflowId, workflowName, inputs };
 }

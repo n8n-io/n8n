@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { AgentNode, ConnectionLine } from '../agents.types';
+import { isExternalAgent } from '../agents.types';
 
 const CARD_WIDTH = 240;
 const CARD_HEIGHT = 110;
@@ -33,11 +34,13 @@ const paths = computed(() =>
 			const end = getCenter(to);
 			const dx = (end.x - start.x) * 0.4;
 			const isActive = props.activeConnectionIds?.has(conn.id) ?? false;
+			const crossInstance = isExternalAgent(from) || isExternalAgent(to);
 
 			return {
 				id: conn.id,
 				d: `M ${start.x} ${start.y} C ${start.x + dx} ${start.y}, ${end.x - dx} ${end.y}, ${end.x} ${end.y}`,
 				active: isActive,
+				crossInstance,
 			};
 		})
 		.filter(Boolean),
@@ -61,10 +64,21 @@ const paths = computed(() =>
 				v-if="path!.active"
 				:d="path!.d"
 				fill="none"
-				stroke="var(--color--primary--tint-1)"
+				:stroke="path!.crossInstance ? '#8b5cf6' : 'var(--color--primary--tint-1)'"
 				stroke-width="2"
-				stroke-dasharray="8 6"
+				:stroke-dasharray="path!.crossInstance ? '16 8' : '8 6'"
 				:class="$style.activeLine"
+				@click="emit('remove-connection', path!.id)"
+			/>
+			<!-- Inactive: cross-instance line (longer dashes, purple) -->
+			<path
+				v-else-if="path!.crossInstance"
+				:d="path!.d"
+				fill="none"
+				stroke="#8b5cf6"
+				stroke-width="1.5"
+				stroke-dasharray="12 6"
+				:class="$style.line"
 				@click="emit('remove-connection', path!.id)"
 			/>
 			<!-- Inactive: default dashed line -->

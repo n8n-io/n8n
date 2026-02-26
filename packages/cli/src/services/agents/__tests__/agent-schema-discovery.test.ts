@@ -174,10 +174,14 @@ describe('discoverWorkflowSkill', () => {
 		expect(discoverWorkflowSkill('wf-1', 'My Workflow', nodes)).toBeNull();
 	});
 
-	it('should return null for passthrough trigger (no typed inputs)', () => {
+	it('should return skill with empty inputs for passthrough trigger', () => {
 		const nodes: INode[] = [makeTriggerNode({ parameters: { inputSource: 'passthrough' } })];
 
-		expect(discoverWorkflowSkill('wf-1', 'My Workflow', nodes)).toBeNull();
+		expect(discoverWorkflowSkill('wf-1', 'My Workflow', nodes)).toEqual({
+			workflowId: 'wf-1',
+			workflowName: 'My Workflow',
+			inputs: [],
+		});
 	});
 
 	it('should return skill with inputs for typed trigger', () => {

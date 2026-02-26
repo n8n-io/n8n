@@ -163,3 +163,5 @@ export { GetQuickConnectApiKeyDto } from './quick-connect/create-quick-connect-c
 export { CreateAgentDto } from './agents/create-agent.dto';
 export { UpdateAgentDto } from './agents/update-agent.dto';
 export { DispatchTaskDto } from './agents/dispatch-task.dto';
+export { DiscoverAgentDto } from './agents/discover-agent.dto';
+export { ExternalTaskDto } from './agents/external-task.dto';
