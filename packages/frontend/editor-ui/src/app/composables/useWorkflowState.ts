@@ -28,7 +28,6 @@ import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
@@ -171,10 +170,8 @@ export function useWorkflowState() {
 
 	function makeNewWorkflowShareable() {
 		const { currentProject, personalProject } = useProjectsStore();
-		const homeProject = currentProject ?? personalProject ?? {};
 		const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
 
-		ws.workflow.homeProject = homeProject as ProjectSharingData;
 		ws.workflow.scopes = scopes;
 	}
 
