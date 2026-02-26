@@ -535,6 +535,26 @@ watch(
 	},
 );
 
+watch(
+	() => stringify(props.node?.credentials ?? {}),
+	(currentValue, oldValue) => {
+		const isUpdated = oldValue !== undefined && currentValue !== oldValue;
+		if (
+			isUpdated &&
+			props.modelValue &&
+			isResourceLocatorValue(props.modelValue) &&
+			props.modelValue.value !== ''
+		) {
+			emit('update:modelValue', {
+				...props.modelValue,
+				cachedResultName: '',
+				cachedResultUrl: '',
+				value: '',
+			});
+		}
+	},
+);
+
 onMounted(() => {
 	props.eventBus.on('refreshList', refreshList);
 	window.addEventListener('resize', setWidth);
