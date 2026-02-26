@@ -2,6 +2,7 @@ import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import type {
+	ICredentialTestFunction,
 	IExecuteFunctions,
 	INodeCredentialDescription,
 	INodeProperties,
@@ -47,6 +48,9 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 				this: ILoadOptionsFunctions,
 				payload: IDataObject | string | undefined,
 			) => Promise<NodeParameterValueType>;
+		};
+		credentialTest?: {
+			[functionName: string]: ICredentialTestFunction;
 		};
 	};
 
