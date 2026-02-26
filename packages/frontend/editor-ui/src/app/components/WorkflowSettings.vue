@@ -1094,7 +1094,7 @@ onBeforeUnmount(() => {
 						<ElCol :span="14" class="ignore-key-press-canvas">
 							<N8nSelect
 								v-model="workflowSettings.redactionPolicy"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
+								:disabled="readOnlyEnv || !workflowPermissions.updateRedactionSetting"
 								:placeholder="i18n.baseText('workflowSettings.selectOption')"
 								filterable
 								:limit-popper-width="true"
