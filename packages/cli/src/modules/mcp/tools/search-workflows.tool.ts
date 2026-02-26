@@ -166,6 +166,7 @@ export async function searchWorkflows(
 		},
 		select: {
 			id: true,
+			versionId: true,
 			activeVersionId: true,
 			name: true,
 			description: true,
