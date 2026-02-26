@@ -362,6 +362,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				throw new Error(`${path.join('.')} is not a function`);
 			}
 
+			// Block native functions for security (same check as getValueAtPath)
+			if (fn.toString().includes('[native code]')) {
+				throw new Error(`${path.join('.')} is a native function and cannot be called`);
+			}
+
 			// Execute function in host context
 			return (fn as Function)(...args);
 		});
