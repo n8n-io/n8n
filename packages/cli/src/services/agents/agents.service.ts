@@ -13,6 +13,7 @@ import {
 	ManualExecutionCancelledError,
 	createRunExecutionData,
 	jsonStringify,
+	type ICredentialContext,
 	type IExecutionContext,
 	type IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
@@ -875,11 +876,11 @@ If there are gaps or errors that need correcting, respond with the appropriate a
 
 		let runtimeData: IExecutionContext | undefined;
 		if (callerId || workflowCredentials) {
-			const credentialContext = JSON.stringify({
+			const credentialContext: ICredentialContext = {
 				version: 1,
 				identity: callerId ?? 'anonymous',
 				metadata: { source: 'agent-a2a', agentId: user.id, workflowCredentials },
-			});
+			};
 			runtimeData = {
 				version: 1,
 				establishedAt: Date.now(),

@@ -2,8 +2,10 @@ import {
 	sseWrite,
 	hardenSseConnection,
 	scrubSecrets,
+	executeTaskOverSse,
 	SSE_HEARTBEAT_INTERVAL_MS,
 } from '../agents.types';
+import type { AgentTaskResult } from '../agents.types';
 
 describe('sseWrite', () => {
 	it('should write SSE-formatted data', () => {
@@ -143,6 +145,80 @@ describe('hardenSseConnection', () => {
 		expect(res.write).not.toHaveBeenCalled();
 
 		jest.useRealTimers();
+	});
+});
+
+describe('executeTaskOverSse', () => {
+	function makeMockSseReqRes() {
+		const req = {
+			socket: { setTimeout: jest.fn(), setKeepAlive: jest.fn(), setNoDelay: jest.fn() },
+			once: jest.fn(),
+		};
+		const res = {
+			writeHead: jest.fn(),
+			write: jest.fn(),
+			end: jest.fn(),
+			flush: jest.fn(),
+			once: jest.fn(),
+			writableEnded: false,
+		};
+		return { req, res };
+	}
+
+	it('should set SSE headers and stream step events', async () => {
+		const { req, res } = makeMockSseReqRes();
+		const result: AgentTaskResult = { status: 'completed', summary: 'Done', steps: [] };
+
+		await executeTaskOverSse(req, res, async (onStep) => {
+			onStep({ type: 'step', action: 'execute_workflow' });
+			return result;
+		});
+
+		expect(res.writeHead).toHaveBeenCalledWith(
+			200,
+			expect.objectContaining({
+				'Content-Type': 'text/event-stream; charset=UTF-8',
+			}),
+		);
+		// Step event + done event
+		expect(res.write).toHaveBeenCalledWith(expect.stringContaining('"type":"step"'));
+		expect(res.write).toHaveBeenCalledWith(expect.stringContaining('"type":"done"'));
+		expect(res.end).toHaveBeenCalled();
+	});
+
+	it('should write error event when execute throws', async () => {
+		const { req, res } = makeMockSseReqRes();
+
+		await executeTaskOverSse(req, res, async () => {
+			throw new Error('Boom');
+		});
+
+		expect(res.write).toHaveBeenCalledWith(expect.stringContaining('"status":"error"'));
+		expect(res.write).toHaveBeenCalledWith(expect.stringContaining('Boom'));
+		expect(res.end).toHaveBeenCalled();
+	});
+
+	it('should not write error if response already ended', async () => {
+		const { req, res } = makeMockSseReqRes();
+		res.writableEnded = true;
+
+		await executeTaskOverSse(req, res, async () => {
+			throw new Error('Boom');
+		});
+
+		// writeHead is called before the error, but no data writes after
+		expect(res.write).not.toHaveBeenCalledWith(expect.stringContaining('Boom'));
+	});
+
+	it('should call hardenSseConnection and cleanup', async () => {
+		const { req, res } = makeMockSseReqRes();
+		const result: AgentTaskResult = { status: 'completed', summary: 'Done', steps: [] };
+
+		await executeTaskOverSse(req, res, async () => result);
+
+		// hardenSseConnection sets socket options
+		expect(req.socket.setTimeout).toHaveBeenCalledWith(0);
+		expect(req.socket.setKeepAlive).toHaveBeenCalledWith(true);
 	});
 });
 

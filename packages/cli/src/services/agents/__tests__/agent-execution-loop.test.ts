@@ -133,7 +133,6 @@ describe('execution loop - complete action', () => {
 	beforeEach(() => jest.clearAllMocks());
 
 	it('should complete immediately when LLM returns complete', async () => {
-		const { service } = createMockedService();
 		const mocks = createMockedService();
 		setupAgent(mocks);
 

@@ -5,7 +5,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { sendErrorResponse } from '@/response-helper';
 import { AgentsService } from '@/services/agents/agents.service';
 import type { ExternalAgentConfig } from '@/services/agents/agents.types';
-import { MAX_ITERATIONS, sseWrite, hardenSseConnection } from '@/services/agents/agents.types';
+import { MAX_ITERATIONS, executeTaskOverSse } from '@/services/agents/agents.types';
 
 import { apiKeyHasScope } from '../../shared/middlewares/global.middleware';
 
@@ -49,54 +49,29 @@ export = {
 			const wantsStream = req.headers.accept?.includes('text/event-stream');
 			const callChain = new Set<string>();
 
+			const taskOptions = { externalAgents, callChain, byokApiKey, callerId, workflowCredentials };
+
 			if (!wantsStream) {
 				const result = await agentsService.executeAgentTask(
 					agentId,
 					prompt,
 					{ remaining: MAX_ITERATIONS },
-					{ externalAgents, callChain, byokApiKey, callerId, workflowCredentials },
+					taskOptions,
 				);
 				return res.json(result);
 			}
 
-			res.writeHead(200, {
-				'Content-Type': 'text/event-stream; charset=UTF-8',
-				'Cache-Control': 'no-cache',
-				Connection: 'keep-alive',
-			});
-
-			const cleanup = hardenSseConnection(req, res);
-
-			try {
-				const result = await agentsService.executeAgentTask(
+			await executeTaskOverSse(req, res, (onStep) =>
+				agentsService.executeAgentTask(
 					agentId,
 					prompt,
 					{ remaining: MAX_ITERATIONS },
 					{
-						onStep: (event) => sseWrite(res, event),
-						externalAgents,
-						callChain,
-						byokApiKey,
-						callerId,
-						workflowCredentials,
+						...taskOptions,
+						onStep,
 					},
-				);
-
-				sseWrite(res, {
-					type: 'done',
-					status: result.status,
-					summary: result.summary ?? result.message,
-				});
-			} catch (error) {
-				if (!res.writableEnded) {
-					const message = error instanceof Error ? error.message : String(error);
-					sseWrite(res, { type: 'done', status: 'error', summary: message });
-				}
-			} finally {
-				cleanup();
-			}
-
-			res.end();
+				),
+			);
 			return res;
 		},
 	],

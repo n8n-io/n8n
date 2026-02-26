@@ -15,7 +15,7 @@ import type { Request, Response } from 'express';
 import { sendErrorResponse } from '@/response-helper';
 import { AgentsService } from '@/services/agents/agents.service';
 import type { ExternalAgentConfig } from '@/services/agents/agents.types';
-import { MAX_ITERATIONS, sseWrite, hardenSseConnection } from '@/services/agents/agents.types';
+import { MAX_ITERATIONS, executeTaskOverSse } from '@/services/agents/agents.types';
 
 @RestController('/agents')
 export class AgentsController {
@@ -94,61 +94,36 @@ export class AgentsController {
 		const wantsStream = req.headers.accept?.includes('text/event-stream');
 		const callChain = new Set<string>();
 
+		const taskOptions = {
+			externalAgents: externalAgents as ExternalAgentConfig[] | undefined,
+			callChain,
+			byokApiKey,
+			callerId,
+			workflowCredentials,
+		};
+
 		if (!wantsStream) {
 			const result = await this.agentsService.executeAgentTask(
 				agentId,
 				prompt,
 				{ remaining: MAX_ITERATIONS },
-				{
-					externalAgents: externalAgents as ExternalAgentConfig[] | undefined,
-					callChain,
-					byokApiKey,
-					callerId,
-					workflowCredentials,
-				},
+				taskOptions,
 			);
 			res.json(result);
 			return undefined;
 		}
 
-		res.writeHead(200, {
-			'Content-Type': 'text/event-stream; charset=UTF-8',
-			'Cache-Control': 'no-cache',
-			Connection: 'keep-alive',
-		});
-
-		const cleanup = hardenSseConnection(req, res);
-
-		try {
-			const result = await this.agentsService.executeAgentTask(
+		await executeTaskOverSse(req, res, (onStep) =>
+			this.agentsService.executeAgentTask(
 				agentId,
 				prompt,
 				{ remaining: MAX_ITERATIONS },
 				{
-					onStep: (event) => sseWrite(res, event),
-					externalAgents: externalAgents as ExternalAgentConfig[] | undefined,
-					callChain,
-					byokApiKey,
-					callerId,
-					workflowCredentials,
+					...taskOptions,
+					onStep,
 				},
-			);
-
-			sseWrite(res, {
-				type: 'done',
-				status: result.status,
-				summary: result.summary ?? result.message,
-			});
-		} catch (error) {
-			if (!res.writableEnded) {
-				const message = error instanceof Error ? error.message : String(error);
-				sseWrite(res, { type: 'done', status: 'error', summary: message });
-			}
-		} finally {
-			cleanup();
-		}
-
-		res.end();
+			),
+		);
 		return undefined;
 	}
 }

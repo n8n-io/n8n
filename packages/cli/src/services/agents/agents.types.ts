@@ -121,6 +121,54 @@ export function scrubSecrets(message: string, secrets: string[]): string {
 	return message;
 }
 
+/**
+ * Execute an agent task over SSE. Shared by the REST controller and public API handler.
+ * Sets up the SSE connection, streams step events, and writes the final done event.
+ */
+export async function executeTaskOverSse(
+	req: {
+		socket: {
+			setTimeout: (ms: number) => void;
+			setKeepAlive: (enable: boolean) => void;
+			setNoDelay: (enable: boolean) => void;
+		};
+		once: (event: string, cb: () => void) => void;
+	},
+	res: SseConnection & {
+		writeHead: (status: number, headers: Record<string, string>) => void;
+		end: () => void;
+		once?: (event: string, cb: () => void) => void;
+	},
+	execute: (onStep: StepCallback) => Promise<AgentTaskResult>,
+): Promise<void> {
+	res.writeHead(200, {
+		'Content-Type': 'text/event-stream; charset=UTF-8',
+		'Cache-Control': 'no-cache',
+		Connection: 'keep-alive',
+	});
+
+	const cleanup = hardenSseConnection(req, res);
+
+	try {
+		const result = await execute((event) => sseWrite(res, event));
+
+		sseWrite(res, {
+			type: 'done',
+			status: result.status,
+			summary: result.summary ?? result.message,
+		});
+	} catch (error) {
+		if (!res.writableEnded) {
+			const message = error instanceof Error ? error.message : String(error);
+			sseWrite(res, { type: 'done', status: 'error', summary: message });
+		}
+	} finally {
+		cleanup();
+	}
+
+	res.end();
+}
+
 export function toAgentDto(user: User): AgentDto {
 	return {
 		id: user.id,
