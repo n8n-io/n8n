@@ -242,8 +242,10 @@ watch(expanded, (value, oldValue) => {
 				v-if="parameters.length > 0"
 				:parameters="parameters"
 				:node-values="state.node.parameters"
+				:remove-first-parameter-margin="true"
 				:node="state.node"
 				:hide-delete="true"
+				:options-overrides="{ showExpressionSelector: false, showFocusPanel: false }"
 				@value-changed="onValueChanged"
 			/>
 		</div>
@@ -254,7 +256,7 @@ watch(expanded, (value, oldValue) => {
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--xs);
 	padding: 0 var(--spacing--xs);
 }
 
@@ -271,7 +273,7 @@ watch(expanded, (value, oldValue) => {
 }
 
 .credential-label {
-	font-size: var(--font-size--sm);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
 }
 

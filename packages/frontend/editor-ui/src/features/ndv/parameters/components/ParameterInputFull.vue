@@ -37,6 +37,8 @@ import { ChatHubToolContextKey, ExpressionLocalResolveContextSymbol } from '@/ap
 
 import { N8nInputLabel } from '@n8n/design-system';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
+import type { ParameterOptionsOverrides } from '@/features/ndv/shared/ndv.utils';
+
 type Props = {
 	parameter: INodeProperties;
 	path: string;
@@ -53,6 +55,7 @@ type Props = {
 	entryIndex?: number;
 	showDelete?: boolean;
 	onDelete?: () => void;
+	optionsOverrides?: ParameterOptionsOverrides;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -399,7 +402,7 @@ function removeOverride(clearField = false) {
 					:value="value"
 					:is-read-only="isReadOnly"
 					:show-options="displayOptions"
-					:show-expression-selector="showExpressionSelector"
+					:show-expression-selector="!hideExpressionSelector && showExpressionSelector"
 					:is-content-overridden="isContentOverride"
 					:show-delete="showDelete"
 					:on-delete="onDelete"
@@ -449,7 +452,10 @@ function removeOverride(clearField = false) {
 				:value="value"
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
-				:show-expression-selector="showExpressionSelector"
+				:show-expression-selector="
+					(optionsOverrides?.showExpressionSelector ?? true) && showExpressionSelector
+				"
+				:show-focus-panel="optionsOverrides?.showFocusPanel ?? true"
 				:is-content-overridden="isContentOverride"
 				:show-delete="showDelete"
 				:on-delete="onDelete"
@@ -514,7 +520,10 @@ function removeOverride(clearField = false) {
 				:value="value"
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
-				:show-expression-selector="showExpressionSelector"
+				:show-expression-selector="
+					(optionsOverrides?.showExpressionSelector ?? true) && showExpressionSelector
+				"
+				:show-focus-panel="optionsOverrides?.showFocusPanel ?? true"
 				:is-content-overridden="isContentOverride"
 				:show-delete="showDelete"
 				:on-delete="onDelete"
@@ -534,7 +543,10 @@ function removeOverride(clearField = false) {
 				:value="value"
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
-				:show-expression-selector="showExpressionSelector"
+				:show-expression-selector="
+					(optionsOverrides?.showExpressionSelector ?? true) && showExpressionSelector
+				"
+				:show-focus-panel="optionsOverrides?.showFocusPanel ?? true"
 				:is-content-overridden="isContentOverride"
 				:show-delete="showDelete"
 				:on-delete="onDelete"

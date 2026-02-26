@@ -165,7 +165,7 @@ const { onSharedNodesHintEnter, onSharedNodesHintLeave } = useCardNodeHighlight(
 }
 
 .credential-label {
-	font-size: var(--font-size--sm);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
 }
 
