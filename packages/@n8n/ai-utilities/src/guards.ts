@@ -4,6 +4,9 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { Tool } from '@langchain/core/tools';
 
+import type { VectorStore } from './types/vector-store';
+import { BaseVectorStore } from './vector-store/base';
+
 function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): obj is T {
 	return methodNames.every(
 		(methodName) =>
@@ -32,4 +35,11 @@ export function isToolsInstance(model: unknown): model is Tool {
 	const namespace = (model as Tool)?.lc_namespace ?? [];
 
 	return namespace.includes('tools');
+}
+
+export function isBaseVectorStore(obj: unknown): obj is VectorStore {
+	return (
+		obj instanceof BaseVectorStore ||
+		hasMethods<VectorStore>(obj, 'addDocuments', 'similaritySearch', 'deleteDocuments')
+	);
 }
