@@ -35,7 +35,7 @@ const isVerifiedCommunityNode = computed(
 		nodeTypesStore.communityNodeType(node.type)?.isOfficialNode,
 );
 const npmPackage = computed(() => removePreviewToken(node.type.split('.')[0]));
-const isAdmin = computed(() => usersStore.isAdmin);
+const isAdminOrOwner = computed(() => usersStore.isAdmin || usersStore.isInstanceOwner);
 const { getQuickConnectOptionByPackageName } = useQuickConnect();
 const quickConnect = computed(() => getQuickConnectOptionByPackageName(npmPackage.value));
 
@@ -114,10 +114,10 @@ watch(isNodeDefined, () => {
 					<N8nText size="medium" bold>{{ npmPackage }}</N8nText>
 				</template>
 			</I18nT>
-			<div v-if="isAdmin" :class="$style.communityNodeActionsContainer">
+			<div v-if="isAdminOrOwner" :class="$style.communityNodeActionsContainer">
 				<N8nButton
 					variant="solid"
-					v-if="isAdmin"
+					v-if="isAdminOrOwner"
 					icon="hard-drive-download"
 					data-test-id="install-community-node-button"
 					:loading="loading"
