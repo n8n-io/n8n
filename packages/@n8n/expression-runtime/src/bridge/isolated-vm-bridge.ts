@@ -352,9 +352,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// Callback 3: Call function at path with arguments
 		// Used when expressions invoke functions from workflow data
 		const callFunctionAtPath = new ivm.Reference((path: string[], ...args: unknown[]) => {
-			// Navigate to function
+			// Navigate to function, tracking parent to preserve `this` context
 			let fn: unknown = data;
+			let parent: unknown = undefined;
 			for (const key of path) {
+				parent = fn;
 				fn = (fn as Record<string, unknown>)?.[key];
 			}
 
@@ -367,8 +369,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				throw new Error(`${path.join('.')} is a native function and cannot be called`);
 			}
 
-			// Execute function in host context
-			return (fn as Function)(...args);
+			// Execute function with parent as `this` to preserve method context
+			return (fn as Function).call(parent, ...args);
 		});
 
 		// Release previous references before replacing to avoid accumulation
