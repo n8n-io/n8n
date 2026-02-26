@@ -14,7 +14,6 @@ import type { IconOrEmoji } from './types';
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
-import type { IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
 import N8nInput from '../N8nInput';
 import N8nTabs from '../N8nTabs';
@@ -158,14 +157,7 @@ const togglePopup = async () => {
 };
 
 function focusSearchInput() {
-	// N8nInput exposes focus method or we can access the inner input
-	const inputEl = searchInputRef.value;
-	if (inputEl) {
-		// Try the component's focus method first
-		if (typeof (inputEl as unknown as { focus: () => void }).focus === 'function') {
-			(inputEl as unknown as { focus: () => void }).focus();
-		}
-	}
+	searchInputRef.value?.focus();
 }
 
 // Persist skin tone preference
@@ -219,7 +211,7 @@ function humanizeIconName(name: string): string {
 				<N8nIconButton
 					v-if="model.type === 'icon'"
 					:class="$style['icon-button']"
-					:icon="(model.value as unknown as IconName)"
+					:icon="model.value"
 					:size="buttonSize"
 					icon-only
 					:disabled="isReadOnly"

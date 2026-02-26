@@ -29,7 +29,7 @@ export interface ButtonProps {
 	/** Additional classes to apply to the button (accepts string, object, or array) */
 	class?: ClassValue;
 	/** @deprecated Use slot instead */
-	icon?: IconName;
+	icon?: IconName | (string & {});
 	iconSize?: IconSize;
 	/** @deprecated Use slot instead */
 	label?: string;
@@ -37,7 +37,7 @@ export interface ButtonProps {
 
 export interface IconButtonProps extends ButtonProps {
 	/** Icon is required for icon buttons */
-	icon: IconName;
+	icon: IconName | (string & {});
 }
 
 export type IN8nButton = {
