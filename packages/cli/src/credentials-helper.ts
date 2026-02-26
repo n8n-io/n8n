@@ -45,6 +45,7 @@ import {
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
+import { CredentialResolutionError } from './modules/dynamic-credentials.ee/errors/credential-resolution.error';
 import { CacheService } from './services/cache/cache.service';
 
 import { CredentialTypes } from '@/credential-types';
@@ -361,10 +362,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// Check if credential can use external secrets for expression resolution
 		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(nodeCredentials);
 
-		/**
-		 * We skip dynamic credentials resolution when no credentials context is present.
-		 * This helps workflow developers to run workflows with static credentials.
-		 */
 		if (additionalData.executionContext?.credentials !== undefined) {
 			// Resolve dynamic credentials if configured (EE feature)
 			decryptedDataOriginal = await this.dynamicCredentialsProxy.resolveIfNeeded(

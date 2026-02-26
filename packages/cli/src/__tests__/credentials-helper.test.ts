@@ -20,6 +20,7 @@ import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { CredentialResolutionError } from '@/modules/dynamic-credentials.ee/errors/credential-resolution.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 describe('CredentialsHelper', () => {
