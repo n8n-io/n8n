@@ -314,7 +314,7 @@ function humanizeIconName(name: string): string {
 				{{ t('iconPicker.loading') }}
 			</div>
 
-		<!-- Icons tab -->
+			<!-- Icons tab -->
 			<div v-else-if="selectedTab === 'icons' && dataLoaded" :class="$style.content">
 				<!-- Search active: flat filtered grid (no section headers) -->
 				<template v-if="isSearching">
