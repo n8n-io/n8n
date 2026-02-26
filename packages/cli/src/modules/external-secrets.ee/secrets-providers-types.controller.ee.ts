@@ -1,7 +1,7 @@
 import type { SecretProviderTypeResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Get, GlobalScope, Middleware, Param, RestController } from '@n8n/decorators';
+import { Get, Middleware, Param, RestController } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
 import { ExternalSecretsConfig } from './external-secrets.config';
@@ -23,11 +23,14 @@ export class SecretProvidersTypesController {
 
 	@Middleware()
 	checkFeatureFlag(_req: Request, res: Response, next: NextFunction) {
-		if (!this.config.externalSecretsForProjects) {
-			this.logger.warn('External secrets for projects feature is not enabled');
+		const hasAccess =
+			this.config.externalSecretsMultipleConnections || this.config.externalSecretsForProjects;
+
+		if (!hasAccess) {
+			this.logger.warn('Requested beta external secret endpoint without feature flag enabled');
 			sendErrorResponse(
 				res,
-				new ForbiddenError('External secrets for projects feature is not enabled'),
+				new ForbiddenError('Requested beta external secret endpoint without feature flag enabled'),
 			);
 			return;
 		}
@@ -35,7 +38,6 @@ export class SecretProvidersTypesController {
 	}
 
 	@Get('/')
-	@GlobalScope('externalSecretsProvider:list')
 	listSecretProviderTypes(): SecretProviderTypeResponse[] {
 		this.logger.debug('List provider connection types');
 		const allProviders = this.secretsProviders.getAllProviders();
@@ -46,7 +48,6 @@ export class SecretProvidersTypesController {
 	}
 
 	@Get('/:type')
-	@GlobalScope('externalSecretsProvider:list')
 	getSecretProviderType(
 		_req: AuthenticatedRequest,
 		_res: Response,

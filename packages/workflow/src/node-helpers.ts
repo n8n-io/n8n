@@ -7,6 +7,7 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
+import { isExpression } from './expressions/expression-helpers';
 import { NodeConnectionTypes } from './interfaces';
 import type {
 	FieldType,
@@ -789,6 +790,15 @@ export function getNodeParameters(
 				nodeParameters[nodeProperties.name] = deepCopy(nodeValues[nodeProperties.name]);
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				continue;
+			}
+
+			// Strip expression prefix if noDataExpression is true
+			if (nodeProperties.noDataExpression && nodeParameters[nodeProperties.name] !== undefined) {
+				const value = nodeParameters[nodeProperties.name];
+				if (isExpression(value)) {
+					nodeParameters[nodeProperties.name] = value.slice(1);
+					nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
+				}
 			}
 		}
 

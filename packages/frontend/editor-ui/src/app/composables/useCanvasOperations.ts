@@ -138,6 +138,7 @@ import { useClipboard } from '@vueuse/core';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	pinDataToExecutionData,
 } from '@/app/stores/workflowDocument.store';
 
 type AddNodeData = Partial<INodeUi> & {
@@ -679,16 +680,15 @@ export function useCanvasOperations() {
 		const nodes = workflowsStore.getNodesByIds(ids);
 
 		// Filter to only pinnable nodes
-		const pinnableNodes = nodes.filter((node) => {
-			const pinnedDataForNode = usePinnedData(node);
-			return pinnedDataForNode.canPinNode(true);
-		});
-		const nextStatePinned = pinnableNodes.some(
-			(node) => !workflowsStore.pinDataByNodeName(node.name),
+		const pinnableNodesWithPinnedData = nodes
+			.map((node) => ({ node, pinnedData: usePinnedData(node) }))
+			.filter(({ pinnedData }) => pinnedData.canPinNode(true));
+
+		const nextStatePinned = pinnableNodesWithPinnedData.some(
+			({ pinnedData }) => !pinnedData.hasData.value,
 		);
 
-		for (const node of pinnableNodes) {
-			const pinnedDataForNode = usePinnedData(node);
+		for (const { node, pinnedData: pinnedDataForNode } of pinnableNodesWithPinnedData) {
 			if (nextStatePinned) {
 				const dataToPin = useDataSchema().getInputDataWithPinned(node);
 				if (dataToPin.length !== 0) {
@@ -748,7 +748,14 @@ export function useCanvasOperations() {
 		}
 
 		for (const [index, nodeAddData] of nodesWithTypeVersion.entries()) {
-			const { isAutoAdd, openDetail: openNDV, actionName, positionOffset, ...node } = nodeAddData;
+			const {
+				isAutoAdd,
+				placeholder,
+				openDetail: openNDV,
+				actionName,
+				positionOffset,
+				...node
+			} = nodeAddData;
 
 			const rawPosition = node.position ?? insertPosition;
 			const position: XYPosition | undefined =
@@ -773,6 +780,9 @@ export function useCanvasOperations() {
 					},
 				);
 				lastAddedNode = newNode;
+				if (nodeAddData.placeholder) {
+					newNode.placeholder = true;
+				}
 				addedNodes.push(newNode);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('error'));
@@ -1113,6 +1123,7 @@ export function useCanvasOperations() {
 			position,
 			disabled,
 			parameters,
+			placeholder: node.placeholder,
 		};
 
 		resolveNodeName(nodeData);
@@ -2762,10 +2773,15 @@ export function useCanvasOperations() {
 
 		for (const node of nodes) {
 			const nodeSaveData = workflowHelpers.getNodeDataToSave(node);
-			const pinDataForNode = workflowsStore.pinDataByNodeName(node.name);
+			const workflowDocumentStore = workflowsStore.workflowId
+				? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+				: null;
+			const pinDataForNode = workflowDocumentStore
+				? pinDataToExecutionData(workflowDocumentStore.pinData)[node.name]
+				: undefined;
 
 			if (pinDataForNode) {
-				data.pinData[node.name] = pinDataForNode;
+				data.pinData[node.name] = pinDataForNode as IPinData[string];
 			}
 
 			if (
@@ -2899,7 +2915,12 @@ export function useCanvasOperations() {
 		workflowState.setWorkflowExecutionData(data);
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
-			workflowState.setWorkflowPinData({});
+			if (workflowsStore.workflowId) {
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowsStore.workflowId),
+				);
+				workflowDocumentStore.setPinData({});
+			}
 		}
 
 		if (nodeId) {

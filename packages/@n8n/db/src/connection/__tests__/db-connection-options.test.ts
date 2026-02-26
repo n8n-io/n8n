@@ -112,10 +112,10 @@ describe('DbConnectionOptions', () => {
 					poolSize: 2,
 					migrations: postgresMigrations,
 					connectTimeoutMS: 20000,
+					statementTimeout: 300_000,
 					ssl: false,
 					extra: {
 						idleTimeoutMillis: 30000,
-						options: '-c statement_timeout=300000',
 					},
 				});
 			});

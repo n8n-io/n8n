@@ -315,5 +315,101 @@ node scripts/import-victoria-data.mjs --start victoria-metrics-export.jsonl vict
    - **Metrics UI:** http://localhost:8428/vmui/
    - **Logs UI:** http://localhost:9428/select/vmui/
 
+## Janitor (Static Analysis)
+
+Janitor enforces test architecture patterns via static analysis. It runs as a **pre-commit hook** and blocks new violations from being introduced.
+
+Existing violations are tracked in a baseline file (`.janitor-baseline.json`) and don't block commits. Only **new** violations in your changed files will fail.
+
+### Quick Commands
+
+```bash
+# Run all rules on entire codebase
+pnpm janitor
+
+# Run on a specific file
+pnpm janitor --file=tests/e2e/my-test.spec.ts
+
+# Run a specific rule
+pnpm janitor --rule=dead-code
+pnpm janitor --rule=selector-purity
+
+# Dead code auto-removal
+pnpm janitor:fix --rule=dead-code
+
+# List all rules
+pnpm janitor --list
+
+# Verbose output (shows suggestions)
+pnpm janitor --verbose
+```
+
+### Rules
+
+| Rule | Severity | What it enforces |
+|------|----------|------------------|
+| `selector-purity` | error | Tests/flows use page objects, not raw locators |
+| `scope-lockdown` | error | Page locators scoped to their container |
+| `boundary-protection` | error | Pages don't import other pages |
+| `no-direct-page-instantiation` | error | Access pages through the facade, not `new XPage()` |
+| `dead-code` | warning | No unused methods/properties [fixable] |
+| `no-page-in-flow` | warning | Flows use page objects, not `page` directly |
+| `api-purity` | warning | Tests use API services, not raw HTTP calls |
+| `deduplication` | warning | Same test ID defined in one page object only |
+
+### Janitor Blocked My Commit - Now What?
+
+When the pre-commit hook blocks your commit, you'll see output like:
+
+```
+Found 2 violation(s)
+
+tests/e2e/my-test.spec.ts (2)
+   [ERR] L15: [selector-purity] Raw locator in test: page.getByTestId('save-button')
+   [ERR] L22: [selector-purity] Chained locator call: n8n.canvas.getNode('X').locator('.status')
+```
+
+**Steps to fix:**
+
+1. **Read the rule name and message** - it tells you exactly what's wrong
+2. **Move the selector into a page object** - the fix is almost always "put this in a page object method instead"
+3. **Re-run janitor on your file** to verify: `pnpm janitor --file=<your-file>`
+4. **Commit again**
+
+**Common fixes by rule:**
+
+| Rule | Problem | Fix |
+|------|---------|-----|
+| `selector-purity` | `page.getByTestId('x')` in test | Add a getter to the page object, call it from the test |
+| `selector-purity` | `someLocator.locator('.child')` in test | Add a method to the page object that returns the specific element |
+| `scope-lockdown` | `this.page.getByTestId('x')` in a component | Use `this.container.getByTestId('x')` instead |
+| `boundary-protection` | Page importing another page | Move the composition to a flow/composable |
+| `dead-code` | Unused method in page object | Delete it (or run `pnpm janitor:fix --rule=dead-code`) |
+
+**False positive?** If you believe the violation is wrong, raise it with the QA team. Don't bypass the hook.
+
+### Impact Analysis
+
+Find which tests are affected by a file or method change:
+
+```bash
+# File-level: which tests use this page object?
+pnpm janitor impact --file=pages/CanvasPage.ts
+
+# Method-level: which tests call this specific method?
+pnpm janitor method-impact --method=CanvasPage.addNode
+
+# Pipe to playwright to run only affected tests
+pnpm janitor impact --file=pages/CanvasPage.ts --test-list | xargs pnpm test:local
+```
+
+### Inventory (Codebase Discovery)
+
+```bash
+pnpm janitor inventory                    # Full inventory
+pnpm janitor inventory --summary          # Summary counts
+pnpm janitor inventory --category=pages   # Single category
+```
+
 ## Writing Tests
 For guidelines on writing new tests, see [CONTRIBUTING.md](./CONTRIBUTING.md).

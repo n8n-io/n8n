@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { deepCopy } from 'n8n-workflow';
 import * as path from 'path';
 
 import { generateWorkflowCode } from './index';
@@ -10,18 +11,11 @@ import {
 	COMMITTED_FIXTURES_DIR,
 } from '../__tests__/fixtures-download';
 import type { WorkflowJSON } from '../types/base';
-
-// Workflows with known issues that need to be skipped
-// 5979: Code generator creates duplicate inline nodes, causing duplicate detection to rename them
-const SKIP_WORKFLOWS = new Set<string>(['5979']);
-
-// Workflows to skip validation due to known codegen bugs (invalid warnings)
-// These produce warnings that don't exist in the original workflow (codegen issues to fix)
-// Once fixed, these should be moved to expectedWarnings in manifest.json
-// NOTE: All previous workflows have been fixed and moved to expectedWarnings in manifests
-const SKIP_VALIDATION_WORKFLOWS = new Set<string>([
-	// Currently empty - all codegen bugs have been fixed!
-]);
+import { normalizeConnections } from '../types/base';
+import {
+	escapeNewlinesInExpressionStrings,
+	isPlaceholderValue,
+} from '../workflow-builder/string-utils';
 
 interface ExpectedWarning {
 	code: string;
@@ -48,14 +42,15 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 			id: string | number;
 			name: string;
 			success: boolean;
+			skip?: boolean;
+			skipReason?: string;
 			expectedWarnings?: ExpectedWarning[];
 		}>;
 	};
 
 	for (const entry of manifest.workflows) {
 		if (!entry.success) continue;
-		if (SKIP_WORKFLOWS.has(String(entry.id))) continue;
-
+		if (entry.skip) continue;
 		const filePath = path.join(dir, `${entry.id}.json`);
 		if (fs.existsSync(filePath)) {
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- Test fixture file
@@ -1984,6 +1979,318 @@ export default workflow('test-id', 'Test Workflow')
 			expect(parsedJson.id).toBe('test-id');
 		});
 	});
+
+	describe('shared subnodes (one subnode used by multiple parents)', () => {
+		it('should produce a single language model node connected to both agents', () => {
+			const code = `
+const sharedModel = languageModel({
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1.3,
+  config: {
+    name: 'Shared GPT-4o',
+    parameters: { model: { mode: 'list', value: 'gpt-4o-mini' } }
+  }
+});
+
+const agent1 = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Research Agent',
+    parameters: { text: 'Research this topic' },
+    subnodes: { model: sharedModel }
+  }
+});
+
+const agent2 = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Writing Agent',
+    parameters: { text: 'Write about this topic' },
+    subnodes: { model: sharedModel }
+  }
+});
+
+export default workflow('shared-model-test', 'Shared Model Test')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } })
+    .to([agent1, agent2]));
+`;
+			const parsedJson = parseWorkflowCode(code);
+
+			// Should have exactly 4 nodes: trigger, 2 agents, 1 shared model
+			expect(parsedJson.nodes).toHaveLength(4);
+
+			// Only ONE language model node should exist
+			const modelNodes = parsedJson.nodes.filter(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			);
+			expect(modelNodes).toHaveLength(1);
+			expect(modelNodes[0].name).toBe('Shared GPT-4o');
+
+			// The shared model should have ai_languageModel connections to BOTH agents
+			const modelConnections = parsedJson.connections['Shared GPT-4o']?.ai_languageModel?.[0];
+			expect(modelConnections).toBeDefined();
+			expect(modelConnections).toHaveLength(2);
+			const targetAgents = modelConnections!.map((c) => c.node).sort();
+			expect(targetAgents).toEqual(['Research Agent', 'Writing Agent']);
+		});
+
+		it('should produce a single tool node connected to both agents', () => {
+			const code = `
+const sharedCalculator = tool({
+  type: '@n8n/n8n-nodes-langchain.toolCalculator',
+  version: 1,
+  config: { name: 'Shared Calculator' }
+});
+
+const agent1 = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Math Agent',
+    parameters: { text: 'Calculate this' },
+    subnodes: {
+      model: languageModel({ type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.3, config: { name: 'Model 1', parameters: { model: { mode: 'list', value: 'gpt-4o-mini' } } } }),
+      tools: [sharedCalculator]
+    }
+  }
+});
+
+const agent2 = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Science Agent',
+    parameters: { text: 'Calculate that' },
+    subnodes: {
+      model: languageModel({ type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.3, config: { name: 'Model 2', parameters: { model: { mode: 'list', value: 'gpt-4o-mini' } } } }),
+      tools: [sharedCalculator]
+    }
+  }
+});
+
+export default workflow('shared-tool-test', 'Shared Tool Test')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } })
+    .to([agent1, agent2]));
+`;
+			const parsedJson = parseWorkflowCode(code);
+
+			// Should have 6 nodes: trigger, 2 agents, 2 models, 1 shared tool
+			expect(parsedJson.nodes).toHaveLength(6);
+
+			// Only ONE calculator tool node should exist
+			const toolNodes = parsedJson.nodes.filter(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.toolCalculator',
+			);
+			expect(toolNodes).toHaveLength(1);
+			expect(toolNodes[0].name).toBe('Shared Calculator');
+
+			// The shared tool should have ai_tool connections to BOTH agents
+			const toolConnections = parsedJson.connections['Shared Calculator']?.ai_tool?.[0];
+			expect(toolConnections).toBeDefined();
+			expect(toolConnections).toHaveLength(2);
+			const targetAgents = toolConnections!.map((c) => c.node).sort();
+			expect(targetAgents).toEqual(['Math Agent', 'Science Agent']);
+		});
+
+		it('should roundtrip JSON with shared language model through codegen', () => {
+			// JSON → code → JSON: A single language model connected to 2 agents
+			const originalJson: WorkflowJSON = {
+				id: 'shared-model-roundtrip',
+				name: 'Shared Model Roundtrip',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'agent-1',
+						name: 'Research Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3.1,
+						position: [200, -100],
+						parameters: { text: 'Research this' },
+					},
+					{
+						id: 'agent-2',
+						name: 'Writing Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3.1,
+						position: [200, 100],
+						parameters: { text: 'Write about this' },
+					},
+					{
+						id: 'model-1',
+						name: 'Shared GPT-4o',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1.3,
+						position: [200, 0],
+						parameters: { model: { mode: 'list', value: 'gpt-4o-mini' } },
+					},
+				],
+				connections: {
+					Start: {
+						main: [
+							[
+								{ node: 'Research Agent', type: 'main', index: 0 },
+								{ node: 'Writing Agent', type: 'main', index: 0 },
+							],
+						],
+					},
+					// Shared model connects to BOTH agents
+					'Shared GPT-4o': {
+						ai_languageModel: [
+							[
+								{ node: 'Research Agent', type: 'ai_languageModel', index: 0 },
+								{ node: 'Writing Agent', type: 'ai_languageModel', index: 0 },
+							],
+						],
+					},
+				},
+			};
+
+			const code = generateWorkflowCode(originalJson);
+			const parsedJson = parseWorkflowCode(code);
+
+			// Should have exactly 4 nodes
+			expect(parsedJson.nodes).toHaveLength(4);
+
+			// Only ONE language model node
+			const modelNodes = parsedJson.nodes.filter(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			);
+			expect(modelNodes).toHaveLength(1);
+
+			// The shared model should connect to BOTH agents
+			const modelConnections = parsedJson.connections['Shared GPT-4o']?.ai_languageModel?.[0];
+			expect(modelConnections).toBeDefined();
+			expect(modelConnections).toHaveLength(2);
+			const targetAgents = modelConnections!.map((c) => c.node).sort();
+			expect(targetAgents).toEqual(['Research Agent', 'Writing Agent']);
+		});
+
+		it('should produce a single embedding node connected to both vector stores', () => {
+			const code = `
+const sharedEmbedding = embedding({
+  type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+  version: 1.2,
+  config: {
+    name: 'Shared Embeddings',
+    parameters: { model: 'text-embedding-3-small' }
+  }
+});
+
+const vectorStore1 = node({
+  type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+  version: 1,
+  config: {
+    name: 'Vector Store 1',
+    parameters: {},
+    subnodes: { embedding: sharedEmbedding }
+  }
+});
+
+const vectorStore2 = node({
+  type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+  version: 1,
+  config: {
+    name: 'Vector Store 2',
+    parameters: {},
+    subnodes: { embedding: sharedEmbedding }
+  }
+});
+
+export default workflow('shared-embedding-test', 'Shared Embedding Test')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } })
+    .to([vectorStore1, vectorStore2]));
+`;
+			const parsedJson = parseWorkflowCode(code);
+
+			// Should have 4 nodes: trigger, 2 vector stores, 1 shared embedding
+			expect(parsedJson.nodes).toHaveLength(4);
+
+			// Only ONE embedding node should exist
+			const embeddingNodes = parsedJson.nodes.filter(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+			);
+			expect(embeddingNodes).toHaveLength(1);
+			expect(embeddingNodes[0].name).toBe('Shared Embeddings');
+
+			// The shared embedding should have ai_embedding connections to BOTH vector stores
+			const embeddingConnections = parsedJson.connections['Shared Embeddings']?.ai_embedding?.[0];
+			expect(embeddingConnections).toBeDefined();
+			expect(embeddingConnections).toHaveLength(2);
+			const targetStores = embeddingConnections!.map((c) => c.node).sort();
+			expect(targetStores).toEqual(['Vector Store 1', 'Vector Store 2']);
+		});
+
+		it('should handle same-named agents sharing a language model (auto-rename scenario)', () => {
+			const code = `
+const sharedModel = languageModel({
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1.3,
+  config: {
+    name: 'OpenAI Chat Model',
+    parameters: { model: { mode: 'list', value: 'gpt-4o' } }
+  }
+});
+
+const agent1 = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Generate Story Script',
+    parameters: { text: 'Write act 1' },
+    subnodes: { model: sharedModel }
+  }
+});
+
+const agent2 = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Generate Story Script',
+    parameters: { text: 'Write act 2' },
+    subnodes: { model: sharedModel }
+  }
+});
+
+export default workflow('same-name-agents', 'Same Name Agents')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } })
+    .to([agent1, agent2]));
+`;
+			const parsedJson = parseWorkflowCode(code);
+
+			// Should have 4 nodes: trigger, 2 agents (one renamed), 1 shared model
+			expect(parsedJson.nodes).toHaveLength(4);
+
+			// Two agent nodes should exist, one auto-renamed
+			const agentNodes = parsedJson.nodes.filter(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.agent',
+			);
+			expect(agentNodes).toHaveLength(2);
+			const agentNames = agentNodes.map((n) => n.name).sort();
+			expect(agentNames).toEqual(['Generate Story Script', 'Generate Story Script 1']);
+
+			// Only ONE language model node
+			const modelNodes = parsedJson.nodes.filter(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			);
+			expect(modelNodes).toHaveLength(1);
+
+			// The shared model should connect to BOTH agents (using their actual map keys)
+			const modelConnections = parsedJson.connections['OpenAI Chat Model']?.ai_languageModel?.[0];
+			expect(modelConnections).toBeDefined();
+			expect(modelConnections).toHaveLength(2);
+			const targetAgents = modelConnections!.map((c) => c.node).sort();
+			expect(targetAgents).toEqual(['Generate Story Script', 'Generate Story Script 1']);
+		});
+	});
 });
 
 describe('Codegen Roundtrip with Real Workflows', () => {
@@ -2018,6 +2325,7 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 			};
 
 			// Helper to recursively add __rl: true to resource locator values
+			// and clear placeholder values in list mode (matches builder normalization)
 			const normalizeResourceLocators = (params: unknown): unknown => {
 				if (typeof params !== 'object' || params === null) return params;
 				if (Array.isArray(params)) return params.map(normalizeResourceLocators);
@@ -2025,10 +2333,14 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				const result: Record<string, unknown> = {};
 				for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
 					if (isResourceLocatorLike(value)) {
-						result[key] = {
-							__rl: true,
-							...(normalizeResourceLocators(value) as Record<string, unknown>),
-						};
+						const rlValue = value;
+						const normalized = normalizeResourceLocators(value) as Record<string, unknown>;
+						// Clear placeholder values in list mode (matches builder behavior)
+						if (rlValue.mode === 'list' && isPlaceholderValue(rlValue.value)) {
+							result[key] = { __rl: true, ...normalized, value: '' };
+						} else {
+							result[key] = { __rl: true, ...normalized };
+						}
 					} else if (typeof value === 'object' && value !== null) {
 						result[key] = normalizeResourceLocators(value);
 					} else {
@@ -2062,14 +2374,28 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				if (!p || typeof p !== 'object') return p;
 				const obj = p as Record<string, unknown>;
 				if (Object.keys(obj).length === 0) return undefined;
-				if (nodeType === 'n8n-nodes-base.stickyNote' && obj.content === '') {
-					const { content, ...rest } = obj;
-					return Object.keys(rest).length === 0 ? undefined : rest;
+				if (nodeType === 'n8n-nodes-base.stickyNote') {
+					// Strip empty content and non-serializable color values (null, empty object)
+					const cleaned = { ...obj };
+					if (cleaned.content === '') delete cleaned.content;
+					if (cleaned.color === null || cleaned.color === undefined) {
+						delete cleaned.color;
+					} else if (
+						typeof cleaned.color === 'object' &&
+						Object.keys(cleaned.color as Record<string, unknown>).length === 0
+					) {
+						delete cleaned.color;
+					}
+					return Object.keys(cleaned).length === 0 ? undefined : cleaned;
 				}
 				// Normalize resource locators (add __rl: true) for fair comparison
 				// since SDK-generated code adds __rl: true to all resource locators
 				// Also normalize expressions (strip leading = from double-equals)
-				return normalizeExpressions(normalizeResourceLocators(p));
+				// Also normalize newlines in expression strings (raw \n → \\n inside quotes)
+				// since the serializer legitimately escapes raw newlines in JS string literals
+				return escapeNewlinesInExpressionStrings(
+					normalizeExpressions(normalizeResourceLocators(p)),
+				);
 			};
 
 			// Helper function for filtering empty connections, orphaned connections (from non-existent nodes),
@@ -2090,6 +2416,8 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					)) {
 						// Filter each output slot to remove connections to non-existent target nodes
 						const filteredOutputs = (outputs || []).map((slot: unknown) => {
+							// Normalize null/undefined slots to empty arrays
+							if (slot === null || slot === undefined) return [] as unknown[];
 							if (!Array.isArray(slot)) return slot as unknown[];
 							// Filter out connections to non-existent nodes
 							if (validNodeNames) {
@@ -2099,6 +2427,15 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 							}
 							return slot as unknown[];
 						});
+						// Strip trailing empty arrays (semantically equivalent to absent)
+						while (filteredOutputs.length > 0) {
+							const lastSlot = filteredOutputs[filteredOutputs.length - 1];
+							if (Array.isArray(lastSlot) && lastSlot.length === 0) {
+								filteredOutputs.pop();
+							} else {
+								break;
+							}
+						}
 						// Only include non-empty output slots
 						const nonEmptyOutputs = filteredOutputs.filter(
 							(arr: unknown) => Array.isArray(arr) && arr.length > 0,
@@ -2112,6 +2449,88 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					}
 				}
 				return result;
+			};
+
+			const sortSlotConnections = (conns: Record<string, unknown>) => {
+				for (const nodeConns of Object.values(conns)) {
+					for (const outputs of Object.values(nodeConns as Record<string, unknown[][]>)) {
+						if (!Array.isArray(outputs)) continue;
+						for (const slot of outputs) {
+							if (Array.isArray(slot) && slot.length > 1) {
+								slot.sort((a: unknown, b: unknown) => {
+									const aNode = (a as { node?: string }).node ?? '';
+									const bNode = (b as { node?: string }).node ?? '';
+									const cmp = aNode.localeCompare(bNode);
+									if (cmp !== 0) return cmp;
+									const aIndex = (a as { index?: number }).index ?? 0;
+									const bIndex = (b as { index?: number }).index ?? 0;
+									return aIndex - bIndex;
+								});
+							}
+						}
+					}
+				}
+			};
+
+			// Normalize main[errorIndex] connections into error[0] connections.
+			// Many original workflows store error outputs under main at the error index;
+			// the builder now natively produces error[0]. Convert the original to match.
+			// Uses the same error output index logic as the semantic registry.
+			const getErrorOutputIndex = (type: string, params?: Record<string, unknown>): number => {
+				// Must match the logic in semantic-registry.ts getErrorOutputIndex
+				switch (type) {
+					case 'n8n-nodes-base.if':
+						return 2; // outputs: ['trueBranch', 'falseBranch']
+					case 'n8n-nodes-base.switch': {
+						const rules = params?.rules as Record<string, unknown> | undefined;
+						const rulesArray = (rules?.rules ?? rules?.values) as unknown[] | undefined;
+						const numCases = Array.isArray(rulesArray) ? rulesArray.length : 4;
+						return numCases + 1; // cases + fallback
+					}
+					case 'n8n-nodes-base.merge':
+						return 1; // outputs: ['output']
+					case 'n8n-nodes-base.splitInBatches':
+						return 2; // outputs: ['done', 'loop']
+					default:
+						return 1; // regular nodes: error at index 1
+				}
+			};
+
+			const normalizeMainErrorToErrorConnections = (
+				connections: Record<string, Record<string, unknown[][]>>,
+				nodes: Array<{
+					name?: string;
+					type: string;
+					parameters?: Record<string, unknown>;
+					onError?: string;
+				}>,
+			): void => {
+				const nodeMap = new Map<
+					string,
+					{ type: string; parameters?: Record<string, unknown>; onError?: string }
+				>();
+				for (const n of nodes) {
+					if (n.name) nodeMap.set(n.name, n);
+				}
+
+				for (const [nodeName, nodeConns] of Object.entries(connections)) {
+					const node = nodeMap.get(nodeName);
+					if (!node || node.onError !== 'continueErrorOutput') continue;
+					if (!nodeConns.main || !Array.isArray(nodeConns.main)) continue;
+					// Already has error connections — skip
+					if (nodeConns.error) continue;
+
+					const errorOutputIndex = getErrorOutputIndex(node.type, node.parameters);
+
+					// Extract main[errorOutputIndex] → error[0]
+					if (errorOutputIndex < nodeConns.main.length) {
+						const errorTargets = nodeConns.main[errorOutputIndex];
+						if (Array.isArray(errorTargets) && errorTargets.length > 0) {
+							nodeConns.error = [errorTargets];
+							nodeConns.main[errorOutputIndex] = [];
+						}
+					}
+				}
 			};
 
 			// Helper to normalize warnings for comparison
@@ -2128,28 +2547,25 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					const parsedJson: WorkflowJSON = builder.toJSON();
 
 					// Validate the parsed workflow
-					if (!SKIP_VALIDATION_WORKFLOWS.has(id)) {
-						const validationResult = builder.validate();
+					const validationResult = builder.validate();
 
-						// Get actual warnings
-						const actualWarnings: ExpectedWarning[] = validationResult.warnings
-							.map((w: { code: string; nodeName?: string }) => ({
-								code: w.code,
-								nodeName: w.nodeName,
-							}))
-							.sort((a: ExpectedWarning, b: ExpectedWarning) =>
-								normalizeWarning(a).localeCompare(normalizeWarning(b)),
-							);
-
-						// Get expected warnings (from manifest or empty array)
-						const expected = (expectedWarnings ?? []).sort(
-							(a: ExpectedWarning, b: ExpectedWarning) =>
-								normalizeWarning(a).localeCompare(normalizeWarning(b)),
+					// Get actual warnings
+					const actualWarnings: ExpectedWarning[] = validationResult.warnings
+						.map((w: { code: string; nodeName?: string }) => ({
+							code: w.code,
+							nodeName: w.nodeName,
+						}))
+						.sort((a: ExpectedWarning, b: ExpectedWarning) =>
+							normalizeWarning(a).localeCompare(normalizeWarning(b)),
 						);
 
-						// Compare warnings
-						expect(actualWarnings).toEqual(expected);
-					}
+					// Get expected warnings (from manifest or empty array)
+					const expected = (expectedWarnings ?? []).sort((a: ExpectedWarning, b: ExpectedWarning) =>
+						normalizeWarning(a).localeCompare(normalizeWarning(b)),
+					);
+
+					// Compare warnings
+					expect(actualWarnings).toEqual(expected);
 
 					// Verify basic structure
 					expect(parsedJson.id ?? '').toBe(json.id ?? '');
@@ -2166,7 +2582,9 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 
 						if (parsedNode) {
 							expect(parsedNode.type).toBe(originalNode.type);
-							expect(parsedNode.typeVersion).toBe(originalNode.typeVersion);
+							// typeVersion: undefined is semantically equivalent to 1
+							// Compare as numbers since string typeVersions are normalized to numbers
+							expect(parsedNode.typeVersion).toBe(Number(originalNode.typeVersion ?? 1));
 							expect(normalizeParams(parsedNode.parameters, parsedNode.type)).toEqual(
 								normalizeParams(originalNode.parameters, originalNode.type),
 							);
@@ -2186,9 +2604,26 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					const validNodeNames = new Set(
 						json.nodes.map((n) => n.name).filter((name): name is string => !!name),
 					);
-					const filteredOriginal = filterEmptyConnections(json.connections, validNodeNames);
+					// Normalize original connections (clone first to avoid mutating input)
+					// since the original JSON may have flat tuple connections
+					const normalizedOriginalConns = deepCopy(json.connections);
+					normalizeConnections(normalizedOriginalConns);
+					normalizeMainErrorToErrorConnections(
+						normalizedOriginalConns as Record<string, Record<string, unknown[][]>>,
+						json.nodes,
+					);
+					const filteredOriginal = filterEmptyConnections(normalizedOriginalConns, validNodeNames);
 					const filteredParsed = filterEmptyConnections(parsedJson.connections);
+
+					// Verify all connection source keys match
 					expect(Object.keys(filteredParsed).sort()).toEqual(Object.keys(filteredOriginal).sort());
+
+					// Deep connection comparison
+					sortSlotConnections(filteredOriginal);
+					sortSlotConnections(filteredParsed);
+					for (const nodeName of Object.keys(filteredOriginal)) {
+						expect(filteredParsed[nodeName]).toEqual(filteredOriginal[nodeName]);
+					}
 				});
 			});
 		});

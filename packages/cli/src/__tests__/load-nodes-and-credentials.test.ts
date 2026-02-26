@@ -598,6 +598,28 @@ describe('LoadNodesAndCredentials', () => {
 			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
 		});
 
+		it('should keep types in memory after post-processing for post-processors to read', async () => {
+			const mockLoader = mock<DirectoryLoader>({
+				packageName: 'test-package',
+				directory: '/test/dir',
+				known: { nodes: {}, credentials: {} },
+				types: {
+					nodes: [{ name: 'TestNode', displayName: 'Test' } as INodeTypeDescription],
+					credentials: [],
+				},
+				credentialTypes: {},
+				isLazyLoaded: false,
+				ensureTypesLoaded: jest.fn().mockResolvedValue(undefined),
+			});
+
+			instance.loaders = { 'test-package': mockLoader };
+
+			await instance.postProcessLoaders();
+
+			expect(instance.types.nodes).toHaveLength(1);
+			expect(instance.types.nodes[0].name).toBe('test-package.TestNode');
+		});
+
 		it('should call createAiTools and createHitlTools', async () => {
 			// Setup a mock loader
 			const mockLoader = mock<DirectoryLoader>({
@@ -625,6 +647,59 @@ describe('LoadNodesAndCredentials', () => {
 			});
 			expect(createAiTools).toHaveBeenCalledWith(instance.types, expectedKnown);
 			expect(createHitlTools).toHaveBeenCalledWith(instance.types, expectedKnown);
+		});
+	});
+
+	describe('collectTypes', () => {
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+		});
+
+		it('should return a snapshot of types with package-namespaced node names', async () => {
+			const mockLoader = mock<DirectoryLoader>({
+				packageName: 'n8n-nodes-base',
+				directory: '/test/dir',
+				known: { nodes: {}, credentials: {} },
+				types: {
+					nodes: [{ name: 'httpRequest', displayName: 'HTTP Request' } as INodeTypeDescription],
+					credentials: [{ name: 'httpBasicAuth', displayName: 'HTTP Basic Auth' }],
+				},
+				credentialTypes: {},
+				isLazyLoaded: false,
+				ensureTypesLoaded: jest.fn().mockResolvedValue(undefined),
+			});
+
+			instance.loaders = { 'n8n-nodes-base': mockLoader };
+
+			const types = await instance.collectTypes();
+
+			expect(types.nodes).toHaveLength(1);
+			expect(types.nodes[0].name).toBe('n8n-nodes-base.httpRequest');
+			expect(types.nodes[0].displayName).toBe('HTTP Request');
+			expect(types.credentials).toHaveLength(1);
+		});
+
+		it('should release loader types after collecting', async () => {
+			const mockLoader = mock<DirectoryLoader>({
+				packageName: 'test-package',
+				directory: '/test/dir',
+				known: { nodes: {}, credentials: {} },
+				types: {
+					nodes: [{ name: 'TestNode', displayName: 'Test' } as INodeTypeDescription],
+					credentials: [],
+				},
+				credentialTypes: {},
+				isLazyLoaded: false,
+				ensureTypesLoaded: jest.fn().mockResolvedValue(undefined),
+			});
+
+			instance.loaders = { 'test-package': mockLoader };
+
+			await instance.collectTypes();
+
+			expect(mockLoader.releaseTypes).toHaveBeenCalled();
 		});
 	});
 });

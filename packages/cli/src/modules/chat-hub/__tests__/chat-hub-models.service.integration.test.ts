@@ -359,6 +359,137 @@ describe('ChatHubModelsService', () => {
 				expect(result.n8n.models[0].metadata.inputModalities).toEqual(['text']);
 			});
 
+			it('should include suggestedPrompts when configured on the chat trigger', async () => {
+				await createActiveWorkflow(
+					{
+						name: 'Agent with prompts',
+						nodes: [
+							{
+								id: uuid(),
+								name: 'Chat Trigger',
+								type: CHAT_TRIGGER_NODE_TYPE,
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {
+									availableInChat: true,
+									agentName: 'Prompt Agent',
+									suggestedPrompts: {
+										prompts: [
+											{ text: 'Summarize this document' },
+											{ text: 'Translate to Spanish', icon: { type: 'emoji', value: '🇪🇸' } },
+										],
+									},
+								},
+							},
+						],
+						connections: {},
+					},
+					member,
+				);
+
+				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
+
+				expect(result.n8n.models).toHaveLength(1);
+				expect(result.n8n.models[0].suggestedPrompts).toEqual([
+					{ text: 'Summarize this document' },
+					{ text: 'Translate to Spanish', icon: { type: 'emoji', value: '🇪🇸' } },
+				]);
+			});
+
+			it('should omit suggestedPrompts when none are configured', async () => {
+				await createActiveWorkflow(
+					{
+						name: 'Agent without prompts',
+						nodes: [
+							{
+								id: uuid(),
+								name: 'Chat Trigger',
+								type: CHAT_TRIGGER_NODE_TYPE,
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {
+									availableInChat: true,
+								},
+							},
+						],
+						connections: {},
+					},
+					member,
+				);
+
+				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
+
+				expect(result.n8n.models).toHaveLength(1);
+				expect(result.n8n.models[0].suggestedPrompts).toBeUndefined();
+			});
+
+			it('should filter out empty suggestedPrompts entries', async () => {
+				await createActiveWorkflow(
+					{
+						name: 'Agent with mixed prompts',
+						nodes: [
+							{
+								id: uuid(),
+								name: 'Chat Trigger',
+								type: CHAT_TRIGGER_NODE_TYPE,
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {
+									availableInChat: true,
+									suggestedPrompts: {
+										prompts: [
+											{ text: 'Valid prompt' },
+											{ text: '   ' },
+											{ text: 'Another valid prompt' },
+										],
+									},
+								},
+							},
+						],
+						connections: {},
+					},
+					member,
+				);
+
+				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
+
+				expect(result.n8n.models).toHaveLength(1);
+				expect(result.n8n.models[0].suggestedPrompts).toEqual([
+					{ text: 'Valid prompt' },
+					{ text: 'Another valid prompt' },
+				]);
+			});
+
+			it('should omit suggestedPrompts when prompts array is empty', async () => {
+				await createActiveWorkflow(
+					{
+						name: 'Agent with empty prompts array',
+						nodes: [
+							{
+								id: uuid(),
+								name: 'Chat Trigger',
+								type: CHAT_TRIGGER_NODE_TYPE,
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {
+									availableInChat: true,
+									suggestedPrompts: {
+										prompts: [],
+									},
+								},
+							},
+						],
+						connections: {},
+					},
+					member,
+				);
+
+				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
+
+				expect(result.n8n.models).toHaveLength(1);
+				expect(result.n8n.models[0].suggestedPrompts).toBeUndefined();
+			});
+
 			it('should include agent icon from chat trigger in workflow model', async () => {
 				const agentIcon = { type: 'emoji' as const, value: '🤖' };
 

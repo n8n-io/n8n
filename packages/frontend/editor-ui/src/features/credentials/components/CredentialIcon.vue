@@ -7,10 +7,12 @@ import { getThemedValue } from '@/app/utils/nodeTypesUtils';
 import type { ICredentialType } from 'n8n-workflow';
 import { computed } from 'vue';
 import { N8nNodeIcon } from '@n8n/design-system';
+import type { AppliedThemeOption } from '@/Interface';
 
 const props = defineProps<{
 	credentialTypeName: string | null;
 	size?: number;
+	theme?: AppliedThemeOption;
 }>();
 
 const credentialsStore = useCredentialsStore();
@@ -20,8 +22,10 @@ const nodeTypesStore = useNodeTypesStore();
 
 const credentialWithIcon = computed(() => getCredentialWithIcon(props.credentialTypeName));
 
+const theme = computed(() => props.theme ?? uiStore.appliedTheme);
+
 const nodeBasedIconUrl = computed(() => {
-	const icon = getThemedValue(credentialWithIcon.value?.icon);
+	const icon = getThemedValue(credentialWithIcon.value?.icon, theme.value);
 	if (!icon?.startsWith('node:')) return null;
 	return nodeTypesStore.getNodeType(icon.replace('node:', ''))?.iconUrl;
 });
@@ -29,7 +33,7 @@ const nodeBasedIconUrl = computed(() => {
 const iconSource = computed(() => {
 	const themeIconUrl = getThemedValue(
 		nodeBasedIconUrl.value ?? credentialWithIcon.value?.iconUrl,
-		uiStore.appliedTheme,
+		theme.value,
 	);
 
 	if (!themeIconUrl) {

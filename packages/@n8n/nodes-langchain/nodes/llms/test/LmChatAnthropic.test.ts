@@ -330,7 +330,7 @@ describe('LmChatAnthropic', () => {
 
 			await lmChatAnthropic.supplyData.call(mockContext, 0);
 
-			expect(mockedMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(mockContext);
+			expect(mockedMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(mockContext, undefined);
 		});
 
 		it('should not add custom headers when header toggle is disabled', async () => {

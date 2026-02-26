@@ -23,7 +23,6 @@ import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 const ChangePasswordView = async () =>
@@ -76,9 +75,10 @@ const SamlOnboarding = async () => await import('@/features/settings/sso/views/S
 const SettingsSourceControl = async () =>
 	await import('@/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue');
 const SettingsExternalSecrets = async () => {
-	const { check } = useEnvFeatureFlag();
+	const settingsStore = useSettingsStore();
+	const moduleConfig = settingsStore.moduleSettings['external-secrets'];
 
-	if (check.value('EXTERNAL_SECRETS_FOR_PROJECTS')) {
+	if (moduleConfig?.multipleConnections || moduleConfig?.forProjects) {
 		return await import(
 			'@/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.ee.vue'
 		);
@@ -106,6 +106,8 @@ const ResourceCenterSectionView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterSectionView.vue');
 const SecuritySettingsView = async () =>
 	await import('@/features/settings/security/SecuritySettings.vue');
+
+import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
 const MigrationReportView = async () =>
 	await import('@/features/settings/migrationReport/MigrationRules.vue');
@@ -555,6 +557,12 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'migration-report',
 				component: RouterView,
+				beforeEnter: () => {
+					if (!MIGRATION_REPORT_TARGET_VERSION) {
+						return { name: VIEWS.HOMEPAGE };
+					}
+					return true;
+				},
 				children: [
 					{
 						path: '',
