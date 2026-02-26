@@ -266,7 +266,6 @@
     "langchain": "catalog:",
     "@langchain/classic": "1.0.5",
     "lodash": "catalog:",
-    "nanoid": "^5.0.9",
     "mammoth": "1.11.0",
     "mime-types": "catalog:",
     "mongodb": "^6.17.0",

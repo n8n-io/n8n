@@ -4,6 +4,7 @@ import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubBaseLLMModel,
 	type ChatHubAgentKnowledgeItem,
+	type ChatHubInputModality,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -215,6 +216,35 @@ export class ChatHubWorkflowService {
 				executionData,
 			};
 		});
+	}
+
+	/**
+	 * Parses input modalities from chat trigger options
+	 * Converts MIME types string to ChatHubInputModality array
+	 */
+	parseInputModalities(options?: {
+		allowFileUploads?: boolean;
+		allowedFilesMimeTypes?: string;
+	}): ChatHubInputModality[] {
+		const allowFileUploads = options?.allowFileUploads ?? false;
+		const allowedFilesMimeTypes = options?.allowedFilesMimeTypes;
+
+		if (!allowFileUploads) {
+			return ['text'];
+		}
+
+		if (!allowedFilesMimeTypes || allowedFilesMimeTypes === '*/*') {
+			return ['text', 'image', 'audio', 'video', 'file'];
+		}
+
+		const mimeTypes = allowedFilesMimeTypes.split(',').map((type) => type.trim());
+		const modalities = new Set<ChatHubInputModality>(['text']);
+
+		for (const mimeType of mimeTypes) {
+			modalities.add(this.getMimeTypeModality(mimeType));
+		}
+
+		return Array.from(modalities);
 	}
 
 	private getUniqueNodeName(originalName: string, existingNames: Set<string>): string {
@@ -848,6 +878,22 @@ Respond the title only:`,
 			id: uuidv4(),
 			name: NODE_NAMES.TITLE_GENERATOR_AGENT,
 		};
+	}
+
+	/**
+	 * Determines the input modality for a given MIME type
+	 */
+	private getMimeTypeModality(mimeType: string): ChatHubInputModality {
+		if (mimeType.startsWith('image/')) {
+			return 'image';
+		}
+		if (mimeType.startsWith('audio/')) {
+			return 'audio';
+		}
+		if (mimeType.startsWith('video/')) {
+			return 'video';
+		}
+		return 'file';
 	}
 
 	prepareExecutionData(

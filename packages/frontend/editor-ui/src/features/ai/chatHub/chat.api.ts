@@ -16,7 +16,6 @@ import type {
 	ChatHubUpdateConversationRequest,
 	ChatHubLLMProvider,
 	ChatProviderSettingsDto,
-	VectorStoreUsageDto,
 	ChatSendMessageResponse,
 	ChatReconnectResponse,
 	ChatHubUpdateToolRequest,
@@ -252,13 +251,6 @@ export function buildAgentAttachmentUrl(
 ): string {
 	return `${context.baseUrl}/chat/agents/${agentId}/attachments/${attachmentIndex}`;
 }
-
-export const fetchVectorStoreUsageApi = async (
-	context: IRestApiContext,
-): Promise<VectorStoreUsageDto> => {
-	const apiEndpoint = '/vector-store/usage';
-	return await makeRestApiRequest<VectorStoreUsageDto>(context, 'GET', apiEndpoint);
-};
 
 export const fetchToolsApi = async (context: IRestApiContext): Promise<ChatHubToolDto[]> => {
 	return await makeRestApiRequest<ChatHubToolDto[]>(context, 'GET', '/chat/tools');

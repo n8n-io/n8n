@@ -8,12 +8,13 @@ import {
 	Column,
 	Entity,
 	ManyToOne,
+	ManyToMany,
+	JoinTable,
 	JoinColumn,
 	PrimaryGeneratedColumn,
 	type Relation,
-	JoinTable,
-	ManyToMany,
 } from '@n8n/typeorm';
+
 import type { ChatHubTool } from './chat-hub-tool.entity';
 
 export interface IChatHubAgent {

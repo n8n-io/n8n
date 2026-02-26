@@ -34,7 +34,6 @@ import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowStatistics } from './workflow-statistics';
-import { VectorStoreData } from './vector-store-data';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
@@ -77,7 +76,6 @@ export {
 	ExecutionEntity,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
-	VectorStoreData,
 };
 
 export const entities = {
@@ -117,5 +115,4 @@ export const entities = {
 	Role,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
-	VectorStoreData,
 };

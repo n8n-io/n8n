@@ -210,16 +210,10 @@ export class DynamicNodeParametersService {
 		credentials?: INodeCredentials,
 		filter?: string,
 		paginationToken?: string,
-		workflowId?: string,
 	): Promise<INodeListSearchResult> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		const method = this.getMethod('listSearch', methodName, nodeType);
-		const workflow = this.getWorkflow(
-			nodeTypeAndVersion,
-			currentNodeParameters,
-			credentials,
-			workflowId,
-		);
+		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return method.call(thisArgs, filter, paginationToken);
@@ -325,7 +319,6 @@ export class DynamicNodeParametersService {
 		nodeTypeAndVersion: INodeTypeNameVersion,
 		currentNodeParameters: INodeParameters,
 		credentials?: INodeCredentials,
-		workflowId?: string,
 	) {
 		const node: INode = {
 			parameters: currentNodeParameters,
@@ -341,7 +334,6 @@ export class DynamicNodeParametersService {
 		}
 
 		return new Workflow({
-			id: workflowId,
 			nodes: [node],
 			connections: {},
 			active: false,

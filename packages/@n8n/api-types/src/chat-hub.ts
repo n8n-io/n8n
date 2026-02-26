@@ -546,12 +546,6 @@ export interface ChatHubModuleSettings {
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
 }
 
-export interface VectorStoreUsageDto {
-	currentSize: number;
-	maxSize: number;
-	usagePercentage: number;
-}
-
 /**
  * Response returned immediately when sending a message via WebSocket streaming.
  * Message IDs are not included as they come via WebSocket events (chatHubStreamBegin).

@@ -7,7 +7,6 @@ export const MODULE_NAMES = [
 	'external-secrets',
 	'community-packages',
 	'data-table',
-	'vector-store',
 	'mcp',
 	'provisioning',
 	'breaking-changes',

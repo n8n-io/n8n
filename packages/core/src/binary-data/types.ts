@@ -38,17 +38,6 @@ export namespace BinaryData {
 		| { type: 'execution'; workflowId: string; executionId: string }
 		| { type: 'custom'; pathSegments: string[]; sourceType?: string; sourceId?: string };
 
-	export type StorageConfig =
-		| { mode: 'filesystem' }
-		| {
-				mode: 's3';
-				bucket: string;
-				region: string;
-				accessKeyId: string;
-				secretAccessKey: string;
-				endpoint?: string;
-		  };
-
 	export interface Manager {
 		init(): Promise<void>;
 
@@ -77,21 +66,6 @@ export namespace BinaryData {
 		): Promise<WriteResult>;
 
 		rename(oldFileId: string, newFileId: string): Promise<void>;
-
-		/**
-		 * Get storage configuration for external tools (e.g., LanceDB)
-		 */
-		getStorageConfig(): StorageConfig;
-
-		/**
-		 * Ensure a location exists in the storage backend and return the full path/URI
-		 */
-		ensureLocation(location: FileLocation): Promise<string>;
-
-		/**
-		 * Get the total size of all files under a location in bytes
-		 */
-		getSize(location: FileLocation): Promise<number>;
 	}
 
 	export type SigningPayload = {

@@ -34,7 +34,6 @@ export class ModuleRegistry {
 		'external-secrets',
 		'community-packages',
 		'data-table',
-		'vector-store',
 		'mcp',
 		'provisioning',
 		'breaking-changes',

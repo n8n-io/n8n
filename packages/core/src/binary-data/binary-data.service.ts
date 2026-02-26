@@ -227,27 +227,6 @@ export class BinaryDataService {
 		await manager.rename(oldFileId, newFileId);
 	}
 
-	/**
-	 * Get storage configuration for external tools (e.g., LanceDB)
-	 */
-	getStorageConfig(): BinaryData.StorageConfig {
-		return this.getManager(this.mode).getStorageConfig();
-	}
-
-	/**
-	 * Ensure a location exists in the storage backend and return the full path/URI
-	 */
-	async ensureLocation(location: BinaryData.FileLocation): Promise<string> {
-		return await this.getManager(this.mode).ensureLocation(location);
-	}
-
-	/**
-	 * Get the total size of all files under a location in bytes
-	 */
-	async getSize(location: BinaryData.FileLocation): Promise<number> {
-		return await this.getManager(this.mode).getSize(location);
-	}
-
 	// ----------------------------------
 	//         private methods
 	// ----------------------------------

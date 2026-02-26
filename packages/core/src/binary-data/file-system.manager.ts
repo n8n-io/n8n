@@ -36,7 +36,7 @@ export class FileSystemManager implements BinaryData.Manager {
 
 		await fs.writeFile(filePath, bufferOrStream);
 
-		const fileSize = await this.getFileSize(fileId);
+		const fileSize = await this.getSize(fileId);
 
 		await this.storeMetadata(fileId, { mimeType, fileName, fileSize });
 
@@ -99,7 +99,7 @@ export class FileSystemManager implements BinaryData.Manager {
 
 		await fs.cp(sourcePath, targetPath);
 
-		const fileSize = await this.getFileSize(targetFileId);
+		const fileSize = await this.getSize(targetFileId);
 
 		await this.storeMetadata(targetFileId, { mimeType, fileName, fileSize });
 
@@ -204,7 +204,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		await fs.writeFile(filePath, JSON.stringify(metadata), { encoding: 'utf-8' });
 	}
 
-	private async getFileSize(fileId: string) {
+	private async getSize(fileId: string) {
 		const filePath = this.resolvePath(fileId);
 
 		try {
@@ -213,59 +213,5 @@ export class FileSystemManager implements BinaryData.Manager {
 		} catch (error) {
 			throw new FileNotFoundError(filePath);
 		}
-	}
-
-	getStorageConfig(): BinaryData.StorageConfig {
-		return {
-			mode: 'filesystem',
-		};
-	}
-
-	/**
-	 * Ensure a location exists by creating the directory if it doesn't exist
-	 * @returns Absolute filesystem path to the directory
-	 */
-	async ensureLocation(location: BinaryData.FileLocation): Promise<string> {
-		const relativePath = this.toRelativePath(location);
-		const dirPath = this.resolvePath(relativePath);
-		await assertDir(dirPath);
-		return dirPath;
-	}
-
-	/**
-	 * Get the total size by recursively calculating directory size
-	 * @returns Size in bytes
-	 */
-	async getSize(location: BinaryData.FileLocation): Promise<number> {
-		const relativePath = this.toRelativePath(location);
-		const dirPath = this.resolvePath(relativePath);
-		return await this.getDirectorySize(dirPath);
-	}
-
-	/**
-	 * Recursively calculate directory size
-	 */
-	private async getDirectorySize(dirPath: string): Promise<number> {
-		let totalSize = 0;
-
-		try {
-			const entries = await fs.readdir(dirPath, { withFileTypes: true });
-
-			for (const entry of entries) {
-				const entryPath = path.join(dirPath, entry.name);
-
-				if (entry.isDirectory()) {
-					totalSize += await this.getDirectorySize(entryPath);
-				} else if (entry.isFile()) {
-					const stats = await fs.stat(entryPath);
-					totalSize += stats.size;
-				}
-			}
-		} catch (error) {
-			// Directory doesn't exist or is inaccessible
-			return 0;
-		}
-
-		return totalSize;
 	}
 }

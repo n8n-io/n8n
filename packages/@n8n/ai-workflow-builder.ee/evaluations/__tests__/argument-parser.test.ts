@@ -119,12 +119,17 @@ describe('argument-parser', () => {
 
 	describe('--webhook-secret', () => {
 		it('parses valid webhook secret', () => {
-			const args = parseEvaluationArgs(['--webhook-secret', 'my-secure-secret-key-1234567890']);
+			const args = parseEvaluationArgs([
+				'--webhook-secret',
+				'my-secure-secret-key-1234567890',
+			]);
 			expect(args.webhookSecret).toBe('my-secure-secret-key-1234567890');
 		});
 
 		it('parses webhook secret with inline = syntax', () => {
-			const args = parseEvaluationArgs(['--webhook-secret=another-secret-key-12345678']);
+			const args = parseEvaluationArgs([
+				'--webhook-secret=another-secret-key-12345678',
+			]);
 			expect(args.webhookSecret).toBe('another-secret-key-12345678');
 		});
 

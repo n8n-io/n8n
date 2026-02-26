@@ -23,7 +23,6 @@ import {
 	fetchChatSettingsApi,
 	fetchChatProviderSettingsApi,
 	updateChatSettingsApi,
-	fetchVectorStoreUsageApi,
 	fetchToolsApi,
 	createToolApi,
 	updateToolApi,
@@ -49,7 +48,6 @@ import {
 	type AgentIconOrEmoji,
 	type ChatHubEditMessageRequest,
 	type ChatHubRegenerateMessageRequest,
-	type ChatAttachment,
 	type ChatHubStreamBegin,
 	type ChatHubStreamChunk,
 	type ChatHubStreamEnd,
@@ -82,7 +80,6 @@ import { deepCopy, type INode } from 'n8n-workflow';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores/constants';
-import type { VectorStoreUsageDto } from '@n8n/api-types/src';
 import { appendChunkToParsedMessageItems } from '@n8n/chat-hub';
 
 export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
@@ -110,7 +107,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const configuredToolsLoaded = ref(false);
 
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
-	const vectorStoreUsage = ref<VectorStoreUsageDto | null>(null);
 
 	const getConversation = (sessionId: ChatSessionId): ChatConversation | undefined =>
 		conversationsBySession.value.get(sessionId);
@@ -605,7 +601,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		}
 
 		// Combine kept existing attachments with new attachments for optimistic UI
-		const keptExistingAttachments = keepAttachmentIndices.flatMap<ChatAttachment>((index) => {
+		const keptExistingAttachments = keepAttachmentIndices.flatMap((index) => {
 			const attachment = message?.attachments[index];
 			if (!attachment) return [];
 			return [
@@ -926,11 +922,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		}
 
 		return saved;
-	}
-
-	async function fetchVectorStoreUsage() {
-		vectorStoreUsage.value = await fetchVectorStoreUsageApi(rootStore.restApiContext);
-		return vectorStoreUsage.value;
 	}
 
 	/**
@@ -1314,12 +1305,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		updateProviderSettings,
 
 		/**
-		 * vector store usage
-		 */
-		vectorStoreUsage,
-		fetchVectorStoreUsage,
-
-		/*
 		 * WebSocket streaming handlers
 		 */
 		handleWebSocketExecutionBegin,

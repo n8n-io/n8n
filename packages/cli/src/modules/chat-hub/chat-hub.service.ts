@@ -9,9 +9,7 @@ import {
 	ChatHubConversationModel,
 	type ChatHubUpdateConversationRequest,
 	type ChatHubSessionDto,
-	type ChatHubBaseLLMModel,
 	type ChatHubAgentKnowledgeItem,
-	type ChatModelMetadataDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -54,7 +52,6 @@ import {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { ChatStreamService } from './chat-stream.service';
-import { getModelMetadata } from './chat-hub.constants';
 import { inE2ETests } from '@/constants';
 import { DateTime } from 'luxon';
 import { collectChatArtifacts, parseMessage } from '@n8n/chat-hub';
@@ -816,7 +813,7 @@ export class ChatHubService {
 				agent,
 				user,
 				sessionId,
-				await this.buildConversationHistory(history, agent, agent.files),
+				await this.buildConversationHistory(history, agent.files),
 				input,
 				trx,
 				agent.systemPrompt + '\n\n' + this.getSystemMessage(timeZone, history),
@@ -832,7 +829,7 @@ export class ChatHubService {
 			sessionId,
 			credentials,
 			model,
-			await this.buildConversationHistory(history, model, []),
+			await this.buildConversationHistory(history, []),
 			input,
 			'You are a helpful assistant.\n\n' + this.getSystemMessage(timeZone, history),
 			tools,
@@ -970,11 +967,8 @@ export class ChatHubService {
 
 	async buildConversationHistory(
 		history: ChatHubMessage[],
-		model: ChatHubBaseLLMModel,
 		contextFiles: ChatHubAgentKnowledgeItem[],
 	): Promise<MessageRecord[]> {
-		const metadata = getModelMetadata(model.provider, model.model);
-
 		// Gemini has 20MB limit, the value should also be what n8n instance can safely handle
 		const maxTotalPayloadSize = 20 * 1024 * 1024 * 0.9;
 
@@ -1021,7 +1015,6 @@ export class ChatHubService {
 					{ type: 'file', binaryData: attachment },
 					currentTotalSize,
 					maxTotalPayloadSize,
-					metadata,
 					'File',
 				);
 
@@ -1046,7 +1039,6 @@ export class ChatHubService {
 				file,
 				currentTotalSize,
 				maxTotalPayloadSize,
-				metadata,
 				`Context file (${i + 1} of ${contextFiles.length})`,
 			);
 
@@ -1074,7 +1066,6 @@ export class ChatHubService {
 		file: ChatHubAgentKnowledgeItem,
 		currentTotalSize: number,
 		maxTotalPayloadSize: number,
-		modelMetadata: ChatModelMetadataDto,
 		prefix: string,
 	): Promise<ContentBlock[]> {
 		class TotalFileSizeExceededError extends Error {}
@@ -1110,12 +1101,6 @@ export class ChatHubService {
 						text: `${prefix}: ${attachment.fileName ?? 'attachment'}\nContent: \n${content}`,
 					},
 				];
-			}
-
-			const modality = this.chatHubModelsService.getMimeTypeModality(attachment.mimeType);
-
-			if (!modelMetadata.inputModalities.includes(modality)) {
-				throw new UnsupportedMimeTypeError();
 			}
 
 			const url = await this.chatHubAttachmentService.getDataUrl(attachment);

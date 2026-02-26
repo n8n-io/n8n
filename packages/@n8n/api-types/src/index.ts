@@ -55,7 +55,6 @@ export {
 	type MessageChunk,
 	UpdateChatSettingsRequest,
 	type ChatProviderSettingsDto,
-	type VectorStoreUsageDto,
 	type ChatSendMessageResponse,
 	type ChatReconnectResponse,
 	ChatReconnectRequest,

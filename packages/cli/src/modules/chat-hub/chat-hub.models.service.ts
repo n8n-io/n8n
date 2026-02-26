@@ -2,7 +2,6 @@ import {
 	chatHubProviderSchema,
 	emptyChatModelsResponse,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
-	type ChatHubInputModality,
 	type ChatHubLLMProvider,
 	type ChatHubProvider,
 	type ChatModelDto,
@@ -24,6 +23,7 @@ import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
 import { chatTriggerParamsShape, type ChatTriggerParams } from './chat-hub.types';
 
@@ -35,6 +35,7 @@ export class ChatHubModelsService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly chatHubAgentService: ChatHubAgentService,
+		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 	) {}
 
 	async getModels(
@@ -781,7 +782,9 @@ export class ChatHubModelsService {
 			return null;
 		}
 
-		const inputModalities = this.parseInputModalities(chatTriggerParams.options);
+		const inputModalities = this.chatHubWorkflowService.parseInputModalities(
+			chatTriggerParams.options,
+		);
 
 		const agentName =
 			chatTriggerParams.agentName && chatTriggerParams.agentName.trim().length > 0
@@ -869,50 +872,5 @@ export class ChatHubModelsService {
 				},
 			];
 		});
-	}
-
-	/**
-	 * Determines the input modality for a given MIME type
-	 */
-	getMimeTypeModality(mimeType: string): ChatHubInputModality {
-		if (mimeType.startsWith('image/')) {
-			return 'image';
-		}
-		if (mimeType.startsWith('audio/')) {
-			return 'audio';
-		}
-		if (mimeType.startsWith('video/')) {
-			return 'video';
-		}
-		return 'file';
-	}
-
-	/**
-	 * Parses input modalities from chat trigger options
-	 * Converts MIME types string to ChatHubInputModality array
-	 */
-	private parseInputModalities(options?: {
-		allowFileUploads?: boolean;
-		allowedFilesMimeTypes?: string;
-	}): ChatHubInputModality[] {
-		const allowFileUploads = options?.allowFileUploads ?? false;
-		const allowedFilesMimeTypes = options?.allowedFilesMimeTypes;
-
-		if (!allowFileUploads) {
-			return ['text'];
-		}
-
-		if (!allowedFilesMimeTypes || allowedFilesMimeTypes === '*/*') {
-			return ['text', 'image', 'audio', 'video', 'file'];
-		}
-
-		const mimeTypes = allowedFilesMimeTypes.split(',').map((type) => type.trim());
-		const modalities = new Set<ChatHubInputModality>(['text']);
-
-		for (const mimeType of mimeTypes) {
-			modalities.add(this.getMimeTypeModality(mimeType));
-		}
-
-		return Array.from(modalities);
 	}
 }

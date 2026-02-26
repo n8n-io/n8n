@@ -166,40 +166,6 @@ export class DatabaseManager implements BinaryData.Manager {
 		if (result.affected === 0) throw new BinaryDataFileNotFoundError(oldFileId);
 	}
 
-	getStorageConfig(): BinaryData.StorageConfig {
-		return {
-			mode: 'filesystem',
-		};
-	}
-
-	/**
-	 * Database doesn't have directories - returns database URI for the location
-	 * @returns Database URI (e.g., database://custom/path/segments)
-	 */
-	async ensureLocation(location: BinaryData.FileLocation): Promise<string> {
-		if (location.type === 'execution') {
-			return `database://workflows/${location.workflowId}/executions/${location.executionId}`;
-		}
-		return `database://${location.pathSegments.join('/')}`;
-	}
-
-	/**
-	 * Calculate total size by summing file sizes from database
-	 * @returns Size in bytes
-	 */
-	async getSize(location: BinaryData.FileLocation): Promise<number> {
-		const { sourceType, sourceId } = this.toSource(location);
-
-		const result = await this.repository
-			.createQueryBuilder('binary_data')
-			.select('SUM(binary_data.fileSize)', 'totalSize')
-			.where('binary_data.sourceType = :sourceType', { sourceType })
-			.andWhere('binary_data.sourceId LIKE :sourceId', { sourceId: `${sourceId}%` })
-			.getRawOne();
-
-		return parseInt(result?.totalSize ?? '0', 10);
-	}
-
 	private toSource(location: BinaryData.FileLocation): {
 		sourceType: SourceType;
 		sourceId: string;
