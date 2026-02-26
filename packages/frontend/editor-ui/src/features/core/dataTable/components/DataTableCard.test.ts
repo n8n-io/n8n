@@ -5,7 +5,6 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 
 vi.mock('@/features/collaboration/projects/projects.store');
 
