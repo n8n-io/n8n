@@ -40,7 +40,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 
 vi.mock('@/features/settings/users/users.store', () => ({
 	useUsersStore: vi.fn(() => ({
-		isInstanceOwner: true,
+		isAdmin: true,
 	})),
 }));
 

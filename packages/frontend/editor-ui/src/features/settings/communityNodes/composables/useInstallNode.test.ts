@@ -86,7 +86,7 @@ beforeEach(() => {
 
 	vi.mocked(useToast).mockReturnValue(toast);
 
-	Object.defineProperty(usersStore, 'isInstanceOwner', {
+	Object.defineProperty(usersStore, 'isAdmin', {
 		value: true,
 		writable: true,
 	});
@@ -133,7 +133,7 @@ beforeEach(() => {
 describe('useInstallNode', () => {
 	describe('installNode', () => {
 		it('should return error when user is not an owner', async () => {
-			Object.defineProperty(usersStore, 'isInstanceOwner', {
+			Object.defineProperty(usersStore, 'isAdmin', {
 				value: false,
 				writable: true,
 			});
