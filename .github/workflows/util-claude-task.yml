@@ -27,7 +27,7 @@ on:
         type: number
         default: 50
       suppress_output:
-        description: 'Suppress console output and job summary (use for security-sensitive tasks)'
+        description: 'Suppress console output and job summary'
         required: false
         type: boolean
         default: false
@@ -172,7 +172,7 @@ jobs:
             echo "## Claude Task Runner Summary"
             echo ""
             if [ "$SUPPRESS_OUTPUT" = "true" ]; then
-              echo "**Task:** _(suppressed — security-sensitive)_"
+              echo "**Task:** _(output suppressed)_"
             else
               echo "**Task:** $INPUT_TASK"
             fi
