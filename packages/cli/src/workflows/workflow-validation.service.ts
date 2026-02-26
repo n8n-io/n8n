@@ -1,5 +1,7 @@
-import { WorkflowRepository } from '@n8n/db';
+import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
 import {
 	validateWorkflowHasTriggerLikeNode,
 	NodeHelpers,
@@ -8,6 +10,7 @@ import {
 	validateNodeCredentials,
 	isNodeConnected,
 	isTriggerLikeNode,
+	toExecutionContextEstablishmentHookParameter,
 } from 'n8n-workflow';
 import type { INode, INodes, IConnections, INodeType } from 'n8n-workflow';
 
@@ -35,7 +38,10 @@ export interface WorkflowStatus {
 
 @Service()
 export class WorkflowValidationService {
-	constructor(private readonly workflowRepository: WorkflowRepository) {}
+	constructor(
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly credentialsRepository: CredentialsRepository,
+	) {}
 
 	/**
 	 * Validates node configuration (credentials, parameters) for connected and enabled nodes.
@@ -179,6 +185,63 @@ export class WorkflowValidationService {
 
 		if (!configValidation.isValid) {
 			return configValidation;
+		}
+
+		return { isValid: true };
+	}
+
+	/**
+	 * Validates that workflows using dynamic (resolvable) credentials have at least
+	 * one trigger node with context establishment hooks configured.
+	 * These hooks extract identity from trigger data (e.g., bearer tokens from HTTP headers)
+	 * and are required for dynamic credential resolution.
+	 */
+	async validateDynamicCredentials(
+		nodes: INode[],
+		nodeTypes: NodeTypes,
+	): Promise<WorkflowValidationResult> {
+		const credentialIds = new Set<string>();
+		for (const node of nodes) {
+			if (node.disabled) continue;
+			for (const credName of Object.keys(node.credentials ?? {})) {
+				const credData = node.credentials?.[credName];
+				if (credData?.id) {
+					credentialIds.add(credData.id);
+				}
+			}
+		}
+
+		if (credentialIds.size === 0) {
+			return { isValid: true };
+		}
+
+		const resolvableCredentials = await this.credentialsRepository.find({
+			where: { id: In([...credentialIds]), isResolvable: true },
+			select: ['id', 'name'],
+		});
+
+		if (resolvableCredentials.length === 0) {
+			return { isValid: true };
+		}
+
+		const hasExtractorHook = nodes.some((node) => {
+			if (node.disabled) return false;
+			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			if (!nodeType || !isTriggerLikeNode(nodeType)) return false;
+			const hookParams = toExecutionContextEstablishmentHookParameter(node.parameters);
+			return (
+				hookParams !== null &&
+				hookParams.success &&
+				hookParams.data.contextEstablishmentHooks.hooks.length > 0
+			);
+		});
+
+		if (!hasExtractorHook) {
+			const credNames = resolvableCredentials.map((c) => `"${c.name}"`).join(', ');
+			return {
+				isValid: false,
+				error: `Cannot publish workflow: dynamic credentials (${credNames}) require a trigger with context establishment hooks configured to establish user identity. Please configure an extractor hook on the trigger node.`,
+			};
 		}
 
 		return { isValid: true };
