@@ -328,10 +328,6 @@ function closeFocusPanel() {
 	) {
 		focusPanelStore.unsetParameters();
 
-		if (setupPanelStore.isFeatureEnabled) {
-			focusPanelStore.setSelectedTab('setup');
-		}
-
 		telemetry.track('User removed focused param', {
 			source: 'closeIcon',
 			parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,

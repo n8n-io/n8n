@@ -288,7 +288,7 @@ const cardComplete = computed(() => {
 				:remove-first-parameter-margin="true"
 				:node="state.node"
 				:hide-delete="true"
-				:options-overrides="{ showExpressionSelector: false, showFocusPanel: false }"
+				:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
 				@value-changed="onValueChanged"
 			/>
 		</div>

@@ -3,7 +3,7 @@ import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 /**
  * Shared hover-highlight logic for the "Used in X nodes" hint
- * shown in NodeSetupCard and CredentialTypeSetupCard.
+ * shown in NodeSetupCard.
  *
  * On mouseenter the hint highlights all related nodes;
  * on mouseleave it restores highlight to just the primary node.

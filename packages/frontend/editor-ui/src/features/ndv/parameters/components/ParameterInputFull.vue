@@ -139,6 +139,8 @@ const parameterTooltipText = computed(() =>
 );
 
 const showExpressionSelector = computed(() => {
+	if (props.optionsOverrides?.hideExpressionSelector) return false;
+
 	if (isResourceLocator.value) {
 		// The resourceLocator handles overrides itself, so we use this hack to
 		// infer whether it's overridden and we should hide the toggle
@@ -402,7 +404,7 @@ function removeOverride(clearField = false) {
 					:value="value"
 					:is-read-only="isReadOnly"
 					:show-options="displayOptions"
-					:show-expression-selector="!hideExpressionSelector && showExpressionSelector"
+					:show-expression-selector="showExpressionSelector"
 					:is-content-overridden="isContentOverride"
 					:show-delete="showDelete"
 					:on-delete="onDelete"
@@ -450,9 +452,7 @@ function removeOverride(clearField = false) {
 				:value="value"
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
-				:show-expression-selector="
-					(optionsOverrides?.showExpressionSelector ?? true) && showExpressionSelector
-				"
+				:show-expression-selector="showExpressionSelector"
 				:show-focus-panel="optionsOverrides?.showFocusPanel ?? true"
 				:is-content-overridden="isContentOverride"
 				:show-delete="showDelete"
@@ -519,9 +519,7 @@ function removeOverride(clearField = false) {
 				:value="value"
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
-				:show-expression-selector="
-					(optionsOverrides?.showExpressionSelector ?? true) && showExpressionSelector
-				"
+				:show-expression-selector="showExpressionSelector"
 				:show-focus-panel="optionsOverrides?.showFocusPanel ?? true"
 				:is-content-overridden="isContentOverride"
 				:show-delete="showDelete"
@@ -542,10 +540,8 @@ function removeOverride(clearField = false) {
 				:value="value"
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
-				:show-expression-selector="
-					(optionsOverrides?.showExpressionSelector ?? true) && showExpressionSelector
-				"
-				:show-focus-panel="optionsOverrides?.showFocusPanel ?? true"
+				:show-expression-selector="showExpressionSelector"
+				:show-focus-panel="!optionsOverrides?.hideFocusPanelButton"
 				:is-content-overridden="isContentOverride"
 				:show-delete="showDelete"
 				:on-delete="onDelete"

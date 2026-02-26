@@ -34,8 +34,8 @@ import { omitKey } from '@/app/utils/objectUtils';
 import type { BaseTextKey } from '@n8n/i18n';
 
 export interface ParameterOptionsOverrides {
-	showExpressionSelector?: boolean;
-	showFocusPanel?: boolean;
+	hideExpressionSelector?: boolean;
+	hideFocusPanelButton?: boolean;
 }
 
 export function getNodeSettingsInitialValues(): INodeParameters {
