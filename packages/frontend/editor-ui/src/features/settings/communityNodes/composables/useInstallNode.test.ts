@@ -91,6 +91,11 @@ beforeEach(() => {
 		writable: true,
 	});
 
+	Object.defineProperty(usersStore, 'isInstanceOwner', {
+		value: false,
+		writable: true,
+	});
+
 	vi.mocked(communityNodesStore.installPackage).mockResolvedValue(undefined);
 	vi.mocked(nodeTypesStore.getNodeTypes).mockResolvedValue(undefined);
 	vi.mocked(nodeTypesStore.fetchCommunityNodePreviews).mockResolvedValue(undefined);
@@ -137,6 +142,10 @@ describe('useInstallNode', () => {
 				value: false,
 				writable: true,
 			});
+			Object.defineProperty(usersStore, 'isInstanceOwner', {
+				value: false,
+				writable: true,
+			});
 			const { installNode } = useInstallNode();
 
 			const result = await installNode({
@@ -151,6 +160,31 @@ describe('useInstallNode', () => {
 			expect(showError).toHaveBeenCalledWith(
 				expect.any(Error),
 				'settings.communityNodes.messages.install.error',
+			);
+		});
+
+		it('should install node when user is instance owner (not admin)', async () => {
+			Object.defineProperty(usersStore, 'isAdmin', {
+				value: false,
+				writable: true,
+			});
+			Object.defineProperty(usersStore, 'isInstanceOwner', {
+				value: true,
+				writable: true,
+			});
+			const { installNode } = useInstallNode();
+
+			const result = await installNode({
+				type: 'verified',
+				packageName: 'test-package',
+				nodeType: 'test-node',
+			});
+
+			expect(result.success).toBe(true);
+			expect(communityNodesStore.installPackage).toHaveBeenCalledWith(
+				'test-package',
+				true,
+				'1.0.0',
 			);
 		});
 

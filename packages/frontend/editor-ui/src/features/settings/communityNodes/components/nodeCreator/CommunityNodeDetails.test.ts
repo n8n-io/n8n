@@ -37,7 +37,7 @@ const showError = vi.fn();
 const removeNodeFromMergedNodes = vi.fn();
 
 const usersStore = {
-	isAdmin: true,
+	isInstanceOwner: true,
 };
 
 vi.mock('@/features/credentials/credentials.store', () => ({
@@ -211,7 +211,7 @@ describe('CommunityNodeDetails', () => {
 	});
 
 	it('should not render install button if not instance owner', async () => {
-		usersStore.isAdmin = false;
+		usersStore.isInstanceOwner = false;
 
 		const wrapper = renderComponent({ pinia });
 
