@@ -1,17 +1,11 @@
 <script lang="ts" setup>
 // vueuse is a peer dependency
 // eslint-disable import-x/no-extraneous-dependencies
-import DOMPurify from 'dompurify';
 import { onClickOutside } from '@vueuse/core';
+import DOMPurify from 'dompurify';
 import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, computed, watch, nextTick } from 'vue';
-import IconShuffle from '~icons/lucide/shuffle';
 
-import type { EmojiSection } from './emojiData';
-import { ICON_PICKER_BLOCKLIST } from './iconPickerBlocklist';
-import type { LucideIcon } from './lucideIconData';
-import SkinTonePicker from './SkinTonePicker.vue';
-import type { IconOrEmoji } from './types';
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
@@ -19,8 +13,15 @@ import N8nIconButton from '../N8nIconButton';
 import N8nInput from '../N8nInput';
 import N8nTabs from '../N8nTabs';
 import N8nTooltip from '../N8nTooltip';
+import type { EmojiSection } from './emojiData';
 import IconColorPicker from './IconColorPicker.vue';
+import { ICON_PICKER_BLOCKLIST } from './iconPickerBlocklist';
+import type { LucideIcon } from './lucideIconData';
+import SkinTonePicker from './SkinTonePicker.vue';
+import type { IconOrEmoji } from './types';
 import { useIconPickerSearch } from './useIconPickerSearch';
+
+import IconShuffle from '~icons/lucide/shuffle';
 
 /**
  * Icon picker with support for all Lucide icons and emojis.
