@@ -23,5 +23,4 @@ export const getTruncatedProjectName = (projectName: string | null | undefined):
 export const enum ResourceType {
 	Credential = 'credential',
 	Workflow = 'workflow',
-	DataTable = 'dataTable',
 }

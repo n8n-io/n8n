@@ -9,10 +9,8 @@ import { VIEWS } from '@/app/constants';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import ProjectIcon from './ProjectIcon.vue';
 import { N8nBadge, N8nTooltip } from '@n8n/design-system';
-import type { DataTableResource } from '@/features/core/dataTable/types';
-
 type Props = {
-	resource: WorkflowResource | CredentialsResource | FolderResource | DataTableResource;
+	resource: WorkflowResource | CredentialsResource | FolderResource;
 	resourceType: ResourceType;
 	resourceTypeLabel: string;
 	personalProject: Project | null;
@@ -34,13 +32,6 @@ const props = withDefaults(defineProps<Props>(), {
 	showBadgeBorder: true,
 });
 
-const homeProject = computed(() => {
-	if (props.resource.resourceType === 'dataTable') {
-		return props.resource.project;
-	}
-	return props.resource.homeProject;
-});
-
 const i18n = useI18n();
 
 const isShared = computed(() => {
@@ -49,19 +40,21 @@ const isShared = computed(() => {
 
 const projectState = computed(() => {
 	if (
-		!homeProject.value ||
-		(props.personalProject && homeProject.value?.id === props.personalProject.id)
+		(props.resource.homeProject &&
+			props.personalProject &&
+			props.resource.homeProject.id === props.personalProject.id) ||
+		!props.resource.homeProject
 	) {
 		if (isShared.value) {
 			return ProjectState.SharedOwned;
 		}
 		return ProjectState.Owned;
-	} else if (homeProject.value?.type !== ProjectTypes.Team) {
+	} else if (props.resource.homeProject?.type !== ProjectTypes.Team) {
 		if (isShared.value) {
 			return ProjectState.SharedPersonal;
 		}
 		return ProjectState.Personal;
-	} else if (homeProject.value?.type === ProjectTypes.Team) {
+	} else if (props.resource.homeProject?.type === ProjectTypes.Team) {
 		if (isShared.value) {
 			return ProjectState.SharedTeam;
 		}
@@ -81,7 +74,7 @@ const badgeText = computed(() => {
 	) {
 		return i18n.baseText('projects.menu.personal');
 	} else {
-		const { name, email } = splitName(homeProject.value?.name ?? '');
+		const { name, email } = splitName(props.resource.homeProject?.name ?? '');
 		return name ?? email ?? '';
 	}
 });
@@ -95,8 +88,8 @@ const badgeIcon = computed<IconOrEmoji>(() => {
 			return { type: 'icon', value: 'user' };
 		case ProjectState.Team:
 		case ProjectState.SharedTeam:
-			return isIconOrEmoji(homeProject.value?.icon)
-				? homeProject.value?.icon
+			return isIconOrEmoji(props.resource.homeProject?.icon)
+				? props.resource.homeProject?.icon
 				: { type: 'icon', value: 'layers' };
 		default:
 			return { type: 'icon', value: 'layers' };
@@ -149,12 +142,12 @@ const projectLocation = computed(() => {
 	if (
 		projectState.value !== ProjectState.Personal &&
 		projectState.value !== ProjectState.SharedPersonal &&
-		homeProject.value?.id &&
+		props.resource.homeProject?.id &&
 		props.resourceType === ResourceType.Workflow
 	) {
 		return {
 			name: VIEWS.PROJECTS_WORKFLOWS,
-			params: { projectId: homeProject.value?.id },
+			params: { projectId: props.resource.homeProject.id },
 		};
 	}
 	return null;
