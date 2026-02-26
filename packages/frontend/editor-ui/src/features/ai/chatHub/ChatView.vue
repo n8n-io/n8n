@@ -7,6 +7,7 @@ import {
 } from '@/app/constants';
 import {
 	findOneFromModelsResponse,
+	flattenModel,
 	isLlmProvider,
 	unflattenModel,
 	createMimeTypes,
@@ -62,6 +63,7 @@ import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import ChatGreetings from './components/ChatGreetings.vue';
 import { useChatPushHandler } from './composables/useChatPushHandler';
 import ChatArtifactViewer from './components/ChatArtifactViewer.vue';
@@ -78,6 +80,7 @@ const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const documentTitle = useDocumentTitle();
 const uiStore = useUIStore();
 const i18n = useI18n();
+const telemetry = useTelemetry();
 
 // Initialize WebSocket push handler for chat streaming
 const chatPushHandler = useChatPushHandler();
@@ -669,6 +672,18 @@ function handleOpenWorkflow(workflowId: string) {
 	window.open(routeData.href, '_blank');
 }
 
+function handleSelectPrompt(prompt: string) {
+	if (selectedModel.value) {
+		telemetry.track('User clicked chat hub suggested prompt', {
+			...flattenModel(selectedModel.value.model),
+			prompt_text: prompt,
+		});
+	}
+
+	inputRef.value?.setText(prompt);
+	inputRef.value?.focus();
+}
+
 function onFilesDropped(files: File[]) {
 	if (!editingMessageId.value) {
 		inputRef.value?.addAttachments(files);
@@ -742,7 +757,12 @@ function onFilesDropped(files: File[]) {
 					:class="$style.scrollArea"
 				>
 					<div ref="scrollable" :class="$style.scrollable">
-						<ChatGreetings v-if="isNewSession" :selected-agent="selectedModel" />
+						<ChatGreetings
+							v-if="isNewSession"
+							:selected-agent="selectedModel"
+							:loading="!chatStore.agentsReady"
+							@select-prompt="handleSelectPrompt"
+						/>
 
 						<div v-else role="log" aria-live="polite" :class="$style.messageList">
 							<ChatMessage
@@ -890,7 +910,8 @@ function onFilesDropped(files: File[]) {
 	gap: var(--spacing--xl);
 
 	.isNewSession & {
-		justify-content: center;
+		justify-content: space-between;
+		padding-top: var(--spacing--2xl);
 	}
 }
 
@@ -913,6 +934,7 @@ function onFilesDropped(files: File[]) {
 .promptContainer {
 	display: flex;
 	justify-content: center;
+	padding-block: var(--spacing--md);
 
 	.isMobileDevice &,
 	.isExistingSession & {
