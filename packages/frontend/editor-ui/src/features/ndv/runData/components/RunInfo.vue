@@ -30,6 +30,21 @@ const runMetadata = computed(() => {
 		startTime: `${date} at ${time}`,
 	};
 });
+
+const credentialResolution = computed(() => {
+	const resolutions = props.taskData?.metadata?.credentialResolutions;
+	if (!resolutions?.length) return null;
+	const hasDynamic = resolutions.some((r) => r.resolvedDynamically);
+	return {
+		isDynamic: hasDynamic,
+		label: hasDynamic
+			? i18n.baseText('runData.credentialResolution.dynamic')
+			: i18n.baseText('runData.credentialResolution.static'),
+		tooltip: hasDynamic
+			? i18n.baseText('runData.credentialResolution.tooltip.dynamic')
+			: i18n.baseText('runData.credentialResolution.tooltip.static'),
+	};
+});
 </script>
 
 <template>
@@ -81,6 +96,18 @@ const runMetadata = computed(() => {
 				}}</N8nText>
 				{{ runMetadata.executionTime }} {{ i18n.baseText('runData.ms') }}
 			</div>
+		</N8nInfoTip>
+		<N8nInfoTip
+			v-if="credentialResolution"
+			type="tooltip"
+			:theme="credentialResolution.isDynamic ? 'success' : 'info'"
+			tooltip-placement="right"
+			data-test-id="credential-resolution-info"
+		>
+			<span>{{ credentialResolution.label }}</span>
+			<template #tooltip>
+				<span>{{ credentialResolution.tooltip }}</span>
+			</template>
 		</N8nInfoTip>
 	</div>
 </template>
