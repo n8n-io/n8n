@@ -115,6 +115,39 @@ describe('Ollama Node', () => {
 			]);
 		});
 
+		it('should pass timeout option to API request', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'llama3.2:latest';
+					case 'messages.values':
+						return [{ role: 'user', content: 'Hello' }];
+					case 'simplify':
+						return true;
+					case 'options':
+						return { timeout: 600000 };
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+			getConnectedToolsMock.mockResolvedValue([]);
+			apiRequestMock.mockResolvedValue({
+				model: 'llama3.2:latest',
+				created_at: '2023-10-01T10:00:00Z',
+				message: { role: 'assistant', content: 'Hello!' },
+				done: true,
+			} as OllamaChatResponse);
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			const callArgs = apiRequestMock.mock.calls[0];
+			expect(callArgs[2]).toMatchObject({
+				body: expect.any(Object),
+				option: { timeout: 600000 },
+			});
+		});
+
 		it('should handle tool calls correctly', async () => {
 			const mockTool = {
 				name: 'calculator',
@@ -674,6 +707,46 @@ describe('Ollama Node', () => {
 						temperature: 0.1,
 					},
 				},
+			});
+		});
+
+		it('should pass timeout option for image analysis API request', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'llava:latest';
+					case 'inputType':
+						return 'binary';
+					case 'binaryPropertyName':
+						return 'data';
+					case 'text':
+						return 'Describe this image';
+					case 'simplify':
+						return true;
+					case 'options':
+						return { timeout: 600000 };
+					default:
+						return undefined;
+				}
+			});
+
+			executeFunctionsMock.helpers.getBinaryDataBuffer.mockResolvedValue(Buffer.from('test image'));
+			apiRequestMock.mockResolvedValue({
+				model: 'llava:latest',
+				created_at: '2023-10-01T10:00:00Z',
+				message: {
+					role: 'assistant',
+					content: 'A sample image.',
+				},
+				done: true,
+			} as OllamaChatResponse);
+
+			await image.analyze.execute.call(executeFunctionsMock, 0);
+
+			const callArgs = apiRequestMock.mock.calls[0];
+			expect(callArgs[2]).toMatchObject({
+				body: expect.any(Object),
+				option: { timeout: 600000 },
 			});
 		});
 	});
