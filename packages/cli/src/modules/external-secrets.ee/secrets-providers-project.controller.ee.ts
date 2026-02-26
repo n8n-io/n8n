@@ -73,7 +73,7 @@ export class SecretProvidersProjectController {
 	}
 
 	@Get('/:projectId/connections')
-	@ProjectScope('externalSecretsProvider:list')
+	@ProjectScope('externalSecretsProvider:read')
 	async listConnectionsForAProject(
 		_req: AuthenticatedRequest,
 		_res: Response,
