@@ -1,9 +1,11 @@
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
+	type IDataObject,
 	type INode,
 	type IPinData,
 	type WorkflowExecuteMode,
@@ -15,6 +17,7 @@ export const SUPPORTED_TRIGGERS: Record<string, string> = {
 	[CHAT_TRIGGER_NODE_TYPE]: 'Chat Trigger',
 	[FORM_TRIGGER_NODE_TYPE]: 'Form Trigger',
 	[SCHEDULE_TRIGGER_NODE_TYPE]: 'Schedule Trigger',
+	[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE]: 'Execute Workflow Trigger',
 };
 
 export function findSupportedTrigger(nodes: INode[]): INode | undefined {
@@ -35,7 +38,18 @@ export function getExecutionMode(node: INode): WorkflowExecuteMode {
 	}
 }
 
-export function buildPinData(node: INode, agentPrompt?: string): IPinData {
+export function buildPinData(
+	node: INode,
+	agentPrompt?: string,
+	typedInputs?: Record<string, unknown>,
+): IPinData {
+	// Typed inputs for Execute Workflow Trigger — pass structured data directly
+	if (node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE && typedInputs) {
+		return {
+			[node.name]: [{ json: typedInputs as IDataObject }],
+		};
+	}
+
 	switch (node.type) {
 		case MANUAL_TRIGGER_NODE_TYPE:
 			return {
@@ -83,6 +97,19 @@ export function buildPinData(node: INode, agentPrompt?: string): IPinData {
 						json: {
 							timestamp: new Date().toISOString(),
 							triggeredByAgent: true,
+						},
+					},
+				],
+			};
+		case EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE:
+			// No typed inputs provided — fall through with agent prompt
+			return {
+				[node.name]: [
+					{
+						json: {
+							triggeredByAgent: true,
+							timestamp: new Date().toISOString(),
+							...(agentPrompt ? { message: agentPrompt } : {}),
 						},
 					},
 				],

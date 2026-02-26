@@ -29,6 +29,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
+import { discoverWorkflowSkill } from './agent-schema-discovery';
 import { callExternalAgent } from './agent-external-client';
 import { callLlm } from './agent-llm-client';
 import { buildSystemPrompt } from './agent-prompt-builder';
@@ -240,6 +241,26 @@ export class AgentsService {
 			}
 		}
 
+		// Discover typed skills from shared workflows with Execute Workflow Triggers
+		const workflowIds = await this.workflowSharingService.getSharedWorkflowIds(agent, {
+			scopes: ['workflow:read'],
+		});
+		const skills: Array<{
+			id: string;
+			name: string;
+			inputs: Array<{ name: string; type: string }>;
+		}> = [];
+		if (workflowIds.length) {
+			const workflows = await this.workflowRepository.findByIds(workflowIds);
+			for (const wf of workflows) {
+				const nodes = wf.nodes ?? [];
+				const skill = discoverWorkflowSkill(wf.id, wf.name, nodes);
+				if (skill) {
+					skills.push({ id: skill.workflowId, name: skill.workflowName, inputs: skill.inputs });
+				}
+			}
+		}
+
 		return {
 			id: agent.id,
 			name: agent.firstName,
@@ -252,7 +273,7 @@ export class AgentsService {
 				pushNotifications: false,
 				multiTurn: true,
 			},
-			skills: [],
+			skills,
 			interfaces: [
 				{
 					type: 'http+json',
@@ -470,9 +491,7 @@ export class AgentsService {
 			scopes: ['workflow:read'],
 		});
 		const workflows = workflowIds.length
-			? await this.workflowRepository.findByIds(workflowIds, {
-					fields: ['id', 'name', 'active'],
-				})
+			? await this.workflowRepository.findByIds(workflowIds)
 			: [];
 
 		const workflowList = workflows.map((w) => ({
@@ -480,6 +499,11 @@ export class AgentsService {
 			name: w.name,
 			active: w.active,
 		}));
+
+		// Discover typed skills from Execute Workflow Trigger schemas
+		const skills = workflows
+			.map((w) => discoverWorkflowSkill(w.id, w.name, w.nodes ?? []))
+			.filter((s): s is NonNullable<typeof s> => s !== null);
 
 		const otherAgents: Array<{ id: string; firstName: string; description: string }> = [];
 		const externalAgentNames = new Set(externalAgents?.map((a) => a.name) ?? []);
@@ -515,7 +539,13 @@ export class AgentsService {
 		const agentName = `${agentUser.firstName} ${agentUser.lastName}`.trim();
 		const steps: TaskStep[] = [];
 
-		const systemPromptText = buildSystemPrompt(agentName, workflowList, otherAgents, canDelegate);
+		const systemPromptText = buildSystemPrompt(
+			agentName,
+			workflowList,
+			otherAgents,
+			canDelegate,
+			skills,
+		);
 		const messages: LlmMessage[] = [
 			{ role: 'system', content: systemPromptText },
 			{ role: 'user', content: prompt },
@@ -535,6 +565,7 @@ export class AgentsService {
 			let parsed: {
 				action: string;
 				workflowId?: string;
+				inputs?: Record<string, unknown>;
 				toAgentId?: string;
 				message?: string;
 				reasoning?: string;
@@ -557,11 +588,17 @@ export class AgentsService {
 			}
 
 			if (parsed.action === 'complete') {
-				return {
-					status: 'completed',
-					summary: parsed.summary ?? 'Task completed',
+				const reflectionResult = await this.reflectBeforeComplete(
+					messages,
+					llmConfig,
+					prompt,
+					parsed.summary ?? 'Task completed',
 					steps,
-				};
+					budget,
+				);
+				if (reflectionResult) return reflectionResult;
+				// Reflection found gaps — loop continues with LLM's corrective action
+				continue;
 			}
 
 			if (parsed.action === 'execute_workflow' && parsed.workflowId) {
@@ -583,6 +620,7 @@ export class AgentsService {
 						prompt,
 						callerId,
 						workflowCredentials,
+						parsed.inputs,
 					);
 					const stepResult = result.success ? 'success' : 'failed';
 					this.recordObservation(steps, messages, onStep, {
@@ -702,6 +740,82 @@ export class AgentsService {
 		return { status: 'completed', summary: 'Reached maximum iterations', steps };
 	}
 
+	// ── Reflection ───────────────────────────────────────────────────────
+
+	/**
+	 * Before accepting a "complete" action, ask the LLM to review whether the
+	 * original task was fully addressed. If gaps are found the LLM should
+	 * respond with a corrective action instead of confirming completion.
+	 *
+	 * Returns `AgentTaskResult` when the task is genuinely complete, or
+	 * `null` when the LLM identified gaps (the caller should continue the loop).
+	 */
+	private async reflectBeforeComplete(
+		messages: LlmMessage[],
+		llmConfig: LlmConfig,
+		originalPrompt: string,
+		proposedSummary: string,
+		steps: TaskStep[],
+		budget: IterationBudget,
+	): Promise<AgentTaskResult | null> {
+		// No budget left — accept the completion as-is
+		if (budget.remaining <= 0) {
+			return { status: 'completed', summary: proposedSummary, steps };
+		}
+
+		const stepsSoFar = steps
+			.map(
+				(s) =>
+					`${s.action}${s.workflowName ? `: ${s.workflowName}` : ''}${s.result ? ` → ${s.result}` : ''}`,
+			)
+			.join('\n');
+
+		const reflectionPrompt = `Before completing, review your work:
+
+Original task: "${originalPrompt}"
+Proposed summary: "${proposedSummary}"
+Steps taken:
+${stepsSoFar || '(none)'}
+
+If everything was addressed, respond with:
+{"action": "complete", "summary": "<final summary>"}
+
+If there are gaps or errors that need correcting, respond with the appropriate action instead (e.g. execute_workflow or send_message).`;
+
+		messages.push({ role: 'user', content: reflectionPrompt });
+		budget.remaining--;
+
+		const response = await callLlm(messages, llmConfig);
+		messages.push({ role: 'assistant', content: response });
+
+		const cleaned = response
+			.replace(/^```(?:json)?\s*/i, '')
+			.replace(/\s*```\s*$/, '')
+			.trim();
+
+		try {
+			const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+			const parsed = JSON.parse(jsonMatch?.[0] ?? cleaned) as {
+				action: string;
+				summary?: string;
+			};
+
+			if (parsed.action === 'complete') {
+				return {
+					status: 'completed',
+					summary: parsed.summary ?? proposedSummary,
+					steps,
+				};
+			}
+		} catch {
+			// Parse failure — accept original completion
+			return { status: 'completed', summary: proposedSummary, steps };
+		}
+
+		// LLM responded with a non-complete action — return null so the loop continues
+		return null;
+	}
+
 	// ── Workflow Execution ────────────────────────────────────────────────
 
 	private async runWorkflow(
@@ -710,6 +824,7 @@ export class AgentsService {
 		agentPrompt?: string,
 		callerId?: string,
 		workflowCredentials?: Record<string, Record<string, string>>,
+		typedInputs?: Record<string, unknown>,
 	): Promise<{ success: boolean; executionId: string; data?: unknown }> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
@@ -732,7 +847,7 @@ export class AgentsService {
 			);
 		}
 
-		const pinData = buildPinData(triggerNode, agentPrompt);
+		const pinData = buildPinData(triggerNode, agentPrompt, typedInputs);
 
 		let runtimeData: IExecutionContext | undefined;
 		if (callerId || workflowCredentials) {

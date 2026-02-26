@@ -1,11 +1,23 @@
+import type { WorkflowSkill } from './agent-schema-discovery';
+
 export function buildSystemPrompt(
 	agentName: string,
 	workflows: Array<{ id: string; name: string; active: boolean }>,
 	otherAgents: Array<{ id: string; firstName: string; description: string }>,
 	canDelegate: boolean,
+	skills?: WorkflowSkill[],
 ): string {
+	const skillMap = new Map(skills?.map((s) => [s.workflowId, s]) ?? []);
+
 	const workflowList = workflows
-		.map((w) => `- ${w.name} (id: ${w.id}, active: ${w.active})`)
+		.map((w) => {
+			const skill = skillMap.get(w.id);
+			if (skill) {
+				const inputDesc = skill.inputs.map((i) => `${i.name}: ${i.type}`).join(', ');
+				return `- ${w.name} (id: ${w.id}, active: ${w.active})\n  Typed inputs: { ${inputDesc} }`;
+			}
+			return `- ${w.name} (id: ${w.id}, active: ${w.active})`;
+		})
 		.join('\n');
 
 	let agentSection = '';
@@ -26,6 +38,13 @@ To send a message to another agent:
 		? '"execute_workflow", "send_message", or "complete"'
 		: '"execute_workflow" or "complete"';
 
+	const typedInputInstruction = skills?.length
+		? `
+For workflows with typed inputs listed above, include an "inputs" field:
+{"action": "execute_workflow", "workflowId": "<id>", "inputs": {"fieldName": "value"}, "reasoning": "<why>"}
+`
+		: '';
+
 	return `You are ${agentName}, an autonomous AI agent in an n8n workflow automation system.
 
 You have access to these workflows:
@@ -40,7 +59,7 @@ RULES:
 
 To execute a workflow:
 {"action": "execute_workflow", "workflowId": "<id>", "reasoning": "<why>"}
-
+${typedInputInstruction}
 When the task is complete (after seeing all results):
 {"action": "complete", "summary": "<what was accomplished>"}
 

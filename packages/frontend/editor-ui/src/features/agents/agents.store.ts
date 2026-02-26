@@ -347,7 +347,7 @@ export const useAgentsStore = defineStore('agents', () => {
 		};
 
 		agents.value.push(newAgent);
-		return newAgent;
+		return { agent: newAgent, apiKey: response.apiKey };
 	};
 
 	const updateAgent = async (

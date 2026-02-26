@@ -2,6 +2,7 @@
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import {
 	N8nButton,
+	N8nCard,
 	N8nDialog,
 	N8nDialogClose,
 	N8nDialogFooter,
@@ -9,6 +10,7 @@ import {
 	N8nInput,
 	N8nText,
 } from '@n8n/design-system';
+import CopyInput from '@/app/components/CopyInput.vue';
 import { useAgentsStore, ZONE_COLORS } from './agents.store';
 import { useAgentPanelStore } from './agentPanel.store';
 import AgentCard from './AgentCard.vue';
@@ -28,6 +30,7 @@ const showAddDialog = ref(false);
 const newAgentName = ref('');
 const newAgentAvatar = ref('');
 const isCreating = ref(false);
+const createdApiKey = ref<string | null>(null);
 
 async function onCreateAgent() {
 	const name = newAgentName.value.trim();
@@ -36,23 +39,35 @@ async function onCreateAgent() {
 	isCreating.value = true;
 	try {
 		const avatar = newAgentAvatar.value.trim() || undefined;
-		await agentsStore.createAgent(name, avatar);
+		const { apiKey } = await agentsStore.createAgent(name, avatar);
 
 		if (canvasRef.value) {
 			const { clientWidth, clientHeight } = canvasRef.value;
 			await agentsStore.fetchZones(clientWidth, clientHeight);
 		}
 
-		newAgentName.value = '';
-		newAgentAvatar.value = '';
-		showAddDialog.value = false;
+		if (apiKey) {
+			createdApiKey.value = apiKey;
+		} else {
+			newAgentName.value = '';
+			newAgentAvatar.value = '';
+			showAddDialog.value = false;
+		}
 	} finally {
 		isCreating.value = false;
 	}
 }
 
+function onDismissApiKey() {
+	createdApiKey.value = null;
+	newAgentName.value = '';
+	newAgentAvatar.value = '';
+	showAddDialog.value = false;
+}
+
 watch(showAddDialog, (open) => {
 	if (!open) {
+		createdApiKey.value = null;
 		newAgentName.value = '';
 		newAgentAvatar.value = '';
 	}
@@ -205,43 +220,69 @@ function onRemoveConnection(lineId: string) {
 		<N8nDialog
 			:open="showAddDialog"
 			size="small"
-			header="Add Agent"
+			:header="createdApiKey ? 'Agent Created' : 'Add Agent'"
 			data-testid="add-agent-dialog"
 			@update:open="showAddDialog = $event"
 		>
-			<div :class="$style.dialogField">
-				<N8nText tag="label" size="small" bold>Name</N8nText>
-				<N8nInput
-					v-model="newAgentName"
-					placeholder="e.g. Docs Curator"
-					:maxlength="32"
-					data-testid="add-agent-name"
-					@keydown.enter="onCreateAgent"
-				/>
-			</div>
-			<div :class="$style.dialogField">
-				<N8nText tag="label" size="small" bold>Avatar (emoji or URL, optional)</N8nText>
-				<N8nInput
-					v-model="newAgentAvatar"
-					placeholder="🤖 or https://..."
-					:maxlength="255"
-					data-testid="add-agent-avatar"
-					@keydown.enter="onCreateAgent"
-				/>
-			</div>
-			<N8nDialogFooter>
-				<N8nDialogClose as-child>
-					<N8nButton label="Cancel" type="tertiary" size="small" />
-				</N8nDialogClose>
-				<N8nButton
-					label="Create"
-					size="small"
-					:disabled="!newAgentName.trim() || isCreating"
-					:loading="isCreating"
-					data-testid="add-agent-submit"
-					@click="onCreateAgent"
-				/>
-			</N8nDialogFooter>
+			<!-- API Key display after creation -->
+			<template v-if="createdApiKey">
+				<N8nCard :class="$style.apiKeyCard">
+					<CopyInput
+						label="A2A API Key"
+						:value="createdApiKey"
+						:redact-value="true"
+						copy-button-text="Click to copy"
+						toast-title="API Key copied"
+						hint="Copy this key now. It will not be shown again."
+						data-testid="agent-api-key"
+					/>
+				</N8nCard>
+				<N8nDialogFooter>
+					<N8nButton
+						label="Done"
+						size="small"
+						data-testid="agent-api-key-done"
+						@click="onDismissApiKey"
+					/>
+				</N8nDialogFooter>
+			</template>
+
+			<!-- Creation form -->
+			<template v-else>
+				<div :class="$style.dialogField">
+					<N8nText tag="label" size="small" bold>Name</N8nText>
+					<N8nInput
+						v-model="newAgentName"
+						placeholder="e.g. Docs Curator"
+						:maxlength="32"
+						data-testid="add-agent-name"
+						@keydown.enter="onCreateAgent"
+					/>
+				</div>
+				<div :class="$style.dialogField">
+					<N8nText tag="label" size="small" bold>Avatar (emoji or URL, optional)</N8nText>
+					<N8nInput
+						v-model="newAgentAvatar"
+						placeholder="🤖 or https://..."
+						:maxlength="255"
+						data-testid="add-agent-avatar"
+						@keydown.enter="onCreateAgent"
+					/>
+				</div>
+				<N8nDialogFooter>
+					<N8nDialogClose as-child>
+						<N8nButton label="Cancel" type="tertiary" size="small" />
+					</N8nDialogClose>
+					<N8nButton
+						label="Create"
+						size="small"
+						:disabled="!newAgentName.trim() || isCreating"
+						:loading="isCreating"
+						data-testid="add-agent-submit"
+						@click="onCreateAgent"
+					/>
+				</N8nDialogFooter>
+			</template>
 		</N8nDialog>
 		<div :class="$style.body">
 			<div ref="canvasRef" :class="$style.canvas" data-testid="agents-canvas">
@@ -344,5 +385,9 @@ function onRemoveConnection(lineId: string) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.apiKeyCard {
+	margin-bottom: var(--spacing--xs);
 }
 </style>

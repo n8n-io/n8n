@@ -28,6 +28,7 @@ export interface UserResponse {
 	avatar?: string | null;
 	description?: string | null;
 	agentAccessLevel?: 'external' | 'internal' | 'closed' | null;
+	apiKey?: string;
 }
 
 export interface ZoneLayout {

@@ -2,12 +2,15 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Request, Response } from 'express';
 
+import type { INode } from 'n8n-workflow';
+
 import { AgentsController } from '../agents.controller';
 
 import type { AgentsService } from '@/services/agents/agents.service';
 import { callExternalAgent } from '@/services/agents/agent-external-client';
 import { callLlm } from '@/services/agents/agent-llm-client';
 import { buildSystemPrompt } from '@/services/agents/agent-prompt-builder';
+import { findSupportedTrigger, buildPinData } from '@/services/agents/agent-workflow-runner';
 import type { ExternalAgentConfig, AgentDto, LlmConfig } from '@/services/agents/agents.types';
 import { sseWrite } from '@/services/agents/agents.types';
 import { jsonStringify } from 'n8n-workflow';
@@ -473,6 +476,56 @@ describe('buildSystemPrompt', () => {
 		expect(prompt).toContain('ExtBot (id: external:ExtBot): External only');
 		expect(prompt).toContain('send_message');
 	});
+
+	it('should render typed inputs for workflows with skills', () => {
+		const workflows = [
+			{ id: 'wf-1', name: 'Send Slack', active: true },
+			{ id: 'wf-2', name: 'Deploy', active: true },
+		];
+		const skills = [
+			{
+				workflowId: 'wf-1',
+				workflowName: 'Send Slack',
+				inputs: [
+					{ name: 'channel', type: 'string' },
+					{ name: 'message', type: 'string' },
+				],
+			},
+		];
+		const prompt = buildSystemPrompt('TestAgent', workflows, [], false, skills);
+
+		expect(prompt).toContain('Typed inputs: { channel: string, message: string }');
+		// wf-2 has no skill — should appear without typed inputs line
+		expect(prompt).toContain('Deploy (id: wf-2, active: true)');
+		expect(prompt).not.toMatch(/Deploy.*Typed inputs/);
+	});
+
+	it('should include inputs instruction when skills are present', () => {
+		const workflows = [{ id: 'wf-1', name: 'Test', active: true }];
+		const skills = [
+			{
+				workflowId: 'wf-1',
+				workflowName: 'Test',
+				inputs: [{ name: 'field', type: 'string' }],
+			},
+		];
+		const prompt = buildSystemPrompt('TestAgent', workflows, [], false, skills);
+
+		expect(prompt).toContain('"inputs"');
+		expect(prompt).toContain('fieldName');
+	});
+
+	it('should not include inputs instruction when no skills', () => {
+		const prompt = buildSystemPrompt('TestAgent', [], [], false);
+
+		expect(prompt).not.toContain('"inputs"');
+	});
+
+	it('should not include inputs instruction when skills array is empty', () => {
+		const prompt = buildSystemPrompt('TestAgent', [], [], false, []);
+
+		expect(prompt).not.toContain('"inputs"');
+	});
 });
 
 describe('callExternalAgent', () => {
@@ -791,5 +844,106 @@ describe('credential leak investigation', () => {
 		// CONCLUSION: The primary leak channel is the LLM context (messages array).
 		// The LLM sees the credential value and could potentially include it in
 		// its reasoning/summary, which WOULD then appear in the final result.
+	});
+});
+
+describe('findSupportedTrigger', () => {
+	function makeNode(type: string, overrides: Partial<INode> = {}): INode {
+		return {
+			id: 'n-1',
+			name: 'Trigger',
+			type,
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			...overrides,
+		};
+	}
+
+	it('should find manual trigger', () => {
+		const nodes = [makeNode('n8n-nodes-base.manualTrigger')];
+		expect(findSupportedTrigger(nodes)?.type).toBe('n8n-nodes-base.manualTrigger');
+	});
+
+	it('should find execute workflow trigger', () => {
+		const nodes = [makeNode('n8n-nodes-base.executeWorkflowTrigger')];
+		expect(findSupportedTrigger(nodes)?.type).toBe('n8n-nodes-base.executeWorkflowTrigger');
+	});
+
+	it('should skip disabled triggers', () => {
+		const nodes = [makeNode('n8n-nodes-base.manualTrigger', { disabled: true })];
+		expect(findSupportedTrigger(nodes)).toBeUndefined();
+	});
+
+	it('should return undefined for unsupported trigger types', () => {
+		const nodes = [makeNode('n8n-nodes-base.someRandomTrigger')];
+		expect(findSupportedTrigger(nodes)).toBeUndefined();
+	});
+
+	it('should return the first supported trigger when multiple exist', () => {
+		const nodes = [
+			makeNode('n8n-nodes-base.webhook', { id: 'n-1', name: 'Webhook' }),
+			makeNode('n8n-nodes-base.manualTrigger', { id: 'n-2', name: 'Manual' }),
+		];
+		expect(findSupportedTrigger(nodes)?.id).toBe('n-1');
+	});
+});
+
+describe('buildPinData', () => {
+	function makeNode(type: string, name = 'Trigger'): INode {
+		return {
+			id: 'n-1',
+			name,
+			type,
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+	}
+
+	it('should inject typed inputs for execute workflow trigger', () => {
+		const node = makeNode('n8n-nodes-base.executeWorkflowTrigger', 'EWT');
+		const result = buildPinData(node, undefined, { channel: '#general', msg: 'hello' });
+
+		expect(result).toEqual({
+			EWT: [{ json: { channel: '#general', msg: 'hello' } }],
+		});
+	});
+
+	it('should fall back to agent prompt for execute workflow trigger without typed inputs', () => {
+		const node = makeNode('n8n-nodes-base.executeWorkflowTrigger', 'EWT');
+		const result = buildPinData(node, 'Run the tests');
+
+		expect(result.EWT[0].json).toHaveProperty('triggeredByAgent', true);
+		expect(result.EWT[0].json).toHaveProperty('message', 'Run the tests');
+	});
+
+	it('should include agent prompt for manual trigger', () => {
+		const node = makeNode('n8n-nodes-base.manualTrigger', 'Manual');
+		const result = buildPinData(node, 'Do stuff');
+
+		expect(result.Manual[0].json).toHaveProperty('triggeredByAgent', true);
+		expect(result.Manual[0].json).toHaveProperty('message', 'Do stuff');
+	});
+
+	it('should produce webhook pin data', () => {
+		const node = makeNode('n8n-nodes-base.webhook', 'Hook');
+		const result = buildPinData(node);
+
+		expect(result.Hook[0].json).toHaveProperty('headers');
+		expect(result.Hook[0].json).toHaveProperty('body');
+	});
+
+	it('should produce chat trigger pin data', () => {
+		const node = makeNode('@n8n/n8n-nodes-langchain.chatTrigger', 'Chat');
+		const result = buildPinData(node);
+
+		expect(result.Chat[0].json).toHaveProperty('sessionId');
+		expect(result.Chat[0].json).toHaveProperty('chatInput');
+	});
+
+	it('should return empty object for unknown trigger type', () => {
+		const node = makeNode('n8n-nodes-base.unknownTrigger');
+		expect(buildPinData(node)).toEqual({});
 	});
 });
