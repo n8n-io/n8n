@@ -137,7 +137,7 @@ beforeEach(() => {
 
 describe('useInstallNode', () => {
 	describe('installNode', () => {
-		it('should return error when user is not an owner', async () => {
+		it('should return error when user is not an owner or admin', async () => {
 			Object.defineProperty(usersStore, 'isAdmin', {
 				value: false,
 				writable: true,
@@ -163,13 +163,16 @@ describe('useInstallNode', () => {
 			);
 		});
 
-		it('should install node when user is instance owner (not admin)', async () => {
+		it.each([
+			{ isAdmin: true, isInstanceOwner: false, label: 'admin' },
+			{ isAdmin: false, isInstanceOwner: true, label: 'instance owner' },
+		])('should allow installing when user is $label', async ({ isAdmin, isInstanceOwner }) => {
 			Object.defineProperty(usersStore, 'isAdmin', {
-				value: false,
+				value: isAdmin,
 				writable: true,
 			});
 			Object.defineProperty(usersStore, 'isInstanceOwner', {
-				value: true,
+				value: isInstanceOwner,
 				writable: true,
 			});
 			const { installNode } = useInstallNode();
