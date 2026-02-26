@@ -11,7 +11,7 @@ import { N8nBadge, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system
 import type { DataTableResource } from '../types';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+
 type Props = {
 	dataTable: DataTableResource;
 	readOnly?: boolean;
@@ -26,16 +26,6 @@ const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
 	readOnly: false,
 	showOwnershipBadge: false,
-});
-
-const isSomeoneElsesDataTable = computed(
-	() =>
-		props.dataTable.project?.type !== ProjectTypes.Team &&
-		props.dataTable.project?.id !== projectsStore.personalProject?.id,
-);
-
-const showCardBreadcrumbs = computed(() => {
-	return props.showOwnershipBadge && !isSomeoneElsesDataTable.value;
 });
 
 const dataTableRoute = computed(() => {
@@ -128,7 +118,6 @@ const getDataTableSize = computed(() => {
 							v-if="showOwnershipBadge"
 							:class="{
 								[$style.cardBadge]: true,
-								[$style['with-breadcrumbs']]: showCardBreadcrumbs,
 							}"
 							:resource="dataTable"
 							:resource-type="ResourceType.DataTable"
