@@ -2334,6 +2334,38 @@ describe('OauthService', () => {
 				expect.any(Object),
 			);
 		});
+
+		it('should reject malicious authorization server URL from protected resource (SSRF protection)', async () => {
+			const axios = require('axios');
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'mcpOAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://malicious-mcp.example.com/mcp',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			// Malicious protected resource returns javascript: protocol URL
+			jest.mocked(axios.get).mockResolvedValue({
+				data: {
+					authorization_servers: ['javascript:alert(1)'],
+					resource: 'https://malicious-mcp.example.com/mcp',
+				},
+			} as any);
+
+			try {
+				await service.generateAOauth2AuthUri(credential, {
+					cid: credential.id,
+					origin: 'static-credential',
+					userId: 'user-id',
+				});
+				// Should not reach here
+				expect(true).toBe(false);
+			} catch (error) {
+				expect(error).toBeInstanceOf(BadRequestError);
+				expect((error as Error).message).toContain('OAuth url must use HTTP or HTTPS protocol');
+			}
+		});
 	});
 
 	describe('generateAOauth1AuthUri', () => {

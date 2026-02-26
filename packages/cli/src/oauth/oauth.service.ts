@@ -345,11 +345,19 @@ export class OauthService {
 				// MCP spec allows multiple; we use the first one
 				authorizationServerUrl = protectedResourceMetadata.authorization_servers[0];
 
+				// Validate authorization server URL to prevent SSRF attacks
+				this.validateOAuthUrlOrThrow(authorizationServerUrl);
+
 				this.logger.debug('Protected resource discovery succeeded', {
 					resourceUrl: oauthCredentials.serverUrl,
 					authorizationServerUrl,
 				});
 			} catch (error) {
+				// Re-throw security validation errors immediately (don't fall back)
+				if (error instanceof BadRequestError && (error as Error).message.includes('OAuth url')) {
+					throw error;
+				}
+
 				// Fallback: If protected resource discovery fails,
 				// assume serverUrl IS the authorization server (backwards compatibility)
 				this.logger.debug(
