@@ -349,8 +349,11 @@ replays missed events before switching to live delivery. Two mechanisms:
 
 - **Auto-reconnect**: Native `EventSource` sends `Last-Event-ID` header
   automatically. Server replays `event.id > Last-Event-ID`.
-- **Manual reconnect** (thread switch, page reload): Frontend passes
-  `?lastEventId=N` query parameter. Server replays `event.id > N`.
+- **Page reload** (same thread): Frontend passes `?lastEventId=N` query
+  parameter from stored per-thread cursor. Server replays `event.id > N`.
+- **Thread switch**: Frontend connects without `lastEventId` — server
+  replays the full event history from the beginning (frontend cleared its
+  messages and needs the complete thread).
 
 Because IDs are monotonically increasing integers per thread, replay does not
 require dedup.

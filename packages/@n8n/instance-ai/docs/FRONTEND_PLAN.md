@@ -374,9 +374,9 @@ stateDiagram-v2
 ### SSE client implementation
 
 Use native `EventSource` for simplicity. It handles auto-reconnect and
-`Last-Event-ID` on reconnection natively. For initial connections that need
-replay (thread switch, page reload), pass `lastEventId` as a query
-parameter:
+`Last-Event-ID` on reconnection natively. For page reloads (same thread),
+pass `lastEventId` as a query parameter to resume from where we left off.
+For thread switches, omit it to get full replay (see `switchThread()`):
 
 ```typescript
 function connectSSE(state: InstanceAiStoreState, threadId: string): EventSource {
