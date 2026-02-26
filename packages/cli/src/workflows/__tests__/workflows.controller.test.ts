@@ -5,6 +5,7 @@ import type {
 	AuthenticatedRequest,
 	IExecutionResponse,
 	CredentialsEntity,
+	ProjectRepository,
 	User,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -19,10 +20,12 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { License } from '@/license';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 jest.mock('axios');
+jest.mock('@/permissions.ee/check-access');
 
 describe('WorkflowsController', () => {
 	const controller = Object.create(WorkflowsController.prototype);
@@ -319,6 +322,192 @@ describe('WorkflowsController', () => {
 				expect(credentialsService.getMany).toHaveBeenCalledWith(mockUser, {
 					includeGlobal: true,
 				});
+			});
+		});
+
+		describe('redaction policy scope enforcement', () => {
+			const userHasScopesMock = jest.mocked(userHasScopes);
+
+			it('should strip redactionPolicy on create when user lacks scope', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockUser = mock<User>({ id: 'user-123' });
+				const body: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					projectId: 'project-123',
+					settings: { redactionPolicy: 'all' } as CreateWorkflowDto['settings'],
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
+					user: mockUser,
+				});
+
+				userHasScopesMock.mockResolvedValue(false);
+
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.existsBy.mockResolvedValue(false);
+
+				controller.workflowRepository = workflowRepository;
+				controller.externalHooks = mock();
+				controller.externalHooks.run = jest.fn().mockRejectedValue(new Error('Stopping for test'));
+				controller.tagRepository = mock();
+				controller.globalConfig = { tags: { disabled: true } };
+
+				/**
+				 * Act
+				 */
+				await expect(controller.create(mockRequest, res, body)).rejects.toThrow(
+					'Stopping for test',
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(userHasScopesMock).toHaveBeenCalledWith(
+					mockUser,
+					['workflow:updateRedactionSetting'],
+					false,
+					{ projectId: 'project-123' },
+				);
+				expect(body.settings?.redactionPolicy).toBeUndefined();
+			});
+
+			it('should preserve redactionPolicy on create when user has scope', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockUser = mock<User>({ id: 'user-123' });
+				const body: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					projectId: 'project-123',
+					settings: { redactionPolicy: 'all' } as CreateWorkflowDto['settings'],
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
+					user: mockUser,
+				});
+
+				userHasScopesMock.mockResolvedValue(true);
+
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.existsBy.mockResolvedValue(false);
+
+				controller.workflowRepository = workflowRepository;
+				controller.externalHooks = mock();
+				controller.externalHooks.run = jest.fn().mockRejectedValue(new Error('Stopping for test'));
+				controller.tagRepository = mock();
+				controller.globalConfig = { tags: { disabled: true } };
+
+				/**
+				 * Act
+				 */
+				await expect(controller.create(mockRequest, res, body)).rejects.toThrow(
+					'Stopping for test',
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(userHasScopesMock).toHaveBeenCalledWith(
+					mockUser,
+					['workflow:updateRedactionSetting'],
+					false,
+					{ projectId: 'project-123' },
+				);
+				expect(body.settings?.redactionPolicy).toBe('all');
+			});
+
+			it('should resolve projectId from personal project when projectId not provided', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockUser = mock<User>({ id: 'user-456' });
+				const body: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					settings: { redactionPolicy: 'all' } as CreateWorkflowDto['settings'],
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
+					user: mockUser,
+				});
+
+				userHasScopesMock.mockResolvedValue(false);
+
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.existsBy.mockResolvedValue(false);
+
+				const projectRepository = mock<ProjectRepository>();
+				projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+					id: 'personal-project-789',
+				} as any);
+
+				controller.workflowRepository = workflowRepository;
+				controller.projectRepository = projectRepository;
+				controller.externalHooks = mock();
+				controller.externalHooks.run = jest.fn().mockRejectedValue(new Error('Stopping for test'));
+				controller.tagRepository = mock();
+				controller.globalConfig = { tags: { disabled: true } };
+
+				/**
+				 * Act
+				 */
+				await expect(controller.create(mockRequest, res, body)).rejects.toThrow(
+					'Stopping for test',
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(projectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith('user-456');
+				expect(userHasScopesMock).toHaveBeenCalledWith(
+					mockUser,
+					['workflow:updateRedactionSetting'],
+					false,
+					{ projectId: 'personal-project-789' },
+				);
+				expect(body.settings?.redactionPolicy).toBeUndefined();
+			});
+
+			it('should not check scope when settings has no redactionPolicy', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockUser = mock<User>({ id: 'user-123' });
+				const body: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					projectId: 'project-123',
+					settings: { executionOrder: 'v1' } as CreateWorkflowDto['settings'],
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
+					user: mockUser,
+				});
+
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.existsBy.mockResolvedValue(false);
+
+				controller.workflowRepository = workflowRepository;
+				controller.externalHooks = mock();
+				controller.externalHooks.run = jest.fn().mockRejectedValue(new Error('Stopping for test'));
+				controller.tagRepository = mock();
+				controller.globalConfig = { tags: { disabled: true } };
+
+				/**
+				 * Act
+				 */
+				await expect(controller.create(mockRequest, res, body)).rejects.toThrow(
+					'Stopping for test',
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(userHasScopesMock).not.toHaveBeenCalled();
 			});
 		});
 	});

@@ -113,6 +113,22 @@ export class WorkflowsController {
 
 		const newWorkflow = new WorkflowEntity();
 
+		// Strip redactionPolicy if user lacks scope
+		if (body.settings?.redactionPolicy !== undefined) {
+			const effectiveProjectId =
+				body.projectId ??
+				(await this.projectRepository.getPersonalProjectForUserOrFail(req.user.id)).id;
+			const canUpdateRedaction = await userHasScopes(
+				req.user,
+				['workflow:updateRedactionSetting'],
+				false,
+				{ projectId: effectiveProjectId },
+			);
+			if (!canUpdateRedaction) {
+				delete body.settings.redactionPolicy;
+			}
+		}
+
 		// Security: Object.assign is now safe because the DTO validates and filters all input
 		// Only fields defined in CreateWorkflowDto are assigned; internal fields like
 		// triggerCount, versionCounter, isArchived, etc. are never set from user input
