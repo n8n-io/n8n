@@ -353,10 +353,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 		it('should return default data', () => {
 			const result = getRunData(workflow);
-			const { resumeToken } = result.executionData ?? {};
 			expect(result).toEqual({
 				executionData: createRunExecutionData({
-					resumeToken,
+					resumeToken: result.executionData?.resumeToken,
 					executionData: {
 						contextData: {},
 						metadata: {},
@@ -392,10 +391,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 				workflowId: '567',
 			};
 			const result = getRunData(workflow, data, parentExecution);
-			const { resumeToken } = result.executionData ?? {};
 			expect(result).toEqual({
 				executionData: createRunExecutionData({
-					resumeToken,
+					resumeToken: result.executionData?.resumeToken,
 					executionData: {
 						contextData: {},
 						metadata: {},
