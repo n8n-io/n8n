@@ -16,6 +16,7 @@ const BREADCRUMBS_SEPARATOR = '/';
 
 type Props = {
 	dataTable: DataTable;
+	readOnly: boolean;
 };
 
 const props = defineProps<Props>();
@@ -29,6 +30,10 @@ const router = useRouter();
 const toast = useToast();
 
 const editableName = ref(props.dataTable.name);
+
+const isRenameDisabled = computed(
+	() => !dataTableStore.projectPermissions.dataTable.update || props.readOnly,
+);
 
 const project = computed(() => {
 	return props.dataTable.project ?? null;
@@ -118,8 +123,8 @@ watch(
 					data-test-id="data-table-header-name-input"
 					:placeholder="i18n.baseText('dataTable.add.input.name.label')"
 					:class="$style['breadcrumb-current']"
-					:read-only="false"
-					:disabled="false"
+					:read-only="readOnly"
+					:disabled="isRenameDisabled"
 					@update:model-value="onNameSubmit"
 				/>
 			</template>
@@ -127,6 +132,7 @@ watch(
 		<div :class="$style['data-table-actions']">
 			<DataTableActions
 				:data-table="props.dataTable"
+				:is-read-only="readOnly"
 				location="breadcrumbs"
 				@rename="onRename"
 				@on-deleted="onDelete"

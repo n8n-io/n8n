@@ -1,46 +1,121 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { MemorySaver } from '@langchain/langgraph';
+import fs from 'fs';
 import { Client } from 'langsmith/client';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import path from 'path';
 
-import { loadNodesFromFile } from './load-nodes.js';
-import { anthropicClaudeSonnet45 } from '../../src/llm-config.js';
-import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
-import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
-import type { EvalLogger } from '../harness/logger.js';
+import { DEFAULT_MODEL, getApiKeyEnvVar, MODEL_FACTORIES, type ModelId } from '@/llm-config';
+import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
+import { WorkflowBuilderAgent } from '@/workflow-builder-agent';
+
+import { loadNodesFromFile } from './load-nodes';
+import type { EvalLogger } from '../harness/logger';
 import {
 	createTraceFilters,
 	isMinimalTracingEnabled,
 	type TraceFilters,
-} from '../langsmith/trace-filters.js';
+} from '../langsmith/trace-filters';
 
-/** Maximum batch size in bytes for trace uploads (2MB - reduced to avoid 403 errors) */
-const TRACE_BATCH_SIZE_LIMIT = 2_000_000;
+/** Maximum memory for trace queue (3GB) */
+const MAX_INGEST_MEMORY_BYTES = 3 * 1024 * 1024 * 1024;
 
-/** Number of concurrent trace batch uploads */
-const TRACE_BATCH_CONCURRENCY = 1;
+// ============================================================================
+// Stage Models Configuration
+// ============================================================================
+
+/**
+ * Configuration for per-stage model selection.
+ * All fields except 'default' are optional - unspecified stages use the default model.
+ */
+export interface StageModels {
+	/** Default model for all stages */
+	default: ModelId;
+	/** Model for supervisor stage (routing decisions) */
+	supervisor?: ModelId;
+	/** Model for responder stage (final user responses) */
+	responder?: ModelId;
+	/** Model for discovery stage (node discovery) */
+	discovery?: ModelId;
+	/** Model for builder stage (workflow structure and configuration) */
+	builder?: ModelId;
+	/** Model for parameter updater (within builder) */
+	parameterUpdater?: ModelId;
+	/** Model for planner stage (plan mode) */
+	planner?: ModelId;
+	/** Model for LLM judge evaluation */
+	judge?: ModelId;
+}
+
+/**
+ * Resolved LLM instances for each stage.
+ * All fields are populated (using default model as fallback).
+ */
+export interface ResolvedStageLLMs {
+	default: BaseChatModel;
+	supervisor: BaseChatModel;
+	responder: BaseChatModel;
+	discovery: BaseChatModel;
+	builder: BaseChatModel;
+	parameterUpdater: BaseChatModel;
+	planner: BaseChatModel;
+	judge: BaseChatModel;
+}
 
 export interface TestEnvironment {
 	parsedNodeTypes: INodeTypeDescription[];
-	llm: BaseChatModel;
+	/** Resolved LLM instances for each stage */
+	llms: ResolvedStageLLMs;
 	tracer?: LangChainTracer;
 	lsClient?: Client;
 	/** Trace filtering utilities (only present when minimal tracing is enabled) */
 	traceFilters?: TraceFilters;
+	/** Directories containing generated node definition files */
+	nodeDefinitionDirs: string[];
 }
 
 /**
- * Sets up the LLM with proper configuration
+ * Sets up an LLM with proper configuration
+ * @param modelId - Model identifier (defaults to DEFAULT_MODEL)
  * @returns Configured LLM instance
- * @throws Error if N8N_AI_ANTHROPIC_KEY environment variable is not set
+ * @throws Error if the required API key environment variable is not set
  */
-export async function setupLLM(): Promise<BaseChatModel> {
-	const apiKey = process.env.N8N_AI_ANTHROPIC_KEY;
+export async function setupLLM(modelId: ModelId = DEFAULT_MODEL): Promise<BaseChatModel> {
+	const envVar = getApiKeyEnvVar(modelId);
+	const apiKey = process.env[envVar];
 	if (!apiKey) {
-		throw new Error('N8N_AI_ANTHROPIC_KEY environment variable is required');
+		throw new Error(`${envVar} environment variable is required for model ${modelId}`);
 	}
-	return await anthropicClaudeSonnet45({ apiKey });
+	const factory = MODEL_FACTORIES[modelId];
+	return await factory({ apiKey });
+}
+
+/**
+ * Resolves all stage models to LLM instances.
+ * Unspecified stages fall back to the default model.
+ * @param stageModels - Per-stage model configuration
+ * @returns Resolved LLM instances for each stage
+ */
+export async function resolveStageModels(stageModels: StageModels): Promise<ResolvedStageLLMs> {
+	const defaultLLM = await setupLLM(stageModels.default);
+
+	// For stages without specific model, use default
+	// For parameter updater, fall back to builder if not specified
+	const builderLLM = stageModels.builder ? await setupLLM(stageModels.builder) : defaultLLM;
+
+	return {
+		default: defaultLLM,
+		supervisor: stageModels.supervisor ? await setupLLM(stageModels.supervisor) : defaultLLM,
+		responder: stageModels.responder ? await setupLLM(stageModels.responder) : defaultLLM,
+		discovery: stageModels.discovery ? await setupLLM(stageModels.discovery) : defaultLLM,
+		builder: builderLLM,
+		parameterUpdater: stageModels.parameterUpdater
+			? await setupLLM(stageModels.parameterUpdater)
+			: builderLLM,
+		planner: stageModels.planner ? await setupLLM(stageModels.planner) : defaultLLM,
+		judge: stageModels.judge ? await setupLLM(stageModels.judge) : defaultLLM,
+	};
 }
 
 /**
@@ -91,35 +166,105 @@ export function createLangsmithClient(logger?: EvalLogger): LangsmithClientResul
 		// Filter large fields from traces to avoid 403 payload errors
 		hideInputs: traceFilters.filterInputs,
 		hideOutputs: traceFilters.filterOutputs,
-		// Reduce batch size and concurrency for high-volume scenarios
-		batchSizeBytesLimit: TRACE_BATCH_SIZE_LIMIT,
-		batchSizeLimit: 10, // Limit runs per batch (default 100) to avoid 403 multipart errors
-		traceBatchConcurrency: TRACE_BATCH_CONCURRENCY,
+		// Increase queue memory limit for high-concurrency evals
+		maxIngestMemoryBytes: MAX_INGEST_MEMORY_BYTES,
 	});
 
 	return { client, traceFilters };
 }
 
 /**
+ * Resolve built-in node definition directories from installed node packages.
+ * Mirrors `WorkflowBuilderService.resolveBuiltinNodeDefinitionDirs()` for use
+ * in the eval harness where the DI container is not available.
+ */
+export function resolveBuiltinNodeDefinitionDirs(): string[] {
+	// In a pnpm monorepo, n8n-nodes-base and n8n-nodes-langchain are not direct
+	// dependencies of ai-workflow-builder.ee, so bare require.resolve() fails.
+	// Resolve from packages/cli which has them as dependencies.
+	const repoRoot = findRepoRoot(__dirname);
+	const resolvePaths = repoRoot ? [path.join(repoRoot, 'packages', 'cli')] : undefined;
+
+	const dirs: string[] = [];
+	for (const packageId of ['n8n-nodes-base', '@n8n/n8n-nodes-langchain']) {
+		try {
+			const packageJsonPath = require.resolve(`${packageId}/package.json`, {
+				paths: resolvePaths,
+			});
+			const distDir = path.dirname(packageJsonPath);
+			const nodeDefsDir = path.join(distDir, 'dist', 'node-definitions');
+			if (fs.existsSync(nodeDefsDir)) {
+				dirs.push(nodeDefsDir);
+			}
+		} catch {
+			// Package not installed, skip
+		}
+	}
+	if (dirs.length === 0) {
+		console.error('[NODE-DEFS] No node definition dirs resolved — get_node_types will fail');
+	}
+	return dirs;
+}
+
+/** Walk up from startDir to find the monorepo root (contains pnpm-workspace.yaml). */
+export function findRepoRoot(startDir: string): string | undefined {
+	let dir = startDir;
+	while (dir !== path.dirname(dir)) {
+		if (fs.existsSync(path.join(dir, 'pnpm-workspace.yaml'))) {
+			return dir;
+		}
+		dir = path.dirname(dir);
+	}
+	return undefined;
+}
+
+/**
+ * Resolve the path to packages/nodes-base/nodes/ for __schema__ resolution.
+ * Returns undefined if the path doesn't exist (e.g. running outside the monorepo).
+ */
+export function resolveNodesBasePath(): string | undefined {
+	const repoRoot = findRepoRoot(__dirname);
+	if (!repoRoot) return undefined;
+	const p = path.join(repoRoot, 'packages', 'nodes-base', 'nodes');
+	return fs.existsSync(p) ? p : undefined;
+}
+
+/**
  * Sets up the test environment with LLM, nodes, and tracing
+ * @param stageModels - Per-stage model configuration (optional, uses default model if not provided)
  * @param logger - Optional logger for trace filter output
  * @returns Test environment configuration
  */
-export async function setupTestEnvironment(logger?: EvalLogger): Promise<TestEnvironment> {
+export async function setupTestEnvironment(
+	stageModels?: StageModels,
+	logger?: EvalLogger,
+): Promise<TestEnvironment> {
 	const parsedNodeTypes = loadNodesFromFile();
-	const llm = await setupLLM();
+
+	// Use provided stage models or default configuration
+	const models: StageModels = stageModels ?? { default: DEFAULT_MODEL };
+	const llms = await resolveStageModels(models);
+
 	const lsClientResult = createLangsmithClient(logger);
 
 	const lsClient = lsClientResult?.client;
 	const traceFilters = lsClientResult?.traceFilters;
 	const tracer = lsClient ? createTracer(lsClient, 'workflow-builder-evaluation') : undefined;
 
-	return { parsedNodeTypes, llm, tracer, lsClient, traceFilters };
+	return {
+		parsedNodeTypes,
+		llms,
+		tracer,
+		lsClient,
+		traceFilters,
+		nodeDefinitionDirs: resolveBuiltinNodeDefinitionDirs(),
+	};
 }
 
 export interface CreateAgentOptions {
 	parsedNodeTypes: INodeTypeDescription[];
-	llm: BaseChatModel;
+	/** Per-stage LLMs resolved from model configuration */
+	llms: ResolvedStageLLMs;
 	tracer?: LangChainTracer;
 	featureFlags?: BuilderFeatureFlags;
 	experimentName?: string;
@@ -131,12 +276,18 @@ export interface CreateAgentOptions {
  * @returns Configured WorkflowBuilderAgent
  */
 export function createAgent(options: CreateAgentOptions): WorkflowBuilderAgent {
-	const { parsedNodeTypes, llm, tracer, featureFlags, experimentName } = options;
+	const { parsedNodeTypes, llms, tracer, featureFlags, experimentName } = options;
 
 	return new WorkflowBuilderAgent({
 		parsedNodeTypes,
-		llmSimpleTask: llm,
-		llmComplexTask: llm,
+		stageLLMs: {
+			supervisor: llms.supervisor,
+			responder: llms.responder,
+			discovery: llms.discovery,
+			builder: llms.builder,
+			parameterUpdater: llms.parameterUpdater,
+			planner: llms.planner,
+		},
 		checkpointer: new MemorySaver(),
 		tracer,
 		featureFlags,

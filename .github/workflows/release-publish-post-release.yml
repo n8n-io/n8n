@@ -1,0 +1,44 @@
+name: 'Release: Publish: Post-release'
+
+on:
+  workflow_call:
+    inputs:
+      track:
+        description: 'Release track acquired from determine-version-info. (e.g. stable, beta)'
+        required: true
+        type: string
+      version:
+        description: 'Release version acquired from determine-version-info. (e.g. 2.9.3, 1.123.23)'
+        required: true
+        type: string
+      bump:
+        description: 'Release bump size acquired from determine-version-info. (e.g. minor, patch)'
+        required: true
+        type: string
+      new_stable_version:
+        description: 'New stable version acquired from determine-version-info. (e.g. 2.9.3, null (on patch releases))'
+        required: true
+        type: string
+      release_type:
+        description: 'Release type acquired from determine-version-info. (stable or rc)'
+        required: true
+        type: string
+
+jobs:
+  push-new-release-to-channel:
+    name: Push new release to channel
+    if: inputs.release_type != 'rc'
+    uses: ./.github/workflows/release-push-to-channel.yml
+    with:
+      version: ${{ inputs.version }}
+      release-channel: ${{ inputs.track }}
+
+  promote-previous-beta-to-stable:
+    name: Promote previous beta to stable
+    uses: ./.github/workflows/release-push-to-channel.yml
+    if: |
+      inputs.release_type != 'rc' &&
+      inputs.bump == 'minor'
+    with:
+      version: ${{ inputs.new_stable_version }}
+      release-channel: stable

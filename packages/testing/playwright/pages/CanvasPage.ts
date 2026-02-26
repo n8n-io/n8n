@@ -1,5 +1,4 @@
 import type { Locator } from '@playwright/test';
-import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
 import { ROUTES } from '../config/constants';
@@ -35,17 +34,9 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('node-creator-item-name').getByText(subItemText, { exact: true });
 	}
 
-	getNthCreatorItem(index: number): Locator {
-		return this.page.getByTestId('node-creator-item').nth(index);
-	}
-
 	getNodeCreatorHeader(text?: string) {
 		const header = this.page.getByTestId('nodes-list-header');
 		return text ? header.filter({ hasText: text }) : header.first();
-	}
-
-	async selectNodeCreatorItemByText(nodeName: string) {
-		await this.page.getByText(nodeName).click();
 	}
 
 	nodeByName(nodeName: string): Locator {
@@ -118,10 +109,15 @@ export class CanvasPage extends BasePage {
 			closeNDV?: boolean;
 			action?: string;
 			trigger?: string;
+			fromNode?: string;
 		},
 	): Promise<void> {
-		// Always start with canvas plus button
-		await this.clickNodeCreatorPlusButton();
+		if (options?.fromNode) {
+			await this.clickNodePlusEndpoint(options.fromNode);
+		} else {
+			// Always start with canvas plus button
+			await this.clickNodeCreatorPlusButton();
+		}
 
 		// Search for and select the node, works on exact name match only
 		await this.fillNodeCreatorSearchBar(nodeName);
@@ -173,20 +169,6 @@ export class CanvasPage extends BasePage {
 
 	async clickExecuteWorkflowButton(triggerNodeName?: string): Promise<void> {
 		await this.getExecuteWorkflowButton(triggerNodeName).click();
-	}
-
-	async clickDebugInEditorButton(): Promise<void> {
-		await this.page.getByRole('button', { name: 'Debug in editor' }).click();
-	}
-
-	async pinNode(nodeName: string): Promise<void> {
-		await this.nodeByName(nodeName).click({ button: 'right' });
-		await this.page.getByTestId('context-menu').getByText('Pin').click();
-	}
-
-	async unpinNode(nodeName: string): Promise<void> {
-		await this.nodeByName(nodeName).click({ button: 'right' });
-		await this.page.getByText('Unpin').click();
 	}
 
 	async openNode(nodeName: string): Promise<void> {
@@ -267,10 +249,6 @@ export class CanvasPage extends BasePage {
 		await this.clickByTestId('workflow-menu-item-import-from-url');
 	}
 
-	async clickImportFromFile(): Promise<void> {
-		await this.clickByTestId('workflow-menu-item-import-from-file');
-	}
-
 	async fillImportURLInput(url: string): Promise<void> {
 		await this.getImportURLInput().fill(url);
 	}
@@ -301,10 +279,6 @@ export class CanvasPage extends BasePage {
 		await responsePromise;
 	}
 
-	async cancelPublishWorkflowModal(): Promise<void> {
-		await this.page.getByTestId('workflow-publish-cancel-button').click();
-	}
-
 	async openShareModal(): Promise<void> {
 		await this.clickByTestId('workflow-menu');
 		await this.clickByTestId('workflow-menu-item-share');
@@ -320,36 +294,6 @@ export class CanvasPage extends BasePage {
 	 */
 	getNodeIssuesByName(nodeName: string) {
 		return this.nodeByName(nodeName).getByTestId('node-issues');
-	}
-
-	/**
-	 * Add tags to the workflow
-	 * @param count - The number of tags to add
-	 * @returns An array of tag names
-	 */
-	async addTags(count: number = 1): Promise<string[]> {
-		const tags: string[] = [];
-
-		for (let i = 0; i < count; i++) {
-			const tag = `tag-${nanoid(8)}-${i}`;
-			tags.push(tag);
-
-			if (i === 0) {
-				await this.clickByText('Add tag');
-			} else {
-				await this.page
-					.getByTestId('tags-dropdown')
-					.getByText(tags[i - 1])
-					.click();
-			}
-
-			await this.page.getByRole('combobox').first().fill(tag);
-			await this.page.getByRole('combobox').first().press('Enter');
-		}
-
-		await this.page.click('body');
-
-		return tags;
 	}
 
 	async clickCreateTagButton(): Promise<void> {
@@ -378,16 +322,12 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('workflow-tags').locator('.n8n-tag:not(.count-container)');
 	}
 
-	getTagsDropdown(): Locator {
-		return this.page.getByTestId('tags-dropdown');
+	getWorkflowTagsElement(): Locator {
+		return this.page.getByTestId('workflow-tags');
 	}
 
 	getWorkflowTagsDropdown(): Locator {
 		return this.page.getByTestId('workflow-tags-dropdown');
-	}
-
-	getWorkflowTags(): Locator {
-		return this.page.getByTestId('workflow-tags');
 	}
 
 	getTagCloseButton(): Locator {
@@ -432,16 +372,12 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('workflow-open-publish-modal-button');
 	}
 
-	getPublishModalCallout(): Locator {
-		return this.page.getByTestId('workflowPublish-modal').locator('.n8n-callout');
-	}
-
 	getPublishButton(): Locator {
 		return this.page.getByTestId('workflow-publish-button');
 	}
 
 	getPublishedIndicator(): Locator {
-		return this.page.getByTestId('workflow-active-version-indicator');
+		return this.page.getByRole('button', { name: 'Published' });
 	}
 
 	getLoadingMask(): Locator {
@@ -508,10 +444,6 @@ export class CanvasPage extends BasePage {
 		await this.getProductionChecklistIgnoreAllButton().click();
 	}
 
-	async clickProductionChecklistAction(actionText: string): Promise<void> {
-		await this.getProductionChecklistActionItem(actionText).click();
-	}
-
 	async duplicateNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
 		await this.page.getByTestId('context-menu').getByText('Duplicate').click();
@@ -519,10 +451,6 @@ export class CanvasPage extends BasePage {
 
 	nodeConnections(): Locator {
 		return this.page.locator('[data-test-id="edge"]');
-	}
-
-	getConnectionBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
-		return this.connectionBetweenNodes(sourceNodeName, targetNodeName);
 	}
 
 	canvasNodePlusEndpointByName(nodeName: string): Locator {
@@ -543,10 +471,6 @@ export class CanvasPage extends BasePage {
 
 	nodeCreatorActionItems(): Locator {
 		return this.page.getByTestId('node-creator-action-item');
-	}
-
-	nodeCreatorCategoryItem(categoryName: string): Locator {
-		return this.page.getByTestId('node-creator-category-item').getByText(categoryName);
 	}
 
 	nodeCreatorCategoryItems(): Locator {
@@ -629,10 +553,6 @@ export class CanvasPage extends BasePage {
 
 	async openCanvasContextMenu(): Promise<void> {
 		await this.canvasPane().click({ button: 'right', position: { x: 10, y: 10 } });
-	}
-
-	getNodeLeftPosition(nodeLocator: Locator): Promise<number> {
-		return nodeLocator.evaluate((el) => el.getBoundingClientRect().left);
 	}
 
 	// Connection helpers
@@ -718,11 +638,6 @@ export class CanvasPage extends BasePage {
 		await this.openNewWorkflow();
 	}
 
-	async addNodeWithSubItem(searchText: string, subItemText: string): Promise<void> {
-		await this.addNode(searchText);
-		await this.nodeCreatorSubItem(subItemText).click();
-	}
-
 	async openNewWorkflow() {
 		await this.page.goto(ROUTES.NEW_WORKFLOW_PAGE);
 	}
@@ -784,12 +699,6 @@ export class CanvasPage extends BasePage {
 		return this.getManualChatModal()
 			.locator('.chat-messages-list .chat-message.chat-message-from-bot')
 			.last();
-	}
-
-	getNodesWithSpinner(): Locator {
-		return this.page.locator(
-			'[data-test-id="canvas-node"].running, [data-test-id="canvas-node"].waiting',
-		);
 	}
 
 	getWaitingNodes(): Locator {
@@ -858,9 +767,17 @@ export class CanvasPage extends BasePage {
 			| 'ai_vectorRetriever'
 			| 'ai_vectorStore',
 		parentNodeName: string,
-		{ closeNDV = false, exactMatch = false }: { closeNDV?: boolean; exactMatch?: boolean } = {},
+		{
+			closeNDV = false,
+			exactMatch = false,
+			subcategory,
+		}: { closeNDV?: boolean; exactMatch?: boolean; subcategory?: string } = {},
 	): Promise<void> {
 		await this.getInputPlusEndpointByType(parentNodeName, endpointType).click();
+
+		if (subcategory) {
+			await this.nodeCreator.navigateToSubcategory(subcategory);
+		}
 
 		if (exactMatch) {
 			await this.nodeCreatorNodeItems().getByText(childNodeName, { exact: true }).click();
@@ -944,14 +861,6 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('canvas-node-status-success');
 	}
 
-	getCanvasHandlePlusWrapper(): Locator {
-		return this.page.getByTestId('canvas-handle-plus-wrapper');
-	}
-
-	getCanvasHandlePlus(): Locator {
-		return this.page.getByTestId('canvas-handle-plus');
-	}
-
 	getCanvasHandlePlusWrapperByName(nodeName: string): Locator {
 		return this.page
 			.locator(
@@ -984,10 +893,6 @@ export class CanvasPage extends BasePage {
 		// Wait for canvas to redraw after redo
 		// eslint-disable-next-line playwright/no-wait-for-timeout
 		await this.page.waitForTimeout(100);
-	}
-
-	async hitSaveWorkflow(): Promise<void> {
-		await this.page.keyboard.press('ControlOrMeta+s');
 	}
 
 	async hitExecuteWorkflow(): Promise<void> {
@@ -1070,7 +975,20 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('workflow-name-input');
 	}
 
-	getWorkflowNameInput(): Locator {
-		return this.page.getByTestId('inline-edit-input');
+	// Workflow History methods
+	getWorkflowHistoryButton(): Locator {
+		return this.page.getByTestId('workflow-history-button');
+	}
+
+	getWorkflowHistoryCloseButton(): Locator {
+		return this.page.getByTestId('workflow-history-close-button');
+	}
+
+	async openWorkflowHistory(): Promise<void> {
+		await this.getWorkflowHistoryButton().click();
+	}
+
+	async closeWorkflowHistory(): Promise<void> {
+		await this.getWorkflowHistoryCloseButton().click();
 	}
 }

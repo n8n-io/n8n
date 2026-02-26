@@ -256,8 +256,10 @@ function buildLlmProviderMenuItem(
 			: [],
 	);
 
-	// Add any manually defined models in settings
-	const allModels = [...models, ...manualModels];
+	// Add any manually defined models in settings, sorted by priority (highest first)
+	const allModels = [...models, ...manualModels].toSorted(
+		(a, b) => (b.metadata.priority ?? 0) - (a.metadata.priority ?? 0),
+	);
 
 	const agentOptions =
 		allModels.length > 0

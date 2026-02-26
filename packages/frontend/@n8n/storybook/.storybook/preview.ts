@@ -3,14 +3,27 @@ import { setup } from '@storybook/vue3';
 import ElementPlus from 'element-plus';
 // @ts-expect-error no types
 import lang from 'element-plus/dist/locale/en.mjs';
+import { createPinia } from 'pinia';
+import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { N8nPlugin } from '@n8n/design-system';
+import { i18nInstance } from '@n8n/i18n';
 
 import './storybook.scss';
 import { allModes } from './modes';
 // import '../src/css/tailwind/index.css';
 
 setup((app) => {
+	const pinia = createPinia();
+	app.use(pinia);
+	app.use(i18nInstance);
+
+	const router = createRouter({
+		history: createMemoryHistory(),
+		routes: [{ path: '/:catchAll(.*)', component: { template: '' } }],
+	});
+	app.use(router);
+
 	app.use(ElementPlus, {
 		locale: lang,
 	});
@@ -69,6 +82,8 @@ export const parameters = {
 				['Colors Primitives', 'Colors Tokens', 'Font', 'Spacing', 'Border'],
 				'Atoms',
 				'Modules',
+				'Chat',
+				'Editor',
 			],
 		},
 	},

@@ -22,6 +22,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	createEmptyRunExecutionData,
 	FORM_TRIGGER_NODE_TYPE,
+	isHitlToolType,
 	NodeConnectionTypes,
 	NodeHelpers,
 	WEBHOOK_NODE_TYPE,
@@ -44,7 +45,9 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getSourceItems } from '@/app/utils/pairedItemUtils';
+import * as workflowHistoryApi from '@n8n/rest-api-client/api/workflowHistory';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { useI18n } from '@n8n/i18n';
@@ -54,6 +57,10 @@ import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -66,12 +73,12 @@ export type ResolveParameterOptions = {
 	connections?: IConnections;
 };
 
-export function resolveParameter<T = IDataObject>(
+export async function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
-): T | null {
+): Promise<T | null> {
 	if ('localResolve' in opts && opts.localResolve) {
-		return resolveParameterImpl(
+		return await resolveParameterImpl(
 			parameter,
 			opts.workflow,
 			opts.connections,
@@ -89,15 +96,18 @@ export function resolveParameter<T = IDataObject>(
 	}
 
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined;
 
-	return resolveParameterImpl(
+	return await resolveParameterImpl(
 		parameter,
 		workflowsStore.workflowObject as Workflow,
 		workflowsStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
 		workflowsStore.workflowExecutionData,
-		workflowsStore.pinnedWorkflowData,
+		workflowDocumentStore?.getPinDataSnapshot(),
 		opts,
 	);
 }
@@ -114,6 +124,7 @@ function resolveParameterImpl<T = IDataObject>(
 	opts: ResolveParameterOptions = {},
 ): T | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
+	const activeNode = ndvActiveNode ?? workflowObject.getNode(opts.contextNodeName || '');
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 		$execution: {
@@ -123,6 +134,12 @@ function resolveParameterImpl<T = IDataObject>(
 			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
 		$vars: envVars,
+		$tool: isHitlToolType(activeNode?.type)
+			? {
+					name: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					parameters: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+				}
+			: undefined,
 
 		// deprecated
 		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
@@ -151,7 +168,6 @@ function resolveParameterImpl<T = IDataObject>(
 
 	const inputName = NodeConnectionTypes.Main;
 
-	const activeNode = ndvActiveNode ?? workflowObject.getNode(opts.contextNodeName || '');
 	let contextNode = activeNode;
 
 	if (activeNode) {
@@ -284,28 +300,23 @@ function resolveParameterImpl<T = IDataObject>(
 	) as T;
 }
 
-export function resolveRequiredParameters(
+export async function resolveRequiredParameters(
 	currentParameter: INodeProperties,
 	parameters: INodeParameters,
-	opts: {
-		connections?: IConnections;
-		targetItem?: TargetItem;
-		inputNodeName?: string;
-		inputRunIndex?: number;
-		inputBranchIndex?: number;
-	} = {},
-): IDataObject | null {
+	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
+): Promise<IDataObject | null> {
 	const loadOptionsDependsOn = new Set(currentParameter?.typeOptions?.loadOptionsDependsOn ?? []);
 
-	const resolvedParameters = Object.fromEntries(
-		Object.entries(parameters).map(([name, parameter]): [string, IDataObject | null] => {
+	const entries = Object.entries(parameters);
+	const resolvedEntries = await Promise.all(
+		entries.map(async ([name, parameter]): Promise<[string, IDataObject | null]> => {
 			const required = loadOptionsDependsOn.has(name);
 
 			if (required) {
-				return [name, resolveParameter(parameter as NodeParameterValue, opts)];
+				return [name, await resolveParameter(parameter as NodeParameterValue, opts)];
 			} else {
 				try {
-					return [name, resolveParameter(parameter as NodeParameterValue, opts)];
+					return [name, await resolveParameter(parameter as NodeParameterValue, opts)];
 				} catch (error) {
 					// ignore any expressions errors for non required parameters
 					return [name, null];
@@ -314,7 +325,7 @@ export function resolveRequiredParameters(
 		}),
 	);
 
-	return resolvedParameters;
+	return Object.fromEntries(resolvedEntries);
 }
 
 function getConnectedNodes(
@@ -407,6 +418,9 @@ export function executeData(
 	parentRunIndex?: number,
 ): IExecuteData {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined;
 
 	return executeDataImpl(
 		connections,
@@ -414,7 +428,7 @@ export function executeData(
 		currentNode,
 		inputName,
 		runIndex,
-		workflowsStore.pinnedWorkflowData,
+		workflowDocumentStore?.getPinDataSnapshot(),
 		workflowsStore.getWorkflowRunData,
 		parentRunIndex,
 	);
@@ -514,6 +528,7 @@ export function useWorkflowHelpers() {
 	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const workflowState = injectWorkflowState();
 	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
@@ -576,14 +591,20 @@ export function useWorkflowHelpers() {
 			nodes.push(nodeData);
 		}
 
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+
+		const tags = workflowDocumentStore?.tags ? [...workflowDocumentStore.tags] : [];
+
 		const data: WorkflowData = {
 			name: workflowsStore.workflowName,
 			nodes,
-			pinData: workflowsStore.pinnedWorkflowData,
+			pinData: workflowDocumentStore?.getPinDataSnapshot() ?? {},
 			connections: workflowConnections,
-			active: workflowsStore.isWorkflowActive,
+			active: useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)).active,
 			settings: workflowsStore.workflow.settings,
-			tags: workflowsStore.workflowTags,
+			tags,
 			versionId: workflowsStore.workflow.versionId,
 			meta: workflowsStore.workflow.meta,
 		};
@@ -707,32 +728,32 @@ export function useWorkflowHelpers() {
 		return nodeData;
 	}
 
-	function getWebhookExpressionValue(
+	async function getWebhookExpressionValue(
 		webhookData: IWebhookDescription,
 		key: string,
 		stringify = true,
 		nodeName?: string,
-	): string {
+	): Promise<string> {
 		if (webhookData[key] === undefined) {
 			return 'empty';
 		}
 		try {
-			return resolveExpression(
+			return (await resolveExpression(
 				webhookData[key] as string,
 				undefined,
 				{ contextNodeName: nodeName },
 				stringify,
-			) as string;
+			)) as string;
 		} catch (e) {
 			return i18n.baseText('nodeWebhooks.invalidExpression');
 		}
 	}
 
-	function getWebhookUrl(
+	async function getWebhookUrl(
 		webhookData: IWebhookDescription,
 		node: INode,
 		showUrlFor: 'test' | 'production',
-	): string {
+	): Promise<string> {
 		const { nodeType, restartWebhook } = webhookData;
 		if (restartWebhook === true) {
 			return nodeType === 'form' ? '$execution.resumeFormUrl' : '$execution.resumeUrl';
@@ -752,14 +773,14 @@ export function useWorkflowHelpers() {
 		} as const;
 		const baseUrl = baseUrls[showUrlFor][nodeType ?? 'webhook'];
 		const workflowId = workflowsStore.workflowId;
-		const path = getWebhookExpressionValue(webhookData, 'path', true, node.name) ?? '';
+		const path = (await getWebhookExpressionValue(webhookData, 'path', true, node.name)) ?? '';
 		const isFullPath =
-			(getWebhookExpressionValue(
+			((await getWebhookExpressionValue(
 				webhookData,
 				'isFullPath',
 				true,
 				node.name,
-			) as unknown as boolean) || false;
+			)) as unknown as boolean) || false;
 
 		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
 	}
@@ -769,21 +790,24 @@ export function useWorkflowHelpers() {
 	 * @param nodeParameters
 	 * @returns
 	 */
-	function getNodeParametersWithResolvedExpressions(
+	async function getNodeParametersWithResolvedExpressions(
 		nodeParameters: INodeParameters,
-	): INodeParameters {
-		function recurse(currentObj: INodeParameters, currentPath: string): INodeParameters {
+	): Promise<INodeParameters> {
+		async function recurse(
+			currentObj: INodeParameters,
+			currentPath: string,
+		): Promise<INodeParameters> {
 			const newObj: INodeParameters = {};
 			for (const key in currentObj) {
 				const value = currentObj[key as keyof typeof currentObj];
 				const path = currentPath ? `${currentPath}.${key}` : key;
 				if (typeof value === 'object' && value !== null) {
-					newObj[key] = recurse(value as INodeParameters, path);
+					newObj[key] = await recurse(value as INodeParameters, path);
 				} else if (typeof value === 'string' && String(value).startsWith('=')) {
 					// Resolve the expression if it is one
 					let resolved;
 					try {
-						resolved = resolveExpression(value, undefined, { isForCredential: false });
+						resolved = await resolveExpression(value, undefined, { isForCredential: false });
 					} catch (error) {
 						resolved = `Error in expression: "${error.message}"`;
 					}
@@ -797,20 +821,20 @@ export function useWorkflowHelpers() {
 			}
 			return newObj;
 		}
-		return recurse(nodeParameters, '');
+		return await recurse(nodeParameters, '');
 	}
 
-	function resolveExpression(
+	async function resolveExpression(
 		expression: string,
 		siblingParameters: INodeParameters = {},
 		opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
 		stringifyObject = true,
-	) {
+	): Promise<unknown> {
 		const parameters = {
 			__xxxxxxx__: expression,
 			...siblingParameters,
 		};
-		const returnData: IDataObject | null = resolveParameter(parameters, opts);
+		const returnData: IDataObject | null = await resolveParameter(parameters, opts);
 		if (!returnData) {
 			return null;
 		}
@@ -836,7 +860,7 @@ export function useWorkflowHelpers() {
 				? { versionId: workflowsStore.workflowVersionId }
 				: await getWorkflowDataToSave();
 		} else {
-			const { versionId } = await workflowsStore.fetchWorkflow(workflowId);
+			const { versionId } = await workflowsListStore.fetchWorkflow(workflowId);
 			data.versionId = versionId;
 		}
 
@@ -850,14 +874,23 @@ export function useWorkflowHelpers() {
 		}
 
 		if (isCurrentWorkflow) {
-			workflowState.setActive(workflow.activeVersionId);
 			uiStore.markStateClean();
 		}
 
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+
 		if (workflow.activeVersion) {
 			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
+			workflowDocumentStore.setActiveState({
+				activeVersionId: workflow.activeVersion.versionId,
+				activeVersion: workflow.activeVersion,
+			});
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
+			workflowDocumentStore.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
 		}
 	}
 
@@ -920,7 +953,7 @@ export function useWorkflowHelpers() {
 	}
 
 	function getWorkflowProjectRole(workflowId: string): 'owner' | 'sharee' | 'member' {
-		const workflow = workflowsStore.workflowsById[workflowId];
+		const workflow = workflowsListStore.getWorkflowById(workflowId);
 
 		// Check if workflow is new (not saved) or belongs to personal project
 		if (workflow?.homeProject?.id === projectsStore.personalProject?.id || !workflow?.id) {
@@ -938,8 +971,7 @@ export function useWorkflowHelpers() {
 
 	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
 		const ws = overrideWorkflowState ?? workflowState;
-		workflowsStore.addWorkflow(workflowData);
-		ws.setActive(workflowData.activeVersionId);
+		workflowsListStore.addWorkflow(workflowData);
 		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowsStore.setDescription(workflowData.description);
 		ws.setWorkflowId(workflowData.id);
@@ -948,13 +980,34 @@ export function useWorkflowHelpers() {
 			setStateDirty: uiStore.stateIsDirty,
 		});
 		ws.setWorkflowSettings(workflowData.settings ?? {});
-		ws.setWorkflowPinData(workflowData.pinData ?? {});
-		workflowsStore.setWorkflowVersionId(workflowData.versionId, workflowData.checksum);
+		workflowsStore.setWorkflowVersionData({
+			versionId: workflowData.versionId,
+			name: null,
+			description: null,
+		});
 		ws.setWorkflowMetadata(workflowData.meta);
 		ws.setWorkflowScopes(workflowData.scopes);
 
 		if ('activeVersion' in workflowData) {
 			workflowsStore.setWorkflowActiveVersion(workflowData.activeVersion ?? null);
+		}
+
+		// Fetch current version details if versionId exists
+		if (workflowData.versionId) {
+			try {
+				const versionData = await workflowHistoryApi.getWorkflowVersion(
+					rootStore.restApiContext,
+					workflowData.id,
+					workflowData.versionId,
+				);
+				workflowsStore.setWorkflowVersionData({
+					versionId: versionData.versionId,
+					name: versionData.name,
+					description: versionData.description,
+				});
+			} catch {
+				// Do nothing
+			}
 		}
 
 		if (workflowData.usedCredentials) {
@@ -969,8 +1022,23 @@ export function useWorkflowHelpers() {
 		}
 
 		const tags = (workflowData.tags ?? []) as ITag[];
-		ws.setWorkflowTagIds(convertWorkflowTagsToIds(tags));
+		const tagIds = convertWorkflowTagsToIds(tags);
+
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowData.id),
+		);
+		workflowDocumentStore.setTags(tagIds);
+		workflowDocumentStore.setActiveState({
+			activeVersionId: workflowData.activeVersionId,
+			activeVersion: workflowData.activeVersion ?? null,
+		});
+		workflowDocumentStore.setPinData(workflowData.pinData ?? {});
+		if (workflowData.checksum) {
+			workflowDocumentStore.setChecksum(workflowData.checksum);
+		}
 		tagsStore.upsertTags(tags);
+
+		return { workflowDocumentStore };
 	}
 
 	/**
@@ -1009,7 +1077,7 @@ export function useWorkflowHelpers() {
 		if (uiStore.stateIsDirty) {
 			data = await getWorkflowDataToSave();
 		} else {
-			data = await workflowsStore.fetchWorkflow(workflowId);
+			data = await workflowsListStore.fetchWorkflow(workflowId);
 		}
 
 		const triggers = data.nodes.filter(

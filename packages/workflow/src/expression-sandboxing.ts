@@ -1,15 +1,85 @@
 import { type ASTAfterHook, type ASTBeforeHook, astBuilders as b, astVisit } from '@n8n/tournament';
 
-import { ExpressionDestructuringError, ExpressionError } from './errors';
+import {
+	ExpressionClassExtensionError,
+	ExpressionComputedDestructuringError,
+	ExpressionDestructuringError,
+	ExpressionError,
+	ExpressionReservedVariableError,
+	ExpressionWithStatementError,
+} from './errors';
 import { isSafeObjectProperty } from './utils';
 
 export const sanitizerName = '__sanitize';
 const sanitizerIdentifier = b.identifier(sanitizerName);
 
+const DATA_NODE_NAME = '___n8n_data';
+
+const RESERVED_VARIABLE_NAMES = new Set([DATA_NODE_NAME, sanitizerName]);
+
+type AstNode = { type: string } & Record<string, unknown>;
+
+const isAstNode = (value: unknown): value is AstNode =>
+	typeof value === 'object' && value !== null && 'type' in value && typeof value.type === 'string';
+
+const getBoundIdentifiers = (node: unknown, acc: string[] = []): string[] => {
+	if (!isAstNode(node)) return acc;
+
+	switch (node.type) {
+		case 'Identifier': {
+			if (typeof node.name === 'string') acc.push(node.name);
+			break;
+		}
+		case 'ObjectPattern': {
+			if (!Array.isArray(node.properties)) break;
+			for (const property of node.properties) {
+				if (!isAstNode(property)) continue;
+				if (property.type === 'Property') {
+					getBoundIdentifiers(property.value, acc);
+				} else if (property.type === 'RestElement') {
+					getBoundIdentifiers(property.argument, acc);
+				}
+			}
+			break;
+		}
+		case 'ArrayPattern': {
+			if (!Array.isArray(node.elements)) break;
+			for (const element of node.elements) {
+				getBoundIdentifiers(element, acc);
+			}
+			break;
+		}
+		case 'AssignmentPattern': {
+			getBoundIdentifiers(node.left, acc);
+			break;
+		}
+		case 'RestElement': {
+			getBoundIdentifiers(node.argument, acc);
+			break;
+		}
+		case 'VariableDeclaration': {
+			if (!Array.isArray(node.declarations)) break;
+			for (const declaration of node.declarations) {
+				if (!isAstNode(declaration) || declaration.type !== 'VariableDeclarator') continue;
+				getBoundIdentifiers(declaration.id, acc);
+			}
+			break;
+		}
+	}
+
+	return acc;
+};
+
+const getReservedIdentifier = (node: unknown): string | undefined =>
+	getBoundIdentifiers(node).find((name) => RESERVED_VARIABLE_NAMES.has(name));
+
 export const DOLLAR_SIGN_ERROR = 'Cannot access "$" without calling it as a function';
 
 const EMPTY_CONTEXT = b.objectExpression([
 	b.property('init', b.identifier('process'), b.objectExpression([])),
+	b.property('init', b.identifier('require'), b.objectExpression([])),
+	b.property('init', b.identifier('module'), b.objectExpression([])),
+	b.property('init', b.identifier('Buffer'), b.objectExpression([])),
 ]);
 
 const SAFE_GLOBAL = b.objectExpression([]);
@@ -58,6 +128,8 @@ const isValidDollarPropertyAccess = (expr: unknown): boolean => {
 };
 
 const GLOBAL_IDENTIFIERS = new Set(['globalThis']);
+
+const BLOCKED_SPREAD_GLOBALS = new Set(['process', 'global', 'globalThis', 'Buffer']);
 
 /**
  * Prevents regular functions from binding their `this` to the Node.js global.
@@ -229,8 +301,171 @@ export const DollarSignValidator: ASTAfterHook = (ast, _dataNode) => {
 	});
 };
 
+const blockedBaseClasses = new Set([
+	'Function',
+	'GeneratorFunction',
+	'AsyncFunction',
+	'AsyncGeneratorFunction',
+]);
+
+/**
+ * Builds an AST node that safely resolves a spread argument like `...process`.
+ *
+ * Tournament's VariablePolyfill rewrites plain identifiers (e.g. `process`)
+ * to look them up from the data context, but it does NOT handle identifiers
+ * inside SpreadElement / SpreadProperty nodes. Without this fix, `{...process}`
+ * would resolve to the real Node.js `process` object.
+ *
+ * The generated code checks the data context first, falling back to a throw:
+ *
+ *   ("process" in data) ? data.process : (() => { throw new Error("...") })()
+ *
+ * - If the workflow has a variable called "process" → spread that (safe, user-defined)
+ * - Otherwise → throw at runtime, blocking access to the real global
+ */
+const buildSafeSpreadArg = (name: string, dataNode: Parameters<ASTAfterHook>[1]) => {
+	// "process" in ___n8n_data
+	const isInDataContext = b.binaryExpression('in', b.literal(name), dataNode);
+
+	// ___n8n_data.process
+	const readFromDataContext = b.memberExpression(dataNode, b.identifier(name));
+
+	// (() => { throw new Error('Cannot spread "process" ...') })()
+	//
+	// This is an IIFE because `throw` is a statement, not an expression,
+	// so it cannot appear directly inside a ternary's falsy branch.
+	const throwSecurityError = b.callExpression(
+		b.arrowFunctionExpression(
+			[],
+			b.blockStatement([
+				b.throwStatement(
+					b.newExpression(b.identifier('Error'), [
+						b.literal(`Cannot spread "${name}" due to security concerns`),
+					]),
+				),
+			]),
+		),
+		[],
+	);
+
+	// Full result:
+	//   ("process" in ___n8n_data) ? ___n8n_data.process : (() => { throw ... })()
+	return b.conditionalExpression(isInDataContext, readFromDataContext, throwSecurityError);
+};
+
 export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 	astVisit(ast, {
+		visitVariableDeclarator(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const reservedIdentifier = getReservedIdentifier(node.id);
+			if (reservedIdentifier === undefined) return;
+			throw new ExpressionReservedVariableError(reservedIdentifier);
+		},
+
+		visitFunction(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const functionName = getReservedIdentifier(node.id);
+			if (functionName !== undefined) {
+				throw new ExpressionReservedVariableError(functionName);
+			}
+
+			for (const param of node.params) {
+				const paramName = getReservedIdentifier(param);
+				if (paramName !== undefined) {
+					throw new ExpressionReservedVariableError(paramName);
+				}
+			}
+		},
+
+		visitCatchClause(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const catchParamName = getReservedIdentifier(node.param);
+			if (catchParamName === undefined) return;
+			throw new ExpressionReservedVariableError(catchParamName);
+		},
+
+		visitClassDeclaration(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const className = getReservedIdentifier(node.id);
+			if (className !== undefined) {
+				throw new ExpressionReservedVariableError(className);
+			}
+
+			if (node.superClass) {
+				if (node.superClass.type === 'Identifier') {
+					if (blockedBaseClasses.has(node.superClass.name)) {
+						throw new ExpressionClassExtensionError(node.superClass.name);
+					}
+				} else {
+					throw new ExpressionError('Cannot use dynamic class extension due to security concerns');
+				}
+			}
+		},
+
+		visitClassExpression(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const className = getReservedIdentifier(node.id);
+			if (className !== undefined) {
+				throw new ExpressionReservedVariableError(className);
+			}
+
+			if (node.superClass) {
+				if (node.superClass.type === 'Identifier') {
+					if (blockedBaseClasses.has(node.superClass.name)) {
+						throw new ExpressionClassExtensionError(node.superClass.name);
+					}
+				} else {
+					throw new ExpressionError('Cannot use dynamic class extension due to security concerns');
+				}
+			}
+		},
+
+		visitAssignmentExpression(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const assignedIdentifier = getReservedIdentifier(node.left);
+			if (assignedIdentifier === undefined) return;
+			throw new ExpressionReservedVariableError(assignedIdentifier);
+		},
+
+		visitUpdateExpression(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const updatedIdentifier = getReservedIdentifier(node.argument);
+			if (updatedIdentifier === undefined) return;
+			throw new ExpressionReservedVariableError(updatedIdentifier);
+		},
+
+		visitForOfStatement(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const loopBinding = getReservedIdentifier(node.left);
+			if (loopBinding === undefined) return;
+			throw new ExpressionReservedVariableError(loopBinding);
+		},
+
+		visitForInStatement(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const loopBinding = getReservedIdentifier(node.left);
+			if (loopBinding === undefined) return;
+			throw new ExpressionReservedVariableError(loopBinding);
+		},
+
 		visitMemberExpression(path) {
 			this.traverse(path);
 			const node = path.node;
@@ -276,6 +511,10 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 
 			for (const prop of node.properties) {
 				if (prop.type === 'Property') {
+					if (prop.computed) {
+						throw new ExpressionComputedDestructuringError();
+					}
+
 					let keyName: string | undefined;
 
 					if (prop.key.type === 'Identifier') {
@@ -290,6 +529,28 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 				}
 			}
 		},
+
+		visitSpreadElement(path) {
+			this.traverse(path);
+			const { argument } = path.node;
+			if (argument.type === 'Identifier' && BLOCKED_SPREAD_GLOBALS.has(argument.name)) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+				(path.node as any).argument = buildSafeSpreadArg(argument.name, dataNode);
+			}
+		},
+
+		visitSpreadProperty(path) {
+			this.traverse(path);
+			const { argument } = path.node;
+			if (argument.type === 'Identifier' && BLOCKED_SPREAD_GLOBALS.has(argument.name)) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+				(path.node as any).argument = buildSafeSpreadArg(argument.name, dataNode);
+			}
+		},
+
+		visitWithStatement() {
+			throw new ExpressionWithStatementError();
+		},
 	});
 };
 
@@ -298,5 +559,5 @@ export const sanitizer = (value: unknown): unknown => {
 	if (!isSafeObjectProperty(propertyKey)) {
 		throw new ExpressionError(`Cannot access "${propertyKey}" due to security concerns`);
 	}
-	return value;
+	return propertyKey;
 };

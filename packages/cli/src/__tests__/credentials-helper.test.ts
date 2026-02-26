@@ -387,6 +387,191 @@ describe('CredentialsHelper', () => {
 			expect(parsedUpdatedData.oauthTokenData.expires_in).toBe(7200);
 			expect(parsedUpdatedData.oauthTokenData.token_type).toBe('Bearer');
 		});
+
+		describe('dynamic credential resolution', () => {
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: 'cred-789',
+				name: 'Test OAuth2 Credential',
+			};
+
+			const existingCredentialData = {
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				oauthTokenData: {
+					access_token: 'old-token',
+					refresh_token: 'old-refresh',
+				},
+			};
+
+			const newOauthTokenData = {
+				oauthTokenData: {
+					access_token: 'new-token',
+					refresh_token: 'new-refresh',
+					expires_in: 3600,
+				},
+			};
+
+			let storeOAuthTokenDataSpy: jest.SpyInstance;
+
+			beforeEach(() => {
+				jest.clearAllMocks();
+				// Spy on the dynamicCredentialProxy's storeOAuthTokenDataIfNeeded method
+				storeOAuthTokenDataSpy = jest
+					.spyOn(dynamicCredentialProxy, 'storeOAuthTokenDataIfNeeded')
+					.mockResolvedValue(undefined);
+			});
+
+			afterEach(() => {
+				storeOAuthTokenDataSpy.mockRestore();
+			});
+
+			test('should use dynamic proxy when credentials are resolvable with credentials context', async () => {
+				// Setup: Resolvable credential with resolver
+				const mockCredentialEntity = {
+					id: 'cred-789',
+					name: 'Test OAuth2 Credential',
+					type: 'oAuth2Api',
+					data: cipher.encrypt(existingCredentialData),
+					isResolvable: true,
+					resolverId: 'resolver-123',
+				} as CredentialsEntity;
+
+				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
+
+				const additionalDataWithCredentials = {
+					executionContext: {
+						version: 1,
+						establishedAt: Date.now(),
+						source: 'manual' as const,
+						credentials: 'encrypted-credential-context', // credentials context present
+					},
+					workflowSettings: {
+						credentialResolverId: 'workflow-resolver-123',
+					},
+				} as IWorkflowExecuteAdditionalData;
+
+				// Act
+				await credentialsHelper.updateCredentialsOauthTokenData(
+					nodeCredentials,
+					'oAuth2Api',
+					newOauthTokenData,
+					additionalDataWithCredentials,
+				);
+
+				// Assert: Should use dynamic proxy, NOT direct database update
+				expect(storeOAuthTokenDataSpy).toHaveBeenCalledWith(
+					{
+						id: 'cred-789',
+						name: 'Test OAuth2 Credential',
+						type: 'oAuth2Api',
+						isResolvable: true,
+						resolverId: 'resolver-123',
+					},
+					newOauthTokenData.oauthTokenData,
+					additionalDataWithCredentials.executionContext,
+					existingCredentialData,
+					additionalDataWithCredentials.workflowSettings,
+				);
+				expect(credentialsRepository.update).not.toHaveBeenCalled();
+			});
+
+			test('should skip dynamic proxy when credentials context is missing', async () => {
+				// Setup: Resolvable credential with resolver, but NO credentials context
+				const mockCredentialEntity = {
+					id: 'cred-789',
+					name: 'Test OAuth2 Credential',
+					type: 'oAuth2Api',
+					data: cipher.encrypt(existingCredentialData),
+					isResolvable: true,
+					resolverId: 'resolver-123',
+				} as CredentialsEntity;
+
+				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
+
+				const additionalDataWithoutCredentials = {
+					executionContext: {
+						version: 1,
+						establishedAt: Date.now(),
+						source: 'manual' as const,
+						// credentials is undefined - static credential execution
+					},
+					workflowSettings: {
+						credentialResolverId: 'workflow-resolver-123',
+					},
+				} as any;
+
+				// Act
+				await credentialsHelper.updateCredentialsOauthTokenData(
+					nodeCredentials,
+					'oAuth2Api',
+					newOauthTokenData,
+					additionalDataWithoutCredentials,
+				);
+
+				// Assert: Should skip dynamic proxy and use direct database update
+				expect(storeOAuthTokenDataSpy).not.toHaveBeenCalled();
+				expect(credentialsRepository.update).toHaveBeenCalledWith(
+					{ id: 'cred-789', type: 'oAuth2Api' },
+					expect.objectContaining({
+						id: 'cred-789',
+						data: expect.any(String),
+						updatedAt: expect.any(Date),
+					}),
+				);
+
+				// Verify OAuth token was updated in database
+				const updateCall = credentialsRepository.update.mock.calls[0];
+				const updatedData = cipher.decrypt(updateCall[1].data as string);
+				const parsedData = JSON.parse(updatedData);
+				expect(parsedData.oauthTokenData.access_token).toBe('new-token');
+			});
+
+			test('should skip dynamic proxy when executionContext is entirely missing', async () => {
+				// Setup: Resolvable credential with resolver, but NO executionContext
+				const mockCredentialEntity = {
+					id: 'cred-789',
+					name: 'Test OAuth2 Credential',
+					type: 'oAuth2Api',
+					data: cipher.encrypt(existingCredentialData),
+					isResolvable: true,
+					resolverId: 'resolver-123',
+				} as CredentialsEntity;
+
+				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
+
+				const additionalDataWithoutContext = {
+					executionContext: undefined, // No execution context at all
+					workflowSettings: {
+						credentialResolverId: 'workflow-resolver-123',
+					},
+				} as any;
+
+				// Act
+				await credentialsHelper.updateCredentialsOauthTokenData(
+					nodeCredentials,
+					'oAuth2Api',
+					newOauthTokenData,
+					additionalDataWithoutContext,
+				);
+
+				// Assert: Should skip dynamic proxy and use direct database update
+				expect(storeOAuthTokenDataSpy).not.toHaveBeenCalled();
+				expect(credentialsRepository.update).toHaveBeenCalledWith(
+					{ id: 'cred-789', type: 'oAuth2Api' },
+					expect.objectContaining({
+						id: 'cred-789',
+						data: expect.any(String),
+						updatedAt: expect.any(Date),
+					}),
+				);
+
+				// Verify OAuth token was updated in database
+				const updateCall = credentialsRepository.update.mock.calls[0];
+				const updatedData = cipher.decrypt(updateCall[1].data as string);
+				const parsedData = JSON.parse(updatedData);
+				expect(parsedData.oauthTokenData.access_token).toBe('new-token');
+			});
+		});
 	});
 
 	describe('getDecrypted - credential resolution integration', () => {

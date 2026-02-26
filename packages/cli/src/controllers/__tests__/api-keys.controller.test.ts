@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import { EventService } from '@/events/event.service';
+import { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import { ApiKeysController } from '../api-keys.controller';
@@ -11,12 +12,15 @@ import { ApiKeysController } from '../api-keys.controller';
 describe('ApiKeysController', () => {
 	const publicApiKeyService = mockInstance(PublicApiKeyService);
 	const eventService = mockInstance(EventService);
+	const license = mockInstance(License);
 
 	const controller = Container.get(ApiKeysController);
 
 	let req: AuthenticatedRequest;
 	beforeAll(() => {
 		req = { user: { id: '123' } } as AuthenticatedRequest;
+		// Mock license as enabled by default for API key scopes
+		license.isLicensed.mockReturnValue(true);
 	});
 
 	describe('createAPIKey', () => {

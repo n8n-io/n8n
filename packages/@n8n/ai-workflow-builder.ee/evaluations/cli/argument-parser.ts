@@ -1,16 +1,28 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { z } from 'zod';
 
-import type { BuilderFeatureFlags } from '../../src/workflow-builder-agent.js';
+import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelId } from '@/llm-config';
+import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
+
 import type { LangsmithExampleFilters } from '../harness/harness-types';
 import { DEFAULTS } from '../support/constants';
+import type { StageModels } from '../support/environment';
 
-export type EvaluationSuite = 'llm-judge' | 'pairwise' | 'programmatic' | 'similarity';
+export type EvaluationSuite =
+	| 'llm-judge'
+	| 'pairwise'
+	| 'programmatic'
+	| 'similarity'
+	| 'introspection';
 export type EvaluationBackend = 'local' | 'langsmith';
+export type AgentType = 'multi-agent' | 'code-builder';
+
+export type SubgraphName = 'responder' | 'discovery' | 'builder' | 'configurator';
 
 export interface EvaluationArgs {
 	suite: EvaluationSuite;
 	backend: EvaluationBackend;
+	agent: AgentType;
 
 	verbose: boolean;
 	repetitions: number;
@@ -30,18 +42,67 @@ export interface EvaluationArgs {
 	donts?: string;
 
 	numJudges: number;
-	numGenerations: number;
 
 	featureFlags?: BuilderFeatureFlags;
+
+	/** Target a specific subgraph for evaluation (requires --dataset or --dataset-file) */
+	subgraph?: SubgraphName;
+
+	/** Path to a local JSON dataset file (alternative to --dataset for subgraph evals) */
+	datasetFile?: string;
+
+	/** Run full workflow generation from prompt instead of using pre-computed state */
+	regenerate?: boolean;
+
+	/** Write regenerated state back to the dataset source */
+	writeBack?: boolean;
+
+	/** URL to POST evaluation results to when complete */
+	webhookUrl?: string;
+	/** Secret for HMAC-SHA256 signature of webhook payload */
+	webhookSecret?: string;
+
+	/** CSV file path for evaluation results */
+	outputCsv?: string;
+
+	// Model configuration
+	/** Default model for all stages */
+	model: ModelId;
+	/** Model for LLM judge evaluation */
+	judgeModel?: ModelId;
+	/** Model for supervisor stage */
+	supervisorModel?: ModelId;
+	/** Model for responder stage */
+	responderModel?: ModelId;
+	/** Model for discovery stage */
+	discoveryModel?: ModelId;
+	/** Model for builder stage (structure and configuration) */
+	builderModel?: ModelId;
+	/** Model for parameter updater (within builder) */
+	parameterUpdaterModel?: ModelId;
 }
 
 type CliValueKind = 'boolean' | 'string';
-type FlagGroup = 'input' | 'eval' | 'pairwise' | 'langsmith' | 'output' | 'feature' | 'advanced';
+type FlagGroup =
+	| 'input'
+	| 'eval'
+	| 'pairwise'
+	| 'langsmith'
+	| 'output'
+	| 'feature'
+	| 'model'
+	| 'advanced';
+
+// Model ID validation schema
+const modelIdSchema = z.enum(AVAILABLE_MODELS as [ModelId, ...ModelId[]]);
 
 const cliSchema = z
 	.object({
-		suite: z.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity']).default('llm-judge'),
+		suite: z
+			.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity', 'introspection'])
+			.default('llm-judge'),
 		backend: z.enum(['local', 'langsmith']).default('local'),
+		agent: z.enum(['code-builder', 'multi-agent']).default('code-builder'),
 
 		verbose: z.boolean().default(false),
 		repetitions: z.coerce.number().int().positive().default(DEFAULTS.REPETITIONS),
@@ -49,11 +110,17 @@ const cliSchema = z
 		timeoutMs: z.coerce.number().int().positive().default(DEFAULTS.TIMEOUT_MS),
 		experimentName: z.string().min(1).optional(),
 		outputDir: z.string().min(1).optional(),
+		outputCsv: z.string().min(1).optional(),
 		datasetName: z.string().min(1).optional(),
 		maxExamples: z.coerce.number().int().positive().optional(),
 		filter: z.array(z.string().min(1)).default([]),
 		notionId: z.string().min(1).optional(),
 		technique: z.string().min(1).optional(),
+
+		subgraph: z.enum(['responder', 'discovery', 'builder', 'configurator']).optional(),
+		datasetFile: z.string().min(1).optional(),
+		regenerate: z.boolean().default(false),
+		writeBack: z.boolean().default(false),
 
 		testCase: z.string().min(1).optional(),
 		promptsCsv: z.string().min(1).optional(),
@@ -63,10 +130,20 @@ const cliSchema = z
 		donts: z.string().min(1).optional(),
 
 		numJudges: z.coerce.number().int().positive().default(DEFAULTS.NUM_JUDGES),
-		numGenerations: z.coerce.number().int().positive().max(10).default(DEFAULTS.NUM_GENERATIONS),
 
 		langsmith: z.boolean().optional(),
 		templateExamples: z.boolean().default(false),
+		webhookUrl: z.string().url().optional(),
+		webhookSecret: z.string().min(16).optional(),
+
+		// Model configuration
+		model: modelIdSchema.default(DEFAULT_MODEL),
+		judgeModel: modelIdSchema.optional(),
+		supervisorModel: modelIdSchema.optional(),
+		responderModel: modelIdSchema.optional(),
+		discoveryModel: modelIdSchema.optional(),
+		builderModel: modelIdSchema.optional(),
+		parameterUpdaterModel: modelIdSchema.optional(),
 	})
 	.strict();
 
@@ -96,14 +173,45 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		desc: 'LangSmith dataset name',
 	},
 
+	'--subgraph': {
+		key: 'subgraph',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Target subgraph (responder|discovery|builder|configurator). Requires --dataset or --dataset-file',
+	},
+	'--dataset-file': {
+		key: 'datasetFile',
+		kind: 'string',
+		group: 'input',
+		desc: 'Path to local JSON dataset file (for subgraph evals)',
+	},
+	'--regenerate': {
+		key: 'regenerate',
+		kind: 'boolean',
+		group: 'eval',
+		desc: 'Run full workflow generation from prompt instead of using pre-computed state',
+	},
+	'--write-back': {
+		key: 'writeBack',
+		kind: 'boolean',
+		group: 'eval',
+		desc: 'Write regenerated state back to dataset source (requires --regenerate)',
+	},
+
 	// Evaluation options
 	'--suite': {
 		key: 'suite',
 		kind: 'string',
 		group: 'eval',
-		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity)',
+		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity|introspection)',
 	},
 	'--backend': { key: 'backend', kind: 'string', group: 'eval', desc: 'Backend (local|langsmith)' },
+	'--agent': {
+		key: 'agent',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Agent type (code-builder|multi-agent)',
+	},
 	'--max-examples': {
 		key: 'maxExamples',
 		kind: 'string',
@@ -177,7 +285,25 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		group: 'output',
 		desc: 'Directory for artifacts',
 	},
+	'--output-csv': {
+		key: 'outputCsv',
+		kind: 'string',
+		group: 'output',
+		desc: 'CSV file for evaluation results - if pre-existing file found it will be overwritten',
+	},
 	'--verbose': { key: 'verbose', kind: 'boolean', group: 'output', desc: 'Verbose logging' },
+	'--webhook-url': {
+		key: 'webhookUrl',
+		kind: 'string',
+		group: 'output',
+		desc: 'URL to POST results to when complete',
+	},
+	'--webhook-secret': {
+		key: 'webhookSecret',
+		kind: 'string',
+		group: 'output',
+		desc: 'Secret for HMAC-SHA256 signature (min 16 chars)',
+	},
 
 	// Feature flags
 	'--template-examples': {
@@ -187,14 +313,52 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		desc: 'Enable template examples phase',
 	},
 
+	// Model configuration
+	'--model': {
+		key: 'model',
+		kind: 'string',
+		group: 'model',
+		desc: `Default model for all stages (default: ${DEFAULT_MODEL})`,
+	},
+	'--judge-model': {
+		key: 'judgeModel',
+		kind: 'string',
+		group: 'model',
+		desc: 'Model for LLM judge evaluation',
+	},
+	'--supervisor-model': {
+		key: 'supervisorModel',
+		kind: 'string',
+		group: 'model',
+		desc: 'Model for supervisor stage',
+	},
+	'--responder-model': {
+		key: 'responderModel',
+		kind: 'string',
+		group: 'model',
+		desc: 'Model for responder stage',
+	},
+	'--discovery-model': {
+		key: 'discoveryModel',
+		kind: 'string',
+		group: 'model',
+		desc: 'Model for discovery stage',
+	},
+	'--builder-model': {
+		key: 'builderModel',
+		kind: 'string',
+		group: 'model',
+		desc: 'Model for builder stage (structure and configuration)',
+	},
+	'--parameter-updater-model': {
+		key: 'parameterUpdaterModel',
+		kind: 'string',
+		group: 'model',
+		desc: 'Model for parameter updater',
+	},
+
 	// Advanced
 	'--judges': { key: 'numJudges', kind: 'string', group: 'advanced', desc: 'Number of LLM judges' },
-	'--generations': {
-		key: 'numGenerations',
-		kind: 'string',
-		group: 'advanced',
-		desc: 'Workflow generations per prompt',
-	},
 };
 
 // Aliases (not shown in help)
@@ -225,6 +389,7 @@ const GROUP_TITLES: Record<FlagGroup, string> = {
 	langsmith: 'LangSmith Options',
 	output: 'Output',
 	feature: 'Feature Flags',
+	model: 'Model Configuration',
 	advanced: 'Advanced',
 };
 
@@ -243,6 +408,7 @@ function formatHelp(): string {
 		'langsmith',
 		'output',
 		'feature',
+		'model',
 		'advanced',
 	];
 
@@ -264,6 +430,9 @@ function formatHelp(): string {
 	lines.push('  pnpm eval --prompt "Create a Slack notification workflow"');
 	lines.push('  pnpm eval --prompts-csv my-prompts.csv --max-examples 5');
 	lines.push('  pnpm eval:langsmith --dataset "workflow-builder-canvas-prompts" --name "test-run"');
+	lines.push(
+		'  pnpm eval:langsmith --subgraph responder --dataset "responder-eval-dataset" --verbose',
+	);
 
 	return lines.join('\n');
 }
@@ -331,14 +500,19 @@ function parseCli(argv: string[]): {
 
 function parseFeatureFlags(args: {
 	templateExamples: boolean;
+	suite: EvaluationSuite;
 }): BuilderFeatureFlags | undefined {
 	const templateExamplesFromEnv = process.env.EVAL_FEATURE_TEMPLATE_EXAMPLES === 'true';
 	const templateExamples = templateExamplesFromEnv || args.templateExamples;
 
-	if (!templateExamples) return undefined;
+	// Auto-enable introspection for introspection suite
+	const enableIntrospection = args.suite === 'introspection';
+
+	if (!templateExamples && !enableIntrospection) return undefined;
 
 	return {
 		templateExamples: templateExamples || undefined,
+		enableIntrospection: enableIntrospection || undefined,
 	};
 }
 
@@ -385,6 +559,37 @@ function parseFilters(args: {
 	return hasAny ? filters : undefined;
 }
 
+function validateSubgraphArgs(parsed: {
+	subgraph?: string;
+	datasetName?: string;
+	datasetFile?: string;
+	prompt?: string;
+	promptsCsv?: string;
+	testCase?: string;
+	writeBack: boolean;
+	regenerate: boolean;
+}): void {
+	if (parsed.subgraph && !parsed.datasetName && !parsed.datasetFile) {
+		throw new Error(
+			'`--subgraph` requires `--dataset` or `--dataset-file`. Subgraph evaluation needs pre-computed state from a dataset.',
+		);
+	}
+
+	if (parsed.subgraph && (parsed.prompt || parsed.promptsCsv || parsed.testCase)) {
+		throw new Error(
+			'`--subgraph` cannot be combined with `--prompt`, `--prompts-csv`, or `--test-case`. Use `--dataset` instead.',
+		);
+	}
+
+	if (parsed.writeBack && !parsed.regenerate) {
+		throw new Error('`--write-back` requires `--regenerate`');
+	}
+
+	if (parsed.regenerate && !parsed.subgraph) {
+		throw new Error('`--regenerate` requires `--subgraph`');
+	}
+}
+
 export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): EvaluationArgs {
 	// Check for help flag before parsing
 	if (argv.includes('--help') || argv.includes('-h')) {
@@ -406,6 +611,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 
 	const featureFlags = parseFeatureFlags({
 		templateExamples: parsed.templateExamples,
+		suite: parsed.suite,
 	});
 
 	const filters = parseFilters({
@@ -413,6 +619,8 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		notionId: parsed.notionId,
 		technique: parsed.technique,
 	});
+
+	validateSubgraphArgs(parsed);
 
 	if (parsed.suite !== 'pairwise' && (filters?.doSearch || filters?.dontSearch)) {
 		throw new Error(
@@ -423,12 +631,14 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 	return {
 		suite: parsed.suite,
 		backend: parsed.backend,
+		agent: parsed.agent,
 		verbose: parsed.verbose,
 		repetitions: parsed.repetitions,
 		concurrency: parsed.concurrency,
 		timeoutMs: parsed.timeoutMs,
 		experimentName: parsed.experimentName,
 		outputDir: parsed.outputDir,
+		outputCsv: parsed.outputCsv,
 		datasetName: parsed.datasetName,
 		maxExamples: parsed.maxExamples,
 		filters,
@@ -438,8 +648,36 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		dos: parsed.dos,
 		donts: parsed.donts,
 		numJudges: parsed.numJudges,
-		numGenerations: parsed.numGenerations,
 		featureFlags,
+		subgraph: parsed.subgraph,
+		datasetFile: parsed.datasetFile,
+		regenerate: parsed.regenerate,
+		writeBack: parsed.writeBack,
+		webhookUrl: parsed.webhookUrl,
+		webhookSecret: parsed.webhookSecret,
+		// Model configuration
+		model: parsed.model,
+		judgeModel: parsed.judgeModel,
+		supervisorModel: parsed.supervisorModel,
+		responderModel: parsed.responderModel,
+		discoveryModel: parsed.discoveryModel,
+		builderModel: parsed.builderModel,
+		parameterUpdaterModel: parsed.parameterUpdaterModel,
+	};
+}
+
+/**
+ * Converts EvaluationArgs to StageModels for use with environment setup.
+ */
+export function argsToStageModels(args: EvaluationArgs): StageModels {
+	return {
+		default: args.model,
+		supervisor: args.supervisorModel,
+		responder: args.responderModel,
+		discovery: args.discoveryModel,
+		builder: args.builderModel,
+		parameterUpdater: args.parameterUpdaterModel,
+		judge: args.judgeModel,
 	};
 }
 

@@ -14,6 +14,7 @@ import type { SimpleWorkflow } from '@/types/workflow';
 
 // Store mocks for dependencies
 const mockParseEvaluationArgs = jest.fn();
+const mockArgsToStageModels = jest.fn();
 const mockSetupTestEnvironment = jest.fn();
 const mockCreateAgent = jest.fn();
 const mockGenerateRunId = jest.fn();
@@ -26,10 +27,13 @@ const mockCreateConsoleLifecycle = jest.fn();
 const mockCreateLLMJudgeEvaluator = jest.fn();
 const mockCreateProgrammaticEvaluator = jest.fn();
 const mockCreatePairwiseEvaluator = jest.fn();
+const mockCreateExecutionEvaluator = jest.fn();
+const mockSendWebhookNotification = jest.fn();
 
 // Mock all external modules
 jest.mock('../cli/argument-parser', () => ({
 	parseEvaluationArgs: (): unknown => mockParseEvaluationArgs(),
+	argsToStageModels: (...args: unknown[]): unknown => mockArgsToStageModels(...args),
 	getDefaultDatasetName: (suite: unknown): unknown =>
 		suite === 'pairwise' ? 'notion-pairwise-workflows' : 'workflow-builder-canvas-prompts',
 	getDefaultExperimentName: (suite: unknown): unknown =>
@@ -39,6 +43,7 @@ jest.mock('../cli/argument-parser', () => ({
 jest.mock('../support/environment', () => ({
 	setupTestEnvironment: (): unknown => mockSetupTestEnvironment(),
 	createAgent: (...args: unknown[]): unknown => mockCreateAgent(...args),
+	resolveNodesBasePath: (): string => '/mock/nodes-base',
 }));
 
 jest.mock('../langsmith/types', () => ({
@@ -54,18 +59,39 @@ jest.mock('../cli/csv-prompt-loader', () => ({
 	getDefaultTestCaseIds: () => ['test-case-1'],
 }));
 
+jest.mock('../cli/webhook', () => ({
+	sendWebhookNotification: (...args: unknown[]): unknown => mockSendWebhookNotification(...args),
+}));
+
 jest.mock('../harness/evaluation-helpers', () => ({
 	consumeGenerator: (...args: unknown[]): unknown => mockConsumeGenerator(...args),
 	getChatPayload: (...args: unknown[]): unknown => mockGetChatPayload(...args),
+	createWorkflowGenerator: () =>
+		jest.fn().mockResolvedValue({ name: 'Test', nodes: [], connections: {} }),
+}));
+
+jest.mock('../lifecycles/introspection-analysis', () => ({
+	createIntrospectionAnalysisLifecycle: () => ({}),
 }));
 
 jest.mock('../index', () => ({
 	runEvaluation: (...args: unknown[]): unknown => mockRunEvaluation(...args),
 	createConsoleLifecycle: (...args: unknown[]): unknown => mockCreateConsoleLifecycle(...args),
+	mergeLifecycles: (...lifecycles: unknown[]): unknown => {
+		// Simple merge implementation for tests - just return the first non-empty lifecycle
+		const valid = (lifecycles as Array<Record<string, unknown> | undefined>).filter(
+			(lc) => lc !== undefined,
+		);
+		if (valid.length === 0) return {};
+		// Return a merged object
+		return Object.assign({}, ...valid);
+	},
 	createLLMJudgeEvaluator: (...args: unknown[]): unknown => mockCreateLLMJudgeEvaluator(...args),
 	createProgrammaticEvaluator: (...args: unknown[]): unknown =>
 		mockCreateProgrammaticEvaluator(...args),
 	createPairwiseEvaluator: (...args: unknown[]): unknown => mockCreatePairwiseEvaluator(...args),
+	createSimilarityEvaluator: () => ({ name: 'similarity', evaluate: jest.fn() }),
+	createExecutionEvaluator: (...args: unknown[]): unknown => mockCreateExecutionEvaluator(...args),
 }));
 
 /** Helper to create a minimal valid workflow for tests */
@@ -88,7 +114,6 @@ function createMockArgs(overrides: Record<string, unknown> = {}) {
 		dos: undefined,
 		donts: undefined,
 		numJudges: 3,
-		numGenerations: 1,
 		experimentName: undefined,
 		repetitions: 1,
 		concurrency: 4,
@@ -99,9 +124,18 @@ function createMockArgs(overrides: Record<string, unknown> = {}) {
 
 /** Helper to create mock environment */
 function createMockEnvironment() {
+	const mockLlm = mock<BaseChatModel>();
 	return {
 		parsedNodeTypes: [] as INodeTypeDescription[],
-		llm: mock<BaseChatModel>(),
+		llms: {
+			default: mockLlm,
+			supervisor: mockLlm,
+			responder: mockLlm,
+			discovery: mockLlm,
+			builder: mockLlm,
+			parameterUpdater: mockLlm,
+			judge: mockLlm,
+		},
 		lsClient: mock<Client>(),
 	};
 }
@@ -148,6 +182,7 @@ describe('CLI', () => {
 
 		// Setup default mocks
 		mockParseEvaluationArgs.mockReturnValue(createMockArgs());
+		mockArgsToStageModels.mockReturnValue({ default: 'claude-sonnet-4.5' });
 		mockSetupTestEnvironment.mockResolvedValue(createMockEnvironment());
 		mockCreateAgent.mockReturnValue(createMockAgentInstance());
 		mockGenerateRunId.mockReturnValue('test-run-id');
@@ -159,6 +194,7 @@ describe('CLI', () => {
 		mockCreateLLMJudgeEvaluator.mockReturnValue({ name: 'llm-judge', evaluate: jest.fn() });
 		mockCreateProgrammaticEvaluator.mockReturnValue({ name: 'programmatic', evaluate: jest.fn() });
 		mockCreatePairwiseEvaluator.mockReturnValue({ name: 'pairwise', evaluate: jest.fn() });
+		mockCreateExecutionEvaluator.mockReturnValue({ name: 'execution', evaluate: jest.fn() });
 	});
 
 	afterEach(() => {
@@ -276,9 +312,9 @@ describe('CLI', () => {
 				// Verify numJudges was passed correctly
 				const callArgs = mockCreatePairwiseEvaluator.mock.calls[0] as [
 					unknown,
-					{ numJudges: number; numGenerations: number },
+					{ numJudges: number },
 				];
-				expect(callArgs[1]).toEqual({ numJudges: 5, numGenerations: 1 });
+				expect(callArgs[1]).toEqual({ numJudges: 5 });
 				expect(mockCreateProgrammaticEvaluator).toHaveBeenCalled();
 				expect(mockCreateLLMJudgeEvaluator).not.toHaveBeenCalled();
 			});
@@ -388,7 +424,7 @@ describe('CLI', () => {
 		});
 
 		describe('exit codes', () => {
-			it('should exit with 0 when pass rate >= 70%', async () => {
+			it('should always exit with 0 on successful completion (pass/fail is informational)', async () => {
 				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 10, passed: 7 }));
 
 				const { runV2Evaluation } = await import('../cli');
@@ -396,28 +432,20 @@ describe('CLI', () => {
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 			});
 
-			it('should exit with 1 when pass rate < 70%', async () => {
+			it('should exit with 0 even when pass rate is low', async () => {
 				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 10, passed: 5 }));
 
 				const { runV2Evaluation } = await import('../cli');
 
-				await expect(runV2Evaluation()).rejects.toThrow('process.exit(1)');
-			});
-
-			it('should exit with 0 when pass rate is exactly 70%', async () => {
-				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 10, passed: 7 }));
-
-				const { runV2Evaluation } = await import('../cli');
-
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 			});
 
-			it('should exit with 1 when no examples', async () => {
+			it('should exit with 0 even when no examples', async () => {
 				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 0, passed: 0 }));
 
 				const { runV2Evaluation } = await import('../cli');
 
-				await expect(runV2Evaluation()).rejects.toThrow('process.exit(1)');
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 			});
 		});
 
@@ -458,6 +486,132 @@ describe('CLI', () => {
 
 				expect(mockCreateConsoleLifecycle).toHaveBeenCalledWith(
 					expect.objectContaining({ verbose: true }),
+				);
+			});
+		});
+
+		describe('webhook notification', () => {
+			it('should send webhook notification when webhookUrl is provided', async () => {
+				mockParseEvaluationArgs.mockReturnValue(
+					createMockArgs({
+						webhookUrl: 'https://example.com/webhook',
+						suite: 'llm-judge',
+						backend: 'local',
+					}),
+				);
+				mockRunEvaluation.mockResolvedValue(createMockSummary());
+
+				const { runV2Evaluation } = await import('../cli');
+
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
+
+				expect(mockSendWebhookNotification).toHaveBeenCalledTimes(1);
+				expect(mockSendWebhookNotification).toHaveBeenCalledWith(
+					expect.objectContaining({
+						webhookUrl: 'https://example.com/webhook',
+						suite: 'llm-judge',
+						dataset: 'local-dataset',
+					}),
+				);
+			});
+
+			it('should NOT send webhook notification when webhookUrl is not provided', async () => {
+				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ webhookUrl: undefined }));
+				mockRunEvaluation.mockResolvedValue(createMockSummary());
+
+				const { runV2Evaluation } = await import('../cli');
+
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
+
+				expect(mockSendWebhookNotification).not.toHaveBeenCalled();
+			});
+
+			it('should use dataset name from args for langsmith backend', async () => {
+				mockParseEvaluationArgs.mockReturnValue(
+					createMockArgs({
+						webhookUrl: 'https://example.com/webhook',
+						backend: 'langsmith',
+						experimentName: 'my-custom-experiment',
+						datasetName: 'my-custom-dataset',
+						suite: 'pairwise',
+					}),
+				);
+				mockRunEvaluation.mockResolvedValue(createMockSummary());
+
+				const { runV2Evaluation } = await import('../cli');
+
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
+
+				expect(mockSendWebhookNotification).toHaveBeenCalledWith(
+					expect.objectContaining({
+						dataset: 'my-custom-dataset',
+						suite: 'pairwise',
+					}),
+				);
+			});
+
+			it('should use default dataset name for langsmith backend when not specified', async () => {
+				mockParseEvaluationArgs.mockReturnValue(
+					createMockArgs({
+						webhookUrl: 'https://example.com/webhook',
+						backend: 'langsmith',
+						experimentName: undefined,
+						datasetName: undefined,
+						suite: 'llm-judge',
+					}),
+				);
+				mockRunEvaluation.mockResolvedValue(createMockSummary());
+
+				const { runV2Evaluation } = await import('../cli');
+
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
+
+				expect(mockSendWebhookNotification).toHaveBeenCalledWith(
+					expect.objectContaining({
+						dataset: 'workflow-builder-canvas-prompts',
+					}),
+				);
+			});
+
+			it('should pass run summary to webhook notification', async () => {
+				const summary = createMockSummary({
+					totalExamples: 25,
+					passed: 20,
+					failed: 5,
+					errors: 0,
+					averageScore: 0.92,
+					totalDurationMs: 12000,
+				});
+				mockParseEvaluationArgs.mockReturnValue(
+					createMockArgs({ webhookUrl: 'https://example.com/webhook' }),
+				);
+				mockRunEvaluation.mockResolvedValue(summary);
+
+				const { runV2Evaluation } = await import('../cli');
+
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
+
+				expect(mockSendWebhookNotification).toHaveBeenCalledWith(
+					expect.objectContaining({
+						summary,
+					}),
+				);
+			});
+
+			it('should include CI metadata in webhook notification', async () => {
+				mockParseEvaluationArgs.mockReturnValue(
+					createMockArgs({ webhookUrl: 'https://example.com/webhook' }),
+				);
+				mockRunEvaluation.mockResolvedValue(createMockSummary());
+
+				const { runV2Evaluation } = await import('../cli');
+
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
+
+				expect(mockSendWebhookNotification).toHaveBeenCalledWith(
+					expect.objectContaining({
+						metadata: expect.any(Object),
+					}),
 				);
 			});
 		});

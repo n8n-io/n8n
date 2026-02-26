@@ -3,13 +3,17 @@ import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, ISupplyDataFunctions, EngineResponse } from 'n8n-workflow';
 
-import { buildSteps, type ToolCallData } from '@utils/agent-execution';
+import {
+	buildSteps,
+	type ToolCallData,
+	type RequestResponseMetadata,
+} from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 import { getTools, prepareMessages, preparePrompt } from '../../common';
-import type { AgentOptions, RequestResponseMetadata } from '../types';
+import type { AgentOptions } from '../types';
 
 /**
  * Context specific to a single item's processing

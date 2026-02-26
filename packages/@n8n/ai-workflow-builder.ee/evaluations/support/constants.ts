@@ -1,4 +1,13 @@
 // ============================================================================
+// Agent Types
+// ============================================================================
+
+export const AGENT_TYPES = {
+	CODE_BUILDER: 'code-builder',
+	MULTI_AGENT: 'multi-agent',
+} as const;
+
+// ============================================================================
 // Evaluation Type Identifiers
 // ============================================================================
 
@@ -24,7 +33,6 @@ export const TRACEABLE_NAMES = {
 
 export const DEFAULTS = {
 	NUM_JUDGES: 3,
-	NUM_GENERATIONS: 1,
 	EXPERIMENT_NAME: 'pairwise-evals',
 	LLM_JUDGE_EXPERIMENT_NAME: 'workflow-builder-evaluation',
 	CONCURRENCY: 5,

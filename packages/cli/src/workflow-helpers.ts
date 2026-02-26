@@ -7,6 +7,7 @@ import type {
 	IRun,
 	ITaskData,
 	IWorkflowBase,
+	IWorkflowSettings,
 	RelatedExecution,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -65,6 +66,44 @@ export function addNodeIds(workflow: IWorkflowBase) {
 			node.id = uuid();
 		}
 	});
+}
+
+/**
+ * Removes default values from workflow settings to avoid storing them in the database.
+ * Returns a new settings object without mutating the original.
+ *
+ * @param settings - The workflow settings to clean
+ * @param defaultExecutionTimeout - The default execution timeout from global config
+ * @returns A new settings object with default values removed
+ */
+export function removeDefaultValues(
+	settings: IWorkflowSettings,
+	defaultExecutionTimeout: number,
+): IWorkflowSettings {
+	const cleanedSettings = { ...settings };
+
+	// Remove settings that are set to 'DEFAULT'
+	const keysAllowingDefault = [
+		'errorWorkflow',
+		'timezone',
+		'saveDataErrorExecution',
+		'saveDataSuccessExecution',
+		'saveManualExecutions',
+		'saveExecutionProgress',
+	] as const;
+
+	for (const key of keysAllowingDefault) {
+		if (cleanedSettings[key] === 'DEFAULT') {
+			delete cleanedSettings[key];
+		}
+	}
+
+	// Remove executionTimeout if it matches the default
+	if (cleanedSettings.executionTimeout === defaultExecutionTimeout) {
+		delete cleanedSettings.executionTimeout;
+	}
+
+	return cleanedSettings;
 }
 
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely
@@ -292,4 +331,24 @@ export function getActiveVersionUpdateValue(
 	}
 
 	return dbWorkflow.activeVersionId ? updatedVersion : null;
+}
+
+/**
+ * Removes the last run data entry so the node is not displayed as executed twice
+ * when resuming. If the entry had an inputOverride (e.g. for chat tool or HITL
+ * nodes), a placeholder entry is pushed back preserving only the inputOverride
+ * and source so the LLM's input stays visible in logs after the execution resumes.
+ */
+export function preserveInputOverride(runDataArray: ITaskData[]): void {
+	const entryToPop = runDataArray.pop()!;
+	const preservedInputOverride = entryToPop.inputOverride;
+	if (preservedInputOverride) {
+		runDataArray.push({
+			startTime: 0,
+			executionTime: 0,
+			executionIndex: 0,
+			source: entryToPop.source,
+			inputOverride: preservedInputOverride,
+		});
+	}
 }

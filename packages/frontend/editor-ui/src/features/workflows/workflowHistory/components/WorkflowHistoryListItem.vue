@@ -44,15 +44,6 @@ const usersStore = useUsersStore();
 
 const actionsVisible = ref(false);
 const itemElement = ref<HTMLElement | null>(null);
-const authorElement = ref<InstanceType<typeof N8nText> | null>(null);
-const isAuthorElementTruncated = ref(false);
-
-const checkAuthorTruncation = () => {
-	const el = authorElement.value?.$el;
-	if (el instanceof HTMLElement) {
-		isAuthorElementTruncated.value = el.scrollWidth > el.clientWidth;
-	}
-};
 
 const formattedCreatedAt = computed<string>(() => {
 	const { date, time } = formatTimestamp(props.item.createdAt);
@@ -111,7 +102,10 @@ const mainTooltipContent = computed(() => {
 	}
 
 	if (props.isVersionActive) {
-		return i18n.baseText('workflowHistory.item.publishedBy');
+		const hasUser = !!getPublishedUserName(lastPublishInfo.value?.userId);
+		return hasUser
+			? i18n.baseText('workflowHistory.item.publishedBy')
+			: i18n.baseText('workflowHistory.item.active');
 	}
 
 	if (props.index === 0 && !props.isVersionActive) {
@@ -119,7 +113,10 @@ const mainTooltipContent = computed(() => {
 	}
 
 	if (versionPublishInfo.value) {
-		return `${i18n.baseText('workflowHistory.item.publishedBy')}`;
+		const hasUser = !!getPublishedUserName(versionPublishInfo.value?.userId);
+		return hasUser
+			? i18n.baseText('workflowHistory.item.publishedBy')
+			: i18n.baseText('workflowHistory.item.active');
 	}
 
 	return formattedCreatedAt.value;
@@ -192,7 +189,6 @@ onMounted(() => {
 		offsetTop: itemElement.value?.offsetTop ?? 0,
 		isSelected: props.isSelected,
 	});
-	checkAuthorTruncation();
 });
 </script>
 <template>
@@ -206,7 +202,10 @@ onMounted(() => {
 				<template v-if="mainTooltipUser">
 					{{ mainTooltipUser }}
 				</template>
-				<span v-if="mainTooltipFormattedDate">{{ ', ' + mainTooltipFormattedDate }}</span>
+				<template v-if="mainTooltipFormattedDate">
+					<template v-if="mainTooltipUser">, </template>
+					{{ mainTooltipFormattedDate }}
+				</template>
 			</div>
 		</template>
 		<li
@@ -218,6 +217,7 @@ onMounted(() => {
 				[$style.selected]: props.isSelected,
 				[$style.actionsVisible]: actionsVisible,
 				[$style.grouped]: props.isGrouped,
+				[$style.firstItem]: props.index === 0,
 			}"
 			@click="onItemClick"
 		>
@@ -247,39 +247,19 @@ onMounted(() => {
 							</N8nText>
 						</div>
 						<div :class="$style.metaRow">
-							<N8nTooltip
-								placement="right-end"
-								:disabled="!isAuthorElementTruncated"
-								:show-after="300"
-							>
-								<template #content>{{ props.item.authors }}</template>
-								<N8nText
-									ref="authorElement"
-									size="small"
-									color="text-base"
-									:class="$style.metaItem"
-								>
-									{{ authors.label }},
-								</N8nText>
-							</N8nTooltip>
-							<N8nText tag="time" size="small" color="text-base" :class="$style.metaItem">
+							<N8nText size="small" color="text-base" :class="$style.metaAuthor">
+								{{ authors.label }},
+							</N8nText>
+							<N8nText tag="time" size="small" color="text-base" :class="$style.metaTime">
 								{{ formattedCreatedAt }}
 							</N8nText>
 						</div>
 					</template>
 					<!-- Unnamed version: show author and time on single row -->
 					<div v-else :class="$style.unnamedRow">
-						<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated">
-							<template #content>{{ props.item.authors }}</template>
-							<N8nText
-								ref="authorElement"
-								size="small"
-								color="text-base"
-								:class="$style.unnamedAuthor"
-							>
-								{{ authors.label }},
-							</N8nText>
-						</N8nTooltip>
+						<N8nText size="small" color="text-base" :class="$style.unnamedAuthor">
+							{{ authors.label }},
+						</N8nText>
 						<N8nText tag="time" size="small" color="text-base" :class="$style.unnamedTime">
 							{{ formattedCreatedAt }}
 						</N8nText>
@@ -302,6 +282,7 @@ onMounted(() => {
 
 $timelineDotSize: 8px;
 $hoverBackground: var(--color--background--light-1);
+$authorMaxWidth: 130px;
 
 .item {
 	display: flex;
@@ -322,12 +303,12 @@ $hoverBackground: var(--color--background--light-1);
 
 	margin-top: var(--spacing--lg);
 
-	&:first-child {
+	&.firstItem {
 		margin-top: 0;
 	}
 
 	// Line segment in the gap above this item (not for first item)
-	&:not(:first-child):not(.grouped)::before {
+	&:not(.firstItem):not(.grouped)::before {
 		@include timeline-gap-line;
 	}
 
@@ -416,36 +397,48 @@ $hoverBackground: var(--color--background--light-1);
 	align-items: center;
 	gap: var(--spacing--5xs);
 	margin-top: var(--spacing--5xs);
+	min-width: 0;
 }
 
-.metaItem {
-	max-width: 120px;
+.metaAuthor {
+	display: block;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	max-width: $authorMaxWidth;
+}
+
+.metaTime {
+	white-space: nowrap;
+	flex-shrink: 0;
 }
 
 // Unnamed version styles
 .unnamedRow {
 	display: flex;
 	align-items: center;
+	min-width: 0;
+	gap: var(--spacing--5xs);
 }
 
 .unnamedAuthor {
+	display: block;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	max-width: 110px;
+	max-width: $authorMaxWidth;
 }
 
 .unnamedTime {
-	margin-left: var(--spacing--5xs);
 	white-space: nowrap;
+	flex-shrink: 0;
 }
 
 .actions {
 	display: block;
 	padding: var(--spacing--3xs);
+	flex-shrink: 0;
+	align-self: center;
 }
 
 .publishedBadge {

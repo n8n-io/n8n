@@ -1,19 +1,25 @@
 <script lang="ts" setup>
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { computed, ref } from 'vue';
-import { N8nAskAssistantChat } from '@n8n/design-system';
+import { computed, ref, useSlots } from 'vue';
+import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import AskModeEmptyState from './AskModeEmptyState.vue';
 
 const emit = defineEmits<{
 	close: [];
 }>();
 
 const assistantStore = useAssistantStore();
+const settingsStore = useSettingsStore();
 const workflowState = injectWorkflowState();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
+const slots = useSlots();
+const i18n = useI18n();
 
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
@@ -23,6 +29,11 @@ const user = computed(() => ({
 }));
 
 const loadingMessage = computed(() => assistantStore.assistantThinkingMessage);
+
+const showUsabilityNotice = computed(
+	() =>
+		assistantStore.canManageAISettings && !settingsStore.settings.ai.allowSendingParameterValues,
+);
 
 async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
 	// If there is no current session running, initialize the support chat session
@@ -69,7 +80,7 @@ defineExpose({
 </script>
 
 <template>
-	<div data-test-id="ask-assistant-chat" tabindex="0" class="wrapper" @keydown.stop>
+	<div data-test-id="ask-assistant-chat" tabindex="0" :class="$style.wrapper" @keydown.stop>
 		<N8nAskAssistantChat
 			ref="n8nChatRef"
 			:user="user"
@@ -77,19 +88,27 @@ defineExpose({
 			:streaming="assistantStore.streaming"
 			:loading-message="loadingMessage"
 			:session-id="assistantStore.currentSessionId"
+			:input-placeholder="i18n.baseText('aiAssistant.askMode.inputPlaceholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
+			@stop="assistantStore.abortStreaming"
 			@code-replace="onCodeReplace"
 			@code-undo="undoCodeDiff"
 		>
-			<template #header>
+			<template v-if="slots.header || showUsabilityNotice" #header>
 				<slot name="header" />
+				<N8nInfoTip v-if="showUsabilityNotice" theme="warning" type="tooltip">
+					<span>{{ i18n.baseText('aiAssistant.reducedHelp.chat.notice') }}</span>
+				</N8nInfoTip>
+			</template>
+			<template #placeholder>
+				<AskModeEmptyState />
 			</template>
 		</N8nAskAssistantChat>
 	</div>
 </template>
 
-<style scoped>
+<style module lang="scss">
 .wrapper {
 	height: 100%;
 	width: 100%;

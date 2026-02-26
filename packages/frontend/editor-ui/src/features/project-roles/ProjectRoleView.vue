@@ -14,20 +14,41 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useAsyncState } from '@vueuse/core';
 import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
 import { computed, ref, toRaw } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { SCOPE_TYPES, SCOPES } from './projectRoleScopes';
 
 const rolesStore = useRolesStore();
+const route = useRoute();
 const router = useRouter();
 const { showError, showMessage } = useToast();
 const i18n = useI18n();
 const message = useMessage();
 const telemetry = useTelemetry();
+const settingsStore = useSettingsStore();
 
 const props = defineProps<{ roleSlug?: string }>();
+
+// Dynamic back button text and navigation based on where the user navigated from
+const cameFromProjectSettings = computed(() => route.query.from === VIEWS.PROJECT_SETTINGS);
+
+const backButtonText = computed(() =>
+	cameFromProjectSettings.value
+		? i18n.baseText('projectRoles.backToProjectSettings')
+		: i18n.baseText('projectRoles.backToProjectRoles'),
+);
+
+const onBackClick = () => {
+	if (cameFromProjectSettings.value) {
+		router.back();
+	} else {
+		void router.push({ name: VIEWS.PROJECT_ROLES_SETTINGS });
+	}
+};
 
 const defaultForm = () => ({
 	displayName: '',
@@ -63,6 +84,11 @@ const { state: form, isLoading } = useAsyncState(
 	{ shallow: false },
 );
 
+// Read-only if system role OR on view route (not edit route)
+const isReadOnly = computed(
+	() => initialState.value?.systemRole === true || route.name === VIEWS.PROJECT_ROLE_VIEW,
+);
+
 const hasUnsavedChanges = computed(() => {
 	if (!initialState.value) return false;
 
@@ -86,47 +112,15 @@ function resetForm(payload: Role | undefined) {
 		: defaultForm();
 }
 
-const project = (['read', 'update', 'delete'] as const).map(
-	(action) => `project:${action}` as const,
-);
-const folder = (['read', 'update', 'create', 'move', 'delete'] as const).map(
-	(action) => `folder:${action}` as const,
-);
-const workflow = (['read', 'update', 'create', 'publish', 'move', 'delete'] as const).map(
-	(action) => `workflow:${action}` as const,
-);
-const credential = (['read', 'update', 'create', 'share', 'move', 'delete'] as const).map(
-	(action) => `credential:${action}` as const,
-);
-const sourceControl = (['push'] as const).map((action) => `sourceControl:${action}` as const);
-
-const dataTable = (['read', 'readRow', 'update', 'writeRow', 'create', 'delete'] as const).map(
-	(action) => `dataTable:${action}` as const,
-);
-
-const projectVariable = (['read', 'update', 'create', 'delete'] as const).map(
-	(action) => `projectVariable:${action}` as const,
-);
-
-const scopeTypes = [
-	'project',
-	'folder',
-	'workflow',
-	'credential',
-	'dataTable',
-	'projectVariable',
-	'sourceControl',
-] as const;
-
-const scopes = {
-	project,
-	folder,
-	workflow,
-	credential,
-	sourceControl,
-	dataTable,
-	projectVariable,
-} as const;
+const scopeTypes = computed(() => {
+	if (!settingsStore.moduleSettings['external-secrets']?.forProjects) {
+		return SCOPE_TYPES.filter(
+			(type) => type !== 'externalSecretsProvider' && type !== 'externalSecret',
+		);
+	}
+	return SCOPE_TYPES;
+});
+const scopes = SCOPES;
 
 function toggleScope(scope: string) {
 	const index = form.value.scopes.indexOf(scope);
@@ -316,32 +310,27 @@ const displayNameValidationRules = [
 <template>
 	<div class="pb-xl" :class="$style.container">
 		<N8nButton
+			variant="ghost"
 			icon="arrow-left"
-			type="secondary"
 			:class="$style.backButton"
 			text
-			@click="() => router.back()"
+			@click="onBackClick"
 		>
-			{{ i18n.baseText('projectRoles.backToRoleList') }}
+			{{ backButtonText }}
 		</N8nButton>
 		<div class="mb-xl" :class="$style.headerContainer">
 			<N8nHeading tag="h1" size="2xlarge">
 				{{ roleSlug ? `Role "${form.displayName}"` : i18n.baseText('projectRoles.newRole') }}
 			</N8nHeading>
-			<div v-if="initialState">
-				<N8nButton
-					type="secondary"
-					:disabled="!hasUnsavedChanges"
-					class="mr-xs"
-					@click="resetForm(initialState)"
-				>
+			<div v-if="initialState && !isReadOnly" :class="$style.headerActions">
+				<N8nButton variant="subtle" :disabled="!hasUnsavedChanges" @click="resetForm(initialState)">
 					{{ i18n.baseText('projectRoles.discardChanges') }}
 				</N8nButton>
 				<N8nButton :disabled="!hasUnsavedChanges" @click="handleSubmit">
 					{{ i18n.baseText('projectRoles.save') }}
 				</N8nButton>
 			</div>
-			<template v-else>
+			<template v-else-if="!initialState">
 				<N8nButton @click="handleSubmit">{{ i18n.baseText('projectRoles.create') }}</N8nButton>
 			</template>
 		</div>
@@ -356,6 +345,7 @@ const displayNameValidationRules = [
 				show-required-asterisk
 				required
 				:maxlength="100"
+				:disabled="isReadOnly"
 			></N8nFormInput>
 			<N8nFormInput
 				v-model="form.description"
@@ -364,27 +354,30 @@ const displayNameValidationRules = [
 				type="textarea"
 				:maxlength="500"
 				:autosize="{ minRows: 2, maxRows: 4 }"
+				:disabled="isReadOnly"
 			></N8nFormInput>
 		</div>
 
 		<N8nHeading tag="h2" size="xlarge" class="mb-s">
 			{{ i18n.baseText('projectRoles.permissions') }}
 		</N8nHeading>
-		<N8nText color="text-light" class="mb-2xs" tag="p">
-			{{ i18n.baseText('projectRoles.preset') }}
-		</N8nText>
+		<template v-if="!isReadOnly">
+			<N8nText color="text-light" class="mb-2xs" tag="p">
+				{{ i18n.baseText('projectRoles.preset') }}
+			</N8nText>
 
-		<div class="mb-s" :class="$style.presetsContainer">
-			<N8nButton type="secondary" @click="setPreset('project:admin')">
-				{{ i18n.baseText('projectRoles.admin') }}
-			</N8nButton>
-			<N8nButton type="secondary" @click="setPreset('project:editor')">
-				{{ i18n.baseText('projectRoles.editor') }}
-			</N8nButton>
-			<N8nButton type="secondary" @click="setPreset('project:viewer')">
-				{{ i18n.baseText('projectRoles.viewer') }}
-			</N8nButton>
-		</div>
+			<div class="mb-s" :class="$style.presetsContainer">
+				<N8nButton variant="subtle" @click="setPreset('project:admin')">
+					{{ i18n.baseText('projectRoles.admin') }}
+				</N8nButton>
+				<N8nButton variant="subtle" @click="setPreset('project:editor')">
+					{{ i18n.baseText('projectRoles.editor') }}
+				</N8nButton>
+				<N8nButton variant="subtle" @click="setPreset('project:viewer')">
+					{{ i18n.baseText('projectRoles.viewer') }}
+				</N8nButton>
+			</div>
+		</template>
 
 		<div :class="$style.cardContainer">
 			<div v-for="type in scopeTypes" :key="type" class="mb-s mt-s" :class="$style.card">
@@ -408,6 +401,7 @@ const displayNameValidationRules = [
 									validate-on-blur
 									type="checkbox"
 									:class="$style.checkbox"
+									:disabled="isReadOnly"
 									@update:model-value="() => toggleScope(scope)"
 								/>
 							</N8nTooltip>
@@ -417,7 +411,7 @@ const displayNameValidationRules = [
 			</div>
 		</div>
 
-		<div v-if="roleSlug && !initialState?.systemRole" class="mt-xl">
+		<div v-if="roleSlug && !isReadOnly" class="mt-xl">
 			<N8nHeading tag="h2" class="mb-2xs" size="large">
 				{{ i18n.baseText('projectRoles.dangerZone') }}
 			</N8nHeading>
@@ -433,7 +427,11 @@ const displayNameValidationRules = [
 				</template>
 				<template v-else> {{ i18n.baseText('projectRoles.action.delete.warning') }}</template>
 			</N8nText>
-			<N8nButton type="danger" :disabled="Boolean(initialState?.usedByUsers)" @click="deleteRole">
+			<N8nButton
+				variant="destructive"
+				:disabled="Boolean(initialState?.usedByUsers)"
+				@click="deleteRole"
+			>
 				{{ i18n.baseText('projectRoles.action.delete.button') }}
 			</N8nButton>
 		</div>
@@ -480,7 +478,14 @@ const displayNameValidationRules = [
 .headerContainer {
 	display: flex;
 	justify-content: space-between;
-	align-items: center;
+	align-items: flex-start;
+	gap: var(--spacing--sm);
+}
+
+.headerActions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
 }
 
 .formContainer {
