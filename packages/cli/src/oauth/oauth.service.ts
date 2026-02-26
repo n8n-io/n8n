@@ -399,6 +399,9 @@ export class OauthService {
 			// Try each discovery URL until one succeeds
 			for (const url of discoveryUrls) {
 				try {
+					// Validate each URL before making request (defense-in-depth)
+					this.validateOAuthUrlOrThrow(url);
+
 					const response = await axios.get<unknown>(url, {
 						validateStatus: (status) => status === 200,
 					});
@@ -664,6 +667,9 @@ export class OauthService {
 
 		for (const discoveryUrl of discoveryUrls) {
 			try {
+				// Validate each URL before making request (defense-in-depth)
+				this.validateOAuthUrlOrThrow(discoveryUrl);
+
 				const { data } = await axios.get(discoveryUrl, {
 					validateStatus: (status) => status === 200,
 				});
