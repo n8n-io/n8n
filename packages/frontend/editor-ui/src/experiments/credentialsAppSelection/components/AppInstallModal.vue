@@ -32,7 +32,7 @@ const usersStore = useUsersStore();
 const nodeTypesStore = useNodeTypesStore();
 const { installNode, loading } = useInstallNode();
 
-const isOwner = computed(() => usersStore.isInstanceOwner);
+const isAdmin = computed(() => usersStore.isAdmin);
 
 // Fetched data from API (like CommunityNodeInfo does)
 const publisherName = ref<string | undefined>(undefined);
@@ -134,7 +134,7 @@ const nodeTypeForIcon = computed((): SimplifiedNodeType | null => {
 });
 
 const handleInstall = async () => {
-	if (!props.appEntry?.packageName || !isOwner.value) return;
+	if (!props.appEntry?.packageName || !isAdmin.value) return;
 
 	const result = await installNode({
 		type: 'verified',
@@ -263,14 +263,14 @@ watch(
 					</a>
 				</div>
 
-				<ContactAdministratorToInstall v-if="!isOwner" />
+				<ContactAdministratorToInstall v-if="!isAdmin" />
 			</div>
 		</template>
 
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
-					v-if="isOwner"
+					v-if="isAdmin"
 					:label="i18n.baseText('communityNodeDetails.install')"
 					icon="download"
 					:loading="loading"
