@@ -310,6 +310,7 @@ onBeforeUnmount(() => {
 
 //methods
 const captureSearchHotKey = (e: KeyboardEvent) => {
+	if (!props.uiConfig.searchEnabled) return;
 	if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
 		e.preventDefault();
 		focusSearchInput();

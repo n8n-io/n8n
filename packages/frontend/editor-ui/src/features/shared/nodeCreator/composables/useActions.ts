@@ -351,6 +351,7 @@ export const useActions = () => {
 					nodes.push({
 						type: NO_OP_NODE_TYPE,
 						isAutoAdd: true,
+						placeholder: true,
 						positionOffset: [0, PUSH_NODES_OFFSET],
 						name: i18n.baseText('nodeView.replaceMe'),
 					});

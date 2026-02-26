@@ -39,7 +39,18 @@ const actions: Array<UserAction<IUser>> = actionTypes.map((value) => ({
 	value,
 }));
 
-const renderComponent = createComponentRenderer(WorkflowHistoryList);
+// N8nTooltip registers pointer-event listeners on each list item (via Element Plus).
+// userEvent.click dispatches ~10 pointer/mouse events per click, and with up to 50
+// items rendered, processing all those tooltip listeners caused intermittent timeouts
+// under parallel test load. Stubbing it to a passthrough slot fixes the flakiness
+// without affecting any test logic — no test here asserts on tooltip behaviour.
+const renderComponent = createComponentRenderer(WorkflowHistoryList, {
+	global: {
+		stubs: {
+			N8nTooltip: { template: '<slot />' },
+		},
+	},
+});
 
 let pinia: ReturnType<typeof createPinia>;
 

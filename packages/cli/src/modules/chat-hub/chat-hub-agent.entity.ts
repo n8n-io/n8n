@@ -97,6 +97,10 @@ export class ChatHubAgent extends WithTimestamps {
 	 */
 	@Column({ type: 'varchar', length: 64, nullable: true })
 	model: string;
+
+	/**
+	 * The tools associated with this agent via `chat_hub_agent_tools` join table.
+	 */
 	@ManyToMany('ChatHubTool')
 	@JoinTable({
 		name: 'chat_hub_agent_tools',

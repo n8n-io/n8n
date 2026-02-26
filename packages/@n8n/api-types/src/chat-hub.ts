@@ -2,7 +2,6 @@ import type { Scope } from '@n8n/permissions';
 import {
 	CHAT_TOOL_NODE_TYPE,
 	type ChunkType,
-	type IBinaryData,
 	DATA_TABLE_TOOL_NODE_TYPE,
 	type INode,
 	INodeSchema,
@@ -31,17 +30,7 @@ export const chatHubLLMProviderSchema = z.enum([
 	'cohere',
 	'mistralCloud',
 ]);
-
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
-
-export type ChatHubAgentKnowledgeItem =
-	| { type: 'file'; binaryData: IBinaryData }
-	| {
-			type: 'embedding';
-			provider: ChatHubLLMProvider;
-			fileName: string;
-			mimeType: string;
-	  };
 
 /**
  * Schema for icon or emoji representation
@@ -257,6 +246,7 @@ export interface ChatModelDto {
 	metadata: ChatModelMetadataDto;
 	groupName: string | null;
 	groupIcon: AgentIconOrEmoji | null;
+	suggestedPrompts?: Array<{ text: string; icon?: AgentIconOrEmoji }>;
 }
 
 /**
@@ -296,7 +286,6 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
  * MimeType, fileType, fileExtension, and fileSize are populated server-side.
  */
 export const chatAttachmentSchema = z.object({
-	id: z.string().optional(),
 	data: z.string(),
 	mimeType: z.string(),
 	fileName: z.string(),
@@ -477,7 +466,6 @@ export interface ChatHubAgentDto {
 	credentialId: string | null;
 	provider: ChatHubLLMProvider;
 	model: string;
-	files: ChatHubAgentKnowledgeItem[];
 	toolIds: string[];
 	createdAt: string;
 	updatedAt: string;
@@ -491,7 +479,6 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	credentialId: z.string(),
 	provider: chatHubLLMProviderSchema,
 	model: z.string().max(64),
-	files: z.array(chatAttachmentSchema).default([]),
 	toolIds: z.array(z.string().uuid()),
 }) {}
 
@@ -503,8 +490,6 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	credentialId: z.string().optional(),
 	provider: chatHubLLMProviderSchema.optional(),
 	model: z.string().max(64).optional(),
-	newFiles: z.array(chatAttachmentSchema),
-	keepFileIndices: z.array(z.number()),
 	toolIds: z.array(z.string().uuid()).optional(),
 }) {}
 
@@ -545,12 +530,6 @@ export class UpdateChatSettingsRequest extends Z.class({
 export interface ChatHubModuleSettings {
 	enabled: boolean;
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
-}
-
-export interface VectorStoreUsageDto {
-	currentSize: number;
-	maxSize: number;
-	usagePercentage: number;
 }
 
 /**

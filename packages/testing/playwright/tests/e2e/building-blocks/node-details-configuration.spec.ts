@@ -1,96 +1,92 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe(
-	'Node Details Configuration',
-	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
-	},
-	() => {
-		test.beforeEach(async ({ n8n }) => {
-			await n8n.start.fromBlankCanvas();
+test.describe('Node Details Configuration', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
+	test.beforeEach(async ({ n8n }) => {
+		await n8n.start.fromBlankCanvas();
+	});
+
+	test('should configure webhook node', async ({ n8n }) => {
+		await n8n.canvas.addNode('Webhook');
+
+		await n8n.ndv.setupHelper.webhook({
+			httpMethod: 'POST',
+			path: 'test-webhook',
+			authentication: 'Basic Auth',
 		});
 
-		test('should configure webhook node', async ({ n8n }) => {
-			await n8n.canvas.addNode('Webhook');
+		await expect(n8n.ndv.getParameterInputField('path')).toHaveValue('test-webhook');
+	});
 
-			await n8n.ndv.setupHelper.webhook({
-				httpMethod: 'POST',
-				path: 'test-webhook',
-				authentication: 'Basic Auth',
-			});
+	test('should configure HTTP Request node', async ({ n8n }) => {
+		await n8n.canvas.addNode('HTTP Request');
 
-			await expect(n8n.ndv.getParameterInputField('path')).toHaveValue('test-webhook');
+		await n8n.ndv.setupHelper.httpRequest({
+			method: 'POST',
+			url: 'https://api.example.com/test',
+			sendQuery: true,
+			sendHeaders: false,
 		});
 
-		test('should configure HTTP Request node', async ({ n8n }) => {
-			await n8n.canvas.addNode('HTTP Request');
+		await expect(n8n.ndv.getParameterInputField('url')).toHaveValue('https://api.example.com/test');
+	});
 
-			await n8n.ndv.setupHelper.httpRequest({
-				method: 'POST',
-				url: 'https://api.example.com/test',
-				sendQuery: true,
-				sendHeaders: false,
-			});
+	test('should auto-detect parameter types', async ({ n8n }) => {
+		await n8n.canvas.addNode('Webhook');
 
-			await expect(n8n.ndv.getParameterInputField('url')).toHaveValue(
-				'https://api.example.com/test',
-			);
-		});
+		await n8n.ndv.setupHelper.setParameter('httpMethod', 'PUT');
+		await n8n.ndv.setupHelper.setParameter('path', 'auto-detect-test');
 
-		test('should auto-detect parameter types', async ({ n8n }) => {
-			await n8n.canvas.addNode('Webhook');
+		await expect(n8n.ndv.getParameterInputField('path')).toHaveValue('auto-detect-test');
+	});
 
-			await n8n.ndv.setupHelper.setParameter('httpMethod', 'PUT');
-			await n8n.ndv.setupHelper.setParameter('path', 'auto-detect-test');
+	test('should use explicit types for better performance', async ({ n8n }) => {
+		await n8n.canvas.addNode('Webhook');
 
-			await expect(n8n.ndv.getParameterInputField('path')).toHaveValue('auto-detect-test');
-		});
+		await n8n.ndv.setupHelper.setParameter('httpMethod', 'PATCH', 'dropdown');
+		await n8n.ndv.setupHelper.setParameter('path', 'explicit-types', 'text');
 
-		test('should use explicit types for better performance', async ({ n8n }) => {
-			await n8n.canvas.addNode('Webhook');
+		await expect(n8n.ndv.getParameterInputField('path')).toHaveValue('explicit-types');
+	});
 
-			await n8n.ndv.setupHelper.setParameter('httpMethod', 'PATCH', 'dropdown');
-			await n8n.ndv.setupHelper.setParameter('path', 'explicit-types', 'text');
+	test('should configure Edit Fields node with single field', async ({ n8n }) => {
+		await n8n.canvas.addNode('Edit Fields (Set)');
 
-			await expect(n8n.ndv.getParameterInputField('path')).toHaveValue('explicit-types');
-		});
+		await n8n.ndv.editFields.setSingleFieldValue('testField', 'string', 'Hello World');
 
-		test('should configure Edit Fields node with single field', async ({ n8n }) => {
-			await n8n.canvas.addNode('Edit Fields (Set)');
+		const nameInput = n8n.ndv.getAssignmentName('assignments', 0).getByRole('textbox');
+		await expect(nameInput).toHaveValue('testField');
+	});
 
-			await n8n.ndv.editFields.setSingleFieldValue('testField', 'string', 'Hello World');
+	test('should configure Edit Fields node with multiple fields', async ({ n8n }) => {
+		await n8n.canvas.addNode('Edit Fields (Set)');
 
-			const nameInput = n8n.ndv.getAssignmentName('assignments', 0).getByRole('textbox');
-			await expect(nameInput).toHaveValue('testField');
-		});
+		await n8n.ndv.editFields.setFieldsValues([
+			{ name: 'stringField', type: 'string', value: 'Test String' },
+			{ name: 'numberField', type: 'number', value: 123 },
+			{ name: 'booleanField', type: 'boolean', value: true },
+		]);
 
-		test('should configure Edit Fields node with multiple fields', async ({ n8n }) => {
-			await n8n.canvas.addNode('Edit Fields (Set)');
+		await expect(
+			n8n.ndv.getAssignmentCollectionContainer('assignments').getByTestId('assignment'),
+		).toHaveCount(3);
+	});
 
-			await n8n.ndv.editFields.setFieldsValues([
-				{ name: 'stringField', type: 'string', value: 'Test String' },
-				{ name: 'numberField', type: 'number', value: 123 },
-				{ name: 'booleanField', type: 'boolean', value: true },
-			]);
+	test('should configure Edit Fields node with all field types', async ({ n8n }) => {
+		await n8n.canvas.addNode('Edit Fields (Set)');
 
-			await expect(
-				n8n.ndv.getAssignmentCollectionContainer('assignments').getByTestId('assignment'),
-			).toHaveCount(3);
-		});
+		await n8n.ndv.editFields.setFieldsValues([
+			{ name: 'myString', type: 'string', value: 'Hello' },
+			{ name: 'myNumber', type: 'number', value: 42 },
+			{ name: 'myBoolean', type: 'boolean', value: false },
+			{ name: 'myArray', type: 'array', value: '["item1", "item2"]' },
+		]);
 
-		test('should configure Edit Fields node with all field types', async ({ n8n }) => {
-			await n8n.canvas.addNode('Edit Fields (Set)');
-
-			await n8n.ndv.editFields.setFieldsValues([
-				{ name: 'myString', type: 'string', value: 'Hello' },
-				{ name: 'myNumber', type: 'number', value: 42 },
-				{ name: 'myBoolean', type: 'boolean', value: false },
-				{ name: 'myArray', type: 'array', value: '["item1", "item2"]' },
-			]);
-
-			await expect(
-				n8n.ndv.getAssignmentCollectionContainer('assignments').getByTestId('assignment'),
-			).toHaveCount(4);
-		});
-	},
-);
+		await expect(
+			n8n.ndv.getAssignmentCollectionContainer('assignments').getByTestId('assignment'),
+		).toHaveCount(4);
+	});
+});

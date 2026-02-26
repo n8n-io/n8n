@@ -14,432 +14,426 @@ import type { McpSession } from '../../../services/mcp-api-helper';
  * - Error handling
  */
 
-test.describe(
-	'MCP Trigger Node',
-	{
-		annotation: [{ type: 'owner', description: 'AI' }],
-	},
-	() => {
-		test.describe('Streamable HTTP Transport', () => {
-			test('should initialize session and return mcp-session-id', async ({ api }) => {
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-basic.json',
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+test.describe('MCP Trigger Node', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
+	test.describe('Streamable HTTP Transport', () => {
+		test('should initialize session and return mcp-session-id', async ({ api }) => {
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-basic.json',
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
-				// Get the MCP path from the workflow
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+			// Get the MCP path from the workflow
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
 
-				const session = await api.mcp.streamableHttpInitialize(mcpPath);
+			const session = await api.mcp.streamableHttpInitialize(mcpPath);
 
-				expect(session.sessionId).toBeTruthy();
-				expect(session.transport).toBe('streamableHttp');
+			expect(session.sessionId).toBeTruthy();
+			expect(session.transport).toBe('streamableHttp');
+		});
+
+		test('should list tools via Streamable HTTP', async ({ api }) => {
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-basic.json',
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+
+			const session = await api.mcp.streamableHttpInitialize(mcpPath);
+			const tools = await api.mcp.listTools(session, mcpPath);
+
+			expect(tools).toHaveLength(1);
+			expect(tools[0].name).toBe('echo');
+			expect(tools[0].description).toContain('Echoes');
+		});
+
+		test('should call tool via Streamable HTTP', async ({ api }) => {
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-basic.json',
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+
+			const session = await api.mcp.streamableHttpInitialize(mcpPath);
+			const result = await api.mcp.callTool(session, mcpPath, 'echo', {
+				message: 'Hello from E2E test!',
 			});
 
-			test('should list tools via Streamable HTTP', async ({ api }) => {
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-basic.json',
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+			expect(result.content).toBeDefined();
+			expect(result.content.length).toBeGreaterThan(0);
+			expect(result.content[0].text).toContain('Hello from E2E test!');
+		});
 
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+		test('should close session via DELETE', async ({ api }) => {
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-basic.json',
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
-				const session = await api.mcp.streamableHttpInitialize(mcpPath);
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+
+			const session = await api.mcp.streamableHttpInitialize(mcpPath);
+			const deleteResponse = await api.mcp.streamableHttpDelete(session, mcpPath);
+
+			// DELETE should return success (200 or 202)
+			expect(deleteResponse.status()).toBeLessThan(300);
+		});
+	});
+
+	test.describe('SSE Transport', () => {
+		test('should establish SSE connection and return session', async ({ api }) => {
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-basic.json',
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+
+			const session = await api.mcp.sseSetup(mcpPath);
+
+			try {
+				expect(session.sessionId).toBeTruthy();
+				expect(session.transport).toBe('sse');
+				expect(session.postUrl).toBeTruthy();
+			} finally {
+				api.mcp.sseClose(session);
+			}
+		});
+
+		test('should list connected tools via SSE', async ({ api }) => {
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-basic.json',
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+
+			const session = await api.mcp.sseSetup(mcpPath);
+
+			try {
 				const tools = await api.mcp.listTools(session, mcpPath);
 
 				expect(tools).toHaveLength(1);
 				expect(tools[0].name).toBe('echo');
-				expect(tools[0].description).toContain('Echoes');
-			});
+			} finally {
+				api.mcp.sseClose(session);
+			}
+		});
 
-			test('should call tool via Streamable HTTP', async ({ api }) => {
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-basic.json',
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+		test('should call tool and receive response via SSE', async ({ api }) => {
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-basic.json',
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
 
-				const session = await api.mcp.streamableHttpInitialize(mcpPath);
+			const session = await api.mcp.sseSetup(mcpPath);
+
+			try {
 				const result = await api.mcp.callTool(session, mcpPath, 'echo', {
-					message: 'Hello from E2E test!',
+					message: 'SSE test message',
 				});
 
 				expect(result.content).toBeDefined();
-				expect(result.content.length).toBeGreaterThan(0);
-				expect(result.content[0].text).toContain('Hello from E2E test!');
-			});
-
-			test('should close session via DELETE', async ({ api }) => {
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-basic.json',
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
-
-				const session = await api.mcp.streamableHttpInitialize(mcpPath);
-				const deleteResponse = await api.mcp.streamableHttpDelete(session, mcpPath);
-
-				// DELETE should return success (200 or 202)
-				expect(deleteResponse.status()).toBeLessThan(300);
-			});
+				expect(result.content[0].text).toContain('SSE test message');
+			} finally {
+				api.mcp.sseClose(session);
+			}
 		});
+	});
 
-		test.describe('SSE Transport', () => {
-			test('should establish SSE connection and return session', async ({ api }) => {
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-basic.json',
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
-
-				const session = await api.mcp.sseSetup(mcpPath);
-
-				try {
-					expect(session.sessionId).toBeTruthy();
-					expect(session.transport).toBe('sse');
-					expect(session.postUrl).toBeTruthy();
-				} finally {
-					api.mcp.sseClose(session);
-				}
+	test.describe('Authentication', () => {
+		test('should reject unauthenticated request with bearerAuth', async ({ api }) => {
+			const token = `secret-token-${nanoid()}`;
+			const credential = await api.credentials.createCredential({
+				type: 'httpBearerAuth',
+				name: `mcp-bearer-${nanoid()}`,
+				data: { token },
 			});
 
-			test('should list connected tools via SSE', async ({ api }) => {
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-basic.json',
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
-
-				const session = await api.mcp.sseSetup(mcpPath);
-
-				try {
-					const tools = await api.mcp.listTools(session, mcpPath);
-
-					expect(tools).toHaveLength(1);
-					expect(tools[0].name).toBe('echo');
-				} finally {
-					api.mcp.sseClose(session);
-				}
-			});
-
-			test('should call tool and receive response via SSE', async ({ api }) => {
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-basic.json',
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
-
-				const session = await api.mcp.sseSetup(mcpPath);
-
-				try {
-					const result = await api.mcp.callTool(session, mcpPath, 'echo', {
-						message: 'SSE test message',
-					});
-
-					expect(result.content).toBeDefined();
-					expect(result.content[0].text).toContain('SSE test message');
-				} finally {
-					api.mcp.sseClose(session);
-				}
-			});
-		});
-
-		test.describe('Authentication', () => {
-			test('should reject unauthenticated request with bearerAuth', async ({ api }) => {
-				const token = `secret-token-${nanoid()}`;
-				const credential = await api.credentials.createCredential({
-					type: 'httpBearerAuth',
-					name: `mcp-bearer-${nanoid()}`,
-					data: { token },
-				});
-
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-bearer-auth.json',
-					{
-						transform: (wf) => {
-							const mcpNode = wf.nodes?.find((n) => n.type.includes('mcpTrigger'));
-							if (mcpNode) {
-								mcpNode.credentials = {
-									httpBearerAuth: { id: credential.id, name: credential.name },
-								};
-							}
-							return wf;
-						},
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-bearer-auth.json',
+				{
+					transform: (wf) => {
+						const mcpNode = wf.nodes?.find((n) => n.type.includes('mcpTrigger'));
+						if (mcpNode) {
+							mcpNode.credentials = {
+								httpBearerAuth: { id: credential.id, name: credential.name },
+							};
+						}
+						return wf;
 					},
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+				},
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
 
-				// Try without auth - should fail
-				const noAuthResponse = await api.webhooks.trigger(mcpPath, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					data: api.mcp.createMessage('initialize', {
-						protocolVersion: '2024-11-05',
-						capabilities: {},
-						clientInfo: { name: 'test', version: '1.0.0' },
-					}),
-				});
-
-				expect(noAuthResponse.status()).toBe(403);
+			// Try without auth - should fail
+			const noAuthResponse = await api.webhooks.trigger(mcpPath, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				data: api.mcp.createMessage('initialize', {
+					protocolVersion: '2024-11-05',
+					capabilities: {},
+					clientInfo: { name: 'test', version: '1.0.0' },
+				}),
 			});
 
-			test('should accept valid bearer token', async ({ api }) => {
-				const token = `secret-token-${nanoid()}`;
-				const credential = await api.credentials.createCredential({
-					type: 'httpBearerAuth',
-					name: `mcp-bearer-${nanoid()}`,
-					data: { token },
-				});
+			expect(noAuthResponse.status()).toBe(403);
+		});
 
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-bearer-auth.json',
-					{
-						transform: (wf) => {
-							const mcpNode = wf.nodes?.find((n) => n.type.includes('mcpTrigger'));
-							if (mcpNode) {
-								mcpNode.credentials = {
-									httpBearerAuth: { id: credential.id, name: credential.name },
-								};
-							}
-							return wf;
-						},
+		test('should accept valid bearer token', async ({ api }) => {
+			const token = `secret-token-${nanoid()}`;
+			const credential = await api.credentials.createCredential({
+				type: 'httpBearerAuth',
+				name: `mcp-bearer-${nanoid()}`,
+				data: { token },
+			});
+
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-bearer-auth.json',
+				{
+					transform: (wf) => {
+						const mcpNode = wf.nodes?.find((n) => n.type.includes('mcpTrigger'));
+						if (mcpNode) {
+							mcpNode.credentials = {
+								httpBearerAuth: { id: credential.id, name: credential.name },
+							};
+						}
+						return wf;
 					},
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+				},
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
 
-				// Try with valid auth - should succeed
-				const session = await api.mcp.streamableHttpInitialize(mcpPath, {
-					headers: { Authorization: `Bearer ${token}` },
-				});
-
-				expect(session.sessionId).toBeTruthy();
+			// Try with valid auth - should succeed
+			const session = await api.mcp.streamableHttpInitialize(mcpPath, {
+				headers: { Authorization: `Bearer ${token}` },
 			});
 
-			test('should accept valid header auth', async ({ api }) => {
-				const headerName = `X-Auth-${nanoid(8)}`;
-				const headerValue = `secret-value-${nanoid()}`;
-				const credential = await api.credentials.createCredential({
-					type: 'httpHeaderAuth',
-					name: `mcp-header-${nanoid()}`,
-					data: { name: headerName, value: headerValue },
-				});
+			expect(session.sessionId).toBeTruthy();
+		});
 
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-header-auth.json',
-					{
-						transform: (wf) => {
-							const mcpNode = wf.nodes?.find((n) => n.type.includes('mcpTrigger'));
-							if (mcpNode) {
-								mcpNode.credentials = {
-									httpHeaderAuth: { id: credential.id, name: credential.name },
-								};
-							}
-							return wf;
-						},
+		test('should accept valid header auth', async ({ api }) => {
+			const headerName = `X-Auth-${nanoid(8)}`;
+			const headerValue = `secret-value-${nanoid()}`;
+			const credential = await api.credentials.createCredential({
+				type: 'httpHeaderAuth',
+				name: `mcp-header-${nanoid()}`,
+				data: { name: headerName, value: headerValue },
+			});
+
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-header-auth.json',
+				{
+					transform: (wf) => {
+						const mcpNode = wf.nodes?.find((n) => n.type.includes('mcpTrigger'));
+						if (mcpNode) {
+							mcpNode.credentials = {
+								httpHeaderAuth: { id: credential.id, name: credential.name },
+							};
+						}
+						return wf;
 					},
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+				},
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
 
-				// Try without auth - should fail
-				const noAuthResponse = await api.webhooks.trigger(mcpPath, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					data: api.mcp.createMessage('initialize', {
-						protocolVersion: '2024-11-05',
-						capabilities: {},
-						clientInfo: { name: 'test', version: '1.0.0' },
-					}),
-				});
-				expect(noAuthResponse.status()).toBe(403);
-
-				// Try with valid auth - should succeed
-				const session = await api.mcp.streamableHttpInitialize(mcpPath, {
-					headers: { [headerName]: headerValue },
-				});
-
-				expect(session.sessionId).toBeTruthy();
+			// Try without auth - should fail
+			const noAuthResponse = await api.webhooks.trigger(mcpPath, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				data: api.mcp.createMessage('initialize', {
+					protocolVersion: '2024-11-05',
+					capabilities: {},
+					clientInfo: { name: 'test', version: '1.0.0' },
+				}),
 			});
+			expect(noAuthResponse.status()).toBe(403);
+
+			// Try with valid auth - should succeed
+			const session = await api.mcp.streamableHttpInitialize(mcpPath, {
+				headers: { [headerName]: headerValue },
+			});
+
+			expect(session.sessionId).toBeTruthy();
+		});
+	});
+
+	test.describe('Tool Operations', () => {
+		test('should return all connected tools in tools/list', async ({ api }) => {
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-multi-tool.json',
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+
+			const session = await api.mcp.streamableHttpInitialize(mcpPath);
+			const tools = await api.mcp.listTools(session, mcpPath);
+
+			expect(tools).toHaveLength(3);
+
+			const toolNames = tools.map((t) => t.name).sort();
+			expect(toolNames).toEqual(['add', 'echo', 'multiply']);
 		});
 
-		test.describe('Tool Operations', () => {
-			test('should return all connected tools in tools/list', async ({ api }) => {
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-multi-tool.json',
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+		test('should execute tool with arguments', async ({ api }) => {
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-multi-tool.json',
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
 
-				const session = await api.mcp.streamableHttpInitialize(mcpPath);
-				const tools = await api.mcp.listTools(session, mcpPath);
+			const session = await api.mcp.streamableHttpInitialize(mcpPath);
 
-				expect(tools).toHaveLength(3);
-
-				const toolNames = tools.map((t) => t.name).sort();
-				expect(toolNames).toEqual(['add', 'echo', 'multiply']);
+			// Test echo tool
+			const echoResult = await api.mcp.callTool(session, mcpPath, 'echo', {
+				message: 'Multi-tool test',
 			});
+			expect(echoResult.content[0].text).toContain('Multi-tool test');
 
-			test('should execute tool with arguments', async ({ api }) => {
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-multi-tool.json',
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+			// Test add tool
+			const addResult = await api.mcp.callTool(session, mcpPath, 'add', { a: 5, b: 3 });
+			expect(addResult.content[0].text).toContain('8');
 
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
-
-				const session = await api.mcp.streamableHttpInitialize(mcpPath);
-
-				// Test echo tool
-				const echoResult = await api.mcp.callTool(session, mcpPath, 'echo', {
-					message: 'Multi-tool test',
-				});
-				expect(echoResult.content[0].text).toContain('Multi-tool test');
-
-				// Test add tool
-				const addResult = await api.mcp.callTool(session, mcpPath, 'add', { a: 5, b: 3 });
-				expect(addResult.content[0].text).toContain('8');
-
-				// Test multiply tool
-				const multiplyResult = await api.mcp.callTool(session, mcpPath, 'multiply', { a: 4, b: 7 });
-				expect(multiplyResult.content[0].text).toContain('28');
-			});
-
-			test('should return error for unknown tool', async ({ api }) => {
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-basic.json',
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
-
-				const session = await api.mcp.streamableHttpInitialize(mcpPath);
-
-				// Try to call a non-existent tool
-				const message = api.mcp.createMessage('tools/call', {
-					name: 'nonexistent_tool',
-					arguments: {},
-				});
-
-				const response = await api.mcp.streamableHttpSendMessage(session, mcpPath, message);
-				const body = await response.text();
-
-				// Should get an error response
-				expect(body).toContain('error');
-			});
+			// Test multiply tool
+			const multiplyResult = await api.mcp.callTool(session, mcpPath, 'multiply', { a: 4, b: 7 });
+			expect(multiplyResult.content[0].text).toContain('28');
 		});
 
-		test.describe('Session Management', () => {
-			test('should reject requests with invalid session ID', async ({ api }) => {
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-basic.json',
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+		test('should return error for unknown tool', async ({ api }) => {
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-basic.json',
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
 
-				// Create a fake session with an invalid session ID
-				const fakeSession: McpSession = {
-					sessionId: 'invalid-session-id-12345',
-					transport: 'streamableHttp',
-				};
+			const session = await api.mcp.streamableHttpInitialize(mcpPath);
 
-				const message = api.mcp.createMessage('tools/list');
-				const response = await api.mcp.streamableHttpSendMessage(fakeSession, mcpPath, message);
-
-				// Should return an error status (404 or 401)
-				expect(response.status()).toBeGreaterThanOrEqual(400);
+			// Try to call a non-existent tool
+			const message = api.mcp.createMessage('tools/call', {
+				name: 'nonexistent_tool',
+				arguments: {},
 			});
 
-			test('should cleanup session on DELETE request', async ({ api }) => {
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-basic.json',
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+			const response = await api.mcp.streamableHttpSendMessage(session, mcpPath, message);
+			const body = await response.text();
 
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+			// Should get an error response
+			expect(body).toContain('error');
+		});
+	});
 
-				// Initialize and then delete session
-				const session = await api.mcp.streamableHttpInitialize(mcpPath);
-				await api.mcp.streamableHttpDelete(session, mcpPath);
+	test.describe('Session Management', () => {
+		test('should reject requests with invalid session ID', async ({ api }) => {
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-basic.json',
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
-				// Try to use the deleted session - should fail
-				const message = api.mcp.createMessage('tools/list');
-				const response = await api.mcp.streamableHttpSendMessage(session, mcpPath, message);
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
 
-				expect(response.status()).toBeGreaterThanOrEqual(400);
-			});
+			// Create a fake session with an invalid session ID
+			const fakeSession: McpSession = {
+				sessionId: 'invalid-session-id-12345',
+				transport: 'streamableHttp',
+			};
+
+			const message = api.mcp.createMessage('tools/list');
+			const response = await api.mcp.streamableHttpSendMessage(fakeSession, mcpPath, message);
+
+			// Should return an error status (404 or 401)
+			expect(response.status()).toBeGreaterThanOrEqual(400);
 		});
 
-		test.describe('Error Handling', () => {
-			test('should return 404 for non-existent endpoint', async ({ api }) => {
-				const response = await api.webhooks.trigger('webhook/non-existent-mcp-endpoint-12345', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					data: api.mcp.createMessage('initialize'),
-				});
+		test('should cleanup session on DELETE request', async ({ api }) => {
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-basic.json',
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
-				expect(response.status()).toBe(404);
-			});
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
 
-			test('should handle malformed JSON-RPC messages', async ({ api }) => {
-				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
-					'mcp-trigger/mcp-trigger-basic.json',
-				);
-				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+			// Initialize and then delete session
+			const session = await api.mcp.streamableHttpInitialize(mcpPath);
+			await api.mcp.streamableHttpDelete(session, mcpPath);
 
-				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
-				const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+			// Try to use the deleted session - should fail
+			const message = api.mcp.createMessage('tools/list');
+			const response = await api.mcp.streamableHttpSendMessage(session, mcpPath, message);
 
-				// First establish a valid session
-				const session = await api.mcp.streamableHttpInitialize(mcpPath);
-
-				// Send malformed message (missing required fields)
-				const malformedMessage = {
-					// Missing jsonrpc version
-					id: nanoid(),
-					method: 'tools/list',
-				};
-
-				const response = await api.mcp.streamableHttpSendMessage(
-					session,
-					mcpPath,
-					malformedMessage,
-				);
-
-				// Server should handle gracefully (either error response or parse error)
-				// The exact behavior depends on implementation
-				const body = await response.text();
-				expect(body).toBeTruthy(); // Should return some response
-			});
+			expect(response.status()).toBeGreaterThanOrEqual(400);
 		});
-	},
-);
+	});
+
+	test.describe('Error Handling', () => {
+		test('should return 404 for non-existent endpoint', async ({ api }) => {
+			const response = await api.webhooks.trigger('webhook/non-existent-mcp-endpoint-12345', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				data: api.mcp.createMessage('initialize'),
+			});
+
+			expect(response.status()).toBe(404);
+		});
+
+		test('should handle malformed JSON-RPC messages', async ({ api }) => {
+			const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+				'mcp-trigger/mcp-trigger-basic.json',
+			);
+			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+
+			const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
+			const mcpPath = `webhook/${mcpNode?.parameters.path as string}`;
+
+			// First establish a valid session
+			const session = await api.mcp.streamableHttpInitialize(mcpPath);
+
+			// Send malformed message (missing required fields)
+			const malformedMessage = {
+				// Missing jsonrpc version
+				id: nanoid(),
+				method: 'tools/list',
+			};
+
+			const response = await api.mcp.streamableHttpSendMessage(session, mcpPath, malformedMessage);
+
+			// Server should handle gracefully (either error response or parse error)
+			// The exact behavior depends on implementation
+			const body = await response.text();
+			expect(body).toBeTruthy(); // Should return some response
+		});
+	});
+});
 
 // Queue mode tests - tagged with @mode:queue to run only in queue infrastructure
 test.describe('MCP Trigger - Queue Mode', () => {

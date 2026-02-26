@@ -245,7 +245,7 @@ export interface SubgraphExampleOutput {
 	response?: string;
 	/** The workflow produced by the subgraph (for builder/configurator) */
 	workflow?: SimpleWorkflow;
-}
+};
 
 /**
  * Result from workflow generation that may include source code.

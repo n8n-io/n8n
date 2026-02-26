@@ -38,97 +38,95 @@ async function setupProjectWithWorkflowAndSignInAsMember({
 	await expect(n8n.canvas.getLoadingMask()).not.toBeAttached();
 }
 
-test.describe(
-	'Workflow Viewer Permissions',
-	{
-		annotation: [{ type: 'owner', description: 'Identity & Access' }],
-	},
-	() => {
-		test.describe.configure({ mode: 'serial' });
+test.describe('Workflow Viewer Permissions', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
+	test.describe.configure({ mode: 'serial' });
 
-		let readOnlyRole: { slug: string };
-		let editorRole: { slug: string };
+	let readOnlyRole: { slug: string };
+	let editorRole: { slug: string };
 
-		test.beforeAll(async ({ api }) => {
-			await api.enableFeature('sharing');
-			await api.enableFeature('advancedPermissions');
-			await api.enableFeature('customRoles');
-			await api.setMaxTeamProjectsQuota(-1);
+	test.beforeAll(async ({ api }) => {
+		await api.enableFeature('sharing');
+		await api.enableFeature('advancedPermissions');
+		await api.enableFeature('customRoles');
+		await api.setMaxTeamProjectsQuota(-1);
 
-			// Sign in as owner (admin) to create custom roles
-			await api.signin('owner');
+		// Sign in as owner (admin) to create custom roles
+		await api.signin('owner');
 
-			// Create custom read-only role (no workflow:update scope)
-			readOnlyRole = await api.roles.createCustomRole(
-				['project:read', 'workflow:read', 'workflow:list'],
-				'Workflow Read Only',
-			);
+		// Create custom read-only role (no workflow:update scope)
+		readOnlyRole = await api.roles.createCustomRole(
+			['project:read', 'workflow:read', 'workflow:list'],
+			'Workflow Read Only',
+		);
 
-			// Create custom editor role (with workflow:update scope)
-			editorRole = await api.roles.createCustomRole(
-				['project:read', 'workflow:read', 'workflow:list', 'workflow:update', 'workflow:execute'],
-				'Workflow Custom Editor',
-			);
+		// Create custom editor role (with workflow:update scope)
+		editorRole = await api.roles.createCustomRole(
+			['project:read', 'workflow:read', 'workflow:list', 'workflow:update', 'workflow:execute'],
+			'Workflow Custom Editor',
+		);
+	});
+
+	test('user without workflow:update scope cannot drag nodes @auth:owner', async ({ n8n }) => {
+		await setupProjectWithWorkflowAndSignInAsMember({
+			n8n,
+			roleSlug: readOnlyRole.slug,
+			nodeName: 'Edit Fields (Set)',
 		});
 
-		test('user without workflow:update scope cannot drag nodes @auth:owner', async ({ n8n }) => {
-			await setupProjectWithWorkflowAndSignInAsMember({
-				n8n,
-				roleSlug: readOnlyRole.slug,
-				nodeName: 'Edit Fields (Set)',
-			});
+		// Attempt to drag - node should not move (no workflow:update scope)
+		const node = n8n.canvas.nodeByName('Edit Fields');
+		const initialPosition = await node.boundingBox();
 
-			// Attempt to drag - node should not move (no workflow:update scope)
-			const node = n8n.canvas.nodeByName('Edit Fields');
-			const initialPosition = await node.boundingBox();
+		await n8n.canvas.dragNodeToRelativePosition('Edit Fields', 100, 50);
 
-			await n8n.canvas.dragNodeToRelativePosition('Edit Fields', 100, 50);
+		const finalPosition = await node.boundingBox();
 
-			const finalPosition = await node.boundingBox();
+		// Position should remain unchanged
+		expect(finalPosition?.x).toBe(initialPosition?.x);
+		expect(finalPosition?.y).toBe(initialPosition?.y);
+	});
 
-			// Position should remain unchanged
-			expect(finalPosition?.x).toBe(initialPosition?.x);
-			expect(finalPosition?.y).toBe(initialPosition?.y);
+	test('user without workflow:update can copy but cannot paste @auth:owner', async ({ n8n }) => {
+		await setupProjectWithWorkflowAndSignInAsMember({
+			n8n,
+			roleSlug: readOnlyRole.slug,
+			nodeName: 'Edit Fields (Set)',
 		});
 
-		test('user without workflow:update can copy but cannot paste @auth:owner', async ({ n8n }) => {
-			await setupProjectWithWorkflowAndSignInAsMember({
-				n8n,
-				roleSlug: readOnlyRole.slug,
-				nodeName: 'Edit Fields (Set)',
-			});
+		// Copy SHOULD work (useful for copying to another workflow)
+		await n8n.canvasComposer.selectAllAndCopy();
 
-			// Copy SHOULD work (useful for copying to another workflow)
-			await n8n.canvasComposer.selectAllAndCopy();
+		// Paste should NOT work (requires workflow:update)
+		const nodeCountBefore = await n8n.canvas.getCanvasNodes().count();
+		await n8n.page.keyboard.press('ControlOrMeta+V');
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(nodeCountBefore);
+	});
 
-			// Paste should NOT work (requires workflow:update)
-			const nodeCountBefore = await n8n.canvas.getCanvasNodes().count();
-			await n8n.page.keyboard.press('ControlOrMeta+V');
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(nodeCountBefore);
+	test('user with workflow:update scope can drag and paste @auth:owner', async ({ n8n }) => {
+		await setupProjectWithWorkflowAndSignInAsMember({
+			n8n,
+			roleSlug: editorRole.slug,
+			nodeName: 'Edit Fields (Set)',
 		});
 
-		test('user with workflow:update scope can drag and paste @auth:owner', async ({ n8n }) => {
-			await setupProjectWithWorkflowAndSignInAsMember({
-				n8n,
-				roleSlug: editorRole.slug,
-				nodeName: 'Edit Fields (Set)',
-			});
+		// Drag should work
+		const node = n8n.canvas.nodeByName('Edit Fields');
+		const initialPosition = await node.boundingBox();
 
-			// Drag should work
-			const node = n8n.canvas.nodeByName('Edit Fields');
-			const initialPosition = await node.boundingBox();
+		await n8n.canvas.dragNodeToRelativePosition('Edit Fields', 100, 50);
 
-			await n8n.canvas.dragNodeToRelativePosition('Edit Fields', 100, 50);
+		// Position SHOULD change
+		await expect.poll(async () => (await node.boundingBox())?.x).not.toBe(initialPosition?.x);
 
-			// Position SHOULD change
-			await expect.poll(async () => (await node.boundingBox())?.x).not.toBe(initialPosition?.x);
+		// Copy and paste should work
+		await n8n.canvasComposer.selectAllAndCopy();
 
-			// Copy and paste should work
-			await n8n.canvasComposer.selectAllAndCopy();
-
-			const nodeCountBefore = await n8n.canvas.getCanvasNodes().count();
-			await n8n.page.keyboard.press('ControlOrMeta+V');
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(nodeCountBefore + 1);
-		});
-	},
-);
+		const nodeCountBefore = await n8n.canvas.getCanvasNodes().count();
+		await n8n.page.keyboard.press('ControlOrMeta+V');
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(nodeCountBefore + 1);
+	});
+});

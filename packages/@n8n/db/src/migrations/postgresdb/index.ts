@@ -147,7 +147,6 @@ import { CreateWorkflowBuilderSessionTable1770220686000 } from '../common/177022
 import { AddScalingFieldsToTestRun1771417407753 } from '../common/1771417407753-AddScalingFieldsToTestRun';
 import { MigrateExternalSecretsToEntityStorage1771500000000 } from '../common/1771500000000-MigrateExternalSecretsToEntityStorage';
 import { AddUnshareScopeToCustomRoles1771500000001 } from '../common/1771500000001-AddUnshareScopeToCustomRoles';
-import { AddVectorStoreDataTable1768906222000 } from '../common/1768906222000-AddVectorStoreDataTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -300,5 +299,4 @@ export const postgresMigrations: Migration[] = [
 	AddScalingFieldsToTestRun1771417407753,
 	MigrateExternalSecretsToEntityStorage1771500000000,
 	AddUnshareScopeToCustomRoles1771500000001,
-	AddVectorStoreDataTable1768906222000,
 ];

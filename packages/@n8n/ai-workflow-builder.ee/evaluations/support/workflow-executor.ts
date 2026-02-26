@@ -294,8 +294,7 @@ export async function executeWorkflowWithPinData(
 		// Find start node. getStartNode() only recognises nodes with a trigger()/poll()
 		// method or those in STARTING_NODE_TYPES. Webhook-based triggers like ChatTrigger
 		// are missed, so fall back to any node whose description group includes 'trigger'.
-		const startNode =
-			workflowInstance.getStartNode() ?? findTriggerByGroup(workflow.nodes, imports.nodeTypes);
+		const startNode = workflowInstance.getStartNode() ?? findTriggerByGroup(workflow.nodes, imports.nodeTypes);
 		if (!startNode) {
 			return {
 				success: false,

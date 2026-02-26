@@ -270,7 +270,7 @@ describe('setupResponseNodePromise', () => {
 		await new Promise(process.nextTick);
 
 		expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-123');
-		expect(res.header).toHaveBeenCalledWith({ 'content-type': 'image/jpeg' });
+		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'image/jpeg']]));
 		expect(mockStream.pipe).toHaveBeenCalledWith(res, { end: false });
 		expect(finished).toHaveBeenCalledWith(mockStream);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
@@ -294,7 +294,7 @@ describe('setupResponseNodePromise', () => {
 		});
 		await new Promise(process.nextTick);
 
-		expect(res.header).toHaveBeenCalledWith({ 'content-type': 'text/plain' });
+		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'text/plain']]));
 		expect(res.end).toHaveBeenCalledWith(buffer);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
 	});
