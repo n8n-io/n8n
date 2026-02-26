@@ -79,40 +79,53 @@ export function buildMessagesFromSteps(steps: ToolCallData[]): BaseMessage[] {
 
 	for (let i = 0; i < steps.length; i++) {
 		const step = steps[i];
+		const messageLog = step.action.messageLog ?? [];
 
-		// Try to extract existing AIMessage and its tool_call ID
-		const existingAIMessage = step.action.messageLog?.[0];
-		const existingToolCallId = existingAIMessage?.tool_calls?.[0]?.id;
+		if (messageLog.length > 0) {
+			// Push all messages from the log (may include announcement + tool-call AIMessages)
+			for (const msg of messageLog) {
+				messages.push(msg);
+			}
 
-		// Use existing ID if available, otherwise extract from step data
-		const toolCallId =
-			existingToolCallId ?? extractToolCallId(step.action.toolCallId, step.action.tool);
+			// Find the tool_call ID from the message that has tool_calls
+			const messageWithToolCalls = messageLog.find((m) => m.tool_calls && m.tool_calls.length > 0);
+			const toolCallId =
+				messageWithToolCalls?.tool_calls?.[0]?.id ??
+				extractToolCallId(step.action.toolCallId, step.action.tool);
 
-		// Use existing AIMessage or create a synthetic one
-		const aiMessage =
-			existingAIMessage ??
-			new AIMessage({
-				content: `Calling ${step.action.tool} with input: ${JSON.stringify(step.action.toolInput)}`,
-				tool_calls: [
-					{
-						id: toolCallId,
-						name: step.action.tool,
-						args: step.action.toolInput,
-						type: 'tool_call',
-					},
-				],
-			});
+			messages.push(
+				new ToolMessage({
+					content: step.observation,
+					tool_call_id: toolCallId,
+					name: step.action.tool,
+				}),
+			);
+		} else {
+			// Create synthetic AIMessage + ToolMessage for steps without messageLog
+			const toolCallId = extractToolCallId(step.action.toolCallId, step.action.tool);
 
-		// Create ToolMessage with the observation result
-		const toolMessage = new ToolMessage({
-			content: step.observation,
-			tool_call_id: toolCallId,
-			name: step.action.tool,
-		});
+			messages.push(
+				new AIMessage({
+					content: `Calling ${step.action.tool} with input: ${JSON.stringify(step.action.toolInput)}`,
+					tool_calls: [
+						{
+							id: toolCallId,
+							name: step.action.tool,
+							args: step.action.toolInput,
+							type: 'tool_call',
+						},
+					],
+				}),
+			);
 
-		// Add both messages
-		messages.push(aiMessage);
-		messages.push(toolMessage);
+			messages.push(
+				new ToolMessage({
+					content: step.observation,
+					tool_call_id: toolCallId,
+					name: step.action.tool,
+				}),
+			);
+		}
 	}
 
 	return messages;

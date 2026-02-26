@@ -716,7 +716,7 @@ describe('buildSteps', () => {
 	});
 
 	describe('Agent configuration toggles (saveAIAnnouncements & saveToolCallingInformation)', () => {
-		it('should include both announcement and tool calling info by default if options are missing', () => {
+		it('should include announcement as separate AIMessage and tool calling info by default if options are missing', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -749,8 +749,13 @@ describe('buildSteps', () => {
 			const result = buildSteps(response, itemIndex);
 			const messageLog = result[0].action.messageLog;
 			expect(messageLog).toBeDefined();
-			expect(messageLog![0].content).toContain('[Announcement] Calculating 2+2 now.');
-			expect(messageLog![0].content).toContain('Calling Calculator with input:');
+			expect(messageLog).toHaveLength(2);
+			// First message: separate announcement AIMessage
+			expect(messageLog![0].content).toBe('Calculating 2+2 now.');
+			expect(messageLog![0].tool_calls).toEqual([]);
+			// Second message: tool-calling AIMessage
+			expect(messageLog![1].content).toContain('Calling Calculator with input:');
+			expect(messageLog![1].tool_calls).toHaveLength(1);
 		});
 
 		it('should respect saveAnnouncements and saveCalling toggles when streaming is on', () => {
@@ -791,7 +796,9 @@ describe('buildSteps', () => {
 			const result = buildSteps(response, itemIndex);
 			const messageLog = result[0].action.messageLog;
 			expect(messageLog).toBeDefined();
-			// Since both are false, content should be empty
+			// No announcement AIMessage (saveAnnouncements is false), only tool-calling AIMessage
+			expect(messageLog).toHaveLength(1);
+			// Tool-calling content is empty (saveCalling is false)
 			expect(messageLog![0].content).toBe('');
 		});
 
@@ -833,9 +840,13 @@ describe('buildSteps', () => {
 			const result = buildSteps(response, itemIndex);
 			const messageLog = result[0].action.messageLog;
 			expect(messageLog).toBeDefined();
-			// Features are fallback to true
-			expect(messageLog![0].content).toContain('[Announcement] Calculating 2+2 now.');
-			expect(messageLog![0].content).toContain('Calling Calculator with input:');
+			// Toggles ignored when streaming is off (defaults to true)
+			expect(messageLog).toHaveLength(2);
+			// Separate announcement AIMessage
+			expect(messageLog![0].content).toBe('Calculating 2+2 now.');
+			expect(messageLog![0].tool_calls).toEqual([]);
+			// Tool-calling AIMessage
+			expect(messageLog![1].content).toContain('Calling Calculator with input:');
 		});
 	});
 

@@ -134,7 +134,6 @@ function buildMessageContent(
 	toolInput: IDataObject,
 	toolId: string,
 	toolName: string,
-	announcement?: string,
 	options?: Record<string, unknown>,
 ): string | Array<ThinkingContentBlock | RedactedThinkingContentBlock | ToolUseContentBlock> {
 	const { thinkingContent, thinkingType, thinkingSignature } = providerMetadata;
@@ -151,15 +150,11 @@ function buildMessageContent(
 		);
 	}
 
-	// Default: simple string content
+	// Default: tool-calling content only (announcements are separate AIMessages)
 	const isStreaming = options?.enableStreaming === true;
-	const saveAnnouncements = isStreaming ? options?.saveAnnouncements !== false : true;
 	const saveCalling = isStreaming ? options?.saveCalling !== false : true;
 
-	const callMsg = saveCalling ? `Calling ${toolName} with input: ${JSON.stringify(toolInput)}` : '';
-	const announcementMsg = saveAnnouncements && announcement ? `[Announcement] ${announcement}` : '';
-
-	return [announcementMsg, callMsg].filter(Boolean).join('\n');
+	return saveCalling ? `Calling ${toolName} with input: ${JSON.stringify(toolInput)}` : '';
 }
 
 function resolveToolName(tool: EngineResult<RequestResponseMetadata>): string {
@@ -221,7 +216,6 @@ function buildIndividualAIMessage(
 	toolName: string,
 	toolInput: IDataObject,
 	providerMetadata: ProviderMetadata,
-	announcement?: string,
 	options?: Record<string, unknown>,
 ): AIMessage {
 	const toolCall = {
@@ -231,14 +225,7 @@ function buildIndividualAIMessage(
 		type: 'tool_call' as const,
 	};
 
-	const content = buildMessageContent(
-		providerMetadata,
-		toolInput,
-		toolId,
-		toolName,
-		announcement,
-		options,
-	);
+	const content = buildMessageContent(providerMetadata, toolInput, toolId, toolName, options);
 
 	return new AIMessage({
 		content,
@@ -271,7 +258,6 @@ function buildIndividualAIMessage(
 function buildSharedGeminiAIMessage(
 	processedTools: ProcessedToolResponse[],
 	thoughtSignature: string,
-	announcement?: string,
 	options?: Record<string, unknown>,
 ): AIMessage {
 	const allToolCalls = processedTools.map((pt) => ({
@@ -284,13 +270,9 @@ function buildSharedGeminiAIMessage(
 	const toolNames = processedTools.map((pt) => pt.nodeName).join(', ');
 
 	const isStreaming = options?.enableStreaming === true;
-	const saveAnnouncements = isStreaming ? options?.saveAnnouncements !== false : true;
 	const saveCalling = isStreaming ? options?.saveCalling !== false : true;
 
-	const callMsg = saveCalling ? `Calling tools: ${toolNames}` : '';
-	const announcementMsg = saveAnnouncements && announcement ? `[Announcement] ${announcement}` : '';
-
-	const content = [announcementMsg, callMsg].filter(Boolean).join('\n');
+	const content = saveCalling ? `Calling tools: ${toolNames}` : '';
 
 	return new AIMessage({
 		content,
@@ -385,21 +367,13 @@ export function buildSteps(
 	const sharedThoughtSignature = batchTools.find((bt) => bt.providerMetadata.thoughtSignature)
 		?.providerMetadata.thoughtSignature;
 
-	// Pass announcement from the first tool if available
-	const firstToolAnnouncement = batchTools[0]?.tool.action.metadata?.announcement;
-
 	const firstToolOptions = batchTools[0]?.tool.action.metadata?.options as
 		| Record<string, unknown>
 		| undefined;
 
 	const sharedAIMessage =
 		sharedThoughtSignature && batchTools.length > 1
-			? buildSharedGeminiAIMessage(
-					batchTools,
-					sharedThoughtSignature,
-					firstToolAnnouncement,
-					firstToolOptions,
-				)
+			? buildSharedGeminiAIMessage(batchTools, sharedThoughtSignature, firstToolOptions)
 			: undefined;
 
 	// Second pass: build steps
@@ -414,10 +388,22 @@ export function buildSteps(
 		// Extract clean announcement text from metadata (falling back to empty string so it surfaces in intermediate steps)
 		const announcement = tool.action.metadata?.announcement || '';
 
+		// Build announcement as a separate AIMessage (only for the first tool in the batch
+		// to avoid duplicating the same streamed text across parallel calls)
+		const announcementMessages: AIMessage[] = [];
+		if (i === 0 && announcement) {
+			const toolOptions = tool.action.metadata?.options as Record<string, unknown> | undefined;
+			const isStreaming = toolOptions?.enableStreaming === true;
+			const saveAnnouncements = isStreaming ? toolOptions?.saveAnnouncements !== false : true;
+			if (saveAnnouncements) {
+				announcementMessages.push(new AIMessage({ content: announcement }));
+			}
+		}
+
 		// Parallel Gemini tool calls: first step gets the shared AIMessage,
 		// subsequent steps get empty messageLog. LangChain's formatToToolMessages
 		// will produce: [SharedAIMessage, ToolMsg_1, ToolMsg_2, ...]
-		const messageLog = sharedAIMessage
+		const toolCallMessages = sharedAIMessage
 			? i === 0
 				? [sharedAIMessage]
 				: []
@@ -427,10 +413,11 @@ export function buildSteps(
 						toolName,
 						toolInput,
 						providerMetadata,
-						announcement,
 						tool.action.metadata?.options as Record<string, unknown> | undefined,
 					),
 				];
+
+		const messageLog = [...announcementMessages, ...toolCallMessages];
 
 		steps.push({
 			action: {

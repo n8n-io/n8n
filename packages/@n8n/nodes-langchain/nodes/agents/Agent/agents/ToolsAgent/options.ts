@@ -41,7 +41,7 @@ export const commonOptions: INodeProperties[] = [
 		type: 'boolean',
 		default: true,
 		description:
-			'Whether or not to save AI tool announcements (e.g., "[Announcement] <announcement_text>") into the agent context',
+			'Whether or not to save AI streamed text as a separate message in the agent context before tool calls',
 		displayOptions: {
 			show: {
 				enableStreaming: [true],
