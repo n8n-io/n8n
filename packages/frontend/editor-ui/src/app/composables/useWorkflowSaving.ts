@@ -211,7 +211,10 @@ export function useWorkflowSaving({
 				workflowDataRequest.versionId = workflowsStore.workflowVersionId;
 				// Check if AI Builder made edits since last save
 				workflowDataRequest.aiBuilderAssisted = builderStore.getAiBuilderMadeEdits();
-				workflowDataRequest.expectedChecksum = workflowsStore.workflowChecksum;
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(currentWorkflow),
+				);
+				workflowDataRequest.expectedChecksum = workflowDocumentStore.checksum;
 				workflowDataRequest.autosaved = autosaved;
 
 				const workflowData = await workflowsStore.updateWorkflow(
@@ -222,14 +225,11 @@ export function useWorkflowSaving({
 				if (!workflowData.checksum) {
 					throw new Error('Failed to update workflow');
 				}
-				workflowsStore.setWorkflowVersionData(
-					{
-						versionId: workflowData.versionId,
-						name: null,
-						description: null,
-					},
-					workflowData.checksum,
-				);
+				workflowsStore.setWorkflowVersionData({
+					versionId: workflowData.versionId,
+					name: null,
+					description: null,
+				});
 				workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
 
 				// Only mark state clean if no new changes were made during the save
@@ -474,15 +474,15 @@ export function useWorkflowSaving({
 				activeVersionId: workflowData.activeVersionId,
 				activeVersion: workflowData.activeVersion ?? null,
 			});
+			if (workflowData.checksum) {
+				workflowDocumentStore.setChecksum(workflowData.checksum);
+			}
 			workflowState.setWorkflowId(workflowData.id);
-			workflowsStore.setWorkflowVersionData(
-				{
-					versionId: workflowData.versionId,
-					name: null,
-					description: null,
-				},
-				workflowData.checksum,
-			);
+			workflowsStore.setWorkflowVersionData({
+				versionId: workflowData.versionId,
+				name: null,
+				description: null,
+			});
 			workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
 
 			// Only update webhook IDs if we explicitly reset them
