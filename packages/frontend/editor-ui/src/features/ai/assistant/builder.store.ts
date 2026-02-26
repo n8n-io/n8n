@@ -13,9 +13,14 @@ import { assert } from '@n8n/utils/assert';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useBuilderMessages } from './composables/useBuilderMessages';
 import {
 	chatWithBuilder,
+	clearBuilderSession,
 	getAiSessions,
 	getBuilderCredits,
 	truncateBuilderMessages,
@@ -48,6 +53,7 @@ import {
 	isPlanModeQuestionsMessage,
 } from '@/features/ai/assistant/assistant.types';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
+import { useCodeDiff } from '@/features/ai/assistant/composables/useCodeDiff';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -66,7 +72,9 @@ export type WorkflowBuilderJourneyEventType =
 	| 'browser_notification_dismiss'
 	| 'browser_generation_done_notified'
 	| 'user_switched_builder_mode'
-	| 'user_clicked_implement_plan';
+	| 'user_clicked_implement_plan'
+	| 'user_opened_review_changes'
+	| 'user_closed_review_changes';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -119,6 +127,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Core state
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
 	const streaming = ref<boolean>(false);
+	// Track whether the current streaming is for a help question (not a build)
+	const isHelpStreaming = ref<boolean>(false);
 	const builderThinkingMessage = ref<string | undefined>();
 	const streamingAbortController = ref<AbortController | null>(null);
 	const initialGeneration = ref<boolean>(false);
@@ -180,6 +190,20 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	const { workflowTodos, getTodosToTrack, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
+	const { applyCodeDiff, undoCodeDiff } = useCodeDiff({
+		chatMessages,
+		getTargetNodeName: (msg) =>
+			msg.nodeName ??
+			ndvStore.activeNodeName ??
+			focusedNodesStore.confirmedNodes[0]?.nodeName ??
+			'',
+		getSessionId: (msg) => {
+			const id = msg.sdkSessionId;
+			assert(id, 'No SDK session ID for code diff');
+			return id;
+		},
+	});
+
 	const trackingSessionId = computed(() => rootStore.pushRef);
 
 	/** Whether the code-builder experiment is enabled for this user */
@@ -232,6 +256,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	});
 
 	const hasMessages = computed(() => chatMessages.value.length > 0);
+
+	const latestRevertVersion = computed(() => {
+		const msg = chatMessages.value.findLast((m) => 'revertVersion' in m && m.revertVersion);
+		return msg && 'revertVersion' in msg ? msg.revertVersion : null;
+	});
 
 	const isPlanModeAvailable = computed(() => {
 		const variant = posthogStore.getVariant(AI_BUILDER_PLAN_MODE_EXPERIMENT.name);
@@ -290,6 +319,18 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		loadedSessionsForWorkflowId.value = undefined;
 		hasHadSuccessfulExecution.value = false;
 		builderMode.value = 'build';
+	}
+
+	/**
+	 * Explicitly clear the backend session for the current workflow.
+	 * Only called when the user explicitly requests a clear (e.g. /clear command).
+	 * This deletes persisted messages so they won't be reloaded on next visit.
+	 */
+	function clearBackendSession() {
+		const workflowId = workflowsStore.workflowId;
+		if (workflowId) {
+			void clearBuilderSession(rootStore.restApiContext, workflowId);
+		}
 	}
 
 	function setBuilderMode(mode: 'build' | 'plan') {
@@ -418,6 +459,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	function stopStreaming(payload?: StopStreamingPayload) {
 		streaming.value = false;
+		isHelpStreaming.value = false;
 		if (streamingAbortController.value) {
 			streamingAbortController.value.abort();
 			streamingAbortController.value = null;
@@ -516,11 +558,17 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			? createUserAnswersMessage(planAnswers, messageId)
 			: createUserMessage(userMessage, messageId, undefined, focusedNodeNames ?? []);
 		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
-		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
+		const thinkingKey =
+			userMessage.trim() === '/compact'
+				? 'aiAssistant.thinkingSteps.compacting'
+				: 'aiAssistant.thinkingSteps.thinking';
+		addLoadingAssistantMessage(locale.baseText(thinkingKey));
 		streaming.value = true;
 
-		// Updates page title to show AI is building
-		documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_BUILDING');
+		// Updates page title to show AI is building (skip for help questions)
+		if (!isHelpStreaming.value) {
+			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_BUILDING');
+		}
 	}
 
 	/**
@@ -666,7 +714,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		mode?: 'build' | 'plan';
 		/** Plan mode answers for custom message display */
 		planAnswers?: PlanMode.QuestionResponse[];
+		/** Whether this is a help question (e.g. credential or error help) that should not lock the canvas */
+		helpMessage?: boolean;
 	}) {
+		isHelpStreaming.value = Boolean(options.helpMessage);
 		if (streaming.value) {
 			return;
 		}
@@ -774,6 +825,15 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				rootStore.restApiContext,
 				{ payload },
 				(response) => {
+					if (!isHelpStreaming.value) {
+						const hasAssistantToolCall = response.messages.some(
+							(msg) => 'toolName' in msg && msg.toolName === 'assistant',
+						);
+						if (hasAssistantToolCall) {
+							isHelpStreaming.value = true;
+						}
+					}
+
 					const result = processAssistantMessages(
 						chatMessages.value,
 						response.messages,
@@ -942,14 +1002,18 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function unpinAllNodes() {
-		const pinData = workflowsStore.workflow.pinData;
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+		const pinData = workflowDocumentStore?.pinData;
 		if (!pinData) return;
 		for (const nodeName of Object.keys(pinData)) {
-			const node = workflowsStore.getNodeByName(nodeName);
-			if (node) {
-				workflowsStore.unpinData({ node });
+			workflowDocumentStore?.unpinNodeData(nodeName);
+			if (workflowsStore.nodeMetadata[nodeName]) {
+				workflowsStore.nodeMetadata[nodeName].pinnedDataLastRemovedAt = Date.now();
 			}
 		}
+		uiStore.markStateDirty();
 	}
 
 	function clearExistingWorkflow() {
@@ -1127,6 +1191,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			chatMessages.value = chatMessages.value.slice(0, msgIndex);
 		}
 
+		builderMode.value = 'build';
+
 		// 4. Track telemetry event for version restore
 		trackWorkflowBuilderJourney('revert_version_from_builder', {
 			revert_user_message_id: messageId,
@@ -1152,6 +1218,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// State
 		chatMessages,
 		streaming,
+		isHelpStreaming,
 		builderThinkingMessage,
 		isAIBuilderEnabled,
 		isCodeBuilder,
@@ -1171,6 +1238,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsRemaining,
 		hasNoCreditsRemaining,
 		hasMessages,
+		latestRevertVersion,
 		workflowTodos,
 		hasTodosHiddenByPinnedData,
 		hasHadSuccessfulExecution,
@@ -1195,9 +1263,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		setBuilderMadeEdits,
 		incrementManualExecutionStats,
 		resetManualExecutionStats,
+		applyCodeDiff,
+		undoCodeDiff,
 		// Version management
 		restoreToVersion,
 		clearExistingWorkflow,
+		// Session management
+		clearBackendSession,
 		// Title management for AI builder
 		clearDoneIndicatorTitle,
 	};

@@ -33,10 +33,11 @@ export class TestRunRepository extends Repository<TestRun> {
 		return await this.save(testRun);
 	}
 
-	async markAsRunning(id: string) {
+	async markAsRunning(id: string, instanceId?: string) {
 		return await this.update(id, {
 			status: 'running',
 			runAt: new Date(),
+			runningInstanceId: instanceId ?? null,
 		});
 	}
 
@@ -63,6 +64,29 @@ export class TestRunRepository extends Repository<TestRun> {
 			{ status: In(['new', 'running']) },
 			{ status: 'error', errorCode: 'INTERRUPTED', completedAt: new Date() },
 		);
+	}
+
+	/**
+	 * Request cancellation of a test run by setting the cancelRequested flag.
+	 * This is used as a fallback mechanism for multi-main mode.
+	 */
+	async requestCancellation(id: string) {
+		return await this.update(id, { cancelRequested: true });
+	}
+
+	/**
+	 * Check if cancellation has been requested for a test run.
+	 */
+	async isCancellationRequested(id: string): Promise<boolean> {
+		const testRun = await this.findOneBy({ id });
+		return testRun?.cancelRequested ?? false;
+	}
+
+	/**
+	 * Clear the instance tracking when test run completes.
+	 */
+	async clearInstanceTracking(id: string) {
+		return await this.update(id, { runningInstanceId: null, cancelRequested: false });
 	}
 
 	async getMany(workflowId: string, options: ListQuery.Options) {

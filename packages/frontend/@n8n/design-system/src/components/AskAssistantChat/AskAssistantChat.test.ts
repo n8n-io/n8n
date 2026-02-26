@@ -626,7 +626,7 @@ describe('AskAssistantChat', () => {
 			expect(props.isStreaming).toBe(true);
 		});
 
-		it('should pass defaultExpanded as true to ThinkingMessage', () => {
+		it('should pass defaultExpanded as false to ThinkingMessage when not streaming', () => {
 			const message = createToolMessage({
 				id: '1',
 				displayTitle: 'Search Results',
@@ -638,7 +638,8 @@ describe('AskAssistantChat', () => {
 			expect(thinkingMessageCallCount).toBe(1);
 
 			const props = getThinkingMessageProps();
-			expect(props.defaultExpanded).toBe(true);
+			// defaultExpanded is false when not streaming (e.g., loading from session)
+			expect(props.defaultExpanded).toBe(false);
 		});
 
 		it('should use thinkingCompletionMessage prop instead of default when provided and tools completed', () => {

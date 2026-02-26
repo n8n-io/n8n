@@ -32,6 +32,7 @@ import { useRouter } from 'vue-router';
 
 import {
 	N8nButton,
+	N8nCallout,
 	N8nCheckbox,
 	N8nHeading,
 	N8nIcon,
@@ -114,6 +115,14 @@ const targetProjectName = computed(() => {
 	return getTruncatedProjectName(selectedProject.value?.name);
 });
 const resourceName = computed(() => truncate(props.data.resource.name, MAX_NAME_LENGTH));
+const isPersonalSpaceRestricted = computed(
+	() =>
+		props.data.resource.homeProject?.type === ProjectTypes.Personal &&
+		props.data.resource.homeProject?.id === projectsStore.personalProject?.id,
+);
+const isTargetPersonalProject = computed(
+	() => projectId.value === projectsStore.personalProject?.id,
+);
 
 const isHomeProjectTeam = (resource: IWorkflowDb | ICredentialsResponse) =>
 	resource.homeProject?.type === ProjectTypes.Team;
@@ -297,7 +306,7 @@ onMounted(async () => {
 						}}</span
 					>
 					<N8nCheckbox
-						v-if="shareableCredentials.length"
+						v-if="shareableCredentials.length && !isTargetPersonalProject"
 						v-model="shareUsedCredentials"
 						:class="$style.textBlock"
 						data-test-id="project-move-resource-modal-checkbox-all"
@@ -328,15 +337,29 @@ onMounted(async () => {
 							</I18nT>
 						</template>
 					</N8nCheckbox>
-					<div v-if="unShareableCredentials.length" :class="$style.textBlock">
+					<N8nCallout
+						v-if="unShareableCredentials.length && !isTargetPersonalProject"
+						theme="warning"
+						:class="$style.textBlock"
+					>
 						<I18nT
-							keypath="projects.move.resource.modal.message.unAccessibleCredentials.note"
+							:keypath="
+								isPersonalSpaceRestricted
+									? 'projects.move.resource.modal.message.unAccessibleCredentials.personalSpaceNote'
+									: 'projects.move.resource.modal.message.unAccessibleCredentials.note'
+							"
 							scope="global"
 						>
 							<template #credentials>
 								<N8nTooltip placement="top">
 									<span :class="$style.tooltipText">{{
-										i18n.baseText('projects.move.resource.modal.message.unAccessibleCredentials')
+										i18n.baseText(
+											'projects.move.resource.modal.message.unAccessibleCredentials.count',
+											{
+												adjustToNumber: unShareableCredentials.length,
+												interpolate: { count: unShareableCredentials.length },
+											},
+										)
 									}}</span>
 									<template #content>
 										<ProjectMoveResourceModalCredentialsList
@@ -347,7 +370,7 @@ onMounted(async () => {
 								</N8nTooltip>
 							</template>
 						</I18nT>
-					</div>
+					</N8nCallout>
 				</N8nText>
 			</div>
 			<N8nText v-else>{{
@@ -358,13 +381,13 @@ onMounted(async () => {
 		</template>
 		<template #footer>
 			<div :class="$style.buttons">
-				<N8nButton type="secondary" text class="mr-2xs" :disabled="loading" @click="closeModal">
+				<N8nButton variant="ghost" class="mr-2xs" :disabled="loading" @click="closeModal">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
 				<N8nButton
+					variant="solid"
 					:loading="loading"
 					:disabled="!projectId || loading"
-					type="primary"
 					data-test-id="project-move-resource-modal-button"
 					@click="moveResource"
 				>

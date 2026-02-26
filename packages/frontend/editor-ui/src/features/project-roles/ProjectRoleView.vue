@@ -14,11 +14,13 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useAsyncState } from '@vueuse/core';
 import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
 import { computed, ref, toRaw } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { SCOPE_TYPES, SCOPES } from './projectRoleScopes';
 
 const rolesStore = useRolesStore();
 const route = useRoute();
@@ -27,8 +29,26 @@ const { showError, showMessage } = useToast();
 const i18n = useI18n();
 const message = useMessage();
 const telemetry = useTelemetry();
+const settingsStore = useSettingsStore();
 
 const props = defineProps<{ roleSlug?: string }>();
+
+// Dynamic back button text and navigation based on where the user navigated from
+const cameFromProjectSettings = computed(() => route.query.from === VIEWS.PROJECT_SETTINGS);
+
+const backButtonText = computed(() =>
+	cameFromProjectSettings.value
+		? i18n.baseText('projectRoles.backToProjectSettings')
+		: i18n.baseText('projectRoles.backToProjectRoles'),
+);
+
+const onBackClick = () => {
+	if (cameFromProjectSettings.value) {
+		router.back();
+	} else {
+		void router.push({ name: VIEWS.PROJECT_ROLES_SETTINGS });
+	}
+};
 
 const defaultForm = () => ({
 	displayName: '',
@@ -92,47 +112,15 @@ function resetForm(payload: Role | undefined) {
 		: defaultForm();
 }
 
-const project = (['read', 'update', 'delete'] as const).map(
-	(action) => `project:${action}` as const,
-);
-const folder = (['read', 'update', 'create', 'move', 'delete'] as const).map(
-	(action) => `folder:${action}` as const,
-);
-const workflow = (
-	['read', 'update', 'create', 'publish', 'unpublish', 'move', 'delete'] as const
-).map((action) => `workflow:${action}` as const);
-const credential = (['read', 'update', 'create', 'share', 'move', 'delete'] as const).map(
-	(action) => `credential:${action}` as const,
-);
-const sourceControl = (['push'] as const).map((action) => `sourceControl:${action}` as const);
-
-const dataTable = (['read', 'readRow', 'update', 'writeRow', 'create', 'delete'] as const).map(
-	(action) => `dataTable:${action}` as const,
-);
-
-const projectVariable = (['read', 'update', 'create', 'delete'] as const).map(
-	(action) => `projectVariable:${action}` as const,
-);
-
-const scopeTypes = [
-	'project',
-	'folder',
-	'workflow',
-	'credential',
-	'dataTable',
-	'projectVariable',
-	'sourceControl',
-] as const;
-
-const scopes = {
-	project,
-	folder,
-	workflow,
-	credential,
-	sourceControl,
-	dataTable,
-	projectVariable,
-} as const;
+const scopeTypes = computed(() => {
+	if (!settingsStore.moduleSettings['external-secrets']?.forProjects) {
+		return SCOPE_TYPES.filter(
+			(type) => type !== 'externalSecretsProvider' && type !== 'externalSecret',
+		);
+	}
+	return SCOPE_TYPES;
+});
+const scopes = SCOPES;
 
 function toggleScope(scope: string) {
 	const index = form.value.scopes.indexOf(scope);
@@ -322,25 +310,20 @@ const displayNameValidationRules = [
 <template>
 	<div class="pb-xl" :class="$style.container">
 		<N8nButton
+			variant="ghost"
 			icon="arrow-left"
-			type="secondary"
 			:class="$style.backButton"
 			text
-			@click="() => router.back()"
+			@click="onBackClick"
 		>
-			{{ i18n.baseText('projectRoles.backToRoleList') }}
+			{{ backButtonText }}
 		</N8nButton>
 		<div class="mb-xl" :class="$style.headerContainer">
 			<N8nHeading tag="h1" size="2xlarge">
 				{{ roleSlug ? `Role "${form.displayName}"` : i18n.baseText('projectRoles.newRole') }}
 			</N8nHeading>
-			<div v-if="initialState && !isReadOnly">
-				<N8nButton
-					type="secondary"
-					:disabled="!hasUnsavedChanges"
-					class="mr-xs"
-					@click="resetForm(initialState)"
-				>
+			<div v-if="initialState && !isReadOnly" :class="$style.headerActions">
+				<N8nButton variant="subtle" :disabled="!hasUnsavedChanges" @click="resetForm(initialState)">
 					{{ i18n.baseText('projectRoles.discardChanges') }}
 				</N8nButton>
 				<N8nButton :disabled="!hasUnsavedChanges" @click="handleSubmit">
@@ -384,13 +367,13 @@ const displayNameValidationRules = [
 			</N8nText>
 
 			<div class="mb-s" :class="$style.presetsContainer">
-				<N8nButton type="secondary" @click="setPreset('project:admin')">
+				<N8nButton variant="subtle" @click="setPreset('project:admin')">
 					{{ i18n.baseText('projectRoles.admin') }}
 				</N8nButton>
-				<N8nButton type="secondary" @click="setPreset('project:editor')">
+				<N8nButton variant="subtle" @click="setPreset('project:editor')">
 					{{ i18n.baseText('projectRoles.editor') }}
 				</N8nButton>
-				<N8nButton type="secondary" @click="setPreset('project:viewer')">
+				<N8nButton variant="subtle" @click="setPreset('project:viewer')">
 					{{ i18n.baseText('projectRoles.viewer') }}
 				</N8nButton>
 			</div>
@@ -444,7 +427,11 @@ const displayNameValidationRules = [
 				</template>
 				<template v-else> {{ i18n.baseText('projectRoles.action.delete.warning') }}</template>
 			</N8nText>
-			<N8nButton type="danger" :disabled="Boolean(initialState?.usedByUsers)" @click="deleteRole">
+			<N8nButton
+				variant="destructive"
+				:disabled="Boolean(initialState?.usedByUsers)"
+				@click="deleteRole"
+			>
 				{{ i18n.baseText('projectRoles.action.delete.button') }}
 			</N8nButton>
 		</div>
@@ -491,7 +478,14 @@ const displayNameValidationRules = [
 .headerContainer {
 	display: flex;
 	justify-content: space-between;
-	align-items: center;
+	align-items: flex-start;
+	gap: var(--spacing--sm);
+}
+
+.headerActions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
 }
 
 .formContainer {

@@ -11,7 +11,7 @@ import {
 	type ChatModelDto,
 	agentIconOrEmojiSchema,
 } from '@n8n/api-types';
-import type { IBinaryData, INode } from 'n8n-workflow';
+import type { IBinaryData } from 'n8n-workflow';
 import { z } from 'zod';
 import { isLlmProviderModel } from './chat.utils';
 
@@ -91,7 +91,6 @@ export interface ChatStreamingState extends Partial<MessageChunk['metadata']> {
 	sessionId: ChatSessionId;
 	retryOfMessageId: ChatMessageId | null;
 	revisionOfMessageId: ChatMessageId | null;
-	tools: INode[];
 	attachments: IBinaryData[];
 	agent: ChatModelDto;
 }

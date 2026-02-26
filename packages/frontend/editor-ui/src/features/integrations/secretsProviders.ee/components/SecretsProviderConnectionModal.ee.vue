@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -29,13 +29,15 @@ import {
 	N8nSelect,
 	N8nText,
 	N8nInfoTip,
+	N8nTooltip,
 	type IMenuItem,
 } from '@n8n/design-system';
-import { useElementSize } from '@vueuse/core';
-import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import Banner from '@/app/components/Banner.vue';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
 // Props
 const props = withDefaults(
@@ -63,10 +65,11 @@ const { confirm } = useMessage();
 const eventBus = createEventBus();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
+const settingsStore = useSettingsStore();
 
 // Constants
 const LABEL_SIZE: IParameterLabel = { size: 'medium' };
-const ACTIVE_TAB = ref(props.data?.activeTab ?? 'connection');
+const internalActiveTab = ref(props.data?.activeTab ?? 'connection');
 
 // Modal state
 const providerTypes = computed(() => props.data.providerTypes ?? []);
@@ -79,6 +82,22 @@ const modal = useConnectionModal({
 	providerKey,
 	existingProviderNames,
 	projectId: projectId.value,
+});
+
+const tabNavigationEnabled =
+	(settingsStore.moduleSettings['external-secrets']?.forProjects ?? false) &&
+	modal.canShareGlobally.value;
+
+const ACTIVE_TAB = computed({
+	get: () => (tabNavigationEnabled ? internalActiveTab.value : 'connection'),
+	set: (value) => {
+		if (tabNavigationEnabled) {
+			// Additional frontend validation to ensure that other
+			// tabs than 'connection' are only accessible when project-scoped secrets
+			// are enabled and the user has global update permission.
+			internalActiveTab.value = value;
+		}
+	},
 });
 
 const sidebarItems = computed(() => {
@@ -98,22 +117,49 @@ const sidebarItems = computed(() => {
 	return menuItems;
 });
 
-const scopeProjects = computed(() =>
-	modal.canShareGlobally.value
-		? projectsStore.teamProjects.filter(
-				(p: ProjectSharingData) => !modal.projectIds.value.includes(p.id),
-			)
-		: [],
+const scopeOptions = computed<Array<{ value: string; label: string; icon: IconOrEmoji }>>(() => {
+	const options: Array<{ value: string; label: string; icon: IconOrEmoji }> = [
+		{
+			value: '',
+			label: i18n.baseText('settings.secretsProviderConnections.modal.scope.global'),
+			icon: { type: 'icon', value: 'globe' },
+		},
+	];
+
+	options.push(
+		...projectsStore.teamProjects.map((project: ProjectSharingData) => {
+			const icon = (project.icon ?? {
+				type: 'icon' as const,
+				value: 'layer-group',
+			}) as IconOrEmoji;
+			return {
+				value: project.id,
+				label: project.name ?? project.id,
+				icon,
+			};
+		}),
+	);
+
+	return options;
+});
+
+const scopeSelectValue = computed(() =>
+	modal.isSharedGlobally.value ? '' : (modal.projectIds.value[0] ?? ''),
 );
 
-// Sync scope changes to composable (max 1 project)
-function handleScopeUpdate(value: ProjectSharingData[] | ProjectSharingData | null) {
-	const project = Array.isArray(value) ? value.at(-1) : value;
-	modal.setScopeState(project ? [project.id] : [], false);
-}
+const selectedScopeIcon = computed<IconOrEmoji>(() => {
+	const selectedOption = scopeOptions.value.find(
+		(option) => option.value === scopeSelectValue.value,
+	);
+	return selectedOption?.icon ?? { type: 'icon' as const, value: 'globe' };
+});
 
-function handleShareGlobally(value: boolean) {
-	modal.setScopeState([], value);
+function handleScopeSelect(value: string) {
+	if (value === '') {
+		modal.setScopeState([], true);
+	} else {
+		modal.setScopeState([value], false);
+	}
 }
 
 // Handlers
@@ -123,7 +169,6 @@ function handleConnectionNameUpdate(value: string) {
 }
 
 function handleConnectionNameBlur() {
-	modal.connectionName.value = modal.hyphenateConnectionName(modal.connectionName.value);
 	modal.connectionNameBlurred.value = true;
 }
 
@@ -142,12 +187,16 @@ async function handleSave() {
 function handleDelete() {
 	if (!modal.providerKey.value) return;
 
+	const deleteProjectId =
+		modal.connectionProjects.value.length > 0 ? modal.connectionProjects.value[0].id : undefined;
+
 	uiStore.openModalWithData({
 		name: DELETE_SECRETS_PROVIDER_MODAL_KEY,
 		data: {
 			providerKey: modal.providerKey.value,
 			providerName: modal.connectionName.value,
 			secretsCount: modal.providerSecretsCount.value ?? 0,
+			projectId: deleteProjectId,
 			onConfirm: () => {
 				props.data.onClose?.();
 				eventBus.emit('close');
@@ -183,9 +232,6 @@ onMounted(async () => {
 		await Promise.all([modal.loadConnection()]);
 	}
 });
-
-const nameRef = useTemplateRef('nameRef');
-const { width } = useElementSize(nameRef);
 </script>
 
 <template>
@@ -209,29 +255,39 @@ const { width } = useElementSize(nameRef);
 							:class="$style.headerIcon"
 						/><N8nIcon v-else icon="vault" width="24" height="24" />
 					</div>
-					<div ref="nameRef" :class="$style.name">
-						<div :class="$style.nameRow">
-							<N8nText size="large">
-								{{
-									modal.selectedProviderType.value?.displayName ??
-									i18n.baseText(
-										'settings.secretsProviderConnections.modal.providerType.placeholder',
-									)
-								}}
-							</N8nText>
-						</div>
+					<div :class="$style.name">
+						<N8nText
+							v-if="modal.providerKey.value"
+							size="large"
+							:class="$style.providerName"
+							:title="modal.providerKey.value"
+						>
+							{{ modal.providerKey.value }}
+						</N8nText>
+						<N8nText
+							:size="modal.providerKey.value ? 'small' : 'large'"
+							:color="modal.providerKey.value ? 'text-light' : 'text-base'"
+						>
+							{{
+								modal.selectedProviderType.value?.displayName ??
+								i18n.baseText('settings.secretsProviderConnections.modal.providerType.placeholder')
+							}}
+						</N8nText>
 					</div>
 				</div>
 				<div :class="$style.actions">
-					<N8nIconButton
-						v-if="modal.isEditMode.value && modal.canDelete.value"
-						:title="i18n.baseText('generic.delete')"
-						icon="trash-2"
-						type="tertiary"
-						:disabled="modal.isSaving.value"
-						data-test-id="secrets-provider-delete-button"
-						@click="handleDelete"
-					/>
+					<N8nTooltip placement="left">
+						<N8nIconButton
+							v-if="modal.isEditMode.value && modal.canDelete.value"
+							:title="i18n.baseText('generic.delete')"
+							icon="trash-2"
+							variant="ghost"
+							:disabled="modal.isSaving.value"
+							data-test-id="secrets-provider-delete-button"
+							@click="handleDelete"
+						/>
+						<template #content>{{ i18n.baseText('generic.delete') }}</template>
+					</N8nTooltip>
 					<SaveButton
 						:saved="!modal.hasUnsavedChanges.value && modal.isEditMode.value"
 						:is-saving="modal.isSaving.value"
@@ -247,7 +303,7 @@ const { width } = useElementSize(nameRef);
 		<template #content>
 			<div :class="$style.container">
 				<!-- Left sidebar menu -->
-				<nav :class="$style.sidebar">
+				<nav v-if="tabNavigationEnabled" :class="$style.sidebar">
 					<N8nMenuItem
 						v-for="item in sidebarItems"
 						:key="item.id"
@@ -300,23 +356,16 @@ const { width } = useElementSize(nameRef);
 									</div>
 								</N8nCallout>
 
-								<N8nCallout
+								<Banner
 									v-else-if="modal.connection.connectionState.value === 'error'"
-									theme="danger"
 									class="mb-l"
-									data-test-id="connection-error-callout"
-								>
-									{{
-										i18n.baseText(
-											'settings.secretsProviderConnections.modal.testConnection.error',
-											{
-												interpolate: {
-													providerName: modal.connectionName.value,
-												},
-											},
-										)
-									}}
-								</N8nCallout>
+									data-test-id="connection-error-banner"
+									theme="danger"
+									:message="
+										i18n.baseText('settings.secretsProviderConnections.modal.testConnection.error')
+									"
+									:details="modal.connection.connectionError.value"
+								/>
 
 								<!-- Provider Name Input -->
 								<div class="mb-l">
@@ -328,7 +377,6 @@ const { width } = useElementSize(nameRef);
 									<N8nInput
 										data-test-id="provider-name"
 										:model-value="modal.connectionName.value"
-										:max-width="width - 10"
 										:readonly="modal.isEditMode.value"
 										:disabled="modal.isEditMode.value"
 										aria-required="true"
@@ -391,6 +439,7 @@ const { width } = useElementSize(nameRef);
 									<N8nNotice v-if="property.type === 'notice'" :content="property.displayName" />
 									<ParameterInputExpanded
 										v-else
+										:ref="(el) => modal.setParameterValidationState(property.name, el)"
 										class="mb-l"
 										:parameter="property"
 										:value="modal.connectionSettings.value[property.name]"
@@ -408,29 +457,48 @@ const { width } = useElementSize(nameRef);
 								<N8nInfoTip :bold="false" class="mb-s">
 									{{ i18n.baseText('settings.secretsProviderConnections.modal.scope.info') }}
 								</N8nInfoTip>
-								<ProjectSharing
-									:model-value="modal.sharedWithProjects.value"
-									:projects="scopeProjects"
-									:readonly="!modal.canUpdate.value"
-									:static="!modal.canUpdate.value"
-									:placeholder="
-										i18n.baseText(
-											'settings.secretsProviderConnections.modal.scope.placeholder.project',
-										)
-									"
-									:all-users-label="
-										i18n.baseText('settings.secretsProviderConnections.modal.scope.global')
-									"
-									:empty-options-text="
-										i18n.baseText(
-											'settings.secretsProviderConnections.modal.scope.emptyOptionsText',
-										)
-									"
-									:can-share-globally="modal.canShareGlobally.value"
-									:is-shared-globally="modal.isSharedGlobally.value"
-									@update:share-with-all-users="handleShareGlobally"
-									@update:model-value="handleScopeUpdate"
-								/>
+								<N8nInputLabel
+									:label="i18n.baseText('settings.secretsProviderConnections.modal.scope.label')"
+								>
+									<N8nSelect
+										:model-value="scopeSelectValue"
+										size="large"
+										filterable
+										:disabled="!modal.canUpdate.value"
+										data-test-id="secrets-provider-scope-select"
+										@update:model-value="handleScopeSelect"
+									>
+										<template #prefix>
+											<N8nText
+												v-if="selectedScopeIcon?.type === 'emoji'"
+												color="text-light"
+												:class="$style.menuItemEmoji"
+											>
+												{{ selectedScopeIcon.value }}
+											</N8nText>
+											<N8nIcon
+												v-else-if="selectedScopeIcon?.value"
+												color="text-light"
+												:icon="selectedScopeIcon.value"
+											/>
+										</template>
+										<N8nOption
+											v-for="option in scopeOptions"
+											:key="option.value || 'global'"
+											:value="option.value"
+											:label="option.label"
+											:class="{ [$style.globalOption]: option.value === '' }"
+										>
+											<div :class="$style.optionContent">
+												<N8nText v-if="option.icon?.type === 'emoji'" :class="$style.menuItemEmoji">
+													{{ option.icon.value }}
+												</N8nText>
+												<N8nIcon v-else-if="option.icon?.value" :icon="option.icon.value" />
+												<span>{{ option.label }}</span>
+											</div>
+										</N8nOption>
+									</N8nSelect>
+								</N8nInputLabel>
 							</div>
 						</div>
 					</div>
@@ -444,8 +512,8 @@ const { width } = useElementSize(nameRef);
 .secretsProviderConnectionModal {
 	--dialog--max-width: 1200px;
 	--dialog--close--spacing--top: 31px;
-	--dialog--min-height: 600px;
-	--dialog--max-height: 600px;
+	min-height: var(--dialog--min-height);
+	max-height: var(--dialog--max-height);
 
 	:global(.el-dialog__header) {
 		padding-bottom: 0;
@@ -467,6 +535,7 @@ const { width } = useElementSize(nameRef);
 .icon {
 	width: 1.5rem;
 	height: 1.5rem;
+	min-width: 1.5rem;
 	display: flex;
 	align-items: center;
 	margin-right: var(--spacing--xs);
@@ -474,16 +543,14 @@ const { width } = useElementSize(nameRef);
 
 .name {
 	display: flex;
-	width: 100%;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
+	min-width: 0;
 }
 
-.nameRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	min-height: var(--spacing--md);
+.providerName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .headerHint {
@@ -522,6 +589,7 @@ const { width } = useElementSize(nameRef);
 	align-items: center;
 	flex-direction: row;
 	flex-grow: 1;
+	min-width: 0;
 	margin-bottom: var(--spacing--lg);
 }
 
@@ -546,5 +614,32 @@ const { width } = useElementSize(nameRef);
 .expressionExample {
 	display: block;
 	margin-top: var(--spacing--4xs);
+}
+
+.optionContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.menuItemEmoji {
+	font-size: var(--font-size--sm);
+	line-height: 1;
+}
+
+.globalOption {
+	position: relative;
+	margin-bottom: var(--spacing--sm);
+	overflow: visible;
+
+	&::after {
+		content: '';
+		position: absolute;
+		bottom: calc(var(--spacing--2xs) * -1);
+		left: var(--spacing--xs);
+		right: var(--spacing--xs);
+		height: 1px;
+		background-color: var(--color--foreground);
+	}
 }
 </style>

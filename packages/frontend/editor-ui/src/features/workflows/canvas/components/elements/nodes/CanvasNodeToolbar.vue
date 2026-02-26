@@ -140,9 +140,8 @@ function onAddToAi() {
 				:content="i18n.baseText('ndv.execute.deactivated')"
 			>
 				<N8nIconButton
+					variant="ghost"
 					data-test-id="execute-node-button"
-					type="tertiary"
-					text
 					size="small"
 					icon="node-play"
 					:disabled="isExecuting || isDisabled"
@@ -151,31 +150,29 @@ function onAddToAi() {
 				/>
 			</N8nTooltip>
 			<N8nIconButton
+				variant="ghost"
 				v-if="isDisableNodeVisible"
 				data-test-id="disable-node-button"
-				type="tertiary"
-				text
 				size="small"
 				icon="node-power"
 				:title="nodeDisabledTitle"
 				@click.stop="onToggleNode"
 			/>
 			<N8nIconButton
+				variant="ghost"
 				v-if="isDeleteNodeVisible"
 				data-test-id="delete-node-button"
-				type="tertiary"
 				size="small"
-				text
 				icon="node-trash"
 				:title="i18n.baseText('node.delete')"
 				@click.stop="onDeleteNode"
 			/>
 			<N8nIconButton
+				variant="ghost"
 				v-if="isFocusNodeVisible"
-				type="tertiary"
 				size="small"
-				text
 				icon="crosshair"
+				:aria-label="i18n.baseText('node.focusNode')"
 				@click.stop="onFocusNode"
 			/>
 			<CanvasNodeStickyColorSelector
@@ -186,19 +183,20 @@ function onAddToAi() {
 			<N8nTooltip v-if="isAddToAiVisible" placement="top" :content="i18n.baseText('node.addToAi')">
 				<N8nIconButton
 					data-test-id="add-to-ai-button"
-					type="tertiary"
+					variant="ghost"
 					size="small"
 					text
 					icon="sparkles"
+					:aria-label="i18n.baseText('node.addToAi')"
 					@click.stop="onAddToAi"
 				/>
 			</N8nTooltip>
 			<N8nIconButton
+				variant="ghost"
 				data-test-id="overflow-node-button"
-				type="tertiary"
 				size="small"
-				text
 				icon="node-ellipsis"
+				:aria-label="i18n.baseText('node.moreActions')"
 				@click.stop="onOpenContextMenu"
 			/>
 		</div>

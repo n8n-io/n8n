@@ -20,7 +20,7 @@ import {
 import {
 	buildSharedForCredential,
 	CredentialsIsNotUpdatableError,
-	getCredentials,
+	getCredential,
 	getSharedCredentials,
 	removeCredential,
 	sanitizeCredentials,
@@ -188,7 +188,7 @@ export = {
 					credential = shared.credentials;
 				}
 			} else {
-				credential = (await getCredentials(credentialId)) as CredentialsEntity;
+				credential = (await getCredential(credentialId)) as CredentialsEntity;
 			}
 
 			if (!credential) {

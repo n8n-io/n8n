@@ -48,6 +48,7 @@ import get from 'lodash/get';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { useCanvasOperations } from './useCanvasOperations';
@@ -67,6 +68,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const settingsStore = useSettingsStore();
+	const uiStore = useUIStore();
 	const agentRequestStore = useAgentRequestStore();
 
 	const rootStore = useRootStore();
@@ -136,6 +138,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		rerunTriggerNode?: boolean;
 		nodeData?: ITaskData;
 		source?: string;
+		sessionId?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
 		if (workflowsStore.activeExecutionId) {
 			return;
@@ -156,7 +159,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const runData = workflowsStore.getWorkflowRunData;
 
-			if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+			if (uiStore.stateIsDirty || !workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
 				await workflowSaving.saveCurrentWorkflow();
 			}
 
@@ -217,7 +220,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				options.destinationNode &&
 				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode.nodeName) ||
 					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
-				options.source !== 'RunData.ManualChatMessage'
+				options.source !== 'RunData.ManualChatMessage' &&
+				options.source !== 'RunData.ManualChatTrigger'
 			) {
 				const startNode = workflowObject.value.getStartNode(options.destinationNode.nodeName);
 				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {
@@ -317,12 +321,13 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				});
 
 			const startRunData: IStartRunData = {
-				workflowData,
+				workflowId: workflowData.id!,
 				runData: isPartialExecution
 					? (runData ?? undefined) // For partial execution, backend decides what run data to use and what to ignore.
 					: undefined, // if it's a full execution we don't want to send any run data
 				startNodes,
 				triggerToStartFrom,
+				chatSessionId: options.sessionId,
 			};
 
 			if ('destinationNode' in options) {

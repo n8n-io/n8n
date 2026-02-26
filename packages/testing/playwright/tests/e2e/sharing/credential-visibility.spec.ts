@@ -4,7 +4,11 @@ import { test, expect } from '../../../fixtures/base';
 
 const TEST_API_KEY = 'test-api-key';
 
-test.describe('Credential Visibility Rules', () => {
+test.describe('Credential Visibility Rules', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test('should only show credentials from the same team project', async ({ n8n, api }) => {
 		await n8n.navigate.toCredentials();
 		const personalCredName = `Personal Credential ${nanoid()}`;

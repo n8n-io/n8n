@@ -93,6 +93,8 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		state.value = undefined;
 		workflowState.setWorkflowExecutionData(null);
 		nodeHelpers.updateNodesExecutionIssues();
+		// Clear partial execution destination to allow full workflow execution
+		workflowsStore.chatPartialExecutionDestinationNode = null;
 		void workflowsStore.fetchLastSuccessfulExecution();
 	}
 

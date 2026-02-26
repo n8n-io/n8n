@@ -220,7 +220,7 @@ function addRole() {
 				</N8nHeading>
 				<N8nTag :clickable="false" text="Beta" />
 			</div>
-			<N8nButton v-if="settingsStore.isCustomRolesFeatureEnabled" type="secondary" @click="addRole">
+			<N8nButton variant="subtle" v-if="settingsStore.isCustomRolesFeatureEnabled" @click="addRole">
 				{{ i18n.baseText('projectRoles.addRole') }}
 			</N8nButton>
 		</div>
@@ -230,7 +230,7 @@ function addRole() {
 				class="mt-2xl mb-l"
 				:button-text="i18n.baseText('settings.externalSecrets.actionBox.buttonText')"
 				description="yes"
-				@click="goToUpgrade('custom-roles', 'upgrade-custom-roles')"
+				@click="goToUpgrade('custom-roles-list', 'upgrade-custom-roles')"
 			>
 				<template #heading>
 					<span>{{ i18n.baseText('projectRoles.manageRoles.paywall.title') }}</span>

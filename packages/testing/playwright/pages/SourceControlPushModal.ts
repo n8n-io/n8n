@@ -56,12 +56,6 @@ export class SourceControlPushModal {
 			.then((classList) => classList?.includes('tabActive') ?? false);
 	}
 
-	isCredentialsTabSelected(): Promise<boolean> {
-		return this.getCredentialsTab()
-			.getAttribute('class')
-			.then((classList) => classList?.includes('tabActive') ?? false);
-	}
-
 	// File items
 	getFileInModal(fileName: string): Locator {
 		return this.getModal().getByTestId('push-modal-item').filter({ hasText: fileName }).first();
@@ -88,14 +82,6 @@ export class SourceControlPushModal {
 
 	getStatusBadge(fileName: string, status: 'New' | 'Modified' | 'Deleted'): Locator {
 		return this.getFileCheckboxByName(fileName).getByText(status);
-	}
-
-	async deselectFile(fileName: string): Promise<void> {
-		const checkbox = this.getFileCheckboxByName(fileName);
-		const isChecked = await checkbox.isChecked();
-		if (isChecked) {
-			await checkbox.click();
-		}
 	}
 
 	async selectFile(fileName: string): Promise<void> {
