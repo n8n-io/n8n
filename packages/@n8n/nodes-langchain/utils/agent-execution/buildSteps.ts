@@ -149,7 +149,7 @@ function buildMessageContent(
 		);
 	}
 
-	// Default: simple string content
+	// Default: tool-calling content only (announcements are separate AIMessages)
 	return `Calling ${toolName} with input: ${JSON.stringify(toolInput)}`;
 }
 
@@ -263,8 +263,10 @@ function buildSharedGeminiAIMessage(
 
 	const toolNames = processedTools.map((pt) => pt.nodeName).join(', ');
 
+	const content = `Calling tools: ${toolNames}`;
+
 	return new AIMessage({
-		content: `Calling tools: ${toolNames}`,
+		content,
 		tool_calls: allToolCalls,
 		additional_kwargs: buildGeminiAdditionalKwargs(allToolCalls, thoughtSignature),
 	});
@@ -370,14 +372,31 @@ export function buildSteps(
 		// Exclude metadata fields (id, log, type) from the tool input forwarded to the result
 		const { id, log, type, ...toolInputForResult } = toolInput;
 
+		// Extract clean announcement text from metadata (falling back to empty string so it surfaces in intermediate steps)
+		const announcement = tool.action.metadata?.announcement || '';
+
+		// Build announcement as a separate AIMessage (only for the first tool in the batch
+		// to avoid duplicating the same streamed text across parallel calls)
+		const announcementMessages: AIMessage[] = [];
+		if (i === 0 && announcement) {
+			const toolOptions = tool.action.metadata?.options as Record<string, unknown> | undefined;
+			const isStreaming = toolOptions?.enableStreaming === true;
+			const saveAnnouncements = isStreaming ? toolOptions?.saveAnnouncements !== false : true;
+			if (saveAnnouncements) {
+				announcementMessages.push(new AIMessage({ content: announcement }));
+			}
+		}
+
 		// Parallel Gemini tool calls: first step gets the shared AIMessage,
 		// subsequent steps get empty messageLog. LangChain's formatToToolMessages
 		// will produce: [SharedAIMessage, ToolMsg_1, ToolMsg_2, ...]
-		const messageLog = sharedAIMessage
+		const toolCallMessages = sharedAIMessage
 			? i === 0
 				? [sharedAIMessage]
 				: []
 			: [buildIndividualAIMessage(toolId, toolName, toolInput, providerMetadata)];
+
+		const messageLog = [...announcementMessages, ...toolCallMessages];
 
 		steps.push({
 			action: {
@@ -387,6 +406,7 @@ export function buildSteps(
 				messageLog,
 				toolCallId: toolInput?.id,
 				type: toolInput.type || 'tool_call',
+				announcement,
 			},
 			observation,
 		});

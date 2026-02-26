@@ -79,7 +79,7 @@ export async function runAgent(
 
 		// If result contains tool calls, build the request object like the normal flow
 		if (result.toolCalls && result.toolCalls.length > 0) {
-			const actions = createEngineRequests(result.toolCalls, itemIndex, tools);
+			const actions = createEngineRequests(result.toolCalls, itemIndex, tools, options);
 
 			return {
 				actions,
@@ -88,8 +88,7 @@ export async function runAgent(
 		}
 		// Save conversation to memory including any tool call context
 		if (memory && input && result?.output) {
-			const previousCount = response?.metadata?.previousRequests?.length;
-			await saveToMemory(input, result.output, memory, steps, previousCount);
+			await saveToMemory(input, result.output, memory, steps, undefined, options);
 		}
 
 		if (options.returnIntermediateSteps && steps.length > 0) {
@@ -109,8 +108,14 @@ export async function runAgent(
 		if ('returnValues' in modelResponse) {
 			// Save conversation to memory including any tool call context
 			if (memory && input && modelResponse.returnValues.output) {
-				const previousCount = response?.metadata?.previousRequests?.length;
-				await saveToMemory(input, modelResponse.returnValues.output, memory, steps, previousCount);
+				await saveToMemory(
+					input,
+					modelResponse.returnValues.output,
+					memory,
+					steps,
+					undefined,
+					options,
+				);
 			}
 			// Include intermediate steps if requested
 			const result = { ...modelResponse.returnValues };
@@ -119,10 +124,7 @@ export async function runAgent(
 			}
 			return result;
 		}
-
-		// If response contains tool calls, we need to return this in the right format
-		const actions = createEngineRequests(modelResponse, itemIndex, tools);
-
+		const actions = createEngineRequests(modelResponse, itemIndex, tools, options);
 		return {
 			actions,
 			metadata: buildResponseMetadata(response, itemIndex),

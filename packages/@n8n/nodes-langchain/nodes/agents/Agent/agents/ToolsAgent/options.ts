@@ -35,4 +35,30 @@ export const commonOptions: INodeProperties[] = [
 		description:
 			'Whether or not binary images should be automatically passed through to the agent as image type messages',
 	},
+	{
+		displayName: 'Save AI Announcements',
+		name: 'saveAnnouncements',
+		type: 'boolean',
+		default: true,
+		description:
+			'Whether or not to save AI streamed text as a separate message in the agent context before tool calls',
+		displayOptions: {
+			show: {
+				enableStreaming: [true],
+			},
+		},
+	},
+	{
+		displayName: 'Clear Tool Call Input Information',
+		name: 'clearToolCallInputInformation',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether or not to clear the raw generic tool calling string (e.g., "Calling <tool_name> with input: <tool_input>") from the attached memory (it will still be visible in the agent run context)',
+		displayOptions: {
+			show: {
+				enableStreaming: [true],
+			},
+		},
+	},
 ];
