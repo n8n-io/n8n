@@ -13,11 +13,13 @@ import type { IUpdateInformation } from '@/Interface';
 import CredentialModeSelector, { type CredentialModeOption } from './CredentialModeSelector.vue';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useI18n, addCredentialTranslation } from '@n8n/i18n';
+import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import {
 	BUILTIN_CREDENTIALS_DOCS_URL,
 	DOCS_DOMAIN,
 	EnterpriseEditionFeature,
+	MODAL_CONFIRM,
 	NEW_ASSISTANT_SESSION_MODAL,
 } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
@@ -99,8 +101,31 @@ const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 
 const i18n = useI18n();
+const message = useMessage();
 const telemetry = useTelemetry();
 const { isQuickConnectEnabled, getQuickConnectOption } = useQuickConnect();
+
+async function onDynamicCredentialsToggle(newValue: boolean) {
+	const titleKey = newValue
+		? 'credentialEdit.credentialConfig.dynamicCredentials.confirm.enableTitle'
+		: 'credentialEdit.credentialConfig.dynamicCredentials.confirm.disableTitle';
+	const messageKey = newValue
+		? 'credentialEdit.credentialConfig.dynamicCredentials.confirm.enableMessage'
+		: 'credentialEdit.credentialConfig.dynamicCredentials.confirm.disableMessage';
+
+	const confirmAction = await message.confirm(i18n.baseText(messageKey), i18n.baseText(titleKey), {
+		confirmButtonText: i18n.baseText(
+			'credentialEdit.credentialConfig.dynamicCredentials.confirm.confirm',
+		),
+		cancelButtonText: i18n.baseText(
+			'credentialEdit.credentialConfig.dynamicCredentials.confirm.cancel',
+		),
+	});
+
+	if (confirmAction === MODAL_CONFIRM) {
+		emit('update:isResolvable', newValue);
+	}
+}
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -403,7 +428,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						<ElSwitch
 							:model-value="isResolvable"
 							data-test-id="dynamic-credentials-toggle"
-							@update:model-value="(val) => $emit('update:isResolvable', Boolean(val))"
+							@update:model-value="(val) => onDynamicCredentialsToggle(Boolean(val))"
 						/>
 						<N8nText size="small">
 							{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.title') }}

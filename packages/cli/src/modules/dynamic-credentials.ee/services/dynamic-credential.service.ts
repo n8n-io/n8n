@@ -68,7 +68,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		}
 
 		if (!resolverId) {
-			return this.handleMissingResolver(credentialsResolveMetadata, staticData, resolverId);
+			return this.handleMissingResolver(credentialsResolveMetadata, resolverId);
 		}
 
 		// Load resolver configuration
@@ -77,21 +77,21 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		});
 
 		if (!resolverEntity) {
-			return this.handleMissingResolver(credentialsResolveMetadata, staticData, resolverId);
+			return this.handleMissingResolver(credentialsResolveMetadata, resolverId);
 		}
 
 		// Get resolver instance from registry
 		const resolver = this.resolverRegistry.getResolverByTypename(resolverEntity.type);
 
 		if (!resolver) {
-			return this.handleMissingResolver(credentialsResolveMetadata, staticData, resolverId);
+			return this.handleMissingResolver(credentialsResolveMetadata, resolverId);
 		}
 
 		// Build credential context from execution context
 		const credentialContext = this.buildCredentialContext(executionContext);
 
 		if (!credentialContext) {
-			return this.handleMissingContext(credentialsResolveMetadata, staticData);
+			return this.handleMissingContext(credentialsResolveMetadata);
 		}
 
 		try {
@@ -139,7 +139,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			// Adds and override static data with dynamically resolved data
 			return { ...staticData, ...dynamicData };
 		} catch (error) {
-			return this.handleResolutionError(credentialsResolveMetadata, staticData, error, resolverId);
+			return this.handleResolutionError(credentialsResolveMetadata, error, resolverId);
 		}
 	}
 
@@ -169,7 +169,6 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	 */
 	private handleResolutionError(
 		credentialsResolveMetadata: CredentialResolveMetadata,
-		_staticData: ICredentialDataDecryptedObject,
 		error: unknown,
 		resolverId: string,
 	): never {
@@ -193,7 +192,6 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	 */
 	private handleMissingResolver(
 		credentialsResolveMetadata: CredentialResolveMetadata,
-		_staticData: ICredentialDataDecryptedObject,
 		resolverId?: string,
 	): never {
 		this.logger.debug('Resolver not found for dynamic credential', {
@@ -212,10 +210,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	 * Handles missing execution context by always throwing.
 	 * Dynamic credentials require an execution context — no silent fallback to static data.
 	 */
-	private handleMissingContext(
-		credentialsResolveMetadata: CredentialResolveMetadata,
-		_staticData: ICredentialDataDecryptedObject,
-	): never {
+	private handleMissingContext(credentialsResolveMetadata: CredentialResolveMetadata): never {
 		this.logger.debug('No execution context available for dynamic credential', {
 			credentialId: credentialsResolveMetadata.id,
 			credentialName: credentialsResolveMetadata.name,
