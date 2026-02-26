@@ -120,11 +120,11 @@ function onPointerDown(event: PointerEvent) {
 	user-select: none;
 	z-index: 3;
 	transition:
+		box-shadow 0.15s ease,
 		border-color 0.3s ease,
 		color 0.3s ease;
 	min-width: 220px;
 	max-width: 260px;
-	overflow: hidden;
 
 	&:hover {
 		border-color: var(--color--primary);
@@ -240,10 +240,40 @@ function onPointerDown(event: PointerEvent) {
 }
 
 .activeGlow {
-	border-color: var(--color--success--tint-2);
+	animation: activeGlowPulse 2s ease-in-out infinite;
 }
 
 .busyGlow {
-	border-color: var(--color--warning--tint-1);
+	animation: busyGlowPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes activeGlowPulse {
+	0%,
+	100% {
+		box-shadow:
+			0 0 8px color-mix(in srgb, var(--color--success) 30%, transparent),
+			0 1px 3px color-mix(in srgb, var(--color--text) 6%, transparent);
+	}
+
+	50% {
+		box-shadow:
+			0 0 20px color-mix(in srgb, var(--color--success) 50%, transparent),
+			0 0 40px color-mix(in srgb, var(--color--success) 20%, transparent);
+	}
+}
+
+@keyframes busyGlowPulse {
+	0%,
+	100% {
+		box-shadow:
+			0 0 8px color-mix(in srgb, var(--color--warning) 30%, transparent),
+			0 1px 3px color-mix(in srgb, var(--color--text) 6%, transparent);
+	}
+
+	50% {
+		box-shadow:
+			0 0 20px color-mix(in srgb, var(--color--warning) 50%, transparent),
+			0 0 40px color-mix(in srgb, var(--color--warning) 20%, transparent);
+	}
 }
 </style>

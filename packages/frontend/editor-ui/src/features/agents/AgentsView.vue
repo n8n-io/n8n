@@ -11,7 +11,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import CopyInput from '@/app/components/CopyInput.vue';
-import { useAgentsStore, ZONE_COLORS } from './agents.store';
+import { useAgentsStore, ZONE_COLORS, UNASSIGNED_ZONE_ID } from './agents.store';
 import { useAgentPanelStore } from './agentPanel.store';
 import AgentCard from './AgentCard.vue';
 import PermissionZone from './components/PermissionZone.vue';
@@ -41,9 +41,9 @@ async function onCreateAgent() {
 		const avatar = newAgentAvatar.value.trim() || undefined;
 		const { apiKey } = await agentsStore.createAgent(name, avatar);
 
+		// Re-layout to position the new agent in the unassigned zone
 		if (canvasRef.value) {
-			const { clientWidth, clientHeight } = canvasRef.value;
-			await agentsStore.fetchZones(clientWidth, clientHeight);
+			agentsStore.layoutAndPosition(canvasRef.value.clientWidth);
 		}
 
 		if (apiKey) {
@@ -90,13 +90,12 @@ onMounted(async () => {
 	agentsStore.initializePushListener();
 
 	if (canvasRef.value) {
-		const { clientWidth, clientHeight } = canvasRef.value;
-		await agentsStore.fetchZones(clientWidth, clientHeight);
+		await agentsStore.fetchZones(canvasRef.value.clientWidth);
 
 		resizeObserver = new ResizeObserver((entries) => {
 			const entry = entries[0];
 			if (entry) {
-				agentsStore.recomputeZoneLayouts(entry.contentRect.width, entry.contentRect.height);
+				agentsStore.recomputeZoneLayouts(entry.contentRect.width);
 			}
 		});
 		resizeObserver.observe(canvasRef.value);
@@ -121,10 +120,11 @@ function onDragStart(agentId: string, event: PointerEvent) {
 	if (!agent || !canvasRef.value) return;
 
 	const canvasRect = canvasRef.value.getBoundingClientRect();
+	const scrollTop = canvasRef.value.scrollTop;
 	dragState = {
 		agentId,
 		offsetX: event.clientX - canvasRect.left - agent.position.x,
-		offsetY: event.clientY - canvasRect.top - agent.position.y,
+		offsetY: event.clientY - canvasRect.top + scrollTop - agent.position.y,
 		startX: event.clientX,
 		startY: event.clientY,
 		moved: false,
@@ -146,8 +146,9 @@ function onPointerMove(event: PointerEvent) {
 	}
 
 	const canvasRect = canvasRef.value.getBoundingClientRect();
+	const scrollTop = canvasRef.value.scrollTop;
 	const x = event.clientX - canvasRect.left - dragState.offsetX;
-	const y = event.clientY - canvasRect.top - dragState.offsetY;
+	const y = event.clientY - canvasRect.top + scrollTop - dragState.offsetY;
 
 	agentsStore.updatePosition(dragState.agentId, {
 		x: Math.max(0, x),
@@ -189,10 +190,20 @@ async function onPointerUp() {
 	const centerY = agent.position.y + CARD_HEIGHT / 2;
 	const targetZoneId = hitTestZone(centerX, centerY);
 
-	if (targetZoneId && targetZoneId !== agent.zoneId) {
+	if (targetZoneId === UNASSIGNED_ZONE_ID && agent.zoneId) {
+		// Dropped into unassigned zone — remove from project
+		await agentsStore.removeAgentFromZone(agentId, agent.zoneId);
+	} else if (targetZoneId && targetZoneId !== UNASSIGNED_ZONE_ID && targetZoneId !== agent.zoneId) {
+		// Dropped into a project zone
 		await agentsStore.assignAgentToZone(agentId, targetZoneId);
 	} else if (!targetZoneId && agent.zoneId) {
+		// Dropped outside all zones — remove from project
 		await agentsStore.removeAgentFromZone(agentId, agent.zoneId);
+	}
+
+	// Re-layout after any zone change
+	if (canvasRef.value) {
+		agentsStore.layoutAndPosition(canvasRef.value.clientWidth);
 	}
 }
 
@@ -307,14 +318,8 @@ function onRemoveConnection(lineId: string) {
 					@drag-start="onDragStart"
 				/>
 
-				<div
-					v-if="agentsStore.agents.length === 0 && agentsStore.zones.length === 0"
-					:class="$style.empty"
-				>
+				<div v-if="agentsStore.agents.length === 0" :class="$style.empty">
 					No agents found. Click "+ Add Agent" to create one.
-				</div>
-				<div v-else-if="agentsStore.zones.length === 0" :class="$style.zonesEmpty">
-					No team projects found.
 				</div>
 			</div>
 
@@ -350,7 +355,8 @@ function onRemoveConnection(lineId: string) {
 .canvas {
 	flex: 1;
 	position: relative;
-	overflow: hidden;
+	overflow-y: auto;
+	overflow-x: hidden;
 	background-image: radial-gradient(circle, var(--color--foreground--tint-1) 1px, transparent 1px);
 	background-size: 24px 24px;
 }
@@ -362,15 +368,6 @@ function onRemoveConnection(lineId: string) {
 	transform: translate(-50%, -50%);
 	color: var(--color--text--tint-2);
 	font-size: var(--font-size--md);
-}
-
-.zonesEmpty {
-	position: absolute;
-	bottom: var(--spacing--lg);
-	left: 50%;
-	transform: translateX(-50%);
-	color: var(--color--text--tint-2);
-	font-size: var(--font-size--sm);
 }
 
 .addBtn {

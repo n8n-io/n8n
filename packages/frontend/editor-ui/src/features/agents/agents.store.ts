@@ -17,50 +17,6 @@ import type {
 	ConnectionLine,
 } from './agents.types';
 
-interface AgentDemoStats {
-	role: string;
-	status: 'idle' | 'active' | 'busy';
-	tasksCompleted: number;
-	lastActive: string;
-	resourceUsage: number;
-	workflowCount: number;
-}
-
-const AGENT_DEMO_STATS: Record<string, AgentDemoStats> = {
-	'agent-docs-curator@internal.n8n.local': {
-		role: 'Knowledge Base',
-		status: 'idle',
-		tasksCompleted: 47,
-		lastActive: '12m ago',
-		resourceUsage: 0.15,
-		workflowCount: 2,
-	},
-	'agent-issue-triager@internal.n8n.local': {
-		role: 'Bug Analysis',
-		status: 'active',
-		tasksCompleted: 128,
-		lastActive: 'now',
-		resourceUsage: 0.62,
-		workflowCount: 3,
-	},
-	'agent-qa@internal.n8n.local': {
-		role: 'Test Strategy',
-		status: 'busy',
-		tasksCompleted: 89,
-		lastActive: '2m ago',
-		resourceUsage: 0.84,
-		workflowCount: 4,
-	},
-	'agent-messenger@internal.n8n.local': {
-		role: 'Comms & Alerts',
-		status: 'active',
-		tasksCompleted: 213,
-		lastActive: '1m ago',
-		resourceUsage: 0.31,
-		workflowCount: 1,
-	},
-};
-
 function parseAvatar(avatarString: string | null | undefined, initials: string): AgentAvatar {
 	if (!avatarString) {
 		return { type: 'initials', value: initials || '??' };
@@ -71,17 +27,17 @@ function parseAvatar(avatarString: string | null | undefined, initials: string):
 	return { type: 'emoji', value: avatarString };
 }
 
-const DEFAULT_POSITIONS: Array<{ x: number; y: number }> = [
-	{ x: 80, y: 60 },
-	{ x: 350, y: 60 },
-	{ x: 80, y: 260 },
-	{ x: 350, y: 260 },
-];
-
 const CANVAS_PADDING = 24;
 const ZONE_GAP = 16;
-const MIN_ZONE_HEIGHT = 160;
 const ZONE_COLS = 2;
+const CARD_W = 240;
+const CARD_H = 110;
+const CARD_GAP_X = 16;
+const CARD_GAP_Y = 16;
+const ZONE_PAD = 16;
+const ZONE_HEADER_H = 48;
+
+export const UNASSIGNED_ZONE_ID = '__unassigned__';
 
 export const ZONE_COLORS = [
 	'var(--color--primary)',
@@ -111,30 +67,22 @@ export const useAgentsStore = defineStore('agents', () => {
 			(u) => u.type === 'agent' || u.email?.endsWith('@internal.n8n.local'),
 		);
 
-		agents.value = agentUsers.map((user, index) => {
+		agents.value = agentUsers.map((user) => {
 			const initials = `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase();
-			const stats = AGENT_DEMO_STATS[user.email] ?? {
-				role: 'Agent',
-				status: 'idle' as const,
-				tasksCompleted: 0,
-				lastActive: 'never',
-				resourceUsage: 0,
-				workflowCount: 0,
-			};
 			return {
 				id: user.id,
 				firstName: user.firstName,
 				lastName: user.lastName,
 				email: user.email,
-				role: stats.role,
+				role: user.description ?? 'Agent',
 				avatar: parseAvatar(user.avatar, initials),
-				status: stats.status,
-				position: DEFAULT_POSITIONS[index % DEFAULT_POSITIONS.length],
+				status: 'idle' as const,
+				position: { x: 0, y: 0 }, // computed by layoutAndPosition
 				zoneId: null,
-				workflowCount: stats.workflowCount,
-				tasksCompleted: stats.tasksCompleted,
-				lastActive: stats.lastActive,
-				resourceUsage: stats.resourceUsage,
+				workflowCount: 0,
+				tasksCompleted: 0,
+				lastActive: 'never',
+				resourceUsage: 0,
 			};
 		});
 	};
@@ -146,40 +94,80 @@ export const useAgentsStore = defineStore('agents', () => {
 		}
 	};
 
-	function computeZoneRects(
-		projectCount: number,
-		canvasWidth: number,
-		canvasHeight: number,
-	): Array<{ x: number; y: number; width: number; height: number }> {
-		const rows = Math.ceil(projectCount / ZONE_COLS);
-		const zoneWidth = (canvasWidth - CANVAS_PADDING * 2 - ZONE_GAP * (ZONE_COLS - 1)) / ZONE_COLS;
-		const zoneHeight = Math.max(
-			MIN_ZONE_HEIGHT,
-			(canvasHeight - CANVAS_PADDING * 2 - ZONE_GAP * (rows - 1)) / rows,
-		);
-
-		const rects: Array<{ x: number; y: number; width: number; height: number }> = [];
-		for (let i = 0; i < projectCount; i++) {
-			const col = i % ZONE_COLS;
-			const row = Math.floor(i / ZONE_COLS);
-			rects.push({
-				x: CANVAS_PADDING + col * (zoneWidth + ZONE_GAP),
-				y: CANVAS_PADDING + row * (zoneHeight + ZONE_GAP),
-				width: zoneWidth,
-				height: zoneHeight,
-			});
-		}
-		return rects;
+	/** Compute how tall a zone needs to be given the number of agents inside it and its width. */
+	function zoneHeightForAgents(agentCount: number, zoneWidth: number): number {
+		if (agentCount === 0) return ZONE_HEADER_H + CARD_H + ZONE_PAD * 2; // room for 1 row (drop target)
+		const innerWidth = zoneWidth - ZONE_PAD * 2;
+		const cols = Math.max(1, Math.floor((innerWidth + CARD_GAP_X) / (CARD_W + CARD_GAP_X)));
+		const rows = Math.ceil(agentCount / cols);
+		return ZONE_HEADER_H + ZONE_PAD + rows * CARD_H + (rows - 1) * CARD_GAP_Y + ZONE_PAD;
 	}
 
-	const fetchZones = async (canvasWidth: number, canvasHeight: number) => {
+	/**
+	 * Layout all zones: unassigned zone (full width, top), then project zones in a 2-col grid below.
+	 * Each zone's height is driven by the number of agents inside it.
+	 */
+	function computeAllZoneRects(canvasWidth: number, agentCountByZone: Map<string, number>): void {
+		const fullWidth = canvasWidth - CANVAS_PADDING * 2;
+		let yOffset = CANVAS_PADDING;
+
+		// Unassigned zone — full width at top
+		const unassignedCount = agentCountByZone.get(UNASSIGNED_ZONE_ID) ?? 0;
+		const unassignedIdx = zones.value.findIndex((z) => z.projectId === UNASSIGNED_ZONE_ID);
+		if (unassignedIdx >= 0) {
+			zones.value[unassignedIdx].rect = {
+				x: CANVAS_PADDING,
+				y: yOffset,
+				width: fullWidth,
+				height: zoneHeightForAgents(unassignedCount, fullWidth),
+			};
+			yOffset += zones.value[unassignedIdx].rect.height + ZONE_GAP;
+		}
+
+		// Project zones — 2-col grid
+		const projectZones = zones.value.filter((z) => z.projectId !== UNASSIGNED_ZONE_ID);
+		const colWidth = (fullWidth - ZONE_GAP * (ZONE_COLS - 1)) / ZONE_COLS;
+
+		// Group into rows of ZONE_COLS
+		for (let i = 0; i < projectZones.length; i += ZONE_COLS) {
+			const rowZones = projectZones.slice(i, i + ZONE_COLS);
+			// Row height = tallest zone in the row
+			const rowHeight = Math.max(
+				...rowZones.map((z) => {
+					const count = agentCountByZone.get(z.projectId) ?? 0;
+					return zoneHeightForAgents(count, colWidth);
+				}),
+			);
+
+			for (let col = 0; col < rowZones.length; col++) {
+				rowZones[col].rect = {
+					x: CANVAS_PADDING + col * (colWidth + ZONE_GAP),
+					y: yOffset,
+					width: colWidth,
+					height: rowHeight,
+				};
+			}
+			yOffset += rowHeight + ZONE_GAP;
+		}
+	}
+
+	const fetchZones = async (canvasWidth: number) => {
 		const context = rootStore.restApiContext;
 		const projects = await getAllProjects(context);
 		const teamProjects = projects.filter((p) => p.type === 'team');
 
-		const rects = computeZoneRects(teamProjects.length, canvasWidth, canvasHeight);
-
 		const zoneLayouts: ZoneLayout[] = [];
+
+		// Unassigned zone first (colorIndex -1 signals neutral)
+		zoneLayouts.push({
+			projectId: UNASSIGNED_ZONE_ID,
+			name: 'Unassigned',
+			icon: null,
+			memberCount: 0,
+			rect: { x: 0, y: 0, width: 0, height: 0 }, // computed below
+			colorIndex: -1,
+		});
+
 		const projectDetails = await Promise.all(
 			teamProjects.map(async (p) => await getProject(context, p.id)),
 		);
@@ -193,7 +181,7 @@ export const useAgentsStore = defineStore('agents', () => {
 				name: project.name ?? 'Unnamed Project',
 				icon: project.icon,
 				memberCount: detail.relations.length,
-				rect: rects[i],
+				rect: { x: 0, y: 0, width: 0, height: 0 },
 				colorIndex: i % ZONE_COLORS.length,
 			});
 
@@ -206,38 +194,53 @@ export const useAgentsStore = defineStore('agents', () => {
 		}
 
 		zones.value = zoneLayouts;
-		positionAgentsInZones();
+		layoutAndPosition(canvasWidth);
 	};
 
-	const recomputeZoneLayouts = (canvasWidth: number, canvasHeight: number) => {
-		const rects = computeZoneRects(zones.value.length, canvasWidth, canvasHeight);
-		zones.value = zones.value.map((zone, i) => ({
-			...zone,
-			rect: rects[i],
-		}));
-		positionAgentsInZones();
+	const recomputeZoneLayouts = (canvasWidth: number) => {
+		layoutAndPosition(canvasWidth);
 	};
 
-	const positionAgentsInZones = () => {
+	/** Compute zone sizes, then position agents inside them. */
+	const layoutAndPosition = (canvasWidth: number) => {
+		// Count agents per zone (unassigned agents go to the unassigned zone)
+		const countByZone = new Map<string, number>();
+		for (const agent of agents.value) {
+			const key = agent.zoneId ?? UNASSIGNED_ZONE_ID;
+			countByZone.set(key, (countByZone.get(key) ?? 0) + 1);
+		}
+
+		// Update unassigned zone member count
+		const unassigned = zones.value.find((z) => z.projectId === UNASSIGNED_ZONE_ID);
+		if (unassigned) {
+			unassigned.memberCount = countByZone.get(UNASSIGNED_ZONE_ID) ?? 0;
+		}
+
+		// Compute zone rects based on content
+		computeAllZoneRects(canvasWidth, countByZone);
+
+		// Position agents in a grid within their zone
 		const agentsByZone = new Map<string, AgentNode[]>();
 		for (const agent of agents.value) {
-			if (agent.zoneId) {
-				const list = agentsByZone.get(agent.zoneId) ?? [];
-				list.push(agent);
-				agentsByZone.set(agent.zoneId, list);
-			}
+			const key = agent.zoneId ?? UNASSIGNED_ZONE_ID;
+			const list = agentsByZone.get(key) ?? [];
+			list.push(agent);
+			agentsByZone.set(key, list);
 		}
 
 		for (const zone of zones.value) {
 			const zoneAgents = agentsByZone.get(zone.projectId) ?? [];
-			const startY = zone.rect.y + 48; // below header
-			const startX = zone.rect.x + 16;
+			const innerWidth = zone.rect.width - ZONE_PAD * 2;
+			const cols = Math.max(1, Math.floor((innerWidth + CARD_GAP_X) / (CARD_W + CARD_GAP_X)));
+			const startX = zone.rect.x + ZONE_PAD;
+			const startY = zone.rect.y + ZONE_HEADER_H + ZONE_PAD;
+
 			for (let i = 0; i < zoneAgents.length; i++) {
-				const col = i % 2;
-				const row = Math.floor(i / 2);
+				const col = i % cols;
+				const row = Math.floor(i / cols);
 				zoneAgents[i].position = {
-					x: startX + col * 270,
-					y: startY + row * 130,
+					x: startX + col * (CARD_W + CARD_GAP_X),
+					y: startY + row * (CARD_H + CARD_GAP_Y),
 				};
 			}
 		}
@@ -271,8 +274,6 @@ export const useAgentsStore = defineStore('agents', () => {
 				oldZone.memberCount = Math.max(0, oldZone.memberCount - 1);
 			}
 		}
-
-		positionAgentsInZones();
 	};
 
 	const removeAgentFromZone = async (agentId: string, projectId: string) => {
@@ -335,10 +336,10 @@ export const useAgentsStore = defineStore('agents', () => {
 			firstName: response.firstName,
 			lastName: response.lastName,
 			email: response.email,
-			role: 'Agent',
+			role: response.description ?? 'Agent',
 			avatar: parseAvatar(response.avatar, initials),
 			status: 'idle',
-			position: DEFAULT_POSITIONS[agents.value.length % DEFAULT_POSITIONS.length],
+			position: { x: 0, y: 0 }, // computed by layoutAndPosition
 			zoneId: null,
 			workflowCount: 0,
 			tasksCompleted: 0,
@@ -440,7 +441,7 @@ export const useAgentsStore = defineStore('agents', () => {
 		updatePosition,
 		fetchZones,
 		recomputeZoneLayouts,
-		positionAgentsInZones,
+		layoutAndPosition,
 		assignAgentToZone,
 		removeAgentFromZone,
 		selectAgent,

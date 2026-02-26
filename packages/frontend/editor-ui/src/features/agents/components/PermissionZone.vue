@@ -9,7 +9,10 @@ const props = defineProps<{
 	zone: ZoneLayout;
 }>();
 
-const color = ZONE_COLORS[props.zone.colorIndex % ZONE_COLORS.length];
+const isNeutral = props.zone.colorIndex < 0;
+const color = isNeutral
+	? 'var(--color--foreground)'
+	: ZONE_COLORS[props.zone.colorIndex % ZONE_COLORS.length];
 
 const iconProp = computed<IconOrEmoji | null>(() => {
 	if (!props.zone.icon) return null;
@@ -19,19 +22,21 @@ const iconProp = computed<IconOrEmoji | null>(() => {
 
 <template>
 	<div
-		:class="$style.zone"
+		:class="[$style.zone, { [$style.neutral]: isNeutral }]"
 		:style="{
 			left: `${zone.rect.x}px`,
 			top: `${zone.rect.y}px`,
 			width: `${zone.rect.width}px`,
 			height: `${zone.rect.height}px`,
 			borderColor: color,
-			boxShadow: `0 0 20px color-mix(in srgb, ${color} 15%, transparent), inset 0 0 20px color-mix(in srgb, ${color} 5%, transparent)`,
+			boxShadow: isNeutral
+				? undefined
+				: `0 0 20px color-mix(in srgb, ${color} 15%, transparent), inset 0 0 20px color-mix(in srgb, ${color} 5%, transparent)`,
 		}"
 		data-testid="permission-zone"
 	>
 		<div :class="$style.header">
-			<span :class="$style.accent" :style="{ backgroundColor: color }" />
+			<span v-if="!isNeutral" :class="$style.accent" :style="{ backgroundColor: color }" />
 			<ProjectIcon v-if="iconProp" :icon="iconProp" size="mini" :border-less="true" />
 			<span :class="$style.name">{{ zone.name }}</span>
 			<span :class="$style.badge">{{ zone.memberCount }}</span>
@@ -46,6 +51,10 @@ const iconProp = computed<IconOrEmoji | null>(() => {
 	border-radius: var(--radius--xl);
 	pointer-events: none;
 	z-index: 1;
+}
+
+.neutral {
+	border-style: dashed;
 }
 
 .header {
