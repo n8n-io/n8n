@@ -78,7 +78,7 @@ export abstract class BaseCommand<F = never> {
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
 
-	/** Whether to init task runner (if enabled). */
+	/** Whether to init task runner. */
 	protected needsTaskRunner = false;
 
 	async init(): Promise<void> {
