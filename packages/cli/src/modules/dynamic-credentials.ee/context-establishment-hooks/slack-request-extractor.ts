@@ -6,18 +6,13 @@ import {
 	HookDescription,
 	IContextEstablishmentHook,
 } from '@n8n/decorators';
-import crypto from 'node:crypto';
 import { z } from 'zod';
+
+import { verifySlackSignature } from '../services/slack-signature-verification';
 
 const SlackRequestExtractorOptionsSchema = z.object({
 	signingSecret: z.string().min(1),
 });
-
-/**
- * Maximum age of a Slack request timestamp before it's considered stale.
- * Slack recommends rejecting requests older than 5 minutes to prevent replay attacks.
- */
-const MAX_REQUEST_AGE_SECONDS = 300; // 5 minutes
 
 /**
  * Extracts user identity from Slack slash command and interaction requests.
@@ -89,26 +84,11 @@ export class SlackRequestExtractor implements IContextEstablishmentHook {
 			throw new Error('Slack request must contain headers and body');
 		}
 
-		// Validate timestamp freshness (replay attack prevention)
+		// Validate timestamp header
 		const timestamp = headers['x-slack-request-timestamp'];
 		if (typeof timestamp !== 'string') {
 			throw new Error('Missing x-slack-request-timestamp header');
 		}
-
-		const requestTimestamp = parseInt(timestamp, 10);
-		if (isNaN(requestTimestamp)) {
-			throw new Error('Invalid x-slack-request-timestamp header');
-		}
-
-		const now = Math.floor(Date.now() / 1000);
-		// TODO: Re-enable this once we have a way to validate the request timestamp
-		// if (Math.abs(now - requestTimestamp) > MAX_REQUEST_AGE_SECONDS) {
-		// 	this.logger.error('Slack request timestamp is too old', {
-		// 		requestTimestamp,
-		// 		currentTimestamp: now,
-		// 	});
-		// 	throw new Error('Slack request timestamp is too old (possible replay attack)');
-		// }
 
 		// Verify request signature
 		const signature = headers['x-slack-signature'];
@@ -116,22 +96,7 @@ export class SlackRequestExtractor implements IContextEstablishmentHook {
 			throw new Error('Missing x-slack-signature header');
 		}
 
-		const rawBody = this.reconstructUrlEncodedBody(body);
-		const basestring = `v0:${timestamp}:${rawBody}`;
-		const expectedSignature =
-			'v0=' +
-			crypto.createHmac('sha256', hookOptions.data.signingSecret).update(basestring).digest('hex');
-
-		const signatureBuffer = Buffer.from(signature);
-		const expectedBuffer = Buffer.from(expectedSignature);
-
-		if (
-			signatureBuffer.length !== expectedBuffer.length ||
-			!crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
-		) {
-			this.logger.error('Slack request signature verification failed');
-			throw new Error('Slack request signature verification failed');
-		}
+		verifySlackSignature(hookOptions.data.signingSecret, timestamp, body, signature);
 
 		// Extract user_id from body
 		const userId = body['user_id'];
@@ -167,19 +132,5 @@ export class SlackRequestExtractor implements IContextEstablishmentHook {
 				},
 			},
 		};
-	}
-
-	/**
-	 * Reconstructs the URL-encoded body string from the parsed body object.
-	 * Needed for Slack signature verification which signs the raw request body.
-	 */
-	private reconstructUrlEncodedBody(body: Record<string, unknown>): string {
-		const params = new URLSearchParams();
-		for (const [key, value] of Object.entries(body)) {
-			if (value !== undefined && value !== null) {
-				params.append(key, String(value));
-			}
-		}
-		return params.toString();
 	}
 }

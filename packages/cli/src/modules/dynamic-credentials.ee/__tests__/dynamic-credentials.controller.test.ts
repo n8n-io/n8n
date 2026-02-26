@@ -39,7 +39,7 @@ describe('DynamicCredentialsController', () => {
 		jest.clearAllMocks();
 
 		// Configure default credential context mock
-		dynamicCredentialWebService.getCredentialContextFromRequest.mockReturnValue({
+		dynamicCredentialWebService.getCredentialContextFromRequest.mockResolvedValue({
 			identity: 'token123',
 			version: 1 as const,
 			metadata: {},
@@ -259,7 +259,9 @@ describe('DynamicCredentialsController', () => {
 			};
 
 			// Set up all mocks before calling the controller
-			dynamicCredentialWebService.getCredentialContextFromRequest.mockReturnValue(expectedContext);
+			dynamicCredentialWebService.getCredentialContextFromRequest.mockResolvedValue(
+				expectedContext,
+			);
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
 			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolverWithValidation);
@@ -459,7 +461,9 @@ describe('DynamicCredentialsController', () => {
 				metadata: {},
 			};
 
-			dynamicCredentialWebService.getCredentialContextFromRequest.mockReturnValue(expectedContext);
+			dynamicCredentialWebService.getCredentialContextFromRequest.mockResolvedValue(
+				expectedContext,
+			);
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
 			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);

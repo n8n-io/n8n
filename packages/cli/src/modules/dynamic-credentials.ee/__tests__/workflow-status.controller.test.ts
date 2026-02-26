@@ -43,7 +43,7 @@ describe('WorkflowStatusController', () => {
 		} as unknown as jest.Mocked<DynamicCredentialCorsService>;
 
 		mockDynamicCredentialWebService = mock<DynamicCredentialWebService>();
-		mockDynamicCredentialWebService.getCredentialContextFromRequest = jest.fn().mockReturnValue({
+		mockDynamicCredentialWebService.getCredentialContextFromRequest = jest.fn().mockResolvedValue({
 			identity: 'mock-token',
 			version: 1,
 			metadata: {},
@@ -265,6 +265,41 @@ describe('WorkflowStatusController', () => {
 
 			expect(result.readyToExecute).toBe(true);
 			expect(result.credentials).toEqual([]);
+		});
+
+		it('should pass workflowId to getCredentialContextFromRequest', async () => {
+			const req = mock<Request>({
+				params: { workflowId: 'workflow-42' },
+				headers: { authorization: 'Bearer token-123' },
+			});
+			const res = mock<Response>();
+
+			mockService.getWorkflowStatus.mockResolvedValue([]);
+
+			await controller.checkWorkflowForExecution(req, res);
+
+			expect(mockDynamicCredentialWebService.getCredentialContextFromRequest).toHaveBeenCalledWith(
+				req,
+				'workflow-42',
+			);
+		});
+	});
+
+	describe('checkWorkflowForExecutionPost', () => {
+		it('should delegate to the same logic as GET handler', async () => {
+			const req = mock<Request>({
+				params: { workflowId: 'workflow-1' },
+				body: { user_id: 'U123', command: '/authorize' },
+				query: { authSource: 'slack' },
+			});
+			const res = mock<Response>();
+
+			mockService.getWorkflowStatus.mockResolvedValue([]);
+
+			const result = await controller.checkWorkflowForExecutionPost(req, res);
+
+			expect(result.workflowId).toBe('workflow-1');
+			expect(result.readyToExecute).toBe(true);
 		});
 	});
 });

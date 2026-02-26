@@ -252,8 +252,12 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		const { endpointAuthToken } = this.dynamicCredentialConfig;
 		if (!endpointAuthToken?.trim()) {
 			return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-				// If a user was authenticated for this request, we allow access irrelevant of the static authentication
 				if (req.user) {
+					return next();
+				}
+				// Slack-authenticated requests bypass static token auth;
+				// actual signature verification happens in getCredentialContextFromRequest
+				if (req.query?.authSource === 'slack') {
 					return next();
 				}
 				this.logger.error(
@@ -272,8 +276,12 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		)!;
 
 		return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-			// If a user was authenticated for this request, we allow access irrelevant of the static authentication
 			if (req.user) {
+				return next();
+			}
+			// Slack-authenticated requests bypass static token auth;
+			// actual signature verification happens in getCredentialContextFromRequest
+			if (req.query?.authSource === 'slack') {
 				return next();
 			}
 			return staticAuthMiddlware(req, res, next);
