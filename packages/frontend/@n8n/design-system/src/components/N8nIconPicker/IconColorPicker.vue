@@ -16,15 +16,47 @@ const DEFAULT_COLOR_VARIABLE = '--node--icon--color--neutral';
 
 const colors = [
 	{ name: 'blue', variable: '--node--icon--color--blue', labelKey: 'iconPicker.colorPicker.blue' },
-	{ name: 'light-blue', variable: '--node--icon--color--light-blue', labelKey: 'iconPicker.colorPicker.lightBlue' },
-	{ name: 'azure', variable: '--node--icon--color--azure', labelKey: 'iconPicker.colorPicker.azure' },
-	{ name: 'purple', variable: '--node--icon--color--purple', labelKey: 'iconPicker.colorPicker.purple' },
-	{ name: 'pink-red', variable: '--node--icon--color--pink-red', labelKey: 'iconPicker.colorPicker.pink' },
+	{
+		name: 'light-blue',
+		variable: '--node--icon--color--light-blue',
+		labelKey: 'iconPicker.colorPicker.lightBlue',
+	},
+	{
+		name: 'azure',
+		variable: '--node--icon--color--azure',
+		labelKey: 'iconPicker.colorPicker.azure',
+	},
+	{
+		name: 'purple',
+		variable: '--node--icon--color--purple',
+		labelKey: 'iconPicker.colorPicker.purple',
+	},
+	{
+		name: 'pink-red',
+		variable: '--node--icon--color--pink-red',
+		labelKey: 'iconPicker.colorPicker.pink',
+	},
 	{ name: 'red', variable: '--node--icon--color--red', labelKey: 'iconPicker.colorPicker.red' },
-	{ name: 'orange', variable: '--node--icon--color--orange', labelKey: 'iconPicker.colorPicker.orange' },
-	{ name: 'green', variable: '--node--icon--color--green', labelKey: 'iconPicker.colorPicker.green' },
-	{ name: 'dark-green', variable: '--node--icon--color--dark-green', labelKey: 'iconPicker.colorPicker.darkGreen' },
-	{ name: 'neutral', variable: '--node--icon--color--neutral', labelKey: 'iconPicker.colorPicker.gray' },
+	{
+		name: 'orange',
+		variable: '--node--icon--color--orange',
+		labelKey: 'iconPicker.colorPicker.orange',
+	},
+	{
+		name: 'green',
+		variable: '--node--icon--color--green',
+		labelKey: 'iconPicker.colorPicker.green',
+	},
+	{
+		name: 'dark-green',
+		variable: '--node--icon--color--dark-green',
+		labelKey: 'iconPicker.colorPicker.darkGreen',
+	},
+	{
+		name: 'neutral',
+		variable: '--node--icon--color--neutral',
+		labelKey: 'iconPicker.colorPicker.gray',
+	},
 ] as const;
 
 /** The effective color variable, treating undefined (no selection) as neutral/gray. */
@@ -58,18 +90,15 @@ defineExpose({ isOpen });
 		:teleported="false"
 	>
 		<template #trigger>
-		<N8nButton
-			:class="$style.triggerButton"
-			variant="outline"
-			size="medium"
-			icon-only
-			:aria-label="t('iconPicker.colorPicker.selectColor')"
-			data-test-id="icon-color-picker-trigger"
-		>
-				<span
-					:class="$style.triggerCircle"
-					:style="{ backgroundColor: displayColor }"
-				/>
+			<N8nButton
+				:class="$style.triggerButton"
+				variant="outline"
+				size="medium"
+				icon-only
+				:aria-label="t('iconPicker.colorPicker.selectColor')"
+				data-test-id="icon-color-picker-trigger"
+			>
+				<span :class="$style.triggerCircle" :style="{ backgroundColor: displayColor }" />
 			</N8nButton>
 		</template>
 		<template #content>
@@ -82,10 +111,7 @@ defineExpose({ isOpen });
 				<button
 					v-for="color in colors"
 					:key="color.name"
-					:class="[
-						$style.swatch,
-						{ [$style.active]: isActive(color.variable) },
-					]"
+					:class="[$style.swatch, { [$style.active]: isActive(color.variable) }]"
 					type="button"
 					role="radio"
 					:aria-checked="isActive(color.variable)"

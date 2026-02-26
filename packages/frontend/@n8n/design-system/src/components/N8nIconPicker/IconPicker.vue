@@ -55,10 +55,12 @@ const dataLoading = ref(false);
 
 // Filter emoji sections for browser support (cached)
 const supportedEmojiSections = computed<EmojiSection[]>(() => {
-	return rawEmojiSections.value.map((section) => ({
-		...section,
-		emojis: section.emojis.filter((e) => isEmojiSupported(e.u)),
-	})).filter((section) => section.emojis.length > 0);
+	return rawEmojiSections.value
+		.map((section) => ({
+			...section,
+			emojis: section.emojis.filter((e) => isEmojiSupported(e.u)),
+		}))
+		.filter((section) => section.emojis.length > 0);
 });
 
 // Filter out blocklisted icons that are used in n8n navigation/settings UI
@@ -126,13 +128,14 @@ onClickOutside(container, () => {
 });
 
 // --- Search ---
-const { filteredIcons, filteredIconSections, filteredEmojiSections, debouncedQuery } = useIconPickerSearch(
-	availableLucideData,
-	supportedEmojiSections,
-	searchQuery,
-	selectedCategory,
-	selectedSkinTone,
-);
+const { filteredIcons, filteredIconSections, filteredEmojiSections, debouncedQuery } =
+	useIconPickerSearch(
+		availableLucideData,
+		supportedEmojiSections,
+		searchQuery,
+		selectedCategory,
+		selectedSkinTone,
+	);
 
 // Show flat search results when a query is active, categorized sections otherwise
 const isSearching = computed(() => debouncedQuery.value.trim().length > 0);
@@ -220,7 +223,9 @@ function humanizeIconName(name: string): string {
 					variant="subtle"
 					:aria-label="props.buttonTooltip ?? t('iconPicker.button.defaultToolTip')"
 					data-test-id="icon-picker-button"
-					:style="model.type === 'icon' && model.color ? { color: `var(${model.color})` } : undefined"
+					:style="
+						model.type === 'icon' && model.color ? { color: `var(${model.color})` } : undefined
+					"
 					@click="togglePopup"
 				/>
 				<N8nButton
@@ -272,36 +277,37 @@ function humanizeIconName(name: string): string {
 						data-test-id="icon-color-picker"
 					/>
 				</N8nTooltip>
-			<N8nTooltip
-				v-if="selectedTab === 'emojis'"
-				placement="top"
-				:disabled="skinTonePickerRef?.isOpen"
-				:teleported="false"
-			>
-				<template #content>
-					{{ t('iconPicker.skinTone.selectSkinTone') }}
-				</template>
-				<SkinTonePicker
-					ref="skinTonePickerRef"
-					v-model="selectedSkinTone"
-				/>
-			</N8nTooltip>
-			<N8nTooltip placement="top" :teleported="false">
-				<template #content>
-					{{ selectedTab === 'icons' ? t('iconPicker.random.icon') : t('iconPicker.random.emoji') }}
-				</template>
-			<N8nButton
-				:class="$style.shuffleButton"
-				variant="outline"
-				size="medium"
-				icon-only
-				:aria-label="selectedTab === 'icons' ? t('iconPicker.random.icon') : t('iconPicker.random.emoji')"
-				data-test-id="icon-picker-random"
-				@click="selectedTab === 'icons' ? selectRandomIcon() : selectRandomEmoji()"
-			>
-				<IconShuffle :class="$style.shuffleIcon" />
-			</N8nButton>
-			</N8nTooltip>
+				<N8nTooltip
+					v-if="selectedTab === 'emojis'"
+					placement="top"
+					:disabled="skinTonePickerRef?.isOpen"
+					:teleported="false"
+				>
+					<template #content>
+						{{ t('iconPicker.skinTone.selectSkinTone') }}
+					</template>
+					<SkinTonePicker ref="skinTonePickerRef" v-model="selectedSkinTone" />
+				</N8nTooltip>
+				<N8nTooltip placement="top" :teleported="false">
+					<template #content>
+						{{
+							selectedTab === 'icons' ? t('iconPicker.random.icon') : t('iconPicker.random.emoji')
+						}}
+					</template>
+					<N8nButton
+						:class="$style.shuffleButton"
+						variant="outline"
+						size="medium"
+						icon-only
+						:aria-label="
+							selectedTab === 'icons' ? t('iconPicker.random.icon') : t('iconPicker.random.emoji')
+						"
+						data-test-id="icon-picker-random"
+						@click="selectedTab === 'icons' ? selectRandomIcon() : selectRandomEmoji()"
+					>
+						<IconShuffle :class="$style.shuffleIcon" />
+					</N8nButton>
+				</N8nTooltip>
 			</div>
 
 			<!-- Loading state -->
@@ -309,8 +315,8 @@ function humanizeIconName(name: string): string {
 				{{ t('iconPicker.loading') }}
 			</div>
 
-		<!-- Icons tab -->
-		<!-- eslint-disable vue/no-v-html -- SVG bodies sanitized via DOMPurify at load time -->
+			<!-- Icons tab -->
+			<!-- eslint-disable vue/no-v-html -- SVG bodies sanitized via DOMPurify at load time -->
 			<div v-else-if="selectedTab === 'icons' && dataLoaded" :class="$style.content">
 				<!-- Search active: flat filtered grid (no section headers) -->
 				<template v-if="isSearching">
@@ -348,10 +354,7 @@ function humanizeIconName(name: string): string {
 							role="group"
 							:aria-labelledby="`icon-section-${section.key}`"
 						>
-							<div
-								:id="`icon-section-${section.key}`"
-								:class="$style.sectionHeader"
-							>
+							<div :id="`icon-section-${section.key}`" :class="$style.sectionHeader">
 								{{ t(section.labelKey) }}
 							</div>
 							<div :class="$style.iconGrid">
@@ -392,10 +395,7 @@ function humanizeIconName(name: string): string {
 						role="group"
 						:aria-labelledby="`emoji-section-${section.key}`"
 					>
-						<div
-							:id="`emoji-section-${section.key}`"
-							:class="$style.sectionHeader"
-						>
+						<div :id="`emoji-section-${section.key}`" :class="$style.sectionHeader">
 							{{ t(section.labelKey) }}
 						</div>
 						<div :class="$style.emojiGrid">

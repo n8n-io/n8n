@@ -48,14 +48,14 @@ defineExpose({ isOpen });
 		:teleported="false"
 	>
 		<template #trigger>
-		<N8nButton
-			:class="$style.triggerButton"
-			variant="outline"
-			size="medium"
-			icon-only
-			:aria-label="t('iconPicker.skinTone.selectSkinTone')"
-			data-test-id="emoji-skin-tone-trigger"
-		>
+			<N8nButton
+				:class="$style.triggerButton"
+				variant="outline"
+				size="medium"
+				icon-only
+				:aria-label="t('iconPicker.skinTone.selectSkinTone')"
+				data-test-id="emoji-skin-tone-trigger"
+			>
 				<span :class="$style.triggerEmoji">{{ displayEmoji }}</span>
 			</N8nButton>
 		</template>
