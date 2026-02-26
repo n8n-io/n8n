@@ -370,7 +370,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			}
 
 			// Execute function with parent as `this` to preserve method context
-			return (fn as Function).call(parent, ...args);
+			return (fn as (...fnArgs: unknown[]) => unknown).call(parent, ...args);
 		});
 
 		// Release previous references before replacing to avoid accumulation
