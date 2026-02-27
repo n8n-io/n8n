@@ -48,6 +48,8 @@ paths:
     $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
   /credentials/{id}/transfer:
     $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
+  /credentials/{id}/share:
+    $ref: './handlers/credentials/spec/paths/credentials.id.share.yml'
   /executions:
     $ref: './handlers/executions/spec/paths/executions.yml'
   /executions/{id}:

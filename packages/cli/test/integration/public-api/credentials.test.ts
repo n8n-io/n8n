@@ -9,11 +9,13 @@ import { randomString } from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 
 import {
 	affixRoleToSaveCredential,
 	createCredentials,
 	getCredentialSharings,
+	shareCredentialWithProjects,
 } from '../shared/db/credentials';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
@@ -1079,6 +1081,182 @@ describe('PUT /credentials/:id/transfer', () => {
 		 * Assert
 		 */
 		expect(response.statusCode).toBe(400);
+	});
+});
+
+describe('PUT /credentials/:id/share', () => {
+	test('should share credential with a project', async () => {
+		/**
+		 * Arrange
+		 */
+		testServer.license.enable('feat:sharing');
+		const ownerProject = await createTeamProject('owner-project', owner);
+		const targetProject = await createTeamProject('target-project', owner);
+
+		const credentials = await createCredentials(
+			{ name: 'Test', type: 'test', data: '' },
+			ownerProject,
+		);
+
+		/**
+		 * Act
+		 */
+		const response = await authOwnerAgent.put(`/credentials/${credentials.id}/share`).send({
+			shareWithIds: [targetProject.id],
+		});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('success', true);
+
+		const sharings = await getCredentialSharings(credentials);
+		expect(sharings).toHaveLength(2); // owner + shared
+		expect(
+			sharings.some((s) => s.projectId === targetProject.id && s.role === 'credential:user'),
+		).toBe(true);
+	});
+
+	test('should return 403 when sharing is not licensed', async () => {
+		/**
+		 * Arrange
+		 */
+		const ownerProject = await createTeamProject('owner-project', owner);
+		const targetProject = await createTeamProject('target-project', owner);
+
+		const credentials = await createCredentials(
+			{ name: 'Test', type: 'test', data: '' },
+			ownerProject,
+		);
+
+		const licenseErrorMessage = new FeatureNotLicensedError('feat:sharing').message;
+
+		/**
+		 * Act
+		 */
+		const response = await authOwnerAgent.put(`/credentials/${credentials.id}/share`).send({
+			shareWithIds: [targetProject.id],
+		});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(403);
+		expect(response.body).toHaveProperty('message', licenseErrorMessage);
+	});
+
+	test('should return 404 when credential not found', async () => {
+		/**
+		 * Arrange
+		 */
+		testServer.license.enable('feat:sharing');
+
+		/**
+		 * Act
+		 */
+		const response = await authOwnerAgent.put('/credentials/non-existent-id/share').send({
+			shareWithIds: ['some-project-id'],
+		});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 403 when member lacks permission', async () => {
+		/**
+		 * Arrange
+		 */
+		testServer.license.enable('feat:sharing');
+		const ownerProject = await createTeamProject('owner-project', owner);
+		const targetProject = await createTeamProject('target-project', owner);
+
+		const credentials = await createCredentials(
+			{ name: 'Test', type: 'test', data: '' },
+			ownerProject,
+		);
+
+		/**
+		 * Act
+		 */
+		const response = await authMemberAgent.put(`/credentials/${credentials.id}/share`).send({
+			shareWithIds: [targetProject.id],
+		});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should unshare credential from a project', async () => {
+		/**
+		 * Arrange
+		 */
+		testServer.license.enable('feat:sharing');
+		const ownerProject = await createTeamProject('owner-project', owner);
+		const targetProject = await createTeamProject('target-project', owner);
+
+		const credentials = await createCredentials(
+			{ name: 'Test', type: 'test', data: '' },
+			ownerProject,
+		);
+
+		// First share with the target project
+		await shareCredentialWithProjects(credentials, [targetProject]);
+
+		// Verify it's shared
+		const sharingsBeforeUnshare = await getCredentialSharings(credentials);
+		expect(sharingsBeforeUnshare).toHaveLength(2); // owner + shared
+
+		/**
+		 * Act - unshare by sending empty shareWithIds
+		 */
+		const response = await authOwnerAgent.put(`/credentials/${credentials.id}/share`).send({
+			shareWithIds: [],
+		});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('success', true);
+
+		const sharingsAfterUnshare = await getCredentialSharings(credentials);
+		expect(sharingsAfterUnshare).toHaveLength(1); // only owner remains
+		expect(sharingsAfterUnshare[0].role).toBe('credential:owner');
+	});
+
+	test('should handle empty shareWithIds when no shares exist', async () => {
+		/**
+		 * Arrange
+		 */
+		testServer.license.enable('feat:sharing');
+		const ownerProject = await createTeamProject('owner-project', owner);
+
+		const credentials = await createCredentials(
+			{ name: 'Test', type: 'test', data: '' },
+			ownerProject,
+		);
+
+		/**
+		 * Act
+		 */
+		const response = await authOwnerAgent.put(`/credentials/${credentials.id}/share`).send({
+			shareWithIds: [],
+		});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('success', true);
+
+		const sharings = await getCredentialSharings(credentials);
+		expect(sharings).toHaveLength(1); // only owner
+		expect(sharings[0].role).toBe('credential:owner');
 	});
 });
 

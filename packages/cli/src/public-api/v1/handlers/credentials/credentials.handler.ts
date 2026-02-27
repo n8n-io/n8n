@@ -1,15 +1,23 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity } from '@n8n/db';
+import { SharedCredentials, SharedCredentialsRepository, ProjectRelationRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type express from 'express';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { EventService } from '@/events/event.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { UserManagementMailer } from '@/user-management/email';
+import * as utils from '@/utils';
 
 import {
 	validCredentialsProperties,
@@ -32,6 +40,7 @@ import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
 import {
 	apiKeyHasScope,
 	apiKeyHasScopeWithGlobalScopeFallback,
+	isLicensed,
 	projectScope,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
@@ -169,6 +178,116 @@ export = {
 			);
 
 			res.status(204).send();
+		},
+	],
+	shareCredential: [
+		isLicensed('feat:sharing'),
+		apiKeyHasScope('credential:share'),
+		projectScope('credential:share', 'credential'),
+		async (req: CredentialRequest.Share, res: express.Response) => {
+			const { id: credentialId } = req.params;
+
+			const bodyResult = z.object({ shareWithIds: z.array(z.string()) }).safeParse(req.body);
+
+			if (!bodyResult.success) {
+				return res.status(400).json({ message: 'Bad request' });
+			}
+
+			const { shareWithIds } = bodyResult.data;
+
+			const credentialsFinderService = Container.get(CredentialsFinderService);
+			const credential = await credentialsFinderService.findCredentialForUser(
+				credentialId,
+				req.user,
+				['credential:read'],
+			);
+
+			if (!credential) {
+				return res.status(404).json({ message: 'Credential not found' });
+			}
+
+			const currentProjectIds = credential.shared
+				.filter((sc) => sc.role === 'credential:user')
+				.map((sc) => sc.projectId);
+			const newProjectIds = shareWithIds;
+
+			const toShare = utils.rightDiff([currentProjectIds, (id) => id], [newProjectIds, (id) => id]);
+			const toUnshare = utils.rightDiff(
+				[newProjectIds, (id) => id],
+				[currentProjectIds, (id) => id],
+			);
+
+			if (toShare.length > 0) {
+				const canShare = await userHasScopes(req.user, ['credential:share'], false, {
+					credentialId,
+				});
+				if (!canShare) {
+					return res.status(403).json({ message: 'Forbidden' });
+				}
+			}
+
+			if (toUnshare.length > 0) {
+				const canUnshare = await userHasScopes(req.user, ['credential:unshare'], false, {
+					credentialId,
+				});
+				if (!canUnshare) {
+					return res.status(403).json({ message: 'Forbidden' });
+				}
+			}
+
+			const { manager: dbManager } = Container.get(SharedCredentialsRepository);
+			const enterpriseCredentialsService = Container.get(EnterpriseCredentialsService);
+
+			let amountRemoved: number | null = null;
+			let newShareeIds: string[] = [];
+
+			await dbManager.transaction(async (trx) => {
+				if (toUnshare.length > 0) {
+					const deleteResult = await trx.delete(SharedCredentials, {
+						credentialsId: credentialId,
+						projectId: In(toUnshare),
+					});
+					if (deleteResult.affected) {
+						amountRemoved = deleteResult.affected;
+					}
+				}
+				if (toShare.length > 0) {
+					await enterpriseCredentialsService.shareWithProjects(
+						req.user,
+						credential.id,
+						toShare,
+						trx,
+					);
+				}
+
+				newShareeIds = toShare;
+			});
+
+			Container.get(EventService).emit('credentials-shared', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+				userIdSharer: req.user.id,
+				userIdsShareesAdded: newShareeIds,
+				shareesRemoved: amountRemoved,
+			});
+
+			try {
+				const projectsRelations = await Container.get(ProjectRelationRepository).findBy({
+					projectId: In(newShareeIds),
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+				});
+
+				await Container.get(UserManagementMailer).notifyCredentialsShared({
+					sharer: req.user,
+					newShareeIds: projectsRelations.map((pr) => pr.userId),
+					credentialsName: credential.name,
+				});
+			} catch {
+				// Email notification failure should not fail the share operation
+			}
+
+			return res.status(200).json({ success: true });
 		},
 	],
 	deleteCredential: [
