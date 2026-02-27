@@ -59,19 +59,9 @@ function closeModal() {
 				:target-workflow="props.data.targetWorkflow"
 				:source-label="props.data.sourceLabel"
 				:target-label="props.data.targetLabel"
-			>
-				<template #header-prefix>
-					<div :class="[$style.backButtonContainer, 'mr-xs']">
-						<N8nIconButton
-							icon="arrow-left"
-							variant="ghost"
-							icon-size="large"
-							data-test-id="ai-builder-diff-back-button"
-							@click="closeModal"
-						/>
-					</div>
-				</template>
-			</WorkflowDiffView>
+				:show-back-button="true"
+				@back="closeModal"
+			/>
 		</template>
 	</Modal>
 </template>

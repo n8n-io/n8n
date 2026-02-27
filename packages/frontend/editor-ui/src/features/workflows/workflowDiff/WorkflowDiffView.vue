@@ -181,7 +181,7 @@ onMounted(async () => {
 									<ul v-if="activeTab === 'connectors'" :class="$style.changes">
 										<template v-if="connectionsDiff.size > 0">
 											<li v-for="change in connectionsDiff" :key="change[0]">
-												<div>
+												<div :class="$style.connectorBadge">
 													<DiffBadge :type="change[1].status" />
 												</div>
 												<div style="flex: 1">
@@ -340,11 +340,6 @@ onMounted(async () => {
 		> div {
 			min-width: 0;
 		}
-
-		.clickableChange {
-			padding: var(--spacing--3xs) var(--spacing--xs) var(--spacing--3xs) 0;
-			margin-left: -4px;
-		}
 	}
 
 	.changesNested {
@@ -354,12 +349,17 @@ onMounted(async () => {
 	}
 }
 
+.connectorBadge {
+	/* Offset changesNested margin-top: -3px so badge aligns with first node icon */
+	padding-top: 3px;
+}
+
 .clickableChange {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 	gap: var(--spacing--2xs);
 	border-radius: 4px;
-	padding: var(--spacing--xs) var(--spacing--2xs);
+	padding: 0 var(--spacing--4xs) !important;
 	margin-right: var(--spacing--xs);
 	line-height: unset;
 	min-width: 0;
@@ -386,7 +386,7 @@ onMounted(async () => {
 	width: 1px;
 	height: 10px;
 	background-color: var(--color--foreground--shade-2);
-	margin: 0 0 -5px var(--spacing--xs);
+	margin: 0 0 -5px var(--spacing--md);
 	position: relative;
 	z-index: 1;
 }
