@@ -385,16 +385,26 @@ describe('NodeSetupCard', () => {
 				expect(getByTestId('node-setup-card').className).toMatch(/completed/);
 			});
 
-			it('should not mark as complete until user collapses the card', () => {
-				const { getByTestId } = renderComponent({
+			it('should not mark as complete until user collapses the card', async () => {
+				const { getByTestId, rerender } = renderComponent({
 					props: {
 						state: createCredentialState({
-							isComplete: true,
+							isComplete: false,
 							selectedCredentialId: 'cred-123',
-							parameterIssues: {},
+							parameterIssues: { testParam: ['Parameter is required'] },
 						}),
 						expanded: true,
 					},
+				});
+
+				// Resolve parameter issues while card stays expanded
+				await rerender({
+					state: createCredentialState({
+						isComplete: true,
+						selectedCredentialId: 'cred-123',
+						parameterIssues: {},
+					}),
+					expanded: true,
 				});
 
 				expect(getByTestId('node-setup-card').className).not.toMatch(/completed/);
