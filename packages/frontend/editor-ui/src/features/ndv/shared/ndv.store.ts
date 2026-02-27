@@ -105,7 +105,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const workflowState = injectWorkflowState();
 
 	const activeNode = computed(() => {
-		return workflowsStore.getNodeByName(activeNodeName.value || '');
+		return workflowDocumentStore.value?.findNodeByName(activeNodeName.value || '') ?? null;
 	});
 
 	const ndvInputData = computed(() => {
@@ -373,10 +373,10 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	};
 
 	const updateNodeParameterIssues = (issues: INodeIssues): void => {
-		const activeNode = workflowsStore.getNodeByName(activeNodeName.value || '');
+		const activeNode = workflowDocumentStore.value?.findNodeByName(activeNodeName.value || '');
 
 		if (activeNode) {
-			const nodeIndex = workflowsStore.workflow.nodes.findIndex((node) => {
+			const nodeIndex = (workflowDocumentStore.value?.allNodes ?? []).findIndex((node) => {
 				return node.name === activeNode.name;
 			});
 

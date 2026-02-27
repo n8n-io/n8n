@@ -16,6 +16,10 @@ import {
 import type { INodeConnections, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed } from 'vue';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 /**
  * Does the command make the given node dirty?
@@ -121,6 +125,12 @@ export function useNodeDirtiness() {
 	const historyStore = useHistoryStore();
 	const workflowsStore = useWorkflowsStore();
 
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
+
 	function getParentSubNodes(nodeName: string) {
 		return Object.entries(workflowsStore.incomingConnectionsByNodeName(nodeName))
 			.filter(([type]) => (type as NodeConnectionType) !== NodeConnectionTypes.Main)
@@ -211,7 +221,7 @@ export function useNodeDirtiness() {
 			}
 		}
 
-		for (const startNode of workflowsStore.allNodes) {
+		for (const startNode of workflowDocumentStore.value?.allNodes ?? []) {
 			const hasIncomingNode =
 				Object.keys(workflowsStore.incomingConnectionsByNodeName(startNode.name)).length > 0;
 

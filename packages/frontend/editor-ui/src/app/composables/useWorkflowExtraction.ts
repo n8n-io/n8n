@@ -327,7 +327,7 @@ export function useWorkflowExtraction() {
 				...x: Parameters<typeof NodeHelpers.getNodeInputs>
 			) => ReturnType<typeof NodeHelpers.getNodeInputs>,
 		) => {
-			const node = workflowsStore.getNodeByName(nodeName);
+			const node = workflowDocumentStore?.value?.findNodeByName(nodeName);
 			if (!node) return true; // invariant broken -> abort onto error path
 			const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
 			if (!nodeType) return true; // invariant broken -> abort onto error path
@@ -398,7 +398,7 @@ export function useWorkflowExtraction() {
 		);
 
 		for (const node of selectionChildNodes) {
-			const currentNode = workflowsStore.workflow.nodes.find((x) => x.id === node.id);
+			const currentNode = workflowDocumentStore?.value?.findNode(node.id);
 
 			if (isEqual(node, currentNode)) continue;
 
@@ -415,7 +415,9 @@ export function useWorkflowExtraction() {
 	}
 
 	function tryExtractNodesIntoSubworkflow(nodeIds: string[]): boolean {
-		const subGraph = nodeIds.map(workflowsStore.getNodeById).filter((x) => x !== undefined);
+		const subGraph = nodeIds
+			.map((id) => workflowDocumentStore?.value?.findNode(id))
+			.filter((x) => x !== undefined);
 
 		const triggers = subGraph.filter((x) =>
 			useNodeTypesStore().getNodeType(x.type, x.typeVersion)?.group.includes('trigger'),
@@ -450,7 +452,7 @@ export function useWorkflowExtraction() {
 	) {
 		const { start, end } = selection;
 
-		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
+		const allNodeNames = (workflowDocumentStore?.value?.allNodes ?? []).map((x) => x.name);
 
 		let startNodeName = 'Start';
 		const subGraphNames = subGraph.map((x) => x.name);

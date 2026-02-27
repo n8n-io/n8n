@@ -57,6 +57,10 @@ import { useWorkflowSaving } from './useWorkflowSaving';
 import { computed } from 'vue';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from './useDocumentTitle';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 export function useRunWorkflow(useRunWorkflowOpts: {
 	router: ReturnType<typeof useRouter>;
@@ -84,12 +88,18 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const { dirtinessByName } = useNodeDirtiness();
 	const { startChat } = useCanvasOperations();
 
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
+
 	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	function sortNodesByYPosition(nodes: string[]) {
 		return [...nodes].sort((a, b) => {
-			const nodeA = workflowsStore.getNodeByName(a)?.position ?? [0, 0];
-			const nodeB = workflowsStore.getNodeByName(b)?.position ?? [0, 0];
+			const nodeA = workflowDocumentStore.value?.findNodeByName(a)?.position ?? [0, 0];
+			const nodeB = workflowDocumentStore.value?.findNodeByName(b)?.position ?? [0, 0];
 
 			const nodeAYPosition = nodeA[1];
 			const nodeBYPosition = nodeB[1];
@@ -186,7 +196,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const { startNodeNames } = consolidatedData;
 			const destinationNodeType = options.destinationNode
-				? workflowsStore.getNodeByName(options.destinationNode.nodeName)?.type
+				? workflowDocumentStore.value?.findNodeByName(options.destinationNode.nodeName)?.type
 				: '';
 
 			let executedNode: string | undefined;
@@ -332,7 +342,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
-				const nodeId = workflowsStore.getNodeByName(options.destinationNode?.nodeName ?? '')?.id;
+				const nodeId = workflowDocumentStore.value?.findNodeByName(
+					options.destinationNode?.nodeName ?? '',
+				)?.id;
 				if (workflowObject.value.id && nodeId) {
 					const agentRequest = agentRequestStore.getAgentRequest(workflowObject.value.id, nodeId);
 

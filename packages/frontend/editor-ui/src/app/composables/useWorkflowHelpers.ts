@@ -56,6 +56,7 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
+import { computed } from 'vue';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import {
 	useWorkflowDocumentStore,
@@ -534,12 +535,17 @@ export function useWorkflowHelpers() {
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
 	const projectsStore = useProjectsStore();
+	const workflowDocStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const tagsStore = useTagsStore();
 
 	const i18n = useI18n();
 
 	function getNodeTypesMaxCount() {
-		const nodes = workflowsStore.allNodes;
+		const nodes = workflowDocStore.value?.allNodes ?? [];
 
 		const returnData: INodeTypesMaxCount = {};
 
@@ -565,7 +571,7 @@ export function useWorkflowHelpers() {
 	}
 
 	function getNodeTypeCount(nodeType: string) {
-		const nodes = workflowsStore.allNodes;
+		const nodes = workflowDocStore.value?.allNodes ?? [];
 
 		let count = 0;
 
@@ -579,7 +585,7 @@ export function useWorkflowHelpers() {
 	}
 
 	async function getWorkflowDataToSave() {
-		const workflowNodes = workflowsStore.allNodes;
+		const workflowNodes = workflowDocStore.value?.allNodes ?? [];
 		const workflowConnections = workflowsStore.allConnections;
 
 		let nodeData;

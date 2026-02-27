@@ -46,7 +46,12 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
 		const execution = await workflowsStore.getExecution(executionId);
 		const workflowObject = workflowsStore.workflowObject;
-		const workflowNodes = workflowsStore.getNodes();
+		// Using the pinned data of the workflow to check if the node is pinned
+		// because workflowsStore.getCurrentWorkflow() returns a cached workflow without the updated pinned data
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+		const workflowNodes = workflowDocumentStore?.getNodes() ?? [];
 
 		if (!execution?.data?.resultData) {
 			return;
@@ -58,12 +63,6 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 		const missingNodeNames = executionNodeNames.filter(
 			(name) => !workflowNodes.some((node) => node.name === name),
 		);
-
-		// Using the pinned data of the workflow to check if the node is pinned
-		// because workflowsStore.getCurrentWorkflow() returns a cached workflow without the updated pinned data
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
 		const workflowPinnedNodeNames = Object.keys(workflowDocumentStore?.pinData ?? {});
 		const matchingPinnedNodeNames = executionNodeNames.filter((name) =>
 			workflowPinnedNodeNames.includes(name),

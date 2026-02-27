@@ -2,6 +2,10 @@ import { watch, computed, ref, type ComputedRef } from 'vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { Workflow, type IRunExecutionData, type ITaskStartedData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	copyExecutionData,
@@ -32,6 +36,12 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	const workflowState = injectWorkflowState();
 	const toast = useToast();
 
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
+
 	const state = ref<
 		| { response: IExecutionResponse; startData: { [nodeName: string]: ITaskStartedData[] } }
 		| undefined
@@ -52,7 +62,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	const latestNodeNameById = computed(() =>
 		Object.values(workflow.value?.nodes ?? {}).reduce<Record<string, LatestNodeInfo>>(
 			(acc, node) => {
-				const nodeInStore = workflowsStore.getNodeById(node.id);
+				const nodeInStore = workflowDocumentStore.value?.findNode(node.id);
 
 				acc[node.id] = {
 					deleted: !nodeInStore,
@@ -65,8 +75,8 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		),
 	);
 	const hasChat = computed(() =>
-		[Object.values(workflow.value?.nodes ?? {}), workflowsStore.workflow.nodes].some((nodes) =>
-			nodes.some(isChatNode),
+		[Object.values(workflow.value?.nodes ?? {}), workflowDocumentStore.value?.allNodes ?? []].some(
+			(nodes) => nodes.some(isChatNode),
 		),
 	);
 

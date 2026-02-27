@@ -227,7 +227,7 @@ export function useBuilderTodos() {
 		// Vue's computed may not track dependencies accessed in recursive helper functions,
 		// so we access pinData and nodes here to register them as dependencies.
 		const _pinData = workflowDocumentStore.value?.pinData;
-		const _nodes = workflowsStore.workflow.nodes;
+		const _nodes = workflowDocumentStore.value?.allNodes;
 		void _pinData;
 		void _nodes;
 
@@ -253,7 +253,7 @@ export function useBuilderTodos() {
 		const issues: WorkflowValidationIssue[] = [];
 		const seen = new Set<string>();
 
-		for (const node of workflowsStore.workflow.nodes) {
+		for (const node of workflowDocumentStore.value?.allNodes ?? []) {
 			if (!node?.parameters) continue;
 
 			// Skip nodes with pinned data - their output is already defined
@@ -324,7 +324,7 @@ export function useBuilderTodos() {
 		if (wouldHaveBaseIssues) return true;
 
 		// Check placeholder issues that would show if not for pinned data
-		for (const node of workflowsStore.workflow.nodes) {
+		for (const node of workflowDocumentStore.value?.allNodes ?? []) {
 			if (!node?.parameters) continue;
 			if (!nodeHasPinnedData(node.name)) continue;
 			if (nodeIsDisabled(node.name)) continue;
