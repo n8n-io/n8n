@@ -360,44 +360,28 @@ const displayNameValidationRules = [
 				class="mb-s"
 				show-required-asterisk
 				required
-				:maxlength="100"
-				:disabled="isReadOnly"
 			>
 				<N8nTooltip
 					:content="i18n.baseText('projectRoles.systemRoleNotEditable')"
 					:disabled="!isReadOnly"
 					placement="top"
 				>
-					<N8nInput
-						:model-value="form.displayName"
-						:maxlength="100"
-						:disabled="isReadOnly"
-						@update:model-value="form.displayName = $event as string"
-					/>
+					<N8nInput v-model="form.displayName" :maxlength="100" :disabled="isReadOnly" />
 				</N8nTooltip>
 			</N8nFormInput>
-			<N8nFormInput
-				v-model="form.description"
-				:label="i18n.baseText('projectRoles.description')"
-				:placeholder="i18n.baseText('projectRoles.optional')"
-				type="textarea"
-				:maxlength="500"
-				:autosize="{ minRows: 2, maxRows: 4 }"
-				:disabled="isReadOnly"
-			>
+			<N8nFormInput v-model="form.description" :label="i18n.baseText('projectRoles.description')">
 				<N8nTooltip
 					:content="i18n.baseText('projectRoles.systemRoleNotEditable')"
 					:disabled="!isReadOnly"
 					placement="top"
 				>
 					<N8nInput
+						v-model="form.description"
 						type="textarea"
-						:model-value="form.description"
 						:placeholder="i18n.baseText('projectRoles.optional')"
 						:maxlength="500"
 						:autosize="{ minRows: 2, maxRows: 4 }"
 						:disabled="isReadOnly"
-						@update:model-value="form.description = $event as string"
 					/>
 				</N8nTooltip>
 			</N8nFormInput>
