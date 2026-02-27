@@ -4,7 +4,6 @@ import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubBaseLLMModel,
 	type ChatHubAgentKnowledgeItem,
-	type ChatHubInputModality,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -51,12 +50,11 @@ import { CHATHUB_EXTRACTOR_NAME, ChatHubAuthenticationMetadata } from './chat-hu
 import { EMBEDDINGS_NODE_TYPE_MAP } from '@n8n/chat-hub';
 import {
 	CHAT_TRIGGER_NODE_MIN_VERSION,
+	getModelMetadata,
 	NODE_NAMES,
 	PROVIDER_NODE_TYPE_MAP,
 	SUPPORTED_RESPONSE_MODES,
 	TOOLS_AGENT_NODE_MIN_VERSION,
-	type ChatHubInputModality,
-	type InternalModelMetadata,
 } from './chat-hub.constants';
 import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
@@ -68,6 +66,7 @@ import {
 } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 import type { ChatHubAgent } from './chat-hub-agent.entity';
+import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { inE2ETests } from '../../constants';
 import { DateTime } from 'luxon';
 
@@ -80,6 +79,7 @@ export class ChatHubWorkflowService {
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 		private readonly chatHubToolService: ChatHubToolService,
+		private readonly chatHubAgentRepository: ChatHubAgentRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly cipher: Cipher,
 	) {
@@ -221,35 +221,6 @@ export class ChatHubWorkflowService {
 	}
 
 	/**
-	 * Parses input modalities from chat trigger options
-	 * Converts MIME types string to ChatHubInputModality array
-	 */
-	parseInputModalities(options?: {
-		allowFileUploads?: boolean;
-		allowedFilesMimeTypes?: string;
-	}): ChatHubInputModality[] {
-		const allowFileUploads = options?.allowFileUploads ?? false;
-		const allowedFilesMimeTypes = options?.allowedFilesMimeTypes;
-
-		if (!allowFileUploads) {
-			return ['text'];
-		}
-
-		if (!allowedFilesMimeTypes || allowedFilesMimeTypes === '*/*') {
-			return ['text', 'image', 'audio', 'video', 'file'];
-		}
-
-		const mimeTypes = allowedFilesMimeTypes.split(',').map((type) => type.trim());
-		const modalities = new Set<ChatHubInputModality>(['text']);
-
-		for (const mimeType of mimeTypes) {
-			modalities.add(this.getMimeTypeModality(mimeType));
-		}
-
-		return Array.from(modalities);
-	}
-
-	/**
 	 * Resolves the allowed MIME types string for the chat hub API from chat trigger options.
 	 * Returns the MIME types string to be used as the `accept` attribute on the file input.
 	 */
@@ -309,7 +280,7 @@ export class ChatHubWorkflowService {
 		}
 
 		if (model.provider === 'custom-agent') {
-			const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id, trx);
+			const agent = await this.chatHubAgentRepository.getOneById(model.agentId, user.id, trx);
 
 			if (!agent?.provider || !agent.model) {
 				throw new BadRequestError('Agent not found or has no model configured');
@@ -896,147 +867,6 @@ IMPORTANT:
 		};
 	}
 
-	private async buildMessageValuesWithAttachments(
-		history: ChatHubMessage[],
-		model: ChatHubBaseLLMModel,
-	): Promise<MessageRecord[]> {
-		const metadata = getModelMetadata(model.provider, model.model);
-
-		// Gemini has 20MB limit, the value should also be what n8n instance can safely handle
-		const maxTotalPayloadSize = 20 * 1024 * 1024 * 0.9;
-
-		const typeMap: Record<string, MessageRecord['type']> = {
-			human: 'user',
-			ai: 'ai',
-			system: 'system',
-		};
-
-		const messageValues: MessageRecord[] = [];
-		let currentTotalSize = 0;
-
-		const messages = history.slice().reverse(); // Traversing messages from last to prioritize newer attachments
-
-		for (const message of messages) {
-			// Empty messages can't be restored by the memory manager
-			if (message.content.length === 0) {
-				continue;
-			}
-
-			const attachments = message.attachments ?? [];
-			const type = typeMap[message.type] || 'system';
-
-			// TODO: Tool messages etc?
-
-			const textSize = message.content.length;
-			currentTotalSize += textSize;
-
-			if (attachments.length === 0) {
-				messageValues.push({
-					type,
-					message: message.content,
-					hideFromUI: false,
-				});
-				continue;
-			}
-
-			const blocks: ContentBlock[] = [{ type: 'text', text: message.content }];
-
-			// Add attachments if within size limit
-			for (const attachment of attachments) {
-				const block = await this.buildContentBlockForAttachment(
-					attachment,
-					currentTotalSize,
-					maxTotalPayloadSize,
-					metadata,
-				);
-				blocks.push(block);
-				currentTotalSize += block.type === 'text' ? block.text.length : block.image_url.length;
-			}
-
-			messageValues.push({
-				type,
-				message: blocks,
-				hideFromUI: false,
-			});
-		}
-
-		// Reverse to restore original order
-		messageValues.reverse();
-
-		return messageValues;
-	}
-
-	private async buildContentBlockForAttachment(
-		attachment: IBinaryData,
-		currentTotalSize: number,
-		maxTotalPayloadSize: number,
-		modelMetadata: InternalModelMetadata,
-	): Promise<ContentBlock> {
-		class TotalFileSizeExceededError extends Error {}
-		class UnsupportedMimeTypeError extends Error {}
-
-		try {
-			if (currentTotalSize >= maxTotalPayloadSize) {
-				throw new TotalFileSizeExceededError();
-			}
-
-			if (this.isTextFile(attachment.mimeType)) {
-				const buffer = await this.chatHubAttachmentService.getAsBuffer(attachment);
-				const content = buffer.toString('utf-8');
-
-				if (currentTotalSize + content.length > maxTotalPayloadSize) {
-					throw new TotalFileSizeExceededError();
-				}
-
-				return {
-					type: 'text',
-					text: `File: ${attachment.fileName ?? 'attachment'}\nContent: \n${content}`,
-				};
-			}
-
-			const modality = this.getMimeTypeModality(attachment.mimeType);
-
-			if (!modelMetadata.inputModalities.includes(modality)) {
-				throw new UnsupportedMimeTypeError();
-			}
-
-			const url = await this.chatHubAttachmentService.getDataUrl(attachment);
-
-			if (currentTotalSize + url.length > maxTotalPayloadSize) {
-				throw new TotalFileSizeExceededError();
-			}
-
-			return { type: 'image_url', image_url: url };
-		} catch (e) {
-			if (e instanceof TotalFileSizeExceededError) {
-				return {
-					type: 'text',
-					text: `File: ${attachment.fileName ?? 'attachment'}\n(Content omitted due to size limit)`,
-				};
-			}
-
-			if (e instanceof UnsupportedMimeTypeError) {
-				return {
-					type: 'text',
-					text: `File: ${attachment.fileName ?? 'attachment'}\n(Unsupported file type)`,
-				};
-			}
-
-			throw e;
-		}
-	}
-
-	private isTextFile(mimeType: string): boolean {
-		return (
-			mimeType.startsWith('text/') ||
-			mimeType === 'application/json' ||
-			mimeType === 'application/xml' ||
-			mimeType === 'application/csv' ||
-			mimeType === 'application/x-yaml' ||
-			mimeType === 'application/yaml'
-		);
-	}
-
 	private buildClearMemoryNode(): INode {
 		return {
 			parameters: {
@@ -1101,22 +931,6 @@ Respond the title only:`,
 			id: uuidv4(),
 			name: NODE_NAMES.TITLE_GENERATOR_AGENT,
 		};
-	}
-
-	/**
-	 * Determines the input modality for a given MIME type
-	 */
-	private getMimeTypeModality(mimeType: string): ChatHubInputModality {
-		if (mimeType.startsWith('image/')) {
-			return 'image';
-		}
-		if (mimeType.startsWith('audio/')) {
-			return 'audio';
-		}
-		if (mimeType.startsWith('video/')) {
-			return 'video';
-		}
-		return 'file';
 	}
 
 	prepareExecutionData(
