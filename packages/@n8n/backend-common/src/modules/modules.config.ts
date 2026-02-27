@@ -20,6 +20,7 @@ export const MODULE_NAMES = [
 	'quick-connect',
 	'workflow-builder',
 	'favorites',
+	'redaction',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

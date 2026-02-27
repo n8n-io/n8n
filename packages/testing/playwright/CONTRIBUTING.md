@@ -508,6 +508,7 @@ Before submitting your PR, ensure:
 - [ ] Constants used for repeated strings
 - [ ] Dynamic data includes timestamps to avoid conflicts
 - [ ] Methods are small and focused on one responsibility
+- [ ] Janitor passes on changed files (`pnpm janitor --file=<your-file>`)
 
 ---
 

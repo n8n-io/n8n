@@ -47,6 +47,7 @@ export class ModuleRegistry {
 		'quick-connect',
 		'workflow-builder',
 		'favorites',
+		'redaction',
 	];
 
 	private readonly activeModules: string[] = [];
