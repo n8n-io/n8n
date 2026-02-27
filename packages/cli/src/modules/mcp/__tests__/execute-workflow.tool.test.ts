@@ -1024,7 +1024,7 @@ describe('execute-workflow MCP tool', () => {
 				await tool.handler(
 					{
 						workflowId: 'telemetry-workflow',
-						mode: 'production',
+						executionMode: 'production',
 						inputs: { type: 'chat', chatInput: 'test' },
 					},
 					{} as any,
@@ -1037,7 +1037,7 @@ describe('execute-workflow MCP tool', () => {
 						tool_name: 'execute_workflow',
 						parameters: {
 							workflowId: 'telemetry-workflow',
-							mode: 'production',
+							executionMode: 'production',
 							inputs: { type: 'chat', parameter_count: 1 },
 						},
 						results: {
@@ -1066,7 +1066,7 @@ describe('execute-workflow MCP tool', () => {
 
 				// Call through the tool handler to test telemetry
 				await tool.handler(
-					{ workflowId: 'error-tracking', mode: 'production', inputs: undefined },
+					{ workflowId: 'error-tracking', executionMode: 'production', inputs: undefined },
 					{} as any,
 				);
 
@@ -1077,7 +1077,7 @@ describe('execute-workflow MCP tool', () => {
 						tool_name: 'execute_workflow',
 						parameters: {
 							workflowId: 'error-tracking',
-							mode: 'production',
+							executionMode: 'production',
 							inputs: undefined,
 						},
 						results: {
@@ -1107,7 +1107,7 @@ describe('execute-workflow MCP tool', () => {
 
 				// Call through the tool handler to test telemetry
 				await tool.handler(
-					{ workflowId: 'no-perm-workflow', mode: 'production', inputs: undefined },
+					{ workflowId: 'no-perm-workflow', executionMode: 'production', inputs: undefined },
 					{} as any,
 				);
 
@@ -1118,7 +1118,7 @@ describe('execute-workflow MCP tool', () => {
 						tool_name: 'execute_workflow',
 						parameters: {
 							workflowId: 'no-perm-workflow',
-							mode: 'production',
+							executionMode: 'production',
 							inputs: undefined,
 						},
 						results: {

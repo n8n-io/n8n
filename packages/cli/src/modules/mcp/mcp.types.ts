@@ -3,7 +3,7 @@ import type { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
-import type { SUPPORTED_MCP_TRIGGERS } from './mcp.constants';
+import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
 
 export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
@@ -102,10 +102,8 @@ export type UserCalledMCPToolEventPayload = {
 	};
 };
 
-type SupportedTriggerNodeTypes = keyof typeof SUPPORTED_MCP_TRIGGERS;
-
 export type MCPTriggersMap = {
-	[K in SupportedTriggerNodeTypes]: INode[];
+	[K in keyof typeof SUPPORTED_PRODUCTION_MCP_TRIGGERS]: INode[];
 };
 
 export type AuthFailureReason =
