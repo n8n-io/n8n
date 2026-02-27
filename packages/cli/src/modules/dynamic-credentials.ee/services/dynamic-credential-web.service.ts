@@ -6,8 +6,10 @@ import { ICredentialContext } from 'n8n-workflow';
 import { Request } from 'express';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
+const MAX_TIMESTAMP_AGE_SECONDS = 300; // 5 minutes — Slack's recommended window
+
 class AuthSourceQuerySchema extends Z.class({
-	authSource: z.enum(['bearer', 'cookie']).optional(),
+	authSource: z.enum(['bearer', 'cookie', 'slack']).optional(),
 }) {}
 
 const BEARER_TOKEN_REGEX = /^[Bb][Ee][Aa][Rr][Ee][Rr]\s+(.+)$/;
@@ -50,6 +52,120 @@ export class DynamicCredentialWebService {
 		};
 	}
 
+	/**
+	 * Builds a credential context from a Slack-signed request.
+	 *
+	 * Extracts user_id from the Slack payload and carries the raw verification
+	 * data (timestamp, rawBody, signature) in metadata so the resolver can
+	 * re-verify the signature using its signing secret.
+	 *
+	 * NOTE: This method does NOT verify the signature itself — that responsibility
+	 * belongs to the resolver's validateIdentity(), which has access to the
+	 * signing secret stored in the resolver's encrypted config.
+	 */
+	private buildSlackCredentialContext(req: Request): ICredentialContext {
+		const timestamp = req.headers['x-slack-request-timestamp'];
+		const signature = req.headers['x-slack-signature'];
+
+		if (!timestamp || typeof timestamp !== 'string') {
+			throw new UnauthenticatedError('Missing X-Slack-Request-Timestamp header');
+		}
+		if (!signature || typeof signature !== 'string') {
+			throw new UnauthenticatedError('Missing X-Slack-Signature header');
+		}
+
+		// Basic timestamp freshness check (defense in depth — resolver re-verifies)
+		const timestampNum = parseInt(timestamp, 10);
+		if (isNaN(timestampNum)) {
+			throw new UnauthenticatedError('Invalid X-Slack-Request-Timestamp');
+		}
+		const currentTimeSec = Math.floor(Date.now() / 1000);
+		if (Math.abs(currentTimeSec - timestampNum) > MAX_TIMESTAMP_AGE_SECONDS) {
+			throw new UnauthenticatedError('Slack request timestamp is too old');
+		}
+
+		// Get raw body for signature verification
+		const rawBody = this.getSlackRawBody(req);
+
+		// Extract user_id from the parsed body
+		const userId = this.extractSlackUserId(req.body);
+		if (!userId) {
+			throw new UnauthenticatedError('Could not extract user_id from Slack payload');
+		}
+
+		const teamId =
+			typeof req.body?.team_id === 'string'
+				? req.body.team_id
+				: typeof req.body?.team?.id === 'string'
+					? req.body.team.id
+					: undefined;
+
+		const enterpriseId =
+			typeof req.body?.enterprise_id === 'string'
+				? req.body.enterprise_id
+				: typeof req.body?.enterprise?.id === 'string'
+					? req.body.enterprise.id
+					: undefined;
+
+		return {
+			identity: userId,
+			version: 1,
+			metadata: {
+				source: 'slack-signature',
+				team_id: teamId,
+				enterprise_id: enterpriseId,
+				timestamp,
+				rawBody,
+				signature,
+			},
+		};
+	}
+
+	private getSlackRawBody(req: Request): string {
+		// rawBody is captured by the rawBodyReader middleware
+		if (req.rawBody) {
+			return Buffer.isBuffer(req.rawBody) ? req.rawBody.toString('utf-8') : String(req.rawBody);
+		}
+		// Fallback: serialize parsed body
+		if (req.body && typeof req.body === 'object') {
+			return JSON.stringify(req.body);
+		}
+		if (typeof req.body === 'string') {
+			return req.body;
+		}
+		throw new UnauthenticatedError('Could not retrieve raw body for Slack verification');
+	}
+
+	/**
+	 * Extracts user_id from various Slack payload formats:
+	 * - Slash commands: flat `user_id` field
+	 * - Interactions: nested `user.id` field
+	 * - Events: `event.user` field
+	 */
+	private extractSlackUserId(body: unknown): string | undefined {
+		if (!body || typeof body !== 'object') return undefined;
+		const payload = body as Record<string, unknown>;
+
+		// Slash commands / flat payloads
+		if (typeof payload['user_id'] === 'string') return payload['user_id'];
+
+		// Interactive payloads
+		const user = payload['user'];
+		if (user && typeof user === 'object' && 'id' in user) {
+			const id = (user as Record<string, unknown>)['id'];
+			if (typeof id === 'string') return id;
+		}
+
+		// Event payloads
+		const event = payload['event'];
+		if (event && typeof event === 'object') {
+			const eventUser = (event as Record<string, unknown>)['user'];
+			if (typeof eventUser === 'string') return eventUser;
+		}
+
+		return undefined;
+	}
+
 	getCredentialContextFromRequest(req: Request): ICredentialContext {
 		const parseResult = AuthSourceQuerySchema.safeParse(req.query);
 
@@ -67,9 +183,18 @@ export class DynamicCredentialWebService {
 				};
 			} else if (authSource === 'cookie') {
 				return this.buildCookieCredentialContext(req);
+			} else if (authSource === 'slack') {
+				return this.buildSlackCredentialContext(req);
 			} else {
 				throw new UnauthenticatedError('Invalid auth source');
 			}
+		}
+
+		// Auto-detection: check for Slack headers first (must be real strings, not mock proxies)
+		const slackSig = req.headers['x-slack-signature'];
+		const slackTs = req.headers['x-slack-request-timestamp'];
+		if (typeof slackSig === 'string' && typeof slackTs === 'string') {
+			return this.buildSlackCredentialContext(req);
 		}
 
 		const token = getBearerToken(req);

@@ -291,8 +291,8 @@ describe('GET /workflows/:workflowId/execution-status - CORS Integration', () =>
 		expect(response.status).toBe(204);
 		expect(response.headers['access-control-allow-origin']).toBe('https://app.example.com');
 		expect(response.headers['access-control-allow-methods']).toContain('GET');
+		expect(response.headers['access-control-allow-methods']).toContain('POST');
 		expect(response.headers['access-control-allow-methods']).toContain('OPTIONS');
-		expect(response.headers['access-control-allow-methods']).not.toContain('POST');
 		expect(response.headers['access-control-allow-methods']).not.toContain('DELETE');
 		expect(response.headers['access-control-allow-headers']).toBeDefined();
 		expect(response.headers['access-control-allow-headers']).toContain('Authorization');

@@ -1,4 +1,4 @@
-import { Get, Options, RestController } from '@n8n/decorators';
+import { Get, Options, Post, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -27,14 +27,14 @@ export class WorkflowStatusController {
 	 */
 	@Options('/:workflowId/execution-status', { skipAuth: true })
 	handlePreflightExecutionStatus(req: Request, res: Response): void {
-		this.dynamicCredentialCorsService.preflightHandler(req, res, ['get', 'options']);
+		this.dynamicCredentialCorsService.preflightHandler(req, res, ['get', 'post', 'options']);
 	}
 
 	/**
 	 * GET /workflows/:workflowId/execution-status
 	 *
 	 * Checks if a workflow is ready to execute by validating all resolvable credentials.
-	 * Requires Bearer token authentication in Authorization header.
+	 * Requires Bearer token or cookie authentication.
 	 *
 	 * @returns Workflow execution status with credential details and authorization URLs
 	 * @throws {BadRequestError} When authorization header is missing or malformed
@@ -43,8 +43,39 @@ export class WorkflowStatusController {
 		allowUnauthenticated: true,
 		middlewares: getDynamicCredentialMiddlewares(),
 	})
-	async checkWorkflowForExecution(req: Request, res: Response): Promise<WorkflowExecutionStatus> {
-		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['get', 'options']);
+	async checkWorkflowForExecutionGet(
+		req: Request,
+		res: Response,
+	): Promise<WorkflowExecutionStatus> {
+		return await this.buildExecutionStatus(req, res);
+	}
+
+	/**
+	 * POST /workflows/:workflowId/execution-status
+	 *
+	 * Same as GET but accepts POST requests, which is required for Slack-signed
+	 * requests where the identity (user_id) is in the request body.
+	 */
+	@Post('/:workflowId/execution-status', {
+		allowUnauthenticated: true,
+		middlewares: getDynamicCredentialMiddlewares(),
+	})
+	async checkWorkflowForExecutionPost(
+		req: Request,
+		res: Response,
+	): Promise<WorkflowExecutionStatus> {
+		return await this.buildExecutionStatus(req, res);
+	}
+
+	private async buildExecutionStatus(
+		req: Request,
+		res: Response,
+	): Promise<WorkflowExecutionStatus> {
+		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, [
+			'get',
+			'post',
+			'options',
+		]);
 		const workflowId = req.params['workflowId'];
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
 

@@ -65,8 +65,10 @@ describe('WorkflowStatusController', () => {
 			req.headers = { authorization: 'Bearer token-123' };
 			const res = mock<Response>();
 
-			await expect(controller.checkWorkflowForExecution(req, res)).rejects.toThrow(BadRequestError);
-			await expect(controller.checkWorkflowForExecution(req, res)).rejects.toThrow(
+			await expect(controller.checkWorkflowForExecutionGet(req, res)).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(controller.checkWorkflowForExecutionGet(req, res)).rejects.toThrow(
 				'Workflow ID is missing',
 			);
 			expect(mockService.getWorkflowStatus).not.toHaveBeenCalled();
@@ -96,7 +98,7 @@ describe('WorkflowStatusController', () => {
 				},
 			]);
 
-			const result = await controller.checkWorkflowForExecution(req, res);
+			const result = await controller.checkWorkflowForExecutionGet(req, res);
 
 			expect(result.readyToExecute).toBe(true);
 			expect(result.workflowId).toBe('workflow-1');
@@ -127,7 +129,7 @@ describe('WorkflowStatusController', () => {
 				},
 			]);
 
-			const result = await controller.checkWorkflowForExecution(req, res);
+			const result = await controller.checkWorkflowForExecutionGet(req, res);
 
 			expect(result.readyToExecute).toBe(false);
 			expect(result.workflowId).toBe('workflow-1');
@@ -151,7 +153,7 @@ describe('WorkflowStatusController', () => {
 				},
 			]);
 
-			const result = await controller.checkWorkflowForExecution(req, res);
+			const result = await controller.checkWorkflowForExecutionGet(req, res);
 
 			expect(result.credentials?.[0].authorizationUrl).toBe(
 				'https://n8n.example.com/rest/credentials/cred-1/authorize?resolverId=resolver-1',
@@ -178,7 +180,7 @@ describe('WorkflowStatusController', () => {
 				},
 			]);
 
-			const result = await controller.checkWorkflowForExecution(req, res);
+			const result = await controller.checkWorkflowForExecutionGet(req, res);
 
 			expect(result.credentials?.[0].authorizationUrl).toBe(
 				'https://n8n.example.com/rest/credentials/cred-1/authorize?resolverId=resolver%2Fwith%2Fspecial%20chars',
@@ -205,7 +207,7 @@ describe('WorkflowStatusController', () => {
 				},
 			]);
 
-			const result = await controller.checkWorkflowForExecution(req, res);
+			const result = await controller.checkWorkflowForExecutionGet(req, res);
 
 			// Verify that the URL is absolute and starts with the base URL
 			expect(result.credentials?.[0].authorizationUrl).toMatch(/^https:\/\//);
@@ -232,7 +234,7 @@ describe('WorkflowStatusController', () => {
 				},
 			]);
 
-			const result = await controller.checkWorkflowForExecution(req, res);
+			const result = await controller.checkWorkflowForExecutionGet(req, res);
 
 			expect(result).toEqual({
 				workflowId: 'workflow-1',
@@ -261,7 +263,7 @@ describe('WorkflowStatusController', () => {
 
 			mockService.getWorkflowStatus.mockResolvedValue([]);
 
-			const result = await controller.checkWorkflowForExecution(req, res);
+			const result = await controller.checkWorkflowForExecutionGet(req, res);
 
 			expect(result.readyToExecute).toBe(true);
 			expect(result.credentials).toEqual([]);
