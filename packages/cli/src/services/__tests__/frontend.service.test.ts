@@ -284,8 +284,12 @@ describe('FrontendService', () => {
 			process.env.N8N_PREVIEW_MODE = 'true';
 
 			const { service } = createMockService();
-			const settings = await service.getPublicSettings(false);
+			const publicSettings = await service.getPublicSettings(false);
 
+			expect(publicSettings.previewMode).toBe(true);
+			expect(publicSettings.userManagement.showSetupOnFirstLoad).toBe(false);
+
+			const settings = await service.getSettings();
 			expect(settings.previewMode).toBe(true);
 			expect(settings.userManagement.showSetupOnFirstLoad).toBe(false);
 		});

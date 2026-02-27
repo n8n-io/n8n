@@ -3,8 +3,6 @@ import {
 	ChatSessionId,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubBaseLLMModel,
-	type ChatHubInputModality,
-	type ChatModelMetadataDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -56,6 +54,8 @@ import {
 	PROVIDER_NODE_TYPE_MAP,
 	SUPPORTED_RESPONSE_MODES,
 	TOOLS_AGENT_NODE_MIN_VERSION,
+	type ChatHubInputModality,
+	type InternalModelMetadata,
 } from './chat-hub.constants';
 import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
@@ -248,6 +248,86 @@ export class ChatHubWorkflowService {
 		}
 
 		return Array.from(modalities);
+	}
+
+	/**
+	 * Resolves the allowed MIME types string for the chat hub API from chat trigger options.
+	 * Returns the MIME types string to be used as the `accept` attribute on the file input.
+	 */
+	resolveAllowedMimeTypes(options?: {
+		allowFileUploads?: boolean;
+		allowedFilesMimeTypes?: string;
+	}): string {
+		if (!options?.allowFileUploads) {
+			return '';
+		}
+
+		const allowedFilesMimeTypes = options.allowedFilesMimeTypes;
+		if (!allowedFilesMimeTypes || allowedFilesMimeTypes === '*/*') {
+			return '*/*';
+		}
+
+		return allowedFilesMimeTypes;
+	}
+
+	/**
+	 * Resolves the attachment policy from a workflow's nodes by finding the
+	 * chat trigger and extracting file upload settings.
+	 */
+	resolveWorkflowAttachmentPolicy(nodes: INode[]) {
+		const chatTrigger = nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+		const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger?.parameters).data;
+		const allowFileUploads = chatTriggerParams?.options?.allowFileUploads ?? false;
+
+		return {
+			allowFileUploads,
+			allowedFilesMimeTypes: this.resolveAllowedMimeTypes(chatTriggerParams?.options),
+		};
+	}
+
+	/**
+	 * Resolves the attachment upload policy for the given model.
+	 * Used to validate attachments before storage.
+	 */
+	async getAttachmentPolicy(
+		model: ChatHubConversationModel,
+		user: User,
+		trx: EntityManager,
+	): Promise<{ allowFileUploads: boolean; allowedFilesMimeTypes: string }> {
+		if (model.provider === 'n8n') {
+			const workflow = await this.workflowFinderService.findWorkflowForUser(
+				model.workflowId,
+				user,
+				['workflow:execute-chat'],
+				{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, em: trx },
+			);
+
+			if (!workflow?.activeVersion) {
+				throw new BadRequestError('Workflow not found');
+			}
+
+			return this.resolveWorkflowAttachmentPolicy(workflow.activeVersion.nodes);
+		}
+
+		if (model.provider === 'custom-agent') {
+			const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id, trx);
+
+			if (!agent?.provider || !agent.model) {
+				throw new BadRequestError('Agent not found or has no model configured');
+			}
+
+			const metadata = getModelMetadata(agent.provider, agent.model);
+			return {
+				allowFileUploads: metadata.allowFileUploads,
+				allowedFilesMimeTypes: metadata.allowedFilesMimeTypes,
+			};
+		}
+
+		const metadata = getModelMetadata(model.provider, model.model);
+		return {
+			allowFileUploads: metadata.allowFileUploads,
+			allowedFilesMimeTypes: metadata.allowedFilesMimeTypes,
+		};
 	}
 
 	private getUniqueNodeName(originalName: string, existingNames: Set<string>): string {
@@ -853,7 +933,7 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 		attachment: IBinaryData,
 		currentTotalSize: number,
 		maxTotalPayloadSize: number,
-		modelMetadata: ChatModelMetadataDto,
+		modelMetadata: InternalModelMetadata,
 	): Promise<ContentBlock> {
 		class TotalFileSizeExceededError extends Error {}
 		class UnsupportedMimeTypeError extends Error {}

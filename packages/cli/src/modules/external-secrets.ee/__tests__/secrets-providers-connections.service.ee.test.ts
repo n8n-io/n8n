@@ -1,4 +1,3 @@
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
 	ProjectSecretsProviderAccessRepository,
@@ -6,11 +5,13 @@ import type {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { EventService } from '@/events/event.service';
 import type { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
+import type { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
 import type { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 import { SecretsProvidersConnectionsService } from '@/modules/external-secrets.ee/secrets-providers-connections.service.ee';
 import type { SecretsProvider } from '@/modules/external-secrets.ee/types';
@@ -20,6 +21,7 @@ describe('SecretsProvidersConnectionsService', () => {
 	const mockProjectAccessRepository = mock<ProjectSecretsProviderAccessRepository>();
 	const mockExternalSecretsManager = mock<ExternalSecretsManager>();
 	const mockRedactionService = mock<RedactionService>();
+	const mockProviderRegistry = mock<ExternalSecretsProviderRegistry>();
 	const mockEventService = mock<EventService>();
 	const mockCipher = {
 		encrypt: jest.fn((data: IDataObject) => JSON.stringify(data)),
@@ -30,6 +32,7 @@ describe('SecretsProvidersConnectionsService', () => {
 		mockLogger(),
 		mockRepository,
 		mockProjectAccessRepository,
+		mockProviderRegistry,
 		mockCipher as any,
 		mockExternalSecretsManager,
 		mockRedactionService,
@@ -645,6 +648,57 @@ describe('SecretsProvidersConnectionsService', () => {
 
 			await expect(service.getConnectionForProject('my-aws', 'project-1')).rejects.toThrow(
 				NotFoundError,
+			);
+		});
+	});
+
+	describe('getConnectionAccessibleFromProject', () => {
+		it('should return connection when it is explicitly linked to the project', async () => {
+			const connection = {
+				id: 1,
+				providerKey: 'my-aws',
+			} as unknown as SecretsProviderConnection;
+
+			mockRepository.findAccessibleByProviderKeyAndProjectId.mockResolvedValue(connection);
+
+			const result = await service.getConnectionAccessibleFromProject('my-aws', 'project-1');
+			expect(result).toBe(connection);
+			expect(mockRepository.findAccessibleByProviderKeyAndProjectId).toHaveBeenCalledWith(
+				'my-aws',
+				'project-1',
+			);
+		});
+
+		it('should return connection when it is a global connection', async () => {
+			const globalConnection = {
+				id: 2,
+				providerKey: 'global-aws',
+				projectAccess: [],
+			} as unknown as SecretsProviderConnection;
+
+			mockRepository.findAccessibleByProviderKeyAndProjectId.mockResolvedValue(globalConnection);
+
+			const result = await service.getConnectionAccessibleFromProject('global-aws', 'project-1');
+			expect(result).toBe(globalConnection);
+		});
+
+		it('should throw NotFoundError when connection is not accessible from the project', async () => {
+			mockRepository.findAccessibleByProviderKeyAndProjectId.mockResolvedValue(null);
+
+			await expect(
+				service.getConnectionAccessibleFromProject('other-project-conn', 'project-1'),
+			).rejects.toThrow(NotFoundError);
+		});
+
+		it('should throw NotFoundError when providerKey does not exist', async () => {
+			mockRepository.findAccessibleByProviderKeyAndProjectId.mockResolvedValue(null);
+
+			await expect(
+				service.getConnectionAccessibleFromProject('non-existent', 'project-1'),
+			).rejects.toThrow(NotFoundError);
+			expect(mockRepository.findAccessibleByProviderKeyAndProjectId).toHaveBeenCalledWith(
+				'non-existent',
+				'project-1',
 			);
 		});
 	});

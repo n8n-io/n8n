@@ -60,6 +60,8 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	const isCreateNodeActive = ref<boolean>(false);
 
+	const oppeningContext = ref<null | 'replacement'>(null);
+
 	const nodePanelSessionId = ref<string>('');
 
 	const allNodeCreatorNodes = computed(() =>
@@ -450,6 +452,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	return {
 		isCreateNodeActive,
+		oppeningContext,
 		openSource,
 		selectedView,
 		showScrim,

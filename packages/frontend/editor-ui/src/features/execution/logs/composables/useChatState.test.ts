@@ -64,6 +64,62 @@ describe('useChatState', () => {
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let mockRunWorkflow: ReturnType<typeof vi.fn>;
 
+	// Mock node type that mirrors the real ChatTrigger structure:
+	// - Multiple 'options' collections with displayOptions at the collection level
+	// - Multiple 'responseMode' parameters with different defaults based on /availableInChat
+	const mockNodeType = {
+		group: [],
+		name: '@n8n/n8n-nodes-langchain.chatTrigger',
+		properties: [
+			{ name: 'public', type: 'boolean', default: false },
+			{ name: 'availableInChat', type: 'boolean', default: false },
+			{
+				name: 'options',
+				type: 'collection',
+				displayOptions: { show: { public: [true] } },
+				default: {},
+				options: [
+					{
+						name: 'responseMode',
+						type: 'options',
+						default: 'lastNode',
+						displayOptions: { show: { '/availableInChat': [false] } },
+					},
+					{
+						name: 'responseMode',
+						type: 'options',
+						default: 'streaming',
+						displayOptions: { show: { '/availableInChat': [true] } },
+					},
+					{ name: 'allowFileUploads', type: 'boolean', default: false },
+					{ name: 'allowedFilesMimeTypes', type: 'string', default: '*' },
+				],
+			},
+			{
+				name: 'options',
+				type: 'collection',
+				displayOptions: { show: { public: [false] } },
+				default: {},
+				options: [
+					{ name: 'allowFileUploads', type: 'boolean', default: false },
+					{ name: 'allowedFilesMimeTypes', type: 'string', default: '*' },
+					{
+						name: 'responseMode',
+						type: 'options',
+						default: 'lastNode',
+						displayOptions: { show: { '/availableInChat': [false] } },
+					},
+					{
+						name: 'responseMode',
+						type: 'options',
+						default: 'streaming',
+						displayOptions: { show: { '/availableInChat': [true] } },
+					},
+				],
+			},
+		],
+	};
+
 	const mockChatTriggerNode: INode = {
 		id: 'chat-trigger-id',
 		name: 'ChatTrigger',
@@ -126,20 +182,7 @@ describe('useChatState', () => {
 
 		// Mock node type
 		Object.defineProperty(nodeTypesStore, 'getNodeType', {
-			value: vi.fn().mockReturnValue({
-				group: [],
-				properties: [
-					{
-						name: 'options',
-						type: 'collection',
-						options: [
-							{ name: 'responseMode', default: 'lastNode' },
-							{ name: 'allowFileUploads', default: false },
-							{ name: 'allowedFilesMimeTypes', default: '*' },
-						],
-					},
-				],
-			} as never),
+			value: vi.fn().mockReturnValue(mockNodeType),
 			writable: true,
 			configurable: true,
 		});
@@ -208,7 +251,6 @@ describe('useChatState', () => {
 
 	describe('file upload configuration', () => {
 		it('should detect file uploads allowed from options', async () => {
-			// Ensure the node in the store has the correct parameters
 			workflowsStore.$patch((state) => {
 				state.workflow.nodes = [
 					{
@@ -498,17 +540,6 @@ describe('useChatState', () => {
 	});
 
 	describe('parameter defaults', () => {
-		it('should fall back to node type defaults when parameter not set', async () => {
-			mockChatTriggerNode.parameters = {};
-
-			const chatState = useChatState(false);
-			await nextTick();
-
-			expect(chatState.isStreamingEnabled.value).toBe(false); // default is 'lastNode'
-			expect(chatState.isFileUploadsAllowed.value).toBe(false); // default is false
-			expect(chatState.allowedFilesMimeTypes.value).toBe('*'); // default is '*'
-		});
-
 		it('should handle missing node type gracefully', async () => {
 			Object.defineProperty(nodeTypesStore, 'getNodeType', {
 				value: vi.fn().mockReturnValue(null),
@@ -521,6 +552,88 @@ describe('useChatState', () => {
 
 			expect(chatState.isStreamingEnabled.value).toBe(false);
 			expect(chatState.isFileUploadsAllowed.value).toBe(false);
+		});
+
+		it('should resolve all defaults from node type when options not set', async () => {
+			workflowsStore.$patch((state) => {
+				state.workflow.nodes = [{ ...mockChatTriggerNode, parameters: {} }];
+			});
+
+			const chatState = useChatState(false);
+			await nextTick();
+
+			expect(chatState.isStreamingEnabled.value).toBe(false);
+			expect(chatState.isFileUploadsAllowed.value).toBe(false);
+			expect(chatState.allowedFilesMimeTypes.value).toBe('*');
+		});
+
+		it('should default to lastNode when availableInChat is false', async () => {
+			workflowsStore.$patch((state) => {
+				state.workflow.nodes = [
+					{
+						...mockChatTriggerNode,
+						parameters: { availableInChat: false },
+					},
+				];
+			});
+
+			const chatState = useChatState(false);
+			await nextTick();
+
+			expect(chatState.isStreamingEnabled.value).toBe(false);
+		});
+
+		it('should default to streaming when availableInChat (Chat hub) is true', async () => {
+			workflowsStore.$patch((state) => {
+				state.workflow.nodes = [
+					{
+						...mockChatTriggerNode,
+						parameters: { availableInChat: true },
+					},
+				];
+			});
+
+			const chatState = useChatState(false);
+			await nextTick();
+
+			expect(chatState.isStreamingEnabled.value).toBe(true);
+		});
+
+		it('should pick the correct options collection when public is true', async () => {
+			workflowsStore.$patch((state) => {
+				state.workflow.nodes = [
+					{
+						...mockChatTriggerNode,
+						parameters: { public: true, availableInChat: true },
+					},
+				];
+			});
+
+			const chatState = useChatState(false);
+			await nextTick();
+
+			expect(chatState.isStreamingEnabled.value).toBe(true);
+		});
+
+		it('should use explicit responseMode over default when set', async () => {
+			// availableInChat is true (default would be streaming),
+			// but user explicitly set responseMode to lastNode
+			workflowsStore.$patch((state) => {
+				state.workflow.nodes = [
+					{
+						...mockChatTriggerNode,
+						parameters: {
+							availableInChat: true,
+							options: { responseMode: 'lastNode' },
+						},
+					},
+				];
+			});
+
+			const chatState = useChatState(false);
+			await nextTick();
+
+			expect(chatState.isStreamingEnabled.value).toBe(false);
 		});
 	});
 });
