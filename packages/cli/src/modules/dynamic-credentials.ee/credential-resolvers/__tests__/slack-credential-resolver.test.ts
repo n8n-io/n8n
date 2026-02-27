@@ -270,8 +270,8 @@ describe('SlackCredentialResolver', () => {
 			expect(resolver.metadata.name).toBe('credential-resolver.slack-1.0');
 			expect(resolver.metadata.displayName).toBe('Slack Resolver');
 			expect(resolver.metadata.options).toHaveLength(2);
-			expect(resolver.metadata.options![0].name).toBe('signingSecret');
-			expect(resolver.metadata.options![1].name).toBe('subjectClaim');
+			expect(resolver.metadata.options[0].name).toBe('signingSecret');
+			expect(resolver.metadata.options[1].name).toBe('subjectClaim');
 		});
 	});
 });
