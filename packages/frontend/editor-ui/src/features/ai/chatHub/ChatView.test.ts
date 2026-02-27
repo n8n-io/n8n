@@ -58,6 +58,7 @@ vi.mock('@/app/stores/settings.store', () => ({
 			'chat-hub': createChatHubModuleSettings(),
 		},
 		isChatFeatureEnabled: true,
+		isModuleActive: vi.fn().mockReturnValue(false),
 	}),
 }));
 

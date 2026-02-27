@@ -66,8 +66,11 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import ChatGreetings from './components/ChatGreetings.vue';
 import { useChatPushHandler } from './composables/useChatPushHandler';
 import ChatArtifactViewer from './components/ChatArtifactViewer.vue';
+import DynamicCredentialsDrawer from './components/DynamicCredentialsDrawer.vue';
 import { useChatArtifacts } from './composables/useChatArtifacts';
 import { useChatInputFocus } from './composables/useChatInputFocus';
+import { useDynamicCredentialsStatus } from './composables/useDynamicCredentialsStatus';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 const router = useRouter();
 const route = useRoute();
@@ -261,6 +264,30 @@ const { credentialsByProvider, selectCredential } = useChatCredentials(
 	usersStore.currentUserId ?? 'anonymous',
 );
 
+// Dynamic credentials
+const { isEnabled: dynamicCredentialsEnabled } = useDynamicCredentials();
+const dynamicCredsWorkflowId = computed(() =>
+	selectedModel.value?.model.provider === 'n8n' && dynamicCredentialsEnabled.value
+		? selectedModel.value.model.workflowId
+		: null,
+);
+const dynamicCreds = useDynamicCredentialsStatus(dynamicCredsWorkflowId);
+const isDynamicCredentialsDrawerOpen = ref(false);
+
+const showDynamicCredentialsMissingCallout = computed(
+	() => messagingState.value === 'missingDynamicCredentials',
+);
+
+// Auto-close drawer when all credentials become connected
+watch(
+	() => dynamicCreds.allAuthenticated.value,
+	(allConnected) => {
+		if (allConnected && isDynamicCredentialsDrawerOpen.value) {
+			isDynamicCredentialsDrawerOpen.value = false;
+		}
+	},
+);
+
 const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
 const artifacts = useChatArtifacts(chatLayoutElement, chatMessages);
 
@@ -309,6 +336,10 @@ const messagingState = computed<MessagingState>(() => {
 
 	if (chatStore.agentsReady && isMissingSelectedCredential.value) {
 		return 'missingCredentials';
+	}
+
+	if (dynamicCreds.hasDynamicCredentials.value && !dynamicCreds.allAuthenticated.value) {
+		return 'missingDynamicCredentials';
 	}
 
 	return 'idle';
@@ -517,7 +548,8 @@ async function onSubmit(message: string, attachments: File[]) {
 		!message.trim() ||
 		isResponding.value ||
 		!selectedModel.value ||
-		!credentialsForSelectedProvider.value
+		!credentialsForSelectedProvider.value ||
+		(dynamicCreds.hasDynamicCredentials.value && !dynamicCreds.allAuthenticated.value)
 	) {
 		return;
 	}
@@ -562,7 +594,8 @@ async function handleEditMessage(
 		!editingMessageId.value ||
 		isResponding.value ||
 		!selectedModel.value ||
-		!credentialsForSelectedProvider.value
+		!credentialsForSelectedProvider.value ||
+		(dynamicCreds.hasDynamicCredentials.value && !dynamicCreds.allAuthenticated.value)
 	) {
 		return;
 	}
@@ -585,7 +618,8 @@ async function handleRegenerateMessage(message: ChatMessageType) {
 		isResponding.value ||
 		message.type !== 'ai' ||
 		!selectedModel.value ||
-		!credentialsForSelectedProvider.value
+		!credentialsForSelectedProvider.value ||
+		(dynamicCreds.hasDynamicCredentials.value && !dynamicCreds.allAuthenticated.value)
 	) {
 		return;
 	}
@@ -722,7 +756,11 @@ function onFilesDropped(files: File[]) {
 			:class="$style.mainContentResizer"
 			:width="artifacts.viewerSize.value"
 			:style="{
-				width: artifacts.isViewerVisible.value ? `${artifacts.viewerSize.value}px` : '100%',
+				width: artifacts.isViewerVisible.value
+					? `${artifacts.viewerSize.value}px`
+					: isDynamicCredentialsDrawerOpen
+						? 'calc(100% - 340px)'
+						: '100%',
 			}"
 			:supported-directions="['right']"
 			:is-resizing-enabled="true"
@@ -815,6 +853,7 @@ function onFilesDropped(files: File[]) {
 								:is-tools-selectable="canSelectTools"
 								:is-new-session="isNewSession"
 								:show-credits-claimed-callout="showCreditsClaimedCallout"
+								:show-dynamic-credentials-missing-callout="showDynamicCredentialsMissingCallout"
 								:ai-credits-quota="String(aiCreditsQuota)"
 								@submit="onSubmit"
 								@stop="onStop"
@@ -822,6 +861,7 @@ function onFilesDropped(files: File[]) {
 								@set-credentials="handleConfigureCredentials"
 								@edit-agent="handleEditAgent"
 								@dismiss-credits-callout="handleDismissCreditsCallout"
+								@open-dynamic-credentials="isDynamicCredentialsDrawerOpen = true"
 							/>
 						</div>
 					</div>
@@ -837,6 +877,17 @@ function onFilesDropped(files: File[]) {
 				/>
 			</div>
 		</N8nResizeWrapper>
+		<DynamicCredentialsDrawer
+			v-if="isDynamicCredentialsDrawerOpen && dynamicCreds.hasDynamicCredentials.value"
+			:class="$style.dynamicCredentialsDrawer"
+			:credentials="dynamicCreds.credentials.value"
+			:connected-count="dynamicCreds.connectedCount.value"
+			:total-count="dynamicCreds.totalCount.value"
+			data-testid="dynamic-credentials-drawer"
+			@close="isDynamicCredentialsDrawerOpen = false"
+			@authorize="dynamicCreds.authorize"
+			@revoke="dynamicCreds.revoke"
+		/>
 		<ChatArtifactViewer
 			v-if="artifacts.isViewerVisible.value"
 			:key="sessionId"
@@ -881,6 +932,13 @@ function onFilesDropped(files: File[]) {
 	overflow: hidden;
 	height: 100%;
 	flex: 1;
+}
+
+.dynamicCredentialsDrawer {
+	flex: 0 0 340px;
+	min-width: 300px;
+	max-width: 400px;
+	overflow: hidden;
 }
 
 .artifactViewer {
