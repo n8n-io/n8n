@@ -115,7 +115,7 @@ const getDataTableSize = computed(() => {
 				<template #append>
 					<div :class="$style['card-actions']" @click.stop>
 						<ProjectCardBadge
-							v-if="showOwnershipBadge"
+							v-if="props.showOwnershipBadge"
 							:class="{
 								[$style['card-badge']]: true,
 							}"
