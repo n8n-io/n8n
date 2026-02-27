@@ -288,8 +288,6 @@
 	"aiAssistant.builder.workflowParsingError.title": "Unable to insert workflow",
 	"aiAssistant.builder.workflowParsingError.content": "The workflow returned by AI could not be parsed. Please try again.",
 	"aiAssistant.builder.error.title": "Workflow update failed",
-	"aiAssistant.builder.reviewChanges.button": "Review changes",
-	"aiAssistant.builder.reviewChanges.editedNodes": "Edited {count} nodes",
 	"aiAssistant.builder.reviewChanges.editsCount": "Edits · {count} nodes",
 	"aiAssistant.builder.reviewChanges.openDiff": "Open diff",
 	"aiAssistant.builder.reviewChanges.previousVersion": "Previous version",

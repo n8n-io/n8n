@@ -42,12 +42,7 @@ const i18n = useI18n();
 					}}
 				</span>
 			</div>
-			<N8nButton
-				size="xsmall"
-				variant="ghost"
-				:class="$style.openDiffButton"
-				@click.stop="emit('openDiff')"
-			>
+			<N8nButton size="xsmall" variant="ghost" @click.stop="emit('openDiff')">
 				{{ i18n.baseText('aiAssistant.builder.reviewChanges.openDiff') }}
 				<N8nIcon icon="arrow-up-right" size="xsmall" />
 			</N8nButton>
@@ -106,7 +101,7 @@ const i18n = useI18n();
 
 .chevron {
 	transition: transform 0.2s ease;
-	color: var(--color--text);
+	color: var(--color--text--shade-1);
 	flex-shrink: 0;
 }
 
@@ -116,12 +111,8 @@ const i18n = useI18n();
 
 .label {
 	font-size: var(--font-size--xs);
-	color: var(--color--text);
+	color: var(--color--text--shade-1);
 	font-weight: var(--font-weight--regular);
-}
-
-.openDiffButton {
-	color: var(--color--text);
 }
 
 .body {
@@ -160,7 +151,7 @@ const i18n = useI18n();
 
 .nodeName {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text);
+	color: var(--color--text--shade-1);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
