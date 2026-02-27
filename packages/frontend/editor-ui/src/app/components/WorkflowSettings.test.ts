@@ -727,7 +727,9 @@ describe('WorkflowSettingsVue', () => {
 		});
 
 		it('should save with empty credentialResolverId when resolver is cleared', async () => {
-			// Simulate a resolver being cleared (clearable sets value to '')
+			// Element Plus clearable sets the model value to '' when the clear icon is clicked.
+			// The clear icon requires CSS hover state which jsdom cannot simulate,
+			// so we verify the save behavior when the value is already empty.
 			workflowsStore.workflowSettings.credentialResolverId = '';
 
 			const { getByRole } = createComponent({ pinia });
