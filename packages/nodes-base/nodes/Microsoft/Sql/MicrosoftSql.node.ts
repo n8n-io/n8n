@@ -306,7 +306,7 @@ export class MicrosoftSql implements INodeType {
 						);
 					}
 
-					let queryValues: Array<string | number | IDataObject> = [];
+					let queryValues: Array<string | number> = [];
 					let queryReplacement = this.getNodeParameter('options.queryReplacement', i, '') as
 						| string
 						| string[];
@@ -316,7 +316,9 @@ export class MicrosoftSql implements INodeType {
 					}
 
 					if (Array.isArray(queryReplacement)) {
-						queryValues = queryReplacement;
+						queryValues = queryReplacement.filter(
+							(value) => typeof value === 'string' || typeof value === 'number',
+						);
 					} else if (queryReplacement) {
 						throw new NodeOperationError(
 							this.getNode(),
