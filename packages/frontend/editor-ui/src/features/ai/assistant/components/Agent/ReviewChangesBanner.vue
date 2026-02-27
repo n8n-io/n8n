@@ -129,14 +129,14 @@ const i18n = useI18n();
 .nodeList {
 	list-style: none;
 	margin: 0;
-	padding: 0 var(--spacing--2xs) var(--spacing--3xs);
+	padding: 0 var(--spacing--4xs) var(--spacing--2xs);
 }
 
 .nodeItem {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--3xs) var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--4xs);
 	border-radius: var(--radius);
 	cursor: pointer;
 
