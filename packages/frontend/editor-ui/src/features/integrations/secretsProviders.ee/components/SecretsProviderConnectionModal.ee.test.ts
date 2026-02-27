@@ -138,6 +138,7 @@ const initialState = {
 			'external-secrets': {
 				multipleConnections: true,
 				forProjects: true,
+				roleBasedAccess: false,
 			},
 		},
 	},
