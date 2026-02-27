@@ -259,7 +259,7 @@ export async function executeSqlQueryAndPrepareResults(
 	pool: mssql.ConnectionPool,
 	rawQuery: string,
 	itemIndex: number,
-	queryValues: Array<string | number> = [],
+	queryValues: Array<string | number | IDataObject> = [],
 ): Promise<INodeExecutionData[]> {
 	const request = pool.request();
 

@@ -306,7 +306,7 @@ export class MicrosoftSql implements INodeType {
 						);
 					}
 
-					let queryValues: Array<string | number> = [];
+					let queryValues: Array<string | number | IDataObject> = [];
 					let queryReplacement = this.getNodeParameter('options.queryReplacement', i, '') as
 						| string
 						| string[];
@@ -314,11 +314,13 @@ export class MicrosoftSql implements INodeType {
 					if (typeof queryReplacement === 'string' && queryReplacement) {
 						queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
 					}
+					if (queryReplacement !== '' && !Array.isArray(queryReplacement)) {
+						// convert non-string single expression values to arrays
+						queryReplacement = [queryReplacement];
+					}
 
 					if (Array.isArray(queryReplacement)) {
-						queryValues = queryReplacement.filter(
-							(value) => typeof value === 'string' || typeof value === 'number',
-						);
+						queryValues = queryReplacement;
 					} else if (queryReplacement) {
 						throw new NodeOperationError(
 							this.getNode(),
