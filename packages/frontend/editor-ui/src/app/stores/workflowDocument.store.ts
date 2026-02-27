@@ -2,6 +2,8 @@ import { defineStore, getActivePinia, type StoreGeneric } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { inject } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
 import { useWorkflowDocumentChecksum } from './workflowDocument/useWorkflowDocumentChecksum';
@@ -9,6 +11,7 @@ import { useWorkflowDocumentMeta } from './workflowDocument/useWorkflowDocumentM
 import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocumentPinData';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
 import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
+import { useWorkflowDocumentNodes } from './workflowDocument/useWorkflowDocumentNodes';
 
 export {
 	getPinDataSize,
@@ -57,6 +60,12 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentTags = useWorkflowDocumentTags();
 		const workflowDocumentPinData = useWorkflowDocumentPinData();
 		const workflowDocumentTimestamps = useWorkflowDocumentTimestamps();
+		const nodeTypesStore = useNodeTypesStore();
+		const { onStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
+			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
+		});
+
+		onStateDirty(() => useUIStore().markStateDirty());
 
 		return {
 			workflowId,
@@ -68,6 +77,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentTags,
 			...workflowDocumentPinData,
 			...workflowDocumentTimestamps,
+			...workflowDocumentNodes,
 		};
 	})();
 }
