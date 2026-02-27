@@ -102,13 +102,26 @@ const originalBinaryMode = ref<undefined | WorkflowSettingsBinaryMode>(undefined
 
 const {
 	resolvers: credentialResolvers,
+	resolverTypes: credentialResolverTypes,
 	fetchResolvers: loadCredentialResolvers,
+	fetchResolverTypes: loadCredentialResolverTypes,
 	openCreateModal,
 	openEditModal,
 } = useCredentialResolvers();
 const executionTimeout = ref(0);
 const maxExecutionTimeout = ref(0);
 const timeoutHMS = ref<ITimeoutHMS>({ hours: 0, minutes: 0, seconds: 0 });
+
+const isSelectedResolverEditable = computed(() => {
+	const resolverId = workflowSettings.value.credentialResolverId;
+	if (!resolverId) return false;
+
+	const resolver = credentialResolvers.value.find((r) => r.id === resolverId);
+	if (!resolver) return false;
+
+	const resolverType = credentialResolverTypes.value.find((t) => t.name === resolver.type);
+	return !!resolverType?.options?.length;
+});
 
 const helpTexts = computed(() => ({
 	errorWorkflow: i18n.baseText('workflowSettings.helpTexts.errorWorkflow'),
@@ -628,7 +641,7 @@ onMounted(async () => {
 		];
 
 		if (isCredentialResolverEnabled.value) {
-			promises.push(loadCredentialResolvers());
+			promises.push(loadCredentialResolvers(), loadCredentialResolverTypes());
 		}
 
 		await Promise.all(promises);
@@ -850,7 +863,7 @@ onBeforeUnmount(() => {
 								</template>
 							</N8nSelect>
 							<N8nIconButton
-								v-if="workflowSettings.credentialResolverId"
+								v-if="isSelectedResolverEditable"
 								variant="ghost"
 								icon="pen"
 								size="small"
