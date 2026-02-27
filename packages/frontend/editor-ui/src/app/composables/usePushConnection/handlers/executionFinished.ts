@@ -274,7 +274,10 @@ export function handleExecutionFinishedWithWaitTill(options: {
 	const workflowSaving = useWorkflowSaving(options);
 	const workflowObject = workflowsStore.workflowObject;
 
-	const workflowSettings = workflowsStore.workflowSettings;
+	const workflowDocumentStore = workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined;
+	const workflowSettings = workflowDocumentStore?.settings ?? {};
 	const saveManualExecutions =
 		workflowSettings.saveManualExecutions ?? settingsStore.saveManualExecutions;
 

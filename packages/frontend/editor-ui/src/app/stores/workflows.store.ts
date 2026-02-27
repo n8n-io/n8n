@@ -160,8 +160,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const workflowVersionId = computed(() => workflow.value.versionId);
 
-	const workflowSettings = computed(() => workflow.value.settings ?? { ...defaults.settings });
-
 	// A workflow is new if it hasn't been saved to the backend yet
 	const isNewWorkflow = computed(() => {
 		if (!workflow.value.id) return true;
@@ -584,7 +582,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			connections: copyData ? deepCopy(connections) : connections,
 			active: false,
 			nodeTypes,
-			settings: workflow.value.settings ?? { ...defaults.settings },
+			settings: workflowDocumentStore?.settings ?? { ...defaults.settings },
 			pinData: workflowDocumentStore?.getPinDataSnapshot() ?? {},
 		});
 	}
@@ -821,11 +819,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowExecutionResultDataLastUpdate.value = Date.now();
 			workflowExecutionStartedData.value = undefined;
 		}
-	}
-
-	function setWorkflowSettings(workflowSettings: IWorkflowSettings) {
-		workflow.value.settings = workflowSettings as IWorkflowDb['settings'];
-		workflowObject.value.setSettings(workflowSettings);
 	}
 
 	function setWorkflow(value: IWorkflowDb): void {
@@ -1420,11 +1413,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		let currentVersionId = '';
 		let currentChecksum = '';
 		const isCurrentWorkflow = id === workflow.value.id;
+		const workflowDocumentStore = isCurrentWorkflow
+			? useWorkflowDocumentStore(createWorkflowDocumentId(id))
+			: undefined;
 
-		if (isCurrentWorkflow) {
-			currentSettings = workflow.value.settings ?? ({} as IWorkflowSettings);
+		if (isCurrentWorkflow && workflowDocumentStore) {
+			currentSettings = (workflowDocumentStore.settings ?? {}) as IWorkflowSettings;
 			currentVersionId = workflow.value.versionId;
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
 			currentChecksum = workflowDocumentStore.checksum;
 		} else {
 			const cached = workflowsListStore.getWorkflowById(id);
@@ -1450,8 +1445,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		});
 
 		// Update local store state to reflect the change
-		if (isCurrentWorkflow) {
-			setWorkflowSettings(updated.settings ?? {});
+		if (isCurrentWorkflow && workflowDocumentStore) {
+			workflowDocumentStore.setSettings(updated.settings ?? {});
 		} else if (workflowsListStore.getWorkflowById(id)) {
 			workflowsListStore.updateWorkflowInCache(id, {
 				settings: updated.settings,
@@ -1698,7 +1693,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowName,
 		workflowId,
 		workflowVersionId,
-		workflowSettings,
 		isNewWorkflow,
 		isWorkflowSaved,
 		workflowTriggerNodes,
@@ -1806,7 +1800,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		// This is exposed to ease the refactoring to the injected workflowState composable
 		// Please do not use outside this context
 		private: {
-			setWorkflowSettings,
 			setActiveExecutionId,
 		},
 	};

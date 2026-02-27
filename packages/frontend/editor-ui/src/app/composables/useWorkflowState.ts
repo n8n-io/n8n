@@ -21,7 +21,6 @@ import {
 	NodeHelpers,
 	type IDataObject,
 	type INodeParameters,
-	type IWorkflowSettings,
 } from 'n8n-workflow';
 import { inject } from 'vue';
 import * as workflowsApi from '@/app/api/workflows';
@@ -123,10 +122,6 @@ export function useWorkflowState() {
 		// Set the workflow ID directly, or empty string if not provided
 		ws.workflow.id = id || '';
 		ws.workflowObject.id = ws.workflow.id;
-	}
-
-	function setWorkflowSettings(workflowSettings: IWorkflowSettings) {
-		ws.private.setWorkflowSettings(workflowSettings);
 	}
 
 	function setWorkflowProperty<K extends keyof IWorkflowDb>(key: K, value: IWorkflowDb[K]) {
@@ -232,7 +227,8 @@ export function useWorkflowState() {
 
 		setWorkflowId('');
 		setWorkflowName({ newName: '', setStateDirty: false });
-		setWorkflowSettings({ ...ws.defaults.settings });
+		// Settings are managed by workflowDocumentStore; reset the runtime Workflow instance directly
+		ws.workflowObject.setSettings({ ...ws.defaults.settings });
 		// Note: Tags are now managed by workflowDocumentStore, which is disposed during reset
 
 		setActiveExecutionId(undefined);
@@ -437,7 +433,6 @@ export function useWorkflowState() {
 		resetAllNodesIssues,
 		setWorkflowId,
 		setWorkflowName,
-		setWorkflowSettings,
 		setWorkflowProperty,
 		setActiveExecutionId,
 		getNewWorkflowDataAndMakeShareable,
