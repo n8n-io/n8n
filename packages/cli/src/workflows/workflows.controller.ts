@@ -39,7 +39,7 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
 import express from 'express';
-import { UnexpectedError, calculateWorkflowChecksum } from 'n8n-workflow';
+import { calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { CollaborationService } from '../collaboration/collaboration.service';
 
@@ -655,26 +655,19 @@ export class WorkflowsController {
 	@Post('/:workflowId/run')
 	@ProjectScope('workflow:execute')
 	async runManually(req: WorkflowRequest.ManualRun, _res: unknown) {
-		if (!req.body.workflowData.id) {
-			throw new UnexpectedError('You cannot execute a workflow without an ID');
-		}
+		const workflowId = req.params.workflowId;
 
-		if (req.params.workflowId !== req.body.workflowData.id) {
-			throw new UnexpectedError('Workflow ID in body does not match workflow ID in URL');
-		}
+		// Always load the stored workflow from the database.
+		// This prevents execution of arbitrary workflow definitions —
+		// users can only execute workflows as they exist in the DB.
+		const dbWorkflow = await this.workflowRepository.get({ id: workflowId });
 
-		if (this.license.isSharingEnabled()) {
-			const workflow = this.workflowRepository.create(req.body.workflowData);
-
-			const safeWorkflow = await this.enterpriseWorkflowService.preventTampering(
-				workflow,
-				workflow.id,
-				req.user,
-			);
-			req.body.workflowData.nodes = safeWorkflow.nodes;
+		if (!dbWorkflow) {
+			throw new NotFoundError(`Workflow with ID "${workflowId}" not found`);
 		}
 
 		const result = await this.workflowExecutionService.executeManually(
+			dbWorkflow,
 			req.body,
 			req.user,
 			req.headers['push-ref'],
@@ -689,8 +682,8 @@ export class WorkflowsController {
 					lastName: req.user.lastName,
 					role: req.user.role,
 				},
-				workflowId: req.body.workflowData.id,
-				workflowName: req.body.workflowData.name,
+				workflowId: dbWorkflow.id,
+				workflowName: dbWorkflow.name,
 				executionId: result.executionId,
 				source: 'user-manual',
 			});
