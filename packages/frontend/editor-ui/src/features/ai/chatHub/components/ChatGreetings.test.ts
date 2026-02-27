@@ -20,9 +20,10 @@ const createAgent = (overrides: Partial<ChatModelDto> = {}): ChatModelDto => ({
 	updatedAt: null,
 	createdAt: null,
 	metadata: {
-		inputModalities: ['text'],
 		capabilities: { functionCalling: false },
 		available: true,
+		allowFileUploads: true,
+		allowedFilesMimeTypes: 'text/*',
 	},
 	groupName: null,
 	groupIcon: null,
