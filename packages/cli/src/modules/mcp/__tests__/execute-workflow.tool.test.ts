@@ -373,8 +373,8 @@ describe('execute-workflow MCP tool', () => {
 					nodes: [
 						{
 							id: 'node-1',
-							name: 'Manual',
-							type: MANUAL_TRIGGER_NODE_TYPE,
+							name: 'Error Trigger',
+							type: 'n8n-nodes-base.errorTrigger',
 							typeVersion: 1,
 							position: [0, 0],
 							disabled: false,
@@ -418,8 +418,8 @@ describe('execute-workflow MCP tool', () => {
 					nodes: [
 						{
 							id: 'node-1',
-							name: 'Manual',
-							type: MANUAL_TRIGGER_NODE_TYPE,
+							name: 'Error Trigger',
+							type: 'n8n-nodes-base.errorTrigger',
 							typeVersion: 1,
 							position: [0, 0],
 							disabled: false,

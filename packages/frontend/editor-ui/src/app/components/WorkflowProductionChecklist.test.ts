@@ -33,6 +33,7 @@ import { createTestNode } from '@/__tests__/mocks';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 
 vi.mock('vue-router', async (importOriginal) => {
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -53,6 +54,10 @@ vi.mock('@/app/composables/useMessage', () => ({
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(),
+}));
+
+vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({
+	useMcp: vi.fn(),
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
@@ -151,6 +156,7 @@ describe('WorkflowProductionChecklist', () => {
 	let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
 	let usersStore: ReturnType<typeof useUsersStore>;
+	let mcpComposable: ReturnType<typeof useMcp>;
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
@@ -183,6 +189,11 @@ describe('WorkflowProductionChecklist', () => {
 			track: vi.fn(),
 		} as unknown as ReturnType<typeof useTelemetry>;
 		(useTelemetry as ReturnType<typeof vi.fn>).mockReturnValue(telemetry);
+
+		mcpComposable = {
+			isEligibleForMcpAccess: vi.fn().mockReturnValue(true),
+		} as unknown as ReturnType<typeof useMcp>;
+		(useMcp as ReturnType<typeof vi.fn>).mockReturnValue(mcpComposable);
 	});
 
 	afterEach(() => {
@@ -845,7 +856,7 @@ describe('WorkflowProductionChecklist', () => {
 			});
 		});
 
-		it('should show instance-level MCP action to admins when MCP is disabled at instance level', async () => {
+		it('should show instance-level MCP action to admins when MCP is disabled at instance level and workflow is eligible', async () => {
 			const pinia = createTestingPinia();
 			settingsStore = useSettingsStore(pinia);
 			usersStore = useUsersStore(pinia);
@@ -855,6 +866,8 @@ describe('WorkflowProductionChecklist', () => {
 				mcp: { mcpAccessEnabled: false },
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
+			(mcpComposable.isEligibleForMcpAccess as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
 			renderComponent({
 				props: {
 					workflow: mockWorkflow,
@@ -870,6 +883,32 @@ describe('WorkflowProductionChecklist', () => {
 					moreInfoLink: MCP_DOCS_PAGE_URL,
 					completed: false,
 				});
+			});
+		});
+
+		it('should not show instance-level MCP action to admins when workflow is not eligible for MCP', async () => {
+			const pinia = createTestingPinia();
+			settingsStore = useSettingsStore(pinia);
+			usersStore = useUsersStore(pinia);
+
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
+				mcp: { mcpAccessEnabled: false },
+			});
+			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
+			(mcpComposable.isEligibleForMcpAccess as ReturnType<typeof vi.fn>).mockReturnValue(false);
+
+			renderComponent({
+				props: {
+					workflow: mockWorkflow,
+				},
+				pinia,
+			});
+
+			await vi.waitFor(() => {
+				const actions = mockN8nSuggestedActionsProps.actions;
+				expect(actions).toBeDefined();
+				expect(actions.find((a: { id: string }) => a.id === 'instance-mcp-access')).toBeUndefined();
 			});
 		});
 
@@ -909,6 +948,8 @@ describe('WorkflowProductionChecklist', () => {
 				mcp: { mcpAccessEnabled: false },
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
+			(mcpComposable.isEligibleForMcpAccess as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
 			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
 				suggestedActions: {
 					'instance-mcp-access': { ignored: true },
@@ -929,7 +970,7 @@ describe('WorkflowProductionChecklist', () => {
 			});
 		});
 
-		it('should show workflow-level MCP action when instance MCP is enabled', async () => {
+		it('should show workflow-level MCP action when workflow is eligible', async () => {
 			const pinia = createTestingPinia();
 			settingsStore = useSettingsStore(pinia);
 
@@ -937,6 +978,8 @@ describe('WorkflowProductionChecklist', () => {
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
 				mcp: { mcpAccessEnabled: true },
 			});
+			(mcpComposable.isEligibleForMcpAccess as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
 			renderComponent({
 				props: {
 					workflow: mockWorkflow,
@@ -963,6 +1006,8 @@ describe('WorkflowProductionChecklist', () => {
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
 				mcp: { mcpAccessEnabled: true },
 			});
+			(mcpComposable.isEligibleForMcpAccess as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
 			renderComponent({
 				props: {
 					workflow: {
@@ -987,6 +1032,30 @@ describe('WorkflowProductionChecklist', () => {
 			});
 		});
 
+		it('should not show workflow-level MCP action when workflow is not eligible', async () => {
+			const pinia = createTestingPinia();
+			settingsStore = useSettingsStore(pinia);
+
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
+				mcp: { mcpAccessEnabled: true },
+			});
+			(mcpComposable.isEligibleForMcpAccess as ReturnType<typeof vi.fn>).mockReturnValue(false);
+
+			renderComponent({
+				props: {
+					workflow: mockWorkflow,
+				},
+				pinia,
+			});
+
+			await vi.waitFor(() => {
+				const actions = mockN8nSuggestedActionsProps.actions;
+				expect(actions).toBeDefined();
+				expect(actions.find((a: { id: string }) => a.id === 'workflow-mcp-access')).toBeUndefined();
+			});
+		});
+
 		it('should not show workflow-level MCP action when ignored', async () => {
 			const pinia = createTestingPinia();
 			settingsStore = useSettingsStore(pinia);
@@ -995,6 +1064,8 @@ describe('WorkflowProductionChecklist', () => {
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
 				mcp: { mcpAccessEnabled: true },
 			});
+			(mcpComposable.isEligibleForMcpAccess as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
 			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
 				suggestedActions: {
 					'workflow-mcp-access': { ignored: true },
@@ -1025,6 +1096,8 @@ describe('WorkflowProductionChecklist', () => {
 				mcp: { mcpAccessEnabled: false },
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
+			(mcpComposable.isEligibleForMcpAccess as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
 			renderComponent({
 				props: {
 					workflow: mockWorkflow,
@@ -1053,6 +1126,8 @@ describe('WorkflowProductionChecklist', () => {
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
 				mcp: { mcpAccessEnabled: true },
 			});
+			(mcpComposable.isEligibleForMcpAccess as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
 			renderComponent({
 				props: {
 					workflow: mockWorkflow,

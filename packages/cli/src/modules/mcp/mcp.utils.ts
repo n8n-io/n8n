@@ -1,6 +1,6 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { Request } from 'express';
-import { MANUAL_TRIGGER_NODE_TYPE, type INode } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 
 import { SUPPORTED_MCP_TRIGGERS } from './mcp.constants';
 import { isRecord, isJSONRPCRequest } from './mcp.typeguards';
@@ -51,21 +51,17 @@ export const getToolArguments = (body: unknown): Record<string, unknown> => {
 
 /**
  * Finds the first supported trigger node in the provided nodes array.
- * By default, supported MCP triggers are:
+ * Supported MCP triggers are:
  * - Schedule trigger
  * - Webhook trigger
  * - Form trigger
  * - Chat trigger
- *
- * In `manual` mode, Manual Trigger is also considered.
+ * - Manual trigger
  */
 export const findMcpSupportedTrigger = (
 	nodes: INode[],
 	mode: McpExecutionMode = 'production',
 ): INode | undefined => {
-	const triggerNodeTypes =
-		mode === 'manual'
-			? [MANUAL_TRIGGER_NODE_TYPE, ...Object.keys(SUPPORTED_MCP_TRIGGERS)]
-			: Object.keys(SUPPORTED_MCP_TRIGGERS);
+	const triggerNodeTypes = Object.keys(SUPPORTED_MCP_TRIGGERS);
 	return nodes.find((node) => triggerNodeTypes.includes(node.type) && !node.disabled);
 };
