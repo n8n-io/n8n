@@ -282,7 +282,7 @@ export function useCanvasOperations() {
 		const oldPosition: XYPosition = [...node.position];
 		const newPosition: XYPosition = [position.x, position.y];
 
-		workflowState.setNodePositionById(id, newPosition);
+		workflowDocumentStore.value?.setNodePositionById(id, newPosition);
 
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(
@@ -312,7 +312,7 @@ export function useCanvasOperations() {
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
-		workflowState.setNodeParameters({
+		workflowDocumentStore.value?.setNodeParameters({
 			name: node.name,
 			value: newParameters,
 		});
@@ -377,7 +377,7 @@ export function useCanvasOperations() {
 		// Update also last selected node and execution data
 		workflowsStore.renameNodeSelectedAndExecution({ old: currentName, new: newName });
 
-		workflowsStore.setNodes(Object.values(workflow.nodes));
+		workflowDocumentStore.value?.setNodes(Object.values(workflow.nodes));
 		workflowsStore.setConnections(workflow.connectionsBySourceNode);
 
 		const isRenamingActiveNode = ndvStore.activeNodeName === currentName;
@@ -483,7 +483,7 @@ export function useCanvasOperations() {
 		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
 		workflowsStore.removeNodeExecutionDataById(id);
-		workflowsStore.removeNodeById(id);
+		workflowDocumentStore.value?.removeNodeById(id);
 
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(new RemoveNodeCommand(node, Date.now()));
@@ -509,7 +509,7 @@ export function useCanvasOperations() {
 	}
 
 	function revertDeleteNode(node: INodeUi) {
-		workflowsStore.addNode(node);
+		workflowDocumentStore.value?.addNode(node);
 		uiStore.markStateDirty();
 	}
 
@@ -632,7 +632,7 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		workflowState.setNodeParameters(
+		workflowDocumentStore.value?.setNodeParameters(
 			{
 				name: node.name,
 				value: parameters as NodeParameterValueType,
@@ -868,7 +868,7 @@ export function useCanvasOperations() {
 			throw new Error(i18n.baseText('nodeViewV2.showError.failedToCreateNode'));
 		}
 
-		workflowsStore.addNode(nodeData);
+		workflowDocumentStore.value?.addNode(nodeData);
 		if (options.trackHistory) {
 			historyStore.pushCommandToUndo(new AddNodeCommand(nodeData, Date.now()));
 		}
@@ -2336,7 +2336,7 @@ export function useCanvasOperations() {
 			}
 		});
 
-		workflowsStore.setNodes(data.nodes);
+		workflowDocumentStore.setNodes(data.nodes);
 		workflowsStore.setConnections(data.connections);
 
 		return { workflowDocumentStore };
