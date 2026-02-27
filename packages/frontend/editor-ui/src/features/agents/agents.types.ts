@@ -13,6 +13,7 @@ export interface AgentNode {
 	status: 'idle' | 'active' | 'busy';
 	position: { x: number; y: number };
 	zoneId: string | null;
+	agentAccessLevel: 'external' | 'internal' | 'closed' | null;
 	workflowCount: number;
 	tasksCompleted: number;
 	lastActive: string;

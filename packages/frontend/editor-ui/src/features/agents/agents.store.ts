@@ -85,6 +85,7 @@ export const useAgentsStore = defineStore('agents', () => {
 				status: 'idle' as const,
 				position: { x: 0, y: 0 }, // computed by layoutAndPosition
 				zoneId: null,
+				agentAccessLevel: user.agentAccessLevel ?? null,
 				workflowCount: 0,
 				tasksCompleted: 0,
 				lastActive: 'never',
@@ -371,12 +372,16 @@ export const useAgentsStore = defineStore('agents', () => {
 		}
 	};
 
-	const createAgent = async (firstName: string, avatar?: string) => {
+	const createAgent = async (
+		firstName: string,
+		avatar?: string,
+		agentAccessLevel?: 'external' | 'internal' | 'closed',
+	) => {
 		const response = await makeRestApiRequest<UserResponse>(
 			rootStore.restApiContext,
 			'POST',
 			'/agents',
-			{ firstName, avatar },
+			{ firstName, avatar, agentAccessLevel },
 		);
 
 		const initials =
@@ -403,7 +408,11 @@ export const useAgentsStore = defineStore('agents', () => {
 
 	const updateAgent = async (
 		agentId: string,
-		updates: { firstName?: string; avatar?: string | null },
+		updates: {
+			firstName?: string;
+			avatar?: string | null;
+			agentAccessLevel?: 'external' | 'internal' | 'closed';
+		},
 	) => {
 		const response = await makeRestApiRequest<UserResponse>(
 			rootStore.restApiContext,
@@ -420,6 +429,9 @@ export const useAgentsStore = defineStore('agents', () => {
 			const initials =
 				`${response.firstName?.[0] ?? ''}${response.lastName?.[0] ?? ''}`.toUpperCase();
 			agent.avatar = parseAvatar(response.avatar, initials);
+			if (response.agentAccessLevel !== undefined) {
+				agent.agentAccessLevel = response.agentAccessLevel ?? null;
+			}
 		}
 	};
 

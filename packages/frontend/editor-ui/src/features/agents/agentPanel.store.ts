@@ -131,7 +131,11 @@ export const useAgentPanelStore = defineStore('agentPanel', () => {
 		}
 	};
 
-	const updateAgent = async (updates: { firstName?: string; avatar?: string | null }) => {
+	const updateAgent = async (updates: {
+		firstName?: string;
+		avatar?: string | null;
+		agentAccessLevel?: 'external' | 'internal' | 'closed';
+	}) => {
 		if (!panelAgentId.value) return;
 		await agentsStore.updateAgent(panelAgentId.value, updates);
 	};

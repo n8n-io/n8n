@@ -36,6 +36,7 @@ const canvasRef = ref<HTMLElement>();
 const showAddDialog = ref(false);
 const newAgentName = ref('');
 const newAgentAvatar = ref('');
+const newAgentAccessLevel = ref<'external' | 'internal' | 'closed'>('external');
 const isCreating = ref(false);
 const createdApiKey = ref<string | null>(null);
 
@@ -53,7 +54,7 @@ async function onCreateAgent() {
 	isCreating.value = true;
 	try {
 		const avatar = newAgentAvatar.value.trim() || undefined;
-		const { apiKey } = await agentsStore.createAgent(name, avatar);
+		const { apiKey } = await agentsStore.createAgent(name, avatar, newAgentAccessLevel.value);
 
 		// Re-layout to position the new agent in the unassigned zone
 		if (canvasRef.value) {
@@ -110,6 +111,7 @@ watch(showAddDialog, (open) => {
 		createdApiKey.value = null;
 		newAgentName.value = '';
 		newAgentAvatar.value = '';
+		newAgentAccessLevel.value = 'external';
 		dialogTab.value = 'create';
 		externalUrl.value = '';
 		externalApiKey.value = '';
@@ -352,6 +354,18 @@ function onRemoveConnection(lineId: string) {
 							@keydown.enter="onCreateAgent"
 						/>
 					</div>
+					<div :class="$style.dialogField">
+						<N8nText tag="label" size="small" bold>Access Level</N8nText>
+						<select
+							v-model="newAgentAccessLevel"
+							:class="$style.accessSelect"
+							data-testid="add-agent-access-level"
+						>
+							<option value="external">External — accessible via A2A from other instances</option>
+							<option value="internal">Internal — same-instance agents and users only</option>
+							<option value="closed">Closed — admins and project members only</option>
+						</select>
+					</div>
 					<N8nDialogFooter>
 						<N8nDialogClose as-child>
 							<N8nButton label="Cancel" type="tertiary" size="small" />
@@ -531,5 +545,22 @@ function onRemoveConnection(lineId: string) {
 
 .errorText {
 	margin-top: var(--spacing--4xs);
+}
+
+.accessSelect {
+	width: 100%;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--color--background);
+	color: var(--color--text);
+	font-size: var(--font-size--sm);
+	font-family: var(--font-family);
+	cursor: pointer;
+
+	&:focus {
+		outline: none;
+		border-color: var(--color--primary);
+	}
 }
 </style>

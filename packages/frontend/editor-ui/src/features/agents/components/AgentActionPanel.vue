@@ -445,6 +445,28 @@ function stepStatusIcon(status: string) {
 				<N8nText v-else color="text-light" size="small">No credentials accessible</N8nText>
 			</section>
 
+			<!-- Access Level -->
+			<section v-if="panelStore.selectedAgent" :class="$style.section">
+				<N8nText tag="h4" size="small" bold :class="$style.sectionTitle">Access Level</N8nText>
+				<select
+					:value="panelStore.selectedAgent.agentAccessLevel ?? 'external'"
+					:class="$style.accessSelect"
+					data-testid="agent-access-level"
+					@change="
+						panelStore.updateAgent({
+							agentAccessLevel: ($event.target as HTMLSelectElement).value as
+								| 'external'
+								| 'internal'
+								| 'closed',
+						})
+					"
+				>
+					<option value="external">External — accessible via A2A</option>
+					<option value="internal">Internal — same-instance only</option>
+					<option value="closed">Closed — admins and project members only</option>
+				</select>
+			</section>
+
 			<!-- Connected Agents -->
 			<section v-if="panelStore.connectedAgents.length" :class="$style.section">
 				<N8nText tag="h4" size="small" bold :class="$style.sectionTitle">Connected Agents</N8nText>
@@ -1067,5 +1089,22 @@ function stepStatusIcon(status: string) {
 .sseEventData {
 	color: var(--color--text--tint-1);
 	word-break: break-all;
+}
+
+.accessSelect {
+	width: 100%;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--color--background);
+	color: var(--color--text);
+	font-size: var(--font-size--sm);
+	font-family: var(--font-family);
+	cursor: pointer;
+
+	&:focus {
+		outline: none;
+		border-color: var(--color--primary);
+	}
 }
 </style>
