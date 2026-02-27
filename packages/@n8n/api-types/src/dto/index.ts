@@ -115,13 +115,15 @@ export { UpdateRoleDto } from './roles/update-role.dto';
 export { CreateRoleDto } from './roles/create-role.dto';
 export { RoleListQueryDto } from './roles/role-list-query.dto';
 export { RoleGetQueryDto } from './roles/role-get-query.dto';
-export type {
-	RoleProjectAssignment,
-	RoleAssignmentsResponse,
+export {
+	RoleAssignmentsResponseDto,
+	type RoleProjectAssignment,
+	type RoleAssignmentsResponse,
 } from './roles/role-assignments-response.dto';
-export type {
-	RoleProjectMember,
-	RoleProjectMembersResponse,
+export {
+	RoleProjectMembersResponseDto,
+	type RoleProjectMember,
+	type RoleProjectMembersResponse,
 } from './roles/role-project-members-response.dto';
 
 export { OidcConfigDto } from './oidc/config.dto';

@@ -1,5 +1,12 @@
+import {
+	CreateRoleDto,
+	RoleAssignmentsResponseDto,
+	RoleGetQueryDto,
+	RoleListQueryDto,
+	RoleProjectMembersResponseDto,
+	UpdateRoleDto,
+} from '@n8n/api-types';
 import type { RoleAssignmentsResponse, RoleProjectMembersResponse } from '@n8n/api-types';
-import { CreateRoleDto, RoleGetQueryDto, RoleListQueryDto, UpdateRoleDto } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -45,7 +52,8 @@ export class RoleController {
 		@Param('slug') slug: string,
 		@Param('projectId') projectId: string,
 	): Promise<RoleProjectMembersResponse> {
-		return await this.roleService.getRoleProjectMembers(slug, projectId);
+		const result = await this.roleService.getRoleProjectMembers(slug, projectId);
+		return RoleProjectMembersResponseDto.parse(result);
 	}
 
 	@Get('/:slug/assignments')
@@ -55,7 +63,8 @@ export class RoleController {
 		_res: Response,
 		@Param('slug') slug: string,
 	): Promise<RoleAssignmentsResponse> {
-		return await this.roleService.getRoleAssignments(slug);
+		const result = await this.roleService.getRoleAssignments(slug);
+		return RoleAssignmentsResponseDto.parse(result);
 	}
 
 	@Get('/:slug')

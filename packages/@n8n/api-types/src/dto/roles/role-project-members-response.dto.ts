@@ -1,11 +1,19 @@
-export interface RoleProjectMember {
-	userId: string;
-	firstName: string | null;
-	lastName: string | null;
-	email: string;
-	role: string;
-}
+import { z } from 'zod';
 
-export interface RoleProjectMembersResponse {
-	members: RoleProjectMember[];
-}
+import { Z } from '../../zod-class';
+
+const roleProjectMemberSchema = z.object({
+	userId: z.string(),
+	firstName: z.string().nullable(),
+	lastName: z.string().nullable(),
+	email: z.string(),
+	role: z.string(),
+});
+
+export type RoleProjectMember = z.infer<typeof roleProjectMemberSchema>;
+
+export class RoleProjectMembersResponseDto extends Z.class({
+	members: z.array(roleProjectMemberSchema),
+}) {}
+
+export type RoleProjectMembersResponse = InstanceType<typeof RoleProjectMembersResponseDto>;

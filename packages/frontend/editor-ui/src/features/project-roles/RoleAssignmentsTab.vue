@@ -6,7 +6,7 @@ import type { RoleProjectAssignment } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useAsyncState } from '@vueuse/core';
 import dateformat from 'dateformat';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import RoleProjectMembersModal from './RoleProjectMembersModal.vue';
@@ -16,9 +16,18 @@ const props = defineProps<{ roleSlug: string }>();
 const rolesStore = useRolesStore();
 const i18n = useI18n();
 
-const { state: assignments, isLoading } = useAsyncState(
-	async () => await rolesStore.fetchRoleAssignments(props.roleSlug),
-	{ projects: [], totalProjects: 0 },
+const {
+	state: assignments,
+	isLoading,
+	execute,
+} = useAsyncState(async () => await rolesStore.fetchRoleAssignments(props.roleSlug), {
+	projects: [],
+	totalProjects: 0,
+});
+
+watch(
+	() => props.roleSlug,
+	() => void execute(),
 );
 
 const membersModalOpen = ref(false);
