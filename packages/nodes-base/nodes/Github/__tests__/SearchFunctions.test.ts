@@ -1,9 +1,18 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { getUsers, getRepositories, getWorkflows, getRefs } from '../SearchFunctions';
+import {
+	getOrganizations,
+	getUsers,
+	getRepositories,
+	getWorkflows,
+	getRefs,
+} from '../SearchFunctions';
 
 const mockLoadOptionsFunctions = {
-	getNodeParameter: jest.fn(),
+	getNodeParameter: jest.fn().mockImplementation((name: string) => {
+		if (name === 'authentication') return 'accessToken';
+		return undefined;
+	}),
 	getCredentials: jest.fn().mockResolvedValue({
 		server: 'https://api.github.com',
 	}),
@@ -109,6 +118,55 @@ describe('Search Functions', () => {
 					qs: expect.objectContaining({ page: 3 }),
 				}),
 			);
+		});
+	});
+
+	describe('getOrganizations', () => {
+		it('should fetch organizations', async () => {
+			const responseData = [
+				{ login: 'org-1', html_url: 'https://github.com/org-1' },
+				{ login: 'org-2', html_url: 'https://github.com/org-2' },
+			];
+
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				responseData,
+			);
+
+			const result = await getOrganizations.call(mockLoadOptionsFunctions);
+
+			expect(result).toEqual({
+				results: [
+					{ name: 'org-1', value: 'org-1', url: 'https://github.com/org-1' },
+					{ name: 'org-2', value: 'org-2', url: 'https://github.com/org-2' },
+				],
+				paginationToken: undefined,
+			});
+
+			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					method: 'GET',
+					uri: expect.stringContaining('/user/orgs'),
+					qs: expect.objectContaining({ page: 1 }),
+				}),
+			);
+		});
+
+		it('should filter organizations when filter is provided', async () => {
+			const responseData = [
+				{ login: 'n8n-io', html_url: 'https://github.com/n8n-io' },
+				{ login: 'other-org', html_url: 'https://github.com/other-org' },
+			];
+
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				responseData,
+			);
+
+			const result = await getOrganizations.call(mockLoadOptionsFunctions, 'n8n');
+
+			expect(result.results).toEqual([
+				{ name: 'n8n-io', value: 'n8n-io', url: 'https://github.com/n8n-io' },
+			]);
 		});
 	});
 

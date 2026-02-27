@@ -12,7 +12,7 @@ import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workf
 
 import { githubApiRequest } from './GenericFunctions';
 import { verifySignature } from './GithubTriggerHelpers';
-import { getRepositories, getUsers } from './SearchFunctions';
+import { getOrganizations, getRepositories, getUsers } from './SearchFunctions';
 
 export class GithubTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -22,8 +22,9 @@ export class GithubTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle:
-			'={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
-		description: 'Starts the workflow when Github events occur',
+			'={{$parameter["scope"] === "organization" ? $parameter["organization"] + " (org)" : $parameter["owner"] + "/" + $parameter["repository"]}}: {{$parameter["events"].join(", ")}}',
+		description:
+			'Starts the workflow when Github events occur in a repository or organization',
 		defaults: {
 			name: 'Github Trigger',
 		},
@@ -66,6 +67,86 @@ export class GithubTrigger implements INodeType {
 				default: '',
 			},
 			{
+				displayName: 'Source',
+				name: 'scope',
+				type: 'options',
+				options: [
+					{
+						name: 'Repository',
+						value: 'repository',
+						description: 'Receive events from a specific repository',
+					},
+					{
+						name: 'Organization',
+						value: 'organization',
+						description:
+							'Receive events from all repositories in an organization (issues, PRs, etc.)',
+					},
+				],
+				default: 'repository',
+				description: 'Whether to listen to a single repository or the entire organization',
+			},
+			{
+				displayName: 'Organization',
+				name: 'organization',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				displayOptions: {
+					show: {
+						scope: ['organization'],
+					},
+				},
+				modes: [
+					{
+						displayName: 'Organization',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an organization...',
+						typeOptions: {
+							searchListMethod: 'getOrganizations',
+							searchable: true,
+							searchFilterRequired: true,
+						},
+					},
+					{
+						displayName: 'Link',
+						name: 'url',
+						type: 'string',
+						placeholder: 'e.g. https://github.com/n8n-io',
+						extractValue: {
+							type: 'regex',
+							regex: 'https:\\/\\/(?:[^/]+)\\/([-_0-9a-zA-Z]+)',
+						},
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https:\\/\\/([^/]+)\\/([-_0-9a-zA-Z]+)(?:.*)',
+									errorMessage: 'Not a valid Github organization URL',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. n8n-io',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[-_a-zA-Z0-9]+',
+									errorMessage: 'Not a valid Github Organization Name',
+								},
+							},
+						],
+						url: '=https://github.com/{{$value}}',
+					},
+				],
+			},
+			{
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
@@ -87,6 +168,11 @@ export class GithubTrigger implements INodeType {
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
+				displayOptions: {
+					show: {
+						scope: ['repository'],
+					},
+				},
 				modes: [
 					{
 						displayName: 'Repository Owner',
@@ -142,6 +228,11 @@ export class GithubTrigger implements INodeType {
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
+				displayOptions: {
+					show: {
+						scope: ['repository'],
+					},
+				},
 				modes: [
 					{
 						displayName: 'Repository Name',
@@ -466,12 +557,12 @@ export class GithubTrigger implements INodeType {
 					return false;
 				}
 
-				// Webhook got created before so check if it still exists
-				const owner = this.getNodeParameter('owner', '', { extractValue: true }) as string;
-				const repository = this.getNodeParameter('repository', '', {
-					extractValue: true,
-				}) as string;
-				const endpoint = `/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
+				// Use stored scope and identifiers from creation (user may have changed the dropdown)
+				const scope = (webhookData.webhookScope as string) ?? this.getNodeParameter('scope', '');
+				const endpoint =
+					scope === 'organization'
+						? `/orgs/${webhookData.webhookOrg ?? this.getNodeParameter('organization', '', { extractValue: true })}/hooks/${webhookData.webhookId}`
+						: `/repos/${webhookData.webhookOwner ?? this.getNodeParameter('owner', '', { extractValue: true })}/${webhookData.webhookRepo ?? this.getNodeParameter('repository', '', { extractValue: true })}/hooks/${webhookData.webhookId}`;
 
 				try {
 					await githubApiRequest.call(this, 'GET', endpoint, {});
@@ -480,6 +571,10 @@ export class GithubTrigger implements INodeType {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
+						delete webhookData.webhookScope;
+						delete webhookData.webhookOrg;
+						delete webhookData.webhookOwner;
+						delete webhookData.webhookRepo;
 
 						return false;
 					}
@@ -500,14 +595,14 @@ export class GithubTrigger implements INodeType {
 					);
 				}
 
-				const owner = this.getNodeParameter('owner', '', { extractValue: true }) as string;
-				const repository = this.getNodeParameter('repository', '', {
-					extractValue: true,
-				}) as string;
+				const scope = this.getNodeParameter('scope', '') as string;
 				const events = this.getNodeParameter('events', []);
-
-				const endpoint = `/repos/${owner}/${repository}/hooks`;
 				const options = this.getNodeParameter('options') as { insecureSSL: boolean };
+
+				const endpoint =
+					scope === 'organization'
+						? `/orgs/${this.getNodeParameter('organization', '', { extractValue: true })}/hooks`
+						: `/repos/${this.getNodeParameter('owner', '', { extractValue: true })}/${this.getNodeParameter('repository', '', { extractValue: true })}/hooks`;
 
 				// Generate a secure random secret for webhook signature verification
 				const webhookSecret = randomBytes(32).toString('hex');
@@ -544,6 +639,25 @@ export class GithubTrigger implements INodeType {
 									// create it again simply save the webhook-id
 									webhookData.webhookId = webhook.id as string;
 									webhookData.webhookEvents = webhook.events as string[];
+									webhookData.webhookScope = scope;
+									if (scope === 'organization') {
+										webhookData.webhookOrg = this.getNodeParameter(
+											'organization',
+											'',
+											{ extractValue: true },
+										);
+									} else {
+										webhookData.webhookOwner = this.getNodeParameter(
+											'owner',
+											'',
+											{ extractValue: true },
+										);
+										webhookData.webhookRepo = this.getNodeParameter(
+											'repository',
+											'',
+											{ extractValue: true },
+										);
+									}
 									// Legacy webhook without secret on GitHub's side - not setting webhookData.webhookSecret
 									// so signature verification is skipped. To enable it, deactivate and reactivate the workflow.
 									return true;
@@ -559,11 +673,13 @@ export class GithubTrigger implements INodeType {
 					}
 
 					if (error.httpCode === '404') {
-						throw new NodeOperationError(
-							this.getNode(),
-							'Check that the repository exists and that you have permission to create the webhooks this node requires',
-							{ level: 'warning' },
-						);
+						const message =
+							scope === 'organization'
+								? 'Check that the organization exists and that you have owner privileges to create org webhooks'
+								: 'Check that the repository exists and that you have permission to create the webhooks this node requires';
+						throw new NodeOperationError(this.getNode(), message, {
+							level: 'warning',
+						});
 					}
 
 					throw error;
@@ -579,6 +695,19 @@ export class GithubTrigger implements INodeType {
 				webhookData.webhookId = responseData.id as string;
 				webhookData.webhookEvents = responseData.events as string[];
 				webhookData.webhookSecret = webhookSecret;
+				webhookData.webhookScope = scope;
+				if (scope === 'organization') {
+					webhookData.webhookOrg = this.getNodeParameter('organization', '', {
+						extractValue: true,
+					});
+				} else {
+					webhookData.webhookOwner = this.getNodeParameter('owner', '', {
+						extractValue: true,
+					});
+					webhookData.webhookRepo = this.getNodeParameter('repository', '', {
+						extractValue: true,
+					});
+				}
 
 				return true;
 			},
@@ -586,11 +715,12 @@ export class GithubTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const owner = this.getNodeParameter('owner', '', { extractValue: true }) as string;
-					const repository = this.getNodeParameter('repository', '', {
-						extractValue: true,
-					}) as string;
-					const endpoint = `/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
+					// Use stored scope and identifiers from creation (user may have changed the dropdown)
+					const scope = (webhookData.webhookScope as string) ?? this.getNodeParameter('scope', '');
+					const endpoint =
+						scope === 'organization'
+							? `/orgs/${webhookData.webhookOrg ?? this.getNodeParameter('organization', '', { extractValue: true })}/hooks/${webhookData.webhookId}`
+							: `/repos/${webhookData.webhookOwner ?? this.getNodeParameter('owner', '', { extractValue: true })}/${webhookData.webhookRepo ?? this.getNodeParameter('repository', '', { extractValue: true })}/hooks/${webhookData.webhookId}`;
 					const body = {};
 
 					try {
@@ -604,6 +734,10 @@ export class GithubTrigger implements INodeType {
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
 					delete webhookData.webhookSecret;
+					delete webhookData.webhookScope;
+					delete webhookData.webhookOrg;
+					delete webhookData.webhookOwner;
+					delete webhookData.webhookRepo;
 				}
 
 				return true;
@@ -615,6 +749,7 @@ export class GithubTrigger implements INodeType {
 		listSearch: {
 			getUsers,
 			getRepositories,
+			getOrganizations,
 		},
 	};
 

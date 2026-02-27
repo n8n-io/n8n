@@ -30,6 +30,44 @@ type RefItem = {
 	ref: string;
 };
 
+type OrganizationSearchItem = {
+	login: string;
+	html_url: string;
+};
+
+export async function getOrganizations(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const page = paginationToken ? +paginationToken : 1;
+	const per_page = 100;
+
+	const responseData: OrganizationSearchItem[] = await githubApiRequest.call(
+		this,
+		'GET',
+		'/user/orgs',
+		{},
+		{ page, per_page },
+	);
+
+	let results: INodeListSearchItems[] = responseData.map((item: OrganizationSearchItem) => ({
+		name: item.login,
+		value: item.login,
+		url: item.html_url,
+	}));
+
+	if (filter) {
+		results = results.filter((org) =>
+			org.name.toLowerCase().includes(filter.toLowerCase()),
+		);
+	}
+
+	const nextPaginationToken =
+		responseData.length === per_page ? page + 1 : undefined;
+	return { results, paginationToken: nextPaginationToken };
+}
+
 export async function getUsers(
 	this: ILoadOptionsFunctions,
 	filter?: string,

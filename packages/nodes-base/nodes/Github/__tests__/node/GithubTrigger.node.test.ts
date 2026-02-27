@@ -17,8 +17,10 @@ describe('GithubTrigger Node', () => {
 			mockThis = {
 				getWorkflowStaticData: () => webhookData,
 				getNodeParameter: jest.fn().mockImplementation((name: string) => {
+					if (name === 'scope') return 'repository';
 					if (name === 'owner') return 'some-owner';
 					if (name === 'repository') return 'some-repo';
+					return undefined;
 				}),
 			};
 		});
@@ -33,6 +35,29 @@ describe('GithubTrigger Node', () => {
 			expect(webhookData.webhookId).toBeUndefined();
 			expect(webhookData.webhookEvents).toBeUndefined();
 		});
+
+		it('should use org endpoint when webhookScope is organization', async () => {
+			webhookData.webhookScope = 'organization';
+			webhookData.webhookOrg = 'my-org';
+			mockThis.getNodeParameter = jest.fn().mockImplementation((name: string) => {
+				if (name === 'scope') return 'organization';
+				if (name === 'organization') return 'my-org';
+				return undefined;
+			});
+
+			const apiRequestSpy = jest
+				.spyOn(GenericFunctions, 'githubApiRequest')
+				.mockResolvedValueOnce({});
+
+			const trigger = new GithubTrigger();
+			await trigger.webhookMethods.default.checkExists.call(mockThis);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/orgs/my-org/hooks/123456',
+				{},
+			);
+		});
 	});
 
 	describe('create webhook method', () => {
@@ -44,10 +69,12 @@ describe('GithubTrigger Node', () => {
 			mockThis = {
 				getNodeWebhookUrl: () => 'https://example.com/webhook',
 				getNodeParameter: jest.fn().mockImplementation((name: string) => {
+					if (name === 'scope') return 'repository';
 					if (name === 'owner') return 'some-owner';
 					if (name === 'repository') return 'some-repo';
 					if (name === 'events') return ['push'];
 					if (name === 'options') return { insecureSSL: false };
+					return undefined;
 				}),
 				getWorkflowStaticData: () => webhookData,
 				getNode: () => ({}),
@@ -124,6 +151,63 @@ describe('GithubTrigger Node', () => {
 				/Check that the repository exists/,
 			);
 		});
+
+		it('should use org endpoint when scope is organization', async () => {
+			mockThis.getNodeParameter = jest.fn().mockImplementation((name: string) => {
+				if (name === 'scope') return 'organization';
+				if (name === 'organization') return 'my-org';
+				if (name === 'events') return ['issues', 'pull_request'];
+				if (name === 'options') return { insecureSSL: false };
+				return undefined;
+			});
+
+			const createdWebhook = { id: '999', active: true };
+			const apiRequestSpy = jest
+				.spyOn(GenericFunctions, 'githubApiRequest')
+				.mockResolvedValueOnce(createdWebhook);
+
+			const trigger = new GithubTrigger();
+			await trigger.webhookMethods.default.create.call(mockThis);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'/orgs/my-org/hooks',
+				expect.objectContaining({
+					name: 'web',
+					events: ['issues', 'pull_request'],
+					active: true,
+					config: expect.objectContaining({
+						content_type: 'json',
+						secret: expect.any(String),
+					}),
+				}),
+			);
+			expect(webhookData.webhookId).toBe('999');
+			expect(webhookData.webhookScope).toBe('organization');
+			expect(webhookData.webhookOrg).toBe('my-org');
+		});
+
+		it('should throw org-specific message when org is not found (404)', async () => {
+			mockThis.getNodeParameter = jest.fn().mockImplementation((name: string) => {
+				if (name === 'scope') return 'organization';
+				if (name === 'organization') return 'nonexistent-org';
+				if (name === 'events') return ['issues'];
+				if (name === 'options') return { insecureSSL: false };
+				return undefined;
+			});
+
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValue({ httpCode: '404' });
+
+			const trigger = new GithubTrigger();
+
+			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
+				NodeOperationError,
+			);
+
+			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
+				/Check that the organization exists/,
+			);
+		});
 	});
 
 	describe('delete webhook method', () => {
@@ -140,8 +224,10 @@ describe('GithubTrigger Node', () => {
 			mockThis = {
 				getWorkflowStaticData: () => webhookData,
 				getNodeParameter: jest.fn().mockImplementation((name: string) => {
+					if (name === 'scope') return 'repository';
 					if (name === 'owner') return 'some-owner';
 					if (name === 'repository') return 'some-repo';
+					return undefined;
 				}),
 			};
 		});
@@ -156,6 +242,45 @@ describe('GithubTrigger Node', () => {
 			expect(webhookData.webhookId).toBeUndefined();
 			expect(webhookData.webhookEvents).toBeUndefined();
 			expect(webhookData.webhookSecret).toBeUndefined();
+		});
+
+		it('should use org endpoint when webhookScope is organization', async () => {
+			webhookData.webhookScope = 'organization';
+			webhookData.webhookOrg = 'my-org';
+
+			const apiRequestSpy = jest
+				.spyOn(GenericFunctions, 'githubApiRequest')
+				.mockResolvedValueOnce({});
+
+			const trigger = new GithubTrigger();
+			await trigger.webhookMethods.default.delete.call(mockThis);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'DELETE',
+				'/orgs/my-org/hooks/123456',
+				{},
+			);
+			expect(webhookData.webhookId).toBeUndefined();
+			expect(webhookData.webhookScope).toBeUndefined();
+			expect(webhookData.webhookOrg).toBeUndefined();
+		});
+	});
+
+	describe('node description', () => {
+		it('should have scope and organization parameters when scope is organization', () => {
+			const trigger = new GithubTrigger();
+			const scopeParam = trigger.description.properties.find((p) => p.name === 'scope');
+			const orgParam = trigger.description.properties.find((p) => p.name === 'organization');
+
+			expect(scopeParam).toBeDefined();
+			expect(scopeParam?.options).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ value: 'repository' }),
+					expect.objectContaining({ value: 'organization' }),
+				]),
+			);
+			expect(orgParam).toBeDefined();
+			expect(orgParam?.displayOptions?.show).toEqual({ scope: ['organization'] });
 		});
 	});
 
