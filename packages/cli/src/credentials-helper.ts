@@ -405,6 +405,18 @@ export class CredentialsHelper extends ICredentialsHelper {
 				additionalData.workflowSettings,
 				canUseExternalSecrets,
 			);
+			resolvedDynamically = credentialsEntity.isResolvable;
+		} else if (
+			credentialsEntity.isResolvable &&
+			mode !== 'manual' &&
+			additionalData.executionContext !== undefined
+		) {
+			// Dynamic credentials must be resolved in non-manual executions.
+			// If an execution context exists but has no credentials, the trigger
+			// is not configured with context establishment hooks to extract identity.
+			throw new CredentialResolutionError(
+				`Cannot resolve dynamic credential "${credentialsEntity.name}" — no execution context available. Dynamic credentials require a trigger with context establishment hooks configured.`,
+			);
 		}
 
 		let data = decryptedDataOriginal;
