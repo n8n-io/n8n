@@ -23,6 +23,13 @@
 		justify-content: center;
 		align-items: center;
 	}
+
+	/* Hide the badge on configuration (subnode/circular) nodes — it overlaps the connection handle */
+	&:has([data-test-id='canvas-configuration-node']) {
+		&::before {
+			display: none;
+		}
+	}
 }
 
 .ai-diff-added {

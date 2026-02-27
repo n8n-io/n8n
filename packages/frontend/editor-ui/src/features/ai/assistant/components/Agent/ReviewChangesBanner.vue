@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
 import type { NodeChangeEntry } from '@/features/ai/assistant/composables/useReviewChanges';
@@ -42,10 +42,15 @@ const i18n = useI18n();
 					}}
 				</span>
 			</div>
-			<button :class="$style.openDiffLink" @click.stop="emit('openDiff')">
+			<N8nButton
+				size="xsmall"
+				variant="ghost"
+				:class="$style.openDiffButton"
+				@click.stop="emit('openDiff')"
+			>
 				{{ i18n.baseText('aiAssistant.builder.reviewChanges.openDiff') }}
-				<N8nIcon icon="arrow-up-right" size="small" />
-			</button>
+				<N8nIcon icon="arrow-up-right" size="xsmall" />
+			</N8nButton>
 		</div>
 		<div :class="[$style.body, expanded && $style.bodyExpanded]">
 			<ul :class="$style.nodeList">
@@ -59,7 +64,12 @@ const i18n = useI18n();
 					@keydown.enter="emit('selectNode', change.node.id)"
 				>
 					<DiffBadge :type="change.status" />
-					<NodeIcon :node-type="change.nodeType" :size="16" :class="$style.nodeIcon" />
+					<NodeIcon
+						v-if="change.nodeType"
+						:node-type="change.nodeType"
+						:size="16"
+						:class="$style.nodeIcon"
+					/>
 					<span :class="$style.nodeName">{{ change.node.name }}</span>
 				</li>
 			</ul>
@@ -84,7 +94,7 @@ const i18n = useI18n();
 	cursor: pointer;
 
 	&:hover {
-		background-color: var(--color--background--shade-1);
+		background-color: var(--color--background--light-1);
 	}
 }
 
@@ -96,7 +106,7 @@ const i18n = useI18n();
 
 .chevron {
 	transition: transform 0.2s ease;
-	color: var(--color--text--tint-1);
+	color: var(--color--text);
 	flex-shrink: 0;
 }
 
@@ -105,25 +115,13 @@ const i18n = useI18n();
 }
 
 .label {
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--xs);
 	color: var(--color--text);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--regular);
 }
 
-.openDiffLink {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	background: none;
-	border: none;
-	cursor: pointer;
-	padding: 0;
-
-	&:hover {
-		color: var(--color--text);
-	}
+.openDiffButton {
+	color: var(--color--text);
 }
 
 .body {
@@ -146,13 +144,13 @@ const i18n = useI18n();
 .nodeItem {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--4xs) var(--spacing--4xs);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
 	border-radius: var(--radius);
 	cursor: pointer;
 
 	&:hover {
-		background-color: var(--color--background--shade-1);
+		background-color: var(--color--background--light-1);
 	}
 }
 

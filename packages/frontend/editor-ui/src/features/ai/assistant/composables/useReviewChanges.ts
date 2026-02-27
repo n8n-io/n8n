@@ -15,6 +15,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { AI_BUILDER_DIFF_MODAL_KEY, AI_BUILDER_REVIEW_CHANGES_EXPERIMENT } from '@/app/constants';
+import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { SimplifiedNodeType } from '@/Interface';
 
@@ -35,6 +36,7 @@ export function useReviewChanges() {
 	const workflowHistoryStore = useWorkflowHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
+	const chatPanelStateStore = useChatPanelStateStore();
 	const posthogStore = usePostHog();
 	const i18n = useI18n();
 	const isLoadingDiff = ref(false);
@@ -178,6 +180,17 @@ export function useReviewChanges() {
 		() => builderStore.latestRevertVersion,
 		() => {
 			if (isExpanded.value) {
+				isExpanded.value = false;
+				clearCanvasHighlights();
+			}
+		},
+	);
+
+	// Clear highlights when the builder panel is closed
+	watch(
+		() => chatPanelStateStore.isOpen,
+		(isOpen) => {
+			if (!isOpen) {
 				isExpanded.value = false;
 				clearCanvasHighlights();
 			}
