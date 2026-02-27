@@ -62,15 +62,10 @@ export const useAgentsStore = defineStore('agents', () => {
 	const allAgents = computed<AgentNode[]>(() => [...agents.value, ...externalAgents.value]);
 
 	const fetchAgents = async () => {
-		const response = await makeRestApiRequest<{ items: UserResponse[] }>(
+		const agentUsers = await makeRestApiRequest<UserResponse[]>(
 			rootStore.restApiContext,
 			'GET',
-			'/users',
-			{ take: 100, skip: 0 },
-		);
-
-		const agentUsers = response.items.filter(
-			(u) => u.type === 'agent' || u.email?.endsWith('@internal.n8n.local'),
+			'/agents',
 		);
 
 		agents.value = agentUsers.map((user) => {

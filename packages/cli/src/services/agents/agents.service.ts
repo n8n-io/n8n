@@ -165,9 +165,50 @@ export class AgentsService {
 		await this.userRepository.delete({ id: agentId });
 	}
 
-	async listAgents(): Promise<AgentDto[]> {
+	async listAgents(requestingUser: User): Promise<AgentDto[]> {
 		const agents = await this.userRepository.find({ where: { type: 'agent' } });
-		return agents.map(toAgentDto);
+
+		// Role may not be eagerly loaded on req.user — load it explicitly
+		const caller = await this.userRepository.findOne({
+			where: { id: requestingUser.id },
+			relations: ['role'],
+		});
+
+		const isAdmin = caller?.role?.slug === 'global:owner' || caller?.role?.slug === 'global:admin';
+
+		if (isAdmin) {
+			return agents.map(toAgentDto);
+		}
+
+		// Members only see agents that share a TEAM project with them, or external agents.
+		// Personal projects are 1:1 so they must be excluded from the intersection check.
+		const teamProjects = await this.projectRepository.find({ where: { type: 'team' } });
+		const teamProjectIds = new Set(teamProjects.map((p) => p.id));
+
+		const userRels = await this.projectRelationRepository.findAllByUser(requestingUser.id);
+		const userTeamProjectIds = new Set(
+			userRels.filter((r) => teamProjectIds.has(r.projectId)).map((r) => r.projectId),
+		);
+
+		const agentProjectMap = new Map<string, Set<string>>();
+		for (const agent of agents) {
+			const rels = await this.projectRelationRepository.findAllByUser(agent.id);
+			agentProjectMap.set(
+				agent.id,
+				new Set(rels.filter((r) => teamProjectIds.has(r.projectId)).map((r) => r.projectId)),
+			);
+		}
+
+		const visible = agents.filter((agent) => {
+			if (agent.agentAccessLevel === 'external') return true;
+			const agentTeamProjects = agentProjectMap.get(agent.id) ?? new Set();
+			for (const pid of agentTeamProjects) {
+				if (userTeamProjectIds.has(pid)) return true;
+			}
+			return false;
+		});
+
+		return visible.map(toAgentDto);
 	}
 
 	// ── Capabilities & Card ──────────────────────────────────────────────

@@ -184,6 +184,168 @@ const nullAccessBot = makeAgentUser({
 
 const allTargetAgents = [externalBot, internalBot, closedBot, nullAccessBot];
 
+// ── listAgents visibility tests ──────────────────────────────────────
+
+describe('listAgents visibility — admin vs member', () => {
+	beforeEach(() => jest.clearAllMocks());
+
+	function createListAgentsService() {
+		const mocks = createMockedService();
+
+		// Stub projectRepository.find for team project lookups
+		(mocks as any).mockProjectRepository = {
+			find: jest.fn().mockResolvedValue([]),
+			findByIds: jest.fn().mockResolvedValue([]),
+		};
+
+		// Re-create service with the project repo that supports .find()
+		const mockProjectRepo = (mocks as any).mockProjectRepository;
+		const service = new AgentsService(
+			mocks.mockUserRepository as any,
+			{ findByIds: jest.fn().mockResolvedValue([]) } as any, // workflowRepo
+			mocks.mockWorkflowSharingService as any,
+			{ getMany: jest.fn().mockResolvedValue([]) } as any, // credService
+			{ getDecrypted: jest.fn() } as any, // credHelper
+			{
+				findAllByUser: jest.fn().mockResolvedValue([]),
+			} as any, // projectRelationRepo
+			mockProjectRepo as any, // projectRepo
+			{ findWorkflowForUser: jest.fn() } as any, // workflowFinder
+			{ run: jest.fn() } as any, // workflowRunner
+			{ getPostExecutePromise: jest.fn(), stopExecution: jest.fn() } as any, // activeExec
+			{ broadcast: jest.fn() } as any, // push
+			{ createPublicApiKeyForUser: jest.fn() } as any, // apiKey
+			{ encrypt: jest.fn() } as any, // cipher
+		);
+
+		return {
+			service,
+			mockUserRepository: mocks.mockUserRepository,
+			mockProjectRepo,
+			mockProjectRelationRepo: (service as any).projectRelationRepository,
+		};
+	}
+
+	it('admin should see all agents regardless of access level', async () => {
+		const { service, mockUserRepository } = createListAgentsService();
+
+		const adminUser = makeAgentUser({
+			id: 'admin-1',
+			type: 'user' as any,
+			role: { slug: 'global:owner' } as any,
+		});
+
+		mockUserRepository.find.mockResolvedValue([externalBot, internalBot, closedBot, nullAccessBot]);
+		mockUserRepository.findOne.mockResolvedValue(adminUser);
+
+		const result = await service.listAgents(adminUser as any);
+
+		expect(result).toHaveLength(4);
+		expect(result.map((a) => a.firstName)).toEqual(
+			expect.arrayContaining(['ExternalBot', 'InternalBot', 'ClosedBot', 'NullBot']),
+		);
+	});
+
+	it('member should only see agents in shared team projects', async () => {
+		const { service, mockUserRepository, mockProjectRepo, mockProjectRelationRepo } =
+			createListAgentsService();
+
+		const memberUser = makeAgentUser({
+			id: 'member-1',
+			type: 'user' as any,
+			role: { slug: 'global:member' } as any,
+		});
+
+		const teamAgent = makeAgentUser({
+			id: 'team-agent',
+			firstName: 'TeamBot',
+			agentAccessLevel: 'internal',
+		});
+
+		const otherAgent = makeAgentUser({
+			id: 'other-agent',
+			firstName: 'OtherBot',
+			agentAccessLevel: 'internal',
+		});
+
+		mockUserRepository.find.mockResolvedValue([teamAgent, otherAgent]);
+		mockUserRepository.findOne.mockResolvedValue(memberUser);
+
+		// One team project
+		mockProjectRepo.find.mockResolvedValue([{ id: 'team-proj-1', type: 'team' }]);
+
+		// Member is in team-proj-1, teamAgent is in team-proj-1, otherAgent is not
+		mockProjectRelationRepo.findAllByUser.mockImplementation(async (userId: string) => {
+			if (userId === 'member-1')
+				return [{ projectId: 'team-proj-1' }, { projectId: 'personal-member' }];
+			if (userId === 'team-agent')
+				return [{ projectId: 'team-proj-1' }, { projectId: 'personal-team-agent' }];
+			if (userId === 'other-agent') return [{ projectId: 'personal-other-agent' }];
+			return [];
+		});
+
+		const result = await service.listAgents(memberUser as any);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].firstName).toBe('TeamBot');
+	});
+
+	it('member should see external access level agents even without shared project', async () => {
+		const { service, mockUserRepository, mockProjectRepo, mockProjectRelationRepo } =
+			createListAgentsService();
+
+		const memberUser = makeAgentUser({
+			id: 'member-1',
+			type: 'user' as any,
+			role: { slug: 'global:member' } as any,
+		});
+
+		mockUserRepository.find.mockResolvedValue([externalBot, internalBot]);
+		mockUserRepository.findOne.mockResolvedValue(memberUser);
+		mockProjectRepo.find.mockResolvedValue([]);
+		mockProjectRelationRepo.findAllByUser.mockResolvedValue([]);
+
+		const result = await service.listAgents(memberUser as any);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].firstName).toBe('ExternalBot');
+	});
+
+	it('member should NOT see agents via personal project overlap', async () => {
+		const { service, mockUserRepository, mockProjectRepo, mockProjectRelationRepo } =
+			createListAgentsService();
+
+		const memberUser = makeAgentUser({
+			id: 'member-1',
+			type: 'user' as any,
+			role: { slug: 'global:member' } as any,
+		});
+
+		const agentInNoTeam = makeAgentUser({
+			id: 'solo-agent',
+			firstName: 'SoloBot',
+			agentAccessLevel: 'internal',
+		});
+
+		mockUserRepository.find.mockResolvedValue([agentInNoTeam]);
+		mockUserRepository.findOne.mockResolvedValue(memberUser);
+
+		// No team projects exist
+		mockProjectRepo.find.mockResolvedValue([]);
+
+		// Both have personal projects only
+		mockProjectRelationRepo.findAllByUser.mockImplementation(async (userId: string) => {
+			if (userId === 'member-1') return [{ projectId: 'personal-member' }];
+			if (userId === 'solo-agent') return [{ projectId: 'personal-solo' }];
+			return [];
+		});
+
+		const result = await service.listAgents(memberUser as any);
+
+		expect(result).toHaveLength(0);
+	});
+});
+
 describe('delegation visibility — A2A external calls', () => {
 	beforeEach(() => jest.clearAllMocks());
 

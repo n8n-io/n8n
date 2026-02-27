@@ -30,13 +30,13 @@ export class AgentsController {
 	constructor(private readonly agentsService: AgentsService) {}
 
 	@Post('/')
-	@GlobalScope('chatHubAgent:create')
+	@GlobalScope('agent:create')
 	async createAgent(_req: AuthenticatedRequest, _res: Response, @Body payload: CreateAgentDto) {
 		return await this.agentsService.createAgent(payload);
 	}
 
 	@Patch('/:agentId')
-	@GlobalScope('chatHubAgent:update')
+	@GlobalScope('agent:update')
 	async updateAgent(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -47,7 +47,7 @@ export class AgentsController {
 	}
 
 	@Delete('/:agentId')
-	@GlobalScope('chatHubAgent:delete')
+	@GlobalScope('agent:delete')
 	async deleteAgent(_req: AuthenticatedRequest, res: Response, @Param('agentId') agentId: string) {
 		await this.agentsService.deleteAgent(agentId);
 		res.status(204).send();
@@ -55,13 +55,13 @@ export class AgentsController {
 	}
 
 	@Get('/')
-	@GlobalScope('chatHubAgent:list')
-	async listAgents(_req: AuthenticatedRequest) {
-		return await this.agentsService.listAgents();
+	@GlobalScope('agent:list')
+	async listAgents(req: AuthenticatedRequest) {
+		return await this.agentsService.listAgents(req.user);
 	}
 
 	@Get('/:agentId/capabilities')
-	@GlobalScope('chatHubAgent:read')
+	@GlobalScope('agent:read')
 	async getCapabilities(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -77,7 +77,7 @@ export class AgentsController {
 	}
 
 	@Post('/discover')
-	@GlobalScope('chatHubAgent:create')
+	@GlobalScope('agent:create')
 	async discoverExternalAgent(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -121,7 +121,7 @@ export class AgentsController {
 	}
 
 	@Post('/external-task', { usesTemplates: true })
-	@GlobalScope('chatHubAgent:create')
+	@GlobalScope('agent:read')
 	async proxyExternalTask(
 		_req: AuthenticatedRequest,
 		res: Response,
