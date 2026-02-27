@@ -85,7 +85,6 @@ export interface SearchWorkflowsResult {
 		createdAt: string | null;
 		updatedAt: string | null;
 		triggerCount: number | null;
-		nodes: Array<{ name: string; type: string }>;
 		scopes: string[];
 		canExecute: boolean;
 	}>;

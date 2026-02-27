@@ -99,30 +99,22 @@ describe('search-workflows MCP tool', () => {
 				{
 					id: 'a',
 					name: 'Alpha',
-					versionId: 'some-version-id',
-					activeVersionId: expect.any(String),
 					description: null,
 					active: true,
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
-					nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE }],
-					activeNodes: [{ name: 'Schedule Trigger', type: SCHEDULE_TRIGGER_NODE_TYPE }],
 					scopes: ['workflow:read', 'workflow:execute'],
 					canExecute: true,
 				},
 				{
 					id: 'b',
 					name: 'Beta',
-					versionId: 'some-version-id',
-					activeVersionId: 'version-b',
 					description: null,
 					active: true,
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
-					nodes: [{ name: 'Execute subworkflow', type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE }],
-					activeNodes: [{ name: 'Schedule Trigger', type: SCHEDULE_TRIGGER_NODE_TYPE }],
 					scopes: ['workflow:read'],
 					canExecute: false,
 				},
@@ -161,7 +153,7 @@ describe('search-workflows MCP tool', () => {
 			expect(optionsArg.take).toBe(1);
 		});
 
-		test('formats nodes as empty array when missing', async () => {
+		test('formats workflows with basic metadata', async () => {
 			const workflows = [
 				createWorkflow({ id: 'no-nodes', activeVersionId: 'version-no-nodes', nodes: [] }),
 			];
@@ -171,8 +163,6 @@ describe('search-workflows MCP tool', () => {
 			const result = await searchWorkflows(user, workflowService as unknown as WorkflowService, {});
 			expect(result.data[0]).toMatchObject({
 				id: 'no-nodes',
-				nodes: [],
-				activeNodes: [],
 				scopes: [],
 				canExecute: false,
 			});

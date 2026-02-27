@@ -1,5 +1,4 @@
 import { type User, type WorkflowEntity } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -10,7 +9,6 @@ import type {
 	SearchWorkflowsItem,
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
-import { nodeSchema } from './schemas';
 
 import type { ListQuery } from '@/requests';
 import type { Telemetry } from '@/telemetry';
@@ -36,11 +34,6 @@ const outputSchema = {
 			z.object({
 				id: z.string().describe('The unique identifier of the workflow'),
 				name: z.string().nullable().describe('The name of the workflow'),
-				versionId: z.string().describe('The current workflow version ID'),
-				activeVersionId: z
-					.string()
-					.nullable()
-					.describe('The active workflow version ID, if available'),
 				description: z.string().nullable().optional().describe('The description of the workflow'),
 				active: z.boolean().nullable().describe('Whether the workflow is active'),
 				createdAt: z
@@ -55,11 +48,6 @@ const outputSchema = {
 					.number()
 					.nullable()
 					.describe('The number of triggers associated with the workflow'),
-				nodes: z.array(nodeSchema).describe('List of nodes in the workflow'),
-				activeNodes: z
-					.array(nodeSchema)
-					.nullable()
-					.describe('List of nodes in the active workflow version, if available'),
 				scopes: z.array(z.string()).describe('User permissions for this workflow'),
 				canExecute: z
 					.boolean()
@@ -72,7 +60,7 @@ const outputSchema = {
 
 /**
  * 	Creates mcp tool definition for searching workflows with optional filters. Workflows can be filtered by name, active status, and project ID.
- * Returns a preview of each workflow including id, name, active status, creation and update timestamps, trigger count, and nodes.
+ * Returns a preview of each workflow including id, name, active status, creation and update timestamps, and trigger count.
  */
 export const createSearchWorkflowsTool = (
 	user: User,
@@ -166,16 +154,12 @@ export async function searchWorkflows(
 		},
 		select: {
 			id: true,
-			versionId: true,
 			activeVersionId: true,
 			name: true,
 			description: true,
-			active: true,
-			nodes: true,
 			createdAt: true,
 			updatedAt: true,
 			triggerCount: true,
-			activeVersion: true,
 			ownedBy: true, // Required for loading 'shared' relation used in scope computation
 		},
 	};
@@ -189,40 +173,18 @@ export async function searchWorkflows(
 	);
 
 	const formattedWorkflows: SearchWorkflowsItem[] = workflows.map((workflow) => {
-		const {
-			id,
-			name,
-			versionId,
-			description,
-			activeVersionId,
-			createdAt,
-			updatedAt,
-			triggerCount,
-			activeVersion,
-			nodes,
-		} = workflow as WorkflowEntity;
+		const { id, name, description, activeVersionId, createdAt, updatedAt, triggerCount } =
+			workflow as WorkflowEntity;
 		const scopes = ('scopes' in workflow ? (workflow.scopes as string[]) : undefined) ?? [];
 
 		return {
 			id,
 			name,
-			versionId,
-			activeVersionId,
 			description,
 			active: activeVersionId !== null,
 			createdAt: createdAt.toISOString(),
 			updatedAt: updatedAt.toISOString(),
 			triggerCount,
-			nodes: (nodes ?? []).map((node: INode) => ({
-				name: node.name,
-				type: node.type,
-			})),
-			activeNodes: activeVersion?.nodes
-				? activeVersion.nodes.map((node: INode) => ({
-						name: node.name,
-						type: node.type,
-					}))
-				: null,
 			scopes,
 			canExecute: scopes.includes('workflow:execute'),
 		};

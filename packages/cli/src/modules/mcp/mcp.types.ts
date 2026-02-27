@@ -33,14 +33,10 @@ export type SearchWorkflowsParams = {
 export type SearchWorkflowsItem = {
 	id: string;
 	name: string | null;
-	versionId: string;
-	activeVersionId: string | null;
 	active: boolean | null;
 	createdAt: string | null;
 	updatedAt: string | null;
 	triggerCount: number | null;
-	nodes: Array<{ name: string; type: string }>;
-	activeNodes: Array<{ name: string; type: string }> | null;
 	scopes: string[];
 	canExecute: boolean;
 };
