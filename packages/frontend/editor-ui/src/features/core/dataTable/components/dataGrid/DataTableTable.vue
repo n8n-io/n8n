@@ -317,6 +317,7 @@ defineExpose({
 	}
 
 	:global(.ag-header-cell[col-id='add-column']) {
+		padding-right: var(--spacing--2xs);
 		&:after {
 			display: none;
 		}
