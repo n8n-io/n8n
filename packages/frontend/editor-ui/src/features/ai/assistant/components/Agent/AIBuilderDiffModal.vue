@@ -64,8 +64,7 @@ function closeModal() {
 					<div :class="[$style.backButtonContainer, 'mr-xs']">
 						<N8nIconButton
 							icon="arrow-left"
-							type="tertiary"
-							:class="[$style.backButton, 'mr-xs']"
+							variant="ghost"
 							icon-size="large"
 							data-test-id="ai-builder-diff-back-button"
 							@click="closeModal"
@@ -95,9 +94,5 @@ function closeModal() {
 
 .backButton {
 	border: none;
-}
-
-.backButtonContainer {
-	border-right: 1px solid var(--color--foreground);
 }
 </style>
