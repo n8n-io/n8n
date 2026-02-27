@@ -7,6 +7,7 @@ import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY } from '../constants';
 import * as restApiClient from '@n8n/rest-api-client';
 import type { CredentialResolverType } from '@n8n/api-types';
+import { defineComponent, h } from 'vue';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showError = vi.fn();
@@ -61,6 +62,59 @@ const mockResolverTypes: CredentialResolverType[] = [
 				required: true,
 				description: 'Enter your API key',
 				placeholder: 'Enter key',
+			},
+		],
+	},
+];
+
+const mockOAuthResolverTypes: CredentialResolverType[] = [
+	{
+		name: 'credential-resolver.oauth2-1.0',
+		displayName: 'OAuth2 Resolver',
+		description: 'OAuth2 based credential resolver',
+		options: [
+			{
+				displayName: 'Metadata URL',
+				name: 'metadataUri',
+				type: 'string',
+				required: true,
+				default: '',
+			},
+			{
+				displayName: 'Validation Method',
+				name: 'validation',
+				type: 'options',
+				options: [
+					{ name: 'OAuth2 Token Introspection', value: 'oauth2-introspection' },
+					{ name: 'OAuth2 UserInfo Endpoint', value: 'oauth2-userinfo' },
+				],
+				default: 'oauth2-introspection',
+			},
+			{
+				displayName: 'Client ID',
+				name: 'clientId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					hide: { validation: ['oauth2-userinfo'] },
+					show: { validation: ['oauth2-introspection'] },
+				},
+			},
+			{
+				displayName: 'Client Secret',
+				name: 'clientSecret',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					hide: { validation: ['oauth2-userinfo'] },
+					show: { validation: ['oauth2-introspection'] },
+				},
+			},
+			{
+				displayName: 'Subject Claim',
+				name: 'subjectClaim',
+				type: 'string',
+				default: 'sub',
 			},
 		],
 	},
@@ -166,6 +220,136 @@ describe('CredentialResolverEditModal', () => {
 					'existing-resolver-id',
 				);
 			});
+		});
+	});
+
+	describe('displayOptions filtering', () => {
+		it('should hide clientId and clientSecret when validation is oauth2-userinfo', async () => {
+			const credentialInputsProps: Array<Record<string, unknown>> = [];
+			const CredentialInputsSpy = defineComponent({
+				props: [
+					'credentialProperties',
+					'credentialData',
+					'documentationUrl',
+					'showValidationWarnings',
+				],
+				setup(props) {
+					credentialInputsProps.push({ ...props });
+					return () => h('div', { 'data-test-id': 'credential-inputs' });
+				},
+			});
+
+			vi.mocked(restApiClient.getCredentialResolverTypes).mockResolvedValue(mockOAuthResolverTypes);
+
+			const mockResolver = {
+				id: 'oauth-resolver-id',
+				name: 'OAuth Resolver',
+				type: 'credential-resolver.oauth2-1.0',
+				config: '{}',
+				decryptedConfig: {
+					metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+					validation: 'oauth2-userinfo',
+					subjectClaim: 'sub',
+				},
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			vi.mocked(restApiClient.getCredentialResolver).mockResolvedValue(mockResolver);
+
+			renderModal({
+				props: {
+					modalName: CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+					data: { resolverId: 'oauth-resolver-id' },
+				},
+				pinia,
+				global: {
+					stubs: {
+						Modal: ModalStub,
+						CredentialInputs: CredentialInputsSpy,
+					},
+				},
+			});
+
+			await vi.waitFor(() => {
+				expect(credentialInputsProps.length).toBeGreaterThan(0);
+			});
+
+			const lastProps = credentialInputsProps[credentialInputsProps.length - 1];
+			const propertyNames = (lastProps.credentialProperties as Array<{ name: string }>).map(
+				(p) => p.name,
+			);
+
+			expect(propertyNames).toContain('metadataUri');
+			expect(propertyNames).toContain('validation');
+			expect(propertyNames).toContain('subjectClaim');
+			expect(propertyNames).not.toContain('clientId');
+			expect(propertyNames).not.toContain('clientSecret');
+		});
+
+		it('should show clientId and clientSecret when validation is oauth2-introspection', async () => {
+			const credentialInputsProps: Array<Record<string, unknown>> = [];
+			const CredentialInputsSpy = defineComponent({
+				props: [
+					'credentialProperties',
+					'credentialData',
+					'documentationUrl',
+					'showValidationWarnings',
+				],
+				setup(props) {
+					credentialInputsProps.push({ ...props });
+					return () => h('div', { 'data-test-id': 'credential-inputs' });
+				},
+			});
+
+			vi.mocked(restApiClient.getCredentialResolverTypes).mockResolvedValue(mockOAuthResolverTypes);
+
+			const mockResolver = {
+				id: 'oauth-resolver-id',
+				name: 'OAuth Resolver',
+				type: 'credential-resolver.oauth2-1.0',
+				config: '{}',
+				decryptedConfig: {
+					metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+					validation: 'oauth2-introspection',
+					clientId: 'my-client',
+					clientSecret: 'my-secret',
+					subjectClaim: 'sub',
+				},
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			vi.mocked(restApiClient.getCredentialResolver).mockResolvedValue(mockResolver);
+
+			renderModal({
+				props: {
+					modalName: CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+					data: { resolverId: 'oauth-resolver-id' },
+				},
+				pinia,
+				global: {
+					stubs: {
+						Modal: ModalStub,
+						CredentialInputs: CredentialInputsSpy,
+					},
+				},
+			});
+
+			await vi.waitFor(() => {
+				expect(credentialInputsProps.length).toBeGreaterThan(0);
+			});
+
+			const lastProps = credentialInputsProps[credentialInputsProps.length - 1];
+			const propertyNames = (lastProps.credentialProperties as Array<{ name: string }>).map(
+				(p) => p.name,
+			);
+
+			expect(propertyNames).toContain('metadataUri');
+			expect(propertyNames).toContain('validation');
+			expect(propertyNames).toContain('clientId');
+			expect(propertyNames).toContain('clientSecret');
+			expect(propertyNames).toContain('subjectClaim');
 		});
 	});
 
