@@ -687,6 +687,20 @@ describe('WorkflowSettingsVue', () => {
 			expect(callArgs[1].settings?.credentialResolverId).toBe('resolver-2');
 		});
 
+		it('should save with empty credentialResolverId when resolver is cleared', async () => {
+			// Simulate a resolver being cleared (clearable sets value to '')
+			workflowsStore.workflowSettings.credentialResolverId = '';
+
+			const { getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			const callArgs = workflowsStore.updateWorkflow.mock.calls[0];
+			expect(callArgs[0]).toBe('1');
+			expect(callArgs[1].settings?.credentialResolverId).toBe('');
+		});
+
 		it('should disable credential resolver dropdown when environment is read-only', async () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 

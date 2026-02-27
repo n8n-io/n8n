@@ -824,6 +824,7 @@ onBeforeUnmount(() => {
 								v-model="workflowSettings.credentialResolverId"
 								:placeholder="i18n.baseText('workflowSettings.credentialResolver.placeholder')"
 								filterable
+								clearable
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:limit-popper-width="true"
 								data-test-id="workflow-settings-credential-resolver"
