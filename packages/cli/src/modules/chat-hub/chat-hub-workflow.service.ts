@@ -48,9 +48,9 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import { ChatHubToolService } from './chat-hub-tool.service';
 import { CHATHUB_EXTRACTOR_NAME, ChatHubAuthenticationMetadata } from './chat-hub-extractor';
+import { EMBEDDINGS_NODE_TYPE_MAP } from '@n8n/chat-hub';
 import {
 	CHAT_TRIGGER_NODE_MIN_VERSION,
-	EMBEDDINGS_NODE_TYPE_MAP,
 	NODE_NAMES,
 	PROVIDER_NODE_TYPE_MAP,
 	SUPPORTED_RESPONSE_MODES,

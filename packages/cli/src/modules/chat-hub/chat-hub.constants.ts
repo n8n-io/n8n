@@ -75,41 +75,6 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 	},
 };
 
-export const EMBEDDINGS_NODE_TYPE_MAP: Partial<Record<ChatHubLLMProvider, INodeTypeNameVersion>> = {
-	openai: {
-		name: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-		version: 1.2,
-	},
-	google: {
-		name: '@n8n/n8n-nodes-langchain.embeddingsGoogleGemini',
-		version: 1,
-	},
-	azureOpenAi: {
-		name: '@n8n/n8n-nodes-langchain.embeddingsAzureOpenAi',
-		version: 1,
-	},
-	azureEntraId: {
-		name: '@n8n/n8n-nodes-langchain.embeddingsAzureOpenAi',
-		version: 1,
-	},
-	ollama: {
-		name: '@n8n/n8n-nodes-langchain.embeddingsOllama',
-		version: 1,
-	},
-	awsBedrock: {
-		name: '@n8n/n8n-nodes-langchain.embeddingsAwsBedrock',
-		version: 1,
-	},
-	cohere: {
-		name: '@n8n/n8n-nodes-langchain.embeddingsCohere',
-		version: 1,
-	},
-	mistralCloud: {
-		name: '@n8n/n8n-nodes-langchain.embeddingsMistralCloud',
-		version: 1,
-	},
-};
-
 export const NODE_NAMES = {
 	CHAT_TRIGGER: 'When chat message received',
 	REPLY_AGENT: 'AI Agent',

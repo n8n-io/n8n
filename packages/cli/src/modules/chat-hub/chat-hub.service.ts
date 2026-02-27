@@ -793,12 +793,8 @@ export class ChatHubService {
 
 			const knowledgeItems = agent.files.filter((f) => f.type === 'embedding');
 			const embeddingModel =
-				agent?.credentialId && knowledgeItems.length > 0
-					? await this.chatHubAgentService.determineEmbeddingProvider(
-							user,
-							{ provider: agent.provider, credentialId: agent.credentialId },
-							knowledgeItems[0].provider,
-						)
+				knowledgeItems.length > 0
+					? await this.chatHubAgentService.determineEmbeddingProvider(user)
 					: null;
 
 			for (const item of knowledgeItems) {

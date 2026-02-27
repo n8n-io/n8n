@@ -545,10 +545,16 @@ export class UpdateVectorStoreCredentialRequest extends Z.class({
 	credentialId: z.string().nullable(),
 }) {}
 
+export class UpdateEmbeddingCredentialRequest extends Z.class({
+	credentialId: z.string().nullable(),
+	credentialType: z.string().nullable(),
+}) {}
+
 export interface ChatHubModuleSettings {
 	enabled: boolean;
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
-	vectorStoreCredentialId?: string;
+	vectorStoreCredential?: { type: string; id: string };
+	embeddingCredential?: { type: string; id: string };
 }
 
 /**

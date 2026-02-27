@@ -15,6 +15,7 @@ const CHAT_PROVIDER_SETTINGS_KEY = (provider: ChatHubLLMProvider) =>
 	`${CHAT_PROVIDER_SETTINGS_KEY_PREFIX}${provider}`;
 const CHAT_ENABLED_KEY = 'chat.access.enabled';
 const CHAT_VECTOR_STORE_CREDENTIAL_KEY = 'chat.vector-store-credential-id';
+const CHAT_EMBEDDING_CREDENTIAL_KEY = 'chat.embedding-credential';
 
 const getDefaultProviderSettings = (provider: ChatHubLLMProvider): ChatProviderSettingsDto => ({
 	provider,
@@ -106,6 +107,27 @@ export class ChatHubSettingsService {
 	async getVectorStoreCredentialId(): Promise<string | null> {
 		const row = await this.settingsRepository.findByKey(CHAT_VECTOR_STORE_CREDENTIAL_KEY);
 		return row?.value ?? null;
+	}
+
+	async getEmbeddingCredential(): Promise<{ type: string; id: string } | null> {
+		const row = await this.settingsRepository.findByKey(CHAT_EMBEDDING_CREDENTIAL_KEY);
+		if (!row) return null;
+		return jsonParse<{ type: string; id: string } | null>(row.value, { fallbackValue: null });
+	}
+
+	async setEmbeddingCredential(credential: { type: string; id: string } | null): Promise<void> {
+		if (credential === null) {
+			await this.settingsRepository.delete({ key: CHAT_EMBEDDING_CREDENTIAL_KEY });
+		} else {
+			await this.settingsRepository.upsert(
+				{
+					key: CHAT_EMBEDDING_CREDENTIAL_KEY,
+					value: JSON.stringify(credential),
+					loadOnStartup: true,
+				},
+				['key'],
+			);
+		}
 	}
 
 	async setVectorStoreCredentialId(id: string | null): Promise<void> {

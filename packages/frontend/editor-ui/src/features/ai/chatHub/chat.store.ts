@@ -65,6 +65,8 @@ import type {
 	ChatConversation,
 	ChatStreamingState,
 	FetchOptions,
+	SemanticSearchReadiness,
+	SemanticSearchCredentialIssue,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
 import {
@@ -1240,7 +1242,11 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	}
 
 	const vectorStoreCredentialId = computed(
-		() => settingsStore.moduleSettings['chat-hub']?.vectorStoreCredentialId ?? null,
+		() => settingsStore.moduleSettings['chat-hub']?.vectorStoreCredential?.id ?? null,
+	);
+
+	const embeddingCredentialId = computed(
+		() => settingsStore.moduleSettings['chat-hub']?.embeddingCredential?.id ?? null,
 	);
 
 	const vectorStoreCredential = computed(() => {
@@ -1250,7 +1256,37 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		return credentialsStore.getCredentialById(vectorStoreCredentialId.value) ?? null;
 	});
 
-	const isVectorStoreReady = computed(() => vectorStoreCredential.value?.isGlobal === true);
+	const embeddingCredential = computed(() => {
+		if (!embeddingCredentialId.value) {
+			return null;
+		}
+		return credentialsStore.getCredentialById(embeddingCredentialId.value) ?? null;
+	});
+
+	const isSingleUser = computed(() => settingsStore.userManagement.quota === 1);
+
+	const semanticSearchReadiness = computed((): SemanticSearchReadiness => {
+		let vectorStoreIssue: SemanticSearchCredentialIssue | undefined;
+		let embeddingIssue: SemanticSearchCredentialIssue | undefined;
+
+		if (!vectorStoreCredentialId.value) {
+			vectorStoreIssue = 'credentialMissing';
+		} else if (!isSingleUser.value && !vectorStoreCredential.value?.isGlobal) {
+			vectorStoreIssue = 'notShared';
+		}
+
+		if (!embeddingCredentialId.value) {
+			embeddingIssue = 'credentialMissing';
+		} else if (!isSingleUser.value && !embeddingCredential.value?.isGlobal) {
+			embeddingIssue = 'notShared';
+		}
+
+		return {
+			isReady: !vectorStoreIssue && !embeddingIssue,
+			vectorStoreIssue,
+			embeddingIssue,
+		};
+	});
 
 	return {
 		/**
@@ -1322,7 +1358,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		updateProviderSettings,
 		vectorStoreCredentialId,
 		vectorStoreCredential,
-		isVectorStoreReady,
+		embeddingCredential,
+		embeddingCredentialId,
+		semanticSearchReadiness,
 
 		/**
 		 * WebSocket streaming handlers

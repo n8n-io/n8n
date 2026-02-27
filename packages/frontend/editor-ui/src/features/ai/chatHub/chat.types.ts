@@ -121,3 +121,11 @@ export type ChatHubConversationModelWithCachedDisplayName = z.infer<
 export interface FetchOptions {
 	minLoadingTime?: number;
 }
+
+export type SemanticSearchCredentialIssue = 'credentialMissing' | 'notShared';
+
+export interface SemanticSearchReadiness {
+	isReady: boolean;
+	vectorStoreIssue?: SemanticSearchCredentialIssue;
+	embeddingIssue?: SemanticSearchCredentialIssue;
+}

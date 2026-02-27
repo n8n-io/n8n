@@ -7,7 +7,8 @@ import type {
 	ChatAttachment,
 	ChatHubLLMProvider,
 } from '@n8n/api-types';
-import { chatHubLLMProviderSchema } from '@n8n/api-types';
+import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
+
 import { Logger } from '@n8n/backend-common';
 import type { EntityManager, User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -16,7 +17,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
-import { EMBEDDINGS_NODE_TYPE_MAP, getModelMetadata } from './chat-hub.constants';
+import { getModelMetadata } from './chat-hub.constants';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { type IBinaryData } from 'n8n-workflow';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
@@ -74,61 +75,25 @@ export class ChatHubAgentService {
 
 	/**
 	 * Determines which embedding provider to use for the agent.
-	 * If the agent's chat provider supports embeddings, use it.
-	 * Otherwise, find a usable embedding provider from settings that the user has access to.
+	 * Uses the embedding credential configured in Chat Hub settings.
 	 */
-	async determineEmbeddingProvider(
-		user: User,
-		chatModel: ProviderAndCredentialId,
-		embeddingProvider?: ChatHubLLMProvider,
-	): Promise<ProviderAndCredentialId | null> {
-		// Check if the chat provider supports embeddings
-		if (
-			EMBEDDINGS_NODE_TYPE_MAP[chatModel.provider] &&
-			(!embeddingProvider || chatModel.provider === embeddingProvider)
-		) {
-			return chatModel;
-		}
+	async determineEmbeddingProvider(user: User): Promise<ProviderAndCredentialId | null> {
+		const embeddingCredential = await this.chatHubSettingsService.getEmbeddingCredential();
+		if (!embeddingCredential) return null;
 
-		// Chat provider doesn't support embeddings, find a fallback from settings
-		const allSettings = await this.chatHubSettingsService.getAllProviderSettings();
+		await this.chatHubCredentialsService.ensureCredentialAccess(user, embeddingCredential.id);
 
-		for (const provider of chatHubLLMProviderSchema.options) {
-			const settings = allSettings[provider];
+		const credentialTypeToProvider = Object.fromEntries(
+			Object.entries(PROVIDER_CREDENTIAL_TYPE_MAP).map(([provider, credType]) => [
+				credType,
+				provider as ChatHubLLMProvider,
+			]),
+		);
 
-			// Check if provider supports embeddings
-			if (!EMBEDDINGS_NODE_TYPE_MAP[provider]) {
-				continue;
-			}
+		const provider = credentialTypeToProvider[embeddingCredential.type];
+		if (!provider) return null;
 
-			if (embeddingProvider && provider !== embeddingProvider) {
-				continue;
-			}
-
-			// Check if provider is enabled
-			if (!settings.enabled) {
-				continue;
-			}
-
-			// Check if provider has credentials configured in the settings
-			if (!settings.credentialId) {
-				continue;
-			}
-
-			// Check if user has permission to use this credential
-			try {
-				await this.chatHubCredentialsService.ensureCredentialAccess(user, settings.credentialId);
-				return {
-					provider,
-					credentialId: settings.credentialId,
-				};
-			} catch {
-				// User doesn't have access to this credential, try next provider
-				continue;
-			}
-		}
-
-		return null;
+		return { provider, credentialId: embeddingCredential.id };
 	}
 
 	async getAgentsByUserId(userId: string): Promise<ChatHubAgent[]> {
@@ -165,7 +130,7 @@ export class ChatHubAgentService {
 		await this.chatHubCredentialsService.ensureCredentialAccess(user, data.credentialId);
 
 		const id = uuidv4();
-		const embeddingModel = await this.determineEmbeddingProvider(user, data);
+		const embeddingModel = await this.determineEmbeddingProvider(user);
 		const files = await this.processNewFiles(user, id, data.files, embeddingModel);
 
 		const agent = await this.chatAgentRepository.createAgent({
@@ -215,10 +180,7 @@ export class ChatHubAgentService {
 		if (updates.provider !== undefined) updateData.provider = updates.provider;
 		if (updates.model !== undefined) updateData.model = updates.model ?? null;
 
-		const newEmbeddingModel = await this.determineEmbeddingProvider(user, {
-			provider: updates.provider ?? existingAgent.provider,
-			credentialId: updates.credentialId ?? existingAgent.credentialId ?? '',
-		});
+		const newEmbeddingModel = await this.determineEmbeddingProvider(user);
 
 		const filesToKeep = await this.processDeleteFiles(
 			user,

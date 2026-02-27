@@ -543,7 +543,7 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 						@change="handleFileSelect"
 					/>
 					<N8nCallout
-						v-if="!chatStore.isVectorStoreReady"
+						v-if="chatStore.semanticSearchReadiness.vectorStoreIssue"
 						theme="warning"
 						icon="info"
 						:class="$style.vectorStoreCallout"

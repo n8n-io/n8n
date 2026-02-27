@@ -3,24 +3,26 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useChatStore } from './chat.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { N8nButton, N8nCallout, N8nHeading } from '@n8n/design-system';
-import { CHAT_CREDENTIAL_SELECTOR_MODAL_KEY, CHAT_PROVIDER_SETTINGS_MODAL_KEY } from './constants';
+import { N8nHeading, N8nIcon, N8nOption, N8nSelect, N8nText, N8nTooltip } from '@n8n/design-system';
+import { CHAT_PROVIDER_SETTINGS_MODAL_KEY } from './constants';
 import ChatProvidersTable from './components/ChatProvidersTable.vue';
+import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import {
 	type ChatHubLLMProvider,
 	type ChatProviderSettingsDto,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
+import { EMBEDDINGS_NODE_TYPE_MAP } from '@n8n/chat-hub';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
-import { updateVectorStoreCredentialApi } from './chat.api';
+import { updateVectorStoreCredentialApi, updateEmbeddingCredentialApi } from './chat.api';
+import { providerDisplayNames } from './constants';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -36,69 +38,117 @@ const rootStore = useRootStore();
 
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
-
 const disabled = computed(() => !isOwner.value && !isAdmin.value);
 
 const VECTOR_STORE_CREDENTIAL_TYPE = 'vectorStorePGVectorScopedApi';
 
-const { vectorStoreCredentialId, vectorStoreCredential, isVectorStoreReady } =
+const EMBEDDING_PROVIDER_OPTIONS = (
+	Object.entries(PROVIDER_CREDENTIAL_TYPE_MAP) as Array<[ChatHubLLMProvider, string]>
+)
+	.filter(([provider]) => provider in EMBEDDINGS_NODE_TYPE_MAP)
+	.map(([provider, credentialType]) => ({
+		label: providerDisplayNames[provider],
+		value: credentialType,
+	}));
+
+const { vectorStoreCredentialId, embeddingCredentialId, semanticSearchReadiness } =
 	storeToRefs(chatStore);
 
-function openVectorStoreSelector() {
-	uiStore.openModalWithData({
-		name: CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
-		data: {
-			credentialType: VECTOR_STORE_CREDENTIAL_TYPE,
-			displayName: 'PGVector',
-			initialValue: vectorStoreCredentialId.value,
-			onSelect: async (credentialId) => {
-				if (!credentialId) {
-					return;
-				}
-				try {
-					await updateVectorStoreCredentialApi(rootStore.restApiContext, credentialId);
-					await settingsStore.getModuleSettings();
-				} catch (error) {
-					toast.showError(error, i18n.baseText('settings.chatHub.vectorStore.save.error'));
-				}
-			},
-		},
-	});
-}
+const localEmbeddingType = ref<string | null>(
+	settingsStore.moduleSettings['chat-hub']?.embeddingCredential?.type ??
+		EMBEDDING_PROVIDER_OPTIONS[0]?.value ??
+		null,
+);
 
-function onSetupVectorStore() {
-	const existing = credentialsStore.getCredentialsByType(VECTOR_STORE_CREDENTIAL_TYPE);
-	if (existing.length > 0) {
-		openVectorStoreSelector();
-	} else {
-		uiStore.openNewCredential(VECTOR_STORE_CREDENTIAL_TYPE);
+const localEmbeddingDisplayName = computed(
+	() => EMBEDDING_PROVIDER_OPTIONS.find((o) => o.value === localEmbeddingType.value)?.label ?? '',
+);
+
+watch(
+	() => settingsStore.moduleSettings['chat-hub']?.embeddingCredential?.type,
+	(newType) => {
+		localEmbeddingType.value = newType ?? EMBEDDING_PROVIDER_OPTIONS[0]?.value ?? null;
+	},
+);
+
+const vectorStoreTooltip = computed(() => {
+	const issue = semanticSearchReadiness.value.vectorStoreIssue;
+	if (!issue) return '';
+	if (issue === 'credentialMissing') {
+		return disabled.value
+			? i18n.baseText('settings.chatHub.vectorStore.missing.noAccess')
+			: i18n.baseText('settings.chatHub.vectorStore.missing');
+	}
+	return disabled.value
+		? i18n.baseText('settings.chatHub.vectorStore.notShared.noAccess')
+		: i18n.baseText('settings.chatHub.vectorStore.notShared');
+});
+
+const embeddingTooltip = computed(() => {
+	const issue = semanticSearchReadiness.value.embeddingIssue;
+	if (!issue) return '';
+	if (issue === 'credentialMissing') {
+		return disabled.value
+			? i18n.baseText('settings.chatHub.embeddingModel.missing.noAccess')
+			: i18n.baseText('settings.chatHub.embeddingModel.missing');
+	}
+	return disabled.value
+		? i18n.baseText('settings.chatHub.embeddingModel.notShared.noAccess')
+		: i18n.baseText('settings.chatHub.embeddingModel.notShared');
+});
+
+async function onVectorStoreCredentialSelected(credentialId: string) {
+	try {
+		await updateVectorStoreCredentialApi(rootStore.restApiContext, credentialId);
+		await settingsStore.getModuleSettings();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.chatHub.vectorStore.save.error'));
 	}
 }
 
-function onConfigureVectorStore() {
-	openVectorStoreSelector();
+async function onVectorStoreCredentialDeselected() {
+	try {
+		await updateVectorStoreCredentialApi(rootStore.restApiContext, null);
+		await settingsStore.getModuleSettings();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.chatHub.vectorStore.save.error'));
+	}
 }
 
-let unsubscribeCredentialActions: (() => void) | null = null;
-
-function subscribeToCredentialActions() {
-	unsubscribeCredentialActions = credentialsStore.$onAction(({ name, after }) => {
-		if (name !== 'createNewCredential') {
-			return;
+async function onEmbeddingTypeChange(credentialType: string) {
+	localEmbeddingType.value = credentialType;
+	const currentType = settingsStore.moduleSettings['chat-hub']?.embeddingCredential?.type;
+	if (currentType !== credentialType) {
+		try {
+			await updateEmbeddingCredentialApi(rootStore.restApiContext, null, credentialType);
+			await settingsStore.getModuleSettings();
+		} catch (error) {
+			toast.showError(error, i18n.baseText('settings.chatHub.embeddingModel.save.error'));
 		}
-		after(async (result) => {
-			const credential = result as unknown as ICredentialsResponse;
-			if (credential?.type !== VECTOR_STORE_CREDENTIAL_TYPE) {
-				return;
-			}
-			try {
-				await updateVectorStoreCredentialApi(rootStore.restApiContext, credential.id);
-				await settingsStore.getModuleSettings();
-			} catch (error) {
-				toast.showError(error, i18n.baseText('settings.chatHub.vectorStore.save.error'));
-			}
-		});
-	});
+	}
+}
+
+async function onEmbeddingCredentialSelected(credentialId: string) {
+	if (!localEmbeddingType.value) return;
+	try {
+		await updateEmbeddingCredentialApi(
+			rootStore.restApiContext,
+			credentialId,
+			localEmbeddingType.value,
+		);
+		await settingsStore.getModuleSettings();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.chatHub.embeddingModel.save.error'));
+	}
+}
+
+async function onEmbeddingCredentialDeselected() {
+	try {
+		await updateEmbeddingCredentialApi(rootStore.restApiContext, null, localEmbeddingType.value);
+		await settingsStore.getModuleSettings();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.chatHub.embeddingModel.save.error'));
+	}
 }
 
 const fetchSettings = async () => {
@@ -153,16 +203,11 @@ onMounted(async () => {
 	if (!settingsStore.isChatFeatureEnabled) {
 		return;
 	}
-	subscribeToCredentialActions();
 	await Promise.all([
 		fetchSettings(),
 		credentialsStore.fetchAllCredentials(),
 		credentialsStore.fetchCredentialTypes(false),
 	]);
-});
-
-onUnmounted(() => {
-	unsubscribeCredentialActions?.();
 });
 </script>
 <template>
@@ -173,40 +218,117 @@ onUnmounted(() => {
 		<div :class="$style.container">
 			<div :class="$style.section">
 				<N8nHeading size="medium" :bold="true" :class="$style.sectionTitle">
-					{{ i18n.baseText('settings.chatHub.vectorStore.title') }}
+					{{ i18n.baseText('settings.chatHub.semanticSearch.title') }}
 				</N8nHeading>
-				<N8nCallout v-if="isVectorStoreReady" theme="success" icon="check">
-					{{ i18n.baseText('settings.chatHub.vectorStore.ready') }}
-					<template v-if="!disabled" #trailingContent>
-						<N8nButton size="small" variant="subtle" @click="onConfigureVectorStore">
-							{{ i18n.baseText('settings.chatHub.vectorStore.configureButton') }}
-						</N8nButton>
-					</template>
-				</N8nCallout>
-				<N8nCallout v-else-if="vectorStoreCredential" theme="warning" icon="info">
-					{{
-						disabled
-							? i18n.baseText('settings.chatHub.vectorStore.notShared.noAccess')
-							: i18n.baseText('settings.chatHub.vectorStore.notShared')
-					}}
-					<template v-if="!disabled" #trailingContent>
-						<N8nButton size="small" variant="subtle" @click="onConfigureVectorStore">
-							{{ i18n.baseText('settings.chatHub.vectorStore.configureButton') }}
-						</N8nButton>
-					</template>
-				</N8nCallout>
-				<N8nCallout v-else theme="warning" icon="info">
-					{{
-						disabled
-							? i18n.baseText('settings.chatHub.vectorStore.missing.noAccess')
-							: i18n.baseText('settings.chatHub.vectorStore.missing')
-					}}
-					<template v-if="!disabled" #trailingContent>
-						<N8nButton size="small" variant="subtle" @click="onSetupVectorStore">
-							{{ i18n.baseText('settings.chatHub.vectorStore.configureButton') }}
-						</N8nButton>
-					</template>
-				</N8nCallout>
+				<div :class="$style.semanticSearchCard">
+					<div :class="$style.semanticSearchRow">
+						<div :class="$style.rowInfo">
+							<div :class="$style.rowLabelRow">
+								<N8nText :bold="true" tag="span" :class="$style.rowLabel">
+									{{ i18n.baseText('settings.chatHub.vectorStore.title') }}
+								</N8nText>
+								<N8nTooltip
+									v-if="semanticSearchReadiness.vectorStoreIssue"
+									:content="vectorStoreTooltip"
+								>
+									<N8nIcon icon="exclamation-triangle" :class="$style.iconWarning" size="large" />
+								</N8nTooltip>
+								<N8nIcon v-else icon="check" :class="$style.iconReady" size="large" />
+							</div>
+							<N8nText color="text-light" tag="span" :class="$style.rowDescription">
+								{{ i18n.baseText('settings.chatHub.vectorStore.description') }}
+							</N8nText>
+						</div>
+						<div :class="[$style.rowControls, disabled && $style.rowControlsDisabled]">
+							<div :class="$style.labeledControl">
+								<N8nText size="small" color="text-light" tag="span" :class="$style.controlLabel">
+									{{ i18n.baseText('settings.chatHub.label.provider') }}
+								</N8nText>
+								<N8nSelect
+									model-value="vectorStorePGVectorScopedApi"
+									size="small"
+									:disabled="true"
+									:class="$style.typeSelect"
+								>
+									<N8nOption value="vectorStorePGVectorScopedApi" label="PGVector" />
+								</N8nSelect>
+							</div>
+							<div :class="$style.labeledControl">
+								<N8nText size="small" color="text-light" tag="span" :class="$style.controlLabel">
+									{{ i18n.baseText('settings.chatHub.label.credential') }}
+								</N8nText>
+								<CredentialPicker
+									:class="$style.credentialPicker"
+									app-name="PGVector"
+									:credential-type="VECTOR_STORE_CREDENTIAL_TYPE"
+									:selected-credential-id="vectorStoreCredentialId"
+									:show-delete="true"
+									create-button-variant="subtle"
+									@credential-selected="onVectorStoreCredentialSelected"
+									@credential-deselected="onVectorStoreCredentialDeselected"
+									@credential-deleted="onVectorStoreCredentialDeselected"
+								/>
+							</div>
+						</div>
+					</div>
+					<div :class="[$style.semanticSearchRow, $style.semanticSearchRowBordered]">
+						<div :class="$style.rowInfo">
+							<div :class="$style.rowLabelRow">
+								<N8nText :bold="true" tag="span" :class="$style.rowLabel">
+									{{ i18n.baseText('settings.chatHub.embeddingModel.title') }}
+								</N8nText>
+								<N8nTooltip
+									v-if="semanticSearchReadiness.embeddingIssue"
+									:content="embeddingTooltip"
+								>
+									<N8nIcon icon="exclamation-triangle" :class="$style.iconWarning" size="large" />
+								</N8nTooltip>
+								<N8nIcon v-else icon="check" :class="$style.iconReady" size="large" />
+							</div>
+							<N8nText color="text-light" tag="span" :class="$style.rowDescription">
+								{{ i18n.baseText('settings.chatHub.embeddingModel.description') }}
+							</N8nText>
+						</div>
+						<div :class="[$style.rowControls, disabled && $style.rowControlsDisabled]">
+							<div :class="$style.labeledControl">
+								<N8nText size="small" color="text-light" tag="span" :class="$style.controlLabel">
+									{{ i18n.baseText('settings.chatHub.label.provider') }}
+								</N8nText>
+								<N8nSelect
+									:model-value="localEmbeddingType"
+									size="small"
+									:disabled="disabled"
+									:class="$style.typeSelect"
+									@update:model-value="onEmbeddingTypeChange"
+								>
+									<N8nOption
+										v-for="option in EMBEDDING_PROVIDER_OPTIONS"
+										:key="option.value"
+										:value="option.value"
+										:label="option.label"
+									/>
+								</N8nSelect>
+							</div>
+							<div :class="$style.labeledControl">
+								<N8nText size="small" color="text-light" tag="span" :class="$style.controlLabel">
+									{{ i18n.baseText('settings.chatHub.label.credential') }}
+								</N8nText>
+								<CredentialPicker
+									v-if="localEmbeddingType"
+									:class="$style.credentialPicker"
+									:app-name="localEmbeddingDisplayName"
+									:credential-type="localEmbeddingType"
+									:selected-credential-id="embeddingCredentialId"
+									:show-delete="true"
+									create-button-variant="subtle"
+									@credential-selected="onEmbeddingCredentialSelected"
+									@credential-deselected="onEmbeddingCredentialDeselected"
+									@credential-deleted="onEmbeddingCredentialDeselected"
+								/>
+							</div>
+						</div>
+					</div>
+				</div>
 			</div>
 			<ChatProvidersTable
 				:data-test-id="'chat-providers-table'"
@@ -239,5 +361,77 @@ onUnmounted(() => {
 
 .sectionTitle {
 	margin-bottom: var(--spacing--3xs);
+}
+
+.semanticSearchCard {
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	overflow: hidden;
+}
+
+.semanticSearchRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm) var(--spacing--md);
+}
+
+.semanticSearchRowBordered {
+	border-top: var(--border);
+}
+
+.rowInfo {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+}
+
+.rowLabelRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.rowLabel {
+	display: block;
+}
+
+.rowDescription {
+	display: block;
+}
+
+.rowControls {
+	display: flex;
+	gap: var(--spacing--sm);
+	flex-shrink: 0;
+	align-items: flex-end;
+}
+
+.rowControlsDisabled {
+	pointer-events: none;
+	opacity: 0.6;
+}
+
+.labeledControl {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+}
+
+.controlLabel {
+	display: block;
+}
+
+.credentialPicker {
+	width: 300px;
+}
+
+.iconReady {
+	color: var(--color--success);
+}
+
+.iconWarning {
+	color: var(--color--warning);
 }
 </style>
