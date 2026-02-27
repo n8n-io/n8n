@@ -1368,10 +1368,16 @@ export type ChatNodeMessageWithButtons = {
 
 export type ChatNodeMessage = ChatNodeMessageWithButtons | string;
 
+export interface INodeExecutionRedactionInfo {
+	redacted: true;
+	reason: string;
+}
+
 export interface INodeExecutionData {
 	[key: string]:
 		| IDataObject
 		| IBinaryKeyData
+		| INodeExecutionRedactionInfo
 		| IPairedItemData
 		| IPairedItemData[]
 		| NodeApiError
@@ -1387,6 +1393,12 @@ export interface INodeExecutionData {
 		subExecution: RelatedExecution;
 	};
 	evaluationData?: Record<string, GenericValue>;
+	/**
+	 * Redaction marker. Present when this item's data has been redacted.
+	 * Check `redaction.redacted` to determine if data was stripped,
+	 * and `redaction.reason` for why (e.g. "workflow_redaction_policy").
+	 */
+	redaction?: INodeExecutionRedactionInfo;
 	/**
 	 * Use this key to send a message to the chat.
 	 *
