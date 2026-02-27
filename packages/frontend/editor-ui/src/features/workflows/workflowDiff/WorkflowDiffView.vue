@@ -32,12 +32,19 @@ const props = withDefaults(
 		sourceLabel?: string;
 		targetLabel?: string;
 		tidyUp?: boolean;
+		showBackButton?: boolean;
 	}>(),
 	{
+		sourceWorkflow: undefined,
+		targetWorkflow: undefined,
 		sourceLabel: 'Before',
 		targetLabel: 'After',
+		showBackButton: false,
 	},
 );
+const emit = defineEmits<{
+	back: [];
+}>();
 
 const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync();
 
@@ -99,6 +106,14 @@ onMounted(async () => {
 		<div :class="$style.header">
 			<div :class="$style.headerLeft">
 				<slot name="header-prefix" />
+				<N8nIconButton
+					v-if="showBackButton"
+					variant="subtle"
+					icon="arrow-left"
+					:class="[$style.backButton, 'mr-xs']"
+					icon-size="large"
+					@click="emit('back')"
+				/>
 				<N8nHeading tag="h4" size="medium">
 					{{ sourceWorkflow?.name || targetWorkflow?.name }}
 				</N8nHeading>
@@ -273,7 +288,20 @@ onMounted(async () => {
 			:nodes-diff="nodesDiff"
 			:connections-diff="connectionsDiff"
 			@close-aside="selectedDetailId = undefined"
-		/>
+		>
+			<template v-if="$slots.sourceLabel" #sourceLabel>
+				<slot name="sourceLabel" />
+			</template>
+			<template v-if="$slots.sourceEmptyText" #sourceEmptyText>
+				<slot name="sourceEmptyText" />
+			</template>
+			<template v-if="$slots.targetLabel" #targetLabel>
+				<slot name="targetLabel" />
+			</template>
+			<template v-if="$slots.targetEmptyText" #targetEmptyText>
+				<slot name="targetEmptyText" />
+			</template>
+		</WorkflowDiffContent>
 	</div>
 </template>
 
@@ -408,8 +436,13 @@ onMounted(async () => {
 	border-bottom: 1px solid var(--color--foreground);
 
 	.navigationButton {
-		height: 34px;
-		width: 34px;
+		&:hover {
+			z-index: 1;
+		}
+	}
+
+	.backButton {
+		border: none;
 	}
 }
 

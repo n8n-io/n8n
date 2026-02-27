@@ -58,7 +58,10 @@ export function needsExtraction(): boolean {
 }
 
 /**
- * Extract workflows from zip file
+ * Extract workflows from zip file.
+ * Skips manifest.json so the committed (git-tracked) manifest is preserved.
+ * The zip may contain a stale manifest; the committed one is the source of truth
+ * for expectedWarnings and skip flags.
  */
 export function extractWorkflowsFromZip(): void {
 	if (!fs.existsSync(ZIP_PATH)) {
@@ -71,7 +74,12 @@ export function extractWorkflowsFromZip(): void {
 	}
 
 	const zip = new AdmZip(ZIP_PATH);
-	zip.extractAllTo(REAL_WORKFLOWS_DIR, true); // overwrite existing
+	for (const entry of zip.getEntries()) {
+		if (entry.isDirectory) continue;
+		// Skip manifest.json — the committed version is the source of truth
+		if (entry.entryName === 'manifest.json') continue;
+		zip.extractEntryTo(entry, REAL_WORKFLOWS_DIR, false, true);
+	}
 }
 
 /**

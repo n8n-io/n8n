@@ -21,6 +21,7 @@
   ],
   "license": "SEE LICENSE IN LICENSE.md",
   "dependencies": {
+    "isolated-vm": "^6.0.2",
     "js-base64": "catalog:",
     "jssha": "3.3.1",
     "lodash": "catalog:",

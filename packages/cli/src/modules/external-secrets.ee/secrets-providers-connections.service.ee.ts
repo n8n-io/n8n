@@ -374,6 +374,22 @@ export class SecretsProvidersConnectionsService {
 		return connection;
 	}
 
+	async getConnectionAccessibleFromProject(
+		providerKey: string,
+		projectId: string,
+	): Promise<SecretsProviderConnection> {
+		const connection = await this.repository.findAccessibleByProviderKeyAndProjectId(
+			providerKey,
+			projectId,
+		);
+
+		if (!connection) {
+			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
+		}
+
+		return connection;
+	}
+
 	async deleteConnectionForProject(
 		providerKey: string,
 		projectId: string,

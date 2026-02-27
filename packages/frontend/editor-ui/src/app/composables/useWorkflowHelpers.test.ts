@@ -268,10 +268,11 @@ describe('useWorkflowHelpers', () => {
 				executionOrder: 'v1',
 				timezone: 'DEFAULT',
 			});
-			expect(setWorkflowVersionDataSpy).toHaveBeenCalledWith(
-				{ versionId: 'v1', name: null, description: null },
-				'checksum',
-			);
+			expect(setWorkflowVersionDataSpy).toHaveBeenCalledWith({
+				versionId: 'v1',
+				name: null,
+				description: null,
+			});
 			expect(setWorkflowMetadataSpy).toHaveBeenCalledWith({});
 			expect(setWorkflowScopesSpy).toHaveBeenCalledWith(['workflow:create']);
 			expect(setUsedCredentialsSpy).toHaveBeenCalledWith([]);
