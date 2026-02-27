@@ -4,6 +4,7 @@ import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import type { ChatHubLLMProvider, ChatModelDto, ChatSessionId } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import {
+	N8nButton,
 	N8nIconButton,
 	N8nIcon,
 	N8nInput,
@@ -14,7 +15,10 @@ import {
 import { useSpeechRecognition } from '@vueuse/core';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import ToolsSelector from './ToolsSelector.vue';
-import { isLlmProviderModel, createMimeTypes } from '@/features/ai/chatHub/chat.utils';
+import {
+	isLlmProviderModel,
+	enrichMimeTypesWithExtensions,
+} from '@/features/ai/chatHub/chat.utils';
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 import type { MessagingState } from '@/features/ai/chatHub/chat.types';
@@ -29,6 +33,7 @@ const props = defineProps<{
 	sessionId?: ChatSessionId;
 	customAgentId?: string;
 	showCreditsClaimedCallout: boolean;
+	showDynamicCredentialsMissingCallout: boolean;
 	aiCreditsQuota: string;
 }>();
 
@@ -41,6 +46,7 @@ const emit = defineEmits<{
 	setCredentials: [ChatHubLLMProvider];
 	editAgent: [agentId: string];
 	dismissCreditsCallout: [];
+	openDynamicCredentials: [];
 }>();
 
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
@@ -72,10 +78,10 @@ const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
 );
 
 const acceptedMimeTypes = computed(() =>
-	createMimeTypes(props.selectedModel?.metadata.inputModalities ?? []),
+	enrichMimeTypesWithExtensions(props.selectedModel?.metadata.allowedFilesMimeTypes ?? ''),
 );
 
-const canUploadFiles = computed(() => !!acceptedMimeTypes.value);
+const canUploadFiles = computed(() => props.selectedModel?.metadata.allowFileUploads ?? false);
 
 const showMisisngAgentCallout = computed(() => props.messagingState === 'missingAgent');
 const showMissingCredentialsCallout = computed(
@@ -85,6 +91,7 @@ const calloutVisible = computed(() => {
 	return (
 		showMisisngAgentCallout.value ||
 		showMissingCredentialsCallout.value ||
+		props.showDynamicCredentialsMissingCallout ||
 		props.showCreditsClaimedCallout
 	);
 });
@@ -283,6 +290,32 @@ defineExpose({
 						{{ providerDisplayNames[llmProvider!] }}
 					</template>
 				</I18nT>
+			</N8nCallout>
+
+			<N8nCallout
+				v-else-if="props.showDynamicCredentialsMissingCallout"
+				theme="warning"
+				:class="$style.callout"
+				data-testid="dynamic-credentials-missing-callout"
+			>
+				<N8nText>{{
+					i18n.baseText(
+						isNewSession
+							? 'chatHub.chat.prompt.callout.dynamicCredentials.missing'
+							: 'chatHub.chat.prompt.callout.dynamicCredentials.expired',
+					)
+				}}</N8nText>
+				<template #trailingContent>
+					<N8nButton
+						type="warning"
+						native-type="button"
+						size="small"
+						data-testid="dynamic-credentials-connect-button"
+						@click="emit('openDynamicCredentials')"
+					>
+						{{ i18n.baseText('chatHub.chat.prompt.callout.dynamicCredentials.missing.button') }}
+					</N8nButton>
+				</template>
 			</N8nCallout>
 
 			<N8nCallout

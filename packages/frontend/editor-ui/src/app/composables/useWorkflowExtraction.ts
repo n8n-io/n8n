@@ -1,4 +1,5 @@
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
@@ -38,6 +39,7 @@ const CANVAS_HISTORY_OPTIONS = {
 export function useWorkflowExtraction() {
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const toast = useToast();
 	const router = useRouter();
@@ -254,7 +256,7 @@ export function useWorkflowExtraction() {
 				...endNodeConnection,
 			},
 			settings: { executionOrder: 'v1' },
-			projectId: workflowsStore.workflow.homeProject?.id,
+			projectId: workflowDocumentStore?.value?.homeProject?.id,
 			parentFolderId: workflowsStore.workflow.parentFolder?.id ?? undefined,
 		};
 	}

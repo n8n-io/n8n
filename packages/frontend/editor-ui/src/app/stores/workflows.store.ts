@@ -833,8 +833,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...value,
 			...(!value.hasOwnProperty('active') ? { active: false } : {}),
 			...(!value.hasOwnProperty('connections') ? { connections: {} } : {}),
-			...(!value.hasOwnProperty('createdAt') ? { createdAt: -1 } : {}),
-			...(!value.hasOwnProperty('updatedAt') ? { updatedAt: -1 } : {}),
 			...(!value.hasOwnProperty('id') ? { id: '' } : {}),
 			...(!value.hasOwnProperty('nodes') ? { nodes: [] } : {}),
 			...(!value.hasOwnProperty('settings') ? { settings: { ...defaults.settings } } : {}),

@@ -186,6 +186,19 @@ export class WorkflowsController {
 				);
 			}
 
+			// Strip redactionPolicy if user lacks scope (projectId is already resolved here)
+			if (newWorkflow.settings?.redactionPolicy !== undefined) {
+				const canUpdateRedaction = await userHasScopes(
+					req.user,
+					['workflow:updateRedactionSetting'],
+					false,
+					{ projectId },
+				);
+				if (!canUpdateRedaction) {
+					delete newWorkflow.settings.redactionPolicy;
+				}
+			}
+
 			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
 			if (parentFolderId) {

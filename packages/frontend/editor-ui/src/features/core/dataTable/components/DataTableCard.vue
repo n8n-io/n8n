@@ -1,21 +1,26 @@
 <script setup lang="ts">
-import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import DataTableActions from '@/features/core/dataTable/components/DataTableActions.vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 
 import { N8nBadge, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
+import type { DataTableResource } from '../types';
+import { ResourceType } from '@/features/collaboration/projects/projects.utils';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+
 type Props = {
-	dataTable: DataTable;
+	dataTable: DataTableResource;
 	readOnly?: boolean;
 	showOwnershipBadge?: boolean;
 };
 
 const i18n = useI18n();
 const dataTableStore = useDataTableStore();
+const projectsStore = useProjectsStore();
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
@@ -108,6 +113,19 @@ const getDataTableSize = computed(() => {
 					</div>
 				</template>
 				<template #append>
+					<div :class="$style['card-actions']" @click.stop>
+						<ProjectCardBadge
+							v-if="props.showOwnershipBadge"
+							:class="{
+								[$style['card-badge']]: true,
+							}"
+							:resource="dataTable"
+							:resource-type="ResourceType.DataTable"
+							:resource-type-label="'Data Table'"
+							:personal-project="projectsStore.personalProject"
+							:show-badge-border="false"
+						/>
+					</div>
 					<div :class="$style['card-actions']" @click.prevent>
 						<DataTableActions
 							:data-table="props.dataTable"
@@ -157,6 +175,21 @@ const getDataTableSize = computed(() => {
 			margin: 0 var(--spacing--4xs);
 		}
 	}
+}
+
+.card-actions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	flex-direction: row;
+	justify-content: center;
+	align-items: center;
+	align-self: stretch;
+	padding: 0 var(--spacing--sm) 0 0;
+	cursor: default;
+}
+
+.card-badge {
+	background-color: var(--color--background--light-3);
 }
 
 @include mixins.breakpoint('sm-and-down') {

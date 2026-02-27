@@ -230,7 +230,7 @@ export function useWorkflowSaving({
 					name: null,
 					description: null,
 				});
-				workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
+				workflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
 
 				// Only mark state clean if no new changes were made during the save
 				if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
@@ -483,7 +483,7 @@ export function useWorkflowSaving({
 				name: null,
 				description: null,
 			});
-			workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
+			workflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
 
 			// Only update webhook IDs if we explicitly reset them
 			if (resetWebhookUrls) {
