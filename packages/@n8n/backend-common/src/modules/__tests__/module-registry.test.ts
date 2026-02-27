@@ -37,6 +37,7 @@ describe('eligibleModules', () => {
 			'quick-connect',
 			'workflow-builder',
 			'redaction',
+			'favorites',
 		]);
 	});
 
