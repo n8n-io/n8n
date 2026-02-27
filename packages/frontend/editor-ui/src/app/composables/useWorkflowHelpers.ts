@@ -978,14 +978,11 @@ export function useWorkflowHelpers() {
 			setStateDirty: uiStore.stateIsDirty,
 		});
 		ws.setWorkflowSettings(workflowData.settings ?? {});
-		workflowsStore.setWorkflowVersionData(
-			{
-				versionId: workflowData.versionId,
-				name: null,
-				description: null,
-			},
-			workflowData.checksum,
-		);
+		workflowsStore.setWorkflowVersionData({
+			versionId: workflowData.versionId,
+			name: null,
+			description: null,
+		});
 		ws.setWorkflowScopes(workflowData.scopes);
 
 		if ('activeVersion' in workflowData) {
