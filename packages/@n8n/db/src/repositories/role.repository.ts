@@ -97,7 +97,7 @@ export class RoleRepository extends Repository<Role> {
 			.getRawMany<{
 				projectId: string;
 				memberCount: string;
-				lastAssigned: string | null;
+				lastAssigned: string | Date | null;
 			}>();
 
 		if (counts.length === 0) return [];
@@ -117,7 +117,10 @@ export class RoleRepository extends Repository<Role> {
 					projectName: project.name,
 					projectIcon: project.icon,
 					memberCount: parseInt(c.memberCount, 10),
-					lastAssigned: c.lastAssigned ?? null,
+					lastAssigned:
+						c.lastAssigned instanceof Date
+							? c.lastAssigned.toISOString()
+							: (c.lastAssigned ?? null),
 				};
 			})
 			.filter((r) => r !== null);

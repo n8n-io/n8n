@@ -27,7 +27,7 @@ const {
 
 watch(
 	() => props.roleSlug,
-	() => void execute(),
+	async () => await execute(),
 );
 
 const membersModalOpen = ref(false);
