@@ -57,7 +57,7 @@ export function useWorkflowCommands(): CommandGroup {
 	const uiStore = useUIStore();
 	const tagsStore = useTagsStore();
 	const workflowsStore = useWorkflowsStore();
-	const documentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
 
@@ -74,7 +74,7 @@ export function useWorkflowCommands(): CommandGroup {
 	const isArchived = computed(() => workflowsStore.workflow.isArchived);
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(documentStore?.value?.scopes).workflow,
+		() => getResourcePermissions(workflowDocumentStore?.value?.scopes).workflow,
 	);
 
 	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>

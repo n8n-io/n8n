@@ -35,7 +35,7 @@ export function useNodeCommands(options: {
 	const credentialsStore = useCredentialsStore();
 	const sourceControlStore = useSourceControlStore();
 	const workflowsStore = useWorkflowsStore();
-	const documentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const collaborationStore = useCollaborationStore();
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
@@ -45,7 +45,7 @@ export function useNodeCommands(options: {
 	const isArchived = computed(() => workflowsStore.workflow.isArchived);
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(documentStore?.value?.scopes).workflow,
+		() => getResourcePermissions(workflowDocumentStore?.value?.scopes).workflow,
 	);
 
 	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>

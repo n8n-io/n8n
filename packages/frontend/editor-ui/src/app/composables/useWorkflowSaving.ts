@@ -69,7 +69,7 @@ export function useWorkflowSaving({
 
 	const saveStore = useWorkflowSaveStore();
 	const backendConnectionStore = useBackendConnectionStore();
-	const documentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -84,7 +84,7 @@ export function useWorkflowSaving({
 		if (
 			!uiStore.stateIsDirty ||
 			workflowsStore.workflow.isArchived ||
-			!getResourcePermissions(documentStore?.value?.scopes).workflow.update
+			!getResourcePermissions(workflowDocumentStore?.value?.scopes).workflow.update
 		) {
 			next();
 			return;

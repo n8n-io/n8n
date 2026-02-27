@@ -70,7 +70,7 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 
 describe('useWorkflowCommands', () => {
 	let mockWorkflow: Ref<IWorkflowDb>;
-	let mockDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
+	let mockWorkflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let mockUIStore: ReturnType<typeof useUIStore>;
 	let mockTagsStore: ReturnType<typeof useTagsStore>;
 	let mockWorkflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -105,9 +105,11 @@ describe('useWorkflowCommands', () => {
 		// Mark workflow as existing by adding it to workflowsById
 		mockWorkflowsListStore.workflowsById = { [mockWorkflow.value.id]: mockWorkflow.value };
 
-		mockDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(mockWorkflow.value.id));
-		mockDocumentStore.setScopes(mockWorkflow.value.scopes ?? []);
-		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(mockDocumentStore));
+		mockWorkflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(mockWorkflow.value.id),
+		);
+		mockWorkflowDocumentStore.setScopes(mockWorkflow.value.scopes ?? []);
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(mockWorkflowDocumentStore));
 
 		Object.defineProperty(mockUIStore, 'isActionActive', {
 			value: { workflowSaving: false } as unknown as typeof mockUIStore.isActionActive,
@@ -244,7 +246,7 @@ describe('useWorkflowCommands', () => {
 
 	describe('duplicate workflow', () => {
 		it('should not include duplicate command when user lacks create permission', () => {
-			mockDocumentStore.setScopes(['workflow:read', 'workflow:update']);
+			mockWorkflowDocumentStore.setScopes(['workflow:read', 'workflow:update']);
 
 			const { commands } = useWorkflowCommands();
 			const duplicateCommand = commands.value.find((cmd) => cmd.id === 'duplicate-workflow');
@@ -416,7 +418,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should not show lifecycle commands without delete permission', () => {
-			mockDocumentStore.setScopes(['workflow:read', 'workflow:update']);
+			mockWorkflowDocumentStore.setScopes(['workflow:read', 'workflow:update']);
 
 			const { commands } = useWorkflowCommands();
 			const archiveCommand = commands.value.find((cmd) => cmd.id === 'archive-workflow');
@@ -471,7 +473,7 @@ describe('useWorkflowCommands', () => {
 		it('should allow actions for new workflows regardless of permissions', () => {
 			// For new workflows, remove from workflowsById so isNewWorkflow returns true
 			mockWorkflowsListStore.workflowsById = {};
-			mockDocumentStore.setScopes(['workflow:read']);
+			mockWorkflowDocumentStore.setScopes(['workflow:read']);
 
 			const { commands } = useWorkflowCommands();
 			const saveCommand = commands.value.find((cmd) => cmd.id === 'rename-workflow');
