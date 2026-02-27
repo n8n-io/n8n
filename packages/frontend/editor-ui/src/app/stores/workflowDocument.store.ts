@@ -7,6 +7,7 @@ import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDo
 import { useWorkflowDocumentChecksum } from './workflowDocument/useWorkflowDocumentChecksum';
 import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocumentPinData';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
+import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
 
 export {
 	getPinDataSize,
@@ -53,6 +54,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentChecksum = useWorkflowDocumentChecksum();
 		const workflowDocumentTags = useWorkflowDocumentTags();
 		const workflowDocumentPinData = useWorkflowDocumentPinData();
+		const workflowDocumentTimestamps = useWorkflowDocumentTimestamps();
 
 		return {
 			workflowId,
@@ -62,6 +64,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentChecksum,
 			...workflowDocumentTags,
 			...workflowDocumentPinData,
+			...workflowDocumentTimestamps,
 		};
 	})();
 }
