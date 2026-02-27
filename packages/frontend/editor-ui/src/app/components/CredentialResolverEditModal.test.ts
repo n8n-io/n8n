@@ -287,6 +287,91 @@ describe('CredentialResolverEditModal', () => {
 			expect(propertyNames).not.toContain('clientSecret');
 		});
 
+		it('should reactively hide clientId and clientSecret when user switches validation to oauth2-userinfo', async () => {
+			const credentialInputsProps: Array<Record<string, unknown>> = [];
+			let triggerUpdate: ((data: { name: string; value: unknown }) => void) | undefined;
+
+			const CredentialInputsSpy = defineComponent({
+				props: [
+					'credentialProperties',
+					'credentialData',
+					'documentationUrl',
+					'showValidationWarnings',
+				],
+				emits: ['update'],
+				setup(props, { emit }) {
+					triggerUpdate = (data) => emit('update', data);
+					credentialInputsProps.push({ ...props });
+					return () => h('div', { 'data-test-id': 'credential-inputs' });
+				},
+				// Re-capture props on update
+				updated() {
+					credentialInputsProps.push({ ...this.$props });
+				},
+			});
+
+			vi.mocked(restApiClient.getCredentialResolverTypes).mockResolvedValue(mockOAuthResolverTypes);
+
+			const mockResolver = {
+				id: 'oauth-resolver-id',
+				name: 'OAuth Resolver',
+				type: 'credential-resolver.oauth2-1.0',
+				config: '{}',
+				decryptedConfig: {
+					metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+					validation: 'oauth2-introspection',
+					clientId: 'my-client',
+					clientSecret: 'my-secret',
+					subjectClaim: 'sub',
+				},
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			vi.mocked(restApiClient.getCredentialResolver).mockResolvedValue(mockResolver);
+
+			renderModal({
+				props: {
+					modalName: CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+					data: { resolverId: 'oauth-resolver-id' },
+				},
+				pinia,
+				global: {
+					stubs: {
+						Modal: ModalStub,
+						CredentialInputs: CredentialInputsSpy,
+					},
+				},
+			});
+
+			// Wait for initial render with introspection — fields should be visible
+			await vi.waitFor(() => {
+				expect(credentialInputsProps.length).toBeGreaterThan(0);
+				expect(triggerUpdate).toBeDefined();
+			});
+
+			let lastProps = credentialInputsProps[credentialInputsProps.length - 1];
+			let propertyNames = (lastProps.credentialProperties as Array<{ name: string }>).map(
+				(p) => p.name,
+			);
+			expect(propertyNames).toContain('clientId');
+			expect(propertyNames).toContain('clientSecret');
+
+			// Simulate user switching validation to oauth2-userinfo
+			const propsCountBefore = credentialInputsProps.length;
+			triggerUpdate!({ name: 'validation', value: 'oauth2-userinfo' });
+
+			await vi.waitFor(() => {
+				expect(credentialInputsProps.length).toBeGreaterThan(propsCountBefore);
+				lastProps = credentialInputsProps[credentialInputsProps.length - 1];
+				propertyNames = (lastProps.credentialProperties as Array<{ name: string }>).map(
+					(p) => p.name,
+				);
+				expect(propertyNames).not.toContain('clientId');
+				expect(propertyNames).not.toContain('clientSecret');
+			});
+		});
+
 		it('should show clientId and clientSecret when validation is oauth2-introspection', async () => {
 			const credentialInputsProps: Array<Record<string, unknown>> = [];
 			const CredentialInputsSpy = defineComponent({
