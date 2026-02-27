@@ -10,6 +10,8 @@ import {
 	isPlanMessage,
 	isUserAnswersMessage,
 	isMessagesCompactedEvent,
+	isSummaryMessage,
+	isAgentSuggestionMessage,
 } from '../assistant.types';
 import { generateShortId } from '../builder.utils';
 
@@ -196,12 +198,33 @@ export function useBuilderMessages() {
 	): boolean {
 		let shouldClearThinking = false;
 
-		if (isTextMessage(msg)) {
+		if (isSummaryMessage(msg)) {
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'block',
+				title: msg.title,
+				content: msg.content,
+				read: false,
+			} satisfies ChatUI.AssistantMessage);
+			shouldClearThinking = true;
+		} else if (isAgentSuggestionMessage(msg)) {
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'block',
+				title: msg.title,
+				content: msg.text,
+				read: false,
+			} satisfies ChatUI.AssistantMessage);
+			shouldClearThinking = true;
+		} else if (isTextMessage(msg)) {
 			messages.push({
 				id: messageId,
 				role: 'assistant',
 				type: 'text',
 				content: msg.text,
+				codeSnippet: msg.codeSnippet,
 				read: false,
 			} satisfies ChatUI.AssistantMessage);
 			shouldClearThinking = true;
@@ -323,7 +346,12 @@ export function useBuilderMessages() {
 		if (lastCompletedToolIndex !== -1) {
 			for (let i = lastCompletedToolIndex + 1; i < messages.length; i++) {
 				const msg = messages[i];
-				if (msg.type === 'text' || msg.type === 'custom' || msg.type === 'code-diff') {
+				if (
+					msg.type === 'text' ||
+					msg.type === 'custom' ||
+					msg.type === 'code-diff' ||
+					msg.type === 'block'
+				) {
 					hasResponseAfterTools = true;
 					break;
 				}
@@ -516,12 +544,35 @@ export function useBuilderMessages() {
 		id: string,
 	): ChatUI.AssistantMessage {
 		// Handle specific message types using type guards
+		if (isSummaryMessage(message)) {
+			return {
+				id,
+				role: 'assistant',
+				type: 'block',
+				title: message.title,
+				content: message.content,
+				read: false,
+			} satisfies ChatUI.AssistantMessage;
+		}
+
+		if (isAgentSuggestionMessage(message)) {
+			return {
+				id,
+				role: 'assistant',
+				type: 'block',
+				title: message.title,
+				content: message.text,
+				read: false,
+			} satisfies ChatUI.AssistantMessage;
+		}
+
 		if (isTextMessage(message)) {
 			return {
 				id,
 				role: message.role ?? 'assistant',
 				type: 'text',
 				content: message.text,
+				codeSnippet: message.codeSnippet,
 				revertVersion: message.revertVersion,
 				read: false,
 			} satisfies ChatUI.AssistantMessage;

@@ -84,6 +84,22 @@ export function hasConsecutiveOutputSlots(node: SemanticNode): boolean {
 }
 
 /**
+ * Check if any non-empty, non-error output has index > 0.
+ * This catches nodes with a single connection at a non-zero output index
+ * (e.g., output 3 only), which hasMultipleOutputSlots() misses since it
+ * only returns true when >1 output slots have connections.
+ */
+export function hasNonZeroOutputIndex(node: SemanticNode): boolean {
+	for (const [outputName, connections] of node.outputs) {
+		if (outputName === 'error') continue;
+		if (connections.length > 0 && getOutputIndex(outputName) > 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
  * Get output targets grouped by output index for multi-output nodes.
  * Returns a Map from output index to array of target info (name + input slot).
  * Excludes error outputs (handled separately via .onError())

@@ -656,13 +656,14 @@ function setSelectedDetailId(
 	align-items: center;
 	justify-content: space-between;
 
-	.navigationButton {
-		height: 34px;
-		width: 34px;
-	}
-
 	.backButton {
 		border: none;
+	}
+}
+
+.navigationButton {
+	&:hover {
+		z-index: 1;
 	}
 }
 

@@ -652,6 +652,57 @@ describe('SecretsProvidersConnectionsService', () => {
 		});
 	});
 
+	describe('getConnectionAccessibleFromProject', () => {
+		it('should return connection when it is explicitly linked to the project', async () => {
+			const connection = {
+				id: 1,
+				providerKey: 'my-aws',
+			} as unknown as SecretsProviderConnection;
+
+			mockRepository.findAccessibleByProviderKeyAndProjectId.mockResolvedValue(connection);
+
+			const result = await service.getConnectionAccessibleFromProject('my-aws', 'project-1');
+			expect(result).toBe(connection);
+			expect(mockRepository.findAccessibleByProviderKeyAndProjectId).toHaveBeenCalledWith(
+				'my-aws',
+				'project-1',
+			);
+		});
+
+		it('should return connection when it is a global connection', async () => {
+			const globalConnection = {
+				id: 2,
+				providerKey: 'global-aws',
+				projectAccess: [],
+			} as unknown as SecretsProviderConnection;
+
+			mockRepository.findAccessibleByProviderKeyAndProjectId.mockResolvedValue(globalConnection);
+
+			const result = await service.getConnectionAccessibleFromProject('global-aws', 'project-1');
+			expect(result).toBe(globalConnection);
+		});
+
+		it('should throw NotFoundError when connection is not accessible from the project', async () => {
+			mockRepository.findAccessibleByProviderKeyAndProjectId.mockResolvedValue(null);
+
+			await expect(
+				service.getConnectionAccessibleFromProject('other-project-conn', 'project-1'),
+			).rejects.toThrow(NotFoundError);
+		});
+
+		it('should throw NotFoundError when providerKey does not exist', async () => {
+			mockRepository.findAccessibleByProviderKeyAndProjectId.mockResolvedValue(null);
+
+			await expect(
+				service.getConnectionAccessibleFromProject('non-existent', 'project-1'),
+			).rejects.toThrow(NotFoundError);
+			expect(mockRepository.findAccessibleByProviderKeyAndProjectId).toHaveBeenCalledWith(
+				'non-existent',
+				'project-1',
+			);
+		});
+	});
+
 	describe('deleteConnectionForProject', () => {
 		const deletedConnection = {
 			id: 1,

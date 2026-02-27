@@ -1,8 +1,10 @@
 import { STREAM_SEPARATOR } from '../../constants';
 import type {
 	AgentMessageChunk,
+	AgentSuggestionChunk,
 	CodeDiffChunk,
 	StreamChunk,
+	SummaryChunk,
 	ToolProgressChunk,
 } from '../../types/streaming';
 import { AssistantHandler } from '../assistant-handler';
@@ -180,7 +182,7 @@ describe('AssistantHandler', () => {
 		expect(result.suggestionIds).toContain('sug-1');
 	});
 
-	it('should degrade summary message to markdown text', async () => {
+	it('should forward summary message as SummaryChunk', async () => {
 		const response = createMockSdkResponse([
 			{
 				sessionId: 'sess-1',
@@ -197,15 +199,19 @@ describe('AssistantHandler', () => {
 		const client = createMockClient(response);
 		const handler = new AssistantHandler(client);
 
-		await handler.execute({ query: 'test' }, 'user-1', writer);
+		const result = await handler.execute({ query: 'test' }, 'user-1', writer);
 
 		// Chunks: connecting, summary message, done
 		expect(writtenChunks).toHaveLength(3);
-		const chunk = writtenChunks[1] as AgentMessageChunk;
-		expect(chunk.text).toBe('**Summary Title**\n\nSummary content here');
+		const chunk = writtenChunks[1] as SummaryChunk;
+		expect(chunk.type).toBe('summary');
+		expect(chunk.title).toBe('Summary Title');
+		expect(chunk.content).toBe('Summary content here');
+		expect(result.responseText).toContain('Summary Title');
+		expect(result.responseText).toContain('Summary content here');
 	});
 
-	it('should degrade agent-suggestion to markdown text', async () => {
+	it('should forward agent-suggestion as AgentSuggestionChunk', async () => {
 		const response = createMockSdkResponse([
 			{
 				sessionId: 'sess-1',
@@ -227,8 +233,11 @@ describe('AssistantHandler', () => {
 
 		// Chunks: connecting, suggestion message, done
 		expect(writtenChunks).toHaveLength(3);
-		const chunk = writtenChunks[1] as AgentMessageChunk;
-		expect(chunk.text).toBe('**Try this**\n\nUse the HTTP node instead');
+		const chunk = writtenChunks[1] as AgentSuggestionChunk;
+		expect(chunk.type).toBe('agent-suggestion');
+		expect(chunk.title).toBe('Try this');
+		expect(chunk.text).toBe('Use the HTTP node instead');
+		expect(chunk.suggestionId).toBe('sug-2');
 		expect(result.suggestionIds).toContain('sug-2');
 	});
 

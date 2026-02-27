@@ -77,7 +77,12 @@ export const secretProviderConnectionSchema = z.object({
 	createdAt: z.string(),
 	updatedAt: z.string(),
 });
-export type SecretProviderConnection = z.infer<typeof secretProviderConnectionSchema>;
+type SecretProviderConnectionWithIsEnabled = z.infer<typeof secretProviderConnectionSchema>;
+export type SecretProviderConnection = Omit<SecretProviderConnectionWithIsEnabled, 'isEnabled'>;
+export type SecretProviderConnectionListItem = Omit<
+	SecretProviderConnection,
+	'settings' | 'secrets'
+>;
 
 /**
  * Provider type metadata - for form rendering

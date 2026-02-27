@@ -1,6 +1,18 @@
 name: 'Release: Push to Channel'
 
 on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'n8n Release version to push to a channel (e.g., 1.2.3 or 1.2.3-beta.4)'
+        required: true
+        type: string
+
+      release-channel:
+        description: 'Release channel'
+        required: true
+        type: string
+
   workflow_dispatch:
     inputs:
       version:
@@ -23,12 +35,12 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.check_version.outputs.version }}
-      release_channel: ${{ github.event.inputs.release-channel }}
+      release_channel: ${{ inputs.release-channel }}
     steps:
       - name: Check Version Format
         id: check_version
         env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
           input_version="${{ env.INPUT_VERSION }}"
           version_regex='^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'
@@ -43,8 +55,8 @@ jobs:
 
       - name: Block RC promotion to stable/beta
         env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
-          CHANNEL: ${{ github.event.inputs.release-channel }}
+          INPUT_VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.release-channel }}
         run: |
           if [[ "$INPUT_VERSION" == *"-rc."* ]]; then
             echo "::error::RC versions cannot be promoted to '$CHANNEL' channel. Version '$INPUT_VERSION' contains '-rc.'"
