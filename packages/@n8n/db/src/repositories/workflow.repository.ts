@@ -31,7 +31,6 @@ import type {
 	FolderWithWorkflowAndSubFolderCount,
 	ListQuery,
 } from '../entities/types-db';
-import { buildWorkflowsByNodesQuery } from '../utils/build-workflows-by-nodes-query';
 import { isStringArray } from '../utils/is-string-array';
 import { TimedQuery } from '../utils/timed-query';
 
@@ -1101,12 +1100,18 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		if (!nodeTypes.length) return;
 
-		const { whereClause, parameters } = buildWorkflowsByNodesQuery(
-			nodeTypes,
-			this.globalConfig.database.type,
-		);
+		const subQuery = this.buildWorkflowIdsByNodeTypesSubQuery(nodeTypes);
+		qb.andWhere(`workflow.id IN (${subQuery.getQuery()})`);
+		qb.setParameters(subQuery.getParameters());
+	}
 
-		qb.andWhere(whereClause, parameters);
+	private buildWorkflowIdsByNodeTypesSubQuery(nodeTypes: string[]) {
+		return this.manager
+			.createQueryBuilder(WorkflowDependency, 'dep')
+			.select('dep.workflowId')
+			.distinct(true)
+			.where('dep.dependencyType = :depType', { depType: 'nodeType' })
+			.andWhere('dep.dependencyKey IN (:...nodeTypes)', { nodeTypes });
 	}
 
 	private applyOwnedByRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
@@ -1375,11 +1380,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		if (!nodeTypes?.length) return [];
 
 		const qb = this.createQueryBuilder('workflow');
-
-		const { whereClause, parameters } = buildWorkflowsByNodesQuery(
-			nodeTypes,
-			this.globalConfig.database.type,
-		);
+		const subQuery = this.buildWorkflowIdsByNodeTypesSubQuery(nodeTypes);
 
 		const workflows: Array<
 			Pick<WorkflowEntity, 'id' | 'name' | 'active' | 'activeVersionId'> &
@@ -1392,7 +1393,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 				'workflow.activeVersionId',
 				...(includeNodes ? ['workflow.nodes'] : []),
 			])
-			.where(whereClause, parameters)
+			.where(`workflow.id IN (${subQuery.getQuery()})`)
+			.setParameters(subQuery.getParameters())
 			.getMany();
 
 		return workflows;
