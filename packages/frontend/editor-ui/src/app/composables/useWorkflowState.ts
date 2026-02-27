@@ -29,7 +29,6 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
-import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';

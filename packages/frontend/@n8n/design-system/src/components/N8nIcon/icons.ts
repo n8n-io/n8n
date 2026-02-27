@@ -208,6 +208,7 @@ import IconLucideSquareCheck from '~icons/lucide/square-check';
 import IconLucideSquareMinus from '~icons/lucide/square-minus';
 import IconLucideSquarePen from '~icons/lucide/square-pen';
 import IconLucideSquarePlus from '~icons/lucide/square-plus';
+import IconLucideStar from '~icons/lucide/star';
 import IconLucideStickyNote from '~icons/lucide/sticky-note';
 import IconLucideSun from '~icons/lucide/sun';
 import IconLucideTable from '~icons/lucide/table';
@@ -244,7 +245,6 @@ import IconLucideYoutube from '~icons/lucide/youtube';
 import IconLucideZap from '~icons/lucide/zap';
 import IconLucideZoomIn from '~icons/lucide/zoom-in';
 import IconLucideZoomOut from '~icons/lucide/zoom-out';
-import IconLucideStar from '~icons/lucide/star';
 
 /**
  * Need to keep old icon names
