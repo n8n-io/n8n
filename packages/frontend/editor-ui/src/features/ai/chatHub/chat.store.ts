@@ -29,6 +29,8 @@ import {
 	deleteToolApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import {
 	emptyChatModelsResponse,
 	type ChatHubConversationModel,
@@ -84,6 +86,8 @@ import { appendChunkToParsedMessageItems } from '@n8n/chat-hub';
 
 export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
+	const credentialsStore = useCredentialsStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
@@ -1235,6 +1239,19 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		addMessage(data.sessionId, message);
 	}
 
+	const vectorStoreCredentialId = computed(
+		() => settingsStore.moduleSettings['chat-hub']?.vectorStoreCredentialId ?? null,
+	);
+
+	const vectorStoreCredential = computed(() => {
+		if (!vectorStoreCredentialId.value) {
+			return null;
+		}
+		return credentialsStore.getCredentialById(vectorStoreCredentialId.value) ?? null;
+	});
+
+	const isVectorStoreReady = computed(() => vectorStoreCredential.value?.isGlobal === true);
+
 	return {
 		/**
 		 * models and agents
@@ -1303,6 +1320,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		fetchAllChatSettings,
 		fetchProviderSettings,
 		updateProviderSettings,
+		vectorStoreCredentialId,
+		vectorStoreCredential,
+		isVectorStoreReady,
 
 		/**
 		 * WebSocket streaming handlers

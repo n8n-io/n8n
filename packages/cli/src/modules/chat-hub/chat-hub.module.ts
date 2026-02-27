@@ -21,10 +21,14 @@ export class ChatHubModule implements ModuleInterface {
 
 	async settings() {
 		const { ChatHubSettingsService } = await import('./chat-hub.settings.service');
-		const enabled = await Container.get(ChatHubSettingsService).getEnabled();
-		const providers = await Container.get(ChatHubSettingsService).getAllProviderSettings();
+		const service = Container.get(ChatHubSettingsService);
+		const [enabled, providers, vectorStoreCredentialId] = await Promise.all([
+			service.getEnabled(),
+			service.getAllProviderSettings(),
+			service.getVectorStoreCredentialId(),
+		]);
 
-		return { enabled, providers };
+		return { enabled, providers, ...(vectorStoreCredentialId && { vectorStoreCredentialId }) };
 	}
 
 	async entities() {

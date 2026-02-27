@@ -54,6 +54,7 @@ export {
 	agentIconOrEmojiSchema,
 	type MessageChunk,
 	UpdateChatSettingsRequest,
+	UpdateVectorStoreCredentialRequest,
 	type ChatProviderSettingsDto,
 	type ChatSendMessageResponse,
 	type ChatReconnectResponse,

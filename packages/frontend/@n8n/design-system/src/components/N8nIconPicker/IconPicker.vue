@@ -222,7 +222,7 @@ async function loadEmojiMetadataMap() {
 						<N8nIcon icon="search" :size="16" />
 					</template>
 				</N8nInput>
-				<N8nButton icon="refresh-cw" size="small" type="secondary" @click="selectRandom">{{
+				<N8nButton icon="refresh-cw" size="small" variant="subtle" @click="selectRandom">{{
 					t('iconPicker.random')
 				}}</N8nButton>
 			</div>

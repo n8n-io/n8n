@@ -260,6 +260,7 @@ export type FrontendModuleSettings = {
 	'chat-hub'?: {
 		enabled: boolean;
 		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+		vectorStoreCredentialId?: string;
 	};
 
 	/**

@@ -541,9 +541,14 @@ export class UpdateChatSettingsRequest extends Z.class({
 	payload: chatProviderSettingsSchema,
 }) {}
 
+export class UpdateVectorStoreCredentialRequest extends Z.class({
+	credentialId: z.string().nullable(),
+}) {}
+
 export interface ChatHubModuleSettings {
 	enabled: boolean;
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+	vectorStoreCredentialId?: string;
 }
 
 /**

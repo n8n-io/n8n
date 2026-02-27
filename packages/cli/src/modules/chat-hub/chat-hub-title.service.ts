@@ -269,7 +269,7 @@ export class ChatHubTitleService {
 		credentialId: string;
 		projectId: string;
 	}> {
-		const agent = await this.chatHubAgentService.getAgentById(user.id, model.agentId, trx);
+		const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id, trx);
 		if (!agent) {
 			throw new BadRequestError('Agent not found for title generation');
 		}

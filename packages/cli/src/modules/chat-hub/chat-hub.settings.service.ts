@@ -14,6 +14,7 @@ const CHAT_PROVIDER_SETTINGS_KEY_PREFIX = 'chat.provider.';
 const CHAT_PROVIDER_SETTINGS_KEY = (provider: ChatHubLLMProvider) =>
 	`${CHAT_PROVIDER_SETTINGS_KEY_PREFIX}${provider}`;
 const CHAT_ENABLED_KEY = 'chat.access.enabled';
+const CHAT_VECTOR_STORE_CREDENTIAL_KEY = 'chat.vector-store-credential-id';
 
 const getDefaultProviderSettings = (provider: ChatHubLLMProvider): ChatProviderSettingsDto => ({
 	provider,
@@ -100,6 +101,22 @@ export class ChatHubSettingsService {
 		}
 
 		return result;
+	}
+
+	async getVectorStoreCredentialId(): Promise<string | null> {
+		const row = await this.settingsRepository.findByKey(CHAT_VECTOR_STORE_CREDENTIAL_KEY);
+		return row?.value ?? null;
+	}
+
+	async setVectorStoreCredentialId(id: string | null): Promise<void> {
+		if (id === null) {
+			await this.settingsRepository.delete({ key: CHAT_VECTOR_STORE_CREDENTIAL_KEY });
+		} else {
+			await this.settingsRepository.upsert(
+				{ key: CHAT_VECTOR_STORE_CREDENTIAL_KEY, value: id, loadOnStartup: true },
+				['key'],
+			);
+		}
 	}
 
 	async setProviderSettings(

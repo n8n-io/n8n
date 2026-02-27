@@ -235,6 +235,13 @@ export const updateChatSettingsApi = async (
 	});
 };
 
+export const updateVectorStoreCredentialApi = async (
+	context: IRestApiContext,
+	credentialId: string | null,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'PUT', '/chat/vector-store-credential', { credentialId });
+};
+
 export function buildChatAttachmentUrl(
 	context: IRestApiContext,
 	sessionId: string,

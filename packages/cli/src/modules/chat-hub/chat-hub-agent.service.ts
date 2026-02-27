@@ -28,7 +28,6 @@ import { ChatHubToolService } from './chat-hub-tool.service';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ChatHubExecutionService } from './chat-hub-execution.service';
-import { CredentialsService } from '@/credentials/credentials.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 import { VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE } from 'n8n-workflow';
@@ -44,7 +43,6 @@ export class ChatHubAgentService {
 		private readonly chatHubExecutionService: ChatHubExecutionService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
-		private readonly credentialsService: CredentialsService,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly chatHubToolService: ChatHubToolService,
 	) {
@@ -281,20 +279,16 @@ export class ChatHubAgentService {
 		return `chat-hub-agent-files-${agentId}`;
 	}
 
-	async ensureVectorStoreCredential(user: User) {
-		const credentials = await this.credentialsService.getMany(user, {
-			listQueryOptions: {
-				filter: { type: 'vectorStorePGVectorScopedApi' },
-			},
-		});
+	async ensureVectorStoreCredential(_user: User) {
+		const credentialId = await this.chatHubSettingsService.getVectorStoreCredentialId();
 
-		if (credentials.length === 0) {
+		if (credentialId === null) {
 			throw new BadRequestError(
-				'No PGVector credential found. Please create a "Postgres PGVector Store (User-Scoped) API" credential to use file knowledge with agents.',
+				'No PGVector credential configured. Please set up a vector store credential in the Chat Hub settings.',
 			);
 		}
 
-		return credentials[0];
+		return { id: credentialId };
 	}
 
 	private async insertEmbeddings(

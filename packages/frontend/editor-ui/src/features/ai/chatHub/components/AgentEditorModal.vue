@@ -3,6 +3,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { fetchChatModelsApi, buildAgentAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import Modal from '@/app/components/Modal.vue';
@@ -33,7 +34,7 @@ import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
-import { type IBinaryData, type INode } from 'n8n-workflow';
+import { type IBinaryData } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
 import {
 	personalAgentDefaultIcon,
@@ -41,7 +42,6 @@ import {
 	createMimeTypes,
 } from '@/features/ai/chatHub/chat.utils';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
-import { TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 
@@ -56,7 +56,10 @@ const props = defineProps<{
 }>();
 
 const chatStore = useChatStore();
+const usersStore = useUsersStore();
 const i18n = useI18n();
+
+const canConfigureVectorStore = computed(() => usersStore.isInstanceOwner || usersStore.isAdmin);
 const toast = useToast();
 const message = useMessage();
 const uiStore = useUIStore();
@@ -539,6 +542,18 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 						multiple
 						@change="handleFileSelect"
 					/>
+					<N8nCallout
+						v-if="!chatStore.isVectorStoreReady"
+						theme="warning"
+						icon="info"
+						:class="$style.vectorStoreCallout"
+					>
+						{{
+							canConfigureVectorStore
+								? i18n.baseText('chatHub.agent.editor.vectorStore.notReady.canConfigure')
+								: i18n.baseText('chatHub.agent.editor.vectorStore.notReady')
+						}}
+					</N8nCallout>
 					<div :class="$style.filesContainer">
 						<div
 							v-for="(file, index) in savedFiles"
@@ -554,6 +569,7 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 								icon="trash-2"
 								type="tertiary"
 								size="small"
+								variant="subtle"
 								:class="$style.removeButton"
 								@click.stop="removeExistingFile(index)"
 							/>
@@ -572,6 +588,7 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 								icon="trash-2"
 								type="tertiary"
 								size="small"
+								variant="subtle"
 								:class="$style.removeButton"
 								@click.stop="removeNewFile(index)"
 							/>
@@ -579,6 +596,7 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 						<N8nButton
 							type="tertiary"
 							icon="plus"
+							variant="subtle"
 							:class="$style.addFileButton"
 							@click="handleClickUploadArea"
 						>
@@ -620,7 +638,15 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 	flex-direction: column;
 	gap: var(--spacing--md);
 	padding: var(--spacing--sm) 0;
+	padding-right: var(--spacing--lg);
 	position: relative;
+	max-height: 60vh;
+	overflow-y: auto;
+	margin-right: calc(-1 * var(--spacing--lg));
+}
+
+.vectorStoreCallout {
+	margin-bottom: var(--spacing--2xs);
 }
 
 .isDraggingFile {

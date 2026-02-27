@@ -345,7 +345,7 @@ export class ChatHubController {
 		}
 
 		// Verify user has access to this agent
-		await this.chatAgentService.getAgentById(req.user.id, agentId);
+		await this.chatAgentService.getAgentById(agentId, req.user.id);
 
 		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
 			await this.chatAttachmentService.getAgentAttachment(agentId, attachmentIndex);
