@@ -34,6 +34,7 @@ import {
 } from '@n8n/decorators';
 import { sanitizeFilename } from '@n8n/utils';
 import type { Response } from 'express';
+import type Stream from 'node:stream';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubToolService } from './chat-hub-tool.service';
@@ -104,32 +105,9 @@ export class ChatHubController {
 		await this.chatService.ensureConversation(req.user.id, sessionId);
 
 		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
-			await this.chatAttachmentService.getAttachment(sessionId, messageId, attachmentIndex);
+			await this.chatAttachmentService.getMessageAttachment(sessionId, messageId, attachmentIndex);
 
-		res.setHeader('Content-Type', mimeType);
-
-		if (attachmentAsStreamOrBuffer.fileSize) {
-			res.setHeader('Content-Length', attachmentAsStreamOrBuffer.fileSize);
-		}
-
-		if (!mimeType || !ViewableMimeTypes.includes(mimeType.toLowerCase())) {
-			// Force download if file is not viewable
-			res.setHeader(
-				'Content-Disposition',
-				`attachment${fileName ? `; filename=${sanitizeFilename(fileName)}` : ''}`,
-			);
-		}
-
-		if (attachmentAsStreamOrBuffer.type === 'buffer') {
-			res.send(attachmentAsStreamOrBuffer.buffer);
-			return;
-		}
-
-		return await new Promise<void>((resolve, reject) => {
-			attachmentAsStreamOrBuffer.stream.on('end', resolve);
-			attachmentAsStreamOrBuffer.stream.on('error', reject);
-			attachmentAsStreamOrBuffer.stream.pipe(res);
-		});
+		return await this.sendAttachment(res, mimeType, fileName, attachmentAsStreamOrBuffer);
 	}
 
 	@GlobalScope('chatHub:message')
@@ -347,9 +325,70 @@ export class ChatHubController {
 		res: Response,
 		@Param('agentId') agentId: string,
 	): Promise<void> {
-		await this.chatAgentService.deleteAgent(agentId, req.user.id);
+		await this.chatAgentService.deleteAgent(agentId, req.user);
 
 		res.status(204).send();
+	}
+
+	@Get('/agents/:agentId/attachments/:index')
+	@GlobalScope('chatHub:message')
+	async getAgentAttachment(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('agentId') agentId: string,
+		@Param('index') index: string,
+	) {
+		const attachmentIndex = Number.parseInt(index, 10);
+
+		if (isNaN(attachmentIndex)) {
+			throw new BadRequestError('Invalid attachment index');
+		}
+
+		// Verify user has access to this agent
+		await this.chatAgentService.getAgentById(agentId, req.user.id);
+
+		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
+			await this.chatAttachmentService.getAgentAttachment(agentId, attachmentIndex);
+
+		return await this.sendAttachment(res, mimeType, fileName, attachmentAsStreamOrBuffer);
+	}
+
+	/**
+	 * Common method to send attachment data to the response.
+	 * Handles setting headers and streaming/buffering the content.
+	 */
+	private async sendAttachment(
+		res: Response,
+		mimeType: string,
+		fileName: string | undefined,
+		attachmentAsStreamOrBuffer:
+			| { type: 'buffer'; buffer: Buffer<ArrayBufferLike>; fileSize: number }
+			| { type: 'stream'; stream: Stream.Readable; fileSize: number },
+	): Promise<void> {
+		res.setHeader('Content-Type', mimeType);
+
+		if (attachmentAsStreamOrBuffer.fileSize) {
+			res.setHeader('Content-Length', attachmentAsStreamOrBuffer.fileSize);
+		}
+
+		if (!mimeType || !ViewableMimeTypes.includes(mimeType.toLowerCase())) {
+			// Force download if file is not viewable
+			res.setHeader(
+				'Content-Disposition',
+				`attachment${fileName ? `; filename=${sanitizeFilename(fileName)}` : ''}`,
+			);
+		}
+
+		if (attachmentAsStreamOrBuffer.type === 'buffer') {
+			res.send(attachmentAsStreamOrBuffer.buffer);
+			return;
+		}
+
+		return await new Promise<void>((resolve, reject) => {
+			attachmentAsStreamOrBuffer.stream.on('end', resolve);
+			attachmentAsStreamOrBuffer.stream.on('error', reject);
+			attachmentAsStreamOrBuffer.stream.pipe(res);
+		});
 	}
 
 	private assertToolTypeAllowed(type: string, user: AuthenticatedRequest['user']) {

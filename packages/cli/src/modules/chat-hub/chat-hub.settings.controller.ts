@@ -1,12 +1,14 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import { type AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Post, RestController, GlobalScope, Param } from '@n8n/decorators';
+import { Body, Get, Post, Put, RestController, GlobalScope, Param } from '@n8n/decorators';
 
 import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
 	ChatHubLLMProvider,
 	chatHubLLMProviderSchema,
 	UpdateChatSettingsRequest,
+	UpdateEmbeddingCredentialRequest,
+	UpdateVectorStoreCredentialRequest,
 } from '@n8n/api-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -60,5 +62,43 @@ export class ChatHubSettingsController {
 		}
 
 		return await this.settings.getProviderSettings(payload.provider);
+	}
+
+	@Put('/vector-store-credential')
+	@GlobalScope('chatHub:manage')
+	async setVectorStoreCredential(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: UpdateVectorStoreCredentialRequest,
+	) {
+		await this.settings.setVectorStoreCredentialId(body.credentialId);
+		try {
+			await this.moduleRegistry.refreshModuleSettings('chat-hub');
+		} catch (error) {
+			this.logger.warn('Failed to sync chat settings to module registry', {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	@Put('/embedding-credential')
+	@GlobalScope('chatHub:manage')
+	async setEmbeddingCredential(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: UpdateEmbeddingCredentialRequest,
+	) {
+		const credential =
+			body.credentialId && body.credentialType
+				? { id: body.credentialId, type: body.credentialType }
+				: null;
+		await this.settings.setEmbeddingCredential(credential);
+		try {
+			await this.moduleRegistry.refreshModuleSettings('chat-hub');
+		} catch (error) {
+			this.logger.warn('Failed to sync chat settings to module registry', {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 }

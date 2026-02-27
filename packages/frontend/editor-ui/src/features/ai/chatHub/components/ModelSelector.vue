@@ -14,6 +14,7 @@ import {
 	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
 	MAX_AGENT_NAME_CHARS,
 	NEW_AGENT_MENU_ID,
+	providerDisplayNames,
 } from '@/features/ai/chatHub/constants';
 import { useI18n } from '@n8n/i18n';
 
@@ -122,9 +123,10 @@ function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
 	uiStore.openModalWithData({
 		name: CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
 		data: {
-			provider,
+			credentialType,
+			displayName: providerDisplayNames[provider],
 			initialValue: credentials?.[provider] ?? null,
-			onSelect: handleSelectCredentials,
+			onSelect: (credentialId) => handleSelectCredentials(provider, credentialId),
 		},
 	});
 }
@@ -196,7 +198,7 @@ defineExpose({
 	>
 		<template #trigger>
 			<N8nButton
-				variant="ghost"
+				:variant="text ? 'ghost' : 'subtle'"
 				:class="$style.dropdownButton"
 				:text="text"
 				data-test-id="chat-model-selector"
@@ -281,6 +283,8 @@ defineExpose({
 	align-items: center;
 	gap: var(--spacing--xs);
 	width: fit-content;
+	height: unset !important;
+	padding-block: var(--spacing--2xs);
 
 	/* disable underline */
 	text-decoration: none !important;

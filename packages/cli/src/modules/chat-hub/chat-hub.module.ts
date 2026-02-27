@@ -21,10 +21,24 @@ export class ChatHubModule implements ModuleInterface {
 
 	async settings() {
 		const { ChatHubSettingsService } = await import('./chat-hub.settings.service');
-		const enabled = await Container.get(ChatHubSettingsService).getEnabled();
-		const providers = await Container.get(ChatHubSettingsService).getAllProviderSettings();
+		const service = Container.get(ChatHubSettingsService);
+		const [enabled, providers, vectorStoreCredentialId, embeddingCredential] = await Promise.all([
+			service.getEnabled(),
+			service.getAllProviderSettings(),
+			service.getVectorStoreCredentialId(),
+			service.getEmbeddingCredential(),
+		]);
 
-		return { enabled, providers };
+		const vectorStoreCredential = vectorStoreCredentialId
+			? { id: vectorStoreCredentialId, type: 'vectorStorePGVectorScopedApi' }
+			: undefined;
+
+		return {
+			enabled,
+			providers,
+			...(vectorStoreCredential && { vectorStoreCredential }),
+			...(embeddingCredential && { embeddingCredential }),
+		};
 	}
 
 	async entities() {

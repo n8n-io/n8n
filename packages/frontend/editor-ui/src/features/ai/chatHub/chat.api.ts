@@ -236,6 +236,24 @@ export const updateChatSettingsApi = async (
 	});
 };
 
+export const updateVectorStoreCredentialApi = async (
+	context: IRestApiContext,
+	credentialId: string | null,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'PUT', '/chat/vector-store-credential', { credentialId });
+};
+
+export const updateEmbeddingCredentialApi = async (
+	context: IRestApiContext,
+	credentialId: string | null,
+	credentialType: string | null,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'PUT', '/chat/embedding-credential', {
+		credentialId,
+		credentialType,
+	});
+};
+
 export function buildChatAttachmentUrl(
 	context: IRestApiContext,
 	sessionId: string,
@@ -243,6 +261,14 @@ export function buildChatAttachmentUrl(
 	attachmentIndex: number,
 ): string {
 	return `${context.baseUrl}/chat/conversations/${sessionId}/messages/${messageId}/attachments/${attachmentIndex}`;
+}
+
+export function buildAgentAttachmentUrl(
+	context: IRestApiContext,
+	agentId: string,
+	attachmentIndex: number,
+): string {
+	return `${context.baseUrl}/chat/agents/${agentId}/attachments/${attachmentIndex}`;
 }
 
 /**

@@ -260,6 +260,8 @@ export type FrontendModuleSettings = {
 	'chat-hub'?: {
 		enabled: boolean;
 		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+		vectorStoreCredential?: { type: string; id: string };
+		embeddingCredential?: { type: string; id: string };
 	};
 
 	/**

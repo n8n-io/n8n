@@ -103,6 +103,11 @@ export const MEMORY_BUFFER_WINDOW_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBu
 export const GUARDRAILS_NODE_TYPE = '@n8n/n8n-nodes-langchain.guardrails';
 export const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
 export const MCP_CLIENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClient';
+export const VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.vectorStorePGVectorScoped';
+export const VECTOR_STORE_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolVectorStore';
+export const DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.documentDefaultDataLoader';
 
 export const LANGCHAIN_CUSTOM_TOOLS = [
 	CODE_TOOL_LANGCHAIN_NODE_TYPE,

@@ -653,6 +653,23 @@ export class ChatHubExecutionService {
 		return { adapter: adapter as unknown as Response, waitForPendingOperations };
 	}
 
+	async ensureWasSuccessfulOrThrow(executionId: string) {
+		const executionEntity = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+
+		if (!executionEntity) {
+			throw new BadRequestError('Execution not found');
+		}
+
+		if (executionEntity.status !== 'success') {
+			const errorMessage = executionEntity.data.resultData.error?.message ?? 'Unknown error';
+
+			throw new BadRequestError(errorMessage);
+		}
+	}
+
 	/**
 	 * Extract error message from run data
 	 */

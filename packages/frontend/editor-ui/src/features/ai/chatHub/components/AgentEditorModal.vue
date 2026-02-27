@@ -3,8 +3,9 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
+import { fetchChatModelsApi, buildAgentAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import Modal from '@/app/components/Modal.vue';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import {
@@ -15,16 +16,34 @@ import {
 	type ChatHubConversationModel,
 	type ChatHubProvider,
 	type ChatModelDto,
+	type ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
-import { N8nButton, N8nHeading, N8nIconPicker, N8nInput, N8nInputLabel } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nHeading,
+	N8nIconButton,
+	N8nIconPicker,
+	N8nInput,
+	N8nInputLabel,
+	N8nIcon,
+	N8nText,
+	N8nCallout,
+} from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
+import { type IBinaryData } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
-import { personalAgentDefaultIcon, isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
+import {
+	personalAgentDefaultIcon,
+	isLlmProviderModel,
+	createMimeTypes,
+} from '@/features/ai/chatHub/chat.utils';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
+import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
+import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 
 const props = defineProps<{
 	modalName: string;
@@ -37,7 +56,10 @@ const props = defineProps<{
 }>();
 
 const chatStore = useChatStore();
+const usersStore = useUsersStore();
 const i18n = useI18n();
+
+const canConfigureVectorStore = computed(() => usersStore.isInstanceOwner || usersStore.isAdmin);
 const toast = useToast();
 const message = useMessage();
 const uiStore = useUIStore();
@@ -55,6 +77,9 @@ const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
 const isLoadingAgents = ref(false);
 const nameInputRef = useTemplateRef('nameInput');
 const icon = ref<AgentIconOrEmoji>(personalAgentDefaultIcon);
+const savedFiles = ref<ChatHubAgentKnowledgeItem[]>([]);
+const newFiles = ref<IBinaryData[]>([]);
+const fileInputRef = useTemplateRef<HTMLInputElement>('fileInput');
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
 const credentialIdForSelectedModelProvider = computed(
@@ -79,14 +104,17 @@ const saveButtonLabel = computed(() =>
 		: i18n.baseText('chatHub.agent.editor.save'),
 );
 
-const isValid = computed(() => {
-	return (
+const acceptedMimeTypes = computed(
+	() => `${createMimeTypes(selectedAgent.value?.metadata.inputModalities ?? [])},application/pdf`,
+);
+
+const isValid = computed(
+	() =>
 		name.value.trim().length > 0 &&
 		systemPrompt.value.trim().length > 0 &&
 		selectedModel.value !== null &&
-		!!credentialIdForSelectedModelProvider.value
-	);
-});
+		!!credentialIdForSelectedModelProvider.value,
+);
 
 const agentMergedCredentials = computed((): CredentialsMap => {
 	return {
@@ -98,6 +126,24 @@ const agentMergedCredentials = computed((): CredentialsMap => {
 const canSelectTools = computed(
 	() => selectedAgent.value?.metadata.capabilities.functionCalling ?? false,
 );
+
+const hasPdfFiles = computed(() => {
+	return savedFiles.value.some(
+		(f) =>
+			(f.type === 'file' && f.binaryData.mimeType === 'application/pdf') || f.type === 'embedding',
+	);
+});
+
+const isProviderChanging = computed(() => {
+	if (!isEditMode.value || !customAgent.value || !selectedModel.value) {
+		return false;
+	}
+	return customAgent.value.provider !== selectedModel.value.provider;
+});
+
+const shouldShowReindexWarning = computed(() => {
+	return isEditMode.value && hasPdfFiles.value && isProviderChanging.value;
+});
 
 function closeDialog() {
 	uiStore.closeModal(props.modalName);
@@ -124,6 +170,7 @@ watch(
 		description.value = agent.description ?? '';
 		systemPrompt.value = agent.systemPrompt;
 		selectedModel.value = { provider: agent.provider, model: agent.model };
+		savedFiles.value = agent.files;
 		toolIds.value = agent.toolIds ?? [];
 
 		if (agent.credentialId) {
@@ -201,13 +248,29 @@ async function onSave() {
 		};
 
 		if (isEditMode.value && props.data.agentId) {
-			await chatStore.updateCustomAgent(props.data.agentId, payload, props.data.credentials);
+			await chatStore.updateCustomAgent(
+				props.data.agentId,
+				{
+					...payload,
+					keepFileIndices:
+						customAgent.value?.files.flatMap((f, i) => (savedFiles.value.includes(f) ? [i] : [])) ??
+						[],
+					newFiles: newFiles.value.map((f) => ({ fileName: '', ...f })),
+				},
+				props.data.credentials,
+			);
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.update'),
 				type: 'success',
 			});
 		} else {
-			const agent = await chatStore.createCustomAgent(payload, props.data.credentials);
+			const agent = await chatStore.createCustomAgent(
+				{
+					...payload,
+					files: newFiles.value.map((f) => ({ fileName: '', ...f })),
+				},
+				props.data.credentials,
+			);
 			props.data.onCreateCustomAgent?.(agent);
 
 			toast.showMessage({
@@ -256,6 +319,88 @@ async function onDelete() {
 		isDeleting.value = false;
 	}
 }
+
+function isFileTypeAccepted(file: File): boolean {
+	const accepted = acceptedMimeTypes.value;
+	if (!accepted) return false;
+	if (accepted === '*/*') return true;
+
+	const acceptedTypes = accepted.split(',').map((type) => type.trim());
+	return acceptedTypes.some((acceptedType) => {
+		if (acceptedType.endsWith('/*')) {
+			// Handle wildcards like 'image/*', 'text/*'
+			const prefix = acceptedType.slice(0, -2);
+			return file.type.startsWith(prefix + '/');
+		}
+		return file.type === acceptedType;
+	});
+}
+
+async function onFilesDropped(droppedFiles: File[]) {
+	const acceptedFiles = droppedFiles.filter((file) => isFileTypeAccepted(file));
+
+	if (acceptedFiles.length === 0) {
+		return;
+	}
+
+	const binaryItems = await Promise.all(
+		acceptedFiles.map(async (f) => await convertFileToBinaryData(f)),
+	);
+
+	newFiles.value = [...newFiles.value, ...binaryItems];
+}
+
+async function handleFileSelect(event: Event) {
+	const target = event.target as HTMLInputElement;
+	if (!target.files) {
+		return;
+	}
+
+	const acceptedFiles = Array.from(target.files).filter((file) => isFileTypeAccepted(file));
+
+	if (acceptedFiles.length === 0) {
+		target.value = '';
+		return;
+	}
+
+	const binaryItems = await Promise.all(
+		acceptedFiles.map(async (f) => await convertFileToBinaryData(f)),
+	);
+
+	newFiles.value = [...newFiles.value, ...binaryItems];
+
+	// Reset input value to allow selecting the same file again
+	target.value = '';
+}
+
+function removeExistingFile(index: number) {
+	savedFiles.value = savedFiles.value.filter((_, i) => i !== index);
+}
+
+function removeNewFile(index: number) {
+	newFiles.value = newFiles.value.filter((_, i) => i !== index);
+}
+
+function handleClickUploadArea() {
+	fileInputRef.value?.click();
+}
+
+function handleFileClick(index: number) {
+	if (!isEditMode.value || !props.data.agentId) {
+		return;
+	}
+
+	const file = savedFiles.value[index];
+
+	if (file.type !== 'file') {
+		return;
+	}
+
+	const url = buildAgentAttachmentUrl(useRootStore().restApiContext, props.data.agentId, index);
+	window.open(url, '_blank');
+}
+
+const fileDrop = useFileDrop(true, onFilesDropped);
 </script>
 
 <template>
@@ -275,7 +420,16 @@ async function onDelete() {
 			</div>
 		</template>
 		<template #content>
-			<div :class="$style.content">
+			<div
+				:class="[$style.content, { [$style.isDraggingFile]: fileDrop.isDragging.value }]"
+				@dragenter="fileDrop.handleDragEnter"
+				@dragleave="fileDrop.handleDragLeave"
+				@dragover="fileDrop.handleDragOver"
+				@drop="fileDrop.handleDrop"
+			>
+				<div v-if="fileDrop.isDragging.value" :class="$style.dropOverlay">
+					<N8nText size="large" color="text-dark">Add file to agent</N8nText>
+				</div>
 				<N8nInputLabel
 					input-name="agent-name"
 					:label="i18n.baseText('chatHub.agent.editor.name.label')"
@@ -369,6 +523,87 @@ async function onDelete() {
 						</div>
 					</N8nInputLabel>
 				</div>
+
+				<N8nCallout
+					v-if="shouldShowReindexWarning"
+					theme="warning"
+					icon="info"
+					:class="$style.reindexWarning"
+				>
+					{{ i18n.baseText('chatHub.agent.editor.reindexWarning') }}
+				</N8nCallout>
+
+				<N8nInputLabel input-name="agent-files" label="Files" :required="false">
+					<input
+						ref="fileInput"
+						type="file"
+						:class="$style.fileInput"
+						:accept="acceptedMimeTypes"
+						multiple
+						@change="handleFileSelect"
+					/>
+					<N8nCallout
+						v-if="chatStore.semanticSearchReadiness.vectorStoreIssue"
+						theme="warning"
+						icon="info"
+						:class="$style.vectorStoreCallout"
+					>
+						{{
+							canConfigureVectorStore
+								? i18n.baseText('chatHub.agent.editor.vectorStore.notReady.canConfigure')
+								: i18n.baseText('chatHub.agent.editor.vectorStore.notReady')
+						}}
+					</N8nCallout>
+					<div :class="$style.filesContainer">
+						<div
+							v-for="(file, index) in savedFiles"
+							:key="`existing-file-${index}`"
+							:class="[$style.fileBar, { [$style.embeddingFile]: file.type === 'embedding' }]"
+							@click="handleFileClick(index)"
+						>
+							<N8nIcon size="medium" icon="file" />
+							<span :class="$style.fileName">
+								{{ file.type === 'file' ? file.binaryData.fileName : file.fileName }}
+							</span>
+							<N8nIconButton
+								icon="trash-2"
+								type="tertiary"
+								size="small"
+								variant="subtle"
+								:class="$style.removeButton"
+								@click.stop="removeExistingFile(index)"
+							/>
+						</div>
+						<div
+							v-for="(file, index) in newFiles"
+							:key="`new-file-${index}`"
+							:class="[$style.fileBar, $style.newFile]"
+							@click="handleFileClick(index)"
+						>
+							<N8nIcon size="medium" icon="file" />
+							<span :class="$style.fileName">
+								{{ file.fileName }}
+							</span>
+							<N8nIconButton
+								icon="trash-2"
+								type="tertiary"
+								size="small"
+								variant="subtle"
+								:class="$style.removeButton"
+								@click.stop="removeNewFile(index)"
+							/>
+						</div>
+						<N8nButton
+							type="tertiary"
+							icon="plus"
+							variant="subtle"
+							:class="$style.addFileButton"
+							@click="handleClickUploadArea"
+						>
+							Add file
+						</N8nButton>
+					</div>
+				</N8nInputLabel>
 			</div>
 		</template>
 
@@ -403,6 +638,33 @@ async function onDelete() {
 	flex-direction: column;
 	gap: var(--spacing--md);
 	padding: var(--spacing--sm) 0;
+	padding-right: var(--spacing--lg);
+	position: relative;
+	max-height: 60vh;
+	overflow-y: auto;
+	margin-right: calc(-1 * var(--spacing--lg));
+}
+
+.vectorStoreCallout {
+	margin-bottom: var(--spacing--2xs);
+}
+
+.isDraggingFile {
+	border-color: var(--color--secondary);
+}
+
+.dropOverlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: color-mix(in srgb, var(--color--background--light-2) 95%, transparent);
+	pointer-events: none;
 }
 
 .input {
@@ -433,5 +695,70 @@ async function onDelete() {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
+}
+
+.fileInput {
+	display: none;
+}
+
+.filesContainer {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.fileBar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing--xs) var(--spacing--xs);
+	background-color: var(--color--background--light-2);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border-radius: var(--radius);
+	gap: var(--spacing--3xs);
+	cursor: pointer;
+}
+
+.addFileButton {
+	width: fit-content;
+}
+
+.fileName {
+	flex: 1;
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	line-height: var(--line-height--xl);
+}
+
+.removeButton {
+	flex-shrink: 0;
+}
+
+.vectorStoreFields {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm);
+	background-color: var(--color--background--light-2);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border-radius: var(--radius);
+}
+
+.credentialPickerRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.credentialPicker {
+	flex: 1;
+}
+
+.newFile,
+.embeddingFile {
+	cursor: default;
 }
 </style>

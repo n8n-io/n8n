@@ -29,6 +29,8 @@ import {
 	deleteToolApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import {
 	emptyChatModelsResponse,
 	type ChatHubConversationModel,
@@ -63,6 +65,8 @@ import type {
 	ChatConversation,
 	ChatStreamingState,
 	FetchOptions,
+	SemanticSearchReadiness,
+	SemanticSearchCredentialIssue,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
 import {
@@ -84,6 +88,8 @@ import { appendChunkToParsedMessageItems } from '@n8n/chat-hub';
 
 export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
+	const credentialsStore = useCredentialsStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
@@ -1236,6 +1242,57 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		addMessage(data.sessionId, message);
 	}
 
+	const vectorStoreCredentialId = computed(
+		() => settingsStore.moduleSettings['chat-hub']?.vectorStoreCredential?.id ?? null,
+	);
+
+	const embeddingCredentialId = computed(
+		() => settingsStore.moduleSettings['chat-hub']?.embeddingCredential?.id ?? null,
+	);
+
+	const vectorStoreCredential = computed(() => {
+		if (!vectorStoreCredentialId.value) {
+			return null;
+		}
+		return credentialsStore.getCredentialById(vectorStoreCredentialId.value) ?? null;
+	});
+
+	const embeddingCredential = computed(() => {
+		if (!embeddingCredentialId.value) {
+			return null;
+		}
+		return credentialsStore.getCredentialById(embeddingCredentialId.value) ?? null;
+	});
+
+	const isSingleUser = computed(() => settingsStore.userManagement.quota === 1);
+
+	const semanticSearchReadiness = computed((): SemanticSearchReadiness => {
+		let vectorStoreIssue: SemanticSearchCredentialIssue | undefined;
+		let embeddingIssue: SemanticSearchCredentialIssue | undefined;
+
+		if (!vectorStoreCredentialId.value) {
+			vectorStoreIssue = 'unspecified';
+		} else if (!vectorStoreCredential.value) {
+			vectorStoreIssue = 'notFound';
+		} else if (!isSingleUser.value && !vectorStoreCredential.value.isGlobal) {
+			vectorStoreIssue = 'notShared';
+		}
+
+		if (!embeddingCredentialId.value) {
+			embeddingIssue = 'unspecified';
+		} else if (!embeddingCredential.value) {
+			embeddingIssue = 'notShared';
+		} else if (!isSingleUser.value && !embeddingCredential.value.isGlobal) {
+			embeddingIssue = 'notShared';
+		}
+
+		return {
+			isReady: !vectorStoreIssue && !embeddingIssue,
+			vectorStoreIssue,
+			embeddingIssue,
+		};
+	});
+
 	return {
 		/**
 		 * models and agents
@@ -1304,6 +1361,11 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		fetchAllChatSettings,
 		fetchProviderSettings,
 		updateProviderSettings,
+		vectorStoreCredentialId,
+		vectorStoreCredential,
+		embeddingCredential,
+		embeddingCredentialId,
+		semanticSearchReadiness,
 
 		/**
 		 * WebSocket streaming handlers

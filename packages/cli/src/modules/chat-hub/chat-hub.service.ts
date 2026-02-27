@@ -9,6 +9,7 @@ import {
 	ChatHubConversationModel,
 	type ChatHubUpdateConversationRequest,
 	type ChatHubSessionDto,
+	type ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -19,6 +20,7 @@ import { ErrorReporter } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	OperationalError,
+	type INode,
 	type INodeCredentials,
 	type IBinaryData,
 	UnexpectedError,
@@ -43,11 +45,16 @@ import {
 	RegenerateMessagePayload,
 	EditMessagePayload,
 	PreparedChatWorkflow,
+	type ChatInput,
+	type MessageRecord,
+	type ContentBlock,
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { ChatStreamService } from './chat-stream.service';
-import { parseMessage } from '@n8n/chat-hub';
+import { inE2ETests } from '@/constants';
+import { DateTime } from 'luxon';
+import { collectChatArtifacts, parseMessage } from '@n8n/chat-hub';
 
 @Service()
 export class ChatHubService {
@@ -261,7 +268,7 @@ export class ChatHubService {
 	}
 
 	async deleteAllSessions() {
-		await this.chatHubAttachmentService.deleteAll();
+		await this.chatHubAttachmentService.deleteAllMessageAttachments();
 		const result = await this.sessionRepository.deleteAll();
 		return result;
 	}
@@ -316,7 +323,7 @@ export class ChatHubService {
 	async deleteSession(userId: string, sessionId: ChatSessionId) {
 		await this.messageRepository.manager.transaction(async (trx) => {
 			await this.ensureConversation(userId, sessionId, trx);
-			await this.chatHubAttachmentService.deleteAllBySessionId(sessionId, trx);
+			await this.chatHubAttachmentService.deleteAllMessageAttachmentsBySessionId(sessionId, trx);
 			await this.sessionRepository.deleteChatHubSession(sessionId, trx);
 		});
 	}
@@ -381,7 +388,12 @@ export class ChatHubService {
 		let processedAttachments: IBinaryData[] = [];
 		let workflow: PreparedChatWorkflow;
 		let previousMessage: ChatHubMessage | undefined;
+
 		try {
+			const vectorStoreCredential =
+				model.provider === 'custom-agent'
+					? await this.chatHubAgentService.ensureVectorStoreCredential(user)
+					: undefined;
 			const result = await this.messageRepository.manager.transaction(async (trx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
 				const isNewSession = !session;
@@ -409,7 +421,7 @@ export class ChatHubService {
 				}
 
 				// Store attachments to populate 'id' field via BinaryDataService
-				processedAttachments = await this.chatHubAttachmentService.store(
+				processedAttachments = await this.chatHubAttachmentService.storeMessageAttachments(
 					sessionId,
 					messageId,
 					attachments,
@@ -430,18 +442,18 @@ export class ChatHubService {
 					? (await this.chatHubToolService.getEnabledTools(user.id, trx)).map((t) => t.definition)
 					: await this.chatHubToolService.getToolDefinitionsForSession(sessionId, trx);
 
-				const replyWorkflow = await this.chatHubWorkflowService.prepareReplyWorkflow(
+				const replyWorkflow = await this.prepareReplyWorkflow(
 					user,
 					sessionId,
 					credentials,
 					model,
 					history,
-					message,
+					{ message, attachments: processedAttachments },
 					tools,
-					processedAttachments,
 					tz,
 					trx,
 					executionMetadata,
+					vectorStoreCredential?.id,
 				);
 
 				return { workflow: replyWorkflow, previousMessage };
@@ -551,6 +563,11 @@ export class ChatHubService {
 		let newStoredAttachments: IBinaryData[] = [];
 
 		try {
+			const vectorStoreCredential =
+				model.provider === 'custom-agent'
+					? await this.chatHubAgentService.ensureVectorStoreCredential(user)
+					: undefined;
+
 			result = await this.messageRepository.manager.transaction(async (trx) => {
 				const session = await this.getChatSession(user, sessionId, trx);
 				if (!session) {
@@ -577,7 +594,7 @@ export class ChatHubService {
 
 					newStoredAttachments =
 						payload.newAttachments.length > 0
-							? await this.chatHubAttachmentService.store(
+							? await this.chatHubAttachmentService.storeMessageAttachments(
 									sessionId,
 									messageId,
 									payload.newAttachments,
@@ -598,18 +615,18 @@ export class ChatHubService {
 
 					const tools = await this.chatHubToolService.getToolDefinitionsForSession(sessionId, trx);
 
-					const workflow = await this.chatHubWorkflowService.prepareReplyWorkflow(
+					const workflow = await this.prepareReplyWorkflow(
 						user,
 						sessionId,
 						credentials,
 						model,
 						history,
-						message,
+						{ message, attachments },
 						tools,
-						attachments,
 						tz,
 						trx,
 						executionMetadata,
+						vectorStoreCredential?.id,
 					);
 
 					return { workflow, combinedAttachments: attachments };
@@ -677,6 +694,11 @@ export class ChatHubService {
 		const { sessionId, retryId, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
+		const vectorStoreCredential =
+			model.provider === 'custom-agent'
+				? await this.chatHubAgentService.ensureVectorStoreCredential(user)
+				: undefined;
+
 		const { retryOfMessageId, previousMessageId, workflow } =
 			await this.messageRepository.manager.transaction(async (trx) => {
 				const session = await this.getChatSession(user, sessionId, trx);
@@ -709,18 +731,18 @@ export class ChatHubService {
 
 				const tools = await this.chatHubToolService.getToolDefinitionsForSession(sessionId, trx);
 
-				const workflow = await this.chatHubWorkflowService.prepareReplyWorkflow(
+				const workflow = await this.prepareReplyWorkflow(
 					user,
 					sessionId,
 					credentials,
 					model,
 					history,
-					message,
+					{ message, attachments },
 					tools,
-					attachments,
 					tz,
 					trx,
 					executionMetadata,
+					vectorStoreCredential?.id,
 				);
 
 				return {
@@ -742,6 +764,84 @@ export class ChatHubService {
 			{},
 			'',
 			[],
+		);
+	}
+
+	private async prepareReplyWorkflow(
+		user: User,
+		sessionId: ChatSessionId,
+		credentials: INodeCredentials,
+		model: ChatHubConversationModel,
+		history: ChatHubMessage[],
+		input: ChatInput,
+		tools: INode[],
+		timeZone: string,
+		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
+		vectorStoreCredentialId?: string,
+	) {
+		if (model.provider === 'n8n') {
+			return await this.chatHubWorkflowService.prepareWorkflowAgentWorkflow(
+				user,
+				sessionId,
+				model.workflowId,
+				input,
+				trx,
+				executionMetadata,
+			);
+		}
+
+		if (model.provider === 'custom-agent') {
+			const agent =
+				model.provider === 'custom-agent'
+					? await this.chatHubAgentService.getAgentById(model.agentId, user.id)
+					: null;
+
+			if (!agent) {
+				throw new BadRequestError('Agent not found');
+			}
+
+			const knowledgeItems = agent.files.filter((f) => f.type === 'embedding');
+			const embeddingModel =
+				knowledgeItems.length > 0
+					? await this.chatHubAgentService.determineEmbeddingProvider(user)
+					: null;
+
+			for (const item of knowledgeItems) {
+				if (item.provider !== embeddingModel?.provider) {
+					throw new BadRequestError(
+						`Credential for processing agent's file knowledge is missing. Configure credential for ${item.provider} or remove '${item.fileName}' from agent.`,
+					);
+				}
+			}
+
+			return await this.chatHubWorkflowService.prepareChatAgentWorkflow(
+				agent,
+				user,
+				sessionId,
+				await this.buildConversationHistory(history, agent.files),
+				input,
+				trx,
+				agent.systemPrompt + '\n\n' + this.getSystemMessage(timeZone, history),
+				executionMetadata,
+				embeddingModel && vectorStoreCredentialId
+					? { agentId: agent.id, embeddingModel, credentialId: vectorStoreCredentialId }
+					: null,
+			);
+		}
+
+		return await this.chatHubWorkflowService.prepareBaseChatWorkflow(
+			user,
+			sessionId,
+			credentials,
+			model,
+			await this.buildConversationHistory(history, []),
+			input,
+			'You are a helpful assistant.\n\n' + this.getSystemMessage(timeZone, history),
+			tools,
+			null,
+			trx,
+			executionMetadata,
 		);
 	}
 
@@ -869,5 +969,295 @@ export class ChatHubService {
 			updatedAt: session.updatedAt.toISOString(),
 			toolIds,
 		};
+	}
+
+	async buildConversationHistory(
+		history: ChatHubMessage[],
+		contextFiles: ChatHubAgentKnowledgeItem[],
+	): Promise<MessageRecord[]> {
+		// Gemini has 20MB limit, the value should also be what n8n instance can safely handle
+		const maxTotalPayloadSize = 20 * 1024 * 1024 * 0.9;
+
+		const typeMap: Record<string, MessageRecord['type']> = {
+			human: 'user',
+			ai: 'ai',
+			system: 'system',
+		};
+
+		const messageValues: MessageRecord[] = [];
+
+		let currentTotalSize = 0;
+
+		const messages = history.slice().reverse(); // Traversing messages from last to prioritize newer attachments
+
+		for (const message of messages) {
+			// Empty messages can't be restored by the memory manager
+			if (message.content.length === 0) {
+				continue;
+			}
+
+			const attachments = message.attachments ?? [];
+			const type = typeMap[message.type] || 'system';
+
+			// TODO: Tool messages etc?
+
+			const textSize = message.content.length;
+			currentTotalSize += textSize;
+
+			if (attachments.length === 0) {
+				messageValues.push({
+					type,
+					message: message.content,
+					hideFromUI: false,
+				});
+				continue;
+			}
+
+			const blocks: ContentBlock[] = [{ type: 'text', text: message.content }];
+
+			// Add attachments if within size limit
+			for (const attachment of attachments) {
+				const attachmentBlocks = await this.buildContentBlockForAttachment(
+					{ type: 'file', binaryData: attachment },
+					currentTotalSize,
+					maxTotalPayloadSize,
+					'File',
+				);
+
+				for (const block of attachmentBlocks) {
+					blocks.push(block);
+					currentTotalSize += block.type === 'text' ? block.text.length : block.image_url.length;
+				}
+			}
+
+			messageValues.push({
+				type,
+				message: blocks,
+				hideFromUI: false,
+			});
+		}
+
+		const contextFileBlocks: ContentBlock[] = [];
+
+		for (let i = 0; i < contextFiles.length; i++) {
+			const file = contextFiles[i];
+			const blocks = await this.buildContentBlockForAttachment(
+				file,
+				currentTotalSize,
+				maxTotalPayloadSize,
+				`Context file (${i + 1} of ${contextFiles.length})`,
+			);
+
+			for (const block of blocks) {
+				contextFileBlocks.push(block);
+				currentTotalSize += block.type === 'text' ? block.text.length : block.image_url.length;
+			}
+		}
+
+		if (contextFileBlocks.length > 0) {
+			messageValues.push({
+				type: 'user',
+				message: contextFileBlocks,
+				hideFromUI: true,
+			});
+		}
+
+		// Reverse to restore original order
+		messageValues.reverse();
+
+		return messageValues;
+	}
+
+	private async buildContentBlockForAttachment(
+		file: ChatHubAgentKnowledgeItem,
+		currentTotalSize: number,
+		maxTotalPayloadSize: number,
+		prefix: string,
+	): Promise<ContentBlock[]> {
+		class TotalFileSizeExceededError extends Error {}
+		class UnsupportedMimeTypeError extends Error {}
+
+		try {
+			if (currentTotalSize >= maxTotalPayloadSize) {
+				throw new TotalFileSizeExceededError();
+			}
+
+			if (file.type === 'embedding') {
+				return [
+					{
+						type: 'text',
+						text: `${prefix}: ${file.fileName ?? 'attachment'}\nContent: \n(Use vector store question tool to query this document)`,
+					},
+				];
+			}
+
+			const attachment = file.binaryData;
+
+			if (this.isTextFile(attachment.mimeType)) {
+				const buffer = await this.chatHubAttachmentService.getAsBuffer(attachment);
+				const content = buffer.toString('utf-8');
+
+				if (currentTotalSize + content.length > maxTotalPayloadSize) {
+					throw new TotalFileSizeExceededError();
+				}
+
+				return [
+					{
+						type: 'text',
+						text: `${prefix}: ${attachment.fileName ?? 'attachment'}\nContent: \n${content}`,
+					},
+				];
+			}
+
+			const url = await this.chatHubAttachmentService.getDataUrl(attachment);
+
+			if (currentTotalSize + url.length > maxTotalPayloadSize) {
+				throw new TotalFileSizeExceededError();
+			}
+
+			return [
+				{ type: 'text', text: `${prefix}: ${attachment.fileName ?? 'attachment'}` },
+				{ type: 'image_url', image_url: url },
+			];
+		} catch (e) {
+			const fileName =
+				file.type === 'embedding' ? file.fileName : (file.binaryData.fileName ?? 'attachment');
+
+			if (e instanceof TotalFileSizeExceededError) {
+				return [
+					{
+						type: 'text',
+						text: `${prefix}: ${fileName}\n(Content omitted due to size limit)`,
+					},
+				];
+			}
+
+			if (e instanceof UnsupportedMimeTypeError) {
+				return [
+					{
+						type: 'text',
+						text: `${prefix}: ${fileName}\n(Unsupported file type)`,
+					},
+				];
+			}
+
+			throw e;
+		}
+	}
+
+	private isTextFile(mimeType: string): boolean {
+		return (
+			mimeType.startsWith('text/') ||
+			mimeType === 'application/json' ||
+			mimeType === 'application/xml' ||
+			mimeType === 'application/csv' ||
+			mimeType === 'application/x-yaml' ||
+			mimeType === 'application/yaml'
+		);
+	}
+
+	private getSystemMessage(timeZone: string, history: ChatHubMessage[]) {
+		const now = inE2ETests ? DateTime.fromISO('2025-01-15T12:00:00.000Z') : DateTime.now();
+		const isoTime = now.setZone(timeZone).toISO({ includeOffset: true });
+
+		return `
+## Current Date and Time
+
+The user's current local date and time is: ${isoTime} (timezone: ${timeZone}).
+When you need to reference "now", use this date and time.
+
+## Content Capabilities
+
+You can only produce text responses.
+You cannot create, generate, edit, or display images, videos, or other non-text content.
+If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.
+
+## Document Generation
+
+You can create and edit documents for the user using special XML-like commands. When you use these commands, documents appear in a side panel next to this chat where users can view them in real-time. You can create multiple documents in a conversation, and users can switch between them using a dropdown selector.
+
+Write these commands DIRECTLY in your response - do NOT wrap them in code fences or backticks.
+
+### Creating a Document
+
+To create a new document, include this command directly in your response:
+
+<command:artifact-create>
+<title>Document Title</title>
+<type>md</type>
+<content>
+Document content here...
+</content>
+</command:artifact-create>
+
+The type can be:
+- html for HTML documents
+- md for Markdown documents
+- A code language like typescript, python, json, etc. for code files
+
+Example response:
+"I'll create an RFC document for you.
+
+<command:artifact-create>
+<title>RFC: New Feature</title>
+<type>md</type>
+<content>
+# RFC: New Feature
+
+## Summary
+This feature will...
+</content>
+</command:artifact-create>
+
+I've created the RFC above. Let me know if you'd like any changes!"
+
+### Editing a Document
+
+To make targeted edits to a document, you must specify the exact title of the document you want to edit:
+
+<command:artifact-edit>
+<title>Document Title</title>
+<oldString>text to find</oldString>
+<newString>replacement text</newString>
+<replaceAll>false</replaceAll>
+</command:artifact-edit>
+
+- <title> is required and must match the exact title of an existing document.
+- Set replaceAll to true to replace all occurrences, or false to replace only the first occurrence.
+- If the document title doesn't exist, the edit command will be ignored.
+
+IMPORTANT:
+- Write these commands directly in your response text, NOT inside code blocks or fences.
+- ALWAYS include conversational text before and/or after document commands. Never send a message with only commands and no explanation.
+
+${this.buildArtifactContext(history)}
+`;
+	}
+
+	private buildArtifactContext(history: ChatHubMessage[]): string {
+		const artifacts = collectChatArtifacts(history.flatMap(parseMessage));
+		if (artifacts.length === 0) {
+			return '';
+		}
+
+		// Multiple artifacts - show all of them
+		const artifactsText = artifacts
+			.map(
+				(artifact, index) => `
+
+### Document ${index + 1}: ${artifact.title} (type: ${artifact.type})
+
+${artifact.content}
+`,
+			)
+			.join('\n');
+
+		return `
+
+## Current Documents
+
+${artifactsText}
+
+You can update the most recent document using the commands described above, or create a new document.`;
 	}
 }
