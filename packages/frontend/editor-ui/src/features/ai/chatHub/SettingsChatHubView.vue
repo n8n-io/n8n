@@ -74,7 +74,7 @@ watch(
 const vectorStoreTooltip = computed(() => {
 	const issue = semanticSearchReadiness.value.vectorStoreIssue;
 	if (!issue) return '';
-	if (issue === 'credentialMissing') {
+	if (issue === 'unspecified' || issue === 'notFound') {
 		return disabled.value
 			? i18n.baseText('settings.chatHub.vectorStore.missing.noAccess')
 			: i18n.baseText('settings.chatHub.vectorStore.missing');
@@ -87,7 +87,7 @@ const vectorStoreTooltip = computed(() => {
 const embeddingTooltip = computed(() => {
 	const issue = semanticSearchReadiness.value.embeddingIssue;
 	if (!issue) return '';
-	if (issue === 'credentialMissing') {
+	if (issue === 'unspecified' || issue === 'notFound') {
 		return disabled.value
 			? i18n.baseText('settings.chatHub.embeddingModel.missing.noAccess')
 			: i18n.baseText('settings.chatHub.embeddingModel.missing');
@@ -100,15 +100,6 @@ const embeddingTooltip = computed(() => {
 async function onVectorStoreCredentialSelected(credentialId: string) {
 	try {
 		await updateVectorStoreCredentialApi(rootStore.restApiContext, credentialId);
-		await settingsStore.getModuleSettings();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.chatHub.vectorStore.save.error'));
-	}
-}
-
-async function onVectorStoreCredentialDeselected() {
-	try {
-		await updateVectorStoreCredentialApi(rootStore.restApiContext, null);
 		await settingsStore.getModuleSettings();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.chatHub.vectorStore.save.error'));
@@ -136,15 +127,6 @@ async function onEmbeddingCredentialSelected(credentialId: string) {
 			credentialId,
 			localEmbeddingType.value,
 		);
-		await settingsStore.getModuleSettings();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.chatHub.embeddingModel.save.error'));
-	}
-}
-
-async function onEmbeddingCredentialDeselected() {
-	try {
-		await updateEmbeddingCredentialApi(rootStore.restApiContext, null, localEmbeddingType.value);
 		await settingsStore.getModuleSettings();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.chatHub.embeddingModel.save.error'));
@@ -262,11 +244,9 @@ onMounted(async () => {
 									app-name="PGVector"
 									:credential-type="VECTOR_STORE_CREDENTIAL_TYPE"
 									:selected-credential-id="vectorStoreCredentialId"
-									:show-delete="true"
 									create-button-variant="subtle"
 									@credential-selected="onVectorStoreCredentialSelected"
 									@credential-deselected="onVectorStoreCredentialDeselected"
-									@credential-deleted="onVectorStoreCredentialDeselected"
 								/>
 							</div>
 						</div>
@@ -319,11 +299,9 @@ onMounted(async () => {
 									:app-name="localEmbeddingDisplayName"
 									:credential-type="localEmbeddingType"
 									:selected-credential-id="embeddingCredentialId"
-									:show-delete="true"
 									create-button-variant="subtle"
 									@credential-selected="onEmbeddingCredentialSelected"
 									@credential-deselected="onEmbeddingCredentialDeselected"
-									@credential-deleted="onEmbeddingCredentialDeselected"
 								/>
 							</div>
 						</div>

@@ -1270,14 +1270,18 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		let embeddingIssue: SemanticSearchCredentialIssue | undefined;
 
 		if (!vectorStoreCredentialId.value) {
-			vectorStoreIssue = 'credentialMissing';
-		} else if (!isSingleUser.value && !vectorStoreCredential.value?.isGlobal) {
+			vectorStoreIssue = 'unspecified';
+		} else if (!vectorStoreCredential.value) {
+			vectorStoreIssue = 'notFound';
+		} else if (!isSingleUser.value && !vectorStoreCredential.value.isGlobal) {
 			vectorStoreIssue = 'notShared';
 		}
 
 		if (!embeddingCredentialId.value) {
-			embeddingIssue = 'credentialMissing';
-		} else if (!isSingleUser.value && !embeddingCredential.value?.isGlobal) {
+			embeddingIssue = 'unspecified';
+		} else if (!embeddingCredential.value) {
+			embeddingIssue = 'notShared';
+		} else if (!isSingleUser.value && !embeddingCredential.value.isGlobal) {
 			embeddingIssue = 'notShared';
 		}
 

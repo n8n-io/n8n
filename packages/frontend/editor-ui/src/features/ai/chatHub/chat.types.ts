@@ -122,7 +122,7 @@ export interface FetchOptions {
 	minLoadingTime?: number;
 }
 
-export type SemanticSearchCredentialIssue = 'credentialMissing' | 'notShared';
+export type SemanticSearchCredentialIssue = 'unspecified' | 'notFound' | 'notShared';
 
 export interface SemanticSearchReadiness {
 	isReady: boolean;
