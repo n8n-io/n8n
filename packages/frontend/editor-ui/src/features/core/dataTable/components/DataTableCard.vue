@@ -192,15 +192,6 @@ const getDataTableSize = computed(() => {
 	background-color: var(--color--background--light-3);
 }
 
-.card-badge.with-breadcrumbs {
-	:global(.n8n-badge) {
-		padding-right: 0;
-	}
-	:global(.n8n-breadcrumbs) {
-		padding-left: var(--spacing--5xs);
-	}
-}
-
 @include mixins.breakpoint('sm-and-down') {
 	.card {
 		flex-wrap: wrap;
