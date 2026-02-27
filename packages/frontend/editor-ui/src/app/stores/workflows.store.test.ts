@@ -1,6 +1,7 @@
 import { setActivePinia, createPinia } from 'pinia';
 import * as workflowsApi from '@/app/api/workflows';
 import {
+	CHAT_TRIGGER_NODE_TYPE,
 	DUPLICATE_POSTFFIX,
 	FORM_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -662,6 +663,72 @@ describe('useWorkflowsStore', () => {
 			const result = workflowsStore.findRootWithMainConnection(parent.name);
 
 			expect(result).toBeNull();
+		});
+	});
+
+	describe('checkIfToolNodeHasChatParent()', () => {
+		it('returns true when tool node is connected via ai_tool to an agent that has a Chat Trigger parent', () => {
+			const chatTrigger = createTestNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE });
+			const agentNode = createTestNode({ name: 'AI Agent' });
+			const toolNode = createTestNode({ name: 'My Tool' });
+
+			workflowsStore.setNodes([chatTrigger, agentNode, toolNode]);
+
+			// Chat Trigger → main → AI Agent
+			// My Tool → ai_tool → AI Agent
+			workflowsStore.setConnections({
+				[chatTrigger.name]: {
+					main: [[{ node: agentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				[toolNode.name]: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: agentNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+			});
+
+			expect(workflowsStore.checkIfToolNodeHasChatParent(toolNode.name)).toBe(true);
+		});
+
+		it('returns false when tool node is connected to an agent that has no Chat Trigger parent', () => {
+			const manualTrigger = createTestNode({
+				name: 'Manual Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+			});
+			const agentNode = createTestNode({ name: 'AI Agent' });
+			const toolNode = createTestNode({ name: 'My Tool' });
+
+			workflowsStore.setNodes([manualTrigger, agentNode, toolNode]);
+
+			// Manual Trigger → main → AI Agent
+			// My Tool → ai_tool → AI Agent
+			workflowsStore.setConnections({
+				[manualTrigger.name]: {
+					main: [[{ node: agentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				[toolNode.name]: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: agentNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+			});
+
+			expect(workflowsStore.checkIfToolNodeHasChatParent(toolNode.name)).toBe(false);
+		});
+
+		it('returns false when tool node has no ai_tool connections', () => {
+			const toolNode = createTestNode({ name: 'My Tool' });
+			workflowsStore.setNodes([toolNode]);
+			workflowsStore.setConnections({});
+
+			expect(workflowsStore.checkIfToolNodeHasChatParent(toolNode.name)).toBe(false);
+		});
+
+		it('returns false for an unknown node name', () => {
+			workflowsStore.setNodes([]);
+			workflowsStore.setConnections({});
+
+			expect(workflowsStore.checkIfToolNodeHasChatParent('NonExistentNode')).toBe(false);
 		});
 	});
 
