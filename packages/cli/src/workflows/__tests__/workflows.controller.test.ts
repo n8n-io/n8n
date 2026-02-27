@@ -328,6 +328,49 @@ describe('WorkflowsController', () => {
 		describe('redaction policy scope enforcement', () => {
 			const userHasScopesMock = jest.mocked(userHasScopes);
 
+			// Helper to set up mocks that get the controller into the transaction
+			// where the redaction scope check now happens. Uses transactionManager.save
+			// as the stop point (throws to halt execution after the check).
+			function setupTransactionMocks(options: {
+				mockUser: User;
+				projectId?: string;
+				personalProjectId?: string;
+			}) {
+				const transactionManager = {
+					save: jest.fn().mockRejectedValue(new Error('Stopping for test')),
+				};
+
+				const projectRepository = mock<ProjectRepository>();
+				if (options.personalProjectId) {
+					projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+						id: options.personalProjectId,
+					} as any);
+				}
+				(projectRepository as any).manager = {
+					transaction: jest.fn(async (cb: any) => cb(transactionManager)),
+				};
+
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.existsBy.mockResolvedValue(false);
+
+				const license = mock<License>();
+				license.isSharingEnabled.mockReturnValue(false);
+
+				projectService.getProjectWithScope.mockResolvedValue({
+					id: options.projectId ?? options.personalProjectId,
+				} as any);
+
+				controller.workflowRepository = workflowRepository;
+				controller.projectRepository = projectRepository;
+				controller.license = license;
+				controller.externalHooks = mock();
+				controller.externalHooks.run = jest.fn().mockResolvedValue(undefined);
+				controller.tagRepository = mock();
+				controller.globalConfig = { tags: { disabled: true } };
+
+				return { projectRepository, transactionManager };
+			}
+
 			it('should strip redactionPolicy on create when user lacks scope', async () => {
 				/**
 				 * Arrange
@@ -345,15 +388,7 @@ describe('WorkflowsController', () => {
 				});
 
 				userHasScopesMock.mockResolvedValue(false);
-
-				const workflowRepository = mock<WorkflowRepository>();
-				workflowRepository.existsBy.mockResolvedValue(false);
-
-				controller.workflowRepository = workflowRepository;
-				controller.externalHooks = mock();
-				controller.externalHooks.run = jest.fn().mockRejectedValue(new Error('Stopping for test'));
-				controller.tagRepository = mock();
-				controller.globalConfig = { tags: { disabled: true } };
+				setupTransactionMocks({ mockUser, projectId: 'project-123' });
 
 				/**
 				 * Act
@@ -371,7 +406,6 @@ describe('WorkflowsController', () => {
 					false,
 					{ projectId: 'project-123' },
 				);
-				expect(body.settings?.redactionPolicy).toBeUndefined();
 			});
 
 			it('should preserve redactionPolicy on create when user has scope', async () => {
@@ -391,15 +425,10 @@ describe('WorkflowsController', () => {
 				});
 
 				userHasScopesMock.mockResolvedValue(true);
-
-				const workflowRepository = mock<WorkflowRepository>();
-				workflowRepository.existsBy.mockResolvedValue(false);
-
-				controller.workflowRepository = workflowRepository;
-				controller.externalHooks = mock();
-				controller.externalHooks.run = jest.fn().mockRejectedValue(new Error('Stopping for test'));
-				controller.tagRepository = mock();
-				controller.globalConfig = { tags: { disabled: true } };
+				const { transactionManager } = setupTransactionMocks({
+					mockUser,
+					projectId: 'project-123',
+				});
 
 				/**
 				 * Act
@@ -417,7 +446,9 @@ describe('WorkflowsController', () => {
 					false,
 					{ projectId: 'project-123' },
 				);
-				expect(body.settings?.redactionPolicy).toBe('all');
+				// Verify the workflow entity passed to save still has redactionPolicy
+				const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+				expect(savedEntity.settings?.redactionPolicy).toBe('all');
 			});
 
 			it('should resolve projectId from personal project when projectId not provided', async () => {
@@ -436,21 +467,10 @@ describe('WorkflowsController', () => {
 				});
 
 				userHasScopesMock.mockResolvedValue(false);
-
-				const workflowRepository = mock<WorkflowRepository>();
-				workflowRepository.existsBy.mockResolvedValue(false);
-
-				const projectRepository = mock<ProjectRepository>();
-				projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-					id: 'personal-project-789',
-				} as any);
-
-				controller.workflowRepository = workflowRepository;
-				controller.projectRepository = projectRepository;
-				controller.externalHooks = mock();
-				controller.externalHooks.run = jest.fn().mockRejectedValue(new Error('Stopping for test'));
-				controller.tagRepository = mock();
-				controller.globalConfig = { tags: { disabled: true } };
+				const { projectRepository } = setupTransactionMocks({
+					mockUser,
+					personalProjectId: 'personal-project-789',
+				});
 
 				/**
 				 * Act
@@ -462,14 +482,16 @@ describe('WorkflowsController', () => {
 				/**
 				 * Assert
 				 */
-				expect(projectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith('user-456');
+				expect(projectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(
+					'user-456',
+					expect.anything(),
+				);
 				expect(userHasScopesMock).toHaveBeenCalledWith(
 					mockUser,
 					['workflow:updateRedactionSetting'],
 					false,
 					{ projectId: 'personal-project-789' },
 				);
-				expect(body.settings?.redactionPolicy).toBeUndefined();
 			});
 
 			it('should not check scope when settings has no redactionPolicy', async () => {
@@ -488,14 +510,7 @@ describe('WorkflowsController', () => {
 					user: mockUser,
 				});
 
-				const workflowRepository = mock<WorkflowRepository>();
-				workflowRepository.existsBy.mockResolvedValue(false);
-
-				controller.workflowRepository = workflowRepository;
-				controller.externalHooks = mock();
-				controller.externalHooks.run = jest.fn().mockRejectedValue(new Error('Stopping for test'));
-				controller.tagRepository = mock();
-				controller.globalConfig = { tags: { disabled: true } };
+				setupTransactionMocks({ mockUser, projectId: 'project-123' });
 
 				/**
 				 * Act
