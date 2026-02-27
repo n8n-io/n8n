@@ -121,12 +121,7 @@ onMounted(async () => {
 	const templateId = workflowsStore.workflow?.meta?.templateId;
 	const isReadyToRunWorkflow = readyToRunStore.isReadyToRunTemplateId(templateId);
 
-	if (
-		isNewTemplatesSetupEnabled.value &&
-		showButton.value &&
-		!isReadyToRunWorkflow &&
-		isTemplateImportRoute.value
-	) {
+	if (showButton.value && !isReadyToRunWorkflow && isTemplateImportRoute.value) {
 		handleTemplateSetup();
 	}
 });
