@@ -1,6 +1,18 @@
 name: 'Release: Create Pull Request'
 
 on:
+  workflow_call:
+    inputs:
+      base-branch:
+        description: 'The branch, tag, or commit to create this release PR from.'
+        required: true
+        type: string
+
+      release-type:
+        description: 'A SemVer release type.'
+        required: true
+        type: string
+
   workflow_dispatch:
     inputs:
       base-branch:
@@ -42,8 +54,14 @@ jobs:
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.inputs.base-branch }}
           token: ${{ steps.generate_token.outputs.token }}
+
+      # Checkout base branch via separate step to prevent unsafe actions/checkout ref usage.
+      # poutine: untrusted_checkout_exec
+      - name: Switch to base branch
+        env:
+          BASE_BRANCH: ${{ github.event.inputs.base-branch }}
+        run: git checkout "$BASE_BRANCH"
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:

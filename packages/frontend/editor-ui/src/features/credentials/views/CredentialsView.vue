@@ -240,7 +240,7 @@ const initialize = async () => {
 };
 
 credentialsStore.$onAction(({ name, after }) => {
-	if (name === 'createNewCredential') {
+	if (name === 'createNewCredential' || name === 'updateCredential') {
 		after(() => {
 			void credentialsStore.fetchAllCredentials({
 				projectId: route?.params?.projectId as string | undefined,

@@ -721,4 +721,108 @@ describe('WorkflowSettingsVue', () => {
 			expect(input).toBeDisabled();
 		});
 	});
+
+	describe('Redaction Policy', () => {
+		it('should not render redaction policy when redaction module is inactive', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
+				(name: string) => name !== 'redaction',
+			);
+
+			const workflowWithRedactionScope = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+			});
+			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
+			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
+
+			const { queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(queryByTestId('workflow-settings-redaction-policy')).not.toBeInTheDocument();
+		});
+
+		it('should not render redaction policy when user lacks updateRedactionSetting scope', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+
+			const { queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(queryByTestId('workflow-settings-redaction-policy')).not.toBeInTheDocument();
+		});
+
+		it('should render redaction policy when module is active and user has scope', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+
+			const workflowWithRedactionScope = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+			});
+			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
+			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(getByTestId('workflow-settings-redaction-policy')).toBeVisible();
+		});
+
+		it('should render three redaction policy options', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+
+			const workflowWithRedactionScope = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+			});
+			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
+			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-redaction-policy'),
+			);
+
+			expect(dropdownItems).toHaveLength(3);
+			expect(dropdownItems[0]).toHaveTextContent('No redaction');
+			expect(dropdownItems[1]).toHaveTextContent('Redact all executions');
+			expect(dropdownItems[2]).toHaveTextContent('Redact non-manual executions');
+		});
+
+		it('should save redaction policy when selected', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+
+			const workflowWithRedactionScope = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+			});
+			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
+			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-redaction-policy'),
+			);
+			await userEvent.click(dropdownItems[1]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ redactionPolicy: 'all' }),
+				}),
+			);
+		});
+	});
 });

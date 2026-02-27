@@ -503,6 +503,34 @@ describe('Send and Wait utils tests', () => {
 			expect(send).toHaveBeenCalledWith('');
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
+
+		it('should return noWebhookResponse if user-agent is Microsoft Teams link preview service (SkypeSpaces)', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+				headers: {
+					'user-agent': 'SkypeSpaces/1.0a$*+',
+				},
+				query: { approved: 'true' },
+			} as any);
+
+			const send = jest.fn();
+
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				send,
+			} as any);
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'approval',
+				};
+				return params[parameterName];
+			});
+
+			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			expect(send).toHaveBeenCalledWith('');
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
 	});
 });
 

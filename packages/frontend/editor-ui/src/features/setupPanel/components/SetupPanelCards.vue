@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import TriggerSetupCard from '@/features/setupPanel/components/cards/TriggerSetupCard.vue';
 import CredentialTypeSetupCard from '@/features/setupPanel/components/cards/CredentialTypeSetupCard.vue';
@@ -8,17 +8,28 @@ import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+
+const props = withDefaults(
+	defineProps<{
+		showCompleted?: boolean;
+	}>(),
+	{
+		showCompleted: true,
+	},
+);
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const { setupCards, isAllComplete, setCredential, unsetCredential, firstTriggerName } =
 	useWorkflowSetupState();
 
 watch(isAllComplete, (allComplete) => {
 	if (allComplete) {
 		telemetry.track('User completed all setup steps', {
-			template_id: workflowsStore.workflow.meta?.templateId,
+			template_id: workflowDocumentStore?.value?.meta?.templateId,
 			workflow_id: workflowsStore.workflowId,
 		});
 	}
@@ -35,10 +46,62 @@ const onCredentialDeselected = (credentialType: string, sourceNodeName?: string)
 	unsetCredential(credentialType, sourceNodeName);
 };
 
+const visibleCards = computed(() => {
+	if (props.showCompleted) return setupCards.value;
+	return setupCards.value.filter((card) => !card.state.isComplete);
+});
+
 const cardKey = (card: SetupCardItem): string => {
 	if (card.type === 'trigger') return `trigger-${card.state.node.id}`;
 	return `credential-${card.state.credentialType}-${card.state.nodes[0]?.name ?? ''}`;
 };
+
+// --- Expanded state management ---
+const expandedStates = reactive<Record<string, boolean>>({});
+const prevCompleteStates = new Map<string, boolean>();
+let initialized = false;
+
+const isCardExpanded = (key: string): boolean => expandedStates[key] ?? false;
+
+const setCardExpanded = (key: string, value: boolean) => {
+	expandedStates[key] = value;
+};
+
+watch(
+	setupCards,
+	(cards) => {
+		if (!initialized) {
+			// On first load, expand the first uncompleted card
+			const firstUncompleted = cards.find((c) => !c.state.isComplete);
+			if (firstUncompleted) {
+				expandedStates[cardKey(firstUncompleted)] = true;
+			}
+			initialized = true;
+		} else {
+			// When a card completes, collapse it and auto-expand the next uncompleted card
+			for (let i = 0; i < cards.length; i++) {
+				const card = cards[i];
+				const key = cardKey(card);
+				const wasComplete = prevCompleteStates.get(key) ?? false;
+
+				if (card.state.isComplete && !wasComplete) {
+					expandedStates[key] = false;
+					const nextUncompleted = cards.find((c, j) => j > i && !c.state.isComplete);
+					if (nextUncompleted) {
+						expandedStates[cardKey(nextUncompleted)] = true;
+					}
+					break;
+				}
+			}
+		}
+
+		prevCompleteStates.clear();
+		for (const card of cards) {
+			prevCompleteStates.set(cardKey(card), card.state.isComplete);
+		}
+	},
+	{ deep: true, immediate: true },
+);
 </script>
 
 <template>
@@ -64,23 +127,21 @@ const cardKey = (card: SetupCardItem): string => {
 			</div>
 		</div>
 		<div v-else :class="$style['card-list']" data-test-id="setup-cards-list">
-			<template v-for="(card, index) in setupCards" :key="cardKey(card)">
+			<template v-for="card in visibleCards" :key="cardKey(card)">
 				<TriggerSetupCard
 					v-if="card.type === 'trigger'"
 					:state="card.state"
-					:expanded="index === 0"
+					:expanded="isCardExpanded(cardKey(card))"
+					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
 				/>
 				<CredentialTypeSetupCard
 					v-else
 					:state="card.state"
 					:first-trigger-name="firstTriggerName"
-					:expanded="index === 0"
-					@credential-selected="
-						(payload) => onCredentialSelected(payload, card.state.nodes[0]?.name)
-					"
-					@credential-deselected="
-						(credType) => onCredentialDeselected(credType, card.state.nodes[0]?.name)
-					"
+					:expanded="isCardExpanded(cardKey(card))"
+					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
+					@credential-selected="onCredentialSelected"
+					@credential-deselected="onCredentialDeselected"
 				/>
 			</template>
 			<div
@@ -103,7 +164,7 @@ const cardKey = (card: SetupCardItem): string => {
 	flex: 1;
 	flex-direction: column;
 	width: 100%;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--2xs);
 }
 
 .empty-state {

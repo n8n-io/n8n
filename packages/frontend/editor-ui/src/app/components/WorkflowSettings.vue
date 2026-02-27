@@ -42,6 +42,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -67,12 +68,27 @@ const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const posthogStore = usePostHog();
 
 const isLoading = ref(true);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
+const redactionPolicyOptions = ref<Array<{ key: string; value: string }>>([
+	{
+		key: 'none',
+		value: i18n.baseText('workflowSettings.redactionPolicy.options.none'),
+	},
+	{
+		key: 'all',
+		value: i18n.baseText('workflowSettings.redactionPolicy.options.all'),
+	},
+	{
+		key: 'non-manual',
+		value: i18n.baseText('workflowSettings.redactionPolicy.options.nonManual'),
+	},
+]);
 const saveDataErrorExecutionOptions = ref<Array<{ key: string; value: string }>>([]);
 const saveDataSuccessExecutionOptions = ref<Array<{ key: string; value: string }>>([]);
 const saveExecutionProgressOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
@@ -122,6 +138,7 @@ const helpTexts = computed(() => ({
 	executionTimeout: i18n.baseText('workflowSettings.helpTexts.executionTimeout'),
 	workflowCallerPolicy: i18n.baseText('workflowSettings.helpTexts.workflowCallerPolicy'),
 	workflowCallerIds: i18n.baseText('workflowSettings.helpTexts.workflowCallerIds'),
+	redactionPolicy: i18n.baseText('workflowSettings.helpTexts.redactionPolicy'),
 }));
 
 const defaultValues = ref({
@@ -159,6 +176,11 @@ const workflowOwnerName = computed(() => {
 	return workflowsEEStore.getWorkflowOwnerName(`${workflowId.value}`, fallback);
 });
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
+
+const isRedactionSettingVisible = computed(
+	() =>
+		settingsStore.isModuleActive('redaction') && workflowPermissions.value.updateRedactionSetting,
+);
 
 const mcpToggleDisabled = computed(() => {
 	return readOnlyEnv.value || !workflowPermissions.value.update || !isEligibleForMcp.value;
@@ -501,7 +523,7 @@ const saveSettings = async () => {
 
 	isLoading.value = true;
 	data.versionId = workflowsStore.workflowVersionId;
-	data.expectedChecksum = workflowsStore.workflowChecksum;
+	data.expectedChecksum = workflowDocumentStore?.value?.checksum;
 
 	try {
 		await workflowsStore.updateWorkflow(String(route.params.name), data);
@@ -1058,6 +1080,37 @@ onBeforeUnmount(() => {
 						</N8nSelect>
 					</ElCol>
 				</ElRow>
+				<div v-if="isRedactionSettingVisible" data-test-id="workflow-settings-redaction-policy">
+					<ElRow>
+						<ElCol :span="10" :class="$style['setting-name']">
+							{{ i18n.baseText('workflowSettings.redactionPolicy') }}
+							<N8nTooltip placement="top">
+								<template #content>
+									<div v-text="helpTexts.redactionPolicy"></div>
+								</template>
+								<N8nIcon icon="circle-help" />
+							</N8nTooltip>
+						</ElCol>
+						<ElCol :span="14" class="ignore-key-press-canvas">
+							<N8nSelect
+								v-model="workflowSettings.redactionPolicy"
+								:disabled="readOnlyEnv || !workflowPermissions.updateRedactionSetting"
+								:placeholder="i18n.baseText('workflowSettings.selectOption')"
+								filterable
+								:limit-popper-width="true"
+								data-test-id="workflow-settings-redaction-policy-select"
+							>
+								<N8nOption
+									v-for="option of redactionPolicyOptions"
+									:key="option.key"
+									:label="option.value"
+									:value="option.key"
+								>
+								</N8nOption>
+							</N8nSelect>
+						</ElCol>
+					</ElRow>
+				</div>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.timeoutWorkflow') }}

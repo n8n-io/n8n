@@ -4,13 +4,8 @@ import { vi } from 'vitest';
 import type { SecretProviderTypeResponse } from '@n8n/api-types';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
-// Mock feature flag composable
-const { useEnvFeatureFlag } = vi.hoisted(() => ({
-	useEnvFeatureFlag: vi.fn(),
-}));
-vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
-	useEnvFeatureFlag,
-}));
+// Mock module settings
+const mockModuleSettings: Record<string, unknown> = {};
 
 // Mock dependencies
 const mockConnection = {
@@ -40,6 +35,12 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: mockShowError,
 		showMessage: mockShowMessage,
+	})),
+}));
+
+vi.mock('@/app/stores/settings.store', () => ({
+	useSettingsStore: vi.fn(() => ({
+		moduleSettings: mockModuleSettings,
 	})),
 }));
 
@@ -87,10 +88,8 @@ describe('useConnectionModal', () => {
 		});
 		mockShowError.mockClear();
 		mockShowMessage.mockClear();
-		// Mock feature flag to return false by default
-		useEnvFeatureFlag.mockReturnValue({
-			check: ref(() => false),
-		});
+		// Reset module settings
+		delete mockModuleSettings['external-secrets'];
 	});
 
 	describe('initialization', () => {
@@ -207,11 +206,12 @@ describe('useConnectionModal', () => {
 
 	describe('infisical deprecation', () => {
 		beforeEach(() => {
-			useEnvFeatureFlag.mockReturnValue({
-				check: ref((key: string) => key === 'EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS'),
-			});
+			mockModuleSettings['external-secrets'] = {
+				multipleConnections: true,
+				forProjects: false,
+			};
 		});
-		it('should not provide option to create new infisical connection if new feature flag is enabled', () => {
+		it('should not provide option to create new infisical connection if multipleConnections is enabled', () => {
 			const providerTypesWithInfisical = ref([
 				...mockProviderTypes,
 				{

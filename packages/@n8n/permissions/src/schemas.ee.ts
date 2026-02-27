@@ -74,6 +74,7 @@ export const roleSchema = z.object({
 	createdAt: z.date().optional(),
 	updatedAt: z.date().optional(),
 	usedByUsers: z.number().optional(),
+	usedByProjects: z.number().optional(),
 });
 
 export type Role = z.infer<typeof roleSchema>;

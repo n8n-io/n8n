@@ -53,6 +53,7 @@ import {
 	isPlanModeQuestionsMessage,
 } from '@/features/ai/assistant/assistant.types';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
+import { useCodeDiff } from '@/features/ai/assistant/composables/useCodeDiff';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -190,6 +191,20 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	} = useBuilderMessages();
 
 	const { workflowTodos, getTodosToTrack, hasTodosHiddenByPinnedData } = useBuilderTodos();
+
+	const { applyCodeDiff, undoCodeDiff } = useCodeDiff({
+		chatMessages,
+		getTargetNodeName: (msg) =>
+			msg.nodeName ??
+			ndvStore.activeNodeName ??
+			focusedNodesStore.confirmedNodes[0]?.nodeName ??
+			'',
+		getSessionId: (msg) => {
+			const id = msg.sdkSessionId;
+			assert(id, 'No SDK session ID for code diff');
+			return id;
+		},
+	});
 
 	const trackingSessionId = computed(() => rootStore.pushRef);
 
@@ -673,7 +688,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Use workflow updatedAt as version timestamp
 		// might not be the same as "version.createdAt" but close enough
-		const updatedAt = workflowsStore.workflow.updatedAt;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		const updatedAt = workflowDocumentStore.updatedAt;
 		return {
 			id: versionId,
 			createdAt: typeof updatedAt === 'number' ? new Date(updatedAt).toISOString() : updatedAt,
@@ -1155,7 +1173,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// version id is important to update, because otherwise the next time user saves,
 		// "overwrite" prevention modal shows, because the version id on the FE would be out of sync with latest on the backend
 		workflowState.setWorkflowProperty('versionId', updatedWorkflow.versionId);
-		workflowState.setWorkflowProperty('updatedAt', updatedWorkflow.updatedAt);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		workflowDocumentStore.setUpdatedAt(updatedWorkflow.updatedAt);
 
 		// 2. Truncate messages in backend session (removes message with messageId and all after)
 		await truncateBuilderMessages(
@@ -1250,6 +1269,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		setBuilderMadeEdits,
 		incrementManualExecutionStats,
 		resetManualExecutionStats,
+		applyCodeDiff,
+		undoCodeDiff,
 		// Version management
 		restoreToVersion,
 		clearExistingWorkflow,

@@ -8,7 +8,12 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import * as rolesApi from '@n8n/rest-api-client/api/roles';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
+import type {
+	CreateRoleDto,
+	RoleAssignmentsResponse,
+	RoleProjectMembersResponse,
+	UpdateRoleDto,
+} from '@n8n/api-types';
 import { useSettingsStore } from './settings.store';
 
 export const useRolesStore = defineStore('roles', () => {
@@ -72,6 +77,17 @@ export const useRolesStore = defineStore('roles', () => {
 		return await rolesApi.updateProjectRole(rootStore.restApiContext, slug, body);
 	};
 
+	const fetchRoleAssignments = async (slug: string): Promise<RoleAssignmentsResponse> => {
+		return await rolesApi.getRoleAssignments(rootStore.restApiContext, slug);
+	};
+
+	const fetchRoleProjectMembers = async (
+		slug: string,
+		projectId: string,
+	): Promise<RoleProjectMembersResponse> => {
+		return await rolesApi.getRoleProjectMembers(rootStore.restApiContext, slug, projectId);
+	};
+
 	return {
 		roles,
 		processedProjectRoles,
@@ -82,5 +98,7 @@ export const useRolesStore = defineStore('roles', () => {
 		fetchRoleBySlug,
 		updateProjectRole,
 		deleteProjectRole,
+		fetchRoleAssignments,
+		fetchRoleProjectMembers,
 	};
 });

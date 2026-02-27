@@ -2,11 +2,7 @@ import type { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import {
-	isWebhookHtmlSandboxingDisabled,
-	getWebhookSandboxCSP,
-	isHtmlRenderedContentType,
-} from '@/html-sandbox';
+import { isWebhookHtmlSandboxingDisabled, getWebhookSandboxCSP } from '@/html-sandbox';
 
 const securityConfig = mock<SecurityConfig>();
 
@@ -26,64 +22,6 @@ describe('isWebhookHtmlSandboxingDisabled', () => {
 	it('should return true when sandboxing is disabled', () => {
 		securityConfig.disableWebhookHtmlSandboxing = true;
 		expect(isWebhookHtmlSandboxingDisabled()).toBe(true);
-	});
-});
-
-describe('isHtmlRenderedContentType', () => {
-	it('should return true for text/html content type', () => {
-		const contentType = 'text/html';
-		expect(isHtmlRenderedContentType(contentType)).toBe(true);
-	});
-
-	it('should return true for application/xhtml+xml content type', () => {
-		const contentType = 'application/xhtml+xml';
-		expect(isHtmlRenderedContentType(contentType)).toBe(true);
-	});
-
-	it('should return false for other content types', () => {
-		const contentType = 'application/json';
-		expect(isHtmlRenderedContentType(contentType)).toBe(false);
-	});
-
-	describe('should handle various HTML content types', () => {
-		test.each([
-			'text/html',
-			'TEXT/HTML',
-			'text/html; charset=utf-8',
-			'text/html; charset=iso-8859-1',
-			'application/xhtml+xml',
-			'APPLICATION/XHTML+XML',
-			'application/xhtml+xml; charset=utf-8',
-		])('should return true for %s', (contentType) => {
-			expect(isHtmlRenderedContentType(contentType)).toBe(true);
-		});
-	});
-
-	describe('should handle non-HTML content types', () => {
-		test.each([
-			'text/plain',
-			'application/xml',
-			'text/css',
-			'application/javascript',
-			'image/png',
-			'application/pdf',
-			'',
-			'html',
-			'xhtml',
-		])('should return false for %s', (contentType) => {
-			expect(isHtmlRenderedContentType(contentType)).toBe(false);
-		});
-	});
-
-	it('should handle content type with extra spaces', () => {
-		expect(isHtmlRenderedContentType('  text/html')).toBe(true);
-		expect(isHtmlRenderedContentType('text/html  ')).toBe(true);
-		expect(isHtmlRenderedContentType('  text/html  ')).toBe(true);
-	});
-
-	it('should handle edge cases', () => {
-		expect(isHtmlRenderedContentType('text/htmlsomething')).toBe(true);
-		expect(isHtmlRenderedContentType('application/xhtml+xmlsomething')).toBe(true);
 	});
 });
 

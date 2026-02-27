@@ -487,7 +487,7 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'Create a simple workflow',
-				featureFlags: { codeBuilder: true },
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
 			};
 
 			const generator = agent.chat(payload);
@@ -506,11 +506,9 @@ describe('WorkflowBuilderAgent', () => {
 
 	describe('triage agent routing', () => {
 		let triageConfig: WorkflowBuilderAgentConfig;
-		const originalMergeAskBuild = process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD;
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD = 'true';
 
 			mockGenerateCodeBuilderThreadId.mockReturnValue('test-thread-id');
 			mockLoadCodeBuilderSession.mockResolvedValue({
@@ -523,14 +521,6 @@ describe('WorkflowBuilderAgent', () => {
 				...config,
 				assistantHandler: mock<AssistantHandler>(),
 			};
-		});
-
-		afterEach(() => {
-			if (originalMergeAskBuild !== undefined) {
-				process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD = originalMergeAskBuild;
-			} else {
-				delete process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD;
-			}
 		});
 
 		it('should yield assistant chunks and not call CodeWorkflowBuilder for assistant outcome', async () => {
@@ -551,7 +541,7 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'How do credentials work?',
-				featureFlags: { codeBuilder: true },
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
 			};
 
 			const results: StreamOutput[] = [];
@@ -576,7 +566,7 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'Build me a Slack notification workflow',
-				featureFlags: { codeBuilder: true },
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
 			};
 
 			const results: StreamOutput[] = [];
@@ -601,7 +591,7 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'What approach should I take?',
-				featureFlags: { codeBuilder: true },
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
 			};
 
 			const results: StreamOutput[] = [];
@@ -622,7 +612,7 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'Help me',
-				featureFlags: { codeBuilder: true },
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
 			};
 
 			for await (const _ of triageAgent.chat(payload, 'user-456')) {
@@ -644,7 +634,7 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'Help me',
-				featureFlags: { codeBuilder: true },
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
 			};
 
 			const controller = new AbortController();
@@ -681,7 +671,7 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'Build this',
-				featureFlags: { codeBuilder: true },
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
 				workflowContext: { currentWorkflow: { id: 'wf-1' } },
 			};
 
@@ -714,7 +704,7 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'How do credentials work?',
-				featureFlags: { codeBuilder: true },
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
 				workflowContext: { currentWorkflow: { id: 'wf-1' } },
 			};
 
@@ -751,7 +741,7 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'What approach should I take?',
-				featureFlags: { codeBuilder: true },
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
 				workflowContext: { currentWorkflow: { id: 'wf-1' } },
 			};
 
@@ -785,7 +775,7 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'Build a workflow',
-				featureFlags: { codeBuilder: true },
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
 				workflowContext: { currentWorkflow: { id: 'wf-1' } },
 			};
 
@@ -812,7 +802,7 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'Fix the Google Sheets error',
-				featureFlags: { codeBuilder: true },
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
 				workflowContext: { currentWorkflow: { id: 'wf-1' } },
 			};
 
@@ -847,7 +837,7 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'Test',
-				featureFlags: { codeBuilder: true },
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
 			};
 
 			for await (const _ of triageAgent.chat(payload, 'user-456')) {
