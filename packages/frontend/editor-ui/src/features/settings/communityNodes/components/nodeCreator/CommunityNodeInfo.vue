@@ -38,7 +38,7 @@ const quickConnect = computed(() => {
 const nodeTypesStore = useNodeTypesStore();
 
 const usersStore = useUsersStore();
-const isAdminOrOwner = computed(() => usersStore.isAdmin || usersStore.isInstanceOwner);
+const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
 
 const formatNumber = (number: number) => {
 	if (!number) return null;

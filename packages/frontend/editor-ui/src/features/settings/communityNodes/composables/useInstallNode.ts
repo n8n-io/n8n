@@ -40,7 +40,6 @@ export function useInstallNode() {
 	const credentialsStore = useCredentialsStore();
 	const workflowsStore = useWorkflowsStore();
 	const userStore = useUsersStore();
-	const canInstallNodes = computed(() => userStore.isAdmin || userStore.isInstanceOwner);
 	const loading = ref(false);
 	const toast = useToast();
 	const canvasOperations = useCanvasOperations();
@@ -57,8 +56,8 @@ export function useInstallNode() {
 	};
 
 	const installNode = async (props: InstallNodeProps): Promise<InstallNodeResult> => {
-		if (!canInstallNodes.value) {
-			const error = new Error('User is not an owner');
+		if (!userStore.isAdminOrOwner) {
+			const error = new Error('User is not an owner or admin');
 			toast.showError(error, i18n.baseText('settings.communityNodes.messages.install.error'));
 			return { success: false, error };
 		}

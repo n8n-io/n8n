@@ -35,7 +35,7 @@ const isVerifiedCommunityNode = computed(
 		nodeTypesStore.communityNodeType(node.type)?.isOfficialNode,
 );
 const npmPackage = computed(() => removePreviewToken(node.type.split('.')[0]));
-const isAdminOrOwner = computed(() => usersStore.isAdmin || usersStore.isInstanceOwner);
+const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
 const { getQuickConnectOptionByPackageName } = useQuickConnect();
 const quickConnect = computed(() => getQuickConnectOptionByPackageName(npmPackage.value));
 

@@ -90,9 +90,12 @@ beforeEach(() => {
 		value: true,
 		writable: true,
 	});
-
 	Object.defineProperty(usersStore, 'isInstanceOwner', {
 		value: false,
+		writable: true,
+	});
+	Object.defineProperty(usersStore, 'isAdminOrOwner', {
+		value: true,
 		writable: true,
 	});
 
@@ -146,6 +149,10 @@ describe('useInstallNode', () => {
 				value: false,
 				writable: true,
 			});
+			Object.defineProperty(usersStore, 'isAdminOrOwner', {
+				value: false,
+				writable: true,
+			});
 			const { installNode } = useInstallNode();
 
 			const result = await installNode({
@@ -156,7 +163,7 @@ describe('useInstallNode', () => {
 
 			expect(result.success).toBe(false);
 			expect(result.error).toBeInstanceOf(Error);
-			expect(result.error?.message).toBe('User is not an owner');
+			expect(result.error?.message).toBe('User is not an owner or admin');
 			expect(showError).toHaveBeenCalledWith(
 				expect.any(Error),
 				'settings.communityNodes.messages.install.error',
@@ -173,6 +180,10 @@ describe('useInstallNode', () => {
 			});
 			Object.defineProperty(usersStore, 'isInstanceOwner', {
 				value: isInstanceOwner,
+				writable: true,
+			});
+			Object.defineProperty(usersStore, 'isAdminOrOwner', {
+				value: isAdmin || isInstanceOwner,
 				writable: true,
 			});
 			const { installNode } = useInstallNode();

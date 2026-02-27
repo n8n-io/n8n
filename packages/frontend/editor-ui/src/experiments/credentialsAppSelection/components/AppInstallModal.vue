@@ -32,7 +32,7 @@ const usersStore = useUsersStore();
 const nodeTypesStore = useNodeTypesStore();
 const { installNode, loading } = useInstallNode();
 
-const isAdminOrOwner = computed(() => usersStore.isAdmin || usersStore.isInstanceOwner);
+const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
 
 // Fetched data from API (like CommunityNodeInfo does)
 const publisherName = ref<string | undefined>(undefined);

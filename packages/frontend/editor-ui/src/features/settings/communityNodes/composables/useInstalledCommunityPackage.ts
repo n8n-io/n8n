@@ -51,7 +51,7 @@ export function useInstalledCommunityPackage(nodeTypeName?: MaybeRefOrGetter<str
 	const isUpdateCheckAvailable = computed(() => {
 		return (
 			isCommunityNode.value &&
-			usersStore.isInstanceOwner &&
+			usersStore.isAdminOrOwner &&
 			!installedPackage.value?.unverifiedUpdate
 		);
 	});
