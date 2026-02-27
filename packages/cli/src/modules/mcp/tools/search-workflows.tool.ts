@@ -155,7 +155,6 @@ export async function searchWorkflows(
 		select: {
 			id: true,
 			activeVersionId: true,
-			versionId: true, // Required by role service to detect entity type
 			name: true,
 			description: true,
 			createdAt: true,

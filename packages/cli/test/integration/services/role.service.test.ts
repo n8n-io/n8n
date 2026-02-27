@@ -1474,7 +1474,7 @@ describe('RoleService', () => {
 			const mockEntity = {
 				id: 'entity-1',
 				name: 'Test Entity',
-				// Missing both 'versionId' and 'type' properties
+				// Missing all workflow fields (versionId, activeVersionId, triggerCount) and credential field (type)
 				shared: [],
 			} as any;
 			const userProjectRelations = [] as any[];
