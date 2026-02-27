@@ -128,6 +128,7 @@ export function useWorkflowState() {
 
 	function setWorkflowSettings(workflowSettings: IWorkflowSettings) {
 		ws.private.setWorkflowSettings(workflowSettings);
+		uiStore.markStateDirty();
 	}
 
 	function setWorkflowProperty<K extends keyof IWorkflowDb>(key: K, value: IWorkflowDb[K]) {

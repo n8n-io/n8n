@@ -13,6 +13,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import * as restApiClient from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
 import { BINARY_MODE_COMBINED } from 'n8n-workflow';
@@ -52,6 +53,7 @@ let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let sourceControlStore: MockedStore<typeof useSourceControlStore>;
+let uiStore: MockedStore<typeof useUIStore>;
 let pinia: ReturnType<typeof createTestingPinia>;
 
 let searchWorkflowsSpy: MockInstance<(typeof workflowsListStore)['searchWorkflows']>;
@@ -74,6 +76,7 @@ describe('WorkflowSettingsVue', () => {
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 		settingsStore = mockedStore(useSettingsStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
+		uiStore = mockedStore(useUIStore);
 
 		settingsStore.settings = mock<FrontendSettings>({
 			enterprise: {},
@@ -719,6 +722,28 @@ describe('WorkflowSettingsVue', () => {
 			const dropdownContainer = getByTestId('workflow-settings-credential-resolver');
 			const input = dropdownContainer.querySelector('input');
 			expect(input).toBeDisabled();
+		});
+	});
+
+	describe('Dirty State', () => {
+		it('should mark state as dirty after saving workflow settings', async () => {
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v1',
+			};
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+
+			// Select the test workflow (second option)
+			await userEvent.click(dropdownItems[1]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			await waitFor(() => {
+				expect(uiStore.markStateDirty).toHaveBeenCalled();
+			});
 		});
 	});
 });
