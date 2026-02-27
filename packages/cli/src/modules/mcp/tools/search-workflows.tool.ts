@@ -148,7 +148,6 @@ export async function searchWorkflows(
 		take: safeLimit,
 		filter: {
 			isArchived: false,
-			availableInMCP: true,
 			...(query ? { query } : {}),
 			...(projectId ? { projectId } : {}),
 		},
@@ -173,7 +172,7 @@ export async function searchWorkflows(
 	);
 
 	const formattedWorkflows: SearchWorkflowsItem[] = workflows.map((workflow) => {
-		const { id, name, description, activeVersionId, createdAt, updatedAt, triggerCount } =
+		const { id, name, description, activeVersionId, createdAt, updatedAt, triggerCount, settings } =
 			workflow as WorkflowEntity;
 		const scopes = ('scopes' in workflow ? (workflow.scopes as string[]) : undefined) ?? [];
 
@@ -187,6 +186,7 @@ export async function searchWorkflows(
 			triggerCount,
 			scopes,
 			canExecute: scopes.includes('workflow:execute'),
+			availableInMCP: settings?.availableInMCP ?? false,
 		};
 	});
 

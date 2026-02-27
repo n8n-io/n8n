@@ -33,12 +33,14 @@ export type SearchWorkflowsParams = {
 export type SearchWorkflowsItem = {
 	id: string;
 	name: string | null;
+	description?: string | null;
 	active: boolean | null;
 	createdAt: string | null;
 	updatedAt: string | null;
 	triggerCount: number | null;
 	scopes: string[];
 	canExecute: boolean;
+	availableInMCP: boolean;
 };
 
 export type SearchWorkflowsResult = {

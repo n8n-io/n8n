@@ -61,6 +61,7 @@ describe('search-workflows MCP tool', () => {
 						activeVersionId: 'version-a',
 						name: 'Alpha',
 						nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE } as INode],
+						settings: { availableInMCP: true },
 						activeVersion: createWorkflowHistoryVersion({
 							workflowId: 'a',
 							versionId: 'version-a',
@@ -78,6 +79,7 @@ describe('search-workflows MCP tool', () => {
 						nodes: [
 							{ name: 'Execute subworkflow', type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } as INode,
 						],
+						settings: { availableInMCP: true },
 						activeVersion: createWorkflowHistoryVersion({
 							workflowId: 'b',
 							versionId: 'version-b',
@@ -106,6 +108,7 @@ describe('search-workflows MCP tool', () => {
 					triggerCount: 1,
 					scopes: ['workflow:read', 'workflow:execute'],
 					canExecute: true,
+					availableInMCP: true,
 				},
 				{
 					id: 'b',
@@ -117,6 +120,7 @@ describe('search-workflows MCP tool', () => {
 					triggerCount: 1,
 					scopes: ['workflow:read'],
 					canExecute: false,
+					availableInMCP: true,
 				},
 			]);
 		});
@@ -136,7 +140,6 @@ describe('search-workflows MCP tool', () => {
 			expect(optionsArg.take).toBe(200);
 			expect(optionsArg.filter).toMatchObject({
 				isArchived: false,
-				availableInMCP: true,
 				query: 'foo',
 				projectId: 'proj-1',
 			});
@@ -155,7 +158,12 @@ describe('search-workflows MCP tool', () => {
 
 		test('formats workflows with basic metadata', async () => {
 			const workflows = [
-				createWorkflow({ id: 'no-nodes', activeVersionId: 'version-no-nodes', nodes: [] }),
+				createWorkflow({
+					id: 'no-nodes',
+					activeVersionId: 'version-no-nodes',
+					nodes: [],
+					settings: { availableInMCP: true },
+				}),
 			];
 			const workflowService = mockInstance(WorkflowService, {
 				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
@@ -165,6 +173,7 @@ describe('search-workflows MCP tool', () => {
 				id: 'no-nodes',
 				scopes: [],
 				canExecute: false,
+				availableInMCP: true,
 			});
 		});
 	});

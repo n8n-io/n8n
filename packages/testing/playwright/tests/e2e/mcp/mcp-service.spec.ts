@@ -143,9 +143,12 @@ test.describe(
 				expect(foundWorkflow).toBeDefined();
 				expect(foundWorkflow!.active).toBe(true);
 				expect(foundWorkflow!.scopes).toBeDefined();
+				expect(foundWorkflow!.availableInMCP).toBe(true);
 			});
 
-			test('should NOT return workflows not marked as available in MCP', async ({ api }) => {
+			test('should return workflows not marked as available in MCP with availableInMCP: false', async ({
+				api,
+			}) => {
 				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 					'mcp-service/mcp-unavailable.json',
 				);
@@ -155,7 +158,8 @@ test.describe(
 				const result = await api.mcp.internalMcpSearchWorkflows(apiKey);
 
 				const foundWorkflow = result.data.find((w) => w.id === workflowId);
-				expect(foundWorkflow).toBeUndefined();
+				expect(foundWorkflow).toBeDefined();
+				expect(foundWorkflow!.availableInMCP).toBe(false);
 			});
 
 			test('should support limit parameter', async ({ api }) => {
@@ -203,6 +207,7 @@ test.describe(
 				expect(foundWorkflow!.name).toBeTruthy();
 				expect(foundWorkflow!.scopes).toBeInstanceOf(Array);
 				expect(typeof foundWorkflow!.canExecute).toBe('boolean');
+				expect(typeof foundWorkflow!.availableInMCP).toBe('boolean');
 			});
 		});
 

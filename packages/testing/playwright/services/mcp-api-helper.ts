@@ -87,6 +87,7 @@ export interface SearchWorkflowsResult {
 		triggerCount: number | null;
 		scopes: string[];
 		canExecute: boolean;
+		availableInMCP: boolean;
 	}>;
 	count: number;
 }
