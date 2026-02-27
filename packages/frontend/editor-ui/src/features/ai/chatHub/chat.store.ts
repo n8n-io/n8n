@@ -820,7 +820,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			updatedAt: customAgent.updatedAt,
 			metadata: baseModel?.metadata ?? {
 				capabilities: { functionCalling: false },
-				inputModalities: [],
+				allowFileUploads: false,
+				allowedFilesMimeTypes: '',
 				available: true,
 			},
 			groupName: null,

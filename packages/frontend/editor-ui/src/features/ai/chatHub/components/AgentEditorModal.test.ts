@@ -89,7 +89,8 @@ const MOCK_AGENT_MODEL: ChatModelDto = {
 	updatedAt: '',
 	metadata: {
 		capabilities: { functionCalling: true },
-		inputModalities: [],
+		allowFileUploads: false,
+		allowedFilesMimeTypes: '',
 		available: true,
 	},
 	groupName: null,
