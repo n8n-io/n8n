@@ -58,7 +58,7 @@ export function useInstallNode() {
 
 	const installNode = async (props: InstallNodeProps): Promise<InstallNodeResult> => {
 		if (!canInstallNodes.value) {
-			const error = new Error('User is not an owner');
+			const error = new Error('User is not an owner or an admin');
 			toast.showError(error, i18n.baseText('settings.communityNodes.messages.install.error'));
 			return { success: false, error };
 		}
