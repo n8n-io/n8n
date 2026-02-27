@@ -33,6 +33,7 @@ import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWo
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
@@ -68,6 +69,7 @@ export function useWorkflowSaving({
 
 	const saveStore = useWorkflowSaveStore();
 	const backendConnectionStore = useBackendConnectionStore();
+	const documentStore = injectWorkflowDocumentStore();
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -82,7 +84,7 @@ export function useWorkflowSaving({
 		if (
 			!uiStore.stateIsDirty ||
 			workflowsStore.workflow.isArchived ||
-			!getResourcePermissions(workflowsStore.workflow.scopes).workflow.update
+			!getResourcePermissions(documentStore?.value?.scopes).workflow.update
 		) {
 			next();
 			return;

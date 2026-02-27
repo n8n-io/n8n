@@ -27,7 +27,6 @@ import { inject } from 'vue';
 import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { isEmpty } from '@/app/utils/typesUtils';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
@@ -37,6 +36,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { createEventBus } from '@n8n/utils/event-bus';
+import type { WorkflowMetadata } from '@n8n/rest-api-client';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -167,25 +167,23 @@ export function useWorkflowState() {
 		return workflowData;
 	}
 
-	function makeNewWorkflowShareable() {
-		const { currentProject, personalProject } = useProjectsStore();
-		const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
-
-		ws.workflow.scopes = scopes;
-	}
-
 	async function getNewWorkflowDataAndMakeShareable(
 		name?: string,
 		projectId?: string,
 		parentFolderId?: string,
 	): Promise<INewWorkflowData> {
-		const workflowData = await getNewWorkflowData(name, projectId, parentFolderId);
-		makeNewWorkflowShareable();
-		return workflowData;
+		return await getNewWorkflowData(name, projectId, parentFolderId);
 	}
 
-	function setWorkflowScopes(scopes: IWorkflowDb['scopes']): void {
-		ws.workflow.scopes = scopes;
+	function setWorkflowMetadata(metadata: WorkflowMetadata | undefined): void {
+		ws.workflow.meta = metadata;
+	}
+
+	function addToWorkflowMetadata(data: Partial<WorkflowMetadata>): void {
+		ws.workflow.meta = {
+			...ws.workflow.meta,
+			...data,
+		};
 	}
 
 	////
@@ -441,7 +439,8 @@ export function useWorkflowState() {
 		setWorkflowProperty,
 		setActiveExecutionId,
 		getNewWorkflowDataAndMakeShareable,
-		setWorkflowScopes,
+		setWorkflowMetadata,
+		addToWorkflowMetadata,
 
 		// Execution
 		markExecutionAsStopped,

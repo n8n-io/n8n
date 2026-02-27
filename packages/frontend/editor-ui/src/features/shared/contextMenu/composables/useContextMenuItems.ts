@@ -60,7 +60,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
+		() => getResourcePermissions(documentStore?.value?.scopes).workflow,
 	);
 
 	const isReadOnly = computed(

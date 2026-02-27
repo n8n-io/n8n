@@ -277,6 +277,11 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
 		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 
+		const { currentProject, personalProject } = projectsStore;
+		currentWorkflowDocumentStore.value.setScopes(
+			currentProject?.scopes ?? personalProject?.scopes ?? [],
+		);
+
 		await projectsStore.refreshCurrentProject();
 		await fetchAndSetParentFolder(parentFolderId);
 

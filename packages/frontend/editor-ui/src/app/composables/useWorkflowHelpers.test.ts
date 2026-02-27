@@ -250,7 +250,7 @@ describe('useWorkflowHelpers', () => {
 			const setWorkflowNameSpy = vi.spyOn(workflowState, 'setWorkflowName');
 			const setWorkflowSettingsSpy = vi.spyOn(workflowState, 'setWorkflowSettings');
 			const setWorkflowVersionDataSpy = vi.spyOn(workflowsStore, 'setWorkflowVersionData');
-			const setWorkflowScopesSpy = vi.spyOn(workflowState, 'setWorkflowScopes');
+			const setWorkflowMetadataSpy = vi.spyOn(workflowState, 'setWorkflowMetadata');
 			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
 			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
@@ -272,7 +272,7 @@ describe('useWorkflowHelpers', () => {
 				name: null,
 				description: null,
 			});
-			expect(setWorkflowScopesSpy).toHaveBeenCalledWith(['workflow:create']);
+			expect(setWorkflowMetadataSpy).toHaveBeenCalledWith({});
 			expect(setUsedCredentialsSpy).toHaveBeenCalledWith([]);
 			expect(setWorkflowSharedWithSpy).toHaveBeenCalledWith({
 				workflowId: '1',

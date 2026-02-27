@@ -604,7 +604,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function fetchLastSuccessfulExecution() {
-		const workflowPermissions = getResourcePermissions(workflow.value.scopes).workflow;
+		const wfDocumentStore = workflowId.value
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
+			: undefined;
+		const workflowPermissions = getResourcePermissions(wfDocumentStore?.scopes).workflow;
 
 		try {
 			if (
