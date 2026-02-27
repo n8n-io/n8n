@@ -2,7 +2,7 @@
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
 import { computed, provide, ref } from 'vue';
@@ -27,11 +27,11 @@ const ndvStore = useNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const isExpanded = computed(() => !experimentalNdvStore.collapsedNodes[nodeId]);
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 useTelemetryContext({ view_shown: 'zoomed_view' });
 
-const node = computed(() => workflowsStore.getNodeById(nodeId) ?? null);
+const node = computed(() => workflowDocumentStore?.value?.findNode(nodeId) ?? null);
 const nodeType = computed(() => {
 	if (node.value) {
 		return nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);

@@ -1,6 +1,7 @@
 <!-- eslint-disable import-x/extensions -->
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
@@ -31,6 +32,7 @@ const emit = defineEmits<Emits>();
 // Initialize composables and stores
 const router = useRouter();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const i18n = useI18n();
@@ -174,7 +176,7 @@ async function onExecute() {
 	const selectedTriggerNode =
 		workflowsStore.selectedTriggerNodeName ?? availableTriggerNodes.value[0]?.name;
 	const selectedTriggerNodeType = selectedTriggerNode
-		? workflowsStore.getNodeByName(selectedTriggerNode)
+		? workflowDocumentStore?.value?.findNodeByName(selectedTriggerNode)
 		: null;
 
 	// If the selected trigger is a chat node, open logs panel instead of executing
@@ -207,7 +209,7 @@ function scrollIntoView() {
 
 function trackBuilderPlaceholders(issue: WorkflowValidationIssue) {
 	builderStore.trackWorkflowBuilderJourney('user_clicked_todo', {
-		node_type: workflowsStore.getNodeByName(issue.node)?.type,
+		node_type: workflowDocumentStore?.value?.findNodeByName(issue.node)?.type,
 		type: issue.type,
 	});
 }

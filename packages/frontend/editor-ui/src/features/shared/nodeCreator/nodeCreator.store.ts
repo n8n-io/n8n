@@ -23,6 +23,10 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { TelemetryNdvType } from '@/app/types/telemetry';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import { isVueFlowConnection } from '@/app/utils/typeGuards';
@@ -44,6 +48,11 @@ import { prepareCommunityNodeDetailsViewStack, transformNodeType } from './nodeC
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const ndvStore = useNDVStore();
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -104,7 +113,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		connectionIndex?: number;
 	}) {
 		const nodeName = node ?? ndvStore.activeNodeName;
-		const nodeData = nodeName ? workflowsStore.getNodeByName(nodeName) : null;
+		const nodeData = nodeName ? workflowDocumentStore.value?.findNodeByName(nodeName) : null;
 
 		ndvStore.unsetActiveNodeName();
 
@@ -180,7 +189,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		// Get the node and set it as active that new nodes
 		// which get created get automatically connected
 		// to it.
-		const sourceNode = workflowsStore.getNodeById(connection.source);
+		const sourceNode = workflowDocumentStore.value?.findNode(connection.source);
 		if (!sourceNode) {
 			return;
 		}
@@ -219,7 +228,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}
 
 	async function openNodeCreatorWithNode(nodeName: string) {
-		const nodeData = nodeName ? workflowsStore.getNodeByName(nodeName) : null;
+		const nodeData = nodeName ? workflowDocumentStore.value?.findNodeByName(nodeName) : null;
 		if (!nodeData) {
 			return;
 		}

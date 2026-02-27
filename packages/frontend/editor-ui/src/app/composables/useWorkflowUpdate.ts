@@ -181,7 +181,7 @@ export function useWorkflowUpdate() {
 		}
 
 		// Sync state back to store
-		workflowsStore.setNodes(Object.values(workflow.nodes));
+		workflowDocumentStore.value?.setNodes(Object.values(workflow.nodes));
 		workflowsStore.setConnections(workflow.connectionsBySourceNode);
 		// Revalidate updated nodes to refresh error indicators on canvas
 		for (const { existing } of nodesToUpdate) {

@@ -1,4 +1,9 @@
-import type { AppliedThemeOption, INodeUi, NodeAuthenticationOption } from '@/Interface';
+import type {
+	AppliedThemeOption,
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	NodeAuthenticationOption,
+} from '@/Interface';
 import type { ITemplatesNode } from '@n8n/rest-api-client/api/templates';
 import {
 	CORE_NODES_CATEGORY,
@@ -22,7 +27,6 @@ import {
 	type ResourceMapperField,
 	type Themed,
 } from 'n8n-workflow';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
 /*
 	Constants and utility functions mainly used to get information about
@@ -361,7 +365,9 @@ export const getCredentialsRelatedFields = (
 };
 
 export const updateNodeAuthType = (
-	workflowState: WorkflowState,
+	nodePropertiesUpdater:
+		| { updateNodeProperties: (info: INodeUpdatePropertiesInformation) => void }
+		| undefined,
 	node: INodeUi | null,
 	type: string,
 ) => {
@@ -381,7 +387,7 @@ export const updateNodeAuthType = (
 					},
 				},
 			};
-			workflowState.updateNodeProperties(updateInformation);
+			nodePropertiesUpdater?.updateNodeProperties(updateInformation);
 		}
 	}
 };

@@ -414,7 +414,10 @@ export function handleExecutionFinishedWithSuccessOrOther(
 
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 	if (workflowExecution?.executedNode) {
-		const node = workflowsStore.getNodeByName(workflowExecution.executedNode);
+		const workflowDocumentStoreForExecution = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+		const node = workflowDocumentStoreForExecution?.findNodeByName(workflowExecution.executedNode);
 		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		const nodeOutput =
 			workflowExecution.data?.resultData?.runData?.[workflowExecution.executedNode];

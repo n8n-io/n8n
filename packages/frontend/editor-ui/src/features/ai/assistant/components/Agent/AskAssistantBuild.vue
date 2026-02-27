@@ -34,8 +34,6 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { useReviewChanges } from '@/features/ai/assistant/composables/useReviewChanges';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-
 import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
 import BuildModeEmptyState from './BuildModeEmptyState.vue';
 import {
@@ -202,14 +200,12 @@ function onSelectChangedNode(nodeId: string) {
 	canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });
 }
 
-const codeDiffWorkflowState = injectWorkflowState();
-
 async function onCodeReplace(index: number) {
-	await builderStore.applyCodeDiff(codeDiffWorkflowState, index);
+	await builderStore.applyCodeDiff(index);
 }
 
 async function onCodeUndo(index: number) {
-	await builderStore.undoCodeDiff(codeDiffWorkflowState, index);
+	await builderStore.undoCodeDiff(index);
 }
 
 const disabledTooltip = computed(() => {

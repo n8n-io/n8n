@@ -742,7 +742,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 				workflow_id: workflowsStore.workflowId,
 			});
 
-			workflowState.updateNodeProperties(updateInformation);
+			workflowDocumentStore.value?.updateNodeProperties(updateInformation);
 			workflowsStore.clearNodeExecutionData(node.name);
 			updateNodeParameterIssues(node);
 			updateNodeCredentialIssues(node);

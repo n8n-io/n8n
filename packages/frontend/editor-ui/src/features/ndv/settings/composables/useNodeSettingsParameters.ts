@@ -31,12 +31,12 @@ import {
 	getNodeAuthFields,
 	isAuthRelatedParameter,
 } from '@/app/utils/nodeTypesUtils';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = injectWorkflowState();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
@@ -133,7 +133,7 @@ export function useNodeSettingsParameters() {
 			workflowsStore.setConnections(updatedConnections);
 		}
 
-		workflowState.setNodeParameters(updateInformation);
+		workflowDocumentStore?.value?.setNodeParameters(updateInformation);
 
 		void externalHooks.run('nodeSettings.valueChanged', {
 			parameterPath,

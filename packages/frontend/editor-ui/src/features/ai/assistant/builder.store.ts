@@ -810,7 +810,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
-			nodesForSchema: Object.keys(workflowsStore.nodesByName),
+			nodesForSchema: Object.keys(workflowDocumentStore.value?.nodesByName ?? {}),
 			mode: modeForPayload,
 			isPlanModeEnabled: isPlanModeAvailable.value,
 			allowSendingParameterValues: settings.settings.ai.allowSendingParameterValues,

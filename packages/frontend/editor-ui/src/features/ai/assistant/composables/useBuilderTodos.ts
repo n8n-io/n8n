@@ -147,7 +147,7 @@ export function useBuilderTodos() {
 		}
 		visited.add(nodeName);
 
-		const node = workflowsStore.getNodeByName(nodeName);
+		const node = workflowDocumentStore.value?.findNodeByName(nodeName);
 
 		// Check if node itself is disabled
 		if (node?.disabled === true) {
@@ -349,7 +349,7 @@ export function useBuilderTodos() {
 			placeholders_todo_count,
 			todos: workflowTodos.value.map((todo) => ({
 				type: todo.type,
-				node_type: workflowsStore.getNodeByName(todo.node)?.type,
+				node_type: workflowDocumentStore.value?.findNodeByName(todo.node)?.type,
 				label: todo.value,
 			})),
 		};

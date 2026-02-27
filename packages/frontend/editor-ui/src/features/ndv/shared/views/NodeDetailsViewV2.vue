@@ -180,7 +180,7 @@ const inputNodeName = computed<string | undefined>(() => {
 
 const inputNode = computed(() => {
 	if (inputNodeName.value) {
-		return workflowsStore.getNodeByName(inputNodeName.value);
+		return workflowDocumentStore?.value?.findNodeByName(inputNodeName.value);
 	}
 	return null;
 });
