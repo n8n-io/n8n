@@ -1,6 +1,6 @@
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { IExecutionResponse } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
+import type { ChatNodeMessage, INode } from 'n8n-workflow';
 import {
 	CHAT_WAIT_USER_REPLY,
 	CHAT_NODE_TYPE,
@@ -12,11 +12,79 @@ import {
 const AI_TOOL = 'ai_tool';
 
 /**
+ * Extracts the node name from startData.originalDestinationNode, which can be
+ * either a plain string (legacy V0 format) or an IDestinationNode object (V1).
+ */
+function getOriginalDestinationNodeName(
+	startData: IExecutionResponse['data']['startData'],
+): string | undefined {
+	const dest = startData?.originalDestinationNode;
+	if (!dest) return undefined;
+	return typeof dest === 'string' ? dest : dest.nodeName;
+}
+
+/**
+ * Reads the sendMessage from a tool ai_tool run.
+ * Tool nodes store their output under the ai_tool connection key (not main),
+ */
+function getSendMessageFromToolNode(
+	nodeRuns: IExecutionResponse['data']['resultData']['runData'][string],
+): ChatNodeMessage | undefined {
+	const lastRun = nodeRuns[nodeRuns.length - 1];
+	const aiToolBranches = lastRun?.data?.[AI_TOOL];
+
+	if (!Array.isArray(aiToolBranches)) return undefined;
+
+	for (const branch of aiToolBranches) {
+		if (Array.isArray(branch) && branch[0]?.sendMessage) {
+			return branch[0].sendMessage;
+		}
+	}
+
+	return undefined;
+}
+
+/**
+ * When the PartialExecutionToolExecutor is the last executed node, the
+ * sendMessage is not in the executor's own output — it lives in the connected
+ * tool node's ai_tool run data (written there by makeHandleToolInvocation via
+ * addOutputData).
+ *
+ * Uses startData.originalDestinationNode to target the exact tool node that
+ * was executed, falling back to scanning all ai_tool outputs if unavailable.
+ */
+function getToolExecutorSendMessage(executionData: IExecutionResponse['data']) {
+	const { startData, resultData } = executionData;
+	const { runData } = resultData;
+
+	const toolNodeName = getOriginalDestinationNodeName(startData);
+	if (toolNodeName && runData[toolNodeName]) {
+		return getSendMessageFromToolNode(runData[toolNodeName]);
+	}
+
+	// Fallback: scan all nodes that have ai_tool output (tool nodes only —
+	// regular nodes cannot produce ai_tool data)
+	for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+		if (nodeName === TOOL_EXECUTOR_NODE_NAME) continue;
+		const message = getSendMessageFromToolNode(nodeRuns);
+		if (message) return message;
+	}
+
+	return undefined;
+}
+
+/**
  * Returns the message to be sent of the last executed node
  */
 export function getMessage(execution: IExecutionResponse) {
 	const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
 	if (typeof lastNodeExecuted !== 'string') return undefined;
+
+	// PartialExecutionToolExecutor is a virtual node not saved in the workflow,
+	// so its sendMessage must be retrieved from the connected tool node's run data.
+	if (lastNodeExecuted === TOOL_EXECUTOR_NODE_NAME) {
+		return getToolExecutorSendMessage(execution.data);
+	}
 
 	const runIndex = execution.data.resultData.runData[lastNodeExecuted].length - 1;
 	const data = execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data;

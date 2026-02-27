@@ -277,8 +277,8 @@ export function makeHandleToolInvocation(
 					[{ json: { response }, sendMessage }],
 				]);
 
-				// Return the stringified results along with any sendMessage for PartialExecutionToolExecutor
-				return { result: JSON.stringify(response), sendMessage };
+				// Return the stringified results
+				return JSON.stringify(response);
 			} catch (error) {
 				// Check if error is due to cancellation
 				if (abortSignal?.aborted) {
