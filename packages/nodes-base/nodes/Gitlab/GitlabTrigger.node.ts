@@ -9,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
 
-import { gitlabApiRequest } from './GenericFunctions';
+import { gitlabApiRequest, gitlabApiRequestAllItems } from './GenericFunctions';
 
 const GITLAB_EVENTS = [
 	{
@@ -190,7 +190,8 @@ export class GitlabTrigger implements INodeType {
 				const endpoint = `/projects/${path}/hooks`;
 
 				try {
-					const webhooks = await gitlabApiRequest.call(this, 'GET', endpoint, {});
+					// Fetch all webhooks with pagination to avoid missing hooks beyond page 1
+					const webhooks = await gitlabApiRequestAllItems.call(this, 'GET', endpoint);
 
 					// Check if any webhook matches our URL
 					const existingWebhook = webhooks.find((hook: IDataObject) => hook.url === webhookUrl);
@@ -198,7 +199,7 @@ export class GitlabTrigger implements INodeType {
 					if (existingWebhook) {
 						// Found a matching webhook, update the ID if needed
 						if (webhookData.webhookId !== existingWebhook.id) {
-							webhookData.webhookId = existingWebhook.id as string;
+							webhookData.webhookId = String(existingWebhook.id);
 						}
 						return true;
 					}
@@ -208,7 +209,8 @@ export class GitlabTrigger implements INodeType {
 					delete webhookData.webhookEvents;
 					return false;
 				} catch (error) {
-					// If we can't fetch webhooks, fall back to checking by ID
+					// If we can't fetch webhooks (e.g. insufficient permissions),
+					// fall back to checking by stored ID
 					if (webhookData.webhookId === undefined) {
 						return false;
 					}
