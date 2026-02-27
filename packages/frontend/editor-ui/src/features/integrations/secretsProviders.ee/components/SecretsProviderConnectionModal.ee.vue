@@ -487,7 +487,9 @@ onMounted(async () => {
 											:key="option.value || 'global'"
 											:value="option.value"
 											:label="option.label"
-											:class="{ [$style.globalOption]: option.value === '' }"
+											:class="{
+												[$style.globalOption]: option.value === '' && scopeOptions.length > 1,
+											}"
 										>
 											<div :class="$style.optionContent">
 												<N8nText v-if="option.icon?.type === 'emoji'" :class="$style.menuItemEmoji">
