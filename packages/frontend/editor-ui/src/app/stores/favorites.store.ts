@@ -27,8 +27,8 @@ export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 
 	async function fetchFavorites() {
 		if (initialized.value) return;
-		initialized.value = true;
 		favorites.value = await favoritesApi.getFavorites(rootStore.restApiContext);
+		initialized.value = true;
 	}
 
 	function isFavorite(resourceId: string): boolean {
