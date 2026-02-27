@@ -93,8 +93,10 @@ async function preloadImage(container: StartedK3sContainer, imageName: string): 
 		} finally {
 			try {
 				unlinkSync(tarPath);
-			} catch (cleanupError) {
-				log(`Warning: failed to clean up temp file ${tarPath}: ${cleanupError}`);
+			} catch (cleanupError: unknown) {
+				log(
+					`Warning: failed to clean up temp file ${tarPath}: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+				);
 			}
 		}
 	}
