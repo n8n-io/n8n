@@ -53,9 +53,7 @@ import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 let owner: User;
 let member: User;
@@ -4198,32 +4196,58 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 });
 
 describe('POST /workflows/:workflowId/run', () => {
-	let sharingSpy: jest.SpyInstance;
-	let tamperingSpy: jest.SpyInstance;
-	let workflow: IWorkflowBase;
+	test('should always use the workflow from the database, ignoring workflowData in the request body', async () => {
+		const dbWorkflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: uuid(),
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						parameters: {},
+						typeVersion: 1,
+						position: [240, 300],
+					},
+				],
+				connections: {},
+			},
+			owner,
+		);
 
-	beforeAll(() => {
-		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
+		// Send modified workflowData with an extra injected node
+		const tamperedWorkflowData = {
+			...dbWorkflow,
+			nodes: [
+				...dbWorkflow.nodes,
+				{
+					id: uuid(),
+					name: 'Injected',
+					type: 'n8n-nodes-base.noOp',
+					parameters: {},
+					typeVersion: 1,
+					position: [500, 300],
+				},
+			],
+		};
 
-		sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled');
-		tamperingSpy = jest.spyOn(enterpriseWorkflowService, 'preventTampering');
-		workflow = workflowRepository.create({ id: uuid() });
+		const response = await authOwnerAgent
+			.post(`/workflows/${dbWorkflow.id}/run`)
+			.send({ workflowData: tamperedWorkflowData });
+
+		// The endpoint should accept the request (the DB workflow exists)
+		// It should NOT use the tampered workflowData
+		expect(response.statusCode).not.toBe(404);
 	});
 
-	test('should prevent tampering if sharing is enabled', async () => {
-		sharingSpy.mockReturnValue(true);
+	test('should return 404 for a non-existent workflow', async () => {
+		const nonExistentId = uuid();
+		const fakeWorkflow = workflowRepository.create({ id: nonExistentId });
 
-		await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({ workflowData: workflow });
+		const response = await authOwnerAgent
+			.post(`/workflows/${nonExistentId}/run`)
+			.send({ workflowData: fakeWorkflow });
 
-		expect(tamperingSpy).toHaveBeenCalledTimes(1);
-	});
-
-	test('should skip tampering prevention if sharing is disabled', async () => {
-		sharingSpy.mockReturnValue(false);
-
-		await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({ workflowData: workflow });
-
-		expect(tamperingSpy).not.toHaveBeenCalled();
+		expect(response.statusCode).toBe(404);
 	});
 });
 

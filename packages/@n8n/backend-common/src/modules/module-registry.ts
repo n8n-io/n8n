@@ -46,6 +46,7 @@ export class ModuleRegistry {
 		'ldap',
 		'quick-connect',
 		'workflow-builder',
+		'redaction',
 	];
 
 	private readonly activeModules: string[] = [];

@@ -244,7 +244,7 @@ async function handleArchiveWorkflow() {
 
 	try {
 		const expectedChecksum =
-			props.id === workflowsStore.workflowId ? workflowsStore.workflowChecksum : undefined;
+			props.id === workflowsStore.workflowId ? workflowDocumentStore?.value?.checksum : undefined;
 		await workflowsStore.archiveWorkflow(props.id, expectedChecksum);
 		workflowDocumentStore?.value?.setActiveState({
 			activeVersionId: null,
