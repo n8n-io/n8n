@@ -391,38 +391,6 @@ describe('CredentialResolverEditModal', () => {
 				expect(getPropertyNames(capturedProps)).not.toContain('clientSecret');
 			});
 		});
-
-		it('should filter by displayOptions in create mode with default values', async () => {
-			const { capturedProps, component } = createCredentialInputsSpy();
-
-			vi.mocked(restApiClient.getCredentialResolverTypes).mockResolvedValue(mockOAuthResolverTypes);
-
-			renderModal({
-				props: {
-					modalName: CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
-					data: { onSave: vi.fn() },
-				},
-				pinia,
-				global: { stubs: { Modal: ModalStub, CredentialInputs: component } },
-			});
-
-			// In create mode, no resolver is loaded — wait for types only
-			await vi.waitFor(() => {
-				expect(restApiClient.getCredentialResolverTypes).toHaveBeenCalled();
-			});
-
-			// CredentialInputs won't render until a type is selected.
-			// Simulate selecting the OAuth type by emitting a type change.
-			// The type select is bound to resolverType via v-model, so we need to
-			// find and interact with it. Since the N8nSelect is not stubbed away,
-			// we check that no CredentialInputs rendered yet (no type selected).
-			expect(capturedProps.length).toBe(0);
-
-			// We can't easily select the type via the stubbed UI, but we can verify
-			// that once the validation field defaults kick in, the filtering works.
-			// This is already covered by the edit-mode tests above — the computed
-			// uses the same code path regardless of create vs edit mode.
-		});
 	});
 
 	describe('Error handling', () => {
