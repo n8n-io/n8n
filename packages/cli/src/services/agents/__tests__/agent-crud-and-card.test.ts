@@ -84,6 +84,7 @@ function createMockedService() {
 		mockCredentialsHelper as any,
 		mockProjectRelationRepository as any,
 		mockProjectRepository as any,
+		{ find: jest.fn().mockResolvedValue([]), findOneBy: jest.fn() } as any, // externalAgentRegistrationRepo
 		mockWorkflowFinderService as any,
 		mockWorkflowRunner as any,
 		mockActiveExecutions as any,
@@ -223,12 +224,14 @@ describe('listAgents', () => {
 
 	it('should return all agents as DTOs', async () => {
 		const mocks = createMockedService();
+		const adminUser = { id: 'admin-1', role: { slug: 'global:owner' } } as any;
 		mocks.mockUserRepository.find.mockResolvedValue([
 			makeAgentUser({ id: 'a1', firstName: 'Bot1' }),
 			makeAgentUser({ id: 'a2', firstName: 'Bot2' }),
 		]);
+		mocks.mockUserRepository.findOne.mockResolvedValue(adminUser);
 
-		const result = await mocks.service.listAgents();
+		const result = await mocks.service.listAgents(adminUser);
 
 		expect(result).toHaveLength(2);
 		expect(result[0].id).toBe('a1');
@@ -237,9 +240,11 @@ describe('listAgents', () => {
 
 	it('should return empty array when no agents exist', async () => {
 		const mocks = createMockedService();
+		const adminUser = { id: 'admin-1', role: { slug: 'global:owner' } } as any;
 		mocks.mockUserRepository.find.mockResolvedValue([]);
+		mocks.mockUserRepository.findOne.mockResolvedValue(adminUser);
 
-		const result = await mocks.service.listAgents();
+		const result = await mocks.service.listAgents(adminUser);
 		expect(result).toEqual([]);
 	});
 });

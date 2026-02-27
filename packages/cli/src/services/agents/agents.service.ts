@@ -5,6 +5,7 @@ import {
 	WorkflowRepository,
 	ProjectRelationRepository,
 	ProjectRepository,
+	ExternalAgentRegistrationRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import crypto from 'node:crypto';
@@ -68,6 +69,7 @@ export class AgentsService {
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly projectRepository: ProjectRepository,
+		private readonly externalAgentRegistrationRepository: ExternalAgentRegistrationRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
@@ -165,6 +167,166 @@ export class AgentsService {
 		await this.userRepository.delete({ id: agentId });
 	}
 
+	// ── External Agent Registration ──────────────────────────────────────
+
+	async registerExternalAgent(url: string, apiKey: string, callingUser: User) {
+		// Discover the remote agent card
+		const cardUrl = `${url.replace(/\/+$/, '')}/.well-known/agent.json`;
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), 10_000);
+
+		let card: {
+			id?: string;
+			name?: string;
+			description?: string;
+			provider?: { description?: string };
+			interfaces?: Array<{ url?: string }>;
+			skills?: Array<{ id: string; name: string; description?: string }>;
+			capabilities?: { streaming?: boolean; multiTurn?: boolean };
+			requiredCredentials?: Array<{ type: string; description: string }>;
+		};
+
+		try {
+			const response = await fetch(cardUrl, {
+				headers: { 'x-n8n-api-key': apiKey, Accept: 'application/json' },
+				signal: controller.signal,
+			});
+			if (!response.ok) {
+				throw new Error(`Remote returned ${String(response.status)}`);
+			}
+			card = (await response.json()) as typeof card;
+		} finally {
+			clearTimeout(timeout);
+		}
+
+		// Extract remote agent ID from the card's interface URL
+		const interfaceUrl = card.interfaces?.[0]?.url ?? '';
+		const remoteIdMatch = /\/agents\/([^/]+)/.exec(interfaceUrl);
+		const remoteAgentId = remoteIdMatch?.[1] ?? card.id ?? 'unknown';
+
+		// Check for duplicate registration
+		const existing = await this.externalAgentRegistrationRepository.findOneBy({
+			remoteUrl: url.replace(/\/+$/, ''),
+			remoteAgentId,
+		});
+		if (existing) {
+			return existing;
+		}
+
+		// Auto-create n8nApi credential to store the encrypted API key
+		const credential = await this.credentialsService.createManagedCredential(
+			{
+				name: `n8n A2A: ${card.name ?? remoteAgentId}`,
+				type: 'n8nApi',
+				data: { apiKey, baseUrl: url.replace(/\/+$/, '') },
+			},
+			callingUser,
+		);
+
+		// Persist the registration
+		const registration = this.externalAgentRegistrationRepository.create({
+			name: card.name ?? 'Remote Agent',
+			description: card.provider?.description ?? null,
+			remoteUrl: url.replace(/\/+$/, ''),
+			remoteAgentId,
+			credentialId: credential.id,
+			remoteCapabilities: card.capabilities ?? null,
+			skills: (card.skills ?? []).map((s) => ({ name: s.name, description: s.description })),
+			// Filter out n8nApi — A2A auth is handled by the registration's stored credential
+			requiredCredentials: card.requiredCredentials?.filter((c) => c.type !== 'n8nApi') ?? null,
+			credentialMappings: null,
+		});
+
+		return await this.externalAgentRegistrationRepository.save(registration);
+	}
+
+	async listExternalAgents() {
+		return await this.externalAgentRegistrationRepository.find({
+			order: { createdAt: 'DESC' },
+		});
+	}
+
+	async updateExternalAgentMappings(
+		registrationId: string,
+		credentialMappings: Record<string, string>,
+	) {
+		const registration = await this.externalAgentRegistrationRepository.findOneBy({
+			id: registrationId,
+		});
+		if (!registration) {
+			throw new NotFoundError(`External agent registration ${registrationId} not found`);
+		}
+		registration.credentialMappings = credentialMappings;
+		return await this.externalAgentRegistrationRepository.save(registration);
+	}
+
+	/**
+	 * Resolve credential mappings for an external agent registration.
+	 * Decrypts each mapped credential and returns the values as workflowCredentials.
+	 */
+	async resolveCredentialMappings(
+		registrationId: string,
+	): Promise<Record<string, Record<string, string>>> {
+		const registration = await this.externalAgentRegistrationRepository.findOneBy({
+			id: registrationId,
+		});
+		if (!registration?.credentialMappings) return {};
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({});
+		const result: Record<string, Record<string, string>> = {};
+
+		for (const [credType, credId] of Object.entries(registration.credentialMappings)) {
+			try {
+				const decrypted = await this.credentialsHelper.getDecrypted(
+					additionalData,
+					{ id: credId, name: '' },
+					credType,
+					'internal',
+				);
+				// Convert all decrypted values to strings
+				const fields: Record<string, string> = {};
+				for (const [key, value] of Object.entries(decrypted)) {
+					if (typeof value === 'string') {
+						fields[key] = value;
+					}
+				}
+				result[credType] = fields;
+			} catch {
+				// Skip credentials that can't be decrypted
+			}
+		}
+
+		return result;
+	}
+
+	async deleteExternalAgent(registrationId: string) {
+		const registration = await this.externalAgentRegistrationRepository.findOneBy({
+			id: registrationId,
+		});
+		if (!registration) {
+			throw new NotFoundError(`External agent registration ${registrationId} not found`);
+		}
+		await this.externalAgentRegistrationRepository.delete({ id: registrationId });
+	}
+
+	async resolveExternalAgentApiKey(registrationId: string): Promise<string> {
+		const registration = await this.externalAgentRegistrationRepository.findOneBy({
+			id: registrationId,
+		});
+		if (!registration?.credentialId) {
+			throw new NotFoundError(`External agent registration ${registrationId} not found`);
+		}
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({});
+		const decrypted = await this.credentialsHelper.getDecrypted(
+			additionalData,
+			{ id: registration.credentialId, name: `n8n A2A: ${registration.name}` },
+			'n8nApi',
+			'internal',
+		);
+		return (decrypted.apiKey as string) ?? '';
+	}
+
 	async listAgents(requestingUser: User): Promise<AgentDto[]> {
 		const agents = await this.userRepository.find({ where: { type: 'agent' } });
 
@@ -244,14 +406,13 @@ export class AgentsService {
 			projectIds.length > 0 ? await this.projectRepository.findByIds(projectIds) : [];
 
 		const hasAnthropicCred = credentials.some((c) => c.type === 'anthropicApi');
-		const llmConfigured = hasAnthropicCred;
 
 		return {
 			agentId: agentUser.id,
 			agentName: `${agentUser.firstName} ${agentUser.lastName}`.trim(),
 			description: agentUser.description,
 			agentAccessLevel: agentUser.agentAccessLevel,
-			llmConfigured,
+			llmConfigured: hasAnthropicCred,
 			projects: projects.map((p) => ({ id: p.id, name: p.name })),
 			workflows: workflows.map((w) => ({
 				id: w.id,
@@ -610,14 +771,50 @@ export class AgentsService {
 			}
 		}
 
-		if (externalAgents) {
-			for (const ext of externalAgents) {
-				otherAgents.push({
-					id: `external:${ext.name}`,
-					firstName: ext.name,
-					description: ext.description ?? '',
-				});
+		// Merge persisted external agent registrations with explicit ones
+		const resolvedExternalAgents: ExternalAgentConfig[] = [...(externalAgents ?? [])];
+		if (!isExternalCall) {
+			const registrations = await this.externalAgentRegistrationRepository.find();
+			for (const reg of registrations) {
+				// Skip if already included by name
+				if (externalAgentNames.has(reg.name)) continue;
+
+				// Resolve encrypted credential for this registration
+				let apiKey = '';
+				if (reg.credentialId) {
+					try {
+						const additionalData = await WorkflowExecuteAdditionalData.getBase({});
+						const decrypted = await this.credentialsHelper.getDecrypted(
+							additionalData,
+							{ id: reg.credentialId, name: `n8n A2A: ${reg.name}` },
+							'n8nApi',
+							'internal',
+						);
+						apiKey = (decrypted.apiKey as string) ?? '';
+					} catch {
+						// Skip registrations with unresolvable credentials
+						continue;
+					}
+				}
+
+				if (apiKey) {
+					resolvedExternalAgents.push({
+						name: reg.name,
+						description: reg.description ?? undefined,
+						url: `${reg.remoteUrl}/api/v1/agents/${reg.remoteAgentId}/task`,
+						apiKey,
+					});
+					knownSecrets.push(apiKey);
+				}
 			}
+		}
+
+		for (const ext of resolvedExternalAgents) {
+			otherAgents.push({
+				id: `external:${ext.name}`,
+				firstName: ext.name,
+				description: ext.description ?? '',
+			});
 		}
 
 		const canDelegate = budget.remaining > 0 && otherAgents.length > 0;
@@ -740,7 +937,7 @@ export class AgentsService {
 				const targetName = targetAgentInfo?.firstName ?? parsed.toAgentId;
 
 				const externalAgent = parsed.toAgentId.startsWith('external:')
-					? externalAgents?.find((a) => `external:${a.name}` === parsed.toAgentId)
+					? resolvedExternalAgents.find((a) => `external:${a.name}` === parsed.toAgentId)
 					: undefined;
 
 				steps.push({ action: 'send_message', toAgent: targetName });

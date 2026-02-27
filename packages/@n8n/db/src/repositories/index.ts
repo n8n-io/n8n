@@ -7,6 +7,7 @@ export { BinaryDataRepository } from './binary-data.repository';
 export { CredentialsRepository } from './credentials.repository';
 export { ExecutionAnnotationRepository } from './execution-annotation.repository';
 export { ExecutionDataRepository } from './execution-data.repository';
+export { ExternalAgentRegistrationRepository } from './external-agent-registration.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';
 export {
 	ExecutionRepository,

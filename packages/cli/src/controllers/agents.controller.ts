@@ -3,7 +3,9 @@ import {
 	DiscoverAgentDto,
 	DispatchTaskDto,
 	ExternalTaskDto,
+	RegisterExternalAgentDto,
 	UpdateAgentDto,
+	UpdateExternalAgentMappingsDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -58,6 +60,50 @@ export class AgentsController {
 	@GlobalScope('agent:list')
 	async listAgents(req: AuthenticatedRequest) {
 		return await this.agentsService.listAgents(req.user);
+	}
+
+	// ── External Agent Registration (declared before /:agentId to avoid param conflict) ──
+
+	@Post('/external')
+	@GlobalScope('agent:create')
+	async registerExternalAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: RegisterExternalAgentDto,
+	) {
+		return await this.agentsService.registerExternalAgent(payload.url, payload.apiKey, req.user);
+	}
+
+	@Get('/external')
+	@GlobalScope('agent:list')
+	async listExternalAgents() {
+		return await this.agentsService.listExternalAgents();
+	}
+
+	@Patch('/external/:registrationId/mappings')
+	@GlobalScope('agent:update')
+	async updateExternalAgentMappings(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('registrationId') registrationId: string,
+		@Body payload: UpdateExternalAgentMappingsDto,
+	) {
+		return await this.agentsService.updateExternalAgentMappings(
+			registrationId,
+			payload.credentialMappings,
+		);
+	}
+
+	@Delete('/external/:registrationId')
+	@GlobalScope('agent:delete')
+	async deleteExternalAgent(
+		_req: AuthenticatedRequest,
+		res: Response,
+		@Param('registrationId') registrationId: string,
+	) {
+		await this.agentsService.deleteExternalAgent(registrationId);
+		res.status(204).send();
+		return undefined;
 	}
 
 	@Get('/:agentId/capabilities')
@@ -127,15 +173,40 @@ export class AgentsController {
 		res: Response,
 		@Body payload: ExternalTaskDto,
 	) {
-		const { url, apiKey, prompt } = payload;
+		let { apiKey } = payload;
+		const { url, prompt, registrationId } = payload;
+
+		// Resolve apiKey from registration's encrypted credential if registrationId is provided
+		if (!apiKey && registrationId) {
+			apiKey = await this.agentsService.resolveExternalAgentApiKey(registrationId);
+		}
+
+		if (!apiKey) {
+			sendErrorResponse(res, new BadRequestError('No API key provided or resolvable'));
+			return undefined;
+		}
 
 		// SSRF protection — skip for localhost in dev
 		if (!url.includes('localhost') && !url.includes('127.0.0.1')) {
 			await validateExternalAgentUrl(url);
 		}
 
+		// Resolve credential mappings if this is a registered external agent
+		let workflowCredentials: Record<string, Record<string, string>> | undefined;
+		if (registrationId) {
+			const resolved = await this.agentsService.resolveCredentialMappings(registrationId);
+			if (Object.keys(resolved).length > 0) {
+				workflowCredentials = resolved;
+			}
+		}
+
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), 120_000);
+
+		const requestBody: Record<string, unknown> = { prompt };
+		if (workflowCredentials) {
+			requestBody.workflowCredentials = workflowCredentials;
+		}
 
 		try {
 			const response = await fetch(url, {
@@ -145,7 +216,7 @@ export class AgentsController {
 					Accept: 'text/event-stream',
 					'x-n8n-api-key': apiKey,
 				},
-				body: JSON.stringify({ prompt }),
+				body: JSON.stringify(requestBody),
 				signal: controller.signal,
 			});
 

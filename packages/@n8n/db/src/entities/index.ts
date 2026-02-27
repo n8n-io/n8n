@@ -8,6 +8,7 @@ import { CredentialsEntity } from './credentials-entity';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
+import { ExternalAgentRegistration } from './external-agent-registration';
 import type { ExecutionDataStorageLocation } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
@@ -74,6 +75,7 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	ExternalAgentRegistration,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
 };
@@ -112,6 +114,7 @@ export const entities = {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	ExternalAgentRegistration,
 	Role,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,

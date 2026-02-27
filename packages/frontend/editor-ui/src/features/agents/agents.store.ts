@@ -13,10 +13,12 @@ import type {
 	AgentAvatar,
 	AgentNode,
 	ExternalAgentNode,
+	ExternalAgentRegistration,
 	UserResponse,
 	ZoneLayout,
 	ConnectionLine,
 } from './agents.types';
+import { isExternalAgent } from './agents.types';
 
 function parseAvatar(avatarString: string | null | undefined, initials: string): AgentAvatar {
 	if (!avatarString) {
@@ -62,11 +64,14 @@ export const useAgentsStore = defineStore('agents', () => {
 	const allAgents = computed<AgentNode[]>(() => [...agents.value, ...externalAgents.value]);
 
 	const fetchAgents = async () => {
-		const agentUsers = await makeRestApiRequest<UserResponse[]>(
-			rootStore.restApiContext,
-			'GET',
-			'/agents',
-		);
+		const [agentUsers, registrations] = await Promise.all([
+			makeRestApiRequest<UserResponse[]>(rootStore.restApiContext, 'GET', '/agents'),
+			makeRestApiRequest<ExternalAgentRegistration[]>(
+				rootStore.restApiContext,
+				'GET',
+				'/agents/external',
+			),
+		]);
 
 		agents.value = agentUsers.map((user) => {
 			const initials = `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase();
@@ -85,6 +90,36 @@ export const useAgentsStore = defineStore('agents', () => {
 				tasksCompleted: 0,
 				lastActive: 'never',
 				resourceUsage: 0,
+			};
+		});
+
+		// Load persisted external agent registrations
+		externalAgents.value = registrations.map((reg) => {
+			const initials = reg.name.slice(0, 2).toUpperCase();
+			return {
+				id: `ext-${reg.remoteAgentId}`,
+				firstName: reg.name,
+				lastName: '',
+				email: '',
+				role: reg.description ?? 'External Agent',
+				avatar: { type: 'initials' as const, value: initials },
+				status: 'idle' as const,
+				position: { x: 0, y: 0 },
+				zoneId: EXTERNAL_ZONE_ID,
+				agentAccessLevel: null,
+				workflowCount: 0,
+				tasksCompleted: 0,
+				lastActive: 'never',
+				resourceUsage: 0,
+				external: true as const,
+				remoteUrl: reg.remoteUrl,
+				remoteAgentId: reg.remoteAgentId,
+				apiKey: '', // No longer stored in frontend — resolved by backend
+				skills: reg.skills ?? [],
+				remoteCapabilities: reg.remoteCapabilities ?? { streaming: false, multiTurn: false },
+				requiredCredentials: reg.requiredCredentials ?? [],
+				credentialMappings: reg.credentialMappings ?? {},
+				registrationId: reg.id,
 			};
 		});
 	};
@@ -454,79 +489,101 @@ export const useAgentsStore = defineStore('agents', () => {
 		}
 	};
 
-	interface RemoteAgentCard {
-		name?: string;
-		description?: string;
-		provider?: { name?: string; description?: string };
-		url?: string;
-		interfaces?: Array<{ url?: string }>;
-		skills?: Array<{ id: string; name: string; description?: string }>;
-		capabilities?: { streaming?: boolean; multiTurn?: boolean };
-		requiredCredentials?: Array<{ type: string; description: string }>;
-	}
-
 	const registerExternalAgent = async (url: string, apiKey: string) => {
-		const card = await makeRestApiRequest<RemoteAgentCard>(
+		// Register via persistent backend endpoint (auto-creates encrypted credential)
+		const registration = await makeRestApiRequest<ExternalAgentRegistration>(
 			rootStore.restApiContext,
 			'POST',
-			'/agents/discover',
+			'/agents/external',
 			{ url, apiKey },
 		);
 
-		// Extract agent ID from the card's interface URL (e.g. /agents/<id>/task)
-		const interfaceUrl = card.interfaces?.[0]?.url ?? '';
-		const remoteIdMatch = /\/agents\/([^/]+)/.exec(interfaceUrl);
-		const remoteAgentId = remoteIdMatch?.[1] ?? 'unknown';
-		const localId = `ext-${remoteAgentId}`;
+		const localId = `ext-${registration.remoteAgentId}`;
 
 		// Don't add duplicates
 		if (externalAgents.value.some((a) => a.id === localId)) {
 			return externalAgents.value.find((a) => a.id === localId)!;
 		}
 
-		const name = card.name ?? 'Remote Agent';
-		const description = card.provider?.description ?? card.description ?? '';
-		const skills = (card.skills ?? []).map((s) => ({
-			name: s.name,
-			description: s.description,
-		}));
-
-		const initials = name.slice(0, 2).toUpperCase();
+		const initials = registration.name.slice(0, 2).toUpperCase();
 		const newAgent: ExternalAgentNode = {
 			id: localId,
-			firstName: name,
+			firstName: registration.name,
 			lastName: '',
 			email: '',
-			role: description || 'External Agent',
+			role: registration.description ?? 'External Agent',
 			avatar: { type: 'initials', value: initials },
 			status: 'idle',
 			position: { x: 0, y: 0 },
 			zoneId: EXTERNAL_ZONE_ID,
+			agentAccessLevel: null,
 			workflowCount: 0,
 			tasksCompleted: 0,
 			lastActive: 'never',
 			resourceUsage: 0,
 			external: true,
-			remoteUrl: url.replace(/\/+$/, ''),
-			remoteAgentId,
-			apiKey,
-			skills,
-			remoteCapabilities: {
-				streaming: card.capabilities?.streaming ?? false,
-				multiTurn: card.capabilities?.multiTurn ?? false,
+			remoteUrl: registration.remoteUrl,
+			remoteAgentId: registration.remoteAgentId,
+			apiKey: '', // Resolved by backend from encrypted credential
+			skills: registration.skills ?? [],
+			remoteCapabilities: registration.remoteCapabilities ?? {
+				streaming: false,
+				multiTurn: false,
 			},
-			requiredCredentials: card.requiredCredentials ?? [],
+			requiredCredentials: registration.requiredCredentials ?? [],
+			credentialMappings: registration.credentialMappings ?? {},
+			registrationId: registration.id,
 		};
 
 		externalAgents.value.push(newAgent);
 		return newAgent;
 	};
 
-	const removeExternalAgent = (id: string) => {
+	const removeExternalAgent = async (id: string) => {
+		const agent = externalAgents.value.find((a) => a.id === id);
+		if (!agent) return;
+
+		// Delete from backend if it has a registration ID
+		const registrationId = (agent as ExternalAgentNode & { registrationId?: string })
+			.registrationId;
+		if (registrationId) {
+			await makeRestApiRequest(
+				rootStore.restApiContext,
+				'DELETE',
+				`/agents/external/${registrationId}`,
+			);
+		}
+
 		const idx = externalAgents.value.findIndex((a) => a.id === id);
 		if (idx >= 0) {
 			externalAgents.value.splice(idx, 1);
 		}
+	};
+
+	const updateExternalAgentMapping = async (
+		agentId: string,
+		credentialType: string,
+		credentialId: string | null,
+	) => {
+		const agent = externalAgents.value.find((a) => a.id === agentId);
+		if (!agent || !isExternalAgent(agent) || !agent.registrationId) return;
+
+		// Update local state
+		const mappings = { ...agent.credentialMappings };
+		if (credentialId) {
+			mappings[credentialType] = credentialId;
+		} else {
+			delete mappings[credentialType];
+		}
+		agent.credentialMappings = mappings;
+
+		// Persist to backend
+		await makeRestApiRequest(
+			rootStore.restApiContext,
+			'PATCH',
+			`/agents/external/${agent.registrationId}/mappings`,
+			{ credentialMappings: mappings },
+		);
 	};
 
 	const pushListenerRemoval = ref<(() => void) | null>(null);
@@ -591,6 +648,7 @@ export const useAgentsStore = defineStore('agents', () => {
 		updateAgent,
 		registerExternalAgent,
 		removeExternalAgent,
+		updateExternalAgentMapping,
 		setAgentStatus,
 		setAgentStatusByName,
 		initializePushListener,

@@ -110,6 +110,7 @@ function createMockedService() {
 		mockCredentialsHelper as any,
 		mockProjectRelationRepository as any,
 		mockProjectRepository as any,
+		{ find: jest.fn().mockResolvedValue([]), findOneBy: jest.fn() } as any, // externalAgentRegistrationRepo
 		mockWorkflowFinderService as any,
 		mockWorkflowRunner as any,
 		mockActiveExecutions as any,
@@ -210,6 +211,7 @@ describe('listAgents visibility — admin vs member', () => {
 				findAllByUser: jest.fn().mockResolvedValue([]),
 			} as any, // projectRelationRepo
 			mockProjectRepo as any, // projectRepo
+			{ find: jest.fn().mockResolvedValue([]), findOneBy: jest.fn() } as any, // externalAgentRegistrationRepo
 			{ findWorkflowForUser: jest.fn() } as any, // workflowFinder
 			{ run: jest.fn() } as any, // workflowRunner
 			{ getPostExecutePromise: jest.fn(), stopExecution: jest.fn() } as any, // activeExec

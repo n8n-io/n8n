@@ -7,6 +7,7 @@ const externalAgentSchema = z.object({
 	description: z.string().max(500).optional(),
 	url: z.string().url().max(2048),
 	apiKey: z.string().min(1).max(512),
+	registrationId: z.string().max(36).optional(),
 });
 
 export class DispatchTaskDto extends Z.class({

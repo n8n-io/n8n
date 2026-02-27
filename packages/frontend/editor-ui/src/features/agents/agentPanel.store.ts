@@ -324,18 +324,11 @@ export const useAgentPanelStore = defineStore('agentPanel', () => {
 		agentsStore.setAgentStatus(panelAgentId.value, 'active');
 		abortController = new AbortController();
 
-		// Auto-include registered external agents alongside any explicit ones
-		const registeredExternals = agentsStore.externalAgents.map((a) => ({
-			name: a.firstName,
-			description: a.role,
-			url: `${a.remoteUrl}/api/v1/agents/${a.remoteAgentId}/task`,
-			apiKey: a.apiKey,
-		}));
-		const allExternalAgents = [...(externalAgents ?? []), ...registeredExternals];
-
+		// Registered external agents are now resolved server-side from encrypted credentials.
+		// Only pass explicitly provided external agents (non-persisted).
 		const body: Record<string, unknown> = { prompt };
-		if (allExternalAgents.length > 0) {
-			body.externalAgents = allExternalAgents;
+		if (externalAgents && externalAgents.length > 0) {
+			body.externalAgents = externalAgents;
 		}
 
 		try {
@@ -385,7 +378,17 @@ export const useAgentPanelStore = defineStore('agentPanel', () => {
 		try {
 			const { baseUrl } = rootStore.restApiContext;
 
-			// Proxy through local backend to avoid CORS
+			// Proxy through local backend to avoid CORS.
+			// For registered agents (registrationId), the backend resolves the API key
+			// from the encrypted credential. For ephemeral agents, pass apiKey directly.
+			const proxyBody: Record<string, unknown> = { url: taskUrl, prompt };
+			if (externalAgentData.value.registrationId) {
+				proxyBody.registrationId = externalAgentData.value.registrationId;
+			}
+			if (externalAgentData.value.apiKey) {
+				proxyBody.apiKey = externalAgentData.value.apiKey;
+			}
+
 			const response = await fetch(`${baseUrl}/agents/external-task`, {
 				method: 'POST',
 				headers: {
@@ -394,11 +397,7 @@ export const useAgentPanelStore = defineStore('agentPanel', () => {
 					'browser-id': localStorage.getItem(BROWSER_ID_STORAGE_KEY) ?? '',
 				},
 				credentials: 'include',
-				body: JSON.stringify({
-					url: taskUrl,
-					apiKey: externalAgentData.value.apiKey,
-					prompt,
-				}),
+				body: JSON.stringify(proxyBody),
 				signal: abortController.signal,
 			});
 

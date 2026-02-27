@@ -142,6 +142,7 @@ import { CreateWorkflowPublishedVersionTable1769698710000 } from '../common/1769
 import { ExpandSubjectIDColumnLength1769784356000 } from '../common/1769784356000-ExpandSubjectIDColumnLength';
 import { AddWorkflowUnpublishScopeToCustomRoles1769900001000 } from '../common/1769900001000-AddWorkflowUnpublishScopeToCustomRoles';
 import { AddAgentColumnsToUser1770000000001 } from '../common/1770000000001-AddAgentColumnsToUser';
+import { CreateExternalAgentRegistration1770000000002 } from '../common/1770000000002-CreateExternalAgentRegistration';
 import { CreateChatHubToolsTable1770000000000 } from '../common/1770000000000-CreateChatHubToolsTable';
 import { ExpandProviderIdColumnLength1770000000000 } from '../common/1770000000000-ExpandProviderIdColumnLength';
 import { CreateWorkflowBuilderSessionTable1770220686000 } from '../common/1770220686000-CreateWorkflowBuilderSessionTable';
@@ -296,6 +297,7 @@ export const postgresMigrations: Migration[] = [
 	AddWorkflowUnpublishScopeToCustomRoles1769900001000,
 	CreateChatHubToolsTable1770000000000,
 	AddAgentColumnsToUser1770000000001,
+	CreateExternalAgentRegistration1770000000002,
 	ExpandProviderIdColumnLength1770000000000,
 	CreateWorkflowBuilderSessionTable1770220686000,
 	AddScalingFieldsToTestRun1771417407753,

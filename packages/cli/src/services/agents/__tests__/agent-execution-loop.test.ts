@@ -99,6 +99,7 @@ function createMockedService() {
 		mockCredentialsHelper as any,
 		mockProjectRelationRepository as any,
 		mockProjectRepository as any,
+		{ find: jest.fn().mockResolvedValue([]), findOneBy: jest.fn() } as any, // externalAgentRegistrationRepo
 		mockWorkflowFinderService as any,
 		mockWorkflowRunner as any,
 		mockActiveExecutions as any,

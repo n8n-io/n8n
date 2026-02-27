@@ -28,6 +28,8 @@ export interface ExternalAgentNode extends AgentNode {
 	skills: Array<{ name: string; description?: string }>;
 	remoteCapabilities: { streaming?: boolean; multiTurn?: boolean };
 	requiredCredentials: Array<{ type: string; description: string }>;
+	credentialMappings: Record<string, string>;
+	registrationId?: string;
 }
 
 export function isExternalAgent(agent: AgentNode): agent is ExternalAgentNode {
@@ -70,6 +72,21 @@ export interface AgentCapabilitiesResponse {
 	projects: Array<{ id: string; name: string }>;
 	workflows: Array<{ id: string; name: string; active: boolean }>;
 	credentials: Array<{ id: string; name: string; type: string }>;
+}
+
+export interface ExternalAgentRegistration {
+	id: string;
+	name: string;
+	description: string | null;
+	remoteUrl: string;
+	remoteAgentId: string;
+	credentialId: string | null;
+	remoteCapabilities: { streaming?: boolean; multiTurn?: boolean } | null;
+	skills: Array<{ name: string; description?: string }> | null;
+	requiredCredentials: Array<{ type: string; description: string }> | null;
+	credentialMappings: Record<string, string> | null;
+	createdAt: string;
+	updatedAt: string;
 }
 
 export interface AgentTaskDispatchResponse {

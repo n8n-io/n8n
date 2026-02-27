@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import {
 	N8nBadge,
 	N8nButton,
@@ -10,9 +10,12 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useAgentPanelStore } from '../agentPanel.store';
+import { useAgentsStore } from '../agents.store';
 import AgentAvatarComp from './AgentAvatar.vue';
+import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 
 const panelStore = useAgentPanelStore();
+const agentsStore = useAgentsStore();
 const taskPrompt = ref('');
 const sseLogOpen = ref(false);
 
@@ -59,6 +62,29 @@ async function saveAvatar() {
 
 function cancelEditAvatar() {
 	isEditingAvatar.value = false;
+}
+
+// Filter out n8nApi — A2A auth is already handled by the registration's stored credential
+const passthroughCredentials = computed(
+	() => panelStore.externalAgentData?.requiredCredentials.filter((c) => c.type !== 'n8nApi') ?? [],
+);
+
+async function onCredentialMapped(credentialType: string, credentialId: string) {
+	if (!panelStore.externalAgentData) return;
+	await agentsStore.updateExternalAgentMapping(
+		panelStore.externalAgentData.id,
+		credentialType,
+		credentialId,
+	);
+}
+
+async function onCredentialUnmapped(credentialType: string) {
+	if (!panelStore.externalAgentData) return;
+	await agentsStore.updateExternalAgentMapping(
+		panelStore.externalAgentData.id,
+		credentialType,
+		null,
+	);
 }
 
 async function onRunTask() {
@@ -226,23 +252,32 @@ function stepStatusIcon(status: string) {
 				<N8nText v-else color="text-light" size="small">No skills advertised</N8nText>
 			</section>
 
-			<!-- Required Credentials -->
-			<section :class="$style.section">
+			<!-- Credential Pass-through -->
+			<section v-if="passthroughCredentials.length" :class="$style.section">
 				<N8nText tag="h4" size="small" bold :class="$style.sectionTitle"
-					>Required Credentials</N8nText
+					>Pass-through Credentials</N8nText
 				>
-				<div v-if="panelStore.externalAgentData.requiredCredentials.length" :class="$style.list">
+				<div :class="$style.credentialMappings">
 					<div
-						v-for="cred in panelStore.externalAgentData.requiredCredentials"
+						v-for="cred in passthroughCredentials"
 						:key="cred.type"
-						:class="$style.listItem"
+						:class="$style.credentialMapping"
 					>
-						<N8nIcon icon="key-round" :class="$style.itemIcon" size="small" />
-						<span :class="$style.itemName">{{ cred.description }}</span>
-						<N8nText color="text-light" size="xsmall">{{ cred.type }}</N8nText>
+						<N8nText size="small" :class="$style.credentialMappingLabel">
+							{{ cred.description }}
+						</N8nText>
+						<CredentialPicker
+							:app-name="cred.description"
+							:credential-type="cred.type"
+							:selected-credential-id="
+								panelStore.externalAgentData.credentialMappings[cred.type] ?? null
+							"
+							:data-testid="`agent-credential-mapping-${cred.type}`"
+							@credential-selected="onCredentialMapped(cred.type, $event)"
+							@credential-deselected="onCredentialUnmapped(cred.type)"
+						/>
 					</div>
 				</div>
-				<N8nText v-else color="text-light" size="small">No credentials required</N8nText>
 			</section>
 
 			<!-- Capabilities -->
@@ -805,6 +840,23 @@ function stepStatusIcon(status: string) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.credentialMappings {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.credentialMapping {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.credentialMappingLabel {
+	color: var(--color--text--tint-1);
+	font-weight: var(--font-weight--bold);
 }
 
 .llmWarning {
