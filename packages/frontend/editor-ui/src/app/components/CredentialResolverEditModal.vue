@@ -26,10 +26,11 @@ import {
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import type {
 	INodeProperties,
+	INodeParameters,
 	ICredentialDataDecryptedObject,
 	CredentialInformation,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, NodeHelpers } from 'n8n-workflow';
 import type { IUpdateInformation } from '@/Interface';
 import CredentialInputs from '@/features/credentials/components/CredentialEdit/CredentialInputs.vue';
 
@@ -136,8 +137,18 @@ const toNodeProperty = (option: Record<string, unknown>): INodeProperties => {
 const resolverProperties = computed<INodeProperties[]>(() => {
 	if (!selectedType.value?.options) return [];
 
-	// Transform resolver options to INodeProperties format
-	return selectedType.value.options.map(toNodeProperty);
+	// Transform resolver options to INodeProperties format and filter by displayOptions
+	return selectedType.value.options.map(toNodeProperty).filter((property) => {
+		if (property.type === 'hidden') return false;
+		if (!property.displayOptions) return true;
+		return NodeHelpers.displayParameterPath(
+			resolverData.value as INodeParameters,
+			property,
+			'',
+			null,
+			null,
+		);
+	});
 });
 
 const resolverData = computed<ICredentialDataDecryptedObject>(() => {
