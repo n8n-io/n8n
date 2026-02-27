@@ -1220,6 +1220,9 @@ importers:
 
   packages/@n8n/expression-runtime:
     dependencies:
+      isolated-vm:
+        specifier: ^6.0.2
+        version: 6.0.2
       js-base64:
         specifier: 'catalog:'
         version: 3.7.2(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
@@ -13684,6 +13687,10 @@ packages:
     resolution: {integrity: sha512-7c7mBznZu2ktfvyT582E2msM+Udc1EjOyhVRE/0ZsjD9LBtWSm23h3PtiRh2a35XoUsTQQjJXaJzuLjXsOdFDg==}
     engines: {node: '>=6.0'}
 
+  isolated-vm@6.0.2:
+    resolution: {integrity: sha512-Qw6AJuagG/VJuh2AIcSWmQPsAArti/L+lKhjXU+lyhYkbt3J57XZr+ZjgfTnOr4NJcY1r3f8f0eePS7MRGp+pg==}
+    engines: {node: '>=22.0.0'}
+
   isomorphic-timers-promises@1.0.1:
     resolution: {integrity: sha512-u4sej9B1LPSxTGKB/HiuzvEQnXH0ECYkSVQU39koSwmFAxhlEAFl9RdTvLv4TOTQUgBS5O3O5fwUxk6byBZ+IQ==}
     engines: {node: '>=10'}
@@ -15329,10 +15336,6 @@ packages:
   nock@14.0.1:
     resolution: {integrity: sha512-IJN4O9pturuRdn60NjQ7YkFt6Rwei7ZKaOwb1tvUIIqTgeD0SDDAX3vrqZD4wcXczeEy/AsUXxpGpP/yHqV7xg==}
     engines: {node: '>=18.20.0 <20 || >=20.12.1'}
-
-  node-abi@3.54.0:
-    resolution: {integrity: sha512-p7eGEiQil0YUV3ItH4/tBb781L5impVmmx2E9FRKF7d18XXzp4PGT2tdYMFY6wQqgxD0IwNZOiSJ0/K0fSi/OA==}
-    engines: {node: '>=10'}
 
   node-abi@3.75.0:
     resolution: {integrity: sha512-OhYaY5sDsIka7H7AtijtI9jwGYLyl29eQn/W623DiN/MIv5sUqc4g7BIDThX+gb7di9f6xK02nkp8sdfFWZLTg==}
@@ -32066,6 +32069,10 @@ snapshots:
 
   iso-639-1@2.1.15: {}
 
+  isolated-vm@6.0.2:
+    dependencies:
+      prebuild-install: 7.1.3
+
   isomorphic-timers-promises@1.0.1: {}
 
   isomorphic.js@0.2.5: {}
@@ -34428,10 +34435,6 @@ snapshots:
       json-stringify-safe: 5.0.1
       propagate: 2.0.1
 
-  node-abi@3.54.0:
-    dependencies:
-      semver: 7.7.3
-
   node-abi@3.75.0:
     dependencies:
       semver: 7.7.3
@@ -35425,7 +35428,7 @@ snapshots:
       minimist: 1.2.8
       mkdirp-classic: 0.5.3
       napi-build-utils: 2.0.0
-      node-abi: 3.54.0
+      node-abi: 3.75.0
       pump: 3.0.0
       rc: 1.2.8
       simple-get: 4.0.1

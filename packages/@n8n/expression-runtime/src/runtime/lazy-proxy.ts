@@ -1,6 +1,8 @@
 // ============================================================================
 // Deep Lazy Proxy System
 // ============================================================================
+// For more information about Proxies see
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy
 
 /**
  * Creates a deep lazy-loading proxy for workflow data.

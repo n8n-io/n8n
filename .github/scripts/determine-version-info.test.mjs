@@ -15,7 +15,7 @@ mock.module('./github-helpers.mjs', {
 		resolveReleaseTagForTrack: (track) => {
 			// Always return deterministic data
 			if (track === 'stable') return { version: '2.9.2' };
-			if (track === 'beta') return { version: '2.10.0' };
+			if (track === 'beta') return { version: '2.10.1' };
 			return { version: '1.123.33' };
 		},
 		writeGithubOutput: () => {}, // no-op in tests
@@ -39,10 +39,10 @@ describe('determine-tracks', () => {
 	});
 
 	it('Allow patch releases on beta', () => {
-		const output = determineTrack('2.10.1');
+		const output = determineTrack('2.10.2');
 
 		assert.equal(output.track, 'beta');
-		assert.equal(output.version, '2.10.1');
+		assert.equal(output.version, '2.10.2');
 		assert.equal(output.bump, 'patch');
 		assert.equal(output.new_stable_version, null);
 		assert.equal(output.release_type, 'stable');
@@ -75,15 +75,15 @@ describe('determine-tracks', () => {
 		assert.equal(output.track, 'beta');
 		assert.equal(output.version, '2.11.0');
 		assert.equal(output.bump, 'minor');
-		assert.equal(output.new_stable_version, '2.10.0');
+		assert.equal(output.new_stable_version, '2.10.1');
 		assert.equal(output.release_type, 'stable');
 	});
 
 	it('Set release_type accordingly on rc releases', () => {
-		const output = determineTrack('2.10.1-rc.1');
+		const output = determineTrack('2.10.2-rc.1');
 
 		assert.equal(output.track, 'beta');
-		assert.equal(output.version, '2.10.1-rc.1');
+		assert.equal(output.version, '2.10.2-rc.1');
 		assert.equal(output.bump, 'patch');
 		assert.equal(output.new_stable_version, null);
 		assert.equal(output.release_type, 'rc');

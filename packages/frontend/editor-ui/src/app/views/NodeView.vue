@@ -301,6 +301,13 @@ const isCanvasReadOnly = computed(() => {
 	);
 });
 
+const canExecuteOnCanvas = computed(() => {
+	if (isDemoRoute.value) return false;
+	if (editableWorkflow.value.isArchived) return false;
+	if (builderStore.streaming) return false;
+	return !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
+});
+
 const isWriterAnotherTab = computed(() => {
 	return collaborationStore.isCurrentUserWriter && !collaborationStore.isCurrentTabWriter;
 });
@@ -1799,7 +1806,7 @@ onBeforeUnmount(() => {
 			<Suspense v-if="!isCanvasReadOnly">
 				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
 			</Suspense>
-			<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">
+			<div v-if="!isCanvasReadOnly || canExecuteOnCanvas" :class="$style.executionButtons">
 				<CanvasRunWorkflowButton
 					v-if="isRunWorkflowButtonVisible"
 					:waiting-for-webhook="isExecutionWaitingForWebhook"

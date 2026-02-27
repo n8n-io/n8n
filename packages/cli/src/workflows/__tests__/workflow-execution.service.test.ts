@@ -125,12 +125,12 @@ describe('WorkflowExecutionService', () => {
 			const connections = {
 				...createMainConnection(hackerNewsNode.name, webhookNode.name),
 			};
+			const workflowData = mock<IWorkflowBase>({
+				nodes: [webhookNode, hackerNewsNode],
+				connections,
+				pinData: undefined,
+			});
 			const runPayload: WorkflowRequest.PartialManualExecutionToDestinationPayload = {
-				workflowData: mock<IWorkflowBase>({
-					nodes: [webhookNode, hackerNewsNode],
-					connections,
-					pinData: undefined,
-				}),
 				agentRequest: undefined,
 				runData: { [webhookNode.name]: [toITaskData([{ data: { value: 1 } }])] },
 				destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
@@ -143,7 +143,7 @@ describe('WorkflowExecutionService', () => {
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
-			const result = await workflowExecutionService.executeManually(runPayload, user);
+			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
 				destinationNode: runPayload.destinationNode,
@@ -151,7 +151,7 @@ describe('WorkflowExecutionService', () => {
 				runData: runPayload.runData,
 				pinData: undefined,
 				pushRef: undefined,
-				workflowData: runPayload.workflowData,
+				workflowData,
 				userId,
 				dirtyNodeNames: runPayload.dirtyNodeNames,
 			});
@@ -163,8 +163,8 @@ describe('WorkflowExecutionService', () => {
 			const userId = 'user-id';
 			const user = mock<User>({ id: userId });
 			const node = mock<INode>();
+			const workflowData = mock<IWorkflowBase>({ nodes: [node], connections: {} });
 			const runPayload: WorkflowRequest.PartialManualExecutionToDestinationPayload = {
-				workflowData: mock<IWorkflowBase>({ nodes: [node], connections: {} }),
 				destinationNode: { nodeName: node.name, mode: 'inclusive' },
 				agentRequest: undefined,
 				runData: { [node.name]: [toITaskData([{ data: { value: 1 } }])] },
@@ -177,15 +177,15 @@ describe('WorkflowExecutionService', () => {
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
-			const result = await workflowExecutionService.executeManually(runPayload, user);
+			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
 				runData: undefined,
 				destinationNode: runPayload.destinationNode,
 				executionMode: 'manual',
-				pinData: runPayload.workflowData.pinData,
+				pinData: workflowData.pinData,
 				pushRef: undefined,
-				workflowData: runPayload.workflowData,
+				workflowData,
 				userId,
 			});
 			expect(result).toEqual({ executionId });
@@ -217,34 +217,34 @@ describe('WorkflowExecutionService', () => {
 				...createMainConnection(hackerNewsNode.name, unexecutedTrigger.name),
 			};
 
-			const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
-				workflowData: {
-					id: 'abc',
-					name: 'test',
-					active: false,
-					activeVersionId: null,
-					isArchived: false,
-					pinData: {
-						[pinnedTrigger.name]: [{ json: {} }],
-					},
-					nodes: [unexecutedTrigger, pinnedTrigger],
-					connections,
-					createdAt: new Date(),
-					updatedAt: new Date(),
+			const workflowData: IWorkflowBase = {
+				id: 'abc',
+				name: 'test',
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				pinData: {
+					[pinnedTrigger.name]: [{ json: {} }],
 				},
+				nodes: [unexecutedTrigger, pinnedTrigger],
+				connections,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+			const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
 				destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
 			};
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
-			const result = await workflowExecutionService.executeManually(runPayload, user);
+			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
 				destinationNode: runPayload.destinationNode,
 				executionMode: 'manual',
-				pinData: runPayload.workflowData.pinData,
+				pinData: workflowData.pinData,
 				pushRef: undefined,
-				workflowData: runPayload.workflowData,
+				workflowData,
 				userId,
 				triggerToStartFrom: { name: pinnedTrigger.name },
 			});
@@ -274,32 +274,32 @@ describe('WorkflowExecutionService', () => {
 				type: 'n8n-nodes-base.airtableTrigger',
 			};
 
+			const workflowData: IWorkflowBase = {
+				id: 'abc',
+				name: 'test',
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				pinData: { [pinnedTrigger.name]: [{ json: {} }] },
+				nodes: [unexecutedTrigger, pinnedTrigger],
+				connections: {},
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
-				workflowData: {
-					id: 'abc',
-					name: 'test',
-					active: false,
-					activeVersionId: null,
-					isArchived: false,
-					pinData: { [pinnedTrigger.name]: [{ json: {} }] },
-					nodes: [unexecutedTrigger, pinnedTrigger],
-					connections: {},
-					createdAt: new Date(),
-					updatedAt: new Date(),
-				},
 				triggerToStartFrom: { name: unexecutedTrigger.name },
 			};
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
-			const result = await workflowExecutionService.executeManually(runPayload, user);
+			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
 				destinationNode: runPayload.destinationNode,
 				executionMode: 'manual',
-				pinData: runPayload.workflowData.pinData,
+				pinData: workflowData.pinData,
 				pushRef: undefined,
-				workflowData: runPayload.workflowData,
+				workflowData,
 				userId,
 				// pass unexecuted trigger to start from
 				triggerToStartFrom: runPayload.triggerToStartFrom,
@@ -311,21 +311,21 @@ describe('WorkflowExecutionService', () => {
 			const executionId = 'fake-execution-id';
 			const userId = 'user-id';
 			const user = mock<User>({ id: userId });
+			const workflowData = mock<IWorkflowBase>({
+				nodes: [webhookNode, hackerNewsNode],
+				connections: createMainConnection(webhookNode.name, hackerNewsNode.name),
+				pinData: undefined,
+			});
 
 			const runPayload = {
-				workflowData: mock<IWorkflowBase>({
-					nodes: [webhookNode, hackerNewsNode],
-					connections: createMainConnection(webhookNode.name, hackerNewsNode.name),
-					pinData: undefined,
-				}),
 				triggerToStartFrom: { name: webhookNode.name },
 				destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
 				runData: { [webhookNode.name]: [toITaskData([{ data: { value: 1 } }])] },
-			} as unknown as WorkflowRequest.ManualRunPayload;
+			} as WorkflowRequest.ManualRunPayload;
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
-			const result = await workflowExecutionService.executeManually(runPayload, user);
+			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -345,24 +345,24 @@ describe('WorkflowExecutionService', () => {
 			const userId = 'user-id';
 			const user = mock<User>({ id: userId });
 			const node = mock<INode>();
+			const workflowData: IWorkflowBase = {
+				id: 'workflow-id',
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: 'version-123',
+				isArchived: false,
+				nodes: [node],
+				connections: {},
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
 			const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
-				workflowData: {
-					id: 'workflow-id',
-					name: 'Test Workflow',
-					active: true,
-					activeVersionId: 'version-123',
-					isArchived: false,
-					nodes: [node],
-					connections: {},
-					createdAt: new Date(),
-					updatedAt: new Date(),
-				},
 				destinationNode: { nodeName: node.name, mode: 'inclusive' },
 			};
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
-			const result = await workflowExecutionService.executeManually(runPayload, user);
+			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			const callArgs = workflowRunner.run.mock.calls[0][0];
@@ -412,7 +412,6 @@ describe('WorkflowExecutionService', () => {
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
-				workflowData: activeWorkflowData,
 				triggerToStartFrom: { name: telegramTrigger.name },
 			};
 
@@ -422,7 +421,7 @@ describe('WorkflowExecutionService', () => {
 				),
 			);
 
-			await expect(service.executeManually(runPayload, user)).rejects.toThrow(
+			await expect(service.executeManually(activeWorkflowData, runPayload, user)).rejects.toThrow(
 				'Cannot test webhook for node "Telegram Trigger" while workflow is active. Please deactivate the workflow first.',
 			);
 
@@ -604,11 +603,12 @@ describe('WorkflowExecutionService', () => {
 
 		test('when receiving no `runData`, should set `runData` to undefined in `executionData`', async () => {
 			// ACT
+			const workflowData = mock<IWorkflowBase>({ nodes: [] });
 			await service.executeManually(
+				workflowData,
 				{
-					workflowData: mock<IWorkflowBase>({ nodes: [] }),
 					triggerToStartFrom: executeWorkflowTriggerNode,
-				} satisfies WorkflowRequest.FullManualExecutionFromKnownTriggerPayload,
+				},
 				mock<User>({ id: 'user-id' }),
 			);
 
@@ -636,13 +636,17 @@ describe('WorkflowExecutionService', () => {
 				.mockReturnValueOnce(mock<INodeType>({ description: { group: [] } }));
 
 			// ACT
+			const workflowData = mock<IWorkflowBase>({
+				nodes: [hackerNewsNode, webhookNode],
+				connections,
+			});
 			await service.executeManually(
+				workflowData,
 				{
-					workflowData: mock<IWorkflowBase>({ nodes: [hackerNewsNode, webhookNode], connections }),
 					runData,
 					destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
 					dirtyNodeNames: [],
-				} satisfies WorkflowRequest.PartialManualExecutionToDestinationPayload,
+				},
 				mock<User>({ id: 'user-id' }),
 			);
 
@@ -653,11 +657,12 @@ describe('WorkflowExecutionService', () => {
 
 		test('should not initialize nested `executionData.executionData` to avoid treating it as resumed execution', async () => {
 			// ACT
+			const workflowData = mock<IWorkflowBase>({ nodes: [] });
 			await service.executeManually(
+				workflowData,
 				{
-					workflowData: mock<IWorkflowBase>({ nodes: [] }),
 					triggerToStartFrom: executeWorkflowTriggerNode,
-				} satisfies WorkflowRequest.FullManualExecutionFromKnownTriggerPayload,
+				},
 				mock<User>({ id: 'user-id' }),
 			);
 

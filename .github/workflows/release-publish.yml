@@ -125,8 +125,8 @@ jobs:
         with:
           commit: ${{github.event.pull_request.base.ref}}
           tag: 'n8n@${{ needs.determine-version-info.outputs.version }}'
-          prerelease: ${{ startsWith(needs.determine-version-info.outputs.version, '2.') }}
-          makeLatest: false
+          prerelease: ${{ needs.determine-version-info.outputs.track == 'beta' }}
+          makeLatest: ${{ needs.determine-version-info.outputs.track == 'stable' }}
           body: ${{github.event.pull_request.body}}
 
   move-track-tag:
@@ -214,3 +214,14 @@ jobs:
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: |
             <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Release tag merge to master failed for n8n@${{ needs.determine-version-info.outputs.version }} >
+  post-release:
+    name: Run Post-release actions
+    needs: [determine-version-info, publish-to-npm, create-github-release]
+    uses: ./.github/workflows/release-publish-post-release.yml
+    with:
+      track: ${{ needs.determine-version-info.outputs.track }}
+      version: ${{ needs.determine-version-info.outputs.version }}
+      bump: ${{ needs.determine-version-info.outputs.bump }}
+      new_stable_version: ${{ needs.determine-version-info.outputs.new_stable_version }}
+      release_type: ${{ needs.determine-version-info.outputs.release_type }}
+    secrets: inherit
