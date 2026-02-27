@@ -5,6 +5,7 @@ import { user, group } from './descriptions';
 import { BASE_URL } from './helpers/constants';
 import { encodeBodyAsFormUrlEncoded } from './helpers/utils';
 import { searchGroups, searchUsers, searchGroupsForUser } from './methods/listSearch';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsIam implements INodeType {
 	description: INodeTypeDescription = {
@@ -19,12 +20,7 @@ export class AwsIam implements INodeType {
 		defaults: { name: 'AWS IAM' },
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		requestDefaults: {
 			baseURL: BASE_URL,
 			json: true,
@@ -33,6 +29,7 @@ export class AwsIam implements INodeType {
 			},
 		},
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Resource',
 				name: 'resource',

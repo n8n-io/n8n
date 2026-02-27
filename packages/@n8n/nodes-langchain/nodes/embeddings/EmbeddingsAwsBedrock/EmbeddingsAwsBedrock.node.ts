@@ -4,6 +4,8 @@ import { BedrockEmbeddings } from '@langchain/aws';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { getNodeProxyAgent, logWrapper } from '@n8n/ai-utilities';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getAwsCredentials, getAwsCredentialProvider } from 'n8n-nodes-base/dist/nodes/Aws/GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -17,12 +19,7 @@ export class EmbeddingsAwsBedrock implements INodeType {
 		displayName: 'Embeddings AWS Bedrock',
 		name: 'embeddingsAwsBedrock',
 		icon: 'file:bedrock.svg',
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		group: ['transform'],
 		version: 1,
 		description: 'Use Embeddings AWS Bedrock',
@@ -53,6 +50,7 @@ export class EmbeddingsAwsBedrock implements INodeType {
 			baseURL: '=https://bedrock.{{$credentials?.region ?? "eu-central-1"}}.amazonaws.com',
 		},
 		properties: [
+			awsNodeAuthOptions,
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName: 'Model',
@@ -106,21 +104,13 @@ export class EmbeddingsAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{
-			region: string;
-			secretAccessKey: string;
-			accessKeyId: string;
-			sessionToken: string;
-		}>('aws');
+		const { credentials, credentialsType } = await getAwsCredentials(this);
+
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
 		const clientConfig: BedrockRuntimeClientConfig = {
 			region: credentials.region,
-			credentials: {
-				secretAccessKey: credentials.secretAccessKey,
-				accessKeyId: credentials.accessKeyId,
-				sessionToken: credentials.sessionToken,
-			},
+			credentials: getAwsCredentialProvider(credentials, credentialsType),
 		};
 
 		const proxyAgent = getNodeProxyAgent();

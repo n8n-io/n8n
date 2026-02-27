@@ -4,6 +4,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { group, user, userPool } from './descriptions';
 import { preSendStringifyBody } from './helpers/utils';
 import { listSearch } from './methods';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsCognito implements INodeType {
 	description: INodeTypeDescription = {
@@ -22,12 +23,7 @@ export class AwsCognito implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		requestDefaults: {
 			headers: {
 				'Content-Type': 'application/x-amz-json-1.1',
@@ -38,6 +34,7 @@ export class AwsCognito implements INodeType {
 			},
 		},
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Resource',
 				name: 'resource',

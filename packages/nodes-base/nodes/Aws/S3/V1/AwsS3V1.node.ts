@@ -19,6 +19,7 @@ import {
 	awsApiRequestSOAP,
 	awsApiRequestSOAPAllItems,
 } from './GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../../utils';
 
 export class AwsS3V1 implements INodeType {
 	description: INodeTypeDescription;
@@ -38,13 +39,9 @@ export class AwsS3V1 implements INodeType {
 			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],
-			credentials: [
-				{
-					name: 'aws',
-					required: true,
-				},
-			],
+			credentials: awsNodeCredentials,
 			properties: [
+				awsNodeAuthOptions,
 				{
 					displayName: 'Resource',
 					name: 'resource',

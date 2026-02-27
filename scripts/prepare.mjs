@@ -7,4 +7,4 @@ if (process.env.CI || process.env.DOCKER_BUILD) {
 	process.exit(0);
 }
 
-execSync('pnpm lefthook install', { stdio: 'inherit' });
+execSync('pnpm lefthook install || true', { stdio: 'inherit' });

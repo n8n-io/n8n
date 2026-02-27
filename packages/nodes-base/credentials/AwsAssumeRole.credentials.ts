@@ -1,12 +1,12 @@
+import type { AwsCredentialIdentity, AwsCredentialIdentityProvider } from '@aws-sdk/types';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
+import type { AwsAssumeRoleCredentialsType, AWSRegion, AwsSecurityHeaders } from './common/aws/types';
 import { ApplicationError } from 'n8n-workflow';
-
-import { type AwsAssumeRoleCredentialsType, type AWSRegion } from './common/aws/types';
 import { awsCustomEndpoints, awsRegionProperty } from './common/aws/descriptions';
 import {
 	assumeRole,
@@ -131,11 +131,7 @@ export class AwsAssumeRole implements ICredentialType {
 		}
 
 		let finalCredentials = credentials;
-		let securityHeaders: {
-			accessKeyId: string;
-			secretAccessKey: string;
-			sessionToken: string;
-		};
+		let securityHeaders: AwsSecurityHeaders;
 
 		if (!credentials.roleArn || credentials.roleArn.trim() === '') {
 			throw new ApplicationError('Role ARN is required when assuming a role.');
@@ -147,7 +143,7 @@ export class AwsAssumeRole implements ICredentialType {
 			throw new ApplicationError('Role Session Name is required when assuming a role.');
 		}
 		try {
-			securityHeaders = await assumeRole(credentials, region);
+			securityHeaders = await AwsAssumeRole.getSecurityHeaders(credentials, region);
 			finalCredentials = { ...credentials, ...securityHeaders };
 		} catch (error) {
 			console.error('Failed to assume role:', error);
@@ -169,4 +165,12 @@ export class AwsAssumeRole implements ICredentialType {
 	}
 
 	test = awsCredentialsTest;
+
+	static async getSecurityHeaders(credentials: AwsAssumeRoleCredentialsType, region?: string): Promise<AwsCredentialIdentity> {
+		return await assumeRole(credentials, region || credentials.region);
+	}
+
+	static getCredentialProvider(credentials: AwsAssumeRoleCredentialsType): AwsCredentialIdentityProvider {
+		return () => AwsAssumeRole.getSecurityHeaders(credentials);
+	}
 }
