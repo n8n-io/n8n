@@ -18,6 +18,7 @@ import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const props = defineProps<{
 	state: NodeSetupState;
@@ -36,6 +37,7 @@ const nodeTypesStore = useNodeTypesStore();
 const credentialsStore = useCredentialsStore();
 const nodeHelpers = useNodeHelpers();
 const workflowState = injectWorkflowState();
+const workflowsStore = useWorkflowsStore();
 
 const setupCard = ref<InstanceType<typeof SetupCard> | null>(null);
 
@@ -117,24 +119,18 @@ const nodeNames = computed(() => (props.state.allNodesUsingCredential ?? []).map
 const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 
 const telemetryPayload = computed(() => {
-	if (isTriggerOnly.value) {
-		return {
-			type: 'trigger',
-			node_type: props.state.node.type,
-		};
-	}
-	if (hasCredential.value) {
-		return {
-			type: 'nodeCredential',
-			credential_type: props.state.credentialType,
-			node_type: props.state.node.type,
-			has_parameters: hasParameters.value,
-			missing_parameters_count: Object.keys(props.state.parameterIssues).length,
-		};
-	}
+	const types: string[] = [];
+	if (isTriggerOnly.value) types.push('trigger');
+	if (hasCredential.value) types.push('credential');
+	if (hasParameters.value) types.push('param');
+
 	return {
-		type: 'parameter',
-		node_type: props.state.node.type,
+		type: types,
+		template_id: workflowsStore.workflow.meta?.templateId,
+		workflow_id: workflowsStore.workflow.id,
+		node_types: (props.state.allNodesUsingCredential ?? [props.state.node]).map((n) => n.type),
+		credential_type: props.state.credentialType,
+		has_parameters: hasParameters.value,
 		missing_parameters_count: Object.keys(props.state.parameterIssues).length,
 	};
 });

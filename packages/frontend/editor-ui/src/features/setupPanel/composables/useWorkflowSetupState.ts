@@ -39,6 +39,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	const nodeHelpers = useNodeHelpers();
 	const environmentsStore = useEnvironmentsStore();
 	const workflowState = injectWorkflowState();
+	const uiStore = useUIStore();
 
 	const sourceNodes = computed(() => nodes?.value ?? workflowsStore.allNodes);
 
@@ -532,6 +533,43 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	}
 
 	/**
+	 * On initial load: auto-select credentials then auto-test them.
+	 * Runs once when nodes become available so checkmarks reflect actual validity.
+	 * Deduplicates by credential ID so shared credentials are only tested once.
+	 */
+	let initialSetupDone = false;
+	watch(
+		nodesRequiringSetup,
+		(entries) => {
+			if (initialSetupDone || entries.length === 0) return;
+			initialSetupDone = true;
+
+			// First, auto-select credentials for cards that don't have one yet
+			autoSelectCredentials();
+
+			// Then, auto-test all selected credentials (including auto-selected ones)
+			const credentialsToTest = new Map<string, { name: string; type: string }>();
+			for (const { node, credentialTypes } of entries) {
+				for (const credType of credentialTypes) {
+					const credValue = node.credentials?.[credType];
+					const selectedId = typeof credValue === 'string' ? undefined : credValue?.id;
+					if (!selectedId || credentialsToTest.has(selectedId)) continue;
+
+					const cred = credentialsStore.getCredentialById(selectedId);
+					if (!cred) continue;
+
+					credentialsToTest.set(selectedId, { name: cred.name, type: credType });
+				}
+			}
+
+			for (const [id, { name, type }] of credentialsToTest) {
+				void testCredentialInBackground(id, name, type);
+			}
+		},
+		{ immediate: true },
+	);
+
+	/**
 	 * Sets a credential for nodes.
 	 * When sourceNodeName is provided, it first tries to find the matching credential card
 	 * (needed when multiple HTTP Request nodes produce separate cards with the same credential type).
@@ -589,7 +627,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				(s) => s.credentialType === credentialType && s.node.name === sourceNodeName,
 			);
 			if (sourceEntry?.allNodesUsingCredential) {
-				for (const node of sourceEntry.allNodesUsingCredential) {
+				for (const node of sourceEntry.allNodesUsingCredential ?? []) {
 					assignCredentialToNode(node.name);
 				}
 			} else {
@@ -598,7 +636,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		}
 
 		nodeHelpers.updateNodesCredentialsIssues();
-		useUIStore().markStateDirty();
+		uiStore.markStateDirty();
 	};
 
 	/**
@@ -686,43 +724,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			setCredential(nodeState.credentialType, mostRecent.id, nodeState.node.name);
 		}
 	};
-
-	/**
-	 * On initial load: auto-select credentials then auto-test them.
-	 * Runs once when nodes become available so checkmarks reflect actual validity.
-	 * Deduplicates by credential ID so shared credentials are only tested once.
-	 */
-	let initialSetupDone = false;
-	watch(
-		nodesRequiringSetup,
-		(entries) => {
-			if (initialSetupDone || entries.length === 0) return;
-			initialSetupDone = true;
-
-			// First, auto-select credentials for cards that don't have one yet
-			autoSelectCredentials();
-
-			// Then, auto-test all selected credentials (including auto-selected ones)
-			const credentialsToTest = new Map<string, { name: string; type: string }>();
-			for (const { node, credentialTypes } of entries) {
-				for (const credType of credentialTypes) {
-					const credValue = node.credentials?.[credType];
-					const selectedId = typeof credValue === 'string' ? undefined : credValue?.id;
-					if (!selectedId || credentialsToTest.has(selectedId)) continue;
-
-					const cred = credentialsStore.getCredentialById(selectedId);
-					if (!cred) continue;
-
-					credentialsToTest.set(selectedId, { name: cred.name, type: credType });
-				}
-			}
-
-			for (const [id, { name, type }] of credentialsToTest) {
-				void testCredentialInBackground(id, name, type);
-			}
-		},
-		{ immediate: true },
-	);
 
 	/**
 	 * When a credential is deleted, unset it from ALL nodes that reference it.
