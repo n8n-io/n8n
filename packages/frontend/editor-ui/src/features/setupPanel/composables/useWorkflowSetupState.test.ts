@@ -100,6 +100,7 @@ describe('useWorkflowSetupState', () => {
 		mockUpdateNodeProperties.mockReset();
 		mockUpdateNodeCredentialIssuesByName.mockReset();
 		mockUpdateNodesCredentialsIssues.mockReset();
+		mockGetNodeParametersIssues.mockReset().mockReturnValue({});
 		mockOnCredentialDeleted = undefined;
 	});
 

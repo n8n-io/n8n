@@ -48,8 +48,9 @@ vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', () => ({
 	},
 }));
 
-const { mockExecute, mockComposableState } = vi.hoisted(() => ({
+const { mockExecute, mockUpdateNodeProperties, mockComposableState } = vi.hoisted(() => ({
 	mockExecute: vi.fn(),
+	mockUpdateNodeProperties: vi.fn(),
 	mockComposableState: {
 		isExecuting: false,
 		isButtonDisabled: false,
@@ -76,6 +77,12 @@ vi.mock('@/features/setupPanel/composables/useTriggerExecution', async () => {
 		})),
 	};
 });
+
+vi.mock('@/app/composables/useWorkflowState', () => ({
+	injectWorkflowState: vi.fn(() => ({
+		updateNodeProperties: mockUpdateNodeProperties,
+	})),
+}));
 
 vi.mock('@/features/setupPanel/composables/useWebhookUrls', () => ({
 	useWebhookUrls: vi.fn(() => ({
@@ -126,6 +133,7 @@ describe('NodeSetupCard', () => {
 
 	beforeEach(() => {
 		mockExecute.mockClear();
+		mockUpdateNodeProperties.mockClear();
 		mockComposableState.isExecuting = false;
 		mockComposableState.isButtonDisabled = false;
 		mockComposableState.label = 'Test node';
@@ -251,7 +259,7 @@ describe('NodeSetupCard', () => {
 				expect(queryByTestId('parameter-input-list')).not.toBeInTheDocument();
 			});
 
-			it('should emit valueChanged event when parameter is changed', async () => {
+			it('should call workflowState.updateNodeProperties when parameter is changed', async () => {
 				const { getByTestId } = renderComponent({
 					props: {
 						state: createCredentialState({
@@ -263,8 +271,14 @@ describe('NodeSetupCard', () => {
 
 				await userEvent.click(getByTestId('param-change-btn'));
 
-				// The component doesn't emit valueChanged directly - it calls workflowState.updateNodeProperties
-				// This test verifies the component is wired up to handle the event from ParameterInputList
+				expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
+					name: 'OpenAI',
+					properties: {
+						parameters: {
+							testParam: 'testValue',
+						},
+					},
+				});
 			});
 
 			it('should keep showing parameter inputs even after issues are resolved', async () => {
