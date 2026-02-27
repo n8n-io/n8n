@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { SETUP_CREDENTIALS_MODAL_KEY, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants';
+import { SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
@@ -9,7 +9,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { doesNodeHaveAllCredentialsFilled } from '@/app/utils/nodes/nodeTransforms';
 
 import { N8nButton } from '@n8n/design-system';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useRoute } from 'vue-router';
@@ -19,7 +18,6 @@ const workflowsStore = useWorkflowsStore();
 const readyToRunStore = useReadyToRunStore();
 const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
-const posthogStore = usePostHog();
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
 const setupPanelStore = useSetupPanelStore();
@@ -45,12 +43,6 @@ const allCredentialsFilled = computed(() => {
 	}
 
 	return nodes.every((node) => doesNodeHaveAllCredentialsFilled(nodeTypesStore, node));
-});
-
-const isNewTemplatesSetupEnabled = computed(() => {
-	return (
-		posthogStore.getVariant(TEMPLATE_SETUP_EXPERIENCE.name) === TEMPLATE_SETUP_EXPERIENCE.variant
-	);
 });
 
 const isSetupPanelFeatureEnabled = computed(() => {
@@ -121,12 +113,7 @@ onMounted(async () => {
 	const templateId = workflowsStore.workflow?.meta?.templateId;
 	const isReadyToRunWorkflow = readyToRunStore.isReadyToRunTemplateId(templateId);
 
-	if (
-		isNewTemplatesSetupEnabled.value &&
-		showButton.value &&
-		!isReadyToRunWorkflow &&
-		isTemplateImportRoute.value
-	) {
+	if (showButton.value && !isReadyToRunWorkflow && isTemplateImportRoute.value) {
 		handleTemplateSetup();
 	}
 });
