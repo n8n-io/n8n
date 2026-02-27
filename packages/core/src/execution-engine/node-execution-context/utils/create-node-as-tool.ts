@@ -101,15 +101,35 @@ function createTool(options: CreateNodeAsToolOptions) {
 	const nodeName = nodeNameToToolName(node);
 	const name = nodeName || nodeType.description.name;
 
+	// Shared ref so PartialExecutionToolExecutor can read sendMessage after tool.invoke()
+	const sendMessageRef: { value: string | undefined } = { value: undefined };
+
 	return new DynamicStructuredTool({
 		name,
 		description,
 		schema,
-		func: async (toolArgs: z.infer<typeof schema>) => await handleToolInvocation(toolArgs),
+		func: async (toolArgs: z.infer<typeof schema>) => {
+			const invocationResult = await handleToolInvocation(toolArgs);
+			// makeHandleToolInvocation returns { result, sendMessage } — unwrap it
+			if (
+				typeof invocationResult === 'object' &&
+				invocationResult !== null &&
+				'result' in invocationResult
+			) {
+				const { result, sendMessage } = invocationResult as {
+					result: string;
+					sendMessage?: string;
+				};
+				sendMessageRef.value = sendMessage;
+				return result;
+			}
+			return invocationResult as string;
+		},
 		// Include sourceNodeName in metadata for engine request routing
 		// This is required for HITL tools to know which node to execute after approval
 		metadata: {
 			sourceNodeName: node.name,
+			sendMessageRef,
 		},
 	});
 }

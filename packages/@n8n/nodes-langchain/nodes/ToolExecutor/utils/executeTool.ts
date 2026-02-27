@@ -11,7 +11,12 @@ export async function executeTool(tool: Tool, query: string | object): Promise<I
 
 	const result = await tool.invoke(convertedQuery);
 
+	// PartialExecutionToolExecutor: read sendMessage stored in metadata by createNodeAsTool
+	const sendMessageRef = tool.metadata?.sendMessageRef as { value?: string } | undefined;
+	const sendMessage = sendMessageRef?.value;
+
 	return {
 		json: result as IDataObject,
+		...(sendMessage !== undefined ? { sendMessage } : {}),
 	};
 }

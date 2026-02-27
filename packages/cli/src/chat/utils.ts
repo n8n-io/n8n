@@ -1,3 +1,4 @@
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { IExecutionResponse } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import {
@@ -39,7 +40,26 @@ export function getMessage(execution: IExecutionResponse) {
 export function getLastNodeExecuted(execution: IExecutionResponse) {
 	const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
 	if (typeof lastNodeExecuted !== 'string') return undefined;
-	return execution.workflowData?.nodes?.find((node) => node.name === lastNodeExecuted);
+
+	const node = execution.workflowData?.nodes?.find((node) => node.name === lastNodeExecuted);
+	if (node) return node;
+
+	// For the virtual PartialExecutionToolExecutor node (not saved in workflowData),
+	// returns a synthetic node so session.nodeWaitingForChatResponse is set correctly
+	// and the message is not re-sent on every poll interval.
+	if (lastNodeExecuted === TOOL_EXECUTOR_NODE_NAME) {
+		return {
+			name: TOOL_EXECUTOR_NODE_NAME,
+			type: '@n8n/n8n-nodes-langchain.toolExecutor',
+			parameters: {},
+			id: '',
+			typeVersion: 1,
+			position: [0, 0],
+			disabled: false,
+		} satisfies INode;
+	}
+
+	return undefined;
 }
 
 /**
