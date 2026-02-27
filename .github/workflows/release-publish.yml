@@ -60,6 +60,7 @@ jobs:
       id-token: write
     env:
       NPM_CONFIG_PROVENANCE: true
+      RELEASE: ${{ needs.determine-version-info.outputs.version }} # Used by Vite build process
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
