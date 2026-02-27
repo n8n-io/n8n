@@ -1,6 +1,6 @@
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { IExecutionResponse } from '@n8n/db';
-import type { ChatNodeMessage, INode } from 'n8n-workflow';
+import type { ChatNodeMessage, IExecuteData, INode, Workflow } from 'n8n-workflow';
 import {
 	CHAT_WAIT_USER_REPLY,
 	CHAT_NODE_TYPE,
@@ -12,9 +12,41 @@ import {
 const AI_TOOL = 'ai_tool';
 
 /**
- * Extracts the node name from startData.originalDestinationNode, which can be
- * either a plain string (legacy V0 format) or an IDestinationNode object (V1).
+ * Redirects execution from PartialExecutionToolExecutor to the actual tool node
+ * it wraps (stored in the executor's `node` parameter).
+ *
+ * - Clears runNodeFilter/destinationNode so downstream nodes (e.g. AI Agent)
+ *   are not blocked by the original partial-execution constraints.
+ * - Forces runIndex=0 to merge into the preserveInputOverride placeholder,
+ *   keeping inputOverride ($fromAI params) visible on the resumed run.
+ *
+ * Returns the resolved tool node, or null if not applicable.
  */
+export function redirectIfToolExecutor(
+	execution: IExecutionResponse,
+	executionData: IExecuteData,
+	workflow: Workflow,
+): INode | null {
+	const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
+	if (lastNodeExecuted !== TOOL_EXECUTOR_NODE_NAME) return null;
+
+	const toolNodeName = executionData.node.parameters?.node as string | undefined;
+	const toolNode = toolNodeName ? workflow.getNode(toolNodeName) : null;
+	if (!toolNode) return null;
+
+	executionData.node = toolNode;
+	execution.data.resultData.lastNodeExecuted = toolNode.name;
+	executionData.runIndex = 0;
+
+	if (execution.data.startData) {
+		execution.data.startData.runNodeFilter = undefined;
+		execution.data.startData.destinationNode = undefined;
+	}
+
+	return toolNode;
+}
+
+/** Normalises originalDestinationNode to a node name (V0 = string, V1 = object). */
 function getOriginalDestinationNodeName(
 	startData: IExecutionResponse['data']['startData'],
 ): string | undefined {
@@ -23,10 +55,7 @@ function getOriginalDestinationNodeName(
 	return typeof dest === 'string' ? dest : dest.nodeName;
 }
 
-/**
- * Reads the sendMessage from a tool ai_tool run.
- * Tool nodes store their output under the ai_tool connection key (not main),
- */
+/** Returns sendMessage from the most recent ai_tool run of a node, if present. */
 function getSendMessageFromToolNode(
 	nodeRuns: IExecutionResponse['data']['resultData']['runData'][string],
 ): ChatNodeMessage | undefined {
@@ -45,13 +74,10 @@ function getSendMessageFromToolNode(
 }
 
 /**
- * When the PartialExecutionToolExecutor is the last executed node, the
- * sendMessage is not in the executor's own output — it lives in the connected
- * tool node's ai_tool run data (written there by makeHandleToolInvocation via
- * addOutputData).
- *
- * Uses startData.originalDestinationNode to target the exact tool node that
- * was executed, falling back to scanning all ai_tool outputs if unavailable.
+ * Finds sendMessage when PartialExecutionToolExecutor is the last executed node.
+ * The message lives in the connected tool node's ai_tool run data, not in the
+ * executor's own output. Targets originalDestinationNode first, then scans all
+ * ai_tool outputs as a fallback.
  */
 function getToolExecutorSendMessage(executionData: IExecutionResponse['data']) {
 	const { startData, resultData } = executionData;
@@ -62,8 +88,7 @@ function getToolExecutorSendMessage(executionData: IExecutionResponse['data']) {
 		return getSendMessageFromToolNode(runData[toolNodeName]);
 	}
 
-	// Fallback: scan all nodes that have ai_tool output (tool nodes only —
-	// regular nodes cannot produce ai_tool data)
+	// Fallback: scan all nodes with ai_tool output (only tool nodes produce it)
 	for (const [nodeName, nodeRuns] of Object.entries(runData)) {
 		if (nodeName === TOOL_EXECUTOR_NODE_NAME) continue;
 		const message = getSendMessageFromToolNode(nodeRuns);
