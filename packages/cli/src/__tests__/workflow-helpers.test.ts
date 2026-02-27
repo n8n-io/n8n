@@ -181,6 +181,15 @@ describe('removeDefaultValues', () => {
 		});
 	});
 
+	it('should remove credentialResolverId when undefined', () => {
+		const settings: IWorkflowSettings = {
+			credentialResolverId: undefined,
+			timezone: 'America/New_York',
+		};
+		const result = removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
+		expect(result).not.toHaveProperty('credentialResolverId');
+	});
+
 	it('should keep credentialResolverId when set to a valid ID', () => {
 		const settings: IWorkflowSettings = {
 			credentialResolverId: 'resolver-id-123',
