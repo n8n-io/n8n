@@ -5,7 +5,6 @@ import { AI_BUILDER_DIFF_MODAL_KEY } from '@/app/constants';
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
 import type { IWorkflowDb } from '@/Interface';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { N8nIconButton } from '@n8n/design-system';
 import { onMounted, useCssModule } from 'vue';
 import { useBuilderStore } from '../../builder.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -59,20 +58,9 @@ function closeModal() {
 				:target-workflow="props.data.targetWorkflow"
 				:source-label="props.data.sourceLabel"
 				:target-label="props.data.targetLabel"
-			>
-				<template #header-prefix>
-					<div :class="[$style.backButtonContainer, 'mr-xs']">
-						<N8nIconButton
-							icon="arrow-left"
-							type="tertiary"
-							:class="[$style.backButton, 'mr-xs']"
-							icon-size="large"
-							data-test-id="ai-builder-diff-back-button"
-							@click="closeModal"
-						/>
-					</div>
-				</template>
-			</WorkflowDiffView>
+				:show-back-button="true"
+				@back="closeModal"
+			/>
 		</template>
 	</Modal>
 </template>
@@ -95,9 +83,5 @@ function closeModal() {
 
 .backButton {
 	border: none;
-}
-
-.backButtonContainer {
-	border-right: 1px solid var(--color--foreground);
 }
 </style>
