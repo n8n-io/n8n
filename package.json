@@ -80,7 +80,7 @@
     "tsc-watch": "^6.2.0",
     "turbo": "2.5.4",
     "typescript": "*",
-    "zx": "^8.1.4"
+    "zx": "^8.8.5"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -127,14 +127,11 @@
       "node-forge": "1.3.2",
       "body-parser": "2.2.1",
       "@isaacs/brace-expansion@5": "5.0.1",
-      "fast-xml-parser": "5.3.6",
       "ajv@6": "6.14.0",
       "ajv@7": "8.18.0",
       "ajv@8": "8.18.0",
       "bn.js@4": "5.2.3",
       "bn.js@5": "5.2.3",
-      "minimatch@9": "10.2.1",
-      "minimatch@10": "10.2.1",
       "diff@5": "5.2.2",
       "glob@10": "10.5.0",
       "glob@7": "7.2.3",
@@ -144,7 +141,12 @@
       "@modelcontextprotocol/sdk": "1.26.0",
       "langchain": "1.2.3",
       "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0",
-      "@smithy/config-resolver": ">=4.4.0"
+      "@smithy/config-resolver": ">=4.4.0",
+      "word-wrap@<=1.2.4": "1.2.4",
+      "hono@<=4.11.10": "4.11.10",
+      "langsmith@<=0.4.6": "0.4.6",
+      "minimatch@<=5.1.8": "5.1.8",
+      "fast-xml-parser": "5.3.8"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
