@@ -85,13 +85,19 @@ const headers = ref<Array<TableHeader<Role>>>([
 async function deleteRole(item: Role) {
 	// When role is in use, show "Go to assignments" dialog instead of delete confirmation
 	if (item.usedByProjects && item.usedByProjects > 0) {
+		const inUseText =
+			[
+				i18n.baseText('projectRoles.action.delete.useWarning.before'),
+				i18n.baseText('projectRoles.action.delete.useWarning.linkText', {
+					adjustToNumber: item.usedByProjects,
+					interpolate: { count: item.usedByProjects },
+				}),
+			].join(' ') +
+			'. ' +
+			i18n.baseText('projectRoles.action.delete.useWarning.after');
+
 		const goToAssignments = await message.confirm(
-			i18n.baseText('projectRoles.action.delete.inUse.text', {
-				adjustToNumber: item.usedByProjects,
-				interpolate: {
-					count: item.usedByProjects,
-				},
-			}),
+			inUseText,
 			i18n.baseText('projectRoles.action.delete.inUse.title', {
 				interpolate: {
 					roleName: item.displayName,

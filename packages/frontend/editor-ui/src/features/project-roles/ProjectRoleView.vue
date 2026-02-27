@@ -352,39 +352,59 @@ const displayNameValidationRules = [
 		</div>
 
 		<div class="mb-l" :class="$style.formContainer">
-			<N8nFormInput
-				v-model="form.displayName"
-				:label="i18n.baseText('projectRoles.roleName')"
-				validate-on-blur
-				:validation-rules="displayNameValidationRules"
-				class="mb-s"
-				show-required-asterisk
-				required
-			>
-				<N8nTooltip
-					:content="i18n.baseText('projectRoles.systemRoleNotEditable')"
-					:disabled="!isReadOnly"
-					placement="top"
+			<!-- Read-only: use slot to wrap input with tooltip -->
+			<template v-if="isReadOnly">
+				<N8nFormInput
+					v-model="form.displayName"
+					:label="i18n.baseText('projectRoles.roleName')"
+					class="mb-s"
+					show-required-asterisk
+					required
 				>
-					<N8nInput v-model="form.displayName" :maxlength="100" :disabled="isReadOnly" />
-				</N8nTooltip>
-			</N8nFormInput>
-			<N8nFormInput v-model="form.description" :label="i18n.baseText('projectRoles.description')">
-				<N8nTooltip
-					:content="i18n.baseText('projectRoles.systemRoleNotEditable')"
-					:disabled="!isReadOnly"
-					placement="top"
-				>
-					<N8nInput
-						v-model="form.description"
-						type="textarea"
-						:placeholder="i18n.baseText('projectRoles.optional')"
-						:maxlength="500"
-						:autosize="{ minRows: 2, maxRows: 4 }"
-						:disabled="isReadOnly"
-					/>
-				</N8nTooltip>
-			</N8nFormInput>
+					<N8nTooltip
+						:content="i18n.baseText('projectRoles.systemRoleNotEditable')"
+						placement="top"
+					>
+						<N8nInput v-model="form.displayName" :maxlength="100" disabled />
+					</N8nTooltip>
+				</N8nFormInput>
+				<N8nFormInput v-model="form.description" :label="i18n.baseText('projectRoles.description')">
+					<N8nTooltip
+						:content="i18n.baseText('projectRoles.systemRoleNotEditable')"
+						placement="top"
+					>
+						<N8nInput
+							v-model="form.description"
+							type="textarea"
+							:placeholder="i18n.baseText('projectRoles.optional')"
+							:maxlength="500"
+							:autosize="{ minRows: 2, maxRows: 4 }"
+							disabled
+						/>
+					</N8nTooltip>
+				</N8nFormInput>
+			</template>
+			<!-- Editable: standard N8nFormInput with full validation -->
+			<template v-else>
+				<N8nFormInput
+					v-model="form.displayName"
+					:label="i18n.baseText('projectRoles.roleName')"
+					validate-on-blur
+					:validation-rules="displayNameValidationRules"
+					class="mb-s"
+					show-required-asterisk
+					required
+					:maxlength="100"
+				/>
+				<N8nFormInput
+					v-model="form.description"
+					:label="i18n.baseText('projectRoles.description')"
+					:placeholder="i18n.baseText('projectRoles.optional')"
+					type="textarea"
+					:maxlength="500"
+					:autosize="{ minRows: 2, maxRows: 4 }"
+				/>
+			</template>
 		</div>
 
 		<div v-if="roleSlug" class="mb-l">

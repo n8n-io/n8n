@@ -2468,7 +2468,6 @@
 	"projectRoles.assignments.membersModal.manageMembers": "Manage members",
 	"projectRoles.assignments.membersModal.cancel": "Cancel",
 	"projectRoles.action.delete.inUse.title": "{roleName}",
-	"projectRoles.action.delete.inUse.text": "You can't delete this role while it's assigned in {count} project. To delete it, first reassign users within projects to a different role. | You can't delete this role while it's assigned in {count} projects. To delete it, first reassign users within projects to a different role.",
 	"projectRoles.action.delete.inUse.goToAssignments": "Go to assignments",
 	"projectRoles.systemRoleNotEditable": "System roles are not editable",
 	"renameAction.emptyName.message": "Please enter a name, or press 'esc' to go back to the old one",

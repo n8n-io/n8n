@@ -12,7 +12,7 @@ import {
 	N8nUserInfo,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import type { RoleProjectMembersResponse } from '@n8n/api-types';
@@ -38,30 +38,30 @@ const isLoading = ref(false);
 watch(
 	() => props.open,
 	async (isOpen) => {
-		if (isOpen) {
-			isLoading.value = true;
-			try {
-				membersData.value = await rolesStore.fetchRoleProjectMembers(
-					props.roleSlug,
-					props.projectId,
-				);
-			} finally {
-				isLoading.value = false;
-			}
+		if (!isOpen) return;
+
+		isLoading.value = true;
+		try {
+			membersData.value = await rolesStore.fetchRoleProjectMembers(props.roleSlug, props.projectId);
+		} finally {
+			isLoading.value = false;
 		}
 	},
 	{ immediate: true },
 );
 
-function getRoleDisplayName(roleSlug: string): string {
+const roleDisplayNameMap = computed(() => {
 	const allRoles = [
 		...rolesStore.roles.global,
 		...rolesStore.roles.project,
 		...rolesStore.roles.credential,
 		...rolesStore.roles.workflow,
 	];
-	const role = allRoles.find((r) => r.slug === roleSlug);
-	return role?.displayName ?? roleSlug;
+	return new Map(allRoles.map((r) => [r.slug, r.displayName]));
+});
+
+function getRoleDisplayName(slug: string): string {
+	return roleDisplayNameMap.value.get(slug) ?? slug;
 }
 
 function navigateToProjectSettings() {
