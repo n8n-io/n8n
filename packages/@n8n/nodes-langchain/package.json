@@ -45,6 +45,7 @@
     "n8nNodesApiVersion": 1,
     "credentials": [
       "dist/credentials/AnthropicApi.credentials.js",
+      "dist/credentials/AvianApi.credentials.js",
       "dist/credentials/AzureAiSearchApi.credentials.js",
       "dist/credentials/AzureOpenAiApi.credentials.js",
       "dist/credentials/AzureEntraCognitiveServicesOAuth2Api.credentials.js",
@@ -106,6 +107,7 @@
       "dist/nodes/embeddings/EmbeddingsOllama/EmbeddingsOllama.node.js",
       "dist/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.js",
       "dist/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.js",
+      "dist/nodes/llms/LmChatAvian/LmChatAvian.node.js",
       "dist/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.js",
       "dist/nodes/llms/LmChatCohere/LmChatCohere.node.js",
       "dist/nodes/llms/LmChatDeepSeek/LmChatDeepSeek.node.js",
