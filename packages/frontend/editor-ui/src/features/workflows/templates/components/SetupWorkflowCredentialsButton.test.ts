@@ -1,3 +1,4 @@
+import { shallowRef } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { flushPromises } from '@vue/test-utils';
 import SetupWorkflowCredentialsButton from './SetupWorkflowCredentialsButton.vue';
@@ -13,6 +14,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 const mockDoesNodeHaveAllCredentialsFilled = vi.fn();
 
@@ -60,7 +62,17 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	}),
 }));
 
-const renderComponent = createComponentRenderer(SetupWorkflowCredentialsButton);
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
+
+const renderComponent = createComponentRenderer(SetupWorkflowCredentialsButton, {
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+		},
+	},
+});
 
 const EMPTY_WORKFLOW = {
 	id: '__EMPTY__',
@@ -81,6 +93,7 @@ function setDocumentStoreMeta(meta: Record<string, unknown>) {
 	const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
 	// Note: createTestingPinia() stubs actions by default, so setMeta() won't work
 	Object.defineProperty(docStore, 'meta', { value: meta, configurable: true });
+	workflowDocumentStoreRef.value = docStore;
 }
 
 describe('SetupWorkflowCredentialsButton', () => {

@@ -14,16 +14,11 @@ import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/ready
 
 import { useRoute } from 'vue-router';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const workflowsStore = useWorkflowsStore();
 const readyToRunStore = useReadyToRunStore();
-const workflowDocumentStore = useWorkflowDocumentStore(
-	createWorkflowDocumentId(workflowsStore.workflowId),
-);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const posthogStore = usePostHog();
 const uiStore = useUIStore();
@@ -37,7 +32,7 @@ const isTemplateImportRoute = computed(() => {
 });
 
 const isTemplateSetupCompleted = computed(() => {
-	return !!workflowDocumentStore.meta?.templateCredsSetupCompleted;
+	return !!workflowDocumentStore?.value?.meta?.templateCredsSetupCompleted;
 });
 
 const allCredentialsFilled = computed(() => {
@@ -64,7 +59,7 @@ const isSetupPanelFeatureEnabled = computed(() => {
 });
 
 const showButton = computed(() => {
-	const isCreatedFromTemplate = !!workflowDocumentStore.meta?.templateId;
+	const isCreatedFromTemplate = !!workflowDocumentStore?.value?.meta?.templateId;
 	if (!isCreatedFromTemplate) {
 		return false;
 	}
@@ -90,7 +85,7 @@ const isButtonDisabled = computed(() => {
 
 const unsubscribe = watch(allCredentialsFilled, (newValue) => {
 	if (newValue) {
-		workflowDocumentStore.addToMeta({
+		workflowDocumentStore?.value?.addToMeta({
 			templateCredsSetupCompleted: true,
 		});
 
@@ -124,7 +119,7 @@ onMounted(async () => {
 	// This ensures meta.templateId is available after initialization
 	await nextTick();
 
-	const templateId = workflowDocumentStore.meta?.templateId;
+	const templateId = workflowDocumentStore?.value?.meta?.templateId;
 	const isReadyToRunWorkflow = readyToRunStore.isReadyToRunTemplateId(templateId);
 
 	if (

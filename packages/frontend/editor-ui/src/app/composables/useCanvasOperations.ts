@@ -2869,10 +2869,10 @@ export function useCanvasOperations() {
 		const workflowData = deepCopy(getNodesToSave(workflowsStore.getNodesByIds(ids)));
 
 		const workflowDocumentId = createWorkflowDocumentId(workflowsStore.workflowId);
-		const documentStore = useWorkflowDocumentStore(workflowDocumentId);
+		const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 		workflowData.meta = {
 			...workflowData.meta,
-			...documentStore.meta,
+			...workflowDocumentStore.meta,
 			instanceId: rootStore.instanceId,
 		};
 
@@ -3142,8 +3142,10 @@ export function useCanvasOperations() {
 			workflowState.setWorkflowId(route.params.name);
 		}
 
-		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
-		docStore.addToMeta({ templateId: `${templateId}` });
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		workflowDocumentStore.addToMeta({ templateId: `${templateId}` });
 
 		canvasStore.stopLoading();
 
@@ -3190,8 +3192,10 @@ export function useCanvasOperations() {
 			workflow,
 		});
 
-		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
-		docStore.addToMeta({ templateId: `${templateId}` });
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		workflowDocumentStore.addToMeta({ templateId: `${templateId}` });
 
 		canvasStore.stopLoading();
 

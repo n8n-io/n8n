@@ -5,10 +5,7 @@ import { N8nIcon, N8nText } from '@n8n/design-system';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -33,9 +30,7 @@ const expanded = defineModel<boolean>('expanded', { default: false });
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = useWorkflowDocumentStore(
-	createWorkflowDocumentId(workflowsStore.workflowId),
-);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const hadManualInteraction = ref(false);
 
@@ -52,7 +47,7 @@ watch(
 	(isComplete) => {
 		if (isComplete && hadManualInteraction.value) {
 			telemetry.track('User completed setup step', {
-				template_id: workflowDocumentStore.meta?.templateId,
+				template_id: workflowDocumentStore?.value?.meta?.templateId,
 				workflow_id: workflowsStore.workflowId,
 				...props.telemetryPayload,
 			});
