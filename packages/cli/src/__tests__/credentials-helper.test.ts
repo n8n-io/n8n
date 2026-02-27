@@ -803,5 +803,120 @@ describe('CredentialsHelper', () => {
 			expect(call[3]).toBeUndefined(); // workflowSettings
 			expect(call[4]).toBe(false); // canUseExternalSecrets
 		});
+
+		test('should throw when resolvable credential has execution context but no credentials in non-manual mode', async () => {
+			const resolvableCredentialEntity = {
+				...mockCredentialEntity,
+				isResolvable: true,
+				resolverId: 'resolver-123',
+			} as CredentialsEntity;
+
+			credentialsRepository.findOneByOrFail.mockResolvedValue(resolvableCredentialEntity);
+
+			const additionalDataWithContext = {
+				...mockAdditionalData,
+				executionContext: {
+					version: 1,
+					establishedAt: Date.now(),
+					source: 'webhook' as const,
+					// credentials is undefined — no identity context
+				},
+			};
+
+			await expect(
+				credentialsHelper.getDecrypted(
+					additionalDataWithContext,
+					nodeCredentials,
+					credentialType,
+					'webhook',
+					undefined,
+					true,
+				),
+			).rejects.toThrow(CredentialResolutionError);
+		});
+
+		test('should use static credentials for resolvable credential in manual mode with context', async () => {
+			const resolvableCredentialEntity = {
+				...mockCredentialEntity,
+				isResolvable: true,
+				resolverId: 'resolver-123',
+			} as CredentialsEntity;
+
+			credentialsRepository.findOneByOrFail.mockResolvedValue(resolvableCredentialEntity);
+
+			const additionalDataWithContext = {
+				...mockAdditionalData,
+				executionContext: {
+					version: 1,
+					establishedAt: Date.now(),
+					source: 'manual' as const,
+					// credentials is undefined
+				},
+			};
+
+			const result = await credentialsHelper.getDecrypted(
+				additionalDataWithContext,
+				nodeCredentials,
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual({ apiKey: 'static-key' });
+		});
+
+		test('should use static credentials for resolvable credential when no execution context exists', async () => {
+			const resolvableCredentialEntity = {
+				...mockCredentialEntity,
+				isResolvable: true,
+				resolverId: 'resolver-123',
+			} as CredentialsEntity;
+
+			credentialsRepository.findOneByOrFail.mockResolvedValue(resolvableCredentialEntity);
+
+			// No executionContext at all (e.g. OAuth management operations)
+			const additionalDataWithoutContext = {
+				...mockAdditionalData,
+				executionContext: undefined,
+			};
+
+			const result = await credentialsHelper.getDecrypted(
+				additionalDataWithoutContext,
+				nodeCredentials,
+				credentialType,
+				'internal',
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual({ apiKey: 'static-key' });
+		});
+
+		test('should use static credentials for non-resolvable credential in webhook mode without context', async () => {
+			// mockCredentialEntity has isResolvable: false
+			credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
+
+			const additionalDataWithContext = {
+				...mockAdditionalData,
+				executionContext: {
+					version: 1,
+					establishedAt: Date.now(),
+					source: 'webhook' as const,
+					// credentials is undefined
+				},
+			};
+
+			const result = await credentialsHelper.getDecrypted(
+				additionalDataWithContext,
+				nodeCredentials,
+				credentialType,
+				'webhook',
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual({ apiKey: 'static-key' });
+		});
 	});
 });

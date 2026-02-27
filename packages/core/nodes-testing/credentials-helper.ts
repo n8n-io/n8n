@@ -2,11 +2,14 @@ import { Service } from '@n8n/di';
 import { ICredentialsHelper } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
+	ICredentialsExpressionResolveValues,
+	IExecuteData,
 	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INode,
 	INodeCredentialsDetails,
 	IWorkflowExecuteAdditionalData,
+	WorkflowExecuteModeValues,
 } from 'n8n-workflow';
 
 import { Credentials } from '../dist/credentials';
@@ -52,6 +55,28 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 	getParentTypes(_name: string): string[] {
 		return [];
+	}
+
+	async getDecryptedWithResolutionInfo(
+		_additionalData: IWorkflowExecuteAdditionalData,
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+		_mode: WorkflowExecuteModeValues,
+		_executeData?: IExecuteData,
+		_raw?: boolean,
+		_expressionResolveValues?: ICredentialsExpressionResolveValues,
+	): Promise<{
+		data: ICredentialDataDecryptedObject;
+		resolvedDynamically: boolean;
+		credentialId: string;
+		credentialName: string;
+	}> {
+		return {
+			data: this.credentialsMap[type] ?? {},
+			resolvedDynamically: false,
+			credentialId: nodeCredentials.id ?? '',
+			credentialName: nodeCredentials.name,
+		};
 	}
 
 	async getDecrypted(
