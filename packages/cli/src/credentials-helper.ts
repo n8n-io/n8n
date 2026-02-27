@@ -48,7 +48,9 @@ import { CredentialNotFoundError } from './errors/credential-not-found.error';
 import { CacheService } from './services/cache/cache.service';
 
 import { CredentialTypes } from '@/credential-types';
+import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { validateAccessToReferencedSecretProviders } from './credentials/validation';
 
 const mockNode = {
 	name: '',
@@ -93,6 +95,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly cacheService: CacheService,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly secretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 	) {
 		super();
 	}
@@ -282,9 +285,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 		let credential: CredentialsEntity;
 
 		try {
-			credential = await this.credentialsRepository.findOneByOrFail({
-				id: nodeCredential.id,
-				type,
+			credential = await this.credentialsRepository.findOneOrFail({
+				where: { id: nodeCredential.id, type },
+				relations: { shared: { project: true } },
 			});
 		} catch (error) {
 			if (error instanceof EntityNotFoundError) {
@@ -357,6 +360,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 			credentialsEntity.data,
 		);
 		let decryptedDataOriginal = credentials.getData();
+
+		// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
+		const projectOwningCredential = credentialsEntity.shared?.find(
+			(shared) => shared.role === 'credential:owner',
+		)!;
+		await validateAccessToReferencedSecretProviders(
+			projectOwningCredential.projectId,
+			decryptedDataOriginal,
+			this.secretsProviderAccessCheckService,
+			'workflow-execution',
+		);
 
 		// Check if credential can use external secrets for expression resolution
 		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(nodeCredentials);

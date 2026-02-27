@@ -140,7 +140,7 @@ export async function validateAccessToReferencedSecretProviders(
 	projectId: string,
 	data: ICredentialDataDecryptedObject,
 	externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
-	source: 'create' | 'update' | 'transfer',
+	source: 'create' | 'update' | 'transfer' | 'workflow-execution',
 ) {
 	const secretPaths = getAllKeyPaths(data, '', [], containsExternalSecretExpression);
 	if (secretPaths.length === 0) {
@@ -196,28 +196,32 @@ export async function validateAccessToReferencedSecretProviders(
 
 	// Throw error if any providers are inaccessible
 	if (inaccessibleProviders.size > 0) {
-		const formatCredentialPropertyList = (properties: string[]): string => {
-			return properties.map((f) => `"${f}"`).join(', ');
-		};
-		const errorMessageSuffix =
-			source === 'transfer' ? 'in the destination project' : 'in this project';
-		if (inaccessibleProviders.size === 1) {
-			const [providerKey, credentialProperties] = Array.from(inaccessibleProviders.entries())[0];
-			const credentialPropertyList = formatCredentialPropertyList(credentialProperties);
-			throw new BadRequestError(
-				`The secret provider "${providerKey}" used in ${credentialPropertyList} does not exist ${errorMessageSuffix}`,
-			);
-		} else {
-			const providerDetails = Array.from(inaccessibleProviders.entries())
-				.map(([provider, fields]) => {
-					const credentialPopertyList = formatCredentialPropertyList(fields);
-					return `"${provider}" (used in ${credentialPopertyList})`;
-				})
+		const formatErrorMessage = (): string => {
+			const formatCredentialPropertyList = (properties: string[]): string =>
+				properties.map((f) => `"${f}"`).join(', ');
+			const providerKeys = [...inaccessibleProviders.keys()];
+
+			if (source === 'workflow-execution') {
+				const keyList = providerKeys.map((key) => `"${key}"`).join(', ');
+				return `A credential is referencing secret ${inaccessibleProviders.size === 1 ? 'vault' : 'vaults'} ${keyList} which is not accessible in this project.`;
+			}
+
+			const suffix = source === 'transfer' ? 'in the destination project' : 'in this project';
+
+			if (inaccessibleProviders.size === 1) {
+				const [[providerKey, credentialProperties]] = inaccessibleProviders;
+				return `The secret provider "${providerKey}" used in ${formatCredentialPropertyList(credentialProperties)} does not exist ${suffix}`;
+			}
+
+			const providerDetails = [...inaccessibleProviders.entries()]
+				.map(
+					([provider, fields]) => `"${provider}" (used in ${formatCredentialPropertyList(fields)})`,
+				)
 				.join(', ');
-			throw new BadRequestError(
-				`The secret providers ${providerDetails} do not exist ${errorMessageSuffix}`,
-			);
-		}
+			return `The secret providers ${providerDetails} do not exist ${suffix}`;
+		};
+
+		throw new BadRequestError(formatErrorMessage());
 	}
 }
 
