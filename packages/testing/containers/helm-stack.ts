@@ -51,7 +51,8 @@ function log(message: string) {
 
 // -- Host command execution ---------------------------------------------------
 
-function run(cmd: string, env: NodeJS.ProcessEnv, description: string): string {
+/** Execute a shell command on the host with the given environment. Returns stdout or throws with stderr. */
+function execOnHost(cmd: string, env: NodeJS.ProcessEnv, description: string): string {
 	try {
 		return execSync(cmd, { env, stdio: 'pipe', encoding: 'utf-8', timeout: COMMAND_TIMEOUT_MS });
 	} catch (error: unknown) {
@@ -92,8 +93,8 @@ async function preloadImage(container: StartedK3sContainer, imageName: string): 
 		} finally {
 			try {
 				unlinkSync(tarPath);
-			} catch {
-				/* ignore */
+			} catch (cleanupError) {
+				log(`Warning: failed to clean up temp file ${tarPath}: ${cleanupError}`);
 			}
 		}
 	}
@@ -108,7 +109,7 @@ function cloneChartToHost(repo: string, ref: string): string {
 	log(`Downloading chart from ${repo} @ ${ref}...`);
 	const dir = mkdtempSync(join(tmpdir(), 'n8n-chart-'));
 	const repoPath = repo.replace('https://github.com/', '').replace('.git', '');
-	const tarUrl = `https://github.com/${repoPath}/archive/refs/heads/${ref}.tar.gz`;
+	const tarUrl = `https://github.com/${repoPath}/archive/${ref}.tar.gz`;
 
 	execSync(`curl -fsSL "${tarUrl}" | tar xz -C "${dir}" --strip-components=1`, { stdio: 'pipe' });
 	log('Chart downloaded');
@@ -189,7 +190,7 @@ function buildHelmSetFlags(imageName: string, mode: HelmStackMode, baseUrl: stri
 
 function createN8nSecret(env: NodeJS.ProcessEnv): void {
 	log('Creating n8n core secrets...');
-	run(
+	execOnHost(
 		'kubectl create secret generic n8n-secrets --from-literal=N8N_ENCRYPTION_KEY=test-encryption-key-for-e2e-testing --from-literal=N8N_HOST=localhost --from-literal=N8N_PORT=5678 --from-literal=N8N_PROTOCOL=http',
 		env,
 		'Create n8n core secrets',
@@ -200,14 +201,14 @@ function createN8nSecret(env: NodeJS.ProcessEnv): void {
 
 function deployQueueInfrastructure(env: NodeJS.ProcessEnv): void {
 	log('Adding Bitnami Helm repo...');
-	run(
+	execOnHost(
 		'helm repo add bitnami https://charts.bitnami.com/bitnami && helm repo update',
 		env,
 		'Add Bitnami repo',
 	);
 
 	log('Deploying PostgreSQL...');
-	run(
+	execOnHost(
 		'helm install postgresql bitnami/postgresql --set auth.username=n8n --set auth.password=n8n-test-password --set auth.database=n8n --set primary.resources.requests.cpu=100m --set primary.resources.requests.memory=256Mi --set primary.resources.limits.cpu=500m --set primary.resources.limits.memory=512Mi --wait --timeout 3m',
 		env,
 		'Deploy PostgreSQL',
@@ -215,14 +216,14 @@ function deployQueueInfrastructure(env: NodeJS.ProcessEnv): void {
 	log('PostgreSQL deployed');
 
 	log('Deploying Redis...');
-	run(
+	execOnHost(
 		"helm install redis bitnami/redis --set architecture=standalone --set auth.enabled=false --set-json 'master.disableCommands=[]' --set master.resources.requests.cpu=100m --set master.resources.requests.memory=128Mi --set master.resources.limits.cpu=250m --set master.resources.limits.memory=256Mi --wait --timeout 3m",
 		env,
 		'Deploy Redis',
 	);
 	log('Redis deployed');
 
-	run(
+	execOnHost(
 		'kubectl create secret generic n8n-db-secret --from-literal=password=n8n-test-password',
 		env,
 		'Create DB password secret',
@@ -316,7 +317,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		const valuesFile = getExampleValuesFile(chartDir, mode);
 		const setFlags = buildHelmSetFlags(n8nImage, mode, baseUrl).join(' ');
 		log(`Using values file: ${valuesFile}`);
-		const helmOutput = run(
+		const helmOutput = execOnHost(
 			`helm install n8n "${chartDir}/charts/n8n" -f "${valuesFile}" ${setFlags} --wait --timeout 5m`,
 			env,
 			'Helm install',
@@ -326,7 +327,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		// Step 9: Patch service to NodePort so traffic goes through K3s's exposed port
 		// (bypasses kubectl port-forward which silently breaks after many connections)
 		log(`Patching n8n service to NodePort ${N8N_NODE_PORT}...`);
-		run(
+		execOnHost(
 			`kubectl patch svc n8n-main --type merge -p '{"spec":{"type":"NodePort","ports":[{"port":5678,"targetPort":5678,"nodePort":${N8N_NODE_PORT}}]}}'`,
 			env,
 			'Patch service to NodePort',
@@ -359,11 +360,11 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 	} catch (error) {
 		// Dump debug info from host kubectl
 		try {
-			const podStatus = run('kubectl get pods -o wide 2>/dev/null || true', env, 'debug');
+			const podStatus = execOnHost('kubectl get pods -o wide 2>/dev/null || true', env, 'debug');
 			console.error('\n--- Pod Status ---');
 			console.error(podStatus);
 
-			const podLogs = run(
+			const podLogs = execOnHost(
 				'kubectl logs -l app.kubernetes.io/name=n8n --tail=50 2>/dev/null || true',
 				env,
 				'debug',
@@ -373,7 +374,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 				console.error(podLogs);
 			}
 
-			const events = run(
+			const events = execOnHost(
 				'kubectl get events --sort-by=.lastTimestamp 2>/dev/null || true',
 				env,
 				'debug',
