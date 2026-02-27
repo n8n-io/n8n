@@ -245,11 +245,11 @@ export class RoleService {
 			return entity;
 		}
 
-		if (!('active' in entity) && !('type' in entity)) {
+		if (!('versionId' in entity) && !('type' in entity)) {
 			throw new UnexpectedError('Cannot detect if entity is a workflow or credential.');
 		}
 
-		const entityType = 'active' in entity ? 'workflow' : 'credential';
+		const entityType = 'versionId' in entity ? 'workflow' : 'credential';
 		entity.scopes = this.combineResourceScopes(entityType, user, shared, userProjectRelations);
 
 		if (
