@@ -1,3 +1,20 @@
+## [2.9.4-exp.0](https://github.com/n8n-io/n8n/compare/n8n@2.9.4...n8n@2.9.4-exp.0) (2026-02-27)
+
+
+### Bug Fixes
+
+* **editor:** Selectively apply credentials for http request nodes ([#26003](https://github.com/n8n-io/n8n/issues/26003)) ([615fe8b](https://github.com/n8n-io/n8n/commit/615fe8be711b8cf3ab31d95dd12e87a2b626e9be))
+* **editor:** Setup panel visual tweaks (no-chaneglog) ([#26107](https://github.com/n8n-io/n8n/issues/26107)) ([897730c](https://github.com/n8n-io/n8n/commit/897730cdc1999d1ad40c326266093bb43e2d038b))
+* **editor:** Show existing credentials in template setup modal ([#25598](https://github.com/n8n-io/n8n/issues/25598)) ([773b020](https://github.com/n8n-io/n8n/commit/773b020ce24e73dd9ae98dcd9e8167021fd9a688))
+
+
+### Features
+
+* **editor:** Highlight nodes in canvas on card hover in setup panel ([#25862](https://github.com/n8n-io/n8n/issues/25862)) ([04bd25c](https://github.com/n8n-io/n8n/commit/04bd25c73b9122f6b66999e83785e0b6cc308d49))
+* **editor:** In setup panel only mark credentials as completed if they are tested ([#25658](https://github.com/n8n-io/n8n/issues/25658)) ([a7a5589](https://github.com/n8n-io/n8n/commit/a7a5589a2d95defb991f8a68cecd4b93eab7926e))
+
+
+
 ## [2.9.4](https://github.com/n8n-io/n8n/compare/n8n@2.9.3...n8n@2.9.4) (2026-02-25)
 
 
