@@ -36,11 +36,7 @@ import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
 import { type IBinaryData } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
-import {
-	personalAgentDefaultIcon,
-	isLlmProviderModel,
-	createMimeTypes,
-} from '@/features/ai/chatHub/chat.utils';
+import { personalAgentDefaultIcon, isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
@@ -104,9 +100,7 @@ const saveButtonLabel = computed(() =>
 		: i18n.baseText('chatHub.agent.editor.save'),
 );
 
-const acceptedMimeTypes = computed(
-	() => `${createMimeTypes(selectedAgent.value?.metadata.inputModalities ?? [])},application/pdf`,
-);
+const acceptedMimeTypes = computed(() => '*/*'); // TODO
 
 const isValid = computed(
 	() =>
