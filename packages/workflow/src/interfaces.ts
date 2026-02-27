@@ -1535,6 +1535,7 @@ export interface INodePropertyTypeOptions {
 	numberPrecision?: number; // Supported by: number
 	fixedCollection?: {
 		itemTitle?: string; // Template for item titles, supports {{ $collection.item.value }}, {{ $collection.item.index }}
+		layout?: 'inline'; // Render sub-parameters side-by-side in a row
 	};
 	password?: boolean; // Supported by: string
 	rows?: number; // Supported by: string

@@ -48,7 +48,7 @@ export const RESOURCES = {
 	oidc: ['manage'] as const,
 	provisioning: ['manage'] as const,
 	dataTable: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
-	execution: ['delete', 'read', 'retry', 'list', 'get'] as const,
+	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
 	workflowTags: ['update', 'list'] as const,
 	role: ['manage'] as const,
 	mcp: ['manage', 'oauth'] as const,

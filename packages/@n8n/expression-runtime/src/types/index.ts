@@ -8,13 +8,6 @@
 export type { RuntimeBridge, BridgeConfig } from './bridge';
 
 // Runtime types
-export type {
-	RuntimeHostInterface,
-	RuntimeGlobals,
-	RuntimeConfig,
-	LazyProxyConfig,
-} from './runtime';
-
 export { RuntimeError } from './runtime';
 
 // Evaluator types
