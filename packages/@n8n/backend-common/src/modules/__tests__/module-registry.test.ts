@@ -36,8 +36,8 @@ describe('eligibleModules', () => {
 			'ldap',
 			'quick-connect',
 			'workflow-builder',
-			'redaction',
 			'favorites',
+			'redaction',
 		]);
 	});
 
@@ -60,8 +60,8 @@ describe('eligibleModules', () => {
 			'ldap',
 			'quick-connect',
 			'workflow-builder',
-			'redaction',
 			'favorites',
+			'redaction',
 		]);
 	});
 
