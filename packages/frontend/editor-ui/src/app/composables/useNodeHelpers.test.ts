@@ -19,6 +19,7 @@ import { faker } from '@faker-js/faker';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { injectWorkflowState, useWorkflowState } from './useWorkflowState';
 
 vi.mock('@/app/composables/useWorkflowState', async () => {
@@ -697,6 +698,132 @@ describe('useNodeHelpers()', () => {
 			const hints = getNodeHints(workflow, node, nodeType);
 
 			expect(hints).toHaveLength(1);
+		});
+	});
+
+	describe('getNodeCredentialIssues()', () => {
+		const credentialId = faker.string.alphanumeric(16);
+		const credentialName = 'Postgres_ADI_client_EE';
+		const credentialTypeName = 'postgres';
+
+		const nodeTypeWithCredentials: INodeTypeDescription = {
+			displayName: 'Postgres',
+			name: 'n8n-nodes-base.postgres',
+			group: ['transform'],
+			version: [1],
+			description: 'Postgres node',
+			defaults: { name: 'Postgres' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [
+				{
+					name: credentialTypeName,
+					required: true,
+				},
+			],
+			properties: [],
+		};
+
+		const nodeWithCredentials: INodeUi = {
+			id: faker.string.uuid(),
+			name: 'Postgres',
+			type: 'n8n-nodes-base.postgres',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: {
+				[credentialTypeName]: {
+					id: credentialId,
+					name: credentialName,
+				},
+			},
+		};
+
+		it('should not report credential issues when credential is in usedCredentials but not in credential store', () => {
+			// Simulates a non-admin (member) user who owns the credential but
+			// the credential is not in the frontend credential store due to
+			// project-scoped filtering. The backend-populated usedCredentials
+			// should suppress the false warning.
+			const { getNodeCredentialIssues } = useNodeHelpers();
+
+			mockedStore(useNodeTypesStore).getNodeType = vi
+				.fn()
+				.mockReturnValue(nodeTypeWithCredentials);
+
+			// Credential store returns empty (not accessible via project-scoped filter)
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				name: credentialTypeName,
+				displayName: 'Postgres',
+			});
+
+			// But the credential IS present in workflowsStore.usedCredentials
+			// (populated from the backend GET /workflows/:id response)
+			const usedCredential: IUsedCredential = {
+				id: credentialId,
+				name: credentialName,
+				credentialType: credentialTypeName,
+				currentUserHasAccess: true,
+			};
+			mockedStore(useWorkflowsStore).usedCredentials = {
+				[credentialId]: usedCredential,
+			};
+
+			const result = getNodeCredentialIssues(nodeWithCredentials);
+			expect(result).toBeNull();
+		});
+
+		it('should report credential issues when credential is neither in credential store nor in usedCredentials', () => {
+			// When a credential truly does not exist (not in store and not in
+			// usedCredentials), the warning should still be shown.
+			const { getNodeCredentialIssues } = useNodeHelpers();
+
+			mockedStore(useNodeTypesStore).getNodeType = vi
+				.fn()
+				.mockReturnValue(nodeTypeWithCredentials);
+
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				name: credentialTypeName,
+				displayName: 'Postgres',
+			});
+
+			// usedCredentials is empty — credential is genuinely missing
+			mockedStore(useWorkflowsStore).usedCredentials = {};
+
+			const result = getNodeCredentialIssues(nodeWithCredentials);
+			expect(result).not.toBeNull();
+			expect(result?.credentials).toBeDefined();
+			expect(result?.credentials?.[credentialTypeName]).toBeDefined();
+		});
+
+		it('should not report credential issues when credential is found in credential store by ID', () => {
+			// Normal case: admin or user who has the credential in their store
+			const { getNodeCredentialIssues } = useNodeHelpers();
+
+			mockedStore(useNodeTypesStore).getNodeType = vi
+				.fn()
+				.mockReturnValue(nodeTypeWithCredentials);
+
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([
+				{
+					id: credentialId,
+					name: credentialName,
+					type: credentialTypeName,
+				},
+			]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				name: credentialTypeName,
+				displayName: 'Postgres',
+			});
+
+			mockedStore(useWorkflowsStore).usedCredentials = {};
+
+			const result = getNodeCredentialIssues(nodeWithCredentials);
+			expect(result).toBeNull();
 		});
 	});
 

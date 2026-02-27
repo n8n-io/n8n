@@ -528,6 +528,15 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 					if (idMatch) {
 						continue;
 					}
+					// If the credential is not in the user's credential store,
+					// check if it is confirmed to be used by this workflow via
+					// the backend-populated usedCredentials. This prevents false
+					// "do not exist" warnings for non-admin users whose credential
+					// store may not include all accessible credentials due to
+					// project-scoped filtering or initialization timing.
+					if (workflowsStore.usedCredentials?.[selectedCredentials.id]) {
+						continue;
+					}
 				}
 
 				const nameMatches = userCredentials.filter(
@@ -1084,6 +1093,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 		updateNodesExecutionIssues,
 		updateNodesParameterIssues,
 		updateNodeInputIssues,
+		getNodeCredentialIssues,
 		updateNodeCredentialIssuesByName,
 		updateNodeCredentialIssues,
 		updateNodeParameterIssuesByName,
