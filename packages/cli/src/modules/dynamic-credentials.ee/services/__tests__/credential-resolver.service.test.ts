@@ -8,6 +8,8 @@ import {
 import type { Cipher } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+
 import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
 import { DynamicCredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
@@ -345,6 +347,7 @@ describe('DynamicCredentialResolverService', () => {
 			mockResolverImplementation.validateOptions.mockRejectedValue(
 				new CredentialResolverValidationError('Invalid config'),
 			);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify({ existingKey: 'value' }));
 
 			await expect(
 				service.update('resolver-id-123', { config: invalidConfig, user: mockUser }),
@@ -564,6 +567,220 @@ describe('DynamicCredentialResolverService', () => {
 			);
 
 			expect(mockRepository.remove).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('config redaction', () => {
+		const resolverWithPasswordField = {
+			...mockResolverImplementation,
+			metadata: {
+				name: 'test.resolver',
+				description: 'A test resolver',
+				options: [
+					{
+						displayName: 'Secret Key',
+						name: 'secretKey',
+						type: 'string' as const,
+						typeOptions: { password: true },
+						default: '',
+					},
+					{
+						displayName: 'Public Setting',
+						name: 'publicSetting',
+						type: 'string' as const,
+						default: '',
+					},
+				],
+			},
+		} as jest.Mocked<ICredentialResolver>;
+
+		it('should redact password fields in decryptedConfig on findById', async () => {
+			const entity = createMockEntity();
+			const config = { secretKey: 'super-secret-value', publicSetting: 'visible' };
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(config));
+			mockRegistry.getResolverByTypename.mockReturnValue(resolverWithPasswordField);
+
+			const result = await service.findById('resolver-id-123');
+
+			expect(result.decryptedConfig).toEqual({
+				secretKey: CREDENTIAL_BLANKING_VALUE,
+				publicSetting: 'visible',
+			});
+		});
+
+		it('should redact password fields in decryptedConfig on findAll', async () => {
+			const entities = [createMockEntity()];
+			const config = { secretKey: 'my-secret', publicSetting: 'open' };
+
+			mockRepository.find.mockResolvedValue(entities);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(config));
+			mockRegistry.getResolverByTypename.mockReturnValue(resolverWithPasswordField);
+
+			const result = await service.findAll();
+
+			expect(result[0].decryptedConfig).toEqual({
+				secretKey: CREDENTIAL_BLANKING_VALUE,
+				publicSetting: 'open',
+			});
+		});
+
+		it('should redact password fields in decryptedConfig on create response', async () => {
+			const config = { secretKey: 'new-secret', publicSetting: 'data' };
+			const savedEntity = createMockEntity();
+			const mockUser = createMockUser();
+
+			mockRegistry.getResolverByTypename.mockReturnValue(resolverWithPasswordField);
+			(resolverWithPasswordField as unknown as { validateOptions: jest.Mock }).validateOptions =
+				jest.fn().mockResolvedValue(undefined);
+			mockCipher.encrypt.mockReturnValue('encrypted');
+			mockRepository.create.mockReturnValue(savedEntity);
+			mockRepository.save.mockResolvedValue(savedEntity);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(config));
+
+			const result = await service.create({
+				name: 'Test',
+				type: 'test.resolver',
+				config,
+				user: mockUser,
+			});
+
+			expect(result.decryptedConfig).toEqual({
+				secretKey: CREDENTIAL_BLANKING_VALUE,
+				publicSetting: 'data',
+			});
+		});
+
+		it('should not redact expression values in password fields', async () => {
+			const entity = createMockEntity();
+			const config = { secretKey: '={{$env.SECRET}}', publicSetting: 'visible' };
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(config));
+			mockRegistry.getResolverByTypename.mockReturnValue(resolverWithPasswordField);
+
+			const result = await service.findById('resolver-id-123');
+
+			expect(result.decryptedConfig).toEqual({
+				secretKey: '={{$env.SECRET}}',
+				publicSetting: 'visible',
+			});
+		});
+
+		it('should replace empty password field with empty string, not blanking value', async () => {
+			const entity = createMockEntity();
+			const config = { secretKey: '', publicSetting: 'visible' };
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(config));
+			mockRegistry.getResolverByTypename.mockReturnValue(resolverWithPasswordField);
+
+			const result = await service.findById('resolver-id-123');
+
+			expect(result.decryptedConfig).toEqual({
+				secretKey: '',
+				publicSetting: 'visible',
+			});
+		});
+
+		it('should pass through config without redaction when resolver has no options', async () => {
+			const entity = createMockEntity();
+			const config = { someKey: 'some-value' };
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(config));
+			// mockResolverImplementation has no metadata.options
+			mockRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
+
+			const result = await service.findById('resolver-id-123');
+
+			expect(result.decryptedConfig).toEqual(config);
+		});
+	});
+
+	describe('config unredaction on update', () => {
+		const resolverWithPasswordField = {
+			...mockResolverImplementation,
+			metadata: {
+				name: 'test.resolver',
+				description: 'A test resolver',
+				options: [
+					{
+						displayName: 'Secret Key',
+						name: 'secretKey',
+						type: 'string' as const,
+						typeOptions: { password: true },
+						default: '',
+					},
+					{
+						displayName: 'Public Setting',
+						name: 'publicSetting',
+						type: 'string' as const,
+						default: '',
+					},
+				],
+			},
+		} as jest.Mocked<ICredentialResolver>;
+
+		it('should restore blanked values from DB when updating config', async () => {
+			const savedConfig = { secretKey: 'original-secret', publicSetting: 'old-value' };
+			const entity = createMockEntity();
+			const updatedEntity = createMockEntity();
+			const mockUser = createMockUser();
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRegistry.getResolverByTypename.mockReturnValue(resolverWithPasswordField);
+			(resolverWithPasswordField as unknown as { validateOptions: jest.Mock }).validateOptions =
+				jest.fn().mockResolvedValue(undefined);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(savedConfig));
+			mockCipher.encrypt.mockReturnValue('new-encrypted');
+			mockRepository.save.mockResolvedValue(updatedEntity);
+
+			// Frontend sends blanking value for secretKey, new value for publicSetting
+			await service.update('resolver-id-123', {
+				config: {
+					secretKey: CREDENTIAL_BLANKING_VALUE,
+					publicSetting: 'new-value',
+				},
+				user: mockUser,
+			});
+
+			// Should encrypt with the original secret restored
+			expect(mockCipher.encrypt).toHaveBeenCalledWith({
+				secretKey: 'original-secret',
+				publicSetting: 'new-value',
+			});
+		});
+
+		it('should accept new password values when user changes the secret', async () => {
+			const savedConfig = { secretKey: 'old-secret', publicSetting: 'value' };
+			const entity = createMockEntity();
+			const updatedEntity = createMockEntity();
+			const mockUser = createMockUser();
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRegistry.getResolverByTypename.mockReturnValue(resolverWithPasswordField);
+			(resolverWithPasswordField as unknown as { validateOptions: jest.Mock }).validateOptions =
+				jest.fn().mockResolvedValue(undefined);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(savedConfig));
+			mockCipher.encrypt.mockReturnValue('new-encrypted');
+			mockRepository.save.mockResolvedValue(updatedEntity);
+
+			// Frontend sends a new actual secret value
+			await service.update('resolver-id-123', {
+				config: {
+					secretKey: 'brand-new-secret',
+					publicSetting: 'value',
+				},
+				user: mockUser,
+			});
+
+			// Should encrypt with the new secret
+			expect(mockCipher.encrypt).toHaveBeenCalledWith({
+				secretKey: 'brand-new-secret',
+				publicSetting: 'value',
+			});
 		});
 	});
 });

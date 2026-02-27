@@ -10,6 +10,8 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
 import { DynamicCredentialResolver } from '../database/entities/credential-resolver';
@@ -125,8 +127,9 @@ export class DynamicCredentialResolverService {
 		}
 
 		if (params.config !== undefined) {
-			await this.validateConfig(existing.type, params.config, canUseExternalSecrets);
-			existing.config = this.encryptConfig(params.config);
+			const unredactedConfig = this.unredactConfig(params.config, existing);
+			await this.validateConfig(existing.type, unredactedConfig, canUseExternalSecrets);
+			existing.config = this.encryptConfig(unredactedConfig);
 		}
 
 		if (params.name !== undefined) {
@@ -221,10 +224,62 @@ export class DynamicCredentialResolverService {
 	}
 
 	/**
-	 * Populates the decryptedConfig field on the resolver.
+	 * Populates the decryptedConfig field on the resolver, with sensitive values redacted.
 	 */
 	private withDecryptedConfig(resolver: DynamicCredentialResolver): DynamicCredentialResolver {
-		resolver.decryptedConfig = this.decryptConfig(resolver.config);
+		resolver.decryptedConfig = this.redactConfig(
+			this.decryptConfig(resolver.config),
+			resolver.type,
+		);
 		return resolver;
+	}
+
+	/**
+	 * Redacts password fields in config, matching the credential redaction pattern.
+	 * Fields with `typeOptions.password` are replaced with `CREDENTIAL_BLANKING_VALUE`.
+	 */
+	private redactConfig(
+		config: CredentialResolverConfiguration,
+		resolverType: string,
+	): CredentialResolverConfiguration {
+		const resolverImpl = this.registry.getResolverByTypename(resolverType);
+		if (!resolverImpl?.metadata.options) {
+			return config;
+		}
+
+		const redacted = { ...config };
+		for (const option of resolverImpl.metadata.options) {
+			if (!option.typeOptions?.password) continue;
+
+			const value = redacted[option.name];
+			if (typeof value !== 'string') continue;
+
+			// Don't redact expressions — users need to see/edit them
+			if (value.startsWith('={{')) continue;
+
+			redacted[option.name] = value.length > 0 ? CREDENTIAL_BLANKING_VALUE : '';
+		}
+		return redacted;
+	}
+
+	/**
+	 * Restores redacted (blanked) config values from the existing DB record.
+	 * When the frontend sends `CREDENTIAL_BLANKING_VALUE` for a field, it means
+	 * the user did not change it, so we restore the original value.
+	 */
+	private unredactConfig(
+		incoming: CredentialResolverConfiguration,
+		existing: DynamicCredentialResolver,
+	): CredentialResolverConfiguration {
+		const savedConfig = this.decryptConfig(existing.config);
+		const merged = { ...incoming };
+
+		for (const [key, value] of Object.entries(merged)) {
+			if (value === CREDENTIAL_BLANKING_VALUE) {
+				merged[key] = savedConfig[key];
+			}
+		}
+
+		return merged;
 	}
 }

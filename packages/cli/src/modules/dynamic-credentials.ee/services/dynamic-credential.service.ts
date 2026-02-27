@@ -276,6 +276,16 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			if (req.user) {
 				return next();
 			}
+
+			// Allow Slack-signed requests through — actual signature verification
+			// happens in the resolver's validateIdentity() which has the signing secret.
+			if (
+				typeof req.headers['x-slack-signature'] === 'string' &&
+				typeof req.headers['x-slack-request-timestamp'] === 'string'
+			) {
+				return next();
+			}
+
 			return staticAuthMiddlware(req, res, next);
 		};
 	}
