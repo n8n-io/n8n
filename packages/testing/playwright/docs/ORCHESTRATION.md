@@ -6,7 +6,7 @@ Capability-aware test distribution across CI shards.
 
 | Step | What Happens |
 |------|--------------|
-| 1. Discovery | `pnpm playwright test --list --project="multi-main:e2e" --grep-invert "@fixme"` |
+| 1. Discovery | `pnpm janitor discover --json` (AST-based, detects `test.fixme()`/`test.skip()` automatically) |
 | 2. Metrics | Get `avgDuration` per spec from Currents (last 30 days) |
 | 3. Default | Missing specs get **60s** default (accounts for container startup) |
 | 4. Group | Group specs by `@capability:xxx` tag for worker reuse |
@@ -94,29 +94,24 @@ test('Multi-main logs @capability:observability @mode:multi-main', ...);
 
 Both `@capability:X` and `@mode:X` tests are skipped in local mode (they require containers).
 
-## Temporarily Disabling Tests with @fixme
+## Temporarily Disabling Tests
 
-Tests tagged with `@fixme` are **excluded from CI distribution**. Use this for flaky or broken tests that need fixing.
+Use `test.fixme()` to mark tests that need fixing. The janitor's `discover` command detects `test.fixme()` and `test.skip()` calls via AST analysis and automatically excludes them from CI distribution.
 
 ```typescript
 // Individual test
-test.fixme('broken test @fixme', async ({ n8n }) => {
-  // This test won't run in CI
+test.fixme('broken test', async ({ n8n }) => {
+  // Excluded from CI distribution automatically
 });
 
 // Entire describe block
-test.describe('Feature @fixme', () => {
+test.describe('Feature', () => {
   test.fixme(); // Marks all tests in this block
 
   test('test 1', async ({ n8n }) => { ... });
   test('test 2', async ({ n8n }) => { ... });
 });
 ```
-
-**Why @fixme instead of test.skip?**
-- `test.skip()` tests still appear in `--list` output and get distributed to shards
-- `@fixme` tests are filtered out via `--grep-invert`, saving CI resources
-- `test.fixme()` semantically indicates "needs fixing" vs "not applicable"
 
 ## Refreshing Metrics
 
@@ -152,7 +147,6 @@ node scripts/distribute-tests.mjs 14 0
 
 | Problem | Solution |
 |---------|----------|
-| Specs not running | Check path matches `playwright test --list` output |
+| Specs not running | Check path matches janitor test patterns in `janitor.config.mjs` |
 | Unbalanced shards | Refresh metrics - durations may have drifted |
 | Worker not reused | Use string capabilities like `'proxy'`, not inline objects |
-| Skipped test still distributed | Use `@fixme` tag instead of `test.skip()` |

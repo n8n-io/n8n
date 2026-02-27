@@ -19,6 +19,7 @@ Commands:
   impact             Analyze impact of file changes (which tests to run)
   method-impact      Find tests that use a specific method (e.g., CanvasPage.addNode)
   tcr                Run TCR (Test && Commit || Revert) workflow
+  discover           Discover test specs and capabilities (for orchestration)
 
 Analysis Options:
   --config=<path>    Path to janitor.config.js (default: ./janitor.config.js)
@@ -48,6 +49,7 @@ For command-specific help:
   playwright-janitor impact --help
   playwright-janitor method-impact --help
   playwright-janitor tcr --help
+  playwright-janitor discover --help
 `);
 }
 
@@ -130,6 +132,35 @@ Workflow:
 
 Example:
   playwright-janitor baseline && git add .janitor-baseline.json
+`);
+}
+
+export function showDiscoverHelp(): void {
+	console.log(`
+Discover - Find test specs and their capabilities via AST analysis
+
+Statically discovers spec files and extracts capability tags.
+Designed to replace Playwright's --list for orchestration/shard distribution.
+
+Usage:
+  playwright-janitor discover              # Human-readable summary
+  playwright-janitor discover --json       # Structured JSON for scripts
+  playwright-janitor discover --verbose    # Include per-file details
+
+Output (--json):
+  { specs: [{ path, capabilities }], skipTags }
+
+Config:
+  skipTags: string[]       Tags that exclude specs (default: [])
+  capabilityPrefix: string Prefix for capability extraction (default: '@capability:')
+
+Skip detection:
+  - test.fixme() and test.skip() are always detected via AST
+  - Specs with ALL tests skipped are excluded from output
+  - skipTags provides additional tag-based filtering
+
+Example:
+  playwright-janitor discover --json | jq '.specs | length'
 `);
 }
 

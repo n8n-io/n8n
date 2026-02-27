@@ -29,7 +29,6 @@ const ROOT_DIR = path.resolve(__dirname, '../../../..');
 const METRICS_PATH = path.join(ROOT_DIR, '.github/test-metrics/playwright.json');
 const PLAYWRIGHT_DIR = path.resolve(__dirname, '..');
 const DEFAULT_DURATION = 60000; // 1 minute default (accounts for container startup)
-const E2E_PROJECT = 'multi-main:e2e';
 const CONTAINER_STARTUP_TIME = 22500; // 22.5 seconds average (heavier stacks with extra services take longer)
 const MAX_GROUP_DURATION = 5 * 60 * 1000; // 5 minutes - split groups larger than this
 
@@ -58,40 +57,20 @@ if (!shards || shards < 1) {
 }
 
 /**
- * Get spec files and their capabilities from Playwright test --list output
+ * Get spec files and their capabilities from janitor's AST-based discovery
  * @returns {{path: string, capabilities: string[]}[]} Array of spec info
  */
-function getSpecsFromPlaywright() {
-	const output = execSync(`pnpm playwright test --list --project="${E2E_PROJECT}" --grep-invert "@fixme"`, {
+function getSpecsFromJanitor() {
+	const output = execSync('pnpm janitor discover --json', {
 		cwd: PLAYWRIGHT_DIR,
 		encoding: 'utf-8',
 		stdio: ['pipe', 'pipe', 'pipe'],
 	});
-
-	// Parse output: "[multi-main:e2e] › tests/e2e/path/spec.ts:line:col › describe @capability:xxx › test"
-	/** @type {Map<string, Set<string>>} */
-	const specCapabilities = new Map();
-
-	for (const line of output.split('\n')) {
-		const specMatch = line.match(/› (tests\/e2e\/[^:]+\.spec\.ts):/);
-		if (specMatch) {
-			const specPath = specMatch[1];
-			if (!specCapabilities.has(specPath)) {
-				specCapabilities.set(specPath, new Set());
-			}
-
-			// Extract @capability:xxx tags from the test description
-			const capMatches = line.matchAll(/@capability:(\w+[-\w]*)/g);
-			for (const match of capMatches) {
-				specCapabilities.get(specPath)?.add(match[1]);
-			}
-		}
-	}
-
-	return [...specCapabilities.entries()].map(([path, caps]) => ({
-		path,
-		capabilities: [...caps],
-	}));
+	// pnpm prints lifecycle headers to stdout — extract JSON starting from first '{'
+	const jsonStart = output.indexOf('{');
+	const json = jsonStart >= 0 ? output.slice(jsonStart) : output;
+	// Filter to e2e specs only — infrastructure/performance tests have separate pipelines
+	return JSON.parse(json).specs.filter((s) => s.path.startsWith('tests/e2e/'));
 }
 
 /**
@@ -109,7 +88,7 @@ function getSpecsFromPlaywright() {
  */
 function distributeCapabilityAware(numShards) {
 	const metrics = JSON.parse(fs.readFileSync(METRICS_PATH, 'utf-8'));
-	const allSpecs = getSpecsFromPlaywright();
+	const allSpecs = getSpecsFromJanitor();
 
 	if (allSpecs.length === 0) {
 		console.error('Error: No spec files found. Check Playwright config and project name.');

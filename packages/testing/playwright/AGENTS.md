@@ -85,6 +85,9 @@ pnpm janitor --list
 # Show detailed rule info (for AI agents)
 pnpm janitor rules --json
 
+# Discover test specs (for orchestration)
+pnpm janitor discover --json
+
 # JSON output
 pnpm janitor --json
 ```

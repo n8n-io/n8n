@@ -12,7 +12,8 @@ export type Command =
 	| 'impact'
 	| 'method-impact'
 	| 'baseline'
-	| 'rules';
+	| 'rules'
+	| 'discover';
 
 export interface CliOptions {
 	command: Command;
@@ -53,6 +54,7 @@ const SUBCOMMANDS: Record<string, Command> = {
 	'method-impact': 'method-impact',
 	baseline: 'baseline',
 	rules: 'rules',
+	discover: 'discover',
 };
 
 interface FlagHandler {

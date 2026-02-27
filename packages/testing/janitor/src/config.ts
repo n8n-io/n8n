@@ -77,6 +77,22 @@ export interface JanitorConfig {
 		[K in RuleId]?: RuleSettings;
 	};
 
+	/**
+	 * Tags that exclude specs from discovery output.
+	 * Specs where all tests match a skip tag are filtered out.
+	 * Note: `test.fixme()` and `test.skip()` are detected via AST regardless of this setting.
+	 * @example ['@wip', '@local-only']
+	 */
+	skipTags: string[];
+
+	/**
+	 * Prefix used to extract capabilities from tags during discovery.
+	 * Tags matching this prefix have it stripped to produce capability names.
+	 * @example '@capability:' extracts 'proxy' from '@capability:proxy'
+	 * @example '@needs:' extracts 'kafka' from '@needs:kafka'
+	 */
+	capabilityPrefix: string;
+
 	/** TCR configuration */
 	tcr: {
 		/** Test command. File paths will be appended. @default 'npx playwright test' */
@@ -154,6 +170,10 @@ export const defaultConfig: Omit<JanitorConfig, 'rootDir'> = {
 		// Enable in projects that use a facade pattern (e.g., n8n.canvas instead of new CanvasPage())
 		'no-direct-page-instantiation': { enabled: false, severity: 'error' },
 	},
+
+	skipTags: [],
+
+	capabilityPrefix: '@capability:',
 
 	tcr: {
 		testCommand: 'npx playwright test',

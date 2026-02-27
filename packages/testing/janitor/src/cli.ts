@@ -23,6 +23,7 @@ import {
 	showMethodImpactHelp,
 	showRulesHelp,
 	showTcrHelp,
+	showDiscoverHelp,
 } from './cli/index.js';
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
 import {
@@ -58,6 +59,11 @@ import {
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer.js';
 import { createProject } from './core/project-loader.js';
+import {
+	TestDiscoveryAnalyzer,
+	formatDiscoveryJSON,
+	formatDiscoveryConsole,
+} from './core/test-discovery-analyzer.js';
 import { toJSON, toConsole, printFixResults } from './core/reporter.js';
 import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
 import { createDefaultRunner } from './index.js';
@@ -402,6 +408,19 @@ function runRules(options: CliOptions): void {
 	}
 }
 
+function runDiscover(options: CliOptions): void {
+	const config = getConfig();
+	const { project } = createProject(config.rootDir);
+	const analyzer = new TestDiscoveryAnalyzer(project);
+	const report = analyzer.discover();
+
+	if (options.json) {
+		console.log(formatDiscoveryJSON(report));
+	} else {
+		formatDiscoveryConsole(report, options.verbose);
+	}
+}
+
 async function main(): Promise<void> {
 	const options = parseArgs();
 
@@ -425,6 +444,9 @@ async function main(): Promise<void> {
 				break;
 			case 'rules':
 				showRulesHelp();
+				break;
+			case 'discover':
+				showDiscoverHelp();
 				break;
 			default:
 				showHelp();
@@ -465,6 +487,9 @@ async function main(): Promise<void> {
 			break;
 		case 'rules':
 			runRules(options);
+			break;
+		case 'discover':
+			runDiscover(options);
 			break;
 		default:
 			runAnalyze(options);
