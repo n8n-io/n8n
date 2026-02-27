@@ -22,7 +22,7 @@ import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import dateformat from 'dateformat';
 import { onMounted, ref, useCssModule } from 'vue';
-import { useRouter } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 
 const { showError, showMessage } = useToast();
 
@@ -54,12 +54,12 @@ const headers = ref<Array<TableHeader<Role>>>([
 		resize: false,
 	},
 	{
-		title: i18n.baseText('projectRoles.sourceControl.table.assignedTo'),
-		key: 'usedByUsers',
+		title: i18n.baseText('projectRoles.sourceControl.table.projectsAssigned'),
+		key: 'usedByProjects',
 		disableSort: true,
 		align: 'end',
-		value: (item: Role) => item.usedByUsers ?? 0,
-		width: 75,
+		value: (item: Role) => item.usedByProjects ?? 0,
+		width: 120,
 		resize: false,
 	},
 	{
@@ -83,11 +83,43 @@ const headers = ref<Array<TableHeader<Role>>>([
 ]);
 
 async function deleteRole(item: Role) {
-	i18n.baseText('projectRoles.action.delete.text', {
-		interpolate: {
-			roleName: item.displayName,
-		},
-	});
+	// When role is in use, show "Go to assignments" dialog instead of delete confirmation
+	if (item.usedByProjects && item.usedByProjects > 0) {
+		const inUseText =
+			[
+				i18n.baseText('projectRoles.action.delete.useWarning.before'),
+				i18n.baseText('projectRoles.action.delete.useWarning.linkText', {
+					adjustToNumber: item.usedByProjects,
+					interpolate: { count: item.usedByProjects },
+				}),
+			].join(' ') +
+			'. ' +
+			i18n.baseText('projectRoles.action.delete.useWarning.after');
+
+		const goToAssignments = await message.confirm(
+			inUseText,
+			i18n.baseText('projectRoles.action.delete.inUse.title', {
+				interpolate: {
+					roleName: item.displayName,
+				},
+			}),
+			{
+				type: 'warning',
+				confirmButtonText: i18n.baseText('projectRoles.action.delete.inUse.goToAssignments'),
+				cancelButtonText: i18n.baseText('projectRoles.action.cancel'),
+			},
+		);
+
+		if (goToAssignments === MODAL_CONFIRM) {
+			void router.push({
+				name: item.systemRole ? VIEWS.PROJECT_ROLE_VIEW : VIEWS.PROJECT_ROLE_SETTINGS,
+				params: { roleSlug: item.slug },
+				query: { tab: 'assignments' },
+			});
+		}
+		return;
+	}
+
 	const deleteConfirmed = await message.confirm(
 		i18n.baseText('projectRoles.action.delete.text', {
 			interpolate: {
@@ -178,7 +210,7 @@ function rowProps(_row: Role) {
 }
 
 function rowActions(
-	item: Role,
+	_item: Role,
 ): Array<{ label: string; value: keyof typeof actions; disabled?: boolean }> {
 	return [
 		{
@@ -188,7 +220,6 @@ function rowActions(
 		{
 			label: i18n.baseText('projectRoles.action.delete'),
 			value: 'delete',
-			disabled: item.usedByUsers !== 0,
 		},
 	];
 }
@@ -262,6 +293,21 @@ function addRole() {
 						<N8nIcon icon="user-pen" /> {{ i18n.baseText('projectRoles.literal.custom') }}</template
 					>
 				</template>
+				<template #[`item.usedByProjects`]="{ item }">
+					<RouterLink
+						v-if="(item.usedByProjects ?? 0) > 0"
+						:to="{
+							name: item.systemRole ? VIEWS.PROJECT_ROLE_VIEW : VIEWS.PROJECT_ROLE_SETTINGS,
+							params: { roleSlug: item.slug },
+							query: { tab: 'assignments' },
+						}"
+						:class="$style.projectCountLink"
+						@click.stop
+					>
+						{{ item.usedByProjects }}
+					</RouterLink>
+					<template v-else>0</template>
+				</template>
 				<template #[`item.actions`]="{ item }">
 					<N8nActionToggle
 						v-if="!item.systemRole"
@@ -293,5 +339,15 @@ function addRole() {
 
 .tallRow {
 	height: 64px;
+}
+
+.projectCountLink {
+	color: var(--color--text);
+	text-decoration: underline;
+	font-weight: var(--font-weight--bold);
+}
+
+.projectCountLink:hover {
+	color: var(--color--primary);
 }
 </style>
