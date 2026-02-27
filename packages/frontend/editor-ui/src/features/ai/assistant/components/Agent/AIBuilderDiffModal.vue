@@ -5,7 +5,6 @@ import { AI_BUILDER_DIFF_MODAL_KEY } from '@/app/constants';
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
 import type { IWorkflowDb } from '@/Interface';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { N8nIconButton } from '@n8n/design-system';
 import { onMounted, useCssModule } from 'vue';
 import { useBuilderStore } from '../../builder.store';
 import { useUIStore } from '@/app/stores/ui.store';
