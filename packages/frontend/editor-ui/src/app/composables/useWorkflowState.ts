@@ -177,10 +177,8 @@ export function useWorkflowState() {
 
 	function makeNewWorkflowShareable() {
 		const { currentProject, personalProject } = useProjectsStore();
-		const homeProject = currentProject ?? personalProject ?? {};
 		const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
 
-		ws.workflow.homeProject = homeProject as ProjectSharingData;
 		ws.workflow.scopes = scopes;
 	}
 

@@ -1033,6 +1033,7 @@ export function useWorkflowHelpers() {
 			activeVersion: workflowData.activeVersion ?? null,
 		});
 		workflowDocumentStore.setPinData(workflowData.pinData ?? {});
+		workflowDocumentStore.setHomeProject(workflowData.homeProject ?? null);
 		if (workflowData.checksum) {
 			workflowDocumentStore.setChecksum(workflowData.checksum);
 		}
