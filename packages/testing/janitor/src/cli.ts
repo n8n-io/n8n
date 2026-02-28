@@ -59,19 +59,11 @@ import {
 	formatMethodUsageIndexConsole,
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer.js';
-import {
-	formatOrchestrationJSON,
-	formatOrchestrationConsole,
-} from './core/orchestrator-formatter.js';
 import { orchestrate } from './core/orchestrator.js';
 import { createProject } from './core/project-loader.js';
 import { toJSON, toConsole, printFixResults } from './core/reporter.js';
 import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
-import {
-	TestDiscoveryAnalyzer,
-	formatDiscoveryJSON,
-	formatDiscoveryConsole,
-} from './core/test-discovery-analyzer.js';
+import { TestDiscoveryAnalyzer } from './core/test-discovery-analyzer.js';
 import { createDefaultRunner } from './index.js';
 import type { RunOptions } from './types.js';
 
@@ -414,17 +406,13 @@ function runRules(options: CliOptions): void {
 	}
 }
 
-function runDiscover(options: CliOptions): void {
+function runDiscover(): void {
 	const config = getConfig();
 	const { project } = createProject(config.rootDir);
 	const analyzer = new TestDiscoveryAnalyzer(project);
 	const report = analyzer.discover();
 
-	if (options.json) {
-		console.log(formatDiscoveryJSON(report));
-	} else {
-		formatDiscoveryConsole(report, options.verbose);
-	}
+	console.log(JSON.stringify(report, null, 2));
 }
 
 async function runOrchestrate(options: CliOptions): Promise<void> {
@@ -511,11 +499,7 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 		return;
 	}
 
-	if (options.json) {
-		console.log(formatOrchestrationJSON(result));
-	} else {
-		formatOrchestrationConsole(result, options.verbose);
-	}
+	console.log(JSON.stringify(result, null, 2));
 }
 
 async function main(): Promise<void> {
@@ -589,7 +573,7 @@ async function main(): Promise<void> {
 			runRules(options);
 			break;
 		case 'discover':
-			runDiscover(options);
+			runDiscover();
 			break;
 		case 'orchestrate':
 			await runOrchestrate(options);

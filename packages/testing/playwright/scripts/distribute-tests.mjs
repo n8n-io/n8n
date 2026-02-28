@@ -48,7 +48,7 @@ function getOrchestration(numShards, options = {}) {
 	const impactFlag = options.impact ? ' --impact' : '';
 	const baseFlag = options.base ? ` --base=${options.base}` : '';
 	const output = execSync(
-		`node ${JANITOR_CLI} orchestrate --shards=${numShards}${impactFlag}${baseFlag} --json`,
+		`node ${JANITOR_CLI} orchestrate --shards=${numShards}${impactFlag}${baseFlag}`,
 		{ cwd: PLAYWRIGHT_DIR, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
 	);
 	return JSON.parse(output);

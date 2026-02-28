@@ -142,14 +142,12 @@ export function showDiscoverHelp(): void {
 Discover - Find test specs and their capabilities via AST analysis
 
 Statically discovers spec files and extracts capability tags.
-Designed to replace Playwright's --list for orchestration/shard distribution.
+Outputs JSON to stdout. Pipe to jq for human-readable output.
 
 Usage:
-  playwright-janitor discover              # Human-readable summary
-  playwright-janitor discover --json       # Structured JSON for scripts
-  playwright-janitor discover --verbose    # Include per-file details
+  playwright-janitor discover
 
-Output (--json):
+Output:
   { specs: [{ path, capabilities }], skipTags }
 
 Config:
@@ -162,7 +160,7 @@ Skip detection:
   - skipTags provides additional tag-based filtering
 
 Example:
-  playwright-janitor discover --json | jq '.specs | length'
+  playwright-janitor discover | jq '.specs | length'
 `);
 }
 
@@ -171,11 +169,10 @@ export function showOrchestrateHelp(): void {
 Orchestrate - Distribute specs across shards using capability-aware bin-packing
 
 Groups tests by capability to minimize fixture overhead, then uses greedy
-bin-packing to balance test time across shards.
+bin-packing to balance test time across shards. Outputs JSON to stdout.
 
 Usage:
-  playwright-janitor orchestrate --shards=<N> --json     # Full result as JSON
-  playwright-janitor orchestrate --shards=<N>            # Human-readable summary
+  playwright-janitor orchestrate --shards=<N>                    # Full result as JSON
   playwright-janitor orchestrate --shards=<N> --shard-index=<I>  # Specs for one shard
 
 Options:
@@ -183,21 +180,19 @@ Options:
   --shard-index=<I>    Output specs for a single shard (0-indexed)
   --impact             Only include specs affected by changed files (git diff)
   --file=<path>        With --impact: specify changed files explicitly
-  --json               Structured JSON output
-  --verbose            Include per-shard spec lists
 
 Config:
   orchestration.metricsPath      Path to metrics JSON (relative to rootDir)
   orchestration.defaultDuration  Duration for specs without metrics (default: 60s)
   orchestration.maxGroupDuration Max group size before splitting (default: 5min)
 
-Output (--json):
+Output:
   { shards: [{ shard, specs, testTime, capabilities, fixtureCount }], totalTestTime }
 
 Examples:
-  playwright-janitor orchestrate --shards=14 --json | jq '.shards[0].specs'
-  playwright-janitor orchestrate --shards=8 --impact --json     # Only affected specs
-  playwright-janitor orchestrate --shards=4 --impact --file=pages/CanvasPage.ts --json
+  playwright-janitor orchestrate --shards=14 | jq '.shards[0].specs'
+  playwright-janitor orchestrate --shards=8 --impact
+  playwright-janitor orchestrate --shards=4 --impact --file=pages/CanvasPage.ts
 `);
 }
 
