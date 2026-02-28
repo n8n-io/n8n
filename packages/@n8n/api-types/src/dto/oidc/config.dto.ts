@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 export class OidcConfigDto extends Z.class({
 	clientId: z.string().min(1),

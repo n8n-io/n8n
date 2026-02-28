@@ -8,9 +8,12 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
+import { useCredentialsAppSelectionStore } from '@/experiments/credentialsAppSelection/stores/credentialsAppSelection.store';
+import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import RecommendedTemplatesSection from '@/features/workflows/templates/recommendations/components/RecommendedTemplatesSection.vue';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 import EmptyStateBuilderPrompt from '@/experiments/emptyStateBuilderPrompt/components/EmptyStateBuilderPrompt.vue';
+import AppSelectionPage from '@/experiments/credentialsAppSelection/components/AppSelectionPage.vue';
 
 const emit = defineEmits<{
 	'click:add': [];
@@ -22,8 +25,11 @@ const bannersStore = useBannersStore();
 const projectsStore = useProjectsStore();
 const projectPages = useProjectPages();
 const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
+const credentialsAppSelectionStore = useCredentialsAppSelectionStore();
+const readyToRunStore = useReadyToRunStore();
 
 const {
+	showAppSelection,
 	showBuilderPrompt,
 	showRecommendedTemplatesInline,
 	builderHeading,
@@ -34,6 +40,23 @@ const {
 
 const addWorkflow = () => {
 	emit('click:add');
+};
+
+// Check if user can claim credits for ready-to-run
+const showReadyToRunCard = computed(() => {
+	return readyToRunStore.userCanClaimOpenAiCredits && canCreateWorkflow.value;
+});
+
+const handleReadyToRunClick = async () => {
+	try {
+		await readyToRunStore.claimCreditsAndOpenWorkflow(
+			'card',
+			builderParentFolderId.value,
+			builderProjectId.value,
+		);
+	} catch {
+		// Error already shown by store
+	}
 };
 
 const containerStyle = computed(() => ({
@@ -55,6 +78,10 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 		builderParentFolderId.value,
 	);
 };
+
+const handleAppSelectionContinue = () => {
+	credentialsAppSelectionStore.dismiss();
+};
 </script>
 
 <template>
@@ -62,15 +89,21 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 		:class="[
 			$style.emptyStateLayout,
 			{
-				[$style.noTemplatesContent]: !showRecommendedTemplatesInline && !showBuilderPrompt,
-				[$style.builderLayout]: showBuilderPrompt,
+				[$style.noTemplatesContent]:
+					!showRecommendedTemplatesInline && !showBuilderPrompt && !showAppSelection,
+				[$style.builderLayout]: showBuilderPrompt || showAppSelection,
 			},
 		]"
 		:style="containerStyle"
 	>
 		<div :class="[$style.content, { [$style.builderContent]: showBuilderPrompt }]">
+			<!-- State 0: App Selection -->
+			<template v-if="showAppSelection">
+				<AppSelectionPage @continue="handleAppSelectionContinue" />
+			</template>
+
 			<!-- State 1: AI Builder -->
-			<template v-if="showBuilderPrompt">
+			<template v-else-if="showBuilderPrompt">
 				<div :class="$style.welcomeBuilder">
 					<N8nHeading tag="h1" size="xlarge">
 						{{ builderHeading }}
@@ -103,7 +136,7 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 					<div :class="$style.actionButtons">
 						<ReadyToRunButton type="secondary" size="large" />
 						<N8nButton
-							type="secondary"
+							variant="subtle"
 							icon="file"
 							size="large"
 							data-test-id="start-from-scratch-button"
@@ -115,7 +148,7 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 				</div>
 			</template>
 
-			<!-- State 3: Fallback -->
+			<!-- State 3: Fallback (Baseline) -->
 			<template v-else>
 				<N8nHeading tag="h1" size="2xlarge" bold :class="$style.welcomeTitle">
 					{{ emptyStateHeading }}
@@ -124,25 +157,53 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 					<N8nText tag="p" size="large" color="text-base">
 						{{ emptyStateDescription }}
 					</N8nText>
-					<N8nCard
+
+					<!-- Two cards or single card depending on ready-to-run availability -->
+					<div
 						v-if="canCreateWorkflow"
-						:class="$style.actionCard"
-						hoverable
-						data-test-id="new-workflow-card"
-						@click="addWorkflow"
+						:class="[$style.actionCardsContainer, { [$style.singleCard]: !showReadyToRunCard }]"
 					>
-						<div :class="$style.cardContent">
-							<N8nIcon
-								:class="$style.cardIcon"
-								icon="file"
-								color="foreground-dark"
-								:stroke-width="1.5"
-							/>
-							<N8nText size="large" class="mt-xs">
-								{{ i18n.baseText('workflows.empty.startFromScratch') }}
-							</N8nText>
-						</div>
-					</N8nCard>
+						<!-- Card 1: Try AI workflow (conditional) -->
+						<N8nCard
+							v-if="showReadyToRunCard"
+							:class="$style.actionCard"
+							hoverable
+							data-test-id="ready-to-run-card"
+							@click="handleReadyToRunClick"
+						>
+							<div :class="$style.cardContent">
+								<N8nIcon
+									:class="$style.cardIcon"
+									icon="zap"
+									color="foreground-dark"
+									:stroke-width="1.5"
+								/>
+								<N8nText size="large" class="mt-xs">
+									{{ i18n.baseText('workflows.empty.tryAiWorkflow') }}
+								</N8nText>
+							</div>
+						</N8nCard>
+
+						<!-- Card 2: Start from scratch (always shown) -->
+						<N8nCard
+							:class="$style.actionCard"
+							hoverable
+							data-test-id="new-workflow-card"
+							@click="addWorkflow"
+						>
+							<div :class="$style.cardContent">
+								<N8nIcon
+									:class="$style.cardIcon"
+									icon="file"
+									color="foreground-dark"
+									:stroke-width="1.5"
+								/>
+								<N8nText size="large" class="mt-xs">
+									{{ i18n.baseText('workflows.empty.startFromScratch') }}
+								</N8nText>
+							</div>
+						</N8nCard>
+					</div>
 				</div>
 			</template>
 		</div>
@@ -206,6 +267,24 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 	text-align: center;
 }
 
+.actionCardsContainer {
+	display: grid;
+	grid-template-columns: repeat(2, 192px);
+	gap: var(--spacing--lg);
+	margin-top: var(--spacing--2xl);
+	justify-content: center;
+
+	&.singleCard {
+		grid-template-columns: 192px;
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		grid-template-columns: 1fr;
+		gap: var(--spacing--md);
+		margin-top: var(--spacing--lg);
+	}
+}
+
 .actionCard {
 	width: 192px;
 	height: 230px;
@@ -213,7 +292,6 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	margin-top: var(--spacing--2xl);
 	transition:
 		transform 0.2s ease,
 		box-shadow 0.2s ease;

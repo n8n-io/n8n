@@ -4,6 +4,7 @@ import {
 	runSingleMigration,
 	type TestMigrationContext,
 } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
@@ -40,6 +41,11 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 
 		dataSource = Container.get(DataSource);
 
+		// Clear database to start with clean slate
+		const context = createTestMigrationContext(dataSource);
+		await context.queryRunner.clearDatabase();
+		await context.queryRunner.release();
+
 		await initDbUpToMigration(MIGRATION_NAME);
 	});
 
@@ -53,7 +59,9 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 		workflowData: WorkflowData,
 	): Promise<void> {
 		const tableName = context.escape.tableName('workflow_entity');
+		const historyTableName = context.escape.tableName('workflow_history');
 		const idColumn = context.escape.columnName('id');
+		const workflowIdColumn = context.escape.columnName('workflowId');
 		const nameColumn = context.escape.columnName('name');
 		const nodesColumn = context.escape.columnName('nodes');
 		const connectionsColumn = context.escape.columnName('connections');
@@ -62,18 +70,34 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 		const createdAtColumn = context.escape.columnName('createdAt');
 		const updatedAtColumn = context.escape.columnName('updatedAt');
 
-		await context.queryRunner.query(
-			`INSERT INTO ${tableName} (${idColumn}, ${nameColumn}, ${nodesColumn}, ${connectionsColumn}, ${activeColumn}, ${versionIdColumn}, ${createdAtColumn}, ${updatedAtColumn}) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			[
-				workflowData.id,
-				workflowData.name,
-				JSON.stringify(workflowData.nodes),
-				JSON.stringify(workflowData.connections),
-				workflowData.active,
-				workflowData.versionId,
-				workflowData.createdAt,
-				workflowData.updatedAt,
-			],
+		// Insert workflow_entity record first (workflow_history references it)
+		await context.runQuery(
+			`INSERT INTO ${tableName} (${idColumn}, ${nameColumn}, ${nodesColumn}, ${connectionsColumn}, ${activeColumn}, ${versionIdColumn}, ${createdAtColumn}, ${updatedAtColumn}) VALUES (:id, :name, :nodes, :connections, :active, :versionId, :createdAt, :updatedAt)`,
+			{
+				id: workflowData.id,
+				name: workflowData.name,
+				nodes: JSON.stringify(workflowData.nodes),
+				connections: JSON.stringify(workflowData.connections),
+				active: workflowData.active,
+				versionId: workflowData.versionId,
+				createdAt: workflowData.createdAt,
+				updatedAt: workflowData.updatedAt,
+			},
+		);
+
+		// Insert workflow_history record (required for activeVersionId foreign key)
+		const authorsColumn = context.escape.columnName('authors');
+		await context.runQuery(
+			`INSERT INTO ${historyTableName} (${versionIdColumn}, ${workflowIdColumn}, ${nodesColumn}, ${connectionsColumn}, ${authorsColumn}, ${createdAtColumn}, ${updatedAtColumn}) VALUES (:versionId, :workflowId, :nodes, :connections, :authors, :createdAt, :updatedAt)`,
+			{
+				versionId: workflowData.versionId,
+				workflowId: workflowData.id,
+				nodes: JSON.stringify(workflowData.nodes),
+				connections: JSON.stringify(workflowData.connections),
+				authors: 'test-user',
+				createdAt: workflowData.createdAt,
+				updatedAt: workflowData.updatedAt,
+			},
 		);
 	}
 
@@ -89,12 +113,24 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 		const versionIdColumn = context.escape.columnName('versionId');
 		const activeVersionIdColumn = context.escape.columnName('activeVersionId');
 
-		const [workflow] = await context.queryRunner.query(
-			`SELECT ${idColumn} as id, ${nameColumn} as name, ${activeColumn} as active, ${nodesColumn} as nodes, ${versionIdColumn} as versionId, ${activeVersionIdColumn} as activeVersionId FROM ${tableName} WHERE ${idColumn} = ?`,
-			[id],
+		// For PostgreSQL, cast JSON column to text to get string representation
+		const nodesSelect = context.isPostgres ? `${nodesColumn}::text` : nodesColumn;
+
+		const workflows = await context.runQuery<
+			Array<{
+				id: string;
+				name: string;
+				active: boolean;
+				nodes: string;
+				versionId: string;
+				activeVersionId: string | null;
+			}>
+		>(
+			`SELECT ${idColumn}, ${nameColumn}, ${activeColumn}, ${nodesSelect}, ${versionIdColumn}, ${activeVersionIdColumn} FROM ${tableName} WHERE ${idColumn} = :id`,
+			{ id },
 		);
 
-		return workflow;
+		return workflows[0] as WorkflowRow | undefined;
 	}
 
 	describe('Up Migration', () => {
@@ -396,30 +432,35 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 			});
 
 			// Insert workflow with invalid JSON containing unescaped control characters
-			const tableName = context.escape.tableName('workflow_entity');
-			const idColumn = context.escape.columnName('id');
-			const nameColumn = context.escape.columnName('name');
-			const nodesColumn = context.escape.columnName('nodes');
-			const connectionsColumn = context.escape.columnName('connections');
-			const activeColumn = context.escape.columnName('active');
-			const versionIdColumn = context.escape.columnName('versionId');
-			const createdAtColumn = context.escape.columnName('createdAt');
-			const updatedAtColumn = context.escape.columnName('updatedAt');
+			// Note: PostgreSQL enforces strict JSON validation and won't allow invalid JSON,
+			// so we skip this test data for PostgreSQL
+			if (!context.isPostgres) {
+				const tableName = context.escape.tableName('workflow_entity');
+				const idColumn = context.escape.columnName('id');
+				const nameColumn = context.escape.columnName('name');
+				const nodesColumn = context.escape.columnName('nodes');
+				const connectionsColumn = context.escape.columnName('connections');
+				const activeColumn = context.escape.columnName('active');
+				const versionIdColumn = context.escape.columnName('versionId');
+				const createdAtColumn = context.escape.columnName('createdAt');
+				const updatedAtColumn = context.escape.columnName('updatedAt');
 
-			await context.queryRunner.query(
-				`INSERT INTO ${tableName} (${idColumn}, ${nameColumn}, ${nodesColumn}, ${connectionsColumn}, ${activeColumn}, ${versionIdColumn}, ${createdAtColumn}, ${updatedAtColumn}) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-				[
-					workflowIds.invalidJson,
-					'Test Invalid JSON with Control Characters',
-					// Invalid JSON with unescaped newline (simulating the production issue)
-					'[{"id":"test","type":"n8n-nodes-base.executeWorkflowTrigger","parameters":{"inputSource":"passthrough","description":"MEASUREMENT DETAILS: \\"N/A\\"\\nMEASUREMENT TYPE: \\"N/A\\"\n"},"typeVersion":1,"position":[0,0]}]',
-					'{}',
-					false,
-					randomUUID(),
-					new Date(),
-					new Date(),
-				],
-			);
+				await context.runQuery(
+					`INSERT INTO ${tableName} (${idColumn}, ${nameColumn}, ${nodesColumn}, ${connectionsColumn}, ${activeColumn}, ${versionIdColumn}, ${createdAtColumn}, ${updatedAtColumn}) VALUES (:id, :name, :nodes, :connections, :active, :versionId, :createdAt, :updatedAt)`,
+					{
+						id: workflowIds.invalidJson,
+						name: 'Test Invalid JSON with Control Characters',
+						// Invalid JSON with unescaped newline (simulating the production issue)
+						nodes:
+							'[{"id":"test","type":"n8n-nodes-base.executeWorkflowTrigger","parameters":{"inputSource":"passthrough","description":"MEASUREMENT DETAILS: \\"N/A\\"\\nMEASUREMENT TYPE: \\"N/A\\"\n"},"typeVersion":1,"position":[0,0]}]',
+						connections: '{}',
+						active: false,
+						versionId: randomUUID(),
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					},
+				);
+			}
 
 			await runSingleMigration(MIGRATION_NAME);
 			await context.queryRunner.release();
@@ -554,18 +595,25 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 			await context.queryRunner.release();
 		});
 
-		it('should skip workflows with invalid JSON containing unescaped control characters', async () => {
-			const context = createTestMigrationContext(dataSource);
-			const workflow = await getWorkflowById(context, workflowIds.invalidJson);
+		// PostgreSQL enforces strict JSON validation and won't allow invalid JSON to be inserted,
+		// so we skip this test for PostgreSQL
+		// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+		const testFn = Container.get(GlobalConfig).database.type === 'postgresdb' ? it.skip : it;
+		testFn(
+			'should skip workflows with invalid JSON containing unescaped control characters',
+			async () => {
+				const context = createTestMigrationContext(dataSource);
+				const workflow = await getWorkflowById(context, workflowIds.invalidJson);
 
-			// Workflow should remain inactive and unchanged
-			expect(workflow?.active).toBeFalsy();
-			expect(workflow?.activeVersionId).toBeNull();
+				// Workflow should remain inactive and unchanged
+				expect(workflow?.active).toBeFalsy();
+				expect(workflow?.activeVersionId).toBeNull();
 
-			// Verify the invalid JSON is still in the database (unchanged)
-			expect(workflow?.nodes).toContain('MEASUREMENT DETAILS');
+				// Verify the invalid JSON is still in the database (unchanged)
+				expect(workflow?.nodes).toContain('MEASUREMENT DETAILS');
 
-			await context.queryRunner.release();
-		});
+				await context.queryRunner.release();
+			},
+		);
 	});
 });

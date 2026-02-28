@@ -32,7 +32,7 @@ export class SecretsProviderConnection extends WithTimestamps {
 	 * If empty, the provider is global and accessible to all projects.
 	 * If populated, the provider is project-scoped and only accessible to the specified projects.
 	 */
-	@OneToMany('ProjectSecretsProviderAccess', 'secretsProviderConnection')
+	@OneToMany('ProjectSecretsProviderAccess', 'secretsProviderConnection', { eager: true })
 	projectAccess: ProjectSecretsProviderAccess[];
 
 	/**
@@ -42,6 +42,7 @@ export class SecretsProviderConnection extends WithTimestamps {
 	encryptedSettings: string;
 
 	/**
+	 * @deprecated This field is no longer used.
 	 * Whether the secrets provider connection is enabled.
 	 * When enabled, a connection attempt will be made to the external secrets provider.
 	 * If the connection is successful, secrets will be available to be used in credentials.

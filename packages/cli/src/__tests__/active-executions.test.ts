@@ -22,6 +22,7 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
 jest.mock('n8n-workflow', () => ({
 	...jest.requireActual('n8n-workflow'),
@@ -32,6 +33,7 @@ const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
 
 const executionRepository = mock<ExecutionRepository>();
+const executionPersistence = mock<ExecutionPersistence>();
 
 const concurrencyControl = mockInstance(ConcurrencyControlService, {
 	// @ts-expect-error Private property
@@ -76,12 +78,13 @@ describe('ActiveExecutions', () => {
 		activeExecutions = new ActiveExecutions(
 			mock(),
 			executionRepository,
+			executionPersistence,
 			concurrencyControl,
 			mock(),
 			executionsConfig,
 		);
 
-		executionRepository.createNewExecution.mockResolvedValue(FAKE_EXECUTION_ID);
+		executionPersistence.create.mockResolvedValue(FAKE_EXECUTION_ID);
 		executionRepository.updateExistingExecution.mockResolvedValue(true);
 		executionRepository.setRunning.mockResolvedValue(Promise.resolve(new Date()));
 
@@ -103,7 +106,7 @@ describe('ActiveExecutions', () => {
 
 		expect(executionId).toBe(FAKE_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
-		expect(executionRepository.createNewExecution).toHaveBeenCalledTimes(1);
+		expect(executionPersistence.create).toHaveBeenCalledTimes(1);
 		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(0);
 	});
 
@@ -112,7 +115,7 @@ describe('ActiveExecutions', () => {
 
 		expect(executionId).toBe(FAKE_SECOND_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
-		expect(executionRepository.createNewExecution).toHaveBeenCalledTimes(0);
+		expect(executionPersistence.create).toHaveBeenCalledTimes(0);
 		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(1);
 	});
 
@@ -259,6 +262,7 @@ describe('ActiveExecutions', () => {
 			activeExecutions = new ActiveExecutions(
 				logger,
 				executionRepository,
+				executionPersistence,
 				concurrencyControl,
 				mock(),
 				executionsConfig,
@@ -361,7 +365,7 @@ describe('ActiveExecutions', () => {
 
 		beforeEach(async () => {
 			let i = 1000;
-			executionRepository.createNewExecution.mockImplementation(async () => `${i++}`);
+			executionPersistence.create.mockImplementation(async () => `${i++}`);
 
 			(sleep as jest.Mock).mockImplementation(() => {
 				// @ts-expect-error private property

@@ -14,7 +14,7 @@ import ProjectCardBadge from '@/features/collaboration/projects/components/Proje
 import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { CredentialsResource } from '@/Interface';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 import {
 	N8nActionToggle,
@@ -51,11 +51,7 @@ const message = useMessage();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
-const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
-
-const isDynamicCredentialsEnabled = computed(() =>
-	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
-);
+const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() =>

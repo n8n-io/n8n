@@ -1,5 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import {
+	filterAuthorsOption,
+	filterBranchesOption,
+	filterGroupsOption,
+	filterTagsOption,
+} from './common.descriptions';
+
 export const testResultOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -134,45 +141,9 @@ export const testResultFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Branches',
-				name: 'branch',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'branch',
-					},
-				},
-				description: 'Filter by git branch names (comma-separated for multiple)',
-			},
-			{
-				displayName: 'Git Authors',
-				name: 'gitAuthor',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'git_author',
-					},
-				},
-				description: 'Filter by git author names (comma-separated for multiple)',
-			},
-			{
-				displayName: 'Groups',
-				name: 'group',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'group',
-					},
-				},
-				description: 'Filter by run groups (comma-separated for multiple)',
-			},
+			filterBranchesOption,
+			filterAuthorsOption,
+			filterGroupsOption,
 			{
 				displayName: 'Status',
 				name: 'status',
@@ -193,17 +164,8 @@ export const testResultFields: INodeProperties[] = [
 				description: 'Filter by test status',
 			},
 			{
-				displayName: 'Tags',
-				name: 'tag',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'tag',
-					},
-				},
-				description: 'Filter by run tags (comma-separated for multiple)',
+				...filterTagsOption,
+				description: 'Filter by run tags (multiple values supported)',
 			},
 		],
 	},

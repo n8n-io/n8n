@@ -9,7 +9,7 @@ export class ExternalSecretsModule implements ModuleInterface {
 
 		await import('./secrets-providers-types.controller.ee');
 		await import('./secrets-providers-connections.controller.ee');
-		await import('./secrets-providers-autocomplete.controller.ee');
+		await import('./secrets-providers-completions.controller.ee');
 		await import('./secrets-providers-project.controller.ee');
 
 		const { ExternalSecretsManager } = await import('./external-secrets-manager.ee');
@@ -20,6 +20,16 @@ export class ExternalSecretsModule implements ModuleInterface {
 
 		await externalSecretsManager.init();
 		externalSecretsProxy.setManager(externalSecretsManager);
+	}
+
+	async settings() {
+		const { ExternalSecretsConfig } = await import('./external-secrets.config');
+		const config = Container.get(ExternalSecretsConfig);
+
+		return {
+			multipleConnections: config.externalSecretsMultipleConnections,
+			forProjects: config.externalSecretsForProjects,
+		};
 	}
 
 	@OnShutdown()

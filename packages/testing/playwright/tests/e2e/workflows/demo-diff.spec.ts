@@ -105,7 +105,11 @@ const newWorkflow = {
 	},
 };
 
-test.describe('Workflow Diff Demo', () => {
+test.describe('Workflow Diff Demo', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ setupRequirements }) => {
 		await setupRequirements(requirements);
 	});
@@ -138,7 +142,7 @@ test.describe('Workflow Diff Demo', () => {
 		);
 
 		// Wait for the diff view to appear - the waiting message should disappear
-		await expect(n8n.page.getByText('Waiting for workflow data...')).not.toBeVisible();
+		await expect(n8n.page.getByText('Waiting for workflow data...')).toBeHidden();
 
 		// The workflow name should appear in the header
 		await expect(
@@ -170,7 +174,7 @@ test.describe('Workflow Diff Demo', () => {
 		);
 
 		// Wait for the diff view to appear
-		await expect(n8n.page.getByText('Waiting for workflow data...')).not.toBeVisible();
+		await expect(n8n.page.getByText('Waiting for workflow data...')).toBeHidden();
 
 		// The workflow name from newWorkflow should appear
 		await expect(n8n.page.getByRole('heading', { name: 'Test Workflow - After' })).toBeVisible();
@@ -197,7 +201,7 @@ test.describe('Workflow Diff Demo', () => {
 		);
 
 		// Wait for the diff view to appear
-		await expect(n8n.page.getByText('Waiting for workflow data...')).not.toBeVisible();
+		await expect(n8n.page.getByText('Waiting for workflow data...')).toBeHidden();
 
 		// The workflow name from oldWorkflow should appear
 		await expect(n8n.page.getByRole('heading', { name: 'Test Workflow - Before' })).toBeVisible();
@@ -226,7 +230,7 @@ test.describe('Workflow Diff Demo', () => {
 		);
 
 		// Wait for the diff view to appear
-		await expect(n8n.page.getByText('Waiting for workflow data...')).not.toBeVisible();
+		await expect(n8n.page.getByText('Waiting for workflow data...')).toBeHidden();
 
 		// The diff view should render (tidyUp affects node positioning but view should still render)
 		await expect(

@@ -54,6 +54,7 @@ import {
 	isCredentialsModalOpen,
 	isPseudoParam,
 	isSplitInBatchesAbsent,
+	isValidJavascriptIdentifier,
 	longestCommonPrefix,
 	prefixMatch,
 	resolveAutocompleteExpression,
@@ -64,6 +65,7 @@ import {
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { isPairedItemIntermediateNodesError } from '@/app/utils/expressions';
 import type { TargetNodeParameterContext } from '@/Interface';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -1244,7 +1246,6 @@ export const secretOptions = (base: string) => {
 			return [];
 		}
 		return Object.entries(resolved).map(([secret, value]) => {
-			const needsBracketAccess = /\//.test(secret);
 			const option = createCompletionOption({
 				name: secret,
 				doc: {
@@ -1256,7 +1257,7 @@ export const secretOptions = (base: string) => {
 			});
 
 			// Override the apply handler for keys that need bracket access
-			if (needsBracketAccess) {
+			if (!isValidJavascriptIdentifier(secret)) {
 				option.apply = applyBracketAccessCompletion;
 			}
 
@@ -1269,18 +1270,56 @@ export const secretOptions = (base: string) => {
 
 export const secretProvidersOptions = () => {
 	const externalSecretsStore = useExternalSecretsStore();
+	const settingsStore = useSettingsStore();
 
-	return Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
-		createCompletionOption({
+	const externalSecretProviderToOption = (provider: string, section?: 'global' | 'project') => {
+		const doc: DocMetadata = {
 			name: provider,
-			doc: {
-				name: provider,
-				returnType: 'Object',
-				description: i18n.baseText('codeNodeEditor.completer.$secrets.provider'),
-				docURL: i18n.baseText('settings.externalSecrets.docs'),
-			},
-		}),
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.$secrets.provider'),
+			docURL: i18n.baseText('settings.externalSecrets.docs'),
+		};
+		if (section) {
+			doc.section = section;
+			doc.description = i18n.baseText(
+				`codeNodeEditor.completer.$secrets.group.${section}.description`,
+			);
+		}
+
+		return createCompletionOption({
+			name: provider,
+			doc,
+		});
+	};
+
+	const projectSecretsEnabled =
+		settingsStore.moduleSettings['external-secrets']?.forProjects ?? false;
+	if (!projectSecretsEnabled) {
+		return Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
+			externalSecretProviderToOption(provider),
+		);
+	}
+
+	const globalSecretProviders = Object.keys(externalSecretsStore.globalSecretsAsObject).map(
+		(provider) => externalSecretProviderToOption(provider, 'global'),
 	);
+	const projectSecretProviders = Object.keys(externalSecretsStore.projectSecretsAsObject).map(
+		(provider) => externalSecretProviderToOption(provider, 'project'),
+	);
+	const secretSections: Record<string, CompletionSection> = {
+		project: {
+			name: i18n.baseText('codeNodeEditor.completer.$secrets.group.project'),
+			rank: 1,
+		},
+		global: {
+			name: i18n.baseText('codeNodeEditor.completer.$secrets.group.global'),
+			rank: 2,
+		},
+	};
+	return applySections({
+		options: projectSecretProviders.concat(globalSecretProviders),
+		sections: secretSections,
+	});
 };
 
 /**

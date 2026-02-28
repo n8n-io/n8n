@@ -7,6 +7,7 @@ import {
 	type INodeParameters,
 	type INodeProperties,
 	type INodeTypeDescription,
+	type NodeParameterValueType,
 } from '../src/interfaces';
 import {
 	getNodeParameters,
@@ -24,6 +25,7 @@ import {
 	getNodeWebhookPath,
 	isToolType,
 	isHitlToolType,
+	getNodeOutputs,
 } from '../src/node-helpers';
 import type { Workflow } from '../src/workflow';
 import { mock } from 'vitest-mock-extended';
@@ -4422,6 +4424,72 @@ describe('NodeHelpers', () => {
 		}
 	});
 
+	describe('getNodeOutputs', () => {
+		const workflowMock = {
+			expression: {
+				getSimpleParameterValue: vi.fn().mockReturnValue([NodeConnectionTypes.Main]),
+			},
+		} as unknown as Workflow;
+
+		test('Should return empty array when nodeTypeData is null', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = getNodeOutputs(workflowMock, node, null as unknown as INodeTypeDescription);
+			expect(result).toEqual([]);
+		});
+
+		test('Should return empty array when nodeTypeData is undefined', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = getNodeOutputs(
+				workflowMock,
+				node,
+				undefined as unknown as INodeTypeDescription,
+			);
+			expect(result).toEqual([]);
+		});
+
+		test('Should return outputs array when nodeTypeData is valid', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const nodeTypeData: INodeTypeDescription = {
+				name: 'TestNode',
+				displayName: 'Test Node',
+				group: ['transform'],
+				description: 'Test node description',
+				version: 1,
+				defaults: {},
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiAgent],
+				properties: [],
+			};
+
+			const result = getNodeOutputs(workflowMock, node, nodeTypeData);
+			expect(result).toEqual([NodeConnectionTypes.Main, NodeConnectionTypes.AiAgent]);
+		});
+	});
+
 	describe('isExecutable', () => {
 		const workflowMock = {
 			expression: {
@@ -4591,6 +4659,34 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(testData.expected);
 			});
 		}
+
+		test('Should return false when nodeTypeData is null', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = isExecutable(workflowMock, node, null as unknown as INodeTypeDescription);
+			expect(result).toBe(false);
+		});
+
+		test('Should return false when nodeTypeData is undefined', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = isExecutable(workflowMock, node, undefined as unknown as INodeTypeDescription);
+			expect(result).toBe(false);
+		});
 	});
 	describe('displayParameter', () => {
 		const testNode: INode = {
@@ -6219,6 +6315,214 @@ describe('NodeHelpers', () => {
 
 		it('should return false when nodeType does not end with "Tool"', () => {
 			expect(isHitlToolType('CustomNode')).toBe(false);
+		});
+	});
+
+	describe('getNodeParameters - noDataExpression handling', () => {
+		it('should strip expression prefix when noDataExpression is true and value is an expression', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: true,
+				},
+			];
+
+			const nodeValues: Record<string, string> = {
+				resource: '=users',
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+			const description: INodeTypeDescription = {
+				name: 'Test',
+				displayName: 'Test',
+				group: [],
+				version: 1,
+				description: 'Test',
+				defaults: {},
+				inputs: [],
+				outputs: [],
+				properties: nodePropertiesArray,
+			};
+
+			const nodeType: INodeType = {
+				description,
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			expect(result?.resource).toBe('users');
+		});
+
+		it('should not strip expression prefix when noDataExpression is false', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: false,
+				},
+			];
+
+			const nodeValues: Record<string, string> = {
+				resource: '=users',
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+
+			const nodeType: INodeType = {
+				description: {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: nodePropertiesArray,
+				},
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			expect(result?.resource).toBe('=users');
+		});
+
+		it('should not modify non-expression values when noDataExpression is true', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: true,
+				},
+			];
+
+			const nodeValues: Record<string, string> = {
+				resource: 'users',
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+
+			const nodeType: INodeType = {
+				description: {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: nodePropertiesArray,
+				},
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			expect(result?.resource).toBe('users');
+		});
+
+		it('should handle undefined values when noDataExpression is true', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: true,
+				},
+			];
+
+			const nodeValues: NodeParameterValueType = {
+				resource: undefined,
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+
+			const nodeType: INodeType = {
+				description: {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: nodePropertiesArray,
+				},
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			// When undefined, the default value (empty string) is used
+			expect(result?.resource).toBe('');
 		});
 	});
 });

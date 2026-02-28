@@ -6,7 +6,7 @@ import type { AuthenticatedRequest, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
-import type { NextFunction, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 
@@ -156,19 +156,28 @@ export class AuthService {
 		};
 	}
 
-	getCookieToken(req: AuthenticatedRequest) {
-		return req.cookies[AUTH_COOKIE_NAME];
+	getCookieToken(req: Request) {
+		// This models the behavior of an AuthenticatedRequest type having an optional cookies property of type Record<string, string>
+		if (typeof req.cookies === 'object' && req.cookies !== null) {
+			const cookies = req.cookies as Record<string, string | undefined>;
+			return cookies[AUTH_COOKIE_NAME];
+		}
+		return undefined;
 	}
 
-	getBrowserId(req: AuthenticatedRequest) {
-		return req.browserId;
+	getBrowserId(req: Request) {
+		// This models the behavior of APIRequest type having an optional browserId property of type string
+		if ('browserId' in req && typeof req.browserId === 'string') {
+			return req.browserId;
+		}
+		return undefined;
 	}
 
-	getMethod(req: AuthenticatedRequest) {
+	getMethod(req: Request) {
 		return req.method;
 	}
 
-	getEndpoint(req: AuthenticatedRequest) {
+	getEndpoint(req: Request) {
 		return req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
 	}
 
@@ -220,6 +229,17 @@ export class AuthService {
 		return this.jwtService.sign(payload, {
 			expiresIn: this.jwtExpiration,
 		});
+	}
+
+	/**
+	 * Validate a cookie auth token: checks revocation, JWT signature/expiry,
+	 * user existence, and hash consistency. Skips browser-id and MFA checks
+	 * since those are not applicable to webhook cookie validation.
+	 */
+	async validateCookieToken(token: string): Promise<void> {
+		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+		if (isInvalid) throw new AuthError('Unauthorized');
+		await this.validateToken(token);
 	}
 
 	async authenticateUserBasedOnToken(

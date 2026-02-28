@@ -12,6 +12,7 @@ import type {
 	CRDTUndoManager,
 	DeepChange,
 	DeepChangeEvent,
+	TransactionBatch,
 	UndoManagerOptions,
 	Unsubscribe,
 } from '../types';
@@ -171,6 +172,28 @@ function mapEventToChanges(event: Y.YMapEvent<unknown>): DeepChangeEvent[] {
 			oldValue: toJSONValue(change.oldValue),
 		}),
 	}));
+}
+
+/**
+ * Check if a Y.Type is a descendant of a root map (or the root map itself).
+ * Walks up _item.parent until we find the root or reach the doc.
+ */
+function isDescendantOf(yType: Y.AbstractType<unknown>, rootMap: Y.Map<unknown>): boolean {
+	let current: Y.AbstractType<unknown> | null = yType;
+	while (current !== null) {
+		if (current === rootMap) return true;
+		// Access internal _item property to walk up the tree
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+		const item = (current as any)._item as Y.Item | null;
+		if (!item) return false;
+		const parent = item.parent;
+		// parent can be AbstractType, ID, or null - we only continue if it's an AbstractType
+		if (parent === null || typeof parent !== 'object' || !('_item' in parent)) {
+			return false;
+		}
+		current = parent as Y.AbstractType<unknown>;
+	}
+	return false;
 }
 
 /**
@@ -348,6 +371,74 @@ class YjsDoc implements CRDTDoc {
 		}
 		this.undoManager = new YjsUndoManager(this.yDoc, options);
 		return this.undoManager;
+	}
+
+	onTransactionBatch(mapNames: string[], handler: (batch: TransactionBatch) => void): Unsubscribe {
+		// Build lookup: Y.Map → name
+		const targetMaps = new Map<Y.Map<unknown>, string>();
+		for (const name of mapNames) {
+			targetMaps.set(this.yDoc.getMap(name), name);
+		}
+
+		const afterTransactionHandler = (transaction: Y.Transaction) => {
+			const batch = new Map<string, DeepChange[]>();
+
+			// Process each root map we care about
+			for (const [rootYMap, mapName] of targetMaps) {
+				// Collect events that belong under this root map
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const allEvents: Array<Y.YEvent<any>> = [];
+
+				for (const [yType, events] of transaction.changedParentTypes) {
+					// Check if yType is rootYMap OR is a descendant of rootYMap
+					if (isDescendantOf(yType as Y.AbstractType<unknown>, rootYMap)) {
+						for (const event of events) {
+							// Only process direct events (event.target === yType)
+							if (event.target === yType) {
+								allEvents.push(event);
+							}
+						}
+					}
+				}
+
+				if (allEvents.length === 0) continue;
+
+				const changes: DeepChange[] = [];
+				for (const event of allEvents) {
+					// Use Yjs's built-in path calculation:
+					// 1. Set currentTarget to our root map
+					// 2. Clear _path to force recalculation
+					// 3. event.path is now computed relative to rootYMap
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+					(event as any).currentTarget = rootYMap;
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+					(event as any)._path = null;
+
+					if (event instanceof Y.YMapEvent) {
+						changes.push(...mapEventToChanges(event));
+					} else if (event instanceof Y.YArrayEvent) {
+						changes.push(arrayEventToChange(event));
+					}
+				}
+
+				if (changes.length > 0) {
+					batch.set(mapName, changes);
+				}
+			}
+
+			if (batch.size > 0) {
+				handler({
+					changes: batch,
+					origin: getChangeOrigin(transaction),
+				});
+			}
+		};
+
+		this.yDoc.on('afterTransaction', afterTransactionHandler);
+
+		return () => {
+			this.yDoc.off('afterTransaction', afterTransactionHandler);
+		};
 	}
 
 	destroy(): void {

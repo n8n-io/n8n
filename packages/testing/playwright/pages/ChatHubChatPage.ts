@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { ChatHubCredentialModal } from './components/ChatHubCredentialModal';
@@ -8,13 +8,13 @@ import { ChatHubToolsModal } from './components/ChatHubToolsModal';
 
 export class ChatHubChatPage extends BasePage {
 	readonly sidebar = new ChatHubSidebar(this.page.locator('#sidebar'));
-	readonly toolsModal = new ChatHubToolsModal(this.page.getByTestId('toolsSelectorModal-modal'));
+	readonly toolsModal = new ChatHubToolsModal(
+		this.page.getByRole('dialog').filter({ has: this.page.locator('[data-tools-manager-modal]') }),
+	);
 	readonly credModal = new ChatHubCredentialModal(
 		this.page.getByTestId('chatCredentialSelectorModal-modal'),
 	);
-	readonly personalAgentModal = new ChatHubPersonalAgentModal(
-		this.page.getByTestId('agentEditorModal-modal'),
-	);
+	readonly personalAgentModal = new ChatHubPersonalAgentModal(this.page.getByRole('dialog'));
 
 	constructor(page: Page) {
 		super(page);
@@ -29,14 +29,15 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	async dismissWelcomeScreen(): Promise<void> {
-		// Wait for conversation list to load (indicates sessions are ready)
-		const conversationList = this.sidebar.getConversations();
-		await this.page.getByTestId('chat-conversation-list').waitFor({ state: 'visible' });
+		// Wait for sessions to load - either the welcome screen or the model selector will appear
+		const welcomeButton = this.getWelcomeStartNewChatButton();
+		const modelSelector = this.getModelSelectorButton();
 
-		// Only dismiss welcome screen if there are no existing conversations
-		const conversationCount = await conversationList.count();
-		if (conversationCount === 0) {
-			const welcomeButton = this.getWelcomeStartNewChatButton();
+		// Wait for either element to be visible (indicates sessions are loaded)
+		await expect(welcomeButton.or(modelSelector)).toBeVisible();
+
+		// If welcome screen is shown, click to dismiss it
+		if (await welcomeButton.isVisible()) {
 			await welcomeButton.click();
 			await welcomeButton.waitFor({ state: 'hidden' });
 		}
@@ -82,12 +83,41 @@ export class ChatHubChatPage extends BasePage {
 		return this.getChatMessages().nth(index).getByTestId('chat-message-prev-alternative');
 	}
 
-	getNextAlternativeButtonAt(index: number): Locator {
-		return this.getChatMessages().nth(index).getByTestId('chat-message-next-alternative');
+	async clickEditButtonAt(index: number): Promise<void> {
+		await this.hoverMessageActionsAt(index);
+		const editButton = this.getEditButtonAt(index);
+		// Wait for streaming to complete - the button is disabled during streaming
+		await editButton.waitFor({ state: 'visible' });
+		await expect(editButton).toBeEnabled();
+		await editButton.click({ force: true });
 	}
 
-	getAttachButton(): Locator {
-		return this.page.getByRole('button', { name: /attach/i });
+	async clickRegenerateButtonAt(index: number): Promise<void> {
+		await this.hoverMessageActionsAt(index);
+		const regenerateButton = this.getRegenerateButtonAt(index);
+		// Wait for streaming to complete - the button is disabled during streaming
+		await regenerateButton.waitFor({ state: 'visible' });
+		await expect(regenerateButton).toBeEnabled();
+		await regenerateButton.click({ force: true });
+	}
+
+	async clickPrevAlternativeButtonAt(index: number): Promise<void> {
+		await this.hoverMessageActionsAt(index);
+		const prevButton = this.getPrevAlternativeButtonAt(index);
+		// Wait for streaming to complete - the button is disabled during streaming
+		await prevButton.waitFor({ state: 'visible' });
+		await expect(prevButton).toBeEnabled();
+		await prevButton.click({ force: true });
+	}
+
+	/**
+	 * Hovers over the message content area to reveal hidden action buttons.
+	 * The action buttons are hidden by CSS until the content area is hovered.
+	 */
+	private async hoverMessageActionsAt(index: number): Promise<void> {
+		const message = this.getChatMessages().nth(index);
+		await message.hover();
+		await message.getByTestId('chat-message-actions').waitFor({ state: 'visible' });
 	}
 
 	getFileInput(): Locator {

@@ -10,10 +10,16 @@ import {
 	ChatMessageId,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
+	ChatHubCreateToolRequest,
+	ChatHubUpdateToolRequest,
 	ChatHubConversationsRequest,
 	ViewableMimeTypes,
+	type ChatSendMessageResponse,
+	type ChatReconnectResponse,
+	ChatReconnectRequest,
+	ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES,
+	CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	RestController,
@@ -28,18 +34,16 @@ import {
 } from '@n8n/decorators';
 import { sanitizeFilename } from '@n8n/utils';
 import type { Response } from 'express';
-import { jsonStringify } from 'n8n-workflow';
-import { strict as assert } from 'node:assert';
-
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubToolService } from './chat-hub-tool.service';
+import { extractAuthenticationMetadata } from './chat-hub-extractor';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
-import { extractAuthenticationMetadata } from './chat-hub-extractor';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/chat')
 export class ChatHubController {
@@ -47,8 +51,8 @@ export class ChatHubController {
 		private readonly chatService: ChatHubService,
 		private readonly chatModelsService: ChatHubModelsService,
 		private readonly chatAgentService: ChatHubAgentService,
+		private readonly chatToolService: ChatHubToolService,
 		private readonly chatAttachmentService: ChatHubAttachmentService,
-		private readonly logger: Logger,
 	) {}
 
 	@Post('/models')
@@ -132,149 +136,71 @@ export class ChatHubController {
 	@Post('/conversations/send')
 	async sendMessage(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Body payload: ChatHubSendMessageRequest,
-	) {
-		let shouldRethrow = false;
-		try {
-			await this.chatService.sendHumanMessage(
-				res,
-				req.user,
-				{
-					...payload,
-					userId: req.user.id,
-				},
-				extractAuthenticationMetadata(req),
-			);
-		} catch (error: unknown) {
-			assert(error instanceof Error);
+	): Promise<ChatSendMessageResponse> {
+		await this.chatService.sendHumanMessage(
+			req.user,
+			{
+				...payload,
+				userId: req.user.id,
+			},
+			extractAuthenticationMetadata(req),
+		);
 
-			this.logger.error(`Error in chat send endpoint: ${error}`);
-
-			if (!res.headersSent) {
-				if (error instanceof ResponseError) {
-					shouldRethrow = true;
-					throw error;
-				}
-
-				res.status(500).json({
-					code: 500,
-					message: error.message,
-				});
-			} else if (!res.writableEnded) {
-				res.write(
-					jsonStringify({
-						type: 'error',
-						content: error.message,
-					}) + '\n',
-				);
-				res.flush();
-			}
-		} finally {
-			if (!shouldRethrow && !res.writableEnded) res.end();
-		}
+		return {
+			status: 'streaming',
+		};
 	}
 
 	@GlobalScope('chatHub:message')
 	@Post('/conversations/:sessionId/messages/:messageId/edit')
 	async editMessage(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Param('sessionId') sessionId: ChatSessionId,
 		@Param('messageId') editId: ChatMessageId,
 		@Body payload: ChatHubEditMessageRequest,
-	) {
-		let shouldRethrow = false;
-		try {
-			await this.chatService.editMessage(
-				res,
-				req.user,
-				{
-					...payload,
-					sessionId,
-					editId,
-					userId: req.user.id,
-				},
-				extractAuthenticationMetadata(req),
-			);
-		} catch (error: unknown) {
-			assert(error instanceof Error);
+	): Promise<ChatSendMessageResponse> {
+		await this.chatService.editMessage(
+			req.user,
+			{
+				...payload,
+				sessionId,
+				editId,
+				userId: req.user.id,
+			},
+			extractAuthenticationMetadata(req),
+		);
 
-			this.logger.error(`Error in chat edit endpoint: ${error}`);
-
-			if (!res.headersSent) {
-				if (error instanceof ResponseError) {
-					shouldRethrow = true;
-					throw error;
-				}
-
-				res.status(500).json({
-					code: 500,
-					message: error.message,
-				});
-			} else if (!res.writableEnded) {
-				res.write(
-					jsonStringify({
-						type: 'error',
-						content: error.message,
-					}) + '\n',
-				);
-				res.flush();
-			}
-		} finally {
-			if (!shouldRethrow && !res.writableEnded) res.end();
-		}
+		return {
+			status: 'streaming',
+		};
 	}
 
 	@GlobalScope('chatHub:message')
 	@Post('/conversations/:sessionId/messages/:messageId/regenerate')
 	async regenerateMessage(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Param('sessionId') sessionId: ChatSessionId,
 		@Param('messageId') retryId: ChatMessageId,
 		@Body payload: ChatHubRegenerateMessageRequest,
-	) {
-		let shouldRethrow = false;
-		try {
-			await this.chatService.regenerateAIMessage(
-				res,
-				req.user,
-				{
-					...payload,
-					sessionId,
-					retryId,
-					userId: req.user.id,
-				},
-				extractAuthenticationMetadata(req),
-			);
-		} catch (error: unknown) {
-			assert(error instanceof Error);
+	): Promise<ChatSendMessageResponse> {
+		await this.chatService.regenerateAIMessage(
+			req.user,
+			{
+				...payload,
+				sessionId,
+				retryId,
+				userId: req.user.id,
+			},
+			extractAuthenticationMetadata(req),
+		);
 
-			this.logger.error(`Error in chat retry endpoint: ${error}`);
-
-			if (!res.headersSent) {
-				if (error instanceof ResponseError) {
-					shouldRethrow = true;
-					throw error;
-				}
-
-				res.status(500).json({
-					code: 500,
-					message: error.message,
-				});
-			} else if (!res.writableEnded) {
-				res.write(
-					jsonStringify({
-						type: 'error',
-						content: error.message,
-					}) + '\n',
-				);
-				res.flush();
-			}
-		} finally {
-			if (!shouldRethrow && !res.writableEnded) res.end();
-		}
+		return {
+			status: 'streaming',
+		};
 	}
 
 	@GlobalScope('chatHub:message')
@@ -287,6 +213,26 @@ export class ChatHubController {
 	) {
 		await this.chatService.stopGeneration(req.user, sessionId, messageId);
 		res.status(204).send();
+	}
+
+	/**
+	 * Reconnect to an active chat stream after WebSocket reconnection.
+	 * Returns pending chunks for replay.
+	 */
+	@GlobalScope('chatHub:message')
+	@Post('/conversations/:sessionId/reconnect')
+	async reconnectToStream(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sessionId') sessionId: ChatSessionId,
+		@Query query: ChatReconnectRequest,
+	): Promise<ChatReconnectResponse> {
+		// Verify user has access to this session
+		await this.chatService.ensureConversation(req.user.id, sessionId);
+
+		const lastReceivedSequence = query.lastSequence ?? 0;
+
+		return await this.chatService.reconnectToStream(sessionId, lastReceivedSequence);
 	}
 
 	@Patch('/conversations/:sessionId')
@@ -316,16 +262,61 @@ export class ChatHubController {
 		res.status(204).send();
 	}
 
+	@Get('/tools')
+	@GlobalScope('chatHub:message')
+	async getTools(req: AuthenticatedRequest) {
+		const tools = await this.chatToolService.getToolsByUserId(req.user.id);
+		return tools.map((tool) => ChatHubToolService.toDto(tool));
+	}
+
+	@Post('/tools')
+	@GlobalScope('chatHub:message')
+	async createTool(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: ChatHubCreateToolRequest,
+	) {
+		this.assertToolTypeAllowed(payload.definition.type, req.user);
+		const tool = await this.chatToolService.createTool(req.user, payload);
+		return ChatHubToolService.toDto(tool);
+	}
+
+	@Patch('/tools/:toolId')
+	@GlobalScope('chatHub:message')
+	async updateTool(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('toolId') toolId: string,
+		@Body payload: ChatHubUpdateToolRequest,
+	) {
+		if (payload.definition?.type) {
+			this.assertToolTypeAllowed(payload.definition.type, req.user);
+		}
+		const tool = await this.chatToolService.updateTool(toolId, req.user, payload);
+		return ChatHubToolService.toDto(tool);
+	}
+
+	@Delete('/tools/:toolId')
+	@GlobalScope('chatHub:message')
+	async deleteTool(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('toolId') toolId: string,
+	): Promise<void> {
+		await this.chatToolService.deleteTool(toolId, req.user.id);
+		res.status(204).send();
+	}
+
 	@Get('/agents')
 	@GlobalScope('chatHubAgent:list')
 	async getAgents(req: AuthenticatedRequest) {
-		return await this.chatAgentService.getAgentsByUserId(req.user.id);
+		return await this.chatAgentService.getAgentsByUserIdAsDtos(req.user.id);
 	}
 
 	@Get('/agents/:agentId')
 	@GlobalScope('chatHubAgent:read')
 	async getAgent(req: AuthenticatedRequest, _res: Response, @Param('agentId') agentId: string) {
-		return await this.chatAgentService.getAgentById(agentId, req.user.id);
+		return await this.chatAgentService.getAgentByIdAsDto(agentId, req.user.id);
 	}
 
 	@Post('/agents')
@@ -359,5 +350,17 @@ export class ChatHubController {
 		await this.chatAgentService.deleteAgent(agentId, req.user.id);
 
 		res.status(204).send();
+	}
+
+	private assertToolTypeAllowed(type: string, user: AuthenticatedRequest['user']) {
+		if (ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES.includes(type)) {
+			throw new BadRequestError(`Tool type "${type}" is not supported in the Chat Hub`);
+		}
+		if (
+			user.role.slug === 'global:chatUser' &&
+			CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES.includes(type)
+		) {
+			throw new BadRequestError(`Tool type "${type}" is not available for your role`);
+		}
 	}
 }

@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { CredentialResolverDataNotFoundError, type ICredentialResolver } from '@n8n/decorators';
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 import type { Cipher } from 'n8n-core';
 import type {
 	ICredentialContext,
@@ -19,6 +19,7 @@ import { CredentialResolutionError } from '../../errors/credential-resolution.er
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialService } from '../dynamic-credential.service';
 import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
+import type { AuthenticatedRequest } from '@n8n/db';
 
 describe('DynamicCredentialService', () => {
 	let service: DynamicCredentialService;
@@ -1088,7 +1089,9 @@ describe('DynamicCredentialService', () => {
 					mockExpressionService,
 				);
 				const middleware = service.getDynamicCredentialsEndpointsMiddleware();
-				const mockReq = {} as Request;
+				const mockReq = {
+					cookies: {},
+				} as AuthenticatedRequest;
 				const mockRes = {
 					status: jest.fn().mockReturnThis(),
 					json: jest.fn(),
@@ -1119,6 +1122,77 @@ describe('DynamicCredentialService', () => {
 				service.getDynamicCredentialsEndpointsMiddleware();
 				expect(getStaticAuthMiddlewareSpy).toHaveBeenCalledWith('test-token', 'x-authorization');
 				getStaticAuthMiddlewareSpy.mockRestore();
+			});
+
+			describe('cookie authentication bypass', () => {
+				it('should bypass static auth check when req.user is present', () => {
+					mockDynamicCredentialConfig.endpointAuthToken = 'test-token';
+					service = new DynamicCredentialService(
+						mockDynamicCredentialConfig,
+						mockResolverRegistry,
+						mockResolverRepository,
+						mockLoadNodesAndCredentials,
+						mockCipher,
+						mockLogger,
+						mockExpressionService,
+					);
+
+					const middleware = service.getDynamicCredentialsEndpointsMiddleware();
+
+					const mockReq = {
+						user: { id: 'user-123', email: 'test@example.com' }, // Authenticated user
+						cookies: {},
+						headers: {}, // No X-Authorization header
+					} as AuthenticatedRequest;
+
+					const mockRes = {
+						status: jest.fn().mockReturnThis(),
+						json: jest.fn(),
+					} as unknown as Response;
+
+					const mockNext = jest.fn();
+
+					middleware(mockReq, mockRes, mockNext);
+
+					// Should call next() without checking static auth
+					expect(mockNext).toHaveBeenCalled();
+					expect(mockRes.status).not.toHaveBeenCalled();
+					expect(mockRes.json).not.toHaveBeenCalled();
+				});
+
+				it('should bypass 500 error when no token configured but req.user is present', () => {
+					mockDynamicCredentialConfig.endpointAuthToken = ''; // No token configured
+					service = new DynamicCredentialService(
+						mockDynamicCredentialConfig,
+						mockResolverRegistry,
+						mockResolverRepository,
+						mockLoadNodesAndCredentials,
+						mockCipher,
+						mockLogger,
+						mockExpressionService,
+					);
+
+					const middleware = service.getDynamicCredentialsEndpointsMiddleware();
+
+					const mockReq = {
+						user: { id: 'user-123', email: 'test@example.com' }, // Authenticated user
+						cookies: {},
+					} as AuthenticatedRequest;
+
+					const mockRes = {
+						status: jest.fn().mockReturnThis(),
+						json: jest.fn(),
+					} as unknown as Response;
+
+					const mockNext = jest.fn();
+
+					middleware(mockReq, mockRes, mockNext);
+
+					// Should call next() instead of returning 500 error
+					expect(mockNext).toHaveBeenCalled();
+					expect(mockLogger.error).not.toHaveBeenCalled();
+					expect(mockRes.status).not.toHaveBeenCalled();
+				});
 			});
 		});
 	});

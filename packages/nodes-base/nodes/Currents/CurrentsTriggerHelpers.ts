@@ -1,13 +1,9 @@
-import { randomBytes, timingSafeEqual } from 'crypto';
+import { randomBytes } from 'crypto';
 import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
 
-const CURRENTS_API_BASE = 'https://api.currents.dev/v1';
+import { verifySignature as verifySignatureGeneric } from '../../utils/webhook-signature-verification';
 
-/**
- * Maximum allowed age for a webhook request timestamp (5 minutes).
- * Requests older than this are considered potential replay attacks.
- */
-const MAX_TIMESTAMP_AGE_SECONDS = 300;
+const CURRENTS_API_BASE = 'https://api.currents.dev/v1';
 
 /**
  * Header name used for webhook secret validation.
@@ -143,49 +139,20 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 	const req = this.getRequestObject();
 	const headerData = this.getHeaderData();
 
-	// Check timestamp to prevent replay attacks (Currents sends milliseconds)
-	const timestampHeader = req.headers['x-timestamp'];
-	if (typeof timestampHeader === 'string') {
-		const requestTimeMs = parseInt(timestampHeader, 10);
-		if (isNaN(requestTimeMs)) {
-			return false;
-		}
-		const requestTimeSec = Math.floor(requestTimeMs / 1000);
-		const currentTimeSec = Math.floor(Date.now() / 1000);
-		const age = Math.abs(currentTimeSec - requestTimeSec);
-
-		if (age > MAX_TIMESTAMP_AGE_SECONDS) {
-			return false;
-		}
-	}
-
 	const webhookData = this.getWorkflowStaticData('node');
 	const expectedSecret = webhookData.webhookSecret;
 
-	if (typeof expectedSecret === 'string') {
-		const actualSecret = headerData[WEBHOOK_SECRET_HEADER];
-		if (typeof actualSecret !== 'string') {
-			return false;
-		}
-		// Use constant-time comparison to prevent timing attacks
-		if (
-			expectedSecret.length !== actualSecret.length ||
-			!timingSafeEqual(Buffer.from(expectedSecret), Buffer.from(actualSecret))
-		) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
-/**
- * Validates that a millisecond timestamp is within the acceptable window.
- * Exported separately for unit testing.
- */
-export function isTimestampValid(timestampMs: number, currentTimeSec?: number): boolean {
-	const requestTimeSec = Math.floor(timestampMs / 1000);
-	const now = currentTimeSec ?? Math.floor(Date.now() / 1000);
-	const age = Math.abs(now - requestTimeSec);
-	return age <= MAX_TIMESTAMP_AGE_SECONDS;
+	return verifySignatureGeneric({
+		getExpectedSignature: () => (typeof expectedSecret === 'string' ? expectedSecret : null),
+		skipIfNoExpectedSignature: true,
+		getActualSignature: () => {
+			const actualSecret = headerData[WEBHOOK_SECRET_HEADER];
+			return typeof actualSecret === 'string' ? actualSecret : null;
+		},
+		getTimestamp: () => {
+			const timestampHeader = req.headers['x-timestamp'];
+			return typeof timestampHeader === 'string' ? timestampHeader : null;
+		},
+		skipIfNoTimestamp: true,
+	});
 }

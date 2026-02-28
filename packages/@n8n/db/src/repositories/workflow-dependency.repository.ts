@@ -1,6 +1,6 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, IsNull, LessThan, Repository } from '@n8n/typeorm';
+import { DataSource, EntityManager, IsNull, LessThan, Repository, Not } from '@n8n/typeorm';
 
 import { WorkflowDependency } from '../entities';
 
@@ -67,7 +67,10 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		const deleteResult = await tx.delete(WorkflowDependency, {
 			workflowId,
 			workflowVersionId: LessThan(dependencies.workflowVersionId),
-			publishedVersionId: dependencies.publishedVersionId ?? IsNull(),
+			// NOTE: this relies on the fact that we only want to track the latest published version or draft dependencies.
+			// If we're updating published dependencies, checking for Not Null works because we don't actually
+			// care about the specific previous published version id.
+			publishedVersionId: dependencies.publishedVersionId ? Not(IsNull()) : IsNull(),
 		});
 
 		// If we deleted something, the incoming version is newer - proceed with insert
@@ -103,6 +106,8 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	/**
 	 * Remove dependencies for a given workflow.
 	 *
+	 * This removes both draft and published dependencies.
+	 *
 	 * NOTE: there's a possible race in case of an update and delete happening concurrently.
 	 * The delete could be reflected in the database, but the update could be reflected in the index.
 	 * To prevent this we would need to implement some tombstone mechanism. However, since we don't
@@ -110,20 +115,11 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	 * The chance of this happening in practice is also very low.
 	 *
 	 * @param workflowId The ID of the workflow
-	 * @param publishedVersionId Filter for publishedVersionId, null to remove draft dependencies
 	 * @returns Whether any dependencies were removed
 	 */
-	async removeDependenciesForWorkflow(
-		workflowId: string,
-		publishedVersionId?: string | null,
-	): Promise<boolean> {
+	async removeDependenciesForWorkflow(workflowId: string): Promise<boolean> {
 		return await this.manager.transaction(async (tx) => {
-			const whereConditions: Record<string, unknown> = {
-				workflowId,
-				publishedVersionId: publishedVersionId ?? IsNull(),
-			};
-
-			const deleteResult = await tx.delete(WorkflowDependency, whereConditions);
+			const deleteResult = await tx.delete(WorkflowDependency, { workflowId });
 
 			return (
 				deleteResult.affected !== undefined &&
@@ -149,7 +145,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			// so the prepareTransactionForSqlite step ensures no concurrent writes happen.
 			return await tx.existsBy(WorkflowDependency, whereConditions);
 		}
-		// For Postgres and MySQL we lock on the workflow row, and only then check the dependency table.
+		// For Postgres we lock on the workflow row, and only then check the dependency table.
 		// This prevents a race between two concurrent updates.
 		const placeholder = this.databaseConfig.type === 'postgresdb' ? '$1' : '?';
 		const tableName = this.getTableName('workflow_entity');

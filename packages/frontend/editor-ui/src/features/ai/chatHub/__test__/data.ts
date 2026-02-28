@@ -30,7 +30,8 @@ export function createMockAgent(overrides: Partial<ChatModelDto> = {}): ChatMode
 		updatedAt: '2024-01-15T12:00:00Z',
 		createdAt: '2024-01-15T12:00:00Z',
 		metadata: {
-			inputModalities: ['text'],
+			allowFileUploads: true,
+			allowedFilesMimeTypes: 'text/*',
 			capabilities: {
 				functionCalling: true,
 			},
@@ -74,7 +75,7 @@ export function createMockSession(overrides: Partial<ChatHubSessionDto> = {}): C
 		agentIcon: null,
 		createdAt: '2024-01-15T12:00:00Z',
 		updatedAt: '2024-01-15T12:00:00Z',
-		tools: [],
+		toolIds: [],
 		...overrides,
 	};
 }
@@ -87,7 +88,7 @@ export function createMockMessageDto(
 		sessionId: 'session-123',
 		type: 'human',
 		name: 'User',
-		content: 'Test message',
+		content: [{ type: 'text', content: 'Test message' }],
 		status: 'success',
 		provider: null,
 		model: null,

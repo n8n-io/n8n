@@ -1,15 +1,21 @@
-import type { WorkflowRepository, SharedWorkflowRepository } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
+import type { WorkflowRepository, SharedWorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Cipher, BinaryDataService } from 'n8n-core';
-import type { IBinaryData } from 'n8n-workflow';
+import { type IBinaryData, type INode, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
-import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
+import type { ChatHubAgentService } from '../chat-hub-agent.service';
+import type { ChatHubCredentialsService } from '../chat-hub-credentials.service';
+import type { ChatHubAuthenticationMetadata } from '../chat-hub-extractor';
 import { ChatHubMessage } from '../chat-hub-message.entity';
 import { ChatHubSession } from '../chat-hub-session.entity';
+import type { ChatHubToolService } from '../chat-hub-tool.service';
+import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
 import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
+import type { ChatHubSettingsService } from '../chat-hub.settings.service';
 import type { ChatHubMessageRepository } from '../chat-message.repository';
-import type { ChatHubAuthenticationMetadata } from '../chat-hub-extractor';
+
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 describe('ChatHubWorkflowService', () => {
 	const logger = mock<Logger>();
@@ -17,6 +23,12 @@ describe('ChatHubWorkflowService', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const binaryDataService = mock<BinaryDataService>();
 	const messageRepository = mock<ChatHubMessageRepository>();
+	const chatHubAgentService = mock<ChatHubAgentService>();
+	const chatHubSettingsService = mock<ChatHubSettingsService>();
+	const chatHubCredentialsService = mock<ChatHubCredentialsService>();
+	const chatHubToolService = mock<ChatHubToolService>();
+	const workflowFinderService = mock<WorkflowFinderService>();
+
 	const mockCipher = mock<Cipher>();
 
 	let chatHubAttachmentService: ChatHubAttachmentService;
@@ -32,6 +44,8 @@ describe('ChatHubWorkflowService', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
 
+		logger.scoped.mockReturnValue(logger);
+
 		// Mock cipher encrypt to return a simple string
 		mockCipher.encrypt.mockReturnValue('encrypted-metadata');
 
@@ -43,6 +57,11 @@ describe('ChatHubWorkflowService', () => {
 			workflowRepository,
 			sharedWorkflowRepository,
 			chatHubAttachmentService,
+			chatHubAgentService,
+			chatHubSettingsService,
+			chatHubCredentialsService,
+			chatHubToolService,
+			workflowFinderService,
 			mockCipher,
 		);
 
@@ -637,6 +656,115 @@ describe('ChatHubWorkflowService', () => {
 					{ type: 'text', text: 'Listen to this audio' },
 					{ type: 'text', text: 'File: audio.mp3\n(Unsupported file type)' },
 				]);
+			});
+		});
+	});
+
+	describe('resolveWorkflowAttachmentPolicy', () => {
+		const makeNode = (params: Record<string, unknown> = {}) =>
+			({
+				type: CHAT_TRIGGER_NODE_TYPE,
+				parameters: params,
+			}) as INode;
+
+		it('should return allowFileUploads true and specific mime types when configured', () => {
+			const nodes = [
+				makeNode({
+					options: {
+						allowFileUploads: true,
+						allowedFilesMimeTypes: 'image/png, audio/mp3, application/pdf',
+					},
+				}),
+			];
+
+			const result = service.resolveWorkflowAttachmentPolicy(nodes);
+
+			expect(result).toEqual({
+				allowFileUploads: true,
+				allowedFilesMimeTypes: 'image/png, audio/mp3, application/pdf',
+			});
+		});
+
+		it('should return wildcard mime types when allowFileUploads is true and mime types is */*', () => {
+			const nodes = [
+				makeNode({
+					options: {
+						allowFileUploads: true,
+						allowedFilesMimeTypes: '*/*',
+					},
+				}),
+			];
+
+			const result = service.resolveWorkflowAttachmentPolicy(nodes);
+
+			expect(result).toEqual({
+				allowFileUploads: true,
+				allowedFilesMimeTypes: '*/*',
+			});
+		});
+
+		it('should return wildcard mime types when allowFileUploads is true and mime types is not set', () => {
+			const nodes = [
+				makeNode({
+					options: {
+						allowFileUploads: true,
+					},
+				}),
+			];
+
+			const result = service.resolveWorkflowAttachmentPolicy(nodes);
+
+			expect(result).toEqual({
+				allowFileUploads: true,
+				allowedFilesMimeTypes: '*/*',
+			});
+		});
+
+		it('should return allowFileUploads false and empty mime types when file uploads disabled', () => {
+			const nodes = [
+				makeNode({
+					options: {
+						allowFileUploads: false,
+					},
+				}),
+			];
+
+			const result = service.resolveWorkflowAttachmentPolicy(nodes);
+
+			expect(result).toEqual({
+				allowFileUploads: false,
+				allowedFilesMimeTypes: '',
+			});
+		});
+
+		it('should return allowFileUploads false when options are not set', () => {
+			const nodes = [makeNode({})];
+
+			const result = service.resolveWorkflowAttachmentPolicy(nodes);
+
+			expect(result).toEqual({
+				allowFileUploads: false,
+				allowedFilesMimeTypes: '',
+			});
+		});
+
+		it('should return allowFileUploads false when no chat trigger node exists', () => {
+			const nodes = [{ type: 'n8n-nodes-base.someOtherNode', parameters: {} } as any];
+
+			const result = service.resolveWorkflowAttachmentPolicy(nodes);
+
+			expect(result).toEqual({
+				allowFileUploads: false,
+				allowedFilesMimeTypes: '',
+			});
+		});
+
+		it('should return allowFileUploads false for empty nodes array', () => {
+			const result = service.resolveWorkflowAttachmentPolicy([]);
+
+			expect(result).toEqual({
+				allowFileUploads: false,
+				allowedFilesMimeTypes: '',
 			});
 		});
 	});

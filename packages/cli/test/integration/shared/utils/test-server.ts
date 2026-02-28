@@ -9,6 +9,7 @@ import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
@@ -17,6 +18,8 @@ import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
+import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
+
 import { LicenseMocker } from '@test-integration/license';
 
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
@@ -151,7 +154,11 @@ export const setupTestServer = ({
 		}
 
 		if (endpointGroups?.includes('health')) {
-			app.get('/healthz/readiness', async (_req, res) => {
+			const globalConfig = Container.get(GlobalConfig);
+			const healthPath = resolveHealthEndpointPath(globalConfig);
+			const readinessPath = `${healthPath}/readiness`;
+
+			app.get(readinessPath, async (_req, res) => {
 				testDb.isReady()
 					? res.status(200).send({ status: 'ok' })
 					: res.status(503).send({ status: 'error' });
@@ -316,6 +323,10 @@ export const setupTestServer = ({
 						await import('@/controllers/module-settings.controller');
 						break;
 
+					case 'security-settings':
+						await import('@/controllers/security-settings.controller');
+						break;
+
 					case 'third-party-licenses':
 						await import('@/controllers/third-party-licenses.controller');
 						break;
@@ -324,6 +335,8 @@ export const setupTestServer = ({
 
 			await Container.get(ModuleRegistry).initModules('main');
 			Container.get(ControllerRegistry).activate(app);
+
+			await Container.get(AuthHandlerRegistry).init();
 		}
 	});
 

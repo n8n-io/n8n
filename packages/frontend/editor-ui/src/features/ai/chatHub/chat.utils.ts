@@ -8,9 +8,7 @@ import {
 	type ChatMessageId,
 	type ChatHubProvider,
 	type ChatHubLLMProvider,
-	type ChatHubInputModality,
 	type AgentIconOrEmoji,
-	type MessageChunk,
 	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
 import type {
@@ -23,7 +21,6 @@ import type {
 } from './chat.types';
 import { CHAT_VIEW } from './constants';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-import type { IRestApiContext } from '@n8n/rest-api-client';
 
 export function getRelativeDate(now: Date, dateString: string): string {
 	const date = new Date(dateString);
@@ -237,7 +234,7 @@ export function createAiMessageFromStreamingState(
 		sessionId,
 		type: 'ai',
 		name: 'AI',
-		content: '',
+		content: [],
 		executionId: streaming?.executionId ?? null,
 		status: 'running',
 		createdAt: new Date().toISOString(),
@@ -265,7 +262,7 @@ export function createHumanMessageFromStreamingState(streaming: ChatStreamingSta
 		sessionId: streaming.sessionId,
 		type: 'human',
 		name: 'User',
-		content: streaming.promptText,
+		content: [{ type: 'text', content: streaming.promptText }],
 		executionId: null,
 		status: 'success',
 		createdAt: new Date().toISOString(),
@@ -308,7 +305,7 @@ export function buildUiMessages(
 			// in running state as an immediate feedback
 			messagesToShow.push({
 				...message,
-				content: '',
+				content: [],
 				status: 'running',
 				...flattenModel(streaming.agent.model),
 			});
@@ -381,7 +378,10 @@ export function findOneFromModelsResponse(
 	return undefined;
 }
 
-export function createSessionFromStreamingState(streaming: ChatStreamingState): ChatHubSessionDto {
+export function createSessionFromStreamingState(
+	streaming: ChatStreamingState,
+	toolIds: string[],
+): ChatHubSessionDto {
 	return {
 		id: streaming.sessionId,
 		title: 'New Chat',
@@ -392,32 +392,9 @@ export function createSessionFromStreamingState(streaming: ChatStreamingState): 
 		agentIcon: streaming.agent.icon,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
-		tools: streaming.tools,
+		toolIds,
 		...flattenModel(streaming.agent.model),
 	};
-}
-
-export function createMimeTypes(modalities: ChatHubInputModality[]): string {
-	// If 'file' modality is present, accept all file types
-	if (modalities.includes('file')) {
-		return '*/*';
-	}
-
-	const mimeTypes: string[] = ['text/*'];
-
-	for (const modality of modalities) {
-		if (modality === 'image') {
-			mimeTypes.push('image/*');
-		}
-		if (modality === 'audio') {
-			mimeTypes.push('audio/*');
-		}
-		if (modality === 'video') {
-			mimeTypes.push('video/*');
-		}
-	}
-
-	return mimeTypes.join(',');
 }
 
 export const personalAgentDefaultIcon: AgentIconOrEmoji = {
@@ -430,60 +407,6 @@ export const workflowAgentDefaultIcon: AgentIconOrEmoji = {
 	value: 'bot' satisfies IconName,
 };
 
-type StreamApi<T> = (
-	ctx: IRestApiContext,
-	payload: T,
-	onChunk: (data: MessageChunk) => void,
-	onDone: () => void,
-	onError: (e: unknown) => void,
-) => void;
-
-/**
- * Converts streaming API to return a promise that resolves when the first chunk is received.
- */
-export function promisifyStreamingApi<T>(
-	streamingApi: StreamApi<T>,
-): (...args: Parameters<StreamApi<T>>) => Promise<void> {
-	return async (ctx, payload, onChunk, onDone, onError) => {
-		let settled = false;
-		let resolvePromise: () => void;
-		let rejectPromise: (reason?: unknown) => void;
-
-		const promise = new Promise<void>((resolve, reject) => {
-			resolvePromise = resolve;
-			rejectPromise = reject;
-		});
-
-		streamingApi(
-			ctx,
-			payload,
-			(chunk) => {
-				if (!settled) {
-					settled = true;
-					resolvePromise();
-				}
-				onChunk(chunk);
-			},
-			() => {
-				if (!settled) {
-					settled = true;
-					resolvePromise();
-				}
-				onDone();
-			},
-			(error: unknown) => {
-				if (!settled) {
-					settled = true;
-					rejectPromise(error);
-				}
-				onError(error);
-			},
-		);
-
-		return await promise;
-	};
-}
-
 export function createFakeAgent(
 	model: ChatHubConversationModel,
 	fallback?: Partial<{ name: string | null; icon: AgentIconOrEmoji | null }>,
@@ -495,11 +418,12 @@ export function createFakeAgent(
 		icon: fallback?.icon ?? null,
 		createdAt: null,
 		updatedAt: null,
-		// Assume file attachment and tools are supported
+		// Assume tools are supported (except n8n provider which never supports function calling)
 		metadata: {
-			inputModalities: ['text', 'file'],
+			allowFileUploads: false,
+			allowedFilesMimeTypes: '',
 			capabilities: {
-				functionCalling: true,
+				functionCalling: model.provider !== 'n8n',
 			},
 			available: true,
 		},
@@ -508,8 +432,20 @@ export function createFakeAgent(
 	};
 }
 
+/**
+ * Enriches a MIME type accept string with the `.md` file extension.
+ * macOS file picker does not recognise `text/*` or `text/markdown` for
+ * Markdown files, so we add the explicit extension.
+ */
+export function enrichMimeTypesWithExtensions(mimeTypes: string): string {
+	if (mimeTypes && (mimeTypes.includes('text/*') || mimeTypes.includes('text/markdown'))) {
+		return `${mimeTypes},.md`;
+	}
+	return mimeTypes;
+}
+
 export const isEditable = (message: ChatMessage): boolean => {
-	return message.status === 'success' && !(message.provider === 'n8n' && message.type === 'ai');
+	return message.status === 'success' && message.type !== 'ai';
 };
 
 export const isRegenerable = (message: ChatMessage): boolean => {
@@ -622,4 +558,17 @@ export function splitMarkdownIntoChunks(content: string): string[] {
 	endChunk();
 
 	return chunks;
+}
+
+/**
+ * Checks if a message represents a waiting-for-approval state.
+ * This occurs when the message has 'waiting' status and contains
+ * a with-buttons chunk that blocks user input.
+ */
+export function isWaitingForApproval(message: ChatMessage | null | undefined): boolean {
+	if (!message || message.status !== 'waiting') {
+		return false;
+	}
+
+	return message.content.some((c) => c.type === 'with-buttons' && c.blockUserInput);
 }

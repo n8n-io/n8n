@@ -150,6 +150,19 @@ class TestAttributeAccessValidation(TestTaskAnalyzer):
                 analyzer.validate(code)
             assert "name-mangled" in exc_info.value.description.lower()
 
+    def test_objclass_attribute_blocked(self, analyzer: TaskAnalyzer) -> None:
+        exploit_attempts = [
+            "str.__or__.__objclass__",
+            "str.__init__.__objclass__",
+            "type_ref = str.__or__.__objclass__",
+            "object_ref = str.__init__.__objclass__",
+        ]
+
+        for code in exploit_attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "__objclass__" in exc_info.value.description
+
     def test_attribute_error_obj_blocked(self, analyzer: TaskAnalyzer) -> None:
         exploit_attempts = [
             "e.obj",
@@ -240,6 +253,68 @@ class TestFormatStringAttacks(TestTaskAnalyzer):
             with pytest.raises(SecurityViolationError) as exc_info:
                 analyzer.validate(code)
             assert "disallowed" in exc_info.value.description.lower()
+
+
+class TestMatchPatternValidation(TestTaskAnalyzer):
+    def test_match_pattern_with_blocked_attributes_blocked(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        attempts = [
+            """
+ex = None
+try:
+    pass
+except Exception as e:
+    ex = e
+match ex:
+    case AttributeError(obj=rip):
+        pass
+""",
+            """
+match error:
+    case ValueError(obj=x):
+        pass
+""",
+            """
+match e:
+    case Exception(__traceback__=tb):
+        pass
+""",
+        ]
+
+        for code in attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "disallowed" in exc_info.value.description.lower()
+
+    def test_safe_match_patterns_allowed(self, analyzer: TaskAnalyzer) -> None:
+        safe_patterns = [
+            """
+match value:
+    case 1:
+        pass
+    case "hello":
+        pass
+""",
+            """
+match point:
+    case Point(x=x, y=y):
+        pass
+""",
+            """
+match data:
+    case {"key": value}:
+        pass
+""",
+            """
+match result:
+    case [first, *rest]:
+        pass
+""",
+        ]
+
+        for code in safe_patterns:
+            analyzer.validate(code)
 
 
 class TestAllowAll(TestTaskAnalyzer):
