@@ -35,13 +35,26 @@ export type RootStoreState = {
 };
 
 export const useRootStore = defineStore(STORES.ROOT, () => {
-	// Generate or retrieve client ID from sessionStorage
+	/**
+	 * Returns a unique client ID for this tab. On page reload, reuses the
+	 * existing ID so in-flight execution push messages keep arriving. On tab
+	 * duplication (or any other fresh navigation) a new ID is generated to
+	 * prevent two tabs from sharing the same WebSocket pushRef.
+	 */
 	const getClientId = (): string => {
 		const storageKey = 'n8n-client-id';
-		const existingId = sessionStorage.getItem(storageKey);
-		if (existingId) {
-			return existingId;
+
+		const navEntry = performance.getEntriesByType('navigation')[0] as
+			| PerformanceNavigationTiming
+			| undefined;
+
+		if (navEntry?.type === 'reload') {
+			const existingId = sessionStorage.getItem(storageKey);
+			if (existingId) {
+				return existingId;
+			}
 		}
+
 		const newId = randomString(10).toLowerCase();
 		sessionStorage.setItem(storageKey, newId);
 		return newId;
