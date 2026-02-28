@@ -1255,6 +1255,29 @@ describe('PUT /credentials/:id/share', () => {
 		expect(sharings).toHaveLength(1); // only owner
 		expect(sharings[0].role).toBe('credential:owner');
 	});
+
+	test('should return 400 when request body is invalid', async () => {
+		/**
+		 * Arrange
+		 */
+		testServer.license.enable('feat:sharing');
+		const ownerProject = await createTeamProject('owner-project', owner);
+
+		const credentials = await createCredentials(
+			{ name: 'Test', type: 'test', data: '' },
+			ownerProject,
+		);
+
+		/**
+		 * Act
+		 */
+		const response = await authOwnerAgent.put(`/credentials/${credentials.id}/share`).send({});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(400);
+	});
 });
 
 const credentialPayload = (): CredentialPayload => ({
