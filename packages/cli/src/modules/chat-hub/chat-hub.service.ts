@@ -1018,7 +1018,7 @@ export class ChatHubService {
 			// Add attachments if within size limit
 			for (const attachment of attachments) {
 				const attachmentBlocks = await this.buildContentBlockForAttachment(
-					{ type: 'file', binaryData: attachment },
+					attachment,
 					currentTotalSize,
 					maxTotalPayloadSize,
 					'File',
@@ -1041,17 +1041,14 @@ export class ChatHubService {
 
 		for (let i = 0; i < contextFiles.length; i++) {
 			const file = contextFiles[i];
-			const blocks = await this.buildContentBlockForAttachment(
-				file,
-				currentTotalSize,
-				maxTotalPayloadSize,
-				`Context file (${i + 1} of ${contextFiles.length})`,
-			);
-
-			for (const block of blocks) {
-				contextFileBlocks.push(block);
-				currentTotalSize += block.type === 'text' ? block.text.length : block.image_url.length;
-			}
+			const label = `Context file (${i + 1} of ${contextFiles.length})`;
+			const text =
+				currentTotalSize < maxTotalPayloadSize
+					? `${label}: ${file.fileName}\nContent: \n(Use vector store question tool to query this document)`
+					: `${label}: ${file.fileName}\n(Content omitted due to size limit)`;
+			const block: ContentBlock = { type: 'text', text };
+			contextFileBlocks.push(block);
+			currentTotalSize += text.length;
 		}
 
 		if (contextFileBlocks.length > 0) {
@@ -1069,29 +1066,19 @@ export class ChatHubService {
 	}
 
 	private async buildContentBlockForAttachment(
-		file: ChatHubAgentKnowledgeItem,
+		attachment: IBinaryData,
 		currentTotalSize: number,
 		maxTotalPayloadSize: number,
 		prefix: string,
 	): Promise<ContentBlock[]> {
 		class TotalFileSizeExceededError extends Error {}
-		class UnsupportedMimeTypeError extends Error {}
+
+		const fileName = attachment.fileName ?? 'attachment';
 
 		try {
 			if (currentTotalSize >= maxTotalPayloadSize) {
 				throw new TotalFileSizeExceededError();
 			}
-
-			if (file.type === 'embedding') {
-				return [
-					{
-						type: 'text',
-						text: `${prefix}: ${file.fileName ?? 'attachment'}\nContent: \n(Use vector store question tool to query this document)`,
-					},
-				];
-			}
-
-			const attachment = file.binaryData;
 
 			if (this.isTextFile(attachment.mimeType)) {
 				const buffer = await this.chatHubAttachmentService.getAsBuffer(attachment);
@@ -1104,7 +1091,7 @@ export class ChatHubService {
 				return [
 					{
 						type: 'text',
-						text: `${prefix}: ${attachment.fileName ?? 'attachment'}\nContent: \n${content}`,
+						text: `${prefix}: ${fileName}\nContent: \n${content}`,
 					},
 				];
 			}
@@ -1116,27 +1103,15 @@ export class ChatHubService {
 			}
 
 			return [
-				{ type: 'text', text: `${prefix}: ${attachment.fileName ?? 'attachment'}` },
+				{ type: 'text', text: `${prefix}: ${fileName}` },
 				{ type: 'image_url', image_url: url },
 			];
 		} catch (e) {
-			const fileName =
-				file.type === 'embedding' ? file.fileName : (file.binaryData.fileName ?? 'attachment');
-
 			if (e instanceof TotalFileSizeExceededError) {
 				return [
 					{
 						type: 'text',
 						text: `${prefix}: ${fileName}\n(Content omitted due to size limit)`,
-					},
-				];
-			}
-
-			if (e instanceof UnsupportedMimeTypeError) {
-				return [
-					{
-						type: 'text',
-						text: `${prefix}: ${fileName}\n(Unsupported file type)`,
 					},
 				];
 			}

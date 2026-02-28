@@ -6,7 +6,7 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { fetchChatModelsApi, buildAgentAttachmentUrl } from '@/features/ai/chatHub/chat.api';
+import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
 import Modal from '@/app/components/Modal.vue';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import {
@@ -96,11 +96,10 @@ const currentEmbeddingProvider = computed<ChatHubLLMProvider | null>(() => {
 const allFiles = computed<FileRow[]>(() => [
 	...savedFiles.value.map((file, index) => ({
 		id: `saved-${index}`,
-		name: file.type === 'file' ? (file.binaryData.fileName ?? '') : file.fileName,
-		mimeType: file.type === 'file' ? (file.binaryData.mimeType ?? '') : file.mimeType,
+		name: file.fileName,
+		mimeType: file.mimeType,
 		isNew: false,
-		isEmbedding: file.type === 'embedding',
-		embeddingProvider: file.type === 'embedding' ? file.provider : null,
+		embeddingProvider: file.provider,
 		index,
 	})),
 	...newFiles.value.map((file, index) => ({
@@ -108,7 +107,6 @@ const allFiles = computed<FileRow[]>(() => [
 		name: file.fileName ?? '',
 		mimeType: file.mimeType ?? '',
 		isNew: true,
-		isEmbedding: false,
 		embeddingProvider: null,
 		index,
 	})),
@@ -137,7 +135,7 @@ const saveButtonLabel = computed(() =>
 		: i18n.baseText('chatHub.agent.editor.save'),
 );
 
-const acceptedMimeTypes = computed(() => '*/*'); // TODO
+const acceptedMimeTypes = computed(() => 'application/pdf');
 
 const isValid = computed(
 	() =>
@@ -399,19 +397,6 @@ function handleClickUploadArea() {
 	fileInputRef.value?.click();
 }
 
-function handleFileRowClick(_event: MouseEvent, { item }: { item: FileRow }) {
-	if (item.isNew || item.isEmbedding || !isEditMode.value || !props.data.agentId) {
-		return;
-	}
-
-	const url = buildAgentAttachmentUrl(
-		useRootStore().restApiContext,
-		props.data.agentId,
-		item.index,
-	);
-	window.open(url, '_blank');
-}
-
 function removeFile(row: FileRow) {
 	if (row.isNew) {
 		removeNewFile(row.index);
@@ -588,7 +573,6 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 								:item="item"
 								:semantic-search-ready="chatStore.semanticSearchReadiness.isReady"
 								:current-embedding-provider="currentEmbeddingProvider"
-								@click="handleFileRowClick($event, { item })"
 								@remove="removeFile(item)"
 							/>
 						</div>

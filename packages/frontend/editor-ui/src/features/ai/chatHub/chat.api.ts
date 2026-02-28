@@ -167,11 +167,6 @@ export const fetchSingleConversationApi = async (
 	return await makeRestApiRequest<ChatHubConversationResponse>(context, 'GET', apiEndpoint);
 };
 
-export const fetchAgentsApi = async (context: IRestApiContext): Promise<ChatHubAgentDto[]> => {
-	const apiEndpoint = '/chat/agents';
-	return await makeRestApiRequest<ChatHubAgentDto[]>(context, 'GET', apiEndpoint);
-};
-
 export const fetchAgentApi = async (
 	context: IRestApiContext,
 	agentId: string,
@@ -261,14 +256,6 @@ export function buildChatAttachmentUrl(
 	attachmentIndex: number,
 ): string {
 	return `${context.baseUrl}/chat/conversations/${sessionId}/messages/${messageId}/attachments/${attachmentIndex}`;
-}
-
-export function buildAgentAttachmentUrl(
-	context: IRestApiContext,
-	agentId: string,
-	attachmentIndex: number,
-): string {
-	return `${context.baseUrl}/chat/agents/${agentId}/attachments/${attachmentIndex}`;
 }
 
 /**

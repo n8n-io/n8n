@@ -9,7 +9,6 @@ import type Stream from 'node:stream';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 
 import { ChatHubMessageRepository } from './chat-message.repository';
 
@@ -21,7 +20,6 @@ export class ChatHubAttachmentService {
 	constructor(
 		private readonly binaryDataService: BinaryDataService,
 		private readonly messageRepository: ChatHubMessageRepository,
-		private readonly agentRepository: ChatHubAgentRepository,
 	) {}
 
 	/**
@@ -188,79 +186,6 @@ export class ChatHubAttachmentService {
 		}
 
 		return await this.processAgentAttachment(agentId, attachment, buffer);
-	}
-
-	async getAgentAttachment(
-		agentId: string,
-		index: number,
-	): Promise<
-		[
-			IBinaryData,
-			(
-				| { type: 'buffer'; buffer: Buffer<ArrayBufferLike>; fileSize: number }
-				| { type: 'stream'; stream: Stream.Readable; fileSize: number }
-			),
-		]
-	> {
-		const agent = await this.agentRepository.findOne({
-			where: { id: agentId },
-			select: ['files'],
-		});
-
-		if (!agent) {
-			throw new NotFoundError('Agent not found');
-		}
-
-		const file = agent.files[index];
-
-		if (file.type !== 'file') {
-			throw new NotFoundError('File not found');
-		}
-
-		const attachment = file.binaryData;
-
-		if (attachment.id) {
-			const metadata = await this.binaryDataService.getMetadata(attachment.id);
-			const stream = await this.binaryDataService.getAsStream(attachment.id);
-
-			return [attachment, { type: 'stream', stream, fileSize: metadata.fileSize }];
-		}
-
-		if (attachment.data) {
-			const buffer = await this.binaryDataService.getAsBuffer(attachment);
-
-			return [attachment, { type: 'buffer', buffer, fileSize: buffer.length }];
-		}
-
-		throw new NotFoundError('Attachment has no stored file');
-	}
-
-	async deleteAgentAttachmentById(agentId: string, trx?: EntityManager): Promise<void> {
-		const em = trx ?? this.agentRepository.manager;
-		const agent = await em.findOne(this.agentRepository.target, {
-			where: { id: agentId },
-			select: ['files'],
-		});
-		const filesToDelete =
-			agent?.files.flatMap((file) => (file.type === 'file' ? [file.binaryData] : [])) ?? [];
-
-		if (filesToDelete.length > 0) {
-			await this.deleteAttachments(filesToDelete);
-		}
-	}
-
-	async deleteAllAgentAttachments(): Promise<void> {
-		const agents = await this.agentRepository.find({
-			select: ['files'],
-		});
-		const filesToDelete = agents.flatMap(
-			(agent) =>
-				agent?.files.flatMap((file) => (file.type === 'file' ? [file.binaryData] : [])) ?? [],
-		);
-
-		if (filesToDelete.length > 0) {
-			await this.deleteAttachments(filesToDelete);
-		}
 	}
 
 	private isAllowedMimeType(mimeType: string, allowedMimeTypes: string): boolean {

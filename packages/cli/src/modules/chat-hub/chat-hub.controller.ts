@@ -285,12 +285,6 @@ export class ChatHubController {
 		res.status(204).send();
 	}
 
-	@Get('/agents')
-	@GlobalScope('chatHubAgent:list')
-	async getAgents(req: AuthenticatedRequest) {
-		return await this.chatAgentService.getAgentsByUserIdAsDtos(req.user.id);
-	}
-
 	@Get('/agents/:agentId')
 	@GlobalScope('chatHubAgent:read')
 	async getAgent(req: AuthenticatedRequest, _res: Response, @Param('agentId') agentId: string) {
@@ -328,29 +322,6 @@ export class ChatHubController {
 		await this.chatAgentService.deleteAgent(agentId, req.user);
 
 		res.status(204).send();
-	}
-
-	@Get('/agents/:agentId/attachments/:index')
-	@GlobalScope('chatHub:message')
-	async getAgentAttachment(
-		req: AuthenticatedRequest,
-		res: Response,
-		@Param('agentId') agentId: string,
-		@Param('index') index: string,
-	) {
-		const attachmentIndex = Number.parseInt(index, 10);
-
-		if (isNaN(attachmentIndex)) {
-			throw new BadRequestError('Invalid attachment index');
-		}
-
-		// Verify user has access to this agent
-		await this.chatAgentService.getAgentById(agentId, req.user.id);
-
-		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
-			await this.chatAttachmentService.getAgentAttachment(agentId, attachmentIndex);
-
-		return await this.sendAttachment(res, mimeType, fileName, attachmentAsStreamOrBuffer);
 	}
 
 	/**

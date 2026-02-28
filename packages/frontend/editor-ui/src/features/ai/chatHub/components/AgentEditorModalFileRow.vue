@@ -10,7 +10,6 @@ export type FileRow = {
 	name: string;
 	mimeType: string;
 	isNew: boolean;
-	isEmbedding: boolean;
 	embeddingProvider: ChatHubLLMProvider | null;
 	index: number;
 };
@@ -22,16 +21,13 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	click: [event: MouseEvent];
 	remove: [];
 }>();
 
 const i18n = useI18n();
 
-const isClickable = computed(() => !props.item.isNew && !props.item.isEmbedding);
-
 const warningTooltip = computed<string | undefined>(() => {
-	if (!props.item.isEmbedding) return undefined;
+	if (props.item.isNew) return undefined;
 	if (!props.semanticSearchReady) {
 		return i18n.baseText('chatHub.agent.editor.files.semanticSearchNotReady.tooltip');
 	}
@@ -50,14 +46,11 @@ const warningTooltip = computed<string | undefined>(() => {
 </script>
 
 <template>
-	<div
-		:class="[$style.fileRow, { [$style.clickableRow]: isClickable }]"
-		@click="emit('click', $event)"
-	>
+	<div :class="$style.fileRow">
 		<span :class="$style.fileName">{{ item.name }}</span>
 		<div :class="$style.indexedCell">
 			<N8nText size="small" color="text-light">
-				{{ item.isEmbedding ? i18n.baseText('chatHub.agent.editor.files.indexed') : item.mimeType }}
+				{{ item.isNew ? item.mimeType : i18n.baseText('chatHub.agent.editor.files.indexed') }}
 			</N8nText>
 			<N8nTooltip v-if="warningTooltip" :content="warningTooltip">
 				<N8nIcon icon="triangle-alert" :class="$style.iconWarning" size="small" />
@@ -96,14 +89,6 @@ const warningTooltip = computed<string | undefined>(() => {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	flex-shrink: 0;
-}
-
-.clickableRow {
-	cursor: pointer;
-
-	&:hover {
-		background-color: var(--color--background--light-3);
-	}
 }
 
 .iconWarning {

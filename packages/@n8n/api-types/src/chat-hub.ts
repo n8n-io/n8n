@@ -2,7 +2,6 @@ import type { Scope } from '@n8n/permissions';
 import {
 	CHAT_TOOL_NODE_TYPE,
 	type ChunkType,
-	type IBinaryData,
 	DATA_TABLE_TOOL_NODE_TYPE,
 	type INode,
 	INodeSchema,
@@ -33,14 +32,12 @@ export const chatHubLLMProviderSchema = z.enum([
 ]);
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
 
-export type ChatHubAgentKnowledgeItem =
-	| { type: 'file'; binaryData: IBinaryData }
-	| {
-			type: 'embedding';
-			provider: ChatHubLLMProvider;
-			fileName: string;
-			mimeType: string;
-	  };
+export interface ChatHubAgentKnowledgeItem {
+	type: 'embedding';
+	provider: ChatHubLLMProvider;
+	fileName: string;
+	mimeType: string;
+}
 
 /**
  * Schema for icon or emoji representation

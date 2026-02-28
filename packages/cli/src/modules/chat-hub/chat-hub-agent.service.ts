@@ -100,16 +100,6 @@ export class ChatHubAgentService {
 		return await this.chatAgentRepository.getManyByUserId(userId);
 	}
 
-	async getAgentsByUserIdAsDtos(userId: string): Promise<ChatHubAgentDto[]> {
-		const agents = await this.chatAgentRepository.getManyByUserIdWithToolIds(userId);
-		return agents.map((agent) =>
-			this.toDto(
-				agent,
-				(agent.tools ?? []).map((t) => t.id),
-			),
-		);
-	}
-
 	async getAgentById(id: string, userId: string, trx?: EntityManager): Promise<ChatHubAgent> {
 		const agent = await this.chatAgentRepository.getOneById(id, userId, trx);
 		if (!agent) {
@@ -230,7 +220,6 @@ export class ChatHubAgentService {
 			throw new NotFoundError('Chat agent not found');
 		}
 
-		await this.chatHubAttachmentService.deleteAgentAttachmentById(id);
 		await this.chatAgentRepository.deleteAgent(id);
 		await this.deleteEmbeddings(user, id);
 
@@ -347,35 +336,30 @@ export class ChatHubAgentService {
 		const pdfFilesToInsert: IBinaryData[] = [];
 
 		for (const file of binaryItems) {
-			const storedFile = await this.chatHubAttachmentService.storeAgentAttachment(id, file);
-
-			if (file.mimeType === 'application/pdf') {
-				if (!embeddingModel) {
-					throw new BadRequestError(
-						'Agent must have embedding provider configured to insert embeddings for RAG',
-					);
-				}
-
-				files.push({
-					type: 'embedding',
-					mimeType: file.mimeType,
-					fileName: file.fileName,
-					provider: embeddingModel.provider,
-				});
-				pdfFilesToInsert.push(storedFile);
-			} else {
-				files.push({ type: 'file', binaryData: storedFile });
+			if (file.mimeType !== 'application/pdf') {
+				throw new BadRequestError(
+					`Unsupported file type: ${file.mimeType}. Only PDF files are supported as agent knowledge.`,
+				);
 			}
-		}
 
-		if (pdfFilesToInsert.length > 0) {
 			if (!embeddingModel) {
 				throw new BadRequestError(
 					'Agent must have embedding provider configured to insert embeddings for RAG',
 				);
 			}
 
-			await this.insertEmbeddings(user, id, embeddingModel, pdfFilesToInsert);
+			const storedFile = await this.chatHubAttachmentService.storeAgentAttachment(id, file);
+			files.push({
+				type: 'embedding',
+				mimeType: file.mimeType,
+				fileName: file.fileName,
+				provider: embeddingModel.provider,
+			});
+			pdfFilesToInsert.push(storedFile);
+		}
+
+		if (pdfFilesToInsert.length > 0) {
+			await this.insertEmbeddings(user, id, embeddingModel!, pdfFilesToInsert);
 			await this.chatHubAttachmentService.deleteAttachments(pdfFilesToInsert);
 		}
 
@@ -391,28 +375,18 @@ export class ChatHubAgentService {
 	): Promise<ChatHubAgentKnowledgeItem[]> {
 		const filesToKeep: ChatHubAgentKnowledgeItem[] = [];
 		const embeddingsToDelete: string[] = [];
-		const attachmentsToDelete: IBinaryData[] = [];
 
 		for (let i = 0; i < existingFiles.length; i++) {
 			const file = existingFiles[i];
 
-			if (file.type === 'embedding') {
-				if (!keepFileIndices.includes(i) || availableEmbeddingProvider !== file.provider) {
-					embeddingsToDelete.push(file.fileName);
-				} else {
-					filesToKeep.push(file);
-				}
+			if (!keepFileIndices.includes(i) || availableEmbeddingProvider !== file.provider) {
+				embeddingsToDelete.push(file.fileName);
 			} else {
-				if (!keepFileIndices.includes(i)) {
-					attachmentsToDelete.push(file.binaryData);
-				} else {
-					filesToKeep.push(file);
-				}
+				filesToKeep.push(file);
 			}
 		}
 
 		await this.deleteEmbeddingsByFileNames(user, agentId, embeddingsToDelete);
-		await this.chatHubAttachmentService.deleteAttachments(attachmentsToDelete);
 
 		return filesToKeep;
 	}

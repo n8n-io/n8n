@@ -3,7 +3,6 @@ import {
 	ChatSessionId,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubBaseLLMModel,
-	type ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -515,10 +514,7 @@ export class ChatHubWorkflowService {
 		attachments: IBinaryData[],
 	) {
 		const chatTriggerNode = this.buildChatTriggerNode();
-		const titleGeneratorAgentNode = this.buildTitleGeneratorAgentNode(
-			humanMessage,
-			attachments.map((binaryData) => ({ type: 'file', binaryData })),
-		);
+		const titleGeneratorAgentNode = this.buildTitleGeneratorAgentNode(humanMessage, attachments);
 		const modelNode = this.buildModelNode(credentials, model);
 
 		const nodes: INode[] = [chatTriggerNode, titleGeneratorAgentNode, modelNode];
@@ -897,13 +893,9 @@ IMPORTANT:
 		};
 	}
 
-	private buildTitleGeneratorAgentNode(
-		message: string,
-		attachments: ChatHubAgentKnowledgeItem[],
-	): INode {
+	private buildTitleGeneratorAgentNode(message: string, attachments: IBinaryData[]): INode {
 		const files = attachments.map(
-			(attachment) =>
-				`[file: "${attachment.type === 'embedding' ? attachment.fileName : (attachment.binaryData.fileName ?? 'attachment')}"]`,
+			(attachment) => `[file: "${attachment.fileName ?? 'attachment'}"]`,
 		);
 
 		return {
