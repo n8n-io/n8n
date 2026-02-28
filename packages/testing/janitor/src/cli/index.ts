@@ -8,4 +8,5 @@ export {
 	showRulesHelp,
 	showTcrHelp,
 	showDiscoverHelp,
+	showOrchestrateHelp,
 } from './help.js';

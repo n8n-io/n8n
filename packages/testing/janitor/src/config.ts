@@ -93,6 +93,18 @@ export interface JanitorConfig {
 	 */
 	capabilityPrefix: string;
 
+	/** Orchestration configuration for distributing specs across shards */
+	orchestration: {
+		/** Path to metrics JSON file (relative to rootDir). When unset, all specs get defaultDuration. */
+		metricsPath?: string;
+		/** Default duration for specs without metrics (ms) @default 60_000 */
+		defaultDuration: number;
+		/** Max group duration before splitting into sub-groups (ms) @default 300_000 */
+		maxGroupDuration: number;
+		/** Only include specs with paths starting with this prefix @default undefined (all specs) */
+		specFilter?: string;
+	};
+
 	/** TCR configuration */
 	tcr: {
 		/** Test command. File paths will be appended. @default 'npx playwright test' */
@@ -175,6 +187,11 @@ export const defaultConfig: Omit<JanitorConfig, 'rootDir'> = {
 
 	capabilityPrefix: '@capability:',
 
+	orchestration: {
+		defaultDuration: 60_000,
+		maxGroupDuration: 5 * 60 * 1000,
+	},
+
 	tcr: {
 		testCommand: 'npx playwright test',
 	},
@@ -211,6 +228,7 @@ export function defineConfig(config: DefineConfigInput): JanitorConfig {
 		patterns: { ...defaultConfig.patterns, ...config.patterns },
 		facade: { ...defaultConfig.facade, ...config.facade },
 		rules: { ...defaultConfig.rules, ...config.rules },
+		orchestration: { ...defaultConfig.orchestration, ...config.orchestration },
 		tcr: { ...defaultConfig.tcr, ...config.tcr },
 	};
 }

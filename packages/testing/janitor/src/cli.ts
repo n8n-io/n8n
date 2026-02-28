@@ -24,6 +24,7 @@ import {
 	showRulesHelp,
 	showTcrHelp,
 	showDiscoverHelp,
+	showOrchestrateHelp,
 } from './cli/index.js';
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
 import {
@@ -59,6 +60,11 @@ import {
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer.js';
 import { createProject } from './core/project-loader.js';
+import { orchestrate } from './core/orchestrator.js';
+import {
+	formatOrchestrationJSON,
+	formatOrchestrationConsole,
+} from './core/orchestrator-formatter.js';
 import {
 	TestDiscoveryAnalyzer,
 	formatDiscoveryJSON,
@@ -421,6 +427,65 @@ function runDiscover(options: CliOptions): void {
 	}
 }
 
+function runOrchestrate(options: CliOptions): void {
+	const config = getConfig();
+
+	if (!options.shards || options.shards < 1) {
+		console.error('Error: --shards=<N> is required (N >= 1)');
+		process.exit(1);
+	}
+
+	// Discover and filter specs
+	const { project } = createProject(config.rootDir);
+	const analyzer = new TestDiscoveryAnalyzer(project);
+	const report = analyzer.discover();
+
+	const specs = config.orchestration.specFilter
+		? report.specs.filter((s) => s.path.startsWith(config.orchestration.specFilter!))
+		: report.specs;
+
+	// Load metrics
+	let metrics: Record<string, number> = {};
+	if (config.orchestration.metricsPath) {
+		const metricsPath = path.isAbsolute(config.orchestration.metricsPath)
+			? config.orchestration.metricsPath
+			: path.resolve(config.rootDir, config.orchestration.metricsPath);
+
+		if (fs.existsSync(metricsPath)) {
+			const raw = JSON.parse(fs.readFileSync(metricsPath, 'utf-8')) as {
+				specs?: Record<string, { avgDuration?: number }>;
+			};
+			if (raw.specs) {
+				for (const [specPath, data] of Object.entries(raw.specs)) {
+					if (data.avgDuration) {
+						metrics[specPath] = data.avgDuration;
+					}
+				}
+			}
+		} else {
+			console.error(`Warning: Metrics file not found: ${metricsPath}`);
+		}
+	}
+
+	const result = orchestrate(specs, options.shards, metrics, config.orchestration);
+
+	// Single shard mode
+	if (options.shardIndex !== undefined) {
+		if (options.shardIndex < 0 || options.shardIndex >= options.shards) {
+			console.error(`Error: --shard-index must be between 0 and ${options.shards - 1}`);
+			process.exit(1);
+		}
+		console.log(result.shards[options.shardIndex].specs.join('\n'));
+		return;
+	}
+
+	if (options.json) {
+		console.log(formatOrchestrationJSON(result));
+	} else {
+		formatOrchestrationConsole(result, options.verbose);
+	}
+}
+
 async function main(): Promise<void> {
 	const options = parseArgs();
 
@@ -447,6 +512,9 @@ async function main(): Promise<void> {
 				break;
 			case 'discover':
 				showDiscoverHelp();
+				break;
+			case 'orchestrate':
+				showOrchestrateHelp();
 				break;
 			default:
 				showHelp();
@@ -490,6 +558,9 @@ async function main(): Promise<void> {
 			break;
 		case 'discover':
 			runDiscover(options);
+			break;
+		case 'orchestrate':
+			runOrchestrate(options);
 			break;
 		default:
 			runAnalyze(options);

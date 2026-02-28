@@ -20,6 +20,7 @@ Commands:
   method-impact      Find tests that use a specific method (e.g., CanvasPage.addNode)
   tcr                Run TCR (Test && Commit || Revert) workflow
   discover           Discover test specs and capabilities (for orchestration)
+  orchestrate        Distribute specs across shards using capability-aware bin-packing
 
 Analysis Options:
   --config=<path>    Path to janitor.config.js (default: ./janitor.config.js)
@@ -50,6 +51,7 @@ For command-specific help:
   playwright-janitor method-impact --help
   playwright-janitor tcr --help
   playwright-janitor discover --help
+  playwright-janitor orchestrate --help
 `);
 }
 
@@ -161,6 +163,37 @@ Skip detection:
 
 Example:
   playwright-janitor discover --json | jq '.specs | length'
+`);
+}
+
+export function showOrchestrateHelp(): void {
+	console.log(`
+Orchestrate - Distribute specs across shards using capability-aware bin-packing
+
+Groups tests by capability to minimize fixture overhead, then uses greedy
+bin-packing to balance test time across shards.
+
+Usage:
+  playwright-janitor orchestrate --shards=<N> --json     # Full result as JSON
+  playwright-janitor orchestrate --shards=<N>            # Human-readable summary
+  playwright-janitor orchestrate --shards=<N> --shard-index=<I>  # Specs for one shard
+
+Options:
+  --shards=<N>         Number of shards (required)
+  --shard-index=<I>    Output specs for a single shard (0-indexed)
+  --json               Structured JSON output
+  --verbose            Include per-shard spec lists
+
+Config:
+  orchestration.metricsPath      Path to metrics JSON (relative to rootDir)
+  orchestration.defaultDuration  Duration for specs without metrics (default: 60s)
+  orchestration.maxGroupDuration Max group size before splitting (default: 5min)
+
+Output (--json):
+  { shards: [{ shard, specs, testTime, capabilities, fixtureCount }], totalTestTime }
+
+Example:
+  playwright-janitor orchestrate --shards=14 --json | jq '.shards[0].specs'
 `);
 }
 

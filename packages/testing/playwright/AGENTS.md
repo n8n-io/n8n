@@ -88,6 +88,9 @@ pnpm janitor rules --json
 # Discover test specs (for orchestration)
 pnpm janitor discover --json
 
+# Distribute specs across shards
+pnpm janitor orchestrate --shards=14 --json
+
 # JSON output
 pnpm janitor --json
 ```

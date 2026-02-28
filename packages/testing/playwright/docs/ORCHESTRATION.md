@@ -126,17 +126,36 @@ This fetches the last 30 days of test durations from Currents, aggregates by spe
 - After significant test changes
 - When adding new specs (optional - they get 60s default)
 
+## Architecture
+
+```
+janitor orchestrate (generic)          distribute-tests.mjs (n8n CI adapter)
+┌──────────────────────────┐          ┌──────────────────────────┐
+│ AST discovery            │          │ Calls janitor orchestrate│
+│ Metrics loading          │   JSON   │ Maps capabilities →      │
+│ Capability grouping      │ ──────→  │   Docker images          │
+│ Group splitting          │          │ Adds container overhead  │
+│ Greedy bin-packing       │          │ Outputs GH Actions matrix│
+└──────────────────────────┘          └──────────────────────────┘
+```
+
+The janitor handles generic orchestration (works for any Playwright project).
+`distribute-tests.mjs` is n8n's CI adapter that maps capabilities to Docker images.
+
 ## Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/distribute-tests.mjs` | Distributes specs across shards |
+| `scripts/distribute-tests.mjs` | CI adapter — calls janitor, maps images, outputs matrix |
 | `scripts/fetch-currents-metrics.mjs` | Fetches metrics from Currents API |
 
 ### Testing Locally
 
 ```bash
-# See distribution for 14 shards
+# Janitor orchestration (generic output)
+pnpm janitor orchestrate --shards=14 --json
+
+# CI adapter (n8n-specific output with Docker images)
 node scripts/distribute-tests.mjs --matrix 14 --orchestrate
 
 # Get specs for shard 0
