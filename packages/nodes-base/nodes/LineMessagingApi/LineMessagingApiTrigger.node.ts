@@ -14,7 +14,7 @@ export class LineMessagingApiTrigger implements INodeType {
 		icon: 'file:line.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'LINE Messaging API の Webhook イベントを受信してワークフローを開始する',
+		description: 'Starts the workflow when LINE Messaging API webhook events are received',
 		codex: {
 			categories: ['Communication'],
 			subcategories: {
@@ -35,10 +35,10 @@ export class LineMessagingApiTrigger implements INodeType {
 			},
 		],
 		triggerPanel: {
-			header: 'LINE Webhook イベントを待機',
+			header: 'Waiting for LINE webhook events',
 			executionsHelp: {
-				active: 'Webhook が有効です。LINE Developers Console で Webhook URL を設定してください。',
-				inactive: 'ワークフローを有効化すると Webhook URL が発行されます。',
+				active: 'The webhook is active. Set the Webhook URL in the LINE Developers Console.',
+				inactive: 'Activate the workflow to generate a Webhook URL.',
 			},
 		},
 		properties: [
@@ -53,7 +53,7 @@ export class LineMessagingApiTrigger implements INodeType {
 					{ name: 'Postback', value: 'postback' },
 				],
 				default: ['message'],
-				description: '処理する LINE イベントタイプ',
+				description: 'The LINE event types to process',
 			},
 		],
 	};

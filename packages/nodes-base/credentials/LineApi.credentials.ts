@@ -21,8 +21,7 @@ export class LineApi implements ICredentialType {
 				{ name: 'Test', value: 'test' },
 			],
 			default: 'production',
-			description:
-				'使用する環境。Test は開発用チャネル、Production は本番チャネルに対応します',
+			description: 'The environment to use. Choose Test for a development channel and Production for a live channel.',
 		},
 
 		// ─── Production ───────────────────────────────────────────
@@ -33,7 +32,7 @@ export class LineApi implements ICredentialType {
 			typeOptions: { password: true },
 			required: true,
 			default: '',
-			description: '本番チャネルの Channel Access Token (long-lived)',
+			description: 'Long-lived channel access token for the production channel',
 			displayOptions: { show: { environment: ['production'] } },
 		},
 		{
@@ -42,7 +41,7 @@ export class LineApi implements ICredentialType {
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
-			description: '本番チャネルの Channel Secret（Webhook 署名検証に使用）',
+			description: 'Channel secret for the production channel, used to verify webhook signatures',
 			displayOptions: { show: { environment: ['production'] } },
 		},
 
@@ -54,7 +53,7 @@ export class LineApi implements ICredentialType {
 			typeOptions: { password: true },
 			required: true,
 			default: '',
-			description: 'テストチャネルの Channel Access Token (long-lived)',
+			description: 'Long-lived channel access token for the test channel',
 			displayOptions: { show: { environment: ['test'] } },
 		},
 		{
@@ -63,7 +62,7 @@ export class LineApi implements ICredentialType {
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
-			description: 'テストチャネルの Channel Secret（Webhook 署名検証に使用）',
+			description: 'Channel secret for the test channel, used to verify webhook signatures',
 			displayOptions: { show: { environment: ['test'] } },
 		},
 	];

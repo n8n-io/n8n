@@ -17,7 +17,7 @@ export class LineMessagingApi implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"]}}',
-		description: 'LINE Messaging API を使ってメッセージを送信',
+		description: 'Send messages using the LINE Messaging API',
 		codex: {
 			categories: ['Communication'],
 			subcategories: {
@@ -37,7 +37,7 @@ export class LineMessagingApi implements INodeType {
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
-				options: [{ name: 'Message', value: 'message', description: 'メッセージを送信' }],
+				options: [{ name: 'Message', value: 'message', description: 'Send a message to users' }],
 				default: 'message',
 			},
 			// ─── Operations & Fields ──────────────────────────────────────

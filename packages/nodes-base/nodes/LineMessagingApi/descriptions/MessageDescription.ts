@@ -11,25 +11,25 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Broadcast',
 				value: 'broadcast',
-				description: '全フォロワーに一斉送信',
+				description: 'Send a message to all followers',
 				action: 'Broadcast a message',
 			},
 			{
 				name: 'Multicast',
 				value: 'multicast',
-				description: '複数ユーザーに送信（最大500人）',
+				description: 'Send a message to multiple users (up to 500)',
 				action: 'Multicast a message',
 			},
 			{
 				name: 'Push',
 				value: 'push',
-				description: '特定ユーザーに送信',
+				description: 'Send a message to a specific user',
 				action: 'Push a message',
 			},
 			{
 				name: 'Reply',
 				value: 'reply',
-				description: 'replyToken を使って返信',
+				description: 'Reply to a user using a replyToken from a webhook event',
 				action: 'Reply to a message',
 			},
 		],
@@ -43,7 +43,7 @@ export const messageFields: INodeProperties[] = [
 		name: 'replyToken',
 		type: 'string',
 		default: '',
-		description: 'Webhook イベントの replyToken',
+		description: 'The replyToken from the webhook event',
 		displayOptions: { show: { resource: ['message'], operation: ['reply'] } },
 	},
 	{
@@ -52,7 +52,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'メッセージ送信先の userId',
+		description: 'The userId of the message recipient',
 		displayOptions: { show: { resource: ['message'], operation: ['push'] } },
 	},
 	{
@@ -61,7 +61,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'カンマ区切りで複数の userId を指定（最大500人）',
+		description: 'Comma-separated list of userIds to send to (up to 500)',
 		displayOptions: { show: { resource: ['message'], operation: ['multicast'] } },
 	},
 	{
@@ -70,8 +70,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'json',
 		required: true,
 		default: '[{"type": "text", "text": ""}]',
-		description:
-			'LINE メッセージオブジェクトの配列（最大5件）。type: text / sticker / image / flex など',
+		description: 'Array of LINE message objects (up to 5). Supported types: text, sticker, image, flex, etc.',
 		typeOptions: { rows: 6 },
 		displayOptions: { show: { resource: ['message'] } },
 	},
