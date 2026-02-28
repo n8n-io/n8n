@@ -18,11 +18,9 @@ import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/ready
 
 import { useRoute } from 'vue-router';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const workflowsStore = useWorkflowsStore();
 const readyToRunStore = useReadyToRunStore();
-const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const posthogStore = usePostHog();
 const uiStore = useUIStore();
