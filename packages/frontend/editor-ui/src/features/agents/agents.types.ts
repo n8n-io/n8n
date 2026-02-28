@@ -92,38 +92,43 @@ export interface ExternalAgentRegistration {
 export interface AgentTaskDispatchResponse {
 	status: 'dispatched' | 'completed' | 'error';
 	summary?: string;
-	steps?: Array<{ action: string; workflowName?: string; toAgent?: string; result?: string }>;
+	steps?: Array<{
+		action: string;
+		workflowName?: string;
+		targetUserName?: string;
+		result?: string;
+	}>;
 	message?: string;
 }
 
 // SSE streaming event types
-export interface StreamStepEvent {
-	type: 'step';
+export interface StreamActionEvent {
+	type: 'task.action';
 	action: string;
 	workflowName?: string;
-	toAgent?: string;
-	external?: boolean;
+	targetUserName?: string;
+	origin?: 'internal' | 'external';
 }
 
 export interface StreamObservationEvent {
-	type: 'observation';
+	type: 'task.observation';
 	result?: string;
 	error?: string;
-	toAgent?: string;
+	targetUserName?: string;
 }
 
-export interface StreamDoneEvent {
-	type: 'done';
+export interface StreamCompletionEvent {
+	type: 'task.completion';
 	summary: string;
 }
 
-export type StreamEvent = StreamStepEvent | StreamObservationEvent | StreamDoneEvent;
+export type StreamEvent = StreamActionEvent | StreamObservationEvent | StreamCompletionEvent;
 
 export interface LiveStep {
 	action: string;
 	workflowName?: string;
-	toAgent?: string;
-	external?: boolean;
+	targetUserName?: string;
+	origin?: 'internal' | 'external';
 	result?: string;
 	error?: string;
 	status: 'running' | 'success' | 'failed' | 'error';

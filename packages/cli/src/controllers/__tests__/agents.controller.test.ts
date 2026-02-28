@@ -389,8 +389,8 @@ describe('AgentsController', () => {
 
 			// Capture the onStep callback and simulate step events
 			agentsService.executeAgentTask.mockImplementation(async (_id, _prompt, _budget, opts) => {
-				opts?.onStep?.({ type: 'step', action: 'execute_workflow', workflowName: 'Report' });
-				opts?.onStep?.({ type: 'observation', result: 'success' });
+				opts?.onStep?.({ type: 'task.action', action: 'execute_workflow', workflowName: 'Report' });
+				opts?.onStep?.({ type: 'task.observation', result: 'success' });
 				return { status: 'completed', summary: 'Done', steps: [] };
 			});
 
@@ -401,7 +401,7 @@ describe('AgentsController', () => {
 				prompt: 'Test',
 			} as never);
 
-			// 2 onStep writes + 1 final "done" write = 3 total
+			// 2 onStep writes + 1 final "task.completion" write = 3 total
 			expect(res.write).toHaveBeenCalledTimes(3);
 			// flush must be called after EVERY write (regression: compression middleware buffers SSE)
 			expect(res.flush).toHaveBeenCalledTimes(3);
@@ -410,19 +410,19 @@ describe('AgentsController', () => {
 });
 
 describe('buildSystemPrompt', () => {
-	it('should include send_message instructions when canDelegate is true', () => {
+	it('should include delegate instructions when canDelegate is true', () => {
 		const agents = [{ id: 'a-1', firstName: 'Helper', description: 'Helps with things' }];
 		const prompt = buildSystemPrompt('TestAgent', [], agents, true);
 
-		expect(prompt).toContain('send_message');
+		expect(prompt).toContain('delegate');
 		expect(prompt).toContain('Helper (id: a-1): Helps with things');
 	});
 
-	it('should exclude send_message when canDelegate is false', () => {
+	it('should exclude delegate when canDelegate is false', () => {
 		const agents = [{ id: 'a-1', firstName: 'Helper', description: 'Helps' }];
 		const prompt = buildSystemPrompt('TestAgent', [], agents, false);
 
-		expect(prompt).not.toContain('send_message');
+		expect(prompt).not.toContain('delegate');
 		expect(prompt).not.toContain('Helper');
 	});
 
@@ -456,15 +456,15 @@ describe('buildSystemPrompt', () => {
 	it('should only allow execute_workflow and complete when canDelegate is false', () => {
 		const prompt = buildSystemPrompt('TestAgent', [], [], false);
 		expect(prompt).toContain('"execute_workflow" or "complete"');
-		expect(prompt).not.toContain('"send_message"');
+		expect(prompt).not.toContain('"delegate"');
 	});
 
-	it('should include toAgentId in delegation instructions', () => {
+	it('should include targetUserId in delegation instructions', () => {
 		const agents = [{ id: 'a-1', firstName: 'Helper', description: 'Helps' }];
 		const prompt = buildSystemPrompt('TestAgent', [], agents, true);
 
-		expect(prompt).toContain('toAgentId');
-		expect(prompt).not.toContain('"toAgent"');
+		expect(prompt).toContain('targetUserId');
+		expect(prompt).not.toContain('"toAgentId"');
 	});
 
 	it('should include external agents in prompt alongside local agents', () => {
@@ -477,7 +477,7 @@ describe('buildSystemPrompt', () => {
 
 		expect(prompt).toContain('LocalBot (id: a-1): Local helper');
 		expect(prompt).toContain('RemoteBot (id: external:RemoteBot): Remote helper');
-		expect(prompt).toContain('send_message');
+		expect(prompt).toContain('delegate');
 	});
 
 	it('should show external-only agents when no local agents exist', () => {
@@ -487,7 +487,7 @@ describe('buildSystemPrompt', () => {
 		const prompt = buildSystemPrompt('TestAgent', [], externalOnly, true);
 
 		expect(prompt).toContain('ExtBot (id: external:ExtBot): External only');
-		expect(prompt).toContain('send_message');
+		expect(prompt).toContain('delegate');
 	});
 
 	it('should render typed inputs for workflows with skills', () => {
@@ -548,10 +548,10 @@ describe('callExternalAgent', () => {
 		global.fetch = originalFetch;
 	});
 
-	it('should POST to external agent URL with correct headers and body (no keys)', async () => {
+	it('should POST to n8n external agent URL with correct headers and body', async () => {
 		const config: ExternalAgentConfig = {
 			name: 'RemoteBot',
-			url: 'https://remote.example.com/rest/agents/abc/task',
+			url: 'https://remote.example.com/api/v1/agents/abc/task',
 			apiKey: 'remote-api-key',
 		};
 
@@ -565,13 +565,13 @@ describe('callExternalAgent', () => {
 		const result = await callExternalAgent(config, 'Do something');
 
 		expect(global.fetch).toHaveBeenCalledWith(
-			'https://remote.example.com/rest/agents/abc/task',
+			'https://remote.example.com/api/v1/agents/abc/task',
 			expect.objectContaining({
 				method: 'POST',
-				headers: {
+				headers: expect.objectContaining({
 					'Content-Type': 'application/json',
 					'x-n8n-api-key': 'remote-api-key',
-				},
+				}),
 				body: JSON.stringify({ prompt: 'Do something' }),
 			}),
 		);
@@ -580,10 +580,76 @@ describe('callExternalAgent', () => {
 		expect(result.summary).toBe('Done remotely');
 	});
 
+	it('should POST to A2A v0.2 endpoint with JSON-RPC tasks/send format', async () => {
+		const config: ExternalAgentConfig = {
+			name: 'PolicyCheck',
+			url: 'https://policycheck.tools/api/a2a',
+			apiKey: 'test-key',
+		};
+
+		global.fetch = jest.fn().mockResolvedValue({
+			ok: true,
+			json: async () => ({
+				jsonrpc: '2.0',
+				id: 'resp-1',
+				result: {
+					id: 'task-1',
+					status: {
+						state: 'completed',
+						message: { role: 'agent', parts: [{ text: 'Policy analysed' }] },
+					},
+				},
+			}),
+		});
+
+		const result = await callExternalAgent(config, 'Analyse policies');
+
+		const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
+		const body = JSON.parse(fetchCall[1].body as string);
+
+		// Should use JSON-RPC tasks/send format
+		expect(body.jsonrpc).toBe('2.0');
+		expect(body.method).toBe('tasks/send');
+		expect(body.params.message.parts[0]).toEqual({ type: 'text', text: 'Analyse policies' });
+
+		// Should use X-API-Key header (not x-n8n-api-key)
+		expect(fetchCall[1].headers).toHaveProperty('X-API-Key', 'test-key');
+		expect(fetchCall[1].headers).not.toHaveProperty('x-n8n-api-key');
+
+		expect(result.status).toBe('completed');
+		expect(result.summary).toBe('Policy analysed');
+	});
+
+	it('should work without API key for public A2A agents', async () => {
+		const config: ExternalAgentConfig = {
+			name: 'PublicBot',
+			url: 'https://public.example.com/a2a',
+		};
+
+		global.fetch = jest.fn().mockResolvedValue({
+			ok: true,
+			json: async () => ({
+				jsonrpc: '2.0',
+				id: 'resp-1',
+				result: {
+					id: 'task-1',
+					status: { state: 'completed', message: { role: 'agent', parts: [{ text: 'Done' }] } },
+				},
+			}),
+		});
+
+		const result = await callExternalAgent(config, 'Hello');
+
+		const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
+		expect(fetchCall[1].headers).not.toHaveProperty('X-API-Key');
+		expect(fetchCall[1].headers).not.toHaveProperty('x-n8n-api-key');
+		expect(result.status).toBe('completed');
+	});
+
 	it('should not forward keys in the request body', async () => {
 		const config: ExternalAgentConfig = {
 			name: 'RemoteBot',
-			url: 'https://remote.example.com/rest/agents/abc/task',
+			url: 'https://remote.example.com/api/v1/agents/abc/task',
 			apiKey: 'key',
 		};
 
@@ -602,7 +668,7 @@ describe('callExternalAgent', () => {
 	it('should unwrap response without data envelope', async () => {
 		const config: ExternalAgentConfig = {
 			name: 'RemoteBot',
-			url: 'https://remote.example.com/rest/agents/abc/task',
+			url: 'https://remote.example.com/api/v1/agents/abc/task',
 			apiKey: 'key',
 		};
 
@@ -620,7 +686,7 @@ describe('callExternalAgent', () => {
 	it('should throw on non-OK response', async () => {
 		const config: ExternalAgentConfig = {
 			name: 'RemoteBot',
-			url: 'https://remote.example.com/rest/agents/abc/task',
+			url: 'https://remote.example.com/api/v1/agents/abc/task',
 			apiKey: 'key',
 		};
 
@@ -639,27 +705,29 @@ describe('callExternalAgent', () => {
 describe('sseWrite', () => {
 	it('should write SSE-formatted data', () => {
 		const res = { write: jest.fn(), flush: jest.fn() };
-		sseWrite(res, { type: 'step', action: 'execute_workflow' });
+		sseWrite(res, { type: 'task.action', action: 'execute_workflow' });
 
-		expect(res.write).toHaveBeenCalledWith('data: {"type":"step","action":"execute_workflow"}\n\n');
+		expect(res.write).toHaveBeenCalledWith(
+			'data: {"type":"task.action","action":"execute_workflow"}\n\n',
+		);
 	});
 
 	it('should flush after every write to prevent compression buffering', () => {
 		const res = { write: jest.fn(), flush: jest.fn() };
 
-		sseWrite(res, { type: 'step', action: 'execute_workflow' });
+		sseWrite(res, { type: 'task.action', action: 'execute_workflow' });
 		expect(res.flush).toHaveBeenCalledTimes(1);
 
-		sseWrite(res, { type: 'observation', result: 'success' });
+		sseWrite(res, { type: 'task.observation', result: 'success' });
 		expect(res.flush).toHaveBeenCalledTimes(2);
 
-		sseWrite(res, { type: 'done', summary: 'All done' });
+		sseWrite(res, { type: 'task.completion', summary: 'All done' });
 		expect(res.flush).toHaveBeenCalledTimes(3);
 	});
 
 	it('should not throw when flush is not available', () => {
 		const res = { write: jest.fn() };
-		expect(() => sseWrite(res, { type: 'done', summary: 'OK' })).not.toThrow();
+		expect(() => sseWrite(res, { type: 'task.completion', summary: 'OK' })).not.toThrow();
 		expect(res.write).toHaveBeenCalled();
 	});
 });
@@ -951,6 +1019,404 @@ describe('findSupportedTrigger', () => {
 			makeNode('n8n-nodes-base.manualTrigger', { id: 'n-2', name: 'Manual' }),
 		];
 		expect(findSupportedTrigger(nodes)?.id).toBe('n-1');
+	});
+});
+
+describe('proxyExternalTask — A2A protocol adapter', () => {
+	const agentsService = mock<AgentsService>();
+	let controller: AgentsController;
+	const originalFetch = global.fetch;
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		controller = new AgentsController(agentsService);
+	});
+
+	afterEach(() => {
+		global.fetch = originalFetch;
+	});
+
+	/** Encode SSE events into a ReadableStream that mimics a fetch response body. */
+	function makeSseStream(events: string[]): ReadableStream<Uint8Array> {
+		const encoder = new TextEncoder();
+		const chunks = events.map((e) => encoder.encode(e));
+		let i = 0;
+		return new ReadableStream<Uint8Array>({
+			pull(ctrl) {
+				if (i < chunks.length) {
+					ctrl.enqueue(chunks[i++]);
+				} else {
+					ctrl.close();
+				}
+			},
+		});
+	}
+
+	function makeFetchSseResponse(events: string[]) {
+		const body = makeSseStream(events);
+		return {
+			ok: true,
+			status: 200,
+			headers: { get: (key: string) => (key === 'content-type' ? 'text/event-stream' : null) },
+			body,
+		};
+	}
+
+	function makeRes() {
+		const written: string[] = [];
+		const res = mock<Response>();
+		res.writeHead.mockReturnValue(res);
+		res.write.mockImplementation((chunk: unknown) => {
+			written.push(String(chunk));
+			return true;
+		});
+		return { res, written };
+	}
+
+	function makePayload(overrides: Record<string, unknown> = {}) {
+		return {
+			url: 'https://remote.example.com/api/v1/agents/abc/task',
+			prompt: 'Do something',
+			apiKey: 'remote-key',
+			...overrides,
+		} as never;
+	}
+
+	it('should translate A2A statusUpdate (working) to n8n task.action event', async () => {
+		const a2aEvent = JSON.stringify({
+			statusUpdate: {
+				taskId: 't1',
+				contextId: 'c1',
+				status: {
+					state: 'working',
+					message: { messageId: 'm1', role: 'agent', parts: [{ text: 'Analyzing...' }] },
+				},
+			},
+		});
+
+		global.fetch = jest.fn().mockResolvedValue(makeFetchSseResponse([`data: ${a2aEvent}\n\n`]));
+		const { res, written } = makeRes();
+
+		await controller.proxyExternalTask(mock(), res, makePayload());
+
+		const parsed = written
+			.filter((w) => w.startsWith('data:'))
+			.map((w) => JSON.parse(w.replace('data: ', '').trim()));
+
+		expect(parsed).toHaveLength(1);
+		expect(parsed[0]).toEqual({
+			type: 'task.action',
+			action: 'Analyzing...',
+			origin: 'external',
+		});
+	});
+
+	it('should skip A2A submitted statusUpdate (no output)', async () => {
+		const submitted = JSON.stringify({
+			statusUpdate: {
+				taskId: 't1',
+				contextId: 'c1',
+				status: { state: 'submitted' },
+			},
+		});
+
+		global.fetch = jest.fn().mockResolvedValue(makeFetchSseResponse([`data: ${submitted}\n\n`]));
+		const { res, written } = makeRes();
+
+		await controller.proxyExternalTask(mock(), res, makePayload());
+
+		const dataEvents = written.filter((w) => w.startsWith('data:'));
+		expect(dataEvents).toHaveLength(0);
+	});
+
+	it('should translate A2A artifactUpdate to n8n task.observation event', async () => {
+		const a2aEvent = JSON.stringify({
+			artifactUpdate: {
+				taskId: 't1',
+				contextId: 'c1',
+				artifact: { artifactId: 'a1', parts: [{ text: 'Result: 42' }] },
+			},
+		});
+
+		global.fetch = jest.fn().mockResolvedValue(makeFetchSseResponse([`data: ${a2aEvent}\n\n`]));
+		const { res, written } = makeRes();
+
+		await controller.proxyExternalTask(mock(), res, makePayload());
+
+		const parsed = written
+			.filter((w) => w.startsWith('data:'))
+			.map((w) => JSON.parse(w.replace('data: ', '').trim()));
+
+		expect(parsed[0]).toEqual({ type: 'task.observation', result: 'Result: 42' });
+	});
+
+	it('should translate A2A task (completed) to n8n task.completion event', async () => {
+		const a2aEvent = JSON.stringify({
+			task: {
+				id: 't1',
+				contextId: 'c1',
+				status: {
+					state: 'completed',
+					message: { messageId: 'm1', role: 'agent', parts: [{ text: 'All done' }] },
+				},
+			},
+		});
+
+		global.fetch = jest.fn().mockResolvedValue(makeFetchSseResponse([`data: ${a2aEvent}\n\n`]));
+		const { res, written } = makeRes();
+
+		await controller.proxyExternalTask(mock(), res, makePayload());
+
+		const parsed = written
+			.filter((w) => w.startsWith('data:'))
+			.map((w) => JSON.parse(w.replace('data: ', '').trim()));
+
+		expect(parsed[0]).toEqual({
+			type: 'task.completion',
+			status: 'completed',
+			summary: 'All done',
+		});
+	});
+
+	it('should pass through n8n internal events unchanged', async () => {
+		const internalEvent = JSON.stringify({
+			type: 'task.action',
+			action: 'execute_workflow',
+			workflowName: 'Deploy',
+		});
+
+		global.fetch = jest
+			.fn()
+			.mockResolvedValue(makeFetchSseResponse([`data: ${internalEvent}\n\n`]));
+		const { res, written } = makeRes();
+
+		await controller.proxyExternalTask(mock(), res, makePayload());
+
+		const parsed = written
+			.filter((w) => w.startsWith('data:'))
+			.map((w) => JSON.parse(w.replace('data: ', '').trim()));
+
+		expect(parsed[0]).toEqual({
+			type: 'task.action',
+			action: 'execute_workflow',
+			workflowName: 'Deploy',
+		});
+	});
+
+	it('should handle mixed A2A and n8n events in the same stream', async () => {
+		const a2aStep = JSON.stringify({
+			statusUpdate: {
+				taskId: 't1',
+				contextId: 'c1',
+				status: {
+					state: 'working',
+					message: { messageId: 'm1', role: 'agent', parts: [{ text: 'Working...' }] },
+				},
+			},
+		});
+		const n8nDone = JSON.stringify({
+			type: 'task.completion',
+			status: 'completed',
+			summary: 'Done',
+		});
+
+		global.fetch = jest
+			.fn()
+			.mockResolvedValue(makeFetchSseResponse([`data: ${a2aStep}\n\n`, `data: ${n8nDone}\n\n`]));
+		const { res, written } = makeRes();
+
+		await controller.proxyExternalTask(mock(), res, makePayload());
+
+		const parsed = written
+			.filter((w) => w.startsWith('data:'))
+			.map((w) => JSON.parse(w.replace('data: ', '').trim()));
+
+		expect(parsed).toHaveLength(2);
+		expect(parsed[0].type).toBe('task.action');
+		expect(parsed[0].action).toBe('Working...');
+		expect(parsed[1].type).toBe('task.completion');
+	});
+
+	it('should use A2A request format (JSON-RPC wrapped) for /message:stream URLs', async () => {
+		global.fetch = jest.fn().mockResolvedValue({
+			ok: true,
+			headers: { get: () => 'application/json' },
+			json: async () => ({ status: 'completed' }),
+		});
+		const res = mock<Response>();
+
+		await controller.proxyExternalTask(
+			mock(),
+			res,
+			makePayload({ url: 'https://agent.example.com/message:stream' }),
+		);
+
+		const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
+		const body = JSON.parse(fetchCall[1].body as string);
+		// JSON-RPC 2.0 envelope
+		expect(body).toHaveProperty('jsonrpc', '2.0');
+		expect(body).toHaveProperty('method', 'message/stream');
+		expect(body).toHaveProperty('id');
+		expect(body).toHaveProperty('params');
+		// Message inside params
+		expect(body.params).toHaveProperty('message');
+		expect(body.params.message).toHaveProperty('parts');
+		expect(body.params.message.parts[0].text).toBe('Do something');
+		expect(body).not.toHaveProperty('prompt');
+	});
+
+	it('should use n8n request format for non-A2A URLs', async () => {
+		global.fetch = jest.fn().mockResolvedValue({
+			ok: true,
+			headers: { get: () => 'application/json' },
+			json: async () => ({ status: 'completed' }),
+		});
+		const res = mock<Response>();
+
+		await controller.proxyExternalTask(mock(), res, makePayload());
+
+		const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
+		const body = JSON.parse(fetchCall[1].body as string);
+		expect(body).toHaveProperty('prompt', 'Do something');
+		expect(body).not.toHaveProperty('message');
+	});
+
+	it('should use A2A v0.2 tasks/send format for generic A2A URLs', async () => {
+		global.fetch = jest.fn().mockResolvedValue({
+			ok: true,
+			headers: { get: () => 'application/json' },
+			json: async () => ({
+				jsonrpc: '2.0',
+				id: 'resp-1',
+				result: { id: 'task-1', status: { state: 'completed' } },
+			}),
+		});
+		const res = mock<Response>();
+
+		await controller.proxyExternalTask(
+			mock(),
+			res,
+			makePayload({ url: 'https://policycheck.tools/api/a2a' }),
+		);
+
+		const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
+		const body = JSON.parse(fetchCall[1].body as string);
+		expect(body).toHaveProperty('jsonrpc', '2.0');
+		expect(body).toHaveProperty('method', 'tasks/send');
+		expect(body.params.message.parts[0]).toEqual({ type: 'text', text: 'Do something' });
+		// Should use X-API-Key header for A2A endpoints
+		expect(fetchCall[1].headers).toHaveProperty('X-API-Key', 'remote-key');
+	});
+
+	it('should translate non-streaming A2A JSON-RPC response to internal format', async () => {
+		global.fetch = jest.fn().mockResolvedValue({
+			ok: true,
+			headers: { get: () => 'application/json' },
+			json: async () => ({
+				jsonrpc: '2.0',
+				id: 'resp-1',
+				result: {
+					id: 'task-1',
+					status: {
+						state: 'completed',
+						message: { role: 'agent', parts: [{ text: 'Analysis complete' }] },
+					},
+				},
+			}),
+		});
+		const res = mock<Response>();
+		res.json = jest.fn();
+
+		await controller.proxyExternalTask(
+			mock(),
+			res,
+			makePayload({ url: 'https://policycheck.tools/api/a2a' }),
+		);
+
+		expect(res.json).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'completed',
+				summary: 'Analysis complete',
+			}),
+		);
+	});
+
+	it('should pass through SSE comments/pings unchanged', async () => {
+		global.fetch = jest.fn().mockResolvedValue(makeFetchSseResponse([`:ping\n\n`]));
+		const { res, written } = makeRes();
+
+		await controller.proxyExternalTask(mock(), res, makePayload());
+
+		expect(written).toContain(':ping\n\n');
+	});
+});
+
+describe('discoverExternalAgent — card normalization', () => {
+	const agentsService = mock<AgentsService>();
+	let controller: AgentsController;
+	const originalFetch = global.fetch;
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		controller = new AgentsController(agentsService);
+	});
+
+	afterEach(() => {
+		global.fetch = originalFetch;
+	});
+
+	it('should normalize standard A2A card to n8n shape', async () => {
+		const standardCard = {
+			name: 'Weather Agent',
+			description: 'Gets weather data',
+			url: 'https://weather.example.com',
+			version: '1.0',
+			capabilities: { streaming: true, pushNotifications: false },
+			skills: [{ name: 'get_weather', description: 'Get current weather' }],
+		};
+
+		global.fetch = jest.fn().mockResolvedValue({
+			ok: true,
+			json: async () => standardCard,
+		});
+
+		const req = mock<AuthenticatedRequest>();
+		const result = (await controller.discoverExternalAgent(req, mock<Response>(), {
+			url: 'https://localhost:5678',
+			apiKey: 'key',
+		} as never)) as unknown as Record<string, unknown>;
+
+		expect(result).toHaveProperty('requiredCredentials');
+		expect(result).toHaveProperty('interfaces');
+		expect(result.name).toBe('Weather Agent');
+		expect((result.capabilities as Record<string, unknown>).streaming).toBe(true);
+		expect((result.capabilities as Record<string, unknown>).multiTurn).toBe(false);
+	});
+
+	it('should pass through n8n card unchanged', async () => {
+		const n8nCard = {
+			name: 'n8n Agent',
+			description: 'Internal agent',
+			requiredCredentials: [{ type: 'notionApi' }],
+			interfaces: { chat: true },
+			capabilities: { streaming: true, multiTurn: true },
+			skills: [],
+		};
+
+		global.fetch = jest.fn().mockResolvedValue({
+			ok: true,
+			json: async () => n8nCard,
+		});
+
+		const req = mock<AuthenticatedRequest>();
+		const result = (await controller.discoverExternalAgent(req, mock<Response>(), {
+			url: 'https://localhost:5678',
+			apiKey: 'key',
+		} as never)) as unknown as Record<string, unknown>;
+
+		expect(result.name).toBe('n8n Agent');
+		expect(result.requiredCredentials).toEqual([{ type: 'notionApi' }]);
+		expect(result.interfaces).toEqual({ chat: true });
 	});
 });
 

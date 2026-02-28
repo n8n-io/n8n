@@ -76,7 +76,7 @@ async function onCreateAgent() {
 async function onRegisterExternal() {
 	const url = externalUrl.value.trim();
 	const apiKey = externalApiKey.value.trim();
-	if (!url || !apiKey) return;
+	if (!url) return;
 
 	isDiscovering.value = true;
 	discoverError.value = null;
@@ -394,10 +394,10 @@ function onRemoveConnection(lineId: string) {
 						/>
 					</div>
 					<div :class="$style.dialogField">
-						<N8nText tag="label" size="small" bold>API Key</N8nText>
+						<N8nText tag="label" size="small" bold>API Key (optional)</N8nText>
 						<N8nInput
 							v-model="externalApiKey"
-							placeholder="Remote agent API key"
+							placeholder="Optional — for authenticated agents"
 							type="password"
 							:maxlength="512"
 							data-testid="external-agent-apikey"
@@ -414,7 +414,7 @@ function onRemoveConnection(lineId: string) {
 						<N8nButton
 							label="Discover & Register"
 							size="small"
-							:disabled="!externalUrl.trim() || !externalApiKey.trim() || isDiscovering"
+							:disabled="!externalUrl.trim() || isDiscovering"
 							:loading="isDiscovering"
 							data-testid="external-agent-submit"
 							@click="onRegisterExternal"

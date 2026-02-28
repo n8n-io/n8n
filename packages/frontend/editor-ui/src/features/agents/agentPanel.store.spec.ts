@@ -93,13 +93,13 @@ describe('agentPanel.store', () => {
 		panelStore.panelOpen = true;
 	});
 
-	describe('handleDoneEvent – resets all agents', () => {
-		it('should reset delegated agent to idle when done fires without observation', async () => {
+	describe('handleCompletionEvent – resets all agents', () => {
+		it('should reset delegated agent to idle when completion fires without observation', async () => {
 			vi.mocked(fetch).mockResolvedValueOnce(
 				mockSSEResponse([
-					{ type: 'step', action: 'send_message', toAgent: 'Comms' },
+					{ type: 'task.action', action: 'delegate', targetUserName: 'Comms' },
 					// No observation — simulates error path or race
-					{ type: 'done', summary: 'Task complete' },
+					{ type: 'task.completion', summary: 'Task complete' },
 				]),
 			);
 
@@ -112,17 +112,22 @@ describe('agentPanel.store', () => {
 	});
 
 	describe('handleObservationEvent – interleaved delegation', () => {
-		it('should reset delegated agent via observation toAgent when steps are interleaved', async () => {
+		it('should reset delegated agent via observation targetUserName when steps are interleaved', async () => {
 			// Simulate: QA delegates to Comms → Comms runs workflow → Comms returns
-			// The observation for the delegation has toAgent, but the lastStep is the
-			// nested execute_workflow (no toAgent). Without the fix, Comms stays busy.
+			// The observation for the delegation has targetUserName, but the lastStep is the
+			// nested execute_workflow (no targetUserName). Without the fix, Comms stays busy.
 			vi.mocked(fetch).mockResolvedValueOnce(
 				mockSSEResponse([
-					{ type: 'step', action: 'send_message', toAgent: 'Comms' },
-					{ type: 'step', action: 'execute_workflow', workflowName: 'Message' },
-					{ type: 'observation', result: 'success', workflowName: 'Message' },
-					{ type: 'observation', result: 'success', toAgent: 'Comms', summary: 'Responded' },
-					{ type: 'done', summary: 'All done' },
+					{ type: 'task.action', action: 'delegate', targetUserName: 'Comms' },
+					{ type: 'task.action', action: 'execute_workflow', workflowName: 'Message' },
+					{ type: 'task.observation', result: 'success', workflowName: 'Message' },
+					{
+						type: 'task.observation',
+						result: 'success',
+						targetUserName: 'Comms',
+						summary: 'Responded',
+					},
+					{ type: 'task.completion', summary: 'All done' },
 				]),
 			);
 
@@ -132,22 +137,27 @@ describe('agentPanel.store', () => {
 			expect(panelStore.activeConnections.size).toBe(0);
 		});
 
-		it('should update the delegation step when observation has toAgent', async () => {
-			// The observation with toAgent should update the send_message step,
+		it('should update the delegation step when observation has targetUserName', async () => {
+			// The observation with targetUserName should update the delegate step,
 			// not the interleaved execute_workflow step
 			vi.mocked(fetch).mockResolvedValueOnce(
 				mockSSEResponse([
-					{ type: 'step', action: 'send_message', toAgent: 'Comms' },
-					{ type: 'step', action: 'execute_workflow', workflowName: 'Message' },
-					{ type: 'observation', result: 'success', workflowName: 'Message' },
-					{ type: 'observation', result: 'success', toAgent: 'Comms', summary: 'Responded' },
-					{ type: 'done', summary: 'All done' },
+					{ type: 'task.action', action: 'delegate', targetUserName: 'Comms' },
+					{ type: 'task.action', action: 'execute_workflow', workflowName: 'Message' },
+					{ type: 'task.observation', result: 'success', workflowName: 'Message' },
+					{
+						type: 'task.observation',
+						result: 'success',
+						targetUserName: 'Comms',
+						summary: 'Responded',
+					},
+					{ type: 'task.completion', summary: 'All done' },
 				]),
 			);
 
 			await panelStore.dispatchTask('Run reports');
 
-			const delegationStep = panelStore.streamingSteps.find((s) => s.toAgent === 'Comms');
+			const delegationStep = panelStore.streamingSteps.find((s) => s.targetUserName === 'Comms');
 			expect(delegationStep?.result).toBe('success');
 			expect(delegationStep?.status).toBe('success');
 		});
@@ -183,12 +193,12 @@ describe('agents.store – push listener', () => {
 		expect(mockPushStore.addEventListener).toHaveBeenCalled();
 	});
 
-	it('should set agent to active on step event', () => {
+	it('should set agent to active on action event', () => {
 		simulatePush({
 			type: 'agentTaskStep',
 			data: {
 				agentId: 'qa-1',
-				event: { type: 'step', action: 'execute_workflow', workflowName: 'Report' },
+				event: { type: 'task.action', action: 'execute_workflow', workflowName: 'Report' },
 			},
 		});
 
@@ -196,12 +206,12 @@ describe('agents.store – push listener', () => {
 		expect(agentsStore.agents.find((a) => a.id === 'comms-1')?.status).toBe('idle');
 	});
 
-	it('should activate target agent on send_message step', () => {
+	it('should activate target agent on delegate step', () => {
 		simulatePush({
 			type: 'agentTaskStep',
 			data: {
 				agentId: 'qa-1',
-				event: { type: 'step', action: 'send_message', toAgent: 'Comms' },
+				event: { type: 'task.action', action: 'delegate', targetUserName: 'Comms' },
 			},
 		});
 
@@ -215,7 +225,7 @@ describe('agents.store – push listener', () => {
 			type: 'agentTaskStep',
 			data: {
 				agentId: 'qa-1',
-				event: { type: 'step', action: 'send_message', toAgent: 'Comms' },
+				event: { type: 'task.action', action: 'delegate', targetUserName: 'Comms' },
 			},
 		});
 		expect(agentsStore.agents.find((a) => a.id === 'comms-1')?.status).toBe('active');
@@ -227,15 +237,15 @@ describe('agents.store – push listener', () => {
 		});
 		expect(agentsStore.agents.find((a) => a.id === 'comms-1')?.status).toBe('idle');
 
-		// Step 3: parent's observation fires with toAgent — must NOT re-activate
+		// Step 3: parent's observation fires with targetUserName — must NOT re-activate
 		simulatePush({
 			type: 'agentTaskStep',
 			data: {
 				agentId: 'qa-1',
 				event: {
-					type: 'observation',
-					action: 'send_message',
-					toAgent: 'Comms',
+					type: 'task.observation',
+					action: 'delegate',
+					targetUserName: 'Comms',
 					result: 'success',
 				},
 			},
@@ -263,7 +273,7 @@ describe('agents.store – push listener', () => {
 			type: 'agentTaskStep',
 			data: {
 				agentId: 'qa-1',
-				event: { type: 'observation', action: 'execute_workflow', result: 'success' },
+				event: { type: 'task.observation', action: 'execute_workflow', result: 'success' },
 			},
 		});
 

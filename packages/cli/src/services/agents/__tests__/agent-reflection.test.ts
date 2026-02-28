@@ -40,7 +40,7 @@ ${stepsSoFar || '(none)'}
 If everything was addressed, respond with:
 {"action": "complete", "summary": "<final summary>"}
 
-If there are gaps or errors that need correcting, respond with the appropriate action instead (e.g. execute_workflow or send_message).`;
+If there are gaps or errors that need correcting, respond with the appropriate action instead (e.g. execute_workflow or delegate).`;
 
 			expect(reflectionPrompt).toContain('Run all QA tests');
 			expect(reflectionPrompt).toContain('Tests executed successfully');

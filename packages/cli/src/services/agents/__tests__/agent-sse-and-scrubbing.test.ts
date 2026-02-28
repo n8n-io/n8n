@@ -10,20 +10,22 @@ import type { AgentTaskResult } from '../agents.types';
 describe('sseWrite', () => {
 	it('should write SSE-formatted data', () => {
 		const res = { write: jest.fn(), flush: jest.fn() };
-		sseWrite(res, { type: 'step', action: 'execute_workflow' });
+		sseWrite(res, { type: 'task.action', action: 'execute_workflow' });
 
-		expect(res.write).toHaveBeenCalledWith('data: {"type":"step","action":"execute_workflow"}\n\n');
+		expect(res.write).toHaveBeenCalledWith(
+			'data: {"type":"task.action","action":"execute_workflow"}\n\n',
+		);
 	});
 
 	it('should flush after every write', () => {
 		const res = { write: jest.fn(), flush: jest.fn() };
-		sseWrite(res, { type: 'done' });
+		sseWrite(res, { type: 'task.completion' });
 		expect(res.flush).toHaveBeenCalledTimes(1);
 	});
 
 	it('should not throw when flush is not available', () => {
 		const res = { write: jest.fn() };
-		expect(() => sseWrite(res, { type: 'done' })).not.toThrow();
+		expect(() => sseWrite(res, { type: 'task.completion' })).not.toThrow();
 	});
 });
 
@@ -170,7 +172,7 @@ describe('executeTaskOverSse', () => {
 		const result: AgentTaskResult = { status: 'completed', summary: 'Done', steps: [] };
 
 		await executeTaskOverSse(req, res, async (onStep) => {
-			onStep({ type: 'step', action: 'execute_workflow' });
+			onStep({ type: 'task.action', action: 'execute_workflow' });
 			return result;
 		});
 
@@ -180,9 +182,9 @@ describe('executeTaskOverSse', () => {
 				'Content-Type': 'text/event-stream; charset=UTF-8',
 			}),
 		);
-		// Step event + done event
-		expect(res.write).toHaveBeenCalledWith(expect.stringContaining('"type":"step"'));
-		expect(res.write).toHaveBeenCalledWith(expect.stringContaining('"type":"done"'));
+		// Action event + completion event
+		expect(res.write).toHaveBeenCalledWith(expect.stringContaining('"type":"task.action"'));
+		expect(res.write).toHaveBeenCalledWith(expect.stringContaining('"type":"task.completion"'));
 		expect(res.end).toHaveBeenCalled();
 	});
 

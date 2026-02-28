@@ -152,19 +152,19 @@ export const useAgentPanelStore = defineStore('agentPanel', () => {
 		return agent?.id ?? null;
 	}
 
-	function handleStepEvent(event: StreamEvent & { type: 'step' }) {
+	function handleActionEvent(event: StreamEvent & { type: 'task.action' }) {
 		const step: LiveStep = {
 			action: event.action,
 			workflowName: event.workflowName,
-			toAgent: event.toAgent,
-			external: event.external,
+			targetUserName: event.targetUserName,
+			origin: event.origin,
 			status: 'running',
 		};
 		streamingSteps.value = [...streamingSteps.value, step];
 
 		// If delegating to another agent, light up that agent + connection
-		if (event.toAgent && panelAgentId.value) {
-			const targetId = findAgentIdByName(event.toAgent);
+		if (event.targetUserName && panelAgentId.value) {
+			const targetId = findAgentIdByName(event.targetUserName);
 			if (targetId) {
 				agentsStore.setAgentStatus(targetId, 'busy');
 				const connId = computeConnectionId(panelAgentId.value, targetId);
@@ -173,17 +173,17 @@ export const useAgentPanelStore = defineStore('agentPanel', () => {
 		}
 	}
 
-	function handleObservationEvent(event: StreamEvent & { type: 'observation' }) {
+	function handleObservationEvent(event: StreamEvent & { type: 'task.observation' }) {
 		const steps = [...streamingSteps.value];
 
-		// Find the matching step: last running step with the same toAgent context,
+		// Find the matching step: last running step with the same targetUserName context,
 		// falling back to the last step. This handles interleaved steps from nested
 		// delegation where the last step may belong to a different agent.
 		let targetStep = steps[steps.length - 1];
-		if (event.toAgent) {
+		if (event.targetUserName) {
 			const delegationStep = [...steps]
 				.reverse()
-				.find((s) => s.toAgent === event.toAgent && s.status === 'running');
+				.find((s) => s.targetUserName === event.targetUserName && s.status === 'running');
 			if (delegationStep) targetStep = delegationStep;
 		}
 
@@ -194,9 +194,9 @@ export const useAgentPanelStore = defineStore('agentPanel', () => {
 		}
 		streamingSteps.value = steps;
 
-		// Clear busy agent + connection using the event's toAgent (not the step's)
+		// Clear busy agent + connection using the event's targetUserName (not the step's)
 		// because nested delegation interleaves steps from multiple agents
-		const agentName = event.toAgent ?? targetStep?.toAgent;
+		const agentName = event.targetUserName ?? targetStep?.targetUserName;
 		if (agentName && panelAgentId.value) {
 			const targetId = findAgentIdByName(agentName);
 			if (targetId) {
@@ -209,7 +209,7 @@ export const useAgentPanelStore = defineStore('agentPanel', () => {
 		}
 	}
 
-	function handleDoneEvent(event: StreamEvent & { type: 'done' }) {
+	function handleCompletionEvent(event: StreamEvent & { type: 'task.completion' }) {
 		streamingSummary.value = event.summary;
 		isStreaming.value = false;
 		isSubmitting.value = false;
@@ -280,14 +280,14 @@ export const useAgentPanelStore = defineStore('agentPanel', () => {
 			for (const event of events) {
 				rawSseEvents.value = [...rawSseEvents.value, { type: event.type, data: event }];
 				switch (event.type) {
-					case 'step':
-						handleStepEvent(event);
+					case 'task.action':
+						handleActionEvent(event);
 						break;
-					case 'observation':
+					case 'task.observation':
 						handleObservationEvent(event);
 						break;
-					case 'done':
-						handleDoneEvent(event);
+					case 'task.completion':
+						handleCompletionEvent(event);
 						break;
 				}
 			}
@@ -373,7 +373,8 @@ export const useAgentPanelStore = defineStore('agentPanel', () => {
 		agentsStore.setAgentStatus(externalAgentData.value.id, 'active');
 		abortController = new AbortController();
 
-		const taskUrl = `${externalAgentData.value.remoteUrl}/api/v1/agents/${externalAgentData.value.remoteAgentId}/task`;
+		// remoteUrl stores the full task endpoint from the card's interface URL
+		const taskUrl = externalAgentData.value.remoteUrl;
 
 		try {
 			const { baseUrl } = rootStore.restApiContext;

@@ -93,9 +93,16 @@ async function onRunTask() {
 	await panelStore.dispatchTask(prompt);
 }
 
-function stepIcon(step: { toAgent?: string; external?: boolean; workflowName?: string }) {
-	if (step.toAgent) return 'users';
-	if (step.external) return 'globe';
+async function onDeleteExternalAgent() {
+	const agent = panelStore.externalAgentData;
+	if (!agent) return;
+	await agentsStore.removeExternalAgent(agent.id);
+	panelStore.closePanel();
+}
+
+function stepIcon(step: { targetUserName?: string; origin?: string; workflowName?: string }) {
+	if (step.targetUserName) return 'users';
+	if (step.origin === 'external') return 'globe';
 	if (step.workflowName) return 'workflow';
 	return 'play';
 }
@@ -349,6 +356,19 @@ function stepStatusIcon(status: string) {
 				/>
 			</section>
 
+			<!-- Remove External Agent -->
+			<section :class="$style.section">
+				<N8nButton
+					label="Remove External Agent"
+					type="tertiary"
+					size="small"
+					icon="trash"
+					data-testid="agent-delete-external"
+					:class="$style.deleteBtn"
+					@click="onDeleteExternalAgent"
+				/>
+			</section>
+
 			<!-- Live Streaming Steps (reused for external) -->
 			<section
 				v-if="
@@ -380,8 +400,8 @@ function stepStatusIcon(status: string) {
 							<span v-if="step.workflowName" :class="$style.streamStepWorkflow">
 								{{ step.workflowName }}
 							</span>
-							<span v-if="step.toAgent" :class="$style.streamStepAgent">
-								&rarr; {{ step.toAgent }}
+							<span v-if="step.targetUserName" :class="$style.streamStepAgent">
+								&rarr; {{ step.targetUserName }}
 							</span>
 							<span :class="$style.streamStepStatus">
 								<N8nIcon
@@ -448,9 +468,9 @@ function stepStatusIcon(status: string) {
 						<span
 							:class="[
 								$style.sseEventType,
-								evt.type === 'step' ? $style.sseStep : '',
-								evt.type === 'observation' ? $style.sseObservation : '',
-								evt.type === 'done' ? $style.sseDone : '',
+								evt.type === 'task.action' ? $style.sseAction : '',
+								evt.type === 'task.observation' ? $style.sseObservation : '',
+								evt.type === 'task.completion' ? $style.sseCompletion : '',
 							]"
 							>{{ evt.type }}</span
 						>
@@ -589,8 +609,8 @@ function stepStatusIcon(status: string) {
 							<span v-if="step.workflowName" :class="$style.streamStepWorkflow">
 								{{ step.workflowName }}
 							</span>
-							<span v-if="step.toAgent" :class="$style.streamStepAgent">
-								&rarr; {{ step.toAgent }}
+							<span v-if="step.targetUserName" :class="$style.streamStepAgent">
+								&rarr; {{ step.targetUserName }}
 							</span>
 							<span :class="$style.streamStepStatus">
 								<N8nIcon
@@ -649,7 +669,9 @@ function stepStatusIcon(status: string) {
 							<span v-if="step.workflowName" :class="$style.stepWorkflow">
 								{{ step.workflowName }}
 							</span>
-							<span v-if="step.toAgent" :class="$style.stepAgent"> &rarr; {{ step.toAgent }} </span>
+							<span v-if="step.targetUserName" :class="$style.stepAgent">
+								&rarr; {{ step.targetUserName }}
+							</span>
 							<span v-if="step.result" :class="$style.stepResult">{{ step.result }}</span>
 						</div>
 					</div>
@@ -669,9 +691,9 @@ function stepStatusIcon(status: string) {
 						<span
 							:class="[
 								$style.sseEventType,
-								evt.type === 'step' ? $style.sseStep : '',
-								evt.type === 'observation' ? $style.sseObservation : '',
-								evt.type === 'done' ? $style.sseDone : '',
+								evt.type === 'task.action' ? $style.sseAction : '',
+								evt.type === 'task.observation' ? $style.sseObservation : '',
+								evt.type === 'task.completion' ? $style.sseCompletion : '',
 							]"
 							>{{ evt.type }}</span
 						>
@@ -1148,7 +1170,7 @@ function stepStatusIcon(status: string) {
 	min-width: 76px;
 }
 
-.sseStep {
+.sseAction {
 	color: var(--color--primary);
 }
 
@@ -1156,13 +1178,18 @@ function stepStatusIcon(status: string) {
 	color: var(--color--success);
 }
 
-.sseDone {
+.sseCompletion {
 	color: var(--color--warning);
 }
 
 .sseEventData {
 	color: var(--color--text--tint-1);
 	word-break: break-all;
+}
+
+.deleteBtn {
+	color: var(--color--danger);
+	width: 100%;
 }
 
 .accessSelect {

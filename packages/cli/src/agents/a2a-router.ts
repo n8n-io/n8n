@@ -7,6 +7,7 @@ import {
 	fromA2ARequest,
 	internalStepToA2AStream,
 	toA2AResponse,
+	unwrapJsonRpc,
 } from '@/agents/a2a-adapter';
 import type { A2ASendMessageRequest } from '@/agents/a2a-adapter';
 import { AgentsService } from '@/services/agents/agents.service';
@@ -50,7 +51,22 @@ async function resolveAgentFromApiKey(
 export function createA2ARouter(): express.Router {
 	const router = express.Router();
 
-	// A2A Discovery: GET /.well-known/agent.json
+	// A2A Discovery: GET /.well-known/agent-card.json (v0.3) with fallback to agent.json (v0.2)
+	router.get(
+		'/.well-known/agent-card.json',
+		async (req: express.Request, res: express.Response) => {
+			const user = await resolveAgentFromApiKey(req, res, 'agent:receive');
+			if (!user) return;
+
+			const agentsService = Container.get(AgentsService);
+			const baseUrl = `${req.protocol}://${req.get('host')}`;
+			const card = await agentsService.getAgentCard(user.id, baseUrl);
+			res.set('A2A-Version', A2A_VERSION);
+			res.json(card);
+		},
+	);
+
+	// Legacy fallback: GET /.well-known/agent.json (v0.2 compat)
 	router.get('/.well-known/agent.json', async (req: express.Request, res: express.Response) => {
 		const user = await resolveAgentFromApiKey(req, res, 'agent:receive');
 		if (!user) return;
@@ -70,7 +86,9 @@ export function createA2ARouter(): express.Router {
 			const user = await resolveAgentFromApiKey(req, res, 'agent:execute');
 			if (!user) return;
 
-			const a2aReq = req.body as A2ASendMessageRequest;
+			// Accept both JSON-RPC wrapped and bare A2A requests
+			const unwrapped = unwrapJsonRpc(req.body as Record<string, unknown>);
+			const a2aReq = unwrapped as unknown as A2ASendMessageRequest;
 			if (!a2aReq.message?.parts?.length) {
 				res.status(400).json({ message: 'Message must contain at least one part' });
 				return;
@@ -106,7 +124,9 @@ export function createA2ARouter(): express.Router {
 			const user = await resolveAgentFromApiKey(req, res, 'agent:execute');
 			if (!user) return;
 
-			const a2aReq = req.body as A2ASendMessageRequest;
+			// Accept both JSON-RPC wrapped and bare A2A requests
+			const unwrapped = unwrapJsonRpc(req.body as Record<string, unknown>);
+			const a2aReq = unwrapped as unknown as A2ASendMessageRequest;
 			if (!a2aReq.message?.parts?.length) {
 				res.status(400).json({ message: 'Message must contain at least one part' });
 				return;
@@ -133,9 +153,9 @@ export function createA2ARouter(): express.Router {
 
 			// Initial status: submitted
 			sseWrite(res, {
-				status_update: {
-					task_id: taskId,
-					context_id: contextId,
+				statusUpdate: {
+					taskId,
+					contextId,
 					status: { state: 'submitted', timestamp: new Date().toISOString() },
 				},
 			});
@@ -159,7 +179,11 @@ export function createA2ARouter(): express.Router {
 				sseWrite(
 					res,
 					internalStepToA2AStream(
-						{ type: 'done', status: result.status, summary: result.summary ?? result.message },
+						{
+							type: 'task.completion',
+							status: result.status,
+							summary: result.summary ?? result.message,
+						},
 						taskId,
 						contextId,
 					),
@@ -170,12 +194,12 @@ export function createA2ARouter(): express.Router {
 					sseWrite(res, {
 						task: {
 							id: taskId,
-							context_id: contextId,
+							contextId,
 							status: {
 								state: 'failed',
 								timestamp: new Date().toISOString(),
 								message: {
-									message_id: `err-${Date.now()}`,
+									messageId: `err-${Date.now()}`,
 									role: 'agent',
 									parts: [{ text: msg }],
 								},

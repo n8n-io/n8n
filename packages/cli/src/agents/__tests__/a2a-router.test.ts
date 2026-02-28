@@ -100,7 +100,7 @@ describe('A2A Router - resolveAgentFromApiKey', () => {
 	it('should return 401 when x-n8n-api-key header is missing', async () => {
 		const router = createA2ARouter();
 		const discoveryRoute = router.stack.find(
-			(layer: { route?: { path: string } }) => layer.route?.path === '/.well-known/agent.json',
+			(layer: { route?: { path: string } }) => layer.route?.path === '/.well-known/agent-card.json',
 		);
 		expect(discoveryRoute).toBeDefined();
 
@@ -119,7 +119,7 @@ describe('A2A Router - resolveAgentFromApiKey', () => {
 
 		const router = createA2ARouter();
 		const discoveryRoute = router.stack.find(
-			(layer: { route?: { path: string } }) => layer.route?.path === '/.well-known/agent.json',
+			(layer: { route?: { path: string } }) => layer.route?.path === '/.well-known/agent-card.json',
 		);
 
 		const { req, res, statusFn, jsonFn } = makeMockReqRes({
@@ -138,7 +138,7 @@ describe('A2A Router - resolveAgentFromApiKey', () => {
 
 		const router = createA2ARouter();
 		const discoveryRoute = router.stack.find(
-			(layer: { route?: { path: string } }) => layer.route?.path === '/.well-known/agent.json',
+			(layer: { route?: { path: string } }) => layer.route?.path === '/.well-known/agent-card.json',
 		);
 
 		const { req, res, statusFn, jsonFn } = makeMockReqRes({
@@ -157,7 +157,7 @@ describe('A2A Router - resolveAgentFromApiKey', () => {
 
 		const router = createA2ARouter();
 		const discoveryRoute = router.stack.find(
-			(layer: { route?: { path: string } }) => layer.route?.path === '/.well-known/agent.json',
+			(layer: { route?: { path: string } }) => layer.route?.path === '/.well-known/agent-card.json',
 		);
 
 		const { req, res, statusFn, jsonFn } = makeMockReqRes({
@@ -182,7 +182,7 @@ describe('A2A Router - resolveAgentFromApiKey', () => {
 
 		const router = createA2ARouter();
 		const discoveryRoute = router.stack.find(
-			(layer: { route?: { path: string } }) => layer.route?.path === '/.well-known/agent.json',
+			(layer: { route?: { path: string } }) => layer.route?.path === '/.well-known/agent-card.json',
 		);
 
 		const { req, res, setFn, jsonFn } = makeMockReqRes({
@@ -221,7 +221,7 @@ describe('A2A Router - POST /message\\:send', () => {
 
 		const { req, res, statusFn, jsonFn } = makeMockReqRes({
 			headers: { 'x-n8n-api-key': 'valid-key' },
-			body: { message: { message_id: 'msg-1', role: 'user', parts: [] } },
+			body: { message: { messageId: 'msg-1', role: 'user', parts: [] } },
 		});
 
 		await handler(req, res, jest.fn());
@@ -252,11 +252,11 @@ describe('A2A Router - POST /message\\:send', () => {
 			headers: { 'x-n8n-api-key': 'valid-key' },
 			body: {
 				message: {
-					message_id: 'msg-1',
+					messageId: 'msg-1',
 					role: 'user',
 					parts: [{ text: 'Run tests' }],
-					task_id: 'task-1',
-					context_id: 'ctx-1',
+					taskId: 'task-1',
+					contextId: 'ctx-1',
 				},
 			},
 		});
@@ -274,7 +274,7 @@ describe('A2A Router - POST /message\\:send', () => {
 			expect.objectContaining({
 				task: expect.objectContaining({
 					id: 'task-1',
-					context_id: 'ctx-1',
+					contextId: 'ctx-1',
 					status: expect.objectContaining({ state: 'completed' }),
 				}),
 			}),
@@ -300,7 +300,7 @@ describe('A2A Router - POST /message\\:send', () => {
 			headers: { 'x-n8n-api-key': 'valid-key' },
 			body: {
 				message: {
-					message_id: 'msg-1',
+					messageId: 'msg-1',
 					role: 'user',
 					parts: [{ text: 'Go' }],
 				},

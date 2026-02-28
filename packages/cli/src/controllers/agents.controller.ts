@@ -20,6 +20,16 @@ import {
 } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
+import {
+	isA2AStreamEvent,
+	a2aStreamEventToInternal,
+	normalizeAgentCard,
+	unwrapJsonRpc,
+	classifyEndpoint,
+	buildRequestBody,
+	buildRequestHeaders,
+	a2aResponseToInternal,
+} from '@/agents/a2a-adapter';
 import { validateExternalAgentUrl } from '@/agents/validate-agent-url';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { sendErrorResponse } from '@/response-helper';
@@ -136,19 +146,33 @@ export class AgentsController {
 			await validateExternalAgentUrl(url);
 		}
 
-		// Fetch the remote agent card
-		const cardUrl = `${url.replace(/\/+$/, '')}/.well-known/agent.json`;
+		// Fetch the remote agent card — try v0.3 path first, fall back to v0.2
+		const baseCardUrl = url
+			.replace(/\/+$/, '')
+			.replace(/\/\.well-known\/agent(?:-card)?\.json$/, '');
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), 10_000);
 
+		const fetchHeaders: Record<string, string> = { Accept: 'application/json' };
+		if (apiKey) {
+			fetchHeaders['x-n8n-api-key'] = apiKey;
+			fetchHeaders['X-API-Key'] = apiKey;
+		}
+
 		try {
-			const response = await fetch(cardUrl, {
-				headers: {
-					'x-n8n-api-key': apiKey,
-					Accept: 'application/json',
-				},
+			// Try agent-card.json (v0.3) first
+			let response = await fetch(`${baseCardUrl}/.well-known/agent-card.json`, {
+				headers: fetchHeaders,
 				signal: controller.signal,
 			});
+
+			// Fall back to agent.json (v0.2) if v0.3 path not found
+			if (response.status === 404) {
+				response = await fetch(`${baseCardUrl}/.well-known/agent.json`, {
+					headers: fetchHeaders,
+					signal: controller.signal,
+				});
+			}
 
 			if (!response.ok) {
 				throw new BadRequestError(
@@ -156,7 +180,8 @@ export class AgentsController {
 				);
 			}
 
-			return (await response.json()) as unknown;
+			const card = (await response.json()) as Record<string, unknown>;
+			return normalizeAgentCard(card);
 		} catch (error) {
 			if (error instanceof BadRequestError) throw error;
 			const message = error instanceof Error ? error.message : String(error);
@@ -179,11 +204,6 @@ export class AgentsController {
 		// Resolve apiKey from registration's encrypted credential if registrationId is provided
 		if (!apiKey && registrationId) {
 			apiKey = await this.agentsService.resolveExternalAgentApiKey(registrationId);
-		}
-
-		if (!apiKey) {
-			sendErrorResponse(res, new BadRequestError('No API key provided or resolvable'));
-			return undefined;
 		}
 
 		// SSRF protection — skip for localhost in dev
@@ -215,19 +235,19 @@ export class AgentsController {
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), 120_000);
 
-		const requestBody: Record<string, unknown> = { prompt };
-		if (byokCredentials) {
-			requestBody.byokCredentials = byokCredentials;
-		}
+		// Classify endpoint to determine request format and headers
+		const endpointType = classifyEndpoint(url);
+		const requestBody = buildRequestBody(
+			endpointType,
+			prompt,
+			byokCredentials as Record<string, unknown> | undefined,
+		);
+		const taskHeaders = buildRequestHeaders(endpointType, apiKey);
 
 		try {
 			const response = await fetch(url, {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Accept: 'text/event-stream',
-					'x-n8n-api-key': apiKey,
-				},
+				headers: taskHeaders,
 				body: JSON.stringify(requestBody),
 				signal: controller.signal,
 			});
@@ -243,7 +263,7 @@ export class AgentsController {
 
 			const contentType = response.headers.get('content-type') ?? '';
 
-			// If remote supports SSE, pipe the stream through
+			// If remote supports SSE, pipe the stream through with A2A translation
 			if (contentType.includes('text/event-stream') && response.body) {
 				res.writeHead(200, {
 					'Content-Type': 'text/event-stream',
@@ -253,12 +273,62 @@ export class AgentsController {
 
 				const reader = response.body.getReader();
 				const decoder = new TextDecoder();
+				let buffer = '';
 
 				try {
 					while (true) {
 						const { done, value } = await reader.read();
 						if (done) break;
-						res.write(decoder.decode(value, { stream: true }));
+
+						buffer += decoder.decode(value, { stream: true });
+
+						// Process complete SSE events (separated by double newline)
+						const parts = buffer.split('\n\n');
+						// Keep the last part as it may be incomplete
+						buffer = parts.pop() ?? '';
+
+						for (const part of parts) {
+							if (!part.trim()) continue;
+
+							// Extract data from SSE event lines
+							const dataLines = part
+								.split('\n')
+								.filter((line) => line.startsWith('data:'))
+								.map((line) => line.slice(5).trim());
+
+							if (dataLines.length === 0) {
+								// Not a data event (could be comment/ping), pass through
+								res.write(part + '\n\n');
+								continue;
+							}
+
+							const dataStr = dataLines.join('');
+							let parsed: Record<string, unknown>;
+							try {
+								parsed = JSON.parse(dataStr) as Record<string, unknown>;
+							} catch {
+								// Not valid JSON, pass through raw
+								res.write(part + '\n\n');
+								continue;
+							}
+
+							// Unwrap JSON-RPC envelope if present
+							parsed = unwrapJsonRpc(parsed);
+
+							// Auto-detect: A2A format → translate, n8n internal → pass through
+							if (isA2AStreamEvent(parsed)) {
+								const translated = a2aStreamEventToInternal(
+									parsed as import('@/agents/a2a-adapter').A2AStreamResponse,
+								);
+								if (translated) {
+									res.write(`data: ${JSON.stringify(translated)}\n\n`);
+								}
+								// null = skip (e.g. 'submitted' state)
+							} else {
+								// Already n8n internal format, pass through
+								res.write(`data: ${dataStr}\n\n`);
+							}
+						}
 					}
 				} catch {
 					// Stream interrupted
@@ -266,9 +336,10 @@ export class AgentsController {
 					res.end();
 				}
 			} else {
-				// Non-streaming JSON response
-				const data = await response.json();
-				res.json(data);
+				// Non-streaming JSON response — translate A2A format to internal
+				const data = (await response.json()) as Record<string, unknown>;
+				const translated = endpointType === 'n8n' ? data : a2aResponseToInternal(data);
+				res.json(translated);
 			}
 		} catch (error) {
 			if (!res.headersSent) {

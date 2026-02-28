@@ -170,8 +170,8 @@ export class AgentsService {
 	// ── External Agent Registration ──────────────────────────────────────
 
 	async registerExternalAgent(url: string, apiKey: string, callingUser: User) {
-		// Discover the remote agent card
-		const cardUrl = `${url.replace(/\/+$/, '')}/.well-known/agent.json`;
+		// Discover the remote agent card — try v0.3 path first, fall back to v0.2
+		const baseUrl = url.replace(/\/+$/, '').replace(/\/\.well-known\/agent(?:-card)?\.json$/, '');
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), 10_000);
 
@@ -179,6 +179,7 @@ export class AgentsService {
 			id?: string;
 			name?: string;
 			description?: string;
+			url?: string;
 			provider?: { description?: string };
 			interfaces?: Array<{ url?: string }>;
 			skills?: Array<{ id: string; name: string; description?: string }>;
@@ -186,11 +187,28 @@ export class AgentsService {
 			requiredCredentials?: Array<{ type: string; description: string }>;
 		};
 
+		const fetchHeaders: Record<string, string> = { Accept: 'application/json' };
+		if (apiKey) {
+			// Send both headers — n8n uses x-n8n-api-key, standard A2A uses X-API-Key
+			fetchHeaders['x-n8n-api-key'] = apiKey;
+			fetchHeaders['X-API-Key'] = apiKey;
+		}
+
 		try {
-			const response = await fetch(cardUrl, {
-				headers: { 'x-n8n-api-key': apiKey, Accept: 'application/json' },
+			// Try agent-card.json (v0.3) first
+			let response = await fetch(`${baseUrl}/.well-known/agent-card.json`, {
+				headers: fetchHeaders,
 				signal: controller.signal,
 			});
+
+			// Fall back to agent.json (v0.2) if v0.3 path not found
+			if (response.status === 404) {
+				response = await fetch(`${baseUrl}/.well-known/agent.json`, {
+					headers: fetchHeaders,
+					signal: controller.signal,
+				});
+			}
+
 			if (!response.ok) {
 				throw new Error(`Remote returned ${String(response.status)}`);
 			}
@@ -199,14 +217,19 @@ export class AgentsService {
 			clearTimeout(timeout);
 		}
 
-		// Extract remote agent ID from the card's interface URL
-		const interfaceUrl = card.interfaces?.[0]?.url ?? '';
+		// Extract the task endpoint from the card.
+		// n8n cards use interfaces[0].url; A2A v0.2 cards use top-level url field.
+		const interfaceUrl = card.interfaces?.[0]?.url ?? card.url ?? '';
 		const remoteIdMatch = /\/agents\/([^/]+)/.exec(interfaceUrl);
 		const remoteAgentId = remoteIdMatch?.[1] ?? card.id ?? 'unknown';
 
+		// Use the card's interface URL as the task endpoint when available,
+		// otherwise fall back to constructing an n8n-style URL.
+		const taskEndpoint = interfaceUrl || `${baseUrl}/api/v1/agents/${remoteAgentId}/task`;
+
 		// Check for duplicate registration
 		const existing = await this.externalAgentRegistrationRepository.findOneBy({
-			remoteUrl: url.replace(/\/+$/, ''),
+			remoteUrl: taskEndpoint,
 			remoteAgentId,
 		});
 		if (existing) {
@@ -218,16 +241,16 @@ export class AgentsService {
 			{
 				name: `n8n A2A: ${card.name ?? remoteAgentId}`,
 				type: 'n8nApi',
-				data: { apiKey, baseUrl: url.replace(/\/+$/, '') },
+				data: { apiKey, baseUrl },
 			},
 			callingUser,
 		);
 
-		// Persist the registration
+		// Persist the registration — remoteUrl stores the full task endpoint
 		const registration = this.externalAgentRegistrationRepository.create({
 			name: card.name ?? 'Remote Agent',
 			description: card.provider?.description ?? null,
-			remoteUrl: url.replace(/\/+$/, ''),
+			remoteUrl: taskEndpoint,
 			remoteAgentId,
 			credentialId: credential.id,
 			remoteCapabilities: card.capabilities ?? null,
@@ -604,7 +627,7 @@ export class AgentsService {
 		steps[steps.length - 1].result = observation.result;
 		messages.push({ role: 'user', content: `Observation: ${safeMessage}` });
 		onStep?.({
-			type: 'observation',
+			type: 'task.observation',
 			action: observation.action,
 			result: observation.result,
 			...observation.extra,
@@ -797,15 +820,13 @@ export class AgentsService {
 					}
 				}
 
-				if (apiKey) {
-					resolvedExternalAgents.push({
-						name: reg.name,
-						description: reg.description ?? undefined,
-						url: `${reg.remoteUrl}/api/v1/agents/${reg.remoteAgentId}/task`,
-						apiKey,
-					});
-					knownSecrets.push(apiKey);
-				}
+				resolvedExternalAgents.push({
+					name: reg.name,
+					description: reg.description ?? undefined,
+					url: reg.remoteUrl,
+					apiKey: apiKey || undefined,
+				});
+				if (apiKey) knownSecrets.push(apiKey);
 			}
 		}
 
@@ -855,7 +876,7 @@ export class AgentsService {
 				action: string;
 				workflowId?: string;
 				inputs?: Record<string, unknown>;
-				toAgentId?: string;
+				targetUserId?: string;
 				message?: string;
 				reasoning?: string;
 				summary?: string;
@@ -896,7 +917,7 @@ export class AgentsService {
 
 				steps.push({ action: 'execute_workflow', workflowName });
 				onStep?.({
-					type: 'step',
+					type: 'task.action',
 					action: 'execute_workflow',
 					workflowName,
 					reasoning: parsed.reasoning,
@@ -928,24 +949,24 @@ export class AgentsService {
 					});
 				}
 			} else if (
-				parsed.action === 'send_message' &&
-				parsed.toAgentId &&
+				parsed.action === 'delegate' &&
+				parsed.targetUserId &&
 				parsed.message &&
 				canDelegate
 			) {
-				const targetAgentInfo = otherAgents.find((a) => a.id === parsed.toAgentId);
-				const targetName = targetAgentInfo?.firstName ?? parsed.toAgentId;
+				const targetAgentInfo = otherAgents.find((a) => a.id === parsed.targetUserId);
+				const targetName = targetAgentInfo?.firstName ?? parsed.targetUserId;
 
-				const externalAgent = parsed.toAgentId.startsWith('external:')
-					? resolvedExternalAgents.find((a) => `external:${a.name}` === parsed.toAgentId)
+				const externalAgent = parsed.targetUserId.startsWith('external:')
+					? resolvedExternalAgents.find((a) => `external:${a.name}` === parsed.targetUserId)
 					: undefined;
 
-				steps.push({ action: 'send_message', toAgent: targetName });
+				steps.push({ action: 'delegate', targetUserName: targetName });
 				onStep?.({
-					type: 'step',
-					action: 'send_message',
-					toAgent: targetName,
-					...(externalAgent ? { external: true } : {}),
+					type: 'task.action',
+					action: 'delegate',
+					targetUserName: targetName,
+					...(externalAgent ? { origin: 'external' } : {}),
 				});
 
 				if (externalAgent) {
@@ -953,38 +974,38 @@ export class AgentsService {
 						const result = await callExternalAgent(externalAgent, parsed.message);
 						const stepResult = result.status === 'completed' ? 'success' : 'failed';
 						observe({
-							action: 'send_message',
+							action: 'delegate',
 							result: stepResult,
 							message: `Agent "${targetName}" responded: ${result.summary ?? 'No summary'}`,
-							extra: { toAgent: targetName, summary: result.summary, external: true },
+							extra: { targetUserName: targetName, summary: result.summary, origin: 'external' },
 						});
 					} catch (error) {
 						const errorMsg = error instanceof Error ? error.message : String(error);
 						observe({
-							action: 'send_message',
+							action: 'delegate',
 							result: 'error',
 							message: `External agent delegation failed: ${errorMsg}`,
-							extra: { toAgent: targetName, error: errorMsg, external: true },
+							extra: { targetUserName: targetName, error: errorMsg, origin: 'external' },
 						});
 					}
 				} else {
 					const targetAgent = await this.userRepository.findOne({
-						where: { id: parsed.toAgentId, type: 'agent' },
+						where: { id: parsed.targetUserId, type: 'agent' },
 					});
 
 					if (!targetAgent) {
 						observe({
-							action: 'send_message',
+							action: 'delegate',
 							result: 'error',
 							message: `Agent "${targetName}" not found. Available agents: ${otherAgents.map((a) => `${a.firstName} (id: ${a.id})`).join(', ')}`,
-							extra: { toAgent: targetName, error: 'Agent not found' },
+							extra: { targetUserName: targetName, error: 'Agent not found' },
 						});
 					} else if (targetAgent.agentAccessLevel === 'closed') {
 						observe({
-							action: 'send_message',
+							action: 'delegate',
 							result: 'error',
 							message: `Agent "${targetName}" is not accessible.`,
-							extra: { toAgent: targetName, error: 'Agent not accessible' },
+							extra: { targetUserName: targetName, error: 'Agent not accessible' },
 						});
 					} else {
 						try {
@@ -999,25 +1020,25 @@ export class AgentsService {
 							const stepResult = result.status === 'completed' ? 'success' : 'failed';
 							const responseText = result.summary ?? result.message ?? 'No summary';
 							observe({
-								action: 'send_message',
+								action: 'delegate',
 								result: stepResult,
 								message: `Agent "${targetName}" responded: ${responseText}`,
-								extra: { toAgent: targetName, summary: responseText },
+								extra: { targetUserName: targetName, summary: responseText },
 							});
 						} catch (error) {
 							const errorMsg = error instanceof Error ? error.message : String(error);
 							observe({
-								action: 'send_message',
+								action: 'delegate',
 								result: 'error',
 								message: `Agent delegation failed: ${errorMsg}`,
-								extra: { toAgent: targetName, error: errorMsg },
+								extra: { targetUserName: targetName, error: errorMsg },
 							});
 						}
 					}
 				}
 			} else {
 				const validActions = canDelegate
-					? '"execute_workflow", "send_message", or "complete"'
+					? '"execute_workflow", "delegate", or "complete"'
 					: '"execute_workflow" or "complete"';
 				messages.push({
 					role: 'user',
@@ -1069,7 +1090,7 @@ ${stepsSoFar || '(none)'}
 If everything was addressed, respond with:
 {"action": "complete", "summary": "<final summary>"}
 
-If there are gaps or errors that need correcting, respond with the appropriate action instead (e.g. execute_workflow or send_message).`;
+If there are gaps or errors that need correcting, respond with the appropriate action instead (e.g. execute_workflow or delegate).`;
 
 		messages.push({ role: 'user', content: reflectionPrompt });
 		budget.remaining--;

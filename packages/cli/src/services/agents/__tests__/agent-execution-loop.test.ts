@@ -300,7 +300,7 @@ describe('execution loop - workflow execution', () => {
 		// Verify step callback was called for the execution step
 		expect(onStep).toHaveBeenCalledWith(
 			expect.objectContaining({
-				type: 'step',
+				type: 'task.action',
 				action: 'execute_workflow',
 				workflowName: 'Deploy',
 			}),
@@ -364,7 +364,7 @@ describe('execution loop - delegation', () => {
 		// Primary: delegate to agent-2 → complete
 		mockedCallLlm
 			.mockResolvedValueOnce(
-				'{"action": "send_message", "toAgentId": "agent-2", "message": "Help me"}',
+				'{"action": "delegate", "targetUserId": "agent-2", "message": "Help me"}',
 			)
 			// Helper agent's inner loop: complete immediately
 			.mockResolvedValueOnce('{"action": "complete", "summary": "Helped!"}')
@@ -388,7 +388,7 @@ describe('execution loop - delegation', () => {
 		);
 
 		expect(result.status).toBe('completed');
-		expect(result.steps.some((s) => s.action === 'send_message' && s.toAgent === 'Helper')).toBe(
+		expect(result.steps.some((s) => s.action === 'delegate' && s.targetUserName === 'Helper')).toBe(
 			true,
 		);
 	});
@@ -413,9 +413,7 @@ describe('execution loop - delegation', () => {
 		mocks.mockWorkflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
 
 		mockedCallLlm
-			.mockResolvedValueOnce(
-				'{"action": "send_message", "toAgentId": "agent-2", "message": "Help"}',
-			)
+			.mockResolvedValueOnce('{"action": "delegate", "targetUserId": "agent-2", "message": "Help"}')
 			.mockResolvedValueOnce('{"action": "complete", "summary": "Done despite error"}')
 			.mockResolvedValueOnce('{"action": "complete", "summary": "Done despite error"}');
 
@@ -428,7 +426,7 @@ describe('execution loop - delegation', () => {
 			},
 		);
 
-		const delegationStep = result.steps.find((s) => s.action === 'send_message');
+		const delegationStep = result.steps.find((s) => s.action === 'delegate');
 		expect(delegationStep?.result).toBe('error');
 	});
 
@@ -461,9 +459,7 @@ describe('execution loop - delegation', () => {
 		mocks.mockWorkflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
 
 		mockedCallLlm
-			.mockResolvedValueOnce(
-				'{"action": "send_message", "toAgentId": "agent-2", "message": "Help"}',
-			)
+			.mockResolvedValueOnce('{"action": "delegate", "targetUserId": "agent-2", "message": "Help"}')
 			.mockResolvedValueOnce('{"action": "complete", "summary": "Done"}')
 			.mockResolvedValueOnce('{"action": "complete", "summary": "Done"}');
 
@@ -476,7 +472,7 @@ describe('execution loop - delegation', () => {
 			},
 		);
 
-		const delegationStep = result.steps.find((s) => s.action === 'send_message');
+		const delegationStep = result.steps.find((s) => s.action === 'delegate');
 		expect(delegationStep?.result).toBe('error');
 	});
 
@@ -501,7 +497,7 @@ describe('execution loop - delegation', () => {
 
 		mockedCallLlm
 			.mockResolvedValueOnce(
-				'{"action": "send_message", "toAgentId": "external:ExtBot", "message": "Help externally"}',
+				'{"action": "delegate", "targetUserId": "external:ExtBot", "message": "Help externally"}',
 			)
 			.mockResolvedValueOnce('{"action": "complete", "summary": "External help received"}')
 			.mockResolvedValueOnce('{"action": "complete", "summary": "External help received"}');
@@ -517,7 +513,7 @@ describe('execution loop - delegation', () => {
 		);
 
 		expect(mockedCallExternalAgent).toHaveBeenCalledWith(externalAgents[0], 'Help externally');
-		expect(result.steps.some((s) => s.action === 'send_message')).toBe(true);
+		expect(result.steps.some((s) => s.action === 'delegate')).toBe(true);
 	});
 
 	it('should record error when external agent fails', async () => {
@@ -532,7 +528,7 @@ describe('execution loop - delegation', () => {
 
 		mockedCallLlm
 			.mockResolvedValueOnce(
-				'{"action": "send_message", "toAgentId": "external:ExtBot", "message": "Help"}',
+				'{"action": "delegate", "targetUserId": "external:ExtBot", "message": "Help"}',
 			)
 			.mockResolvedValueOnce('{"action": "complete", "summary": "Done despite error"}')
 			.mockResolvedValueOnce('{"action": "complete", "summary": "Done despite error"}');
@@ -547,7 +543,7 @@ describe('execution loop - delegation', () => {
 			},
 		);
 
-		const delegationStep = result.steps.find((s) => s.action === 'send_message');
+		const delegationStep = result.steps.find((s) => s.action === 'delegate');
 		expect(delegationStep?.result).toBe('error');
 	});
 });
@@ -668,10 +664,10 @@ describe('execution loop - unknown actions and edge cases', () => {
 			},
 		);
 
-		// step event + observation event + agentTaskDone broadcast
-		const stepCalls = onStep.mock.calls.filter((c) => c[0].type === 'step');
-		const observationCalls = onStep.mock.calls.filter((c) => c[0].type === 'observation');
-		expect(stepCalls).toHaveLength(1);
+		// action event + observation event + agentTaskDone broadcast
+		const actionCalls = onStep.mock.calls.filter((c) => c[0].type === 'task.action');
+		const observationCalls = onStep.mock.calls.filter((c) => c[0].type === 'task.observation');
+		expect(actionCalls).toHaveLength(1);
 		expect(observationCalls).toHaveLength(1);
 	});
 

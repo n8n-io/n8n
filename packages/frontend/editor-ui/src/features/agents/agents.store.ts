@@ -597,11 +597,11 @@ export const useAgentsStore = defineStore('agents', () => {
 		pushListenerRemoval.value = pushStore.addEventListener((event) => {
 			if (event.type === 'agentTaskStep') {
 				const stepEvent = event.data.event as Record<string, unknown>;
-				// Only activate on new actions (type: step), not results (type: observation)
-				if (stepEvent.type === 'step') {
+				// Only activate on new actions (type: task.action), not results (type: task.observation)
+				if (stepEvent.type === 'task.action') {
 					setAgentStatus(event.data.agentId, 'active');
-					if (stepEvent.action === 'send_message' && typeof stepEvent.toAgent === 'string') {
-						setAgentStatusByName(stepEvent.toAgent, 'active');
+					if (stepEvent.action === 'delegate' && typeof stepEvent.targetUserName === 'string') {
+						setAgentStatusByName(stepEvent.targetUserName, 'active');
 					}
 				}
 			}

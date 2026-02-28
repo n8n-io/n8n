@@ -10,7 +10,7 @@ export interface ExternalAgentConfig {
 	name: string;
 	description?: string;
 	url: string;
-	apiKey: string;
+	apiKey?: string;
 }
 
 export interface LlmConfig {
@@ -27,7 +27,7 @@ export interface LlmMessage {
 export interface TaskStep {
 	action: string;
 	workflowName?: string;
-	toAgent?: string;
+	targetUserName?: string;
 	result?: string;
 }
 
@@ -153,14 +153,14 @@ export async function executeTaskOverSse(
 		const result = await execute((event) => sseWrite(res, event));
 
 		sseWrite(res, {
-			type: 'done',
+			type: 'task.completion',
 			status: result.status,
 			summary: result.summary ?? result.message,
 		});
 	} catch (error) {
 		if (!res.writableEnded) {
 			const message = error instanceof Error ? error.message : String(error);
-			sseWrite(res, { type: 'done', status: 'error', summary: message });
+			sseWrite(res, { type: 'task.completion', status: 'error', summary: message });
 		}
 	} finally {
 		cleanup();

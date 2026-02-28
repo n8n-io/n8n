@@ -35,12 +35,12 @@ export function buildSystemPrompt(
 You can also delegate tasks to other agents:
 ${agentList}
 
-To send a message to another agent:
-{"action": "send_message", "toAgentId": "<id>", "message": "<what you need them to do>"}`;
+To delegate a task to another agent:
+{"action": "delegate", "targetUserId": "<id>", "message": "<what you need them to do>"}`;
 	}
 
 	const validActions = canDelegate
-		? '"execute_workflow", "send_message", or "complete"'
+		? '"execute_workflow", "delegate", or "complete"'
 		: '"execute_workflow" or "complete"';
 
 	const typedInputInstruction = skills?.length
