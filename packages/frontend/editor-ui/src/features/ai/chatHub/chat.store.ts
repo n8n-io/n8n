@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { CHAT_SESSIONS_PAGE_SIZE } from './constants';
+import { EnterpriseEditionFeature } from '@/app/constants/enterprise';
 import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
@@ -1264,7 +1265,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		return credentialsStore.getCredentialById(embeddingCredentialId.value) ?? null;
 	});
 
-	const isSingleUser = computed(() => settingsStore.userManagement.quota === 1);
+	const isSharingEnabled = computed(
+		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
+	);
 
 	const semanticSearchReadiness = computed((): SemanticSearchReadiness => {
 		let vectorStoreIssue: SemanticSearchCredentialIssue | undefined;
@@ -1274,7 +1277,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			vectorStoreIssue = 'unspecified';
 		} else if (!vectorStoreCredential.value) {
 			vectorStoreIssue = 'notFound';
-		} else if (!isSingleUser.value && !vectorStoreCredential.value.isGlobal) {
+		} else if (isSharingEnabled.value && !vectorStoreCredential.value.isGlobal) {
 			vectorStoreIssue = 'notShared';
 		}
 
@@ -1282,7 +1285,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			embeddingIssue = 'unspecified';
 		} else if (!embeddingCredential.value) {
 			embeddingIssue = 'notShared';
-		} else if (!isSingleUser.value && !embeddingCredential.value.isGlobal) {
+		} else if (isSharingEnabled.value && !embeddingCredential.value.isGlobal) {
 			embeddingIssue = 'notShared';
 		}
 

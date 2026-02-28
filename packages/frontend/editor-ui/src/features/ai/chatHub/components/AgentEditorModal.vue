@@ -4,16 +4,19 @@ import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { fetchChatModelsApi, buildAgentAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import Modal from '@/app/components/Modal.vue';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import {
 	emptyChatModelsResponse,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatModelsResponse,
 	type ChatHubBaseLLMModel,
 	type AgentIconOrEmoji,
 	type ChatHubConversationModel,
+	type ChatHubLLMProvider,
 	type ChatHubProvider,
 	type ChatModelDto,
 	type ChatHubAgentKnowledgeItem,
@@ -21,11 +24,9 @@ import {
 import {
 	N8nButton,
 	N8nHeading,
-	N8nIconButton,
 	N8nIconPicker,
 	N8nInput,
 	N8nInputLabel,
-	N8nIcon,
 	N8nText,
 	N8nCallout,
 } from '@n8n/design-system';
@@ -37,6 +38,11 @@ import type { CredentialsMap } from '../chat.types';
 import { type IBinaryData } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
 import { personalAgentDefaultIcon, isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
+import { CHAT_SETTINGS_VIEW } from '@/features/ai/chatHub/constants';
+import AgentEditorModalFileRow, {
+	type FileRow,
+} from '@/features/ai/chatHub/components/AgentEditorModalFileRow.vue';
+import { I18nT } from 'vue-i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
@@ -53,9 +59,10 @@ const props = defineProps<{
 
 const chatStore = useChatStore();
 const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
 const i18n = useI18n();
 
-const canConfigureVectorStore = computed(() => usersStore.isInstanceOwner || usersStore.isAdmin);
+const canConfigureVectorStore = computed(() => usersStore.isInstanceOwner);
 const toast = useToast();
 const message = useMessage();
 const uiStore = useUIStore();
@@ -76,6 +83,36 @@ const icon = ref<AgentIconOrEmoji>(personalAgentDefaultIcon);
 const savedFiles = ref<ChatHubAgentKnowledgeItem[]>([]);
 const newFiles = ref<IBinaryData[]>([]);
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInput');
+
+const currentEmbeddingProvider = computed<ChatHubLLMProvider | null>(() => {
+	const credentialType = settingsStore.moduleSettings['chat-hub']?.embeddingCredential?.type;
+	if (!credentialType) return null;
+	const entry = (
+		Object.entries(PROVIDER_CREDENTIAL_TYPE_MAP) as Array<[ChatHubLLMProvider, string]>
+	).find(([, type]) => type === credentialType);
+	return entry?.[0] ?? null;
+});
+
+const allFiles = computed<FileRow[]>(() => [
+	...savedFiles.value.map((file, index) => ({
+		id: `saved-${index}`,
+		name: file.type === 'file' ? (file.binaryData.fileName ?? '') : file.fileName,
+		mimeType: file.type === 'file' ? (file.binaryData.mimeType ?? '') : file.mimeType,
+		isNew: false,
+		isEmbedding: file.type === 'embedding',
+		embeddingProvider: file.type === 'embedding' ? file.provider : null,
+		index,
+	})),
+	...newFiles.value.map((file, index) => ({
+		id: `new-${index}`,
+		name: file.fileName ?? '',
+		mimeType: file.mimeType ?? '',
+		isNew: true,
+		isEmbedding: false,
+		embeddingProvider: null,
+		index,
+	})),
+]);
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
 const credentialIdForSelectedModelProvider = computed(
@@ -121,24 +158,6 @@ const canSelectTools = computed(
 	() => selectedAgent.value?.metadata.capabilities.functionCalling ?? false,
 );
 
-const hasPdfFiles = computed(() => {
-	return savedFiles.value.some(
-		(f) =>
-			(f.type === 'file' && f.binaryData.mimeType === 'application/pdf') || f.type === 'embedding',
-	);
-});
-
-const isProviderChanging = computed(() => {
-	if (!isEditMode.value || !customAgent.value || !selectedModel.value) {
-		return false;
-	}
-	return customAgent.value.provider !== selectedModel.value.provider;
-});
-
-const shouldShowReindexWarning = computed(() => {
-	return isEditMode.value && hasPdfFiles.value && isProviderChanging.value;
-});
-
 function closeDialog() {
 	uiStore.closeModal(props.modalName);
 }
@@ -165,6 +184,7 @@ watch(
 		systemPrompt.value = agent.systemPrompt;
 		selectedModel.value = { provider: agent.provider, model: agent.model };
 		savedFiles.value = agent.files;
+		newFiles.value = [];
 		toolIds.value = agent.toolIds ?? [];
 
 		if (agent.credentialId) {
@@ -379,19 +399,25 @@ function handleClickUploadArea() {
 	fileInputRef.value?.click();
 }
 
-function handleFileClick(index: number) {
-	if (!isEditMode.value || !props.data.agentId) {
+function handleFileRowClick(_event: MouseEvent, { item }: { item: FileRow }) {
+	if (item.isNew || item.isEmbedding || !isEditMode.value || !props.data.agentId) {
 		return;
 	}
 
-	const file = savedFiles.value[index];
-
-	if (file.type !== 'file') {
-		return;
-	}
-
-	const url = buildAgentAttachmentUrl(useRootStore().restApiContext, props.data.agentId, index);
+	const url = buildAgentAttachmentUrl(
+		useRootStore().restApiContext,
+		props.data.agentId,
+		item.index,
+	);
 	window.open(url, '_blank');
+}
+
+function removeFile(row: FileRow) {
+	if (row.isNew) {
+		removeNewFile(row.index);
+	} else {
+		removeExistingFile(row.index);
+	}
 }
 
 const fileDrop = useFileDrop(true, onFilesDropped);
@@ -414,177 +440,156 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 			</div>
 		</template>
 		<template #content>
-			<div
-				:class="[$style.content, { [$style.isDraggingFile]: fileDrop.isDragging.value }]"
-				@dragenter="fileDrop.handleDragEnter"
-				@dragleave="fileDrop.handleDragLeave"
-				@dragover="fileDrop.handleDragOver"
-				@drop="fileDrop.handleDrop"
-			>
+			<div :class="$style.contentWrapper">
 				<div v-if="fileDrop.isDragging.value" :class="$style.dropOverlay">
 					<N8nText size="large" color="text-dark">Add file to agent</N8nText>
 				</div>
-				<N8nInputLabel
-					input-name="agent-name"
-					:label="i18n.baseText('chatHub.agent.editor.name.label')"
-					:required="true"
+				<div
+					:class="[$style.content, { [$style.isDraggingFile]: fileDrop.isDragging.value }]"
+					@dragenter="fileDrop.handleDragEnter"
+					@dragleave="fileDrop.handleDragLeave"
+					@dragover="fileDrop.handleDragOver"
+					@drop="fileDrop.handleDrop"
 				>
-					<div :class="$style.agentName">
-						<N8nIconPicker
-							v-model="icon as IconOrEmoji"
-							:button-tooltip="i18n.baseText('chatHub.agent.editor.iconPicker.button.tooltip')"
-						/>
-						<N8nInput
-							id="agent-name"
-							ref="nameInput"
-							v-model="name"
-							:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
-							:maxlength="128"
-							:class="$style.agentNameInput"
-						/>
-					</div>
-				</N8nInputLabel>
-
-				<N8nInputLabel
-					input-name="agent-description"
-					:label="i18n.baseText('chatHub.agent.editor.description.label')"
-				>
-					<N8nInput
-						id="agent-description"
-						v-model="description"
-						type="textarea"
-						:placeholder="i18n.baseText('chatHub.agent.editor.description.placeholder')"
-						:maxlength="512"
-						:rows="3"
-						:class="$style.input"
-					/>
-				</N8nInputLabel>
-
-				<N8nInputLabel
-					input-name="agent-system-prompt"
-					:label="i18n.baseText('chatHub.agent.editor.systemPrompt.label')"
-					:required="true"
-				>
-					<N8nInput
-						id="agent-system-prompt"
-						v-model="systemPrompt"
-						type="textarea"
-						:placeholder="i18n.baseText('chatHub.agent.editor.systemPrompt.placeholder')"
-						:rows="6"
-						:class="$style.input"
-					/>
-				</N8nInputLabel>
-
-				<div :class="$style.row">
 					<N8nInputLabel
-						input-name="agent-model"
-						:class="$style.input"
-						:label="i18n.baseText('chatHub.agent.editor.model.label')"
+						input-name="agent-name"
+						:label="i18n.baseText('chatHub.agent.editor.name.label')"
 						:required="true"
 					>
-						<ModelSelector
-							:selected-agent="selectedAgent"
-							:include-custom-agents="false"
-							:credentials="agentMergedCredentials"
-							:agents="agents"
-							:is-loading="isLoadingAgents"
-							:class="$style.modelSelector"
-							warn-missing-credentials
-							@change="onModelChange"
-							@select-credential="onCredentialSelected"
+						<div :class="$style.agentName">
+							<N8nIconPicker
+								v-model="icon as IconOrEmoji"
+								:button-tooltip="i18n.baseText('chatHub.agent.editor.iconPicker.button.tooltip')"
+							/>
+							<N8nInput
+								id="agent-name"
+								ref="nameInput"
+								v-model="name"
+								:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
+								:maxlength="128"
+								:class="$style.agentNameInput"
+							/>
+						</div>
+					</N8nInputLabel>
+
+					<N8nInputLabel
+						input-name="agent-description"
+						:label="i18n.baseText('chatHub.agent.editor.description.label')"
+					>
+						<N8nInput
+							id="agent-description"
+							v-model="description"
+							type="textarea"
+							:placeholder="i18n.baseText('chatHub.agent.editor.description.placeholder')"
+							:maxlength="512"
+							:rows="3"
+							:class="$style.input"
 						/>
 					</N8nInputLabel>
 
 					<N8nInputLabel
-						input-name="agent-tool"
-						:class="$style.input"
-						:label="i18n.baseText('chatHub.agent.editor.tools.label')"
-						:required="false"
+						input-name="agent-system-prompt"
+						:label="i18n.baseText('chatHub.agent.editor.systemPrompt.label')"
+						:required="true"
 					>
-						<div>
-							<ToolsSelector
-								:disabled="!canSelectTools"
-								:disabled-tooltip="
-									canSelectTools
-										? undefined
-										: selectedModel
-											? i18n.baseText('chatHub.tools.selector.disabled.tooltip')
-											: i18n.baseText('chatHub.tools.selector.disabled.noModel.tooltip')
-								"
-								:checked-tool-ids="toolIds"
-								@toggle="handleToggleAgentTool"
-							/>
-						</div>
+						<N8nInput
+							id="agent-system-prompt"
+							v-model="systemPrompt"
+							type="textarea"
+							:placeholder="i18n.baseText('chatHub.agent.editor.systemPrompt.placeholder')"
+							:rows="6"
+							:class="$style.input"
+						/>
 					</N8nInputLabel>
-				</div>
 
-				<N8nCallout
-					v-if="shouldShowReindexWarning"
-					theme="warning"
-					icon="info"
-					:class="$style.reindexWarning"
-				>
-					{{ i18n.baseText('chatHub.agent.editor.reindexWarning') }}
-				</N8nCallout>
-
-				<N8nInputLabel input-name="agent-files" label="Files" :required="false">
-					<input
-						ref="fileInput"
-						type="file"
-						:class="$style.fileInput"
-						:accept="acceptedMimeTypes"
-						multiple
-						@change="handleFileSelect"
-					/>
-					<N8nCallout
-						v-if="chatStore.semanticSearchReadiness.vectorStoreIssue"
-						theme="warning"
-						icon="info"
-						:class="$style.vectorStoreCallout"
-					>
-						{{
-							canConfigureVectorStore
-								? i18n.baseText('chatHub.agent.editor.vectorStore.notReady.canConfigure')
-								: i18n.baseText('chatHub.agent.editor.vectorStore.notReady')
-						}}
-					</N8nCallout>
-					<div :class="$style.filesContainer">
-						<div
-							v-for="(file, index) in savedFiles"
-							:key="`existing-file-${index}`"
-							:class="[$style.fileBar, { [$style.embeddingFile]: file.type === 'embedding' }]"
-							@click="handleFileClick(index)"
+					<div :class="$style.row">
+						<N8nInputLabel
+							input-name="agent-model"
+							:class="$style.input"
+							:label="i18n.baseText('chatHub.agent.editor.model.label')"
+							:required="true"
 						>
-							<N8nIcon size="medium" icon="file" />
-							<span :class="$style.fileName">
-								{{ file.type === 'file' ? file.binaryData.fileName : file.fileName }}
-							</span>
-							<N8nIconButton
-								icon="trash-2"
-								type="tertiary"
-								size="small"
-								variant="subtle"
-								:class="$style.removeButton"
-								@click.stop="removeExistingFile(index)"
+							<ModelSelector
+								:selected-agent="selectedAgent"
+								:include-custom-agents="false"
+								:credentials="agentMergedCredentials"
+								:agents="agents"
+								:is-loading="isLoadingAgents"
+								:class="$style.modelSelector"
+								warn-missing-credentials
+								@change="onModelChange"
+								@select-credential="onCredentialSelected"
 							/>
-						</div>
-						<div
-							v-for="(file, index) in newFiles"
-							:key="`new-file-${index}`"
-							:class="[$style.fileBar, $style.newFile]"
-							@click="handleFileClick(index)"
+						</N8nInputLabel>
+
+						<N8nInputLabel
+							input-name="agent-tool"
+							:class="$style.input"
+							:label="i18n.baseText('chatHub.agent.editor.tools.label')"
+							:required="false"
 						>
-							<N8nIcon size="medium" icon="file" />
-							<span :class="$style.fileName">
-								{{ file.fileName }}
-							</span>
-							<N8nIconButton
-								icon="trash-2"
-								type="tertiary"
-								size="small"
-								variant="subtle"
-								:class="$style.removeButton"
-								@click.stop="removeNewFile(index)"
+							<div>
+								<ToolsSelector
+									:disabled="!canSelectTools"
+									:disabled-tooltip="
+										canSelectTools
+											? undefined
+											: selectedModel
+												? i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+												: i18n.baseText('chatHub.tools.selector.disabled.noModel.tooltip')
+									"
+									:checked-tool-ids="toolIds"
+									@toggle="handleToggleAgentTool"
+								/>
+							</div>
+						</N8nInputLabel>
+					</div>
+
+					<N8nInputLabel input-name="agent-files" label="Files" :required="false">
+						<input
+							ref="fileInput"
+							type="file"
+							:class="$style.fileInput"
+							:accept="acceptedMimeTypes"
+							multiple
+							@change="handleFileSelect"
+						/>
+						<N8nCallout
+							v-if="!chatStore.semanticSearchReadiness.isReady"
+							theme="info"
+							icon="info"
+							:class="$style.vectorStoreCallout"
+						>
+							<I18nT
+								:keypath="
+									canConfigureVectorStore
+										? 'chatHub.agent.editor.semanticSearch.notReady.canConfigure'
+										: 'chatHub.agent.editor.semanticSearch.notReady'
+								"
+								tag="span"
+								scope="global"
+							>
+								<template #settingsLink>
+									<RouterLink
+										:to="{ name: CHAT_SETTINGS_VIEW }"
+										target="_blank"
+										:class="$style.settingsLink"
+										>{{
+											i18n.baseText('chatHub.agent.editor.semanticSearch.settingsLink')
+										}}</RouterLink
+									>
+								</template>
+							</I18nT>
+						</N8nCallout>
+						<div v-if="allFiles.length > 0" :class="$style.fileList">
+							<AgentEditorModalFileRow
+								v-for="item in allFiles"
+								:key="item.id"
+								:item="item"
+								:semantic-search-ready="chatStore.semanticSearchReadiness.isReady"
+								:current-embedding-provider="currentEmbeddingProvider"
+								@click="handleFileRowClick($event, { item })"
+								@remove="removeFile(item)"
 							/>
 						</div>
 						<N8nButton
@@ -596,8 +601,8 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 						>
 							Add file
 						</N8nButton>
-					</div>
-				</N8nInputLabel>
+					</N8nInputLabel>
+				</div>
 			</div>
 		</template>
 
@@ -627,20 +632,28 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 	margin-top: calc(-1 * var(--spacing--xs));
 }
 
+.contentWrapper {
+	position: relative;
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
 	padding: var(--spacing--sm) 0;
 	padding-right: var(--spacing--lg);
-	position: relative;
 	max-height: 60vh;
 	overflow-y: auto;
 	margin-right: calc(-1 * var(--spacing--lg));
 }
 
 .vectorStoreCallout {
-	margin-bottom: var(--spacing--2xs);
+	margin-bottom: var(--spacing--xs);
+}
+
+.settingsLink {
+	color: inherit;
+	text-decoration: underline;
 }
 
 .isDraggingFile {
@@ -695,50 +708,15 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 	display: none;
 }
 
-.filesContainer {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.fileBar {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--xs) var(--spacing--xs);
-	background-color: var(--color--background--light-2);
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	border-radius: var(--radius);
-	gap: var(--spacing--3xs);
-	cursor: pointer;
-}
-
 .addFileButton {
 	width: fit-content;
+	margin-top: var(--spacing--2xs);
 }
 
-.fileName {
-	flex: 1;
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	line-height: var(--line-height--xl);
-}
-
-.removeButton {
-	flex-shrink: 0;
-}
-
-.vectorStoreFields {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--sm);
-	background-color: var(--color--background--light-2);
-	border: var(--border-width) var(--border-style) var(--color--foreground);
+.fileList {
+	border: var(--border);
 	border-radius: var(--radius);
+	overflow: hidden;
 }
 
 .credentialPickerRow {
@@ -749,10 +727,5 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 
 .credentialPicker {
 	flex: 1;
-}
-
-.newFile,
-.embeddingFile {
-	cursor: default;
 }
 </style>

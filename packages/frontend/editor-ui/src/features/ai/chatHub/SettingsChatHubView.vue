@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useI18n } from '@n8n/i18n';
@@ -26,6 +27,7 @@ import { providerDisplayNames } from './constants';
 
 const i18n = useI18n();
 const toast = useToast();
+const message = useMessage();
 const documentTitle = useDocumentTitle();
 
 const chatStore = useChatStore();
@@ -97,7 +99,7 @@ const embeddingTooltip = computed(() => {
 		: i18n.baseText('settings.chatHub.embeddingModel.notShared');
 });
 
-async function onVectorStoreCredentialSelected(credentialId: string) {
+async function onVectorStoreCredentialSelected(credentialId: string | null) {
 	try {
 		await updateVectorStoreCredentialApi(rootStore.restApiContext, credentialId);
 		await settingsStore.getModuleSettings();
@@ -107,19 +109,33 @@ async function onVectorStoreCredentialSelected(credentialId: string) {
 }
 
 async function onEmbeddingTypeChange(credentialType: string) {
-	localEmbeddingType.value = credentialType;
 	const currentType = settingsStore.moduleSettings['chat-hub']?.embeddingCredential?.type;
-	if (currentType !== credentialType) {
-		try {
-			await updateEmbeddingCredentialApi(rootStore.restApiContext, null, credentialType);
-			await settingsStore.getModuleSettings();
-		} catch (error) {
-			toast.showError(error, i18n.baseText('settings.chatHub.embeddingModel.save.error'));
+	if (currentType && currentType !== credentialType) {
+		const confirmed = await message.confirm(
+			i18n.baseText('settings.chatHub.embeddingModel.changeProvider.confirm.message'),
+			i18n.baseText('settings.chatHub.embeddingModel.changeProvider.confirm.title'),
+			{
+				confirmButtonText: i18n.baseText(
+					'settings.chatHub.embeddingModel.changeProvider.confirm.button',
+				),
+				cancelButtonText: i18n.baseText('generic.cancel'),
+				type: 'warning',
+			},
+		);
+		if (confirmed !== 'confirm') {
+			return;
 		}
+	}
+	localEmbeddingType.value = credentialType;
+	try {
+		await updateEmbeddingCredentialApi(rootStore.restApiContext, null, credentialType);
+		await settingsStore.getModuleSettings();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.chatHub.embeddingModel.save.error'));
 	}
 }
 
-async function onEmbeddingCredentialSelected(credentialId: string) {
+async function onEmbeddingCredentialSelected(credentialId: string | null) {
 	if (!localEmbeddingType.value) return;
 	try {
 		await updateEmbeddingCredentialApi(
@@ -213,11 +229,11 @@ onMounted(async () => {
 									v-if="semanticSearchReadiness.vectorStoreIssue"
 									:content="vectorStoreTooltip"
 								>
-									<N8nIcon icon="exclamation-triangle" :class="$style.iconWarning" size="large" />
+									<N8nIcon icon="triangle-alert" :class="$style.iconWarning" size="large" />
 								</N8nTooltip>
 								<N8nIcon v-else icon="check" :class="$style.iconReady" size="large" />
 							</div>
-							<N8nText color="text-light" tag="span" :class="$style.rowDescription">
+							<N8nText color="text-light" size="small" tag="span" :class="$style.rowDescription">
 								{{ i18n.baseText('settings.chatHub.vectorStore.description') }}
 							</N8nText>
 						</div>
@@ -246,7 +262,7 @@ onMounted(async () => {
 									:selected-credential-id="vectorStoreCredentialId"
 									create-button-variant="subtle"
 									@credential-selected="onVectorStoreCredentialSelected"
-									@credential-deselected="onVectorStoreCredentialDeselected"
+									@credential-deleted="onVectorStoreCredentialSelected(null)"
 								/>
 							</div>
 						</div>
@@ -261,11 +277,11 @@ onMounted(async () => {
 									v-if="semanticSearchReadiness.embeddingIssue"
 									:content="embeddingTooltip"
 								>
-									<N8nIcon icon="exclamation-triangle" :class="$style.iconWarning" size="large" />
+									<N8nIcon icon="triangle-alert" :class="$style.iconWarning" size="large" />
 								</N8nTooltip>
 								<N8nIcon v-else icon="check" :class="$style.iconReady" size="large" />
 							</div>
-							<N8nText color="text-light" tag="span" :class="$style.rowDescription">
+							<N8nText color="text-light" size="small" tag="span" :class="$style.rowDescription">
 								{{ i18n.baseText('settings.chatHub.embeddingModel.description') }}
 							</N8nText>
 						</div>
@@ -301,7 +317,7 @@ onMounted(async () => {
 									:selected-credential-id="embeddingCredentialId"
 									create-button-variant="subtle"
 									@credential-selected="onEmbeddingCredentialSelected"
-									@credential-deselected="onEmbeddingCredentialDeselected"
+									@credential-deleted="onEmbeddingCredentialSelected(null)"
 								/>
 							</div>
 						</div>
@@ -343,7 +359,7 @@ onMounted(async () => {
 
 .semanticSearchCard {
 	border: var(--border);
-	border-radius: var(--radius--lg);
+	border-radius: var(--radius);
 	overflow: hidden;
 }
 
@@ -351,7 +367,7 @@ onMounted(async () => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--sm);
-	padding: var(--spacing--sm) var(--spacing--md);
+	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
 .semanticSearchRowBordered {
