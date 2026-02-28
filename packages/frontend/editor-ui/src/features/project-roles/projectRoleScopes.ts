@@ -17,7 +17,16 @@ import { type RESOURCES } from '@n8n/permissions';
 const UI_OPERATIONS = {
 	project: ['read', 'update', 'delete'],
 	folder: ['read', 'update', 'create', 'move', 'delete'],
-	workflow: ['read', 'update', 'create', 'publish', 'unpublish', 'move', 'delete'],
+	workflow: [
+		'read',
+		'update',
+		'create',
+		'publish',
+		'unpublish',
+		'move',
+		'delete',
+		'updateRedactionSetting',
+	],
 	credential: ['read', 'update', 'create', 'share', 'unshare', 'move', 'delete'],
 	externalSecretsProvider: ['read', 'create', 'update', 'delete', 'sync'],
 	externalSecret: ['list'],

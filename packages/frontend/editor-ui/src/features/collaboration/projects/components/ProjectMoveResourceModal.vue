@@ -45,7 +45,7 @@ const props = defineProps<{
 	modalName: string;
 	data: {
 		resource: IWorkflowDb | ICredentialsResponse;
-		resourceType: ResourceType;
+		resourceType: Exclude<ResourceType, 'dataTable'>;
 		resourceTypeLabel: string;
 		eventBus?: EventBus;
 	};

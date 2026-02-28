@@ -82,6 +82,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'workflow:execute',
 	'workflow:execute-chat',
 	'workflow:move',
+	'workflow:updateRedactionSetting',
 	'workersView:manage',
 	'project:list',
 	'project:create',

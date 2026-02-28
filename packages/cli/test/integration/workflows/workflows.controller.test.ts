@@ -836,7 +836,7 @@ describe('POST /workflows', () => {
 				settings: { redactionPolicy: 'non-manual' },
 			};
 
-			const response = await authMemberAgent.post('/workflows').send(payload).expect(200);
+			const response = await authOwnerAgent.post('/workflows').send(payload).expect(200);
 
 			const dbWorkflow = await workflowRepository.findOneBy({
 				id: response.body.data.id,
@@ -1210,6 +1210,7 @@ describe('GET /workflows', () => {
 					'workflow:share',
 					'workflow:unshare',
 					'workflow:update',
+					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 
@@ -1228,6 +1229,7 @@ describe('GET /workflows', () => {
 					'workflow:share',
 					'workflow:unshare',
 					'workflow:update',
+					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 		}
@@ -2386,6 +2388,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:share',
 					'workflow:unshare',
 					'workflow:update',
+					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 
@@ -2404,6 +2407,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:share',
 					'workflow:unshare',
 					'workflow:update',
+					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 
