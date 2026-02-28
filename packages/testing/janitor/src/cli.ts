@@ -59,19 +59,19 @@ import {
 	formatMethodUsageIndexConsole,
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer.js';
-import { createProject } from './core/project-loader.js';
-import { orchestrate } from './core/orchestrator.js';
 import {
 	formatOrchestrationJSON,
 	formatOrchestrationConsole,
 } from './core/orchestrator-formatter.js';
+import { orchestrate } from './core/orchestrator.js';
+import { createProject } from './core/project-loader.js';
+import { toJSON, toConsole, printFixResults } from './core/reporter.js';
+import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
 import {
 	TestDiscoveryAnalyzer,
 	formatDiscoveryJSON,
 	formatDiscoveryConsole,
 } from './core/test-discovery-analyzer.js';
-import { toJSON, toConsole, printFixResults } from './core/reporter.js';
-import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
 import { createDefaultRunner } from './index.js';
 import type { RunOptions } from './types.js';
 
@@ -473,7 +473,7 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 	}
 
 	// Load metrics
-	let metrics: Record<string, number> = {};
+	const metrics: Record<string, number> = {};
 	if (config.orchestration.metricsPath) {
 		const metricsPath = path.isAbsolute(config.orchestration.metricsPath)
 			? config.orchestration.metricsPath
@@ -492,7 +492,7 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 					}
 				}
 			} catch (error) {
-				console.error(`Warning: Failed to parse metrics file ${metricsPath}: ${error}`);
+				console.error(`Warning: Failed to parse metrics file ${metricsPath}: ${String(error)}`);
 			}
 		} else {
 			console.error(`Warning: Metrics file not found: ${metricsPath}`);
