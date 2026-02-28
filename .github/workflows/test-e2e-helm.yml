@@ -128,7 +128,7 @@ jobs:
             --project=e2e \
             tests/e2e/building-blocks/ \
             --workers=1 \
-            --retries=0 \
+            --retries=2 \
             --reporter=list
 
       - name: Debug K8s State

@@ -131,46 +131,54 @@ function getExampleValuesFile(chartDir: string, mode: HelmStackMode): string {
 
 // -- Helm install flags -------------------------------------------------------
 
+function parseImageName(imageName: string): { repository: string; tag: string } {
+	// Split on last colon to handle registry ports (e.g. localhost:5000/repo:tag)
+	const lastColon = imageName.lastIndexOf(':');
+	const hasTag = lastColon > 0 && !imageName.substring(lastColon).includes('/');
+	return hasTag
+		? { repository: imageName.substring(0, lastColon), tag: imageName.substring(lastColon + 1) }
+		: { repository: imageName, tag: 'latest' };
+}
+
 function buildHelmSetFlags(imageName: string, mode: HelmStackMode, baseUrl: string): string[] {
-	const [repository, tag = 'latest'] = imageName.split(':');
+	const { repository, tag } = parseImageName(imageName);
+
+	// Collect env vars as an array, then convert to indexed --set flags.
+	// This avoids fragile manual index tracking and makes it easy to add conditional entries.
+	const extraEnvs: Array<{ name: string; value: string }> = [
+		{ name: 'E2E_TESTS', value: 'true' },
+		{ name: 'NODE_ENV', value: 'development' },
+		{ name: 'N8N_DIAGNOSTICS_ENABLED', value: 'false' },
+		{ name: 'N8N_DYNAMIC_BANNERS_ENABLED', value: 'false' },
+		// WEBHOOK_URL tells n8n its externally-accessible address (for invitation links, webhooks, etc.)
+		{ name: 'WEBHOOK_URL', value: baseUrl },
+	];
+
+	// License env vars from host (same pattern as testcontainers stack)
+	if (process.env.N8N_LICENSE_TENANT_ID) {
+		extraEnvs.push({ name: 'N8N_LICENSE_TENANT_ID', value: process.env.N8N_LICENSE_TENANT_ID });
+	}
+	if (process.env.N8N_LICENSE_ACTIVATION_KEY) {
+		extraEnvs.push({
+			name: 'N8N_LICENSE_ACTIVATION_KEY',
+			value: process.env.N8N_LICENSE_ACTIVATION_KEY,
+		});
+	}
+	if (process.env.N8N_LICENSE_CERT) {
+		extraEnvs.push({ name: 'N8N_LICENSE_CERT', value: process.env.N8N_LICENSE_CERT });
+	}
 
 	// Dynamic overrides on top of the example values file (-f).
 	// Mode-specific config (database type, queue settings, etc.) comes from the example file.
 	const flags = [
-		// Image
 		`--set image.repository=${repository}`,
 		`--set image.tag=${tag}`,
-		// E2E-specific env vars (--set-string because K8s env values must be strings)
-		'--set config.extraEnv[0].name=E2E_TESTS --set-string config.extraEnv[0].value=true',
-		'--set config.extraEnv[1].name=NODE_ENV --set-string config.extraEnv[1].value=development',
-		'--set config.extraEnv[2].name=N8N_DIAGNOSTICS_ENABLED --set-string config.extraEnv[2].value=false',
-		'--set config.extraEnv[3].name=N8N_DYNAMIC_BANNERS_ENABLED --set-string config.extraEnv[3].value=false',
-		// WEBHOOK_URL tells n8n its externally-accessible address (for invitation links, webhooks, etc.)
-		`--set config.extraEnv[4].name=WEBHOOK_URL --set-string config.extraEnv[4].value=${baseUrl}`,
+		// --set-string because K8s env values must be strings
+		...extraEnvs.flatMap((env, i) => [
+			`--set config.extraEnv[${i}].name=${env.name}`,
+			`--set-string config.extraEnv[${i}].value=${env.value}`,
+		]),
 	];
-
-	// License env vars from host (same pattern as testcontainers stack)
-	let envIdx = 5;
-	const licenseTenantId = process.env.N8N_LICENSE_TENANT_ID;
-	if (licenseTenantId) {
-		flags.push(
-			`--set config.extraEnv[${envIdx}].name=N8N_LICENSE_TENANT_ID --set-string config.extraEnv[${envIdx}].value=${licenseTenantId}`,
-		);
-		envIdx++;
-	}
-	const licenseActivationKey = process.env.N8N_LICENSE_ACTIVATION_KEY;
-	if (licenseActivationKey) {
-		flags.push(
-			`--set config.extraEnv[${envIdx}].name=N8N_LICENSE_ACTIVATION_KEY --set-string config.extraEnv[${envIdx}].value=${licenseActivationKey}`,
-		);
-		envIdx++;
-	}
-	const licenseCert = process.env.N8N_LICENSE_CERT;
-	if (licenseCert) {
-		flags.push(
-			`--set config.extraEnv[${envIdx}].name=N8N_LICENSE_CERT --set-string config.extraEnv[${envIdx}].value=${licenseCert}`,
-		);
-	}
 
 	if (mode === 'standalone') {
 		// Override persistence size (example uses 5Gi, we need less for tests)
