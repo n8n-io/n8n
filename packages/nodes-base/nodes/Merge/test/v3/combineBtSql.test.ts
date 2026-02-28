@@ -40,42 +40,42 @@ describe('combineBySql sandbox (isolated-vm)', () => {
 		it('should not expose require inside the sandbox', async () => {
 			const context = await loadAlaSqlSandbox();
 			await expect(
-				context.eval(`(function() { return typeof require; })()`, { copy: true }),
+				context.eval('(function() { return typeof require; })()', { copy: true }),
 			).resolves.toBe('undefined');
 		});
 
 		it('should not expose process inside the sandbox', async () => {
 			const context = await loadAlaSqlSandbox();
 			await expect(
-				context.eval(`(function() { return typeof process; })()`, { copy: true }),
+				context.eval('(function() { return typeof process; })()', { copy: true }),
 			).resolves.toBe('undefined');
 		});
 
 		it('should not expose __dirname inside the sandbox', async () => {
 			const context = await loadAlaSqlSandbox();
 			await expect(
-				context.eval(`(function() { return typeof __dirname; })()`, { copy: true }),
+				context.eval('(function() { return typeof __dirname; })()', { copy: true }),
 			).resolves.toBe('undefined');
 		});
 
 		it('should not expose __filename inside the sandbox', async () => {
 			const context = await loadAlaSqlSandbox();
 			await expect(
-				context.eval(`(function() { return typeof __filename; })()`, { copy: true }),
+				context.eval('(function() { return typeof __filename; })()', { copy: true }),
 			).resolves.toBe('undefined');
 		});
 
 		it('should not expose global inside the sandbox', async () => {
 			const context = await loadAlaSqlSandbox();
 			await expect(
-				context.eval(`(function() { return typeof global; })()`, { copy: true }),
+				context.eval('(function() { return typeof global; })()', { copy: true }),
 			).resolves.toBe('undefined');
 		});
 
 		it('should not expose Buffer inside the sandbox', async () => {
 			const context = await loadAlaSqlSandbox();
 			await expect(
-				context.eval(`(function() { return typeof Buffer; })()`, { copy: true }),
+				context.eval('(function() { return typeof Buffer; })()', { copy: true }),
 			).resolves.toBe('undefined');
 		});
 
@@ -87,7 +87,7 @@ describe('combineBySql sandbox (isolated-vm)', () => {
 				runAlaSqlInSandbox(
 					context,
 					[[{ id: 1 }]],
-					`SELECT * FROM FILE('/etc/passwd', {headers: false})`,
+					"SELECT * FROM FILE('/etc/passwd', {headers: false})",
 				),
 			).rejects.toThrow();
 		});
@@ -98,7 +98,7 @@ describe('combineBySql sandbox (isolated-vm)', () => {
 				runAlaSqlInSandbox(
 					context,
 					[[{ id: 1 }]],
-					`ATTACH CSV '/etc/passwd' AS secret; SELECT * FROM secret`,
+					"ATTACH CSV '/etc/passwd' AS secret; SELECT * FROM secret",
 				),
 			).rejects.toThrow();
 		});
@@ -112,7 +112,7 @@ describe('combineBySql sandbox (isolated-vm)', () => {
 				runAlaSqlInSandbox(
 					context,
 					[[{ id: 1 }]],
-					`SELECT id FROM input1 WHERE alasql('CREATE FUNCTION danger() RETURNS STRING BEGIN RETURN typeof require END; SELECT danger() FROM [{"x":1}]')`,
+					'SELECT id FROM input1 WHERE alasql(\'CREATE FUNCTION danger() RETURNS STRING BEGIN RETURN typeof require END; SELECT danger() FROM [{"x":1}]\')',
 				),
 			).rejects.toThrow();
 		});
@@ -124,7 +124,7 @@ describe('combineBySql sandbox (isolated-vm)', () => {
 				runAlaSqlInSandbox(
 					context,
 					[[{ id: 1 }]],
-					`SELECT alasql('CREATE FUNCTION getRequire() RETURNS STRING BEGIN RETURN typeof require END') FROM input1`,
+					"SELECT alasql('CREATE FUNCTION getRequire() RETURNS STRING BEGIN RETURN typeof require END') FROM input1",
 				),
 			).rejects.toThrow();
 		});
@@ -160,7 +160,7 @@ describe('combineBySql sandbox (isolated-vm)', () => {
 		it('should contain prototype pollution within the isolate heap', async () => {
 			const context = await loadAlaSqlSandbox();
 			// Pollute Object.prototype inside the sandbox
-			await context.eval(`Object.prototype.__polluted = true`, { copy: true });
+			await context.eval('Object.prototype.__polluted = true', { copy: true });
 			// Host-side Object.prototype must be untouched
 			expect(({} as Record<string, unknown>).__polluted).toBeUndefined();
 		});
@@ -170,7 +170,7 @@ describe('combineBySql sandbox (isolated-vm)', () => {
 		it('should enforce the CPU timeout on an infinite loop', async () => {
 			const context = await loadAlaSqlSandbox();
 			await expect(
-				context.eval(`(function() { while(true) {} })()`, { timeout: 100, copy: true }),
+				context.eval('(function() { while(true) {} })()', { timeout: 100, copy: true }),
 			).rejects.toThrow();
 		});
 	});
