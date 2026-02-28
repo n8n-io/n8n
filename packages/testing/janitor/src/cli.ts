@@ -487,15 +487,14 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 	const result = orchestrate(specs, options.shards, metrics, config.orchestration);
 
 	if (options.shardIndex !== undefined) {
-		if (
-			Number.isNaN(options.shardIndex) ||
-			options.shardIndex < 0 ||
-			options.shardIndex >= options.shards
-		) {
-			console.error(`Error: --shard-index must be between 0 and ${options.shards - 1}`);
+		if (Number.isNaN(options.shardIndex) || options.shardIndex < 0) {
+			console.error('Error: --shard-index must be >= 0');
 			process.exit(1);
 		}
-		console.log(result.shards[options.shardIndex].specs.join('\n'));
+		const shard = result.shards[options.shardIndex];
+		if (shard) {
+			console.log(shard.specs.join('\n'));
+		}
 		return;
 	}
 
