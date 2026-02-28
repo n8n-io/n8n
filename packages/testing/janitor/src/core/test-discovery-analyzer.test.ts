@@ -40,7 +40,7 @@ describe('TestDiscoveryAnalyzer', () => {
 
 	describe('basic discovery', () => {
 		it('discovers file with an active test', () => {
-			const file = createFile('tests/login.spec.ts', `test('logs in', async () => {});`);
+			const file = createFile('tests/login.spec.ts', "test('logs in', async () => {});");
 			const report = discoverWith([file]);
 
 			expect(report.specs).toHaveLength(1);
@@ -49,22 +49,22 @@ describe('TestDiscoveryAnalyzer', () => {
 		});
 
 		it('excludes file with no test calls', () => {
-			const file = createFile('tests/helpers.ts', `export function helper() {}`);
+			const file = createFile('tests/helpers.ts', 'export function helper() {}');
 			const report = discoverWith([file]);
 
 			expect(report.specs).toHaveLength(0);
 		});
 
 		it('treats test.only as active', () => {
-			const file = createFile('tests/focused.spec.ts', `test.only('focused', async () => {});`);
+			const file = createFile('tests/focused.spec.ts', "test.only('focused', async () => {});");
 			const report = discoverWith([file]);
 
 			expect(report.specs).toHaveLength(1);
 		});
 
 		it('sorts specs by path', () => {
-			const b = createFile('tests/b.spec.ts', `test('b', () => {});`);
-			const a = createFile('tests/a.spec.ts', `test('a', () => {});`);
+			const b = createFile('tests/b.spec.ts', "test('b', () => {});");
+			const a = createFile('tests/a.spec.ts', "test('a', () => {});");
 			const report = discoverWith([b, a]);
 
 			expect(report.specs.map((s) => s.path)).toEqual(['tests/a.spec.ts', 'tests/b.spec.ts']);
@@ -73,14 +73,14 @@ describe('TestDiscoveryAnalyzer', () => {
 
 	describe('skip and fixme detection', () => {
 		it('excludes file where all tests are test.skip', () => {
-			const file = createFile('tests/skipped.spec.ts', `test.skip('skipped', async () => {});`);
+			const file = createFile('tests/skipped.spec.ts', "test.skip('skipped', async () => {});");
 			const report = discoverWith([file]);
 
 			expect(report.specs).toHaveLength(0);
 		});
 
 		it('excludes file where all tests are test.fixme', () => {
-			const file = createFile('tests/fixme.spec.ts', `test.fixme('fixme', async () => {});`);
+			const file = createFile('tests/fixme.spec.ts', "test.fixme('fixme', async () => {});");
 			const report = discoverWith([file]);
 
 			expect(report.specs).toHaveLength(0);
@@ -167,7 +167,7 @@ test('outside', async () => {});
 		it('extracts capability from test title tag', () => {
 			const file = createFile(
 				'tests/email.spec.ts',
-				`test('sends email @capability:email', async () => {});`,
+				"test('sends email @capability:email', async () => {});",
 			);
 			const report = discoverWith([file]);
 
@@ -214,7 +214,7 @@ test.describe('email tests @capability:email', () => {
 
 			const file = createFile(
 				'tests/wip.spec.ts',
-				`test('work in progress @wip', async () => {});`,
+				"test('work in progress @wip', async () => {});",
 			);
 			const report = discoverWith([file]);
 
@@ -269,7 +269,7 @@ test('active', async () => {});
 				}),
 			);
 
-			const file = createFile('tests/test.spec.ts', `test('test', async () => {});`);
+			const file = createFile('tests/test.spec.ts', "test('test', async () => {});");
 			const report = discoverWith([file]);
 
 			expect(report.skipTags).toEqual(['@wip', '@local-only']);
