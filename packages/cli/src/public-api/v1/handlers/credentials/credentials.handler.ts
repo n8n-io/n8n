@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import type { CredentialsEntity } from '@n8n/db';
-import { SharedCredentials, SharedCredentialsRepository, ProjectRelationRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	SharedCredentials,
+	SharedCredentialsRepository,
+	ProjectRelationRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type express from 'express';
@@ -45,7 +50,6 @@ import {
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { CredentialsRepository } from '@n8n/db';
 
 export = {
 	getCredentials: [
@@ -283,11 +287,13 @@ export = {
 					newShareeIds: projectsRelations.map((pr) => pr.userId),
 					credentialsName: credential.name,
 				});
-			} catch {
-				// Email notification failure should not fail the share operation
+			} catch (error) {
+				Container.get(Logger).warn('Failed to send credential sharing notification email', {
+					error,
+				});
 			}
 
-			return res.status(200).json({ success: true });
+			return res.status(204).send();
 		},
 	],
 	deleteCredential: [

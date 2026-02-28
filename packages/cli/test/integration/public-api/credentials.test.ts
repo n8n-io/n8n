@@ -1108,8 +1108,7 @@ describe('PUT /credentials/:id/share', () => {
 		/**
 		 * Assert
 		 */
-		expect(response.statusCode).toBe(200);
-		expect(response.body).toHaveProperty('success', true);
+		expect(response.statusCode).toBe(204);
 
 		const sharings = await getCredentialSharings(credentials);
 		expect(sharings).toHaveLength(2); // owner + shared
@@ -1221,8 +1220,7 @@ describe('PUT /credentials/:id/share', () => {
 		/**
 		 * Assert
 		 */
-		expect(response.statusCode).toBe(200);
-		expect(response.body).toHaveProperty('success', true);
+		expect(response.statusCode).toBe(204);
 
 		const sharingsAfterUnshare = await getCredentialSharings(credentials);
 		expect(sharingsAfterUnshare).toHaveLength(1); // only owner remains
@@ -1251,8 +1249,7 @@ describe('PUT /credentials/:id/share', () => {
 		/**
 		 * Assert
 		 */
-		expect(response.statusCode).toBe(200);
-		expect(response.body).toHaveProperty('success', true);
+		expect(response.statusCode).toBe(204);
 
 		const sharings = await getCredentialSharings(credentials);
 		expect(sharings).toHaveLength(1); // only owner
