@@ -10,17 +10,11 @@ function spec(path: string, capabilities: string[] = []): DiscoveredSpec {
 }
 
 describe('orchestrate', () => {
-	it('returns empty shards when no specs provided', () => {
+	it('returns 0 shards when no specs provided', () => {
 		const result = orchestrate([], 3, {}, DEFAULT_CONFIG);
 
-		expect(result.shards).toHaveLength(3);
+		expect(result.shards).toHaveLength(0);
 		expect(result.totalTestTime).toBe(0);
-		for (const shard of result.shards) {
-			expect(shard.specs).toEqual([]);
-			expect(shard.testTime).toBe(0);
-			expect(shard.capabilities).toEqual([]);
-			expect(shard.fixtureCount).toBe(0);
-		}
 	});
 
 	it('assigns single spec to single shard', () => {
@@ -31,12 +25,17 @@ describe('orchestrate', () => {
 		expect(result.shards[0].testTime).toBe(60_000);
 	});
 
-	it('leaves excess shards empty when more shards than specs', () => {
+	it('strips empty shards when more shards than specs', () => {
 		const result = orchestrate([spec('a.spec.ts'), spec('b.spec.ts')], 5, {}, DEFAULT_CONFIG);
 
-		expect(result.shards).toHaveLength(5);
-		const nonEmpty = result.shards.filter((s) => s.specs.length > 0);
-		expect(nonEmpty).toHaveLength(2);
+		expect(result.shards).toHaveLength(2);
+		expect(result.shards.every((s) => s.specs.length > 0)).toBe(true);
+	});
+
+	it('re-numbers shards sequentially after stripping empty ones', () => {
+		const result = orchestrate([spec('a.spec.ts'), spec('b.spec.ts')], 5, {}, DEFAULT_CONFIG);
+
+		expect(result.shards.map((s) => s.shard)).toEqual([1, 2]);
 	});
 
 	it('uses defaultDuration when metrics are missing', () => {
@@ -151,7 +150,8 @@ describe('orchestrate', () => {
 	});
 
 	it('uses 1-indexed shard numbers', () => {
-		const result = orchestrate([spec('a.spec.ts')], 3, {}, DEFAULT_CONFIG);
+		const specs = [spec('a.spec.ts'), spec('b.spec.ts'), spec('c.spec.ts')];
+		const result = orchestrate(specs, 3, {}, DEFAULT_CONFIG);
 
 		expect(result.shards.map((s) => s.shard)).toEqual([1, 2, 3]);
 	});

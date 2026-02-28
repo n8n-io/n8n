@@ -78,29 +78,37 @@ if (matrixMode) {
 	} else {
 		const result = getOrchestration(shards, { impact: impactMode, base: baseArg });
 
-		console.error('\n📊 Shard Distribution:');
-		let maxShardTime = 0;
-		for (const shard of result.shards) {
-			const overhead = shard.fixtureCount * CONTAINER_STARTUP_TIME;
-			const totalTime = shard.testTime + overhead;
-			maxShardTime = Math.max(maxShardTime, totalTime);
-			const testMins = (shard.testTime / 60_000).toFixed(1);
-			const totalMins = (totalTime / 60_000).toFixed(1);
-			const caps = shard.capabilities.length > 0 ? ` [${shard.capabilities.join(', ')}]` : '';
+		if (result.shards.length === 0) {
+			console.error('\n⏭️  No specs to run — all filtered out by discovery/impact. Skipping.\n');
+			console.log(JSON.stringify([{ shard: 1, specs: '', images: '' }]));
+		} else {
+			console.error('\n📊 Shard Distribution:');
+			let maxShardTime = 0;
+			for (const shard of result.shards) {
+				const overhead = shard.fixtureCount * CONTAINER_STARTUP_TIME;
+				const totalTime = shard.testTime + overhead;
+				maxShardTime = Math.max(maxShardTime, totalTime);
+				const testMins = (shard.testTime / 60_000).toFixed(1);
+				const totalMins = (totalTime / 60_000).toFixed(1);
+				const caps =
+					shard.capabilities.length > 0 ? ` [${shard.capabilities.join(', ')}]` : '';
+				console.error(
+					`  Shard ${shard.shard}: ${shard.specs.length} specs, ${testMins} min test + ${(overhead / 1000).toFixed(0)}s startup = ${totalMins} min${caps}`,
+				);
+			}
+			const totalTestMins = (result.totalTestTime / 60_000).toFixed(1);
+			console.error(`\n  Total test time: ${totalTestMins} min`);
 			console.error(
-				`  Shard ${shard.shard}: ${shard.specs.length} specs, ${testMins} min test + ${(overhead / 1000).toFixed(0)}s startup = ${totalMins} min${caps}`,
+				`  Expected wall-clock: ~${(maxShardTime / 60_000).toFixed(1)} min (longest shard)\n`,
 			);
-		}
-		const totalTestMins = (result.totalTestTime / 60_000).toFixed(1);
-		console.error(`\n  Total test time: ${totalTestMins} min`);
-		console.error(`  Expected wall-clock: ~${(maxShardTime / 60_000).toFixed(1)} min (longest shard)\n`);
 
-		const matrix = result.shards.map((shard) => ({
-			shard: shard.shard,
-			specs: shard.specs.join(' '),
-			images: getRequiredImages(shard.capabilities).join(' '),
-		}));
-		console.log(JSON.stringify(matrix));
+			const matrix = result.shards.map((shard) => ({
+				shard: shard.shard,
+				specs: shard.specs.join(' '),
+				images: getRequiredImages(shard.capabilities).join(' '),
+			}));
+			console.log(JSON.stringify(matrix));
+		}
 	}
 } else {
 	const index = parseInt(args[1]);
@@ -109,5 +117,8 @@ if (matrixMode) {
 		process.exit(1);
 	}
 	const result = getOrchestration(shards, { impact: impactMode, base: baseArg });
-	console.log(result.shards[index].specs.join('\n'));
+	const shard = result.shards[index];
+	if (shard) {
+		console.log(shard.specs.join('\n'));
+	}
 }

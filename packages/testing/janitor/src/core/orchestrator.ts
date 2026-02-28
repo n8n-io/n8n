@@ -170,13 +170,15 @@ export function orchestrate(
 	const totalTestTime = enriched.reduce((sum, s) => sum + s.duration, 0);
 
 	return {
-		shards: buckets.map((b, i) => ({
-			shard: i + 1,
-			specs: b.specs,
-			testTime: b.testTime,
-			capabilities: [...b.capabilities].sort(),
-			fixtureCount: b.capabilities.size + (b.hasStandardSpecs ? 1 : 0),
-		})),
+		shards: buckets
+			.filter((b) => b.specs.length > 0)
+			.map((b, i) => ({
+				shard: i + 1,
+				specs: b.specs,
+				testTime: b.testTime,
+				capabilities: [...b.capabilities].sort(),
+				fixtureCount: b.capabilities.size + (b.hasStandardSpecs ? 1 : 0),
+			})),
 		totalTestTime,
 	};
 }
