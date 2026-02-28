@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 
 import ivm from 'isolated-vm';
@@ -30,7 +30,7 @@ export async function loadAlaSqlSandbox(): Promise<ivm.Context> {
 	// Browser bundle only – no Node.js fs/require handlers inside the isolate.
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	const alasqlBundlePath = require.resolve('alasql/dist/alasql.min.js');
-	await sandboxContext.eval(readFileSync(alasqlBundlePath, 'utf-8'));
+	await sandboxContext.eval(await readFile(alasqlBundlePath, 'utf-8'));
 
 	return sandboxContext;
 }
