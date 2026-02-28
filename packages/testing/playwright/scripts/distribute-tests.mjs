@@ -19,6 +19,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PLAYWRIGHT_DIR = path.resolve(__dirname, '..');
+const JANITOR_CLI = path.resolve(__dirname, '..', '..', 'janitor', 'dist', 'cli.js');
 const CONTAINER_STARTUP_TIME = 22_500; // 22.5s average per fixture
 
 /** Maps capability names to required Docker container images */
@@ -60,13 +61,10 @@ function getOrchestration(numShards, options = {}) {
 	const impactFlag = options.impact ? ' --impact' : '';
 	const baseFlag = options.base ? ` --base=${options.base}` : '';
 	const output = execSync(
-		`pnpm exec playwright-janitor orchestrate --shards=${numShards}${impactFlag}${baseFlag} --json`,
+		`node ${JANITOR_CLI} orchestrate --shards=${numShards}${impactFlag}${baseFlag} --json`,
 		{ cwd: PLAYWRIGHT_DIR, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
 	);
-	// pnpm exec may print headers — extract JSON from first '{'
-	const jsonStart = output.indexOf('{');
-	const json = jsonStart >= 0 ? output.slice(jsonStart) : output;
-	return JSON.parse(json);
+	return JSON.parse(output);
 }
 
 const args = process.argv.slice(2);
