@@ -8,7 +8,7 @@ import type {
 	IExecutionContext,
 	IWorkflowSettings,
 } from 'n8n-workflow';
-import { toCredentialContext, UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, toCredentialContext } from 'n8n-workflow';
 
 import type {
 	CredentialResolveMetadata,
@@ -43,6 +43,15 @@ export class DynamicCredentialsProxy
 		workflowSettings?: IWorkflowSettings,
 		canUseExternalSecrets?: boolean,
 	): Promise<ICredentialDataDecryptedObject> {
+		// A2A inline credential resolution — runs before the EE module gate so BYOK
+		// works on all instances (including unlicensed dev instances).
+		const a2aResult = this.resolveA2AInline(
+			credentialsResolveMetadata,
+			staticData,
+			executionContext,
+		);
+		if (a2aResult !== undefined) return a2aResult;
+
 		if (!this.resolvingProvider) {
 			if (credentialsResolveMetadata.isResolvable) {
 				this.logger.warn(
@@ -58,6 +67,60 @@ export class DynamicCredentialsProxy
 			executionContext,
 			workflowSettings,
 			canUseExternalSecrets,
+		);
+	}
+
+	/**
+	 * Attempts A2A inline credential resolution. Returns resolved data if the
+	 * execution context carries an `agent-a2a` source, or `undefined` to signal
+	 * the caller should continue with the standard resolution path.
+	 */
+	private resolveA2AInline(
+		credentialsResolveMetadata: CredentialResolveMetadata,
+		staticData: ICredentialDataDecryptedObject,
+		executionContext?: IExecutionContext,
+	): ICredentialDataDecryptedObject | undefined {
+		if (!executionContext?.credentials) return undefined;
+
+		let credentialContext: ICredentialContext | undefined;
+		try {
+			const cipher = Container.get(Cipher);
+			const decrypted = cipher.decrypt(executionContext.credentials);
+			credentialContext = toCredentialContext(decrypted);
+		} catch (error) {
+			this.logger.error('Failed to decrypt credential context for A2A check', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
+
+		if (credentialContext?.metadata?.source !== 'agent-a2a') return undefined;
+
+		const workflowCredentials = credentialContext.metadata.workflowCredentials as
+			| Record<string, Record<string, string>>
+			| undefined;
+		const inlineCreds = workflowCredentials?.[credentialsResolveMetadata.type];
+
+		if (inlineCreds && typeof inlineCreds === 'object') {
+			this.logger.debug('A2A proxy: injecting inline BYOK credentials', {
+				credentialId: credentialsResolveMetadata.id,
+				credentialType: credentialsResolveMetadata.type,
+				identity: credentialContext.identity,
+			});
+			return { ...staticData, ...inlineCreds };
+		}
+
+		// A2A context present but no BYOK for this type — respect fallback setting
+		if (credentialsResolveMetadata.resolvableAllowFallback) {
+			this.logger.debug('A2A proxy: no BYOK for type, falling back to static', {
+				credentialId: credentialsResolveMetadata.id,
+				credentialType: credentialsResolveMetadata.type,
+			});
+			return staticData;
+		}
+
+		throw new UnexpectedError(
+			`A2A credential resolution failed: no BYOK credentials for type "${credentialsResolveMetadata.type}"`,
 		);
 	}
 

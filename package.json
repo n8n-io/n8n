@@ -48,7 +48,8 @@
     "test:show:report": "pnpm --filter=n8n-playwright exec playwright show-report",
     "watch": "turbo run watch --concurrency=30",
     "webhook": "./packages/cli/bin/n8n webhook",
-    "worker": "./packages/cli/bin/n8n worker"
+    "worker": "./packages/cli/bin/n8n worker",
+    "federation": "bash ./scripts/a2a-federation.sh"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.26.0",

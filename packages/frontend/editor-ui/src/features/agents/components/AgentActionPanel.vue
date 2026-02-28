@@ -252,6 +252,24 @@ function stepStatusIcon(status: string) {
 				<N8nText v-else color="text-light" size="small">No skills advertised</N8nText>
 			</section>
 
+			<!-- LLM Credential (BYOK Anthropic key for the remote agent's brain) -->
+			<section :class="$style.section">
+				<N8nText tag="h4" size="small" bold :class="$style.sectionTitle">LLM Credential</N8nText>
+				<N8nText color="text-light" size="xsmall" :class="$style.sectionHint">
+					Provide an Anthropic API key for this agent to use
+				</N8nText>
+				<CredentialPicker
+					app-name="Anthropic"
+					credential-type="anthropicApi"
+					:selected-credential-id="
+						panelStore.externalAgentData.credentialMappings['anthropicApi'] ?? null
+					"
+					data-testid="agent-llm-credential-picker"
+					@credential-selected="onCredentialMapped('anthropicApi', $event)"
+					@credential-deselected="onCredentialUnmapped('anthropicApi')"
+				/>
+			</section>
+
 			<!-- Credential Pass-through -->
 			<section v-if="passthroughCredentials.length" :class="$style.section">
 				<N8nText tag="h4" size="small" bold :class="$style.sectionTitle"
@@ -840,6 +858,10 @@ function stepStatusIcon(status: string) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.sectionHint {
+	margin-bottom: var(--spacing--2xs);
 }
 
 .credentialMappings {

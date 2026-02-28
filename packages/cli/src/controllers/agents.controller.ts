@@ -191,12 +191,24 @@ export class AgentsController {
 			await validateExternalAgentUrl(url);
 		}
 
-		// Resolve credential mappings if this is a registered external agent
-		let workflowCredentials: Record<string, Record<string, string>> | undefined;
+		// Resolve credential mappings if this is a registered external agent.
+		// Extract anthropicApi separately as the BYOK LLM key; the rest go as workflowCredentials.
+		let byokCredentials:
+			| { anthropicApiKey?: string; workflowCredentials?: Record<string, Record<string, string>> }
+			| undefined;
 		if (registrationId) {
 			const resolved = await this.agentsService.resolveCredentialMappings(registrationId);
-			if (Object.keys(resolved).length > 0) {
-				workflowCredentials = resolved;
+			const anthropicData = resolved.anthropicApi;
+			// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+			delete resolved.anthropicApi;
+
+			const anthropicApiKey = anthropicData?.apiKey;
+			const hasWorkflowCreds = Object.keys(resolved).length > 0;
+
+			if (anthropicApiKey || hasWorkflowCreds) {
+				byokCredentials = {};
+				if (anthropicApiKey) byokCredentials.anthropicApiKey = anthropicApiKey;
+				if (hasWorkflowCreds) byokCredentials.workflowCredentials = resolved;
 			}
 		}
 
@@ -204,8 +216,8 @@ export class AgentsController {
 		const timeout = setTimeout(() => controller.abort(), 120_000);
 
 		const requestBody: Record<string, unknown> = { prompt };
-		if (workflowCredentials) {
-			requestBody.workflowCredentials = workflowCredentials;
+		if (byokCredentials) {
+			requestBody.byokCredentials = byokCredentials;
 		}
 
 		try {
