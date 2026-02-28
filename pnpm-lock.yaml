@@ -3531,6 +3531,9 @@ importers:
       iso-639-1:
         specifier: 2.1.15
         version: 2.1.15
+      isolated-vm:
+        specifier: ^6.0.2
+        version: 6.0.2
       js-nacl:
         specifier: 1.4.0
         version: 1.4.0
