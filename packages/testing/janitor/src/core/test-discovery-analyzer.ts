@@ -128,31 +128,32 @@ export class TestDiscoveryAnalyzer {
 		const skippedScopes = new Set<number>();
 
 		for (const callExpr of file.getDescendantsOfKind(SyntaxKind.CallExpression)) {
-			const expr = callExpr.getExpression().getText();
-			if (expr !== 'test.fixme' && expr !== 'test.skip') continue;
-
-			const args = callExpr.getArguments();
-			if (args.length === 0) {
-				// No-arg fixme/skip — find the enclosing block
-				const parent = callExpr.getFirstAncestorByKind(SyntaxKind.Block);
-				if (parent) {
-					skippedScopes.add(parent.getStart());
-				}
-			} else {
-				// test.fixme('title', ..., callback) — register the callback body as skipped
-				const lastArg = args.at(-1);
-				if (lastArg) {
-					const block =
-						lastArg.asKind(SyntaxKind.ArrowFunction)?.getBody().asKind(SyntaxKind.Block) ??
-						lastArg.asKind(SyntaxKind.FunctionExpression)?.getBody();
-					if (block) {
-						skippedScopes.add(block.getStart());
-					}
-				}
+			const blockStart = this.extractSkippedBlock(callExpr);
+			if (blockStart !== null) {
+				skippedScopes.add(blockStart);
 			}
 		}
 
 		return skippedScopes;
+	}
+
+	private extractSkippedBlock(callExpr: CallExpression): number | null {
+		const expr = callExpr.getExpression().getText();
+		if (expr !== 'test.fixme' && expr !== 'test.skip') return null;
+
+		const args = callExpr.getArguments();
+		if (args.length === 0) {
+			const parent = callExpr.getFirstAncestorByKind(SyntaxKind.Block);
+			return parent ? parent.getStart() : null;
+		}
+
+		const lastArg = args.at(-1);
+		if (!lastArg) return null;
+
+		const block =
+			lastArg.asKind(SyntaxKind.ArrowFunction)?.getBody().asKind(SyntaxKind.Block) ??
+			lastArg.asKind(SyntaxKind.FunctionExpression)?.getBody();
+		return block ? block.getStart() : null;
 	}
 
 	/**

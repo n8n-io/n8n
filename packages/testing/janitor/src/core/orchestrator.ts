@@ -74,7 +74,7 @@ function groupByCapability(specs: SpecWithDuration[]): {
 			if (!groups.has(cap)) {
 				groups.set(cap, []);
 			}
-			groups.get(cap)!.push(spec);
+			groups.get(cap)?.push(spec);
 		} else {
 			standard.push(spec);
 		}

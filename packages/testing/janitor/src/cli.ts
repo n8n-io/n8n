@@ -480,15 +480,19 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 			: path.resolve(config.rootDir, config.orchestration.metricsPath);
 
 		if (fs.existsSync(metricsPath)) {
-			const raw = JSON.parse(fs.readFileSync(metricsPath, 'utf-8')) as {
-				specs?: Record<string, { avgDuration?: number }>;
-			};
-			if (raw.specs) {
-				for (const [specPath, data] of Object.entries(raw.specs)) {
-					if (data.avgDuration) {
-						metrics[specPath] = data.avgDuration;
+			try {
+				const raw = JSON.parse(fs.readFileSync(metricsPath, 'utf-8')) as {
+					specs?: Record<string, { avgDuration?: number }>;
+				};
+				if (raw.specs) {
+					for (const [specPath, data] of Object.entries(raw.specs)) {
+						if (data.avgDuration) {
+							metrics[specPath] = data.avgDuration;
+						}
 					}
 				}
+			} catch (error) {
+				console.error(`Warning: Failed to parse metrics file ${metricsPath}: ${error}`);
 			}
 		} else {
 			console.error(`Warning: Metrics file not found: ${metricsPath}`);
