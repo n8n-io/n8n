@@ -10,14 +10,6 @@ import {
 import { Service } from '@n8n/di';
 import crypto from 'node:crypto';
 import { Cipher } from 'n8n-core';
-import {
-	ManualExecutionCancelledError,
-	createRunExecutionData,
-	jsonStringify,
-	type ICredentialContext,
-	type IExecutionContext,
-	type IWorkflowExecutionDataProcess,
-} from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -32,16 +24,12 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { A2A_VERSION } from '@/agents/a2a-adapter';
+import { dispatchAction } from './agent-action-handlers';
+import type { ExecutionContext, ParsedAction } from './agent-execution-types';
 import { discoverWorkflowSkill } from './agent-schema-discovery';
-import { callExternalAgent } from './agent-external-client';
 import { callLlm } from './agent-llm-client';
 import { buildSystemPrompt } from './agent-prompt-builder';
-import {
-	SUPPORTED_TRIGGERS,
-	buildPinData,
-	findSupportedTrigger,
-	getExecutionMode,
-} from './agent-workflow-runner';
+import { executeWorkflow } from './agent-workflow-executor';
 import type {
 	AgentDto,
 	AgentTaskResult,
@@ -52,13 +40,7 @@ import type {
 	StepCallback,
 	TaskStep,
 } from './agents.types';
-import {
-	EXECUTION_TIMEOUT_MS,
-	LLM_BASE_URL,
-	LLM_MODEL,
-	toAgentDto,
-	scrubSecrets,
-} from './agents.types';
+import { LLM_BASE_URL, LLM_MODEL, toAgentDto, scrubSecrets } from './agents.types';
 
 @Service()
 export class AgentsService {
@@ -726,18 +708,40 @@ export class AgentsService {
 		return result;
 	}
 
-	private async executeAgentTaskInner(
+	private buildExecutionDeps(): import('./agent-execution-types').ExecutionDeps {
+		return {
+			runWorkflow: (user, workflowId, agentPrompt, callerId, workflowCredentials, typedInputs) =>
+				executeWorkflow(
+					{
+						workflowFinderService: this.workflowFinderService,
+						workflowRunner: this.workflowRunner,
+						activeExecutions: this.activeExecutions,
+						cipher: this.cipher,
+					},
+					user,
+					workflowId,
+					agentPrompt,
+					callerId,
+					workflowCredentials,
+					typedInputs,
+				),
+			executeAgentTask: this.executeAgentTask.bind(this),
+			enforceAccessLevel: this.enforceAccessLevel.bind(this),
+			findAgentUser: async (id: string) =>
+				await this.userRepository.findOne({ where: { id, type: 'agent' } }),
+			reflectBeforeComplete: this.reflectBeforeComplete.bind(this),
+		};
+	}
+
+	private async buildExecutionContext(
 		agentId: string,
-		prompt: string,
 		budget: IterationBudget,
 		onStep: StepCallback | undefined,
 		externalAgents: ExternalAgentConfig[] | undefined,
-		callChain: Set<string>,
 		byokApiKey: string | undefined,
-		callerId: string | undefined,
 		workflowCredentials: Record<string, Record<string, string>> | undefined,
 		isExternalCall: boolean | undefined,
-	): Promise<AgentTaskResult> {
+	): Promise<{ ctx: ExecutionContext } | { earlyReturn: AgentTaskResult }> {
 		const agentUser = await this.userRepository.findOne({
 			where: { id: agentId, type: 'agent' },
 			relations: ['role'],
@@ -750,15 +754,15 @@ export class AgentsService {
 		const llmConfig = await this.resolveLlmConfig(agentUser, byokApiKey);
 		if (!llmConfig.apiKey) {
 			return {
-				status: 'error',
-				message:
-					'No LLM API key available. Share an Anthropic credential with this agent or provide a BYOK key.',
-				steps: [],
+				earlyReturn: {
+					status: 'error',
+					message:
+						'No LLM API key available. Share an Anthropic credential with this agent or provide a BYOK key.',
+					steps: [],
+				},
 			};
 		}
 
-		// Collect all known secret values for scrubbing from observations.
-		// This prevents credential leakage when APIs echo auth headers in error responses.
 		const knownSecrets: string[] = [llmConfig.apiKey];
 		if (workflowCredentials) {
 			for (const creds of Object.values(workflowCredentials)) {
@@ -780,20 +784,12 @@ export class AgentsService {
 			description: w.description,
 		}));
 
-		// Discover typed skills from Execute Workflow Trigger schemas
-		// Use activeVersion nodes (published) when available, falling back to draft nodes
 		const skills = workflows
 			.map((w) => discoverWorkflowSkill(w.id, w.name, w.activeVersion?.nodes ?? w.nodes ?? []))
 			.filter((s): s is NonNullable<typeof s> => s !== null);
 
 		const otherAgents: Array<{ id: string; firstName: string; description: string }> = [];
 		const externalAgentNames = new Set(externalAgents?.map((a) => a.name) ?? []);
-
-		// Delegation visibility depends on call origin and executing agent's access level:
-		//   A2A external call  → no delegation (skip agent discovery entirely)
-		//   external agent     → sees external targets only
-		//   internal agent     → sees external + internal targets
-		//   closed agent       → sees external + internal targets (closed always hidden)
 		const myAccessLevel = agentUser.agentAccessLevel ?? 'external';
 
 		if (budget.remaining > 0 && !isExternalCall) {
@@ -803,11 +799,7 @@ export class AgentsService {
 				if (externalAgentNames.has(a.firstName)) continue;
 
 				const targetLevel = a.agentAccessLevel ?? 'external';
-
-				// Closed agents are never visible for delegation
 				if (targetLevel === 'closed') continue;
-
-				// External agents can only see other external agents
 				if (myAccessLevel === 'external' && targetLevel !== 'external') continue;
 
 				otherAgents.push({
@@ -818,15 +810,12 @@ export class AgentsService {
 			}
 		}
 
-		// Merge persisted external agent registrations with explicit ones
 		const resolvedExternalAgents: ExternalAgentConfig[] = [...(externalAgents ?? [])];
 		if (!isExternalCall) {
 			const registrations = await this.externalAgentRegistrationRepository.find();
 			for (const reg of registrations) {
-				// Skip if already included by name
 				if (externalAgentNames.has(reg.name)) continue;
 
-				// Resolve encrypted credential for this registration
 				let apiKey = '';
 				if (reg.credentialId) {
 					try {
@@ -839,7 +828,6 @@ export class AgentsService {
 						);
 						apiKey = (decrypted.apiKey as string) ?? '';
 					} catch {
-						// Skip registrations with unresolvable credentials
 						continue;
 					}
 				}
@@ -866,13 +854,6 @@ export class AgentsService {
 		const agentName = `${agentUser.firstName} ${agentUser.lastName}`.trim();
 		const steps: TaskStep[] = [];
 
-		const observe = (observation: {
-			action: string;
-			result: string;
-			message: string;
-			extra?: Record<string, unknown>;
-		}) => this.recordObservation(steps, messages, onStep, observation, knownSecrets);
-
 		const systemPromptText = buildSystemPrompt(
 			agentName,
 			workflowList,
@@ -880,198 +861,126 @@ export class AgentsService {
 			canDelegate,
 			skills,
 		);
-		const messages: LlmMessage[] = [
-			{ role: 'system', content: systemPromptText },
-			{ role: 'user', content: prompt },
-		];
+		const messages: LlmMessage[] = [{ role: 'system', content: systemPromptText }];
 
-		while (budget.remaining > 0) {
-			budget.remaining--;
+		return {
+			ctx: {
+				agentUser,
+				agentName,
+				llmConfig,
+				knownSecrets,
+				workflows: workflowList,
+				skills,
+				otherAgents,
+				resolvedExternalAgents,
+				canDelegate,
+				steps,
+				messages,
+				budget,
+				onStep,
+				deps: this.buildExecutionDeps(),
+			},
+		};
+	}
 
-			const llmResponse = await callLlm(messages, llmConfig);
-			messages.push({ role: 'assistant', content: llmResponse });
+	private parseLlmResponse(llmResponse: string): ParsedAction | null {
+		const cleaned = llmResponse
+			.replace(/^```(?:json)?\s*/i, '')
+			.replace(/\s*```\s*$/, '')
+			.trim();
 
-			const cleaned = llmResponse
-				.replace(/^```(?:json)?\s*/i, '')
-				.replace(/\s*```\s*$/, '')
-				.trim();
-
-			let parsed: {
-				action: string;
-				workflowId?: string;
-				inputs?: Record<string, unknown>;
-				targetUserId?: string;
-				message?: string;
-				reasoning?: string;
-				summary?: string;
-			};
-			try {
-				parsed = JSON.parse(cleaned);
-			} catch {
-				// LLM sometimes includes preamble text before/after JSON — extract it
-				const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-				if (jsonMatch) {
-					try {
-						parsed = JSON.parse(jsonMatch[0]);
-					} catch {
-						return { status: 'completed', summary: llmResponse, steps };
-					}
-				} else {
-					return { status: 'completed', summary: llmResponse, steps };
-				}
-			}
-
-			if (parsed.action === 'complete') {
-				const reflectionResult = await this.reflectBeforeComplete(
-					messages,
-					llmConfig,
-					prompt,
-					parsed.summary ?? 'Task completed',
-					steps,
-					budget,
-				);
-				if (reflectionResult) return reflectionResult;
-				// Reflection found gaps — loop continues with LLM's corrective action
-				continue;
-			}
-
-			if (parsed.action === 'execute_workflow' && parsed.workflowId) {
-				const capWorkflow = workflowList.find((w) => w.id === parsed.workflowId);
-				const workflowName = capWorkflow?.name ?? parsed.workflowId;
-
-				steps.push({ action: 'execute_workflow', workflowName });
-				onStep?.({
-					type: 'task.action',
-					action: 'execute_workflow',
-					workflowName,
-					reasoning: parsed.reasoning,
-				});
-
+		try {
+			return JSON.parse(cleaned) as ParsedAction;
+		} catch {
+			const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+			if (jsonMatch) {
 				try {
-					const result = await this.runWorkflow(
-						agentUser,
-						parsed.workflowId,
-						prompt,
-						callerId,
-						workflowCredentials,
-						parsed.inputs,
+					return JSON.parse(jsonMatch[0]) as ParsedAction;
+				} catch {
+					return null;
+				}
+			}
+			return null;
+		}
+	}
+
+	private async executeAgentTaskInner(
+		agentId: string,
+		prompt: string,
+		budget: IterationBudget,
+		onStep: StepCallback | undefined,
+		externalAgents: ExternalAgentConfig[] | undefined,
+		callChain: Set<string>,
+		byokApiKey: string | undefined,
+		callerId: string | undefined,
+		workflowCredentials: Record<string, Record<string, string>> | undefined,
+		isExternalCall: boolean | undefined,
+	): Promise<AgentTaskResult> {
+		const built = await this.buildExecutionContext(
+			agentId,
+			budget,
+			onStep,
+			externalAgents,
+			byokApiKey,
+			workflowCredentials,
+			isExternalCall,
+		);
+
+		if ('earlyReturn' in built) return built.earlyReturn;
+
+		const { ctx } = built;
+		ctx.messages.push({ role: 'user', content: prompt });
+
+		while (ctx.budget.remaining > 0) {
+			ctx.budget.remaining--;
+
+			const llmResponse = await callLlm(ctx.messages, ctx.llmConfig);
+			ctx.messages.push({ role: 'assistant', content: llmResponse });
+
+			const parsed = this.parseLlmResponse(llmResponse);
+			if (!parsed) {
+				return { status: 'completed', summary: llmResponse, steps: ctx.steps };
+			}
+
+			const outcome = await dispatchAction(
+				ctx,
+				parsed,
+				prompt,
+				callChain,
+				byokApiKey,
+				callerId,
+				workflowCredentials,
+			);
+
+			switch (outcome.kind) {
+				case 'completed':
+					return outcome.result;
+				case 'continue_loop':
+					continue;
+				case 'observed':
+					this.recordObservation(
+						ctx.steps,
+						ctx.messages,
+						ctx.onStep,
+						{
+							action: outcome.action,
+							result: outcome.result,
+							message: outcome.message,
+							extra: outcome.extra,
+						},
+						ctx.knownSecrets,
 					);
-					const stepResult = result.success ? 'success' : 'failed';
-					observe({
-						action: 'execute_workflow',
-						result: stepResult,
-						message: `Workflow "${workflowName}" executed. Result: ${jsonStringify(result).slice(0, 2000)}`,
-						extra: { workflowName },
+					break;
+				case 'unknown_action':
+					ctx.messages.push({
+						role: 'user',
+						content: `Observation: Unknown action. Use ${outcome.validActions}.`,
 					});
-				} catch (error) {
-					const errorMsg = error instanceof Error ? error.message : String(error);
-					observe({
-						action: 'execute_workflow',
-						result: 'error',
-						message: `Workflow execution failed: ${errorMsg}`,
-						extra: { workflowName, error: errorMsg },
-					});
-				}
-			} else if (
-				parsed.action === 'delegate' &&
-				parsed.targetUserId &&
-				parsed.message &&
-				canDelegate
-			) {
-				const targetAgentInfo = otherAgents.find((a) => a.id === parsed.targetUserId);
-				const targetName = targetAgentInfo?.firstName ?? parsed.targetUserId;
-
-				const externalAgent = parsed.targetUserId.startsWith('external:')
-					? resolvedExternalAgents.find((a) => `external:${a.name}` === parsed.targetUserId)
-					: undefined;
-
-				steps.push({ action: 'delegate', targetUserName: targetName });
-				onStep?.({
-					type: 'task.action',
-					action: 'delegate',
-					targetUserName: targetName,
-					...(externalAgent ? { origin: 'external' } : {}),
-				});
-
-				if (externalAgent) {
-					try {
-						const result = await callExternalAgent(externalAgent, parsed.message);
-						const stepResult = result.status === 'completed' ? 'success' : 'failed';
-						observe({
-							action: 'delegate',
-							result: stepResult,
-							message: `Agent "${targetName}" responded: ${result.summary ?? 'No summary'}`,
-							extra: { targetUserName: targetName, summary: result.summary, origin: 'external' },
-						});
-					} catch (error) {
-						const errorMsg = error instanceof Error ? error.message : String(error);
-						observe({
-							action: 'delegate',
-							result: 'error',
-							message: `External agent delegation failed: ${errorMsg}`,
-							extra: { targetUserName: targetName, error: errorMsg, origin: 'external' },
-						});
-					}
-				} else {
-					const targetAgent = await this.userRepository.findOne({
-						where: { id: parsed.targetUserId, type: 'agent' },
-					});
-
-					if (!targetAgent) {
-						observe({
-							action: 'delegate',
-							result: 'error',
-							message: `Agent "${targetName}" not found. Available agents: ${otherAgents.map((a) => `${a.firstName} (id: ${a.id})`).join(', ')}`,
-							extra: { targetUserName: targetName, error: 'Agent not found' },
-						});
-					} else if (targetAgent.agentAccessLevel === 'closed') {
-						observe({
-							action: 'delegate',
-							result: 'error',
-							message: `Agent "${targetName}" is not accessible.`,
-							extra: { targetUserName: targetName, error: 'Agent not accessible' },
-						});
-					} else {
-						try {
-							await this.enforceAccessLevel(targetAgent.id, agentUser);
-							const result = await this.executeAgentTask(targetAgent.id, parsed.message, budget, {
-								onStep,
-								callChain,
-								byokApiKey,
-								callerId,
-								workflowCredentials,
-							});
-							const stepResult = result.status === 'completed' ? 'success' : 'failed';
-							const responseText = result.summary ?? result.message ?? 'No summary';
-							observe({
-								action: 'delegate',
-								result: stepResult,
-								message: `Agent "${targetName}" responded: ${responseText}`,
-								extra: { targetUserName: targetName, summary: responseText },
-							});
-						} catch (error) {
-							const errorMsg = error instanceof Error ? error.message : String(error);
-							observe({
-								action: 'delegate',
-								result: 'error',
-								message: `Agent delegation failed: ${errorMsg}`,
-								extra: { targetUserName: targetName, error: errorMsg },
-							});
-						}
-					}
-				}
-			} else {
-				const validActions = canDelegate
-					? '"execute_workflow", "delegate", or "complete"'
-					: '"execute_workflow" or "complete"';
-				messages.push({
-					role: 'user',
-					content: `Observation: Unknown action. Use ${validActions}.`,
-				});
+					break;
 			}
 		}
 
-		return { status: 'completed', summary: 'Reached maximum iterations', steps };
+		return { status: 'completed', summary: 'Reached maximum iterations', steps: ctx.steps };
 	}
 
 	// ── Reflection ───────────────────────────────────────────────────────
@@ -1148,109 +1057,5 @@ If there are gaps or errors that need correcting, respond with the appropriate a
 
 		// LLM responded with a non-complete action — return null so the loop continues
 		return null;
-	}
-
-	// ── Workflow Execution ────────────────────────────────────────────────
-
-	private async runWorkflow(
-		user: User,
-		workflowId: string,
-		agentPrompt?: string,
-		callerId?: string,
-		workflowCredentials?: Record<string, Record<string, string>>,
-		typedInputs?: Record<string, unknown>,
-	): Promise<{ success: boolean; executionId: string; data?: unknown }> {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(
-			workflowId,
-			user,
-			['workflow:execute'],
-			{ includeActiveVersion: true },
-		);
-
-		if (!workflow) {
-			throw new Error(`Workflow ${workflowId} not found or agent lacks permission`);
-		}
-
-		const nodes = workflow.activeVersion?.nodes ?? workflow.nodes ?? [];
-		const connections = workflow.activeVersion?.connections ?? workflow.connections ?? {};
-
-		const triggerNode = findSupportedTrigger(nodes);
-		if (!triggerNode) {
-			throw new Error(
-				`Workflow has no supported trigger. Supported: ${Object.values(SUPPORTED_TRIGGERS).join(', ')}`,
-			);
-		}
-
-		const pinData = buildPinData(triggerNode, agentPrompt, typedInputs);
-
-		let runtimeData: IExecutionContext | undefined;
-		if (callerId || workflowCredentials) {
-			const credentialContext: ICredentialContext = {
-				version: 1,
-				identity: callerId ?? 'anonymous',
-				metadata: { source: 'agent-a2a', agentId: user.id, workflowCredentials },
-			};
-			runtimeData = {
-				version: 1,
-				establishedAt: Date.now(),
-				source: getExecutionMode(triggerNode),
-				triggerNode: { name: triggerNode.name, type: triggerNode.type },
-				credentials: this.cipher.encrypt(credentialContext),
-			};
-		}
-
-		const runData: IWorkflowExecutionDataProcess = {
-			executionMode: getExecutionMode(triggerNode),
-			workflowData: { ...workflow, nodes, connections },
-			userId: user.id,
-			startNodes: [{ name: triggerNode.name, sourceData: null }],
-			pinData,
-			executionData: createRunExecutionData({
-				startData: {},
-				resultData: { pinData, runData: {} },
-				executionData: {
-					contextData: {},
-					metadata: {},
-					nodeExecutionStack: [
-						{
-							node: triggerNode,
-							data: { main: [pinData[triggerNode.name]] },
-							source: null,
-						},
-					],
-					waitingExecution: {},
-					waitingExecutionSource: {},
-					runtimeData,
-				},
-			}),
-		};
-
-		const executionId = await this.workflowRunner.run(runData);
-
-		const resultPromise = this.activeExecutions.getPostExecutePromise(executionId);
-		let timeoutHandle: ReturnType<typeof setTimeout>;
-		const timeoutPromise = new Promise<never>((_, reject) => {
-			timeoutHandle = setTimeout(() => {
-				void this.activeExecutions.stopExecution(
-					executionId,
-					new ManualExecutionCancelledError(executionId),
-				);
-				reject(new Error('Workflow execution timed out'));
-			}, EXECUTION_TIMEOUT_MS);
-		});
-
-		try {
-			const data = await Promise.race([resultPromise, timeoutPromise]);
-
-			if (data === undefined) {
-				throw new Error('Workflow did not return any data');
-			}
-
-			const success = data.status !== 'error' && !data.data.resultData?.error;
-
-			return { success, executionId, data: data.data.resultData };
-		} finally {
-			clearTimeout(timeoutHandle!);
-		}
 	}
 }
