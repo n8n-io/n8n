@@ -12,7 +12,6 @@ export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
 	type ChatModelMetadataDto,
-	type ChatHubInputModality,
 	type ChatHubOpenAIModel,
 	type ChatHubAnthropicModel,
 	type ChatHubGoogleModel,

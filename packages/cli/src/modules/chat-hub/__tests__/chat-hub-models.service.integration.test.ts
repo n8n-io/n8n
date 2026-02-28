@@ -265,7 +265,7 @@ describe('ChatHubModelsService', () => {
 				expect(agentNames).toContain('Second Agent');
 			});
 
-			it('should parse input modalities from chat trigger options', async () => {
+			it('should pass through allowed mime types from chat trigger options', async () => {
 				await createActiveWorkflow(
 					{
 						name: 'Agent with specific mime types',
@@ -293,11 +293,12 @@ describe('ChatHubModelsService', () => {
 				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
 
 				expect(result.n8n.models).toHaveLength(1);
-				const inputModalities = result.n8n.models[0].metadata.inputModalities;
-				expect(inputModalities).toEqual(['text', 'image', 'audio', 'file']);
+				const { metadata } = result.n8n.models[0];
+				expect(metadata.allowFileUploads).toBe(true);
+				expect(metadata.allowedFilesMimeTypes).toBe('image/png, audio/mp3, application/pdf');
 			});
 
-			it('should parse all input modalities when wildcard mime type is used', async () => {
+			it('should allow all file types when wildcard mime type is used', async () => {
 				await createActiveWorkflow(
 					{
 						name: 'Agent with all file types',
@@ -325,11 +326,12 @@ describe('ChatHubModelsService', () => {
 				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
 
 				expect(result.n8n.models).toHaveLength(1);
-				const inputModalities = result.n8n.models[0].metadata.inputModalities;
-				expect(inputModalities).toEqual(['text', 'image', 'audio', 'video', 'file']);
+				const { metadata } = result.n8n.models[0];
+				expect(metadata.allowFileUploads).toBe(true);
+				expect(metadata.allowedFilesMimeTypes).toBe('*/*');
 			});
 
-			it('should return only text modality when file uploads are disabled', async () => {
+			it('should disallow file uploads when disabled in chat trigger', async () => {
 				await createActiveWorkflow(
 					{
 						name: 'Agent without file uploads',
@@ -356,7 +358,9 @@ describe('ChatHubModelsService', () => {
 				const result = await chatHubModelsService.getModels(member, emptyCredentialIds);
 
 				expect(result.n8n.models).toHaveLength(1);
-				expect(result.n8n.models[0].metadata.inputModalities).toEqual(['text']);
+				const { metadata } = result.n8n.models[0];
+				expect(metadata.allowFileUploads).toBe(false);
+				expect(metadata.allowedFilesMimeTypes).toBe('');
 			});
 
 			it('should include suggestedPrompts when configured on the chat trigger', async () => {

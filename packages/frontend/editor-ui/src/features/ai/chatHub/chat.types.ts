@@ -46,6 +46,7 @@ export type MessagingState =
 	| 'waitingFirstChunk'
 	| 'receiving'
 	| 'missingCredentials'
+	| 'missingDynamicCredentials'
 	| 'missingAgent'
 	| 'waitingForApproval';
 
