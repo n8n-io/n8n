@@ -31,6 +31,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
+import { A2A_VERSION } from '@/agents/a2a-adapter';
 import { discoverWorkflowSkill } from './agent-schema-discovery';
 import { callExternalAgent } from './agent-external-client';
 import { callLlm } from './agent-llm-client';
@@ -180,8 +181,9 @@ export class AgentsService {
 			name?: string;
 			description?: string;
 			url?: string;
-			provider?: { description?: string };
-			interfaces?: Array<{ url?: string }>;
+			protocolVersion?: string;
+			provider?: { description?: string; organization?: string };
+			additionalInterfaces?: Array<{ transport?: string; url?: string }>;
 			skills?: Array<{ id: string; name: string; description?: string }>;
 			capabilities?: { streaming?: boolean; multiTurn?: boolean };
 			requiredCredentials?: Array<{ type: string; description: string }>;
@@ -218,8 +220,8 @@ export class AgentsService {
 		}
 
 		// Extract the task endpoint from the card.
-		// n8n cards use interfaces[0].url; A2A v0.2 cards use top-level url field.
-		const interfaceUrl = card.interfaces?.[0]?.url ?? card.url ?? '';
+		// n8n cards use additionalInterfaces[0].url; standard A2A cards use top-level url.
+		const interfaceUrl = card.additionalInterfaces?.[0]?.url ?? card.url ?? '';
 		const remoteIdMatch = /\/agents\/([^/]+)/.exec(interfaceUrl);
 		const remoteAgentId = remoteIdMatch?.[1] ?? card.id ?? 'unknown';
 
@@ -249,11 +251,14 @@ export class AgentsService {
 		// Persist the registration — remoteUrl stores the full task endpoint
 		const registration = this.externalAgentRegistrationRepository.create({
 			name: card.name ?? 'Remote Agent',
-			description: card.provider?.description ?? null,
+			description: card.description ?? card.provider?.description ?? null,
 			remoteUrl: taskEndpoint,
 			remoteAgentId,
 			credentialId: credential.id,
-			remoteCapabilities: card.capabilities ?? null,
+			remoteCapabilities: {
+				...(card.capabilities ?? {}),
+				protocolVersion: card.protocolVersion,
+			},
 			skills: (card.skills ?? []).map((s) => ({ name: s.name, description: s.description })),
 			// Filter out n8nApi — A2A auth is handled by the registration's stored credential
 			requiredCredentials: card.requiredCredentials?.filter((c) => c.type !== 'n8nApi') ?? null,
@@ -330,6 +335,13 @@ export class AgentsService {
 			throw new NotFoundError(`External agent registration ${registrationId} not found`);
 		}
 		await this.externalAgentRegistrationRepository.delete({ id: registrationId });
+	}
+
+	async resolveProtocolVersion(registrationId: string): Promise<string | undefined> {
+		const registration = await this.externalAgentRegistrationRepository.findOneBy({
+			id: registrationId,
+		});
+		return registration?.remoteCapabilities?.protocolVersion;
 	}
 
 	async resolveExternalAgentApiKey(registrationId: string): Promise<string> {
@@ -501,25 +513,29 @@ export class AgentsService {
 			}
 		}
 
+		const taskUrl = `${baseUrl}/api/v1/agents/${agent.id}/task`;
+
 		return {
-			id: agent.id,
+			// A2A v0.3 required fields
 			name: agent.firstName,
-			provider: {
-				name: 'n8n',
-				description: agent.description ?? '',
-			},
+			description: agent.description ?? '',
+			url: taskUrl,
+			version: '1.0.0',
+			protocolVersion: A2A_VERSION,
+			defaultInputModes: ['application/json'],
+			defaultOutputModes: ['application/json'],
 			capabilities: {
 				streaming: true,
 				pushNotifications: false,
 				multiTurn: true,
 			},
-			skills,
-			interfaces: [
-				{
-					type: 'http+json',
-					url: `${baseUrl}/api/v1/agents/${agent.id}/task`,
-				},
-			],
+			skills: skills.map((s) => ({
+				id: s.id,
+				name: s.name,
+				description: s.description ?? '',
+				...(s.inputs.length > 0 ? { inputs: s.inputs } : {}),
+			})),
+			provider: { organization: 'n8n', url: baseUrl },
 			securitySchemes: {
 				apiKey: {
 					type: 'apiKey',
@@ -528,6 +544,14 @@ export class AgentsService {
 				},
 			},
 			security: [{ apiKey: [] }],
+			additionalInterfaces: [
+				{
+					transport: 'JSONRPC',
+					url: taskUrl,
+				},
+			],
+			// n8n extensions
+			id: agent.id,
 			requiredCredentials,
 		};
 	}

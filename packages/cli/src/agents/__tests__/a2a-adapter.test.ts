@@ -322,6 +322,17 @@ describe('isA2AStreamEvent', () => {
 		).toBe(true);
 	});
 
+	it('should return true for v0.3 message events', () => {
+		expect(
+			isA2AStreamEvent({
+				kind: 'message',
+				messageId: 'msg-1',
+				role: 'agent',
+				parts: [{ text: 'Hello' }],
+			}),
+		).toBe(true);
+	});
+
 	it('should return false for n8n internal task.action events', () => {
 		expect(isA2AStreamEvent({ type: 'task.action', action: 'execute_workflow' })).toBe(false);
 	});
@@ -518,6 +529,37 @@ describe('a2aStreamEventToInternal', () => {
 			summary: 'Final result here',
 		});
 	});
+
+	it('should convert v0.3 message event to task.completion', () => {
+		const event = {
+			kind: 'message',
+			messageId: 'msg-1',
+			role: 'agent',
+			parts: [{ kind: 'text', text: 'Hello World' }],
+		};
+
+		const result = a2aStreamEventToInternal(event as unknown as A2AStreamResponse);
+		expect(result).toEqual({
+			type: 'task.completion',
+			status: 'completed',
+			summary: 'Hello World',
+		});
+	});
+
+	it('should convert JSON-RPC error sentinel to task.completion error', () => {
+		const event = {
+			__jsonRpcError: true,
+			message: 'Method not found',
+			code: -32601,
+		};
+
+		const result = a2aStreamEventToInternal(event as unknown as A2AStreamResponse);
+		expect(result).toEqual({
+			type: 'task.completion',
+			status: 'error',
+			summary: 'Remote agent error: Method not found',
+		});
+	});
 });
 
 describe('toA2ASendMessageRequest', () => {
@@ -564,24 +606,54 @@ describe('normalizeAgentCard', () => {
 
 		expect(result.name).toBe('Weather Agent');
 		expect(result.description).toBe('Gets weather data');
+		expect(result.url).toBe('https://weather.example.com');
+		expect(result.version).toBe('1.0');
+		expect(result.protocolVersion).toBe('0.3');
+		expect(result.defaultInputModes).toEqual(['application/json']);
+		expect(result.defaultOutputModes).toEqual(['application/json']);
 		expect(result.capabilities).toEqual({ streaming: true, multiTurn: false });
-		expect(result.skills).toEqual(card.skills);
+		expect(result.skills).toEqual([{ name: 'get_weather', description: 'Get current weather' }]);
 		expect(result.requiredCredentials).toEqual([]);
-		expect(result.interfaces).toEqual({});
+		expect(result.additionalInterfaces).toEqual([]);
 	});
 
-	it('should pass through n8n card unchanged when it has requiredCredentials', () => {
+	it('should pass through n8n card unchanged when it has requiredCredentials and additionalInterfaces', () => {
 		const card = {
 			name: 'n8n Agent',
 			description: 'Internal agent',
+			url: 'https://example.com/api/v1/agents/1/task',
+			version: '1.0.0',
+			protocolVersion: '0.3',
+			defaultInputModes: ['application/json'],
+			defaultOutputModes: ['application/json'],
 			requiredCredentials: [{ type: 'notionApi' }],
-			interfaces: { chat: true },
+			additionalInterfaces: [{ transport: 'JSONRPC', url: 'https://example.com/task' }],
 			capabilities: { streaming: true, multiTurn: true },
 			skills: [],
 		};
 
 		const result = normalizeAgentCard(card);
 		expect(result).toBe(card); // Same reference — passed through
+	});
+
+	it('should default description and version for minimal cards', () => {
+		const card = { name: 'Minimal Agent' };
+
+		const result = normalizeAgentCard(card);
+		expect(result.description).toBe('');
+		expect(result.url).toBe('');
+		expect(result.version).toBe('unknown');
+		expect(result.protocolVersion).toBe('0.3');
+	});
+
+	it('should default skill description to empty string', () => {
+		const card = {
+			name: 'Agent',
+			skills: [{ name: 'do_thing' }],
+		};
+
+		const result = normalizeAgentCard(card);
+		expect(result.skills).toEqual([{ name: 'do_thing', description: '' }]);
 	});
 });
 
@@ -611,6 +683,17 @@ describe('unwrapJsonRpc', () => {
 		expect(result).toEqual({ message: { text: 'hello' } });
 	});
 
+	it('should extract result from JSON-RPC response envelope', () => {
+		const wrapped = {
+			jsonrpc: '2.0',
+			id: 'resp-1',
+			result: { kind: 'message', parts: [{ text: 'Hello' }] },
+		};
+
+		const result = unwrapJsonRpc(wrapped);
+		expect(result).toEqual({ kind: 'message', parts: [{ text: 'Hello' }] });
+	});
+
 	it('should return data as-is when not JSON-RPC wrapped', () => {
 		const bare = { statusUpdate: { taskId: 't1', status: { state: 'working' } } };
 
@@ -630,6 +713,36 @@ describe('unwrapJsonRpc', () => {
 
 		const result = unwrapJsonRpc(wrong);
 		expect(result).toBe(wrong);
+	});
+
+	it('should return error sentinel for JSON-RPC error response', () => {
+		const errorResp = {
+			jsonrpc: '2.0',
+			id: 'req-1',
+			error: { code: -32601, message: 'Method not found' },
+		};
+
+		const result = unwrapJsonRpc(errorResp);
+		expect(result).toEqual({
+			__jsonRpcError: true,
+			message: 'Method not found',
+			code: -32601,
+		});
+	});
+
+	it('should return error sentinel with default message when error has no message', () => {
+		const errorResp = {
+			jsonrpc: '2.0',
+			id: 'req-1',
+			error: { code: -32600 },
+		};
+
+		const result = unwrapJsonRpc(errorResp);
+		expect(result).toEqual({
+			__jsonRpcError: true,
+			message: 'Unknown error',
+			code: -32600,
+		});
 	});
 });
 
@@ -678,9 +791,27 @@ describe('classifyEndpoint', () => {
 		expect(classifyEndpoint('https://agent.example.com/message:send')).toBe('a2a-v03');
 	});
 
-	it('should classify generic URLs as a2a-v02', () => {
-		expect(classifyEndpoint('https://policycheck.tools/api/a2a')).toBe('a2a-v02');
-		expect(classifyEndpoint('https://agent.example.com/task')).toBe('a2a-v02');
+	it('should classify /tasks URLs as a2a-v02', () => {
+		expect(classifyEndpoint('https://agent.example.com/tasks')).toBe('a2a-v02');
+	});
+
+	it('should default generic URLs to a2a-v03 (current spec)', () => {
+		expect(classifyEndpoint('https://policycheck.tools/api/a2a')).toBe('a2a-v03');
+		expect(classifyEndpoint('https://hello-world.onrender.com/')).toBe('a2a-v03');
+	});
+
+	it('should use protocolVersion hint over URL pattern for non-n8n URLs', () => {
+		// Generic URL would default to a2a-v02, but v0.3 hint overrides
+		expect(classifyEndpoint('https://hello-world.onrender.com/', '0.3.0')).toBe('a2a-v03');
+		expect(classifyEndpoint('https://hello-world.onrender.com/', '1.0.0')).toBe('a2a-v03');
+	});
+
+	it('should use protocolVersion hint for v0.2 agents', () => {
+		expect(classifyEndpoint('https://policycheck.tools/api/a2a', '0.2.0')).toBe('a2a-v02');
+	});
+
+	it('should still classify n8n URLs as n8n regardless of protocolVersion', () => {
+		expect(classifyEndpoint('https://n8n.example.com/api/v1/agents/abc/task', '0.3.0')).toBe('n8n');
 	});
 });
 
@@ -811,11 +942,52 @@ describe('a2aResponseToInternal', () => {
 		expect(result.summary).toBe('Task failed');
 	});
 
-	it('should return data as-is when no status.state field', () => {
+	it('should return error for unrecognized response format', () => {
 		const data = { custom: 'response', foo: 'bar' };
 
 		const result = a2aResponseToInternal(data);
-		expect(result).toBe(data);
+		expect(result).toEqual({
+			status: 'error',
+			summary: 'Unsupported response format: agent did not return a valid A2A or n8n response',
+		});
+	});
+
+	it('should translate v0.3 message response (kind: "message") to completed format', () => {
+		const data = {
+			jsonrpc: '2.0',
+			id: 'test-1',
+			result: {
+				kind: 'message',
+				messageId: 'msg-1',
+				role: 'agent',
+				parts: [{ kind: 'text', text: 'Hello World' }],
+			},
+		};
+
+		const result = a2aResponseToInternal(data);
+		expect(result).toEqual({
+			status: 'completed',
+			summary: 'Hello World',
+		});
+	});
+
+	it('should use default summary for v0.3 message with no text parts', () => {
+		const data = {
+			jsonrpc: '2.0',
+			id: 'test-1',
+			result: {
+				kind: 'message',
+				messageId: 'msg-1',
+				role: 'agent',
+				parts: [{ kind: 'data', data: { some: 'value' } }],
+			},
+		};
+
+		const result = a2aResponseToInternal(data);
+		expect(result).toEqual({
+			status: 'completed',
+			summary: 'Agent responded',
+		});
 	});
 });
 

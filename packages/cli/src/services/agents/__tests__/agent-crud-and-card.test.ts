@@ -308,11 +308,20 @@ describe('getAgentCard', () => {
 
 		const result = await mocks.service.getAgentCard('agent-1', 'https://n8n.example.com');
 
+		// A2A v0.3 required fields
 		expect(result.id).toBe('agent-1');
 		expect(result.name).toBe('TestBot');
+		expect(result.description).toBe('A test agent');
+		expect(result.url).toBe('https://n8n.example.com/api/v1/agents/agent-1/task');
+		expect(result.version).toBe('1.0.0');
+		expect(result.protocolVersion).toBe('0.3');
+		expect(result.defaultInputModes).toEqual(['application/json']);
+		expect(result.defaultOutputModes).toEqual(['application/json']);
 		expect(result.capabilities.streaming).toBe(true);
 		expect(result.securitySchemes.apiKey.name).toBe('x-n8n-api-key');
-		expect(result.interfaces[0].url).toContain('https://n8n.example.com');
+		expect(result.provider).toEqual({ organization: 'n8n', url: 'https://n8n.example.com' });
+		expect(result.additionalInterfaces[0].transport).toBe('JSONRPC');
+		expect(result.additionalInterfaces[0].url).toContain('https://n8n.example.com');
 		expect(result.requiredCredentials).toHaveLength(1);
 	});
 

@@ -35,7 +35,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { sendErrorResponse } from '@/response-helper';
 import { AgentsService } from '@/services/agents/agents.service';
 import type { ExternalAgentConfig } from '@/services/agents/agents.types';
-import { MAX_ITERATIONS, executeTaskOverSse } from '@/services/agents/agents.types';
+import { MAX_ITERATIONS, executeTaskOverSse, sseWrite } from '@/services/agents/agents.types';
 
 @RestController('/agents')
 export class AgentsController {
@@ -235,8 +235,13 @@ export class AgentsController {
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), 120_000);
 
+		// Resolve protocol version from registration for accurate format detection
+		const protocolVersion = registrationId
+			? await this.agentsService.resolveProtocolVersion(registrationId)
+			: undefined;
+
 		// Classify endpoint to determine request format and headers
-		const endpointType = classifyEndpoint(url);
+		const endpointType = classifyEndpoint(url, protocolVersion);
 		const requestBody = buildRequestBody(
 			endpointType,
 			prompt,
@@ -254,10 +259,14 @@ export class AgentsController {
 
 			if (!response.ok) {
 				const text = await response.text();
-				sendErrorResponse(
-					res,
-					new BadRequestError(`Remote agent returned ${String(response.status)}: ${text}`),
-				);
+				const errorMsg = `Remote agent returned ${String(response.status)}: ${text}`;
+				res.writeHead(200, {
+					'Content-Type': 'text/event-stream',
+					'Cache-Control': 'no-cache',
+					Connection: 'keep-alive',
+				});
+				sseWrite(res, { type: 'task.completion', status: 'error', summary: errorMsg });
+				res.end();
 				return undefined;
 			}
 
@@ -315,18 +324,20 @@ export class AgentsController {
 							// Unwrap JSON-RPC envelope if present
 							parsed = unwrapJsonRpc(parsed);
 
-							// Auto-detect: A2A format → translate, n8n internal → pass through
-							if (isA2AStreamEvent(parsed)) {
-								const translated = a2aStreamEventToInternal(
-									parsed as import('@/agents/a2a-adapter').A2AStreamResponse,
-								);
+							// Auto-detect: A2A format or JSON-RPC error → translate, n8n internal → pass through
+							if ('__jsonRpcError' in parsed || isA2AStreamEvent(parsed)) {
+								const translated = a2aStreamEventToInternal(parsed);
 								if (translated) {
-									res.write(`data: ${JSON.stringify(translated)}\n\n`);
+									sseWrite(res, translated);
+									if (translated.type === 'task.completion') {
+										reader.cancel();
+										break;
+									}
 								}
 								// null = skip (e.g. 'submitted' state)
 							} else {
 								// Already n8n internal format, pass through
-								res.write(`data: ${dataStr}\n\n`);
+								sseWrite(res, JSON.parse(dataStr) as Record<string, unknown>);
 							}
 						}
 					}
@@ -336,16 +347,38 @@ export class AgentsController {
 					res.end();
 				}
 			} else {
-				// Non-streaming JSON response — translate A2A format to internal
+				// Non-streaming JSON response — translate and wrap as SSE for the frontend
 				const data = (await response.json()) as Record<string, unknown>;
 				const translated = endpointType === 'n8n' ? data : a2aResponseToInternal(data);
-				res.json(translated);
+
+				res.writeHead(200, {
+					'Content-Type': 'text/event-stream',
+					'Cache-Control': 'no-cache',
+					Connection: 'keep-alive',
+				});
+				sseWrite(res, {
+					type: 'task.completion',
+					status: translated.status ?? 'completed',
+					summary: translated.summary ?? 'Task completed',
+				});
+				res.end();
 			}
 		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
 			if (!res.headersSent) {
-				const message = error instanceof Error ? error.message : String(error);
-				sendErrorResponse(res, new BadRequestError(`External task failed: ${message}`));
+				// Send error as SSE so the frontend's stream reader can pick it up
+				res.writeHead(200, {
+					'Content-Type': 'text/event-stream',
+					'Cache-Control': 'no-cache',
+					Connection: 'keep-alive',
+				});
 			}
+			sseWrite(res, {
+				type: 'task.completion',
+				status: 'error',
+				summary: `External task failed: ${message}`,
+			});
+			res.end();
 		} finally {
 			clearTimeout(timeout);
 		}

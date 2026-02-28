@@ -22,7 +22,11 @@ export class ExternalAgentRegistration extends WithTimestampsAndStringId {
 	credentialId: string | null;
 
 	@Column({ type: jsonColumnType, nullable: true })
-	remoteCapabilities: { streaming?: boolean; multiTurn?: boolean } | null;
+	remoteCapabilities: {
+		streaming?: boolean;
+		multiTurn?: boolean;
+		protocolVersion?: string;
+	} | null;
 
 	@Column({ type: jsonColumnType, nullable: true })
 	skills: Array<{ name: string; description?: string }> | null;

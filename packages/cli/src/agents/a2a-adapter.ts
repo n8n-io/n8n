@@ -88,20 +88,28 @@ export type A2AStreamResponse =
 // ─── A2A Agent Card Types ────────────────────────────────────────────────────
 
 export interface A2AAgentCard {
+	// A2A v0.3 required fields
 	name: string;
-	description?: string;
-	url?: string;
-	version?: string;
+	description: string;
+	url: string;
+	version: string;
+	protocolVersion: string;
+	defaultInputModes: string[];
+	defaultOutputModes: string[];
+	// A2A v0.3 optional fields
 	capabilities?: {
 		streaming?: boolean;
 		pushNotifications?: boolean;
 		multiTurn?: boolean;
 	};
-	skills?: Array<{ id?: string; name: string; description?: string }>;
-	securitySchemes?: unknown;
-	// n8n-specific fields
+	skills?: Array<{ id?: string; name: string; description: string }>;
+	securitySchemes?: Record<string, unknown>;
+	security?: Array<Record<string, string[]>>;
+	provider?: { organization?: string; url?: string };
+	additionalInterfaces?: Array<{ transport: string; url: string }>;
+	// n8n extension fields
+	id?: string;
 	requiredCredentials?: Array<{ type: string; description?: string }>;
-	interfaces?: Record<string, unknown>;
 }
 
 // ─── JSON-RPC 2.0 Helpers ───────────────────────────────────────────────────
@@ -124,29 +132,65 @@ export function wrapJsonRpc(method: string, params: Record<string, unknown>): Js
 	};
 }
 
-/** Extracts params from a JSON-RPC envelope, or returns the data as-is if not wrapped. */
+/** Extracts params or result from a JSON-RPC envelope, or returns the data as-is if not wrapped. */
 export function unwrapJsonRpc(data: Record<string, unknown>): Record<string, unknown> {
-	if (data.jsonrpc === '2.0' && typeof data.params === 'object' && data.params !== null) {
-		return data.params as Record<string, unknown>;
+	if (data.jsonrpc === '2.0') {
+		// Unwrap request (params) or response (result)
+		if (typeof data.params === 'object' && data.params !== null) {
+			return data.params as Record<string, unknown>;
+		}
+		if (typeof data.result === 'object' && data.result !== null) {
+			return data.result as Record<string, unknown>;
+		}
+		// JSON-RPC error response — surface as a sentinel so callers can detect it
+		if (typeof data.error === 'object' && data.error !== null) {
+			const err = data.error as { message?: string; code?: number };
+			return {
+				__jsonRpcError: true,
+				message: err.message ?? 'Unknown error',
+				code: err.code,
+			};
+		}
 	}
 	return data;
 }
 
 // ─── Type Guard: A2A vs Internal Stream Events ──────────────────────────────
 
-/** Returns true if the parsed JSON is an A2A SSE event (statusUpdate, artifactUpdate, or task). */
+/** Returns true if the parsed JSON is an A2A SSE event (statusUpdate, artifactUpdate, task, or v0.3 message). */
 export function isA2AStreamEvent(
 	event: Record<string, unknown>,
-): event is { statusUpdate: unknown } | { artifactUpdate: unknown } | { task: unknown } {
-	return 'statusUpdate' in event || 'artifactUpdate' in event || 'task' in event;
+): event is
+	| { statusUpdate: unknown }
+	| { artifactUpdate: unknown }
+	| { task: unknown }
+	| { kind: 'message' } {
+	return (
+		'statusUpdate' in event ||
+		'artifactUpdate' in event ||
+		'task' in event ||
+		event.kind === 'message'
+	);
 }
 
 // ─── Reverse Adapter: A2A → Internal ────────────────────────────────────────
 
 /** Converts a single A2A SSE event to n8n internal format. Returns null for events to skip. */
-export function a2aStreamEventToInternal(event: A2AStreamResponse): Record<string, unknown> | null {
+export function a2aStreamEventToInternal(
+	event: A2AStreamResponse | Record<string, unknown>,
+): Record<string, unknown> | null {
+	// JSON-RPC error sentinel from unwrapJsonRpc
+	if ('__jsonRpcError' in event) {
+		return {
+			type: 'task.completion',
+			status: 'error',
+			summary: `Remote agent error: ${String(event.message)}`,
+		};
+	}
+
 	if ('statusUpdate' in event) {
-		const { state, message } = event.statusUpdate.status;
+		const { state, message } = (event as { statusUpdate: A2AStatusUpdateEvent }).statusUpdate
+			.status;
 
 		// Skip initial ack and input-required states — no UI representation
 		if (state === 'submitted' || state === 'input-required') return null;
@@ -172,7 +216,7 @@ export function a2aStreamEventToInternal(event: A2AStreamResponse): Record<strin
 	}
 
 	if ('artifactUpdate' in event) {
-		const { parts } = event.artifactUpdate.artifact;
+		const { parts } = (event as { artifactUpdate: A2AArtifactUpdateEvent }).artifactUpdate.artifact;
 		const textPart = parts.find((p) => p.text !== undefined);
 		const dataPart = parts.find((p) => p.data !== undefined);
 
@@ -202,15 +246,27 @@ export function a2aStreamEventToInternal(event: A2AStreamResponse): Record<strin
 	}
 
 	if ('task' in event) {
-		const { state, message } = event.task.status;
+		const taskEvent = event as { task: A2ATask };
+		const { state, message } = taskEvent.task.status;
 		const summary =
 			message?.parts?.[0]?.text ??
-			event.task.artifacts?.[0]?.parts?.[0]?.text ??
+			taskEvent.task.artifacts?.[0]?.parts?.[0]?.text ??
 			(state === 'completed' ? 'Task completed' : 'Task failed');
 		return {
 			type: 'task.completion',
 			status: state === 'completed' ? 'completed' : 'error',
 			summary,
+		};
+	}
+
+	// A2A v0.3 message response (from message/stream or message/send)
+	if ('kind' in event && event.kind === 'message') {
+		const parts = (event as { parts?: Array<{ text?: string }> }).parts;
+		const text = parts?.find((p) => p.text !== undefined)?.text ?? 'Agent responded';
+		return {
+			type: 'task.completion',
+			status: 'completed',
+			summary: text,
 		};
 	}
 
@@ -263,11 +319,19 @@ export function toA2ATaskSendRequest(
 
 export type EndpointType = 'n8n' | 'a2a-v03' | 'a2a-v02';
 
-/** Classifies a remote URL to determine the correct request format. */
-export function classifyEndpoint(url: string): EndpointType {
+/** Classifies a remote URL to determine the correct request format.
+ *  When protocolVersion from the agent card is available, it takes precedence
+ *  over URL pattern matching for non-n8n endpoints.
+ *  Defaults to a2a-v03 (message/send) as the current A2A spec. */
+export function classifyEndpoint(url: string, protocolVersion?: string): EndpointType {
 	if (/\/api\/v\d+\/agents\//.test(url)) return 'n8n';
-	if (/\/message:(stream|send)/.test(url)) return 'a2a-v03';
-	return 'a2a-v02';
+	if (protocolVersion) {
+		return protocolVersion.startsWith('0.2') ? 'a2a-v02' : 'a2a-v03';
+	}
+	// v0.2 agents typically use /tasks paths
+	if (/\/tasks/.test(url)) return 'a2a-v02';
+	// Default to v0.3 (current spec) for all other non-n8n URLs
+	return 'a2a-v03';
 }
 
 /** Builds the correct request body for the given endpoint type. */
@@ -316,6 +380,16 @@ export function a2aResponseToInternal(data: Record<string, unknown>): Record<str
 		data.jsonrpc === '2.0' ? ((data.result as Record<string, unknown>) ?? data) : data
 	) as Record<string, unknown>;
 
+	// Handle A2A v0.3 message response (kind: "message")
+	if (result.kind === 'message') {
+		const parts = result.parts as Array<{ text?: string; kind?: string }> | undefined;
+		const text = parts?.find((p) => p.text !== undefined)?.text ?? 'Agent responded';
+		return {
+			status: 'completed',
+			summary: text,
+		};
+	}
+
 	// Handle A2A task object (has status.state)
 	const status = result.status as { state?: string; message?: A2AMessage } | undefined;
 	if (status?.state) {
@@ -332,15 +406,19 @@ export function a2aResponseToInternal(data: Record<string, unknown>): Record<str
 		};
 	}
 
-	return data;
+	// Response doesn't match any supported format (n8n internal, A2A v0.3 message, A2A task)
+	return {
+		status: 'error',
+		summary: 'Unsupported response format: agent did not return a valid A2A or n8n response',
+	};
 }
 
 // ─── Agent Card Normalization ───────────────────────────────────────────────
 
 /** Normalizes a standard A2A agent card to n8n's expected shape. */
 export function normalizeAgentCard(card: Record<string, unknown>): A2AAgentCard {
-	// If it already has n8n-specific fields, pass through
-	if ('requiredCredentials' in card || 'interfaces' in card) {
+	// n8n cards already have the right shape — pass through
+	if ('requiredCredentials' in card && 'additionalInterfaces' in card) {
 		return card as unknown as A2AAgentCard;
 	}
 
@@ -348,19 +426,27 @@ export function normalizeAgentCard(card: Record<string, unknown>): A2AAgentCard 
 	const skills = card.skills as
 		| Array<{ id?: string; name: string; description?: string }>
 		| undefined;
+	const additionalInterfaces =
+		(card.additionalInterfaces as A2AAgentCard['additionalInterfaces']) ?? [];
 
 	return {
 		name: String(card.name ?? 'Unknown Agent'),
-		description: card.description ? String(card.description) : undefined,
-		url: card.url ? String(card.url) : undefined,
-		version: card.version ? String(card.version) : undefined,
+		description: String(card.description ?? ''),
+		url: String(card.url ?? ''),
+		version: String(card.version ?? 'unknown'),
+		protocolVersion: String(card.protocolVersion ?? A2A_VERSION),
+		defaultInputModes: (card.defaultInputModes as string[]) ?? ['application/json'],
+		defaultOutputModes: (card.defaultOutputModes as string[]) ?? ['application/json'],
 		capabilities: {
 			streaming: Boolean(capabilities?.streaming ?? false),
 			multiTurn: Boolean(capabilities?.multiTurn ?? false),
 		},
-		skills: skills ?? [],
-		requiredCredentials: [],
-		interfaces: {},
+		skills: (skills ?? []).map((s) => ({
+			...s,
+			description: s.description ?? '',
+		})),
+		requiredCredentials: (card.requiredCredentials as A2AAgentCard['requiredCredentials']) ?? [],
+		additionalInterfaces,
 	};
 }
 

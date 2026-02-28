@@ -1,22 +1,45 @@
 type: object
+required:
+  - name
+  - description
+  - url
+  - version
+  - protocolVersion
+  - defaultInputModes
+  - defaultOutputModes
 properties:
-  id:
-    type: string
-    description: Unique identifier of the agent.
-    example: 5f3b1c2d-4e5a-6b7c-8d9e-0f1a2b3c4d5e
   name:
     type: string
     description: Display name of the agent.
     example: DataProcessor
-  provider:
-    type: object
-    properties:
-      name:
-        type: string
-        example: n8n
-      description:
-        type: string
-        example: Handles data processing tasks
+  description:
+    type: string
+    description: Human-readable description of the agent.
+    example: Handles data processing tasks
+  url:
+    type: string
+    description: Task endpoint URL for sending messages to the agent.
+    example: https://n8n.example.com/api/v1/agents/abc123/task
+  version:
+    type: string
+    description: Version of this agent.
+    example: '1.0.0'
+  protocolVersion:
+    type: string
+    description: A2A protocol version supported by this agent.
+    example: '0.3'
+  defaultInputModes:
+    type: array
+    description: MIME types the agent accepts as input.
+    items:
+      type: string
+    example: ['application/json']
+  defaultOutputModes:
+    type: array
+    description: MIME types the agent produces as output.
+    items:
+      type: string
+    example: ['application/json']
   capabilities:
     type: object
     properties:
@@ -33,14 +56,23 @@ properties:
     type: array
     items:
       type: object
-  interfaces:
+  provider:
+    type: object
+    properties:
+      organization:
+        type: string
+        example: n8n
+      url:
+        type: string
+        example: https://n8n.example.com
+  additionalInterfaces:
     type: array
     items:
       type: object
       properties:
-        type:
+        transport:
           type: string
-          example: http+json
+          example: JSONRPC
         url:
           type: string
           example: https://n8n.example.com/api/v1/agents/abc123/task
@@ -63,6 +95,10 @@ properties:
     type: array
     items:
       type: object
+  id:
+    type: string
+    description: n8n-specific unique identifier of the agent.
+    example: 5f3b1c2d-4e5a-6b7c-8d9e-0f1a2b3c4d5e
   requiredCredentials:
     type: array
     description: Credential types the agent needs. Callers should provide these via BYOK or ensure the agent has shared access.

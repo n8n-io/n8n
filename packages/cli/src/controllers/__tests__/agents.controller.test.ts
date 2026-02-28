@@ -45,16 +45,24 @@ describe('AgentsController', () => {
 	describe('getAgentCard', () => {
 		it('should return valid A2A agent card schema with requiredCredentials', async () => {
 			const card = {
-				id: 'agent-1',
 				name: 'TestAgent',
-				provider: { name: 'n8n', description: 'Handles docs' },
+				description: 'Handles docs',
+				url: 'https://example.com/api/v1/agents/agent-1/task',
+				version: '1.0.0',
+				protocolVersion: '0.3',
+				defaultInputModes: ['application/json'],
+				defaultOutputModes: ['application/json'],
+				provider: { organization: 'n8n', url: 'https://example.com' },
 				capabilities: { streaming: true, pushNotifications: false, multiTurn: true },
 				skills: [],
-				interfaces: [{ type: 'http+json', url: 'https://example.com/api/v1/agents/agent-1/task' }],
+				additionalInterfaces: [
+					{ transport: 'JSONRPC', url: 'https://example.com/api/v1/agents/agent-1/task' },
+				],
 				securitySchemes: {
 					apiKey: { type: 'apiKey', name: 'x-n8n-api-key', in: 'header' },
 				},
 				security: [{ apiKey: [] }],
+				id: 'agent-1',
 				requiredCredentials: [{ type: 'anthropicApi', description: 'My Anthropic Key' }],
 			};
 			agentsService.getAgentCard.mockResolvedValue(card);
@@ -73,16 +81,24 @@ describe('AgentsController', () => {
 
 		it('should return empty requiredCredentials for agent with no credentials', async () => {
 			const card = {
-				id: 'agent-2',
 				name: 'EmptyAgent',
-				provider: { name: 'n8n', description: '' },
+				description: '',
+				url: 'https://example.com/api/v1/agents/agent-2/task',
+				version: '1.0.0',
+				protocolVersion: '0.3',
+				defaultInputModes: ['application/json'],
+				defaultOutputModes: ['application/json'],
+				provider: { organization: 'n8n', url: 'https://example.com' },
 				capabilities: { streaming: true, pushNotifications: false, multiTurn: true },
 				skills: [],
-				interfaces: [{ type: 'http+json', url: 'https://example.com/api/v1/agents/agent-2/task' }],
+				additionalInterfaces: [
+					{ transport: 'JSONRPC', url: 'https://example.com/api/v1/agents/agent-2/task' },
+				],
 				securitySchemes: {
 					apiKey: { type: 'apiKey', name: 'x-n8n-api-key', in: 'header' },
 				},
 				security: [{ apiKey: [] }],
+				id: 'agent-2',
 				requiredCredentials: [],
 			};
 			agentsService.getAgentCard.mockResolvedValue(card);
@@ -580,7 +596,7 @@ describe('callExternalAgent', () => {
 		expect(result.summary).toBe('Done remotely');
 	});
 
-	it('should POST to A2A v0.2 endpoint with JSON-RPC tasks/send format', async () => {
+	it('should POST to A2A v0.3 endpoint with JSON-RPC message/send format', async () => {
 		const config: ExternalAgentConfig = {
 			name: 'PolicyCheck',
 			url: 'https://policycheck.tools/api/a2a',
@@ -593,11 +609,10 @@ describe('callExternalAgent', () => {
 				jsonrpc: '2.0',
 				id: 'resp-1',
 				result: {
-					id: 'task-1',
-					status: {
-						state: 'completed',
-						message: { role: 'agent', parts: [{ text: 'Policy analysed' }] },
-					},
+					kind: 'message',
+					messageId: 'msg-1',
+					role: 'agent',
+					parts: [{ kind: 'text', text: 'Policy analysed' }],
 				},
 			}),
 		});
@@ -607,10 +622,10 @@ describe('callExternalAgent', () => {
 		const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
 		const body = JSON.parse(fetchCall[1].body as string);
 
-		// Should use JSON-RPC tasks/send format
+		// Should use JSON-RPC message/stream format (v0.3 default for non-n8n URLs)
 		expect(body.jsonrpc).toBe('2.0');
-		expect(body.method).toBe('tasks/send');
-		expect(body.params.message.parts[0]).toEqual({ type: 'text', text: 'Analyse policies' });
+		expect(body.method).toBe('message/stream');
+		expect(body.params.message.parts[0]).toEqual({ text: 'Analyse policies' });
 
 		// Should use X-API-Key header (not x-n8n-api-key)
 		expect(fetchCall[1].headers).toHaveProperty('X-API-Key', 'test-key');
@@ -1281,14 +1296,14 @@ describe('proxyExternalTask — A2A protocol adapter', () => {
 		expect(body).not.toHaveProperty('message');
 	});
 
-	it('should use A2A v0.2 tasks/send format for generic A2A URLs', async () => {
+	it('should use A2A v0.3 message/stream format for generic A2A URLs', async () => {
 		global.fetch = jest.fn().mockResolvedValue({
 			ok: true,
 			headers: { get: () => 'application/json' },
 			json: async () => ({
 				jsonrpc: '2.0',
 				id: 'resp-1',
-				result: { id: 'task-1', status: { state: 'completed' } },
+				result: { kind: 'message', messageId: 'msg-1', role: 'agent', parts: [{ text: 'Done' }] },
 			}),
 		});
 		const res = mock<Response>();
@@ -1302,13 +1317,13 @@ describe('proxyExternalTask — A2A protocol adapter', () => {
 		const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
 		const body = JSON.parse(fetchCall[1].body as string);
 		expect(body).toHaveProperty('jsonrpc', '2.0');
-		expect(body).toHaveProperty('method', 'tasks/send');
-		expect(body.params.message.parts[0]).toEqual({ type: 'text', text: 'Do something' });
+		expect(body).toHaveProperty('method', 'message/stream');
+		expect(body.params.message.parts[0]).toEqual({ text: 'Do something' });
 		// Should use X-API-Key header for A2A endpoints
 		expect(fetchCall[1].headers).toHaveProperty('X-API-Key', 'remote-key');
 	});
 
-	it('should translate non-streaming A2A JSON-RPC response to internal format', async () => {
+	it('should wrap non-streaming A2A response as SSE for frontend consumption', async () => {
 		global.fetch = jest.fn().mockResolvedValue({
 			ok: true,
 			headers: { get: () => 'application/json' },
@@ -1325,7 +1340,11 @@ describe('proxyExternalTask — A2A protocol adapter', () => {
 			}),
 		});
 		const res = mock<Response>();
-		res.json = jest.fn();
+		const written: string[] = [];
+		res.write.mockImplementation((chunk: unknown) => {
+			written.push(chunk as string);
+			return true;
+		});
 
 		await controller.proxyExternalTask(
 			mock(),
@@ -1333,12 +1352,93 @@ describe('proxyExternalTask — A2A protocol adapter', () => {
 			makePayload({ url: 'https://policycheck.tools/api/a2a' }),
 		);
 
-		expect(res.json).toHaveBeenCalledWith(
+		// Should send SSE headers, not JSON
+		expect(res.writeHead).toHaveBeenCalledWith(
+			200,
 			expect.objectContaining({
-				status: 'completed',
-				summary: 'Analysis complete',
+				'Content-Type': 'text/event-stream',
 			}),
 		);
+		// Should wrap result as SSE task.completion event
+		expect(written).toHaveLength(1);
+		const parsed = JSON.parse(written[0].replace('data: ', '').trim());
+		expect(parsed).toEqual({
+			type: 'task.completion',
+			status: 'completed',
+			summary: 'Analysis complete',
+		});
+		expect(res.end).toHaveBeenCalled();
+	});
+
+	it('should wrap v0.3 message response as SSE for frontend consumption', async () => {
+		global.fetch = jest.fn().mockResolvedValue({
+			ok: true,
+			headers: { get: () => 'application/json' },
+			json: async () => ({
+				jsonrpc: '2.0',
+				id: 'test-1',
+				result: {
+					kind: 'message',
+					messageId: 'msg-1',
+					role: 'agent',
+					parts: [{ kind: 'text', text: 'Hello World' }],
+				},
+			}),
+		});
+		const res = mock<Response>();
+		const written: string[] = [];
+		res.write.mockImplementation((chunk: unknown) => {
+			written.push(chunk as string);
+			return true;
+		});
+
+		await controller.proxyExternalTask(
+			mock(),
+			res,
+			makePayload({ url: 'https://hello-world.onrender.com/' }),
+		);
+
+		expect(res.writeHead).toHaveBeenCalledWith(
+			200,
+			expect.objectContaining({
+				'Content-Type': 'text/event-stream',
+			}),
+		);
+		expect(written).toHaveLength(1);
+		const parsed = JSON.parse(written[0].replace('data: ', '').trim());
+		expect(parsed).toEqual({
+			type: 'task.completion',
+			status: 'completed',
+			summary: 'Hello World',
+		});
+		expect(res.end).toHaveBeenCalled();
+	});
+
+	it('should translate Hello World v0.3 SSE message/stream response to task.completion', async () => {
+		// Exact response format from https://hello-world-gxfr.onrender.com/
+		const ssePayload = `data: {"id":"test-stream","jsonrpc":"2.0","result":{"kind":"message","messageId":"msg-1","parts":[{"kind":"text","text":"Hello World"}],"role":"agent"}}\n\n`;
+		global.fetch = jest.fn().mockResolvedValue(makeFetchSseResponse([ssePayload]));
+		const { res, written } = makeRes();
+
+		await controller.proxyExternalTask(
+			mock(),
+			res,
+			makePayload({ url: 'https://hello-world.onrender.com/' }),
+		);
+
+		expect(res.writeHead).toHaveBeenCalledWith(
+			200,
+			expect.objectContaining({ 'Content-Type': 'text/event-stream' }),
+		);
+		// Should translate to task.completion
+		const dataEvents = written.filter((w) => w.startsWith('data:'));
+		expect(dataEvents).toHaveLength(1);
+		const parsed = JSON.parse(dataEvents[0].replace('data: ', '').trim());
+		expect(parsed).toEqual({
+			type: 'task.completion',
+			status: 'completed',
+			summary: 'Hello World',
+		});
 	});
 
 	it('should pass through SSE comments/pings unchanged', async () => {
@@ -1387,8 +1487,13 @@ describe('discoverExternalAgent — card normalization', () => {
 		} as never)) as unknown as Record<string, unknown>;
 
 		expect(result).toHaveProperty('requiredCredentials');
-		expect(result).toHaveProperty('interfaces');
+		expect(result).toHaveProperty('additionalInterfaces');
 		expect(result.name).toBe('Weather Agent');
+		expect(result.description).toBe('Gets weather data');
+		expect(result.url).toBe('https://weather.example.com');
+		expect(result.protocolVersion).toBe('0.3');
+		expect(result.defaultInputModes).toEqual(['application/json']);
+		expect(result.defaultOutputModes).toEqual(['application/json']);
 		expect((result.capabilities as Record<string, unknown>).streaming).toBe(true);
 		expect((result.capabilities as Record<string, unknown>).multiTurn).toBe(false);
 	});
@@ -1397,8 +1502,13 @@ describe('discoverExternalAgent — card normalization', () => {
 		const n8nCard = {
 			name: 'n8n Agent',
 			description: 'Internal agent',
+			url: 'https://example.com/api/v1/agents/1/task',
+			version: '1.0.0',
+			protocolVersion: '0.3',
+			defaultInputModes: ['application/json'],
+			defaultOutputModes: ['application/json'],
 			requiredCredentials: [{ type: 'notionApi' }],
-			interfaces: { chat: true },
+			additionalInterfaces: [{ transport: 'JSONRPC', url: 'https://example.com/task' }],
 			capabilities: { streaming: true, multiTurn: true },
 			skills: [],
 		};
@@ -1416,7 +1526,9 @@ describe('discoverExternalAgent — card normalization', () => {
 
 		expect(result.name).toBe('n8n Agent');
 		expect(result.requiredCredentials).toEqual([{ type: 'notionApi' }]);
-		expect(result.interfaces).toEqual({ chat: true });
+		expect(result.additionalInterfaces).toEqual([
+			{ transport: 'JSONRPC', url: 'https://example.com/task' },
+		]);
 	});
 });
 
