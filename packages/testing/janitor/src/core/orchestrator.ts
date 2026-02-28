@@ -1,9 +1,4 @@
 /**
- * Test Orchestrator
- *
- * Distributes specs across shards using capability-aware bin-packing.
- * Pure data transformation — no I/O, no side effects.
- *
  * Algorithm:
  * 1. Enrich specs with duration from metrics
  * 2. Group by capability (specs sharing a capability stay together)

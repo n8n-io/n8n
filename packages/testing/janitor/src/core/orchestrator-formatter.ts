@@ -1,9 +1,3 @@
-/**
- * Orchestrator Output Formatting
- *
- * JSON for machine consumption (stdout), diagnostics for humans (stderr).
- */
-
 import type { OrchestrationResult } from './orchestrator.js';
 
 export function formatOrchestrationJSON(result: OrchestrationResult): string {
@@ -18,7 +12,6 @@ export function formatOrchestrationConsole(result: OrchestrationResult, verbose:
 	console.error(`  Total test time: ${(totalTestTime / 60_000).toFixed(1)} min`);
 	console.error(`  Target per shard: ${(targetPerShard / 60_000).toFixed(1)} min`);
 
-	// Capability summary
 	const allCapabilities = new Set(shards.flatMap((s) => s.capabilities));
 	if (allCapabilities.size > 0) {
 		console.error(`  Capabilities: ${[...allCapabilities].sort().join(', ')}`);

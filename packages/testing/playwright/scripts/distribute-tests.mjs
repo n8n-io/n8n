@@ -22,7 +22,6 @@ const PLAYWRIGHT_DIR = path.resolve(__dirname, '..');
 const JANITOR_CLI = path.resolve(__dirname, '..', '..', 'janitor', 'dist', 'cli.js');
 const CONTAINER_STARTUP_TIME = 22_500; // 22.5s average per fixture
 
-/** Maps capability names to required Docker container images */
 const CAPABILITY_IMAGES = {
 	email: ['mailpit'],
 	kafka: ['kafka'],
@@ -32,14 +31,8 @@ const CAPABILITY_IMAGES = {
 	'source-control': ['gitea'],
 };
 
-/** Base images needed by all E2E tests */
 const BASE_IMAGES = ['postgres', 'redis', 'caddy', 'n8n', 'taskRunner'];
 
-/**
- * Get required Docker images for a shard based on its capabilities
- * @param {string[]} capabilities
- * @returns {string[]}
- */
 function getRequiredImages(capabilities) {
 	const images = new Set(BASE_IMAGES);
 	for (const cap of capabilities) {
@@ -51,12 +44,6 @@ function getRequiredImages(capabilities) {
 	return [...images].sort();
 }
 
-/**
- * Call janitor orchestrate and get shard assignments
- * @param {number} numShards
- * @param {{ impact?: boolean, base?: string }} [options]
- * @returns {{ shards: Array<{ shard: number, specs: string[], testTime: number, capabilities: string[], fixtureCount: number }>, totalTestTime: number }}
- */
 function getOrchestration(numShards, options = {}) {
 	const impactFlag = options.impact ? ' --impact' : '';
 	const baseFlag = options.base ? ` --base=${options.base}` : '';
@@ -82,7 +69,6 @@ if (!shards || shards < 1) {
 
 if (matrixMode) {
 	if (!orchestrateMode) {
-		// Simple matrix — let Playwright handle sharding
 		const matrix = Array.from({ length: shards }, (_, i) => ({
 			shard: i + 1,
 			specs: '',
@@ -90,10 +76,8 @@ if (matrixMode) {
 		}));
 		console.log(JSON.stringify(matrix));
 	} else {
-		// Orchestrated matrix — janitor distributes (specFilter handles e2e-only), we map images
 		const result = getOrchestration(shards, { impact: impactMode, base: baseArg });
 
-		// Log n8n-specific diagnostics (container overhead)
 		console.error('\n📊 Shard Distribution:');
 		let maxShardTime = 0;
 		for (const shard of result.shards) {
@@ -111,7 +95,6 @@ if (matrixMode) {
 		console.error(`\n  Total test time: ${totalTestMins} min`);
 		console.error(`  Expected wall-clock: ~${(maxShardTime / 60_000).toFixed(1)} min (longest shard)\n`);
 
-		// Output GitHub Actions matrix
 		const matrix = result.shards.map((shard) => ({
 			shard: shard.shard,
 			specs: shard.specs.join(' '),

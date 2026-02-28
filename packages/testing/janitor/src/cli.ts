@@ -435,7 +435,6 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 		process.exit(1);
 	}
 
-	// Discover and filter specs
 	const { project } = createProject(config.rootDir);
 	const discoveryAnalyzer = new TestDiscoveryAnalyzer(project);
 	const report = discoveryAnalyzer.discover();
@@ -444,7 +443,6 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 		? report.specs.filter((s) => s.path.startsWith(config.orchestration.specFilter!))
 		: report.specs;
 
-	// Impact filtering: only include specs affected by changed files
 	if (options.impact) {
 		let changedFiles = options.files ?? [];
 
@@ -472,7 +470,6 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 		}
 	}
 
-	// Load metrics
 	const metrics: Record<string, number> = {};
 	if (config.orchestration.metricsPath) {
 		const metricsPath = path.isAbsolute(config.orchestration.metricsPath)
@@ -501,7 +498,6 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 
 	const result = orchestrate(specs, options.shards, metrics, config.orchestration);
 
-	// Single shard mode
 	if (options.shardIndex !== undefined) {
 		if (
 			Number.isNaN(options.shardIndex) ||
