@@ -6,7 +6,7 @@ Capability-aware test distribution across CI shards.
 
 | Step | What Happens |
 |------|--------------|
-| 1. Discovery | `pnpm janitor discover --json` (AST-based, detects `test.fixme()`/`test.skip()` automatically) |
+| 1. Discovery | `pnpm janitor discover` (AST-based, detects `test.fixme()`/`test.skip()` automatically) |
 | 2. Metrics | Get `avgDuration` per spec from Currents (last 30 days) |
 | 3. Default | Missing specs get **60s** default (accounts for container startup) |
 | 4. Group | Group specs by `@capability:xxx` tag for worker reuse |
@@ -153,7 +153,7 @@ The janitor handles generic orchestration (works for any Playwright project).
 
 ```bash
 # Janitor orchestration (generic output)
-pnpm janitor orchestrate --shards=14 --json
+pnpm janitor orchestrate --shards=14
 
 # CI adapter (n8n-specific output with Docker images)
 node scripts/distribute-tests.mjs --matrix 14 --orchestrate
