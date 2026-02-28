@@ -95,6 +95,7 @@ export class OAuth1CredentialController {
 					oauthTokenData,
 					state.authorizationHeader.split('Bearer ')[1],
 					state.credentialResolverId,
+					(state.authMetadata as Record<string, unknown>) ?? {},
 				);
 				return res.render('oauth-callback');
 			}

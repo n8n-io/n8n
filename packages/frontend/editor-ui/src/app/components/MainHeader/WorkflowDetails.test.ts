@@ -170,7 +170,6 @@ const defaultProps = {
 	id: workflow.id,
 	tags: ['1', '2'] as readonly string[],
 	name: workflow.name,
-	meta: workflow.meta,
 	scopes: workflow.scopes,
 	isArchived: workflow.isArchived,
 	description: workflow.description,
@@ -180,9 +179,9 @@ describe('WorkflowDetails', () => {
 	beforeEach(() => {
 		const docPinia = createTestingPinia({ stubActions: false });
 		setActivePinia(docPinia);
-		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
-		docStore.setActiveState({ activeVersionId: null, activeVersion: null });
-		workflowDocumentStoreRef.value = docStore;
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+		workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
+		workflowDocumentStoreRef.value = workflowDocumentStore;
 		setActivePinia(pinia);
 
 		uiStore = useUIStore();
@@ -200,7 +199,7 @@ describe('WorkflowDetails', () => {
 		};
 		workflowsStore.isWorkflowSaved = { '1': true, '123': true };
 		workflowsStore.workflowId = workflow.id;
-		workflowsStore.workflowChecksum = 'test-checksum';
+		workflowDocumentStoreRef.value?.setChecksum('test-checksum');
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = { id: 'personal', name: 'Personal' } as Project;
 		collaborationStore.shouldBeReadOnly = false;

@@ -12,7 +12,6 @@ export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
 	type ChatModelMetadataDto,
-	type ChatHubInputModality,
 	type ChatHubOpenAIModel,
 	type ChatHubAnthropicModel,
 	type ChatHubGoogleModel,
@@ -188,6 +187,8 @@ export type {
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
 } from './schemas/breaking-changes.schema';
+
+export { MIGRATION_REPORT_TARGET_VERSION } from './schemas/breaking-changes.schema';
 
 export type {
 	SecretsProviderType,

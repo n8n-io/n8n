@@ -75,6 +75,7 @@ export type CanvasNodeDefaultRender = {
 		tooltip?: string;
 		dirtiness?: CanvasNodeDirtinessType;
 		icon?: NodeIconSource;
+		placeholder?: boolean;
 	}>;
 };
 
@@ -194,6 +195,7 @@ export type CanvasEventBusEvents = {
 		trackBulk?: boolean;
 	};
 	'create:sticky': never;
+	'deprecated:tab-shortcut': never;
 };
 
 export interface CanvasNodeInjectionData {

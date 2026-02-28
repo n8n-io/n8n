@@ -1,5 +1,4 @@
 import { Container } from '@n8n/di';
-import alasqlImport from 'alasql';
 import { ErrorReporter } from 'n8n-core';
 
 import type {
@@ -16,25 +15,43 @@ import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 import { numberInputsProperty } from '../../helpers/descriptions';
 import { modifySelectQuery, rowToExecutionData } from '../../helpers/utils';
 
-type AlaSQLBase = typeof alasqlImport;
-type AlaSQLExtended = AlaSQLBase & {
+// Type for AlaSQL - use type-only import to avoid runtime import
+// We import the type statically for type checking, but use dynamic import at runtime
+import type AlasqlType from 'alasql';
+type AlaSQLBase = typeof AlasqlType;
+export type AlaSQLExtended = AlaSQLBase & {
 	// Access `engines` internal structure to override file access engines
 	engines?: Record<string, unknown>;
 	// Access `into` handlers to override file write operations
 	into?: Record<string, unknown>;
 	// Access `utils` for utility functions
 	utils?: Record<string, unknown>;
+	// Access `yy` for statement types like REQUIRE
+	yy?: {
+		Require?: {
+			prototype?: {
+				execute?: (...args: unknown[]) => unknown;
+			};
+		};
+		[key: string]: unknown;
+	};
 	// Fix Database constructor typing
 	Database: AlaSQLBase['Database'] & { new (databaseId: string): AlaSQLBase['Database'] };
 };
 
-const alasql = alasqlImport as AlaSQLExtended;
+// Cache for the loaded and secured alasql instance
+let cachedAlaSql: AlaSQLExtended | null = null;
 
-function disableAlasqlFileAccess() {
-	const disabledFunction = () => {
-		throw new Error('File access operations are disabled for security reasons');
-	};
+// Export for testing - allows resetting the cache
+export function resetAlaSqlCache() {
+	cachedAlaSql = null;
+}
 
+const disabledFunction = () => {
+	throw new Error('File access operations are disabled for security reasons');
+};
+
+export function disableUnsafeAccess(alasql: AlaSQLExtended) {
 	// Block ALL FROM handlers that can read files or external resources
 	if (alasql.from) {
 		const fromHandlers = [
@@ -109,15 +126,60 @@ function disableAlasqlFileAccess() {
 		alasql.utils.removeFile = disabledFunction;
 		alasql.utils.deleteFile = disabledFunction;
 		alasql.utils.fileExists = disabledFunction;
+		alasql.utils.require = disabledFunction;
 	}
 
 	// Block fn handlers if present
 	if (alasql.fn) {
-		const fnHandlers = ['FILE', 'JSON', 'TXT', 'CSV', 'XLSX', 'XLS', 'LOAD', 'SAVE'];
+		const fnHandlers = ['FILE', 'JSON', 'TXT', 'CSV', 'XLSX', 'XLS', 'LOAD', 'SAVE', 'REQUIRE'];
 		fnHandlers.forEach((handler) => {
 			alasql.fn[handler] = disabledFunction;
 		});
+		alasql.fn = Object.freeze(alasql.fn);
 	}
+
+	if (alasql.yy) {
+		alasql.yy.JavaScript = disabledFunction;
+	}
+
+	// Block REQUIRE statement execution
+	// REQUIRE is a statement type (like SELECT, INSERT) that can load and execute arbitrary code
+	// We need to override yy.Require.prototype.execute before freezing
+	// The yy object contains statement constructors and is accessible via alasql.yy
+	if (alasql.yy?.Require?.prototype) {
+		alasql.yy.Require.prototype.execute = disabledFunction;
+	}
+}
+
+export function freezeAlasql(alasql: AlaSQLExtended) {
+	/*
+	 * we freeze these elements of alasql to avoid users being able to create new functions as part of an execution
+	 * by creating and immediately executing functions with CREATE FUNCTION or with AGGREGATE manipulation.
+	 */
+	alasql.fn = Object.freeze(alasql.fn);
+	if (alasql.yy) {
+		alasql.yy = Object.freeze(alasql.yy);
+	}
+}
+
+/**
+ * Lazy loads AlaSQL, disables file access, and freezes it in one go.
+ * This ensures AlaSQL is only loaded when needed and is immediately secured.
+ */
+export async function loadAlaSql(): Promise<AlaSQLExtended> {
+	if (cachedAlaSql) {
+		return cachedAlaSql;
+	}
+
+	const alasqlImport = await import('alasql');
+	const alasql = (alasqlImport.default || alasqlImport) as AlaSQLExtended;
+
+	disableUnsafeAccess(alasql);
+	freezeAlasql(alasql);
+
+	cachedAlaSql = alasql;
+
+	return alasql;
 }
 
 type OperationOptions = {
@@ -200,6 +262,7 @@ async function executeSelectWithMappedPairedItems(
 	inputsData: INodeExecutionData[][],
 	query: string,
 	returnSuccessItemIfEmpty: boolean,
+	alasql: AlaSQLExtended,
 ): Promise<INodeExecutionData[][]> {
 	const returnData: INodeExecutionData[] = [];
 
@@ -250,7 +313,8 @@ export async function execute(
 	this: IExecuteFunctions,
 	inputsData: INodeExecutionData[][],
 ): Promise<INodeExecutionData[][]> {
-	disableAlasqlFileAccess();
+	// Lazy load AlaSQL, disable file access, and freeze it
+	const alasql = await loadAlaSql();
 
 	const node = this.getNode();
 	const returnData: INodeExecutionData[] = [];
@@ -274,6 +338,7 @@ export async function execute(
 				inputsData,
 				query,
 				returnSuccessItemIfEmpty,
+				alasql,
 			);
 		} catch (error) {
 			Container.get(ErrorReporter).error(error, {

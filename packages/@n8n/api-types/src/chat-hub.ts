@@ -224,10 +224,9 @@ export const chatModelsRequestSchema = z.object({
 
 export type ChatModelsRequest = z.infer<typeof chatModelsRequestSchema>;
 
-export type ChatHubInputModality = 'text' | 'image' | 'audio' | 'video' | 'file';
-
 export interface ChatModelMetadataDto {
-	inputModalities: ChatHubInputModality[];
+	allowFileUploads: boolean;
+	allowedFilesMimeTypes: string;
 	priority?: number; // Order on the model picker list, higher means first, default 0
 	capabilities: {
 		functionCalling: boolean;
@@ -246,6 +245,7 @@ export interface ChatModelDto {
 	metadata: ChatModelMetadataDto;
 	groupName: string | null;
 	groupIcon: AgentIconOrEmoji | null;
+	suggestedPrompts?: Array<{ text: string; icon?: AgentIconOrEmoji }>;
 }
 
 /**

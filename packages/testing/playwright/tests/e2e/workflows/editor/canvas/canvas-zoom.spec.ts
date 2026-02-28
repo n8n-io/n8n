@@ -151,6 +151,25 @@ test.describe(
 			await expect(n8n.canvas.nodeByName('Something different')).toBeAttached();
 		});
 
+		test('should allow typing space while holding Shift in rename dialog', async ({ n8n }) => {
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
+			await n8n.canvas.getCanvasNodes().last().click();
+			await n8n.page.keyboard.press('F2');
+			await expect(n8n.canvas.getRenamePrompt()).toBeVisible();
+
+			await n8n.page.keyboard.press('ControlOrMeta+a');
+			await n8n.page.keyboard.type('X:');
+			await n8n.page.keyboard.press('Shift+Space');
+			await n8n.page.keyboard.type('Y');
+
+			const renameInput = n8n.canvas.getRenamePrompt().locator('input');
+			await expect(renameInput).toHaveValue('X: Y');
+
+			await n8n.page.keyboard.press('Enter');
+			await expect(n8n.canvas.nodeByName('X: Y')).toBeAttached();
+		});
+
 		test('should not allow empty strings for node names', async ({ n8n }) => {
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });

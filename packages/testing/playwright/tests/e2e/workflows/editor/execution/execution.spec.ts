@@ -277,13 +277,8 @@ test.describe(
 			const firstPayload = await n8n.executionsComposer.executeNodeAndCapturePayload(NODE_NAMES.IF);
 
 			expect(firstPayload).not.toHaveProperty('runData');
-			expect(firstPayload).toHaveProperty('workflowData');
-			expect(firstPayload.workflowData).toBeInstanceOf(Object);
-			expect(firstPayload.workflowData).toHaveProperty('pinData');
-			expect(firstPayload.workflowData.pinData).toBeInstanceOf(Object);
-			expect(firstPayload.workflowData.pinData).toEqual({
-				[NODE_NAMES.WEBHOOK]: expect.anything(),
-			});
+			expect(firstPayload).toHaveProperty('workflowId');
+			expect(firstPayload).not.toHaveProperty('workflowData');
 
 			await expect(n8n.canvas.clearExecutionDataButton()).toBeVisible();
 
@@ -293,18 +288,12 @@ test.describe(
 
 			expect(secondPayload).toHaveProperty('runData');
 			expect(secondPayload.runData).toBeInstanceOf(Object);
-			expect(secondPayload).toHaveProperty('workflowData');
-			expect(secondPayload.workflowData).toBeInstanceOf(Object);
-			expect(secondPayload.workflowData).toHaveProperty('pinData');
-			expect(secondPayload.workflowData.pinData).toBeInstanceOf(Object);
+			expect(secondPayload).toHaveProperty('workflowId');
+			expect(secondPayload).not.toHaveProperty('workflowData');
 
 			expect(secondPayload.runData).toEqual({
 				[NODE_NAMES.IF]: expect.any(Array),
 				[NODE_NAMES.WEBHOOK]: expect.any(Array),
-			});
-
-			expect(secondPayload.workflowData.pinData).toEqual({
-				[NODE_NAMES.WEBHOOK]: expect.anything(),
 			});
 		});
 
