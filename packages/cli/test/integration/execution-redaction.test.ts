@@ -112,13 +112,13 @@ function parseResponseData(responseBody: { data: { data: string } }): IRunExecut
 	return parse(responseBody.data.data) as IRunExecutionData;
 }
 
-function assertRedacted(data: IRunExecutionData) {
+function assertRedacted(data: IRunExecutionData, expectedReason = 'workflow_redaction_policy') {
 	const items = data.resultData.runData['Test Node'][0].data!.main[0]!;
 	expect(items.length).toBeGreaterThan(0);
 	for (const item of items) {
 		expect(item.json).toEqual({});
 		expect(item.binary).toBeUndefined();
-		expect(item.redaction).toEqual({ redacted: true });
+		expect(item.redaction).toEqual({ redacted: true, reason: expectedReason });
 	}
 }
 
@@ -296,7 +296,7 @@ describe('GET /executions/:id — Execution Redaction', () => {
 				.query({ redactExecutionData: 'true' })
 				.expect(200);
 
-			assertRedacted(parseResponseData(response.body));
+			assertRedacted(parseResponseData(response.body), 'user_requested');
 		});
 	});
 

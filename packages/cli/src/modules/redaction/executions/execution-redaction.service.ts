@@ -50,7 +50,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	): Promise<IExecutionDb> {
 		if (options.redactExecutionData === true) {
 			// user wants redacted data, this is always fine!
-			this.applyRedaction(execution);
+			this.applyRedaction(execution, 'user_requested');
 		} else if (options.redactExecutionData === false) {
 			// user wants unredacted data, lets see if they have the permissions to do so
 			const allowed = await this.canUserReveal(options.user, execution);
@@ -73,7 +73,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				return execution;
 			}
 
-			this.applyRedaction(execution);
+			this.applyRedaction(execution, 'workflow_redaction_policy');
 		}
 
 		return execution;
@@ -122,30 +122,30 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 * Mutates execution data in place, replacing all node output json with a
 	 * redaction marker and removing binary data.
 	 */
-	private applyRedaction(execution: IExecutionDb): void {
+	private applyRedaction(execution: IExecutionDb, reason: string): void {
 		const runData = execution.data.resultData.runData;
 		if (!runData) return;
 
 		for (const nodeName of Object.keys(runData)) {
 			for (const taskData of runData[nodeName]) {
 				if (taskData.data) {
-					this.redactConnections(taskData.data);
+					this.redactConnections(taskData.data, reason);
 				}
 				if (taskData.inputOverride) {
-					this.redactConnections(taskData.inputOverride);
+					this.redactConnections(taskData.inputOverride, reason);
 				}
 			}
 		}
 	}
 
 	/** Walks an ITaskDataConnections structure and redacts every data item in place. */
-	private redactConnections(connections: ITaskDataConnections): void {
+	private redactConnections(connections: ITaskDataConnections, reason: string): void {
 		for (const connectionType of Object.keys(connections)) {
 			const outputs = connections[connectionType];
 			for (const items of outputs) {
 				if (items) {
 					for (const item of items) {
-						this.redactItem(item);
+						this.redactItem(item, reason);
 					}
 				}
 			}
@@ -157,11 +157,12 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 * This is the default "full" redaction strategy. Future strategies (field-level,
 	 * pattern-based) can replace this function without changing the traversal logic.
 	 */
-	private redactItem(item: INodeExecutionData): void {
+	private redactItem(item: INodeExecutionData, reason: string): void {
 		item.json = {};
 		delete item.binary;
 		item.redaction = {
 			redacted: true,
+			reason,
 		};
 	}
 }
