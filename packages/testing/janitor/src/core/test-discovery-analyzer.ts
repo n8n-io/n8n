@@ -118,20 +118,36 @@ export class TestDiscoveryAnalyzer {
 	}
 
 	/**
-	 * Find scopes where test.fixme() or test.skip() is called with no arguments.
-	 * This is the Playwright pattern for marking all tests in a describe as skipped.
-	 * Returns the syntax nodes of the arrow/function bodies that are skipped.
+	 * Find scopes where test.fixme() or test.skip() marks all contained tests as skipped.
+	 * Handles two patterns:
+	 *   1. No-arg: test.fixme() inside a describe — marks the enclosing block
+	 *   2. Wrapper: test.fixme('title', opts, callback) — marks the callback body
+	 * Returns the start positions of blocks that are skipped.
 	 */
 	private findSkippedScopes(file: SourceFile): Set<number> {
 		const skippedScopes = new Set<number>();
 
 		for (const callExpr of file.getDescendantsOfKind(SyntaxKind.CallExpression)) {
 			const expr = callExpr.getExpression().getText();
-			if ((expr === 'test.fixme' || expr === 'test.skip') && callExpr.getArguments().length === 0) {
-				// This is a no-arg fixme/skip — find the enclosing block
+			if (expr !== 'test.fixme' && expr !== 'test.skip') continue;
+
+			const args = callExpr.getArguments();
+			if (args.length === 0) {
+				// No-arg fixme/skip — find the enclosing block
 				const parent = callExpr.getFirstAncestorByKind(SyntaxKind.Block);
 				if (parent) {
 					skippedScopes.add(parent.getStart());
+				}
+			} else {
+				// test.fixme('title', ..., callback) — register the callback body as skipped
+				const lastArg = args.at(-1);
+				if (lastArg) {
+					const block =
+						lastArg.asKind(SyntaxKind.ArrowFunction)?.getBody().asKind(SyntaxKind.Block) ??
+						lastArg.asKind(SyntaxKind.FunctionExpression)?.getBody();
+					if (block) {
+						skippedScopes.add(block.getStart());
+					}
 				}
 			}
 		}

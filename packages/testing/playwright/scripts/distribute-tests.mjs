@@ -53,11 +53,14 @@ function getRequiredImages(capabilities) {
 /**
  * Call janitor orchestrate and get shard assignments
  * @param {number} numShards
+ * @param {{ impact?: boolean, base?: string }} [options]
  * @returns {{ shards: Array<{ shard: number, specs: string[], testTime: number, capabilities: string[], fixtureCount: number }>, totalTestTime: number }}
  */
-function getOrchestration(numShards) {
+function getOrchestration(numShards, options = {}) {
+	const impactFlag = options.impact ? ' --impact' : '';
+	const baseFlag = options.base ? ` --base=${options.base}` : '';
 	const output = execSync(
-		`pnpm exec playwright-janitor orchestrate --shards=${numShards} --json`,
+		`pnpm exec playwright-janitor orchestrate --shards=${numShards}${impactFlag}${baseFlag} --json`,
 		{ cwd: PLAYWRIGHT_DIR, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
 	);
 	// pnpm exec may print headers — extract JSON from first '{'
@@ -69,10 +72,12 @@ function getOrchestration(numShards) {
 const args = process.argv.slice(2);
 const matrixMode = args.includes('--matrix');
 const orchestrateMode = args.includes('--orchestrate');
+const impactMode = args.includes('--impact');
+const baseArg = args.find((a) => a.startsWith('--base='))?.slice('--base='.length);
 const shards = parseInt(args.find((a) => !a.startsWith('-')) ?? '');
 
 if (!shards || shards < 1) {
-	console.error('Usage: node distribute-tests.mjs --matrix <shards> [--orchestrate]');
+	console.error('Usage: node distribute-tests.mjs --matrix <shards> [--orchestrate] [--impact]');
 	console.error('       node distribute-tests.mjs <shards> <index>');
 	process.exit(1);
 }
@@ -88,7 +93,7 @@ if (matrixMode) {
 		console.log(JSON.stringify(matrix));
 	} else {
 		// Orchestrated matrix — janitor distributes (specFilter handles e2e-only), we map images
-		const result = getOrchestration(shards);
+		const result = getOrchestration(shards, { impact: impactMode, base: baseArg });
 
 		// Log n8n-specific diagnostics (container overhead)
 		console.error('\n📊 Shard Distribution:');
@@ -122,6 +127,6 @@ if (matrixMode) {
 		console.error(`Index must be between 0 and ${shards - 1}`);
 		process.exit(1);
 	}
-	const result = getOrchestration(shards);
+	const result = getOrchestration(shards, { impact: impactMode, base: baseArg });
 	console.log(result.shards[index].specs.join('\n'));
 }

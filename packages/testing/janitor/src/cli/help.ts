@@ -181,6 +181,8 @@ Usage:
 Options:
   --shards=<N>         Number of shards (required)
   --shard-index=<I>    Output specs for a single shard (0-indexed)
+  --impact             Only include specs affected by changed files (git diff)
+  --file=<path>        With --impact: specify changed files explicitly
   --json               Structured JSON output
   --verbose            Include per-shard spec lists
 
@@ -192,8 +194,10 @@ Config:
 Output (--json):
   { shards: [{ shard, specs, testTime, capabilities, fixtureCount }], totalTestTime }
 
-Example:
+Examples:
   playwright-janitor orchestrate --shards=14 --json | jq '.shards[0].specs'
+  playwright-janitor orchestrate --shards=8 --impact --json     # Only affected specs
+  playwright-janitor orchestrate --shards=4 --impact --file=pages/CanvasPage.ts --json
 `);
 }
 

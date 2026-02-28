@@ -427,7 +427,7 @@ function runDiscover(options: CliOptions): void {
 	}
 }
 
-function runOrchestrate(options: CliOptions): void {
+async function runOrchestrate(options: CliOptions): Promise<void> {
 	const config = getConfig();
 
 	if (!options.shards || options.shards < 1) {
@@ -437,12 +437,40 @@ function runOrchestrate(options: CliOptions): void {
 
 	// Discover and filter specs
 	const { project } = createProject(config.rootDir);
-	const analyzer = new TestDiscoveryAnalyzer(project);
-	const report = analyzer.discover();
+	const discoveryAnalyzer = new TestDiscoveryAnalyzer(project);
+	const report = discoveryAnalyzer.discover();
 
-	const specs = config.orchestration.specFilter
+	let specs = config.orchestration.specFilter
 		? report.specs.filter((s) => s.path.startsWith(config.orchestration.specFilter!))
 		: report.specs;
+
+	// Impact filtering: only include specs affected by changed files
+	if (options.impact) {
+		let changedFiles = options.files ?? [];
+
+		if (changedFiles.length === 0) {
+			const { getChangedFiles } = await import('./utils/git-operations.js');
+			changedFiles = getChangedFiles({
+				scopeDir: config.rootDir,
+				extensions: ['.ts'],
+				targetBranch: options.baseRef,
+			});
+		}
+
+		if (changedFiles.length === 0) {
+			console.error('Impact: No changed files detected. Returning empty orchestration.');
+			specs = [];
+		} else {
+			const impactAnalyzer = new ImpactAnalyzer(project);
+			const impactResult = impactAnalyzer.analyze(changedFiles);
+			const affectedSet = new Set(impactResult.affectedTests);
+			const totalBefore = specs.length;
+			specs = specs.filter((s) => affectedSet.has(s.path));
+			console.error(
+				`Impact: ${specs.length}/${totalBefore} specs affected by ${changedFiles.length} changed files`,
+			);
+		}
+	}
 
 	// Load metrics
 	let metrics: Record<string, number> = {};
@@ -471,7 +499,11 @@ function runOrchestrate(options: CliOptions): void {
 
 	// Single shard mode
 	if (options.shardIndex !== undefined) {
-		if (options.shardIndex < 0 || options.shardIndex >= options.shards) {
+		if (
+			Number.isNaN(options.shardIndex) ||
+			options.shardIndex < 0 ||
+			options.shardIndex >= options.shards
+		) {
 			console.error(`Error: --shard-index must be between 0 and ${options.shards - 1}`);
 			process.exit(1);
 		}
@@ -560,7 +592,7 @@ async function main(): Promise<void> {
 			runDiscover(options);
 			break;
 		case 'orchestrate':
-			runOrchestrate(options);
+			await runOrchestrate(options);
 			break;
 		default:
 			runAnalyze(options);

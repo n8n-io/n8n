@@ -49,6 +49,7 @@ export interface CliOptions {
 	// Orchestration-specific options
 	shards?: number;
 	shardIndex?: number;
+	impact: boolean;
 }
 
 const SUBCOMMANDS: Record<string, Command> = {
@@ -117,6 +118,9 @@ const FLAG_HANDLERS: Record<string, FlagHandler> = {
 	},
 	'-s': (opts) => {
 		opts.summary = true;
+	},
+	'--impact': (opts) => {
+		opts.impact = true;
 	},
 };
 
@@ -192,6 +196,7 @@ function createDefaultOptions(): CliOptions {
 		category: undefined,
 		shards: undefined,
 		shardIndex: undefined,
+		impact: false,
 	};
 }
 
