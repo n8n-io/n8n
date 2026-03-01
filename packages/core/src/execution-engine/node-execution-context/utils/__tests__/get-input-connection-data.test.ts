@@ -633,12 +633,13 @@ describe('makeHandleToolInvocation', () => {
 		]);
 	});
 
-	it('should handle engine requests and return a warning message', async () => {
+	it('should handle engine requests with fallback error when no workflow context is provided', async () => {
 		const mockContext = mock<IExecuteFunctions>();
 		contextFactory.mockReturnValue(mockContext);
 		const mockResult: EngineRequest = { actions: [], metadata: {} };
 		execute.mockResolvedValueOnce(mockResult);
 
+		// Without workflow context, engine requests fall back to the error message
 		const handleToolInvocation = makeHandleToolInvocation(
 			contextFactory,
 			connectedNode,
@@ -660,6 +661,72 @@ describe('makeHandleToolInvocation', () => {
 				},
 			],
 		]);
+	});
+
+	it('should execute sub-agent tools in-process when engine request is returned with workflow context', async () => {
+		const mockContext = mock<IExecuteFunctions>();
+		contextFactory.mockReturnValue(mockContext);
+
+		const toolNode = mock<INode>({
+			name: 'MCP Tool',
+			type: 'test.mcpTool',
+			typeVersion: 1,
+		});
+
+		const toolExecute = jest.fn().mockResolvedValueOnce([[{ json: { mcp_result: 'data' } }]]);
+		const toolNodeType = mock<INodeType>({ execute: toolExecute });
+
+		const mockNodeTypes = mock<INodeTypes>();
+		const mockWorkflow = mock<Workflow>({
+			id: 'test-workflow',
+			active: false,
+			nodeTypes: mockNodeTypes,
+		});
+		mockWorkflow.getNode.calledWith('MCP Tool').mockReturnValue(toolNode);
+		mockNodeTypes.getByNameAndVersion
+			.calledWith(toolNode.type, expect.anything())
+			.mockReturnValue(toolNodeType);
+
+		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+		// First call: sub-agent returns EngineRequest
+		const engineRequest: EngineRequest = {
+			actions: [{
+				actionType: 'ExecutionNodeAction',
+				nodeName: 'MCP Tool',
+				input: { query: 'test' },
+				type: NodeConnectionTypes.AiTool,
+				id: 'call-1',
+				metadata: {},
+			}],
+			metadata: {},
+		};
+		execute.mockResolvedValueOnce(engineRequest);
+
+		// Second call: sub-agent returns final data after receiving tool results
+		execute.mockResolvedValueOnce([[{ json: { output: 'final answer' } }]]);
+
+		const handleToolInvocation = makeHandleToolInvocation(
+			contextFactory,
+			connectedNode,
+			connectedNodeType,
+			runExecutionData,
+			mockWorkflow,
+			mockAdditionalData,
+			'internal' as WorkflowExecuteMode,
+			[],
+		);
+
+		const result = await handleToolInvocation(toolArgs);
+
+		// Verify the sub-agent returned data after tool execution
+		expect(result).toBe(JSON.stringify([{ output: 'final answer' }]));
+
+		// Verify the tool node was executed
+		expect(toolExecute).toHaveBeenCalled();
+
+		// Verify the sub-agent was re-invoked (execute called twice: initial + resume)
+		expect(execute).toHaveBeenCalledTimes(2);
 	});
 
 	it('should continue if json and binary data exist', async () => {

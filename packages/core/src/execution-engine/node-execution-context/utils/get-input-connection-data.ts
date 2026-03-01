@@ -3,6 +3,8 @@ import { DynamicStructuredTool, StructuredTool, Tool } from '@langchain/core/too
 import type {
 	AINodeConnectionType,
 	CloseFunction,
+	EngineRequest,
+	EngineResponse,
 	GenericValue,
 	IDataObject,
 	IExecuteData,
@@ -13,6 +15,7 @@ import type {
 	INodeType,
 	IRunExecutionData,
 	ISupplyDataFunctions,
+	ITaskData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	NodeConnectionType,
@@ -197,11 +200,246 @@ function mapResult(result?: NodeOutput) {
 	return { response, nodeHasMixedJsonAndBinaryData };
 }
 
+/**
+ * Maximum number of engine request/response iterations to prevent infinite loops.
+ * Each iteration represents one round-trip: sub-agent requests tool execution,
+ * tools execute, results returned to sub-agent.
+ */
+const MAX_ENGINE_REQUEST_ITERATIONS = 50;
+
+/**
+ * Executes tool nodes referenced in an EngineRequest in-process.
+ * This is used when a sub-agent (AgentToolV3) returns an EngineRequest
+ * but cannot relay it to the workflow execution loop because it's running
+ * inside makeHandleToolInvocation's synchronous tool callback.
+ *
+ * Supports recursive handling: if a tool node itself returns an EngineRequest,
+ * this function will recursively execute those nested tool nodes.
+ *
+ * @param request - The EngineRequest containing actions to execute
+ * @param workflow - The workflow containing the tool nodes
+ * @param runExecutionData - Current execution data
+ * @param additionalData - Additional workflow execution data
+ * @param mode - Current workflow execution mode
+ * @param closeFunctions - Array to collect close functions from tool contexts
+ * @param abortSignal - Optional signal for cancellation support
+ * @param depth - Current recursion depth (for safety limits)
+ * @returns EngineResponse with results from all executed tool actions
+ */
+async function executeSubAgentTools(
+	request: EngineRequest,
+	workflow: Workflow,
+	runExecutionData: IRunExecutionData,
+	additionalData: IWorkflowExecuteAdditionalData,
+	mode: WorkflowExecuteMode,
+	closeFunctions: CloseFunction[],
+	abortSignal?: AbortSignal,
+	depth: number = 0,
+): Promise<EngineResponse> {
+	const MAX_RECURSION_DEPTH = 10;
+	if (depth >= MAX_RECURSION_DEPTH) {
+		throw new ApplicationError(
+			'Maximum engine request recursion depth exceeded in sub-agent tool execution',
+		);
+	}
+
+	const actionResponses: EngineResponse['actionResponses'] = [];
+
+	for (const action of request.actions) {
+		// action.nodeName comes from the EngineRequest generated server-side by
+		// the sub-agent's own execution — it is NOT user-supplied input.
+		// Node existence is validated below; only nodes present in the current
+		// workflow can be executed, consistent with WorkflowExecute behavior.
+		const toolNode = workflow.getNode(action.nodeName);
+		if (!toolNode) {
+			throw new ApplicationError(
+				`Sub-agent requested execution of node "${action.nodeName}" which does not exist in the workflow`,
+			);
+		}
+
+		const toolNodeType = workflow.nodeTypes.getByNameAndVersion(
+			toolNode.type,
+			toolNode.typeVersion,
+		);
+
+		if (!toolNodeType.execute) {
+			throw new ApplicationError(
+				`Sub-agent requested execution of node "${action.nodeName}" which does not have an execute method`,
+			);
+		}
+
+		// Build input data for the tool node from the action's input
+		const toolInputData: ITaskDataConnections = {
+			main: [[{ json: { ...action.input } }]],
+		};
+		const toolConnectionInputData: INodeExecutionData[] = [{ json: { ...action.input } }];
+		const toolExecuteData: IExecuteData = {
+			node: toolNode,
+			data: toolInputData,
+			source: null,
+		};
+
+		const toolContext = new SupplyDataContext(
+			workflow,
+			toolNode,
+			additionalData,
+			mode,
+			runExecutionData,
+			0, // runIndex
+			toolConnectionInputData,
+			toolInputData,
+			NodeConnectionTypes.AiTool,
+			toolExecuteData,
+			closeFunctions,
+			abortSignal,
+		);
+
+		const startTime = Date.now();
+
+		try {
+			let toolResult = await toolNodeType.execute.call(
+				toolContext as unknown as IExecuteFunctions,
+			);
+
+			// Recursively handle nested EngineRequests (e.g., MCP tools that also
+			// use the engine request pattern for their own sub-operations)
+			if (isEngineRequest(toolResult)) {
+				const nestedResponse = await executeSubAgentTools(
+					toolResult,
+					workflow,
+					runExecutionData,
+					additionalData,
+					mode,
+					closeFunctions,
+					abortSignal,
+					depth + 1,
+				);
+
+				// Re-invoke the tool with nested results
+				toolResult = await toolNodeType.execute.call(
+					toolContext as unknown as IExecuteFunctions,
+					nestedResponse,
+				);
+			}
+
+			const executionTime = Date.now() - startTime;
+
+			// Build ITaskData from the tool execution result
+			const taskData: ITaskData = {
+				startTime,
+				executionTime,
+				executionIndex: 0,
+				source: [],
+				executionStatus: 'success',
+				data: {
+					main: isEngineRequest(toolResult) ? [[]] : (toolResult ?? [[]]),
+				},
+			};
+
+			actionResponses.push({ data: taskData, action });
+		} catch (error) {
+			const executionTime = Date.now() - startTime;
+
+			// Create error task data so the sub-agent can see what went wrong
+			const taskData: ITaskData = {
+				startTime,
+				executionTime,
+				executionIndex: 0,
+				source: [],
+				executionStatus: 'error',
+				error: error instanceof ExecutionBaseError
+					? error
+					: new NodeOperationError(toolNode, error as Error),
+				data: { main: [[{ json: { error: (error as Error).message } }]] },
+			};
+
+			actionResponses.push({ data: taskData, action });
+		}
+	}
+
+	return {
+		actionResponses,
+		metadata: request.metadata,
+	};
+}
+
+/**
+ * Resolves an EngineRequest from a sub-agent by executing its tool nodes
+ * in-process and re-invoking the sub-agent until it returns actual data.
+ *
+ * When a sub-agent's tools (MCP, VectorStore, etc.) need execution, the
+ * sub-agent returns an EngineRequest. Since we're inside a tool callback
+ * and can't relay this to the workflow execution loop, we execute the
+ * requested tool nodes in-process and re-invoke the sub-agent with results.
+ */
+async function resolveSubAgentEngineRequests(
+	initialRequest: EngineRequest,
+	executionCtx: {
+		workflow: Workflow;
+		runExecutionData: IRunExecutionData;
+		additionalData: IWorkflowExecuteAdditionalData;
+		mode: WorkflowExecuteMode;
+		closeFns: CloseFunction[];
+		abortSig?: AbortSignal;
+	},
+	agentCtx: {
+		nodeType: INodeType;
+		contextFactory: (runIndex: number) => ISupplyDataFunctions;
+		toolArgs: IDataObject;
+	},
+	currentRunIndex: number,
+	updateRunIndex: (newIndex: number) => void,
+	nodeName: string,
+): Promise<INodeExecutionData[][] | undefined> {
+	let result: INodeExecutionData[][] | EngineRequest | undefined = initialRequest;
+	let runIndex = currentRunIndex;
+	let iteration = 0;
+
+	while (isEngineRequest(result) && iteration < MAX_ENGINE_REQUEST_ITERATIONS) {
+		iteration++;
+		const engineResponse = await executeSubAgentTools(
+			result,
+			executionCtx.workflow,
+			executionCtx.runExecutionData,
+			executionCtx.additionalData,
+			executionCtx.mode,
+			executionCtx.closeFns,
+			executionCtx.abortSig,
+		);
+
+		// Re-invoke the sub-agent with tool results
+		const resumeRunIndex = runIndex++;
+		const resumeContext = agentCtx.contextFactory(resumeRunIndex);
+		resumeContext.addInputData(NodeConnectionTypes.AiTool, [[{ json: agentCtx.toolArgs }]]);
+
+		result = await agentCtx.nodeType.execute?.call(
+			resumeContext as unknown as IExecuteFunctions,
+			engineResponse,
+		);
+	}
+
+	// Propagate the updated runIndex back to the caller
+	updateRunIndex(runIndex);
+
+	if (isEngineRequest(result)) {
+		throw new ApplicationError(
+			`Sub-agent "${nodeName}" exceeded maximum engine request iterations (${MAX_ENGINE_REQUEST_ITERATIONS})`,
+		);
+	}
+
+	return result;
+}
+
 export function makeHandleToolInvocation(
 	contextFactory: (runIndex: number) => ISupplyDataFunctions,
 	node: INode,
 	nodeType: INodeType,
 	runExecutionData: IRunExecutionData,
+	workflow?: Workflow,
+	additionalData?: IWorkflowExecuteAdditionalData,
+	mode?: WorkflowExecuteMode,
+	closeFns?: CloseFunction[],
+	abortSig?: AbortSignal,
 ) {
 	/**
 	 * This keeps track of how many times this specific AI tool node has been invoked.
@@ -210,6 +448,10 @@ export function makeHandleToolInvocation(
 	// We get the runIndex from the context to handle multiple executions
 	// of the same tool when the tool is used in a loop or in a parallel execution.
 	let runIndex = getNextRunIndex(runExecutionData, node.name);
+
+	// Pre-compute whether we have the context needed to handle engine requests
+	// from sub-agent nodes. This avoids multiple && checks inside the hot loop.
+	const canResolveEngineRequests = !!(workflow && additionalData && mode);
 
 	return async (toolArgs: IDataObject) => {
 		let maxTries = 1;
@@ -253,7 +495,25 @@ export function makeHandleToolInvocation(
 
 			try {
 				// Execute the sub-node with the proxied context
-				const result = await nodeType.execute?.call(context as unknown as IExecuteFunctions);
+				let result = await nodeType.execute?.call(context as unknown as IExecuteFunctions);
+
+				// Handle EngineRequest returns from sub-agent nodes (e.g., AgentToolV3).
+				// When a sub-agent's tools (MCP, VectorStore, etc.) need execution,
+				// the sub-agent returns an EngineRequest. Since we're inside a tool
+				// callback and can't relay this to the workflow execution loop, we
+				// execute the requested tool nodes in-process and re-invoke the
+				// sub-agent with the results.
+				if (isEngineRequest(result) && canResolveEngineRequests) {
+					result = await resolveSubAgentEngineRequests(
+						result,
+						// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+						{ workflow: workflow!, runExecutionData, additionalData: additionalData!, mode: mode!, closeFns: closeFns ?? [], abortSig },
+						{ nodeType, contextFactory, toolArgs },
+						runIndex,
+						(newRunIndex) => { runIndex = newRunIndex; },
+						node.name,
+					);
+				}
 
 				const { response, nodeHasMixedJsonAndBinaryData } = mapResult(result);
 
@@ -462,6 +722,11 @@ export async function getInputConnectionData(
 						connectedNode,
 						connectedNodeType,
 						runExecutionData,
+						workflow,
+						additionalData,
+						mode,
+						closeFunctions,
+						abortSignal,
 					),
 				});
 				nodes.push(supplyData);
