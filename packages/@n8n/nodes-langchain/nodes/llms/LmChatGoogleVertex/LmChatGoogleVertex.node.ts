@@ -18,7 +18,53 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeErrorFromStatus } from './error-handling';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
+import {
+	isMalformedLlmResponseError,
+	createEmptyChatResult,
+} from '../gemini-common/response-guard';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+
+/**
+ * Safe wrapper around ChatVertexAI that handles malformed API responses.
+ *
+ * The @langchain/google-common package (used by ChatVertexAI) crashes with
+ * "Cannot read properties of undefined (reading 'parts')" when the Gemini API
+ * returns a candidate without a `content` field. This subclass intercepts that
+ * specific error and returns a valid empty response.
+ */
+class SafeChatVertexAI extends ChatVertexAI {
+	static override lc_name() {
+		return 'ChatVertexAI';
+	}
+
+	override async _generate(
+		...args: Parameters<ChatVertexAI['_generate']>
+	): ReturnType<ChatVertexAI['_generate']> {
+		try {
+			return await super._generate(...args);
+		} catch (error) {
+			if (isMalformedLlmResponseError(error)) {
+				return createEmptyChatResult();
+			}
+			throw error;
+		}
+	}
+
+	override async *_streamResponseChunks(
+		...args: Parameters<ChatVertexAI['_streamResponseChunks']>
+	): ReturnType<ChatVertexAI['_streamResponseChunks']> {
+		try {
+			yield* super._streamResponseChunks(...args);
+		} catch (error) {
+			if (isMalformedLlmResponseError(error)) {
+				return;
+			}
+			throw error;
+		}
+	}
+}
 
 export class LmChatGoogleVertex implements INodeType {
 	description: INodeTypeDescription = {
@@ -201,7 +247,7 @@ export class LmChatGoogleVertex implements INodeType {
 				modelConfig.thinkingBudget = options.thinkingBudget;
 			}
 
-			const model = new ChatVertexAI(modelConfig);
+			const model = new SafeChatVertexAI(modelConfig);
 
 			return {
 				response: model,

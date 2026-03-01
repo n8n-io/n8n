@@ -205,6 +205,17 @@ export function handleAgentFinishOutput(
 	const agentFinishSteps = steps as AgentMultiOutputFinish | AgentFinish;
 
 	if (agentFinishSteps.returnValues) {
+		// Guard against undefined/null output — can happen when an LLM adapter returns a
+		// malformed response (e.g., Gemini returning candidates with missing content).
+		// Normalizing to empty string prevents downstream code from reading properties on undefined.
+		if (
+			agentFinishSteps.returnValues.output === undefined ||
+			agentFinishSteps.returnValues.output === null
+		) {
+			agentFinishSteps.returnValues.output = '';
+			return agentFinishSteps;
+		}
+
 		const isMultiOutput = Array.isArray(agentFinishSteps.returnValues?.output);
 		if (isMultiOutput) {
 			const multiOutputSteps = agentFinishSteps.returnValues.output as Array<{

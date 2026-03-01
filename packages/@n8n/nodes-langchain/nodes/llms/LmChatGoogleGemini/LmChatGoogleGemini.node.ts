@@ -12,7 +12,54 @@ import type {
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { getAdditionalOptions } from '../gemini-common/additional-options';
+import {
+	isMalformedLlmResponseError,
+	createEmptyChatResult,
+} from '../gemini-common/response-guard';
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+
+/**
+ * Safe wrapper around ChatGoogleGenerativeAI that handles malformed API responses.
+ *
+ * The @langchain/google-genai package crashes with "Cannot read properties of undefined
+ * (reading 'parts')" when the Gemini API returns a candidate without a `content` field.
+ * This subclass intercepts that specific error and returns a valid empty response,
+ * allowing the agent pipeline to handle it gracefully instead of crashing.
+ */
+class SafeChatGoogleGenerativeAI extends ChatGoogleGenerativeAI {
+	static override lc_name() {
+		return 'ChatGoogleGenerativeAI';
+	}
+
+	override async _generate(
+		...args: Parameters<ChatGoogleGenerativeAI['_generate']>
+	): ReturnType<ChatGoogleGenerativeAI['_generate']> {
+		try {
+			return await super._generate(...args);
+		} catch (error) {
+			if (isMalformedLlmResponseError(error)) {
+				return createEmptyChatResult();
+			}
+			throw error;
+		}
+	}
+
+	override async *_streamResponseChunks(
+		...args: Parameters<ChatGoogleGenerativeAI['_streamResponseChunks']>
+	): ReturnType<ChatGoogleGenerativeAI['_streamResponseChunks']> {
+		try {
+			yield* super._streamResponseChunks(...args);
+		} catch (error) {
+			if (isMalformedLlmResponseError(error)) {
+				// End the stream cleanly — the agent will see an empty response
+				return;
+			}
+			throw error;
+		}
+	}
+}
 
 function errorDescriptionMapper(error: NodeError) {
 	if (error.description?.includes('properties: should be non-empty for OBJECT type')) {
@@ -146,7 +193,7 @@ export class LmChatGoogleGemini implements INodeType {
 			null,
 		) as SafetySetting[];
 
-		const model = new ChatGoogleGenerativeAI({
+		const model = new SafeChatGoogleGenerativeAI({
 			apiKey: credentials.apiKey as string,
 			baseUrl: credentials.host as string,
 			model: modelName,
