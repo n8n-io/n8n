@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "client_id": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}
