@@ -29,7 +29,7 @@ const keys = computed(() => {
 <template>
 	<div :class="$style.shortcut">
 		<div v-for="key of keys" :key="key" :class="$style.keyWrapper">
-			<div :class="$style.key">{{ key }}</div>
+			<kbd :class="$style.key">{{ key }}</kbd>
 		</div>
 	</div>
 </template>
@@ -44,16 +44,18 @@ const keys = computed(() => {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	border-radius: var(--radius--sm);
+	border-radius: var(--radius);
 	height: 18px;
 	min-width: 18px;
 	padding: 0 var(--spacing--4xs);
-	border: solid 1px var(--color--foreground);
-	background: var(--color--background);
+	/** TODO: Add Dark Mode variant **/
+	background-color: var(--color--black-alpha-200);
 }
 
 .key {
 	color: var(--color--text);
 	font-size: var(--font-size--3xs);
+	font-family: var(--font-family);
+	font-weight: var(--font-weight--medium);
 }
 </style>
