@@ -53,3 +53,7 @@ packages/cli/src/commands/export/outputs
 .data/
 .claude/settings.local.json
 lefthook-local.yml
+
+
+# Agent Files
+.qoder/*
