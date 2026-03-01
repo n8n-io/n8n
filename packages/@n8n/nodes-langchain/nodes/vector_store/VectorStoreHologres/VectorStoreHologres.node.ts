@@ -374,7 +374,7 @@ const hgraphIndexField: INodeProperties = {
 	default: {
 		values: {
 			baseQuantizationType: 'rabitq',
-			useReorder: false,
+			useReorder: true,
 			preciseQuantizationType: 'fp32',
 			preciseIoType: 'block_memory_io',
 			maxDegree: 64,
@@ -406,7 +406,7 @@ const hgraphIndexField: INodeProperties = {
 					displayName: 'Use Reorder',
 					name: 'useReorder',
 					type: 'boolean',
-					default: false,
+					default: true,
 					description:
 						'Whether to use high-precision index for reordering. When enabled, allows configuring precise quantization type and IO type.',
 				},
@@ -519,7 +519,7 @@ function getHGraphIndexSettings(context: {
 }): HGraphIndexSettings {
 	const settings = context.getNodeParameter('options.hgraphIndex.values', 0, {
 		baseQuantizationType: 'rabitq',
-		useReorder: false,
+		useReorder: true,
 		preciseQuantizationType: 'fp32',
 		preciseIoType: 'block_memory_io',
 		maxDegree: 64,
@@ -578,7 +578,9 @@ export class VectorStoreHologres extends createVectorStoreNode<HologresVectorSto
 			columns,
 			indexSettings: {
 				baseQuantizationType: 'rabitq',
-				useReorder: false,
+				useReorder: true,
+				preciseQuantizationType: 'fp32',
+				preciseIoType: 'block_memory_io',
 				maxDegree: 64,
 				efConstruction: 400,
 			},
