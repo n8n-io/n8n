@@ -2895,11 +2895,9 @@ export function useCanvasOperations() {
 			getNodesToSave(workflowDocumentStore.value?.getNodesByIds(ids) ?? []),
 		);
 
-		const workflowDocumentId = createWorkflowDocumentId(workflowsStore.workflowId);
-		const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 		workflowData.meta = {
 			...workflowData.meta,
-			...workflowDocumentStore.meta,
+			...workflowDocumentStore.value?.meta,
 			instanceId: rootStore.instanceId,
 		};
 

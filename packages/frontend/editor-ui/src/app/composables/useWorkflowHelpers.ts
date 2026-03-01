@@ -545,7 +545,7 @@ export function useWorkflowHelpers() {
 	const i18n = useI18n();
 
 	function getNodeTypesMaxCount() {
-		const nodes = workflowDocStore.value?.allNodes ?? [];
+		const nodes = workflowDocStore.value?.allNodes ?? workflowsStore.allNodes;
 
 		const returnData: INodeTypesMaxCount = {};
 
@@ -571,7 +571,7 @@ export function useWorkflowHelpers() {
 	}
 
 	function getNodeTypeCount(nodeType: string) {
-		const nodes = workflowDocStore.value?.allNodes ?? [];
+		const nodes = workflowDocStore.value?.allNodes ?? workflowsStore.allNodes;
 
 		let count = 0;
 
@@ -585,7 +585,7 @@ export function useWorkflowHelpers() {
 	}
 
 	async function getWorkflowDataToSave() {
-		const workflowNodes = workflowDocStore.value?.allNodes ?? [];
+		const workflowNodes = workflowDocStore.value?.allNodes ?? workflowsStore.allNodes;
 		const workflowConnections = workflowsStore.allConnections;
 
 		let nodeData;

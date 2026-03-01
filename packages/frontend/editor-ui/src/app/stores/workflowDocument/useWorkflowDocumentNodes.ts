@@ -37,6 +37,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	const workflowsStore = useWorkflowsStore();
 
 	const onNodesChange = createEventHook<NodesChangeEvent>();
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 	const onStateDirty = createEventHook<void>();
 
 	// -----------------------------------------------------------------------
