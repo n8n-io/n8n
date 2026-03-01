@@ -54,6 +54,7 @@
       "dist/credentials/DeepSeekApi.credentials.js",
       "dist/credentials/GooglePalmApi.credentials.js",
       "dist/credentials/GroqApi.credentials.js",
+      "dist/credentials/HologresApi.credentials.js",
       "dist/credentials/HuggingFaceApi.credentials.js",
       "dist/credentials/MicrosoftAgent365Api.credentials.js",
       "dist/credentials/McpOAuth2Api.credentials.js",

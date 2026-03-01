@@ -1,8 +1,6 @@
 import { VectorStore } from '@langchain/core/vectorstores';
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
 import { Document } from '@langchain/core/documents';
-import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
-import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
 import type { INodeProperties } from 'n8n-workflow';
 import pg from 'pg';
 import crypto from 'node:crypto';
@@ -493,6 +491,18 @@ const retrieveFields: INodeProperties[] = [
 
 // ─── Helper Functions ────────────────────────────────────────────────────────
 
+function createPoolFromCredentials(credentials: Record<string, unknown>): pg.Pool {
+	return new pg.Pool({
+		host: credentials.host as string,
+		port: credentials.port as number,
+		database: credentials.database as string,
+		user: credentials.user as string,
+		password: credentials.password as string,
+		max: (credentials.maxConnections as number) ?? 100,
+		ssl: false,
+	});
+}
+
 function getColumnOptions(context: {
 	getNodeParameter: (name: string, index: number, fallback: unknown) => unknown;
 }): ColumnOptions {
@@ -530,9 +540,8 @@ export class VectorStoreHologres extends createVectorStoreNode<HologresVectorSto
 		name: 'vectorStoreHologres',
 		credentials: [
 			{
-				name: 'postgres',
+				name: 'hologresApi',
 				required: true,
-				testedBy: 'postgresConnectionTest',
 			},
 		],
 		operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
@@ -546,9 +555,8 @@ export class VectorStoreHologres extends createVectorStoreNode<HologresVectorSto
 		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
 			extractValue: true,
 		}) as string;
-		const credentials = await context.getCredentials('postgres');
-		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
-		const pool = pgConf.db.$pool as unknown as pg.Pool;
+		const credentials = await context.getCredentials('hologresApi');
+		const pool = createPoolFromCredentials(credentials);
 
 		const columns = getColumnOptions(context);
 		const distanceMethod = context.getNodeParameter(
@@ -588,9 +596,8 @@ export class VectorStoreHologres extends createVectorStoreNode<HologresVectorSto
 			extractValue: true,
 		}) as string;
 		const dimensions = context.getNodeParameter('dimensions', itemIndex, 1536) as number;
-		const credentials = await context.getCredentials('postgres');
-		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
-		const pool = pgConf.db.$pool as unknown as pg.Pool;
+		const credentials = await context.getCredentials('hologresApi');
+		const pool = createPoolFromCredentials(credentials);
 
 		const columns = getColumnOptions(context);
 		const distanceMethod = context.getNodeParameter(
