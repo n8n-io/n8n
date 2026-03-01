@@ -8,16 +8,13 @@ export default defineConfig(frontendConfig, {
 		'no-restricted-syntax': [
 			'warn',
 			{
-				selector:
-					"MemberExpression[property.name='allNodes'][object.name='workflowsStore']",
-				message:
-					'Use workflowDocumentStore.allNodes instead of workflowsStore.allNodes',
+				selector: "MemberExpression[property.name='allNodes'][object.name='workflowsStore']",
+				message: 'Use workflowDocumentStore.allNodes instead of workflowsStore.allNodes',
 			},
 			{
 				selector:
 					"CallExpression[callee.property.name='getNodeById'][callee.object.name='workflowsStore']",
-				message:
-					'Use workflowDocumentStore.findNode() instead of workflowsStore.getNodeById()',
+				message: 'Use workflowDocumentStore.findNode() instead of workflowsStore.getNodeById()',
 			},
 			{
 				selector:
@@ -28,8 +25,7 @@ export default defineConfig(frontendConfig, {
 			{
 				selector:
 					"CallExpression[callee.property.name='getNodes'][callee.object.name='workflowsStore']",
-				message:
-					'Use workflowDocumentStore.getNodes() instead of workflowsStore.getNodes()',
+				message: 'Use workflowDocumentStore.getNodes() instead of workflowsStore.getNodes()',
 			},
 			{
 				selector:
@@ -38,22 +34,18 @@ export default defineConfig(frontendConfig, {
 					'Use workflowDocumentStore.getNodesByIds() instead of workflowsStore.getNodesByIds()',
 			},
 			{
-				selector:
-					"MemberExpression[property.name='nodesByName'][object.name='workflowsStore']",
-				message:
-					'Use workflowDocumentStore.findNodeByName() instead of workflowsStore.nodesByName',
+				selector: "MemberExpression[property.name='nodesByName'][object.name='workflowsStore']",
+				message: 'Use workflowDocumentStore.findNodeByName() instead of workflowsStore.nodesByName',
 			},
 			{
 				selector:
 					"CallExpression[callee.property.name='addNode'][callee.object.name='workflowsStore']",
-				message:
-					'Use workflowDocumentStore.addNode() instead of workflowsStore.addNode()',
+				message: 'Use workflowDocumentStore.addNode() instead of workflowsStore.addNode()',
 			},
 			{
 				selector:
 					"CallExpression[callee.property.name='removeNode'][callee.object.name='workflowsStore']",
-				message:
-					'Use workflowDocumentStore.removeNode() instead of workflowsStore.removeNode()',
+				message: 'Use workflowDocumentStore.removeNode() instead of workflowsStore.removeNode()',
 			},
 			{
 				selector:
@@ -64,8 +56,7 @@ export default defineConfig(frontendConfig, {
 			{
 				selector:
 					"CallExpression[callee.property.name='setNodes'][callee.object.name='workflowsStore']",
-				message:
-					'Use workflowDocumentStore.setNodes() instead of workflowsStore.setNodes()',
+				message: 'Use workflowDocumentStore.setNodes() instead of workflowsStore.setNodes()',
 			},
 		],
 		// TODO: Remove these
