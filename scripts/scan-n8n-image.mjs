@@ -27,7 +27,8 @@ const config = {
 	scanners: process.env.TRIVY_SCANNERS || 'vuln',
 	quiet: process.env.TRIVY_QUIET === 'true',
 	rootDir: rootDir,
-	vexFile: process.env.TRIVY_VEX || path.join(rootDir, 'vex.openvex.json'),
+	vexFile: process.env.TRIVY_VEX || path.join(rootDir, 'security/vex.openvex.json'),
+	ignorePolicyFile: process.env.TRIVY_IGNORE_POLICY || path.join(rootDir, 'security/trivy-ignore-policy.rego'),
 };
 
 config.fullImageName = `${config.imageBaseName}:${config.imageTag}`;
@@ -54,6 +55,7 @@ const printSummary = (status, time, message) => {
 	echo(chalk.gray(`  • Severity Levels: ${config.severity}`));
 	echo(chalk.gray(`  • Scanners: ${config.scanners}`));
 	echo(chalk.gray(`  • VEX file: ${config.vexFile}`));
+	echo(chalk.gray(`  • Ignore policy: ${config.ignorePolicyFile}`));
 	if (config.ignoreUnfixed) echo(chalk.gray(`  • Ignored unfixed: yes`));
 	echo(chalk.blue.bold('========================'));
 };
@@ -94,6 +96,8 @@ const printSummary = (status, time, message) => {
 		'/var/run/docker.sock:/var/run/docker.sock',
 		'-v',
 		`${config.vexFile}:/vex.openvex.json:ro`,
+		'-v',
+		`${config.ignorePolicyFile}:/trivy-ignore-policy.rego:ro`,
 		config.trivyImage,
 		'image',
 		'--severity',
@@ -107,6 +111,8 @@ const printSummary = (status, time, message) => {
 		'--no-progress',
 		'--vex',
 		'/vex.openvex.json',
+		'--ignore-policy',
+		'/trivy-ignore-policy.rego',
 	];
 
 	if (config.ignoreUnfixed) trivyArgs.push('--ignore-unfixed');
