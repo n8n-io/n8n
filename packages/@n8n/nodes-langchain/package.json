@@ -174,7 +174,7 @@
     "fast-glob": "catalog:",
     "jest-mock-extended": "^3.0.4",
     "n8n-core": "workspace:*",
-    "tsup": "^8.5.0"
+    "tsup": "^8.5.1"
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
@@ -183,11 +183,12 @@
     "@getzep/zep-cloud": "1.0.6",
     "@getzep/zep-js": "0.9.0",
     "@google-cloud/resource-manager": "5.3.0",
-    "@google/generative-ai": "0.21.0",
     "@google/genai": "1.19.0",
+    "@google/generative-ai": "0.21.0",
     "@huggingface/inference": "4.0.5",
     "@langchain/anthropic": "catalog:",
     "@langchain/aws": "1.0.3",
+    "@langchain/classic": "1.0.5",
     "@langchain/cohere": "1.0.1",
     "@langchain/community": "catalog:",
     "@langchain/core": "catalog:",
@@ -212,7 +213,6 @@
     "@n8n/json-schema-to-zod": "workspace:*",
     "@n8n/typeorm": "catalog:",
     "@n8n/typescript-config": "workspace:*",
-    "vm2": "catalog:",
     "@pinecone-database/pinecone": "^5.0.2",
     "@qdrant/js-client-rest": "^1.15.0",
     "@supabase/supabase-js": "2.49.9",
@@ -231,7 +231,6 @@
     "js-tiktoken": "^1.0.12",
     "jsdom": "23.0.1",
     "langchain": "1.1.1",
-    "@langchain/classic": "1.0.5",
     "lodash": "catalog:",
     "mammoth": "1.11.0",
     "mime-types": "catalog:",
@@ -248,6 +247,7 @@
     "temp": "0.9.4",
     "tmp-promise": "3.0.3",
     "undici": "^6.21.0",
+    "vm2": "catalog:",
     "weaviate-client": "3.6.2",
     "zod": "catalog:",
     "zod-to-json-schema": "3.23.3"
