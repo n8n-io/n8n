@@ -14,6 +14,15 @@ const scriptDir = path.dirname(new URL(import.meta.url).pathname);
 const isInScriptsDir = path.basename(scriptDir) === 'scripts';
 const rootDir = isInScriptsDir ? path.join(scriptDir, '..') : scriptDir;
 
+const assertPathWithinRoot = (envVar, defaultRelPath) => {
+	const resolved = path.resolve(process.env[envVar] || path.join(rootDir, defaultRelPath));
+	if (!resolved.startsWith(rootDir + path.sep) && resolved !== rootDir) {
+		echo(chalk.red(`Error: ${envVar} must resolve within the repository root`));
+		process.exit(1);
+	}
+	return resolved;
+};
+
 // #region ===== Configuration =====
 const config = {
 	imageBaseName: process.env.IMAGE_BASE_NAME || 'n8nio/n8n',
@@ -27,8 +36,8 @@ const config = {
 	scanners: process.env.TRIVY_SCANNERS || 'vuln',
 	quiet: process.env.TRIVY_QUIET === 'true',
 	rootDir: rootDir,
-	vexFile: process.env.TRIVY_VEX || path.join(rootDir, 'security/vex.openvex.json'),
-	ignorePolicyFile: process.env.TRIVY_IGNORE_POLICY || path.join(rootDir, 'security/trivy-ignore-policy.rego'),
+	vexFile: assertPathWithinRoot('TRIVY_VEX', 'security/vex.openvex.json'),
+	ignorePolicyFile: assertPathWithinRoot('TRIVY_IGNORE_POLICY', 'security/trivy-ignore-policy.rego'),
 };
 
 config.fullImageName = `${config.imageBaseName}:${config.imageTag}`;
