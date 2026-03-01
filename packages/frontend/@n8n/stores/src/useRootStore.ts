@@ -80,25 +80,25 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 
 	const formUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointForm}`);
 
-	const formTestUrl = computed(() => `${state.value.urlBaseEditor}${state.value.endpointFormTest}`);
+	const formTestUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointFormTest}`);
 
 	const formWaitingUrl = computed(
-		() => `${state.value.urlBaseEditor}${state.value.endpointFormWaiting}`,
+		() => `${state.value.urlBaseWebhook}${state.value.endpointFormWaiting}`,
 	);
 
 	const webhookUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointWebhook}`);
 
 	const webhookTestUrl = computed(
-		() => `${state.value.urlBaseEditor}${state.value.endpointWebhookTest}`,
+		() => `${state.value.urlBaseWebhook}${state.value.endpointWebhookTest}`,
 	);
 
 	const webhookWaitingUrl = computed(
-		() => `${state.value.urlBaseEditor}${state.value.endpointWebhookWaiting}`,
+		() => `${state.value.urlBaseWebhook}${state.value.endpointWebhookWaiting}`,
 	);
 
 	const mcpUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointMcp}`);
 
-	const mcpTestUrl = computed(() => `${state.value.urlBaseEditor}${state.value.endpointMcpTest}`);
+	const mcpTestUrl = computed(() => `${state.value.urlBaseWebhook}${state.value.endpointMcpTest}`);
 
 	const pushRef = computed(() => state.value.pushRef);
 
